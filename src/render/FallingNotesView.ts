@@ -5,8 +5,9 @@ import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
 import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
-import { layoutKeyboard } from "./keyboardLayout";
+import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
+import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
 
 export interface FrameState {
   /** Song seconds at the hit line. */
@@ -32,33 +33,22 @@ const WHITE_KEY = 0xf4f4f4;
 const BLACK_KEY = 0x1c1c22;
 const OCTAVE_LINE = 0x2a2f3d;
 const HIT_LINE = 0xffffff;
-const KEYBOARD_SHARE = 0.22;
+const NOTE_GAP_PX = 1;
 
 /*
- * Note names as on classroom key stickers: a rainbow from red C to violet B,
- * the Latin letter over the solfège syllable on white keys, both enharmonic
- * names on black ones.
+ * The keyboard keeps its size in pixels whatever happens above it: a staff
+ * zoomed in takes room from the falling notes, never from the keys. Stickers
+ * need a taller key, and black keys shorter, to leave a white key room for one.
  */
-const STICKER_COLORS = [0xe53935, 0xfb8c00, 0x8bc34a, 0x2e9e4f, 0x2f9be0, 0x2146c7, 0x8e44ad];
-const WHITE_NAMES: readonly (readonly [string, string])[] = [
-  ["C", "до"],
-  ["D", "ре"],
-  ["E", "ми"],
-  ["F", "фа"],
-  ["G", "соль"],
-  ["A", "ля"],
-  ["B", "си"]
-];
-const BLACK_NAMES: Readonly<Record<number, readonly [string, string]>> = {
-  1: ["до♯", "ре♭"],
-  3: ["ре♯", "ми♭"],
-  6: ["фа♯", "соль♭"],
-  8: ["соль♯", "ля♭"],
-  10: ["ля♯", "си♭"]
-};
-const WHITE_PITCH_CLASSES = [0, 2, 4, 5, 7, 9, 11];
+const KEYBOARD_PX = 110;
+/** With stickers the keys grow with their width, like a real key: long and narrow. */
+const KEY_LENGTH_PER_WIDTH = 3.6;
+const KEYBOARD_WITH_STICKERS_MIN_PX = 160;
+const MAX_KEYBOARD_SHARE = 0.6;
 const BLACK_KEY_HEIGHT = 0.62;
-const NOTE_GAP_PX = 1;
+const BLACK_KEY_HEIGHT_WITH_STICKERS = 0.5;
+/** Largest size of a finger digit on a key. */
+const DIGIT_MAX_PX = 26;
 
 interface NoteSprite {
   readonly note: SongNote;
@@ -66,10 +56,16 @@ interface NoteSprite {
   readonly digit: Sprite;
 }
 
+interface Geometry {
+  readonly keyboardTop: number;
+  readonly keyboardHeight: number;
+  readonly blackHeight: number;
+}
+
 /**
- * The Synthesia-style picture: notes fall onto an 88-key keyboard, each
- * carrying the finger that plays it. Everything is a tinted sprite; the only
- * drawn things, the five finger digits, are baked into textures once.
+ * The Synthesia-style picture: notes fall onto a keyboard, each carrying the
+ * finger that plays it. Everything is a tinted sprite; the finger digits and
+ * the key stickers are drawn once into textures.
  */
 export class FallingNotesView {
   onNoteClick: ((noteId: string) => void) | undefined;
@@ -81,15 +77,14 @@ export class FallingNotesView {
   private readonly guides = new Container();
   private readonly keyboard = new Container();
   private readonly keyHints = new Container();
-  private readonly keyLabels = new Container();
+  private readonly keyStickers = new Container();
   private notes: NoteSprite[] = [];
   private readonly keySprites = new Map<number, Sprite>();
   private readonly keyDigits = new Map<number, Sprite>();
-  private readonly labelSprites = new Map<number, Sprite>();
+  private readonly stickerSprites = new Map<number, Sprite>();
   private digitTextures = new Map<Finger, Texture>();
-  /** One baked label per pitch class. */
-  private labelTextures = new Map<number, Texture>();
   private keys = new Map<number, KeyRect>();
+  private range = { low: LOWEST_PITCH, high: HIGHEST_PITCH };
   private laidOutFor = { width: 0, height: 0 };
   private ready = false;
   private resizeObserver: ResizeObserver | undefined;
@@ -97,19 +92,25 @@ export class FallingNotesView {
   private mouseKey: number | undefined;
 
   async mount(host: HTMLElement): Promise<void> {
-    await this.app.init({ resizeTo: host, background: 0x11131a, antialias: true });
+    await this.app.init({
+      resizeTo: host,
+      background: 0x11131a,
+      antialias: true,
+      // Draw at the screen's pixel density, or text is blurred on scaled displays.
+      resolution: window.devicePixelRatio,
+      autoDensity: true
+    });
     host.appendChild(this.app.canvas);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
     this.resizeObserver = new ResizeObserver(() => {
       this.app.queueResize();
     });
     this.resizeObserver.observe(host);
-    this.app.stage.addChild(this.guides, this.lane, this.keyboard, this.keyLabels, this.keyHints);
-    this.keyLabels.eventMode = "none";
-    this.keyLabels.visible = false;
+    this.app.stage.addChild(this.guides, this.lane, this.keyboard, this.keyStickers, this.keyHints);
+    this.keyStickers.eventMode = "none";
+    this.keyStickers.visible = false;
     this.digitTextures = this.bakeDigits();
-    this.labelTextures = this.bakeLabels();
-    for (let pitch = 21; pitch <= 108; pitch++) {
+    for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
       const sprite = new Sprite(Texture.WHITE);
       sprite.eventMode = "static";
       sprite.cursor = "pointer";
@@ -132,10 +133,10 @@ export class FallingNotesView {
       digit.visible = false;
       this.keyDigits.set(pitch, digit);
       this.keyHints.addChild(digit);
-      const label = new Sprite(this.labelTextures.get(pitch % 12) ?? Texture.EMPTY);
-      label.anchor.set(0.5, 1);
-      this.labelSprites.set(pitch, label);
-      this.keyLabels.addChild(label);
+      const sticker = new Sprite(bakeKeySticker(this.app.renderer, pitch));
+      sticker.anchor.set(0.5, 1);
+      this.stickerSprites.set(pitch, sticker);
+      this.keyStickers.addChild(sticker);
     }
     // White keys first so black keys draw over them.
     const pitches = [...this.keySprites.keys()];
@@ -148,9 +149,16 @@ export class FallingNotesView {
     this.ready = true;
   }
 
-  /** Note names on the keys, like stickers on a classroom piano. */
+  /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
   setShowLabels(show: boolean): void {
-    this.keyLabels.visible = show;
+    this.keyStickers.visible = show;
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  /** The keys shown, lowest to highest; fewer keys are wider. */
+  setRange(low: number, high: number): void {
+    this.range = { low, high };
+    this.laidOutFor = { width: 0, height: 0 };
   }
 
   /** Runs `onFrame` with real milliseconds before every draw. */
@@ -184,7 +192,7 @@ export class FallingNotesView {
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
     }
-    const keyboardTop = height * (1 - KEYBOARD_SHARE);
+    const { keyboardTop, keyboardHeight, blackHeight } = this.geometry(height);
     const pixelsPerSecond = keyboardTop / state.lookAhead;
 
     // Notes crossing the hit line right now: their finger is shown on the key too.
@@ -210,14 +218,14 @@ export class FallingNotesView {
       body.tint = status === "missed" ? MISSED_COLOR : HAND_COLOR[note.hand];
       body.alpha = !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
 
-      const digitScale = Math.min(1, (key.width * 0.9) / 40);
-      digit.scale.set(digitScale);
+      digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
       digit.x = key.x + key.width / 2;
       digit.y = bottom - 2;
       digit.alpha = body.alpha;
     }
 
     const dueByPitch = new Map(state.due.map((note) => [note.pitch, note]));
+    const stickers = this.keyStickers.visible;
     for (const [pitch, sprite] of this.keySprites) {
       const due = dueByPitch.get(pitch);
       // The owed note wins: it is the one the player has to find next.
@@ -233,20 +241,17 @@ export class FallingNotesView {
               : WHITE_KEY;
       const hint = this.keyDigits.get(pitch);
       const key = this.keys.get(pitch);
-      if (!hint || !key) continue;
-      hint.visible = shown?.finger !== undefined;
-      if (shown?.finger !== undefined) {
-        hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
-        hint.scale.set(Math.min(1, (key.width * 0.9) / 40));
-        hint.x = key.x + key.width / 2;
-        const keyBottom = keyboardTop + (height - keyboardTop) * (key.black ? BLACK_KEY_HEIGHT : 1);
-        if (!this.keyLabels.visible) {
-          hint.y = keyBottom - 4;
-        } else {
-          // The label sits at the bottom of the key; the finger moves to the top of its free part.
-          const blackBottom = keyboardTop + (height - keyboardTop) * BLACK_KEY_HEIGHT;
-          hint.y = (key.black ? keyboardTop : blackBottom) + hint.height + 2;
-        }
+      if (!hint) continue;
+      hint.visible = key !== undefined && shown?.finger !== undefined;
+      if (!key || shown?.finger === undefined) continue;
+      hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
+      hint.scale.set(Math.min(1, (key.width * 0.9) / 40, DIGIT_MAX_PX / 40));
+      hint.x = key.x + key.width / 2;
+      if (!stickers) {
+        hint.y = keyboardTop + (key.black ? blackHeight : keyboardHeight) - 4;
+      } else {
+        // The sticker fills the bottom of the key; the finger sits at the top of its free part.
+        hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
     }
   }
@@ -270,28 +275,54 @@ export class FallingNotesView {
     this.app.destroy({ removeView: true }, { children: true });
   }
 
+  private geometry(height: number): Geometry {
+    const stickers = this.keyStickers.visible;
+    const whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
+    const wanted = stickers
+      ? Math.max(KEYBOARD_WITH_STICKERS_MIN_PX, whiteWidth * KEY_LENGTH_PER_WIDTH)
+      : KEYBOARD_PX;
+    const keyboardHeight = Math.min(wanted, height * MAX_KEYBOARD_SHARE);
+    const blackShare = stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT;
+    return {
+      keyboardTop: height - keyboardHeight,
+      keyboardHeight,
+      blackHeight: keyboardHeight * blackShare
+    };
+  }
+
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
-    this.keys = layoutKeyboard(width);
-    const keyboardTop = height * (1 - KEYBOARD_SHARE);
-    const keyboardHeight = height - keyboardTop;
+    this.keys = layoutKeyboard(width, this.range.low, this.range.high);
+    const { keyboardTop, keyboardHeight, blackHeight } = this.geometry(height);
+
+    // One scale per kind of sticker, so every white label reads at one size and every black one too.
+    const sample = [...this.keys.values()];
+    const whiteWidth = sample.find((key) => !key.black)?.width ?? 0;
+    const blackWidth = sample.find((key) => key.black)?.width ?? 0;
+    const digitRoom = Math.min(whiteWidth * 0.9, DIGIT_MAX_PX) + 4;
+    const whiteScale = Math.min(
+      (whiteWidth * 0.92) / WHITE_STICKER.width,
+      (keyboardHeight - blackHeight - digitRoom) / WHITE_STICKER.height
+    );
+    const blackScale = Math.min(
+      (blackWidth * 0.92) / BLACK_STICKER.width,
+      (blackHeight - digitRoom) / BLACK_STICKER.height
+    );
+
     for (const [pitch, sprite] of this.keySprites) {
       const key = this.keys.get(pitch);
+      const sticker = this.stickerSprites.get(pitch);
+      sprite.visible = key !== undefined;
+      if (sticker) sticker.visible = key !== undefined;
       if (!key) continue;
       sprite.x = key.x + (key.black ? 0 : 0.5);
       sprite.y = keyboardTop;
       sprite.width = key.width - (key.black ? 0 : 1);
-      sprite.height = keyboardHeight * (key.black ? BLACK_KEY_HEIGHT : 1);
-
-      const label = this.labelSprites.get(pitch);
-      if (!label) continue;
-      const blackHeight = keyboardHeight * BLACK_KEY_HEIGHT;
-      // Room left for the label: under the black keys on a white key, the lower half of a black one.
-      const room = key.black ? blackHeight * 0.45 : (keyboardHeight - blackHeight) * 0.62;
-      label.scale.set(1);
-      label.scale.set(Math.min((key.width * 0.88) / label.width, room / label.height));
-      label.x = key.x + key.width / 2;
-      label.y = keyboardTop + (key.black ? blackHeight : keyboardHeight) - 3;
+      sprite.height = key.black ? blackHeight : keyboardHeight;
+      if (!sticker) continue;
+      sticker.scale.set(Math.max(key.black ? blackScale : whiteScale, 0));
+      sticker.x = key.x + key.width / 2;
+      sticker.y = keyboardTop + (key.black ? blackHeight : keyboardHeight) - 3;
     }
 
     this.guides.removeChildren().forEach((child) => {
@@ -329,42 +360,8 @@ export class FallingNotesView {
         },
         resolution: 2
       });
-      textures.set(finger, this.app.renderer.generateTexture(text));
+      textures.set(finger, this.app.renderer.generateTexture({ target: text, resolution: 3 }));
       text.destroy();
-    }
-    return textures;
-  }
-
-  /** Two centred lines per pitch class, baked once and shared by every octave. */
-  private bakeLabels(): Map<number, Texture> {
-    const textures = new Map<number, Texture>();
-    const line = (text: string, fill: number, fontSize: number) =>
-      new Text({
-        text,
-        style: { fontFamily: "system-ui, sans-serif", fontSize, fontWeight: "700", fill },
-        resolution: 2
-      });
-    const bake = (pitchClass: number, top: Text, bottom: Text) => {
-      const width = Math.max(top.width, bottom.width);
-      top.x = (width - top.width) / 2;
-      bottom.x = (width - bottom.width) / 2;
-      bottom.y = top.height;
-      const group = new Container();
-      group.addChild(top, bottom);
-      textures.set(pitchClass, this.app.renderer.generateTexture(group));
-      group.destroy({ children: true });
-    };
-    WHITE_PITCH_CLASSES.forEach((pitchClass, index) => {
-      const [letter, syllable] = WHITE_NAMES[index] ?? ["", ""];
-      const color = STICKER_COLORS[index] ?? 0x000000;
-      bake(pitchClass, line(letter, color, 30), line(syllable.toUpperCase(), color, 22));
-    });
-    for (const [pitchClass, [sharp, flat]] of Object.entries(BLACK_NAMES)) {
-      bake(
-        Number(pitchClass),
-        line(sharp.toUpperCase(), 0xe8e8e8, 20),
-        line(flat.toUpperCase(), 0xe8e8e8, 20)
-      );
     }
     return textures;
   }

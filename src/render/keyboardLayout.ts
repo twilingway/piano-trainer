@@ -12,17 +12,27 @@ export interface KeyRect {
   readonly width: number;
 }
 
-/** Horizontal placement of every key across `width` pixels. */
-export function layoutKeyboard(width: number): Map<number, KeyRect> {
+/**
+ * Horizontal placement of the keys from `low` to `high` across `width`
+ * pixels. A range that starts or ends on a black key is widened to the white
+ * key beside it, so the keyboard never ends in half a key.
+ */
+export function layoutKeyboard(
+  width: number,
+  low: number = LOWEST_PITCH,
+  high: number = HIGHEST_PITCH
+): Map<number, KeyRect> {
+  const first = Math.max(LOWEST_PITCH, isBlackKey(low) ? low - 1 : low);
+  const last = Math.min(HIGHEST_PITCH, isBlackKey(high) ? high + 1 : high);
   let whiteCount = 0;
-  for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
+  for (let pitch = first; pitch <= last; pitch++) {
     if (!isBlackKey(pitch)) whiteCount++;
   }
   const whiteWidth = width / whiteCount;
   const blackWidth = whiteWidth * BLACK_WIDTH_RATIO;
   const keys = new Map<number, KeyRect>();
   let whiteIndex = 0;
-  for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
+  for (let pitch = first; pitch <= last; pitch++) {
     if (isBlackKey(pitch)) {
       // A black key sits on the seam between the white key before it and the one after.
       keys.set(pitch, {

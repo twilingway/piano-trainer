@@ -21,6 +21,17 @@ describe("layoutKeyboard", () => {
   });
 });
 
+describe("layoutKeyboard with a range", () => {
+  it("spreads only the chosen keys, widening a black edge to its white neighbour", () => {
+    // C4 to C#5 becomes C4 to D5: nine white keys.
+    const keys = layoutKeyboard(900, 60, 73);
+    expect(keys.has(59)).toBe(false);
+    expect(keys.get(60)).toMatchObject({ x: 0, width: 100 });
+    expect(keys.get(74)).toMatchObject({ x: 800, width: 100 });
+    expect(keys.has(75)).toBe(false);
+  });
+});
+
 describe("parseMidiMessage", () => {
   it("reads note on, note off and the note-on-with-zero-velocity release", () => {
     expect(parseMidiMessage(new Uint8Array([0x90, 60, 100]))).toEqual({

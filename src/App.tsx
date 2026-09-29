@@ -94,6 +94,28 @@ function saveStaffPrefs(prefs: StaffPrefs): void {
   }
 }
 
+type KeyRange = "song" | "88" | "61" | "49";
+
+/** Fixed ranges of real keyboards: 88 keys A0-C8, 61 keys C2-C7, 49 keys C2-C6. */
+const FIXED_RANGES: Readonly<Record<Exclude<KeyRange, "song">, readonly [number, number]>> = {
+  "88": [21, 108],
+  "61": [36, 96],
+  "49": [36, 84]
+};
+
+/** The song's notes from the C below them to the C above, at least two octaves wide. */
+function songRange(song: Song): readonly [number, number] {
+  const pitches = song.notes.map((note) => note.pitch);
+  if (pitches.length === 0) return [48, 84];
+  let low = Math.floor((Math.min(...pitches) - 1) / 12) * 12;
+  let high = Math.ceil((Math.max(...pitches) + 1) / 12) * 12;
+  while (high - low < 24) {
+    low -= 12;
+    if (high - low < 24) high += 12;
+  }
+  return [Math.max(21, low), Math.min(108, high)];
+}
+
 function saveOverrides(song: Song, overrides: ReadonlyMap<string, Finger>): void {
   try {
     localStorage.setItem(overridesKey(song), JSON.stringify([...overrides]));
@@ -159,6 +181,7 @@ export function App() {
   const [listening, setListening] = useState(false);
   const [metronome, setMetronome] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
+  const [keyRange, setKeyRange] = useState<KeyRange>("song");
   /** Which MIDI input plays; "all" listens to every one. */
   const [midiDeviceId, setMidiDeviceId] = useState("all");
   const midiDeviceRef = useRef("all");
@@ -274,6 +297,11 @@ export function App() {
   useEffect(() => {
     viewRef.current?.setShowLabels(showLabels);
   }, [trainerReady, showLabels]);
+
+  const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
+  useEffect(() => {
+    viewRef.current?.setRange(rangeLow, rangeHigh);
+  }, [trainerReady, rangeLow, rangeHigh]);
 
   useEffect(() => {
     midiDeviceRef.current = midiDeviceId;
@@ -455,6 +483,18 @@ export function App() {
           />
           Названия нот
         </label>
+        <select
+          aria-label="Клавиши"
+          value={keyRange}
+          onChange={(event) => {
+            setKeyRange(event.target.value as KeyRange);
+          }}
+        >
+          <option value="song">Клавиши по песне</option>
+          <option value="88">88 клавиш</option>
+          <option value="61">61 клавиша</option>
+          <option value="49">49 клавиш</option>
+        </select>
       </header>
 
       <div className="status">

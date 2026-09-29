@@ -213,7 +213,10 @@ export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) 
       // Off by default for a one-part score; the fingers are the point here.
       drawFingerings: true,
       renderSingleHorizontalStaffline: singleLine,
-      followCursor: false
+      followCursor: false,
+      // Eighths and shorter are beamed beat by beat, so each beat reads as one group at a glance.
+      autoBeam: true,
+      autoBeamOptions: { groups: [[1, 4]] }
     });
     void osmd.load(musicXml).then(() => {
       if (cancelled) return;
