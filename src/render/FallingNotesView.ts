@@ -36,14 +36,13 @@ const HIT_LINE = 0xffffff;
 const NOTE_GAP_PX = 1;
 
 /*
- * The keyboard keeps its size in pixels whatever happens above it: a staff
- * zoomed in takes room from the falling notes, never from the keys. Stickers
- * need a taller key, and black keys shorter, to leave a white key room for one.
+ * The keyboard's height follows its key width, like a real key, long and
+ * narrow, and nothing else: a staff zoomed in takes room from the falling
+ * notes, never from the keys, and stickers on or off leave the keys alone.
+ * Stickers only shorten the black keys, to leave a white key room for one.
  */
-const KEYBOARD_PX = 110;
-/** With stickers the keys grow with their width, like a real key: long and narrow. */
 const KEY_LENGTH_PER_WIDTH = 3.6;
-const KEYBOARD_WITH_STICKERS_MIN_PX = 160;
+const KEYBOARD_MIN_PX = 110;
 const MAX_KEYBOARD_SHARE = 0.6;
 const BLACK_KEY_HEIGHT = 0.62;
 const BLACK_KEY_HEIGHT_WITH_STICKERS = 0.5;
@@ -278,9 +277,7 @@ export class FallingNotesView {
   private geometry(height: number): Geometry {
     const stickers = this.keyStickers.visible;
     const whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
-    const wanted = stickers
-      ? Math.max(KEYBOARD_WITH_STICKERS_MIN_PX, whiteWidth * KEY_LENGTH_PER_WIDTH)
-      : KEYBOARD_PX;
+    const wanted = Math.max(KEYBOARD_MIN_PX, whiteWidth * KEY_LENGTH_PER_WIDTH);
     const keyboardHeight = Math.min(wanted, height * MAX_KEYBOARD_SHARE);
     const blackShare = stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT;
     return {
