@@ -8,3 +8,87 @@
 body {
   margin: 0;
 }
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  background: #1a1d27;
+}
+
+.toolbar .title {
+  margin-right: auto;
+}
+
+.toolbar button,
+.toolbar select,
+.toolbar .button {
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid #3a3f52;
+  border-radius: 6px;
+  background: #242838;
+  color: inherit;
+  cursor: pointer;
+}
+
+.toolbar .speed {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 4px 12px;
+  font-size: 14px;
+  color: #a9aec2;
+}
+
+.status .waiting {
+  color: #ffd166;
+}
+
+.status .error {
+  color: #ff6b6b;
+}
+
+.status .hint {
+  margin-left: auto;
+}
+
+.staff {
+  flex: 0 0 auto;
+  height: 180px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #fbfaf5;
+}
+
+.lane {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.result {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 24px 32px;
+  border-radius: 12px;
+  background: #1f2331;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 50%);
+  text-align: center;
+}
