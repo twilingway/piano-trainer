@@ -17,6 +17,8 @@ export interface SongNote {
   readonly scoreFinger?: Finger;
   readonly finger?: Finger;
   readonly transition?: TransitionKind;
+  /** How hard the note is struck, MIDI 1-127; a recorded take has it, a score does not. */
+  readonly velocity?: number;
 }
 
 export interface SongBeat {

@@ -3,7 +3,7 @@ import type { KeyEvent } from "../input/midiInput";
 import type { FallingNotesView } from "../render/FallingNotesView";
 import { TakeRecorder } from "../recording/take";
 import type { Take } from "../recording/take";
-import type { Song } from "../song/song";
+import type { Song, SongNote } from "../song/song";
 import { PracticeSession } from "./session";
 import type { PracticeEvent, PracticeOptions, PracticeStats } from "./session";
 
@@ -16,6 +16,8 @@ export interface TrainerSnapshot {
   readonly beat: number;
   readonly stats: PracticeStats;
 }
+
+const NOTHING: ReadonlySet<number> = new Set();
 
 /** Song seconds visible above the hit line. */
 const LOOK_AHEAD_S = 3;
@@ -54,6 +56,16 @@ export class Trainer {
   private songKey = "";
   private playing = false;
   private recorder: TakeRecorder | undefined;
+  /** Colours for the notes on this trainer's view, and a second view drawn in step with it. */
+  private comparison:
+    | {
+        readonly colorOf: (note: SongNote) => number | undefined;
+        readonly mirror?: {
+          readonly view: FallingNotesView;
+          readonly colorOf: (note: SongNote) => number | undefined;
+        };
+      }
+    | undefined;
   /** Real clock of the take: when it began and how long it sat paused, in ms. */
   private takeClock = { start: 0, paused: 0, pausedAt: 0 };
   private readonly pressed = new Set<number>();
@@ -133,6 +145,14 @@ export class Trainer {
     }
   }
 
+  /**
+   * Compare mode: the trainer's own notes get `colorOf`, and `mirror` (a second
+   * view already showing the other song) is drawn at the same song time.
+   */
+  setComparison(comparison: Trainer["comparison"]): void {
+    this.comparison = comparison;
+  }
+
   pedal(down: boolean): void {
     if (this.recorder && this.session) {
       this.recorder.setPedal(down, this.session.time, this.realTime());
@@ -175,7 +195,19 @@ export class Trainer {
       pressed: this.pressed,
       sounding: this.sounding,
       due: this.playing || session.time < 0 ? session.nextDue() : [],
-      hands: session.options.hands
+      hands: session.options.hands,
+      colorOf: this.comparison?.colorOf
+    });
+    const mirror = this.comparison?.mirror;
+    mirror?.view.draw({
+      time: session.time,
+      lookAhead: LOOK_AHEAD_S,
+      statusOf: () => undefined,
+      pressed: NOTHING,
+      sounding: NOTHING,
+      due: [],
+      hands: session.options.hands,
+      colorOf: mirror.colorOf
     });
     this.sinceSnapshot += deltaMs;
     const beat = beatAt(session.song, session.time);
@@ -187,7 +219,7 @@ export class Trainer {
       switch (event.type) {
         case "autoNoteOn":
           this.sounding.add(event.pitch);
-          soundNoteOn(event.pitch);
+          soundNoteOn(event.pitch, event.velocity);
           break;
         case "autoNoteOff":
           this.sounding.delete(event.pitch);

@@ -54,8 +54,10 @@ function noteName(pitch: number): string {
   return Tone.Frequency(pitch, "midi").toNote();
 }
 
-export function soundNoteOn(pitch: number): void {
-  if (samplesReady) sampler?.triggerAttack(noteName(pitch));
+/** `velocity` is MIDI 1-127; without one the note sounds at full strength. */
+export function soundNoteOn(pitch: number, velocity?: number): void {
+  if (!samplesReady) return;
+  sampler?.triggerAttack(noteName(pitch), undefined, velocity === undefined ? 1 : velocity / 127);
 }
 
 export function soundNoteOff(pitch: number): void {

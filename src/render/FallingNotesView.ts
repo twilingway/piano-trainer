@@ -22,6 +22,8 @@ export interface FrameState {
   /** The chord the player owes next, shown on the keyboard with its fingers. */
   readonly due: readonly SongNote[];
   readonly hands: ReadonlySet<Hand>;
+  /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
+  readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
 }
 
 const HAND_COLOR: Readonly<Record<Hand, number>> = { right: 0x4cc9f0, left: 0xf4a261 };
@@ -214,8 +216,9 @@ export class FallingNotesView {
       body.width = key.width - NOTE_GAP_PX * 2;
       body.y = bottom - noteHeight;
       body.height = noteHeight;
-      body.tint = status === "missed" ? MISSED_COLOR : HAND_COLOR[note.hand];
-      body.alpha = !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
+      const custom = state.colorOf?.(note);
+      body.tint = custom ?? (status === "missed" ? MISSED_COLOR : HAND_COLOR[note.hand]);
+      body.alpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
 
       digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
       digit.x = key.x + key.width / 2;

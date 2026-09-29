@@ -156,7 +156,6 @@ body {
 }
 
 .review-bar button {
-  margin-left: auto;
   font: inherit;
   padding: 2px 8px;
   border: 1px solid #3a3f52;
@@ -227,11 +226,53 @@ body {
   padding-inline: 50%;
 }
 
+/* One lane, or two when a take is compared with the original: side by side or stacked. */
+.lanes {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-height: 0;
+}
+
+.lanes--row {
+  flex-direction: row;
+}
+
+.lanes--column {
+  flex-direction: column;
+}
+
 .lane {
   position: relative;
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.lane-label {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  left: 8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  background: rgb(0 0 0 / 55%);
+  pointer-events: none;
+}
+
+.review-bar select {
+  font: inherit;
+  padding: 2px 6px;
+  border: 1px solid #3a3f52;
+  border-radius: 6px;
+  background: #242838;
+  color: inherit;
+}
+
+.review-bar button[aria-pressed="true"] {
+  border-color: #6c8cff;
 }
 
 /*

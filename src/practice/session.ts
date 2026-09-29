@@ -15,7 +15,7 @@ export interface PracticeOptions {
 export type NoteStatus = "pending" | "hit" | "missed" | "skipped";
 
 export type PracticeEvent =
-  | { readonly type: "autoNoteOn"; readonly pitch: number }
+  | { readonly type: "autoNoteOn"; readonly pitch: number; readonly velocity?: number }
   | { readonly type: "autoNoteOff"; readonly pitch: number }
   | { readonly type: "hit"; readonly noteId: string; readonly offset: number }
   | { readonly type: "miss"; readonly noteId: string }
@@ -248,7 +248,11 @@ export class PracticeSession {
       const note = this.autoNotes[this.autoStartIndex];
       if (!note || note.start > this.time) break;
       this.autoStartIndex++;
-      events.push({ type: "autoNoteOn", pitch: note.pitch });
+      events.push(
+        note.velocity === undefined
+          ? { type: "autoNoteOn", pitch: note.pitch }
+          : { type: "autoNoteOn", pitch: note.pitch, velocity: note.velocity }
+      );
       this.soundingAuto.push(note);
     }
   }

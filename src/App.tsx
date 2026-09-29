@@ -12,6 +12,8 @@ import { listenToComputerKeyboard, listenToMidi, midiSupported } from "./input/m
 import type { KeyEvent, MidiDevice, MidiEvent } from "./input/midiInput";
 import { compareTake } from "./recording/compare";
 import type { Grade, TakeReview } from "./recording/compare";
+import { loadTakes, saveTake } from "./recording/history";
+import { takeAsSong, takeToMidi } from "./recording/playback";
 import type { Take } from "./recording/take";
 import type { PracticeMode, PracticeOptions } from "./practice/session";
 import { Trainer } from "./practice/Trainer";
@@ -131,6 +133,34 @@ function songRange(song: Song): readonly [number, number] {
   return [Math.max(21, low), Math.min(108, high)];
 }
 
+/** The same grades as tints for the falling notes; a key that belongs to no note is red too. */
+const GRADE_TINTS: Readonly<Record<Grade, number>> = {
+  good: 0x2e9e4f,
+  inaccurate: 0xe08a00,
+  missed: 0xe63946
+};
+const EXTRA_TINT = 0xe63946;
+
+type SplitDirection = "row" | "column";
+
+function takeLabel(take: Take): string {
+  const when = new Date(take.createdAt);
+  const time = when.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const date = when.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  const mode = take.mode === "tempo" ? "в темпе" : "с ожиданием";
+  return `${date} ${time} · ${mode} · ${String(Math.round(take.speed * 100))}%`;
+}
+
+function downloadTake(take: Take, title: string): void {
+  const bytes = new Uint8Array(takeToMidi(take, title));
+  const url = URL.createObjectURL(new Blob([bytes], { type: "audio/midi" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${title} ${take.createdAt.slice(0, 16).replace(/[T:]/g, "-")}.mid`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Staff colours of a reviewed note: clean, off in rhythm, length or touch, not played. */
 const GRADE_COLORS: Readonly<Record<Grade, string>> = {
   good: "#2e9e4f",
@@ -209,6 +239,13 @@ export function App() {
   const midiDeviceRef = useRef("all");
   /** The last take and how it compares with the score. */
   const [lastTake, setLastTake] = useState<{ take: Take; review: TakeReview } | null>(null);
+  const [takes, setTakes] = useState<Take[]>([]);
+  /** The take playing on one screen against the original on the other. */
+  const [comparing, setComparing] = useState(false);
+  const [splitDirection, setSplitDirection] = useState<SplitDirection>("row");
+  /** Bumped to play the comparison again from its start. */
+  const [replayCount, setReplayCount] = useState(0);
+  const mirrorHostRef = useRef<HTMLDivElement>(null);
   const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
   /**
    * Song time practice starts from after a click on the staff; null = the beginning.
@@ -331,13 +368,39 @@ export function App() {
     [listening, mode, handChoice, speed]
   );
 
+  // The take as a song, sounding with its own velocities, while comparing.
+  const compareSong = useMemo(
+    () => (comparing && lastTake ? takeAsSong(lastTake.take, song, lastTake.review) : undefined),
+    [comparing, lastTake, song]
+  );
+
   useEffect(() => {
     const trainer = trainerRef.current;
     if (!trainer) return;
+    if (compareSong && lastTake) {
+      trainer.load(
+        compareSong,
+        { mode: "tempo", hands: new Set<Hand>(), speed: lastTake.take.speed },
+        `${overridesKey(baseSong)}:replay`
+      );
+      if (lastTake.take.from > 0) trainer.seek(lastTake.take.from);
+      trainer.setPlaying(true);
+      return;
+    }
     trainer.load(song, practiceOptions, overridesKey(baseSong));
     if (startFromRef.current !== null) trainer.seek(startFromRef.current);
     if (listening) trainer.setPlaying(true);
-  }, [trainerReady, song, practiceOptions, listening, baseSong]);
+    // replayCount is here only to play the comparison again.
+  }, [
+    trainerReady,
+    song,
+    practiceOptions,
+    listening,
+    baseSong,
+    compareSong,
+    lastTake,
+    replayCount
+  ]);
 
   useEffect(() => {
     if (trainerRef.current) trainerRef.current.metronome = metronome;
@@ -351,6 +414,39 @@ export function App() {
   useEffect(() => {
     viewRef.current?.setRange(rangeLow, rangeHigh);
   }, [trainerReady, rangeLow, rangeHigh]);
+
+  // The original on a second screen, drawn by the trainer at the take's song time.
+  useEffect(() => {
+    const host = mirrorHostRef.current;
+    const trainer = trainerRef.current;
+    if (!comparing || !host || !trainer || !lastTake) return;
+    const { take, review: taken } = lastTake;
+    const gradeOf = new Map(taken.notes.map((item) => [item.note.id, GRADE_TINTS[item.grade]]));
+    const playedTint = new Map<string, number>();
+    take.notes.forEach((played, index) => {
+      const owed = taken.notes.find((item) => item.played === played);
+      playedTint.set(`take${String(index)}`, owed ? GRADE_TINTS[owed.grade] : EXTRA_TINT);
+    });
+    const mirror = new FallingNotesView();
+    let disposed = false;
+    const mounted = mirror.mount(host).then(() => {
+      if (disposed) return;
+      mirror.setSong(song);
+      mirror.setShowLabels(showLabels);
+      mirror.setRange(rangeLow, rangeHigh);
+      trainer.setComparison({
+        colorOf: (note) => playedTint.get(note.id),
+        mirror: { view: mirror, colorOf: (note) => gradeOf.get(note.id) }
+      });
+    });
+    return () => {
+      disposed = true;
+      trainer.setComparison(undefined);
+      void mounted.then(() => {
+        mirror.destroy();
+      });
+    };
+  }, [comparing, lastTake, song, showLabels, rangeLow, rangeHigh]);
 
   useEffect(() => {
     midiDeviceRef.current = midiDeviceId;
@@ -418,6 +514,10 @@ export function App() {
   };
 
   const restart = () => {
+    if (comparing) {
+      setReplayCount((count) => count + 1);
+      return;
+    }
     setListening(false);
     startFromRef.current = null;
     trainerRef.current?.load(song, practiceOptions, overridesKey(baseSong));
@@ -426,9 +526,31 @@ export function App() {
   useEffect(() => {
     // The trainer outlives renders; a finished take is compared with the song on screen now.
     takeHandlerRef.current = (take) => {
+      setTakes(saveTake(take));
       setLastTake({ take, review: compareTake(song, take) });
     };
   });
+
+  // Each song and level keeps its own takes.
+  const songKey = overridesKey(baseSong);
+  const [takesOf, setTakesOf] = useState<string | null>(null);
+  if (takesOf !== songKey) {
+    // Another song or level: its own history, and nothing of the last one on screen.
+    setTakesOf(songKey);
+    setTakes(loadTakes(songKey));
+    setLastTake(null);
+    setComparing(false);
+  }
+
+  const selectTake = (id: string) => {
+    const take = takes.find((item) => item.id === id);
+    if (take) setLastTake({ take, review: compareTake(song, take) });
+  };
+
+  const startComparing = async () => {
+    await ensureSound();
+    setComparing(true);
+  };
 
   // A take belongs to the song and level it was played on; another song shows no review.
   const review = lastTake?.take.songKey === overridesKey(baseSong) ? lastTake.review : undefined;
@@ -694,9 +816,67 @@ export function App() {
             <span>ритм ±{Math.round(review.summary.meanAbsOffsetMs)} мс</span>
           )}
           <span>ровность удара ±{Math.round(review.summary.velocitySpread)}</span>
+          {takes.length > 1 && (
+            <select
+              aria-label="Дубль"
+              value={lastTake.take.id}
+              onChange={(event) => {
+                selectTake(event.target.value);
+              }}
+            >
+              {takes.map((take) => (
+                <option key={take.id} value={take.id}>
+                  {takeLabel(take)}
+                </option>
+              ))}
+            </select>
+          )}
+          {comparing ? (
+            <>
+              <button
+                type="button"
+                aria-pressed={splitDirection === "row"}
+                onClick={() => {
+                  setSplitDirection("row");
+                }}
+              >
+                Рядом
+              </button>
+              <button
+                type="button"
+                aria-pressed={splitDirection === "column"}
+                onClick={() => {
+                  setSplitDirection("column");
+                }}
+              >
+                Друг под другом
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setComparing(false);
+                }}
+              >
+                Закрыть сравнение
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => void startComparing()}>
+              Сравнить с оригиналом
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
+              downloadTake(lastTake.take, song.title);
+            }}
+          >
+            Скачать .mid
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setComparing(false);
               setLastTake(null);
             }}
           >
@@ -718,9 +898,18 @@ export function App() {
         />
       )}
 
-      <div className="lane" ref={hostRef} />
+      <div className={`lanes lanes--${splitDirection}`}>
+        <div className="lane" ref={hostRef}>
+          {comparing && <span className="lane-label">Твой дубль</span>}
+        </div>
+        {comparing && (
+          <div className="lane" ref={mirrorHostRef}>
+            <span className="lane-label">Оригинал</span>
+          </div>
+        )}
+      </div>
 
-      {snapshot?.finished && !listening && stats && (
+      {snapshot?.finished && !listening && !comparing && stats && (
         <div className="result">
           <h2>Готово</h2>
           <p>Точность {Math.round(accuracy * 100)}%</p>
