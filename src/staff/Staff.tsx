@@ -31,6 +31,8 @@ const GLIDE = 0.12;
 const DEFAULT_MAX_SHARE = 0.45;
 /** Time constant of the single line's easing, seconds: long enough to hide a note's jolt. */
 const LIVE_SMOOTHING_S = 0.35;
+/** How long the reader's scrolling keeps the line from following the song, ms. */
+const MANUAL_SCROLL_HOLD_MS = 2500;
 const MAX_LINES = 3;
 /** Air left above a line when it is scrolled to the top. */
 const LINE_TOP_GAP_PX = 4;
@@ -468,14 +470,35 @@ export function Staff({
     let lastFrame = performance.now();
     /** The line's scroll position as the loop keeps it: fractional, unlike scrollLeft. */
     let smoothLeft: number | undefined;
+    let lastBeat: number | undefined;
+    /** Until when the reader's own scrolling holds the line still, ms. */
+    let manualUntil = 0;
+    const holdForReader = () => {
+      manualUntil = performance.now() + MANUAL_SCROLL_HOLD_MS;
+    };
+    const reader = hostRef.current;
+    for (const type of ["wheel", "pointerdown", "touchstart", "keydown"] as const) {
+      reader?.addEventListener(type, holdForReader, { passive: true });
+    }
     const step = () => {
       const now = performance.now();
       const dt = Math.min(now - lastFrame, 100) / 1000;
       lastFrame = now;
       const host = hostRef.current;
       const live = liveBeatRef.current;
-      if (host && live && latest.current.singleLine && latest.current.follow) {
-        const x = xAtBeat(beatXRef.current, live());
+      const beatNow = live?.();
+      // Following leaves the line to the reader while the song stands still or they scroll it.
+      const moving = beatNow !== undefined && beatNow !== lastBeat;
+      lastBeat = beatNow;
+      if (now < manualUntil || !moving) {
+        smoothLeft = undefined;
+      } else if (
+        host &&
+        beatNow !== undefined &&
+        latest.current.singleLine &&
+        latest.current.follow
+      ) {
+        const x = xAtBeat(beatXRef.current, beatNow);
         const svg = host.querySelector("svg");
         if (x !== undefined && svg) {
           const svgLeft =
@@ -484,10 +507,10 @@ export function Staff({
           // Notes sit unevenly on the page and the song can stop and start: the line eases
           // towards where the song is rather than copying every change of pace.
           const ease = 1 - Math.exp(-dt / LIVE_SMOOTHING_S);
+          // Coming back from the reader's scroll, the line eases from where they left it.
+          const from = smoothLeft ?? host.scrollLeft;
           smoothLeft =
-            smoothLeft === undefined || Math.abs(wanted - smoothLeft) > host.clientWidth
-              ? wanted
-              : smoothLeft + (wanted - smoothLeft) * ease;
+            Math.abs(wanted - from) > host.clientWidth * 3 ? wanted : from + (wanted - from) * ease;
           host.scrollLeft = smoothLeft;
         }
       } else {
@@ -511,6 +534,9 @@ export function Staff({
     };
     frame = requestAnimationFrame(step);
     return () => {
+      for (const type of ["wheel", "pointerdown", "touchstart", "keydown"] as const) {
+        reader?.removeEventListener(type, holdForReader);
+      }
       cancelAnimationFrame(frame);
     };
   }, []);
