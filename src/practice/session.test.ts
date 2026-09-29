@@ -19,6 +19,11 @@ const SONG: Song = {
   title: "test",
   source: "midi",
   notes: [note("c3", 48, 0, "left"), note("c4", 60, 0), note("e4", 64, 1), note("g4", 67, 1)],
+  beats: [
+    { time: 0, downbeat: true },
+    { time: 0.5, downbeat: false },
+    { time: 1, downbeat: false }
+  ],
   duration: 1.5
 };
 
@@ -94,5 +99,25 @@ describe("the other hand", () => {
     const tail = run.advance(0.1);
     expect(tail).toContainEqual({ type: "finished" });
     expect(run.finished).toBe(true);
+  });
+});
+
+describe("metronome", () => {
+  const beatsOf = (events: readonly { type: string }[]) =>
+    events.filter((event) => event.type === "beat");
+
+  it("counts in over the lead-in at the song's beat interval", () => {
+    const run = session("tempo");
+    // Lead-in of 2 s at 0.5 s per beat: clicks at -2, -1.5, -1, -0.5.
+    expect(beatsOf(run.advance(LEAD_IN_S - 0.01))).toHaveLength(4);
+  });
+
+  it("marks the first beat of a measure and stays silent while the wait mode waits", () => {
+    const run = session("wait");
+    const atStart = beatsOf(run.advance(LEAD_IN_S + 3));
+    expect(atStart.at(-1)).toEqual({ type: "beat", downbeat: true });
+    expect(beatsOf(run.advance(3))).toHaveLength(0);
+    run.pressKey(60);
+    expect(beatsOf(run.advance(0.6))).toEqual([{ type: "beat", downbeat: false }]);
   });
 });

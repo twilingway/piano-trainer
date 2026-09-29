@@ -40,6 +40,12 @@ body {
   cursor: pointer;
 }
 
+.toolbar .check {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
 .toolbar .speed {
   display: flex;
   gap: 6px;

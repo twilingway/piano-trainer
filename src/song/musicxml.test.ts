@@ -60,6 +60,19 @@ describe("songFromMusicXml", () => {
     expect(song.notes.find((note) => note.pitch === 62)?.scoreFinger).toBeUndefined();
   });
 
+  it("clicks every quarter at the written tempo, ticking on each downbeat", () => {
+    expect(song.beats.map((beat) => [beat.time, beat.downbeat])).toEqual([
+      [0, true],
+      [1, false],
+      [2, false],
+      [3, false],
+      [4, true],
+      [5, false],
+      [6, false],
+      [7, false]
+    ]);
+  });
+
   it("counts the second measure from the end of the first", () => {
     expect(song.notes.find((note) => note.pitch === 66)?.startBeat).toBe(5);
   });

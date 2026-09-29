@@ -44,3 +44,18 @@ export function soundNoteOff(pitch: number): void {
 export function soundAllOff(): void {
   sampler?.releaseAll();
 }
+
+/*
+ * Metronome: a short high blip, higher and louder on the first beat of a
+ * measure ("tick") than on the others ("tock").
+ */
+let click: Tone.Synth | undefined;
+
+export function soundClick(downbeat: boolean): void {
+  click ??= new Tone.Synth({
+    oscillator: { type: "square" },
+    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 }
+  }).toDestination();
+  click.volume.value = downbeat ? -8 : -14;
+  click.triggerAttackRelease(downbeat ? "C7" : "G6", 0.03);
+}

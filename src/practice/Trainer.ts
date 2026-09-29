@@ -1,4 +1,4 @@
-import { soundAllOff, soundNoteOff, soundNoteOn } from "../audio/pianoSound";
+import { soundAllOff, soundClick, soundNoteOff, soundNoteOn } from "../audio/pianoSound";
 import type { KeyEvent } from "../input/midiInput";
 import type { FallingNotesView } from "../render/FallingNotesView";
 import type { Song } from "../song/song";
@@ -44,6 +44,7 @@ export function beatAt(song: Song, time: number): number {
  */
 export class Trainer {
   onSnapshot: ((snapshot: TrainerSnapshot) => void) | undefined;
+  metronome = false;
 
   private session: PracticeSession | undefined;
   private playing = false;
@@ -115,6 +116,9 @@ export class Trainer {
         case "autoNoteOff":
           this.sounding.delete(event.pitch);
           soundNoteOff(event.pitch);
+          break;
+        case "beat":
+          if (this.metronome) soundClick(event.downbeat);
           break;
         case "finished":
           this.playing = false;

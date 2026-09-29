@@ -25,6 +25,7 @@ const SONG: Song = {
     note("d", 65, 3),
     note("e", 67, 4)
   ],
+  beats: [],
   duration: 5
 };
 

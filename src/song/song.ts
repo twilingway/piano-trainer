@@ -17,10 +17,19 @@ export interface SongNote {
   readonly transition?: TransitionKind;
 }
 
+export interface SongBeat {
+  /** Seconds from the start of the song at its written tempo. */
+  readonly time: number;
+  /** The first beat of a measure: the metronome's "tick" rather than its "tock". */
+  readonly downbeat: boolean;
+}
+
 export interface Song {
   readonly title: string;
   readonly source: "midi" | "musicxml";
   readonly notes: readonly SongNote[];
+  /** The metronome grid, in order. */
+  readonly beats: readonly SongBeat[];
   /** Seconds until the last note ends. */
   readonly duration: number;
   /** The original MusicXML text, for the staff renderer; absent for MIDI. */

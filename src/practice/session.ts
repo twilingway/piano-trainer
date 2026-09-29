@@ -1,5 +1,5 @@
 import type { Hand } from "../fingering/fingering";
-import type { Song, SongNote } from "../song/song";
+import type { Song, SongBeat, SongNote } from "../song/song";
 
 export type PracticeMode = "wait" | "tempo";
 
@@ -19,6 +19,7 @@ export type PracticeEvent =
   | { readonly type: "hit"; readonly noteId: string; readonly offset: number }
   | { readonly type: "miss"; readonly noteId: string }
   | { readonly type: "wrong"; readonly pitch: number }
+  | { readonly type: "beat"; readonly downbeat: boolean }
   | { readonly type: "finished" };
 
 export interface PracticeStats {
@@ -57,6 +58,9 @@ export class PracticeSession {
   private readonly missedPitches: number[] = [];
   private autoStartIndex = 0;
   private readonly soundingAuto: SongNote[] = [];
+  /** The song's beat grid, preceded by a count-in over the lead-in. */
+  private readonly beats: readonly SongBeat[];
+  private beatIndex = 0;
 
   constructor(song: Song, options: PracticeOptions) {
     this.song = song;
@@ -64,6 +68,7 @@ export class PracticeSession {
     this.playerNotes = song.notes.filter((note) => options.hands.has(note.hand));
     this.autoNotes = song.notes.filter((note) => !options.hands.has(note.hand));
     for (const note of this.playerNotes) this.status.set(note.id, "pending");
+    this.beats = [...countIn(song.beats), ...song.beats];
   }
 
   statusOf(noteId: string): NoteStatus | undefined {
@@ -107,6 +112,13 @@ export class PracticeSession {
 
     this.time = Math.max(this.time, target);
     this.playAuto(events);
+    // The metronome follows song time, so it slows with the speed and falls silent while waiting.
+    while (this.beatIndex < this.beats.length) {
+      const beat = this.beats[this.beatIndex];
+      if (!beat || beat.time > this.time) break;
+      this.beatIndex++;
+      events.push({ type: "beat", downbeat: beat.downbeat });
+    }
 
     const allPlayed = this.playerNotes.every((note) => this.status.get(note.id) !== "pending");
     if (allPlayed && this.time >= this.song.duration && this.soundingAuto.length === 0) {
@@ -197,4 +209,18 @@ export class PracticeSession {
       this.soundingAuto.push(note);
     }
   }
+}
+
+/** Clicks at the song's opening beat interval, filling the lead-in before time 0. */
+function countIn(beats: readonly SongBeat[]): SongBeat[] {
+  const first = beats[0];
+  const second = beats[1];
+  if (!first || !second) return [];
+  const interval = second.time - first.time;
+  if (interval <= 0) return [];
+  const clicks: SongBeat[] = [];
+  for (let time = first.time - interval; time >= -LEAD_IN_S; time -= interval) {
+    clicks.unshift({ time, downbeat: false });
+  }
+  return clicks;
 }

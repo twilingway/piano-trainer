@@ -2,7 +2,7 @@ import { strFromU8, unzipSync } from "fflate";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import { handByPitch, sortNotes } from "./song";
-import type { Song, SongNote } from "./song";
+import type { Song, SongBeat, SongNote } from "./song";
 
 const DEFAULT_TEMPO_BPM = 120;
 
@@ -76,6 +76,38 @@ function beatToSeconds(beat: number, marks: readonly TempoMark[]): number {
   return seconds + ((beat - fromBeat) * 60) / bpm;
 }
 
+interface MeasureInfo {
+  /** Quarter notes from the start. */
+  readonly start: number;
+  readonly length: number;
+  readonly beats: number;
+  readonly beatType: number;
+}
+
+/**
+ * Metronome clicks, one per beat of the time signature. A measure shorter
+ * than its signature is a pickup: its clicks are counted back from its end,
+ * so an eighth-note upbeat gets no click of its own.
+ */
+function beatGrid(measures: readonly MeasureInfo[]): { beat: number; downbeat: boolean }[] {
+  const grid: { beat: number; downbeat: boolean }[] = [];
+  for (const measure of measures) {
+    const unit = 4 / measure.beatType;
+    const nominal = unit * measure.beats;
+    const end = measure.start + measure.length;
+    if (measure.length + 1e-9 < nominal) {
+      for (let beat = end - unit; beat >= measure.start - 1e-9; beat -= unit) {
+        grid.push({ beat, downbeat: false });
+      }
+      continue;
+    }
+    for (let index = 0; measure.start + index * unit < end - 1e-9; index++) {
+      grid.push({ beat: measure.start + index * unit, downbeat: index % measure.beats === 0 });
+    }
+  }
+  return grid.sort((a, b) => a.beat - b.beat);
+}
+
 interface RawNote {
   id: string;
   pitch: number;
@@ -103,12 +135,15 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
   const parts = Array.from(score.querySelectorAll(":scope > part"));
   const tempoMarks: TempoMark[] = [];
   const raw: RawNote[] = [];
+  const measures: MeasureInfo[] = [];
 
   parts.forEach((part, partIndex) => {
     let divisions = 1;
     let staves = 1;
     let measureStart = 0;
     let lastChordStart = 0;
+    let timeBeats = 4;
+    let beatType = 4;
     // Open ties by staff and pitch: the next note with a tie stop extends them.
     const openTies = new Map<string, RawNote>();
 
@@ -126,6 +161,11 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
           case "attributes": {
             divisions = childNumber(element, "divisions") ?? divisions;
             staves = childNumber(element, "staves") ?? staves;
+            const time = element.querySelector(":scope > time");
+            if (time) {
+              timeBeats = childNumber(time, "beats") ?? timeBeats;
+              beatType = childNumber(time, "beat-type") ?? beatType;
+            }
             break;
           }
           case "backup": {
@@ -186,6 +226,14 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
         }
         measureLength = Math.max(measureLength, position);
       }
+      if (partIndex === 0) {
+        measures.push({
+          start: measureStart,
+          length: measureLength / divisions,
+          beats: timeBeats,
+          beatType
+        });
+      }
       measureStart += measureLength / divisions;
     }
   });
@@ -205,5 +253,16 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
   });
   sortNotes(notes);
   const duration = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
-  return { title: title || fallbackTitle, source: "musicxml", notes, duration, musicXml: xml };
+  const beats: SongBeat[] = beatGrid(measures).map(({ beat, downbeat }) => ({
+    time: beatToSeconds(beat, tempoMarks),
+    downbeat
+  }));
+  return {
+    title: title || fallbackTitle,
+    source: "musicxml",
+    notes,
+    beats,
+    duration,
+    musicXml: xml
+  };
 }

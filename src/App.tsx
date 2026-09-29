@@ -5,7 +5,7 @@ import { soundNoteOff, soundNoteOn, startPianoSound } from "./audio/pianoSound";
 import type { Finger, Hand } from "./fingering/fingering";
 import { listenToComputerKeyboard, listenToMidi, midiSupported } from "./input/midiInput";
 import type { KeyEvent, MidiDevice } from "./input/midiInput";
-import type { PracticeMode } from "./practice/session";
+import type { PracticeMode, PracticeOptions } from "./practice/session";
 import { Trainer } from "./practice/Trainer";
 import type { TrainerSnapshot } from "./practice/Trainer";
 import { FallingNotesView } from "./render/FallingNotesView";
@@ -105,6 +105,8 @@ export function App() {
   );
   const [sound, setSound] = useState<"off" | "loading" | "ready">("off");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const [metronome, setMetronome] = useState(true);
 
   const song = useMemo(() => withFingering(baseSong, overrides), [baseSong, overrides]);
 
@@ -119,7 +121,11 @@ export function App() {
     const mounted = view.mount(host).then(() => {
       if (disposed) return;
       const trainer = new Trainer(view);
-      trainer.onSnapshot = setSnapshot;
+      trainer.onSnapshot = (next) => {
+        setSnapshot(next);
+        // A listen-through ends by handing the song back for practice.
+        if (next.finished) setListening(false);
+      };
       trainerRef.current = trainer;
       setTrainerReady(true);
     });
@@ -161,11 +167,24 @@ export function App() {
     };
   }, []);
 
+  const practiceOptions = useMemo<PracticeOptions>(
+    () =>
+      listening
+        ? { mode: "tempo", hands: new Set<Hand>(), speed }
+        : { mode, hands: new Set(HANDS[handChoice]), speed },
+    [listening, mode, handChoice, speed]
+  );
+
   useEffect(() => {
     const trainer = trainerRef.current;
     if (!trainer) return;
-    trainer.load(song, { mode, hands: new Set(HANDS[handChoice]), speed });
-  }, [trainerReady, song, mode, handChoice, speed]);
+    trainer.load(song, practiceOptions);
+    if (listening) trainer.setPlaying(true);
+  }, [trainerReady, song, practiceOptions, listening]);
+
+  useEffect(() => {
+    if (trainerRef.current) trainerRef.current.metronome = metronome;
+  }, [trainerReady, metronome]);
 
   const cycleFinger = (noteId: string) => {
     const current = song.notes.find((note) => note.id === noteId)?.finger ?? 1;
@@ -203,21 +222,30 @@ export function App() {
     setOverrides(loadOverrides(loaded));
   };
 
-  const togglePlay = async () => {
-    if (sound === "off") {
-      setSound("loading");
-      try {
-        await startPianoSound();
-        setSound("ready");
-      } catch {
-        setSound("off");
-      }
+  const ensureSound = async () => {
+    if (sound !== "off") return;
+    setSound("loading");
+    try {
+      await startPianoSound();
+      setSound("ready");
+    } catch {
+      setSound("off");
     }
+  };
+
+  const togglePlay = async () => {
+    await ensureSound();
     trainerRef.current?.setPlaying(!(snapshot?.playing ?? false));
   };
 
+  const toggleListening = async () => {
+    await ensureSound();
+    setListening((current) => !current);
+  };
+
   const restart = () => {
-    trainerRef.current?.load(song, { mode, hands: new Set(HANDS[handChoice]), speed });
+    setListening(false);
+    trainerRef.current?.load(song, practiceOptions);
   };
 
   const stats = snapshot?.stats;
@@ -294,6 +322,19 @@ export function App() {
         <button type="button" onClick={restart}>
           Сначала
         </button>
+        <button type="button" onClick={() => void toggleListening()} disabled={sound === "loading"}>
+          {listening ? "Стоп" : "Прослушать"}
+        </button>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={metronome}
+            onChange={(event) => {
+              setMetronome(event.target.checked);
+            }}
+          />
+          Метроном
+        </label>
       </header>
 
       <div className="status">
@@ -320,7 +361,7 @@ export function App() {
 
       <div className="lane" ref={hostRef} />
 
-      {snapshot?.finished && stats && (
+      {snapshot?.finished && !listening && stats && (
         <div className="result">
           <h2>Готово</h2>
           <p>Точность {Math.round(accuracy * 100)}%</p>
