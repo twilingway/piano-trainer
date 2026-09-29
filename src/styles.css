@@ -226,6 +226,44 @@ body {
   padding-inline: 50%;
 }
 
+/* The score, or the score and the take written out: side by side or stacked. */
+.staves {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 0;
+}
+
+.staves--row {
+  flex-direction: row;
+}
+
+.staves--column,
+.staves--single {
+  flex-direction: column;
+}
+
+.staff-slot {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.staff-label {
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  left: 8px;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #fff;
+  background: rgb(20 24 36 / 75%);
+  pointer-events: none;
+}
+
 /* One lane, or two when a take is compared with the original: side by side or stacked. */
 .lanes {
   display: flex;

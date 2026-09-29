@@ -15,6 +15,8 @@ import type { Grade, TakeReview } from "./recording/compare";
 import { loadTakes, saveTake } from "./recording/history";
 import { takeAsSong, takeToMidi } from "./recording/playback";
 import type { Take } from "./recording/take";
+import { transcribeTake } from "./recording/transcribe";
+import type { TranscribedGrade } from "./recording/transcribe";
 import type { PracticeMode, PracticeOptions } from "./practice/session";
 import { Trainer } from "./practice/Trainer";
 import type { TrainerSnapshot } from "./practice/Trainer";
@@ -142,6 +144,16 @@ const GRADE_TINTS: Readonly<Record<Grade, number>> = {
 const EXTRA_TINT = 0xe63946;
 
 type SplitDirection = "row" | "column";
+/** The take's own staff: hidden, beside the original, or under it. */
+type TakeStaff = "off" | SplitDirection;
+
+/** Staff colours of a written-out take: the review's, and red for a key that matched no note. */
+const TRANSCRIBED_COLORS: Readonly<Record<TranscribedGrade, string>> = {
+  good: "#2e9e4f",
+  inaccurate: "#e08a00",
+  missed: "#e63946",
+  extra: "#e63946"
+};
 
 function takeLabel(take: Take): string {
   const when = new Date(take.createdAt);
@@ -246,6 +258,7 @@ export function App() {
   /** Bumped to play the comparison again from its start. */
   const [replayCount, setReplayCount] = useState(0);
   const mirrorHostRef = useRef<HTMLDivElement>(null);
+  const [takeStaff, setTakeStaff] = useState<TakeStaff>("off");
   const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
   /**
    * Song time practice starts from after a click on the staff; null = the beginning.
@@ -567,6 +580,22 @@ export function App() {
     [review]
   );
 
+  // The take written out as a score, laid out in the same lines as the original.
+  const transcription = useMemo(() => {
+    if (!review || !lastTake || takeStaff === "off") return undefined;
+    const written = transcribeTake(song, lastTake.take, review);
+    const musicXml = fixedLines
+      ? musicXmlWithLineBreaks(written.musicXml, staffPrefs.measuresPerLine)
+      : written.musicXml;
+    const marks = new Map(
+      [...written.grades].map(([key, grade]) => {
+        const [beat = "0", pitch = "0"] = key.split(":");
+        return [markKey(Number(beat), Number(pitch)), TRANSCRIBED_COLORS[grade]] as const;
+      })
+    );
+    return { musicXml, marks };
+  }, [review, lastTake, takeStaff, song, fixedLines, staffPrefs.measuresPerLine]);
+
   const stats = snapshot?.stats;
   const played = stats ? stats.hits + stats.misses : 0;
   const accuracy = stats && played + stats.wrong > 0 ? stats.hits / (played + stats.wrong) : 0;
@@ -865,6 +894,17 @@ export function App() {
               Сравнить с оригиналом
             </button>
           )}
+          <select
+            aria-label="Ноты дубля"
+            value={takeStaff}
+            onChange={(event) => {
+              setTakeStaff(event.target.value as TakeStaff);
+            }}
+          >
+            <option value="off">Ноты дубля: скрыть</option>
+            <option value="column">Ноты дубля: под оригиналом</option>
+            <option value="row">Ноты дубля: рядом</option>
+          </select>
           <button
             type="button"
             onClick={() => {
@@ -886,16 +926,38 @@ export function App() {
       )}
 
       {staffXml && (
-        <Staff
-          musicXml={staffXml}
-          beat={snapshot?.beat ?? 0}
-          zoom={staffPrefs.zoom}
-          singleLine={staffPrefs.singleLine}
-          follow={staffPrefs.follow}
-          breaksFromScore={fixedLines}
-          onSeek={seekToBeat}
-          marks={reviewMarks}
-        />
+        <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
+          <div className="staff-slot">
+            {transcription && <span className="staff-label">Оригинал</span>}
+            <Staff
+              musicXml={staffXml}
+              beat={snapshot?.beat ?? 0}
+              zoom={staffPrefs.zoom}
+              singleLine={staffPrefs.singleLine}
+              follow={staffPrefs.follow}
+              breaksFromScore={fixedLines}
+              onSeek={seekToBeat}
+              marks={reviewMarks}
+              maxShare={transcription && takeStaff === "column" ? 0.26 : 0.45}
+            />
+          </div>
+          {transcription && (
+            <div className="staff-slot">
+              <span className="staff-label">Твой дубль</span>
+              <Staff
+                musicXml={transcription.musicXml}
+                beat={snapshot?.beat ?? 0}
+                zoom={staffPrefs.zoom}
+                singleLine={staffPrefs.singleLine}
+                follow={staffPrefs.follow}
+                breaksFromScore={fixedLines}
+                onSeek={seekToBeat}
+                marks={transcription.marks}
+                maxShare={takeStaff === "column" ? 0.26 : 0.45}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       <div className={`lanes lanes--${splitDirection}`}>
