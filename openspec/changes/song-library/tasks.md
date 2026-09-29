@@ -21,7 +21,7 @@
 
 - [ ] 4.1 Save each opened song file to the library and select it; verify by opening a file,
       reloading and finding it under «Мои песни»
-- [ ] 4.2 Group the lesson select into «Уроки», «Мои песни» and «Папка: <имя>», load library and
+- [x] 4.2 Group the lesson select into «Уроки», «Мои песни» and «Папка: <имя>», load library and
       folder songs through `songFromFileData`, and verify by `pnpm typecheck` and selecting each
       kind
 - [ ] 4.3 Add «Удалить из моих» for a selected library song and verify it disappears after a reload

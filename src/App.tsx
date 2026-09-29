@@ -23,10 +23,20 @@ import type { TrainerSnapshot } from "./practice/Trainer";
 import { FallingNotesView } from "./render/FallingNotesView";
 import { EXERCISES } from "./song/exercises";
 import { LOCAL_LESSONS } from "./song/localLessons";
-import type { LevelId } from "./song/exercises";
-import { songFromMidi } from "./song/midi";
+import { folderPermission, foldersSupported, pickFolder, readFolderSongs } from "./library/folder";
+import type { FolderSong } from "./library/folder";
 import {
-  musicXmlFromMxl,
+  listMySongs,
+  loadFolderHandle,
+  loadMySong,
+  removeMySong,
+  saveFolderHandle,
+  saveMySong
+} from "./library/myLibrary";
+import type { MySong } from "./library/myLibrary";
+import { songFromFileData } from "./library/songFile";
+import type { LevelId } from "./song/exercises";
+import {
   musicXmlWithFingering,
   musicXmlWithLineBreaks,
   musicXmlWithNoteNames,
@@ -209,20 +219,6 @@ function saveOverrides(song: Song, overrides: ReadonlyMap<string, Finger>): void
   }
 }
 
-async function readSongFile(file: File): Promise<Song> {
-  const name = file.name.toLowerCase();
-  const title = file.name.replace(/\.[^.]+$/, "");
-  if (name.endsWith(".mid") || name.endsWith(".midi")) {
-    return songFromMidi(await file.arrayBuffer(), title);
-  }
-  if (name.endsWith(".mxl"))
-    return songFromMusicXml(musicXmlFromMxl(await file.arrayBuffer()), title);
-  if (name.endsWith(".xml") || name.endsWith(".musicxml")) {
-    return songFromMusicXml(await file.text(), title);
-  }
-  throw new Error("Нужен файл .mid, .musicxml, .xml или .mxl");
-}
-
 interface LessonChoice {
   readonly exerciseId: string;
   readonly levelId: LevelId;
@@ -343,6 +339,15 @@ export function App() {
   );
   const [sound, setSound] = useState<"off" | "loading" | "ready">("off");
   const [loadError, setLoadError] = useState<string | null>(null);
+  /** The player's library: songs kept in this browser, and the linked folder. */
+  const [mySongs, setMySongs] = useState<MySong[]>([]);
+  const [folder, setFolder] = useState<{
+    handle: FileSystemDirectoryHandle;
+    access: PermissionState;
+    songs: FolderSong[];
+  } | null>(null);
+  /** The library song on screen, as the lesson select names it: `my:<id>` or `dir:<path>`. */
+  const [librarySource, setLibrarySource] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [metronome, setMetronome] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
@@ -605,27 +610,128 @@ export function App() {
     noteClickRef.current = cycleFinger;
   });
 
+  /** Puts a song read from a file on screen: a new song, not a lesson level. */
+  const showFileSong = (fileName: string, data: ArrayBuffer, source: string | null) => {
+    const loaded = songFromFileData(fileName, data);
+    if (loaded.notes.length === 0) throw new Error("В файле нет нот");
+    setLoadError(null);
+    setLesson(null);
+    setLibrarySource(source);
+    startFromRef.current = null;
+    setSourceSong(loaded);
+    setTranspose(0);
+    return loaded;
+  };
+
+  const reportError = (error: unknown) => {
+    setLoadError(error instanceof Error ? error.message : String(error));
+  };
+
   const openFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     try {
-      const loaded = await readSongFile(file);
-      if (loaded.notes.length === 0) throw new Error("В файле нет нот");
-      setLoadError(null);
-      setLesson(null);
-      startFromRef.current = null;
-      setSourceSong(loaded);
-      setTranspose(0);
-      setOverrides(loadOverrides(loaded));
+      const data = await file.arrayBuffer();
+      const loaded = showFileSong(file.name, data, null);
+      // Kept only once it read as a song: a broken file never reaches the library.
+      const saved = await saveMySong(file.name, loaded.title, data);
+      setMySongs(await listMySongs());
+      setLibrarySource(`my:${saved.id}`);
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : String(error));
+      reportError(error);
     }
   };
+
+  const openMySong = async (id: string) => {
+    try {
+      const stored = await loadMySong(id);
+      if (!stored) throw new Error("Песни больше нет в библиотеке");
+      showFileSong(stored.fileName, stored.data, `my:${id}`);
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  const openFolderSong = async (songPath: string) => {
+    const entry = folder?.songs.find((item) => item.path === songPath);
+    try {
+      if (!entry) throw new Error("Песни больше нет в папке");
+      const file = await entry.handle.getFile();
+      showFileSong(file.name, await file.arrayBuffer(), `dir:${songPath}`);
+    } catch (error) {
+      reportError(error);
+      // The file may be gone from the disk: read the folder again.
+      if (folder) void refreshFolder(folder.handle, false);
+    }
+  };
+
+  const deleteMySong = async (id: string) => {
+    try {
+      await removeMySong(id);
+      setMySongs(await listMySongs());
+      const first = LESSONS[0];
+      if (first) openLesson({ exerciseId: first.id, levelId: first.levels[0]?.id ?? "easy" });
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  /** Reads the linked folder if the browser grants it; `ask` prompts, and needs a click. */
+  const refreshFolder = async (handle: FileSystemDirectoryHandle, ask: boolean) => {
+    try {
+      const access = await folderPermission(handle, ask);
+      const songs = access === "granted" ? await readFolderSongs(handle) : [];
+      setFolder({ handle, access, songs });
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  const chooseFolder = async () => {
+    try {
+      const handle = await pickFolder();
+      await saveFolderHandle(handle);
+      await refreshFolder(handle, false);
+    } catch (error) {
+      // Closing the picker is not an error.
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      reportError(error);
+    }
+  };
+
+  const forgetFolder = async () => {
+    await saveFolderHandle(undefined);
+    setFolder(null);
+  };
+
+  // The library as it was left: the kept songs, and the folder if the browser still grants it.
+  useEffect(() => {
+    let disposed = false;
+    // Read through a call: the cleanup changes the flag where narrowing cannot see it.
+    const alive = () => !disposed;
+    void (async () => {
+      try {
+        const songs = await listMySongs();
+        if (alive()) setMySongs(songs);
+        const handle = await loadFolderHandle();
+        if (!handle || !alive()) return;
+        const access = await folderPermission(handle, false);
+        const folderSongs = access === "granted" ? await readFolderSongs(handle) : [];
+        if (alive()) setFolder({ handle, access, songs: folderSongs });
+      } catch {
+        // No IndexedDB (a private window): the library just starts empty.
+      }
+    })();
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   const openLesson = (choice: LessonChoice) => {
     const loaded = lessonSong(choice);
     setLesson(choice);
+    setLibrarySource(null);
     startFromRef.current = null;
     setSourceSong(loaded);
     setTranspose(0);
@@ -746,23 +852,76 @@ export function App() {
             onChange={(event) => void openFile(event)}
           />
         </label>
+        {foldersSupported() && !folder && (
+          <button type="button" onClick={() => void chooseFolder()}>
+            Выбрать папку
+          </button>
+        )}
+        {folder?.access === "prompt" && (
+          <button type="button" onClick={() => void refreshFolder(folder.handle, true)}>
+            Дать доступ к папке
+          </button>
+        )}
+        {folder && (
+          <button
+            type="button"
+            title={`Папка «${folder.handle.name}»: перестать читать её песни`}
+            onClick={() => void forgetFolder()}
+          >
+            Отключить папку
+          </button>
+        )}
         <select
           aria-label="Урок"
-          value={lesson?.exerciseId ?? ""}
+          value={lesson?.exerciseId ?? librarySource ?? ""}
           onChange={(event) => {
-            const first = LESSONS.find((item) => item.id === event.target.value)?.levels[0];
-            openLesson({ exerciseId: event.target.value, levelId: first?.id ?? "easy" });
+            const value = event.target.value;
+            if (value.startsWith("my:")) {
+              void openMySong(value.slice(3));
+              return;
+            }
+            if (value.startsWith("dir:")) {
+              void openFolderSong(value.slice(4));
+              return;
+            }
+            const first = LESSONS.find((item) => item.id === value)?.levels[0];
+            openLesson({ exerciseId: value, levelId: first?.id ?? "easy" });
           }}
         >
           <option value="" disabled>
             Уроки…
           </option>
-          {LESSONS.map((exercise) => (
-            <option key={exercise.id} value={exercise.id}>
-              {exercise.title}
-            </option>
-          ))}
+          <optgroup label="Уроки">
+            {LESSONS.map((exercise) => (
+              <option key={exercise.id} value={exercise.id}>
+                {exercise.title}
+              </option>
+            ))}
+          </optgroup>
+          {mySongs.length > 0 && (
+            <optgroup label="Мои песни">
+              {mySongs.map((item) => (
+                <option key={item.id} value={`my:${item.id}`}>
+                  {item.title}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {folder && folder.songs.length > 0 && (
+            <optgroup label={`Папка: ${folder.handle.name}`}>
+              {folder.songs.map((item) => (
+                <option key={item.path} value={`dir:${item.path}`}>
+                  {item.title}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
+        {librarySource?.startsWith("my:") && (
+          <button type="button" onClick={() => void deleteMySong(librarySource.slice(3))}>
+            Удалить из моих
+          </button>
+        )}
         {lesson && (
           <select
             aria-label="Уровень"
