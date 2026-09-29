@@ -16,7 +16,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "spec": "cross-env OPENSPEC_TELEMETRY=0 openspec",
+    "spec:status": "cross-env OPENSPEC_TELEMETRY=0 openspec status",
+    "spec:validate": "cross-env OPENSPEC_TELEMETRY=0 openspec validate --all"
   },
   "dependencies": {
     "@tonejs/midi": "^2.0.28",
@@ -29,9 +32,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@fission-ai/openspec": "^1.13.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "cross-env": "^10.1.0",
     "eslint": "^10.11.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "happy-dom": "^20.14.5",

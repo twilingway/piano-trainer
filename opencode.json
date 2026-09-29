@@ -1,0 +1,59 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "lmstudio": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LM Studio (local)",
+      "options": {
+        "baseURL": "http://192.168.1.227:1234/v1"
+      },
+      "models": {
+        "qwen3.8-27b": {
+          "limit": {
+            "context": 140000,
+            "output": 32000
+          },
+          "modalities": {
+            "input": ["text"]
+          }
+        },
+        "qwen3.8-27b-uncensored": {
+          "limit": {
+            "context": 128000,
+            "output": 32000
+          },
+          "modalities": {
+            "input": ["text", "image"]
+          }
+        }
+      }
+    },
+    "qwen": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Qwen (remote)",
+      "options": {
+        "baseURL": "https://qwen.twiling.ru/v1"
+      },
+      "models": {
+        "qwen3.8-27b": {
+          "limit": {
+            "context": 128000,
+            "output": 32000
+          },
+          "modalities": {
+            "input": ["text", "image"]
+          }
+        },
+        "qwen3.8-27b-uncensored": {
+          "limit": {
+            "context": 128000,
+            "output": 32000
+          },
+          "modalities": {
+            "input": ["text", "image"]
+          }
+        }
+      }
+    }
+  }
+}

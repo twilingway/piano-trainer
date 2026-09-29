@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  Product: a browser piano trainer in the spirit of Synthesia. A digital piano
+  connects over USB MIDI; falling notes carry the finger that plays them, the
+  score scrolls above, and every take is recorded and compared with the score.
+  Stack: strict TypeScript, pnpm, React 19/Vite, PixiJS for the falling notes and
+  keyboard, OpenSheetMusicDisplay for the staff, Tone.js for sound, Vitest,
+  ESLint, and Prettier.
+  Boundaries: fingering, song, practice session, and recording logic are pure
+  TypeScript, independent of React, Pixi, OSMD, timers, and audio. The practice
+  session owns song time; every view reads it.
+  Scores: MusicXML is the source for staves, measures, and written fingering;
+  staff features are string-to-string passes over the XML. MIDI files have no
+  score.
+  Language: specifications and product docs may be Russian; code identifiers
+  are English.
+
+rules:
+  proposal:
+    - Include explicit goals and non-goals.
+    - Call out material product, dependency, licensing, and compatibility decisions.
+  specs:
+    - Describe observable behavior with testable scenarios.
+    - Include what the player sees when input is missing or malformed.
+  design:
+    - Document which pure module owns the behavior and which view only draws it.
+    - Identify performance risks for the frame loop and the staff renderer.
+  tasks:
+    - Keep tasks small enough to implement and verify independently.
+    - Give each implementation group an explicit verification command or observable check.
