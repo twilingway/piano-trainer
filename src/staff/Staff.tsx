@@ -17,6 +17,8 @@ interface StaffProps {
   readonly onSeek?: (beat: number) => void;
   /** Notehead colours by markKey(beat, pitch): the review of the last take. */
   readonly marks?: ReadonlyMap<string, string> | undefined;
+  /** Share of the window this staff may take; two staves stacked take less each. */
+  readonly maxShare?: number;
 }
 
 const BEAT_EPSILON = 1e-6;
@@ -24,7 +26,7 @@ const HIGHLIGHT = "#e63946";
 /** Share of the remaining distance the view covers each frame: a glide, not a jump. */
 const GLIDE = 0.12;
 /** Share of the window the score may take; the lines that fit decide the exact height. */
-const STAFF_MAX_SHARE = 0.45;
+const DEFAULT_MAX_SHARE = 0.45;
 const MAX_LINES = 3;
 /** Air left above a line when it is scrolled to the top. */
 const LINE_TOP_GAP_PX = 4;
@@ -218,11 +220,16 @@ function centreShortScore(osmd: OpenSheetMusicDisplay, page: HTMLElement): void 
 }
 
 /**
- * Sizes the view to whole lines of music: as many as fit in STAFF_MAX_SHARE of
+ * Sizes the view to whole lines of music: as many as fit in `maxShare` of
  * the window, one to three, so zooming changes how many lines show, not how
  * much of the screen the score takes.
  */
-function fitHeight(scroller: HTMLElement, lines: readonly LineBox[], singleLine: boolean): void {
+function fitHeight(
+  scroller: HTMLElement,
+  lines: readonly LineBox[],
+  singleLine: boolean,
+  maxShare: number
+): void {
   const first = lines[0];
   if (!first) return;
   const scrollbar = scroller.offsetHeight - scroller.clientHeight;
@@ -241,7 +248,7 @@ function fitHeight(scroller: HTMLElement, lines: readonly LineBox[], singleLine:
     }
     return height;
   };
-  const room = window.innerHeight * STAFF_MAX_SHARE;
+  const room = window.innerHeight * maxShare;
   let count = Math.min(MAX_LINES, lines.length);
   while (count > 1 && tallest(count) > room) count--;
   scroller.style.height = `${String(Math.ceil(tallest(count) + LINE_TOP_GAP_PX * 2 + scrollbar))}px`;
@@ -260,7 +267,8 @@ export function Staff({
   follow,
   breaksFromScore,
   onSeek,
-  marks
+  marks,
+  maxShare = DEFAULT_MAX_SHARE
 }: StaffProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   /** OSMD draws here; the host around it scrolls. */
@@ -268,14 +276,14 @@ export function Staff({
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   const paintedRef = useRef<SVGElement[]>([]);
   // Read by the loader and the zoom effect, which must land the cursor where the song is.
-  const latest = useRef({ beat, zoom, follow, singleLine });
+  const latest = useRef({ beat, zoom, follow, singleLine, maxShare });
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
   const noteIndexRef = useRef<NoteIndex>({ beats: new Map(), heads: new Map() });
   const marksRef = useRef(marks);
 
   useEffect(() => {
-    latest.current = { beat, zoom, follow, singleLine };
+    latest.current = { beat, zoom, follow, singleLine, maxShare };
   });
 
   const showBeat = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
@@ -302,7 +310,7 @@ export function Staff({
     linesRef.current = lineBoxes(osmd);
     noteIndexRef.current = indexNotes(osmd);
     paintMarks(noteIndexRef.current.heads, marksRef.current);
-    fitHeight(host, linesRef.current, latest.current.singleLine);
+    fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
     // A new render draws new noteheads and puts the cursor back at the start.
     paintedRef.current = [];
     osmd.cursor.reset();
@@ -384,6 +392,12 @@ export function Staff({
     if (!osmd || !host) return;
     showBeat(osmd, host);
   }, [beat]);
+
+  useEffect(() => {
+    const osmd = osmdRef.current;
+    const host = hostRef.current;
+    if (osmd && host) relayout(osmd, host);
+  }, [maxShare]);
 
   useEffect(() => {
     marksRef.current = marks;
