@@ -39,6 +39,9 @@ const SAME_FINGER_PER_SEMITONE = 0.5;
 const CROSS_BASE = 3;
 const INDEX_CROSS_EXTRA = 1;
 const THUMB_ON_BLACK = 1;
+/** Semitones from which a chord counts as wide: a perfect fifth. */
+const WIDE_CHORD = 7;
+const OUTER_FINGER_MISSING = 1;
 const CROSS_FROM_BLACK_BONUS = -1;
 const CROSS_ONTO_BLACK_EXTRA = 2;
 
@@ -56,7 +59,8 @@ interface Span {
  * hand. Negative values for thumb pairs are the thumb passing under.
  */
 const SPANS: Readonly<Record<string, Span>> = {
-  "1-2": span(-5, -3, 1, 2, 8, 10),
+  // Thumb and index hold a major third at rest: inversions are fingered 1-2-5 on it.
+  "1-2": span(-5, -3, 1, 4, 8, 10),
   "1-3": span(-4, -2, 3, 4, 10, 12),
   "1-4": span(-3, -1, 5, 6, 12, 14),
   "1-5": span(-1, 1, 7, 8, 13, 15),
@@ -219,6 +223,14 @@ function unaryCost(fingers: readonly Finger[], keys: readonly Key[]): number {
     if (nextFinger !== undefined && nextKey !== undefined) {
       cost += pairCost(finger, key, nextFinger, nextKey);
     }
+  }
+  // A chord of a fifth or wider is held by the outer fingers, 1 and 5: the hand sits
+  // still on it, and the inner fingers choose between themselves.
+  const lowKey = keys[0];
+  const highKey = keys.at(-1);
+  if (fingers.length >= 3 && lowKey && highKey && highKey.pitch - lowKey.pitch >= WIDE_CHORD) {
+    if (fingers[0] !== 1) cost += OUTER_FINGER_MISSING;
+    if (fingers.at(-1) !== 5) cost += OUTER_FINGER_MISSING;
   }
   return cost;
 }

@@ -116,6 +116,16 @@ describe("assignFingering: chords", () => {
     expect(fingersOf(triad(4), "right")).toEqual([1, 3, 5]);
     expect(fingersOf(triad(3), "left")).toEqual([5, 3, 1]);
   });
+
+  it("fingers the inversions of a triad as taught", () => {
+    const chord = (names: readonly string[]): FingeringNote[] =>
+      names.map((name, index) => ({ id: `i${String(index)}`, pitch: pitch(name), start: 0 }));
+    // First inversion E-G-C, second inversion G-C-E.
+    expect(fingersOf(chord(["E4", "G4", "C5"]), "right")).toEqual([1, 2, 5]);
+    expect(fingersOf(chord(["G4", "C5", "E5"]), "right")).toEqual([1, 3, 5]);
+    expect(fingersOf(chord(["E3", "G3", "C4"]), "left")).toEqual([5, 3, 1]);
+    expect(fingersOf(chord(["G3", "C4", "E4"]), "left")).toEqual([5, 2, 1]);
+  });
 });
 
 describe("assignFingering: pinned fingers", () => {
