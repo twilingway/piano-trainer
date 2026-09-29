@@ -153,3 +153,24 @@ describe("seek", () => {
     expect(clicks).toHaveLength(5);
   });
 });
+
+describe("listening", () => {
+  it("starts on the first note with no run-up and no burst of count-in clicks", () => {
+    const run = session("tempo", []);
+    expect(run.time).toBe(0);
+    const events = run.advance(0.01);
+    expect(events).toContainEqual({ type: "autoNoteOn", pitch: 60 });
+    expect(events.filter((event) => event.type === "beat")).toEqual([
+      { type: "beat", downbeat: true }
+    ]);
+  });
+
+  it("resumes right on the chosen note after a seek", () => {
+    const run = session("tempo", []);
+    run.seek(1);
+    expect(run.time).toBe(1);
+    const events = run.advance(0.01);
+    expect(events).toContainEqual({ type: "autoNoteOn", pitch: 64 });
+    expect(events).not.toContainEqual({ type: "autoNoteOn", pitch: 60 });
+  });
+});

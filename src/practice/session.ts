@@ -48,8 +48,13 @@ const CHORD_WINDOW_S = 0.03;
 export class PracticeSession {
   readonly song: Song;
   readonly options: PracticeOptions;
-  time = -LEAD_IN_S;
+  time: number;
   finished = false;
+  /**
+   * Seconds of run-up before a start point. Only a player needs one, to get
+   * the hands ready; a listen-through starts on its first note.
+   */
+  private readonly leadIn: number;
 
   private readonly playerNotes: SongNote[];
   private readonly autoNotes: SongNote[];
@@ -70,13 +75,19 @@ export class PracticeSession {
     this.autoNotes = song.notes.filter((note) => !options.hands.has(note.hand));
     for (const note of this.playerNotes) this.status.set(note.id, "pending");
     this.beats = [...countIn(song.beats), ...song.beats];
+    this.leadIn = options.hands.size > 0 ? LEAD_IN_S : 0;
+    this.time = 0 - this.leadIn;
+    // Without a run-up the count-in clicks lie in the past: they must not all fire at once.
+    const firstBeat = this.beats.findIndex((beat) => beat.time >= this.time);
+    this.beatIndex = firstBeat === -1 ? this.beats.length : firstBeat;
   }
 
   /**
    * Starts the run over from song time `from`: earlier notes are skipped and
    * never counted, the score is cleared, and the song resumes a lead-in
-   * before `from` so the metronome counts the player in. Call `stopAuto`
-   * first if the program may be holding notes.
+   * before `from` so the metronome counts the player in; a listen-through
+   * resumes on `from` itself. Call `stopAuto` first if the program may be
+   * holding notes.
    */
   seek(from: number): void {
     const edge = from - 1e-6;
@@ -88,7 +99,7 @@ export class PracticeSession {
     this.missedPitches = [];
     this.soundingAuto.length = 0;
     this.finished = false;
-    this.time = from - LEAD_IN_S;
+    this.time = from - this.leadIn;
     // The other hand resumes at `from` too; what it played before stays silent.
     const autoIndex = this.autoNotes.findIndex((note) => note.start >= edge);
     this.autoStartIndex = autoIndex === -1 ? this.autoNotes.length : autoIndex;
