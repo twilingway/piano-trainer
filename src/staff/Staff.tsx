@@ -180,11 +180,21 @@ function fitHeight(scroller: HTMLElement, lines: readonly LineBox[], singleLine:
     scroller.style.height = `${String(Math.ceil(first.bottom - first.top + LINE_TOP_GAP_PX + scrollbar))}px`;
     return;
   }
-  const pitch = (lines[1]?.top ?? first.bottom) - first.top;
+  // The tallest run of `count` lines anywhere in the score: later lines carry the gap
+  // above them (fingers, ledger notes), so measuring from the first one cut them short.
+  const tallest = (count: number) => {
+    let height = 0;
+    for (let index = 0; index + count <= lines.length; index++) {
+      const top = lines[index]?.top ?? 0;
+      const bottom = lines[index + count - 1]?.bottom ?? top;
+      height = Math.max(height, bottom - top);
+    }
+    return height;
+  };
   const room = window.innerHeight * STAFF_MAX_SHARE;
-  const count = Math.max(1, Math.min(MAX_LINES, lines.length, Math.floor(room / pitch)));
-  const last = lines[count - 1] ?? first;
-  scroller.style.height = `${String(Math.ceil(last.bottom - first.top + LINE_TOP_GAP_PX * 2 + scrollbar))}px`;
+  let count = Math.min(MAX_LINES, lines.length);
+  while (count > 1 && tallest(count) > room) count--;
+  scroller.style.height = `${String(Math.ceil(tallest(count) + LINE_TOP_GAP_PX * 2 + scrollbar))}px`;
 }
 
 /**
