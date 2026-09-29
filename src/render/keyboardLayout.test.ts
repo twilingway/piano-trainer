@@ -41,6 +41,15 @@ describe("parseMidiMessage", () => {
     });
     expect(parseMidiMessage(new Uint8Array([0x91, 60, 0]))?.type).toBe("up");
     expect(parseMidiMessage(new Uint8Array([0x80, 60, 40]))?.type).toBe("up");
-    expect(parseMidiMessage(new Uint8Array([0xb0, 64, 127]))).toBeUndefined();
+    expect(parseMidiMessage(new Uint8Array([0xe0, 0, 64]))).toBeUndefined();
+  });
+
+  it("reads the sustain pedal, pressed from value 64 up", () => {
+    expect(parseMidiMessage(new Uint8Array([0xb0, 64, 127]))).toEqual({
+      type: "pedal",
+      down: true
+    });
+    expect(parseMidiMessage(new Uint8Array([0xb0, 64, 0]))).toEqual({ type: "pedal", down: false });
+    expect(parseMidiMessage(new Uint8Array([0xb0, 7, 100]))).toBeUndefined();
   });
 });

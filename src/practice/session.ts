@@ -63,6 +63,7 @@ export class PracticeSession {
   private wrongPitches: number[] = [];
   private missedPitches: number[] = [];
   private autoStartIndex = 0;
+  private from = 0;
   private readonly soundingAuto: SongNote[] = [];
   /** The song's beat grid, preceded by a count-in over the lead-in. */
   private readonly beats: readonly SongBeat[];
@@ -99,12 +100,18 @@ export class PracticeSession {
     this.missedPitches = [];
     this.soundingAuto.length = 0;
     this.finished = false;
+    this.from = from;
     this.time = from - this.leadIn;
     // The other hand resumes at `from` too; what it played before stays silent.
     const autoIndex = this.autoNotes.findIndex((note) => note.start >= edge);
     this.autoStartIndex = autoIndex === -1 ? this.autoNotes.length : autoIndex;
     const beatIndex = this.beats.findIndex((beat) => beat.time >= this.time);
     this.beatIndex = beatIndex === -1 ? this.beats.length : beatIndex;
+  }
+
+  /** Song seconds this run started from: 0, or the point of the last seek. */
+  get startedFrom(): number {
+    return this.from;
   }
 
   statusOf(noteId: string): NoteStatus | undefined {

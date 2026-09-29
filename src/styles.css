@@ -133,6 +133,39 @@ body {
   align-items: center;
 }
 
+.review-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 14px;
+  background: #20243a;
+}
+
+.review-bar .good {
+  color: #5fd08a;
+}
+
+.review-bar .inaccurate {
+  color: #f4b24a;
+}
+
+.review-bar .missed {
+  color: #ff6b6b;
+}
+
+.review-bar button {
+  margin-left: auto;
+  font: inherit;
+  padding: 2px 8px;
+  border: 1px solid #3a3f52;
+  border-radius: 6px;
+  background: #242838;
+  color: inherit;
+  cursor: pointer;
+}
+
 /* The reader drags the bottom edge to give the score or the lane more room. */
 .staff {
   flex: 0 0 auto;

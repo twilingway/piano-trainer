@@ -1,6 +1,8 @@
 import { soundAllOff, soundClick, soundNoteOff, soundNoteOn } from "../audio/pianoSound";
 import type { KeyEvent } from "../input/midiInput";
 import type { FallingNotesView } from "../render/FallingNotesView";
+import { TakeRecorder } from "../recording/take";
+import type { Take } from "../recording/take";
 import type { Song } from "../song/song";
 import { PracticeSession } from "./session";
 import type { PracticeEvent, PracticeOptions, PracticeStats } from "./session";
@@ -44,10 +46,16 @@ export function beatAt(song: Song, time: number): number {
  */
 export class Trainer {
   onSnapshot: ((snapshot: TrainerSnapshot) => void) | undefined;
+  /** A take has ended: the song finished, or the run was restarted, moved or reloaded. */
+  onTake: ((take: Take) => void) | undefined;
   metronome = false;
 
   private session: PracticeSession | undefined;
+  private songKey = "";
   private playing = false;
+  private recorder: TakeRecorder | undefined;
+  /** Real clock of the take: when it began and how long it sat paused, in ms. */
+  private takeClock = { start: 0, paused: 0, pausedAt: 0 };
   private readonly pressed = new Set<number>();
   private readonly sounding = new Set<number>();
   private sinceSnapshot = 0;
@@ -61,8 +69,11 @@ export class Trainer {
     });
   }
 
-  load(song: Song, options: PracticeOptions): void {
+  /** `songKey` names the song for its takes: the same key its finger corrections use. */
+  load(song: Song, options: PracticeOptions, songKey: string): void {
+    this.finishTake();
     this.silence();
+    this.songKey = songKey;
     this.session = new PracticeSession(song, options);
     this.playing = false;
     this.view.setSong(song);
@@ -73,24 +84,81 @@ export class Trainer {
   /** Restarts the run from song time `from`, keeping play or pause as it was. */
   seek(from: number): void {
     if (!this.session) return;
+    this.finishTake();
     this.silence();
     this.session.seek(from);
     this.publish();
   }
 
   setPlaying(playing: boolean): void {
-    this.playing = playing && this.session?.finished !== true;
+    const session = this.session;
+    const wasPlaying = this.playing;
+    this.playing = playing && session?.finished !== true;
     if (!this.playing) this.silence();
+    const now = performance.now();
+    if (this.playing && !wasPlaying && session) {
+      if (this.recorder) {
+        this.takeClock.paused += now - this.takeClock.pausedAt;
+      } else if (session.options.hands.size > 0) {
+        // A listen-through has no player: nothing to record.
+        this.recorder = new TakeRecorder({
+          songKey: this.songKey,
+          mode: session.options.mode,
+          speed: session.options.speed,
+          hands: [...session.options.hands],
+          from: session.startedFrom
+        });
+        this.takeClock = { start: now, paused: 0, pausedAt: 0 };
+      }
+    }
+    if (!this.playing && wasPlaying) this.takeClock.pausedAt = now;
     this.publish();
   }
 
   key(event: KeyEvent): void {
     if (event.type === "down") this.pressed.add(event.pitch);
     else this.pressed.delete(event.pitch);
-    if (event.type === "down" && this.playing && this.session) {
-      this.apply(this.session.pressKey(event.pitch));
+    const session = this.session;
+    if (this.recorder && session) {
+      // Releases are kept even while paused: a key held over the pause still ends somewhere.
+      if (event.type === "down" && this.playing) {
+        this.recorder.noteOn(event.pitch, event.velocity, session.time, this.realTime());
+      } else if (event.type === "up") {
+        this.recorder.noteOff(event.pitch, session.time, this.realTime());
+      }
+    }
+    if (event.type === "down" && this.playing && session) {
+      this.apply(session.pressKey(event.pitch));
       this.publish();
     }
+  }
+
+  pedal(down: boolean): void {
+    if (this.recorder && this.session) {
+      this.recorder.setPedal(down, this.session.time, this.realTime());
+    }
+  }
+
+  /** Seconds of the take's own clock: real time since it began, pauses left out. */
+  private realTime(): number {
+    const clock = this.takeClock;
+    const pausedNow = this.playing ? 0 : performance.now() - clock.pausedAt;
+    return (performance.now() - clock.start - clock.paused - pausedNow) / 1000;
+  }
+
+  /** Ends the take in progress, if anything was played, and hands it over. */
+  private finishTake(): void {
+    const recorder = this.recorder;
+    const session = this.session;
+    this.recorder = undefined;
+    if (!recorder || !session || recorder.isEmpty) return;
+    const take = recorder.finish(
+      session.time,
+      this.realTime(),
+      `${String(Date.now())}-${String(Math.round(Math.random() * 1e6))}`,
+      new Date().toISOString()
+    );
+    this.onTake?.(take);
   }
 
   private frame(deltaMs: number): void {
@@ -130,6 +198,7 @@ export class Trainer {
           break;
         case "finished":
           this.playing = false;
+          this.finishTake();
           break;
         case "hit":
         case "miss":

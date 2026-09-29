@@ -15,6 +15,8 @@ interface StaffProps {
   readonly breaksFromScore: boolean;
   /** A click on the score: the beat of the note nearest to it. */
   readonly onSeek?: (beat: number) => void;
+  /** Notehead colours by markKey(beat, pitch): the review of the last take. */
+  readonly marks?: ReadonlyMap<string, string> | undefined;
 }
 
 const BEAT_EPSILON = 1e-6;
@@ -45,23 +47,59 @@ function moveCursor(osmd: OpenSheetMusicDisplay, beat: number): void {
 }
 
 /** Colours the noteheads under the cursor; returns them so the next move can restore them. */
+/** A notehead and the paths it is drawn with: everything a colour has to reach. */
+function noteheadShapes(note: VexFlowGraphicalNote): SVGElement[] {
+  const shapes: SVGElement[] = [];
+  // OSMD types the heads as HTMLElement; in an SVG backend they are SVG groups.
+  for (const head of note.getNoteheadSVGs()) {
+    for (const shape of [head, ...Array.from(head.querySelectorAll("path"))]) {
+      if (shape instanceof SVGElement) shapes.push(shape);
+    }
+  }
+  return shapes;
+}
+
+/** Back to the review colour if the take marked it, to black if not. */
+function restoreFill(shape: SVGElement): void {
+  const mark = shape.dataset.mark;
+  if (mark) shape.style.fill = mark;
+  else shape.style.removeProperty("fill");
+}
+
 function highlightUnderCursor(
   osmd: OpenSheetMusicDisplay,
   previous: readonly SVGElement[]
 ): SVGElement[] {
-  for (const element of previous) element.style.removeProperty("fill");
+  for (const element of previous) restoreFill(element);
   const painted: SVGElement[] = [];
   for (const note of osmd.cursor.GNotesUnderCursor()) {
     if (!(note instanceof VexFlowGraphicalNote)) continue;
-    for (const head of note.getNoteheadSVGs()) {
-      for (const shape of [head, ...Array.from(head.querySelectorAll("path"))]) {
-        if (!(shape instanceof SVGElement)) continue;
-        shape.style.fill = HIGHLIGHT;
-        painted.push(shape);
-      }
+    for (const shape of noteheadShapes(note)) {
+      shape.style.fill = HIGHLIGHT;
+      painted.push(shape);
     }
   }
   return painted;
+}
+
+/** Colours noteheads by the review of the last take; notes it does not name go back to black. */
+function paintMarks(
+  heads: ReadonlyMap<string, readonly SVGElement[]>,
+  marks: ReadonlyMap<string, string> | undefined
+): void {
+  for (const [key, shapes] of heads) {
+    const mark = marks?.get(key);
+    for (const shape of shapes) {
+      if (mark) shape.dataset.mark = mark;
+      else delete shape.dataset.mark;
+      restoreFill(shape);
+    }
+  }
+}
+
+/** The key a mark is given under: the note's beat and MIDI pitch. */
+export function markKey(beat: number, pitch: number): string {
+  return `${String(Math.round(beat * 1000) / 1000)}:${String(pitch)}`;
 }
 
 interface ScrollTarget {
@@ -128,8 +166,16 @@ function scrollTarget(
 }
 
 /** Every drawn note of the score with the beat it starts on, for clicks on the staff. */
-function noteBeats(osmd: OpenSheetMusicDisplay): Map<SVGGElement, number> {
+interface NoteIndex {
+  /** Each drawn note with its beat, for clicks. */
+  readonly beats: Map<SVGGElement, number>;
+  /** Noteheads by markKey, for the review colours. */
+  readonly heads: Map<string, SVGElement[]>;
+}
+
+function indexNotes(osmd: OpenSheetMusicDisplay): NoteIndex {
   const beats = new Map<SVGGElement, number>();
+  const heads = new Map<string, SVGElement[]>();
   for (const row of osmd.GraphicSheet.MeasureList) {
     for (const measure of row) {
       // OSMD's measure rows have holes for staves without a measure there.
@@ -139,13 +185,17 @@ function noteBeats(osmd: OpenSheetMusicDisplay): Map<SVGGElement, number> {
         const beat = entry.getAbsoluteTimestamp().RealValue * 4;
         for (const voice of entry.graphicalVoiceEntries) {
           for (const note of voice.notes) {
-            if (note instanceof VexFlowGraphicalNote) beats.set(note.getSVGGElement(), beat);
+            if (!(note instanceof VexFlowGraphicalNote) || note.sourceNote.isRest()) continue;
+            beats.set(note.getSVGGElement(), beat);
+            // OSMD counts half tones from C0; MIDI from C-1.
+            const key = markKey(beat, note.sourceNote.halfTone + 12);
+            heads.set(key, [...(heads.get(key) ?? []), ...noteheadShapes(note)]);
           }
         }
       }
     }
   }
-  return beats;
+  return { beats, heads };
 }
 
 /**
@@ -209,7 +259,8 @@ export function Staff({
   singleLine,
   follow,
   breaksFromScore,
-  onSeek
+  onSeek,
+  marks
 }: StaffProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   /** OSMD draws here; the host around it scrolls. */
@@ -220,7 +271,8 @@ export function Staff({
   const latest = useRef({ beat, zoom, follow, singleLine });
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
-  const noteBeatsRef = useRef<Map<SVGGElement, number>>(new Map());
+  const noteIndexRef = useRef<NoteIndex>({ beats: new Map(), heads: new Map() });
+  const marksRef = useRef(marks);
 
   useEffect(() => {
     latest.current = { beat, zoom, follow, singleLine };
@@ -248,7 +300,8 @@ export function Staff({
       else centreShortScore(osmd, page);
     }
     linesRef.current = lineBoxes(osmd);
-    noteBeatsRef.current = noteBeats(osmd);
+    noteIndexRef.current = indexNotes(osmd);
+    paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine);
     // A new render draws new noteheads and puts the cursor back at the start.
     paintedRef.current = [];
@@ -332,6 +385,11 @@ export function Staff({
     showBeat(osmd, host);
   }, [beat]);
 
+  useEffect(() => {
+    marksRef.current = marks;
+    paintMarks(noteIndexRef.current.heads, marks);
+  }, [marks]);
+
   // The view glides towards its target every frame instead of jumping on each note.
   useEffect(() => {
     let frame = 0;
@@ -368,7 +426,7 @@ export function Staff({
     if (!onSeek) return;
     let best: number | undefined;
     let bestDistance = Number.POSITIVE_INFINITY;
-    for (const [element, beat] of noteBeatsRef.current) {
+    for (const [element, beat] of noteIndexRef.current.beats) {
       const box = element.getBoundingClientRect();
       if (box.width === 0 && box.height === 0) continue;
       // Rows count heavily: a note on the clicked line beats a closer one on the next line.

@@ -9,7 +9,10 @@ import {
 } from "./audio/pianoSound";
 import type { Finger, Hand } from "./fingering/fingering";
 import { listenToComputerKeyboard, listenToMidi, midiSupported } from "./input/midiInput";
-import type { KeyEvent, MidiDevice } from "./input/midiInput";
+import type { KeyEvent, MidiDevice, MidiEvent } from "./input/midiInput";
+import { compareTake } from "./recording/compare";
+import type { Grade, TakeReview } from "./recording/compare";
+import type { Take } from "./recording/take";
 import type { PracticeMode, PracticeOptions } from "./practice/session";
 import { Trainer } from "./practice/Trainer";
 import type { TrainerSnapshot } from "./practice/Trainer";
@@ -25,7 +28,7 @@ import {
 } from "./song/musicxml";
 import { withFingering } from "./song/song";
 import type { Song } from "./song/song";
-import { Staff } from "./staff/Staff";
+import { Staff, markKey } from "./staff/Staff";
 
 type HandChoice = "right" | "left" | "both" | "listen";
 
@@ -128,6 +131,13 @@ function songRange(song: Song): readonly [number, number] {
   return [Math.max(21, low), Math.min(108, high)];
 }
 
+/** Staff colours of a reviewed note: clean, off in rhythm, length or touch, not played. */
+const GRADE_COLORS: Readonly<Record<Grade, string>> = {
+  good: "#2e9e4f",
+  inaccurate: "#e08a00",
+  missed: "#e63946"
+};
+
 function saveOverrides(song: Song, overrides: ReadonlyMap<string, Finger>): void {
   try {
     localStorage.setItem(overridesKey(song), JSON.stringify([...overrides]));
@@ -197,6 +207,9 @@ export function App() {
   /** Which MIDI input plays; "all" listens to every one. */
   const [midiDeviceId, setMidiDeviceId] = useState("all");
   const midiDeviceRef = useRef("all");
+  /** The last take and how it compares with the score. */
+  const [lastTake, setLastTake] = useState<{ take: Take; review: TakeReview } | null>(null);
+  const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
   /**
    * Song time practice starts from after a click on the staff; null = the beginning.
    * Kept across reloads (listen, speed, hand, mode), cleared by "Сначала" and a new song.
@@ -253,6 +266,9 @@ export function App() {
       if (disposed) return;
       viewRef.current = view;
       const trainer = new Trainer(view);
+      trainer.onTake = (take) => {
+        takeHandlerRef.current(take);
+      };
       trainer.onSnapshot = (next) => {
         setSnapshot(next);
         // A listen-through ends by handing the song back for practice.
@@ -283,9 +299,11 @@ export function App() {
     let stopMidi: (() => void) | undefined;
     let disposed = false;
     if (midiSupported()) {
-      const onMidiKey = (event: KeyEvent, deviceId: string) => {
+      const onMidiKey = (event: MidiEvent, deviceId: string) => {
         const chosen = midiDeviceRef.current;
-        if (chosen === "all" || chosen === deviceId) onKey(event);
+        if (chosen !== "all" && chosen !== deviceId) return;
+        if (event.type === "pedal") trainerRef.current?.pedal(event.down);
+        else onKey(event);
       };
       listenToMidi(onMidiKey, setDevices).then(
         (stop) => {
@@ -316,10 +334,10 @@ export function App() {
   useEffect(() => {
     const trainer = trainerRef.current;
     if (!trainer) return;
-    trainer.load(song, practiceOptions);
+    trainer.load(song, practiceOptions, overridesKey(baseSong));
     if (startFromRef.current !== null) trainer.seek(startFromRef.current);
     if (listening) trainer.setPlaying(true);
-  }, [trainerReady, song, practiceOptions, listening]);
+  }, [trainerReady, song, practiceOptions, listening, baseSong]);
 
   useEffect(() => {
     if (trainerRef.current) trainerRef.current.metronome = metronome;
@@ -402,8 +420,30 @@ export function App() {
   const restart = () => {
     setListening(false);
     startFromRef.current = null;
-    trainerRef.current?.load(song, practiceOptions);
+    trainerRef.current?.load(song, practiceOptions, overridesKey(baseSong));
   };
+
+  useEffect(() => {
+    // The trainer outlives renders; a finished take is compared with the song on screen now.
+    takeHandlerRef.current = (take) => {
+      setLastTake({ take, review: compareTake(song, take) });
+    };
+  });
+
+  // A take belongs to the song and level it was played on; another song shows no review.
+  const review = lastTake?.take.songKey === overridesKey(baseSong) ? lastTake.review : undefined;
+  const reviewMarks = useMemo(
+    () =>
+      review
+        ? new Map(
+            review.notes.map((item) => [
+              markKey(item.note.startBeat, item.note.pitch),
+              GRADE_COLORS[item.grade]
+            ])
+          )
+        : undefined,
+    [review]
+  );
 
   const stats = snapshot?.stats;
   const played = stats ? stats.hits + stats.misses : 0;
@@ -643,6 +683,28 @@ export function App() {
         </button>
       </div>
 
+      {review && lastTake && (
+        <div className="review-bar">
+          <strong>Разбор дубля</strong>
+          <span className="good">чисто {review.summary.good}</span>
+          <span className="inaccurate">неточно {review.summary.inaccurate}</span>
+          <span className="missed">пропущено {review.summary.missed}</span>
+          <span>лишние нажатия {review.summary.extras}</span>
+          {lastTake.take.mode === "tempo" && (
+            <span>ритм ±{Math.round(review.summary.meanAbsOffsetMs)} мс</span>
+          )}
+          <span>ровность удара ±{Math.round(review.summary.velocitySpread)}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLastTake(null);
+            }}
+          >
+            Скрыть
+          </button>
+        </div>
+      )}
+
       {staffXml && (
         <Staff
           musicXml={staffXml}
@@ -652,6 +714,7 @@ export function App() {
           follow={staffPrefs.follow}
           breaksFromScore={fixedLines}
           onSeek={seekToBeat}
+          marks={reviewMarks}
         />
       )}
 
