@@ -24,4 +24,19 @@ describe("built-in exercises", () => {
       expect(song.notes.some((note) => note.hand === "right")).toBe(true);
     }
   });
+
+  it("writes the anthem as a pickup, a verse and the chorus with its final ending", () => {
+    const exercise = EXERCISES.find((item) => item.id === "anthem-ru");
+    if (!exercise) throw new Error("missing anthem");
+    const song = withFingering(songFromMusicXml(exercise.musicXml, exercise.title));
+    const right = song.notes.filter((note) => note.hand === "right");
+    // G4 upbeat, then "Рос-си-я — свя-щен-на-я" on C5 G4 A4 B4 E4 E4.
+    expect(right.slice(0, 7).map((note) => note.pitch)).toEqual([67, 72, 67, 69, 71, 64, 64]);
+    expect(right[1]?.startBeat).toBe(0.5);
+    expect(right.at(-1)).toMatchObject({ pitch: 72, startBeat: 0.5 + 20 * 4 });
+    // The upbeat gets no click; the first downbeat lands on "Рос-".
+    expect(song.beats[0]).toMatchObject({ downbeat: true });
+    expect(song.beats[0]?.time).toBeCloseTo((0.5 * 60) / 152);
+    expect(song.notes.every((note) => note.finger !== undefined)).toBe(true);
+  });
 });
