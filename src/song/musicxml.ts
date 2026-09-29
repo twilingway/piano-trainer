@@ -326,3 +326,39 @@ export function musicXmlWithLineBreaks(xml: string, perLine: number): string {
   }
   return new XMLSerializer().serializeToString(document);
 }
+
+export type NoteNameStyle = "ru" | "en";
+
+const NAMES: Readonly<Record<NoteNameStyle, Readonly<Record<string, string>>>> = {
+  ru: { C: "до", D: "ре", E: "ми", F: "фа", G: "соль", A: "ля", B: "си" },
+  en: { C: "C", D: "D", E: "E", F: "F", G: "G", A: "A", B: "B" }
+};
+
+const ACCIDENTALS: Readonly<Record<string, string>> = { "-2": "𝄫", "-1": "♭", "1": "♯", "2": "𝄪" };
+
+/**
+ * The score with every note's name written under it as a lyric, spelled as
+ * the score spells it (B flat stays B flat). Chord notes stack their names.
+ */
+export function musicXmlWithNoteNames(xml: string, style: NoteNameStyle): string {
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  let stack = 0;
+  for (const note of Array.from(document.querySelectorAll("note"))) {
+    const pitch = note.querySelector(":scope > pitch");
+    if (!pitch) continue;
+    stack = note.querySelector(":scope > chord") ? stack + 1 : 1;
+    const step = pitch.querySelector(":scope > step")?.textContent.trim() ?? "";
+    const alter = pitch.querySelector(":scope > alter")?.textContent.trim() ?? "0";
+    const name = `${NAMES[style][step] ?? step}${ACCIDENTALS[alter] ?? ""}`;
+    const lyric = document.createElement("lyric");
+    lyric.setAttribute("number", String(stack));
+    lyric.setAttribute("placement", "below");
+    const syllabic = document.createElement("syllabic");
+    syllabic.textContent = "single";
+    const text = document.createElement("text");
+    text.textContent = name;
+    lyric.append(syllabic, text);
+    note.appendChild(lyric);
+  }
+  return new XMLSerializer().serializeToString(document);
+}

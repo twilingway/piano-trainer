@@ -55,7 +55,16 @@ interface NoteSprite {
   readonly note: SongNote;
   readonly body: Sprite;
   readonly digit: Sprite;
+  readonly name: Sprite;
 }
+
+export type FallingNoteNames = "ru" | "en";
+
+/** Names by pitch class, sharps for the black keys: a falling note has no written spelling. */
+const FALLING_NAMES: Readonly<Record<FallingNoteNames, readonly string[]>> = {
+  ru: ["до", "до♯", "ре", "ре♯", "ми", "фа", "фа♯", "соль", "соль♯", "ля", "ля♯", "си"],
+  en: ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
+};
 
 interface Geometry {
   readonly keyboardTop: number;
@@ -84,6 +93,8 @@ export class FallingNotesView {
   private readonly keyDigits = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private digitTextures = new Map<Finger, Texture>();
+  private nameTextures = new Map<string, Texture>();
+  private noteNames: FallingNoteNames | undefined;
   private keys = new Map<number, KeyRect>();
   private range = { low: LOWEST_PITCH, high: HIGHEST_PITCH };
   private laidOutFor = { width: 0, height: 0 };
@@ -111,6 +122,7 @@ export class FallingNotesView {
     this.keyStickers.eventMode = "none";
     this.keyStickers.visible = false;
     this.digitTextures = this.bakeDigits();
+    this.nameTextures = this.bakeNames();
     for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
       const sprite = new Sprite(Texture.WHITE);
       sprite.eventMode = "static";
@@ -151,6 +163,16 @@ export class FallingNotesView {
   }
 
   /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
+  /** Note names on the falling notes, over the finger; undefined hides them. */
+  setNoteNames(style: FallingNoteNames | undefined): void {
+    this.noteNames = style;
+    for (const { note, name } of this.notes) {
+      name.texture = style
+        ? (this.nameTextures.get(`${style}:${String(note.pitch % 12)}`) ?? Texture.EMPTY)
+        : Texture.EMPTY;
+    }
+  }
+
   setShowLabels(show: boolean): void {
     this.keyStickers.visible = show;
     this.laidOutFor = { width: 0, height: 0 };
@@ -173,6 +195,7 @@ export class FallingNotesView {
     for (const sprite of this.notes) {
       sprite.body.destroy();
       sprite.digit.destroy();
+      sprite.name.destroy();
     }
     this.notes = song.notes.map((note) => {
       const body = new Sprite(Texture.WHITE);
@@ -182,8 +205,16 @@ export class FallingNotesView {
       const digit = new Sprite(note.finger ? this.digitTextures.get(note.finger) : undefined);
       digit.anchor.set(0.5, 1);
       digit.eventMode = "none";
-      this.lane.addChild(body, digit);
-      return { note, body, digit };
+      const style = this.noteNames;
+      const name = new Sprite(
+        style
+          ? (this.nameTextures.get(`${style}:${String(note.pitch % 12)}`) ?? Texture.EMPTY)
+          : Texture.EMPTY
+      );
+      name.anchor.set(0.5, 1);
+      name.eventMode = "none";
+      this.lane.addChild(body, digit, name);
+      return { note, body, digit, name };
     });
   }
 
@@ -198,7 +229,7 @@ export class FallingNotesView {
 
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = new Map<number, SongNote>();
-    for (const { note, body, digit } of this.notes) {
+    for (const { note, body, digit, name } of this.notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
         playing.set(note.pitch, note);
       }
@@ -208,6 +239,7 @@ export class FallingNotesView {
       const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < keyboardTop;
       body.visible = onScreen;
       digit.visible = onScreen && note.finger !== undefined;
+      name.visible = false;
       if (!onScreen) continue;
 
       const playerNote = state.hands.has(note.hand);
@@ -224,6 +256,15 @@ export class FallingNotesView {
       digit.x = key.x + key.width / 2;
       digit.y = bottom - 2;
       digit.alpha = body.alpha;
+      if (this.noteNames) {
+        // Over the finger, when the note is tall enough to hold both.
+        name.scale.set(Math.min(1, (key.width * 0.92) / Math.max(name.texture.width, 1)));
+        const digitHeight = note.finger === undefined ? 0 : digit.height + 2;
+        name.visible = noteHeight >= digitHeight + name.height + 4;
+        name.x = key.x + key.width / 2;
+        name.y = bottom - 2 - digitHeight;
+        name.alpha = body.alpha;
+      }
     }
 
     const dueByPitch = new Map(state.due.map((note) => [note.pitch, note]));
@@ -345,6 +386,30 @@ export class FallingNotesView {
     hitLine.width = width;
     hitLine.height = 2;
     this.guides.addChild(hitLine);
+  }
+
+  private bakeNames(): Map<string, Texture> {
+    const textures = new Map<string, Texture>();
+    for (const [style, names] of Object.entries(FALLING_NAMES)) {
+      names.forEach((label, pitchClass) => {
+        const text = new Text({
+          text: label,
+          style: {
+            fontFamily: "system-ui, sans-serif",
+            fontSize: 22,
+            fontWeight: "700",
+            fill: 0x10121a
+          },
+          resolution: 2
+        });
+        textures.set(
+          `${style}:${String(pitchClass)}`,
+          this.app.renderer.generateTexture({ target: text, resolution: 3 })
+        );
+        text.destroy();
+      });
+    }
+    return textures;
   }
 
   private bakeDigits(): Map<Finger, Texture> {

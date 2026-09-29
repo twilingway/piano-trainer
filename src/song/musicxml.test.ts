@@ -1,7 +1,12 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 
-import { musicXmlWithFingering, musicXmlWithLineBreaks, songFromMusicXml } from "./musicxml";
+import {
+  musicXmlWithFingering,
+  musicXmlWithLineBreaks,
+  musicXmlWithNoteNames,
+  songFromMusicXml
+} from "./musicxml";
 import { withFingering } from "./song";
 
 /*
@@ -104,5 +109,33 @@ describe("songFromMusicXml", () => {
     // Pickup + 9 full measures, 4 per line: new lines at full measures 5 and 9.
     expect(breaksOf(musicXmlWithLineBreaks(measures(10, true), 4))).toEqual([5, 9]);
     expect(breaksOf(musicXmlWithLineBreaks(measures(8, false), 2))).toEqual([2, 4, 6]);
+  });
+});
+
+describe("musicXmlWithNoteNames", () => {
+  const lyricsOf = (xml: string) =>
+    Array.from(
+      new DOMParser().parseFromString(xml, "application/xml").querySelectorAll("note")
+    ).map((note) =>
+      Array.from(note.querySelectorAll("lyric")).map(
+        (lyric) =>
+          `${lyric.getAttribute("number") ?? ""}:${lyric.querySelector("text")?.textContent ?? ""}`
+      )
+    );
+
+  it("names every note under it in solfège or letters, keeping the score's spelling", () => {
+    const xml = `<score-partwise><part id="P1"><measure number="1">
+      <note><pitch><step>B</step><alter>-1</alter><octave>4</octave></pitch><duration>1</duration></note>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note>
+      <note><chord/><pitch><step>F</step><alter>1</alter><octave>4</octave></pitch><duration>1</duration></note>
+      <note><rest/><duration>1</duration></note>
+    </measure></part></score-partwise>`;
+    expect(lyricsOf(musicXmlWithNoteNames(xml, "ru"))).toEqual([
+      ["1:си♭"],
+      ["1:до"],
+      ["2:фа♯"],
+      []
+    ]);
+    expect(lyricsOf(musicXmlWithNoteNames(xml, "en"))).toEqual([["1:B♭"], ["1:C"], ["2:F♯"], []]);
   });
 });

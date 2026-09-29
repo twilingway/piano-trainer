@@ -354,6 +354,8 @@ export function Staff({
       osmd.Zoom = latest.current.zoom;
       // Half the usual page margin: the view starts at the first line anyway.
       osmd.EngravingRules.PageTopMargin = 2;
+      // A fixed count per line gets equal measures, so barlines line up from line to line.
+      osmd.EngravingRules.FixedMeasureWidth = breaksFromScore;
       osmd.render();
       osmd.cursor.show();
       osmdRef.current = osmd;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 
 import {
@@ -28,8 +28,10 @@ import {
   musicXmlFromMxl,
   musicXmlWithFingering,
   musicXmlWithLineBreaks,
+  musicXmlWithNoteNames,
   songFromMusicXml
 } from "./song/musicxml";
+import type { NoteNameStyle } from "./song/musicxml";
 import { withFingering } from "./song/song";
 import type { Song } from "./song/song";
 import { Staff, markKey } from "./staff/Staff";
@@ -81,6 +83,8 @@ interface StaffPrefs {
   readonly follow: boolean;
   /** Measures on every line of a wrapped page; 0 lets the width decide. */
   readonly measuresPerLine: 0 | 2 | 4 | 8;
+  /** Note names on the staff and the falling notes. */
+  readonly noteNames: "off" | NoteNameStyle;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -88,7 +92,8 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   zoom: 0.8,
   singleLine: false,
   follow: true,
-  measuresPerLine: 4
+  measuresPerLine: 4,
+  noteNames: "off"
 };
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
@@ -271,11 +276,17 @@ export function App() {
   // The staff shows the same fingers as the falling notes, corrections included.
   const [staffPrefs, setStaffPrefs] = useState<StaffPrefs>(loadStaffPrefs);
   const fixedLines = !staffPrefs.singleLine && staffPrefs.measuresPerLine > 0;
+  const nameStyle = staffPrefs.noteNames === "off" ? undefined : staffPrefs.noteNames;
+  const fallingNames = nameStyle;
+  const withNames = useCallback(
+    (xml: string) => (nameStyle ? musicXmlWithNoteNames(xml, nameStyle) : xml),
+    [nameStyle]
+  );
   const staffXml = useMemo(() => {
     if (!song.musicXml) return undefined;
-    const fingered = musicXmlWithFingering(song.musicXml, song.notes);
+    const fingered = withNames(musicXmlWithFingering(song.musicXml, song.notes));
     return fixedLines ? musicXmlWithLineBreaks(fingered, staffPrefs.measuresPerLine) : fingered;
-  }, [song, fixedLines, staffPrefs.measuresPerLine]);
+  }, [song, fixedLines, staffPrefs.measuresPerLine, withNames]);
   /** A click on the staff: play from the first note at or after that beat. */
   const seekToBeat = (beat: number) => {
     const target = song.notes.find((note) => note.startBeat >= beat - 1e-6);
@@ -421,7 +432,8 @@ export function App() {
 
   useEffect(() => {
     viewRef.current?.setShowLabels(showLabels);
-  }, [trainerReady, showLabels]);
+    viewRef.current?.setNoteNames(fallingNames);
+  }, [trainerReady, showLabels, fallingNames]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {
@@ -446,6 +458,7 @@ export function App() {
       if (disposed) return;
       mirror.setSong(song);
       mirror.setShowLabels(showLabels);
+      mirror.setNoteNames(fallingNames);
       mirror.setRange(rangeLow, rangeHigh);
       trainer.setComparison({
         colorOf: (note) => playedTint.get(note.id),
@@ -459,7 +472,7 @@ export function App() {
         mirror.destroy();
       });
     };
-  }, [comparing, lastTake, song, showLabels, rangeLow, rangeHigh]);
+  }, [comparing, lastTake, song, showLabels, rangeLow, rangeHigh, fallingNames]);
 
   useEffect(() => {
     midiDeviceRef.current = midiDeviceId;
@@ -584,9 +597,8 @@ export function App() {
   const transcription = useMemo(() => {
     if (!review || !lastTake || takeStaff === "off") return undefined;
     const written = transcribeTake(song, lastTake.take, review);
-    const musicXml = fixedLines
-      ? musicXmlWithLineBreaks(written.musicXml, staffPrefs.measuresPerLine)
-      : written.musicXml;
+    const named = withNames(written.musicXml);
+    const musicXml = fixedLines ? musicXmlWithLineBreaks(named, staffPrefs.measuresPerLine) : named;
     const marks = new Map(
       [...written.grades].map(([key, grade]) => {
         const [beat = "0", pitch = "0"] = key.split(":");
@@ -594,7 +606,7 @@ export function App() {
       })
     );
     return { musicXml, marks };
-  }, [review, lastTake, takeStaff, song, fixedLines, staffPrefs.measuresPerLine]);
+  }, [review, lastTake, takeStaff, song, fixedLines, staffPrefs.measuresPerLine, withNames]);
 
   const stats = snapshot?.stats;
   const played = stats ? stats.hits + stats.misses : 0;
@@ -824,6 +836,19 @@ export function App() {
                 <option value={2}>По 2 такта</option>
                 <option value={4}>По 4 такта</option>
                 <option value={8}>По 8 тактов</option>
+              </select>
+            )}
+            {staffXml && (
+              <select
+                aria-label="Названия нот на нотах"
+                value={staffPrefs.noteNames}
+                onChange={(event) => {
+                  updateStaffPrefs({ noteNames: event.target.value as StaffPrefs["noteNames"] });
+                }}
+              >
+                <option value="off">Названия: нет</option>
+                <option value="ru">Названия: до ре ми</option>
+                <option value="en">Названия: C D E</option>
               </select>
             )}
             <span className="hint">Клик по нотам — играть с этого места</span>
