@@ -1,4 +1,9 @@
-import { OpenSheetMusicDisplay, VexFlowGraphicalNote, unitInPixels } from "opensheetmusicdisplay";
+import {
+  OpenSheetMusicDisplay,
+  PointF2D,
+  VexFlowGraphicalNote,
+  unitInPixels
+} from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useRef } from "react";
 
 interface StaffProps {
@@ -11,6 +16,10 @@ interface StaffProps {
   readonly singleLine: boolean;
   /** Keep the cursor in view as the song plays. */
   readonly follow: boolean;
+  /** Break lines where the score says so (the fixed measures-per-line layout) instead of by width. */
+  readonly breaksFromScore: boolean;
+  /** A click on the score: the beat of the note nearest to it. */
+  readonly onSeek?: (beat: number) => void;
 }
 
 const BEAT_EPSILON = 1e-6;
@@ -124,6 +133,25 @@ function scrollTarget(
 }
 
 /**
+ * A score narrower than the page (a short piece on one line) is moved to the
+ * middle of it; a full page of justified lines stays where it is.
+ */
+function centreShortScore(osmd: OpenSheetMusicDisplay, page: HTMLElement): void {
+  page.style.transform = "";
+  const pixels = unitInPixels * osmd.Zoom;
+  const systems = osmd.GraphicSheet.MusicPages[0]?.MusicSystems ?? [];
+  if (systems.length === 0) return;
+  const left = Math.min(...systems.map((system) => system.PositionAndShape.AbsolutePosition.x));
+  const right = Math.max(
+    ...systems.map(
+      (system) => system.PositionAndShape.AbsolutePosition.x + system.PositionAndShape.Size.width
+    )
+  );
+  const shift = (page.clientWidth - (left + right) * pixels) / 2;
+  if (shift > 4) page.style.transform = `translateX(${String(Math.round(shift))}px)`;
+}
+
+/**
  * Sizes the view to whole lines of music: as many as fit in STAFF_MAX_SHARE of
  * the window, one to three, so zooming changes how many lines show, not how
  * much of the screen the score takes.
@@ -148,7 +176,15 @@ function fitHeight(scroller: HTMLElement, lines: readonly LineBox[], singleLine:
  * seconds, so tempo changes cannot drift it off; the notes under it are
  * coloured. Zoom, line wrapping and following are the reader's choice.
  */
-export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) {
+export function Staff({
+  musicXml,
+  beat,
+  zoom,
+  singleLine,
+  follow,
+  breaksFromScore,
+  onSeek
+}: StaffProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   /** OSMD draws here; the host around it scrolls. */
   const pageRef = useRef<HTMLDivElement>(null);
@@ -179,6 +215,11 @@ export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     osmd.render();
+    const page = pageRef.current;
+    if (page) {
+      if (latest.current.singleLine) page.style.transform = "";
+      else centreShortScore(osmd, page);
+    }
     linesRef.current = lineBoxes(osmd);
     fitHeight(host, linesRef.current, latest.current.singleLine);
     // A new render draws new noteheads and puts the cursor back at the start.
@@ -214,6 +255,7 @@ export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) 
       drawFingerings: true,
       renderSingleHorizontalStaffline: singleLine,
       followCursor: false,
+      newSystemFromXML: breaksFromScore,
       // Eighths and shorter are beamed beat by beat, so each beat reads as one group at a glance.
       autoBeam: true,
       autoBeamOptions: { groups: [[1, 4]] }
@@ -245,7 +287,7 @@ export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) 
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
       page.replaceChildren();
     };
-  }, [musicXml, singleLine]);
+  }, [musicXml, singleLine, breaksFromScore]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
@@ -289,8 +331,24 @@ export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) 
     };
   }, []);
 
+  /** The beat of the note nearest to a click, found by OSMD in its own coordinates. */
+  const seekAt = (clientX: number, clientY: number) => {
+    const osmd = osmdRef.current;
+    if (!osmd || !onSeek) return;
+    const sheet = osmd.GraphicSheet;
+    const point = sheet.svgToOsmd(sheet.domToSvg(new PointF2D(clientX, clientY)));
+    const entry = sheet.GetNearestStaffEntry(point);
+    onSeek(entry.getAbsoluteTimestamp().RealValue * 4);
+  };
+
   return (
-    <div className={singleLine ? "staff staff--single" : "staff staff--wrapped"} ref={hostRef}>
+    <div
+      className={singleLine ? "staff staff--single" : "staff staff--wrapped"}
+      ref={hostRef}
+      onClick={(event) => {
+        seekAt(event.clientX, event.clientY);
+      }}
+    >
       <div className="staff-page" ref={pageRef} />
     </div>
   );

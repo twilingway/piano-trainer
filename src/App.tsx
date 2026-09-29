@@ -17,7 +17,12 @@ import { FallingNotesView } from "./render/FallingNotesView";
 import { EXERCISES } from "./song/exercises";
 import type { LevelId } from "./song/exercises";
 import { songFromMidi } from "./song/midi";
-import { musicXmlFromMxl, musicXmlWithFingering, songFromMusicXml } from "./song/musicxml";
+import {
+  musicXmlFromMxl,
+  musicXmlWithFingering,
+  musicXmlWithLineBreaks,
+  songFromMusicXml
+} from "./song/musicxml";
 import { withFingering } from "./song/song";
 import type { Song } from "./song/song";
 import { Staff } from "./staff/Staff";
@@ -67,10 +72,17 @@ interface StaffPrefs {
   readonly zoom: number;
   readonly singleLine: boolean;
   readonly follow: boolean;
+  /** Measures on every line of a wrapped page; 0 lets the width decide. */
+  readonly measuresPerLine: 0 | 2 | 4 | 8;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
-const DEFAULT_STAFF_PREFS: StaffPrefs = { zoom: 0.8, singleLine: false, follow: true };
+const DEFAULT_STAFF_PREFS: StaffPrefs = {
+  zoom: 0.8,
+  singleLine: false,
+  follow: true,
+  measuresPerLine: 4
+};
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
 const ZOOM_STEP = 0.1;
@@ -189,11 +201,18 @@ export function App() {
 
   const song = useMemo(() => withFingering(baseSong, overrides), [baseSong, overrides]);
   // The staff shows the same fingers as the falling notes, corrections included.
-  const staffXml = useMemo(
-    () => (song.musicXml ? musicXmlWithFingering(song.musicXml, song.notes) : undefined),
-    [song]
-  );
   const [staffPrefs, setStaffPrefs] = useState<StaffPrefs>(loadStaffPrefs);
+  const fixedLines = !staffPrefs.singleLine && staffPrefs.measuresPerLine > 0;
+  const staffXml = useMemo(() => {
+    if (!song.musicXml) return undefined;
+    const fingered = musicXmlWithFingering(song.musicXml, song.notes);
+    return fixedLines ? musicXmlWithLineBreaks(fingered, staffPrefs.measuresPerLine) : fingered;
+  }, [song, fixedLines, staffPrefs.measuresPerLine]);
+  /** A click on the staff: practice restarts from the first note at or after that beat. */
+  const seekToBeat = (beat: number) => {
+    const target = song.notes.find((note) => note.startBeat >= beat - 1e-6);
+    if (target) trainerRef.current?.seek(target.start);
+  };
   const updateStaffPrefs = (change: Partial<StaffPrefs>) => {
     const next = { ...staffPrefs, ...change };
     saveStaffPrefs(next);
@@ -585,6 +604,23 @@ export function App() {
               />
               Следовать за игрой
             </label>
+            {!staffPrefs.singleLine && (
+              <select
+                aria-label="Тактов в строке"
+                value={staffPrefs.measuresPerLine}
+                onChange={(event) => {
+                  updateStaffPrefs({
+                    measuresPerLine: Number(event.target.value) as StaffPrefs["measuresPerLine"]
+                  });
+                }}
+              >
+                <option value={0}>Тактов в строке: авто</option>
+                <option value={2}>По 2 такта</option>
+                <option value={4}>По 4 такта</option>
+                <option value={8}>По 8 тактов</option>
+              </select>
+            )}
+            <span className="hint">Клик по нотам — играть с этого места</span>
           </>
         )}
         <button type="button" onClick={resetFingers} disabled={overrides.size === 0}>
@@ -599,6 +635,8 @@ export function App() {
           zoom={staffPrefs.zoom}
           singleLine={staffPrefs.singleLine}
           follow={staffPrefs.follow}
+          breaksFromScore={fixedLines}
+          onSeek={seekToBeat}
         />
       )}
 

@@ -70,6 +70,14 @@ export class Trainer {
     this.publish();
   }
 
+  /** Restarts the run from song time `from`, keeping play or pause as it was. */
+  seek(from: number): void {
+    if (!this.session) return;
+    this.silence();
+    this.session.seek(from);
+    this.publish();
+  }
+
   setPlaying(playing: boolean): void {
     this.playing = playing && this.session?.finished !== true;
     if (!this.playing) this.silence();

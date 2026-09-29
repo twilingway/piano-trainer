@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 
-import { musicXmlWithFingering, songFromMusicXml } from "./musicxml";
+import { musicXmlWithFingering, musicXmlWithLineBreaks, songFromMusicXml } from "./musicxml";
 import { withFingering } from "./song";
 
 /*
@@ -86,5 +86,23 @@ describe("songFromMusicXml", () => {
       fingered.notes.map((note) => note.finger)
     );
     expect(annotated.notes.map((note) => note.pitch)).toEqual(song.notes.map((note) => note.pitch));
+  });
+
+  it("breaks lines every N full measures, keeping a pickup on the first line", () => {
+    const measures = (count: number, pickup: boolean) =>
+      `<score-partwise><part id="P1">${Array.from(
+        { length: count },
+        (_, index) =>
+          `<measure number="${String(index)}"${pickup && index === 0 ? ' implicit="yes"' : ""}/>`
+      ).join("")}</part></score-partwise>`;
+    const breaksOf = (xml: string) =>
+      Array.from(
+        new DOMParser().parseFromString(xml, "application/xml").querySelectorAll("measure")
+      )
+        .map((measure, index) => (measure.querySelector("print[new-system='yes']") ? index : -1))
+        .filter((index) => index >= 0);
+    // Pickup + 9 full measures, 4 per line: new lines at full measures 5 and 9.
+    expect(breaksOf(musicXmlWithLineBreaks(measures(10, true), 4))).toEqual([5, 9]);
+    expect(breaksOf(musicXmlWithLineBreaks(measures(8, false), 2))).toEqual([2, 4, 6]);
   });
 });

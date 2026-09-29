@@ -11,7 +11,8 @@ export interface PracticeOptions {
   readonly speed: number;
 }
 
-export type NoteStatus = "pending" | "hit" | "missed";
+/** "skipped": before the point the run was started from; it never counts. */
+export type NoteStatus = "pending" | "hit" | "missed" | "skipped";
 
 export type PracticeEvent =
   | { readonly type: "autoNoteOn"; readonly pitch: number }
@@ -53,9 +54,9 @@ export class PracticeSession {
   private readonly playerNotes: SongNote[];
   private readonly autoNotes: SongNote[];
   private readonly status = new Map<string, NoteStatus>();
-  private readonly offsets: number[] = [];
-  private readonly wrongPitches: number[] = [];
-  private readonly missedPitches: number[] = [];
+  private offsets: number[] = [];
+  private wrongPitches: number[] = [];
+  private missedPitches: number[] = [];
   private autoStartIndex = 0;
   private readonly soundingAuto: SongNote[] = [];
   /** The song's beat grid, preceded by a count-in over the lead-in. */
@@ -69,6 +70,30 @@ export class PracticeSession {
     this.autoNotes = song.notes.filter((note) => !options.hands.has(note.hand));
     for (const note of this.playerNotes) this.status.set(note.id, "pending");
     this.beats = [...countIn(song.beats), ...song.beats];
+  }
+
+  /**
+   * Starts the run over from song time `from`: earlier notes are skipped and
+   * never counted, the score is cleared, and the song resumes a lead-in
+   * before `from` so the metronome counts the player in. Call `stopAuto`
+   * first if the program may be holding notes.
+   */
+  seek(from: number): void {
+    const edge = from - 1e-6;
+    for (const note of this.playerNotes) {
+      this.status.set(note.id, note.start < edge ? "skipped" : "pending");
+    }
+    this.offsets = [];
+    this.wrongPitches = [];
+    this.missedPitches = [];
+    this.soundingAuto.length = 0;
+    this.finished = false;
+    this.time = from - LEAD_IN_S;
+    // The other hand resumes at `from` too; what it played before stays silent.
+    const autoIndex = this.autoNotes.findIndex((note) => note.start >= edge);
+    this.autoStartIndex = autoIndex === -1 ? this.autoNotes.length : autoIndex;
+    const beatIndex = this.beats.findIndex((beat) => beat.time >= this.time);
+    this.beatIndex = beatIndex === -1 ? this.beats.length : beatIndex;
   }
 
   statusOf(noteId: string): NoteStatus | undefined {

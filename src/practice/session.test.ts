@@ -121,3 +121,35 @@ describe("metronome", () => {
     expect(beatsOf(run.advance(0.6))).toEqual([{ type: "beat", downbeat: false }]);
   });
 });
+
+describe("seek", () => {
+  it("skips earlier notes without counting them and waits for the chosen one", () => {
+    const run = session("wait");
+    run.advance(LEAD_IN_S);
+    run.pressKey(62);
+    run.seek(1);
+    expect(run.statusOf("c4")).toBe("skipped");
+    expect(run.stats()).toMatchObject({ hits: 0, misses: 0, wrong: 0 });
+    expect(run.time).toBe(1 - LEAD_IN_S);
+    run.advance(LEAD_IN_S + 1);
+    expect(run.time).toBe(1);
+    expect(run.nextDue().map((note) => note.id)).toEqual(["e4", "g4"]);
+  });
+
+  it("does not mark skipped notes missed in tempo mode or replay the other hand before the point", () => {
+    const run = session("tempo");
+    run.seek(1);
+    const events = run.advance(LEAD_IN_S + 0.1);
+    expect(events).not.toContainEqual({ type: "miss", noteId: "c4" });
+    expect(events).not.toContainEqual({ type: "autoNoteOn", pitch: 48 });
+    expect(run.statusOf("c4")).toBe("skipped");
+  });
+
+  it("counts the player in with the song's own beats before the point", () => {
+    const run = session("tempo");
+    run.seek(1);
+    // Lead-in from -1 to 1: count-in clicks at -1 and -0.5, then the song's 0, 0.5 and 1.
+    const clicks = run.advance(LEAD_IN_S).filter((event) => event.type === "beat");
+    expect(clicks).toHaveLength(5);
+  });
+});

@@ -113,6 +113,20 @@ body {
   text-align: center;
 }
 
+.staff-bar select {
+  font: inherit;
+  padding: 2px 6px;
+  border: 1px solid #3a3f52;
+  border-radius: 6px;
+  background: #242838;
+  color: inherit;
+}
+
+.staff-bar .hint {
+  margin-left: auto;
+  color: #a9aec2;
+}
+
 .staff-bar .check {
   display: flex;
   gap: 4px;
@@ -134,6 +148,34 @@ body {
 
 .staff-page {
   position: relative;
+}
+
+.staff {
+  cursor: pointer;
+}
+
+/*
+ * Measure numbers and fingering are both small digits over the staff; they
+ * must not read alike. Numbers: small grey italic sans. Fingers: bold, in the
+ * colour of their hand as on the falling notes (OSMD ids staff lines -1 and -2).
+ */
+.staff .measure-number text {
+  fill: #8a8f9c;
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.staff .staffline[id$="-1"] > .vf-text text {
+  fill: #1669a8;
+  font-family: system-ui, sans-serif;
+  font-weight: 700;
+}
+
+.staff .staffline[id$="-2"] > .vf-text text {
+  fill: #b35a12;
+  font-family: system-ui, sans-serif;
+  font-weight: 700;
 }
 
 /* Wrapped: a page of readable width in the middle of a wide screen. */

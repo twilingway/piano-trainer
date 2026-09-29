@@ -303,3 +303,24 @@ export function musicXmlWithFingering(xml: string, notes: readonly SongNote[]): 
   }
   return new XMLSerializer().serializeToString(document);
 }
+
+/**
+ * The score with a new line forced every `perLine` measures, so lines hold
+ * a fixed count (2, 4, 8) instead of whatever fits. A pickup measure does not
+ * count: it rides on the first line in front of the first full measure.
+ */
+export function musicXmlWithLineBreaks(xml: string, perLine: number): string {
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  for (const part of Array.from(document.querySelectorAll("part"))) {
+    const measures = Array.from(part.querySelectorAll(":scope > measure"));
+    const pickup = measures[0]?.getAttribute("implicit") === "yes" ? 1 : 0;
+    measures.forEach((measure, index) => {
+      const counted = index - pickup;
+      if (counted <= 0 || counted % perLine !== 0) return;
+      const print = document.createElement("print");
+      print.setAttribute("new-system", "yes");
+      measure.insertBefore(print, measure.firstChild);
+    });
+  }
+  return new XMLSerializer().serializeToString(document);
+}
