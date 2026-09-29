@@ -3,5 +3,6 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5190 }
+  // `host: true` listens on every interface, so the page opens by LAN address too.
+  server: { port: 5190, host: true }
 });

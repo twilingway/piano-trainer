@@ -101,7 +101,10 @@ export function App() {
   const [midiError, setMidiError] = useState<string | null>(() =>
     midiSupported()
       ? null
-      : "Этот браузер не поддерживает Web MIDI — откройте тренажёр в Chrome или Edge"
+      : // Chrome hides Web MIDI on plain http unless the host is localhost.
+        !window.isSecureContext
+        ? "MIDI доступен только по https или на localhost — откройте http://localhost:5190"
+        : "Этот браузер не поддерживает Web MIDI — откройте тренажёр в Chrome или Edge"
   );
   const [sound, setSound] = useState<"off" | "loading" | "ready">("off");
   const [loadError, setLoadError] = useState<string | null>(null);
