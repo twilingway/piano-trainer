@@ -242,10 +242,13 @@ function transposeSong(song: Song, semitones: number): Song {
   };
 }
 
-/** The shift that takes `from` to `to` by the shorter way round, -5..+6 semitones. */
+/**
+ * The shift that takes `from` to `to`, -4..+7 semitones: up a fifth rather than
+ * down a fourth, as C major to G major is usually written out.
+ */
 function shiftBetween(from: number, to: number): number {
   const up = (((to - from) % 12) + 12) % 12;
-  return up > 6 ? up - 12 : up;
+  return up > 7 ? up - 12 : up;
 }
 
 const FIRST_LESSON: LessonChoice = { exerciseId: LESSONS[0]?.id ?? "", levelId: "easy" };
