@@ -1,19 +1,19 @@
 ## 1. File reading
 
-- [ ] 1.1 Move reading a song from a file's bytes into `src/library/songFile.ts`
+- [x] 1.1 Move reading a song from a file's bytes into `src/library/songFile.ts`
       (`songFromFileData`, `isSongFile`, `titleOf`) and verify with tests that MusicXML and MIDI
       bytes read back into the expected notes and a non-song name is rejected
 
 ## 2. Library storage
 
-- [ ] 2.1 Add `fake-indexeddb` as a dev dependency and verify `pnpm install` succeeds
-- [ ] 2.2 Implement `src/library/myLibrary.ts` (list, save with replace-on-same-file, load, remove,
+- [x] 2.1 Add `fake-indexeddb` as a dev dependency and verify `pnpm install` succeeds
+- [x] 2.2 Implement `src/library/myLibrary.ts` (list, save with replace-on-same-file, load, remove,
       folder handle) and verify with tests against `fake-indexeddb`: save/list/load round trip, same
       name and size replaces, remove deletes
 
 ## 3. Folder
 
-- [ ] 3.1 Implement `src/library/folder.ts` (support check, pick, permission, read songs two levels
+- [x] 3.1 Implement `src/library/folder.ts` (support check, pick, permission, read songs two levels
       deep) and verify with a test over a fake directory handle that nested song files are listed by
       path and other files are skipped
 
