@@ -1,0 +1,98 @@
+import { describe, expect, it } from "vitest";
+
+import type { Hand } from "../fingering/fingering";
+import type { Song, SongNote } from "../song/song";
+import { LEAD_IN_S, PracticeSession } from "./session";
+import type { PracticeMode } from "./session";
+
+const note = (id: string, pitch: number, start: number, hand: Hand = "right"): SongNote => ({
+  id,
+  pitch,
+  start,
+  duration: 0.5,
+  startBeat: start,
+  hand
+});
+
+// Right hand: C4 at 0, an E4-G4 chord at 1. Left hand: C3 at 0.
+const SONG: Song = {
+  title: "test",
+  source: "midi",
+  notes: [note("c3", 48, 0, "left"), note("c4", 60, 0), note("e4", 64, 1), note("g4", 67, 1)],
+  duration: 1.5
+};
+
+const session = (mode: PracticeMode, hands: Hand[] = ["right"], speed = 1) =>
+  new PracticeSession(SONG, { mode, hands: new Set(hands), speed });
+
+describe("wait mode", () => {
+  it("holds the song at the owed note until it is pressed", () => {
+    const run = session("wait");
+    run.advance(LEAD_IN_S + 5);
+    expect(run.time).toBe(0);
+    expect(run.waiting).toBe(true);
+    expect(run.pressKey(60)).toEqual([{ type: "hit", noteId: "c4", offset: 0 }]);
+    run.advance(5);
+    expect(run.time).toBe(1);
+  });
+
+  it("waits for every key of a chord and counts a wrong key without moving on", () => {
+    const run = session("wait");
+    run.advance(LEAD_IN_S);
+    run.pressKey(60);
+    run.advance(1);
+    expect(run.pressKey(62)).toEqual([{ type: "wrong", pitch: 62 }]);
+    run.pressKey(64);
+    expect(run.waiting).toBe(true);
+    run.pressKey(67);
+    expect(run.waiting).toBe(false);
+    expect(run.stats()).toMatchObject({ hits: 3, misses: 0, wrong: 1 });
+  });
+
+  it("does not accept a key long before the song reaches its note", () => {
+    const run = session("wait");
+    expect(run.pressKey(60)).toEqual([{ type: "wrong", pitch: 60 }]);
+  });
+});
+
+describe("tempo mode", () => {
+  it("counts a key inside the window as a hit with its timing error", () => {
+    const run = session("tempo");
+    run.advance(LEAD_IN_S + 0.1);
+    const [event] = run.pressKey(60);
+    expect(event?.type).toBe("hit");
+    expect(event?.type === "hit" ? event.offset : NaN).toBeCloseTo(0.1);
+  });
+
+  it("marks a note missed once the song passes its window", () => {
+    const run = session("tempo");
+    const events = run.advance(LEAD_IN_S + 0.5);
+    expect(events).toContainEqual({ type: "miss", noteId: "c4" });
+    expect(run.pressKey(60)).toEqual([{ type: "wrong", pitch: 60 }]);
+  });
+
+  it("scales the window by the speed", () => {
+    const run = session("tempo", ["right"], 0.5);
+    // 0.8 real seconds after the note at half speed is 0.4 song seconds: too late.
+    run.advance(LEAD_IN_S * 2 + 0.8);
+    expect(run.statusOf("c4")).toBe("missed");
+  });
+});
+
+describe("the other hand", () => {
+  it("is played by the program and stopped when its note ends", () => {
+    const run = session("tempo");
+    const started = run.advance(LEAD_IN_S);
+    expect(started).toContainEqual({ type: "autoNoteOn", pitch: 48 });
+    expect(run.advance(0.6)).toContainEqual({ type: "autoNoteOff", pitch: 48 });
+  });
+
+  it("finishes a listen-only run by itself", () => {
+    const run = session("tempo", []);
+    const events = run.advance(LEAD_IN_S + 2);
+    expect(events).toContainEqual({ type: "autoNoteOn", pitch: 67 });
+    const tail = run.advance(0.1);
+    expect(tail).toContainEqual({ type: "finished" });
+    expect(run.finished).toBe(true);
+  });
+});
