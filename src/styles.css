@@ -188,6 +188,8 @@ body {
 
 .staff {
   cursor: pointer;
+  /* Dragging scrolls the score; without this the drag would select the note names. */
+  user-select: none;
 }
 
 /*
