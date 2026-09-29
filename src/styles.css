@@ -108,6 +108,10 @@ body {
   cursor: default;
 }
 
+.staff-bar .key-name {
+  color: #d7dbe8;
+}
+
 .staff-bar .zoom {
   min-width: 3em;
   text-align: center;

@@ -91,3 +91,26 @@ export function withFingering(song: Song, overrides?: ReadonlyMap<string, Finger
     })
   };
 }
+
+/** Quarters a second where a song has no beat grid to read: 120 per quarter. */
+const DEFAULT_QUARTERS_PER_SECOND = 2;
+
+/** Quarter notes at a song time, read off the song's beat grid; beyond it, at its edge tempo. */
+export function quartersAt(song: Song, time: number): number {
+  const beats = song.beats;
+  const first = beats[0];
+  const second = beats[1];
+  if (!first || !second) return time * DEFAULT_QUARTERS_PER_SECOND;
+  const rate = (a: typeof first, b: typeof first) =>
+    b.time > a.time ? (b.position - a.position) / (b.time - a.time) : DEFAULT_QUARTERS_PER_SECOND;
+  if (time <= first.time) return first.position + (time - first.time) * rate(first, second);
+  for (let index = 1; index < beats.length; index++) {
+    const after = beats[index];
+    const before = beats[index - 1];
+    if (!after || !before) break;
+    if (time <= after.time) return before.position + (time - before.time) * rate(before, after);
+  }
+  const last = beats.at(-1) ?? second;
+  const beforeLast = beats.at(-2) ?? first;
+  return last.position + (time - last.time) * rate(beforeLast, last);
+}

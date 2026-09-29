@@ -5,7 +5,8 @@ import { songFromMusicXml } from "../song/musicxml";
 import type { Song, SongNote } from "../song/song";
 import { compareTake } from "./compare";
 import type { PlayedNote, Take } from "./take";
-import { quartersAt, transcribeTake } from "./transcribe";
+import { quartersAt } from "../song/song";
+import { transcribeTake } from "./transcribe";
 
 const note = (id: string, pitch: number, start: number, duration: number): SongNote => ({
   id,

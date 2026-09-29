@@ -1,4 +1,4 @@
-import { handByPitch } from "../song/song";
+import { handByPitch, quartersAt } from "../song/song";
 import type { Song, SongMeasure } from "../song/song";
 import type { Grade, TakeReview } from "./compare";
 import type { PlayedNote, Take } from "./take";
@@ -12,7 +12,6 @@ import type { PlayedNote, Take } from "./take";
 
 /** Sixteenths per quarter: the grid a take is rounded to, and the score's divisions. */
 const DIVISIONS = 4;
-const DEFAULT_QUARTERS_PER_SECOND = 2;
 
 /** Lengths a single note can be written in, in sixteenths, longest first. */
 const WRITABLE: readonly (readonly [number, string, boolean])[] = [
@@ -47,26 +46,6 @@ export interface Transcription {
   readonly musicXml: string;
   /** Grade of each written note by `${quarters}:${pitch}` of its first head. */
   readonly grades: ReadonlyMap<string, TranscribedGrade>;
-}
-
-/** Quarter notes at a song time, read off the song's beat grid; beyond it, at its edge tempo. */
-export function quartersAt(song: Song, time: number): number {
-  const beats = song.beats;
-  const first = beats[0];
-  const second = beats[1];
-  if (!first || !second) return time * DEFAULT_QUARTERS_PER_SECOND;
-  const rate = (a: typeof first, b: typeof first) =>
-    b.time > a.time ? (b.position - a.position) / (b.time - a.time) : DEFAULT_QUARTERS_PER_SECOND;
-  if (time <= first.time) return first.position + (time - first.time) * rate(first, second);
-  for (let index = 1; index < beats.length; index++) {
-    const after = beats[index];
-    const before = beats[index - 1];
-    if (!after || !before) break;
-    if (time <= after.time) return before.position + (time - before.time) * rate(before, after);
-  }
-  const last = beats.at(-1) ?? second;
-  const beforeLast = beats.at(-2) ?? first;
-  return last.position + (time - last.time) * rate(beforeLast, last);
 }
 
 interface Placed {

@@ -32,6 +32,7 @@ import {
   songFromMusicXml
 } from "./song/musicxml";
 import type { NoteNameStyle } from "./song/musicxml";
+import { detectChords, detectKey, keyName, musicXmlWithChords } from "./song/harmony";
 import { withFingering } from "./song/song";
 import type { Song } from "./song/song";
 import { Staff, markKey } from "./staff/Staff";
@@ -85,6 +86,8 @@ interface StaffPrefs {
   readonly measuresPerLine: 0 | 2 | 4 | 8;
   /** Note names on the staff and the falling notes. */
   readonly noteNames: "off" | NoteNameStyle;
+  /** Chord symbols over the staff. */
+  readonly chords: boolean;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -93,7 +96,8 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   singleLine: false,
   follow: true,
   measuresPerLine: 4,
-  noteNames: "off"
+  noteNames: "off",
+  chords: false
 };
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
@@ -276,6 +280,9 @@ export function App() {
   // The staff shows the same fingers as the falling notes, corrections included.
   const [staffPrefs, setStaffPrefs] = useState<StaffPrefs>(loadStaffPrefs);
   const fixedLines = !staffPrefs.singleLine && staffPrefs.measuresPerLine > 0;
+  // Harmony of the song as written: the chords over the staff and its key.
+  const chords = useMemo(() => detectChords(baseSong), [baseSong]);
+  const key = useMemo(() => detectKey(baseSong), [baseSong]);
   const nameStyle = staffPrefs.noteNames === "off" ? undefined : staffPrefs.noteNames;
   const fallingNames = nameStyle;
   const withNames = useCallback(
@@ -284,9 +291,10 @@ export function App() {
   );
   const staffXml = useMemo(() => {
     if (!song.musicXml) return undefined;
-    const fingered = withNames(musicXmlWithFingering(song.musicXml, song.notes));
+    const named = withNames(musicXmlWithFingering(song.musicXml, song.notes));
+    const fingered = staffPrefs.chords ? musicXmlWithChords(named, chords) : named;
     return fixedLines ? musicXmlWithLineBreaks(fingered, staffPrefs.measuresPerLine) : fingered;
-  }, [song, fixedLines, staffPrefs.measuresPerLine, withNames]);
+  }, [song, fixedLines, staffPrefs.measuresPerLine, withNames, staffPrefs.chords, chords]);
   /** A click on the staff: play from the first note at or after that beat. */
   const seekToBeat = (beat: number) => {
     const target = song.notes.find((note) => note.startBeat >= beat - 1e-6);
@@ -851,6 +859,19 @@ export function App() {
                 <option value="en">Названия: C D E</option>
               </select>
             )}
+            {staffXml && (
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={staffPrefs.chords}
+                  onChange={(event) => {
+                    updateStaffPrefs({ chords: event.target.checked });
+                  }}
+                />
+                Аккорды
+              </label>
+            )}
+            {key && <span className="key-name">Тональность: {keyName(key)}</span>}
             <span className="hint">Клик по нотам — играть с этого места</span>
           </>
         )}
