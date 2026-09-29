@@ -333,7 +333,7 @@ export function Staff({
   const showBeat = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     moveCursor(osmd, latest.current.beat);
     paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
-    // A single line with a live position scrolls every frame on its own; only its height is steered.
+    // A single line with a live position scrolls every frame on its own and needs no steering.
     const live = latest.current.singleLine && liveBeatRef.current !== undefined;
     if (latest.current.follow) {
       const target = scrollTarget(
@@ -342,7 +342,9 @@ export function Staff({
         linesRef.current,
         latest.current.singleLine
       );
-      targetRef.current = live ? { left: host.scrollLeft, top: target.top } : target;
+      // Live, the line is placed once by relayout and moved by the frame loop alone:
+      // a second steer here pulled it back to where it stood when the note began.
+      targetRef.current = live ? null : target;
     }
   });
 
