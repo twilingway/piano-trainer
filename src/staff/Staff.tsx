@@ -1,9 +1,4 @@
-import {
-  OpenSheetMusicDisplay,
-  PointF2D,
-  VexFlowGraphicalNote,
-  unitInPixels
-} from "opensheetmusicdisplay";
+import { OpenSheetMusicDisplay, VexFlowGraphicalNote, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useRef } from "react";
 
 interface StaffProps {
@@ -132,6 +127,27 @@ function scrollTarget(
   return { left: clamp(scroller.scrollLeft + shift, maxLeft), top };
 }
 
+/** Every drawn note of the score with the beat it starts on, for clicks on the staff. */
+function noteBeats(osmd: OpenSheetMusicDisplay): Map<SVGGElement, number> {
+  const beats = new Map<SVGGElement, number>();
+  for (const row of osmd.GraphicSheet.MeasureList) {
+    for (const measure of row) {
+      // OSMD's measure rows have holes for staves without a measure there.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!measure) continue;
+      for (const entry of measure.staffEntries) {
+        const beat = entry.getAbsoluteTimestamp().RealValue * 4;
+        for (const voice of entry.graphicalVoiceEntries) {
+          for (const note of voice.notes) {
+            if (note instanceof VexFlowGraphicalNote) beats.set(note.getSVGGElement(), beat);
+          }
+        }
+      }
+    }
+  }
+  return beats;
+}
+
 /**
  * A score narrower than the page (a short piece on one line) is moved to the
  * middle of it; a full page of justified lines stays where it is.
@@ -194,6 +210,7 @@ export function Staff({
   const latest = useRef({ beat, zoom, follow, singleLine });
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
+  const noteBeatsRef = useRef<Map<SVGGElement, number>>(new Map());
 
   useEffect(() => {
     latest.current = { beat, zoom, follow, singleLine };
@@ -221,6 +238,7 @@ export function Staff({
       else centreShortScore(osmd, page);
     }
     linesRef.current = lineBoxes(osmd);
+    noteBeatsRef.current = noteBeats(osmd);
     fitHeight(host, linesRef.current, latest.current.singleLine);
     // A new render draws new noteheads and puts the cursor back at the start.
     paintedRef.current = [];
@@ -331,14 +349,28 @@ export function Staff({
     };
   }, []);
 
-  /** The beat of the note nearest to a click, found by OSMD in its own coordinates. */
+  /**
+   * The beat of the drawn note nearest to a click, measured on screen. OSMD's
+   * own hit test works in coordinates it caches at render time, which a
+   * scrolled or shifted view no longer matches.
+   */
   const seekAt = (clientX: number, clientY: number) => {
-    const osmd = osmdRef.current;
-    if (!osmd || !onSeek) return;
-    const sheet = osmd.GraphicSheet;
-    const point = sheet.svgToOsmd(sheet.domToSvg(new PointF2D(clientX, clientY)));
-    const entry = sheet.GetNearestStaffEntry(point);
-    onSeek(entry.getAbsoluteTimestamp().RealValue * 4);
+    if (!onSeek) return;
+    let best: number | undefined;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const [element, beat] of noteBeatsRef.current) {
+      const box = element.getBoundingClientRect();
+      if (box.width === 0 && box.height === 0) continue;
+      // Rows count heavily: a note on the clicked line beats a closer one on the next line.
+      const dx = clientX - (box.left + box.width / 2);
+      const dy = Math.max(0, Math.abs(clientY - (box.top + box.height / 2)) - box.height / 2);
+      const distance = dx * dx + 16 * dy * dy;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = beat;
+      }
+    }
+    if (best !== undefined) onSeek(best);
   };
 
   return (

@@ -197,6 +197,11 @@ export function App() {
   /** Which MIDI input plays; "all" listens to every one. */
   const [midiDeviceId, setMidiDeviceId] = useState("all");
   const midiDeviceRef = useRef("all");
+  /**
+   * Song time practice starts from after a click on the staff; null = the beginning.
+   * Kept across reloads (listen, speed, hand, mode), cleared by "Сначала" and a new song.
+   */
+  const startFromRef = useRef<number | null>(null);
   const viewRef = useRef<FallingNotesView | null>(null);
 
   const song = useMemo(() => withFingering(baseSong, overrides), [baseSong, overrides]);
@@ -208,10 +213,16 @@ export function App() {
     const fingered = musicXmlWithFingering(song.musicXml, song.notes);
     return fixedLines ? musicXmlWithLineBreaks(fingered, staffPrefs.measuresPerLine) : fingered;
   }, [song, fixedLines, staffPrefs.measuresPerLine]);
-  /** A click on the staff: practice restarts from the first note at or after that beat. */
+  /** A click on the staff: play from the first note at or after that beat. */
   const seekToBeat = (beat: number) => {
     const target = song.notes.find((note) => note.startBeat >= beat - 1e-6);
-    if (target) trainerRef.current?.seek(target.start);
+    const trainer = trainerRef.current;
+    if (!target || !trainer) return;
+    startFromRef.current = target.start;
+    trainer.seek(target.start);
+    void ensureSound().then(() => {
+      trainerRef.current?.setPlaying(true);
+    });
   };
   const updateStaffPrefs = (change: Partial<StaffPrefs>) => {
     const next = { ...staffPrefs, ...change };
@@ -306,6 +317,7 @@ export function App() {
     const trainer = trainerRef.current;
     if (!trainer) return;
     trainer.load(song, practiceOptions);
+    if (startFromRef.current !== null) trainer.seek(startFromRef.current);
     if (listening) trainer.setPlaying(true);
   }, [trainerReady, song, practiceOptions, listening]);
 
@@ -348,6 +360,7 @@ export function App() {
       if (loaded.notes.length === 0) throw new Error("В файле нет нот");
       setLoadError(null);
       setLesson(null);
+      startFromRef.current = null;
       setBaseSong(loaded);
       setOverrides(loadOverrides(loaded));
     } catch (error) {
@@ -358,6 +371,7 @@ export function App() {
   const openLesson = (choice: LessonChoice) => {
     const loaded = lessonSong(choice);
     setLesson(choice);
+    startFromRef.current = null;
     setBaseSong(loaded);
     setOverrides(loadOverrides(loaded));
   };
@@ -387,6 +401,7 @@ export function App() {
 
   const restart = () => {
     setListening(false);
+    startFromRef.current = null;
     trainerRef.current?.load(song, practiceOptions);
   };
 
