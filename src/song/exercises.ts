@@ -5,7 +5,8 @@
  * "C3+E3+G3:8" a half-note chord) and "|" ends a measure.
  */
 
-export type LevelId = "easy" | "medium" | "hard";
+/** A level's id within its lesson: "easy", "medium", "hard" for the built-in ones, a file name for local ones. */
+export type LevelId = string;
 
 export interface ExerciseLevel {
   readonly id: LevelId;

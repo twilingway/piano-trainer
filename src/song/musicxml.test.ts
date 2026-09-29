@@ -5,7 +5,9 @@ import {
   musicXmlWithFingering,
   musicXmlWithLineBreaks,
   musicXmlWithNoteNames,
-  songFromMusicXml
+  songFromMusicXml,
+  transposeFifths,
+  transposeMusicXml
 } from "./musicxml";
 import { withFingering } from "./song";
 
@@ -137,5 +139,36 @@ describe("musicXmlWithNoteNames", () => {
       []
     ]);
     expect(lyricsOf(musicXmlWithNoteNames(xml, "en"))).toEqual([["1:B♭"], ["1:C"], ["2:F♯"], []]);
+  });
+});
+
+describe("transposeMusicXml", () => {
+  const SCALE = `<score-partwise><part id="P1"><measure number="1">
+    <attributes><divisions>1</divisions><key><fifths>0</fifths></key></attributes>
+    <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>
+      <notations><technical><fingering>1</fingering></technical></notations></note>
+    <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration></note>
+    <note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration></note>
+  </measure></part></score-partwise>`;
+
+  it("moves every pitch and the key, spelling in the new key's accidentals", () => {
+    // Up a tone to D major: two sharps, F becomes G, B becomes C sharp in the next octave.
+    const up = songFromMusicXml(transposeMusicXml(SCALE, 2), "up");
+    expect(up.notes.map((note) => note.pitch)).toEqual([62, 67, 73]);
+    expect(transposeMusicXml(SCALE, 2)).toContain("<fifths>2</fifths>");
+    // Up a semitone to D flat: five flats, and the names are flats.
+    const flat = transposeMusicXml(SCALE, 1);
+    expect(flat).toContain("<fifths>-5</fifths>");
+    const first = new DOMParser().parseFromString(flat, "application/xml").querySelector("pitch");
+    expect(first?.querySelector("step")?.textContent).toBe("D");
+    expect(first?.querySelector("alter")?.textContent).toBe("-1");
+    expect(flat).not.toContain("<fingering>");
+  });
+
+  it("walks the circle of fifths within six accidentals", () => {
+    expect(transposeFifths(0, 7)).toBe(1);
+    expect(transposeFifths(0, 5)).toBe(-1);
+    expect(transposeFifths(0, 6)).toBe(6);
+    expect(transposeFifths(4, -4)).toBe(0);
   });
 });

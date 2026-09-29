@@ -22,6 +22,7 @@ import { Trainer } from "./practice/Trainer";
 import type { TrainerSnapshot } from "./practice/Trainer";
 import { FallingNotesView } from "./render/FallingNotesView";
 import { EXERCISES } from "./song/exercises";
+import { LOCAL_LESSONS } from "./song/localLessons";
 import type { LevelId } from "./song/exercises";
 import { songFromMidi } from "./song/midi";
 import {
@@ -29,10 +30,12 @@ import {
   musicXmlWithFingering,
   musicXmlWithLineBreaks,
   musicXmlWithNoteNames,
+  transposeMusicXml,
   songFromMusicXml
 } from "./song/musicxml";
 import type { NoteNameStyle } from "./song/musicxml";
 import { detectChords, detectKey, keyName, musicXmlWithChords } from "./song/harmony";
+import type { Key } from "./song/harmony";
 import { withFingering } from "./song/song";
 import type { Song } from "./song/song";
 import { Staff, markKey } from "./staff/Staff";
@@ -216,11 +219,40 @@ interface LessonChoice {
   readonly levelId: LevelId;
 }
 
-const FIRST_LESSON: LessonChoice = { exerciseId: EXERCISES[0]?.id ?? "", levelId: "easy" };
+const LESSONS = [...EXERCISES, ...LOCAL_LESSONS];
+
+/**
+ * The song moved by `semitones`. A score is respelled and re-read, so its
+ * staff, fingering and names all follow; a MIDI song just shifts its keys.
+ */
+function transposeSong(song: Song, semitones: number): Song {
+  if (semitones === 0) return song;
+  const sign = semitones > 0 ? "+" : "−";
+  const title = `${song.title} (${sign}${String(Math.abs(semitones))})`;
+  if (song.musicXml) {
+    return { ...songFromMusicXml(transposeMusicXml(song.musicXml, semitones), title), title };
+  }
+  return {
+    ...song,
+    title,
+    notes: song.notes.map((note) => {
+      const { finger, transition, scoreFinger, ...rest } = note;
+      return { ...rest, pitch: note.pitch + semitones };
+    })
+  };
+}
+
+/** The shift that takes `from` to `to` by the shorter way round, -5..+6 semitones. */
+function shiftBetween(from: number, to: number): number {
+  const up = (((to - from) % 12) + 12) % 12;
+  return up > 6 ? up - 12 : up;
+}
+
+const FIRST_LESSON: LessonChoice = { exerciseId: LESSONS[0]?.id ?? "", levelId: "easy" };
 
 /** A built-in lesson at one level; the level is part of the title, so corrections stay per level. */
 function lessonSong(choice: LessonChoice): Song {
-  const exercise = EXERCISES.find((item) => item.id === choice.exerciseId);
+  const exercise = LESSONS.find((item) => item.id === choice.exerciseId);
   const level = exercise?.levels.find((item) => item.id === choice.levelId) ?? exercise?.levels[0];
   if (!exercise || !level) throw new Error(`No lesson ${choice.exerciseId}`);
   const song = songFromMusicXml(level.musicXml, exercise.title);
@@ -234,8 +266,18 @@ export function App() {
   const [trainerReady, setTrainerReady] = useState(false);
 
   const [lesson, setLesson] = useState<LessonChoice | null>(FIRST_LESSON);
-  const [baseSong, setBaseSong] = useState<Song>(() => lessonSong(FIRST_LESSON));
+  /** The song as loaded; `baseSong` is it in the chosen key. */
+  const [sourceSong, setSourceSong] = useState<Song>(() => lessonSong(FIRST_LESSON));
+  const [transpose, setTranspose] = useState(0);
+  const baseSong = useMemo(() => transposeSong(sourceSong, transpose), [sourceSong, transpose]);
+  const sourceKey = useMemo(() => detectKey(sourceSong), [sourceSong]);
   const [overrides, setOverrides] = useState<Map<string, Finger>>(() => loadOverrides(baseSong));
+  // Corrections belong to a song in a key: another key starts from its own.
+  const [overridesOf, setOverridesOf] = useState(() => overridesKey(baseSong));
+  if (overridesOf !== overridesKey(baseSong)) {
+    setOverridesOf(overridesKey(baseSong));
+    setOverrides(loadOverrides(baseSong));
+  }
   const [mode, setMode] = useState<PracticeMode>("wait");
   const [handChoice, setHandChoice] = useState<HandChoice>("right");
   const [speed, setSpeed] = useState(0.75);
@@ -282,7 +324,6 @@ export function App() {
   const fixedLines = !staffPrefs.singleLine && staffPrefs.measuresPerLine > 0;
   // Harmony of the song as written: the chords over the staff and its key.
   const chords = useMemo(() => detectChords(baseSong), [baseSong]);
-  const key = useMemo(() => detectKey(baseSong), [baseSong]);
   const nameStyle = staffPrefs.noteNames === "off" ? undefined : staffPrefs.noteNames;
   const fallingNames = nameStyle;
   const withNames = useCallback(
@@ -295,6 +336,9 @@ export function App() {
     const fingered = staffPrefs.chords ? musicXmlWithChords(named, chords) : named;
     return fixedLines ? musicXmlWithLineBreaks(fingered, staffPrefs.measuresPerLine) : fingered;
   }, [song, fixedLines, staffPrefs.measuresPerLine, withNames, staffPrefs.chords, chords]);
+  // Read by the staff every frame; stable, so the staff never re-subscribes.
+  const liveBeat = useCallback(() => trainerRef.current?.quarters() ?? 0, []);
+
   /** A click on the staff: play from the first note at or after that beat. */
   const seekToBeat = (beat: number) => {
     const target = song.notes.find((note) => note.startBeat >= beat - 1e-6);
@@ -509,7 +553,8 @@ export function App() {
       setLoadError(null);
       setLesson(null);
       startFromRef.current = null;
-      setBaseSong(loaded);
+      setSourceSong(loaded);
+      setTranspose(0);
       setOverrides(loadOverrides(loaded));
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : String(error));
@@ -520,11 +565,12 @@ export function App() {
     const loaded = lessonSong(choice);
     setLesson(choice);
     startFromRef.current = null;
-    setBaseSong(loaded);
+    setSourceSong(loaded);
+    setTranspose(0);
     setOverrides(loadOverrides(loaded));
   };
 
-  const lessonLevels = EXERCISES.find((item) => item.id === lesson?.exerciseId)?.levels ?? [];
+  const lessonLevels = LESSONS.find((item) => item.id === lesson?.exerciseId)?.levels ?? [];
 
   const ensureSound = async () => {
     if (sound !== "off") return;
@@ -637,13 +683,14 @@ export function App() {
           aria-label="Урок"
           value={lesson?.exerciseId ?? ""}
           onChange={(event) => {
-            openLesson({ exerciseId: event.target.value, levelId: "easy" });
+            const first = LESSONS.find((item) => item.id === event.target.value)?.levels[0];
+            openLesson({ exerciseId: event.target.value, levelId: first?.id ?? "easy" });
           }}
         >
           <option value="" disabled>
             Уроки…
           </option>
-          {EXERCISES.map((exercise) => (
+          {LESSONS.map((exercise) => (
             <option key={exercise.id} value={exercise.id}>
               {exercise.title}
             </option>
@@ -654,7 +701,7 @@ export function App() {
             aria-label="Уровень"
             value={lesson.levelId}
             onChange={(event) => {
-              openLesson({ ...lesson, levelId: event.target.value as LevelId });
+              openLesson({ ...lesson, levelId: event.target.value });
             }}
           >
             {lessonLevels.map((level) => (
@@ -871,7 +918,47 @@ export function App() {
                 Аккорды
               </label>
             )}
-            {key && <span className="key-name">Тональность: {keyName(key)}</span>}
+            {sourceKey && (
+              <span className="key-name">
+                Тональность:{" "}
+                <select
+                  aria-label="Тональность"
+                  value={(sourceKey.tonic + transpose + 12) % 12}
+                  onChange={(event) => {
+                    setTranspose(shiftBetween(sourceKey.tonic, Number(event.target.value)));
+                  }}
+                >
+                  {Array.from({ length: 12 }, (_, tonic) => {
+                    const moved: Key = { tonic, mode: sourceKey.mode };
+                    const shift = shiftBetween(sourceKey.tonic, tonic);
+                    return (
+                      <option key={tonic} value={tonic}>
+                        {keyName(moved)}
+                        {shift === 0 ? " (как в нотах)" : ""}
+                      </option>
+                    );
+                  })}
+                </select>{" "}
+                <button
+                  type="button"
+                  aria-label="На полтона ниже"
+                  onClick={() => {
+                    setTranspose((value) => Math.max(-11, value - 1));
+                  }}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  aria-label="На полтона выше"
+                  onClick={() => {
+                    setTranspose((value) => Math.min(11, value + 1));
+                  }}
+                >
+                  +
+                </button>
+              </span>
+            )}
             <span className="hint">Клик по нотам — играть с этого места</span>
           </>
         )}
@@ -983,6 +1070,7 @@ export function App() {
               follow={staffPrefs.follow}
               breaksFromScore={fixedLines}
               onSeek={seekToBeat}
+              liveBeat={liveBeat}
               marks={reviewMarks}
               maxShare={transcription && takeStaff === "column" ? 0.26 : 0.45}
             />
@@ -998,6 +1086,7 @@ export function App() {
                 follow={staffPrefs.follow}
                 breaksFromScore={fixedLines}
                 onSeek={seekToBeat}
+                liveBeat={liveBeat}
                 marks={transcription.marks}
                 maxShare={takeStaff === "column" ? 0.26 : 0.45}
               />

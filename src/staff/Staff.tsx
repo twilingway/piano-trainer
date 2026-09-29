@@ -17,6 +17,8 @@ interface StaffProps {
   readonly onSeek?: (beat: number) => void;
   /** Notehead colours by markKey(beat, pitch): the review of the last take. */
   readonly marks?: ReadonlyMap<string, string> | undefined;
+  /** Where the song is right now in quarters; a single line scrolls with it every frame. */
+  readonly liveBeat?: () => number;
   /** Share of the window this staff may take; two staves stacked take less each. */
   readonly maxShare?: number;
 }
@@ -200,6 +202,44 @@ function indexNotes(osmd: OpenSheetMusicDisplay): NoteIndex {
   return { beats, heads };
 }
 
+/** Every beat that has a note, with that note's x centre from the left edge of the SVG. */
+function beatPositions(
+  beats: ReadonlyMap<SVGGElement, number>,
+  host: HTMLElement
+): (readonly [number, number])[] {
+  const svg = host.querySelector("svg");
+  if (!svg) return [];
+  const left = svg.getBoundingClientRect().left;
+  const byBeat = new Map<number, number>();
+  for (const [element, beat] of beats) {
+    const box = element.getBoundingClientRect();
+    if (box.width === 0) continue;
+    const x = box.left + box.width / 2 - left;
+    byBeat.set(beat, Math.min(byBeat.get(beat) ?? x, x));
+  }
+  return [...byBeat].sort((a, b) => a[0] - b[0]);
+}
+
+/** The x a beat falls at, between the notes around it; past the ends, at the nearest note. */
+function xAtBeat(
+  positions: readonly (readonly [number, number])[],
+  beat: number
+): number | undefined {
+  const first = positions[0];
+  if (!first) return undefined;
+  if (beat <= first[0]) return first[1];
+  for (let index = 1; index < positions.length; index++) {
+    const after = positions[index];
+    const before = positions[index - 1];
+    if (!after || !before) break;
+    if (beat <= after[0]) {
+      const share = (beat - before[0]) / (after[0] - before[0]);
+      return before[1] + share * (after[1] - before[1]);
+    }
+  }
+  return positions.at(-1)?.[1];
+}
+
 /**
  * A score narrower than the page (a short piece on one line) is moved to the
  * middle of it; a full page of justified lines stays where it is.
@@ -268,7 +308,8 @@ export function Staff({
   breaksFromScore,
   onSeek,
   marks,
-  maxShare = DEFAULT_MAX_SHARE
+  maxShare = DEFAULT_MAX_SHARE,
+  liveBeat
 }: StaffProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   /** OSMD draws here; the host around it scrolls. */
@@ -280,6 +321,9 @@ export function Staff({
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
   const noteIndexRef = useRef<NoteIndex>({ beats: new Map(), heads: new Map() });
+  /** Each beat that has a note, with the x of that note from the SVG's left edge, in order. */
+  const beatXRef = useRef<(readonly [number, number])[]>([]);
+  const liveBeatRef = useRef(liveBeat);
   const marksRef = useRef(marks);
 
   useEffect(() => {
@@ -289,13 +333,16 @@ export function Staff({
   const showBeat = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     moveCursor(osmd, latest.current.beat);
     paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
+    // A single line with a live position scrolls every frame on its own; only its height is steered.
+    const live = latest.current.singleLine && liveBeatRef.current !== undefined;
     if (latest.current.follow) {
-      targetRef.current = scrollTarget(
+      const target = scrollTarget(
         host,
         osmd.cursor.cursorElement,
         linesRef.current,
         latest.current.singleLine
       );
+      targetRef.current = live ? { left: host.scrollLeft, top: target.top } : target;
     }
   });
 
@@ -309,6 +356,7 @@ export function Staff({
     }
     linesRef.current = lineBoxes(osmd);
     noteIndexRef.current = indexNotes(osmd);
+    beatXRef.current = beatPositions(noteIndexRef.current.beats, host);
     paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
     // A new render draws new noteheads and puts the cursor back at the start.
@@ -402,6 +450,10 @@ export function Staff({
   }, [maxShare]);
 
   useEffect(() => {
+    liveBeatRef.current = liveBeat;
+  }, [liveBeat]);
+
+  useEffect(() => {
     marksRef.current = marks;
     paintMarks(noteIndexRef.current.heads, marks);
   }, [marks]);
@@ -411,6 +463,16 @@ export function Staff({
     let frame = 0;
     const step = () => {
       const host = hostRef.current;
+      const live = liveBeatRef.current;
+      if (host && live && latest.current.singleLine && latest.current.follow) {
+        const x = xAtBeat(beatXRef.current, live());
+        const svg = host.querySelector("svg");
+        if (x !== undefined && svg) {
+          const svgLeft =
+            svg.getBoundingClientRect().left - host.getBoundingClientRect().left + host.scrollLeft;
+          host.scrollLeft = svgLeft + x - host.clientWidth / 2;
+        }
+      }
       const target = targetRef.current;
       if (host && target) {
         const dx = target.left - host.scrollLeft;

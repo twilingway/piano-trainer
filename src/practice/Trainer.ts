@@ -3,6 +3,7 @@ import type { KeyEvent } from "../input/midiInput";
 import type { FallingNotesView } from "../render/FallingNotesView";
 import { TakeRecorder } from "../recording/take";
 import type { Take } from "../recording/take";
+import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
 import { PracticeSession } from "./session";
 import type { PracticeEvent, PracticeOptions, PracticeStats } from "./session";
@@ -151,6 +152,11 @@ export class Trainer {
    */
   setComparison(comparison: Trainer["comparison"]): void {
     this.comparison = comparison;
+  }
+
+  /** Where the song is now, in quarter notes, between notes too: what a view follows smoothly. */
+  quarters(): number {
+    return this.session ? quartersAt(this.session.song, this.session.time) : 0;
   }
 
   pedal(down: boolean): void {

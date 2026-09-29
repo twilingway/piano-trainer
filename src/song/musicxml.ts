@@ -362,3 +362,96 @@ export function musicXmlWithNoteNames(xml: string, style: NoteNameStyle): string
   }
   return new XMLSerializer().serializeToString(document);
 }
+
+const SHARP_SPELLING: readonly (readonly [string, number])[] = [
+  ["C", 0],
+  ["C", 1],
+  ["D", 0],
+  ["D", 1],
+  ["E", 0],
+  ["F", 0],
+  ["F", 1],
+  ["G", 0],
+  ["G", 1],
+  ["A", 0],
+  ["A", 1],
+  ["B", 0]
+];
+const FLAT_SPELLING: readonly (readonly [string, number])[] = [
+  ["C", 0],
+  ["D", -1],
+  ["D", 0],
+  ["E", -1],
+  ["E", 0],
+  ["F", 0],
+  ["G", -1],
+  ["G", 0],
+  ["A", -1],
+  ["A", 0],
+  ["B", -1],
+  ["B", 0]
+];
+
+/** A key signature moved by `semitones`: seven fifths a semitone, kept within six accidentals. */
+export function transposeFifths(fifths: number, semitones: number): number {
+  let moved = (((fifths + 7 * semitones) % 12) + 12) % 12;
+  // 0..11 fifths round the circle: past six sharps a key reads better in flats.
+  if (moved > 6) moved -= 12;
+  return moved;
+}
+
+/**
+ * The score moved by `semitones`: every pitch respelled in the new key's
+ * accidentals, every key signature moved round the circle of fifths. Written
+ * fingering is dropped: it belonged to the old keys under the fingers.
+ */
+export function transposeMusicXml(xml: string, semitones: number): string {
+  if (semitones === 0) return xml;
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  let fifths = 0;
+  const walk = (element: Element) => {
+    if (element.tagName === "key") {
+      const node = element.querySelector(":scope > fifths");
+      const original = Number(node?.textContent ?? 0);
+      fifths = transposeFifths(original, semitones);
+      if (node) node.textContent = String(fifths);
+      return;
+    }
+    if (element.tagName === "pitch") {
+      const step = element.querySelector(":scope > step");
+      const alter = element.querySelector(":scope > alter");
+      const octave = element.querySelector(":scope > octave");
+      const base = STEP_SEMITONES[step?.textContent.trim() ?? "C"] ?? 0;
+      const midi =
+        (Number(octave?.textContent ?? 4) + 1) * 12 +
+        base +
+        Math.round(Number(alter?.textContent ?? 0));
+      const moved = midi + semitones;
+      const [newStep, newAlter] = (fifths < 0 ? FLAT_SPELLING : SHARP_SPELLING)[
+        ((moved % 12) + 12) % 12
+      ] ?? ["C", 0];
+      if (step) step.textContent = newStep;
+      if (octave) octave.textContent = String(Math.floor(moved / 12) - 1);
+      if (newAlter === 0) alter?.remove();
+      else if (alter) alter.textContent = String(newAlter);
+      else {
+        const created = document.createElementNS(document.documentElement.namespaceURI, "alter");
+        created.textContent = String(newAlter);
+        step?.after(created);
+      }
+      return;
+    }
+    if (element.tagName === "fingering") {
+      element.remove();
+      return;
+    }
+    // Explicit accidental marks would contradict the respelling; the renderer places its own.
+    if (element.tagName === "accidental") {
+      element.remove();
+      return;
+    }
+    for (const child of Array.from(element.children)) walk(child);
+  };
+  walk(document.documentElement);
+  return new XMLSerializer().serializeToString(document);
+}

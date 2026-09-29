@@ -11,3 +11,6 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Lessons from scores we may not publish: loaded when present, never committed.
+local-lessons/
