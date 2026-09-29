@@ -1,14 +1,24 @@
 /*
  * Built-in lessons, written out as MusicXML so they get a staff like any
  * loaded score. Each hand is a line of "note:length" tokens, where the length
- * counts sixteenths ("C4:4" is a quarter C4, "r:2" an eighth rest) and "|"
- * ends a measure.
+ * counts sixteenths ("C4:4" is a quarter C4, "r:2" an eighth rest,
+ * "C3+E3+G3:8" a half-note chord) and "|" ends a measure.
  */
+
+export type LevelId = "easy" | "medium" | "hard";
+
+export interface ExerciseLevel {
+  readonly id: LevelId;
+  /** What changes at this level, shown in the level picker. */
+  readonly title: string;
+  readonly musicXml: string;
+}
 
 export interface Exercise {
   readonly id: string;
   readonly title: string;
-  readonly musicXml: string;
+  /** Easiest first. */
+  readonly levels: readonly ExerciseLevel[];
 }
 
 const STEPS: Readonly<Record<string, number>> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -41,8 +51,8 @@ const NOTE_TYPES: Readonly<Record<number, readonly [string, boolean]>> = {
 };
 
 interface Token {
-  /** MIDI pitch, or undefined for a rest. */
-  readonly pitch: number | undefined;
+  /** MIDI pitches struck together; empty for a rest. */
+  readonly pitches: readonly number[];
   readonly sixteenths: number;
 }
 
@@ -61,7 +71,10 @@ function parseLine(line: string): Token[][] {
       .filter((token) => token !== "")
       .map((token) => {
         const [name = "", length = ""] = token.split(":");
-        return { pitch: name === "r" ? undefined : parsePitch(name), sixteenths: Number(length) };
+        return {
+          pitches: name === "r" ? [] : name.split("+").map(parsePitch),
+          sixteenths: Number(length)
+        };
       })
   );
 }
@@ -72,11 +85,16 @@ function noteXml(token: Token, staff: 1 | 2): string {
   const tail =
     `<duration>${String(token.sixteenths)}</duration><voice>${String(voice)}</voice>` +
     `<type>${type}</type>${dotted ? "<dot/>" : ""}<staff>${String(staff)}</staff>`;
-  if (token.pitch === undefined) return `<note><rest/>${tail}</note>`;
-  const [step, alter] = SPELLING[token.pitch % 12] ?? ["C", 0];
-  const octave = Math.floor(token.pitch / 12) - 1;
-  const alterXml = alter === 0 ? "" : `<alter>${String(alter)}</alter>`;
-  return `<note><pitch><step>${step}</step>${alterXml}<octave>${String(octave)}</octave></pitch>${tail}</note>`;
+  if (token.pitches.length === 0) return `<note><rest/>${tail}</note>`;
+  return token.pitches
+    .map((pitch, index) => {
+      const [step, alter] = SPELLING[pitch % 12] ?? ["C", 0];
+      const octave = Math.floor(pitch / 12) - 1;
+      const alterXml = alter === 0 ? "" : `<alter>${String(alter)}</alter>`;
+      const chord = index === 0 ? "" : "<chord/>";
+      return `<note>${chord}<pitch><step>${step}</step>${alterXml}<octave>${String(octave)}</octave></pitch>${tail}</note>`;
+    })
+    .join("");
 }
 
 const sixteenthsOf = (tokens: readonly Token[]) =>
@@ -109,30 +127,54 @@ function scoreXml(title: string, tempo: number, right: string, left: string): st
 <score-partwise version="4.0"><work><work-title>${title}</work-title></work><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1">${measures.join("")}</part></score-partwise>`;
 }
 
-/** Both hands on the same line an octave apart, in quarters, four to a measure. */
-function unisonQuarters(names: readonly string[]): { right: string; left: string } {
+/** Both hands on the same line an octave apart, `sixteenths` long each, in 4/4. */
+function unisonLine(names: readonly string[], sixteenths: number): { right: string; left: string } {
   const lower = (name: string) => name.replace(/\d$/, (octave) => String(Number(octave) - 1));
+  const perMeasure = 16 / sixteenths;
   const measures = (transform: (name: string) => string) => {
-    const tokens = names.map((name) => `${transform(name)}:4`);
-    while (tokens.length % 4 !== 0) tokens.push("r:4");
+    const tokens = names.map((name) => `${transform(name)}:${String(sixteenths)}`);
+    while (tokens.length % perMeasure !== 0) tokens.push(`r:${String(sixteenths)}`);
     const bars: string[] = [];
-    for (let index = 0; index < tokens.length; index += 4) {
-      bars.push(tokens.slice(index, index + 4).join(" "));
+    for (let index = 0; index < tokens.length; index += perMeasure) {
+      bars.push(tokens.slice(index, index + perMeasure).join(" "));
     }
     return bars.join(" | ");
   };
   return { right: measures((name) => name), left: measures(lower) };
 }
 
-const FIVE_FINGER = unisonQuarters(["C4", "D4", "E4", "F4", "G4", "F4", "E4", "D4", "C4"]);
-const SCALE_C = unisonQuarters([..."C4 D4 E4 F4 G4 A4 B4 C5 B4 A4 G4 F4 E4 D4 C4".split(" ")]);
+/** Slow quarters, quarters at tempo, eighths at tempo: the same line, only faster. */
+function drillLevels(title: string, names: readonly string[]): ExerciseLevel[] {
+  const quarters = unisonLine(names, 4);
+  const eighths = unisonLine(names, 2);
+  return [
+    {
+      id: "easy",
+      title: "Лёгкий — медленно",
+      musicXml: scoreXml(title, 60, quarters.right, quarters.left)
+    },
+    {
+      id: "medium",
+      title: "Средний — в темпе",
+      musicXml: scoreXml(title, 88, quarters.right, quarters.left)
+    },
+    {
+      id: "hard",
+      title: "Сложный — восьмыми",
+      musicXml: scoreXml(title, 88, eighths.right, eighths.left)
+    }
+  ];
+}
+
+const FIVE_FINGER = ["C4", "D4", "E4", "F4", "G4", "F4", "E4", "D4", "C4"];
+const SCALE_C = "C4 D4 E4 F4 G4 A4 B4 C5 B4 A4 G4 F4 E4 D4 C4".split(" ");
 
 /*
  * State Anthem of the Russian Federation, music by A. V. Alexandrov: one verse
  * and the chorus with the final ending. The melody follows the official 2001
  * edition (Muzyka); where the voice line splits, the upper voice is the tune.
- * The left hand is a teaching bass: the root of each harmony from the full
- * accompaniment, an octave up so it sits in the middle of the keyboard.
+ * The left hand is written per level from the harmony of the accompaniment
+ * (ANTHEM_HARMONY below): its root, the root in octaves, or close chords.
  */
 const ANTHEM_RIGHT = [
   "G4:2",
@@ -159,48 +201,147 @@ const ANTHEM_RIGHT = [
   "C5:16"
 ].join(" | ");
 
-const ANTHEM_LEFT = [
+/*
+ * The harmony under the melody, per half measure, as the full accompaniment
+ * voices it. Seventh chords keep root, third and seventh: three fingers of
+ * the left hand, and the fifth is the note a pianist drops first.
+ */
+const ANTHEM_HARMONY = [
   "r:2",
-  "C3:8 E3:8",
-  "F3:8 C3:8",
-  "D3:8 F3:8",
-  "D3:8 G3:8",
-  "C3:8 E3:8",
-  "F3:8 E3:8",
-  "F3:8 C3:8",
-  "D3:8 G3:8",
-  "C3:8 E3:8",
-  "G3:16",
-  "F3:8 E3:8",
-  "E3:16",
-  "F3:16",
-  "F3:16",
-  "D3:8 G3:8",
-  "C3:16",
-  "D3:8 E3:8",
-  "F3:16",
-  "F3:8 C3:8",
-  "G3:8 F3:4 G3:4",
-  "C3:16"
+  "C:8 Em:8",
+  "F:8 C:8",
+  "Dm:8 F:8",
+  "D:8 G7:8",
+  "C:8 Em:8",
+  "F:8 Em:8",
+  "F:8 C:8",
+  "D:8 G7:8",
+  "C:8 Em:8",
+  "G7:16",
+  "F:8 Em:8",
+  "Em:16",
+  "F:16",
+  "F:16",
+  "Dm7:8 G7:8",
+  "C:16",
+  "Dm:8 E7:8",
+  "F:16",
+  "F:8 C:8",
+  "G7:8 F:4 G7:4",
+  "C:16"
 ].join(" | ");
+
+/** Pitch classes, root first. */
+const CHORDS: Readonly<Record<string, readonly number[]>> = {
+  C: [0, 4, 7],
+  Dm: [2, 5, 9],
+  D: [2, 6, 9],
+  Em: [4, 7, 11],
+  F: [5, 9, 0],
+  G7: [7, 11, 5],
+  E7: [4, 8, 2],
+  Dm7: [2, 5, 0]
+};
+
+/** The octave from C3: where a teaching bass sits without crowding the melody. */
+const BASS_LOW = 48;
+/** Chords stay between G2 and B3. */
+const CHORD_LOW = 43;
+const CHORD_HIGH = 59;
+
+function chordTones(symbol: string): readonly number[] {
+  const tones = CHORDS[symbol];
+  if (!tones) throw new Error(`Unknown chord ${symbol}`);
+  return tones;
+}
+
+function pitchName(pitch: number): string {
+  const [step, alter] = SPELLING[pitch % 12] ?? ["C", 0];
+  return `${step}${alter === 0 ? "" : "#"}${String(Math.floor(pitch / 12) - 1)}`;
+}
+
+/** Every close voicing of a triad inside the chord range, lowest note first. */
+function voicings(tones: readonly number[]): number[][] {
+  const result: number[][] = [];
+  for (let rotation = 0; rotation < tones.length; rotation++) {
+    const order = [...tones.slice(rotation), ...tones.slice(0, rotation)];
+    for (let base = CHORD_LOW; base < CHORD_LOW + 12; base++) {
+      if (base % 12 !== order[0]) continue;
+      const pitches = [base];
+      for (const tone of order.slice(1)) {
+        let next = (pitches.at(-1) ?? base) + 1;
+        while (next % 12 !== tone) next++;
+        pitches.push(next);
+      }
+      if ((pitches.at(-1) ?? 0) <= CHORD_HIGH) result.push(pitches);
+    }
+  }
+  return result;
+}
+
+/**
+ * Rewrites a harmony line for the left hand: each chord symbol becomes its
+ * root, the root in octaves, or the voicing nearest to the previous chord,
+ * so the hand moves as little as the harmony allows.
+ */
+function leftHand(harmony: string, style: "root" | "octave" | "chord"): string {
+  let previous: readonly number[] = [48, 52, 55];
+  const distance = (pitches: readonly number[]) =>
+    pitches.reduce((sum, pitch, index) => sum + Math.abs(pitch - (previous[index] ?? pitch)), 0);
+  return harmony
+    .split("|")
+    .map((measure) =>
+      measure
+        .trim()
+        .split(/\s+/)
+        .map((token) => {
+          const [symbol = "", length = ""] = token.split(":");
+          if (symbol === "r") return token;
+          const tones = chordTones(symbol);
+          const root = BASS_LOW + (tones[0] ?? 0);
+          if (style === "root") return `${pitchName(root)}:${length}`;
+          if (style === "octave") return `${pitchName(root - 12)}+${pitchName(root)}:${length}`;
+          const best = voicings(tones).sort((a, b) => distance(a) - distance(b))[0] ?? [root];
+          previous = best;
+          return `${best.map(pitchName).join("+")}:${length}`;
+        })
+        .join(" ")
+    )
+    .join(" | ");
+}
 
 /** Official edition: "Широко. Торжественно", half note = 76. */
 const ANTHEM_TEMPO = 152;
+
+const ANTHEM_TITLE = "Гимн России";
+
+function anthemLevel(
+  id: LevelId,
+  title: string,
+  style: "root" | "octave" | "chord"
+): ExerciseLevel {
+  const left = leftHand(ANTHEM_HARMONY, style);
+  return { id, title, musicXml: scoreXml(ANTHEM_TITLE, ANTHEM_TEMPO, ANTHEM_RIGHT, left) };
+}
 
 export const EXERCISES: readonly Exercise[] = [
   {
     id: "five-finger-c",
     title: "Позиция до: пять пальцев",
-    musicXml: scoreXml("Позиция до: пять пальцев", 72, FIVE_FINGER.right, FIVE_FINGER.left)
+    levels: drillLevels("Позиция до: пять пальцев", FIVE_FINGER)
   },
   {
     id: "scale-c",
     title: "Гамма до мажор: подкладывание",
-    musicXml: scoreXml("Гамма до мажор: подкладывание", 72, SCALE_C.right, SCALE_C.left)
+    levels: drillLevels("Гамма до мажор: подкладывание", SCALE_C)
   },
   {
     id: "anthem-ru",
-    title: "Гимн России: мелодия и басы",
-    musicXml: scoreXml("Гимн России: мелодия и басы", ANTHEM_TEMPO, ANTHEM_RIGHT, ANTHEM_LEFT)
+    title: ANTHEM_TITLE,
+    levels: [
+      anthemLevel("easy", "Лёгкий — бас одной нотой", "root"),
+      anthemLevel("medium", "Средний — бас октавами", "octave"),
+      anthemLevel("hard", "Сложный — аккорды", "chord")
+    ]
   }
 ];
