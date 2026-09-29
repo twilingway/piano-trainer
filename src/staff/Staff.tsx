@@ -1,5 +1,5 @@
-import { OpenSheetMusicDisplay, VexFlowGraphicalNote } from "opensheetmusicdisplay";
-import { useEffect, useRef } from "react";
+import { OpenSheetMusicDisplay, VexFlowGraphicalNote, unitInPixels } from "opensheetmusicdisplay";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 interface StaffProps {
   readonly musicXml: string;
@@ -15,6 +15,13 @@ interface StaffProps {
 
 const BEAT_EPSILON = 1e-6;
 const HIGHLIGHT = "#e63946";
+/** Share of the remaining distance the view covers each frame: a glide, not a jump. */
+const GLIDE = 0.12;
+/** Share of the window the score may take; the lines that fit decide the exact height. */
+const STAFF_MAX_SHARE = 0.45;
+const MAX_LINES = 3;
+/** Air left above a line when it is scrolled to the top. */
+const LINE_TOP_GAP_PX = 4;
 
 function cursorBeat(osmd: OpenSheetMusicDisplay): number {
   // OSMD counts in whole notes.
@@ -53,17 +60,87 @@ function highlightUnderCursor(
   return painted;
 }
 
-/** Scrolls the host only when the cursor leaves the comfortable middle of it. */
-function keepCursorInView(host: HTMLElement, cursor: HTMLElement): void {
-  const box = host.getBoundingClientRect();
+interface ScrollTarget {
+  left: number;
+  top: number;
+}
+
+interface LineBox {
+  /** Pixels from the top of the score's SVG. */
+  readonly top: number;
+  readonly bottom: number;
+}
+
+/**
+ * Each line of music with everything that belongs to it. A line's own box
+ * leaves out fingerings and ledger notes above it, so it starts where the
+ * line before it ends.
+ */
+function lineBoxes(osmd: OpenSheetMusicDisplay): LineBox[] {
+  const pixels = unitInPixels * osmd.Zoom;
+  const systems = osmd.GraphicSheet.MusicPages[0]?.MusicSystems ?? [];
+  return systems.map((system, index) => {
+    const box = system.PositionAndShape;
+    const own = (box.AbsolutePosition.y + box.BorderMarginTop) * pixels;
+    const previous = systems[index - 1]?.PositionAndShape;
+    const top = previous
+      ? Math.min(own, (previous.AbsolutePosition.y + previous.BorderMarginBottom) * pixels)
+      : own;
+    return { top, bottom: (box.AbsolutePosition.y + box.BorderMarginBottom) * pixels };
+  });
+}
+
+/** Where the score's SVG sits inside the scroller's content, in pixels from its top. */
+function svgOffset(scroller: HTMLElement): number {
+  const svg = scroller.querySelector("svg");
+  if (!svg) return 0;
+  return (
+    svg.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop
+  );
+}
+
+/**
+ * Where the view should be. One line: the note being played in the middle of
+ * the screen. Wrapped: the cursor's line at the top, the next lines under it.
+ */
+function scrollTarget(
+  scroller: HTMLElement,
+  cursor: HTMLElement,
+  lines: readonly LineBox[],
+  singleLine: boolean
+): ScrollTarget {
+  const box = scroller.getBoundingClientRect();
   const mark = cursor.getBoundingClientRect();
-  let left = 0;
-  let top = 0;
-  if (mark.left < box.left + box.width * 0.1 || mark.right > box.left + box.width * 0.7) {
-    left = mark.left - box.left - box.width * 0.25;
+  const maxLeft = scroller.scrollWidth - scroller.clientWidth;
+  const maxTop = scroller.scrollHeight - scroller.clientHeight;
+  const clamp = (value: number, max: number) => Math.min(Math.max(value, 0), Math.max(max, 0));
+  const offset = svgOffset(scroller);
+  const cursorY = mark.top - box.top + scroller.scrollTop - offset;
+  const line = lines.filter((candidate) => candidate.top <= cursorY + 1).at(-1) ?? lines[0];
+  const top = line ? clamp(offset + line.top - LINE_TOP_GAP_PX, maxTop) : scroller.scrollTop;
+  if (!singleLine) return { left: scroller.scrollLeft, top };
+  const shift = mark.left + mark.width / 2 - (box.left + box.width / 2);
+  return { left: clamp(scroller.scrollLeft + shift, maxLeft), top };
+}
+
+/**
+ * Sizes the view to whole lines of music: as many as fit in STAFF_MAX_SHARE of
+ * the window, one to three, so zooming changes how many lines show, not how
+ * much of the screen the score takes.
+ */
+function fitHeight(scroller: HTMLElement, lines: readonly LineBox[], singleLine: boolean): void {
+  const first = lines[0];
+  if (!first) return;
+  const scrollbar = scroller.offsetHeight - scroller.clientHeight;
+  if (singleLine) {
+    scroller.style.height = `${String(Math.ceil(first.bottom - first.top + LINE_TOP_GAP_PX + scrollbar))}px`;
+    return;
   }
-  if (mark.top < box.top || mark.bottom > box.bottom) top = mark.top - box.top - box.height * 0.15;
-  if (left !== 0 || top !== 0) host.scrollBy({ left, top, behavior: "smooth" });
+  const pitch = (lines[1]?.top ?? first.bottom) - first.top;
+  const room = window.innerHeight * STAFF_MAX_SHARE;
+  const count = Math.max(1, Math.min(MAX_LINES, lines.length, Math.floor(room / pitch)));
+  const last = lines[count - 1] ?? first;
+  scroller.style.height = `${String(Math.ceil(last.bottom - first.top + LINE_TOP_GAP_PX * 2 + scrollbar))}px`;
 }
 
 /**
@@ -73,29 +150,63 @@ function keepCursorInView(host: HTMLElement, cursor: HTMLElement): void {
  */
 export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  /** OSMD draws here; the host around it scrolls. */
+  const pageRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   const paintedRef = useRef<SVGElement[]>([]);
   // Read by the loader and the zoom effect, which must land the cursor where the song is.
-  const latest = useRef({ beat, zoom, follow });
+  const latest = useRef({ beat, zoom, follow, singleLine });
+  const targetRef = useRef<ScrollTarget | null>(null);
+  const linesRef = useRef<LineBox[]>([]);
 
   useEffect(() => {
-    latest.current = { beat, zoom, follow };
+    latest.current = { beat, zoom, follow, singleLine };
   });
 
-  const showBeat = (osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
+  const showBeat = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     moveCursor(osmd, latest.current.beat);
     paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
-    if (latest.current.follow) keepCursorInView(host, osmd.cursor.cursorElement);
-  };
+    if (latest.current.follow) {
+      targetRef.current = scrollTarget(
+        host,
+        osmd.cursor.cursorElement,
+        linesRef.current,
+        latest.current.singleLine
+      );
+    }
+  });
+
+  /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
+  const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
+    osmd.render();
+    linesRef.current = lineBoxes(osmd);
+    fitHeight(host, linesRef.current, latest.current.singleLine);
+    // A new render draws new noteheads and puts the cursor back at the start.
+    paintedRef.current = [];
+    osmd.cursor.reset();
+    showBeat(osmd, host);
+    // The page under the view has changed: jump to the cursor's line at once instead of gliding.
+    const target = scrollTarget(
+      host,
+      osmd.cursor.cursorElement,
+      linesRef.current,
+      latest.current.singleLine
+    );
+    host.scrollLeft = target.left;
+    host.scrollTop = target.top;
+    targetRef.current = null;
+  });
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host) return;
+    const page = pageRef.current;
+    if (!host || !page) return;
     let cancelled = false;
-    const osmd = new OpenSheetMusicDisplay(host, {
+    let resizeTimer = 0;
+    const osmd = new OpenSheetMusicDisplay(page, {
       backend: "svg",
-      // A wrapped page re-flows when the window changes; a single line never needs to.
-      autoResize: !singleLine,
+      // Re-flowing on resize is done below, so the line sizes are measured again too.
+      autoResize: false,
       drawTitle: false,
       drawComposer: false,
       drawPartNames: false,
@@ -107,18 +218,29 @@ export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) 
     void osmd.load(musicXml).then(() => {
       if (cancelled) return;
       osmd.Zoom = latest.current.zoom;
+      // Half the usual page margin: the view starts at the first line anyway.
+      osmd.EngravingRules.PageTopMargin = 2;
       osmd.render();
       osmd.cursor.show();
       osmdRef.current = osmd;
-      paintedRef.current = [];
-      showBeat(osmd, host);
+      relayout(osmd, host);
     });
+    // A wrapped page re-flows to a new width; a single line never needs to.
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        if (osmdRef.current === osmd && !latest.current.singleLine) relayout(osmd, host);
+      }, 200);
+    };
+    window.addEventListener("resize", onResize);
     return () => {
       cancelled = true;
+      window.clearTimeout(resizeTimer);
+      window.removeEventListener("resize", onResize);
       osmdRef.current = null;
       osmd.clear();
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
-      host.replaceChildren();
+      page.replaceChildren();
     };
   }, [musicXml, singleLine]);
 
@@ -127,11 +249,7 @@ export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) 
     const host = hostRef.current;
     if (!osmd || !host || osmd.Zoom === zoom) return;
     osmd.Zoom = zoom;
-    osmd.render();
-    // A new render draws new noteheads and puts the cursor back at the start.
-    paintedRef.current = [];
-    osmd.cursor.reset();
-    showBeat(osmd, host);
+    relayout(osmd, host);
   }, [zoom]);
 
   useEffect(() => {
@@ -141,5 +259,36 @@ export function Staff({ musicXml, beat, zoom, singleLine, follow }: StaffProps) 
     showBeat(osmd, host);
   }, [beat]);
 
-  return <div className="staff" ref={hostRef} />;
+  // The view glides towards its target every frame instead of jumping on each note.
+  useEffect(() => {
+    let frame = 0;
+    const step = () => {
+      const host = hostRef.current;
+      const target = targetRef.current;
+      if (host && target) {
+        const dx = target.left - host.scrollLeft;
+        const dy = target.top - host.scrollTop;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+          host.scrollLeft = target.left;
+          host.scrollTop = target.top;
+          // Reached: stop steering, so the reader can scroll by hand.
+          targetRef.current = null;
+        } else {
+          host.scrollLeft += Math.abs(dx * GLIDE) < 1 ? Math.sign(dx) : dx * GLIDE;
+          host.scrollTop += Math.abs(dy * GLIDE) < 1 ? Math.sign(dy) : dy * GLIDE;
+        }
+      }
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return (
+    <div className={singleLine ? "staff staff--single" : "staff staff--wrapped"} ref={hostRef}>
+      <div className="staff-page" ref={pageRef} />
+    </div>
+  );
 }

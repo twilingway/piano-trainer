@@ -126,8 +126,30 @@ body {
   min-height: 80px;
   max-height: 80dvh;
   overflow: auto;
+  /* Room for the scrollbar is kept, so the score is never laid out a scrollbar too wide. */
+  scrollbar-gutter: stable;
   resize: vertical;
   background: #fbfaf5;
+}
+
+.staff-page {
+  position: relative;
+}
+
+/* Wrapped: a page of readable width in the middle of a wide screen. */
+.staff--wrapped {
+  overflow-x: hidden;
+}
+
+.staff--wrapped .staff-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* One line: half a screen of margin on each side, so any note can sit in the middle. */
+.staff--single .staff-page {
+  display: inline-block;
+  padding-inline: 50%;
 }
 
 .lane {
