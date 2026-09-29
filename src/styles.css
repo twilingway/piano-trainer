@@ -224,6 +224,11 @@ body {
   margin: 0 auto;
 }
 
+/* One line: its height is set to the line and kept there, so it never scrolls up and down. */
+.staff--single {
+  overflow-y: hidden;
+}
+
 /* One line: half a screen of margin on each side, so any note can sit in the middle. */
 .staff--single .staff-page {
   display: inline-block;

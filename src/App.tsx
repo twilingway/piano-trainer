@@ -91,6 +91,8 @@ interface StaffPrefs {
   readonly noteNames: "off" | NoteNameStyle;
   /** Chord symbols over the staff. */
   readonly chords: boolean;
+  /** The staff on screen at all; hidden, the falling notes get the room. */
+  readonly visible: boolean;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -100,7 +102,8 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   follow: true,
   measuresPerLine: 4,
   noteNames: "off",
-  chords: false
+  chords: false,
+  visible: true
 };
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
@@ -833,6 +836,16 @@ export function App() {
 
       <div className="staff-bar">
         {staffXml && (
+          <button
+            type="button"
+            onClick={() => {
+              updateStaffPrefs({ visible: !staffPrefs.visible });
+            }}
+          >
+            {staffPrefs.visible ? "Скрыть ноты" : "Показать ноты"}
+          </button>
+        )}
+        {staffXml && (
           <>
             <span>Ноты</span>
             <button
@@ -1061,7 +1074,7 @@ export function App() {
         </div>
       )}
 
-      {staffXml && (
+      {staffXml && staffPrefs.visible && (
         <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
           <div className="staff-slot">
             {transcription && <span className="staff-label">Оригинал</span>}
