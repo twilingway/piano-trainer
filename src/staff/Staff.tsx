@@ -29,6 +29,8 @@ const HIGHLIGHT = "#e63946";
 const GLIDE = 0.12;
 /** Share of the window the score may take; the lines that fit decide the exact height. */
 const DEFAULT_MAX_SHARE = 0.45;
+/** Time constant of the single line's easing, seconds: long enough to hide a note's jolt. */
+const LIVE_SMOOTHING_S = 0.35;
 const MAX_LINES = 3;
 /** Air left above a line when it is scrolled to the top. */
 const LINE_TOP_GAP_PX = 4;
@@ -463,7 +465,13 @@ export function Staff({
   // The view glides towards its target every frame instead of jumping on each note.
   useEffect(() => {
     let frame = 0;
+    let lastFrame = performance.now();
+    /** The line's scroll position as the loop keeps it: fractional, unlike scrollLeft. */
+    let smoothLeft: number | undefined;
     const step = () => {
+      const now = performance.now();
+      const dt = Math.min(now - lastFrame, 100) / 1000;
+      lastFrame = now;
       const host = hostRef.current;
       const live = liveBeatRef.current;
       if (host && live && latest.current.singleLine && latest.current.follow) {
@@ -472,8 +480,18 @@ export function Staff({
         if (x !== undefined && svg) {
           const svgLeft =
             svg.getBoundingClientRect().left - host.getBoundingClientRect().left + host.scrollLeft;
-          host.scrollLeft = svgLeft + x - host.clientWidth / 2;
+          const wanted = svgLeft + x - host.clientWidth / 2;
+          // Notes sit unevenly on the page and the song can stop and start: the line eases
+          // towards where the song is rather than copying every change of pace.
+          const ease = 1 - Math.exp(-dt / LIVE_SMOOTHING_S);
+          smoothLeft =
+            smoothLeft === undefined || Math.abs(wanted - smoothLeft) > host.clientWidth
+              ? wanted
+              : smoothLeft + (wanted - smoothLeft) * ease;
+          host.scrollLeft = smoothLeft;
         }
+      } else {
+        smoothLeft = undefined;
       }
       const target = targetRef.current;
       if (host && target) {
