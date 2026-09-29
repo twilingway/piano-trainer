@@ -13,6 +13,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  overflow: hidden;
 }
 
 .toolbar {
@@ -73,11 +74,11 @@ body {
   margin-left: auto;
 }
 
+/* Tall enough for both staves; a very tall score scrolls instead of eating the lane. */
 .staff {
   flex: 0 0 auto;
-  height: 180px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  max-height: 40dvh;
+  overflow: auto;
   background: #fbfaf5;
 }
 
@@ -85,6 +86,17 @@ body {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * Out of flow: an inline canvas adds a descender gap, which grew the page by
+ * a scrollbar and left Pixi's resize one scrollbar too wide.
+ */
+.lane canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
 }
 
 .result {

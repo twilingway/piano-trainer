@@ -8,6 +8,7 @@ interface StaffProps {
 }
 
 const BEAT_EPSILON = 1e-6;
+const STAFF_ZOOM = 0.7;
 
 function cursorBeat(osmd: OpenSheetMusicDisplay): number {
   // OSMD counts in whole notes.
@@ -37,6 +38,8 @@ export function Staff({ musicXml, beat }: StaffProps) {
     });
     void osmd.load(musicXml).then(() => {
       if (cancelled) return;
+      // Both staves at full size are ~290 px; this leaves the lane most of the screen.
+      osmd.Zoom = STAFF_ZOOM;
       osmd.render();
       osmd.cursor.show();
       osmdRef.current = osmd;
@@ -45,6 +48,8 @@ export function Staff({ musicXml, beat }: StaffProps) {
       cancelled = true;
       osmdRef.current = null;
       osmd.clear();
+      // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
+      host.replaceChildren();
     };
   }, [musicXml]);
 

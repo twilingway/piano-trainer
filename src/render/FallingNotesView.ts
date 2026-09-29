@@ -2,6 +2,7 @@ import { Application, Container, Sprite, Text, Texture } from "pixi.js";
 
 import { isBlackKey } from "../fingering/fingering";
 import type { Finger, Hand } from "../fingering/fingering";
+import type { KeyEvent } from "../input/midiInput";
 import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
 import { layoutKeyboard } from "./keyboardLayout";
@@ -48,6 +49,8 @@ interface NoteSprite {
  */
 export class FallingNotesView {
   onNoteClick: ((noteId: string) => void) | undefined;
+  /** A key pressed or released with the mouse (or a finger on a touch screen). */
+  onKeyPointer: ((event: KeyEvent) => void) | undefined;
 
   private readonly app = new Application();
   private readonly lane = new Container();
@@ -61,14 +64,37 @@ export class FallingNotesView {
   private keys = new Map<number, KeyRect>();
   private laidOutFor = { width: 0, height: 0 };
   private ready = false;
+  private resizeObserver: ResizeObserver | undefined;
+  /** The key the mouse holds down, if any. */
+  private mouseKey: number | undefined;
 
   async mount(host: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: host, background: 0x11131a, antialias: true });
     host.appendChild(this.app.canvas);
+    // `resizeTo` follows the window only; the lane also changes when the staff above it does.
+    this.resizeObserver = new ResizeObserver(() => {
+      this.app.queueResize();
+    });
+    this.resizeObserver.observe(host);
     this.app.stage.addChild(this.guides, this.lane, this.keyboard, this.keyHints);
     this.digitTextures = this.bakeDigits();
     for (let pitch = 21; pitch <= 108; pitch++) {
       const sprite = new Sprite(Texture.WHITE);
+      sprite.eventMode = "static";
+      sprite.cursor = "pointer";
+      sprite.on("pointerdown", () => {
+        this.pressWithMouse(pitch);
+      });
+      // Dragging across the keys with the button held plays each one: a glissando.
+      sprite.on("pointerover", (event) => {
+        if (this.mouseKey !== undefined && (event.buttons & 1) === 1) this.pressWithMouse(pitch);
+      });
+      sprite.on("pointerup", () => {
+        this.releaseMouse();
+      });
+      sprite.on("pointerupoutside", () => {
+        this.releaseMouse();
+      });
       this.keySprites.set(pitch, sprite);
       const digit = new Sprite();
       digit.anchor.set(0.5, 1);
@@ -171,8 +197,22 @@ export class FallingNotesView {
     }
   }
 
+  private pressWithMouse(pitch: number): void {
+    if (this.mouseKey === pitch) return;
+    this.releaseMouse();
+    this.mouseKey = pitch;
+    this.onKeyPointer?.({ type: "down", pitch, velocity: 90 });
+  }
+
+  private releaseMouse(): void {
+    if (this.mouseKey === undefined) return;
+    this.onKeyPointer?.({ type: "up", pitch: this.mouseKey, velocity: 0 });
+    this.mouseKey = undefined;
+  }
+
   destroy(): void {
     this.ready = false;
+    this.resizeObserver?.disconnect();
     this.app.destroy({ removeView: true }, { children: true });
   }
 

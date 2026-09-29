@@ -10,6 +10,7 @@ import { Trainer } from "./practice/Trainer";
 import type { TrainerSnapshot } from "./practice/Trainer";
 import { FallingNotesView } from "./render/FallingNotesView";
 import { EXERCISES } from "./song/exercises";
+import type { LevelId } from "./song/exercises";
 import { songFromMidi } from "./song/midi";
 import { musicXmlFromMxl, songFromMusicXml } from "./song/musicxml";
 import { withFingering } from "./song/song";
@@ -79,10 +80,20 @@ async function readSongFile(file: File): Promise<Song> {
   throw new Error("Нужен файл .mid, .musicxml, .xml или .mxl");
 }
 
-function firstExerciseSong(): Song {
-  const exercise = EXERCISES[0];
-  if (!exercise) throw new Error("No built-in exercises");
-  return songFromMusicXml(exercise.musicXml, exercise.title);
+interface LessonChoice {
+  readonly exerciseId: string;
+  readonly levelId: LevelId;
+}
+
+const FIRST_LESSON: LessonChoice = { exerciseId: EXERCISES[0]?.id ?? "", levelId: "easy" };
+
+/** A built-in lesson at one level; the level is part of the title, so corrections stay per level. */
+function lessonSong(choice: LessonChoice): Song {
+  const exercise = EXERCISES.find((item) => item.id === choice.exerciseId);
+  const level = exercise?.levels.find((item) => item.id === choice.levelId) ?? exercise?.levels[0];
+  if (!exercise || !level) throw new Error(`No lesson ${choice.exerciseId}`);
+  const song = songFromMusicXml(level.musicXml, exercise.title);
+  return { ...song, title: `${exercise.title} · ${level.title}` };
 }
 
 export function App() {
@@ -91,7 +102,8 @@ export function App() {
   const noteClickRef = useRef<(noteId: string) => void>(() => undefined);
   const [trainerReady, setTrainerReady] = useState(false);
 
-  const [baseSong, setBaseSong] = useState<Song>(firstExerciseSong);
+  const [lesson, setLesson] = useState<LessonChoice | null>(FIRST_LESSON);
+  const [baseSong, setBaseSong] = useState<Song>(() => lessonSong(FIRST_LESSON));
   const [overrides, setOverrides] = useState<Map<string, Finger>>(() => loadOverrides(baseSong));
   const [mode, setMode] = useState<PracticeMode>("wait");
   const [handChoice, setHandChoice] = useState<HandChoice>("right");
@@ -119,6 +131,12 @@ export function App() {
     const view = new FallingNotesView();
     view.onNoteClick = (noteId) => {
       noteClickRef.current(noteId);
+    };
+    view.onKeyPointer = (event) => {
+      // A clicked key has no voice of its own, unlike the piano.
+      if (event.type === "down") soundNoteOn(event.pitch);
+      else soundNoteOff(event.pitch);
+      trainerRef.current?.key(event);
     };
     let disposed = false;
     const mounted = view.mount(host).then(() => {
@@ -210,6 +228,7 @@ export function App() {
       const loaded = await readSongFile(file);
       if (loaded.notes.length === 0) throw new Error("В файле нет нот");
       setLoadError(null);
+      setLesson(null);
       setBaseSong(loaded);
       setOverrides(loadOverrides(loaded));
     } catch (error) {
@@ -217,13 +236,14 @@ export function App() {
     }
   };
 
-  const openExercise = (id: string) => {
-    const exercise = EXERCISES.find((item) => item.id === id);
-    if (!exercise) return;
-    const loaded = songFromMusicXml(exercise.musicXml, exercise.title);
+  const openLesson = (choice: LessonChoice) => {
+    const loaded = lessonSong(choice);
+    setLesson(choice);
     setBaseSong(loaded);
     setOverrides(loadOverrides(loaded));
   };
+
+  const lessonLevels = EXERCISES.find((item) => item.id === lesson?.exerciseId)?.levels ?? [];
 
   const ensureSound = async () => {
     if (sound !== "off") return;
@@ -269,14 +289,14 @@ export function App() {
           />
         </label>
         <select
-          aria-label="Упражнение"
-          value=""
+          aria-label="Урок"
+          value={lesson?.exerciseId ?? ""}
           onChange={(event) => {
-            openExercise(event.target.value);
+            openLesson({ exerciseId: event.target.value, levelId: "easy" });
           }}
         >
           <option value="" disabled>
-            Упражнения…
+            Уроки…
           </option>
           {EXERCISES.map((exercise) => (
             <option key={exercise.id} value={exercise.id}>
@@ -284,6 +304,21 @@ export function App() {
             </option>
           ))}
         </select>
+        {lesson && (
+          <select
+            aria-label="Уровень"
+            value={lesson.levelId}
+            onChange={(event) => {
+              openLesson({ ...lesson, levelId: event.target.value as LevelId });
+            }}
+          >
+            {lessonLevels.map((level) => (
+              <option key={level.id} value={level.id}>
+                {level.title}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           aria-label="Режим"
           value={mode}
