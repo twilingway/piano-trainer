@@ -122,6 +122,11 @@ export function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [metronome, setMetronome] = useState(true);
+  const [showLabels, setShowLabels] = useState(true);
+  /** Which MIDI input plays; "all" listens to every one. */
+  const [midiDeviceId, setMidiDeviceId] = useState("all");
+  const midiDeviceRef = useRef("all");
+  const viewRef = useRef<FallingNotesView | null>(null);
 
   const song = useMemo(() => withFingering(baseSong, overrides), [baseSong, overrides]);
 
@@ -141,6 +146,7 @@ export function App() {
     let disposed = false;
     const mounted = view.mount(host).then(() => {
       if (disposed) return;
+      viewRef.current = view;
       const trainer = new Trainer(view);
       trainer.onSnapshot = (next) => {
         setSnapshot(next);
@@ -171,7 +177,11 @@ export function App() {
     let stopMidi: (() => void) | undefined;
     let disposed = false;
     if (midiSupported()) {
-      listenToMidi(onKey, setDevices).then(
+      const onMidiKey = (event: KeyEvent, deviceId: string) => {
+        const chosen = midiDeviceRef.current;
+        if (chosen === "all" || chosen === deviceId) onKey(event);
+      };
+      listenToMidi(onMidiKey, setDevices).then(
         (stop) => {
           if (disposed) stop();
           else stopMidi = stop;
@@ -206,6 +216,14 @@ export function App() {
   useEffect(() => {
     if (trainerRef.current) trainerRef.current.metronome = metronome;
   }, [trainerReady, metronome]);
+
+  useEffect(() => {
+    viewRef.current?.setShowLabels(showLabels);
+  }, [trainerReady, showLabels]);
+
+  useEffect(() => {
+    midiDeviceRef.current = midiDeviceId;
+  }, [midiDeviceId]);
 
   const cycleFinger = (noteId: string) => {
     const current = song.notes.find((note) => note.id === noteId)?.finger ?? 1;
@@ -373,15 +391,44 @@ export function App() {
           />
           Метроном
         </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={showLabels}
+            onChange={(event) => {
+              setShowLabels(event.target.checked);
+            }}
+          />
+          Названия нот
+        </label>
       </header>
 
       <div className="status">
-        <span>
-          {devices.length > 0
-            ? `Пианино: ${devices.map((device) => device.name).join(", ")}`
-            : (midiError ??
-              "Пианино не найдено — подключите USB-кабель или играйте на клавиатуре: Z…/ и Q…P — белые, S D G H J и 2 3 5 6 7 9 0 — чёрные")}
-        </span>
+        {devices.length > 1 ? (
+          <label className="device">
+            MIDI:{" "}
+            <select
+              value={midiDeviceId}
+              onChange={(event) => {
+                setMidiDeviceId(event.target.value);
+              }}
+            >
+              <option value="all">Все устройства</option>
+              {devices.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <span>
+            {devices.length === 1
+              ? `Пианино: ${devices[0]?.name ?? ""}`
+              : (midiError ??
+                "Пианино не найдено — подключите USB-кабель или играйте на клавиатуре: Z…/ и Q…P — белые, S D G H J и 2 3 5 6 7 9 0 — чёрные")}
+          </span>
+        )}
         {stats && (
           <span>
             Попадания {stats.hits} · Промахи {stats.misses} · Лишние {stats.wrong}

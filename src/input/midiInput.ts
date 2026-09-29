@@ -28,22 +28,22 @@ export function midiSupported(): boolean {
 
 /**
  * Listens to every MIDI input the browser exposes, now and when a device is
- * plugged in later. Returns a function that stops listening.
+ * plugged in later; each key event names the input it came from, so the
+ * caller can keep to one device. Returns a function that stops listening.
  */
 export async function listenToMidi(
-  onKey: (event: KeyEvent) => void,
+  onKey: (event: KeyEvent, deviceId: string) => void,
   onDevices: (devices: MidiDevice[]) => void
 ): Promise<() => void> {
   const access = await navigator.requestMIDIAccess();
-  const handler = (message: MIDIMessageEvent) => {
-    if (!message.data) return;
-    const event = parseMidiMessage(message.data);
-    if (event) onKey(event);
-  };
   const attach = () => {
     const devices: MidiDevice[] = [];
     access.inputs.forEach((input) => {
-      input.onmidimessage = handler;
+      input.onmidimessage = (message: MIDIMessageEvent) => {
+        if (!message.data) return;
+        const event = parseMidiMessage(message.data);
+        if (event) onKey(event, input.id);
+      };
       devices.push({ id: input.id, name: input.name ?? input.id });
     });
     onDevices(devices);

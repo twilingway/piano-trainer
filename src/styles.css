@@ -62,6 +62,14 @@ body {
   color: #a9aec2;
 }
 
+.status .device select {
+  font: inherit;
+  background: #242838;
+  color: inherit;
+  border: 1px solid #3a3f52;
+  border-radius: 4px;
+}
+
 .status .waiting {
   color: #ffd166;
 }
