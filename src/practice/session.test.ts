@@ -19,10 +19,11 @@ const SONG: Song = {
   title: "test",
   source: "midi",
   notes: [note("c3", 48, 0, "left"), note("c4", 60, 0), note("e4", 64, 1), note("g4", 67, 1)],
+  measures: [],
   beats: [
-    { time: 0, downbeat: true },
-    { time: 0.5, downbeat: false },
-    { time: 1, downbeat: false }
+    { time: 0, position: 0, downbeat: true },
+    { time: 0.5, position: 0.5, downbeat: false },
+    { time: 1, position: 1, downbeat: false }
   ],
   duration: 1.5
 };

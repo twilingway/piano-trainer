@@ -264,10 +264,15 @@ function countIn(beats: readonly SongBeat[]): SongBeat[] {
   const second = beats[1];
   if (!first || !second) return [];
   const interval = second.time - first.time;
+  const step = second.position - first.position;
   if (interval <= 0) return [];
   const clicks: SongBeat[] = [];
-  for (let time = first.time - interval; time >= -LEAD_IN_S; time -= interval) {
-    clicks.unshift({ time, downbeat: false });
+  for (let count = 1; first.time - count * interval >= -LEAD_IN_S; count++) {
+    clicks.unshift({
+      time: first.time - count * interval,
+      position: first.position - count * step,
+      downbeat: false
+    });
   }
   return clicks;
 }

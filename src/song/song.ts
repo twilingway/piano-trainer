@@ -24,8 +24,19 @@ export interface SongNote {
 export interface SongBeat {
   /** Seconds from the start of the song at its written tempo. */
   readonly time: number;
+  /** Quarter notes from the start: where the beat sits in the score. */
+  readonly position: number;
   /** The first beat of a measure: the metronome's "tick" rather than its "tock". */
   readonly downbeat: boolean;
+}
+
+/** A measure of the score, in quarter notes: what a transcription is laid out in. */
+export interface SongMeasure {
+  readonly start: number;
+  readonly length: number;
+  /** Time signature: beats per measure and the note value of one beat. */
+  readonly beats: number;
+  readonly beatType: number;
 }
 
 export interface Song {
@@ -34,6 +45,8 @@ export interface Song {
   readonly notes: readonly SongNote[];
   /** The metronome grid, in order. */
   readonly beats: readonly SongBeat[];
+  /** The measures, in order; the first may be a short pickup. */
+  readonly measures: readonly SongMeasure[];
   /** Seconds until the last note ends. */
   readonly duration: number;
   /** The original MusicXML text, for the staff renderer; absent for MIDI. */

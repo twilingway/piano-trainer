@@ -18,6 +18,7 @@ const SONG: Song = {
   title: "test",
   source: "musicxml",
   notes: [note("c", 60, 0), note("d", 62, 1), note("e", 64, 2), note("f", 65, 3)],
+  measures: [],
   beats: [],
   duration: 4
 };

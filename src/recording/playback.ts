@@ -46,7 +46,14 @@ export function takeAsSong(take: Take, original: Song, review: TakeReview): Song
   }));
   notes.sort((a, b) => a.start - b.start || a.pitch - b.pitch);
   const duration = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
-  return { title: original.title, source: "midi", notes, beats: original.beats, duration };
+  return {
+    title: original.title,
+    source: "midi",
+    notes,
+    beats: original.beats,
+    measures: original.measures,
+    duration
+  };
 }
 
 /** The take as a MIDI file, in real time as it was played, with velocities and the pedal. */

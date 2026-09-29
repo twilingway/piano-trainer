@@ -2,7 +2,7 @@ import { Midi } from "@tonejs/midi";
 
 import type { Hand } from "../fingering/fingering";
 import { handByPitch, sortNotes } from "./song";
-import type { Song, SongBeat, SongNote } from "./song";
+import type { Song, SongBeat, SongMeasure, SongNote } from "./song";
 
 /**
  * A MIDI file carries no hands, so they are guessed: with two or more melodic
@@ -50,6 +50,7 @@ export function songFromMidi(data: ArrayBuffer, fallbackTitle: string): Song {
     source: "midi",
     notes,
     beats: midiBeats(midi, duration),
+    measures: midiMeasures(midi, duration),
     duration
   };
 }
@@ -70,9 +71,30 @@ function midiBeats(midi: Midi, duration: number): SongBeat[] {
     for (let count = 0; signature.ticks + count * unit < until; count++) {
       beats.push({
         time: header.ticksToSeconds(signature.ticks + count * unit),
+        position: (signature.ticks + count * unit) / header.ppq,
         downbeat: count % perMeasure === 0
       });
     }
   });
   return beats;
+}
+
+/** Measures from the file's time signatures, in quarter notes, 4/4 when it names none. */
+function midiMeasures(midi: Midi, duration: number): SongMeasure[] {
+  const header = midi.header;
+  const signatures =
+    header.timeSignatures.length > 0
+      ? [...header.timeSignatures].sort((a, b) => a.ticks - b.ticks)
+      : [{ ticks: 0, timeSignature: [4, 4] }];
+  const end = header.secondsToTicks(duration) / header.ppq;
+  const measures: SongMeasure[] = [];
+  signatures.forEach((signature, index) => {
+    const [beats = 4, beatType = 4] = signature.timeSignature;
+    const length = (beats * 4) / beatType;
+    const until = (signatures[index + 1]?.ticks ?? Number.POSITIVE_INFINITY) / header.ppq;
+    for (let start = signature.ticks / header.ppq; start < Math.min(until, end); start += length) {
+      measures.push({ start, length, beats, beatType });
+    }
+  });
+  return measures;
 }

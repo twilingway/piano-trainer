@@ -260,6 +260,7 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
   const duration = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
   const beats: SongBeat[] = beatGrid(measures).map(({ beat, downbeat }) => ({
     time: beatToSeconds(beat, tempoMarks),
+    position: beat,
     downbeat
   }));
   return {
@@ -267,6 +268,7 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
     source: "musicxml",
     notes,
     beats,
+    measures,
     duration,
     musicXml: xml
   };
