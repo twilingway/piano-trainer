@@ -275,6 +275,78 @@ body {
   pointer-events: none;
 }
 
+/* The score and the lane on the left, a narrow rail of view toggles on the right. */
+.workspace {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.workspace-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.side-rail {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 4px;
+  background: #1a1d27;
+  border-left: 1px solid #262a38;
+}
+
+.rail-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #3a3f52;
+  border-radius: 6px;
+  background: #242838;
+  color: #6f7590;
+  cursor: pointer;
+}
+
+.rail-button[aria-pressed="true"] {
+  border-color: #4d7cff;
+  background: #1f3261;
+  color: #b9cdff;
+}
+
+.rail-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.rail-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+}
+
+.rail-button svg .filled {
+  fill: currentcolor;
+  stroke: none;
+}
+
+/* Only the keys: a strip of keyboard; nothing at all: the score gets the room. */
+.lanes--keys {
+  flex: 0 0 auto;
+  height: clamp(110px, 24vh, 260px);
+}
+
+.lanes--hidden {
+  display: none;
+}
+
 /* One lane, or two when a take is compared with the original: side by side or stacked. */
 .lanes {
   display: flex;

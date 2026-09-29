@@ -93,6 +93,10 @@ interface StaffPrefs {
   readonly chords: boolean;
   /** The staff on screen at all; hidden, the falling notes get the room. */
   readonly visible: boolean;
+  /** The falling notes on screen. */
+  readonly lane: boolean;
+  /** The keyboard on screen. */
+  readonly keys: boolean;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -103,7 +107,9 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   measuresPerLine: 4,
   noteNames: "off",
   chords: false,
-  visible: true
+  visible: true,
+  lane: true,
+  keys: true
 };
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
@@ -263,6 +269,44 @@ function lessonSong(choice: LessonChoice): Song {
   if (!exercise || !level) throw new Error(`No lesson ${choice.exerciseId}`);
   const song = songFromMusicXml(level.musicXml, exercise.title);
   return { ...song, title: `${exercise.title} · ${level.title}` };
+}
+
+/** The side rail's icons: small line drawings in the current text colour. */
+function StaffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {[6, 9, 12, 15, 18].map((y) => (
+        <line key={y} x1="2" x2="22" y1={y} y2={y} />
+      ))}
+      <ellipse cx="10" cy="15" rx="3" ry="2.2" className="filled" />
+      <line x1="13" x2="13" y1="15" y2="4" />
+    </svg>
+  );
+}
+
+function FallingNotesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="3" width="4" height="8" rx="1" className="filled" />
+      <rect x="10" y="7" width="4" height="10" rx="1" className="filled" />
+      <rect x="17" y="2" width="4" height="6" rx="1" className="filled" />
+      <line x1="2" x2="22" y1="21" y2="21" />
+    </svg>
+  );
+}
+
+function KeyboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="2" y="5" width="20" height="14" rx="1.5" />
+      {[7, 12, 17].map((x) => (
+        <line key={x} x1={x} x2={x} y1="12" y2="19" />
+      ))}
+      {[5.5, 9.5, 15.5].map((x) => (
+        <rect key={x} x={x} y="5" width="2.6" height="7" className="filled" />
+      ))}
+    </svg>
+  );
 }
 
 export function App() {
@@ -491,7 +535,8 @@ export function App() {
   useEffect(() => {
     viewRef.current?.setShowLabels(showLabels);
     viewRef.current?.setNoteNames(fallingNames);
-  }, [trainerReady, showLabels, fallingNames]);
+    viewRef.current?.setParts({ notes: staffPrefs.lane, keys: staffPrefs.keys });
+  }, [trainerReady, showLabels, fallingNames, staffPrefs.lane, staffPrefs.keys]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {
@@ -517,6 +562,7 @@ export function App() {
       mirror.setSong(song);
       mirror.setShowLabels(showLabels);
       mirror.setNoteNames(fallingNames);
+      mirror.setParts({ notes: staffPrefs.lane, keys: staffPrefs.keys });
       mirror.setRange(rangeLow, rangeHigh);
       trainer.setComparison({
         colorOf: (note) => playedTint.get(note.id),
@@ -530,7 +576,17 @@ export function App() {
         mirror.destroy();
       });
     };
-  }, [comparing, lastTake, song, showLabels, rangeLow, rangeHigh, fallingNames]);
+  }, [
+    comparing,
+    lastTake,
+    song,
+    showLabels,
+    rangeLow,
+    rangeHigh,
+    fallingNames,
+    staffPrefs.lane,
+    staffPrefs.keys
+  ]);
 
   useEffect(() => {
     midiDeviceRef.current = midiDeviceId;
@@ -667,6 +723,11 @@ export function App() {
     );
     return { musicXml, marks };
   }, [review, lastTake, takeStaff, song, fixedLines, staffPrefs.measuresPerLine, withNames]);
+
+  // The lane shows notes and keys, only the keys (a strip), or nothing at all.
+  const laneMode = staffPrefs.lane ? "full" : staffPrefs.keys ? "keys" : "hidden";
+  // With the lane hidden or cut to its keys, the staff may take more of the screen.
+  const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
 
   const stats = snapshot?.stats;
   const played = stats ? stats.hits + stats.misses : 0;
@@ -835,16 +896,6 @@ export function App() {
       </div>
 
       <div className="staff-bar">
-        {staffXml && (
-          <button
-            type="button"
-            onClick={() => {
-              updateStaffPrefs({ visible: !staffPrefs.visible });
-            }}
-          >
-            {staffPrefs.visible ? "Скрыть ноты" : "Показать ноты"}
-          </button>
-        )}
         {staffXml && (
           <>
             <span>Ноты</span>
@@ -1074,52 +1125,94 @@ export function App() {
         </div>
       )}
 
-      {staffXml && staffPrefs.visible && (
-        <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
-          <div className="staff-slot">
-            {transcription && <span className="staff-label">Оригинал</span>}
-            <Staff
-              musicXml={staffXml}
-              beat={snapshot?.beat ?? 0}
-              zoom={staffPrefs.zoom}
-              singleLine={staffPrefs.singleLine}
-              follow={staffPrefs.follow}
-              breaksFromScore={fixedLines}
-              onSeek={seekToBeat}
-              liveBeat={liveBeat}
-              marks={reviewMarks}
-              maxShare={transcription && takeStaff === "column" ? 0.26 : 0.45}
-            />
-          </div>
-          {transcription && (
-            <div className="staff-slot">
-              <span className="staff-label">Твой дубль</span>
-              <Staff
-                musicXml={transcription.musicXml}
-                beat={snapshot?.beat ?? 0}
-                zoom={staffPrefs.zoom}
-                singleLine={staffPrefs.singleLine}
-                follow={staffPrefs.follow}
-                breaksFromScore={fixedLines}
-                onSeek={seekToBeat}
-                liveBeat={liveBeat}
-                marks={transcription.marks}
-                maxShare={takeStaff === "column" ? 0.26 : 0.45}
-              />
+      <div className="workspace">
+        <div className="workspace-main">
+          {staffXml && staffPrefs.visible && (
+            <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
+              <div className="staff-slot">
+                {transcription && <span className="staff-label">Оригинал</span>}
+                <Staff
+                  musicXml={staffXml}
+                  beat={snapshot?.beat ?? 0}
+                  zoom={staffPrefs.zoom}
+                  singleLine={staffPrefs.singleLine}
+                  follow={staffPrefs.follow}
+                  breaksFromScore={fixedLines}
+                  onSeek={seekToBeat}
+                  liveBeat={liveBeat}
+                  marks={reviewMarks}
+                  maxShare={(transcription && takeStaff === "column" ? 0.26 : 0.45) * staffRoom}
+                />
+              </div>
+              {transcription && (
+                <div className="staff-slot">
+                  <span className="staff-label">Твой дубль</span>
+                  <Staff
+                    musicXml={transcription.musicXml}
+                    beat={snapshot?.beat ?? 0}
+                    zoom={staffPrefs.zoom}
+                    singleLine={staffPrefs.singleLine}
+                    follow={staffPrefs.follow}
+                    breaksFromScore={fixedLines}
+                    onSeek={seekToBeat}
+                    liveBeat={liveBeat}
+                    marks={transcription.marks}
+                    maxShare={(takeStaff === "column" ? 0.26 : 0.45) * staffRoom}
+                  />
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      <div className={`lanes lanes--${splitDirection}`}>
-        <div className="lane" ref={hostRef}>
-          {comparing && <span className="lane-label">Твой дубль</span>}
-        </div>
-        {comparing && (
-          <div className="lane" ref={mirrorHostRef}>
-            <span className="lane-label">Оригинал</span>
+          {/* Hidden, not removed: the view under it keeps the keys, the sound and the take going. */}
+          <div className={`lanes lanes--${splitDirection} lanes--${laneMode}`}>
+            <div className="lane" ref={hostRef}>
+              {comparing && <span className="lane-label">Твой дубль</span>}
+            </div>
+            {comparing && (
+              <div className="lane" ref={mirrorHostRef}>
+                <span className="lane-label">Оригинал</span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        <nav className="side-rail" aria-label="Что показывать">
+          <button
+            type="button"
+            className="rail-button"
+            aria-pressed={staffPrefs.visible}
+            title={staffPrefs.visible ? "Скрыть нотный стан" : "Показать нотный стан"}
+            disabled={!staffXml}
+            onClick={() => {
+              updateStaffPrefs({ visible: !staffPrefs.visible });
+            }}
+          >
+            <StaffIcon />
+          </button>
+          <button
+            type="button"
+            className="rail-button"
+            aria-pressed={staffPrefs.lane}
+            title={staffPrefs.lane ? "Скрыть падающие ноты" : "Показать падающие ноты"}
+            onClick={() => {
+              updateStaffPrefs({ lane: !staffPrefs.lane });
+            }}
+          >
+            <FallingNotesIcon />
+          </button>
+          <button
+            type="button"
+            className="rail-button"
+            aria-pressed={staffPrefs.keys}
+            title={staffPrefs.keys ? "Скрыть клавиатуру" : "Показать клавиатуру"}
+            onClick={() => {
+              updateStaffPrefs({ keys: !staffPrefs.keys });
+            }}
+          >
+            <KeyboardIcon />
+          </button>
+        </nav>
       </div>
 
       {snapshot?.finished && !listening && !comparing && stats && (

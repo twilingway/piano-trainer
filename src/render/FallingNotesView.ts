@@ -95,6 +95,9 @@ export class FallingNotesView {
   private digitTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
   private noteNames: FallingNoteNames | undefined;
+  private labels = false;
+  /** Which parts are on screen: the falling notes, the keyboard, or both. */
+  private parts = { notes: true, keys: true };
   private keys = new Map<number, KeyRect>();
   private range = { low: LOWEST_PITCH, high: HIGHEST_PITCH };
   private laidOutFor = { width: 0, height: 0 };
@@ -174,13 +177,28 @@ export class FallingNotesView {
   }
 
   setShowLabels(show: boolean): void {
-    this.keyStickers.visible = show;
+    this.labels = show;
+    this.keyStickers.visible = show && this.parts.keys;
     this.laidOutFor = { width: 0, height: 0 };
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */
   setRange(low: number, high: number): void {
     this.range = { low, high };
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  /**
+   * Shows the falling notes, the keyboard, or both. Without the notes the
+   * keys fill the view; without the keys the notes fall to its bottom edge.
+   */
+  setParts(parts: { notes: boolean; keys: boolean }): void {
+    this.parts = parts;
+    this.lane.visible = parts.notes;
+    this.guides.visible = parts.notes;
+    this.keyboard.visible = parts.keys;
+    this.keyHints.visible = parts.keys;
+    this.keyStickers.visible = this.labels && parts.keys;
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -268,7 +286,7 @@ export class FallingNotesView {
     }
 
     const dueByPitch = new Map(state.due.map((note) => [note.pitch, note]));
-    const stickers = this.keyStickers.visible;
+    const stickers = this.labels;
     for (const [pitch, sprite] of this.keySprites) {
       const due = dueByPitch.get(pitch);
       // The owed note wins: it is the one the player has to find next.
@@ -319,7 +337,13 @@ export class FallingNotesView {
   }
 
   private geometry(height: number): Geometry {
-    const stickers = this.keyStickers.visible;
+    const stickers = this.labels;
+    if (!this.parts.keys) return { keyboardTop: height, keyboardHeight: 0, blackHeight: 0 };
+    const blackOf = (keyboardHeight: number) =>
+      keyboardHeight * (stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT);
+    // Only the keys: they take the whole view, whatever its height.
+    if (!this.parts.notes)
+      return { keyboardTop: 0, keyboardHeight: height, blackHeight: blackOf(height) };
     const whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
     const wanted = Math.max(KEYBOARD_MIN_PX, whiteWidth * KEY_LENGTH_PER_WIDTH);
     const keyboardHeight = Math.min(wanted, height * MAX_KEYBOARD_SHARE);
