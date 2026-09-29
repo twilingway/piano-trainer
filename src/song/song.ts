@@ -11,6 +11,8 @@ export interface SongNote {
   /** Quarter notes from the start; what the staff cursor is synchronised by. */
   readonly startBeat: number;
   readonly hand: Hand;
+  /** Position of the note's <note> element among all of them, for MusicXML sources. */
+  readonly sourceIndex?: number;
   /** A finger written in the score; it pins the solver. */
   readonly scoreFinger?: Finger;
   readonly finger?: Finger;

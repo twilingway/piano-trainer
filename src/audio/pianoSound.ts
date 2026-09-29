@@ -17,6 +17,8 @@ function sampleUrls(): Record<string, string> {
 }
 
 let sampler: Tone.Sampler | undefined;
+/** Samples arrive over the network; a note struck before that is skipped, not an error. */
+let samplesReady = false;
 
 /** Must run from a user gesture: browsers keep audio suspended until then. */
 export async function startPianoSound(): Promise<void> {
@@ -27,6 +29,25 @@ export async function startPianoSound(): Promise<void> {
     baseUrl: "https://tonejs.github.io/audio/salamander/"
   }).toDestination();
   await Tone.loaded();
+  samplesReady = true;
+}
+
+/**
+ * Starts the sound on the first click or key press anywhere on the page, so
+ * keys played by mouse or computer keyboard sound before "Играть" is pressed.
+ */
+export function startSoundOnFirstGesture(): () => void {
+  const start = () => {
+    window.removeEventListener("pointerdown", start, true);
+    window.removeEventListener("keydown", start, true);
+    void startPianoSound();
+  };
+  window.addEventListener("pointerdown", start, true);
+  window.addEventListener("keydown", start, true);
+  return () => {
+    window.removeEventListener("pointerdown", start, true);
+    window.removeEventListener("keydown", start, true);
+  };
 }
 
 function noteName(pitch: number): string {
@@ -34,11 +55,11 @@ function noteName(pitch: number): string {
 }
 
 export function soundNoteOn(pitch: number): void {
-  sampler?.triggerAttack(noteName(pitch));
+  if (samplesReady) sampler?.triggerAttack(noteName(pitch));
 }
 
 export function soundNoteOff(pitch: number): void {
-  sampler?.triggerRelease(noteName(pitch));
+  if (samplesReady) sampler?.triggerRelease(noteName(pitch));
 }
 
 export function soundAllOff(): void {

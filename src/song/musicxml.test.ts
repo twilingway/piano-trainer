@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 
-import { songFromMusicXml } from "./musicxml";
+import { musicXmlWithFingering, songFromMusicXml } from "./musicxml";
+import { withFingering } from "./song";
 
 /*
  * Two staves, 4/4 at quarter = 60: the right hand plays C4 (finger 1), D4, then
@@ -75,5 +76,15 @@ describe("songFromMusicXml", () => {
 
   it("counts the second measure from the end of the first", () => {
     expect(song.notes.find((note) => note.pitch === 66)?.startBeat).toBe(5);
+  });
+
+  it("writes solved fingers back into the score it came from", () => {
+    const fingered = withFingering(song);
+    const annotated = songFromMusicXml(musicXmlWithFingering(SCORE, fingered.notes), "again");
+    // Every sounding note now carries its solved finger as written fingering.
+    expect(annotated.notes.map((note) => note.scoreFinger)).toEqual(
+      fingered.notes.map((note) => note.finger)
+    );
+    expect(annotated.notes.map((note) => note.pitch)).toEqual(song.notes.map((note) => note.pitch));
   });
 });

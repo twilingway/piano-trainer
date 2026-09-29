@@ -115,6 +115,7 @@ interface RawNote {
   durationBeats: number;
   hand: Hand;
   scoreFinger?: Finger;
+  sourceIndex: number;
 }
 
 /**
@@ -133,6 +134,8 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
     fallbackTitle;
 
   const parts = Array.from(score.querySelectorAll(":scope > part"));
+  // Every <note> by document order: how a solved finger finds its way back into the score.
+  const noteOrder = new Map(Array.from(document.querySelectorAll("note")).map((el, i) => [el, i]));
   const tempoMarks: TempoMark[] = [];
   const raw: RawNote[] = [];
   const measures: MeasureInfo[] = [];
@@ -213,6 +216,7 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
                   startBeat: measureStart + start / divisions,
                   durationBeats: duration / divisions,
                   hand: handFor(staff, pitch),
+                  sourceIndex: noteOrder.get(element) ?? -1,
                   ...(scoreFinger === undefined ? {} : { scoreFinger })
                 };
                 raw.push(note);
@@ -248,6 +252,7 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
       duration: beatToSeconds(note.startBeat + note.durationBeats, tempoMarks) - start,
       startBeat: note.startBeat,
       hand: note.hand,
+      sourceIndex: note.sourceIndex,
       ...(note.scoreFinger === undefined ? {} : { scoreFinger: note.scoreFinger })
     };
   });
@@ -265,4 +270,36 @@ export function songFromMusicXml(xml: string, fallbackTitle: string): Song {
     duration,
     musicXml: xml
   };
+}
+
+/**
+ * The score with every solved finger written into it as MusicXML fingering,
+ * so the staff shows the same fingers as the falling notes. Fingers already
+ * in the score are replaced by the solved ones, which include them anyway.
+ */
+export function musicXmlWithFingering(xml: string, notes: readonly SongNote[]): string {
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  const elements = Array.from(document.querySelectorAll("note"));
+  for (const note of notes) {
+    const element = note.sourceIndex === undefined ? undefined : elements[note.sourceIndex];
+    if (!element || note.finger === undefined) continue;
+    let notations = element.querySelector(":scope > notations");
+    if (!notations) {
+      notations = document.createElement("notations");
+      // MusicXML wants <notations> before <lyric>; everything else it follows.
+      element.insertBefore(notations, element.querySelector(":scope > lyric"));
+    }
+    let technical = notations.querySelector(":scope > technical");
+    if (!technical) {
+      technical = document.createElement("technical");
+      notations.appendChild(technical);
+    }
+    technical.querySelectorAll(":scope > fingering").forEach((old) => {
+      old.remove();
+    });
+    const fingering = document.createElement("fingering");
+    fingering.textContent = String(note.finger);
+    technical.appendChild(fingering);
+  }
+  return new XMLSerializer().serializeToString(document);
 }

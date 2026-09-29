@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 
-import { soundNoteOff, soundNoteOn, startPianoSound } from "./audio/pianoSound";
+import {
+  soundNoteOff,
+  soundNoteOn,
+  startPianoSound,
+  startSoundOnFirstGesture
+} from "./audio/pianoSound";
 import type { Finger, Hand } from "./fingering/fingering";
 import { listenToComputerKeyboard, listenToMidi, midiSupported } from "./input/midiInput";
 import type { KeyEvent, MidiDevice } from "./input/midiInput";
@@ -12,7 +17,7 @@ import { FallingNotesView } from "./render/FallingNotesView";
 import { EXERCISES } from "./song/exercises";
 import type { LevelId } from "./song/exercises";
 import { songFromMidi } from "./song/midi";
-import { musicXmlFromMxl, songFromMusicXml } from "./song/musicxml";
+import { musicXmlFromMxl, musicXmlWithFingering, songFromMusicXml } from "./song/musicxml";
 import { withFingering } from "./song/song";
 import type { Song } from "./song/song";
 import { Staff } from "./staff/Staff";
@@ -55,6 +60,37 @@ function loadOverrides(song: Song): Map<string, Finger> {
     return new Map(raw ? (JSON.parse(raw) as [string, Finger][]) : []);
   } catch {
     return new Map();
+  }
+}
+
+interface StaffPrefs {
+  readonly zoom: number;
+  readonly singleLine: boolean;
+  readonly follow: boolean;
+}
+
+const STAFF_PREFS_KEY = "staff-prefs";
+const DEFAULT_STAFF_PREFS: StaffPrefs = { zoom: 0.8, singleLine: false, follow: true };
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2;
+const ZOOM_STEP = 0.1;
+
+function loadStaffPrefs(): StaffPrefs {
+  try {
+    const raw = localStorage.getItem(STAFF_PREFS_KEY);
+    return raw
+      ? { ...DEFAULT_STAFF_PREFS, ...(JSON.parse(raw) as Partial<StaffPrefs>) }
+      : DEFAULT_STAFF_PREFS;
+  } catch {
+    return DEFAULT_STAFF_PREFS;
+  }
+}
+
+function saveStaffPrefs(prefs: StaffPrefs): void {
+  try {
+    localStorage.setItem(STAFF_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // Private mode: the staff just starts at the defaults next time.
   }
 }
 
@@ -129,6 +165,22 @@ export function App() {
   const viewRef = useRef<FallingNotesView | null>(null);
 
   const song = useMemo(() => withFingering(baseSong, overrides), [baseSong, overrides]);
+  // The staff shows the same fingers as the falling notes, corrections included.
+  const staffXml = useMemo(
+    () => (song.musicXml ? musicXmlWithFingering(song.musicXml, song.notes) : undefined),
+    [song]
+  );
+  const [staffPrefs, setStaffPrefs] = useState<StaffPrefs>(loadStaffPrefs);
+  const updateStaffPrefs = (change: Partial<StaffPrefs>) => {
+    const next = { ...staffPrefs, ...change };
+    saveStaffPrefs(next);
+    setStaffPrefs(next);
+  };
+  const resetFingers = () => {
+    const cleared = new Map<string, Finger>();
+    saveOverrides(baseSong, cleared);
+    setOverrides(cleared);
+  };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -168,6 +220,7 @@ export function App() {
 
   useEffect(() => {
     const onKey = (event: KeyEvent) => trainerRef.current?.key(event);
+    const stopWarmUp = startSoundOnFirstGesture();
     const stopKeyboard = listenToComputerKeyboard((event) => {
       // The computer keyboard has no voice of its own, unlike the piano.
       if (event.type === "down") soundNoteOn(event.pitch);
@@ -193,6 +246,7 @@ export function App() {
     }
     return () => {
       disposed = true;
+      stopWarmUp();
       stopKeyboard();
       stopMidi?.();
     };
@@ -442,7 +496,71 @@ export function App() {
         <span className="hint">Клик по ноте меняет палец</span>
       </div>
 
-      {song.musicXml && <Staff musicXml={song.musicXml} beat={snapshot?.beat ?? 0} />}
+      <div className="staff-bar">
+        {staffXml && (
+          <>
+            <span>Ноты</span>
+            <button
+              type="button"
+              aria-label="Мельче"
+              disabled={staffPrefs.zoom <= ZOOM_MIN + 1e-9}
+              onClick={() => {
+                updateStaffPrefs({
+                  zoom: Math.max(ZOOM_MIN, Math.round((staffPrefs.zoom - ZOOM_STEP) * 10) / 10)
+                });
+              }}
+            >
+              −
+            </button>
+            <span className="zoom">{Math.round(staffPrefs.zoom * 100)}%</span>
+            <button
+              type="button"
+              aria-label="Крупнее"
+              disabled={staffPrefs.zoom >= ZOOM_MAX - 1e-9}
+              onClick={() => {
+                updateStaffPrefs({
+                  zoom: Math.min(ZOOM_MAX, Math.round((staffPrefs.zoom + ZOOM_STEP) * 10) / 10)
+                });
+              }}
+            >
+              +
+            </button>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={!staffPrefs.singleLine}
+                onChange={(event) => {
+                  updateStaffPrefs({ singleLine: !event.target.checked });
+                }}
+              />
+              По строкам
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={staffPrefs.follow}
+                onChange={(event) => {
+                  updateStaffPrefs({ follow: event.target.checked });
+                }}
+              />
+              Следовать за игрой
+            </label>
+          </>
+        )}
+        <button type="button" onClick={resetFingers} disabled={overrides.size === 0}>
+          Сбросить пальцы
+        </button>
+      </div>
+
+      {staffXml && (
+        <Staff
+          musicXml={staffXml}
+          beat={snapshot?.beat ?? 0}
+          zoom={staffPrefs.zoom}
+          singleLine={staffPrefs.singleLine}
+          follow={staffPrefs.follow}
+        />
+      )}
 
       <div className="lane" ref={hostRef} />
 

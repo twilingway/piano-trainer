@@ -82,11 +82,51 @@ body {
   margin-left: auto;
 }
 
-/* Tall enough for both staves; a very tall score scrolls instead of eating the lane. */
+.staff-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 14px;
+  background: #1a1d27;
+}
+
+.staff-bar button {
+  font: inherit;
+  min-width: 28px;
+  padding: 2px 8px;
+  border: 1px solid #3a3f52;
+  border-radius: 6px;
+  background: #242838;
+  color: inherit;
+  cursor: pointer;
+}
+
+.staff-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.staff-bar .zoom {
+  min-width: 3em;
+  text-align: center;
+}
+
+.staff-bar .check {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* The reader drags the bottom edge to give the score or the lane more room. */
 .staff {
   flex: 0 0 auto;
-  max-height: 40dvh;
+  height: 34dvh;
+  min-height: 80px;
+  max-height: 80dvh;
   overflow: auto;
+  resize: vertical;
   background: #fbfaf5;
 }
 
