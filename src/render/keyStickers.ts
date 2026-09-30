@@ -48,9 +48,15 @@ export interface Placement {
   readonly octaveMark: string;
 }
 
-/** Middle C and above in the treble clef, below it in the bass clef. */
-export function placeOnStaff(pitch: number): Placement {
-  let position = diatonicStep(pitch) - (pitch >= 60 ? TREBLE_BOTTOM : BASS_BOTTOM);
+export type Clef = "treble" | "bass";
+
+/**
+ * Where a note sits on a staff: in `clef` if given (a hand's own staff),
+ * else middle C and above in the treble clef, below it in the bass clef.
+ */
+export function placeOnStaff(pitch: number, clef?: Clef): Placement {
+  const treble = clef === undefined ? pitch >= 60 : clef === "treble";
+  let position = diatonicStep(pitch) - (treble ? TREBLE_BOTTOM : BASS_BOTTOM);
   let shifted = 0;
   while (position > 8 + MAX_LEDGERS * 2) {
     position -= 7;

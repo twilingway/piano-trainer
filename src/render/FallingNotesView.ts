@@ -177,10 +177,14 @@ export class FallingNotesView {
   private notes: NoteSprite[] = [];
   private readonly keySprites = new Map<number, NineSliceSprite>();
   private readonly keyDigits = new Map<number, Sprite>();
+  /** The front part of a key, lit on its own for the left hand. */
+  private readonly keyFronts = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private digitTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
   private cardFrame: Texture = Texture.WHITE;
+  /** The left hand's frame, with a second ring. */
+  private cardFrameLeft: Texture = Texture.WHITE;
   private cardGlow: Texture = Texture.WHITE;
   private badgeTextures = new Map<Finger, Texture>();
   /** Card faces by pitch and written value, baked the first time a song needs one. */
@@ -248,7 +252,9 @@ export class FallingNotesView {
     this.badgeTextures = this.bakeDigits(0xffffff);
     this.nameTextures = this.bakeNames();
     this.cardFrame = bakeCardFrame(this.app.renderer);
+    this.cardFrameLeft = bakeCardFrame(this.app.renderer, true);
     this.cardGlow = bakeCardGlow(this.app.renderer);
+    const fronts: Sprite[] = [];
     for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
       const sprite = new NineSliceSprite({ texture: Texture.WHITE, ...NO_SLICE });
       sprite.eventMode = "static";
@@ -271,6 +277,12 @@ export class FallingNotesView {
       digit.anchor.set(0.5, 1);
       digit.visible = false;
       this.keyDigits.set(pitch, digit);
+      const front = new Sprite(Texture.WHITE);
+      front.eventMode = "none";
+      front.visible = false;
+      this.keyFronts.set(pitch, front);
+      // Over the keys, under their stickers and digits: added to the keyboard after the keys.
+      fronts.push(front);
       this.keyHints.addChild(digit);
       const sticker = new Sprite(bakeKeySticker(this.app.renderer, pitch));
       sticker.anchor.set(0.5, 1);
@@ -285,6 +297,7 @@ export class FallingNotesView {
         if (sprite && isBlackKey(pitch) === black) this.keyboard.addChild(sprite);
       }
     }
+    for (const front of fronts) this.keyboard.addChild(front);
     if (CODEX_KEYS) {
       try {
         const [white, black, blackLit] = await Promise.all(
@@ -410,13 +423,13 @@ export class FallingNotesView {
       );
       name.anchor.set(0.5, 1);
       name.eventMode = "none";
-      const frame = new Sprite(this.cardFrame);
+      const frame = new Sprite(note.hand === "left" ? this.cardFrameLeft : this.cardFrame);
       frame.anchor.set(0.5, 1);
       frame.eventMode = "static";
       frame.cursor = "pointer";
       frame.on("pointertap", () => this.onNoteClick?.(note.id));
       const glyph = noteGlyph(quartersAt(song, note.start + note.duration) - note.startBeat);
-      const face = new Sprite(this.cardFace(note.pitch, glyph));
+      const face = new Sprite(this.cardFace(note.pitch, glyph, note.hand));
       face.anchor.set(0.5, 1);
       face.eventMode = "none";
       const badge = new Sprite(note.finger ? this.badgeTextures.get(note.finger) : undefined);
@@ -551,12 +564,29 @@ export class FallingNotesView {
                 ? HAND_HINT[shown.hand]
                 : undefined;
       const key = this.keys.get(pitch);
+      // The left hand lights only the key's front part, the right hand all of it: the two
+      // hands tell apart where a finger's colour is the same.
+      const leftHand = shown?.hand === "left" && shown.finger !== undefined;
+      const whole = leftHand ? undefined : color;
       if (key?.black && this.keyTextures) {
         // A black key is repainted in pale grey for its colour to show; a white one is tinted as it is.
-        const face = color === undefined ? this.keyTextures.black : this.keyTextures.blackLit;
+        const face = whole === undefined ? this.keyTextures.black : this.keyTextures.blackLit;
         if (sprite.texture !== face) sprite.texture = face;
       }
-      sprite.tint = color ?? 0xffffff;
+      sprite.tint = whole ?? 0xffffff;
+      const front = this.keyFronts.get(pitch);
+      if (front) {
+        front.visible = leftHand && key !== undefined && color !== undefined;
+        if (front.visible && key && color !== undefined) {
+          const top = key.black ? keyboardTop + blackHeight * 0.5 : keyboardTop + blackHeight;
+          const bottom = keyboardTop + (key.black ? blackHeight - 3 : keyboardHeight - 2);
+          front.tint = color;
+          front.x = key.x + (key.black ? 2 : 1.5);
+          front.width = key.width - (key.black ? 4 : 3);
+          front.y = top;
+          front.height = Math.max(0, bottom - top);
+        }
+      }
       const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
       hint.visible = key !== undefined && shown?.finger !== undefined;
@@ -804,11 +834,12 @@ export class FallingNotesView {
     sprite.setSize(sprite.texture.width, height / scale);
   }
 
-  private cardFace(pitch: number, glyph: ReturnType<typeof noteGlyph>): Texture {
-    const key = `${String(pitch)}:${glyph.kind}:${String(glyph.dotted)}`;
+  private cardFace(pitch: number, glyph: ReturnType<typeof noteGlyph>, hand: Hand): Texture {
+    const key = `${String(pitch)}:${glyph.kind}:${String(glyph.dotted)}:${hand}`;
     let texture = this.cardFaces.get(key);
     if (!texture) {
-      texture = bakeCardFace(this.app.renderer, pitch, glyph);
+      const clef = hand === "left" ? "bass" : "treble";
+      texture = bakeCardFace(this.app.renderer, pitch, glyph, clef);
       this.cardFaces.set(key, texture);
     }
     return texture;

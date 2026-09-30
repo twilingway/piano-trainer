@@ -3,6 +3,7 @@ import type { Renderer, Texture } from "pixi.js";
 
 import { isBlackKey } from "../fingering/fingering";
 import { placeOnStaff } from "./keyStickers";
+import type { Clef } from "./keyStickers";
 import type { NoteGlyph } from "./noteGlyph";
 
 /*
@@ -37,13 +38,23 @@ function bake(renderer: Renderer, root: Container): Texture {
   return texture;
 }
 
-/** The white frame, a ring: tinted to the note's colour round the see-through face. */
-export function bakeCardFrame(renderer: Renderer): Texture {
+/**
+ * The white frame, a ring: tinted to the note's colour round the see-through
+ * face. The left hand's card has a second, inner ring, so the two hands tell
+ * apart at a glance even where a finger's colour is the same.
+ */
+export function bakeCardFrame(renderer: Renderer, double = false): Texture {
   const frame = new Graphics();
   const half = FRAME / 2;
   frame
     .roundRect(half, half, CARD_WIDTH - FRAME, CARD_HEIGHT - FRAME, RADIUS - half)
     .stroke({ width: FRAME, color: 0xffffff });
+  if (double) {
+    const inset = FRAME + 3;
+    frame
+      .roundRect(inset, inset, CARD_WIDTH - inset * 2, CARD_HEIGHT - inset * 2, RADIUS - inset / 2)
+      .stroke({ width: 1.6, color: 0xffffff });
+  }
   const root = new Container();
   root.addChild(frame);
   return bake(renderer, root);
@@ -73,8 +84,17 @@ export function bakeCardGlow(renderer: Renderer): Texture {
   return bake(renderer, root);
 }
 
-/** The face: staff lines, ledger lines, the note's head, stem, flags and dot, a sharp if black. */
-export function bakeCardFace(renderer: Renderer, pitch: number, glyph: NoteGlyph): Texture {
+/**
+ * The face: the hand's clef (treble for the right, bass for the left, as the
+ * score writes them), staff lines, ledger lines, the note's head, stem,
+ * flags and dot, a sharp if black.
+ */
+export function bakeCardFace(
+  renderer: Renderer,
+  pitch: number,
+  glyph: NoteGlyph,
+  clef: Clef
+): Texture {
   const inner = CARD_WIDTH - FRAME * 2;
   const g = new Graphics();
   g.roundRect(0, 0, inner, CARD_HEIGHT - FRAME * 2, RADIUS - FRAME).fill({
@@ -87,8 +107,8 @@ export function bakeCardFace(renderer: Renderer, pitch: number, glyph: NoteGlyph
     const y = STAFF_BOTTOM - line * SPACING;
     g.moveTo(left, y).lineTo(right, y);
   }
-  const { position, octaveMark } = placeOnStaff(pitch);
-  const x = inner * 0.56;
+  const { position, octaveMark } = placeOnStaff(pitch, clef);
+  const x = inner * 0.62;
   const y = STAFF_BOTTOM - (position * SPACING) / 2;
   for (let ledger = -2; ledger >= position; ledger -= 2) {
     const ly = STAFF_BOTTOM - (ledger * SPACING) / 2;
@@ -126,6 +146,12 @@ export function bakeCardFace(renderer: Renderer, pitch: number, glyph: NoteGlyph
 
   const root = new Container();
   root.addChild(g);
+  const top = STAFF_BOTTOM - 4 * SPACING;
+  root.addChild(
+    clef === "treble"
+      ? mark("\u{1D11E}", 38, 2, top - 13, CLEF_FONT)
+      : mark("\u{1D122}", 26, 3, top - 5, CLEF_FONT)
+  );
   if (isBlackKey(pitch)) root.addChild(mark("♯", 15, x - 17, y - 10));
   if (octaveMark !== "") {
     const above = octaveMark.endsWith("a");
@@ -136,10 +162,19 @@ export function bakeCardFace(renderer: Renderer, pitch: number, glyph: NoteGlyph
   return bake(renderer, root);
 }
 
-function mark(text: string, fontSize: number, x: number, y: number): Text {
+/** Fonts that carry the musical clef symbols on Windows, macOS and Linux. */
+const CLEF_FONT = '"Segoe UI Symbol", "Noto Music", "Apple Symbols", serif';
+
+function mark(
+  text: string,
+  fontSize: number,
+  x: number,
+  y: number,
+  fontFamily = "system-ui, sans-serif"
+): Text {
   const label = new Text({
     text,
-    style: { fontFamily: "system-ui, sans-serif", fontSize, fontWeight: "700", fill: INK },
+    style: { fontFamily, fontSize, fontWeight: "700", fill: INK },
     resolution: BAKE_RESOLUTION
   });
   label.x = x;
