@@ -146,7 +146,7 @@ export class FallingNotesView {
       this.keysRoot,
       this.road.effects
     );
-    await keyboard.loadCodexFaces();
+    await keyboard.loadPaintedFaces();
     this.ready = true;
   }
 

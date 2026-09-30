@@ -22,12 +22,23 @@ const PRESSED_DARKEN = 0.62;
 const FELT = 0x6e1616;
 const FELT_EDGE = 0xb33a3a;
 /*
- * Trial: key faces painted by Codex (public/generated/keys), stretched as
- * nine-slice sprites, instead of the ones baked in code. On with ?keys=codex.
+ * Key faces painted after the approved mockup (src/render/keys), stretched as
+ * nine-slice sprites: corners and the front bevel keep their size, the middle
+ * stretches. The "lit" faces are the same keys in neutral grey, for a tint to
+ * colour them. Should they fail to load, the faces baked in code stand in.
  */
-const CODEX_KEYS = new URLSearchParams(window.location.search).get("keys") === "codex";
-const WHITE_SLICE = { leftWidth: 32, topHeight: 32, rightWidth: 32, bottomHeight: 80 };
-const BLACK_SLICE = { leftWidth: 18, topHeight: 56, rightWidth: 18, bottomHeight: 96 };
+const PAINTED_FACES = {
+  white: new URL("./keys/white.webp", import.meta.url).href,
+  whiteLit: new URL("./keys/white-lit.webp", import.meta.url).href,
+  black: new URL("./keys/black.webp", import.meta.url).href,
+  blackLit: new URL("./keys/black-lit.webp", import.meta.url).href
+};
+const WHITE_SLICE = { leftWidth: 20, topHeight: 60, rightWidth: 20, bottomHeight: 64 };
+const BLACK_SLICE = { leftWidth: 16, topHeight: 178, rightWidth: 16, bottomHeight: 76 };
+
+interface PaintedFaces extends KeyTextures {
+  readonly whiteLit: Texture;
+}
 const NO_SLICE = { leftWidth: 0, topHeight: 0, rightWidth: 0, bottomHeight: 0 };
 /** Largest size of a finger digit on a key. */
 const DIGIT_MAX_PX = 26;
@@ -59,8 +70,8 @@ export class KeyboardLayer {
   private readonly keyFronts = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private keyTextures: KeyTextures | undefined;
-  /** Codex's key faces, when the trial is on; kept for good, never re-baked. */
-  private codexFaces: KeyTextures | undefined;
+  /** The painted key faces once loaded; kept for good, never re-baked. */
+  private painted: PaintedFaces | undefined;
   /** The owed chord by pitch, refilled every frame rather than made anew. */
   private readonly dueByPitch = new Map<number, SongNote>();
   /** The key the mouse holds down, if any. */
@@ -120,19 +131,18 @@ export class KeyboardLayer {
     for (const front of fronts) this.keyboard.addChild(front);
   }
 
-  /** Loads Codex's key faces when the trial asks for them; without them the baked keys stay. */
-  async loadCodexFaces(): Promise<void> {
-    if (!CODEX_KEYS) return;
+  /** Loads the painted key faces; without them the baked keys stay. */
+  async loadPaintedFaces(): Promise<void> {
     try {
-      const [white, black, blackLit] = await Promise.all(
-        ["white", "black", "black-lit"].map((name) =>
-          Assets.load<Texture>(`/generated/keys/${name}.png`)
-        )
-      );
-      if (white && black && blackLit) this.codexFaces = { white, black, blackLit };
+      const [white, whiteLit, black, blackLit] = await Promise.all([
+        Assets.load<Texture>(PAINTED_FACES.white),
+        Assets.load<Texture>(PAINTED_FACES.whiteLit),
+        Assets.load<Texture>(PAINTED_FACES.black),
+        Assets.load<Texture>(PAINTED_FACES.blackLit)
+      ]);
+      this.painted = { white, whiteLit, black, blackLit };
     } catch (error) {
-      // The faces are local drafts, not in the repository: without them the baked keys stay.
-      console.warn("Codex key faces did not load; using the baked keys", error);
+      console.warn("The painted key faces did not load; using the baked keys", error);
     }
   }
 
@@ -240,9 +250,17 @@ export class KeyboardLayer {
       // hands tell apart where a finger's colour is the same.
       const leftHand = shown?.hand === "left" && shown.finger !== undefined;
       const whole = leftHand ? undefined : color;
-      if (key?.black && this.keyTextures) {
-        // A black key is repainted in pale grey for its colour to show; a white one is tinted as it is.
-        const face = whole === undefined ? this.keyTextures.black : this.keyTextures.blackLit;
+      if (key && this.keyTextures) {
+        // A coloured key takes its grey face, so the tint shows true; a baked white key has none
+        // and is tinted as it is.
+        const lit = whole !== undefined;
+        const face = key.black
+          ? lit
+            ? this.keyTextures.blackLit
+            : this.keyTextures.black
+          : lit && this.painted
+            ? this.painted.whiteLit
+            : this.keyTextures.white;
         if (sprite.texture !== face) sprite.texture = face;
       }
       sprite.tint = whole ?? 0xffffff;
@@ -276,13 +294,13 @@ export class KeyboardLayer {
   }
 
   /**
-   * Puts a key on screen. A Codex face keeps its corners at the picture's own
+   * Puts a key on screen. A painted face keeps its corners at the picture's own
    * proportions: it is sized in picture pixels across and scaled to the key.
    */
   private placeKey(sprite: NineSliceSprite, x: number, y: number, width: number, height: number) {
     sprite.x = x;
     sprite.y = y;
-    if (!this.codexFaces) {
+    if (!this.painted) {
       sprite.scale.set(1);
       sprite.setSize(width, height);
       return;
@@ -299,11 +317,11 @@ export class KeyboardLayer {
     keyboardHeight: number,
     blackHeight: number
   ): void {
-    if (this.codexFaces) {
-      this.keyTextures = this.codexFaces;
+    if (this.painted) {
+      this.keyTextures = this.painted;
       for (const [pitch, sprite] of this.keySprites) {
         const isBlack = isBlackKey(pitch);
-        sprite.texture = isBlack ? this.codexFaces.black : this.codexFaces.white;
+        sprite.texture = isBlack ? this.painted.black : this.painted.white;
         Object.assign(sprite, isBlack ? BLACK_SLICE : WHITE_SLICE);
       }
       return;
