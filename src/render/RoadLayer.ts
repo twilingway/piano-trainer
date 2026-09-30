@@ -16,9 +16,9 @@ export interface Strike {
 }
 
 /** Half the width of the road at the horizon, as a share of the view's width. */
-const HORIZON_HALF_WIDTH = 0.12;
+const HORIZON_HALF_WIDTH = 0.05;
 /** How much narrower the keyboard is at its back edge than at its front, per side, as a share. */
-const KEYS_TILT = 0.035;
+const KEYS_TILT = 0.08;
 const GLOW_STRENGTH = 10;
 const GLOW_ALPHA = 0.9;
 const MAX_SPARKS = 400;
