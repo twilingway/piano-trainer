@@ -48,3 +48,34 @@ export function layoutKeyboard(
   }
   return keys;
 }
+
+/** White keys from `low` to `high`, both included. */
+export function whiteKeysBetween(low: number, high: number): number {
+  let count = 0;
+  for (let pitch = low; pitch <= high; pitch++) if (!isBlackKey(pitch)) count++;
+  return count;
+}
+
+/**
+ * Widens `low`–`high` to `whites` white keys, a key at a time on alternate
+ * sides so the song stays in the middle, and never past the piano's ends.
+ * A range already that wide is returned as it is.
+ */
+export function widenRange(low: number, high: number, whites: number): [number, number] {
+  let from = low;
+  let to = high;
+  let below = true;
+  while (whiteKeysBetween(from, to) < whites && (from > LOWEST_PITCH || to < HIGHEST_PITCH)) {
+    const canGoDown = from > LOWEST_PITCH;
+    const canGoUp = to < HIGHEST_PITCH;
+    if ((below && canGoDown) || !canGoUp) {
+      from--;
+      while (from > LOWEST_PITCH && isBlackKey(from)) from--;
+    } else {
+      to++;
+      while (to < HIGHEST_PITCH && isBlackKey(to)) to++;
+    }
+    below = !below;
+  }
+  return [from, to];
+}

@@ -4,11 +4,30 @@ import { isBlackKey } from "../fingering/fingering";
 import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
 import type { NoteStatus } from "../practice/session";
+import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
-import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
+import {
+  HIGHEST_PITCH,
+  LOWEST_PITCH,
+  layoutKeyboard,
+  whiteKeysBetween,
+  widenRange
+} from "./keyboardLayout";
+import { easePan, panToShow } from "./keyboardPan";
+import type { Span } from "./keyboardPan";
 import type { KeyRect } from "./keyboardLayout";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
+import {
+  CARD_FACE_OFFSET,
+  CARD_GLOW,
+  CARD_HEIGHT,
+  CARD_WIDTH,
+  bakeCardFace,
+  bakeCardFrame,
+  bakeCardGlow
+} from "./noteCards";
+import { noteGlyph } from "./noteGlyph";
 import { RoadLayer } from "./RoadLayer";
 import type { Strike } from "./RoadLayer";
 import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
@@ -74,9 +93,38 @@ const DIGIT_MAX_PX = 26;
 interface NoteSprite {
   readonly note: SongNote;
   readonly body: Sprite;
+  /** The note written on a little staff, at the head of the body, glowing in its colour. */
+  readonly glow: Sprite;
+  readonly frame: Sprite;
+  readonly face: Sprite;
+  /** The finger, on the card. */
+  readonly badge: Sprite;
   readonly digit: Sprite;
   readonly name: Sprite;
 }
+
+/*
+ * With the keys fitted to the song, a white key is kept between these widths,
+ * in CSS pixels, on any screen. A short song gets more keys round it rather
+ * than giant ones; a wide one keeps playable keys and the view scrolls along
+ * the keyboard to the keys to play next.
+ */
+const SONG_WHITE_MIN_PX = 56;
+const SONG_WHITE_MAX_PX = 90;
+/** Seconds the scroll takes to go most of the way to where it is headed. */
+const PAN_SMOOTHING_S = 0.35;
+/** How far ahead, as a share of the lane's time, the scroll looks for keys to bring in. */
+const PAN_LOOK_AHEAD = 0.6;
+/** How much a held fingered key darkens, so the press stands out from the hint. */
+const PRESSED_DARKEN = 0.62;
+/** Keys the scroll considers at most, earliest first. */
+const PAN_NOTES = 24;
+/** With cards on, the bar behind a card is a tail this share of its key wide. */
+const TAIL_SHARE = 0.28;
+/** A note card's width, in white-key widths, and its limits in pixels. */
+const CARD_PER_WIDTH = 1.9;
+const CARD_MIN_PX = 34;
+const CARD_MAX_PX = 96;
 
 export type FallingNoteNames = "ru" | "en";
 
@@ -111,6 +159,11 @@ export class FallingNotesView {
   private readonly guides = new Container();
   /** The guides and the notes together: on the stage flat, or drawn into the road. */
   private readonly laneRoot = new Container();
+  /**
+   * The note cards, over the lane on the stage in both views: flat they sit
+   * where the notes are, on the road they stand upright where the notes land.
+   */
+  private readonly cardsLayer = new Container({ sortableChildren: true });
   /** The keys and everything drawn on them: on the stage flat, or laid back under the road. */
   private readonly keysRoot = new Container();
   private road: RoadLayer | undefined;
@@ -126,9 +179,19 @@ export class FallingNotesView {
   private notes: NoteSprite[] = [];
   private readonly keySprites = new Map<number, NineSliceSprite>();
   private readonly keyDigits = new Map<number, Sprite>();
+  /** The front part of a key, lit on its own for the left hand. */
+  private readonly keyFronts = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private digitTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
+  private cardFrame: Texture = Texture.WHITE;
+  /** The left hand's frame, with a second ring. */
+  private cardFrameLeft: Texture = Texture.WHITE;
+  private cardGlow: Texture = Texture.WHITE;
+  private badgeTextures = new Map<Finger, Texture>();
+  /** Card faces by pitch and written value, baked the first time a song needs one. */
+  private readonly cardFaces = new Map<string, Texture>();
+  private cards = true;
   private noteNames: FallingNoteNames | undefined;
   private labels = false;
   /** Which parts are on screen: the falling notes, the keyboard, the hands over it. */
@@ -139,7 +202,15 @@ export class FallingNotesView {
   /** The player wants the road; it shows only while both the notes and the keys are on screen. */
   private roadWanted = false;
   private range = { low: LOWEST_PITCH, high: HIGHEST_PITCH };
+  /** The range follows the song, so the road may show more keys around it; a fixed range stays. */
+  private rangeFitsSong = false;
   private laidOutFor = { width: 0, height: 0 };
+  /** The next scroll lands on its target at once: a new song starts where its keys are. */
+  private panSnap = true;
+  /** The whole keyboard's width: wider than the view when it scrolls. */
+  private total = 0;
+  /** How far the view is scrolled along the keyboard. */
+  private pan = 0;
   private ready = false;
   private resizeObserver: ResizeObserver | undefined;
   /** The key the mouse holds down, if any. */
@@ -171,11 +242,23 @@ export class FallingNotesView {
       this.keyHints,
       this.hands.container
     );
-    this.app.stage.addChild(this.road.container, this.laneRoot, this.keysRoot, this.road.effects);
+    this.app.stage.addChild(
+      this.road.container,
+      this.laneRoot,
+      this.cardsLayer,
+      this.keysRoot,
+      this.road.effects
+    );
     this.keyStickers.eventMode = "none";
     this.keyStickers.visible = false;
     this.digitTextures = this.bakeDigits();
+    // Light digits for the cards' smoked glass.
+    this.badgeTextures = this.bakeDigits(0xffffff);
     this.nameTextures = this.bakeNames();
+    this.cardFrame = bakeCardFrame(this.app.renderer);
+    this.cardFrameLeft = bakeCardFrame(this.app.renderer, true);
+    this.cardGlow = bakeCardGlow(this.app.renderer);
+    const fronts: Sprite[] = [];
     for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
       const sprite = new NineSliceSprite({ texture: Texture.WHITE, ...NO_SLICE });
       sprite.eventMode = "static";
@@ -198,6 +281,12 @@ export class FallingNotesView {
       digit.anchor.set(0.5, 1);
       digit.visible = false;
       this.keyDigits.set(pitch, digit);
+      const front = new Sprite(Texture.WHITE);
+      front.eventMode = "none";
+      front.visible = false;
+      this.keyFronts.set(pitch, front);
+      // Over the keys, under their stickers and digits: added to the keyboard after the keys.
+      fronts.push(front);
       this.keyHints.addChild(digit);
       const sticker = new Sprite(bakeKeySticker(this.app.renderer, pitch));
       sticker.anchor.set(0.5, 1);
@@ -212,6 +301,7 @@ export class FallingNotesView {
         if (sprite && isBlackKey(pitch) === black) this.keyboard.addChild(sprite);
       }
     }
+    for (const front of fronts) this.keyboard.addChild(front);
     if (CODEX_KEYS) {
       try {
         const [white, black, blackLit] = await Promise.all(
@@ -239,6 +329,11 @@ export class FallingNotesView {
     }
   }
 
+  /** Each falling note carries a card with the note written on a staff; off, plain bars. */
+  setNoteCards(on: boolean): void {
+    this.cards = on;
+  }
+
   setShowLabels(show: boolean): void {
     this.labels = show;
     this.keyStickers.visible = show && this.parts.keys;
@@ -246,8 +341,9 @@ export class FallingNotesView {
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */
-  setRange(low: number, high: number): void {
+  setRange(low: number, high: number, fitsSong = false): void {
     this.range = { low, high };
+    this.rangeFitsSong = fitsSong;
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -260,6 +356,7 @@ export class FallingNotesView {
     this.parts = { notes: parts.notes, keys: parts.keys, hands: parts.hands === true };
     this.hands.container.visible = this.parts.hands && parts.keys;
     this.lane.visible = parts.notes;
+    this.cardsLayer.visible = parts.notes;
     this.guides.visible = parts.notes;
     this.keyboard.visible = parts.keys;
     this.felt.visible = parts.keys;
@@ -281,9 +378,9 @@ export class FallingNotesView {
     this.syncRoad();
   }
 
-  /** Puts the road on or off: on only when asked for and both the notes and the keys show. */
+  /** Puts the road on or off: on when asked for and the notes show, with or without the keys. */
   private syncRoad(): void {
-    const on = this.roadWanted && this.parts.notes && this.parts.keys;
+    const on = this.roadWanted && this.parts.notes;
     if (!this.road || on === this.roadMode) return;
     this.roadMode = on;
     this.road.container.visible = on;
@@ -291,7 +388,7 @@ export class FallingNotesView {
     if (on) this.app.stage.removeChild(this.laneRoot, this.keysRoot);
     else {
       this.app.stage.addChildAt(this.laneRoot, 1);
-      this.app.stage.addChildAt(this.keysRoot, 2);
+      this.app.stage.addChildAt(this.keysRoot, 3);
     }
     this.laidOutFor = { width: 0, height: 0 };
   }
@@ -309,8 +406,17 @@ export class FallingNotesView {
       sprite.body.destroy();
       sprite.digit.destroy();
       sprite.name.destroy();
+      sprite.frame.destroy();
+      sprite.face.destroy();
+      sprite.glow.destroy();
+      sprite.badge.destroy();
     }
-    this.notes = song.notes.map((note) => {
+    // Faces of the last song: baked per pitch, value and hand, they go with it.
+    for (const texture of this.cardFaces.values()) texture.destroy(true);
+    this.cardFaces.clear();
+    // The new song's keys are elsewhere: the scroll lands on them rather than gliding there.
+    this.panSnap = true;
+    this.notes = song.notes.map((note, order) => {
       const body = new Sprite(Texture.WHITE);
       body.eventMode = "static";
       body.cursor = "pointer";
@@ -326,8 +432,32 @@ export class FallingNotesView {
       );
       name.anchor.set(0.5, 1);
       name.eventMode = "none";
+      const frame = new Sprite(note.hand === "left" ? this.cardFrameLeft : this.cardFrame);
+      frame.anchor.set(0.5, 1);
+      frame.eventMode = "static";
+      frame.cursor = "pointer";
+      frame.on("pointertap", () => this.onNoteClick?.(note.id));
+      const glyph = noteGlyph(quartersAt(song, note.start + note.duration) - note.startBeat);
+      const face = new Sprite(this.cardFace(note.pitch, glyph, note.hand));
+      face.anchor.set(0.5, 1);
+      face.eventMode = "none";
+      const badge = new Sprite(note.finger ? this.badgeTextures.get(note.finger) : undefined);
+      badge.anchor.set(0.5, 0);
+      badge.eventMode = "none";
+      // Nearer notes in front: on the road the earlier note is the closer one. By order in
+      // the song, not by time, so a card's glow, frame, face and badge never mix with a
+      // neighbour's, a chord's included.
+      const glow = new Sprite(this.cardGlow);
+      glow.anchor.set(0.5, 1);
+      glow.eventMode = "none";
+      glow.blendMode = "add";
+      glow.zIndex = -order * 4;
+      frame.zIndex = glow.zIndex + 1;
+      face.zIndex = glow.zIndex + 2;
+      badge.zIndex = glow.zIndex + 3;
       this.lane.addChild(body, digit, name);
-      return { note, body, digit, name };
+      this.cardsLayer.addChild(glow, frame, face, badge);
+      return { note, body, glow, frame, face, badge, digit, name };
     });
   }
 
@@ -340,10 +470,16 @@ export class FallingNotesView {
     const geometry = this.geometry(height);
     const { keyboardTop, keyboardHeight, blackHeight, hitY } = geometry;
     const pixelsPerSecond = hitY / state.lookAhead;
+    this.scroll(state, width);
 
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = new Map<number, SongNote>();
-    for (const { note, body, digit, name } of this.notes) {
+    const cardWidth = Math.min(
+      CARD_MAX_PX,
+      Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
+    );
+    const cardScale = cardWidth / CARD_WIDTH;
+    for (const { note, body, glow, frame, face, badge, digit, name } of this.notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
         playing.set(note.pitch, note);
       }
@@ -351,15 +487,23 @@ export class FallingNotesView {
       const bottom = hitY - (note.start - state.time) * pixelsPerSecond;
       const noteHeight = Math.max(note.duration * pixelsPerSecond - NOTE_GAP_PX, 4);
       const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
+      // With cards the bar thins to a tail behind the card: the length still shows.
       body.visible = onScreen;
-      digit.visible = onScreen && note.finger !== undefined;
+      frame.visible = onScreen && this.cards;
+      face.visible = frame.visible;
+      glow.visible = frame.visible;
+      badge.visible = frame.visible && note.finger !== undefined;
+      digit.visible = onScreen && !this.cards && note.finger !== undefined;
       name.visible = false;
       if (!onScreen) continue;
 
       const playerNote = state.hands.has(note.hand);
       const status = state.statusOf(note.id);
-      body.x = key.x + NOTE_GAP_PX;
-      body.width = key.width - NOTE_GAP_PX * 2;
+      const barWidth = this.cards ? key.width * TAIL_SHARE : key.width - NOTE_GAP_PX * 2;
+      body.x = key.x + (key.width - barWidth) / 2;
+      body.width = barWidth;
+      // The tail runs the note's whole length, so lengths compare; the card's glass covers
+      // its head.
       body.y = bottom - noteHeight;
       body.height = noteHeight;
       const custom = state.colorOf?.(note);
@@ -374,6 +518,32 @@ export class FallingNotesView {
       digit.x = key.x + key.width / 2;
       digit.y = bottom - 2;
       digit.alpha = body.alpha;
+      if (this.cards) {
+        // The card stands where the note lands; on the road it faces the player and
+        // grows as it comes nearer.
+        const centre = key.x + key.width / 2;
+        // A sounding note's card waits on the hit line rather than sliding over the keys.
+        const landing = Math.min(bottom, hitY);
+        const spot = this.roadMode ? this.road?.place(centre, landing) : undefined;
+        const scale = cardScale * (spot?.scale ?? 1);
+        const x = spot?.x ?? centre;
+        const y = spot?.y ?? landing;
+        glow.scale.set(scale);
+        glow.position.set(x, y + CARD_GLOW * scale);
+        glow.tint = body.tint;
+        glow.alpha = body.alpha;
+        frame.scale.set(scale);
+        frame.position.set(x, y);
+        frame.tint = body.tint;
+        frame.alpha = body.alpha;
+        face.scale.set(scale);
+        face.position.set(x, y - CARD_FACE_OFFSET * scale);
+        face.alpha = body.alpha;
+        badge.scale.set(scale * 0.55);
+        badge.position.set(x, y - (CARD_HEIGHT - CARD_FACE_OFFSET - 1) * scale);
+        badge.alpha = body.alpha;
+        continue;
+      }
       if (this.noteNames) {
         // Over the finger, when the note is tall enough to hold both.
         name.scale.set(Math.min(1, (key.width * 0.92) / Math.max(name.texture.width, 1)));
@@ -392,22 +562,45 @@ export class FallingNotesView {
       // The owed note wins: it is the one the player has to find next.
       const shown = due ?? playing.get(pitch);
       const pressed = state.pressed.has(pitch);
-      const color = pressed
-        ? PRESSED_COLOR
-        : state.sounding.has(pitch)
-          ? SOUNDING_COLOR
-          : shown
-            ? shown.finger !== undefined
-              ? FINGER_COLOR[shown.finger]
-              : HAND_HINT[shown.hand]
-            : undefined;
+      // A key with a fingered note is its finger's colour whoever plays it; the press and
+      // the program's own colours are for keys without one.
+      // Held by the player, a fingered key darkens: the press stands out from the hint.
+      const color =
+        shown?.finger !== undefined
+          ? pressed
+            ? darken(FINGER_COLOR[shown.finger], PRESSED_DARKEN)
+            : FINGER_COLOR[shown.finger]
+          : pressed
+            ? PRESSED_COLOR
+            : state.sounding.has(pitch)
+              ? SOUNDING_COLOR
+              : shown
+                ? HAND_HINT[shown.hand]
+                : undefined;
       const key = this.keys.get(pitch);
+      // The left hand lights only the key's front part, the right hand all of it: the two
+      // hands tell apart where a finger's colour is the same.
+      const leftHand = shown?.hand === "left" && shown.finger !== undefined;
+      const whole = leftHand ? undefined : color;
       if (key?.black && this.keyTextures) {
         // A black key is repainted in pale grey for its colour to show; a white one is tinted as it is.
-        const face = color === undefined ? this.keyTextures.black : this.keyTextures.blackLit;
+        const face = whole === undefined ? this.keyTextures.black : this.keyTextures.blackLit;
         if (sprite.texture !== face) sprite.texture = face;
       }
-      sprite.tint = color ?? 0xffffff;
+      sprite.tint = whole ?? 0xffffff;
+      const front = this.keyFronts.get(pitch);
+      if (front) {
+        front.visible = leftHand && key !== undefined && color !== undefined;
+        if (front.visible && key && color !== undefined) {
+          const top = key.black ? keyboardTop + blackHeight * 0.5 : keyboardTop + blackHeight;
+          const bottom = keyboardTop + (key.black ? blackHeight - 3 : keyboardHeight - 2);
+          front.tint = color;
+          front.x = key.x + (key.black ? 2 : 1.5);
+          front.width = key.width - (key.black ? 4 : 3);
+          front.y = top;
+          front.height = Math.max(0, bottom - top);
+        }
+      }
       const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
       hint.visible = key !== undefined && shown?.finger !== undefined;
@@ -439,6 +632,40 @@ export class FallingNotesView {
     }
   }
 
+  /**
+   * Scrolls a keyboard wider than the view towards the keys to play next,
+   * the player's hands' first (every hand's when listening), smoothly.
+   */
+  private scroll(state: FrameState, width: number): void {
+    let pan = 0;
+    if (this.total > width) {
+      const until = state.time + state.lookAhead * PAN_LOOK_AHEAD;
+      const spans: Span[] = [];
+      for (const { note } of this.notes) {
+        if (note.start >= until) break;
+        if (note.start + note.duration <= state.time) continue;
+        if (state.hands.size > 0 && !state.hands.has(note.hand)) continue;
+        const key = this.keys.get(note.pitch);
+        if (key) spans.push({ left: key.x, right: key.x + key.width });
+        if (spans.length >= PAN_NOTES) break;
+      }
+      const target = panToShow(this.pan, spans, width, this.total, this.whiteWidth);
+      pan = this.panSnap
+        ? target
+        : easePan(this.pan, target, this.app.ticker.deltaMS / 1000, PAN_SMOOTHING_S);
+      // The ease never quite arrives: settle once it is within half a pixel.
+      if (Math.abs(target - pan) < 0.5) pan = target;
+    }
+    this.panSnap = false;
+    this.pan = pan;
+    // Flat, the lane and the keys slide; on the road they are pictures and the road scrolls them.
+    const flat = this.roadMode ? 0 : -pan;
+    this.laneRoot.x = flat;
+    this.keysRoot.x = flat;
+    this.cardsLayer.x = flat;
+    if (this.roadMode) this.road?.setPan(pan);
+  }
+
   private pressWithMouse(pitch: number): void {
     if (this.mouseKey === pitch) return;
     this.releaseMouse();
@@ -461,6 +688,16 @@ export class FallingNotesView {
       this.keysRoot.destroy({ children: true });
     }
     this.road?.destroy();
+    const baked = [
+      ...this.cardFaces.values(),
+      ...this.digitTextures.values(),
+      ...this.badgeTextures.values(),
+      ...this.nameTextures.values(),
+      this.cardFrame,
+      this.cardFrameLeft,
+      this.cardGlow
+    ];
+    for (const texture of baked) if (texture !== Texture.WHITE) texture.destroy(true);
     this.app.destroy({ removeView: true }, { children: true });
   }
 
@@ -505,7 +742,21 @@ export class FallingNotesView {
 
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
-    this.keys = layoutKeyboard(width, this.range.low, this.range.high);
+    let [low, high] = [this.range.low, this.range.high];
+    let total = width;
+    if (this.rangeFitsSong) {
+      const whites = Math.max(1, whiteKeysBetween(low, high));
+      if (width / whites > SONG_WHITE_MAX_PX) {
+        // Few keys: more round the song, so none is giant.
+        [low, high] = widenRange(low, high, Math.ceil(width / SONG_WHITE_MAX_PX));
+      } else if (width / whites < SONG_WHITE_MIN_PX) {
+        // Many keys: keep them playable and scroll.
+        total = whites * SONG_WHITE_MIN_PX;
+      }
+    }
+    this.total = total;
+    this.pan = Math.min(this.pan, Math.max(0, total - width));
+    this.keys = layoutKeyboard(total, low, high);
     this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
     const { keyboardTop, keyboardHeight, blackHeight, hitY, feltHeight } = this.geometry(height);
     this.bakeKeys(keyboardHeight, blackHeight);
@@ -562,23 +813,27 @@ export class FallingNotesView {
       child.destroy();
     });
     // The road ends on the felt, where the notes meet the keys.
-    this.road?.layout(width, hitY, height);
+    // Each octave its own road: the lane is cut at every C.
+    const octaves = [...this.keys.values()]
+      .filter((key) => key.pitch % 12 === 0)
+      .map((key) => key.x);
+    this.road?.layout(total, hitY, height, octaves, width);
     const felt = new Sprite(Texture.WHITE);
     felt.tint = FELT;
     felt.y = keyboardTop - feltHeight;
-    felt.width = width;
+    felt.width = total;
     felt.height = feltHeight;
     const feltEdge = new Sprite(Texture.WHITE);
     feltEdge.tint = FELT_EDGE;
     feltEdge.y = keyboardTop - feltHeight;
-    feltEdge.width = width;
+    feltEdge.width = total;
     feltEdge.height = 1;
     // The felt throws a thin shadow on the tops of the keys.
     const feltShade = new Sprite(Texture.WHITE);
     feltShade.tint = 0x000000;
     feltShade.alpha = 0.25;
     feltShade.y = keyboardTop;
-    feltShade.width = width;
+    feltShade.width = total;
     feltShade.height = 2;
     this.felt.addChild(felt, feltEdge, feltShade);
 
@@ -586,7 +841,7 @@ export class FallingNotesView {
     hitLine.tint = HIT_LINE;
     hitLine.alpha = 0.5;
     hitLine.y = hitY - 1;
-    hitLine.width = width;
+    hitLine.width = total;
     hitLine.height = 2;
     this.guides.addChild(hitLine);
   }
@@ -606,6 +861,17 @@ export class FallingNotesView {
     const scale = width / sprite.texture.width;
     sprite.scale.set(scale);
     sprite.setSize(sprite.texture.width, height / scale);
+  }
+
+  private cardFace(pitch: number, glyph: ReturnType<typeof noteGlyph>, hand: Hand): Texture {
+    const key = `${String(pitch)}:${glyph.kind}:${String(glyph.dotted)}:${hand}`;
+    let texture = this.cardFaces.get(key);
+    if (!texture) {
+      const clef = hand === "left" ? "bass" : "treble";
+      texture = bakeCardFace(this.app.renderer, pitch, glyph, clef);
+      this.cardFaces.set(key, texture);
+    }
+    return texture;
   }
 
   /** Key faces at this keyboard's size; the old ones are freed once replaced. */
@@ -660,7 +926,7 @@ export class FallingNotesView {
     return textures;
   }
 
-  private bakeDigits(): Map<Finger, Texture> {
+  private bakeDigits(fill = 0x10121a): Map<Finger, Texture> {
     const textures = new Map<Finger, Texture>();
     for (const finger of [1, 2, 3, 4, 5] as const) {
       const text = new Text({
@@ -669,7 +935,7 @@ export class FallingNotesView {
           fontFamily: "system-ui, sans-serif",
           fontSize: 32,
           fontWeight: "700",
-          fill: 0x10121a
+          fill
         },
         resolution: 2
       });
@@ -678,4 +944,10 @@ export class FallingNotesView {
     }
     return textures;
   }
+}
+
+/** A colour with each channel scaled by `factor`. */
+function darken(color: number, factor: number): number {
+  const channel = (shift: number) => Math.round(((color >> shift) & 0xff) * factor) << shift;
+  return channel(16) | channel(8) | channel(0);
 }
