@@ -6,7 +6,15 @@ import type { KeyEvent } from "../input/midiInput";
 import type { NoteStatus } from "../practice/session";
 import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
-import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard, widenRange } from "./keyboardLayout";
+import {
+  HIGHEST_PITCH,
+  LOWEST_PITCH,
+  layoutKeyboard,
+  whiteKeysBetween,
+  widenRange
+} from "./keyboardLayout";
+import { easePan, panToShow } from "./keyboardPan";
+import type { Span } from "./keyboardPan";
 import type { KeyRect } from "./keyboardLayout";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
@@ -95,12 +103,20 @@ interface NoteSprite {
   readonly name: Sprite;
 }
 
-/**
- * On the road, with the keys fitted to the song, a white key is this many
- * CSS pixels wide on any screen: a wider screen shows more keys around the
- * song, not bigger ones.
+/*
+ * With the keys fitted to the song, a white key is kept between these widths,
+ * in CSS pixels, on any screen. A short song gets more keys round it rather
+ * than giant ones; a wide one keeps playable keys and the view scrolls along
+ * the keyboard to the keys to play next.
  */
-const ROAD_WHITE_PX = 48;
+const SONG_WHITE_MIN_PX = 56;
+const SONG_WHITE_MAX_PX = 90;
+/** Seconds the scroll takes to go most of the way to where it is headed. */
+const PAN_SMOOTHING_S = 0.35;
+/** How far ahead, as a share of the lane's time, the scroll looks for keys to bring in. */
+const PAN_LOOK_AHEAD = 0.6;
+/** Keys the scroll considers at most, earliest first. */
+const PAN_NOTES = 24;
 /** With cards on, the bar behind a card is a tail this share of its key wide. */
 const TAIL_SHARE = 0.28;
 /** A note card's width, in white-key widths, and its limits in pixels. */
@@ -183,6 +199,10 @@ export class FallingNotesView {
   /** The range follows the song, so the road may show more keys around it; a fixed range stays. */
   private rangeFitsSong = false;
   private laidOutFor = { width: 0, height: 0 };
+  /** The whole keyboard's width: wider than the view when it scrolls. */
+  private total = 0;
+  /** How far the view is scrolled along the keyboard. */
+  private pan = 0;
   private ready = false;
   private resizeObserver: ResizeObserver | undefined;
   /** The key the mouse holds down, if any. */
@@ -426,6 +446,7 @@ export class FallingNotesView {
     const geometry = this.geometry(height);
     const { keyboardTop, keyboardHeight, blackHeight, hitY } = geometry;
     const pixelsPerSecond = hitY / state.lookAhead;
+    this.scroll(state, width);
 
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = new Map<number, SongNote>();
@@ -567,6 +588,35 @@ export class FallingNotesView {
     }
   }
 
+  /**
+   * Scrolls a keyboard wider than the view towards the keys to play next,
+   * the player's hands' first (every hand's when listening), smoothly.
+   */
+  private scroll(state: FrameState, width: number): void {
+    let pan = 0;
+    if (this.total > width) {
+      const until = state.time + state.lookAhead * PAN_LOOK_AHEAD;
+      const spans: Span[] = [];
+      for (const { note } of this.notes) {
+        if (note.start >= until) break;
+        if (note.start + note.duration <= state.time) continue;
+        if (state.hands.size > 0 && !state.hands.has(note.hand)) continue;
+        const key = this.keys.get(note.pitch);
+        if (key) spans.push({ left: key.x, right: key.x + key.width });
+        if (spans.length >= PAN_NOTES) break;
+      }
+      const target = panToShow(this.pan, spans, width, this.total, this.whiteWidth);
+      pan = easePan(this.pan, target, this.app.ticker.deltaMS / 1000, PAN_SMOOTHING_S);
+    }
+    this.pan = pan;
+    // Flat, the lane and the keys slide; on the road they are pictures and the road scrolls them.
+    const flat = this.roadMode ? 0 : -pan;
+    this.laneRoot.x = flat;
+    this.keysRoot.x = flat;
+    this.cardsLayer.x = flat;
+    this.road?.setPan(pan);
+  }
+
   private pressWithMouse(pitch: number): void {
     if (this.mouseKey === pitch) return;
     this.releaseMouse();
@@ -633,11 +683,21 @@ export class FallingNotesView {
 
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
-    const [low, high] =
-      this.roadMode && this.rangeFitsSong
-        ? widenRange(this.range.low, this.range.high, Math.round(width / ROAD_WHITE_PX))
-        : [this.range.low, this.range.high];
-    this.keys = layoutKeyboard(width, low, high);
+    let [low, high] = [this.range.low, this.range.high];
+    let total = width;
+    if (this.rangeFitsSong) {
+      const whites = Math.max(1, whiteKeysBetween(low, high));
+      if (width / whites > SONG_WHITE_MAX_PX) {
+        // Few keys: more round the song, so none is giant.
+        [low, high] = widenRange(low, high, Math.ceil(width / SONG_WHITE_MAX_PX));
+      } else if (width / whites < SONG_WHITE_MIN_PX) {
+        // Many keys: keep them playable and scroll.
+        total = whites * SONG_WHITE_MIN_PX;
+      }
+    }
+    this.total = total;
+    this.pan = Math.min(this.pan, Math.max(0, total - width));
+    this.keys = layoutKeyboard(total, low, high);
     this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
     const { keyboardTop, keyboardHeight, blackHeight, hitY, feltHeight } = this.geometry(height);
     this.bakeKeys(keyboardHeight, blackHeight);
@@ -698,23 +758,23 @@ export class FallingNotesView {
     const octaves = [...this.keys.values()]
       .filter((key) => key.pitch % 12 === 0)
       .map((key) => key.x);
-    this.road?.layout(width, hitY, height, octaves);
+    this.road?.layout(total, hitY, height, octaves, width);
     const felt = new Sprite(Texture.WHITE);
     felt.tint = FELT;
     felt.y = keyboardTop - feltHeight;
-    felt.width = width;
+    felt.width = total;
     felt.height = feltHeight;
     const feltEdge = new Sprite(Texture.WHITE);
     feltEdge.tint = FELT_EDGE;
     feltEdge.y = keyboardTop - feltHeight;
-    feltEdge.width = width;
+    feltEdge.width = total;
     feltEdge.height = 1;
     // The felt throws a thin shadow on the tops of the keys.
     const feltShade = new Sprite(Texture.WHITE);
     feltShade.tint = 0x000000;
     feltShade.alpha = 0.25;
     feltShade.y = keyboardTop;
-    feltShade.width = width;
+    feltShade.width = total;
     feltShade.height = 2;
     this.felt.addChild(felt, feltEdge, feltShade);
 
@@ -722,7 +782,7 @@ export class FallingNotesView {
     hitLine.tint = HIT_LINE;
     hitLine.alpha = 0.5;
     hitLine.y = hitY - 1;
-    hitLine.width = width;
+    hitLine.width = total;
     hitLine.height = 2;
     this.guides.addChild(hitLine);
   }

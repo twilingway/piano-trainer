@@ -69,8 +69,12 @@ export class RoadLayer {
   /** One road and one glow a strip of the lane, an octave each. */
   private readonly roads = new Container();
   private readonly glows = new Container();
-  private strips: { readonly left: number; readonly right: number; readonly texture: Texture }[] =
-    [];
+  private strips: {
+    readonly left: number;
+    readonly right: number;
+    readonly texture: Texture;
+    readonly meshes: readonly PerspectiveMesh[];
+  }[] = [];
   private readonly hitLine = new Graphics();
   private readonly sparkTexture: Texture;
   private readonly sparks: Spark[] = [];
@@ -78,8 +82,13 @@ export class RoadLayer {
   /** The hit line on screen: where the road meets the keys. */
   private hit = { y: 0, left: 0, right: 0 };
   private keysShift = new Matrix();
-  /** Where a point of the flat scene lands in perspective; undefined before the first layout. */
-  private projector: ((x: number, y: number) => Projected) | undefined;
+  /** The camera over the floor; undefined before the first layout. */
+  private camera: ReturnType<typeof floorCamera> | undefined;
+  /** How far the view is scrolled along a keyboard wider than it, in the scene's pixels. */
+  private pan = 0;
+  /** The view's width: the scene (the whole keyboard) may be wider. */
+  private viewWidth = 0;
+  private hitY = 0;
   private clock = 0;
   /** Sparks owed to each held key: the fraction of a spark carried to the next frame. */
   private held = new Map<number, number>();
@@ -100,40 +109,63 @@ export class RoadLayer {
   }
 
   /**
-   * Lays the flat scene — the lane down to the hit line at `height`, the keys
-   * under it down to `bottom` — on the floor in perspective, the lane cut at
+   * Lays the flat scene — `width` wide, the lane down to the hit line at
+   * `height`, the keys under it down to `bottom` — on the floor in
+   * perspective, seen through a view `viewWidth` wide, the lane cut at
    * `splits` (the x of every C) into roads of their own.
    */
-  layout(width: number, height: number, bottom: number, splits: readonly number[]): void {
-    if (width < 1 || height < 1 || bottom < height) return;
+  layout(
+    width: number,
+    height: number,
+    bottom: number,
+    splits: readonly number[],
+    viewWidth: number
+  ): void {
+    if (width < 1 || viewWidth < 1 || height < 1 || bottom < height) return;
     this.size = { width, height };
+    this.viewWidth = viewWidth;
     this.texture.source.resize(width, height, this.renderer.resolution);
     const keysHeight = bottom - height;
     // Without keys the road runs down to the bottom and there is no keyboard to lay.
     this.keys.visible = keysHeight >= 1;
-    this.keysTexture.source.resize(width, Math.max(1, keysHeight), this.renderer.resolution);
-    this.keysShift = new Matrix().translate(0, -height);
-    const hitY = bottom - keysHeight * KEYS_SQUASH;
-    const camera = floorCamera(width, hitY, hitY * HORIZON_Y);
-    this.layStrips(width, height, hitY, splits, camera);
-    this.projector = (x, y) => {
-      const strip = this.strips.find((item) => x < item.right) ?? this.strips.at(-1);
-      const centre = strip ? (strip.left + strip.right) / 2 : width / 2;
-      return camera.at(x, depthBetween(ROAD_DEPTH, 1, Math.min(1, y / height)), centre);
-    };
+    this.keysTexture.source.resize(viewWidth, Math.max(1, keysHeight), this.renderer.resolution);
+    this.hitY = bottom - keysHeight * KEYS_SQUASH;
+    this.camera = floorCamera(viewWidth, this.hitY, this.hitY * HORIZON_Y);
+    this.layStrips(width, height, splits);
     this.keys.texture = this.keysTexture;
-    this.keys.setCorners(0, hitY, width, hitY, width, bottom, 0, bottom);
-    this.hit = { y: hitY, left: 0, right: width };
+    this.keys.setCorners(0, this.hitY, viewWidth, this.hitY, viewWidth, bottom, 0, bottom);
+    this.hit = { y: this.hitY, left: 0, right: viewWidth };
+    this.setPan(this.pan, true);
+  }
+
+  /** Scrolls the view along the scene: the roads follow their octaves across the screen. */
+  setPan(pan: number, force = false): void {
+    if (!force && pan === this.pan) return;
+    this.pan = pan;
+    this.keysShift = new Matrix().translate(-pan, -this.size.height);
+    const camera = this.camera;
+    if (!camera) return;
+    for (const { left, right, meshes } of this.strips) {
+      const centre = (left + right) / 2 - pan;
+      const farLeft = camera.at(left - pan, ROAD_DEPTH, centre);
+      const farRight = camera.at(right - pan, ROAD_DEPTH, centre);
+      for (const mesh of meshes) {
+        mesh.setCorners(
+          farLeft.x,
+          farLeft.y,
+          farRight.x,
+          farRight.y,
+          right - pan,
+          this.hitY,
+          left - pan,
+          this.hitY
+        );
+      }
+    }
   }
 
   /** A road and a glow for every strip, each converging over its own middle. */
-  private layStrips(
-    width: number,
-    height: number,
-    hitY: number,
-    splits: readonly number[],
-    camera: ReturnType<typeof floorCamera>
-  ): void {
+  private layStrips(width: number, height: number, splits: readonly number[]): void {
     for (const strip of this.strips) strip.texture.destroy(false);
     for (const layer of [this.roads, this.glows]) {
       layer.removeChildren().forEach((child) => {
@@ -150,27 +182,28 @@ export class RoadLayer {
         source: this.texture.source,
         frame: new Rectangle(left, 0, right - left, height)
       });
-      this.strips.push({ left, right, texture });
-      const centre = (left + right) / 2;
-      const farLeft = camera.at(left, ROAD_DEPTH, centre);
-      const farRight = camera.at(right, ROAD_DEPTH, centre);
-      for (const layer of [this.roads, this.glows]) {
+      const meshes = [this.roads, this.glows].map((layer) => {
         const mesh = new PerspectiveMesh({ texture, verticesX: 12, verticesY: 64 });
-        mesh.setCorners(farLeft.x, farLeft.y, farRight.x, farRight.y, right, hitY, left, hitY);
         layer.addChild(mesh);
-      }
+        return mesh;
+      });
+      this.strips.push({ left, right, texture, meshes });
     }
   }
 
   /** Where a point of the flat scene lands in perspective, and how much it shrinks there. */
   place(x: number, y: number): Projected | undefined {
-    return this.projector?.(x, y);
+    const camera = this.camera;
+    if (!camera) return undefined;
+    const strip = this.strips.find((item) => x < item.right) ?? this.strips.at(-1);
+    const centre = (strip ? (strip.left + strip.right) / 2 : this.size.width / 2) - this.pan;
+    const z = depthBetween(ROAD_DEPTH, 1, Math.min(1, y / this.size.height));
+    return camera.at(x - this.pan, z, centre);
   }
 
   /** Where a point on the flat hit line lands on screen. */
   private project(x: number): number {
-    // The hit line spans the view as the flat lane does.
-    return x;
+    return x - this.pan;
   }
 
   /**
