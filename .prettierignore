@@ -4,3 +4,9 @@ pnpm-lock.yaml
 
 # Vendored rule sets, kept as upstream wrote them.
 .agents/
+
+# The effects editor, a submodule kept as upstream wrote it.
+tools/arcadia-effects/
+
+# Generated drafts under review, not source.
+public/generated/
