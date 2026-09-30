@@ -38,6 +38,12 @@ plays in tempo, plays the other hand, records every take and compares it with th
 - Keep acceptance scenarios observable and testable.
 - Small fixes and UI tweaks the user asks for directly do not need an OpenSpec change.
 
+## Branches
+
+- Every task starts a branch off an up-to-date `main` and lands through a pull request after
+  `pnpm check` and `pnpm spec:validate` pass. `main` only receives reviewed merges.
+- A feature's OpenSpec change is written and validated on its branch before the code.
+
 ## Delegation
 
 - Delegate independent research, specification review, implementation and test review when doing so

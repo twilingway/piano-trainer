@@ -78,9 +78,13 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 
 `~/.claude/CLAUDE.md` carries the personal working rules. Where this project differs:
 
-- **Work happens on `main`.** No CI and no deployment hang off this repository; commits land on
-  `main` and are pushed when the user asks. A delegated task still runs in its own worktree and
-  branch (the codex-worker procedure) and is merged back by Claude.
+- **A task branches off `main` without asking, unlike the global default.** The user's standing
+  instruction (2026-09-30): every task starts on a fresh branch off an up-to-date `main` (`feat/…`,
+  `fix/…`, `chore/…`), a feature goes through an OpenSpec change on that branch, and the branch
+  lands through a pull request once `pnpm check` and `pnpm spec:validate` pass. The standing
+  permission covers exactly that: branching for the task at hand and pushing it. Merging into
+  `main`, pushing to `main` directly, and switching onto someone else's branch still need the user's
+  words. A delegated task runs in its own worktree on its own branch (the codex-worker procedure).
 - **Browser checks are allowed but costly.** The built-in browser asks the user to approve every
   JavaScript call on this site; prefer tests and screenshots, and say when a behaviour could not be
   seen (a hidden pane pauses the animation frame).
