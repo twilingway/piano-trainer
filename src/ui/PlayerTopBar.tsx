@@ -43,36 +43,40 @@ export function PlayerTopBar(props: Props) {
         <LibraryIcon />
         <span className="topbar-title">{props.title}</span>
       </button>
-      <button
-        type="button"
-        className="icon-button"
-        title="Сначала"
-        aria-label="Сначала"
-        onClick={props.onRestart}
-      >
+      <button type="button" className="game-button" onClick={props.onRestart}>
         <RestartIcon />
+        Сначала
       </button>
       <button
         type="button"
         className="play-button"
-        aria-label={props.playing ? "Пауза" : "Играть"}
-        title={props.soundLoading ? "Загружаю звук…" : props.playing ? "Пауза" : "Играть"}
+        data-playing={props.playing}
         disabled={props.soundLoading}
         onClick={props.onTogglePlay}
       >
-        {props.playing ? <PauseIcon /> : <PlayIcon />}
+        <span className="play-button__ring">{props.playing ? <PauseIcon /> : <PlayIcon />}</span>
+        {props.soundLoading ? "Звук…" : props.playing ? "Пауза" : "Играть"}
       </button>
-      <select
-        className="game-select"
-        aria-label="Режим"
-        value={props.mode}
-        onChange={(event) => {
-          props.onMode(event.target.value as PracticeModeChoice);
-        }}
-      >
-        <option value="wait">Ждать ноту</option>
-        <option value="tempo">В темпе</option>
-      </select>
+      <div className="segmented" role="radiogroup" aria-label="Режим">
+        {(
+          [
+            ["wait", "Ждать ноту"],
+            ["tempo", "В темпе"]
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={props.mode === value}
+            onClick={() => {
+              props.onMode(value);
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <select
         className="game-select"
         aria-label="Руки"
