@@ -12,10 +12,12 @@ import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
 import {
   CARD_FACE_OFFSET,
+  CARD_GLOW,
   CARD_HEIGHT,
   CARD_WIDTH,
   bakeCardFace,
-  bakeCardFrame
+  bakeCardFrame,
+  bakeCardGlow
 } from "./noteCards";
 import { noteGlyph } from "./noteGlyph";
 import { RoadLayer } from "./RoadLayer";
@@ -83,7 +85,8 @@ const DIGIT_MAX_PX = 26;
 interface NoteSprite {
   readonly note: SongNote;
   readonly body: Sprite;
-  /** The note written on a little staff, at the head of the body. */
+  /** The note written on a little staff, at the head of the body, glowing in its colour. */
+  readonly glow: Sprite;
   readonly frame: Sprite;
   readonly face: Sprite;
   /** The finger, on the card. */
@@ -162,6 +165,8 @@ export class FallingNotesView {
   private digitTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
   private cardFrame: Texture = Texture.WHITE;
+  private cardGlow: Texture = Texture.WHITE;
+  private badgeTextures = new Map<Finger, Texture>();
   /** Card faces by pitch and written value, baked the first time a song needs one. */
   private readonly cardFaces = new Map<string, Texture>();
   private cards = true;
@@ -219,8 +224,11 @@ export class FallingNotesView {
     this.keyStickers.eventMode = "none";
     this.keyStickers.visible = false;
     this.digitTextures = this.bakeDigits();
+    // Light digits for the cards' smoked glass.
+    this.badgeTextures = this.bakeDigits(0xffffff);
     this.nameTextures = this.bakeNames();
     this.cardFrame = bakeCardFrame(this.app.renderer);
+    this.cardGlow = bakeCardGlow(this.app.renderer);
     for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
       const sprite = new NineSliceSprite({ texture: Texture.WHITE, ...NO_SLICE });
       sprite.eventMode = "static";
@@ -363,6 +371,7 @@ export class FallingNotesView {
       sprite.name.destroy();
       sprite.frame.destroy();
       sprite.face.destroy();
+      sprite.glow.destroy();
       sprite.badge.destroy();
     }
     this.notes = song.notes.map((note) => {
@@ -390,16 +399,21 @@ export class FallingNotesView {
       const face = new Sprite(this.cardFace(note.pitch, glyph));
       face.anchor.set(0.5, 1);
       face.eventMode = "none";
-      const badge = new Sprite(note.finger ? this.digitTextures.get(note.finger) : undefined);
+      const badge = new Sprite(note.finger ? this.badgeTextures.get(note.finger) : undefined);
       badge.anchor.set(0.5, 0);
       badge.eventMode = "none";
       // Nearer notes in front: on the road the earlier note is the closer one.
+      const glow = new Sprite(this.cardGlow);
+      glow.anchor.set(0.5, 1);
+      glow.eventMode = "none";
+      glow.blendMode = "add";
+      glow.zIndex = -note.start * 4 - 1;
       frame.zIndex = -note.start * 4;
       face.zIndex = frame.zIndex + 1;
       badge.zIndex = frame.zIndex + 2;
       this.lane.addChild(body, digit, name);
-      this.cardsLayer.addChild(frame, face, badge);
-      return { note, body, frame, face, badge, digit, name };
+      this.cardsLayer.addChild(glow, frame, face, badge);
+      return { note, body, glow, frame, face, badge, digit, name };
     });
   }
 
@@ -420,7 +434,7 @@ export class FallingNotesView {
       Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
     );
     const cardScale = cardWidth / CARD_WIDTH;
-    for (const { note, body, frame, face, badge, digit, name } of this.notes) {
+    for (const { note, body, glow, frame, face, badge, digit, name } of this.notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
         playing.set(note.pitch, note);
       }
@@ -432,6 +446,7 @@ export class FallingNotesView {
       body.visible = onScreen;
       frame.visible = onScreen && this.cards;
       face.visible = frame.visible;
+      glow.visible = frame.visible;
       badge.visible = frame.visible && note.finger !== undefined;
       digit.visible = onScreen && !this.cards && note.finger !== undefined;
       name.visible = false;
@@ -442,8 +457,10 @@ export class FallingNotesView {
       const barWidth = this.cards ? key.width * TAIL_SHARE : key.width - NOTE_GAP_PX * 2;
       body.x = key.x + (key.width - barWidth) / 2;
       body.width = barWidth;
+      // Under a card the tail starts at the card's top, so it does not cross it.
+      const underCard = this.cards && !this.roadMode ? CARD_HEIGHT * cardScale : 0;
       body.y = bottom - noteHeight;
-      body.height = noteHeight;
+      body.height = Math.max(0, noteHeight - underCard);
       const custom = state.colorOf?.(note);
       const own =
         this.roadMode && note.finger !== undefined
@@ -466,6 +483,10 @@ export class FallingNotesView {
         const scale = cardScale * (spot?.scale ?? 1);
         const x = spot?.x ?? centre;
         const y = spot?.y ?? landing;
+        glow.scale.set(scale);
+        glow.position.set(x, y + CARD_GLOW * scale);
+        glow.tint = body.tint;
+        glow.alpha = body.alpha;
         frame.scale.set(scale);
         frame.position.set(x, y);
         frame.tint = body.tint;
@@ -778,7 +799,7 @@ export class FallingNotesView {
     return textures;
   }
 
-  private bakeDigits(): Map<Finger, Texture> {
+  private bakeDigits(fill = 0x10121a): Map<Finger, Texture> {
     const textures = new Map<Finger, Texture>();
     for (const finger of [1, 2, 3, 4, 5] as const) {
       const text = new Text({
@@ -787,7 +808,7 @@ export class FallingNotesView {
           fontFamily: "system-ui, sans-serif",
           fontSize: 32,
           fontWeight: "700",
-          fill: 0x10121a
+          fill
         },
         resolution: 2
       });
