@@ -6,7 +6,7 @@ import type { KeyEvent } from "../input/midiInput";
 import type { NoteStatus } from "../practice/session";
 import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
-import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
+import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard, widenRange } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
@@ -92,6 +92,13 @@ interface NoteSprite {
   readonly name: Sprite;
 }
 
+/**
+ * On the road a white key is this share of the view's height wide, on any
+ * screen: a wider screen shows more keys around the song, not bigger ones.
+ */
+const ROAD_WHITE_PER_HEIGHT = 0.04;
+/** With cards on, the bar behind a card is a tail this share of its key wide. */
+const TAIL_SHARE = 0.28;
 /** A note card's width, in white-key widths, and its limits in pixels. */
 const CARD_PER_WIDTH = 1.9;
 const CARD_MIN_PX = 34;
@@ -417,8 +424,8 @@ export class FallingNotesView {
       const bottom = hitY - (note.start - state.time) * pixelsPerSecond;
       const noteHeight = Math.max(note.duration * pixelsPerSecond - NOTE_GAP_PX, 4);
       const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
-      // With cards the note is its card: the value is written on it, no bar stretches out.
-      body.visible = onScreen && !this.cards;
+      // With cards the bar thins to a tail behind the card: the length still shows.
+      body.visible = onScreen;
       frame.visible = onScreen && this.cards;
       face.visible = frame.visible;
       badge.visible = frame.visible && note.finger !== undefined;
@@ -428,8 +435,9 @@ export class FallingNotesView {
 
       const playerNote = state.hands.has(note.hand);
       const status = state.statusOf(note.id);
-      body.x = key.x + NOTE_GAP_PX;
-      body.width = key.width - NOTE_GAP_PX * 2;
+      const barWidth = this.cards ? key.width * TAIL_SHARE : key.width - NOTE_GAP_PX * 2;
+      body.x = key.x + (key.width - barWidth) / 2;
+      body.width = barWidth;
       body.y = bottom - noteHeight;
       body.height = noteHeight;
       const custom = state.colorOf?.(note);
@@ -448,10 +456,12 @@ export class FallingNotesView {
         // The card stands where the note lands; on the road it faces the player and
         // grows as it comes nearer.
         const centre = key.x + key.width / 2;
-        const spot = this.roadMode ? this.road?.place(centre, bottom) : undefined;
+        // A sounding note's card waits on the hit line rather than sliding over the keys.
+        const landing = Math.min(bottom, hitY);
+        const spot = this.roadMode ? this.road?.place(centre, landing) : undefined;
         const scale = cardScale * (spot?.scale ?? 1);
         const x = spot?.x ?? centre;
-        const y = spot?.y ?? bottom;
+        const y = spot?.y ?? landing;
         frame.scale.set(scale);
         frame.position.set(x, y);
         frame.tint = body.tint;
@@ -595,7 +605,14 @@ export class FallingNotesView {
 
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
-    this.keys = layoutKeyboard(width, this.range.low, this.range.high);
+    const [low, high] = this.roadMode
+      ? widenRange(
+          this.range.low,
+          this.range.high,
+          Math.round(width / (height * ROAD_WHITE_PER_HEIGHT))
+        )
+      : [this.range.low, this.range.high];
+    this.keys = layoutKeyboard(width, low, high);
     this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
     const { keyboardTop, keyboardHeight, blackHeight, hitY, feltHeight } = this.geometry(height);
     this.bakeKeys(keyboardHeight, blackHeight);

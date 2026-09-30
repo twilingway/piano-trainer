@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseMidiMessage } from "../input/midiInput";
-import { layoutKeyboard } from "./keyboardLayout";
+import { layoutKeyboard, whiteKeysBetween, widenRange } from "./keyboardLayout";
 
 describe("layoutKeyboard", () => {
   const keys = layoutKeyboard(520);
@@ -51,5 +51,20 @@ describe("parseMidiMessage", () => {
     });
     expect(parseMidiMessage(new Uint8Array([0xb0, 64, 0]))).toEqual({ type: "pedal", down: false });
     expect(parseMidiMessage(new Uint8Array([0xb0, 7, 100]))).toBeUndefined();
+  });
+});
+
+describe("widenRange", () => {
+  it("adds white keys on both sides until the count is reached", () => {
+    // C4-G4 is five white keys; four more, alternately below and above: A3-B4.
+    const [low, high] = widenRange(60, 67, 9);
+    expect(whiteKeysBetween(low, high)).toBe(9);
+    expect(low).toBe(57);
+    expect(high).toBe(71);
+  });
+
+  it("stops at the ends of the piano and leaves a wide range alone", () => {
+    expect(widenRange(21, 30, 100)).toEqual([21, 108]);
+    expect(widenRange(48, 84, 5)).toEqual([48, 84]);
   });
 });
