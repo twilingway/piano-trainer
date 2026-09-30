@@ -1,4 +1,4 @@
-import { Application, Container, Sprite, Text, Texture } from "pixi.js";
+import { Application, Assets, Container, NineSliceSprite, Sprite, Text, Texture } from "pixi.js";
 
 import { isBlackKey } from "../fingering/fingering";
 import type { Finger, Hand } from "../fingering/fingering";
@@ -7,7 +7,13 @@ import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
 import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
+import { FINGER_COLOR } from "./fingerColors";
+import { HandsLayer } from "./HandsLayer";
+import { RoadLayer } from "./RoadLayer";
+import type { Strike } from "./RoadLayer";
 import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
+import { bakeKeyTextures } from "./keyTextures";
+import type { KeyTextures } from "./keyTextures";
 
 export interface FrameState {
   /** Song seconds at the hit line. */
@@ -31,8 +37,19 @@ const HAND_HINT: Readonly<Record<Hand, number>> = { right: 0xbdeefb, left: 0xfbd
 const MISSED_COLOR = 0xe63946;
 const PRESSED_COLOR = 0xffd166;
 const SOUNDING_COLOR = 0xb8b8ff;
-const WHITE_KEY = 0xf4f4f4;
-const BLACK_KEY = 0x1c1c22;
+/** The dark red felt strip over the keys, as on a real piano. */
+const FELT = 0x6e1616;
+const FELT_EDGE = 0xb33a3a;
+/*
+ * Trial: key faces painted by Codex (public/generated/keys), stretched as
+ * nine-slice sprites, instead of the ones baked in code. On with ?keys=codex.
+ */
+const CODEX_KEYS = new URLSearchParams(window.location.search).get("keys") === "codex";
+const WHITE_SLICE = { leftWidth: 32, topHeight: 32, rightWidth: 32, bottomHeight: 80 };
+const BLACK_SLICE = { leftWidth: 18, topHeight: 56, rightWidth: 18, bottomHeight: 96 };
+const NO_SLICE = { leftWidth: 0, topHeight: 0, rightWidth: 0, bottomHeight: 0 };
+/** The felt strip's height, in white-key widths. */
+const FELT_PER_WIDTH = 0.22;
 const OCTAVE_LINE = 0x2a2f3d;
 const HIT_LINE = 0xffffff;
 const NOTE_GAP_PX = 1;
@@ -48,6 +65,9 @@ const KEYBOARD_MIN_PX = 110;
 const MAX_KEYBOARD_SHARE = 0.6;
 const BLACK_KEY_HEIGHT = 0.62;
 const BLACK_KEY_HEIGHT_WITH_STICKERS = 0.5;
+/** Room under the keys for the palms of the drawn hands, in white-key widths and at most a share. */
+const HANDS_STRIP_PER_WIDTH = 3;
+const MAX_HANDS_SHARE = 0.25;
 /** Largest size of a finger digit on a key. */
 const DIGIT_MAX_PX = 26;
 
@@ -70,6 +90,10 @@ interface Geometry {
   readonly keyboardTop: number;
   readonly keyboardHeight: number;
   readonly blackHeight: number;
+  readonly whiteWidth: number;
+  /** Where notes meet the keys: the top of the felt over them, or the view's bottom without keys. */
+  readonly hitY: number;
+  readonly feltHeight: number;
 }
 
 /**
@@ -85,20 +109,35 @@ export class FallingNotesView {
   private readonly app = new Application();
   private readonly lane = new Container();
   private readonly guides = new Container();
+  /** The guides and the notes together: on the stage flat, or drawn into the road. */
+  private readonly laneRoot = new Container();
+  /** The keys and everything drawn on them: on the stage flat, or laid back under the road. */
+  private readonly keysRoot = new Container();
+  private road: RoadLayer | undefined;
+  private roadMode = false;
   private readonly keyboard = new Container();
   private readonly keyHints = new Container();
   private readonly keyStickers = new Container();
+  private readonly hands = new HandsLayer();
+  private readonly felt = new Container();
+  private keyTextures: KeyTextures | undefined;
+  /** Codex's key faces, when the trial is on; kept for good, never re-baked. */
+  private codexFaces: KeyTextures | undefined;
   private notes: NoteSprite[] = [];
-  private readonly keySprites = new Map<number, Sprite>();
+  private readonly keySprites = new Map<number, NineSliceSprite>();
   private readonly keyDigits = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private digitTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
   private noteNames: FallingNoteNames | undefined;
   private labels = false;
-  /** Which parts are on screen: the falling notes, the keyboard, or both. */
-  private parts = { notes: true, keys: true };
+  /** Which parts are on screen: the falling notes, the keyboard, the hands over it. */
+  private parts = { notes: true, keys: true, hands: false };
   private keys = new Map<number, KeyRect>();
+  /** A white key's width in this layout, kept so a frame need not search the keys for it. */
+  private whiteWidth = 0;
+  /** The player wants the road; it shows only while both the notes and the keys are on screen. */
+  private roadWanted = false;
   private range = { low: LOWEST_PITCH, high: HIGHEST_PITCH };
   private laidOutFor = { width: 0, height: 0 };
   private ready = false;
@@ -121,13 +160,24 @@ export class FallingNotesView {
       this.app.queueResize();
     });
     this.resizeObserver.observe(host);
-    this.app.stage.addChild(this.guides, this.lane, this.keyboard, this.keyStickers, this.keyHints);
+    this.laneRoot.addChild(this.guides, this.lane);
+    this.road = new RoadLayer(this.app.renderer);
+    this.road.container.visible = false;
+    this.road.effects.visible = false;
+    this.keysRoot.addChild(
+      this.keyboard,
+      this.felt,
+      this.keyStickers,
+      this.keyHints,
+      this.hands.container
+    );
+    this.app.stage.addChild(this.road.container, this.laneRoot, this.keysRoot, this.road.effects);
     this.keyStickers.eventMode = "none";
     this.keyStickers.visible = false;
     this.digitTextures = this.bakeDigits();
     this.nameTextures = this.bakeNames();
     for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
-      const sprite = new Sprite(Texture.WHITE);
+      const sprite = new NineSliceSprite({ texture: Texture.WHITE, ...NO_SLICE });
       sprite.eventMode = "static";
       sprite.cursor = "pointer";
       sprite.on("pointerdown", () => {
@@ -162,6 +212,19 @@ export class FallingNotesView {
         if (sprite && isBlackKey(pitch) === black) this.keyboard.addChild(sprite);
       }
     }
+    if (CODEX_KEYS) {
+      try {
+        const [white, black, blackLit] = await Promise.all(
+          ["white", "black", "black-lit"].map((name) =>
+            Assets.load<Texture>(`/generated/keys/${name}.png`)
+          )
+        );
+        if (white && black && blackLit) this.codexFaces = { white, black, blackLit };
+      } catch (error) {
+        // The faces are local drafts, not in the repository: without them the baked keys stay.
+        console.warn("Codex key faces did not load; using the baked keys", error);
+      }
+    }
     this.ready = true;
   }
 
@@ -191,14 +254,45 @@ export class FallingNotesView {
   /**
    * Shows the falling notes, the keyboard, or both. Without the notes the
    * keys fill the view; without the keys the notes fall to its bottom edge.
+   * Hands lie over the keyboard, so they need it on screen.
    */
-  setParts(parts: { notes: boolean; keys: boolean }): void {
-    this.parts = parts;
+  setParts(parts: { notes: boolean; keys: boolean; hands?: boolean }): void {
+    this.parts = { notes: parts.notes, keys: parts.keys, hands: parts.hands === true };
+    this.hands.container.visible = this.parts.hands && parts.keys;
     this.lane.visible = parts.notes;
     this.guides.visible = parts.notes;
     this.keyboard.visible = parts.keys;
+    this.felt.visible = parts.keys;
     this.keyHints.visible = parts.keys;
     this.keyStickers.visible = this.labels && parts.keys;
+    if (!this.hands.container.visible) this.hands.reset();
+    this.syncRoad();
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  /**
+   * The trial road view: the notes come out of the horizon in perspective,
+   * glowing, with sparks in their finger's colour where they are struck.
+   * Notes cannot be clicked there, nor keys played with the mouse: the lane
+   * and the keyboard are pictures laid on the road.
+   */
+  setRoad(on: boolean): void {
+    this.roadWanted = on;
+    this.syncRoad();
+  }
+
+  /** Puts the road on or off: on only when asked for and both the notes and the keys show. */
+  private syncRoad(): void {
+    const on = this.roadWanted && this.parts.notes && this.parts.keys;
+    if (!this.road || on === this.roadMode) return;
+    this.roadMode = on;
+    this.road.container.visible = on;
+    this.road.effects.visible = on;
+    if (on) this.app.stage.removeChild(this.laneRoot, this.keysRoot);
+    else {
+      this.app.stage.addChildAt(this.laneRoot, 1);
+      this.app.stage.addChildAt(this.keysRoot, 2);
+    }
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -210,6 +304,7 @@ export class FallingNotesView {
   }
 
   setSong(song: Song): void {
+    this.hands.setSong(song);
     for (const sprite of this.notes) {
       sprite.body.destroy();
       sprite.digit.destroy();
@@ -242,8 +337,9 @@ export class FallingNotesView {
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
     }
-    const { keyboardTop, keyboardHeight, blackHeight } = this.geometry(height);
-    const pixelsPerSecond = keyboardTop / state.lookAhead;
+    const geometry = this.geometry(height);
+    const { keyboardTop, keyboardHeight, blackHeight, hitY } = geometry;
+    const pixelsPerSecond = hitY / state.lookAhead;
 
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = new Map<number, SongNote>();
@@ -252,9 +348,9 @@ export class FallingNotesView {
         playing.set(note.pitch, note);
       }
       const key = this.keys.get(note.pitch);
-      const bottom = keyboardTop - (note.start - state.time) * pixelsPerSecond;
+      const bottom = hitY - (note.start - state.time) * pixelsPerSecond;
       const noteHeight = Math.max(note.duration * pixelsPerSecond - NOTE_GAP_PX, 4);
-      const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < keyboardTop;
+      const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
       body.visible = onScreen;
       digit.visible = onScreen && note.finger !== undefined;
       name.visible = false;
@@ -267,7 +363,11 @@ export class FallingNotesView {
       body.y = bottom - noteHeight;
       body.height = noteHeight;
       const custom = state.colorOf?.(note);
-      body.tint = custom ?? (status === "missed" ? MISSED_COLOR : HAND_COLOR[note.hand]);
+      const own =
+        this.roadMode && note.finger !== undefined
+          ? FINGER_COLOR[note.finger]
+          : HAND_COLOR[note.hand];
+      body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       body.alpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
 
       digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
@@ -291,17 +391,24 @@ export class FallingNotesView {
       const due = dueByPitch.get(pitch);
       // The owed note wins: it is the one the player has to find next.
       const shown = due ?? playing.get(pitch);
-      sprite.tint = state.pressed.has(pitch)
+      const pressed = state.pressed.has(pitch);
+      const color = pressed
         ? PRESSED_COLOR
         : state.sounding.has(pitch)
           ? SOUNDING_COLOR
           : shown
-            ? HAND_HINT[shown.hand]
-            : isBlackKey(pitch)
-              ? BLACK_KEY
-              : WHITE_KEY;
-      const hint = this.keyDigits.get(pitch);
+            ? shown.finger !== undefined
+              ? FINGER_COLOR[shown.finger]
+              : HAND_HINT[shown.hand]
+            : undefined;
       const key = this.keys.get(pitch);
+      if (key?.black && this.keyTextures) {
+        // A black key is repainted in pale grey for its colour to show; a white one is tinted as it is.
+        const face = color === undefined ? this.keyTextures.black : this.keyTextures.blackLit;
+        if (sprite.texture !== face) sprite.texture = face;
+      }
+      sprite.tint = color ?? 0xffffff;
+      const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
       hint.visible = key !== undefined && shown?.finger !== undefined;
       if (!key || shown?.finger === undefined) continue;
@@ -314,6 +421,21 @@ export class FallingNotesView {
         // The sticker fills the bottom of the key; the finger sits at the top of its free part.
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
+    }
+    if (this.hands.container.visible) {
+      this.hands.draw(state.time, this.app.ticker.deltaMS / 1000, state.hands, this.keys, geometry);
+    }
+    // Last, once the keys and hands of this frame are drawn: the road takes a picture of them.
+    if (this.roadMode && this.road) {
+      const strikes: Strike[] = [];
+      for (const [pitch, note] of playing) {
+        const key = this.keys.get(pitch);
+        // Only the player's own notes, held while they sound.
+        if (!key || !state.hands.has(note.hand) || !state.pressed.has(pitch)) continue;
+        const color = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
+        strikes.push({ pitch, x: key.x + key.width / 2, color });
+      }
+      this.road.draw(this.laneRoot, this.keysRoot, strikes, this.app.ticker.deltaMS / 1000);
     }
   }
 
@@ -333,32 +455,62 @@ export class FallingNotesView {
   destroy(): void {
     this.ready = false;
     this.resizeObserver?.disconnect();
+    // Off the stage in the road view, so the stage's own destroy would miss them.
+    if (this.roadMode) {
+      this.laneRoot.destroy({ children: true });
+      this.keysRoot.destroy({ children: true });
+    }
+    this.road?.destroy();
     this.app.destroy({ removeView: true }, { children: true });
   }
 
   private geometry(height: number): Geometry {
     const stickers = this.labels;
-    if (!this.parts.keys) return { keyboardTop: height, keyboardHeight: 0, blackHeight: 0 };
+    const whiteWidth = this.whiteWidth;
+    if (!this.parts.keys) {
+      const none = { keyboardHeight: 0, blackHeight: 0, feltHeight: 0 };
+      return { ...none, keyboardTop: height, hitY: height, whiteWidth };
+    }
+    const feltHeight = Math.max(3, whiteWidth * FELT_PER_WIDTH);
     const blackOf = (keyboardHeight: number) =>
       keyboardHeight * (stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT);
+    // The palms reach below the keys, into a strip of their own.
+    const strip = this.parts.hands
+      ? Math.min(whiteWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE)
+      : 0;
     // Only the keys: they take the whole view, whatever its height.
-    if (!this.parts.notes)
-      return { keyboardTop: 0, keyboardHeight: height, blackHeight: blackOf(height) };
-    const whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
+    if (!this.parts.notes) {
+      const keyboardHeight = height - strip - feltHeight;
+      return {
+        keyboardTop: feltHeight,
+        keyboardHeight,
+        blackHeight: blackOf(keyboardHeight),
+        whiteWidth,
+        hitY: 0,
+        feltHeight
+      };
+    }
     const wanted = Math.max(KEYBOARD_MIN_PX, whiteWidth * KEY_LENGTH_PER_WIDTH);
     const keyboardHeight = Math.min(wanted, height * MAX_KEYBOARD_SHARE);
-    const blackShare = stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT;
+    const keyboardTop = height - strip - keyboardHeight;
     return {
-      keyboardTop: height - keyboardHeight,
+      keyboardTop,
       keyboardHeight,
-      blackHeight: keyboardHeight * blackShare
+      blackHeight: blackOf(keyboardHeight),
+      whiteWidth,
+      hitY: keyboardTop - feltHeight,
+      feltHeight
     };
   }
 
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
     this.keys = layoutKeyboard(width, this.range.low, this.range.high);
-    const { keyboardTop, keyboardHeight, blackHeight } = this.geometry(height);
+    this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
+    const { keyboardTop, keyboardHeight, blackHeight, hitY, feltHeight } = this.geometry(height);
+    this.bakeKeys(keyboardHeight, blackHeight);
+    // The hands' pixels belong to the old layout.
+    this.hands.reset();
 
     // One scale per kind of sticker, so every white label reads at one size and every black one too.
     const sample = [...this.keys.values()];
@@ -380,10 +532,13 @@ export class FallingNotesView {
       sprite.visible = key !== undefined;
       if (sticker) sticker.visible = key !== undefined;
       if (!key) continue;
-      sprite.x = key.x + (key.black ? 0 : 0.5);
-      sprite.y = keyboardTop;
-      sprite.width = key.width - (key.black ? 0 : 1);
-      sprite.height = key.black ? blackHeight : keyboardHeight;
+      this.placeKey(
+        sprite,
+        key.x + (key.black ? 0 : 0.5),
+        keyboardTop,
+        key.width - (key.black ? 0 : 1),
+        key.black ? blackHeight : keyboardHeight
+      );
       if (!sticker) continue;
       sticker.scale.set(Math.max(key.black ? blackScale : whiteScale, 0));
       sticker.x = key.x + key.width / 2;
@@ -400,16 +555,85 @@ export class FallingNotesView {
       line.tint = OCTAVE_LINE;
       line.x = key.x;
       line.width = 1;
-      line.height = keyboardTop;
+      line.height = hitY;
       this.guides.addChild(line);
     }
+    this.felt.removeChildren().forEach((child) => {
+      child.destroy();
+    });
+    // The road ends on the felt, where the notes meet the keys.
+    this.road?.layout(width, hitY, height);
+    const felt = new Sprite(Texture.WHITE);
+    felt.tint = FELT;
+    felt.y = keyboardTop - feltHeight;
+    felt.width = width;
+    felt.height = feltHeight;
+    const feltEdge = new Sprite(Texture.WHITE);
+    feltEdge.tint = FELT_EDGE;
+    feltEdge.y = keyboardTop - feltHeight;
+    feltEdge.width = width;
+    feltEdge.height = 1;
+    // The felt throws a thin shadow on the tops of the keys.
+    const feltShade = new Sprite(Texture.WHITE);
+    feltShade.tint = 0x000000;
+    feltShade.alpha = 0.25;
+    feltShade.y = keyboardTop;
+    feltShade.width = width;
+    feltShade.height = 2;
+    this.felt.addChild(felt, feltEdge, feltShade);
+
     const hitLine = new Sprite(Texture.WHITE);
     hitLine.tint = HIT_LINE;
     hitLine.alpha = 0.5;
-    hitLine.y = keyboardTop - 1;
+    hitLine.y = hitY - 1;
     hitLine.width = width;
     hitLine.height = 2;
     this.guides.addChild(hitLine);
+  }
+
+  /**
+   * Puts a key on screen. A Codex face keeps its corners at the picture's own
+   * proportions: it is sized in picture pixels across and scaled to the key.
+   */
+  private placeKey(sprite: NineSliceSprite, x: number, y: number, width: number, height: number) {
+    sprite.x = x;
+    sprite.y = y;
+    if (!this.codexFaces) {
+      sprite.scale.set(1);
+      sprite.setSize(width, height);
+      return;
+    }
+    const scale = width / sprite.texture.width;
+    sprite.scale.set(scale);
+    sprite.setSize(sprite.texture.width, height / scale);
+  }
+
+  /** Key faces at this keyboard's size; the old ones are freed once replaced. */
+  private bakeKeys(keyboardHeight: number, blackHeight: number): void {
+    if (this.codexFaces) {
+      this.keyTextures = this.codexFaces;
+      for (const [pitch, sprite] of this.keySprites) {
+        const black = isBlackKey(pitch);
+        sprite.texture = black ? this.codexFaces.black : this.codexFaces.white;
+        Object.assign(sprite, black ? BLACK_SLICE : WHITE_SLICE);
+      }
+      return;
+    }
+    const sample = [...this.keys.values()];
+    const white = sample.find((key) => !key.black);
+    const black = sample.find((key) => key.black);
+    const old = this.keyTextures;
+    this.keyTextures = bakeKeyTextures(
+      this.app.renderer,
+      { width: (white?.width ?? 10) - 1, height: keyboardHeight },
+      { width: black?.width ?? 6, height: blackHeight }
+    );
+    for (const [pitch, sprite] of this.keySprites) {
+      sprite.texture = isBlackKey(pitch) ? this.keyTextures.black : this.keyTextures.white;
+    }
+    if (old) {
+      for (const texture of [old.white, old.black, old.blackLit]) texture.destroy(true);
+    }
   }
 
   private bakeNames(): Map<string, Texture> {
