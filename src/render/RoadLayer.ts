@@ -37,6 +37,8 @@ const HORIZON_Y = 0.22;
 /** The keyboard's height on the road, as a share of its flat height. */
 const KEYS_SQUASH = 0.9;
 const GLOW_STRENGTH = 10;
+/** The widest texture most GPUs, phones included, will take. */
+const MAX_TEXTURE_PX = 8192;
 const GLOW_ALPHA = 0.9;
 const MAX_SPARKS = 400;
 /** A burst when a key is struck, then a thin stream while it is held, per second. */
@@ -121,10 +123,18 @@ export class RoadLayer {
     splits: readonly number[],
     viewWidth: number
   ): void {
-    if (width < 1 || viewWidth < 1 || height < 1 || bottom < height) return;
+    // Too little room for a road: hide it rather than draw the last layout's.
+    this.container.visible = width >= 1 && viewWidth >= 1 && height >= 1 && bottom >= height;
+    this.effects.visible = this.container.visible;
+    if (!this.container.visible) {
+      this.size = { width: 0, height: 0 };
+      return;
+    }
     this.size = { width, height };
     this.viewWidth = viewWidth;
-    this.texture.source.resize(width, height, this.renderer.resolution);
+    // A song across the whole keyboard is wide: keep the texture within what GPUs take.
+    const resolution = Math.min(this.renderer.resolution, MAX_TEXTURE_PX / width);
+    this.texture.source.resize(width, height, resolution);
     const keysHeight = bottom - height;
     // Without keys the road runs down to the bottom and there is no keyboard to lay.
     this.keys.visible = keysHeight >= 1;
@@ -167,11 +177,14 @@ export class RoadLayer {
   /** A road and a glow for every strip, each converging over its own middle. */
   private layStrips(width: number, height: number, splits: readonly number[]): void {
     for (const strip of this.strips) strip.texture.destroy(false);
-    for (const layer of [this.roads, this.glows]) {
-      layer.removeChildren().forEach((child) => {
-        child.destroy();
-      });
+    for (const strip of this.strips) {
+      // A mesh's destroy leaves its geometry's buffers to the garbage collector; free them now.
+      for (const mesh of strip.meshes) {
+        mesh.geometry.destroy();
+        mesh.destroy();
+      }
     }
+    for (const layer of [this.roads, this.glows]) layer.removeChildren();
     const edges = [0, ...splits.filter((x) => x > 1 && x < width - 1), width];
     this.strips = [];
     for (let index = 1; index < edges.length; index++) {
@@ -242,6 +255,7 @@ export class RoadLayer {
   }
 
   destroy(): void {
+    for (const filter of this.glows.filters) filter.destroy();
     for (const strip of this.strips) strip.texture.destroy(false);
     this.container.destroy({ children: true });
     this.effects.destroy({ children: true });

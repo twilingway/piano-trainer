@@ -24,7 +24,9 @@ export function panToShow(
   if (!first) return clamp(current);
   let low = first.left;
   let high = first.right;
-  for (const span of spans.slice(1)) {
+  for (let index = 1; index < spans.length; index++) {
+    const span = spans[index];
+    if (!span) break;
     const nextLow = Math.min(low, span.left);
     const nextHigh = Math.max(high, span.right);
     if (nextHigh - nextLow + margin * 2 > viewWidth) break;
