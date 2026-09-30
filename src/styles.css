@@ -1,8 +1,65 @@
 :root {
   color-scheme: dark;
-  font-family: system-ui, sans-serif;
-  background: #11131a;
-  color: #e8eaf0;
+  /* The stage desk: a dark, quiet field, dense panels, one cool accent, glow only for actions. */
+  --bg: #11131a;
+  --panel: #1b2030;
+  --panel-raised: #252c3e;
+  --glass: rgb(27 32 48 / 86%);
+  --border: #39445b;
+  --text: #f2f5ff;
+  --muted: #aeb9d0;
+  --accent: #62d9ff;
+  --accent-soft: rgb(98 217 255 / 18%);
+  --good: #69d88b;
+  --early: #ffd166;
+  --miss: #ff7488;
+  --finger-1: #f5952e;
+  --finger-2: #f2d43a;
+  --finger-3: #4cc45a;
+  --finger-4: #3fb8f0;
+  --finger-5: #9b5cf0;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --font-ui: "Manrope", system-ui, sans-serif;
+  --font-display: "Russo One", "Manrope", system-ui, sans-serif;
+  --font-digits: "IBM Plex Mono", ui-monospace, monospace;
+
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Every control: a raised panel with a thin edge, the accent on hover and focus. */
+button,
+select {
+  transition:
+    background 140ms var(--ease),
+    border-color 140ms var(--ease),
+    transform 140ms var(--ease);
+}
+
+button:not(:disabled):hover,
+select:hover {
+  border-color: var(--accent);
+}
+
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 body {
@@ -22,7 +79,7 @@ body {
   gap: 8px;
   align-items: center;
   padding: 8px 12px;
-  background: #1a1d27;
+  background: var(--panel);
 }
 
 .toolbar .title {
@@ -34,9 +91,9 @@ body {
 .toolbar .button {
   font: inherit;
   padding: 6px 12px;
-  border: 1px solid #3a3f52;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #242838;
+  background: var(--panel-raised);
   color: inherit;
   cursor: pointer;
 }
@@ -64,9 +121,9 @@ body {
 
 .status .device select {
   font: inherit;
-  background: #242838;
+  background: var(--panel-raised);
   color: inherit;
-  border: 1px solid #3a3f52;
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 
@@ -89,16 +146,16 @@ body {
   align-items: center;
   padding: 4px 12px;
   font-size: 14px;
-  background: #1a1d27;
+  background: var(--panel);
 }
 
 .staff-bar button {
   font: inherit;
   min-width: 28px;
   padding: 2px 8px;
-  border: 1px solid #3a3f52;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #242838;
+  background: var(--panel-raised);
   color: inherit;
   cursor: pointer;
 }
@@ -120,9 +177,9 @@ body {
 .staff-bar select {
   font: inherit;
   padding: 2px 6px;
-  border: 1px solid #3a3f52;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #242838;
+  background: var(--panel-raised);
   color: inherit;
 }
 
@@ -162,9 +219,9 @@ body {
 .review-bar button {
   font: inherit;
   padding: 2px 8px;
-  border: 1px solid #3a3f52;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #242838;
+  background: var(--panel-raised);
   color: inherit;
   cursor: pointer;
 }
@@ -296,7 +353,7 @@ body {
   flex-direction: column;
   gap: 6px;
   padding: 6px 4px;
-  background: #1a1d27;
+  background: var(--panel);
   border-left: 1px solid #262a38;
 }
 
@@ -306,17 +363,17 @@ body {
   width: 34px;
   height: 34px;
   padding: 0;
-  border: 1px solid #3a3f52;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #242838;
+  background: var(--panel-raised);
   color: #6f7590;
   cursor: pointer;
 }
 
 .rail-button[aria-pressed="true"] {
-  border-color: #4d7cff;
-  background: #1f3261;
-  color: #b9cdff;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 .rail-button:disabled {
@@ -386,9 +443,9 @@ body {
 .review-bar select {
   font: inherit;
   padding: 2px 6px;
-  border: 1px solid #3a3f52;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #242838;
+  background: var(--panel-raised);
   color: inherit;
 }
 
