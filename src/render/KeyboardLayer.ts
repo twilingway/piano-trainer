@@ -31,14 +31,26 @@ const PAINTED_FACES = {
   white: new URL("./keys/white.webp", import.meta.url).href,
   whiteLit: new URL("./keys/white-lit.webp", import.meta.url).href,
   black: new URL("./keys/black.webp", import.meta.url).href,
-  blackLit: new URL("./keys/black-lit.webp", import.meta.url).href
+  blackLit: new URL("./keys/black-lit.webp", import.meta.url).href,
+  whitePressed: new URL("./keys/white-pressed.webp", import.meta.url).href,
+  whitePressedLit: new URL("./keys/white-pressed-lit.webp", import.meta.url).href,
+  blackPressed: new URL("./keys/black-pressed.webp", import.meta.url).href,
+  blackPressedLit: new URL("./keys/black-pressed-lit.webp", import.meta.url).href,
+  sideLeft: new URL("./keys/side-left.webp", import.meta.url).href,
+  sideRight: new URL("./keys/side-right.webp", import.meta.url).href,
+  blackSideLeft: new URL("./keys/black-side-left.webp", import.meta.url).href,
+  blackSideRight: new URL("./keys/black-side-right.webp", import.meta.url).href
 };
+/*
+ * A held key sinks: it takes its pressed face, and the side walls of the keys
+ * either side of it show in the gaps, as on a real keyboard seen from above.
+ * The walls are this share of a key's width.
+ */
+const SIDE_WALL_SHARE = 0.09;
 const WHITE_SLICE = { leftWidth: 20, topHeight: 60, rightWidth: 20, bottomHeight: 64 };
 const BLACK_SLICE = { leftWidth: 16, topHeight: 178, rightWidth: 16, bottomHeight: 76 };
 
-interface PaintedFaces extends KeyTextures {
-  readonly whiteLit: Texture;
-}
+type PaintedFaces = KeyTextures & Readonly<Record<keyof typeof PAINTED_FACES, Texture>>;
 const NO_SLICE = { leftWidth: 0, topHeight: 0, rightWidth: 0, bottomHeight: 0 };
 /** Largest size of a finger digit on a key. */
 const DIGIT_MAX_PX = 26;
@@ -68,6 +80,8 @@ export class KeyboardLayer {
   private readonly keyDigits = new Map<number, Sprite>();
   /** The front part of a key, lit on its own for the left hand. */
   private readonly keyFronts = new Map<number, Sprite>();
+  /** The neighbours' side walls a sunk key shows, left and right of it. */
+  private readonly sideWalls = new Map<number, readonly [Sprite, Sprite]>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private keyTextures: KeyTextures | undefined;
   /** The painted key faces once loaded; kept for good, never re-baked. */
@@ -120,27 +134,39 @@ export class KeyboardLayer {
       this.stickerSprites.set(pitch, sticker);
       this.stickers.addChild(sticker);
     }
-    // White keys first so black keys draw over them.
+    // White keys first, then the side walls in the gaps between them, then the black keys.
     const pitches = [...this.keySprites.keys()];
-    for (const black of [false, true]) {
+    const addKeys = (black: boolean) => {
       for (const pitch of pitches) {
         const sprite = this.keySprites.get(pitch);
         if (sprite && isBlackKey(pitch) === black) this.keyboard.addChild(sprite);
       }
+    };
+    addKeys(false);
+    for (const pitch of pitches) {
+      const walls = [new Sprite(), new Sprite()] as const;
+      for (const wall of walls) {
+        wall.eventMode = "none";
+        wall.visible = false;
+        this.keyboard.addChild(wall);
+      }
+      this.sideWalls.set(pitch, walls);
     }
+    addKeys(true);
     for (const front of fronts) this.keyboard.addChild(front);
   }
 
   /** Loads the painted key faces; without them the baked keys stay. */
   async loadPaintedFaces(): Promise<void> {
     try {
-      const [white, whiteLit, black, blackLit] = await Promise.all([
-        Assets.load<Texture>(PAINTED_FACES.white),
-        Assets.load<Texture>(PAINTED_FACES.whiteLit),
-        Assets.load<Texture>(PAINTED_FACES.black),
-        Assets.load<Texture>(PAINTED_FACES.blackLit)
-      ]);
-      this.painted = { white, whiteLit, black, blackLit };
+      const names = Object.keys(PAINTED_FACES) as (keyof typeof PAINTED_FACES)[];
+      const textures = await Promise.all(
+        names.map((name) => Assets.load<Texture>(PAINTED_FACES[name]))
+      );
+      // Every name has its texture: Promise.all keeps the order of `names`.
+      this.painted = Object.fromEntries(
+        names.map((name, index) => [name, textures[index]])
+      ) as unknown as PaintedFaces;
     } catch (error) {
       console.warn("The painted key faces did not load; using the baked keys", error);
     }
@@ -250,19 +276,17 @@ export class KeyboardLayer {
       // hands tell apart where a finger's colour is the same.
       const leftHand = shown?.hand === "left" && shown.finger !== undefined;
       const whole = leftHand ? undefined : color;
+      // Held by the player or sounded by the program, a painted key sinks.
+      const down = this.painted !== undefined && (pressed || frame.sounding.has(pitch));
       if (key && this.keyTextures) {
         // A coloured key takes its grey face, so the tint shows true; a baked white key has none
         // and is tinted as it is.
-        const lit = whole !== undefined;
-        const face = key.black
-          ? lit
-            ? this.keyTextures.blackLit
-            : this.keyTextures.black
-          : lit && this.painted
-            ? this.painted.whiteLit
-            : this.keyTextures.white;
+        const face = this.faceOf(key.black, whole !== undefined, down);
         if (sprite.texture !== face) sprite.texture = face;
       }
+      const walls = this.sideWalls.get(pitch);
+      if (walls && key && this.painted) this.placeWalls(walls, key, down, geometry);
+      else if (walls) for (const wall of walls) wall.visible = false;
       sprite.tint = whole ?? 0xffffff;
       const front = this.keyFronts.get(pitch);
       if (front) {
@@ -291,6 +315,51 @@ export class KeyboardLayer {
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
     }
+  }
+
+  /** The face for a key: black or white, coloured (grey, to tint) or not, sunk or not. */
+  private faceOf(black: boolean, lit: boolean, down: boolean): Texture {
+    const painted = this.painted;
+    const baked = this.keyTextures;
+    if (!painted) {
+      if (!baked) return Texture.WHITE;
+      return black ? (lit ? baked.blackLit : baked.black) : baked.white;
+    }
+    if (black) {
+      if (down) return lit ? painted.blackPressedLit : painted.blackPressed;
+      return lit ? painted.blackLit : painted.black;
+    }
+    if (down) return lit ? painted.whitePressedLit : painted.whitePressed;
+    return lit ? painted.whiteLit : painted.white;
+  }
+
+  /** The neighbours' side walls in the gaps either side of a sunk key; hidden otherwise. */
+  private placeWalls(
+    walls: readonly [Sprite, Sprite],
+    key: KeyRect,
+    down: boolean,
+    geometry: {
+      readonly keyboardTop: number;
+      readonly keyboardHeight: number;
+      readonly blackHeight: number;
+    }
+  ): void {
+    const painted = this.painted;
+    const [left, right] = walls;
+    left.visible = down && painted !== undefined;
+    right.visible = left.visible;
+    if (!left.visible || !painted) return;
+    const width = Math.max(2, key.width * SIDE_WALL_SHARE);
+    const height = key.black ? geometry.blackHeight : geometry.keyboardHeight;
+    left.texture = key.black ? painted.blackSideLeft : painted.sideLeft;
+    right.texture = key.black ? painted.blackSideRight : painted.sideRight;
+    for (const wall of walls) {
+      wall.y = geometry.keyboardTop;
+      wall.width = width;
+      wall.height = height;
+    }
+    left.x = key.x - width;
+    right.x = key.x + key.width;
   }
 
   /**
