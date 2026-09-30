@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 
 import {
@@ -49,6 +49,22 @@ import type { Key } from "./song/harmony";
 import { withFingering } from "./song/song";
 import type { Song } from "./song/song";
 import { Staff, markKey } from "./staff/Staff";
+import { scoreboard } from "./practice/scoreboard";
+import { quartersAt } from "./song/song";
+import { LibraryDialog } from "./ui/LibraryDialog";
+import { GameDialog } from "./ui/GameDialog";
+import { PlayerTopBar } from "./ui/PlayerTopBar";
+import { SettingsPanel } from "./ui/SettingsPanel";
+import { SongProgress } from "./ui/SongProgress";
+import { useAutoHide } from "./ui/useAutoHide";
+import {
+  FallingNotesIcon,
+  HandIcon,
+  KeyboardIcon,
+  NoteCardIcon,
+  RoadIcon,
+  StaffIcon
+} from "./ui/icons";
 
 type HandChoice = "right" | "left" | "both" | "listen";
 
@@ -274,75 +290,6 @@ function lessonSong(choice: LessonChoice): Song {
   if (!exercise || !level) throw new Error(`No lesson ${choice.exerciseId}`);
   const song = songFromMusicXml(level.musicXml, exercise.title);
   return { ...song, title: `${exercise.title} · ${level.title}` };
-}
-
-/** The side rail's icons: small line drawings in the current text colour. */
-function StaffIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      {[6, 9, 12, 15, 18].map((y) => (
-        <line key={y} x1="2" x2="22" y1={y} y2={y} />
-      ))}
-      <ellipse cx="10" cy="15" rx="3" ry="2.2" className="filled" />
-      <line x1="13" x2="13" y1="15" y2="4" />
-    </svg>
-  );
-}
-
-function FallingNotesIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="3" width="4" height="8" rx="1" className="filled" />
-      <rect x="10" y="7" width="4" height="10" rx="1" className="filled" />
-      <rect x="17" y="2" width="4" height="6" rx="1" className="filled" />
-      <line x1="2" x2="22" y1="21" y2="21" />
-    </svg>
-  );
-}
-
-function KeyboardIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="2" y="5" width="20" height="14" rx="1.5" />
-      {[7, 12, 17].map((x) => (
-        <line key={x} x1={x} x2={x} y1="12" y2="19" />
-      ))}
-      {[5.5, 9.5, 15.5].map((x) => (
-        <rect key={x} x={x} y="5" width="2.6" height="7" className="filled" />
-      ))}
-    </svg>
-  );
-}
-
-function NoteCardIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="4" y="3" width="16" height="18" rx="3" />
-      {[9, 12, 15].map((y) => (
-        <line key={y} x1="7" x2="17" y1={y} y2={y} />
-      ))}
-      <ellipse cx="11" cy="15" rx="2" ry="1.5" className="filled" />
-      <line x1="12.8" x2="12.8" y1="15" y2="8" />
-    </svg>
-  );
-}
-
-function RoadIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M10 3h4l7 18H3z" />
-      <line x1="12" x2="12" y1="6" y2="9" />
-      <line x1="12" x2="12" y1="12" y2="16" />
-    </svg>
-  );
-}
-
-function HandIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M7 12V6.5a1.3 1.3 0 0 1 2.6 0V11V4.8a1.3 1.3 0 0 1 2.6 0V11V5.6a1.3 1.3 0 0 1 2.6 0V11.5V8a1.3 1.3 0 0 1 2.6 0v6.5a6.5 6.5 0 0 1-6.5 6.5h-.5a5.5 5.5 0 0 1-4.6-2.5L3.4 13.6a1.3 1.3 0 0 1 2-1.6L7 13.6" />
-    </svg>
-  );
 }
 
 export function App() {
@@ -795,8 +742,6 @@ export function App() {
     setOverrides(loadOverrides(loaded));
   };
 
-  const lessonLevels = LESSONS.find((item) => item.id === lesson?.exerciseId)?.levels ?? [];
-
   const ensureSound = async () => {
     if (sound !== "off") return;
     setSound("loading");
@@ -896,315 +841,153 @@ export function App() {
   const played = stats ? stats.hits + stats.misses : 0;
   const accuracy = stats && played + stats.wrong > 0 ? stats.hits / (played + stats.wrong) : 0;
 
-  return (
-    <div className="app">
-      <header className="toolbar">
-        <strong className="title">{song.title}</strong>
-        <label className="button">
-          Открыть файл
-          <input
-            type="file"
-            accept=".mid,.midi,.musicxml,.xml,.mxl"
-            hidden
-            onChange={(event) => void openFile(event)}
-          />
-        </label>
-        {foldersSupported() && !folder && (
-          <button type="button" onClick={() => void chooseFolder()}>
-            Выбрать папку
-          </button>
-        )}
-        {folder?.access === "prompt" && (
-          <button type="button" onClick={() => void refreshFolder(folder.handle, true)}>
-            Дать доступ к папке
-          </button>
-        )}
-        {folder && (
-          <button
-            type="button"
-            title={`Папка «${folder.handle.name}»: перестать читать её песни`}
-            onClick={() => void forgetFolder()}
-          >
-            Отключить папку
-          </button>
-        )}
-        <select
-          aria-label="Урок"
-          value={lesson?.exerciseId ?? librarySource ?? ""}
-          onChange={(event) => {
-            const value = event.target.value;
-            if (value.startsWith("my:")) {
-              void openMySong(value.slice(3));
-              return;
-            }
-            if (value.startsWith("dir:")) {
-              void openFolderSong(value.slice(4));
-              return;
-            }
-            const first = LESSONS.find((item) => item.id === value)?.levels[0];
-            openLesson({ exerciseId: value, levelId: first?.id ?? "easy" });
-          }}
-        >
-          <option value="" disabled>
-            Уроки…
-          </option>
-          <optgroup label="Уроки">
-            {LESSONS.map((exercise) => (
-              <option key={exercise.id} value={exercise.id}>
-                {exercise.title}
-              </option>
-            ))}
-          </optgroup>
-          {mySongs.length > 0 && (
-            <optgroup label="Мои песни">
-              {mySongs.map((item) => (
-                <option key={item.id} value={`my:${item.id}`}>
-                  {item.title}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {folder && folder.songs.length > 0 && (
-            <optgroup label={`Папка: ${folder.handle.name}`}>
-              {folder.songs.map((item) => (
-                <option key={item.path} value={`dir:${item.path}`}>
-                  {item.title}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-        {librarySource?.startsWith("my:") && (
-          <button type="button" onClick={() => void deleteMySong(librarySource.slice(3))}>
-            Удалить из моих
-          </button>
-        )}
-        {lesson && (
-          <select
-            aria-label="Уровень"
-            value={lesson.levelId}
-            onChange={(event) => {
-              openLesson({ ...lesson, levelId: event.target.value });
-            }}
-          >
-            {lessonLevels.map((level) => (
-              <option key={level.id} value={level.id}>
-                {level.title}
-              </option>
-            ))}
-          </select>
-        )}
-        <select
-          aria-label="Режим"
-          value={mode}
-          onChange={(event) => {
-            setMode(event.target.value as PracticeMode);
-          }}
-        >
-          <option value="wait">Ждать ноту</option>
-          <option value="tempo">В темпе</option>
-        </select>
-        <select
-          aria-label="Руки"
-          value={handChoice}
-          onChange={(event) => {
-            setHandChoice(event.target.value as HandChoice);
-          }}
-        >
-          <option value="right">Правая рука</option>
-          <option value="left">Левая рука</option>
-          <option value="both">Обе руки</option>
-          <option value="listen">Только слушать</option>
-        </select>
-        <label className="speed">
-          Скорость {Math.round(speed * 100)}%
-          <input
-            type="range"
-            min={0.25}
-            max={1}
-            step={0.05}
-            value={speed}
-            onChange={(event) => {
-              setSpeed(Number(event.target.value));
-            }}
-          />
-        </label>
-        <button type="button" onClick={() => void togglePlay()} disabled={sound === "loading"}>
-          {sound === "loading" ? "Загружаю звук…" : snapshot?.playing ? "Пауза" : "Играть"}
-        </button>
-        <button type="button" onClick={restart}>
-          Сначала
-        </button>
-        <button type="button" onClick={() => void toggleListening()} disabled={sound === "loading"}>
-          {listening ? "Стоп" : "Прослушать"}
-        </button>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={metronome}
-            onChange={(event) => {
-              setMetronome(event.target.checked);
-            }}
-          />
-          Метроном
-        </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={showLabels}
-            onChange={(event) => {
-              setShowLabels(event.target.checked);
-            }}
-          />
-          Названия нот
-        </label>
-        <select
-          aria-label="Клавиши"
-          value={keyRange}
-          onChange={(event) => {
-            setKeyRange(event.target.value as KeyRange);
-          }}
-        >
-          <option value="song">Клавиши по песне</option>
-          <option value="88">88 клавиш</option>
-          <option value="61">61 клавиша</option>
-          <option value="49">49 клавиш</option>
-        </select>
-      </header>
+  // The shell: one bar, the song's progress, windows for the library and the settings.
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [resultClosed, setResultClosed] = useState(false);
+  const [bar, setBar] = useState<HTMLDivElement | null>(null);
+  const playing = snapshot?.playing ?? false;
+  const barHidden = useAutoHide(playing && !settingsOpen && !libraryOpen, bar);
+  const board = scoreboard(song, snapshot?.time ?? 0, speed);
+  const totalQuarters = Math.max(1e-6, quartersAt(song, song.duration));
+  const progress = Math.min(1, quartersAt(song, snapshot?.time ?? 0) / totalQuarters);
+  const ticks = useMemo(
+    () => song.measures.map((measure) => measure.start / totalQuarters),
+    [song, totalQuarters]
+  );
+  const midiName = devices.length > 0 ? (devices[0]?.name ?? "MIDI") : undefined;
 
-      <div className="status">
-        {devices.length > 1 ? (
-          <label className="device">
-            MIDI:{" "}
-            <select
-              value={midiDeviceId}
-              onChange={(event) => {
-                setMidiDeviceId(event.target.value);
-              }}
-            >
-              <option value="all">Все устройства</option>
-              {devices.map((device) => (
-                <option key={device.id} value={device.id}>
-                  {device.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <span>
-            {devices.length === 1
-              ? `Пианино: ${devices[0]?.name ?? ""}`
-              : (midiError ??
-                "Пианино не найдено — подключите USB-кабель или играйте на клавиатуре: Z…/ и Q…P — белые, S D G H J и 2 3 5 6 7 9 0 — чёрные")}
-          </span>
-        )}
-        {stats && (
-          <span>
-            Попадания {stats.hits} · Промахи {stats.misses} · Лишние {stats.wrong}
-            {mode === "tempo" && stats.hits > 0
-              ? ` · Смещение ${String(Math.round(stats.meanOffset * 1000))} мс`
-              : ""}
-          </span>
-        )}
-        {snapshot?.waiting && <span className="waiting">Жду ноту</span>}
-        {loadError && <span className="error">{loadError}</span>}
-        <span className="hint">Клик по ноте меняет палец</span>
-      </div>
+  const play = () => {
+    setResultClosed(false);
+    void togglePlay();
+  };
+  const startOver = () => {
+    setResultClosed(false);
+    restart();
+  };
 
-      <div className="staff-bar">
-        {staffXml && (
-          <>
-            <span>Ноты</span>
-            <button
-              type="button"
-              aria-label="Мельче"
-              disabled={staffPrefs.zoom <= ZOOM_MIN + 1e-9}
-              onClick={() => {
-                updateStaffPrefs({
-                  zoom: Math.max(ZOOM_MIN, Math.round((staffPrefs.zoom - ZOOM_STEP) * 10) / 10)
-                });
-              }}
-            >
-              −
-            </button>
-            <span className="zoom">{Math.round(staffPrefs.zoom * 100)}%</span>
-            <button
-              type="button"
-              aria-label="Крупнее"
-              disabled={staffPrefs.zoom >= ZOOM_MAX - 1e-9}
-              onClick={() => {
-                updateStaffPrefs({
-                  zoom: Math.min(ZOOM_MAX, Math.round((staffPrefs.zoom + ZOOM_STEP) * 10) / 10)
-                });
-              }}
-            >
-              +
-            </button>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={!staffPrefs.singleLine}
-                onChange={(event) => {
-                  updateStaffPrefs({ singleLine: !event.target.checked });
-                }}
-              />
-              По строкам
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={staffPrefs.follow}
-                onChange={(event) => {
-                  updateStaffPrefs({ follow: event.target.checked });
-                }}
-              />
-              Следовать за игрой
-            </label>
-            {!staffPrefs.singleLine && (
-              <select
-                aria-label="Тактов в строке"
-                value={staffPrefs.measuresPerLine}
-                onChange={(event) => {
-                  updateStaffPrefs({
-                    measuresPerLine: Number(event.target.value) as StaffPrefs["measuresPerLine"]
-                  });
-                }}
-              >
-                <option value={0}>Тактов в строке: авто</option>
-                <option value={2}>По 2 такта</option>
-                <option value={4}>По 4 такта</option>
-                <option value={8}>По 8 тактов</option>
-              </select>
-            )}
-            {staffXml && (
-              <select
-                aria-label="Названия нот на нотах"
-                value={staffPrefs.noteNames}
-                onChange={(event) => {
-                  updateStaffPrefs({ noteNames: event.target.value as StaffPrefs["noteNames"] });
-                }}
-              >
-                <option value="off">Названия: нет</option>
-                <option value="ru">Названия: до ре ми</option>
-                <option value="en">Названия: C D E</option>
-              </select>
-            )}
-            {staffXml && (
-              <label className="check">
-                <input
-                  type="checkbox"
-                  checked={staffPrefs.chords}
-                  onChange={(event) => {
-                    updateStaffPrefs({ chords: event.target.checked });
+  // Keys play notes: the shortcuts take Ctrl or Alt, never a lone key or the space bar.
+  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
+    const pause =
+      (event.ctrlKey && event.code === "Space") || (event.altKey && event.code === "KeyP");
+    if (pause) {
+      event.preventDefault();
+      play();
+    } else if (event.altKey && event.code === "KeyR") {
+      event.preventDefault();
+      startOver();
+    } else if (event.altKey && event.code === "KeyL") {
+      event.preventDefault();
+      setLibraryOpen(true);
+    }
+  });
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => {
+      onShortcut(event);
+    };
+    window.addEventListener("keydown", listener);
+    return () => {
+      window.removeEventListener("keydown", listener);
+    };
+  }, []);
+
+  const toggles = (
+    <>
+      <button
+        type="button"
+        className="view-toggle"
+        aria-pressed={staffPrefs.visible}
+        title={staffPrefs.visible ? "Скрыть нотный стан" : "Показать нотный стан"}
+        disabled={!staffXml}
+        onClick={() => {
+          updateStaffPrefs({ visible: !staffPrefs.visible });
+        }}
+      >
+        <StaffIcon />
+      </button>
+      <button
+        type="button"
+        className="view-toggle"
+        aria-pressed={staffPrefs.lane}
+        title={staffPrefs.lane ? "Скрыть падающие ноты" : "Показать падающие ноты"}
+        onClick={() => {
+          updateStaffPrefs({ lane: !staffPrefs.lane });
+        }}
+      >
+        <FallingNotesIcon />
+      </button>
+      <button
+        type="button"
+        className="view-toggle"
+        aria-pressed={staffPrefs.keys}
+        title={staffPrefs.keys ? "Скрыть клавиатуру" : "Показать клавиатуру"}
+        onClick={() => {
+          updateStaffPrefs({ keys: !staffPrefs.keys });
+        }}
+      >
+        <KeyboardIcon />
+      </button>
+      <button
+        type="button"
+        className="view-toggle"
+        aria-pressed={staffPrefs.hands}
+        disabled={!staffPrefs.keys}
+        title={staffPrefs.hands ? "Скрыть руки" : "Показать руки"}
+        onClick={() => {
+          updateStaffPrefs({ hands: !staffPrefs.hands });
+        }}
+      >
+        <HandIcon />
+      </button>
+      <button
+        type="button"
+        className="view-toggle"
+        aria-pressed={staffPrefs.road}
+        disabled={!staffPrefs.lane}
+        title={staffPrefs.road ? "Обычный вид нот" : "Дорога: ноты в перспективе"}
+        onClick={() => {
+          updateStaffPrefs({ road: !staffPrefs.road });
+        }}
+      >
+        <RoadIcon />
+      </button>
+      <button
+        type="button"
+        className="view-toggle"
+        aria-pressed={staffPrefs.noteCards}
+        disabled={!staffPrefs.lane}
+        title={staffPrefs.noteCards ? "Падающие ноты полосками" : "Падающие ноты нотами на стане"}
+        onClick={() => {
+          updateStaffPrefs({ noteCards: !staffPrefs.noteCards });
+        }}
+      >
+        <NoteCardIcon />
+      </button>
+    </>
+  );
+
+  const settingsTabs = [
+    {
+      id: "song",
+      title: "Песня",
+      content: (
+        <div className="settings-list">
+          {sourceKey && (
+            <label className="setting">
+              <span>Тональность</span>
+              <span className="setting-control">
+                <button
+                  type="button"
+                  className="game-button"
+                  aria-label="На полтона ниже"
+                  onClick={() => {
+                    setTranspose((value) => Math.max(-11, value - 1));
                   }}
-                />
-                Аккорды
-              </label>
-            )}
-            {sourceKey && (
-              <span className="key-name">
-                Тональность:{" "}
+                >
+                  −
+                </button>
                 <select
+                  className="game-select"
                   aria-label="Тональность"
                   value={(sourceKey.tonic + transpose + 12) % 12}
                   onChange={(event) => {
@@ -1221,18 +1004,10 @@ export function App() {
                       </option>
                     );
                   })}
-                </select>{" "}
+                </select>
                 <button
                   type="button"
-                  aria-label="На полтона ниже"
-                  onClick={() => {
-                    setTranspose((value) => Math.max(-11, value - 1));
-                  }}
-                >
-                  −
-                </button>
-                <button
-                  type="button"
+                  className="game-button"
                   aria-label="На полтона выше"
                   onClick={() => {
                     setTranspose((value) => Math.min(11, value + 1));
@@ -1241,14 +1016,282 @@ export function App() {
                   +
                 </button>
               </span>
-            )}
-            <span className="hint">Клик по нотам — играть с этого места</span>
-          </>
-        )}
-        <button type="button" onClick={resetFingers} disabled={overrides.size === 0}>
-          Сбросить пальцы
-        </button>
+            </label>
+          )}
+          <div className="setting">
+            <span>Пальцы, исправленные кликом по ноте</span>
+            <button
+              type="button"
+              className="game-button"
+              onClick={resetFingers}
+              disabled={overrides.size === 0}
+            >
+              Сбросить пальцы
+            </button>
+          </div>
+          <p className="setting-hint">
+            Клик по падающей ноте меняет палец; клик по нотам на стане — играть с этого места.
+          </p>
+        </div>
+      )
+    },
+    {
+      id: "play",
+      title: "Игра",
+      content: (
+        <div className="settings-list">
+          <label className="setting">
+            <span>Метроном</span>
+            <input
+              type="checkbox"
+              checked={metronome}
+              onChange={(event) => {
+                setMetronome(event.target.checked);
+              }}
+            />
+          </label>
+          <div className="setting">
+            <span>Послушать, как звучит песня</span>
+            <button
+              type="button"
+              className="game-button"
+              onClick={() => void toggleListening()}
+              disabled={sound === "loading"}
+            >
+              {listening ? "Стоп" : "Прослушать"}
+            </button>
+          </div>
+          {stats && (
+            <p className="setting-hint">
+              Попадания {stats.hits} · Промахи {stats.misses} · Лишние {stats.wrong}
+              {mode === "tempo" && stats.hits > 0
+                ? ` · Смещение ${String(Math.round(stats.meanOffset * 1000))} мс`
+                : ""}
+            </p>
+          )}
+          <p className="setting-hint">
+            Горячие клавиши: Ctrl+Пробел или Alt+P — играть и пауза, Alt+R — сначала, Alt+L —
+            библиотека.
+          </p>
+        </div>
+      )
+    },
+    {
+      id: "staff",
+      title: "Вид нот",
+      content: staffXml ? (
+        <div className="settings-list">
+          <div className="setting">
+            <span>Масштаб</span>
+            <span className="setting-control">
+              <button
+                type="button"
+                className="game-button"
+                aria-label="Мельче"
+                disabled={staffPrefs.zoom <= ZOOM_MIN + 1e-9}
+                onClick={() => {
+                  updateStaffPrefs({
+                    zoom: Math.max(ZOOM_MIN, Math.round((staffPrefs.zoom - ZOOM_STEP) * 10) / 10)
+                  });
+                }}
+              >
+                −
+              </button>
+              <span className="digits">{Math.round(staffPrefs.zoom * 100)}%</span>
+              <button
+                type="button"
+                className="game-button"
+                aria-label="Крупнее"
+                disabled={staffPrefs.zoom >= ZOOM_MAX - 1e-9}
+                onClick={() => {
+                  updateStaffPrefs({
+                    zoom: Math.min(ZOOM_MAX, Math.round((staffPrefs.zoom + ZOOM_STEP) * 10) / 10)
+                  });
+                }}
+              >
+                +
+              </button>
+            </span>
+          </div>
+          <label className="setting">
+            <span>По строкам</span>
+            <input
+              type="checkbox"
+              checked={!staffPrefs.singleLine}
+              onChange={(event) => {
+                updateStaffPrefs({ singleLine: !event.target.checked });
+              }}
+            />
+          </label>
+          <label className="setting">
+            <span>Следовать за игрой</span>
+            <input
+              type="checkbox"
+              checked={staffPrefs.follow}
+              onChange={(event) => {
+                updateStaffPrefs({ follow: event.target.checked });
+              }}
+            />
+          </label>
+          {!staffPrefs.singleLine && (
+            <label className="setting">
+              <span>Тактов в строке</span>
+              <select
+                className="game-select"
+                value={staffPrefs.measuresPerLine}
+                onChange={(event) => {
+                  updateStaffPrefs({
+                    measuresPerLine: Number(event.target.value) as StaffPrefs["measuresPerLine"]
+                  });
+                }}
+              >
+                <option value={0}>Авто</option>
+                <option value={2}>По 2 такта</option>
+                <option value={4}>По 4 такта</option>
+                <option value={8}>По 8 тактов</option>
+              </select>
+            </label>
+          )}
+          <label className="setting">
+            <span>Названия на нотах</span>
+            <select
+              className="game-select"
+              value={staffPrefs.noteNames}
+              onChange={(event) => {
+                updateStaffPrefs({ noteNames: event.target.value as StaffPrefs["noteNames"] });
+              }}
+            >
+              <option value="off">Нет</option>
+              <option value="ru">до ре ми</option>
+              <option value="en">C D E</option>
+            </select>
+          </label>
+          <label className="setting">
+            <span>Аккорды</span>
+            <input
+              type="checkbox"
+              checked={staffPrefs.chords}
+              onChange={(event) => {
+                updateStaffPrefs({ chords: event.target.checked });
+              }}
+            />
+          </label>
+        </div>
+      ) : (
+        <p className="setting-hint">У этой песни нет нотной записи: она открыта из MIDI.</p>
+      )
+    },
+    {
+      id: "keys",
+      title: "Клавиатура",
+      content: (
+        <div className="settings-list">
+          <label className="setting">
+            <span>Клавиши</span>
+            <select
+              className="game-select"
+              value={keyRange}
+              onChange={(event) => {
+                setKeyRange(event.target.value as KeyRange);
+              }}
+            >
+              <option value="song">По песне</option>
+              <option value="88">88 клавиш</option>
+              <option value="61">61 клавиша</option>
+              <option value="49">49 клавиш</option>
+            </select>
+          </label>
+          <label className="setting">
+            <span>Наклейки с названиями на клавишах</span>
+            <input
+              type="checkbox"
+              checked={showLabels}
+              onChange={(event) => {
+                setShowLabels(event.target.checked);
+              }}
+            />
+          </label>
+          <div className="setting">
+            <span>Что показывать</span>
+            <span className="setting-control">{toggles}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: "midi",
+      title: "Звук и MIDI",
+      content: (
+        <div className="settings-list">
+          {devices.length > 1 ? (
+            <label className="setting">
+              <span>Пианино</span>
+              <select
+                className="game-select"
+                value={midiDeviceId}
+                onChange={(event) => {
+                  setMidiDeviceId(event.target.value);
+                }}
+              >
+                <option value="all">Все устройства</option>
+                {devices.map((device) => (
+                  <option key={device.id} value={device.id}>
+                    {device.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="setting-hint">
+              {devices.length === 1
+                ? `Пианино: ${devices[0]?.name ?? ""}`
+                : (midiError ??
+                  "Пианино не найдено — подключите USB-кабель или играйте на клавиатуре: Z…/ и Q…P — белые, S D G H J и 2 3 5 6 7 9 0 — чёрные")}
+            </p>
+          )}
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <div className="app">
+      <div ref={setBar} className="shell-top" data-hidden={barHidden}>
+        <PlayerTopBar
+          title={song.title}
+          hidden={barHidden}
+          playing={playing}
+          soundLoading={sound === "loading"}
+          mode={mode}
+          hands={handChoice}
+          speed={speed}
+          board={board}
+          midi={midiName}
+          settingsOpen={settingsOpen}
+          toggles={toggles}
+          onLibrary={() => {
+            setLibraryOpen(true);
+          }}
+          onRestart={startOver}
+          onTogglePlay={play}
+          onMode={setMode}
+          onHands={setHandChoice}
+          onSpeed={setSpeed}
+          onSettings={() => {
+            setSettingsOpen((open) => !open);
+          }}
+        />
+        <SongProgress
+          progress={progress}
+          ticks={ticks}
+          hidden={barHidden}
+          onSeek={(share) => {
+            seekToBeat(share * totalQuarters);
+          }}
+        />
       </div>
+
+      {loadError && <div className="toast toast--error">{loadError}</div>}
 
       {review && lastTake && (
         <div className="review-bar">
@@ -1384,6 +1427,7 @@ export function App() {
           <div className={`lanes lanes--${splitDirection} lanes--${laneMode}`}>
             <div className="lane" ref={hostRef}>
               {comparing && <span className="lane-label">Твой дубль</span>}
+              {snapshot?.waiting && <span className="waiting-pill">Жду ноту</span>}
             </div>
             {comparing && (
               <div className="lane" ref={mirrorHostRef}>
@@ -1392,102 +1436,84 @@ export function App() {
             )}
           </div>
         </div>
-
-        <nav className="side-rail" aria-label="Что показывать">
-          <button
-            type="button"
-            className="rail-button"
-            aria-pressed={staffPrefs.visible}
-            title={staffPrefs.visible ? "Скрыть нотный стан" : "Показать нотный стан"}
-            disabled={!staffXml}
-            onClick={() => {
-              updateStaffPrefs({ visible: !staffPrefs.visible });
-            }}
-          >
-            <StaffIcon />
-          </button>
-          <button
-            type="button"
-            className="rail-button"
-            aria-pressed={staffPrefs.lane}
-            title={staffPrefs.lane ? "Скрыть падающие ноты" : "Показать падающие ноты"}
-            onClick={() => {
-              updateStaffPrefs({ lane: !staffPrefs.lane });
-            }}
-          >
-            <FallingNotesIcon />
-          </button>
-          <button
-            type="button"
-            className="rail-button"
-            aria-pressed={staffPrefs.keys}
-            title={staffPrefs.keys ? "Скрыть клавиатуру" : "Показать клавиатуру"}
-            onClick={() => {
-              updateStaffPrefs({ keys: !staffPrefs.keys });
-            }}
-          >
-            <KeyboardIcon />
-          </button>
-          <button
-            type="button"
-            className="rail-button"
-            aria-pressed={staffPrefs.hands}
-            disabled={!staffPrefs.keys}
-            title={staffPrefs.hands ? "Скрыть руки" : "Показать руки"}
-            onClick={() => {
-              updateStaffPrefs({ hands: !staffPrefs.hands });
-            }}
-          >
-            <HandIcon />
-          </button>
-          <button
-            type="button"
-            className="rail-button"
-            aria-pressed={staffPrefs.road}
-            disabled={!staffPrefs.lane}
-            title={
-              staffPrefs.road ? "Обычный вид нот" : "Дорога: ноты в перспективе (пробный режим)"
-            }
-            onClick={() => {
-              updateStaffPrefs({ road: !staffPrefs.road });
-            }}
-          >
-            <RoadIcon />
-          </button>
-          <button
-            type="button"
-            className="rail-button"
-            aria-pressed={staffPrefs.noteCards}
-            disabled={!staffPrefs.lane}
-            title={
-              staffPrefs.noteCards ? "Падающие ноты полосками" : "Падающие ноты нотами на стане"
-            }
-            onClick={() => {
-              updateStaffPrefs({ noteCards: !staffPrefs.noteCards });
-            }}
-          >
-            <NoteCardIcon />
-          </button>
-        </nav>
       </div>
 
-      {snapshot?.finished && !listening && !comparing && stats && (
-        <div className="result">
-          <h2>Готово</h2>
-          <p>Точность {Math.round(accuracy * 100)}%</p>
-          {stats.troubleSpots.length > 0 && (
-            <p>
-              Трудные ноты:{" "}
-              {stats.troubleSpots
-                .map((spot) => `${noteLabel(spot.pitch)} (${String(spot.errors)})`)
-                .join(", ")}
-            </p>
-          )}
-          <button type="button" onClick={restart}>
+      <LibraryDialog
+        open={libraryOpen}
+        onClose={() => {
+          setLibraryOpen(false);
+        }}
+        lessons={LESSONS}
+        current={lesson}
+        currentSource={librarySource}
+        onLesson={(exerciseId, levelId) => {
+          openLesson({ exerciseId, levelId });
+        }}
+        mySongs={mySongs}
+        onMySong={(id) => void openMySong(id)}
+        onDeleteMySong={(id) => void deleteMySong(id)}
+        folder={
+          folder
+            ? {
+                name: folder.handle.name,
+                needsAccess: folder.access === "prompt",
+                songs: folder.songs
+              }
+            : undefined
+        }
+        foldersSupported={foldersSupported()}
+        onFolderSong={(path) => void openFolderSong(path)}
+        onChooseFolder={() => void chooseFolder()}
+        onGrantFolder={() => {
+          if (folder) void refreshFolder(folder.handle, true);
+        }}
+        onForgetFolder={() => void forgetFolder()}
+        onOpenFile={(event) => void openFile(event)}
+      />
+
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => {
+          setSettingsOpen(false);
+        }}
+        tabs={settingsTabs}
+      />
+
+      <GameDialog
+        open={Boolean(snapshot?.finished && !listening && !comparing && stats && !resultClosed)}
+        title="Готово"
+        className="result"
+        onClose={() => {
+          setResultClosed(true);
+        }}
+      >
+        <p className="result-score digits">{Math.round(accuracy * 100)}%</p>
+        <p className="result-caption">точность</p>
+        {stats && stats.troubleSpots.length > 0 && (
+          <p>
+            Трудные ноты:{" "}
+            {stats.troubleSpots
+              .map((spot) => `${noteLabel(spot.pitch)} (${String(spot.errors)})`)
+              .join(", ")}
+          </p>
+        )}
+        <div className="result-actions">
+          <button type="button" className="game-button game-button--play" onClick={startOver}>
             Ещё раз
           </button>
+          {review && (
+            <button
+              type="button"
+              className="game-button"
+              onClick={() => {
+                setResultClosed(true);
+              }}
+            >
+              Разобрать дубль
+            </button>
+          )}
         </div>
-      )}
+      </GameDialog>
     </div>
   );
 }

@@ -73,127 +73,6 @@ body {
   overflow: hidden;
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 12px;
-  background: var(--panel);
-}
-
-.toolbar .title {
-  margin-right: auto;
-}
-
-.toolbar button,
-.toolbar select,
-.toolbar .button {
-  font: inherit;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel-raised);
-  color: inherit;
-  cursor: pointer;
-}
-
-.toolbar .check {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.toolbar .speed {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 4px 12px;
-  font-size: 14px;
-  color: #a9aec2;
-}
-
-.status .device select {
-  font: inherit;
-  background: var(--panel-raised);
-  color: inherit;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
-.status .waiting {
-  color: #ffd166;
-}
-
-.status .error {
-  color: #ff6b6b;
-}
-
-.status .hint {
-  margin-left: auto;
-}
-
-.staff-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  padding: 4px 12px;
-  font-size: 14px;
-  background: var(--panel);
-}
-
-.staff-bar button {
-  font: inherit;
-  min-width: 28px;
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel-raised);
-  color: inherit;
-  cursor: pointer;
-}
-
-.staff-bar button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.staff-bar .key-name {
-  color: #d7dbe8;
-}
-
-.staff-bar .zoom {
-  min-width: 3em;
-  text-align: center;
-}
-
-.staff-bar select {
-  font: inherit;
-  padding: 2px 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel-raised);
-  color: inherit;
-}
-
-.staff-bar .hint {
-  margin-left: auto;
-  color: #a9aec2;
-}
-
-.staff-bar .check {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
 .review-bar {
   display: flex;
   flex-wrap: wrap;
@@ -332,7 +211,7 @@ body {
   pointer-events: none;
 }
 
-/* The score and the lane on the left, a narrow rail of view toggles on the right. */
+/* The score over the lane. */
 .workspace {
   display: flex;
   flex: 1 1 auto;
@@ -345,53 +224,6 @@ body {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-}
-
-.side-rail {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  gap: 6px;
-  padding: 6px 4px;
-  background: var(--panel);
-  border-left: 1px solid #262a38;
-}
-
-.rail-button {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel-raised);
-  color: #6f7590;
-  cursor: pointer;
-}
-
-.rail-button[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--text);
-}
-
-.rail-button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.rail-button svg {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.5;
-}
-
-.rail-button svg .filled {
-  fill: currentcolor;
-  stroke: none;
 }
 
 /* Only the keys: a strip of keyboard; nothing at all: the score gets the room. */
@@ -463,14 +295,469 @@ body {
   display: block;
 }
 
-.result {
-  position: fixed;
-  top: 50%;
+/* ---- The player shell: one bar, the song's progress, windows. ---- */
+
+.shell-top {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-rows: auto auto;
+  transition: margin-top 260ms var(--ease);
+}
+
+/* Out of the way while the song plays: the bar slides up, the progress stays as a hairline. */
+.shell-top[data-hidden="true"] {
+  margin-top: -52px;
+}
+
+.topbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 52px;
+  padding: 0 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.game-button,
+.game-select,
+.icon-button,
+.view-toggle,
+.level-chip {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.game-button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+.game-button--play {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #101722;
+  font-weight: 700;
+}
+
+.game-select {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+.icon-button,
+.view-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.view-toggle {
+  color: var(--muted);
+}
+
+.view-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.icon-button[aria-pressed="true"] {
+  border-color: var(--accent);
+}
+
+.game-button svg,
+.icon-button svg,
+.view-toggle svg,
+.play-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+}
+
+.game-button svg .filled,
+.icon-button svg .filled,
+.view-toggle svg .filled,
+.play-button svg .filled {
+  fill: currentcolor;
+  stroke: none;
+}
+
+button:disabled,
+select:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.topbar-library {
+  min-width: 0;
+  max-width: 34vw;
+}
+
+.topbar-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 700;
+}
+
+.play-button {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.play-button:not(:disabled):hover {
+  background: var(--accent);
+  color: #101722;
+}
+
+.topbar-speed {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.topbar-speed input {
+  width: 90px;
+  accent-color: var(--accent);
+}
+
+.digits {
+  font-family: var(--font-digits);
+  font-variant-numeric: tabular-nums;
+}
+
+.scoreboard {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.scoreboard b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.midi-dot::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #56607a;
+}
+
+.midi-dot[data-on="true"]::after {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.topbar-toggles {
+  display: flex;
+  gap: 4px;
+}
+
+.song-progress {
+  position: relative;
+  height: 6px;
+  background: #30394d;
+  cursor: pointer;
+}
+
+.song-progress__fill {
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 9px rgb(98 217 255 / 45%);
+}
+
+.song-progress__tick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: rgb(145 160 187 / 55%);
+  pointer-events: none;
+}
+
+.waiting-pill {
+  position: absolute;
+  z-index: 2;
+  bottom: 38%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 24px 32px;
+  padding: 4px 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--early);
+  border-radius: 999px;
+  background: rgb(17 19 26 / 80%);
+  color: var(--early);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.toast {
+  position: fixed;
+  z-index: 20;
+  top: 64px;
+  left: 50%;
+  padding: 8px 16px;
+  transform: translateX(-50%);
+  border-radius: 10px;
+  background: var(--panel-raised);
+}
+
+.toast--error {
+  border: 1px solid var(--miss);
+  color: var(--miss);
+}
+
+.game-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 60%);
+}
+
+.game-dialog::backdrop {
+  background: rgb(8 10 16 / 60%);
+  backdrop-filter: blur(4px);
+}
+
+.game-dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.game-dialog__head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.game-dialog__body {
+  overflow: auto;
+  max-height: calc(100dvh - 120px);
+  padding: 16px 18px 20px;
+}
+
+.game-dialog h3 {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 18px 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* The settings sit beside the game, not over it. */
+.game-dialog.settings {
+  position: fixed;
+  inset: 60px 12px auto auto;
+  width: min(420px, calc(100vw - 24px));
+  margin: 0;
+}
+
+.library-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.song-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.song-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #1f2331;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 50%);
+  background: var(--panel-raised);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.song-card[data-current="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.song-card__levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.level-chip {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.level-chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.song-card__open {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.song-card.song-card__open {
+  padding: 14px;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+}
+
+.song-card__remove {
+  align-self: flex-end;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.text-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setting {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.setting-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.setting input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.setting-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.game-dialog.result {
+  width: min(420px, calc(100vw - 32px));
   text-align: center;
+}
+
+.result-score {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: 56px;
+  color: var(--accent);
+}
+
+.result-caption {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.result-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+/* A narrow screen keeps play, the title and the settings; the rest waits in the settings. */
+@media (width <= 900px) {
+  .topbar .game-select,
+  .topbar-speed input,
+  .topbar-toggles {
+    display: none;
+  }
 }
