@@ -9,6 +9,9 @@ import {
 } from "pixi.js";
 import type { Renderer, Texture } from "pixi.js";
 
+import { perspectiveMap } from "./perspective";
+import type { Projected } from "./perspective";
+
 /** A key being struck right now: where on the hit line, and in what colour. */
 export interface Strike {
   /** The key struck: a strike carries on from frame to frame while its key is held. */
@@ -17,10 +20,14 @@ export interface Strike {
   readonly color: number;
 }
 
-/** Half the width of the road at the horizon, as a share of the view's width. */
-const HORIZON_HALF_WIDTH = 0.05;
-/** How much narrower the keyboard is at its back edge than at its front, per side, as a share. */
-const KEYS_TILT = 0.08;
+/*
+ * One plane in perspective for the whole scene: the lane and the keys are
+ * one floor, the keys the nearest part of it, so the keys' edges run on
+ * along the road's lines. The picture's bottom edge is the view's; its top
+ * edge lies on the horizon, this narrow and this far down the lane.
+ */
+const HORIZON_HALF_WIDTH = 0.2;
+const HORIZON_Y = 0.3;
 const GLOW_STRENGTH = 10;
 const GLOW_ALPHA = 0.9;
 const MAX_SPARKS = 400;
@@ -57,20 +64,22 @@ export class RoadLayer {
   private readonly sparkTexture: Texture;
   private readonly sparks: Spark[] = [];
   private size = { width: 0, height: 0 };
-  /** How far in from each side the road meets the keyboard's back edge. */
-  private inset = 0;
+  /** The hit line on screen: where the road meets the keys. */
+  private hit = { y: 0, left: 0, right: 0 };
   private keysShift = new Matrix();
+  /** Where a point of the flat scene lands in perspective; undefined before the first layout. */
+  private projector: ((x: number, y: number) => Projected) | undefined;
   private clock = 0;
   /** Sparks owed to each held key: the fraction of a spark carried to the next frame. */
   private held = new Map<number, number>();
 
   constructor(private readonly renderer: Renderer) {
-    this.road = new PerspectiveMesh({ texture: this.texture, verticesX: 24, verticesY: 24 });
-    this.glow = new PerspectiveMesh({ texture: this.texture, verticesX: 24, verticesY: 24 });
+    this.road = new PerspectiveMesh({ texture: this.texture, verticesX: 48, verticesY: 96 });
+    this.glow = new PerspectiveMesh({ texture: this.texture, verticesX: 48, verticesY: 96 });
     // The blur's last pass blends as the filter does, not as the mesh: add, for a glow.
     this.glow.filters = [new BlurFilter({ strength: GLOW_STRENGTH, quality: 3, blendMode: "add" })];
     this.glow.alpha = GLOW_ALPHA;
-    this.keys = new PerspectiveMesh({ texture: this.keysTexture, verticesX: 24, verticesY: 8 });
+    this.keys = new PerspectiveMesh({ texture: this.keysTexture, verticesX: 48, verticesY: 24 });
     this.container.addChild(this.road, this.glow, this.keys);
     this.container.eventMode = "none";
     this.hitLine.blendMode = "add";
@@ -80,32 +89,72 @@ export class RoadLayer {
   }
 
   /**
-   * Sizes the road to the lane, down to the hit line at `height`, and the
-   * keyboard under it down to `bottom`. The keyboard leans back too: its back
-   * edge is narrower than its front, and the road meets it there.
+   * Lays the flat scene — the lane down to the hit line at `height`, the keys
+   * under it down to `bottom` — on one floor in perspective.
    */
   layout(width: number, height: number, bottom: number): void {
-    if (width < 1 || height < 1 || bottom <= height) return;
+    if (width < 1 || height < 1 || bottom < height) return;
     this.size = { width, height };
-    this.inset = width * KEYS_TILT;
-    const inset = this.inset;
     this.texture.source.resize(width, height, this.renderer.resolution);
-    this.keysTexture.source.resize(width, bottom - height, this.renderer.resolution);
+    // Without keys the road runs down to the bottom and there is no keyboard to lay.
+    this.keys.visible = bottom - height >= 1;
+    this.keysTexture.source.resize(width, Math.max(1, bottom - height), this.renderer.resolution);
     this.keysShift = new Matrix().translate(0, -height);
     const middle = width / 2;
     const half = width * HORIZON_HALF_WIDTH;
+    const horizon = height * HORIZON_Y;
+    const map = perspectiveMap(width, bottom, [
+      middle - half,
+      horizon,
+      middle + half,
+      horizon,
+      width,
+      bottom,
+      0,
+      bottom
+    ]);
+    this.projector = map;
+    const topLeft = map(0, 0);
+    const topRight = map(width, 0);
+    const hitLeft = map(0, height);
+    const hitRight = map(width, height);
+    const bottomRight = map(width, bottom);
+    const bottomLeft = map(0, bottom);
     for (const mesh of [this.road, this.glow]) {
       mesh.texture = this.texture;
-      mesh.setCorners(middle - half, 0, middle + half, 0, width - inset, height, inset, height);
+      mesh.setCorners(
+        topLeft.x,
+        topLeft.y,
+        topRight.x,
+        topRight.y,
+        hitRight.x,
+        hitRight.y,
+        hitLeft.x,
+        hitLeft.y
+      );
     }
     this.keys.texture = this.keysTexture;
-    this.keys.setCorners(inset, height, width - inset, height, width, bottom, 0, bottom);
+    this.keys.setCorners(
+      hitLeft.x,
+      hitLeft.y,
+      hitRight.x,
+      hitRight.y,
+      bottomRight.x,
+      bottomRight.y,
+      bottomLeft.x,
+      bottomLeft.y
+    );
+    this.hit = { y: hitLeft.y, left: hitLeft.x, right: hitRight.x };
   }
 
-  /** Where a point on the flat hit line lands on the road's narrower bottom edge. */
+  /** Where a point of the flat scene lands in perspective, and how much it shrinks there. */
+  place(x: number, y: number): Projected | undefined {
+    return this.projector?.(x, y);
+  }
+
+  /** Where a point on the flat hit line lands on screen. */
   private project(x: number): number {
-    const { width } = this.size;
-    return this.inset + (x * (width - this.inset * 2)) / width;
+    return this.projector?.(x, this.size.height).x ?? x;
   }
 
   /**
@@ -152,12 +201,10 @@ export class RoadLayer {
   }
 
   private drawHitLine(strikes: readonly Strike[]): void {
-    const { width, height } = this.size;
+    const { y: height, left, right } = this.hit;
     const line = this.hitLine;
     line.clear();
     // A wide faint band under a thin bright wire that crackles a little.
-    const left = this.inset;
-    const right = width - this.inset;
     line.rect(left, height - 6, right - left, 12).fill({ color: HIT_LINE_COLOR, alpha: 0.12 });
     const step = 6;
     line.moveTo(left, height);
@@ -189,7 +236,7 @@ export class RoadLayer {
         this.sparks.push(spark);
       }
       spark.sprite.x = strike.x + (Math.random() - 0.5) * 10;
-      spark.sprite.y = this.size.height;
+      spark.sprite.y = this.hit.y;
       spark.sprite.tint = strike.color;
       spark.vx = (Math.random() - 0.5) * 140;
       spark.vy = -(80 + Math.random() * 260);

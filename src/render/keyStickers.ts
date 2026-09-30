@@ -41,7 +41,7 @@ function diatonicStep(pitch: number): number {
   return octave * 7 + (LETTER_OF[pitch % 12] ?? 0);
 }
 
-interface Placement {
+export interface Placement {
   /** Staff position counted in half spaces above the bottom line. */
   readonly position: number;
   /** "8va", "8vb", "15ma"… when the note is written away from where it sounds. */
@@ -49,7 +49,7 @@ interface Placement {
 }
 
 /** Middle C and above in the treble clef, below it in the bass clef. */
-function placeOnStaff(pitch: number): Placement {
+export function placeOnStaff(pitch: number): Placement {
   let position = diatonicStep(pitch) - (pitch >= 60 ? TREBLE_BOTTOM : BASS_BOTTOM);
   let shifted = 0;
   while (position > 8 + MAX_LEDGERS * 2) {

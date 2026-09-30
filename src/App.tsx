@@ -111,6 +111,8 @@ interface StaffPrefs {
   readonly hands: boolean;
   /** The trial road view: notes in perspective, glowing, with sparks. */
   readonly road: boolean;
+  /** Falling notes carry the note written on a small staff. */
+  readonly noteCards: boolean;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -125,7 +127,8 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   lane: true,
   keys: true,
   hands: true,
-  road: false
+  road: false,
+  noteCards: true
 };
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
@@ -307,6 +310,19 @@ function KeyboardIcon() {
       {[5.5, 9.5, 15.5].map((x) => (
         <rect key={x} x={x} y="5" width="2.6" height="7" className="filled" />
       ))}
+    </svg>
+  );
+}
+
+function NoteCardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="3" />
+      {[9, 12, 15].map((y) => (
+        <line key={y} x1="7" x2="17" y1={y} y2={y} />
+      ))}
+      <ellipse cx="11" cy="15" rx="2" ry="1.5" className="filled" />
+      <line x1="12.8" x2="12.8" y1="15" y2="8" />
     </svg>
   );
 }
@@ -570,6 +586,7 @@ export function App() {
       hands: staffPrefs.hands
     });
     viewRef.current?.setRoad(staffPrefs.road);
+    viewRef.current?.setNoteCards(staffPrefs.noteCards);
   }, [
     trainerReady,
     showLabels,
@@ -577,7 +594,8 @@ export function App() {
     staffPrefs.lane,
     staffPrefs.keys,
     staffPrefs.hands,
-    staffPrefs.road
+    staffPrefs.road,
+    staffPrefs.noteCards
   ]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
@@ -1435,6 +1453,20 @@ export function App() {
             }}
           >
             <RoadIcon />
+          </button>
+          <button
+            type="button"
+            className="rail-button"
+            aria-pressed={staffPrefs.noteCards}
+            disabled={!staffPrefs.lane}
+            title={
+              staffPrefs.noteCards ? "Падающие ноты полосками" : "Падающие ноты нотами на стане"
+            }
+            onClick={() => {
+              updateStaffPrefs({ noteCards: !staffPrefs.noteCards });
+            }}
+          >
+            <NoteCardIcon />
           </button>
         </nav>
       </div>
