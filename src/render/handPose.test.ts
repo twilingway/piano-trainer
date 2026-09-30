@@ -39,8 +39,27 @@ describe("handPose", () => {
 
   it("reaches in for a black key", () => {
     const pose = handPose("right", [{ pitch: 66, finger: 3 }], keys);
-    expect(pose?.tips[3]).toEqual({ x: middle(66), black: true });
-    expect(pose?.tips[4].black).toBe(false);
+    expect(pose?.tips[3]).toEqual({ x: middle(66), reach: 1 });
+    expect(pose?.tips[4].reach).toBe(0);
+  });
+
+  it("lays the free fingers a key apart below the only placed one", () => {
+    // Right hand, only the fifth finger on G: the thumb lies four keys lower, on C.
+    const pose = handPose("right", [{ pitch: 67, finger: 5 }], keys);
+    expect(pose?.tips[4].x).toBe(middle(67) - 20);
+    expect(pose?.tips[1].x).toBe(middle(67) - 80);
+  });
+
+  it("keeps the first key of a finger given two", () => {
+    const pose = handPose(
+      "right",
+      [
+        { pitch: 60, finger: 1 },
+        { pitch: 62, finger: 1 }
+      ],
+      keys
+    );
+    expect(pose?.tips[1].x).toBe(middle(60));
   });
 
   it("keeps the last pose, lifted, when nothing is fingered", () => {
@@ -61,10 +80,22 @@ describe("upcomingChord", () => {
     expect(upcomingChord(notes, 0.6)).toMatchObject({ start: 1, notes: [{ id: "c" }] });
     expect(upcomingChord(notes, 3)).toBeUndefined();
   });
+
+  it("does not take a note just after the chord's window into the chord", () => {
+    const late = [note("a", 0), note("b", 0.05)];
+    expect(upcomingChord(late, 0.01)?.notes.map((n) => n.id)).toEqual(["a"]);
+  });
+
+  it("follows the notes played over a held bass", () => {
+    const bass = [note("bass", 0, 4), note("x", 1), note("y", 2)];
+    expect(upcomingChord(bass, 1.2)).toMatchObject({ start: 1, notes: [{ id: "x" }] });
+    expect(upcomingChord(bass, 2.1)).toMatchObject({ start: 2, notes: [{ id: "y" }] });
+    expect(upcomingChord(bass, 3)).toMatchObject({ start: 0, notes: [{ id: "bass" }] });
+  });
 });
 
 describe("easePose", () => {
-  it("moves part of the way, more with a longer frame, and lands on a new press at once", () => {
+  it("moves part of the way, more with a longer frame", () => {
     const from = handPose("right", [{ pitch: 60, finger: 1 }], keys);
     const to = handPose("right", [{ pitch: 67, finger: 1 }], keys);
     if (!from || !to) throw new Error("no pose");
@@ -74,5 +105,17 @@ describe("easePose", () => {
     expect(long).toBeGreaterThan(short);
     expect(long).toBeLessThan(middle(67));
     expect(easePose(undefined, to, 0.01, 0.1)).toBe(to);
+  });
+
+  it("gets as far in two half frames as in one whole frame", () => {
+    const from = handPose("right", [{ pitch: 60, finger: 1 }], keys);
+    const to = handPose("right", [{ pitch: 66, finger: 1 }], keys);
+    if (!from || !to) throw new Error("no pose");
+    const once = easePose(from, to, 0.1, 0.12);
+    const twice = easePose(easePose(from, to, 0.05, 0.12), to, 0.05, 0.12);
+    expect(twice.tips[1].x).toBeCloseTo(once.tips[1].x, 9);
+    // Onto a black key the tip slides in with the hand rather than jumping.
+    expect(once.tips[1].reach).toBeGreaterThan(0);
+    expect(once.tips[1].reach).toBeLessThan(1);
   });
 });

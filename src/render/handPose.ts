@@ -3,10 +3,14 @@ import type { KeyRect } from "./keyboardLayout";
 
 export const FINGERS: readonly Finger[] = [1, 2, 3, 4, 5];
 
-/** Where one fingertip rests: across the keyboard, and whether it reaches in to a black key. */
+/**
+ * Where one fingertip rests: across the keyboard, and how far in it reaches,
+ * 0 on a white key's front, 1 in among the black keys. A number, not a flag,
+ * so a finger moving onto a black key slides in rather than jumping.
+ */
 export interface Tip {
   readonly x: number;
-  readonly black: boolean;
+  readonly reach: number;
 }
 
 /** A hand over the keyboard: every fingertip, and the fingers pressing now. */
@@ -38,15 +42,16 @@ export function handPose(
   const placed = new Map<Finger, Tip>();
   for (const note of notes) {
     const key = keys.get(note.pitch);
-    if (note.finger === undefined || !key) continue;
-    placed.set(note.finger, { x: key.x + key.width / 2, black: key.black });
+    // One key a finger: a second note on the same finger keeps the first.
+    if (note.finger === undefined || !key || placed.has(note.finger)) continue;
+    placed.set(note.finger, { x: key.x + key.width / 2, reach: key.black ? 1 : 0 });
   }
   if (placed.size === 0) return previous && { ...previous, down: new Set() };
 
   const step = whiteWidth(keys) * (hand === "right" ? 1 : -1);
   const tips = {} as Record<Finger, Tip>;
   for (const finger of FINGERS) {
-    tips[finger] = placed.get(finger) ?? { x: freeX(finger, placed, step), black: false };
+    tips[finger] = placed.get(finger) ?? { x: freeX(finger, placed, step), reach: 0 };
   }
   return { hand, tips, down: new Set(placed.keys()) };
 }
@@ -78,19 +83,35 @@ function whiteWidth(keys: ReadonlyMap<number, KeyRect>): number {
 const CHORD_WINDOW_S = 0.03;
 
 /**
- * What the hand is on at `time`: the chord still sounding, or else the next
- * one. `start` tells whether it is pressed yet. Undefined past the last note.
+ * What the hand is on at `time`: the chord struck last among those still
+ * sounding (a held bass does not keep the hand from the notes over it), or
+ * else the next one. `start` tells whether it is pressed yet. Undefined past
+ * the last note.
  */
 export function upcomingChord<T extends { readonly start: number; readonly duration: number }>(
   notes: readonly T[],
   time: number
 ): { readonly start: number; readonly notes: readonly T[] } | undefined {
-  let first = Infinity;
+  let latestStruck = -Infinity;
+  let nextStart = Infinity;
   for (const note of notes) {
-    if (note.start + note.duration > time && note.start < first) first = note.start;
+    if (note.start + note.duration <= time) continue;
+    if (note.start <= time) latestStruck = Math.max(latestStruck, note.start);
+    else nextStart = Math.min(nextStart, note.start);
   }
+  let first = latestStruck > -Infinity ? latestStruck : nextStart;
   if (first === Infinity) return undefined;
-  const chord = notes.filter((note) => note.start >= first && note.start - first <= CHORD_WINDOW_S);
+  // A chord struck a little unevenly starts with its earliest note.
+  for (const note of notes) {
+    const sounding = note.start + note.duration > time;
+    if (sounding && note.start < first && first - note.start <= CHORD_WINDOW_S) first = note.start;
+  }
+  const chord = notes.filter(
+    (note) =>
+      note.start >= first &&
+      note.start - first <= CHORD_WINDOW_S &&
+      note.start + note.duration > time
+  );
   return { start: first, notes: chord };
 }
 
@@ -104,13 +125,16 @@ export function easePose(
   deltaSeconds: number,
   smoothing: number
 ): HandPose {
-  if (!current) return target;
+  if (!current || smoothing <= 0) return target;
   const share = 1 - Math.exp(-deltaSeconds / smoothing);
   const tips = {} as Record<Finger, Tip>;
   for (const finger of FINGERS) {
     const from = current.tips[finger];
     const to = target.tips[finger];
-    tips[finger] = { x: from.x + (to.x - from.x) * share, black: to.black };
+    tips[finger] = {
+      x: from.x + (to.x - from.x) * share,
+      reach: from.reach + (to.reach - from.reach) * share
+    };
   }
   return { hand: target.hand, tips, down: target.down };
 }

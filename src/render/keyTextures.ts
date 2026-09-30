@@ -28,13 +28,15 @@ function bake(renderer: Renderer, draw: (graphics: Graphics) => void): Texture {
   const root = new Container();
   root.addChild(graphics);
   const texture = renderer.generateTexture({ target: root, resolution: 2, antialias: true });
-  root.destroy({ children: true });
+  // `context` too, or the graphics' gradients outlive every re-bake.
+  root.destroy({ children: true, context: true });
   return texture;
 }
 
 function whiteFace(width: number, height: number) {
   return (graphics: Graphics) => {
     const radius = Math.min(width * 0.14, 6);
+    // Rounded at the front only: the back corners run square under the felt.
     graphics.roundRect(0, 0, width, height, radius).fill(
       vertical([
         [0, 0xfbf8ea],
@@ -43,6 +45,7 @@ function whiteFace(width: number, height: number) {
         [1, 0xd9d2ba]
       ])
     );
+    graphics.rect(0, 0, width, radius * 2).fill(0xfbf8ea);
   };
 }
 

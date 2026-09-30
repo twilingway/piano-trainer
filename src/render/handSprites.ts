@@ -36,7 +36,8 @@ export function fitPose(
   whiteWidth: number,
   pixelsPerKey: number
 ): PoseFit | undefined {
-  if (targets.size === 0 || pixelsPerKey <= 0) return undefined;
+  // Also refuses NaN: a pose measured wrong must not place a hand nowhere.
+  if (targets.size === 0 || !(pixelsPerKey > 0) || !(whiteWidth > 0)) return undefined;
   const scale = whiteWidth / pixelsPerKey;
   const scaleX = hand === "right" ? scale : -scale;
   let best: PoseFit | undefined;

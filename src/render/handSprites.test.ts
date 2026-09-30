@@ -72,6 +72,28 @@ describe("fitPose", () => {
     expect(fit?.x).toBeCloseTo(200);
   });
 
+  it("prefers a pose that presses the placed fingers over one that only lies near", () => {
+    // Same tips, only which fingers press differs: the one pressing 1 and 5 wins.
+    const lying = pose("lying", [0, 100, 200, 300, 400], [2, 3, 4]);
+    const pressing = pose("pressing", [0, 100, 200, 300, 400], [1, 5]);
+    const fit = fitPose(
+      [lying, pressing],
+      "right",
+      new Map([
+        [1, 110],
+        [5, 190]
+      ]),
+      20,
+      100
+    );
+    expect(fit?.pose.id).toBe("pressing");
+  });
+
+  it("refuses a pose measured wrong", () => {
+    expect(fitPose(poses, "right", new Map([[1, 110]]), 20, Number.NaN)).toBeUndefined();
+    expect(fitPose(poses, "right", new Map([[1, 110]]), 0, 100)).toBeUndefined();
+  });
+
   it("has nothing to fit without a placed finger", () => {
     expect(fitPose(poses, "right", new Map(), 20, 100)).toBeUndefined();
   });

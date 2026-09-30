@@ -604,7 +604,8 @@ export function App() {
       mirror.setSong(song);
       mirror.setShowLabels(showLabels);
       mirror.setNoteNames(fallingNames);
-      mirror.setParts({ notes: staffPrefs.lane, keys: staffPrefs.keys });
+      // The same parts as the main view, or the two lanes run at different speeds.
+      mirror.setParts({ notes: staffPrefs.lane, keys: staffPrefs.keys, hands: staffPrefs.hands });
       mirror.setRange(rangeLow, rangeHigh);
       trainer.setComparison({
         colorOf: (note) => playedTint.get(note.id),
@@ -627,7 +628,8 @@ export function App() {
     rangeHigh,
     fallingNames,
     staffPrefs.lane,
-    staffPrefs.keys
+    staffPrefs.keys,
+    staffPrefs.hands
   ]);
 
   useEffect(() => {

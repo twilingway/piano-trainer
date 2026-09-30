@@ -48,8 +48,8 @@ const CODEX_KEYS = new URLSearchParams(window.location.search).get("keys") === "
 const WHITE_SLICE = { leftWidth: 32, topHeight: 32, rightWidth: 32, bottomHeight: 80 };
 const BLACK_SLICE = { leftWidth: 18, topHeight: 56, rightWidth: 18, bottomHeight: 96 };
 const NO_SLICE = { leftWidth: 0, topHeight: 0, rightWidth: 0, bottomHeight: 0 };
-/** How far a held key sinks, in white-key widths. */
-const PRESS_DEPTH = 0.05;
+/** The felt strip's height, in white-key widths. */
+const FELT_PER_WIDTH = 0.22;
 const OCTAVE_LINE = 0x2a2f3d;
 const HIT_LINE = 0xffffff;
 const NOTE_GAP_PX = 1;
@@ -91,6 +91,9 @@ interface Geometry {
   readonly keyboardHeight: number;
   readonly blackHeight: number;
   readonly whiteWidth: number;
+  /** Where notes meet the keys: the top of the felt over them, or the view's bottom without keys. */
+  readonly hitY: number;
+  readonly feltHeight: number;
 }
 
 /**
@@ -131,6 +134,10 @@ export class FallingNotesView {
   /** Which parts are on screen: the falling notes, the keyboard, the hands over it. */
   private parts = { notes: true, keys: true, hands: false };
   private keys = new Map<number, KeyRect>();
+  /** A white key's width in this layout, kept so a frame need not search the keys for it. */
+  private whiteWidth = 0;
+  /** The player wants the road; it shows only while both the notes and the keys are on screen. */
+  private roadWanted = false;
   private range = { low: LOWEST_PITCH, high: HIGHEST_PITCH };
   private laidOutFor = { width: 0, height: 0 };
   private ready = false;
@@ -206,12 +213,17 @@ export class FallingNotesView {
       }
     }
     if (CODEX_KEYS) {
-      const [white, black, blackLit] = await Promise.all(
-        ["white", "black", "black-lit"].map((name) =>
-          Assets.load<Texture>(`/generated/keys/${name}.png`)
-        )
-      );
-      if (white && black && blackLit) this.codexFaces = { white, black, blackLit };
+      try {
+        const [white, black, blackLit] = await Promise.all(
+          ["white", "black", "black-lit"].map((name) =>
+            Assets.load<Texture>(`/generated/keys/${name}.png`)
+          )
+        );
+        if (white && black && blackLit) this.codexFaces = { white, black, blackLit };
+      } catch (error) {
+        // The faces are local drafts, not in the repository: without them the baked keys stay.
+        console.warn("Codex key faces did not load; using the baked keys", error);
+      }
     }
     this.ready = true;
   }
@@ -253,20 +265,29 @@ export class FallingNotesView {
     this.felt.visible = parts.keys;
     this.keyHints.visible = parts.keys;
     this.keyStickers.visible = this.labels && parts.keys;
+    if (!this.hands.container.visible) this.hands.reset();
+    this.syncRoad();
     this.laidOutFor = { width: 0, height: 0 };
   }
 
   /**
    * The trial road view: the notes come out of the horizon in perspective,
    * glowing, with sparks in their finger's colour where they are struck.
-   * Notes cannot be clicked there: the lane is a picture on the road.
+   * Notes cannot be clicked there, nor keys played with the mouse: the lane
+   * and the keyboard are pictures laid on the road.
    */
   setRoad(on: boolean): void {
+    this.roadWanted = on;
+    this.syncRoad();
+  }
+
+  /** Puts the road on or off: on only when asked for and both the notes and the keys show. */
+  private syncRoad(): void {
+    const on = this.roadWanted && this.parts.notes && this.parts.keys;
     if (!this.road || on === this.roadMode) return;
     this.roadMode = on;
     this.road.container.visible = on;
     this.road.effects.visible = on;
-    // Laid back, the keys are a picture on the road too: the mouse no longer plays them.
     if (on) this.app.stage.removeChild(this.laneRoot, this.keysRoot);
     else {
       this.app.stage.addChildAt(this.laneRoot, 1);
@@ -317,8 +338,8 @@ export class FallingNotesView {
       this.layout(width, height);
     }
     const geometry = this.geometry(height);
-    const { keyboardTop, keyboardHeight, blackHeight } = geometry;
-    const pixelsPerSecond = keyboardTop / state.lookAhead;
+    const { keyboardTop, keyboardHeight, blackHeight, hitY } = geometry;
+    const pixelsPerSecond = hitY / state.lookAhead;
 
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = new Map<number, SongNote>();
@@ -327,9 +348,9 @@ export class FallingNotesView {
         playing.set(note.pitch, note);
       }
       const key = this.keys.get(note.pitch);
-      const bottom = keyboardTop - (note.start - state.time) * pixelsPerSecond;
+      const bottom = hitY - (note.start - state.time) * pixelsPerSecond;
       const noteHeight = Math.max(note.duration * pixelsPerSecond - NOTE_GAP_PX, 4);
-      const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < keyboardTop;
+      const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
       body.visible = onScreen;
       digit.visible = onScreen && note.finger !== undefined;
       name.visible = false;
@@ -381,22 +402,12 @@ export class FallingNotesView {
               : HAND_HINT[shown.hand]
             : undefined;
       const key = this.keys.get(pitch);
-      if (key && this.keyTextures) {
+      if (key?.black && this.keyTextures) {
         // A black key is repainted in pale grey for its colour to show; a white one is tinted as it is.
-        if (key.black) {
-          sprite.texture = color === undefined ? this.keyTextures.black : this.keyTextures.blackLit;
-        }
-        sprite.tint = color ?? 0xffffff;
-        // A held key sinks a little under the felt.
-        const depth = pressed ? geometry.whiteWidth * PRESS_DEPTH : 0;
-        this.placeKey(
-          sprite,
-          sprite.x,
-          keyboardTop + depth,
-          key.width - (key.black ? 0 : 1),
-          (key.black ? blackHeight : keyboardHeight) - depth
-        );
+        const face = color === undefined ? this.keyTextures.black : this.keyTextures.blackLit;
+        if (sprite.texture !== face) sprite.texture = face;
       }
+      sprite.tint = color ?? 0xffffff;
       const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
       hint.visible = key !== undefined && shown?.finger !== undefined;
@@ -419,10 +430,10 @@ export class FallingNotesView {
       const strikes: Strike[] = [];
       for (const [pitch, note] of playing) {
         const key = this.keys.get(pitch);
-        // Struck by the player, or sounded by the program when it plays alone.
-        if (!key || !(state.pressed.has(pitch) || state.sounding.has(pitch))) continue;
+        // Only the player's own notes, held while they sound.
+        if (!key || !state.hands.has(note.hand) || !state.pressed.has(pitch)) continue;
         const color = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
-        strikes.push({ x: key.x + key.width / 2, color });
+        strikes.push({ pitch, x: key.x + key.width / 2, color });
       }
       this.road.draw(this.laneRoot, this.keysRoot, strikes, this.app.ticker.deltaMS / 1000);
     }
@@ -444,14 +455,23 @@ export class FallingNotesView {
   destroy(): void {
     this.ready = false;
     this.resizeObserver?.disconnect();
+    // Off the stage in the road view, so the stage's own destroy would miss them.
+    if (this.roadMode) {
+      this.laneRoot.destroy({ children: true });
+      this.keysRoot.destroy({ children: true });
+    }
+    this.road?.destroy();
     this.app.destroy({ removeView: true }, { children: true });
   }
 
   private geometry(height: number): Geometry {
     const stickers = this.labels;
-    const whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
-    if (!this.parts.keys)
-      return { keyboardTop: height, keyboardHeight: 0, blackHeight: 0, whiteWidth };
+    const whiteWidth = this.whiteWidth;
+    if (!this.parts.keys) {
+      const none = { keyboardHeight: 0, blackHeight: 0, feltHeight: 0 };
+      return { ...none, keyboardTop: height, hitY: height, whiteWidth };
+    }
+    const feltHeight = Math.max(3, whiteWidth * FELT_PER_WIDTH);
     const blackOf = (keyboardHeight: number) =>
       keyboardHeight * (stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT);
     // The palms reach below the keys, into a strip of their own.
@@ -460,24 +480,37 @@ export class FallingNotesView {
       : 0;
     // Only the keys: they take the whole view, whatever its height.
     if (!this.parts.notes) {
-      const keyboardHeight = height - strip;
-      return { keyboardTop: 0, keyboardHeight, blackHeight: blackOf(keyboardHeight), whiteWidth };
+      const keyboardHeight = height - strip - feltHeight;
+      return {
+        keyboardTop: feltHeight,
+        keyboardHeight,
+        blackHeight: blackOf(keyboardHeight),
+        whiteWidth,
+        hitY: 0,
+        feltHeight
+      };
     }
     const wanted = Math.max(KEYBOARD_MIN_PX, whiteWidth * KEY_LENGTH_PER_WIDTH);
     const keyboardHeight = Math.min(wanted, height * MAX_KEYBOARD_SHARE);
+    const keyboardTop = height - strip - keyboardHeight;
     return {
-      keyboardTop: height - strip - keyboardHeight,
+      keyboardTop,
       keyboardHeight,
       blackHeight: blackOf(keyboardHeight),
-      whiteWidth
+      whiteWidth,
+      hitY: keyboardTop - feltHeight,
+      feltHeight
     };
   }
 
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
     this.keys = layoutKeyboard(width, this.range.low, this.range.high);
-    const { keyboardTop, keyboardHeight, blackHeight } = this.geometry(height);
+    this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
+    const { keyboardTop, keyboardHeight, blackHeight, hitY, feltHeight } = this.geometry(height);
     this.bakeKeys(keyboardHeight, blackHeight);
+    // The hands' pixels belong to the old layout.
+    this.hands.reset();
 
     // One scale per kind of sticker, so every white label reads at one size and every black one too.
     const sample = [...this.keys.values()];
@@ -522,15 +555,14 @@ export class FallingNotesView {
       line.tint = OCTAVE_LINE;
       line.x = key.x;
       line.width = 1;
-      line.height = keyboardTop;
+      line.height = hitY;
       this.guides.addChild(line);
     }
     this.felt.removeChildren().forEach((child) => {
       child.destroy();
     });
-    const feltHeight = Math.max(3, whiteWidth * 0.22);
-    // The road ends on the felt, so the hit line glows over it, not across it.
-    this.road?.layout(width, keyboardTop - feltHeight, height);
+    // The road ends on the felt, where the notes meet the keys.
+    this.road?.layout(width, hitY, height);
     const felt = new Sprite(Texture.WHITE);
     felt.tint = FELT;
     felt.y = keyboardTop - feltHeight;
@@ -553,7 +585,7 @@ export class FallingNotesView {
     const hitLine = new Sprite(Texture.WHITE);
     hitLine.tint = HIT_LINE;
     hitLine.alpha = 0.5;
-    hitLine.y = keyboardTop - feltHeight - 2;
+    hitLine.y = hitY - 1;
     hitLine.width = width;
     hitLine.height = 2;
     this.guides.addChild(hitLine);

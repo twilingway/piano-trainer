@@ -22,6 +22,11 @@ const FILL = 0x3a4150;
 const HAND_ALPHA = 0.72;
 /** Seconds the hand takes to move most of the way to its next position. */
 const MOVE_SMOOTHING_S = 0.12;
+/**
+ * How early the hand sets off for the next chord, so that played legato it
+ * is over the keys when they are struck rather than still gliding there.
+ */
+const ANTICIPATION_S = 0.2;
 /** In white-key widths: knuckles from the white fingertips, spacing of the knuckles. */
 const KNUCKLE_DROP = 2.4;
 const KNUCKLE_SPACING = 1.1;
@@ -64,6 +69,12 @@ export class HandsLayer {
     this.poses.clear();
   }
 
+  /** Forgets where the hands were: their pixels belong to a keyboard laid out anew, or hidden. */
+  reset(): void {
+    this.poses.clear();
+    for (const hand of HANDS) this.graphics[hand].clear();
+  }
+
   draw(
     time: number,
     deltaSeconds: number,
@@ -78,7 +89,7 @@ export class HandsLayer {
         this.poses.delete(hand);
         continue;
       }
-      const chord = upcomingChord(this.notes[hand], time);
+      const chord = upcomingChord(this.notes[hand], time + ANTICIPATION_S);
       const target = handPose(hand, chord?.notes ?? [], keys, this.poses.get(hand));
       if (!target) continue;
       const pose = easePose(this.poses.get(hand), target, deltaSeconds, MOVE_SMOOTHING_S);
@@ -92,9 +103,9 @@ export class HandsLayer {
 
 function tipY(tip: Tip, geometry: HandsGeometry): number {
   const { keyboardTop, keyboardHeight, blackHeight } = geometry;
-  return tip.black
-    ? keyboardTop + blackHeight * 0.72
-    : keyboardTop + blackHeight + (keyboardHeight - blackHeight) * 0.45;
+  const white = keyboardTop + blackHeight + (keyboardHeight - blackHeight) * 0.45;
+  const black = keyboardTop + blackHeight * 0.72;
+  return white + (black - white) * tip.reach;
 }
 
 /**
@@ -109,7 +120,7 @@ function drawHand(
 ): void {
   const w = geometry.whiteWidth;
   const dir = pose.hand === "right" ? 1 : -1;
-  const whiteTipY = tipY({ x: 0, black: false }, geometry);
+  const whiteTipY = tipY({ x: 0, reach: 0 }, geometry);
   const knuckleY = whiteTipY + KNUCKLE_DROP * w;
   const palmX = (pose.tips[2].x + pose.tips[3].x + pose.tips[4].x + pose.tips[5].x) / 4;
 

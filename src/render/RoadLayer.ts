@@ -11,6 +11,8 @@ import type { Renderer, Texture } from "pixi.js";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
 export interface Strike {
+  /** The key struck: a strike carries on from frame to frame while its key is held. */
+  readonly pitch: number;
   readonly x: number;
   readonly color: number;
 }
@@ -22,7 +24,9 @@ const KEYS_TILT = 0.08;
 const GLOW_STRENGTH = 10;
 const GLOW_ALPHA = 0.9;
 const MAX_SPARKS = 400;
-const SPARKS_PER_STRIKE_S = 90;
+/** A burst when a key is struck, then a thin stream while it is held, per second. */
+const SPARKS_PER_BURST = 24;
+const SPARKS_PER_HELD_S = 30;
 const SPARK_LIFE_S = 0.7;
 const HIT_LINE_COLOR = 0xc9a8ff;
 
@@ -57,12 +61,14 @@ export class RoadLayer {
   private inset = 0;
   private keysShift = new Matrix();
   private clock = 0;
+  /** Sparks owed to each held key: the fraction of a spark carried to the next frame. */
+  private held = new Map<number, number>();
 
   constructor(private readonly renderer: Renderer) {
     this.road = new PerspectiveMesh({ texture: this.texture, verticesX: 24, verticesY: 24 });
     this.glow = new PerspectiveMesh({ texture: this.texture, verticesX: 24, verticesY: 24 });
-    this.glow.filters = [new BlurFilter({ strength: GLOW_STRENGTH, quality: 3 })];
-    this.glow.blendMode = "add";
+    // The blur's last pass blends as the filter does, not as the mesh: add, for a glow.
+    this.glow.filters = [new BlurFilter({ strength: GLOW_STRENGTH, quality: 3, blendMode: "add" })];
     this.glow.alpha = GLOW_ALPHA;
     this.keys = new PerspectiveMesh({ texture: this.keysTexture, verticesX: 24, verticesY: 8 });
     this.container.addChild(this.road, this.glow, this.keys);
@@ -124,8 +130,25 @@ export class RoadLayer {
     this.clock += deltaSeconds;
     const strikes = flatStrikes.map((strike) => ({ ...strike, x: this.project(strike.x) }));
     this.drawHitLine(strikes);
-    for (const strike of strikes) this.emit(strike, deltaSeconds);
+    const held = new Map<number, number>();
+    for (const strike of strikes) {
+      const owed = this.held.get(strike.pitch);
+      // A burst on the strike, then a stream whose rate does not depend on the frame rate.
+      const due = owed === undefined ? SPARKS_PER_BURST : owed + SPARKS_PER_HELD_S * deltaSeconds;
+      const count = Math.floor(due);
+      this.emit(strike, count);
+      held.set(strike.pitch, due - count);
+    }
+    this.held = held;
     this.moveSparks(deltaSeconds);
+  }
+
+  destroy(): void {
+    this.container.destroy({ children: true });
+    this.effects.destroy({ children: true });
+    this.texture.destroy(true);
+    this.keysTexture.destroy(true);
+    this.sparkTexture.destroy(true);
   }
 
   private drawHitLine(strikes: readonly Strike[]): void {
@@ -150,12 +173,14 @@ export class RoadLayer {
     }
   }
 
-  private emit(strike: Strike, deltaSeconds: number): void {
-    const count = Math.max(1, Math.round(SPARKS_PER_STRIKE_S * deltaSeconds));
+  private emit(strike: Strike, count: number): void {
     for (let index = 0; index < count; index++) {
       let spark = this.sparks.find((item) => item.life <= 0);
+      // A full pool takes back its oldest spark, so a late strike is never left dark.
+      if (!spark && this.sparks.length >= MAX_SPARKS) {
+        spark = this.sparks.reduce((oldest, item) => (item.life < oldest.life ? item : oldest));
+      }
       if (!spark) {
-        if (this.sparks.length >= MAX_SPARKS) return;
         const sprite = new Sprite(this.sparkTexture);
         sprite.anchor.set(0.5);
         sprite.blendMode = "add";
@@ -197,5 +222,7 @@ function bakeSpark(renderer: Renderer): Texture {
   for (let ring = 6; ring >= 1; ring--) {
     dot.circle(8, 8, ring * 1.3).fill({ color: 0xffffff, alpha: 0.25 });
   }
-  return renderer.generateTexture({ target: dot, resolution: 2 });
+  const texture = renderer.generateTexture({ target: dot, resolution: 2 });
+  dot.destroy();
+  return texture;
 }
