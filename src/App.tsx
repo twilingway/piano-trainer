@@ -600,8 +600,8 @@ export function App() {
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {
-    viewRef.current?.setRange(rangeLow, rangeHigh);
-  }, [trainerReady, rangeLow, rangeHigh]);
+    viewRef.current?.setRange(rangeLow, rangeHigh, keyRange === "song");
+  }, [trainerReady, rangeLow, rangeHigh, keyRange]);
 
   // The original on a second screen, drawn by the trainer at the take's song time.
   useEffect(() => {

@@ -1,29 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import { perspectiveMap } from "./perspective";
+import { depthBetween, floorCamera } from "./perspective";
 
-// A 100×100 picture laid on a road: 20 wide at the horizon (y 40), 100 wide at the bottom.
-const map = perspectiveMap(100, 100, [40, 40, 60, 40, 100, 100, 0, 100]);
+describe("floorCamera", () => {
+  // A 1000×800 view with the horizon at y 200.
+  const camera = floorCamera(1000, 800, 200);
 
-describe("perspectiveMap", () => {
-  it("puts the picture's corners on the quad's corners", () => {
-    expect(map(0, 0)).toMatchObject({ x: 40, y: 40 });
-    expect(map(100, 0).x).toBeCloseTo(60);
-    expect(map(100, 100).x).toBeCloseTo(100);
-    expect(map(0, 100).y).toBeCloseTo(100);
+  it("spans the view's bottom edge at depth 1", () => {
+    expect(camera.at(0, 1)).toEqual({ x: 0, y: 800, scale: 1 });
+    expect(camera.at(1000, 1).x).toBe(1000);
   });
 
-  it("keeps the middle on the axis and pulls the half-way line towards the horizon", () => {
-    const middle = map(50, 50);
-    expect(middle.x).toBeCloseTo(50);
-    // The far half is squeezed on screen: half-way down the picture lands nearer the
-    // horizon (40) than half-way down the quad (70).
-    expect(middle.y).toBeCloseTo(50);
+  it("halves size and drop at twice the depth, and nears the horizon far away", () => {
+    expect(camera.at(1000, 2)).toEqual({ x: 750, y: 500, scale: 0.5 });
+    const far = camera.at(0, 100);
+    expect(far.y).toBeCloseTo(206);
+    expect(far.x).toBeCloseTo(495);
   });
 
-  it("scales things down with distance", () => {
-    expect(map(50, 100).scale).toBeCloseTo(1);
-    expect(map(50, 0).scale).toBeCloseTo(0.2);
-    expect(map(50, 50).scale).toBeGreaterThan(0.2);
+  it("spaces depth evenly on the floor", () => {
+    expect(depthBetween(12, 2, 0.5)).toBe(7);
   });
 });

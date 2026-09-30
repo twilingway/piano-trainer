@@ -9,7 +9,7 @@ import {
 } from "pixi.js";
 import type { Renderer, Texture } from "pixi.js";
 
-import { perspectiveMap } from "./perspective";
+import { depthBetween, floorCamera } from "./perspective";
 import type { Projected } from "./perspective";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
@@ -21,13 +21,17 @@ export interface Strike {
 }
 
 /*
- * One plane in perspective for the whole scene: the lane and the keys are
- * one floor, the keys the nearest part of it, so the keys' edges run on
- * along the road's lines. The picture's bottom edge is the view's; its top
- * edge lies on the horizon, this narrow and this far down the lane.
+ * The road is a floor seen by a camera: at the hit line it spans the view,
+ * and it runs this many times that width away, so a note is born small at
+ * the horizon and grows as it comes. The keyboard in front is not in that
+ * perspective: it is the flat keyboard squashed in height, every key leaning
+ * alike, none cut away at the ends.
  */
-const HORIZON_HALF_WIDTH = 0.2;
-const HORIZON_Y = 0.3;
+const ROAD_DEPTH = 12;
+/** The horizon, as a share of the way down from the top of the view to the hit line. */
+const HORIZON_Y = 0.22;
+/** The keyboard's height on the road, as a share of its flat height. */
+const KEYS_SQUASH = 0.9;
 const GLOW_STRENGTH = 10;
 const GLOW_ALPHA = 0.9;
 const MAX_SPARKS = 400;
@@ -96,55 +100,22 @@ export class RoadLayer {
     if (width < 1 || height < 1 || bottom < height) return;
     this.size = { width, height };
     this.texture.source.resize(width, height, this.renderer.resolution);
+    const keysHeight = bottom - height;
     // Without keys the road runs down to the bottom and there is no keyboard to lay.
-    this.keys.visible = bottom - height >= 1;
-    this.keysTexture.source.resize(width, Math.max(1, bottom - height), this.renderer.resolution);
+    this.keys.visible = keysHeight >= 1;
+    this.keysTexture.source.resize(width, Math.max(1, keysHeight), this.renderer.resolution);
     this.keysShift = new Matrix().translate(0, -height);
-    const middle = width / 2;
-    const half = width * HORIZON_HALF_WIDTH;
-    const horizon = height * HORIZON_Y;
-    const map = perspectiveMap(width, bottom, [
-      middle - half,
-      horizon,
-      middle + half,
-      horizon,
-      width,
-      bottom,
-      0,
-      bottom
-    ]);
-    this.projector = map;
-    const topLeft = map(0, 0);
-    const topRight = map(width, 0);
-    const hitLeft = map(0, height);
-    const hitRight = map(width, height);
-    const bottomRight = map(width, bottom);
-    const bottomLeft = map(0, bottom);
+    const hitY = bottom - keysHeight * KEYS_SQUASH;
+    const camera = floorCamera(width, hitY, hitY * HORIZON_Y);
+    this.projector = (x, y) => camera.at(x, depthBetween(ROAD_DEPTH, 1, Math.min(1, y / height)));
+    const far = [camera.at(0, ROAD_DEPTH), camera.at(width, ROAD_DEPTH)] as const;
     for (const mesh of [this.road, this.glow]) {
       mesh.texture = this.texture;
-      mesh.setCorners(
-        topLeft.x,
-        topLeft.y,
-        topRight.x,
-        topRight.y,
-        hitRight.x,
-        hitRight.y,
-        hitLeft.x,
-        hitLeft.y
-      );
+      mesh.setCorners(far[0].x, far[0].y, far[1].x, far[1].y, width, hitY, 0, hitY);
     }
     this.keys.texture = this.keysTexture;
-    this.keys.setCorners(
-      hitLeft.x,
-      hitLeft.y,
-      hitRight.x,
-      hitRight.y,
-      bottomRight.x,
-      bottomRight.y,
-      bottomLeft.x,
-      bottomLeft.y
-    );
-    this.hit = { y: hitLeft.y, left: hitLeft.x, right: hitRight.x };
+    this.keys.setCorners(0, hitY, width, hitY, width, bottom, 0, bottom);
+    this.hit = { y: hitY, left: 0, right: width };
   }
 
   /** Where a point of the flat scene lands in perspective, and how much it shrinks there. */
@@ -154,7 +125,8 @@ export class RoadLayer {
 
   /** Where a point on the flat hit line lands on screen. */
   private project(x: number): number {
-    return this.projector?.(x, this.size.height).x ?? x;
+    // The hit line spans the view as the flat lane does.
+    return x;
   }
 
   /**

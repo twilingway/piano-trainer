@@ -93,10 +93,11 @@ interface NoteSprite {
 }
 
 /**
- * On the road a white key is this share of the view's height wide, on any
- * screen: a wider screen shows more keys around the song, not bigger ones.
+ * On the road, with the keys fitted to the song, a white key is this many
+ * CSS pixels wide on any screen: a wider screen shows more keys around the
+ * song, not bigger ones.
  */
-const ROAD_WHITE_PER_HEIGHT = 0.04;
+const ROAD_WHITE_PX = 48;
 /** With cards on, the bar behind a card is a tail this share of its key wide. */
 const TAIL_SHARE = 0.28;
 /** A note card's width, in white-key widths, and its limits in pixels. */
@@ -174,6 +175,8 @@ export class FallingNotesView {
   /** The player wants the road; it shows only while both the notes and the keys are on screen. */
   private roadWanted = false;
   private range = { low: LOWEST_PITCH, high: HIGHEST_PITCH };
+  /** The range follows the song, so the road may show more keys around it; a fixed range stays. */
+  private rangeFitsSong = false;
   private laidOutFor = { width: 0, height: 0 };
   private ready = false;
   private resizeObserver: ResizeObserver | undefined;
@@ -293,8 +296,9 @@ export class FallingNotesView {
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */
-  setRange(low: number, high: number): void {
+  setRange(low: number, high: number, fitsSong = false): void {
     this.range = { low, high };
+    this.rangeFitsSong = fitsSong;
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -605,13 +609,10 @@ export class FallingNotesView {
 
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
-    const [low, high] = this.roadMode
-      ? widenRange(
-          this.range.low,
-          this.range.high,
-          Math.round(width / (height * ROAD_WHITE_PER_HEIGHT))
-        )
-      : [this.range.low, this.range.high];
+    const [low, high] =
+      this.roadMode && this.rangeFitsSong
+        ? widenRange(this.range.low, this.range.high, Math.round(width / ROAD_WHITE_PX))
+        : [this.range.low, this.range.high];
     this.keys = layoutKeyboard(width, low, high);
     this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
     const { keyboardTop, keyboardHeight, blackHeight, hitY, feltHeight } = this.geometry(height);
