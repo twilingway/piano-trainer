@@ -97,6 +97,8 @@ interface StaffPrefs {
   readonly lane: boolean;
   /** The keyboard on screen. */
   readonly keys: boolean;
+  /** Schematic hands over the keyboard. */
+  readonly hands: boolean;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -109,7 +111,8 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   chords: false,
   visible: true,
   lane: true,
-  keys: true
+  keys: true,
+  hands: true
 };
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
@@ -305,6 +308,14 @@ function KeyboardIcon() {
       {[5.5, 9.5, 15.5].map((x) => (
         <rect key={x} x={x} y="5" width="2.6" height="7" className="filled" />
       ))}
+    </svg>
+  );
+}
+
+function HandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 12V6.5a1.3 1.3 0 0 1 2.6 0V11V4.8a1.3 1.3 0 0 1 2.6 0V11V5.6a1.3 1.3 0 0 1 2.6 0V11.5V8a1.3 1.3 0 0 1 2.6 0v6.5a6.5 6.5 0 0 1-6.5 6.5h-.5a5.5 5.5 0 0 1-4.6-2.5L3.4 13.6a1.3 1.3 0 0 1 2-1.6L7 13.6" />
     </svg>
   );
 }
@@ -535,8 +546,12 @@ export function App() {
   useEffect(() => {
     viewRef.current?.setShowLabels(showLabels);
     viewRef.current?.setNoteNames(fallingNames);
-    viewRef.current?.setParts({ notes: staffPrefs.lane, keys: staffPrefs.keys });
-  }, [trainerReady, showLabels, fallingNames, staffPrefs.lane, staffPrefs.keys]);
+    viewRef.current?.setParts({
+      notes: staffPrefs.lane,
+      keys: staffPrefs.keys,
+      hands: staffPrefs.hands
+    });
+  }, [trainerReady, showLabels, fallingNames, staffPrefs.lane, staffPrefs.keys, staffPrefs.hands]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {
@@ -1211,6 +1226,18 @@ export function App() {
             }}
           >
             <KeyboardIcon />
+          </button>
+          <button
+            type="button"
+            className="rail-button"
+            aria-pressed={staffPrefs.hands}
+            disabled={!staffPrefs.keys}
+            title={staffPrefs.hands ? "Скрыть руки" : "Показать руки"}
+            onClick={() => {
+              updateStaffPrefs({ hands: !staffPrefs.hands });
+            }}
+          >
+            <HandIcon />
           </button>
         </nav>
       </div>
