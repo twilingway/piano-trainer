@@ -99,6 +99,8 @@ interface StaffPrefs {
   readonly keys: boolean;
   /** Schematic hands over the keyboard. */
   readonly hands: boolean;
+  /** The trial road view: notes in perspective, glowing, with sparks. */
+  readonly road: boolean;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -112,7 +114,8 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   visible: true,
   lane: true,
   keys: true,
-  hands: true
+  hands: true,
+  road: false
 };
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
@@ -308,6 +311,16 @@ function KeyboardIcon() {
       {[5.5, 9.5, 15.5].map((x) => (
         <rect key={x} x={x} y="5" width="2.6" height="7" className="filled" />
       ))}
+    </svg>
+  );
+}
+
+function RoadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M10 3h4l7 18H3z" />
+      <line x1="12" x2="12" y1="6" y2="9" />
+      <line x1="12" x2="12" y1="12" y2="16" />
     </svg>
   );
 }
@@ -551,7 +564,16 @@ export function App() {
       keys: staffPrefs.keys,
       hands: staffPrefs.hands
     });
-  }, [trainerReady, showLabels, fallingNames, staffPrefs.lane, staffPrefs.keys, staffPrefs.hands]);
+    viewRef.current?.setRoad(staffPrefs.road);
+  }, [
+    trainerReady,
+    showLabels,
+    fallingNames,
+    staffPrefs.lane,
+    staffPrefs.keys,
+    staffPrefs.hands,
+    staffPrefs.road
+  ]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {
@@ -1238,6 +1260,20 @@ export function App() {
             }}
           >
             <HandIcon />
+          </button>
+          <button
+            type="button"
+            className="rail-button"
+            aria-pressed={staffPrefs.road}
+            disabled={!staffPrefs.lane}
+            title={
+              staffPrefs.road ? "Обычный вид нот" : "Дорога: ноты в перспективе (пробный режим)"
+            }
+            onClick={() => {
+              updateStaffPrefs({ road: !staffPrefs.road });
+            }}
+          >
+            <RoadIcon />
           </button>
         </nav>
       </div>

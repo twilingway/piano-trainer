@@ -9,6 +9,8 @@ import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
+import { RoadLayer } from "./RoadLayer";
+import type { Strike } from "./RoadLayer";
 import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
 import { bakeKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
@@ -104,6 +106,10 @@ export class FallingNotesView {
   private readonly app = new Application();
   private readonly lane = new Container();
   private readonly guides = new Container();
+  /** The guides and the notes together: on the stage flat, or drawn into the road. */
+  private readonly laneRoot = new Container();
+  private road: RoadLayer | undefined;
+  private roadMode = false;
   private readonly keyboard = new Container();
   private readonly keyHints = new Container();
   private readonly keyStickers = new Container();
@@ -145,13 +151,18 @@ export class FallingNotesView {
       this.app.queueResize();
     });
     this.resizeObserver.observe(host);
+    this.laneRoot.addChild(this.guides, this.lane);
+    this.road = new RoadLayer(this.app.renderer);
+    this.road.container.visible = false;
+    this.road.effects.visible = false;
     this.app.stage.addChild(
-      this.guides,
-      this.lane,
+      this.road.container,
+      this.laneRoot,
       this.keyboard,
       this.felt,
       this.keyStickers,
       this.keyHints,
+      this.road.effects,
       this.hands.container
     );
     this.keyStickers.eventMode = "none";
@@ -245,6 +256,21 @@ export class FallingNotesView {
     this.laidOutFor = { width: 0, height: 0 };
   }
 
+  /**
+   * The trial road view: the notes come out of the horizon in perspective,
+   * glowing, with sparks in their finger's colour where they are struck.
+   * Notes cannot be clicked there: the lane is a picture on the road.
+   */
+  setRoad(on: boolean): void {
+    if (!this.road || on === this.roadMode) return;
+    this.roadMode = on;
+    this.road.container.visible = on;
+    this.road.effects.visible = on;
+    if (on) this.app.stage.removeChild(this.laneRoot);
+    else this.app.stage.addChildAt(this.laneRoot, 1);
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
   /** Runs `onFrame` with real milliseconds before every draw. */
   onTick(onFrame: (deltaMs: number) => void): void {
     this.app.ticker.add((ticker) => {
@@ -312,7 +338,11 @@ export class FallingNotesView {
       body.y = bottom - noteHeight;
       body.height = noteHeight;
       const custom = state.colorOf?.(note);
-      body.tint = custom ?? (status === "missed" ? MISSED_COLOR : HAND_COLOR[note.hand]);
+      const own =
+        this.roadMode && note.finger !== undefined
+          ? FINGER_COLOR[note.finger]
+          : HAND_COLOR[note.hand];
+      body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       body.alpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
 
       digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
@@ -377,6 +407,16 @@ export class FallingNotesView {
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
     }
+    if (this.roadMode && this.road && this.parts.notes) {
+      const strikes: Strike[] = [];
+      for (const [pitch, note] of playing) {
+        const key = this.keys.get(pitch);
+        if (!key || !state.pressed.has(pitch)) continue;
+        const color = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
+        strikes.push({ x: key.x + key.width / 2, color });
+      }
+      this.road.draw(this.laneRoot, strikes, this.app.ticker.deltaMS / 1000);
+    }
     if (this.hands.container.visible) {
       this.hands.draw(state.time, this.app.ticker.deltaMS / 1000, state.hands, this.keys, geometry);
     }
@@ -432,6 +472,7 @@ export class FallingNotesView {
     this.keys = layoutKeyboard(width, this.range.low, this.range.high);
     const { keyboardTop, keyboardHeight, blackHeight } = this.geometry(height);
     this.bakeKeys(keyboardHeight, blackHeight);
+    this.road?.layout(width, keyboardTop);
 
     // One scale per kind of sticker, so every white label reads at one size and every black one too.
     const sample = [...this.keys.values()];
