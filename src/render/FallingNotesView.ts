@@ -108,6 +108,8 @@ export class FallingNotesView {
   private readonly guides = new Container();
   /** The guides and the notes together: on the stage flat, or drawn into the road. */
   private readonly laneRoot = new Container();
+  /** The keys and everything drawn on them: on the stage flat, or laid back under the road. */
+  private readonly keysRoot = new Container();
   private road: RoadLayer | undefined;
   private roadMode = false;
   private readonly keyboard = new Container();
@@ -155,16 +157,14 @@ export class FallingNotesView {
     this.road = new RoadLayer(this.app.renderer);
     this.road.container.visible = false;
     this.road.effects.visible = false;
-    this.app.stage.addChild(
-      this.road.container,
-      this.laneRoot,
+    this.keysRoot.addChild(
       this.keyboard,
       this.felt,
       this.keyStickers,
       this.keyHints,
-      this.road.effects,
       this.hands.container
     );
+    this.app.stage.addChild(this.road.container, this.laneRoot, this.keysRoot, this.road.effects);
     this.keyStickers.eventMode = "none";
     this.keyStickers.visible = false;
     this.digitTextures = this.bakeDigits();
@@ -266,8 +266,12 @@ export class FallingNotesView {
     this.roadMode = on;
     this.road.container.visible = on;
     this.road.effects.visible = on;
-    if (on) this.app.stage.removeChild(this.laneRoot);
-    else this.app.stage.addChildAt(this.laneRoot, 1);
+    // Laid back, the keys are a picture on the road too: the mouse no longer plays them.
+    if (on) this.app.stage.removeChild(this.laneRoot, this.keysRoot);
+    else {
+      this.app.stage.addChildAt(this.laneRoot, 1);
+      this.app.stage.addChildAt(this.keysRoot, 2);
+    }
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -407,18 +411,20 @@ export class FallingNotesView {
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
     }
-    if (this.roadMode && this.road && this.parts.notes) {
+    if (this.hands.container.visible) {
+      this.hands.draw(state.time, this.app.ticker.deltaMS / 1000, state.hands, this.keys, geometry);
+    }
+    // Last, once the keys and hands of this frame are drawn: the road takes a picture of them.
+    if (this.roadMode && this.road) {
       const strikes: Strike[] = [];
       for (const [pitch, note] of playing) {
         const key = this.keys.get(pitch);
-        if (!key || !state.pressed.has(pitch)) continue;
+        // Struck by the player, or sounded by the program when it plays alone.
+        if (!key || !(state.pressed.has(pitch) || state.sounding.has(pitch))) continue;
         const color = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
         strikes.push({ x: key.x + key.width / 2, color });
       }
-      this.road.draw(this.laneRoot, strikes, this.app.ticker.deltaMS / 1000);
-    }
-    if (this.hands.container.visible) {
-      this.hands.draw(state.time, this.app.ticker.deltaMS / 1000, state.hands, this.keys, geometry);
+      this.road.draw(this.laneRoot, this.keysRoot, strikes, this.app.ticker.deltaMS / 1000);
     }
   }
 
@@ -472,7 +478,6 @@ export class FallingNotesView {
     this.keys = layoutKeyboard(width, this.range.low, this.range.high);
     const { keyboardTop, keyboardHeight, blackHeight } = this.geometry(height);
     this.bakeKeys(keyboardHeight, blackHeight);
-    this.road?.layout(width, keyboardTop);
 
     // One scale per kind of sticker, so every white label reads at one size and every black one too.
     const sample = [...this.keys.values()];
@@ -524,6 +529,8 @@ export class FallingNotesView {
       child.destroy();
     });
     const feltHeight = Math.max(3, whiteWidth * 0.22);
+    // The road ends on the felt, so the hit line glows over it, not across it.
+    this.road?.layout(width, keyboardTop - feltHeight, height);
     const felt = new Sprite(Texture.WHITE);
     felt.tint = FELT;
     felt.y = keyboardTop - feltHeight;
