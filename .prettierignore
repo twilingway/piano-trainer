@@ -10,3 +10,6 @@ tools/arcadia-effects/
 
 # Generated drafts under review, not source.
 public/generated/
+
+# Agents' worktrees: copies of the repository.
+.claude/worktrees/

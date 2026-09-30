@@ -633,7 +633,7 @@ select:disabled {
 .game-dialog.settings {
   position: fixed;
   inset: 60px 12px auto auto;
-  width: min(420px, calc(100vw - 24px));
+  width: min(520px, calc(100vw - 24px));
   margin: 0;
 }
 
@@ -729,6 +729,7 @@ button.song-card.song-card__open {
 
 .tab {
   padding: 8px 10px;
+  white-space: nowrap;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;

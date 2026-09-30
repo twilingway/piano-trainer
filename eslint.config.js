@@ -11,7 +11,8 @@ export default tseslint.config(
       "eslint.config.js",
       ".agents/**",
       "tools/arcadia-effects/**",
-      "public/generated/**"
+      "public/generated/**",
+      ".claude/**"
     ]
   },
   eslint.configs.recommended,
