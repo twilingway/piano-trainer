@@ -12,15 +12,23 @@ export interface Projected {
  * from the horizon down to the bottom edge.
  */
 export interface FloorCamera {
-  /** Screen position and scale of a point `x` across the flat scene, `z` deep. */
-  readonly at: (x: number, z: number) => Projected;
+  /**
+   * Screen position and scale of a point `x` across the flat scene, `z`
+   * deep, on a floor whose lines meet over `centre` (the view's middle
+   * unless given): each octave can have a vanishing point of its own.
+   */
+  readonly at: (x: number, z: number, centre?: number) => Projected;
 }
 
 export function floorCamera(width: number, viewHeight: number, horizonY: number): FloorCamera {
   const middle = width / 2;
   const drop = viewHeight - horizonY;
   return {
-    at: (x, z) => ({ x: middle + (x - middle) / z, y: horizonY + drop / z, scale: 1 / z })
+    at: (x, z, centre = middle) => ({
+      x: centre + (x - centre) / z,
+      y: horizonY + drop / z,
+      scale: 1 / z
+    })
   };
 }
 

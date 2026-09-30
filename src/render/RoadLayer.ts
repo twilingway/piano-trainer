@@ -4,10 +4,12 @@ import {
   Graphics,
   Matrix,
   PerspectiveMesh,
+  Rectangle,
   RenderTexture,
-  Sprite
+  Sprite,
+  Texture
 } from "pixi.js";
-import type { Renderer, Texture } from "pixi.js";
+import type { Renderer } from "pixi.js";
 
 import { depthBetween, floorCamera } from "./perspective";
 import type { Projected } from "./perspective";
@@ -23,7 +25,9 @@ export interface Strike {
 /*
  * The road is a floor seen by a camera: at the hit line it spans the view,
  * and it runs this many times that width away, so a note is born small at
- * the horizon and grows as it comes. The keyboard in front is not in that
+ * the horizon and grows as it comes. Each octave is a road of its own with
+ * its own vanishing point over its middle, so notes come from over their
+ * octave, not all out of the view's centre. The keyboard in front is not in that
  * perspective: it is the flat keyboard squashed in height, every key leaning
  * alike, none cut away at the ends.
  */
@@ -62,8 +66,11 @@ export class RoadLayer {
   private readonly texture = RenderTexture.create({ width: 1, height: 1 });
   private readonly keysTexture = RenderTexture.create({ width: 1, height: 1 });
   private readonly keys: PerspectiveMesh;
-  private readonly road: PerspectiveMesh;
-  private readonly glow: PerspectiveMesh;
+  /** One road and one glow a strip of the lane, an octave each. */
+  private readonly roads = new Container();
+  private readonly glows = new Container();
+  private strips: { readonly left: number; readonly right: number; readonly texture: Texture }[] =
+    [];
   private readonly hitLine = new Graphics();
   private readonly sparkTexture: Texture;
   private readonly sparks: Spark[] = [];
@@ -78,13 +85,13 @@ export class RoadLayer {
   private held = new Map<number, number>();
 
   constructor(private readonly renderer: Renderer) {
-    this.road = new PerspectiveMesh({ texture: this.texture, verticesX: 48, verticesY: 96 });
-    this.glow = new PerspectiveMesh({ texture: this.texture, verticesX: 48, verticesY: 96 });
-    // The blur's last pass blends as the filter does, not as the mesh: add, for a glow.
-    this.glow.filters = [new BlurFilter({ strength: GLOW_STRENGTH, quality: 3, blendMode: "add" })];
-    this.glow.alpha = GLOW_ALPHA;
+    // One blur for every strip's glow; its last pass blends as the filter does: add, for a glow.
+    this.glows.filters = [
+      new BlurFilter({ strength: GLOW_STRENGTH, quality: 3, blendMode: "add" })
+    ];
+    this.glows.alpha = GLOW_ALPHA;
     this.keys = new PerspectiveMesh({ texture: this.keysTexture, verticesX: 48, verticesY: 24 });
-    this.container.addChild(this.road, this.glow, this.keys);
+    this.container.addChild(this.roads, this.glows, this.keys);
     this.container.eventMode = "none";
     this.hitLine.blendMode = "add";
     this.effects.addChild(this.hitLine);
@@ -94,9 +101,10 @@ export class RoadLayer {
 
   /**
    * Lays the flat scene — the lane down to the hit line at `height`, the keys
-   * under it down to `bottom` — on one floor in perspective.
+   * under it down to `bottom` — on the floor in perspective, the lane cut at
+   * `splits` (the x of every C) into roads of their own.
    */
-  layout(width: number, height: number, bottom: number): void {
+  layout(width: number, height: number, bottom: number, splits: readonly number[]): void {
     if (width < 1 || height < 1 || bottom < height) return;
     this.size = { width, height };
     this.texture.source.resize(width, height, this.renderer.resolution);
@@ -107,15 +115,51 @@ export class RoadLayer {
     this.keysShift = new Matrix().translate(0, -height);
     const hitY = bottom - keysHeight * KEYS_SQUASH;
     const camera = floorCamera(width, hitY, hitY * HORIZON_Y);
-    this.projector = (x, y) => camera.at(x, depthBetween(ROAD_DEPTH, 1, Math.min(1, y / height)));
-    const far = [camera.at(0, ROAD_DEPTH), camera.at(width, ROAD_DEPTH)] as const;
-    for (const mesh of [this.road, this.glow]) {
-      mesh.texture = this.texture;
-      mesh.setCorners(far[0].x, far[0].y, far[1].x, far[1].y, width, hitY, 0, hitY);
-    }
+    this.layStrips(width, height, hitY, splits, camera);
+    this.projector = (x, y) => {
+      const strip = this.strips.find((item) => x < item.right) ?? this.strips.at(-1);
+      const centre = strip ? (strip.left + strip.right) / 2 : width / 2;
+      return camera.at(x, depthBetween(ROAD_DEPTH, 1, Math.min(1, y / height)), centre);
+    };
     this.keys.texture = this.keysTexture;
     this.keys.setCorners(0, hitY, width, hitY, width, bottom, 0, bottom);
     this.hit = { y: hitY, left: 0, right: width };
+  }
+
+  /** A road and a glow for every strip, each converging over its own middle. */
+  private layStrips(
+    width: number,
+    height: number,
+    hitY: number,
+    splits: readonly number[],
+    camera: ReturnType<typeof floorCamera>
+  ): void {
+    for (const strip of this.strips) strip.texture.destroy(false);
+    for (const layer of [this.roads, this.glows]) {
+      layer.removeChildren().forEach((child) => {
+        child.destroy();
+      });
+    }
+    const edges = [0, ...splits.filter((x) => x > 1 && x < width - 1), width];
+    this.strips = [];
+    for (let index = 1; index < edges.length; index++) {
+      const left = edges[index - 1] ?? 0;
+      const right = edges[index] ?? width;
+      if (right - left < 1) continue;
+      const texture = new Texture({
+        source: this.texture.source,
+        frame: new Rectangle(left, 0, right - left, height)
+      });
+      this.strips.push({ left, right, texture });
+      const centre = (left + right) / 2;
+      const farLeft = camera.at(left, ROAD_DEPTH, centre);
+      const farRight = camera.at(right, ROAD_DEPTH, centre);
+      for (const layer of [this.roads, this.glows]) {
+        const mesh = new PerspectiveMesh({ texture, verticesX: 12, verticesY: 64 });
+        mesh.setCorners(farLeft.x, farLeft.y, farRight.x, farRight.y, right, hitY, left, hitY);
+        layer.addChild(mesh);
+      }
+    }
   }
 
   /** Where a point of the flat scene lands in perspective, and how much it shrinks there. */
@@ -165,6 +209,7 @@ export class RoadLayer {
   }
 
   destroy(): void {
+    for (const strip of this.strips) strip.texture.destroy(false);
     this.container.destroy({ children: true });
     this.effects.destroy({ children: true });
     this.texture.destroy(true);

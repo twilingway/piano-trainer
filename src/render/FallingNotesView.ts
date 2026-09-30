@@ -517,15 +517,18 @@ export class FallingNotesView {
       // The owed note wins: it is the one the player has to find next.
       const shown = due ?? playing.get(pitch);
       const pressed = state.pressed.has(pitch);
-      const color = pressed
-        ? PRESSED_COLOR
-        : state.sounding.has(pitch)
-          ? SOUNDING_COLOR
-          : shown
-            ? shown.finger !== undefined
-              ? FINGER_COLOR[shown.finger]
-              : HAND_HINT[shown.hand]
-            : undefined;
+      // A key with a fingered note is its finger's colour whoever plays it; the press and
+      // the program's own colours are for keys without one.
+      const color =
+        shown?.finger !== undefined
+          ? FINGER_COLOR[shown.finger]
+          : pressed
+            ? PRESSED_COLOR
+            : state.sounding.has(pitch)
+              ? SOUNDING_COLOR
+              : shown
+                ? HAND_HINT[shown.hand]
+                : undefined;
       const key = this.keys.get(pitch);
       if (key?.black && this.keyTextures) {
         // A black key is repainted in pale grey for its colour to show; a white one is tinted as it is.
@@ -691,7 +694,11 @@ export class FallingNotesView {
       child.destroy();
     });
     // The road ends on the felt, where the notes meet the keys.
-    this.road?.layout(width, hitY, height);
+    // Each octave its own road: the lane is cut at every C.
+    const octaves = [...this.keys.values()]
+      .filter((key) => key.pitch % 12 === 0)
+      .map((key) => key.x);
+    this.road?.layout(width, hitY, height, octaves);
     const felt = new Sprite(Texture.WHITE);
     felt.tint = FELT;
     felt.y = keyboardTop - feltHeight;

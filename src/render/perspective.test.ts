@@ -18,6 +18,12 @@ describe("floorCamera", () => {
     expect(far.x).toBeCloseTo(495);
   });
 
+  it("draws a strip's lines to its own vanishing point", () => {
+    // An octave centred at x 200: its middle stays put, its edges close in on it.
+    expect(camera.at(200, 4, 200).x).toBe(200);
+    expect(camera.at(300, 4, 200).x).toBe(225);
+  });
+
   it("spaces depth evenly on the floor", () => {
     expect(depthBetween(12, 2, 0.5)).toBe(7);
   });
