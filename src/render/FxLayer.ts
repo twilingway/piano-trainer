@@ -29,17 +29,17 @@ const HIT: AtlasEffect = {
   perKeyWidth: 6,
   pool: 24
 };
-/** Glitter and a soft haze rising from a sounding key (src/fx/piano-glitter.json). */
+/** Glitter, wisps and haze whirling up off a sounding key (src/fx/piano-glitter.json). */
 const GLITTER: AtlasEffect = {
   url: new URL("../fx/piano-glitter.webp", import.meta.url).href,
-  frameWidth: 96,
+  frameWidth: 144,
   frameHeight: 192,
   cols: 6,
   frames: 24,
-  fps: 17.14,
+  fps: 15,
   // The emitter sits 200 of 512 below the middle of its frame.
   anchorY: 0.5 + 200 / 512,
-  perKeyWidth: 2.4,
+  perKeyWidth: 3.6,
   pool: 160
 };
 /** A held key sends up a new puff of glitter this often, so the column never breaks. */
