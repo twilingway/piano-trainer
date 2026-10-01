@@ -37,7 +37,9 @@ export interface Arrival {
  * flash and grows as it comes. The keyboard in front is not in that
  * perspective: it is the flat keyboard squashed in height.
  */
-const FAR_SHARE = 0.22;
+const FAR_SHARE = 0.8;
+/** The notes are sized as on a much deeper floor: tiny at the horizon, growing as they come. */
+const SIZE_FAR_SHARE = 0.2;
 /** The horizon, as a share of the way down from the top of the view to the hit line. */
 const HORIZON_Y = 0.04;
 /** The keyboard's height on the road, as a share of its flat height. */
@@ -143,7 +145,13 @@ export class RoadLayer {
     this.keysTexture.source.resize(viewWidth, Math.max(1, keysHeight), this.renderer.resolution);
     this.hitY = bottom - keysHeight * KEYS_SQUASH;
     this.horizonY = this.hitY * HORIZON_Y;
-    this.projection = roadProjection(viewWidth, this.hitY, this.horizonY, FAR_SHARE);
+    this.projection = roadProjection(
+      viewWidth,
+      this.hitY,
+      this.horizonY,
+      FAR_SHARE,
+      SIZE_FAR_SHARE
+    );
     // A resized texture keeps its object: the meshes take it again to pick up the new size.
     this.road.texture = this.texture;
     this.glow.texture = this.texture;
