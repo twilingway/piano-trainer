@@ -1,4 +1,4 @@
-import { Container, Text } from "pixi.js";
+import { Container, FillGradient, Sprite, Text, Texture } from "pixi.js";
 import type { TextStyleOptions } from "pixi.js";
 
 import type { ComboBoard, GradedStrike, StrikeGrade } from "../practice/combo";
@@ -17,7 +17,10 @@ const POP_RISE_PX = 36;
 const POP_SWELL_S = 0.12;
 const POP_SWELL = 1.35;
 const DISPLAY_FONT = "'Russo One', system-ui, sans-serif";
-const BOARD_MARGIN_PX = 16;
+const BOARD_MARGIN_PX = 24;
+const ACCENT = 0x3fd6ff;
+/** The divider under the combo, and how wide the board is. */
+const BOARD_WIDTH_PX = 190;
 
 function glowing(color: number, size: number): TextStyleOptions {
   return {
@@ -27,6 +30,51 @@ function glowing(color: number, size: number): TextStyleOptions {
     dropShadow: { color, blur: 10, distance: 0, alpha: 0.8 }
   };
 }
+
+/*
+ * The board after the approved mockup: a white italic title, a big italic
+ * number shading from ice blue to deep blue, a thin divider, then the
+ * accuracy in white with its figure in the accent.
+ */
+const TITLE_STYLE: TextStyleOptions = {
+  fontFamily: DISPLAY_FONT,
+  fontSize: 34,
+  fontStyle: "italic",
+  fill: 0xffffff,
+  stroke: { color: 0x0b1a33, width: 4 },
+  dropShadow: { color: 0x000000, blur: 6, distance: 2, alpha: 0.6 }
+};
+const NUMBER_STYLE: TextStyleOptions = {
+  fontFamily: DISPLAY_FONT,
+  fontSize: 84,
+  fontStyle: "italic",
+  fill: new FillGradient({
+    type: "linear",
+    start: { x: 0, y: 0 },
+    end: { x: 0, y: 1 },
+    colorStops: [
+      { offset: 0, color: 0xc8f7ff },
+      { offset: 0.45, color: 0x48d8ff },
+      { offset: 1, color: 0x1477ff }
+    ],
+    textureSpace: "local"
+  }),
+  stroke: { color: 0x071a3a, width: 5 },
+  dropShadow: { color: ACCENT, blur: 18, distance: 0, alpha: 0.7 }
+};
+const ACCURACY_LABEL_STYLE: TextStyleOptions = {
+  fontFamily: "Manrope, system-ui, sans-serif",
+  fontSize: 20,
+  fontWeight: "700",
+  fill: 0xffffff,
+  dropShadow: { color: 0x000000, blur: 4, distance: 1, alpha: 0.6 }
+};
+const ACCURACY_VALUE_STYLE: TextStyleOptions = {
+  fontFamily: DISPLAY_FONT,
+  fontSize: 30,
+  fill: ACCENT,
+  dropShadow: { color: ACCENT, blur: 12, distance: 0, alpha: 0.7 }
+};
 
 interface Pop {
   readonly text: Text;
@@ -43,9 +91,11 @@ interface Pop {
 export class HudLayer {
   readonly container = new Container();
   private readonly board = new Container();
-  private readonly comboTitle = new Text({ text: "КОМБО", style: glowing(0x9fb3d1, 15) });
-  private readonly comboValue = new Text({ text: "0", style: glowing(0x62d9ff, 44) });
-  private readonly accuracy = new Text({ text: "", style: glowing(0xe8edf7, 15) });
+  private readonly comboTitle = new Text({ text: "КОМБО", style: TITLE_STYLE });
+  private readonly comboValue = new Text({ text: "0", style: NUMBER_STYLE });
+  private readonly divider = new Sprite(Texture.WHITE);
+  private readonly accuracyLabel = new Text({ text: "точность", style: ACCURACY_LABEL_STYLE });
+  private readonly accuracy = new Text({ text: "", style: ACCURACY_VALUE_STYLE });
   private readonly pops = new Container();
   private readonly active: Pop[] = [];
   private readonly spare = new Map<StrikeGrade, Text[]>();
@@ -53,9 +103,21 @@ export class HudLayer {
 
   constructor() {
     this.container.eventMode = "none";
-    this.comboValue.y = 16;
-    this.accuracy.y = 64;
-    this.board.addChild(this.comboTitle, this.comboValue, this.accuracy);
+    this.comboValue.position.set(-4, 26);
+    this.divider.tint = 0x7fdcff;
+    this.divider.alpha = 0.7;
+    this.divider.position.set(0, 126);
+    this.divider.width = BOARD_WIDTH_PX;
+    this.divider.height = 1.5;
+    this.accuracyLabel.position.set(4, 138);
+    this.accuracy.y = 131;
+    this.board.addChild(
+      this.comboTitle,
+      this.comboValue,
+      this.divider,
+      this.accuracyLabel,
+      this.accuracy
+    );
     this.board.position.set(BOARD_MARGIN_PX, BOARD_MARGIN_PX);
     this.board.visible = false;
     this.container.addChild(this.board, this.pops);
@@ -109,7 +171,8 @@ export class HudLayer {
     }
     const percent = Math.round(board.accuracy * 100);
     if (percent !== this.shown.accuracy) {
-      this.accuracy.text = `точность ${String(percent)}%`;
+      this.accuracy.text = `${String(percent)}%`;
+      this.accuracy.x = this.accuracyLabel.x + this.accuracyLabel.width + 8;
       this.shown.accuracy = percent;
     }
   }
