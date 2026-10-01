@@ -87,7 +87,8 @@ class AtlasPlayer {
     }
   }
 
-  play(x: number, y: number, keyWidth: number, color: number): void {
+  /** Plays the effect at a point; `vary` gives it a random lean, size, side and offset. */
+  play(x: number, y: number, keyWidth: number, color: number, vary = false): void {
     const first = this.frames[0];
     if (!first) return;
     let item = this.playing.find((candidate) => !candidate.sprite.visible);
@@ -107,8 +108,18 @@ class AtlasPlayer {
     item.age = 0;
     const sprite = item.sprite;
     sprite.texture = first;
-    sprite.position.set(x, y);
-    sprite.scale.set((keyWidth * this.effect.perKeyWidth) / this.effect.frameWidth);
+    const size = (keyWidth * this.effect.perKeyWidth) / this.effect.frameWidth;
+    if (vary) {
+      // Puffs that differ from each other read as flame, not as one beam going up.
+      const scale = size * (0.75 + Math.random() * 0.5);
+      sprite.position.set(x + (Math.random() - 0.5) * keyWidth * 0.7, y);
+      sprite.rotation = (Math.random() - 0.5) * 0.7;
+      sprite.scale.set(Math.random() < 0.5 ? -scale : scale, scale);
+    } else {
+      sprite.position.set(x, y);
+      sprite.rotation = 0;
+      sprite.scale.set(size);
+    }
     sprite.tint = color;
     sprite.visible = true;
   }
@@ -182,7 +193,7 @@ export class FxLayer {
       if (heldFor < HOLD_AFTER_S) continue;
       stillSounding.add(key.pitch);
       const due = (this.puffs.get(key.pitch) ?? 0) - deltaSeconds;
-      if (due <= 0) this.glitter.play(key.x, hitY, key.width, key.color);
+      if (due <= 0) this.glitter.play(key.x, hitY, key.width, key.color, true);
       this.puffs.set(key.pitch, due <= 0 ? due + GLITTER_EVERY_S : due);
       this.light(key, hitY);
     }
