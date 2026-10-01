@@ -421,6 +421,13 @@ export class FallingNotesView {
     this.hands.reset();
     this.notesLayer?.layout(this.keys, geometry.hitY, total);
     // The road ends on the felt, where the notes meet the keys.
-    this.road?.layout(total, geometry.hitY, height, width);
+    if (this.road) {
+      this.road.layout(total, geometry.hitY, height, width);
+      // The road shows itself when it fits; off, it stays hidden whatever the layout.
+      if (!this.roadMode) {
+        this.road.container.visible = false;
+        this.road.effects.visible = false;
+      }
+    }
   }
 }
