@@ -26,7 +26,7 @@ const HIT: AtlasEffect = {
   fps: 24,
   // The effect's origin sits 50 of 384 below the middle of its frame.
   anchorY: 0.5 + 50 / 384,
-  perKeyWidth: 3.2,
+  perKeyWidth: 6,
   pool: 24
 };
 /** Glitter and a soft haze rising from a sounding key (src/fx/piano-glitter.json). */
@@ -44,6 +44,8 @@ const GLITTER: AtlasEffect = {
 };
 /** A held key sends up a new puff of glitter this often, so the column never breaks. */
 const GLITTER_EVERY_S = 0.16;
+/** The hold's light and glitter wait this long after the strike, so the burst is seen first. */
+const HOLD_AFTER_S = 0.3;
 /** The light on a sounding key: its size in key widths, and how it breathes. */
 const HALO_PER_WIDTH = 2.6;
 const HALO_PULSE = 0.08;
@@ -151,6 +153,8 @@ export class FxLayer {
   private readonly lights = new Map<number, { readonly glow: Sprite; readonly core: Sprite }>();
   /** Seconds until each sounding key sends up its next puff of glitter. */
   private readonly puffs = new Map<number, number>();
+  /** How long each sounding key has sounded. */
+  private readonly held = new Map<number, number>();
   private clock = 0;
 
   constructor() {
@@ -173,6 +177,9 @@ export class FxLayer {
     for (const key of struck) this.hit.play(key.x, hitY, key.width, key.color);
     const stillSounding = new Set<number>();
     for (const key of sounding) {
+      const heldFor = (this.held.get(key.pitch) ?? 0) + deltaSeconds;
+      this.held.set(key.pitch, heldFor);
+      if (heldFor < HOLD_AFTER_S) continue;
       stillSounding.add(key.pitch);
       const due = (this.puffs.get(key.pitch) ?? 0) - deltaSeconds;
       if (due <= 0) this.glitter.play(key.x, hitY, key.width, key.color);
@@ -181,6 +188,10 @@ export class FxLayer {
     }
     for (const pitch of [...this.puffs.keys()]) {
       if (!stillSounding.has(pitch)) this.puffs.delete(pitch);
+    }
+    const soundingNow = new Set(sounding.map((key) => key.pitch));
+    for (const pitch of [...this.held.keys()]) {
+      if (!soundingNow.has(pitch)) this.held.delete(pitch);
     }
     for (const [pitch, light] of this.lights) {
       const on = stillSounding.has(pitch);
@@ -195,6 +206,7 @@ export class FxLayer {
     this.hit.clear();
     this.glitter.clear();
     this.puffs.clear();
+    this.held.clear();
     for (const light of this.lights.values()) {
       light.glow.visible = false;
       light.core.visible = false;
