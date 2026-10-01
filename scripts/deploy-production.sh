@@ -135,10 +135,16 @@ printf '%s\n' "$target_sha" > "$STATE_DIR/deployed-sha"
   if [[ -f "$STATE_DIR/tag-history" ]]; then grep -v "^$short_sha$" "$STATE_DIR/tag-history" || true; fi
 } > "$STATE_DIR/tag-history.next"
 mv "$STATE_DIR/tag-history.next" "$STATE_DIR/tag-history"
-mapfile -t tags < "$STATE_DIR/tag-history"
-if ((${#tags[@]} > 3)); then
-  for old_tag in "${tags[@]:3}"; do docker image rm "piano-trainer:$old_tag" >/dev/null 2>&1 || true; done
-  printf '%s\n' "${tags[@]:0:3}" > "$STATE_DIR/tag-history.next"
+tag_count=0
+while IFS= read -r old_tag; do
+  [[ -n "$old_tag" ]] || continue
+  tag_count=$((tag_count + 1))
+  if ((tag_count > 3)); then
+    docker image rm "piano-trainer:$old_tag" >/dev/null 2>&1 || true
+  fi
+done < "$STATE_DIR/tag-history"
+if ((tag_count > 3)); then
+  head -n 3 "$STATE_DIR/tag-history" > "$STATE_DIR/tag-history.next"
   mv "$STATE_DIR/tag-history.next" "$STATE_DIR/tag-history"
 fi
 log "Release $short_sha is live."
