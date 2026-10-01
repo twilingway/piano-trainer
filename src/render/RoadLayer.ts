@@ -5,9 +5,10 @@ import {
   Matrix,
   PerspectiveMesh,
   RenderTexture,
-  Sprite
+  Sprite,
+  Texture
 } from "pixi.js";
-import type { Renderer, Texture } from "pixi.js";
+import type { Renderer } from "pixi.js";
 
 import { roadProjection } from "./perspective";
 import type { Projected, RoadProjection } from "./perspective";
@@ -37,6 +38,12 @@ export interface Arrival {
  * flash and grows as it comes. The keyboard in front is not in that
  * perspective: it is the flat keyboard squashed in height.
  */
+/** Notes are born at most this share of their full size at the horizon, however wide the road. */
+const SIZE_FAR_SHARE = 0.12;
+/** The fog over the far road reaches this share of the way down to the keys. */
+const FOG_REACH = 0.5;
+const FOG_COLOR = 0x11131a;
+
 export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
 
 /** The road's shape, the player's to tune: a wider keyboard wants a lower horizon. */
@@ -87,6 +94,8 @@ export class RoadLayer {
   private readonly hitLine = new Graphics();
   /** The glowing horizon and the flashes of notes coming over it. */
   private readonly horizon = new Graphics();
+  /** Haze over the far road: lanes and notes come out of it as they near. */
+  private readonly fog = new Sprite(bakeFog());
   private readonly sparkTexture: Texture;
   private readonly sparks: Spark[] = [];
   private size = { width: 0, height: 0 };
@@ -117,7 +126,8 @@ export class RoadLayer {
     this.glow = new PerspectiveMesh({ texture: this.texture, verticesX: 32, verticesY: 64 });
     this.glows.addChild(this.glow);
     this.horizon.blendMode = "add";
-    this.container.addChild(this.road, this.glows, this.horizon, this.keys);
+    this.fog.tint = FOG_COLOR;
+    this.container.addChild(this.road, this.glows, this.fog, this.horizon, this.keys);
     this.container.eventMode = "none";
     this.hitLine.blendMode = "add";
     this.effects.addChild(this.hitLine);
@@ -149,7 +159,16 @@ export class RoadLayer {
     this.keysTexture.source.resize(viewWidth, Math.max(1, keysHeight), this.renderer.resolution);
     this.hitY = bottom - keysHeight * KEYS_SQUASH;
     this.horizonY = this.hitY * this.shape.horizon;
-    this.projection = roadProjection(viewWidth, this.hitY, this.horizonY, this.shape.far);
+    this.projection = roadProjection(
+      viewWidth,
+      this.hitY,
+      this.horizonY,
+      this.shape.far,
+      Math.min(this.shape.far, SIZE_FAR_SHARE)
+    );
+    this.fog.position.set(0, this.horizonY);
+    this.fog.width = viewWidth;
+    this.fog.height = (this.hitY - this.horizonY) * FOG_REACH;
     // A resized texture keeps its object: the meshes take it again to pick up the new size.
     this.road.texture = this.texture;
     this.glow.texture = this.texture;
@@ -187,6 +206,12 @@ export class RoadLayer {
         this.hitY
       );
     }
+  }
+
+  /** How clear a point of the flat lane is through the fog: 0 at the horizon, 1 out of it. */
+  clarity(y: number): number {
+    if (this.size.height <= 0) return 1;
+    return Math.max(0, Math.min(1, y / this.size.height / FOG_REACH));
   }
 
   /** The hit line's height on screen, where the road meets the keys. */
@@ -366,4 +391,20 @@ function bakeSpark(renderer: Renderer): Texture {
   const texture = renderer.generateTexture({ target: dot, resolution: 2 });
   dot.destroy();
   return texture;
+}
+
+/** A vertical fade, opaque at the top: the fog, tinted the background's colour. */
+function bakeFog(): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return Texture.WHITE;
+  const gradient = context.createLinearGradient(0, 0, 0, 128);
+  gradient.addColorStop(0, "rgba(255, 255, 255, 0.92)");
+  gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.55)");
+  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 1, 128);
+  return Texture.from(canvas);
 }

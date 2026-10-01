@@ -333,23 +333,25 @@ export class NotesLayer {
         // A sounding note's card waits on the hit line rather than sliding over the keys.
         const landing = Math.min(bottom, hitY);
         const spot = road?.place(centre, landing);
+        // Far up the road a card is still in the fog; it clears as it nears.
+        const seen = body.alpha * (road ? road.clarity(landing) : 1);
         const scale = cardScale * (spot?.scale ?? 1);
         const x = spot?.x ?? centre;
         const y = spot?.y ?? landing;
         glow.scale.set(scale);
         glow.position.set(x, y + CARD_GLOW * scale);
         glow.tint = body.tint;
-        glow.alpha = body.alpha;
+        glow.alpha = seen;
         frame.scale.set(scale);
         frame.position.set(x, y);
         frame.tint = body.tint;
-        frame.alpha = body.alpha;
+        frame.alpha = seen;
         face.scale.set(scale);
         face.position.set(x, y - CARD_FACE_OFFSET * scale);
-        face.alpha = body.alpha;
+        face.alpha = seen;
         badge.scale.set(scale * 0.55);
         badge.position.set(x, y - (CARD_HEIGHT - CARD_FACE_OFFSET - 1) * scale);
-        badge.alpha = body.alpha;
+        badge.alpha = seen;
         continue;
       }
       if (this.noteNames) {

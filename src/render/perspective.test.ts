@@ -20,6 +20,13 @@ describe("roadProjection", () => {
     expect(left.scale).toBeCloseTo(0.4);
   });
 
+  it("can size the notes as on a deeper floor than the lanes converge", () => {
+    const wide = roadProjection(1000, 800, 200, 0.8, 0.2);
+    expect(wide.at(0, 0).x).toBeCloseTo(100);
+    expect(wide.at(0, 0).scale).toBeCloseTo(0.2);
+    expect(wide.at(0, 1)).toEqual({ x: 0, y: 800, scale: 1 });
+  });
+
   it("gives every key a point of its own on the horizon", () => {
     expect(road.at(100, 0).x).not.toBeCloseTo(road.at(200, 0).x);
   });
