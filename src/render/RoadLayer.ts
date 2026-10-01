@@ -214,6 +214,12 @@ export class RoadLayer {
     return camera.at(x - this.pan, z, centre);
   }
 
+  /** The point of the flat keyboard under a point of the laid keys on screen; undefined off them. */
+  keysPointAt(x: number, y: number): { x: number; y: number } | undefined {
+    if (!this.keys.visible || this.size.width < 1 || y < this.hitY) return undefined;
+    return { x: x + this.pan, y: this.size.height + (y - this.hitY) / KEYS_SQUASH };
+  }
+
   /** Where a point on the flat hit line lands on screen. */
   private project(x: number): number {
     return x - this.pan;

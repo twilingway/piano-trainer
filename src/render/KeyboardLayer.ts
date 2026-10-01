@@ -409,14 +409,30 @@ export class KeyboardLayer {
     }
   }
 
-  private pressWithMouse(pitch: number): void {
+  /** The key under a point of the keyboard, black keys first: they lie over the white ones. */
+  pitchAt(x: number, y: number): number | undefined {
+    for (const black of [true, false]) {
+      for (const [pitch, sprite] of this.keySprites) {
+        if (!sprite.visible || isBlackKey(pitch) !== black) continue;
+        const inside =
+          x >= sprite.x &&
+          x < sprite.x + sprite.width &&
+          y >= sprite.y &&
+          y < sprite.y + sprite.height;
+        if (inside) return pitch;
+      }
+    }
+    return undefined;
+  }
+
+  pressWithMouse(pitch: number): void {
     if (this.mouseKey === pitch) return;
     this.releaseMouse();
     this.mouseKey = pitch;
     this.onKeyPointer({ type: "down", pitch, velocity: 90 });
   }
 
-  private releaseMouse(): void {
+  releaseMouse(): void {
     if (this.mouseKey === undefined) return;
     this.onKeyPointer({ type: "up", pitch: this.mouseKey, velocity: 0 });
     this.mouseKey = undefined;

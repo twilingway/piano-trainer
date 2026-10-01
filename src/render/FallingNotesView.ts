@@ -1,5 +1,5 @@
 import { Application, Container } from "pixi.js";
-import type { Texture } from "pixi.js";
+import type { FederatedPointerEvent, Texture } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
@@ -146,6 +146,22 @@ export class FallingNotesView {
       this.keysRoot,
       this.road.effects
     );
+    // On the road the keys are a picture: the stage finds the key under the mouse itself.
+    const stage = this.app.stage;
+    stage.eventMode = "static";
+    stage.hitArea = this.app.screen;
+    stage.on("pointerdown", (event) => {
+      this.roadPointer(event);
+    });
+    stage.on("pointermove", (event) => {
+      if ((event.buttons & 1) === 1) this.roadPointer(event);
+    });
+    stage.on("pointerup", () => {
+      keyboard.releaseMouse();
+    });
+    stage.on("pointerupoutside", () => {
+      keyboard.releaseMouse();
+    });
     await keyboard.loadPaintedFaces();
     this.ready = true;
   }
@@ -194,8 +210,8 @@ export class FallingNotesView {
   /**
    * The trial road view: the notes come out of the horizon in perspective,
    * glowing, with sparks in their finger's colour where they are struck.
-   * Notes cannot be clicked there, nor keys played with the mouse: the lane
-   * and the keyboard are pictures laid on the road.
+   * Notes cannot be clicked there: the lane is a picture laid on the road.
+   * The keys are one too, so the stage finds the key under the mouse.
    */
   setRoad(on: boolean): void {
     this.roadWanted = on;
@@ -215,6 +231,14 @@ export class FallingNotesView {
       this.app.stage.addChildAt(this.keysRoot, 3);
     }
     this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  /** Plays the key under the mouse on the road's picture of the keyboard. */
+  private roadPointer(event: FederatedPointerEvent): void {
+    if (!this.roadMode || event.target !== this.app.stage || !this.parts.keys) return;
+    const point = this.road?.keysPointAt(event.global.x, event.global.y);
+    const pitch = point && this.keyboard?.pitchAt(point.x, point.y);
+    if (pitch !== undefined) this.keyboard?.pressWithMouse(pitch);
   }
 
   /** Runs `onFrame` with real milliseconds before every draw. */
