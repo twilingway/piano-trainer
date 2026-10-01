@@ -37,7 +37,7 @@ export interface Arrival {
  * flash and grows as it comes. The keyboard in front is not in that
  * perspective: it is the flat keyboard squashed in height.
  */
-const FAR_SHARE = 0.42;
+const FAR_SHARE = 0.22;
 /** The horizon, as a share of the way down from the top of the view to the hit line. */
 const HORIZON_Y = 0.04;
 /** The keyboard's height on the road, as a share of its flat height. */
