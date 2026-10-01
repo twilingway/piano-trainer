@@ -1,4 +1,4 @@
-import { Container, Sprite, Texture, TilingSprite } from "pixi.js";
+import { Assets, Container, Rectangle, Sprite, Texture, TilingSprite } from "pixi.js";
 import type { Renderer } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
@@ -35,6 +35,13 @@ const TAIL_SHARE = 0.28;
 const TRAIL_SHARE = 0.86;
 /** A note flashes on the horizon for this share of the lane after it comes over. */
 const ARRIVAL_SHARE = 0.08;
+/*
+ * The cards' neon, baked by Arcadia Effector (src/fx/card-neon.json): a
+ * breathing, flickering tube with a halo round the card, 16 frames of 108×128
+ * (the card and its glow margin) in 8×2, one loop in 1.2 s.
+ */
+const CARD_NEON = new URL("../fx/card-neon.webp", import.meta.url).href;
+const CARD_NEON_FRAME = { width: 108, height: 128, cols: 8, count: 16, fps: 13.33 } as const;
 /** The road's lanes: a faint line between keys and a bar across at every beat. */
 const LANE_COLOR = 0x2f7bff;
 const LANE_ALPHA = 0.35;
@@ -107,6 +114,8 @@ export class NotesLayer {
   /** The left hand's frame, with a second ring. */
   private readonly cardFrameLeft: Texture;
   private readonly cardGlow: Texture;
+  /** The neon loop's frames; until they load, or if they cannot, the still glow stands in. */
+  private neonFrames: Texture[] = [];
   private readonly trailTile: Texture;
   /** Card faces by pitch and written value, baked the first time a song needs one. */
   private readonly cardFaces = new Map<string, Texture>();
@@ -346,7 +355,14 @@ export class NotesLayer {
         glow.position.set(x, y + CARD_GLOW * scale);
         glow.tint = body.tint;
         // A neon tube flickers a little, each card on its own beat.
-        glow.alpha = seen * (0.85 + 0.15 * Math.sin(state.time * 11 + note.startBeat * 7));
+        glow.alpha = seen;
+        // Each card on its own step of the neon's loop, so cards never flicker in step.
+        const neon = this.neonFrames;
+        if (neon.length > 0) {
+          const step = Math.floor((performance.now() / 1000) * CARD_NEON_FRAME.fps);
+          glow.texture =
+            neon[(step + Math.round(note.startBeat * 5)) % neon.length] ?? glow.texture;
+        }
         frame.scale.set(scale);
         frame.position.set(x, y);
         // The tube itself burns near white, only touched by the finger's colour.
@@ -396,6 +412,29 @@ export class NotesLayer {
     for (let index = used; index < this.beatBars.children.length; index++) {
       const bar = this.beatBars.children[index];
       if (bar) bar.visible = false;
+    }
+  }
+
+  /** Loads the cards' neon loop; a failure leaves them their still glow. */
+  async loadNeon(): Promise<void> {
+    try {
+      const atlas = await Assets.load<Texture>(CARD_NEON);
+      const { width, height, cols, count } = CARD_NEON_FRAME;
+      this.neonFrames = Array.from(
+        { length: count },
+        (_, index) =>
+          new Texture({
+            source: atlas.source,
+            frame: new Rectangle(
+              (index % cols) * width,
+              Math.floor(index / cols) * height,
+              width,
+              height
+            )
+          })
+      );
+    } catch (error) {
+      console.warn("The cards' neon did not load; they keep a still glow", error);
     }
   }
 
