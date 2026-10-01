@@ -10,6 +10,7 @@ import { bakeDigits, bakeNames } from "./bakeLabels";
 import type { FallingNoteNames } from "./bakeLabels";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
+import { BurstLayer } from "./BurstLayer";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
 import type { KeyStyle } from "./KeyboardLayer";
@@ -77,6 +78,10 @@ export class FallingNotesView {
   private readonly hands = new HandsLayer();
   /** The combo board and the strikes' grades, over everything. */
   private readonly hud = new HudLayer();
+  /** Arcadia's strike bursts, on the keys at the hit line. */
+  private readonly bursts = new BurstLayer();
+  /** Keys the program was sounding last frame: a key that starts to sound bursts too. */
+  private readonly wasSounding = new Set<number>();
   private digitTextures = new Map<Finger, Texture>();
   private badgeTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
@@ -161,8 +166,10 @@ export class FallingNotesView {
       notes.cards,
       this.keysRoot,
       this.road.effects,
+      this.bursts.container,
       this.hud.container
     );
+    await this.bursts.load();
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -288,6 +295,7 @@ export class FallingNotesView {
     this.song = song;
     this.songNotes = song.notes;
     this.hud.clear();
+    this.bursts.clear();
     // The new song's keys are elsewhere: the scroll lands on them rather than gliding there.
     this.panSnap = true;
   }
@@ -331,6 +339,30 @@ export class FallingNotesView {
         this.app.ticker.deltaMS / 1000
       );
     }
+    const hitLineY = road ? road.hitLineY : geometry.hitY;
+    const burst = (pitch: number) => {
+      const key = this.keys.get(pitch);
+      if (!key) return;
+      const note =
+        this.notesLayer?.playing.get(pitch) ?? state.due.find((item) => item.pitch === pitch);
+      const color =
+        note?.finger !== undefined
+          ? FINGER_COLOR[note.finger]
+          : note
+            ? HAND_COLOR[note.hand]
+            : 0xffffff;
+      this.bursts.play(key.x + key.width / 2 - this.pan, hitLineY, key.width, color);
+    };
+    for (const strike of state.graded ?? []) {
+      if (strike.grade !== "miss") burst(strike.pitch);
+    }
+    // The program's own notes, for the hand the player leaves to it, flash as they sound.
+    for (const pitch of state.sounding) {
+      if (!this.wasSounding.has(pitch)) burst(pitch);
+    }
+    this.wasSounding.clear();
+    for (const pitch of state.sounding) this.wasSounding.add(pitch);
+    this.bursts.update(this.app.ticker.deltaMS / 1000);
     // The board belongs to the lane: without the falling notes there is nothing to count over.
     this.hud.draw(
       this.parts.notes ? state.board : undefined,
@@ -339,7 +371,7 @@ export class FallingNotesView {
         const key = this.keys.get(pitch);
         return key && key.x + key.width / 2 - this.pan;
       },
-      road ? road.hitLineY : geometry.hitY,
+      hitLineY,
       this.app.ticker.deltaMS / 1000
     );
   }

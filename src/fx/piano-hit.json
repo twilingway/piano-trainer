@@ -1,0 +1,252 @@
+{
+  "app": "arcadia-effects",
+  "v": 1,
+  "doc": {
+    "v": 1,
+    "id": "fx_piano_hit",
+    "name": "piano-hit",
+    "comp": {
+      "w": 384,
+      "h": 384,
+      "dur": 0.5,
+      "fps": 60
+    },
+    "cam": {
+      "comp": 0
+    },
+    "exp": {
+      "cols": 4,
+      "rows": 3,
+      "frames": 12,
+      "cellW": 160,
+      "cellH": 160,
+      "t0": 0,
+      "t1": -1,
+      "mode": "rgba",
+      "thr": 0,
+      "ss": 2
+    },
+    "textures": [],
+    "layers": [
+      {
+        "id": "lr_mt5goosf_1zr2",
+        "name": "Вспышка",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 0.3,
+        "blend": "add",
+        "opacity": {
+          "keys": [
+            {
+              "t": 0,
+              "v": 1,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 0.04,
+              "v": 1,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 0.26,
+              "v": 0,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            }
+          ]
+        },
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "soft",
+            "p": {}
+          },
+          "size": 130,
+          "x": 0,
+          "y": 50,
+          "scale": {
+            "keys": [
+              {
+                "t": 0,
+                "v": 0.3,
+                "i": {
+                  "m": "lin"
+                },
+                "o": {
+                  "m": "ease"
+                }
+              },
+              {
+                "t": 0.14,
+                "v": 1.4,
+                "i": {
+                  "m": "ease"
+                },
+                "o": {
+                  "m": "ease"
+                }
+              }
+            ]
+          },
+          "aspect": 1,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0.8,
+          "glowSize": 1.6,
+          "fps": 0,
+          "glowBlur": 0.15
+        },
+        "glowL": 0,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      },
+      {
+        "id": "lr_mt5goosf_1zr1",
+        "name": "Искры",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 0.5,
+        "blend": "add",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 50,
+          "shape": "point",
+          "sx": 60,
+          "sy": 60,
+          "dir": "out",
+          "angle": -90,
+          "spread": 75,
+          "speed": 560,
+          "speedRnd": 0.6,
+          "rate": 0,
+          "bursts": [
+            {
+              "t": 0,
+              "n": 36
+            }
+          ],
+          "seed": 1,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.38,
+          "lifeRnd": 0.5,
+          "sprite": {
+            "kind": "shape",
+            "id": "streak",
+            "p": {}
+          },
+          "size": 46,
+          "sizeRnd": 0.5,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 0.319315402307243,
+                "v": 0.5102145287298387
+              },
+              {
+                "t": 1,
+                "v": 0.1
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 0.55,
+                "v": 0.85
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 0.4,
+                "c": [235, 235, 235]
+              },
+              {
+                "t": 1,
+                "c": [150, 150, 150]
+              }
+            ]
+          },
+          "tintTex": false,
+          "rot": 0,
+          "rotRnd": 1,
+          "spin": 40,
+          "spinRnd": 1,
+          "alignVel": true,
+          "stretch": 1.6,
+          "gravX": 0,
+          "gravY": 600,
+          "drag": 1.333331298828125,
+          "turbAmp": 0,
+          "turbFreq": 1.5,
+          "squash": 0,
+          "glow": 0.4,
+          "glowSize": 1.6,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0
+        },
+        "glowL": 0,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      }
+    ]
+  },
+  "tex": {}
+}
