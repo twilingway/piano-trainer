@@ -84,7 +84,7 @@ const KEY_STYLES: Readonly<Record<KeyStyle, StyleSet>> = {
       blackPressedLit: new URL("./keys-arcade/black-pressed-lit.webp", import.meta.url).href
     },
     // The pressed faces share the up faces' slices: their sunk bevel sits inside the bottom band.
-    white: { leftWidth: 34, topHeight: 50, rightWidth: 24, bottomHeight: 146 },
+    white: { leftWidth: 20, topHeight: 50, rightWidth: 20, bottomHeight: 146 },
     black: { leftWidth: 26, topHeight: 38, rightWidth: 22, bottomHeight: 91 },
     rail: new URL("./keys-arcade/case-rail.webp", import.meta.url).href
   }
