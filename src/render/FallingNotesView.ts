@@ -149,6 +149,12 @@ export class FallingNotesView {
     this.road.container.visible = false;
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, this.hands.container);
+    // Pixi draws a Text the first time it is shown: wait for the web fonts, or the board is set
+    // in a fallback face. Offline they never come, and the fallback is fine.
+    await Promise.all([
+      document.fonts.load("34px 'Russo One'"),
+      document.fonts.load("700 20px Manrope")
+    ]).catch(() => undefined);
     this.app.stage.addChild(
       this.road.container,
       notes.root,
@@ -311,7 +317,13 @@ export class FallingNotesView {
         const color = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
         strikes.push({ pitch, x: key.x + key.width / 2, color });
       }
-      road.draw(this.notesLayer.root, this.keysRoot, strikes, this.app.ticker.deltaMS / 1000);
+      road.draw(
+        this.notesLayer.root,
+        this.keysRoot,
+        strikes,
+        this.notesLayer.arrivals,
+        this.app.ticker.deltaMS / 1000
+      );
     }
     // The board belongs to the lane: without the falling notes there is nothing to count over.
     this.hud.draw(
@@ -403,10 +415,6 @@ export class FallingNotesView {
     this.hands.reset();
     this.notesLayer?.layout(this.keys, geometry.hitY, total);
     // The road ends on the felt, where the notes meet the keys.
-    // Each octave its own road: the lane is cut at every C.
-    const octaves = [...this.keys.values()]
-      .filter((key) => key.pitch % 12 === 0)
-      .map((key) => key.x);
-    this.road?.layout(total, geometry.hitY, height, octaves, width);
+    this.road?.layout(total, geometry.hitY, height, width);
   }
 }

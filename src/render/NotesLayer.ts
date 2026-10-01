@@ -21,7 +21,7 @@ import {
   bakeTrailTile
 } from "./noteCards";
 import { noteGlyph } from "./noteGlyph";
-import type { RoadLayer } from "./RoadLayer";
+import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
 export const HAND_COLOR: Readonly<Record<Hand, number>> = { right: 0x4cc9f0, left: 0xf4a261 };
@@ -33,6 +33,8 @@ const NOTE_GAP_PX = 1;
 const TAIL_SHARE = 0.28;
 /** On the road a note trails a lane this share of its key wide, marked at every beat. */
 const TRAIL_SHARE = 0.86;
+/** A note flashes on the horizon for this share of the lane after it comes over. */
+const ARRIVAL_SHARE = 0.08;
 /** A note card's width, in white-key widths, and its limits in pixels. */
 const CARD_PER_WIDTH = 1.9;
 const CARD_MIN_PX = 34;
@@ -86,6 +88,8 @@ export class NotesLayer {
   readonly cards = new Container({ sortableChildren: true });
   /** Notes crossing the hit line in the last frame drawn, by pitch. */
   readonly playing = new Map<number, SongNote>();
+  /** Notes coming over the road's horizon in the last frame drawn, with their flash. */
+  readonly arrivals: Arrival[] = [];
   private readonly lane = new Container();
   private readonly guides = new Container();
   private notes: NoteSprite[] = [];
@@ -226,6 +230,7 @@ export class NotesLayer {
     const pixelsPerSecond = hitY / state.lookAhead;
     const cards = this.cardsOn;
     this.playing.clear();
+    this.arrivals.length = 0;
     const cardWidth = Math.min(
       CARD_MAX_PX,
       Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
@@ -280,6 +285,13 @@ export class NotesLayer {
         road && note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       body.alpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
+      if (road && bottom < hitY * ARRIVAL_SHARE) {
+        this.arrivals.push({
+          x: key.x + key.width / 2,
+          color: body.tint,
+          strength: (1 - bottom / (hitY * ARRIVAL_SHARE)) * body.alpha
+        });
+      }
 
       digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
       digit.x = key.x + key.width / 2;

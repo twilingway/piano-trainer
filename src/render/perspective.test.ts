@@ -1,30 +1,34 @@
 import { describe, expect, it } from "vitest";
 
-import { depthBetween, floorCamera } from "./perspective";
+import { roadProjection } from "./perspective";
 
-describe("floorCamera", () => {
-  // A 1000×800 view with the horizon at y 200.
-  const camera = floorCamera(1000, 800, 200);
+describe("roadProjection", () => {
+  // A 1000-wide view, the hit line at y 800, the horizon at y 200, the far edge 0.4 as wide.
+  const road = roadProjection(1000, 800, 200, 0.4);
 
-  it("spans the view's bottom edge at depth 1", () => {
-    expect(camera.at(0, 1)).toEqual({ x: 0, y: 800, scale: 1 });
-    expect(camera.at(1000, 1).x).toBe(1000);
+  it("spans the view at the hit line", () => {
+    expect(road.at(0, 1)).toEqual({ x: 0, y: 800, scale: 1 });
+    expect(road.at(1000, 1).x).toBe(1000);
   });
 
-  it("halves size and drop at twice the depth, and nears the horizon far away", () => {
-    expect(camera.at(1000, 2)).toEqual({ x: 750, y: 500, scale: 0.5 });
-    const far = camera.at(0, 100);
-    expect(far.y).toBeCloseTo(206);
-    expect(far.x).toBeCloseTo(495);
+  it("narrows to its share of the width at the horizon, around the middle", () => {
+    const left = road.at(0, 0);
+    const right = road.at(1000, 0);
+    expect(left.y).toBe(200);
+    expect(left.x).toBeCloseTo(300);
+    expect(right.x).toBeCloseTo(700);
+    expect(left.scale).toBeCloseTo(0.4);
   });
 
-  it("draws a strip's lines to its own vanishing point", () => {
-    // An octave centred at x 200: its middle stays put, its edges close in on it.
-    expect(camera.at(200, 4, 200).x).toBe(200);
-    expect(camera.at(300, 4, 200).x).toBe(225);
+  it("gives every key a point of its own on the horizon", () => {
+    expect(road.at(100, 0).x).not.toBeCloseTo(road.at(200, 0).x);
   });
 
-  it("spaces depth evenly on the floor", () => {
-    expect(depthBetween(12, 2, 0.5)).toBe(7);
+  it("closes up towards the horizon: halfway down the lane is above the screen's midpoint", () => {
+    const half = road.at(500, 0.5);
+    expect(half.scale).toBeCloseTo(1 / 1.75);
+    expect(half.y).toBeLessThan(500);
+    // A quarter of the lane from the horizon covers less screen than a quarter near the keys.
+    expect(road.at(500, 0.25).y - 200).toBeLessThan(800 - road.at(500, 0.75).y + 1e-9);
   });
 });
