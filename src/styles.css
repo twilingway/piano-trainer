@@ -107,6 +107,7 @@ body {
 
 /* The reader drags the bottom edge to give the score or the lane more room. */
 .staff {
+  position: relative;
   flex: 0 0 auto;
   height: 34dvh;
   min-height: 80px;
@@ -120,6 +121,28 @@ body {
 
 .staff-page {
   position: relative;
+}
+
+/* OSMD's cursor jumps from note to note: it stays, unseen, to steer the scrolling. */
+.staff img[id^="cursorImg"] {
+  opacity: 0;
+}
+
+/* The play cursor as in the mockup: a thin glowing blue line gliding with the song. */
+.staff-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: #3fd6ff;
+  box-shadow:
+    0 0 6px 1px rgb(63 214 255 / 80%),
+    0 0 16px 4px rgb(63 214 255 / 35%);
+  pointer-events: none;
+  visibility: hidden;
+  will-change: transform;
 }
 
 .staff {
