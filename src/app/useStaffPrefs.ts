@@ -45,8 +45,8 @@ export interface StaffPrefs {
 
 const STAFF_PREFS_KEY = "staff-prefs";
 const DEFAULT_STAFF_PREFS: StaffPrefs = {
-  zoom: 0.8,
-  singleLine: false,
+  zoom: 1,
+  singleLine: true,
   follow: true,
   measuresPerLine: 4,
   noteNames: "off",
@@ -55,12 +55,12 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   visible: true,
   lane: true,
   keys: true,
-  hands: true,
-  road: false,
+  hands: false,
+  road: true,
   noteCards: true,
   labels: true,
   keyRange: "song",
-  keyStyle: "classic",
+  keyStyle: "arcade",
   autoReview: false,
   roadFar: DEFAULT_ROAD_SHAPE.far,
   roadHorizon: DEFAULT_ROAD_SHAPE.horizon

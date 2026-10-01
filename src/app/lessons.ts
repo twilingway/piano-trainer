@@ -11,7 +11,15 @@ export interface LessonChoice {
 
 export const LESSONS = [...EXERCISES, ...LOCAL_LESSONS];
 
-export const FIRST_LESSON: LessonChoice = { exerciseId: LESSONS[0]?.id ?? "", levelId: "easy" };
+/** What a first visit opens: the anthem, or the first lesson should it be missing. */
+const DEFAULT_LESSON_ID = "anthem-ru";
+
+export const FIRST_LESSON: LessonChoice = {
+  exerciseId: LESSONS.some((item) => item.id === DEFAULT_LESSON_ID)
+    ? DEFAULT_LESSON_ID
+    : (LESSONS[0]?.id ?? ""),
+  levelId: "easy"
+};
 
 /** A built-in lesson at one level; the level is part of the title, so corrections stay per level. */
 export function lessonSong(choice: LessonChoice): Song {
