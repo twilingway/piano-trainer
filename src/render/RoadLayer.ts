@@ -294,15 +294,13 @@ export class RoadLayer {
     if (!projection) return;
     const y = this.horizonY;
     const width = this.viewWidth;
-    // Across the whole view, as in the mockup: a glow that fades out above and below a bright
-    // wire, the glow reaching further down onto the road than up into the sky.
-    for (let step = 1; step <= 8; step++) {
-      line
-        .rect(0, y - step * 2, width, step * 2 + step * 5)
-        .fill({ color: HORIZON_COLOR, alpha: 0.035 });
+    // Across the whole view, quiet as in the mockup: a thin blue line in a faint haze that
+    // reaches further down onto the road than up; the notes' flashes are the bright part.
+    for (let step = 1; step <= 6; step++) {
+      line.rect(0, y - step, width, step + step * 4).fill({ color: HORIZON_COLOR, alpha: 0.018 });
     }
-    line.rect(0, y - 3, width, 6).fill({ color: HORIZON_COLOR, alpha: 0.45 });
-    line.rect(0, y - 1, width, 2).fill({ color: 0xffffff, alpha: 0.95 });
+    line.rect(0, y - 1.5, width, 3).fill({ color: HORIZON_COLOR, alpha: 0.18 });
+    line.rect(0, y - 0.5, width, 1).fill({ color: HORIZON_COLOR, alpha: 0.6 });
     for (const arrival of arrivals) {
       const spot = projection.at(arrival.x - this.pan, 0);
       const strength = arrival.strength;
