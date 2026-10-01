@@ -14,6 +14,8 @@ const BLACK_KEY_HEIGHT_WITH_STICKERS = 0.5;
 /** Room under the keys for the palms of the drawn hands, in white-key widths and at most a share. */
 const HANDS_STRIP_PER_WIDTH = 3;
 const MAX_HANDS_SHARE = 0.25;
+/** A margin under the keys, so they do not sit on the view's edge, in white-key widths. */
+const BOTTOM_MARGIN_PER_WIDTH = 0.2;
 /** The felt strip's height, in white-key widths. */
 const FELT_PER_WIDTH = 0.22;
 
@@ -57,10 +59,11 @@ export function viewGeometry(
   const feltHeight = Math.max(3, whiteWidth * FELT_PER_WIDTH);
   const blackOf = (keyboardHeight: number) =>
     keyboardHeight * (stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT);
-  // The palms reach below the keys, into a strip of their own.
+  // The palms reach below the keys, into a strip of their own; without hands a margin stays.
+  const margin = whiteWidth * BOTTOM_MARGIN_PER_WIDTH;
   const strip = parts.hands
-    ? Math.min(whiteWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE)
-    : 0;
+    ? Math.max(margin, Math.min(whiteWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE))
+    : margin;
   // Only the keys: they take the whole view, whatever its height.
   if (!parts.notes) {
     const keyboardHeight = height - strip - feltHeight;

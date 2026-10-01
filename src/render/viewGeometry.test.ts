@@ -11,9 +11,10 @@ describe("viewGeometry", () => {
     expect(geometry).toMatchObject({ keyboardTop: 600, hitY: 600, keyboardHeight: 0 });
   });
 
-  it("puts the hit line on top of the felt over the keys", () => {
+  it("puts the hit line on top of the felt, the keys a margin off the bottom", () => {
     const geometry = viewGeometry(600, 40, ALL, false);
-    expect(geometry.keyboardTop + geometry.keyboardHeight).toBe(600);
+    // A margin of a fifth of a white key under the keys.
+    expect(geometry.keyboardTop + geometry.keyboardHeight).toBe(592);
     expect(geometry.hitY).toBeCloseTo(geometry.keyboardTop - geometry.feltHeight);
   });
 
@@ -25,7 +26,7 @@ describe("viewGeometry", () => {
   it("gives the whole view to the keys without the notes", () => {
     const geometry = viewGeometry(300, 40, { ...ALL, notes: false }, false);
     expect(geometry.hitY).toBe(0);
-    expect(geometry.keyboardTop + geometry.keyboardHeight).toBeCloseTo(300);
+    expect(geometry.keyboardTop + geometry.keyboardHeight).toBeCloseTo(292);
   });
 
   it("shortens the black keys for stickers only", () => {
