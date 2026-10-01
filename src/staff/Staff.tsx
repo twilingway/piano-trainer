@@ -1,3 +1,5 @@
+import { placeCursorLine, spotAt } from "./liveCursor";
+import type { BeatSpot } from "./liveCursor";
 import { OpenSheetMusicDisplay, VexFlowGraphicalNote, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useRef } from "react";
 
@@ -210,42 +212,26 @@ function indexNotes(osmd: OpenSheetMusicDisplay): NoteIndex {
   return { beats, heads };
 }
 
-/** Every beat that has a note, with that note's x centre from the left edge of the SVG. */
+/** Every beat that has a note: that note's x centre from the SVG's left edge, and its line. */
 function beatPositions(
   beats: ReadonlyMap<SVGGElement, number>,
-  host: HTMLElement
-): (readonly [number, number])[] {
+  host: HTMLElement,
+  lines: readonly LineBox[]
+): BeatSpot[] {
   const svg = host.querySelector("svg");
   if (!svg) return [];
-  const left = svg.getBoundingClientRect().left;
-  const byBeat = new Map<number, number>();
+  const origin = svg.getBoundingClientRect();
+  const byBeat = new Map<number, BeatSpot>();
   for (const [element, beat] of beats) {
     const box = element.getBoundingClientRect();
     if (box.width === 0) continue;
-    const x = box.left + box.width / 2 - left;
-    byBeat.set(beat, Math.min(byBeat.get(beat) ?? x, x));
+    const x = box.left + box.width / 2 - origin.left;
+    const y = box.top + box.height / 2 - origin.top;
+    const line = (lines.filter((item) => item.top <= y).at(-1) ?? lines[0])?.top ?? 0;
+    const known = byBeat.get(beat);
+    if (!known || x < known.x) byBeat.set(beat, { beat, x, line });
   }
-  return [...byBeat].sort((a, b) => a[0] - b[0]);
-}
-
-/** The x a beat falls at, between the notes around it; past the ends, at the nearest note. */
-function xAtBeat(
-  positions: readonly (readonly [number, number])[],
-  beat: number
-): number | undefined {
-  const first = positions[0];
-  if (!first) return undefined;
-  if (beat <= first[0]) return first[1];
-  for (let index = 1; index < positions.length; index++) {
-    const after = positions[index];
-    const before = positions[index - 1];
-    if (!after || !before) break;
-    if (beat <= after[0]) {
-      const share = (beat - before[0]) / (after[0] - before[0]);
-      return before[1] + share * (after[1] - before[1]);
-    }
-  }
-  return positions.at(-1)?.[1];
+  return [...byBeat.values()].sort((a, b) => a.beat - b.beat);
 }
 
 /**
@@ -330,8 +316,10 @@ export function Staff({
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
   const noteIndexRef = useRef<NoteIndex>({ beats: new Map(), heads: new Map() });
-  /** Each beat that has a note, with the x of that note from the SVG's left edge, in order. */
-  const beatXRef = useRef<(readonly [number, number])[]>([]);
+  /** Each beat that has a note, with that note's x from the SVG's left edge and its line. */
+  const beatXRef = useRef<BeatSpot[]>([]);
+  /** The play cursor: a thin glowing line gliding with the song, over OSMD's own. */
+  const cursorLineRef = useRef<HTMLDivElement>(null);
   const liveBeatRef = useRef(liveBeat);
   const marksRef = useRef(marks);
 
@@ -367,7 +355,7 @@ export function Staff({
     }
     linesRef.current = lineBoxes(osmd);
     noteIndexRef.current = indexNotes(osmd);
-    beatXRef.current = beatPositions(noteIndexRef.current.beats, host);
+    beatXRef.current = beatPositions(noteIndexRef.current.beats, host, linesRef.current);
     paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
     // A new render draws new noteheads and puts the cursor back at the start.
@@ -498,7 +486,7 @@ export function Staff({
       if (now < manualUntil || !moving) {
         smoothLeft = undefined;
       } else if (host && latest.current.singleLine && latest.current.follow) {
-        const x = xAtBeat(beatXRef.current, beatNow);
+        const x = spotAt(beatXRef.current, beatNow)?.x;
         const svg = host.querySelector("svg");
         if (x !== undefined && svg) {
           const svgLeft =
@@ -530,6 +518,13 @@ export function Staff({
           host.scrollTop += Math.abs(dy * GLIDE) < 1 ? Math.sign(dy) : dy * GLIDE;
         }
       }
+      placeCursorLine(
+        hostRef.current,
+        cursorLineRef.current,
+        beatXRef.current,
+        linesRef.current,
+        beatNow ?? latest.current.beat
+      );
       frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
@@ -616,6 +611,7 @@ export function Staff({
       }}
     >
       <div className="staff-page" ref={pageRef} />
+      <div className="staff-cursor" ref={cursorLineRef} />
     </div>
   );
 }

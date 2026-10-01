@@ -5,6 +5,8 @@ import { TakeRecorder } from "../recording/take";
 import type { Take } from "../recording/take";
 import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
+import { ComboCounter } from "./combo";
+import type { GradedStrike } from "./combo";
 import { PracticeSession } from "./session";
 import type { PracticeEvent, PracticeOptions, PracticeStats } from "./session";
 
@@ -55,6 +57,12 @@ export class Trainer {
 
   private session: PracticeSession | undefined;
   private songKey = "";
+  /** The run of good notes and the accuracy, started over with each run. */
+  private readonly combo = new ComboCounter();
+  /** Strikes graded since the last frame was drawn. */
+  private graded: GradedStrike[] = [];
+  /** The song's notes' keys by note id: a missed note is shown on its key. */
+  private pitchOf = new Map<string, number>();
   private playing = false;
   private recorder: TakeRecorder | undefined;
   /** Colours for the notes on this trainer's view, and a second view drawn in step with it. */
@@ -88,6 +96,9 @@ export class Trainer {
     this.silence();
     this.songKey = songKey;
     this.session = new PracticeSession(song, options);
+    this.pitchOf = new Map(song.notes.map((note) => [note.id, note.pitch]));
+    this.combo.reset();
+    this.graded = [];
     this.playing = false;
     this.view.setSong(song);
     this.lastBeat = -1;
@@ -100,6 +111,8 @@ export class Trainer {
     this.finishTake();
     this.silence();
     this.session.seek(from);
+    this.combo.reset();
+    this.graded = [];
     this.publish();
   }
 
@@ -202,8 +215,12 @@ export class Trainer {
       sounding: this.sounding,
       due: this.playing || session.time < 0 ? session.nextDue() : [],
       hands: session.options.hands,
-      colorOf: this.comparison?.colorOf
+      colorOf: this.comparison?.colorOf,
+      board: this.combo.board(),
+      graded: this.graded
     });
+    // The view has shown them: next frame grades only its own strikes.
+    this.graded = [];
     const mirror = this.comparison?.mirror;
     mirror?.view.draw({
       time: session.time,
@@ -240,8 +257,12 @@ export class Trainer {
           break;
         case "hit":
         case "miss":
-        case "wrong":
+        case "wrong": {
+          const grade = this.combo.record(event);
+          const pitch = event.type === "wrong" ? event.pitch : this.pitchOf.get(event.noteId);
+          if (grade && pitch !== undefined) this.graded.push({ grade, pitch });
           break;
+        }
       }
     }
   }

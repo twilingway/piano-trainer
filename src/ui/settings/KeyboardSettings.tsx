@@ -10,6 +10,9 @@ interface Props {
   readonly onShowLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
+  /** The road's width at the horizon and the horizon's height, as shares. */
+  readonly road: { readonly far: number; readonly horizon: number };
+  readonly onRoad: (road: { far?: number; horizon?: number }) => void;
   /** The view toggles, the same as on the bar. */
   readonly toggles: ReactNode;
 }
@@ -22,6 +25,8 @@ export function KeyboardSettings({
   onShowLabels,
   keyStyle,
   onKeyStyle,
+  road,
+  onRoad,
   toggles
 }: Props) {
   return (
@@ -53,6 +58,38 @@ export function KeyboardSettings({
           <option value="classic">Классика</option>
           <option value="arcade">Аркада</option>
         </select>
+      </label>
+      <label className="setting">
+        <span>Дорога: горизонт</span>
+        <span className="setting-control">
+          <input
+            type="range"
+            min={0}
+            max={0.6}
+            step={0.01}
+            value={road.horizon}
+            onChange={(event) => {
+              onRoad({ horizon: Number(event.target.value) });
+            }}
+          />
+          <span className="digits">{Math.round(road.horizon * 100)}%</span>
+        </span>
+      </label>
+      <label className="setting">
+        <span>Дорога: ширина у горизонта</span>
+        <span className="setting-control">
+          <input
+            type="range"
+            min={0.1}
+            max={0.9}
+            step={0.01}
+            value={road.far}
+            onChange={(event) => {
+              onRoad({ far: Number(event.target.value) });
+            }}
+          />
+          <span className="digits">{Math.round(road.far * 100)}%</span>
+        </span>
       </label>
       <label className="setting">
         <span>Наклейки с названиями на клавишах</span>

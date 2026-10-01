@@ -4,15 +4,14 @@ import {
   Graphics,
   Matrix,
   PerspectiveMesh,
-  Rectangle,
   RenderTexture,
   Sprite,
   Texture
 } from "pixi.js";
 import type { Renderer } from "pixi.js";
 
-import { depthBetween, floorCamera } from "./perspective";
-import type { Projected } from "./perspective";
+import { roadProjection } from "./perspective";
+import type { Projected, RoadProjection } from "./perspective";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
 export interface Strike {
@@ -22,18 +21,38 @@ export interface Strike {
   readonly color: number;
 }
 
+/** A note coming over the horizon: where it appears and how bright its flash still is. */
+export interface Arrival {
+  /** Across the flat scene: the middle of the note's key. */
+  readonly x: number;
+  readonly color: number;
+  /** 1 as it appears, fading to 0 as it moves on. */
+  readonly strength: number;
+}
+
 /*
- * The road is a floor seen by a camera: at the hit line it spans the view,
- * and it runs this many times that width away, so a note is born small at
- * the horizon and grows as it comes. Each octave is a road of its own with
- * its own vanishing point over its middle, so notes come from over their
- * octave, not all out of the view's centre. The keyboard in front is not in that
- * perspective: it is the flat keyboard squashed in height, every key leaning
- * alike, none cut away at the ends.
+ * The road as in the mockup: one floor in perspective, a trapezoid that
+ * spans the view at the hit line and narrows to this share of it at the
+ * horizon, so every key's lane runs to a point of its own up there and the
+ * lanes fan out towards the player. A note is born small at the horizon in a
+ * flash and grows as it comes. The keyboard in front is not in that
+ * perspective: it is the flat keyboard squashed in height.
  */
-const ROAD_DEPTH = 12;
-/** The horizon, as a share of the way down from the top of the view to the hit line. */
-const HORIZON_Y = 0.22;
+/** Notes are born at most this share of their full size at the horizon, however wide the road. */
+const SIZE_FAR_SHARE = 0.12;
+/** The fog over the far road reaches this share of the way down to the keys. */
+const FOG_REACH = 0.5;
+const FOG_COLOR = 0x11131a;
+
+export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
+
+/** The road's shape, the player's to tune: a wider keyboard wants a lower horizon. */
+export interface RoadShape {
+  /** The road's width at the horizon, as a share of its width at the hit line. */
+  readonly far: number;
+  /** The horizon, as a share of the way down from the top of the view to the hit line. */
+  readonly horizon: number;
+}
 /** The keyboard's height on the road, as a share of its flat height. */
 const KEYS_SQUASH = 0.9;
 const GLOW_STRENGTH = 10;
@@ -45,7 +64,7 @@ const MAX_SPARKS = 400;
 const SPARKS_PER_BURST = 24;
 const SPARKS_PER_HELD_S = 30;
 const SPARK_LIFE_S = 0.7;
-const HIT_LINE_COLOR = 0xc9a8ff;
+const HORIZON_COLOR = 0x3fd6ff;
 
 interface Spark {
   readonly sprite: Sprite;
@@ -68,24 +87,25 @@ export class RoadLayer {
   private readonly texture = RenderTexture.create({ width: 1, height: 1 });
   private readonly keysTexture = RenderTexture.create({ width: 1, height: 1 });
   private readonly keys: PerspectiveMesh;
-  /** One road and one glow a strip of the lane, an octave each. */
-  private readonly roads = new Container();
+  /** The lane laid on the floor, and a blurred copy over it for the glow. */
+  private readonly road: PerspectiveMesh;
+  private readonly glow: PerspectiveMesh;
   private readonly glows = new Container();
-  private strips: {
-    readonly left: number;
-    readonly right: number;
-    readonly texture: Texture;
-    readonly meshes: readonly PerspectiveMesh[];
-  }[] = [];
   private readonly hitLine = new Graphics();
+  /** The glowing horizon and the flashes of notes coming over it. */
+  private readonly horizon = new Graphics();
+  /** Haze over the far road: lanes and notes come out of it as they near. */
+  private readonly fog = new Sprite(bakeFog());
   private readonly sparkTexture: Texture;
   private readonly sparks: Spark[] = [];
   private size = { width: 0, height: 0 };
   /** The hit line on screen: where the road meets the keys. */
   private hit = { y: 0, left: 0, right: 0 };
   private keysShift = new Matrix();
-  /** The camera over the floor; undefined before the first layout. */
-  private camera: ReturnType<typeof floorCamera> | undefined;
+  /** The floor's perspective; undefined before the first layout. */
+  private projection: RoadProjection | undefined;
+  private horizonY = 0;
+  private shape: RoadShape = DEFAULT_ROAD_SHAPE;
   /** How far the view is scrolled along a keyboard wider than it, in the scene's pixels. */
   private pan = 0;
   /** The view's width: the scene (the whole keyboard) may be wider. */
@@ -102,7 +122,12 @@ export class RoadLayer {
     ];
     this.glows.alpha = GLOW_ALPHA;
     this.keys = new PerspectiveMesh({ texture: this.keysTexture, verticesX: 48, verticesY: 24 });
-    this.container.addChild(this.roads, this.glows, this.keys);
+    this.road = new PerspectiveMesh({ texture: this.texture, verticesX: 32, verticesY: 64 });
+    this.glow = new PerspectiveMesh({ texture: this.texture, verticesX: 32, verticesY: 64 });
+    this.glows.addChild(this.glow);
+    this.horizon.blendMode = "add";
+    this.fog.tint = FOG_COLOR;
+    this.container.addChild(this.road, this.glows, this.fog, this.horizon, this.keys);
     this.container.eventMode = "none";
     this.hitLine.blendMode = "add";
     this.effects.addChild(this.hitLine);
@@ -113,16 +138,9 @@ export class RoadLayer {
   /**
    * Lays the flat scene — `width` wide, the lane down to the hit line at
    * `height`, the keys under it down to `bottom` — on the floor in
-   * perspective, seen through a view `viewWidth` wide, the lane cut at
-   * `splits` (the x of every C) into roads of their own.
+   * perspective, seen through a view `viewWidth` wide.
    */
-  layout(
-    width: number,
-    height: number,
-    bottom: number,
-    splits: readonly number[],
-    viewWidth: number
-  ): void {
+  layout(width: number, height: number, bottom: number, viewWidth: number): void {
     // Too little room for a road: hide it rather than draw the last layout's.
     this.container.visible = width >= 1 && viewWidth >= 1 && height >= 1 && bottom >= height;
     this.effects.visible = this.container.visible;
@@ -140,78 +158,72 @@ export class RoadLayer {
     this.keys.visible = keysHeight >= 1;
     this.keysTexture.source.resize(viewWidth, Math.max(1, keysHeight), this.renderer.resolution);
     this.hitY = bottom - keysHeight * KEYS_SQUASH;
-    this.camera = floorCamera(viewWidth, this.hitY, this.hitY * HORIZON_Y);
-    this.layStrips(width, height, splits);
+    this.horizonY = this.hitY * this.shape.horizon;
+    this.projection = roadProjection(
+      viewWidth,
+      this.hitY,
+      this.horizonY,
+      this.shape.far,
+      Math.min(this.shape.far, SIZE_FAR_SHARE)
+    );
+    this.fog.position.set(0, this.horizonY);
+    this.fog.width = viewWidth;
+    this.fog.height = (this.hitY - this.horizonY) * FOG_REACH;
+    // A resized texture keeps its object: the meshes take it again to pick up the new size.
+    this.road.texture = this.texture;
+    this.glow.texture = this.texture;
     this.keys.texture = this.keysTexture;
     this.keys.setCorners(0, this.hitY, viewWidth, this.hitY, viewWidth, bottom, 0, bottom);
     this.hit = { y: this.hitY, left: 0, right: viewWidth };
     this.setPan(this.pan, true);
   }
 
-  /** Scrolls the view along the scene: the roads follow their octaves across the screen. */
+  /** A new shape for the road; it takes effect on the next layout. */
+  setShape(shape: RoadShape): void {
+    this.shape = shape;
+  }
+
+  /** Scrolls the view along the scene: the road slides under the view's fixed perspective. */
   setPan(pan: number, force = false): void {
     if (!force && pan === this.pan) return;
     this.pan = pan;
     this.keysShift = new Matrix().translate(-pan, -this.size.height);
-    const camera = this.camera;
-    if (!camera) return;
-    for (const { left, right, meshes } of this.strips) {
-      const centre = (left + right) / 2 - pan;
-      const farLeft = camera.at(left - pan, ROAD_DEPTH, centre);
-      const farRight = camera.at(right - pan, ROAD_DEPTH, centre);
-      for (const mesh of meshes) {
-        mesh.setCorners(
-          farLeft.x,
-          farLeft.y,
-          farRight.x,
-          farRight.y,
-          right - pan,
-          this.hitY,
-          left - pan,
-          this.hitY
-        );
-      }
+    const projection = this.projection;
+    if (!projection) return;
+    const left = -pan;
+    const right = this.size.width - pan;
+    const farLeft = projection.at(left, 0);
+    const farRight = projection.at(right, 0);
+    for (const mesh of [this.road, this.glow]) {
+      mesh.setCorners(
+        farLeft.x,
+        farLeft.y,
+        farRight.x,
+        farRight.y,
+        right,
+        this.hitY,
+        left,
+        this.hitY
+      );
     }
   }
 
-  /** A road and a glow for every strip, each converging over its own middle. */
-  private layStrips(width: number, height: number, splits: readonly number[]): void {
-    for (const strip of this.strips) strip.texture.destroy(false);
-    for (const strip of this.strips) {
-      // A mesh's destroy leaves its geometry's buffers to the garbage collector; free them now.
-      for (const mesh of strip.meshes) {
-        mesh.geometry.destroy();
-        mesh.destroy();
-      }
-    }
-    for (const layer of [this.roads, this.glows]) layer.removeChildren();
-    const edges = [0, ...splits.filter((x) => x > 1 && x < width - 1), width];
-    this.strips = [];
-    for (let index = 1; index < edges.length; index++) {
-      const left = edges[index - 1] ?? 0;
-      const right = edges[index] ?? width;
-      if (right - left < 1) continue;
-      const texture = new Texture({
-        source: this.texture.source,
-        frame: new Rectangle(left, 0, right - left, height)
-      });
-      const meshes = [this.roads, this.glows].map((layer) => {
-        const mesh = new PerspectiveMesh({ texture, verticesX: 12, verticesY: 64 });
-        layer.addChild(mesh);
-        return mesh;
-      });
-      this.strips.push({ left, right, texture, meshes });
-    }
+  /** How clear a point of the flat lane is through the fog: 0 at the horizon, 1 out of it. */
+  clarity(y: number): number {
+    if (this.size.height <= 0) return 1;
+    return Math.max(0, Math.min(1, y / this.size.height / FOG_REACH));
+  }
+
+  /** The hit line's height on screen, where the road meets the keys. */
+  get hitLineY(): number {
+    return this.hitY;
   }
 
   /** Where a point of the flat scene lands in perspective, and how much it shrinks there. */
   place(x: number, y: number): Projected | undefined {
-    const camera = this.camera;
-    if (!camera) return undefined;
-    const strip = this.strips.find((item) => x < item.right) ?? this.strips.at(-1);
-    const centre = (strip ? (strip.left + strip.right) / 2 : this.size.width / 2) - this.pan;
-    const z = depthBetween(ROAD_DEPTH, 1, Math.min(1, y / this.size.height));
-    return camera.at(x - this.pan, z, centre);
+    const projection = this.projection;
+    if (!projection || this.size.height <= 0) return undefined;
+    return projection.at(x - this.pan, Math.max(0, Math.min(1, y / this.size.height)));
   }
 
   /** The point of the flat keyboard under a point of the laid keys on screen; undefined off them. */
@@ -227,13 +239,15 @@ export class RoadLayer {
 
   /**
    * Draws `lane` into the road and `keys` (laid out for the flat view, from
-   * the hit line down) into the keyboard, then the hit line and the sparks
-   * of this frame's strikes.
+   * the hit line down) into the keyboard, then the horizon with the flashes
+   * of the notes coming over it, the hit line and the sparks of this frame's
+   * strikes.
    */
   draw(
     lane: Container,
     keys: Container,
     flatStrikes: readonly Strike[],
+    arrivals: readonly Arrival[],
     deltaSeconds: number
   ): void {
     if (this.size.width < 1) return;
@@ -246,6 +260,7 @@ export class RoadLayer {
     });
     this.clock += deltaSeconds;
     const strikes = flatStrikes.map((strike) => ({ ...strike, x: this.project(strike.x) }));
+    this.drawHorizon(arrivals);
     this.drawHitLine(strikes);
     const held = new Map<number, number>();
     for (const strike of strikes) {
@@ -262,7 +277,8 @@ export class RoadLayer {
 
   destroy(): void {
     for (const filter of this.glows.filters) filter.destroy();
-    for (const strip of this.strips) strip.texture.destroy(false);
+    // A mesh's destroy leaves its geometry's buffers to the garbage collector; free them now.
+    for (const mesh of [this.road, this.glow, this.keys]) mesh.geometry.destroy();
     this.container.destroy({ children: true });
     this.effects.destroy({ children: true });
     this.texture.destroy(true);
@@ -270,24 +286,72 @@ export class RoadLayer {
     this.sparkTexture.destroy(true);
   }
 
+  /** The horizon glowing across the far end of the road, flashing where notes come over it. */
+  private drawHorizon(arrivals: readonly Arrival[]): void {
+    const line = this.horizon;
+    line.clear();
+    const projection = this.projection;
+    if (!projection) return;
+    const y = this.horizonY;
+    const width = this.viewWidth;
+    // Across the whole view, quiet as in the mockup: a thin blue line in a faint haze that
+    // reaches further down onto the road than up; the notes' flashes are the bright part.
+    for (let step = 1; step <= 6; step++) {
+      line.rect(0, y - step, width, step + step * 4).fill({ color: HORIZON_COLOR, alpha: 0.018 });
+    }
+    line.rect(0, y - 1.5, width, 3).fill({ color: HORIZON_COLOR, alpha: 0.18 });
+    line.rect(0, y - 0.5, width, 1).fill({ color: HORIZON_COLOR, alpha: 0.6 });
+    for (const arrival of arrivals) {
+      const spot = projection.at(arrival.x - this.pan, 0);
+      const strength = arrival.strength;
+      line
+        .circle(spot.x, y, 6 + 18 * strength)
+        .fill({ color: arrival.color, alpha: 0.3 * strength });
+      line.circle(spot.x, y, 2 + 6 * strength).fill({ color: 0xffffff, alpha: 0.9 * strength });
+      // A short streak along the horizon, like light catching an edge.
+      line
+        .rect(spot.x - 30 * strength, y - 1.5, 60 * strength, 3)
+        .fill({ color: arrival.color, alpha: 0.6 * strength });
+    }
+  }
+
   private drawHitLine(strikes: readonly Strike[]): void {
     const { y: height, left, right } = this.hit;
     const line = this.hitLine;
     line.clear();
-    // A wide faint band under a thin bright wire that crackles a little.
-    line.rect(left, height - 6, right - left, 12).fill({ color: HIT_LINE_COLOR, alpha: 0.12 });
+    // In place of the felt, as in the mockup: a glowing blue band over the keys under a bright
+    // wire that crackles a little where a key is struck.
+    for (let step = 1; step <= 6; step++) {
+      line
+        .rect(left, height - step * 3, right - left, step * 6)
+        .fill({ color: HORIZON_COLOR, alpha: 0.05 });
+    }
+    // The band's core shimmers: its brightness drifts along it in slow waves, never still.
+    const shimmerStep = 24;
+    for (let x = left; x < right; x += shimmerStep) {
+      const wave =
+        Math.sin(x * 0.013 + this.clock * 1.7) * 0.5 + Math.sin(x * 0.041 - this.clock * 2.9) * 0.5;
+      line
+        .rect(x, height - 3, shimmerStep + 1, 6)
+        .fill({ color: HORIZON_COLOR, alpha: 0.42 + 0.18 * wave });
+    }
+    // Round every sounding key the line flares in its note's colour, fading out to the sides.
+    for (const strike of strikes) {
+      for (let ring = 1; ring <= 5; ring++) {
+        const reach = ring * 26;
+        line
+          .rect(strike.x - reach, height - 3 - ring, reach * 2, 6 + ring * 2)
+          .fill({ color: strike.color, alpha: 0.12 });
+      }
+    }
     const step = 6;
     line.moveTo(left, height);
     for (let x = left + step; x <= right; x += step) {
       const near = strikes.some((strike) => Math.abs(strike.x - x) < 40);
       const jitter = Math.sin(x * 0.37 + this.clock * 31) * Math.sin(x * 0.11 - this.clock * 17);
-      line.lineTo(x, height + jitter * (near ? 5 : 1.5));
+      line.lineTo(x, height + jitter * (near ? 4 : 0));
     }
-    line.stroke({ width: 2, color: HIT_LINE_COLOR, alpha: 0.95 });
-    for (const strike of strikes) {
-      line.circle(strike.x, height, 14).fill({ color: strike.color, alpha: 0.35 });
-      line.circle(strike.x, height, 6).fill({ color: 0xffffff, alpha: 0.8 });
-    }
+    line.stroke({ width: 2, color: 0xffffff, alpha: 0.95 });
   }
 
   private emit(strike: Strike, count: number): void {
@@ -342,4 +406,20 @@ function bakeSpark(renderer: Renderer): Texture {
   const texture = renderer.generateTexture({ target: dot, resolution: 2 });
   dot.destroy();
   return texture;
+}
+
+/** A vertical fade, opaque at the top: the fog, tinted the background's colour. */
+function bakeFog(): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return Texture.WHITE;
+  const gradient = context.createLinearGradient(0, 0, 0, 128);
+  gradient.addColorStop(0, "rgba(255, 255, 255, 0.92)");
+  gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.55)");
+  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 1, 128);
+  return Texture.from(canvas);
 }

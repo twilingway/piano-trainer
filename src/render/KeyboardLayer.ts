@@ -7,6 +7,8 @@ import type { KeyEvent } from "../input/midiInput";
 import type { SongNote } from "../song/song";
 import { FINGER_COLOR } from "./fingerColors";
 import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
+import { KEY_LIGHT_FPS } from "./keyLights";
+import type { KeyLights } from "./keyLights";
 import type { KeyRect } from "./keyboardLayout";
 import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
 import { bakeKeyTextures } from "./keyTextures";
@@ -16,8 +18,13 @@ import type { Geometry } from "./viewGeometry";
 const HAND_HINT: Readonly<Record<Hand, number>> = { right: 0xbdeefb, left: 0xfbdcc0 };
 const PRESSED_COLOR = 0xffd166;
 const SOUNDING_COLOR = 0xb8b8ff;
-/** How much a held fingered key darkens, so the press stands out from the hint. */
-const PRESSED_DARKEN = 0.62;
+/*
+ * A key keeps its own face and its colour is a light laid over it: faint while
+ * the key waits to be played, strong once it sounds. On a black key the light
+ * is added, so the colour glows rather than paints it.
+ */
+const LIGHT_WAITING = { white: 0.32, black: 0.45 } as const;
+const LIGHT_SOUNDING = { white: 0.78, black: 0.95 } as const;
 /** The dark red felt strip over the keys, as on a real piano. */
 const FELT = 0x6e1616;
 const FELT_EDGE = 0xb33a3a;
@@ -109,8 +116,8 @@ export interface KeysFrame {
 }
 
 /**
- * The keyboard and everything drawn on it: the keys, lit in their finger's
- * colour, the fronts the left hand lights, the felt over them, the classroom
+ * The keyboard and everything drawn on it: the keys with their finger's
+ * colour as a light over them, the felt over them, the classroom
  * stickers and the finger digits. The keys can be played with the mouse.
  */
 export class KeyboardLayer {
@@ -122,7 +129,7 @@ export class KeyboardLayer {
   private readonly felt = new Container();
   private readonly keySprites = new Map<number, NineSliceSprite>();
   private readonly keyDigits = new Map<number, Sprite>();
-  /** The front part of a key, lit on its own for the left hand. */
+  /** The light over each key, in its note's colour; a white key's under the black keys. */
   private readonly keyFronts = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private keyTextures: KeyTextures | undefined;
@@ -135,6 +142,8 @@ export class KeyboardLayer {
   private readonly rail = new Sprite();
   /** The owed chord by pitch, refilled every frame rather than made anew. */
   private readonly dueByPitch = new Map<number, SongNote>();
+  /** Arcadia's looping lights for the keys; without them a plain gradient lights a key. */
+  private lights: KeyLights | undefined;
   /** The key the mouse holds down, if any. */
   private mouseKey: number | undefined;
   /** The front bevel's height on screen, white and black: the finger digit stands above it. */
@@ -150,7 +159,7 @@ export class KeyboardLayer {
     this.rail.visible = false;
     this.stickers.eventMode = "none";
     this.stickers.visible = false;
-    const fronts: Sprite[] = [];
+    const lightTexture = bakeKeyLight();
     for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
       const sprite = new NineSliceSprite({ texture: Texture.WHITE, ...NO_SLICE });
       sprite.eventMode = "static";
@@ -173,27 +182,26 @@ export class KeyboardLayer {
       digit.anchor.set(0.5, 1);
       digit.visible = false;
       this.keyDigits.set(pitch, digit);
-      const front = new Sprite(Texture.WHITE);
+      const front = new Sprite(lightTexture);
       front.eventMode = "none";
       front.visible = false;
       this.keyFronts.set(pitch, front);
-      // Over the keys, under their stickers and digits: added to the keyboard after the keys.
-      fronts.push(front);
       this.hints.addChild(digit);
       const sticker = new Sprite(bakeKeySticker(renderer, pitch));
       sticker.anchor.set(0.5, 1);
       this.stickerSprites.set(pitch, sticker);
       this.stickers.addChild(sticker);
     }
-    // White keys first so black keys draw over them.
+    // White keys and their lights first, so black keys and theirs draw over them.
     const pitches = [...this.keySprites.keys()];
     for (const black of [false, true]) {
-      for (const pitch of pitches) {
-        const sprite = this.keySprites.get(pitch);
-        if (sprite && isBlackKey(pitch) === black) this.keyboard.addChild(sprite);
+      for (const layer of [this.keySprites, this.keyFronts]) {
+        for (const pitch of pitches) {
+          const sprite = layer.get(pitch);
+          if (sprite && isBlackKey(pitch) === black) this.keyboard.addChild(sprite);
+        }
       }
     }
-    for (const front of fronts) this.keyboard.addChild(front);
   }
 
   /**
@@ -217,6 +225,16 @@ export class KeyboardLayer {
     } catch (error) {
       console.warn("The painted key faces did not load; keeping the keys as they are", error);
     }
+  }
+
+  /** The red felt over the keys; on the road a glowing hit line takes its place. */
+  showFelt(show: boolean): void {
+    this.felt.visible = show;
+  }
+
+  /** The animated lights for waiting and sounding keys. */
+  setLights(lights: KeyLights | undefined): void {
+    this.lights = lights;
   }
 
   /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
@@ -318,14 +336,12 @@ export class KeyboardLayer {
       // The owed note wins: it is the one the player has to find next.
       const shown = due ?? frame.playing.get(pitch);
       const pressed = frame.pressed.has(pitch);
+      const sounding = pressed || frame.sounding.has(pitch);
       // A key with a fingered note is its finger's colour whoever plays it; the press and
       // the program's own colours are for keys without one.
-      // Held by the player, a fingered key darkens: the press stands out from the hint.
       const color =
         shown?.finger !== undefined
-          ? pressed
-            ? darken(FINGER_COLOR[shown.finger], PRESSED_DARKEN)
-            : FINGER_COLOR[shown.finger]
+          ? FINGER_COLOR[shown.finger]
           : pressed
             ? PRESSED_COLOR
             : frame.sounding.has(pitch)
@@ -334,30 +350,32 @@ export class KeyboardLayer {
                 ? HAND_HINT[shown.hand]
                 : undefined;
       const key = keys.get(pitch);
-      // The left hand lights only the key's front part, the right hand all of it: the two
-      // hands tell apart where a finger's colour is the same.
-      const leftHand = shown?.hand === "left" && shown.finger !== undefined;
-      const whole = leftHand ? undefined : color;
       // Held by the player or sounded by the program, a painted key sinks.
-      const down = this.painted !== undefined && (pressed || frame.sounding.has(pitch));
       if (key && this.keyTextures) {
-        // A coloured key takes its grey face, so the tint shows true; a baked white key has none
-        // and is tinted as it is.
-        const face = this.faceOf(key.black, whole !== undefined, down);
+        const face = this.faceOf(key.black, false, this.painted !== undefined && sounding);
         if (sprite.texture !== face) sprite.texture = face;
       }
-      sprite.tint = whole ?? 0xffffff;
-      const front = this.keyFronts.get(pitch);
-      if (front) {
-        front.visible = leftHand && key !== undefined && color !== undefined;
-        if (front.visible && key && color !== undefined) {
-          const top = key.black ? keyboardTop + blackHeight * 0.5 : keyboardTop + blackHeight;
-          const bottom = keyboardTop + (key.black ? blackHeight - 3 : keyboardHeight - 2);
-          front.tint = color;
-          front.x = key.x + (key.black ? 2 : 1.5);
-          front.width = key.width - (key.black ? 4 : 3);
-          front.y = top;
-          front.height = Math.max(0, bottom - top);
+      sprite.tint = 0xffffff;
+      const light = this.keyFronts.get(pitch);
+      if (light) {
+        light.visible = key !== undefined && color !== undefined;
+        if (light.visible && key && color !== undefined) {
+          const strength = sounding ? LIGHT_SOUNDING : LIGHT_WAITING;
+          const inset = key.black ? 2 : 1.5;
+          light.tint = color;
+          const loop = sounding ? this.lights?.lit : this.lights?.wait;
+          if (loop) {
+            // Each key on its own step of the loop, so lit keys never pulse in step; the
+            // neon outline brings its own brightness.
+            const step = Math.floor((performance.now() / 1000) * KEY_LIGHT_FPS) + pitch * 5;
+            light.texture = loop[step % loop.length] ?? light.texture;
+          }
+          light.blendMode = key.black ? "add" : "normal";
+          light.alpha = loop ? 1 : key.black ? strength.black : strength.white;
+          light.x = key.x + inset;
+          light.width = key.width - inset * 2;
+          light.y = keyboardTop;
+          light.height = (key.black ? blackHeight : keyboardHeight) - 2;
         }
       }
       const hint = this.keyDigits.get(pitch);
@@ -486,8 +504,18 @@ export class KeyboardLayer {
   }
 }
 
-/** A colour with each channel scaled by `factor`. */
-function darken(color: number, factor: number): number {
-  const channel = (shift: number) => Math.round(((color >> shift) & 0xff) * factor) << shift;
-  return channel(16) | channel(8) | channel(0);
+/** The light laid over a lit key: white for a tint, fainter at the back, full at the front. */
+function bakeKeyLight(): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 4;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return Texture.WHITE;
+  const gradient = context.createLinearGradient(0, 0, 0, 128);
+  gradient.addColorStop(0, "rgba(255, 255, 255, 0.55)");
+  gradient.addColorStop(0.7, "rgba(255, 255, 255, 0.9)");
+  gradient.addColorStop(1, "rgba(255, 255, 255, 1)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 4, 128);
+  return Texture.from(canvas);
 }

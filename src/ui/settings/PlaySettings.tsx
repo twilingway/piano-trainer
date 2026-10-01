@@ -8,6 +8,8 @@ interface Props {
   readonly onListen: () => void;
   readonly stats: PracticeStats | undefined;
   readonly mode: PracticeMode;
+  readonly autoReview: boolean;
+  readonly onAutoReview: (on: boolean) => void;
 }
 
 /** The play tab: the metronome, a listen-through and the counts of the run. */
@@ -18,7 +20,9 @@ export function PlaySettings({
   soundLoading,
   onListen,
   stats,
-  mode
+  mode,
+  autoReview,
+  onAutoReview
 }: Props) {
   return (
     <div className="settings-list">
@@ -29,6 +33,16 @@ export function PlaySettings({
           checked={metronome}
           onChange={(event) => {
             onMetronome(event.target.checked);
+          }}
+        />
+      </label>
+      <label className="setting">
+        <span>Открывать разбор после игры</span>
+        <input
+          type="checkbox"
+          checked={autoReview}
+          onChange={(event) => {
+            onAutoReview(event.target.checked);
           }}
         />
       </label>

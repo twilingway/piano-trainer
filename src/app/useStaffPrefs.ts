@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { KeyStyle } from "../render/KeyboardLayer";
+import { DEFAULT_ROAD_SHAPE } from "../render/RoadLayer";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { KeyRange } from "./useFallingView";
 
@@ -34,6 +35,12 @@ export interface StaffPrefs {
   readonly keyRange: KeyRange;
   /** The look of the keys. */
   readonly keyStyle: KeyStyle;
+  /** The take's review opens by itself at the end of a run. */
+  readonly autoReview: boolean;
+  /** The road's width at the horizon, as a share of its width at the keys. */
+  readonly roadFar: number;
+  /** The road's horizon, as a share of the way from the top down to the keys. */
+  readonly roadHorizon: number;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -53,7 +60,10 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   noteCards: true,
   labels: true,
   keyRange: "song",
-  keyStyle: "classic"
+  keyStyle: "classic",
+  autoReview: false,
+  roadFar: DEFAULT_ROAD_SHAPE.far,
+  roadHorizon: DEFAULT_ROAD_SHAPE.horizon
 };
 
 function loadStaffPrefs(): StaffPrefs {

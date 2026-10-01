@@ -3,13 +3,18 @@ import type { FederatedPointerEvent, Texture } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
+import type { ComboBoard, GradedStrike } from "../practice/combo";
 import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
 import { bakeDigits, bakeNames } from "./bakeLabels";
 import type { FallingNoteNames } from "./bakeLabels";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
+import { FxLayer } from "./FxLayer";
+import type { FxKey } from "./FxLayer";
+import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
+import { loadKeyLights } from "./keyLights";
 import type { KeyStyle } from "./KeyboardLayer";
 import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
@@ -17,7 +22,7 @@ import { easePan, panToShow } from "./keyboardPan";
 import type { Span } from "./keyboardPan";
 import { HAND_COLOR, NotesLayer } from "./NotesLayer";
 import { RoadLayer } from "./RoadLayer";
-import type { Strike } from "./RoadLayer";
+import type { RoadShape, Strike } from "./RoadLayer";
 import { fitRange, viewGeometry } from "./viewGeometry";
 import type { Geometry, ViewParts } from "./viewGeometry";
 
@@ -38,6 +43,10 @@ export interface FrameState {
   readonly hands: ReadonlySet<Hand>;
   /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
+  /** The combo and accuracy board; none on a view that only mirrors another. */
+  readonly board?: ComboBoard;
+  /** Strikes graded since the last frame, shown over their keys at the hit line. */
+  readonly graded?: readonly GradedStrike[];
 }
 
 /** Seconds the scroll takes to go most of the way to where it is headed. */
@@ -69,6 +78,12 @@ export class FallingNotesView {
   private road: RoadLayer | undefined;
   private roadMode = false;
   private readonly hands = new HandsLayer();
+  /** The combo board and the strikes' grades, over everything. */
+  private readonly hud = new HudLayer();
+  /** Bursts, light and glitter on the keys at the hit line. */
+  private readonly fx = new FxLayer();
+  /** Keys the program was sounding last frame: a key that starts to sound bursts too. */
+  private readonly wasSounding = new Set<number>();
   private digitTextures = new Map<Finger, Texture>();
   private badgeTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
@@ -141,13 +156,22 @@ export class FallingNotesView {
     this.road.container.visible = false;
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, this.hands.container);
+    // Pixi draws a Text the first time it is shown: wait for the web fonts, or the board is set
+    // in a fallback face. Offline they never come, and the fallback is fine.
+    await Promise.all([
+      document.fonts.load("34px 'Russo One'"),
+      document.fonts.load("700 20px Manrope")
+    ]).catch(() => undefined);
     this.app.stage.addChild(
       this.road.container,
       notes.root,
       notes.cards,
       this.keysRoot,
-      this.road.effects
+      this.road.effects,
+      this.fx.container,
+      this.hud.container
     );
+    await this.fx.load();
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -165,6 +189,7 @@ export class FallingNotesView {
       keyboard.releaseMouse();
     });
     await keyboard.loadPaintedFaces(this.keyStyle);
+    keyboard.setLights(await loadKeyLights());
     this.ready = true;
   }
 
@@ -226,6 +251,12 @@ export class FallingNotesView {
    * Notes cannot be clicked there: the lane is a picture laid on the road.
    * The keys are one too, so the stage finds the key under the mouse.
    */
+  /** How far the road reaches and how much it narrows towards the horizon. */
+  setRoadShape(shape: RoadShape): void {
+    this.road?.setShape(shape);
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
   setRoad(on: boolean): void {
     this.roadWanted = on;
     this.syncRoad();
@@ -236,6 +267,7 @@ export class FallingNotesView {
     const on = this.roadWanted && this.parts.notes;
     if (!this.road || !this.notesLayer || on === this.roadMode) return;
     this.roadMode = on;
+    this.keyboard?.showFelt(!on);
     this.road.container.visible = on;
     this.road.effects.visible = on;
     if (on) this.app.stage.removeChild(this.notesLayer.root, this.keysRoot);
@@ -266,6 +298,8 @@ export class FallingNotesView {
     this.notesLayer?.setSong(song);
     this.song = song;
     this.songNotes = song.notes;
+    this.hud.clear();
+    this.fx.clear();
     // The new song's keys are elsewhere: the scroll lands on them rather than gliding there.
     this.panSnap = true;
   }
@@ -296,13 +330,64 @@ export class FallingNotesView {
       const strikes: Strike[] = [];
       for (const [pitch, note] of playing) {
         const key = this.keys.get(pitch);
-        // Only the player's own notes, held while they sound.
-        if (!key || !state.hands.has(note.hand) || !state.pressed.has(pitch)) continue;
+        // The player's own notes while held, and the program's while it sounds them.
+        const own = state.hands.has(note.hand) && state.pressed.has(pitch);
+        if (!key || !(own || state.sounding.has(pitch))) continue;
         const color = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
         strikes.push({ pitch, x: key.x + key.width / 2, color });
       }
-      road.draw(this.notesLayer.root, this.keysRoot, strikes, this.app.ticker.deltaMS / 1000);
+      road.draw(
+        this.notesLayer.root,
+        this.keysRoot,
+        strikes,
+        this.notesLayer.arrivals,
+        this.app.ticker.deltaMS / 1000
+      );
     }
+    const hitLineY = road ? road.hitLineY : geometry.hitY;
+    const fxKey = (pitch: number): FxKey | undefined => {
+      const key = this.keys.get(pitch);
+      if (!key) return undefined;
+      const note = playing.get(pitch) ?? state.due.find((item) => item.pitch === pitch);
+      const color =
+        note?.finger !== undefined
+          ? FINGER_COLOR[note.finger]
+          : note
+            ? HAND_COLOR[note.hand]
+            : 0xffffff;
+      return { pitch, x: key.x + key.width / 2 - this.pan, width: key.width, color };
+    };
+    const struck: FxKey[] = [];
+    for (const strike of state.graded ?? []) {
+      const key = strike.grade === "miss" ? undefined : fxKey(strike.pitch);
+      if (key) struck.push(key);
+    }
+    // The program's own notes, for the hand the player leaves to it, flash as they sound.
+    for (const pitch of state.sounding) {
+      const key = this.wasSounding.has(pitch) ? undefined : fxKey(pitch);
+      if (key) struck.push(key);
+    }
+    this.wasSounding.clear();
+    for (const pitch of state.sounding) this.wasSounding.add(pitch);
+    // A note burns away on its key while it sounds: the player's held notes and the program's.
+    const sounding: FxKey[] = [];
+    for (const [pitch, note] of playing) {
+      const own = state.hands.has(note.hand) && state.pressed.has(pitch);
+      const key = own || state.sounding.has(pitch) ? fxKey(pitch) : undefined;
+      if (key) sounding.push(key);
+    }
+    this.fx.draw(struck, sounding, hitLineY, this.app.ticker.deltaMS / 1000);
+    // The board belongs to the lane: without the falling notes there is nothing to count over.
+    this.hud.draw(
+      this.parts.notes ? state.board : undefined,
+      state.graded ?? [],
+      (pitch) => {
+        const key = this.keys.get(pitch);
+        return key && key.x + key.width / 2 - this.pan;
+      },
+      hitLineY,
+      this.app.ticker.deltaMS / 1000
+    );
   }
 
   /**
@@ -382,10 +467,13 @@ export class FallingNotesView {
     this.hands.reset();
     this.notesLayer?.layout(this.keys, geometry.hitY, total);
     // The road ends on the felt, where the notes meet the keys.
-    // Each octave its own road: the lane is cut at every C.
-    const octaves = [...this.keys.values()]
-      .filter((key) => key.pitch % 12 === 0)
-      .map((key) => key.x);
-    this.road?.layout(total, geometry.hitY, height, octaves, width);
+    if (this.road) {
+      this.road.layout(total, geometry.hitY, height, width);
+      // The road shows itself when it fits; off, it stays hidden whatever the layout.
+      if (!this.roadMode) {
+        this.road.container.visible = false;
+        this.road.effects.visible = false;
+      }
+    }
   }
 }

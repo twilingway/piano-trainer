@@ -9,8 +9,8 @@ import type { TrainerSnapshot } from "../practice/Trainer";
 import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
 import type { Song } from "../song/song";
-
-type HandChoice = "right" | "left" | "both" | "listen";
+import { loadPlayerPrefs, savePlayerPrefs } from "./playerPrefs";
+import type { HandChoice } from "./playerPrefs";
 
 const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
   right: ["right"],
@@ -66,11 +66,15 @@ export function useTrainer({
   const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
   const [trainerReady, setTrainerReady] = useState(false);
   const [snapshot, setSnapshot] = useState<TrainerSnapshot | null>(null);
-  const [mode, setMode] = useState<PracticeMode>("wait");
-  const [handChoice, setHandChoice] = useState<HandChoice>("right");
-  const [speed, setSpeed] = useState(0.75);
+  // How the player last played, brought back from the previous visit.
+  const [mode, setMode] = useState<PracticeMode>(() => loadPlayerPrefs().mode);
+  const [handChoice, setHandChoice] = useState<HandChoice>(() => loadPlayerPrefs().handChoice);
+  const [speed, setSpeed] = useState(() => loadPlayerPrefs().speed);
   const [listening, setListening] = useState(false);
-  const [metronome, setMetronome] = useState(true);
+  const [metronome, setMetronome] = useState(() => loadPlayerPrefs().metronome);
+  useEffect(() => {
+    savePlayerPrefs({ mode, handChoice, speed, metronome });
+  }, [mode, handChoice, speed, metronome]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -125,16 +129,26 @@ export function useTrainer({
     [listening, mode, handChoice, speed]
   );
 
+  // The take to play back while comparing. Outside comparing it stays undefined, so a take
+  // just finished does not reload the song: the run ends where it ended, with its results.
+  const replaying = useMemo(
+    () =>
+      compareSong && lastTake
+        ? { song: compareSong, speed: lastTake.take.speed, from: lastTake.take.from }
+        : undefined,
+    [compareSong, lastTake]
+  );
+
   useEffect(() => {
     const trainer = trainerRef.current;
     if (!trainer) return;
-    if (compareSong && lastTake) {
+    if (replaying) {
       trainer.load(
-        compareSong,
-        { mode: "tempo", hands: new Set<Hand>(), speed: lastTake.take.speed },
+        replaying.song,
+        { mode: "tempo", hands: new Set<Hand>(), speed: replaying.speed },
         `${songKey}:replay`
       );
-      if (lastTake.take.from > 0) trainer.seek(lastTake.take.from);
+      if (replaying.from > 0) trainer.seek(replaying.from);
       trainer.setPlaying(true);
       return;
     }
@@ -149,8 +163,7 @@ export function useTrainer({
     listening,
     songKey,
     startFromRef,
-    compareSong,
-    lastTake,
+    replaying,
     replayCount
   ]);
 

@@ -1,5 +1,5 @@
-import { Container, Graphics, Text } from "pixi.js";
-import type { Renderer, Texture } from "pixi.js";
+import { BlurFilter, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
+import type { Renderer } from "pixi.js";
 
 import { isBlackKey } from "../fingering/fingering";
 import { placeOnStaff } from "./keyStickers";
@@ -16,7 +16,7 @@ import type { NoteGlyph } from "./noteGlyph";
 /** The card's size in its own pixels; the view scales it to the keys. */
 export const CARD_WIDTH = 64;
 export const CARD_HEIGHT = 84;
-const FRAME = 3;
+const FRAME = 4;
 const RADIUS = 10;
 const INK = 0xffffff;
 const FACE = 0x0b0d14;
@@ -48,7 +48,7 @@ export function bakeCardFrame(renderer: Renderer, double = false): Texture {
   const half = FRAME / 2;
   frame
     .roundRect(half, half, CARD_WIDTH - FRAME, CARD_HEIGHT - FRAME, RADIUS - half)
-    .stroke({ width: FRAME, color: 0xffffff });
+    .stroke({ width: FRAME * 0.6, color: 0xffffff });
   if (double) {
     const inset = FRAME + 3;
     frame
@@ -64,24 +64,91 @@ export function bakeCardFrame(renderer: Renderer, double = false): Texture {
  * A soft white halo the card's shape: rings fading outwards, cheaper than a
  * blur and baked once. Added in the finger's colour behind the card, it glows.
  */
-export function bakeCardGlow(renderer: Renderer): Texture {
-  const glow = new Graphics();
-  const rings = 11;
-  for (let ring = rings; ring >= 1; ring--) {
-    const reach = (CARD_GLOW * ring) / rings;
-    glow
-      .roundRect(
-        CARD_GLOW - reach,
-        CARD_GLOW - reach,
-        CARD_WIDTH + reach * 2,
-        CARD_HEIGHT + reach * 2,
-        RADIUS + reach
-      )
-      .fill({ color: 0xffffff, alpha: 0.075 });
+/** The trail tile's side in pixels: one beat of a note's trail on the road. */
+export const TRAIL_TILE = 64;
+
+/**
+ * One beat of a note's trail on the road, white for a tint to colour: a thin
+ * glassy fill, bright edges fading inwards, and a bright bar across its
+ * bottom with a soft glow over it. Repeated along the note, it marks every
+ * beat of its length.
+ */
+export function bakeTrailTile(): Texture {
+  const size = TRAIL_TILE;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) return Texture.WHITE;
+  context.fillStyle = "rgba(255, 255, 255, 0.3)";
+  context.fillRect(0, 0, size, size);
+  const edge = 8;
+  for (const [from, to] of [
+    [0, edge],
+    [size, size - edge]
+  ] as const) {
+    const gradient = context.createLinearGradient(from, 0, to, 0);
+    gradient.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+    gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    context.fillStyle = gradient;
+    context.fillRect(Math.min(from, to), 0, edge, size);
   }
+  const bar = 5;
+  const halo = context.createLinearGradient(0, size - bar - 14, 0, size - bar);
+  halo.addColorStop(0, "rgba(255, 255, 255, 0)");
+  halo.addColorStop(1, "rgba(255, 255, 255, 0.4)");
+  context.fillStyle = halo;
+  context.fillRect(0, size - bar - 14, size, 14);
+  context.fillStyle = "rgba(255, 255, 255, 0.95)";
+  context.fillRect(0, size - bar, size, bar);
+  return Texture.from(canvas);
+}
+
+export function bakeCardGlow(renderer: Renderer): Texture {
+  const width = CARD_WIDTH + CARD_GLOW * 2;
+  const height = CARD_HEIGHT + CARD_GLOW * 2;
+  const glow = canvasSprite(width, height, (context) => {
+    context.strokeStyle = "#ffffff";
+    context.shadowColor = "#ffffff";
+    // A neon tube's light: wide and faint, then tighter and brighter round the line itself.
+    for (const [blur, lineWidth, alpha] of [
+      [16, 6, 0.55],
+      [9, 4, 0.7],
+      [4, 3, 0.9]
+    ] as const) {
+      context.globalAlpha = alpha;
+      context.shadowBlur = blur;
+      context.lineWidth = lineWidth;
+      context.beginPath();
+      context.roundRect(CARD_GLOW, CARD_GLOW, CARD_WIDTH, CARD_HEIGHT, RADIUS);
+      context.stroke();
+    }
+  });
   const root = new Container();
   root.addChild(glow);
   return bake(renderer, root);
+}
+
+/**
+ * A sprite of a canvas drawn in card units: the canvas is the bake's resolution
+ * finer, the sprite as much smaller, so baking it keeps every edge sharp.
+ */
+function canvasSprite(
+  width: number,
+  height: number,
+  draw: (context: CanvasRenderingContext2D) => void
+): Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(width * BAKE_RESOLUTION);
+  canvas.height = Math.ceil(height * BAKE_RESOLUTION);
+  const context = canvas.getContext("2d");
+  if (context) {
+    context.scale(BAKE_RESOLUTION, BAKE_RESOLUTION);
+    draw(context);
+  }
+  const sprite = new Sprite(Texture.from(canvas));
+  sprite.scale.set(1 / BAKE_RESOLUTION);
+  return sprite;
 }
 
 /**
@@ -96,7 +163,7 @@ export function bakeCardFace(
   clef: Clef
 ): Texture {
   const inner = CARD_WIDTH - FRAME * 2;
-  const g = new Graphics();
+  let g = new Graphics();
   g.roundRect(0, 0, inner, CARD_HEIGHT - FRAME * 2, RADIUS - FRAME).fill({
     color: FACE,
     alpha: FACE_ALPHA
@@ -118,8 +185,12 @@ export function bakeCardFace(
     const ly = STAFF_BOTTOM - (ledger * SPACING) / 2;
     g.moveTo(x - 10, ly).lineTo(x + 10, ly);
   }
-  g.stroke({ width: 1.8, color: INK, alpha: 0.9 });
+  // The staff stays in the background: the note on it is what reads first.
+  g.stroke({ width: 1.8, color: INK, alpha: 0.42 });
 
+  // The note on its own, so it can glow over the dim staff.
+  const staff = g;
+  g = new Graphics();
   const headX = 6.8;
   const headY = 4.9;
   const hollow = glyph.kind === "whole" || glyph.kind === "half";
@@ -144,8 +215,10 @@ export function bakeCardFace(
   }
   if (glyph.dotted) g.circle(x + headX + 4, y - (position % 2 === 0 ? 2.5 : 0), 2.3).fill(INK);
 
+  const halo = g.clone();
+  halo.filters = [new BlurFilter({ strength: 3, quality: 3 })];
   const root = new Container();
-  root.addChild(g);
+  root.addChild(staff, halo, g);
   const top = STAFF_BOTTOM - 4 * SPACING;
   root.addChild(
     clef === "treble"
