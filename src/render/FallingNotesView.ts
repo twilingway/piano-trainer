@@ -328,8 +328,9 @@ export class FallingNotesView {
       const strikes: Strike[] = [];
       for (const [pitch, note] of playing) {
         const key = this.keys.get(pitch);
-        // Only the player's own notes, held while they sound.
-        if (!key || !state.hands.has(note.hand) || !state.pressed.has(pitch)) continue;
+        // The player's own notes while held, and the program's while it sounds them.
+        const own = state.hands.has(note.hand) && state.pressed.has(pitch);
+        if (!key || !(own || state.sounding.has(pitch))) continue;
         const color = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
         strikes.push({ pitch, x: key.x + key.width / 2, color });
       }

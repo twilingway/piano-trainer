@@ -326,7 +326,24 @@ export class RoadLayer {
         .rect(left, height - step * 3, right - left, step * 6)
         .fill({ color: HORIZON_COLOR, alpha: 0.05 });
     }
-    line.rect(left, height - 3, right - left, 6).fill({ color: HORIZON_COLOR, alpha: 0.5 });
+    // The band's core shimmers: its brightness drifts along it in slow waves, never still.
+    const shimmerStep = 24;
+    for (let x = left; x < right; x += shimmerStep) {
+      const wave =
+        Math.sin(x * 0.013 + this.clock * 1.7) * 0.5 + Math.sin(x * 0.041 - this.clock * 2.9) * 0.5;
+      line
+        .rect(x, height - 3, shimmerStep + 1, 6)
+        .fill({ color: HORIZON_COLOR, alpha: 0.42 + 0.18 * wave });
+    }
+    // Round every sounding key the line flares in its note's colour, fading out to the sides.
+    for (const strike of strikes) {
+      for (let ring = 1; ring <= 5; ring++) {
+        const reach = ring * 26;
+        line
+          .rect(strike.x - reach, height - 3 - ring, reach * 2, 6 + ring * 2)
+          .fill({ color: strike.color, alpha: 0.12 });
+      }
+    }
     const step = 6;
     line.moveTo(left, height);
     for (let x = left + step; x <= right; x += step) {
