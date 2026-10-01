@@ -23,10 +23,14 @@ describe("viewGeometry", () => {
     expect(viewGeometry(200, 40, ALL, false).keyboardHeight).toBeCloseTo(120);
   });
 
-  it("gives the whole view to the keys without the notes", () => {
-    const geometry = viewGeometry(300, 40, { ...ALL, notes: false }, false);
-    expect(geometry.hitY).toBe(0);
-    expect(geometry.keyboardTop + geometry.keyboardHeight).toBeCloseTo(292);
+  it("keeps the keys' length without the notes, at the bottom of the view", () => {
+    const geometry = viewGeometry(1000, 40, { ...ALL, notes: false }, false);
+    expect(geometry.keyboardHeight).toBeCloseTo(144);
+    expect(geometry.keyboardTop + geometry.keyboardHeight).toBeCloseTo(992);
+    // A view too short for them gets all its height to the keys.
+    expect(viewGeometry(150, 40, { ...ALL, notes: false }, false).keyboardHeight).toBeCloseTo(
+      150 - 8 - 8.8
+    );
   });
 
   it("shortens the black keys for stickers only", () => {

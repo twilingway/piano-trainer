@@ -64,20 +64,10 @@ export function viewGeometry(
   const strip = parts.hands
     ? Math.max(margin, Math.min(whiteWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE))
     : margin;
-  // Only the keys: they take the whole view, whatever its height.
-  if (!parts.notes) {
-    const keyboardHeight = height - strip - feltHeight;
-    return {
-      keyboardTop: feltHeight,
-      keyboardHeight,
-      blackHeight: blackOf(keyboardHeight),
-      whiteWidth,
-      hitY: 0,
-      feltHeight
-    };
-  }
   const wanted = Math.max(KEYBOARD_MIN_PX, whiteWidth * KEY_LENGTH_PER_WIDTH);
-  const keyboardHeight = Math.min(wanted, height * MAX_KEYBOARD_SHARE);
+  // Only the keys: they keep their length, not stretched over the view, and may use all of it.
+  const room = parts.notes ? height * MAX_KEYBOARD_SHARE : height - strip - feltHeight;
+  const keyboardHeight = Math.max(0, Math.min(wanted, room));
   const keyboardTop = height - strip - keyboardHeight;
   return {
     keyboardTop,
