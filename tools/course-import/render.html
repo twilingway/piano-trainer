@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Render PDF pages</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  </head>
+  <body>
+    <pre id="log">working</pre>
+    <script>
+      // render.html?f=n05,t05 renders every page of n05.pdf and t05.pdf at 3x and posts
+      // the PNGs back to serve.py, which saves them.
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      const log = (line) => (document.getElementById("log").textContent += "\n" + line);
+      (async () => {
+        for (const name of new URLSearchParams(location.search).get("f").split(",")) {
+          const doc = await pdfjsLib.getDocument(name + ".pdf").promise;
+          for (let number = 1; number <= doc.numPages; number++) {
+            const page = await doc.getPage(number);
+            const viewport = page.getViewport({ scale: 3 });
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.floor(viewport.width);
+            canvas.height = Math.floor(viewport.height);
+            const context = canvas.getContext("2d");
+            context.fillStyle = "#fff";
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            await page.render({ canvasContext: context, viewport }).promise;
+            await fetch(`/${name}_p${number}.png`, {
+              method: "POST",
+              body: canvas.toDataURL("image/png")
+            });
+            log(`${name} p${number} ${canvas.width}x${canvas.height}`);
+          }
+        }
+        log("DONE");
+      })().catch((error) => log("ERR " + error));
+    </script>
+  </body>
+</html>

@@ -44,6 +44,19 @@ const WIDE_CHORD = 7;
 const OUTER_FINGER_MISSING = 1;
 const CROSS_FROM_BLACK_BONUS = -1;
 const CROSS_ONTO_BLACK_EXTRA = 2;
+/**
+ * The most a move between two events can cost: past the comfortable span the
+ * hand does not stretch, it jumps, and a jump costs the same whichever finger lands.
+ */
+const JUMP_COST = 6;
+/** Events on each side of a note that make up the hand position it belongs to. */
+const POSITION_WINDOW = 4;
+/** Widest set of keys, in semitones, that one hand position covers. */
+const POSITION_SPAN = 12;
+/** Cost per finger of playing a note off the finger its rank in the position gives. */
+const POSITION_COST = 0.3;
+/** An octave or a root-position triad fingered against the course's rule. */
+const CHORD_RULE_COST = PRACTICAL_COST;
 
 interface Span {
   readonly minPractical: number;
@@ -211,8 +224,31 @@ function risingCombinations(count: number): Finger[][] {
   return result;
 }
 
-function unaryCost(fingers: readonly Finger[], keys: readonly Key[]): number {
-  let cost = 0;
+/** Mirrored-geometry fingerings the course allows: octave 1-5; left-hand triad 5-3-1 or 4-2-1. */
+function chordRuleCost(fingers: readonly Finger[], keys: readonly Key[], hand: Hand): number {
+  const shape = fingers.join("");
+  const first = keys[0];
+  const last = keys.at(-1);
+  if (!first || !last) return 0;
+  if (keys.length === 2 && Math.abs(last.pitch - first.pitch) === 12) {
+    return shape === "15" ? 0 : CHORD_RULE_COST;
+  }
+  if (hand === "left" && keys.length === 3 && isRootTriad(keys.map((key) => -key.pitch))) {
+    return shape === "135" || shape === "124" ? 0 : CHORD_RULE_COST;
+  }
+  return 0;
+}
+
+/** Three pitches stacked in thirds from the root: major (4+3) or minor (3+4). */
+function isRootTriad(pitches: readonly number[]): boolean {
+  const [low = 0, middle = 0, high = 0] = [...pitches].sort((a, b) => a - b);
+  const lower = middle - low;
+  const upper = high - middle;
+  return (lower === 4 && upper === 3) || (lower === 3 && upper === 4);
+}
+
+function unaryCost(fingers: readonly Finger[], keys: readonly Key[], hand: Hand): number {
+  let cost = chordRuleCost(fingers, keys, hand);
   for (let index = 0; index < fingers.length; index++) {
     const finger = fingers[index];
     const key = keys[index];
@@ -235,6 +271,11 @@ function unaryCost(fingers: readonly Finger[], keys: readonly Key[]): number {
   return cost;
 }
 
+/** A finger-to-finger move between events: a pair cost, capped at a jump. */
+function moveCost(a: Finger, from: Key, b: Finger, to: Key): number {
+  return Math.min(pairCost(a, from, b, to), JUMP_COST);
+}
+
 /** Chords are joined by their outer voices: the lowest to the lowest, the highest to the highest. */
 function transitionCost(
   fromFingers: readonly Finger[],
@@ -242,14 +283,14 @@ function transitionCost(
   toFingers: readonly Finger[],
   toKeys: readonly Key[]
 ): number {
-  const lowCost = pairCost(
+  const lowCost = moveCost(
     fromFingers[0] ?? 1,
     fromKeys[0] ?? { pitch: 0, black: false },
     toFingers[0] ?? 1,
     toKeys[0] ?? { pitch: 0, black: false }
   );
   if (fromFingers.length === 1 && toFingers.length === 1) return lowCost;
-  const highCost = pairCost(
+  const highCost = moveCost(
     fromFingers.at(-1) ?? 1,
     fromKeys.at(-1) ?? { pitch: 0, black: false },
     toFingers.at(-1) ?? 1,
@@ -277,6 +318,28 @@ function candidatesFor(
   return allowed.length > 0 ? allowed : all;
 }
 
+/**
+ * The finger each single note gets when the hand sits still over its
+ * neighbours: the lowest key of the position under the thumb, the next key used
+ * under the index finger and so on, whatever the semitones between them.
+ * Undefined where the neighbours do not fit one position.
+ */
+function positionFingers(events: readonly FingeringEvent[]): (Finger | undefined)[] {
+  return events.map((event, index) => {
+    const key = event.keys[0];
+    if (event.keys.length !== 1 || !key) return undefined;
+    const around = events
+      .slice(Math.max(0, index - POSITION_WINDOW), index + POSITION_WINDOW + 1)
+      .filter((other) => other.keys.length === 1)
+      .map((other) => other.keys[0]?.pitch ?? key.pitch);
+    const keys = [...new Set(around)].sort((a, b) => a - b);
+    const low = keys[0] ?? key.pitch;
+    const high = keys.at(-1) ?? key.pitch;
+    if (keys.length > FINGERS.length || high - low > POSITION_SPAN) return undefined;
+    return FINGERS[keys.indexOf(key.pitch)];
+  });
+}
+
 export interface FingeredNote {
   readonly finger: Finger;
   /** How the hand arrives at this note from the previous event; absent on the first one. */
@@ -294,6 +357,7 @@ export function assignFingering(
 ): Map<string, FingeredNote> {
   const events = groupEvents(notes, hand);
   const candidates = events.map((event) => candidatesFor(event, fixed));
+  const expected = positionFingers(events);
 
   const costs: number[][] = [];
   const back: number[][] = [];
@@ -305,7 +369,10 @@ export function assignFingering(
     const rowCosts: number[] = [];
     const rowBack: number[] = [];
     for (const fingers of options) {
-      const own = unaryCost(fingers, event.keys);
+      const target = expected[eventIndex];
+      const own =
+        unaryCost(fingers, event.keys, hand) +
+        (target === undefined ? 0 : POSITION_COST * Math.abs((fingers[0] ?? target) - target));
       if (!previousEvent) {
         rowCosts.push(own);
         rowBack.push(-1);
