@@ -14,3 +14,6 @@ coverage/
 
 # Lessons from scores we may not publish: loaded when present, never committed.
 local-lessons/
+
+# Agents' worktrees: copies of the repository, created and removed by the harness.
+.claude/worktrees/

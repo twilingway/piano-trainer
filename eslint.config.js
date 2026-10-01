@@ -11,7 +11,8 @@ export default tseslint.config(
       "eslint.config.js",
       ".agents/**",
       "tools/arcadia-effects/**",
-      "public/generated/**"
+      "public/generated/**",
+      ".claude/**"
     ]
   },
   eslint.configs.recommended,
@@ -29,6 +30,14 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
       // `const { dropped, ...rest } = value` is how a field is removed from an immutable copy.
       "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }]
+    }
+  },
+  {
+    // docs/CODE_STYLE.md: a production module stays under 500 lines; tests do not count.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}"],
+    rules: {
+      "max-lines": ["error", { max: 500, skipBlankLines: true, skipComments: true }]
     }
   }
 );

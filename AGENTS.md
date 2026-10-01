@@ -30,6 +30,12 @@ plays in tempo, plays the other hand, records every take and compares it with th
 - `local-lessons/` is git-ignored on purpose: scores there may not be published (the repository is
   public). Never add its files to a commit, and never copy their music into `src/`.
 
+## Code layout
+
+Where a new file goes, how big a module may grow (500 lines, held by ESLint) and what `App.tsx` may
+hold (composition only) are in `docs/CODE_STYLE.md`. Read it before adding a file or a branch to an
+existing one.
+
 ## Spec-driven workflow
 
 - Use `$openspec-workflow` for features, architecture changes and non-trivial refactors.

@@ -11,6 +11,8 @@ interface StaffProps {
   readonly singleLine: boolean;
   /** Keep the cursor in view as the song plays. */
   readonly follow: boolean;
+  /** Finger numbers over and under the notes. */
+  readonly fingers: boolean;
   /** Break lines where the score says so (the fixed measures-per-line layout) instead of by width. */
   readonly breaksFromScore: boolean;
   /** A click on the score: the beat of the note nearest to it. */
@@ -311,6 +313,7 @@ export function Staff({
   zoom,
   singleLine,
   follow,
+  fingers,
   breaksFromScore,
   onSeek,
   marks,
@@ -396,8 +399,8 @@ export function Staff({
       drawTitle: false,
       drawComposer: false,
       drawPartNames: false,
-      // Off by default for a one-part score; the fingers are the point here.
-      drawFingerings: true,
+      // OSMD leaves them off for a one-part score; here the reader chooses.
+      drawFingerings: fingers,
       renderSingleHorizontalStaffline: singleLine,
       followCursor: false,
       newSystemFromXML: breaksFromScore,
@@ -434,7 +437,7 @@ export function Staff({
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
       page.replaceChildren();
     };
-  }, [musicXml, singleLine, breaksFromScore]);
+  }, [musicXml, singleLine, breaksFromScore, fingers]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
