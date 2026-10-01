@@ -69,7 +69,7 @@ const KEY_STYLES: Readonly<Record<KeyStyle, StyleSet>> = {
       blackPressed: new URL("./keys/black-pressed.webp", import.meta.url).href,
       blackPressedLit: new URL("./keys/black-pressed-lit.webp", import.meta.url).href
     },
-    white: { leftWidth: 20, topHeight: 60, rightWidth: 20, bottomHeight: 64 },
+    white: { leftWidth: 12, topHeight: 60, rightWidth: 14, bottomHeight: 64 },
     black: { leftWidth: 16, topHeight: 178, rightWidth: 16, bottomHeight: 76 }
   },
   arcade: {
