@@ -35,16 +35,8 @@ const PAINTED_FACES = {
   whitePressed: new URL("./keys/white-pressed.webp", import.meta.url).href,
   whitePressedLit: new URL("./keys/white-pressed-lit.webp", import.meta.url).href,
   blackPressed: new URL("./keys/black-pressed.webp", import.meta.url).href,
-  blackPressedLit: new URL("./keys/black-pressed-lit.webp", import.meta.url).href,
-  sideLeft: new URL("./keys/side-left.webp", import.meta.url).href,
-  sideRight: new URL("./keys/side-right.webp", import.meta.url).href
+  blackPressedLit: new URL("./keys/black-pressed-lit.webp", import.meta.url).href
 };
-/*
- * A held key sinks: it takes its pressed face, and the side walls of the keys
- * either side of it show in the gaps, as on a real keyboard seen from above.
- * The walls are this share of a key's width.
- */
-const SIDE_WALL_SHARE = 0.09;
 const WHITE_SLICE = { leftWidth: 20, topHeight: 60, rightWidth: 20, bottomHeight: 64 };
 const BLACK_SLICE = { leftWidth: 16, topHeight: 178, rightWidth: 16, bottomHeight: 76 };
 
@@ -52,6 +44,8 @@ type PaintedFaces = KeyTextures & Readonly<Record<keyof typeof PAINTED_FACES, Te
 const NO_SLICE = { leftWidth: 0, topHeight: 0, rightWidth: 0, bottomHeight: 0 };
 /** Largest size of a finger digit on a key. */
 const DIGIT_MAX_PX = 26;
+/** The finger digit's height on a key without stickers, at most. */
+const DIGIT_BARE_PX = 44;
 
 /** What the keys show in a frame: what is held, sounded and owed, and what crosses the hit line. */
 export interface KeysFrame {
@@ -78,8 +72,6 @@ export class KeyboardLayer {
   private readonly keyDigits = new Map<number, Sprite>();
   /** The front part of a key, lit on its own for the left hand. */
   private readonly keyFronts = new Map<number, Sprite>();
-  /** The neighbours' side walls a sunk key shows, left and right of it. */
-  private readonly sideWalls = new Map<number, readonly [Sprite, Sprite]>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private keyTextures: KeyTextures | undefined;
   /** The painted key faces once loaded; kept for good, never re-baked. */
@@ -88,6 +80,8 @@ export class KeyboardLayer {
   private readonly dueByPitch = new Map<number, SongNote>();
   /** The key the mouse holds down, if any. */
   private mouseKey: number | undefined;
+  /** The front bevel's height on screen, white and black: the finger digit stands above it. */
+  private bevel = { white: 3, black: 3 };
 
   constructor(
     private readonly renderer: Renderer,
@@ -132,25 +126,14 @@ export class KeyboardLayer {
       this.stickerSprites.set(pitch, sticker);
       this.stickers.addChild(sticker);
     }
-    // White keys first, then the side walls in the gaps between them, then the black keys.
+    // White keys first so black keys draw over them.
     const pitches = [...this.keySprites.keys()];
-    const addKeys = (black: boolean) => {
+    for (const black of [false, true]) {
       for (const pitch of pitches) {
         const sprite = this.keySprites.get(pitch);
         if (sprite && isBlackKey(pitch) === black) this.keyboard.addChild(sprite);
       }
-    };
-    addKeys(false);
-    for (const pitch of pitches) {
-      const walls = [new Sprite(), new Sprite()] as const;
-      for (const wall of walls) {
-        wall.eventMode = "none";
-        wall.visible = false;
-        this.keyboard.addChild(wall);
-      }
-      this.sideWalls.set(pitch, walls);
     }
-    addKeys(true);
     for (const front of fronts) this.keyboard.addChild(front);
   }
 
@@ -191,6 +174,7 @@ export class KeyboardLayer {
     const painted = this.painted;
     const whiteBevel = painted ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width : 3;
     const blackBevel = painted ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width : 3;
+    this.bevel = { white: whiteBevel, black: blackBevel };
     const whiteShare = painted ? 1 - (2 * WHITE_SLICE.leftWidth) / painted.white.width : 0.92;
     const blackShare = painted ? 1 - (2 * BLACK_SLICE.leftWidth) / painted.black.width : 0.92;
     const whiteScale = Math.min(
@@ -289,9 +273,6 @@ export class KeyboardLayer {
         const face = this.faceOf(key.black, whole !== undefined, down);
         if (sprite.texture !== face) sprite.texture = face;
       }
-      const walls = this.sideWalls.get(pitch);
-      if (walls && key && this.painted) this.placeWalls(walls, key, down, geometry);
-      else if (walls) for (const wall of walls) wall.visible = false;
       sprite.tint = whole ?? 0xffffff;
       const front = this.keyFronts.get(pitch);
       if (front) {
@@ -311,11 +292,14 @@ export class KeyboardLayer {
       hint.visible = key !== undefined && shown?.finger !== undefined;
       if (!key || shown?.finger === undefined) continue;
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
-      hint.scale.set(Math.min(1, (key.width * 0.9) / 40, DIGIT_MAX_PX / 40));
       hint.x = key.x + key.width / 2;
       if (!stickers) {
-        hint.y = keyboardTop + (key.black ? blackHeight : keyboardHeight) - 4;
+        // Without stickers the key is free: a large digit, just above the front bevel.
+        hint.scale.set(Math.min((key.width * 0.7) / hint.texture.width, DIGIT_BARE_PX / 40));
+        const bevel = key.black ? this.bevel.black : this.bevel.white;
+        hint.y = keyboardTop + (key.black ? blackHeight : keyboardHeight) - bevel - 4;
       } else {
+        hint.scale.set(Math.min(1, (key.width * 0.9) / 40, DIGIT_MAX_PX / 40));
         // The sticker fills the bottom of the key; the finger sits at the top of its free part.
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
@@ -336,35 +320,6 @@ export class KeyboardLayer {
     }
     if (down) return lit ? painted.whitePressedLit : painted.whitePressed;
     return lit ? painted.whiteLit : painted.white;
-  }
-
-  /** The neighbours' side walls in the gaps either side of a sunk key; hidden otherwise. */
-  private placeWalls(
-    walls: readonly [Sprite, Sprite],
-    key: KeyRect,
-    down: boolean,
-    geometry: {
-      readonly keyboardTop: number;
-      readonly keyboardHeight: number;
-      readonly blackHeight: number;
-    }
-  ): void {
-    const painted = this.painted;
-    const [left, right] = walls;
-    // Only a white key shows its neighbours' walls; a black one just sinks.
-    left.visible = down && painted !== undefined && !key.black;
-    right.visible = left.visible;
-    if (!left.visible || !painted) return;
-    const width = Math.max(2, key.width * SIDE_WALL_SHARE);
-    left.texture = painted.sideLeft;
-    right.texture = painted.sideRight;
-    for (const wall of walls) {
-      wall.y = geometry.keyboardTop;
-      wall.width = width;
-      wall.height = geometry.keyboardHeight;
-    }
-    left.x = key.x - width;
-    right.x = key.x + key.width;
   }
 
   /**
