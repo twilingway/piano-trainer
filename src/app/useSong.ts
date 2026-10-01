@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
 
 import type { Finger } from "../fingering/fingering";
@@ -6,8 +6,16 @@ import { detectKey } from "../song/harmony";
 import { songFromMusicXml, transposeMusicXml } from "../song/musicxml";
 import { withFingering } from "../song/song";
 import type { Song } from "../song/song";
-import { FIRST_LESSON, lessonSong } from "./lessons";
+import { FIRST_LESSON, LESSONS, lessonSong } from "./lessons";
 import type { LessonChoice } from "./lessons";
+import { loadPlayerPrefs, savePlayerPrefs } from "./playerPrefs";
+
+/** The lesson opened last, if it is still there; otherwise the first one. */
+function startingLesson(): LessonChoice {
+  const kept = loadPlayerPrefs().lesson;
+  const exercise = kept && LESSONS.find((item) => item.id === kept.exerciseId);
+  return kept && exercise?.levels.some((level) => level.id === kept.levelId) ? kept : FIRST_LESSON;
+}
 
 function overridesKey(song: Song): string {
   return `fingering:${song.title}:${String(song.notes.length)}`;
@@ -56,11 +64,11 @@ function transposeSong(song: Song, semitones: number): Song {
  * corrections. `startFromRef` is cleared whenever another song comes up.
  */
 export function useSong(startFromRef: RefObject<number | null>) {
-  const [lesson, setLesson] = useState<LessonChoice | null>(FIRST_LESSON);
+  const [lesson, setLesson] = useState<LessonChoice | null>(startingLesson);
   /** The library song on screen, as the lesson select names it: `my:<id>` or `dir:<path>`. */
   const [librarySource, setLibrarySource] = useState<string | null>(null);
   /** The song as loaded; `baseSong` is it in the chosen key. */
-  const [sourceSong, setSourceSong] = useState<Song>(() => lessonSong(FIRST_LESSON));
+  const [sourceSong, setSourceSong] = useState<Song>(() => lessonSong(startingLesson()));
   const [transpose, setTranspose] = useState(0);
   const baseSong = useMemo(() => transposeSong(sourceSong, transpose), [sourceSong, transpose]);
   const sourceKey = useMemo(() => detectKey(sourceSong), [sourceSong]);
@@ -72,6 +80,10 @@ export function useSong(startFromRef: RefObject<number | null>) {
     setOverrides(loadOverrides(baseSong));
   }
   const song = useMemo(() => withFingering(baseSong, overrides), [baseSong, overrides]);
+  // What is on screen comes back next time: a lesson by its level, a library song by its source.
+  useEffect(() => {
+    savePlayerPrefs(lesson ? { lesson, librarySource: null } : { librarySource });
+  }, [lesson, librarySource]);
   // Each song and level keeps its own takes and trainer state under this key.
   const songKey = overridesKey(baseSong);
 

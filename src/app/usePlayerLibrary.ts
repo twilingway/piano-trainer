@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import type { ChangeEvent } from "react";
 
 import { folderPermission, pickFolder, readFolderSongs } from "../library/folder";
@@ -15,6 +15,7 @@ import type { MySong } from "../library/myLibrary";
 import { songFromFileData } from "../library/songFile";
 import type { Song } from "../song/song";
 import { LESSONS } from "./lessons";
+import { loadPlayerPrefs } from "./playerPrefs";
 import type { LessonChoice } from "./lessons";
 
 interface Options {
@@ -130,6 +131,27 @@ export function usePlayerLibrary({ showSong, setLibrarySource, openLesson }: Opt
     setFolder(null);
   };
 
+  // The library song on screen last time, if it can be had without asking: a kept song, or
+  // one from the folder the browser still grants. Otherwise the last lesson stays.
+  // Read before any effect runs: the song hook writes what is on screen as soon as it mounts.
+  const [source] = useState(() => loadPlayerPrefs().librarySource);
+  const reopen = useEffectEvent(async (folderSongs: readonly FolderSong[]) => {
+    try {
+      if (source?.startsWith("my:")) {
+        const stored = await loadMySong(source.slice(3));
+        if (stored) showFileSong(stored.fileName, stored.data, source);
+      } else if (source?.startsWith("dir:")) {
+        const entry = folderSongs.find((item) => item.path === source.slice(4));
+        if (entry) {
+          const file = await entry.handle.getFile();
+          showFileSong(file.name, await file.arrayBuffer(), source);
+        }
+      }
+    } catch {
+      // Gone or unreadable: the last lesson is on screen already.
+    }
+  });
+
   // The library as it was left: the kept songs, and the folder if the browser still grants it.
   useEffect(() => {
     let disposed = false;
@@ -140,10 +162,16 @@ export function usePlayerLibrary({ showSong, setLibrarySource, openLesson }: Opt
         const songs = await listMySongs();
         if (alive()) setMySongs(songs);
         const handle = await loadFolderHandle();
-        if (!handle || !alive()) return;
+        if (!alive()) return;
+        if (!handle) {
+          await reopen([]);
+          return;
+        }
         const access = await folderPermission(handle, false);
         const folderSongs = access === "granted" ? await readFolderSongs(handle) : [];
-        if (alive()) setFolder({ handle, access, songs: folderSongs });
+        if (!alive()) return;
+        setFolder({ handle, access, songs: folderSongs });
+        await reopen(folderSongs);
       } catch {
         // No IndexedDB (a private window): the library just starts empty.
       }
