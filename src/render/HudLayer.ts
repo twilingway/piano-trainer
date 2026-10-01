@@ -125,6 +125,18 @@ export class HudLayer {
     this.board.position.set(BOARD_MARGIN_PX, BOARD_MARGIN_PX);
     this.board.visible = false;
     this.container.addChild(this.board, this.pops);
+    // A web font that arrives after the board was drawn: draw it again in the right face.
+    const redraw = () => {
+      // A view torn down (React mounts it twice in development) lets go of the fonts.
+      if (this.container.destroyed) {
+        document.fonts.removeEventListener("loadingdone", redraw);
+        return;
+      }
+      for (const text of [this.comboTitle, this.comboValue, this.accuracyLabel, this.accuracy]) {
+        text.style.update();
+      }
+    };
+    document.fonts.addEventListener("loadingdone", redraw);
   }
 
   /**
