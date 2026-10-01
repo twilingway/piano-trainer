@@ -14,7 +14,6 @@ import { FxLayer } from "./FxLayer";
 import type { FxKey } from "./FxLayer";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
-import { loadKeyLights } from "./keyLights";
 import type { KeyStyle } from "./KeyboardLayer";
 import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
@@ -189,7 +188,6 @@ export class FallingNotesView {
       keyboard.releaseMouse();
     });
     await keyboard.loadPaintedFaces(this.keyStyle);
-    keyboard.setLights(await loadKeyLights());
     this.ready = true;
   }
 
