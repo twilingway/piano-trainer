@@ -14,7 +14,6 @@ import { FxLayer } from "./FxLayer";
 import type { FxKey } from "./FxLayer";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
-import { loadKeyLights } from "./keyLights";
 import type { KeyStyle } from "./KeyboardLayer";
 import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
@@ -171,7 +170,7 @@ export class FallingNotesView {
       this.fx.container,
       this.hud.container
     );
-    await this.fx.load();
+    await Promise.all([this.fx.load(), notes.loadNeon()]);
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -189,7 +188,6 @@ export class FallingNotesView {
       keyboard.releaseMouse();
     });
     await keyboard.loadPaintedFaces(this.keyStyle);
-    keyboard.setLights(await loadKeyLights());
     this.ready = true;
   }
 

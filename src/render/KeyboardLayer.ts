@@ -7,8 +7,7 @@ import type { KeyEvent } from "../input/midiInput";
 import type { SongNote } from "../song/song";
 import { FINGER_COLOR } from "./fingerColors";
 import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
-import { KEY_LIGHT_FPS } from "./keyLights";
-import type { KeyLights } from "./keyLights";
+import { KEY_LIGHT_PAD, bakeKeyLight, keyShape, shapeId } from "./keyLightShapes";
 import type { KeyRect } from "./keyboardLayout";
 import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
 import { bakeKeyTextures } from "./keyTextures";
@@ -19,12 +18,12 @@ const HAND_HINT: Readonly<Record<Hand, number>> = { right: 0xbdeefb, left: 0xfbd
 const PRESSED_COLOR = 0xffd166;
 const SOUNDING_COLOR = 0xb8b8ff;
 /*
- * A key keeps its own face and its colour is a light laid over it: faint while
- * the key waits to be played, strong once it sounds. On a black key the light
- * is added, so the colour glows rather than paints it.
+ * A key keeps its own face and its colour is a light laid over it, the key's
+ * own shape with a neon edge: faint while the key waits to be played, full
+ * once it sounds. On a black key the light is added, so it glows.
  */
-const LIGHT_WAITING = { white: 0.32, black: 0.45 } as const;
-const LIGHT_SOUNDING = { white: 0.78, black: 0.95 } as const;
+const LIGHT_WAITING = { white: 0.38, black: 0.55 } as const;
+const LIGHT_SOUNDING = { white: 1, black: 1 } as const;
 /** The dark red felt strip over the keys, as on a real piano. */
 const FELT = 0x6e1616;
 const FELT_EDGE = 0xb33a3a;
@@ -142,8 +141,9 @@ export class KeyboardLayer {
   private readonly rail = new Sprite();
   /** The owed chord by pitch, refilled every frame rather than made anew. */
   private readonly dueByPitch = new Map<number, SongNote>();
-  /** Arcadia's looping lights for the keys; without them a plain gradient lights a key. */
-  private lights: KeyLights | undefined;
+  /** Each key's light, baked for its shape at the last layout; keys of one shape share one. */
+  private readonly lightOf = new Map<number, Texture>();
+  private lightTextures = new Map<string, Texture>();
   /** The key the mouse holds down, if any. */
   private mouseKey: number | undefined;
   /** The front bevel's height on screen, white and black: the finger digit stands above it. */
@@ -159,7 +159,6 @@ export class KeyboardLayer {
     this.rail.visible = false;
     this.stickers.eventMode = "none";
     this.stickers.visible = false;
-    const lightTexture = bakeKeyLight();
     for (let pitch = LOWEST_PITCH; pitch <= HIGHEST_PITCH; pitch++) {
       const sprite = new NineSliceSprite({ texture: Texture.WHITE, ...NO_SLICE });
       sprite.eventMode = "static";
@@ -182,7 +181,7 @@ export class KeyboardLayer {
       digit.anchor.set(0.5, 1);
       digit.visible = false;
       this.keyDigits.set(pitch, digit);
-      const front = new Sprite(lightTexture);
+      const front = new Sprite();
       front.eventMode = "none";
       front.visible = false;
       this.keyFronts.set(pitch, front);
@@ -232,11 +231,6 @@ export class KeyboardLayer {
     this.felt.visible = show;
   }
 
-  /** The animated lights for waiting and sounding keys. */
-  setLights(lights: KeyLights | undefined): void {
-    this.lights = lights;
-  }
-
   /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
   showStickers(show: boolean): void {
     this.stickers.visible = show;
@@ -249,6 +243,7 @@ export class KeyboardLayer {
     const white = sample.find((key) => !key.black);
     const black = sample.find((key) => key.black);
     this.bakeKeys(white, black, keyboardHeight, blackHeight);
+    this.bakeLights(keys, keyboardHeight, blackHeight);
 
     // One scale per kind of sticker, so every white label reads at one size and every black one too.
     const whiteWidth = white?.width ?? 0;
@@ -361,21 +356,11 @@ export class KeyboardLayer {
         light.visible = key !== undefined && color !== undefined;
         if (light.visible && key && color !== undefined) {
           const strength = sounding ? LIGHT_SOUNDING : LIGHT_WAITING;
-          const inset = key.black ? 2 : 1.5;
           light.tint = color;
-          const loop = sounding ? this.lights?.lit : this.lights?.wait;
-          if (loop) {
-            // Each key on its own step of the loop, so lit keys never pulse in step; the
-            // neon outline brings its own brightness.
-            const step = Math.floor((performance.now() / 1000) * KEY_LIGHT_FPS) + pitch * 5;
-            light.texture = loop[step % loop.length] ?? light.texture;
-          }
+          light.texture = this.lightOf.get(pitch) ?? Texture.EMPTY;
           light.blendMode = key.black ? "add" : "normal";
-          light.alpha = loop ? 1 : key.black ? strength.black : strength.white;
-          light.x = key.x + inset;
-          light.width = key.width - inset * 2;
-          light.y = keyboardTop;
-          light.height = (key.black ? blackHeight : keyboardHeight) - 2;
+          light.alpha = key.black ? strength.black : strength.white;
+          light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
         }
       }
       const hint = this.keyDigits.get(pitch);
@@ -461,6 +446,29 @@ export class KeyboardLayer {
     }
   }
 
+  /** Bakes a light for every key's shape; the last layout's lights are freed. */
+  private bakeLights(
+    keys: ReadonlyMap<number, KeyRect>,
+    keyboardHeight: number,
+    blackHeight: number
+  ): void {
+    const old = this.lightTextures;
+    this.lightTextures = new Map();
+    this.lightOf.clear();
+    for (const pitch of keys.keys()) {
+      const shape = keyShape(pitch, keys, keyboardHeight - 2, blackHeight);
+      if (!shape) continue;
+      const id = shapeId(shape);
+      let texture = this.lightTextures.get(id) ?? old.get(id);
+      texture ??= bakeKeyLight(this.renderer, shape);
+      this.lightTextures.set(id, texture);
+      this.lightOf.set(pitch, texture);
+    }
+    for (const [id, texture] of old) {
+      if (!this.lightTextures.has(id)) texture.destroy(true);
+    }
+  }
+
   /** The lacquered rail under the keys, for a style with one. */
   private placeRail(whiteWidth: number, keysBottom: number, total: number): void {
     const texture = this.railTexture;
@@ -502,20 +510,4 @@ export class KeyboardLayer {
     this.onKeyPointer({ type: "up", pitch: this.mouseKey, velocity: 0 });
     this.mouseKey = undefined;
   }
-}
-
-/** The light laid over a lit key: white for a tint, fainter at the back, full at the front. */
-function bakeKeyLight(): Texture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 4;
-  canvas.height = 128;
-  const context = canvas.getContext("2d");
-  if (!context) return Texture.WHITE;
-  const gradient = context.createLinearGradient(0, 0, 0, 128);
-  gradient.addColorStop(0, "rgba(255, 255, 255, 0.55)");
-  gradient.addColorStop(0.7, "rgba(255, 255, 255, 0.9)");
-  gradient.addColorStop(1, "rgba(255, 255, 255, 1)");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, 4, 128);
-  return Texture.from(canvas);
 }
