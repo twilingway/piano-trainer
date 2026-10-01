@@ -24,7 +24,6 @@ import { PlaySettings } from "./ui/settings/PlaySettings";
 import { SongSettings } from "./ui/settings/SongSettings";
 import { StaffSettings } from "./ui/settings/StaffSettings";
 import { SongProgress } from "./ui/SongProgress";
-import { useAutoHide } from "./ui/useAutoHide";
 import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
 
@@ -84,9 +83,7 @@ export function App() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resultClosed, setResultClosed] = useState(false);
-  const [bar, setBar] = useState<HTMLDivElement | null>(null);
   const playing = snapshot?.playing ?? false;
-  const barHidden = useAutoHide(playing && !settingsOpen && !libraryOpen, bar);
   const { board, totalQuarters, progress, ticks } = useSongProgress(
     song,
     snapshot?.time ?? 0,
@@ -190,10 +187,9 @@ export function App() {
 
   return (
     <div className="app">
-      <div ref={setBar} className="shell-top" data-hidden={barHidden}>
+      <div className="shell-top">
         <PlayerTopBar
           title={song.title}
-          hidden={barHidden}
           playing={playing}
           soundLoading={sound === "loading"}
           mode={trainer.mode}
@@ -218,7 +214,6 @@ export function App() {
         <SongProgress
           progress={progress}
           ticks={ticks}
-          hidden={barHidden}
           onSeek={(share) => {
             trainer.seekToBeat(share * totalQuarters);
           }}

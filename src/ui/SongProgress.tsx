@@ -3,17 +3,15 @@ interface Props {
   readonly progress: number;
   /** Where each measure starts, 0 to 1. */
   readonly ticks: readonly number[];
-  readonly hidden: boolean;
   /** Goes to a share of the song, 0 to 1. */
   readonly onSeek: (share: number) => void;
 }
 
 /** A thin strip under the bar: how far the song has got, measure ticks, and a click to go there. */
-export function SongProgress({ progress, ticks, hidden, onSeek }: Props) {
+export function SongProgress({ progress, ticks, onSeek }: Props) {
   return (
     <div
       className="song-progress"
-      data-hidden={hidden}
       role="slider"
       aria-label="Ход песни"
       aria-valuemin={0}

@@ -8,8 +8,6 @@ export type HandsChoice = "right" | "left" | "both" | "listen";
 
 interface Props {
   readonly title: string;
-  /** The bar is out of the way while the song plays. */
-  readonly hidden: boolean;
   readonly playing: boolean;
   readonly soundLoading: boolean;
   readonly mode: PracticeModeChoice;
@@ -38,7 +36,7 @@ interface Props {
 export function PlayerTopBar(props: Props) {
   const { board } = props;
   return (
-    <header className="topbar" data-hidden={props.hidden}>
+    <header className="topbar">
       <button type="button" className="game-button topbar-library" onClick={props.onLibrary}>
         <LibraryIcon />
         <span className="topbar-title">{props.title}</span>

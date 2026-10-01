@@ -302,12 +302,6 @@ body {
   z-index: 5;
   display: grid;
   grid-template-rows: auto auto;
-  transition: margin-top 260ms var(--ease);
-}
-
-/* Out of the way while the song plays: the bar slides up, the progress stays as a hairline. */
-.shell-top[data-hidden="true"] {
-  margin-top: -52px;
 }
 
 .topbar {
