@@ -40,6 +40,8 @@ const TITLE_STYLE: TextStyleOptions = {
   fontFamily: DISPLAY_FONT,
   fontSize: 34,
   fontStyle: "italic",
+  // Canvas measures italic text upright: the slant and the stroke need room or they are cut.
+  padding: 16,
   fill: 0xffffff,
   stroke: { color: 0x0b1a33, width: 4 },
   dropShadow: { color: 0x000000, blur: 6, distance: 2, alpha: 0.6 }
@@ -48,6 +50,8 @@ const NUMBER_STYLE: TextStyleOptions = {
   fontFamily: DISPLAY_FONT,
   fontSize: 84,
   fontStyle: "italic",
+  // Canvas measures italic text upright: the slant and the stroke need room or they are cut.
+  padding: 16,
   fill: new FillGradient({
     type: "linear",
     start: { x: 0, y: 0 },
