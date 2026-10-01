@@ -65,6 +65,7 @@ export function App() {
     song,
     baseSong: current.baseSong,
     staffPrefs,
+    updateStaffPrefs,
     fallingNames: score.nameStyle,
     comparing: takes.comparing,
     lastTake: takes.lastTake

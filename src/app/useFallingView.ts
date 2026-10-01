@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { RefObject } from "react";
 
 import type { Trainer } from "../practice/Trainer";
@@ -46,6 +46,7 @@ interface Options {
   readonly song: Song;
   readonly baseSong: Song;
   readonly staffPrefs: StaffPrefs;
+  readonly updateStaffPrefs: (change: Partial<StaffPrefs>) => void;
   readonly fallingNames: NoteNameStyle | undefined;
   readonly comparing: boolean;
   readonly lastTake: { readonly take: Take; readonly review: TakeReview } | null;
@@ -62,12 +63,19 @@ export function useFallingView({
   song,
   baseSong,
   staffPrefs,
+  updateStaffPrefs,
   fallingNames,
   comparing,
   lastTake
 }: Options) {
-  const [showLabels, setShowLabels] = useState(true);
-  const [keyRange, setKeyRange] = useState<KeyRange>("song");
+  // Kept with the other view settings, so a reload brings them back.
+  const { labels: showLabels, keyRange } = staffPrefs;
+  const setShowLabels = (labels: boolean) => {
+    updateStaffPrefs({ labels });
+  };
+  const setKeyRange = (range: KeyRange) => {
+    updateStaffPrefs({ keyRange: range });
+  };
   const mirrorHostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

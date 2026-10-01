@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { NoteNameStyle } from "../song/musicxml";
+import type { KeyRange } from "./useFallingView";
 
 export interface StaffPrefs {
   readonly zoom: number;
@@ -24,6 +25,10 @@ export interface StaffPrefs {
   readonly road: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
+  /** Classroom stickers on the keys. */
+  readonly labels: boolean;
+  /** The keys shown: fitted to the song, or a real keyboard's range. */
+  readonly keyRange: KeyRange;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -39,7 +44,9 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   keys: true,
   hands: true,
   road: false,
-  noteCards: true
+  noteCards: true,
+  labels: true,
+  keyRange: "song"
 };
 
 function loadStaffPrefs(): StaffPrefs {
