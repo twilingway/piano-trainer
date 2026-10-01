@@ -345,10 +345,12 @@ export class NotesLayer {
         glow.scale.set(scale);
         glow.position.set(x, y + CARD_GLOW * scale);
         glow.tint = body.tint;
-        glow.alpha = seen;
+        // A neon tube flickers a little, each card on its own beat.
+        glow.alpha = seen * (0.85 + 0.15 * Math.sin(state.time * 11 + note.startBeat * 7));
         frame.scale.set(scale);
         frame.position.set(x, y);
-        frame.tint = body.tint;
+        // The tube itself burns near white, only touched by the finger's colour.
+        frame.tint = towardWhite(body.tint, 0.55);
         frame.alpha = seen;
         face.scale.set(scale);
         face.position.set(x, y - CARD_FACE_OFFSET * scale);
@@ -420,4 +422,13 @@ export class NotesLayer {
     }
     return texture;
   }
+}
+
+/** A colour `share` of the way to white. */
+function towardWhite(color: number, share: number): number {
+  const channel = (shift: number) => {
+    const value = (color >> shift) & 0xff;
+    return Math.round(value + (255 - value) * share) << shift;
+  };
+  return channel(16) | channel(8) | channel(0);
 }

@@ -1,4 +1,4 @@
-import { Container, Graphics, Text, Texture } from "pixi.js";
+import { BlurFilter, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import type { Renderer } from "pixi.js";
 
 import { isBlackKey } from "../fingering/fingering";
@@ -48,7 +48,7 @@ export function bakeCardFrame(renderer: Renderer, double = false): Texture {
   const half = FRAME / 2;
   frame
     .roundRect(half, half, CARD_WIDTH - FRAME, CARD_HEIGHT - FRAME, RADIUS - half)
-    .stroke({ width: FRAME, color: 0xffffff });
+    .stroke({ width: FRAME * 0.6, color: 0xffffff });
   if (double) {
     const inset = FRAME + 3;
     frame
@@ -105,23 +105,50 @@ export function bakeTrailTile(): Texture {
 }
 
 export function bakeCardGlow(renderer: Renderer): Texture {
-  const glow = new Graphics();
-  const rings = 11;
-  for (let ring = rings; ring >= 1; ring--) {
-    const reach = (CARD_GLOW * ring) / rings;
-    glow
-      .roundRect(
-        CARD_GLOW - reach,
-        CARD_GLOW - reach,
-        CARD_WIDTH + reach * 2,
-        CARD_HEIGHT + reach * 2,
-        RADIUS + reach
-      )
-      .fill({ color: 0xffffff, alpha: 0.12 });
-  }
+  const width = CARD_WIDTH + CARD_GLOW * 2;
+  const height = CARD_HEIGHT + CARD_GLOW * 2;
+  const glow = canvasSprite(width, height, (context) => {
+    context.strokeStyle = "#ffffff";
+    context.shadowColor = "#ffffff";
+    // A neon tube's light: wide and faint, then tighter and brighter round the line itself.
+    for (const [blur, lineWidth, alpha] of [
+      [16, 6, 0.55],
+      [9, 4, 0.7],
+      [4, 3, 0.9]
+    ] as const) {
+      context.globalAlpha = alpha;
+      context.shadowBlur = blur;
+      context.lineWidth = lineWidth;
+      context.beginPath();
+      context.roundRect(CARD_GLOW, CARD_GLOW, CARD_WIDTH, CARD_HEIGHT, RADIUS);
+      context.stroke();
+    }
+  });
   const root = new Container();
   root.addChild(glow);
   return bake(renderer, root);
+}
+
+/**
+ * A sprite of a canvas drawn in card units: the canvas is the bake's resolution
+ * finer, the sprite as much smaller, so baking it keeps every edge sharp.
+ */
+function canvasSprite(
+  width: number,
+  height: number,
+  draw: (context: CanvasRenderingContext2D) => void
+): Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(width * BAKE_RESOLUTION);
+  canvas.height = Math.ceil(height * BAKE_RESOLUTION);
+  const context = canvas.getContext("2d");
+  if (context) {
+    context.scale(BAKE_RESOLUTION, BAKE_RESOLUTION);
+    draw(context);
+  }
+  const sprite = new Sprite(Texture.from(canvas));
+  sprite.scale.set(1 / BAKE_RESOLUTION);
+  return sprite;
 }
 
 /**
@@ -136,7 +163,7 @@ export function bakeCardFace(
   clef: Clef
 ): Texture {
   const inner = CARD_WIDTH - FRAME * 2;
-  const g = new Graphics();
+  let g = new Graphics();
   g.roundRect(0, 0, inner, CARD_HEIGHT - FRAME * 2, RADIUS - FRAME).fill({
     color: FACE,
     alpha: FACE_ALPHA
@@ -161,6 +188,9 @@ export function bakeCardFace(
   // The staff stays in the background: the note on it is what reads first.
   g.stroke({ width: 1.8, color: INK, alpha: 0.42 });
 
+  // The note on its own, so it can glow over the dim staff.
+  const staff = g;
+  g = new Graphics();
   const headX = 6.8;
   const headY = 4.9;
   const hollow = glyph.kind === "whole" || glyph.kind === "half";
@@ -185,8 +215,10 @@ export function bakeCardFace(
   }
   if (glyph.dotted) g.circle(x + headX + 4, y - (position % 2 === 0 ? 2.5 : 0), 2.3).fill(INK);
 
+  const halo = g.clone();
+  halo.filters = [new BlurFilter({ strength: 3, quality: 3 })];
   const root = new Container();
-  root.addChild(g);
+  root.addChild(staff, halo, g);
   const top = STAFF_BOTTOM - 4 * SPACING;
   root.addChild(
     clef === "treble"
