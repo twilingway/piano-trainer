@@ -37,7 +37,7 @@ export interface Arrival {
  * flash and grows as it comes. The keyboard in front is not in that
  * perspective: it is the flat keyboard squashed in height.
  */
-export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.22, horizon: 0.04 };
+export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
 
 /** The road's shape, the player's to tune: a wider keyboard wants a lower horizon. */
 export interface RoadShape {
