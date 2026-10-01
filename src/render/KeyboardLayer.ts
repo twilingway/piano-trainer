@@ -189,13 +189,19 @@ export class KeyboardLayer {
     const whiteWidth = white?.width ?? 0;
     const blackWidth = black?.width ?? 0;
     const digitRoom = Math.min(whiteWidth * 0.9, DIGIT_MAX_PX) + 4;
+    // A sticker keeps off a painted key's rounded sides and its front bevel.
+    const painted = this.painted;
+    const whiteBevel = painted ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width : 3;
+    const blackBevel = painted ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width : 3;
+    const whiteShare = painted ? 1 - (2 * WHITE_SLICE.leftWidth) / painted.white.width : 0.92;
+    const blackShare = painted ? 1 - (2 * BLACK_SLICE.leftWidth) / painted.black.width : 0.92;
     const whiteScale = Math.min(
-      (whiteWidth * 0.92) / WHITE_STICKER.width,
-      (keyboardHeight - blackHeight - digitRoom) / WHITE_STICKER.height
+      (whiteWidth * whiteShare) / WHITE_STICKER.width,
+      (keyboardHeight - blackHeight - digitRoom - whiteBevel) / WHITE_STICKER.height
     );
     const blackScale = Math.min(
-      (blackWidth * 0.92) / BLACK_STICKER.width,
-      (blackHeight - digitRoom) / BLACK_STICKER.height
+      (blackWidth * blackShare) / BLACK_STICKER.width,
+      (blackHeight - digitRoom - blackBevel) / BLACK_STICKER.height
     );
 
     for (const [pitch, sprite] of this.keySprites) {
@@ -214,7 +220,8 @@ export class KeyboardLayer {
       if (!sticker) continue;
       sticker.scale.set(Math.max(key.black ? blackScale : whiteScale, 0));
       sticker.x = key.x + key.width / 2;
-      sticker.y = keyboardTop + (key.black ? blackHeight : keyboardHeight) - 3;
+      sticker.y =
+        keyboardTop + (key.black ? blackHeight - blackBevel : keyboardHeight - whiteBevel);
     }
 
     this.felt.removeChildren().forEach((child) => {
@@ -414,11 +421,12 @@ export class KeyboardLayer {
     for (const black of [true, false]) {
       for (const [pitch, sprite] of this.keySprites) {
         if (!sprite.visible || isBlackKey(pitch) !== black) continue;
+        // A nine-slice sprite's width and height leave out its scale, which a painted face uses.
         const inside =
           x >= sprite.x &&
-          x < sprite.x + sprite.width &&
+          x < sprite.x + sprite.width * sprite.scale.x &&
           y >= sprite.y &&
-          y < sprite.y + sprite.height;
+          y < sprite.y + sprite.height * sprite.scale.y;
         if (inside) return pitch;
       }
     }
