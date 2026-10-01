@@ -137,3 +137,62 @@ describe("assignFingering: pinned fingers", () => {
     expect(fingers.every((finger) => finger !== undefined)).toBe(true);
   });
 });
+
+describe("assignFingering: the course's rules", () => {
+  /** One event per entry; the notes of an entry sound together. */
+  function events(entries: readonly (readonly string[])[]): FingeringNote[] {
+    return entries.flatMap((names, index) =>
+      names.map((name, voice) => ({
+        id: `e${String(index)}v${String(voice)}`,
+        pitch: pitch(name),
+        start: index * 0.5
+      }))
+    );
+  }
+
+  /** Fingers of every event, lowest note first: "51" is the fifth on the lower key. */
+  function shapes(entries: readonly (readonly string[])[], hand: Hand): string[] {
+    const result = assignFingering(events(entries), hand);
+    return entries.map((names, index) =>
+      names
+        .map((_, voice) => String(result.get(`e${String(index)}v${String(voice)}`)?.finger))
+        .join("")
+    );
+  }
+
+  it("plays every left-hand octave with the fifth finger and the thumb", () => {
+    const octaves = [
+      ["A2", "A3"],
+      ["G2", "G3"],
+      ["F2", "F3"],
+      ["C3", "C4"],
+      ["A2", "A3"],
+      ["G2", "G3"]
+    ];
+    expect(shapes(octaves, "left")).toEqual(["51", "51", "51", "51", "51", "51"]);
+  });
+
+  it("plays left-hand root-position triads only as 5-3-1 or 4-2-1", () => {
+    const triads = [
+      ["C4", "E4", "G4"],
+      ["F4", "A4", "C5"],
+      ["G4", "B4", "D5"],
+      ["C4", "E4", "G4"],
+      ["A3", "C4", "E4"],
+      ["D4", "F4", "A4"]
+    ];
+    for (const shape of shapes(triads, "left")) expect(["531", "421"]).toContain(shape);
+  });
+
+  it("jumps rather than stretches past the span of the hand", () => {
+    const leaps = [["C5"], ["C5"], ["E6"], ["D6"], ["E6"], ["C5"], ["C5"]];
+    const fingers = shapes(leaps, "right");
+    // Back down, the hand lands with the thumb on the low note instead of dragging one finger along.
+    expect([fingers[0], fingers[1], fingers[5], fingers[6]]).toEqual(["1", "1", "1", "1"]);
+  });
+
+  it("keeps a neighbour-note figure on the middle fingers when the position allows", () => {
+    const phrase = ["G4", "C5", "B4", "C5", "F4", "D5", "C5", "D5", "C5", "B4"];
+    expect(fingersOf(melody(phrase), "right").slice(-4)).toEqual([3, 4, 3, 2]);
+  });
+});
