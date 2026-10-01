@@ -57,7 +57,6 @@ const MAX_SPARKS = 400;
 const SPARKS_PER_BURST = 24;
 const SPARKS_PER_HELD_S = 30;
 const SPARK_LIFE_S = 0.7;
-const HIT_LINE_COLOR = 0xc9a8ff;
 const HORIZON_COLOR = 0x3fd6ff;
 
 interface Spark {
@@ -297,20 +296,22 @@ export class RoadLayer {
     const { y: height, left, right } = this.hit;
     const line = this.hitLine;
     line.clear();
-    // A wide faint band under a thin bright wire that crackles a little.
-    line.rect(left, height - 6, right - left, 12).fill({ color: HIT_LINE_COLOR, alpha: 0.12 });
+    // In place of the felt, as in the mockup: a glowing blue band over the keys under a bright
+    // wire that crackles a little where a key is struck.
+    for (let step = 1; step <= 6; step++) {
+      line
+        .rect(left, height - step * 3, right - left, step * 6)
+        .fill({ color: HORIZON_COLOR, alpha: 0.05 });
+    }
+    line.rect(left, height - 3, right - left, 6).fill({ color: HORIZON_COLOR, alpha: 0.5 });
     const step = 6;
     line.moveTo(left, height);
     for (let x = left + step; x <= right; x += step) {
       const near = strikes.some((strike) => Math.abs(strike.x - x) < 40);
       const jitter = Math.sin(x * 0.37 + this.clock * 31) * Math.sin(x * 0.11 - this.clock * 17);
-      line.lineTo(x, height + jitter * (near ? 5 : 1.5));
+      line.lineTo(x, height + jitter * (near ? 4 : 0));
     }
-    line.stroke({ width: 2, color: HIT_LINE_COLOR, alpha: 0.95 });
-    for (const strike of strikes) {
-      line.circle(strike.x, height, 14).fill({ color: strike.color, alpha: 0.35 });
-      line.circle(strike.x, height, 6).fill({ color: 0xffffff, alpha: 0.8 });
-    }
+    line.stroke({ width: 2, color: 0xffffff, alpha: 0.95 });
   }
 
   private emit(strike: Strike, count: number): void {

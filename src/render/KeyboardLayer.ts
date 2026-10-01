@@ -219,6 +219,11 @@ export class KeyboardLayer {
     }
   }
 
+  /** The red felt over the keys; on the road a glowing hit line takes its place. */
+  showFelt(show: boolean): void {
+    this.felt.visible = show;
+  }
+
   /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
   showStickers(show: boolean): void {
     this.stickers.visible = show;
