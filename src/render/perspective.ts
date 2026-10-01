@@ -16,9 +16,7 @@ export interface RoadProjection {
   /**
    * Screen position and scale of a point `x` across the view and `t` of the
    * way down the lane: 0 at the horizon, 1 at the hit line. Equal steps of
-   * `t` close up towards the horizon, as on a real floor. The scale is that of
-   * a deeper floor (`sizeFarShare` at the horizon): the lanes stay nearly over
-   * their keys while the notes still come from far away and grow.
+   * `t` close up towards the horizon, as on a real floor.
    */
   readonly at: (x: number, t: number) => Projected;
 }
@@ -27,8 +25,7 @@ export function roadProjection(
   width: number,
   hitY: number,
   horizonY: number,
-  farShare: number,
-  sizeFarShare = farShare
+  farShare: number
 ): RoadProjection {
   const middle = width / 2;
   return {
@@ -36,13 +33,12 @@ export function roadProjection(
       // Depth runs evenly down the lane, from 1 / farShare at the horizon to 1 at the hit line;
       // things shrink as 1 / depth, which is the map PerspectiveMesh draws the lane with.
       const far = 1 / farShare;
-      const shrink = 1 / (far + (1 - far) * t);
-      const down = (shrink - farShare) / (1 - farShare);
-      const sizeFar = 1 / sizeFarShare;
+      const scale = 1 / (far + (1 - far) * t);
+      const down = (scale - farShare) / (1 - farShare);
       return {
-        x: middle + (x - middle) * shrink,
+        x: middle + (x - middle) * scale,
         y: horizonY + (hitY - horizonY) * down,
-        scale: 1 / (sizeFar + (1 - sizeFar) * t)
+        scale
       };
     }
   };
