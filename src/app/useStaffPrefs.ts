@@ -14,6 +14,8 @@ export interface StaffPrefs {
   readonly noteNames: "off" | NoteNameStyle;
   /** Chord symbols over the staff. */
   readonly chords: boolean;
+  /** Finger numbers on the staff. */
+  readonly fingers: boolean;
   /** The staff on screen at all; hidden, the falling notes get the room. */
   readonly visible: boolean;
   /** The falling notes on screen. */
@@ -42,6 +44,7 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   measuresPerLine: 4,
   noteNames: "off",
   chords: false,
+  fingers: true,
   visible: true,
   lane: true,
   keys: true,

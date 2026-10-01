@@ -47,6 +47,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                 zoom={prefs.zoom}
                 singleLine={prefs.singleLine}
                 follow={prefs.follow}
+                fingers={prefs.fingers}
                 breaksFromScore={props.fixedLines}
                 onSeek={props.onSeek}
                 liveBeat={props.liveBeat}
@@ -63,6 +64,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                   zoom={prefs.zoom}
                   singleLine={prefs.singleLine}
                   follow={prefs.follow}
+                  fingers={prefs.fingers}
                   breaksFromScore={props.fixedLines}
                   onSeek={props.onSeek}
                   liveBeat={props.liveBeat}

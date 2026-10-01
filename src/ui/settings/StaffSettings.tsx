@@ -11,7 +11,7 @@ interface Props {
   readonly onChange: (change: Partial<StaffPrefs>) => void;
 }
 
-/** The staff tab: zoom, lines, following the play, names and chords. */
+/** The staff tab: zoom, lines, following the play, names, fingers and chords. */
 export function StaffSettings({ prefs, hasScore, onChange }: Props) {
   if (!hasScore) {
     return <p className="setting-hint">У этой песни нет нотной записи: она открыта из MIDI.</p>;
@@ -102,6 +102,16 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
           <option value="ru">до ре ми</option>
           <option value="en">C D E</option>
         </select>
+      </label>
+      <label className="setting">
+        <span>Номера пальцев</span>
+        <input
+          type="checkbox"
+          checked={prefs.fingers}
+          onChange={(event) => {
+            onChange({ fingers: event.target.checked });
+          }}
+        />
       </label>
       <label className="setting">
         <span>Аккорды</span>
