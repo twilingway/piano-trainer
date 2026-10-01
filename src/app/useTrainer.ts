@@ -125,16 +125,26 @@ export function useTrainer({
     [listening, mode, handChoice, speed]
   );
 
+  // The take to play back while comparing. Outside comparing it stays undefined, so a take
+  // just finished does not reload the song: the run ends where it ended, with its results.
+  const replaying = useMemo(
+    () =>
+      compareSong && lastTake
+        ? { song: compareSong, speed: lastTake.take.speed, from: lastTake.take.from }
+        : undefined,
+    [compareSong, lastTake]
+  );
+
   useEffect(() => {
     const trainer = trainerRef.current;
     if (!trainer) return;
-    if (compareSong && lastTake) {
+    if (replaying) {
       trainer.load(
-        compareSong,
-        { mode: "tempo", hands: new Set<Hand>(), speed: lastTake.take.speed },
+        replaying.song,
+        { mode: "tempo", hands: new Set<Hand>(), speed: replaying.speed },
         `${songKey}:replay`
       );
-      if (lastTake.take.from > 0) trainer.seek(lastTake.take.from);
+      if (replaying.from > 0) trainer.seek(replaying.from);
       trainer.setPlaying(true);
       return;
     }
@@ -149,8 +159,7 @@ export function useTrainer({
     listening,
     songKey,
     startFromRef,
-    compareSong,
-    lastTake,
+    replaying,
     replayCount
   ]);
 
