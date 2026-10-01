@@ -7,6 +7,8 @@ import type { KeyEvent } from "../input/midiInput";
 import type { SongNote } from "../song/song";
 import { FINGER_COLOR } from "./fingerColors";
 import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
+import { KEY_LIGHT_FPS } from "./keyLights";
+import type { KeyLights } from "./keyLights";
 import type { KeyRect } from "./keyboardLayout";
 import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
 import { bakeKeyTextures } from "./keyTextures";
@@ -140,6 +142,8 @@ export class KeyboardLayer {
   private readonly rail = new Sprite();
   /** The owed chord by pitch, refilled every frame rather than made anew. */
   private readonly dueByPitch = new Map<number, SongNote>();
+  /** Arcadia's looping lights for the keys; without them a plain gradient lights a key. */
+  private lights: KeyLights | undefined;
   /** The key the mouse holds down, if any. */
   private mouseKey: number | undefined;
   /** The front bevel's height on screen, white and black: the finger digit stands above it. */
@@ -226,6 +230,11 @@ export class KeyboardLayer {
   /** The red felt over the keys; on the road a glowing hit line takes its place. */
   showFelt(show: boolean): void {
     this.felt.visible = show;
+  }
+
+  /** The animated lights for waiting and sounding keys. */
+  setLights(lights: KeyLights | undefined): void {
+    this.lights = lights;
   }
 
   /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
@@ -354,6 +363,12 @@ export class KeyboardLayer {
           const strength = sounding ? LIGHT_SOUNDING : LIGHT_WAITING;
           const inset = key.black ? 2 : 1.5;
           light.tint = color;
+          const loop = sounding ? this.lights?.lit : this.lights?.wait;
+          if (loop) {
+            // Each key on its own step of the loop, so lit keys never pulse in step.
+            const step = Math.floor((performance.now() / 1000) * KEY_LIGHT_FPS) + pitch * 5;
+            light.texture = loop[step % loop.length] ?? light.texture;
+          }
           light.blendMode = key.black ? "add" : "normal";
           light.alpha = key.black ? strength.black : strength.white;
           light.x = key.x + inset;
