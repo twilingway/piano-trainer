@@ -1,4 +1,4 @@
-import { Container, Sprite, Texture } from "pixi.js";
+import { Container, Sprite, Texture, TilingSprite } from "pixi.js";
 import type { Renderer } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
@@ -14,9 +14,11 @@ import {
   CARD_GLOW,
   CARD_HEIGHT,
   CARD_WIDTH,
+  TRAIL_TILE,
   bakeCardFace,
   bakeCardFrame,
-  bakeCardGlow
+  bakeCardGlow,
+  bakeTrailTile
 } from "./noteCards";
 import { noteGlyph } from "./noteGlyph";
 import type { RoadLayer } from "./RoadLayer";
@@ -29,6 +31,8 @@ const HIT_LINE = 0xffffff;
 const NOTE_GAP_PX = 1;
 /** With cards on, the bar behind a card is a tail this share of its key wide. */
 const TAIL_SHARE = 0.28;
+/** On the road a note trails a lane this share of its key wide, marked at every beat. */
+const TRAIL_SHARE = 0.86;
 /** A note card's width, in white-key widths, and its limits in pixels. */
 const CARD_PER_WIDTH = 1.9;
 const CARD_MIN_PX = 34;
@@ -36,7 +40,10 @@ const CARD_MAX_PX = 96;
 
 interface NoteSprite {
   readonly note: SongNote;
-  readonly body: Sprite;
+  /** The bar, or on the road the trail: a tiled lane with a bar at every beat. */
+  readonly body: TilingSprite;
+  /** Seconds of one quarter within the note: the trail's beat. */
+  readonly beatSeconds: number;
   /** The note written on a little staff, at the head of the body, glowing in its colour. */
   readonly glow: Sprite;
   readonly frame: Sprite;
@@ -86,6 +93,7 @@ export class NotesLayer {
   /** The left hand's frame, with a second ring. */
   private readonly cardFrameLeft: Texture;
   private readonly cardGlow: Texture;
+  private readonly trailTile: Texture;
   /** Card faces by pitch and written value, baked the first time a song needs one. */
   private readonly cardFaces = new Map<string, Texture>();
   private cardsOn = true;
@@ -100,6 +108,7 @@ export class NotesLayer {
     this.cardFrame = bakeCardFrame(renderer);
     this.cardFrameLeft = bakeCardFrame(renderer, true);
     this.cardGlow = bakeCardGlow(renderer);
+    this.trailTile = bakeTrailTile();
   }
 
   /** Shows or hides the notes, their cards and the guides. */
@@ -134,7 +143,7 @@ export class NotesLayer {
     for (const texture of this.cardFaces.values()) texture.destroy(true);
     this.cardFaces.clear();
     this.notes = song.notes.map((note, order) => {
-      const body = new Sprite(Texture.WHITE);
+      const body = new TilingSprite({ texture: Texture.WHITE, width: 1, height: 1 });
       body.eventMode = "static";
       body.cursor = "pointer";
       body.on("pointertap", () => {
@@ -153,7 +162,9 @@ export class NotesLayer {
       frame.on("pointertap", () => {
         this.onNoteClick(note.id);
       });
-      const glyph = noteGlyph(quartersAt(song, note.start + note.duration) - note.startBeat);
+      const quarters = quartersAt(song, note.start + note.duration) - note.startBeat;
+      const glyph = noteGlyph(quarters);
+      const beatSeconds = note.duration / Math.max(quarters, 0.25);
       const face = new Sprite(this.cardFace(note.pitch, glyph, note.hand));
       face.anchor.set(0.5, 1);
       face.eventMode = "none";
@@ -173,7 +184,7 @@ export class NotesLayer {
       badge.zIndex = glow.zIndex + 3;
       this.lane.addChild(body, digit, name);
       this.cards.addChild(glow, frame, face, badge);
-      return { note, body, glow, frame, face, badge, digit, name };
+      return { note, body, beatSeconds, glow, frame, face, badge, digit, name };
     });
   }
 
@@ -220,7 +231,9 @@ export class NotesLayer {
       Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
     );
     const cardScale = cardWidth / CARD_WIDTH;
-    for (const { note, body, glow, frame, face, badge, digit, name } of this.notes) {
+    // On the road a note trails a lane of beats behind its card, as in the mockup.
+    const trail = road !== undefined && cards;
+    for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
         this.playing.set(note.pitch, note);
       }
@@ -240,13 +253,28 @@ export class NotesLayer {
 
       const playerNote = state.hands.has(note.hand);
       const status = state.statusOf(note.id);
-      const barWidth = cards ? key.width * TAIL_SHARE : key.width - NOTE_GAP_PX * 2;
+      const barWidth = trail
+        ? key.width * TRAIL_SHARE
+        : cards
+          ? key.width * TAIL_SHARE
+          : key.width - NOTE_GAP_PX * 2;
       body.x = key.x + (key.width - barWidth) / 2;
       body.width = barWidth;
       // The tail runs the note's whole length, so lengths compare; the card's glass covers
       // its head.
       body.y = bottom - noteHeight;
       body.height = noteHeight;
+      if (body.texture !== (trail ? this.trailTile : Texture.WHITE)) {
+        body.texture = trail ? this.trailTile : Texture.WHITE;
+        body.blendMode = trail ? "add" : "normal";
+        if (!trail) body.tileScale.set(1);
+      }
+      if (trail) {
+        const beatPx = Math.max(6, beatSeconds * pixelsPerSecond);
+        body.tileScale.set(barWidth / TRAIL_TILE, beatPx / TRAIL_TILE);
+        // A bar on the note's start, then one every beat back towards the horizon.
+        body.tilePosition.set(0, noteHeight % beatPx);
+      }
       const custom = state.colorOf?.(note);
       const own =
         road && note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
@@ -298,7 +326,7 @@ export class NotesLayer {
   /** Frees the textures the notes baked for themselves; the shared labels are the view's. */
   destroy(): void {
     for (const texture of this.cardFaces.values()) texture.destroy(true);
-    for (const texture of [this.cardFrame, this.cardFrameLeft, this.cardGlow]) {
+    for (const texture of [this.cardFrame, this.cardFrameLeft, this.cardGlow, this.trailTile]) {
       if (texture !== Texture.WHITE) texture.destroy(true);
     }
   }

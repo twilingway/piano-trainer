@@ -1,5 +1,5 @@
-import { Container, Graphics, Text } from "pixi.js";
-import type { Renderer, Texture } from "pixi.js";
+import { Container, Graphics, Text, Texture } from "pixi.js";
+import type { Renderer } from "pixi.js";
 
 import { isBlackKey } from "../fingering/fingering";
 import { placeOnStaff } from "./keyStickers";
@@ -64,6 +64,46 @@ export function bakeCardFrame(renderer: Renderer, double = false): Texture {
  * A soft white halo the card's shape: rings fading outwards, cheaper than a
  * blur and baked once. Added in the finger's colour behind the card, it glows.
  */
+/** The trail tile's side in pixels: one beat of a note's trail on the road. */
+export const TRAIL_TILE = 64;
+
+/**
+ * One beat of a note's trail on the road, white for a tint to colour: a thin
+ * glassy fill, bright edges fading inwards, and a bright bar across its
+ * bottom with a soft glow over it. Repeated along the note, it marks every
+ * beat of its length.
+ */
+export function bakeTrailTile(): Texture {
+  const size = TRAIL_TILE;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) return Texture.WHITE;
+  context.fillStyle = "rgba(255, 255, 255, 0.16)";
+  context.fillRect(0, 0, size, size);
+  const edge = 8;
+  for (const [from, to] of [
+    [0, edge],
+    [size, size - edge]
+  ] as const) {
+    const gradient = context.createLinearGradient(from, 0, to, 0);
+    gradient.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+    gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    context.fillStyle = gradient;
+    context.fillRect(Math.min(from, to), 0, edge, size);
+  }
+  const bar = 5;
+  const halo = context.createLinearGradient(0, size - bar - 14, 0, size - bar);
+  halo.addColorStop(0, "rgba(255, 255, 255, 0)");
+  halo.addColorStop(1, "rgba(255, 255, 255, 0.4)");
+  context.fillStyle = halo;
+  context.fillRect(0, size - bar - 14, size, 14);
+  context.fillStyle = "rgba(255, 255, 255, 0.95)";
+  context.fillRect(0, size - bar, size, bar);
+  return Texture.from(canvas);
+}
+
 export function bakeCardGlow(renderer: Renderer): Texture {
   const glow = new Graphics();
   const rings = 11;
