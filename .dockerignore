@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+.agents
+.codex
+node_modules
+dist
+coverage
+local-lessons
+tools
+*.log
+.env*
+!.env.example
+docs
+openspec

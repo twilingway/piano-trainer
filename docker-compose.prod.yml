@@ -1,0 +1,20 @@
+services:
+  piano-web:
+    image: piano-trainer:${IMAGE_TAG:-local}
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-public_net}
