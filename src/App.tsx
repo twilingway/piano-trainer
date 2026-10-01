@@ -41,7 +41,8 @@ export function App() {
   const takes = useTakeReview(song, songKey, ensureSound, {
     withNames: score.withNames,
     fixedLines: score.fixedLines,
-    measuresPerLine: staffPrefs.measuresPerLine
+    measuresPerLine: staffPrefs.measuresPerLine,
+    autoReview: staffPrefs.autoReview
   });
   const trainer = useTrainer({
     song,
@@ -140,6 +141,10 @@ export function App() {
           onListen={() => void trainer.toggleListening()}
           stats={stats}
           mode={trainer.mode}
+          autoReview={staffPrefs.autoReview}
+          onAutoReview={(autoReview) => {
+            updateStaffPrefs({ autoReview });
+          }}
         />
       )
     },
@@ -300,11 +305,15 @@ export function App() {
       <ResultDialog
         open={Boolean(snapshot?.finished && !listening && !comparing && stats && !resultClosed)}
         stats={stats}
-        canReview={Boolean(review)}
+        canReview={takes.canReview}
         onClose={() => {
           setResultClosed(true);
         }}
         onAgain={startOver}
+        onReview={() => {
+          takes.showReview();
+          setResultClosed(true);
+        }}
       />
     </div>
   );

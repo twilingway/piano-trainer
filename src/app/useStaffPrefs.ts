@@ -35,6 +35,8 @@ export interface StaffPrefs {
   readonly keyRange: KeyRange;
   /** The look of the keys. */
   readonly keyStyle: KeyStyle;
+  /** The take's review opens by itself at the end of a run. */
+  readonly autoReview: boolean;
   /** The road's width at the horizon, as a share of its width at the keys. */
   readonly roadFar: number;
   /** The road's horizon, as a share of the way from the top down to the keys. */
@@ -59,6 +61,7 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   labels: true,
   keyRange: "song",
   keyStyle: "classic",
+  autoReview: false,
   roadFar: DEFAULT_ROAD_SHAPE.far,
   roadHorizon: DEFAULT_ROAD_SHAPE.horizon
 };

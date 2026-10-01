@@ -27,10 +27,11 @@ interface Props {
   readonly canReview: boolean;
   readonly onClose: () => void;
   readonly onAgain: () => void;
+  readonly onReview: () => void;
 }
 
 /** The end of a run: the accuracy, the notes that went wrong most, and what next. */
-export function ResultDialog({ open, stats, canReview, onClose, onAgain }: Props) {
+export function ResultDialog({ open, stats, canReview, onClose, onAgain, onReview }: Props) {
   const played = stats ? stats.hits + stats.misses : 0;
   const accuracy = stats && played + stats.wrong > 0 ? stats.hits / (played + stats.wrong) : 0;
   return (
@@ -50,10 +51,13 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain }: Props
           Ещё раз
         </button>
         {canReview && (
-          <button type="button" className="game-button" onClick={onClose}>
+          <button type="button" className="game-button" onClick={onReview}>
             Разобрать дубль
           </button>
         )}
+        <button type="button" className="game-button" onClick={onClose}>
+          Закрыть
+        </button>
       </div>
     </GameDialog>
   );

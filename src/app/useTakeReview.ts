@@ -44,6 +44,8 @@ interface StaffLayout {
   readonly withNames: (xml: string) => string;
   readonly fixedLines: boolean;
   readonly measuresPerLine: number;
+  /** Open the review by itself when a take ends; otherwise only on the player's ask. */
+  readonly autoReview: boolean;
 }
 
 /**
@@ -54,7 +56,7 @@ export function useTakeReview(
   song: Song,
   songKey: string,
   ensureSound: () => Promise<void>,
-  { withNames, fixedLines, measuresPerLine }: StaffLayout
+  { withNames, fixedLines, measuresPerLine, autoReview }: StaffLayout
 ) {
   /** The last take and how it compares with the score. */
   const [lastTake, setLastTake] = useState<{ take: Take; review: TakeReview } | null>(null);
@@ -65,6 +67,8 @@ export function useTakeReview(
   /** Bumped to play the comparison again from its start. */
   const [replayCount, setReplayCount] = useState(0);
   const [takeStaff, setTakeStaff] = useState<TakeStaff>("off");
+  /** The review of the last take is on screen: the bar and the marks on the staff. */
+  const [reviewShown, setReviewShown] = useState(false);
 
   // Each song and level keeps its own takes.
   const [takesOf, setTakesOf] = useState<string | null>(null);
@@ -74,12 +78,18 @@ export function useTakeReview(
     setTakes(loadTakes(songKey));
     setLastTake(null);
     setComparing(false);
+    setReviewShown(false);
   }
 
   /** A finished take is compared with the song on screen now. */
   const recordTake = (take: Take) => {
     setTakes(saveTake(take));
     setLastTake({ take, review: compareTake(song, take) });
+    setReviewShown(autoReview);
+  };
+
+  const showReview = () => {
+    setReviewShown(true);
   };
 
   const selectTake = (id: string) => {
@@ -99,6 +109,7 @@ export function useTakeReview(
   const hideReview = () => {
     setComparing(false);
     setLastTake(null);
+    setReviewShown(false);
   };
 
   const downloadLastTake = () => {
@@ -112,7 +123,8 @@ export function useTakeReview(
   );
 
   // A take belongs to the song and level it was played on; another song shows no review.
-  const review = lastTake?.take.songKey === songKey ? lastTake.review : undefined;
+  const takeReview = lastTake?.take.songKey === songKey ? lastTake.review : undefined;
+  const review = reviewShown ? takeReview : undefined;
   const reviewMarks = useMemo(
     () =>
       review
@@ -145,6 +157,9 @@ export function useTakeReview(
     takes,
     lastTake,
     review,
+    /** The last take has a review to open. */
+    canReview: takeReview !== undefined,
+    showReview,
     reviewMarks,
     transcription,
     comparing,
