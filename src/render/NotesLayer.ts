@@ -277,7 +277,11 @@ export class NotesLayer {
       const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
       // With cards the bar thins to a tail behind the card: the length still shows.
       body.visible = onScreen;
-      frame.visible = onScreen && cards;
+      // A note taken bursts on its key and its card is gone; the key's own light carries on.
+      const struck =
+        state.statusOf(note.id) === "hit" ||
+        (!state.hands.has(note.hand) && note.start <= state.time);
+      frame.visible = onScreen && cards && !struck;
       face.visible = frame.visible;
       glow.visible = frame.visible;
       badge.visible = frame.visible && note.finger !== undefined;
@@ -349,6 +353,8 @@ export class NotesLayer {
         face.scale.set(scale);
         face.position.set(x, y - CARD_FACE_OFFSET * scale);
         face.alpha = seen;
+        // The note and its staff in the finger's colour, the note bright over the dim lines.
+        face.tint = body.tint;
         badge.scale.set(scale * 0.55);
         badge.position.set(x, y - (CARD_HEIGHT - CARD_FACE_OFFSET - 1) * scale);
         badge.alpha = seen;

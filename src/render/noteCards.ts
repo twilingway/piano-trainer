@@ -16,7 +16,7 @@ import type { NoteGlyph } from "./noteGlyph";
 /** The card's size in its own pixels; the view scales it to the keys. */
 export const CARD_WIDTH = 64;
 export const CARD_HEIGHT = 84;
-const FRAME = 3;
+const FRAME = 4;
 const RADIUS = 10;
 const INK = 0xffffff;
 const FACE = 0x0b0d14;
@@ -117,7 +117,7 @@ export function bakeCardGlow(renderer: Renderer): Texture {
         CARD_HEIGHT + reach * 2,
         RADIUS + reach
       )
-      .fill({ color: 0xffffff, alpha: 0.075 });
+      .fill({ color: 0xffffff, alpha: 0.12 });
   }
   const root = new Container();
   root.addChild(glow);
@@ -158,7 +158,8 @@ export function bakeCardFace(
     const ly = STAFF_BOTTOM - (ledger * SPACING) / 2;
     g.moveTo(x - 10, ly).lineTo(x + 10, ly);
   }
-  g.stroke({ width: 1.8, color: INK, alpha: 0.9 });
+  // The staff stays in the background: the note on it is what reads first.
+  g.stroke({ width: 1.8, color: INK, alpha: 0.42 });
 
   const headX = 6.8;
   const headY = 4.9;

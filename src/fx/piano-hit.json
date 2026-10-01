@@ -26,7 +26,33 @@
       "thr": 0,
       "ss": 2
     },
-    "textures": [],
+    "textures": [
+      {
+        "id": "tex_note_eighth",
+        "name": "note-eighth",
+        "sheet": null
+      },
+      {
+        "id": "tex_note_beamed",
+        "name": "note-beamed",
+        "sheet": null
+      },
+      {
+        "id": "tex_note_quarter",
+        "name": "note-quarter",
+        "sheet": null
+      },
+      {
+        "id": "tex_note_sixteenth",
+        "name": "note-sixteenth",
+        "sheet": null
+      },
+      {
+        "id": "tex_note_clef",
+        "name": "note-clef",
+        "sheet": null
+      }
+    ],
     "layers": [
       {
         "id": "lr_mt5goosf_1zr2",
@@ -122,6 +148,606 @@
         "fadeSoft": 0.5
       },
       {
+        "id": "lr_note_0",
+        "name": "note-eighth",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 0.5,
+        "blend": "add",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 50,
+          "shape": "point",
+          "sx": 60,
+          "sy": 60,
+          "dir": "out",
+          "angle": -90,
+          "spread": 70,
+          "speed": 360,
+          "speedRnd": 0.5,
+          "rate": 0,
+          "bursts": [
+            {
+              "t": 0,
+              "n": 3
+            }
+          ],
+          "seed": 11,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.45,
+          "lifeRnd": 0.25,
+          "sprite": {
+            "kind": "tex",
+            "texId": "tex_note_eighth"
+          },
+          "size": 62,
+          "sizeRnd": 0.3,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.6
+              },
+              {
+                "t": 0.25,
+                "v": 1.1
+              },
+              {
+                "t": 1,
+                "v": 0.8
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 0.6,
+                "v": 0.9
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [235, 235, 235]
+              }
+            ]
+          },
+          "tintTex": true,
+          "rot": 0,
+          "rotRnd": 0.4,
+          "spin": 60,
+          "spinRnd": 1,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": 260,
+          "drag": 1.6,
+          "turbAmp": 0,
+          "turbFreq": 1.5,
+          "squash": 0,
+          "glow": 0.5,
+          "glowSize": 1.6,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0
+        },
+        "glowL": 0,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      },
+      {
+        "id": "lr_note_1",
+        "name": "note-beamed",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 0.5,
+        "blend": "add",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 50,
+          "shape": "point",
+          "sx": 60,
+          "sy": 60,
+          "dir": "out",
+          "angle": -90,
+          "spread": 70,
+          "speed": 360,
+          "speedRnd": 0.5,
+          "rate": 0,
+          "bursts": [
+            {
+              "t": 0,
+              "n": 3
+            }
+          ],
+          "seed": 12,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.45,
+          "lifeRnd": 0.25,
+          "sprite": {
+            "kind": "tex",
+            "texId": "tex_note_beamed"
+          },
+          "size": 62,
+          "sizeRnd": 0.3,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.6
+              },
+              {
+                "t": 0.25,
+                "v": 1.1
+              },
+              {
+                "t": 1,
+                "v": 0.8
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 0.6,
+                "v": 0.9
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [235, 235, 235]
+              }
+            ]
+          },
+          "tintTex": true,
+          "rot": 0,
+          "rotRnd": 0.4,
+          "spin": 60,
+          "spinRnd": 1,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": 260,
+          "drag": 1.6,
+          "turbAmp": 0,
+          "turbFreq": 1.5,
+          "squash": 0,
+          "glow": 0.5,
+          "glowSize": 1.6,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0
+        },
+        "glowL": 0,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      },
+      {
+        "id": "lr_note_2",
+        "name": "note-quarter",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 0.5,
+        "blend": "add",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 50,
+          "shape": "point",
+          "sx": 60,
+          "sy": 60,
+          "dir": "out",
+          "angle": -90,
+          "spread": 70,
+          "speed": 360,
+          "speedRnd": 0.5,
+          "rate": 0,
+          "bursts": [
+            {
+              "t": 0,
+              "n": 3
+            }
+          ],
+          "seed": 13,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.45,
+          "lifeRnd": 0.25,
+          "sprite": {
+            "kind": "tex",
+            "texId": "tex_note_quarter"
+          },
+          "size": 62,
+          "sizeRnd": 0.3,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.6
+              },
+              {
+                "t": 0.25,
+                "v": 1.1
+              },
+              {
+                "t": 1,
+                "v": 0.8
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 0.6,
+                "v": 0.9
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [235, 235, 235]
+              }
+            ]
+          },
+          "tintTex": true,
+          "rot": 0,
+          "rotRnd": 0.4,
+          "spin": 60,
+          "spinRnd": 1,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": 260,
+          "drag": 1.6,
+          "turbAmp": 0,
+          "turbFreq": 1.5,
+          "squash": 0,
+          "glow": 0.5,
+          "glowSize": 1.6,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0
+        },
+        "glowL": 0,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      },
+      {
+        "id": "lr_note_3",
+        "name": "note-sixteenth",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 0.5,
+        "blend": "add",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 50,
+          "shape": "point",
+          "sx": 60,
+          "sy": 60,
+          "dir": "out",
+          "angle": -90,
+          "spread": 70,
+          "speed": 360,
+          "speedRnd": 0.5,
+          "rate": 0,
+          "bursts": [
+            {
+              "t": 0,
+              "n": 3
+            }
+          ],
+          "seed": 14,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.45,
+          "lifeRnd": 0.25,
+          "sprite": {
+            "kind": "tex",
+            "texId": "tex_note_sixteenth"
+          },
+          "size": 62,
+          "sizeRnd": 0.3,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.6
+              },
+              {
+                "t": 0.25,
+                "v": 1.1
+              },
+              {
+                "t": 1,
+                "v": 0.8
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 0.6,
+                "v": 0.9
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [235, 235, 235]
+              }
+            ]
+          },
+          "tintTex": true,
+          "rot": 0,
+          "rotRnd": 0.4,
+          "spin": 60,
+          "spinRnd": 1,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": 260,
+          "drag": 1.6,
+          "turbAmp": 0,
+          "turbFreq": 1.5,
+          "squash": 0,
+          "glow": 0.5,
+          "glowSize": 1.6,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0
+        },
+        "glowL": 0,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      },
+      {
+        "id": "lr_note_4",
+        "name": "note-clef",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 0.5,
+        "blend": "add",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 50,
+          "shape": "point",
+          "sx": 60,
+          "sy": 60,
+          "dir": "out",
+          "angle": -90,
+          "spread": 70,
+          "speed": 360,
+          "speedRnd": 0.5,
+          "rate": 0,
+          "bursts": [
+            {
+              "t": 0,
+              "n": 1
+            }
+          ],
+          "seed": 15,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.45,
+          "lifeRnd": 0.25,
+          "sprite": {
+            "kind": "tex",
+            "texId": "tex_note_clef"
+          },
+          "size": 62,
+          "sizeRnd": 0.3,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.6
+              },
+              {
+                "t": 0.25,
+                "v": 1.1
+              },
+              {
+                "t": 1,
+                "v": 0.8
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 0.6,
+                "v": 0.9
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [235, 235, 235]
+              }
+            ]
+          },
+          "tintTex": true,
+          "rot": 0,
+          "rotRnd": 0.4,
+          "spin": 60,
+          "spinRnd": 1,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": 260,
+          "drag": 1.6,
+          "turbAmp": 0,
+          "turbFreq": 1.5,
+          "squash": 0,
+          "glow": 0.5,
+          "glowSize": 1.6,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0
+        },
+        "glowL": 0,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      },
+      {
         "id": "lr_mt5goosf_1zr1",
         "name": "Искры",
         "type": "emitter",
@@ -146,7 +772,7 @@
           "bursts": [
             {
               "t": 0,
-              "n": 36
+              "n": 14
             }
           ],
           "seed": 1,
@@ -167,7 +793,7 @@
             "id": "streak",
             "p": {}
           },
-          "size": 46,
+          "size": 30,
           "sizeRnd": 0.5,
           "sizeOL": {
             "pts": [
@@ -248,5 +874,11 @@
       }
     ]
   },
-  "tex": {}
+  "tex": {
+    "tex_note_eighth": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAADeUlEQVR4nO3cS6hNUQDG8W95RF4DRMRAymMiIhORiTLATAYmproyFZkoJmJCJkoJUwMzJQYXkZEUA8lACoXIo+uRz2AfpWsf9+xz1t3rrr3/v9G9a59W3259Z9/HPntJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgogupA6Rk++KoocshhJspsiAB/+tg6kx1m5Q6wASzKHUA1KjkCvDENm+KtigpgG0fTp0LNelSgF+296fOhhp0KcAfp21PTp0R42iMAtj2sO2lqXNinPRQANt+b3t36qwYBz0W4I/LtmenzoyIKhbAtp/aXps6NyIpWeA3PZTgq+2dqbMjgpLFPWj7mO2fY5Tgp+09qfNjQCULe6AzvsH24zFK8M325tTngAF0K0Dn2HTb58YowQtn/osh//fuIoQwEkIYkrRX0kiXly2VdLS+VIjqf1eAUa/bZPtDl6vAR9tz6s4eC1eAHoQQ7kraJel7yeE5krbXmygeCtCjEMKwpBNdDm+tMUpUFKCaU5LelYyvqjtILBSgghDCV0lXSw5l+0kiClDdcMnYzNpTREIBqntWMvaj9hSRUIDqPpSMva87RCwUII6XqQP0iwJUN69k7H7tKSKhANXNLRm7XXuKSChAdStGff9C0r0UQWKgANWtH/X9lRCCkySJgAJUt+Cvr0cknU0VJIYpqQPkJoSwzfZqSbsljYQQXqfOhD71eju4yfgR0HIUoOUoQMtRgJajAC1HAVqOArQcBWg5CtByFKDlKEDLNfpmkO2pkjZL2ihpoYpP83yW9ErSg4TRJoxGFsD2cklHVNyxy/rp3fHWqALYnibppKQhSWzx1oPGFMDFdm7XJK1LnSUnjSiA7fmSbkhamTpLbrL/K8B2UPG8Hovfh+wLIGmfpC2R5voVaZ5sZF0AF1u7H484ZbaPePUr6wKo2JhhccT53kacKwu5F2BH5PmeR55vwsu9AMsizvUyhEABMhNzZ45bEefKRu4F+BZxrgsR58pG7gWI9VTOw84uYK2TewHuRJrnUKR5UCfbSzqbNg/ifOrzwABsnxlg8W/ZnpH6HDAA29Ns3+tj8a+z+A1he4btSz0u/CfbQy5uIqFJbK+xfdb2I9vf/1r0L7bv2j7k4tYxOhr9LrA9S8U5fs55GxcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANBuvwHIhOd2THRAFQAAAABJRU5ErkJggg==",
+    "tex_note_beamed": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAEe0lEQVR4nO3dT2gcZRzG8e+v9o/VVkWLRqmCelDECipKxbZIiwdBvSl468FTreCt2JuiF/GmF//kpIIXQUGkUmgx7SpWCEVREP+A0qIHa1qMjdHEx8NsSEjSmJ19Z2dm3+cDA4Flfu9vd56d3ZnJzgtmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmAybpOUl7JF1Sdy9tE3U3kIIkdf/8BxgHxrpLJyImamusBYYtAEseAr6iCMMxYCwifh1YYy0w7AFYzvfM7yGORcSP1XTVDjkGYLHTLNhDAN9ERD/1WsUBWOoMcJz5UIxHxGzC+o3iAPy/SeBT5vcQJyLirwrHGygHoHfTwBfM7yE6EfHHAMdPalgD8DzwNbAL2AncDqypaPhZ4CRFGD6JiPcrGqcSwxqApyPi1QWPXwHsoAjDLuBuYF0FrcxGxNoK6lamVc2WFRFngQ+7C5I2AvdRBGInsB24tK7+6pRFABaLiCngSHdB0lqKvcLcR8b9wJW1NWi90VL7+6wXkrZJ2ifpXUmnlxljOTOpnpP1IHUALjDGTZL2ShqV9J0D0CCDCMAyY45IeqPtAajq0GjodS8qfVt3H/1yADLnAGTOAcicA5A5ByBzDkDmHIDMOQCZcwAy5wBkzgHInAOQOQcgcw5A5hyAzDkAmXMAMucAZM4ByJwDkDkHIHMOQOYcgMw5AJlzADLnAGTOAchcK+4PIGkdxe/27wWuAa6iuHnTL8CJGltrvUYHQNLNwEHgMWBzze0MpUYGQNIG4CXgKeCimtsZao0LgKTrgQ+AO+vuJQeNCoCkLcBh4Ja6e8lFY44CJAXwHt74A9WYAAB7Ke7SlcK/ieoMvUYEQNIa4IWEJX9PWGuoNeU7wAPAdQnr/Zaw1lxAtwAjwHpgAvgp5Rh1aUoAHk5cr+9JILqHok8AjwAPsvQ8xBRFEFqtKQG4MWGtU/3MAtJ9t+8DnmXlvdLG7tJqTQnAtQlrHSm7oqQR4B1gd7p2mq0pAZhOWGu0zEqStgId4IaEvTReI44CgFQzeZ2MiLFeV5J0OfAxmW18aE4Ajieqc6Dkei8CtyXqwXolaauk6VXekftCXi859jZJM32OPedc6temao3YA0TEKeC1PkocBZ4pue6TpLvimPT8Q1YkbZD0WYl33SGVnDNYxbwAq50LYDU6qV+XqjViDwAQEdPAHuCtVa4yCewHHoqI8yWHvZq0ZyA/T1grX5LukPSKpC8l/b3gHfanpI6kAyouHfc7zl0J3/2S9GiK52+LSNokabOKS8Yp6+5IuPHPStqUsr9BaMqJoBVFxGRFpc8krDVaYZ+VGYp5A8tSccFngv7P6U8Bt0bEz/13NViN+RJYh+4Xz6MJSh1s48Y3QNLuPj/7D6m4gmhtJenNkhv/sIpZSK3NJK2X9HYPG35G0suSLq67d0tI0uOSxlfY8LOSPpJ0T929ppL1UcCFqPhxynaKf1S5DDgP/AB0IsLn+83MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzKw2/wHxRVsJRYuzdwAAAABJRU5ErkJggg==",
+    "tex_note_quarter": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACK0lEQVR4nO3dsYsPYBzH8c9z6OpiokQMMtiUxUb+AKvdfvYrs8nIppSYDTYlN4iUSf4Ak2KQxd1wBh/DbxG68Pu65/F83q/xhk/fX897+fUbTgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKNrvQ8Yke17P/zpQWvtaY9b0IF/dq33Tf/KSu8D0BcBhCOAcAQQjgDCEUA4AghHAOEIIBwBhCOAcAQQjgDCEUA4AghHAOEIIBwBhCOAcAQQjgDCEUA4AghHAOEIIBwBhCOAcAQQjgDCEUA4AghHAOEIIBwBhCOAcAQQjgDCEUA4AghHAOEIINz+3gf0YPuApAuSzks6KumwpC1J7yW96njanosKwPZpSdclXZF0qPM5Q4gIwPaqpJuS1iXt63zOUKYPwPZJSY8knet9y4imDsD2EUlPJJ3pfcuopv0WYLtJeigef1fTBiDpqqSLRVtfi3aGM2UAtlck3Sic/FS4NZQpA5B0SdLxwr2PhVtDmTWAy8V7b4v3hjFrAKcKt9611gjgP3OscGuzcGs4swawU7h1t3BrOLMG8KFo53Vr7VnR1pBmDeB50c5G0Q72ku0Ttnd+8Q8g/8Sd3p8DS7B9a4nH37S91vszYAm2V22//IvHf8zjT8L2mu37v/nwn22ve/EjEmZi+6zt27bf2P7y3aNv235he8OLn47jRNZu+6AWn32rtebe9wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOzmGzdiZ8tCc0E5AAAAAElFTkSuQmCC",
+    "tex_note_sixteenth": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAADaklEQVR4nO3dO4hcZRjG8f+JGyPrBoQIxitrLOwCNmLhJYKIBFtBxMLCRiKIIgSsU4jaaKwUIdpbBKIYAgmKIlqJkFZEBC8Eb6vBWOSx2CyEKOxm5j3zTeb7//p5v4fvPLszh3NmDkiSJEmSJEmSJEmSJEmSJEmSJEmSJEmSpHk3tA4wqSRHWmfYxO/DMDzXOsRmruQCpHWGTfw0DMPu1iE2s611ALVlATpnATpnATq31DpAoTXgbMP1V4BrG67fl/zXs43zHLokz48t82yVbwGdswCdswCdswCdswCdW6TTwKuTrDRcf3vDtSfmxaDxeDFI888CdM4CdM4CdM4CdG6RTgOPAV80XP8h4IGG609kkQpwfBiGN1stnuQarsAC+BbQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQOQvQubm9KzjJduA+4G7gBmAX8CfwA/Blo0y3AQ8DqxcyLQG/AqeBm1tkmtbcFSDJHcBLwGPAzsZxSLIEPAk8D+xtHKfc3BQgyQ7gFeAAcFXjOAAkuRd4F9jTOstY5qIASW4FjgJ3tc6yIcmLwMvMSRnH0rwASa4HTgB3ts6yIckLwKutc8xC07OAJAPwPvN18PcDr7XOMSutTwOfAu4vmnV+2gEXvt93mJqfzpk6zyw0K0CSbcChwpG/FMx4mroPfBV5RtfyP8A+4KbCeWcKZjxRMGNDRZ7RtSzAo8XzvpnmxUl2AfcUZYEp88xKywLcXjjr+2EYpt3wVWp/Nu/jwlmjaVmAGwtnnSyYUZkH4FTxvFG0LMC5wlnvFMyozHNiGIbvCueNpmUBqh6o8NUwDJ8UzKl8wMPrhbNG1bIAnxbNOVg05zTwW8GcU8CHBXMWW5Jbkpz7n0e/XI63ijO9PWWetSSrlZkWWpI3ptjsk0mWi/PsSXJ2wjx/J3mkMs/CS7IjyecTbPZH1Qf/okyPJzl/mXn+8OBPKMlykve2uNFrSQ5k/SLSmJn2J/l5i5mOZ/1OIU0jyd4kh5N8neSfizb4rySfJTmY9UvHs8qznOSZJB8kOXPJQf82yZEkD84qT3eSrCTZOfZf+1YlWUpyXdbvVZQkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZqZfwEKXOUjQUhhfQAAAABJRU5ErkJggg==",
+    "tex_note_clef": "data:image/png;base64,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"
+  }
 }
