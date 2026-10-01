@@ -2,9 +2,10 @@ import { Assets, Rectangle, Texture } from "pixi.js";
 
 /*
  * The lights over the keys, baked by Arcadia Effector as looping atlases:
- * src/fx/key-wait.json breathes slowly over a key waiting to be played,
- * src/fx/key-lit.json burns with sparks over a key that sounds. Both are
- * white for a tint and the size of one key, 16 frames of 64×256 in 8×2.
+ * a neon outline round the key's edge that breathes slowly while the key
+ * waits to be played (src/fx/key-wait.json), and burns brighter with sparks
+ * once it sounds (src/fx/key-lit.json). Both are white for a tint and the
+ * size of one key, 16 frames of 64×256 in 8×2.
  */
 const ATLASES = {
   wait: new URL("../fx/key-wait.webp", import.meta.url).href,

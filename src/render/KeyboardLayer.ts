@@ -365,12 +365,13 @@ export class KeyboardLayer {
           light.tint = color;
           const loop = sounding ? this.lights?.lit : this.lights?.wait;
           if (loop) {
-            // Each key on its own step of the loop, so lit keys never pulse in step.
+            // Each key on its own step of the loop, so lit keys never pulse in step; the
+            // neon outline brings its own brightness.
             const step = Math.floor((performance.now() / 1000) * KEY_LIGHT_FPS) + pitch * 5;
             light.texture = loop[step % loop.length] ?? light.texture;
           }
           light.blendMode = key.black ? "add" : "normal";
-          light.alpha = key.black ? strength.black : strength.white;
+          light.alpha = loop ? 1 : key.black ? strength.black : strength.white;
           light.x = key.x + inset;
           light.width = key.width - inset * 2;
           light.y = keyboardTop;
