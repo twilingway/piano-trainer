@@ -37,9 +37,7 @@ const PAINTED_FACES = {
   blackPressed: new URL("./keys/black-pressed.webp", import.meta.url).href,
   blackPressedLit: new URL("./keys/black-pressed-lit.webp", import.meta.url).href,
   sideLeft: new URL("./keys/side-left.webp", import.meta.url).href,
-  sideRight: new URL("./keys/side-right.webp", import.meta.url).href,
-  blackSideLeft: new URL("./keys/black-side-left.webp", import.meta.url).href,
-  blackSideRight: new URL("./keys/black-side-right.webp", import.meta.url).href
+  sideRight: new URL("./keys/side-right.webp", import.meta.url).href
 };
 /*
  * A held key sinks: it takes its pressed face, and the side walls of the keys
@@ -353,17 +351,17 @@ export class KeyboardLayer {
   ): void {
     const painted = this.painted;
     const [left, right] = walls;
-    left.visible = down && painted !== undefined;
+    // Only a white key shows its neighbours' walls; a black one just sinks.
+    left.visible = down && painted !== undefined && !key.black;
     right.visible = left.visible;
     if (!left.visible || !painted) return;
     const width = Math.max(2, key.width * SIDE_WALL_SHARE);
-    const height = key.black ? geometry.blackHeight : geometry.keyboardHeight;
-    left.texture = key.black ? painted.blackSideLeft : painted.sideLeft;
-    right.texture = key.black ? painted.blackSideRight : painted.sideRight;
+    left.texture = painted.sideLeft;
+    right.texture = painted.sideRight;
     for (const wall of walls) {
       wall.y = geometry.keyboardTop;
       wall.width = width;
-      wall.height = height;
+      wall.height = geometry.keyboardHeight;
     }
     left.x = key.x - width;
     right.x = key.x + key.width;
