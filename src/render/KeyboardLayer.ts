@@ -22,25 +22,77 @@ const PRESSED_DARKEN = 0.62;
 const FELT = 0x6e1616;
 const FELT_EDGE = 0xb33a3a;
 /*
- * Key faces painted after the approved mockup (src/render/keys), stretched as
- * nine-slice sprites: corners and the front bevel keep their size, the middle
- * stretches. The "lit" faces are the same keys in neutral grey, for a tint to
- * colour them. Should they fail to load, the faces baked in code stand in.
+ * Key faces painted after the approved mockup, stretched as nine-slice
+ * sprites: corners and the front bevel keep their size, the middle stretches.
+ * The "lit" faces are the same keys in neutral grey, for a tint to colour
+ * them. Should they fail to load, the faces baked in code stand in.
+ *
+ * Two styles: "classic" (src/render/keys) and "arcade" (src/render/keys-arcade),
+ * thicker pseudo-3D keys over a lacquered rail.
  */
-const PAINTED_FACES = {
-  white: new URL("./keys/white.webp", import.meta.url).href,
-  whiteLit: new URL("./keys/white-lit.webp", import.meta.url).href,
-  black: new URL("./keys/black.webp", import.meta.url).href,
-  blackLit: new URL("./keys/black-lit.webp", import.meta.url).href,
-  whitePressed: new URL("./keys/white-pressed.webp", import.meta.url).href,
-  whitePressedLit: new URL("./keys/white-pressed-lit.webp", import.meta.url).href,
-  blackPressed: new URL("./keys/black-pressed.webp", import.meta.url).href,
-  blackPressedLit: new URL("./keys/black-pressed-lit.webp", import.meta.url).href
-};
-const WHITE_SLICE = { leftWidth: 20, topHeight: 60, rightWidth: 20, bottomHeight: 64 };
-const BLACK_SLICE = { leftWidth: 16, topHeight: 178, rightWidth: 16, bottomHeight: 76 };
+export type KeyStyle = "classic" | "arcade";
 
-type PaintedFaces = KeyTextures & Readonly<Record<keyof typeof PAINTED_FACES, Texture>>;
+type FaceName =
+  | "white"
+  | "whiteLit"
+  | "black"
+  | "blackLit"
+  | "whitePressed"
+  | "whitePressedLit"
+  | "blackPressed"
+  | "blackPressedLit";
+
+interface Slice {
+  readonly leftWidth: number;
+  readonly topHeight: number;
+  readonly rightWidth: number;
+  readonly bottomHeight: number;
+}
+
+interface StyleSet {
+  readonly faces: Readonly<Record<FaceName, string>>;
+  readonly white: Slice;
+  readonly black: Slice;
+  /** The lacquered rail under the keys, for a style that has one. */
+  readonly rail?: string;
+}
+
+const KEY_STYLES: Readonly<Record<KeyStyle, StyleSet>> = {
+  classic: {
+    faces: {
+      white: new URL("./keys/white.webp", import.meta.url).href,
+      whiteLit: new URL("./keys/white-lit.webp", import.meta.url).href,
+      black: new URL("./keys/black.webp", import.meta.url).href,
+      blackLit: new URL("./keys/black-lit.webp", import.meta.url).href,
+      whitePressed: new URL("./keys/white-pressed.webp", import.meta.url).href,
+      whitePressedLit: new URL("./keys/white-pressed-lit.webp", import.meta.url).href,
+      blackPressed: new URL("./keys/black-pressed.webp", import.meta.url).href,
+      blackPressedLit: new URL("./keys/black-pressed-lit.webp", import.meta.url).href
+    },
+    white: { leftWidth: 20, topHeight: 60, rightWidth: 20, bottomHeight: 64 },
+    black: { leftWidth: 16, topHeight: 178, rightWidth: 16, bottomHeight: 76 }
+  },
+  arcade: {
+    faces: {
+      white: new URL("./keys-arcade/white.webp", import.meta.url).href,
+      whiteLit: new URL("./keys-arcade/white-lit.webp", import.meta.url).href,
+      black: new URL("./keys-arcade/black.webp", import.meta.url).href,
+      blackLit: new URL("./keys-arcade/black-lit.webp", import.meta.url).href,
+      whitePressed: new URL("./keys-arcade/white-pressed.webp", import.meta.url).href,
+      whitePressedLit: new URL("./keys-arcade/white-pressed-lit.webp", import.meta.url).href,
+      blackPressed: new URL("./keys-arcade/black-pressed.webp", import.meta.url).href,
+      blackPressedLit: new URL("./keys-arcade/black-pressed-lit.webp", import.meta.url).href
+    },
+    // The pressed faces share the up faces' slices: their sunk bevel sits inside the bottom band.
+    white: { leftWidth: 34, topHeight: 50, rightWidth: 24, bottomHeight: 146 },
+    black: { leftWidth: 26, topHeight: 38, rightWidth: 22, bottomHeight: 91 },
+    rail: new URL("./keys-arcade/case-rail.webp", import.meta.url).href
+  }
+};
+/** The case's rail under the keys, in white-key widths. */
+const RAIL_PER_WIDTH = 0.2;
+
+type PaintedFaces = KeyTextures & Readonly<Record<FaceName, Texture>>;
 const NO_SLICE = { leftWidth: 0, topHeight: 0, rightWidth: 0, bottomHeight: 0 };
 /** Largest size of a finger digit on a key. */
 const DIGIT_MAX_PX = 26;
@@ -76,6 +128,11 @@ export class KeyboardLayer {
   private keyTextures: KeyTextures | undefined;
   /** The painted key faces once loaded; kept for good, never re-baked. */
   private painted: PaintedFaces | undefined;
+  /** The style the painted faces are of. */
+  private style: KeyStyle = "classic";
+  /** The rail under the keys, for a style that has one. */
+  private railTexture: Texture | undefined;
+  private readonly rail = new Sprite();
   /** The owed chord by pitch, refilled every frame rather than made anew. */
   private readonly dueByPitch = new Map<number, SongNote>();
   /** The key the mouse holds down, if any. */
@@ -88,7 +145,9 @@ export class KeyboardLayer {
     private readonly digitTextures: ReadonlyMap<Finger, Texture>,
     private readonly onKeyPointer: (event: KeyEvent) => void
   ) {
-    this.container.addChild(this.keyboard, this.felt, this.stickers, this.hints);
+    this.container.addChild(this.keyboard, this.rail, this.felt, this.stickers, this.hints);
+    this.rail.eventMode = "none";
+    this.rail.visible = false;
     this.stickers.eventMode = "none";
     this.stickers.visible = false;
     const fronts: Sprite[] = [];
@@ -137,19 +196,26 @@ export class KeyboardLayer {
     for (const front of fronts) this.keyboard.addChild(front);
   }
 
-  /** Loads the painted key faces; without them the baked keys stay. */
-  async loadPaintedFaces(): Promise<void> {
+  /**
+   * Loads the painted key faces of `style`; without them the keys stay as they
+   * were. The faces take effect on the next layout. Assets caches every load.
+   */
+  async loadPaintedFaces(style: KeyStyle): Promise<void> {
+    const set = KEY_STYLES[style];
     try {
-      const names = Object.keys(PAINTED_FACES) as (keyof typeof PAINTED_FACES)[];
+      const names = Object.keys(set.faces) as FaceName[];
       const textures = await Promise.all(
-        names.map((name) => Assets.load<Texture>(PAINTED_FACES[name]))
+        names.map((name) => Assets.load<Texture>(set.faces[name]))
       );
+      const rail = set.rail ? await Assets.load<Texture>(set.rail) : undefined;
       // Every name has its texture: Promise.all keeps the order of `names`.
       this.painted = Object.fromEntries(
         names.map((name, index) => [name, textures[index]])
       ) as unknown as PaintedFaces;
+      this.railTexture = rail;
+      this.style = style;
     } catch (error) {
-      console.warn("The painted key faces did not load; using the baked keys", error);
+      console.warn("The painted key faces did not load; keeping the keys as they are", error);
     }
   }
 
@@ -172,11 +238,16 @@ export class KeyboardLayer {
     const digitRoom = Math.min(whiteWidth * 0.9, DIGIT_MAX_PX) + 4;
     // A sticker keeps off a painted key's rounded sides and its front bevel.
     const painted = this.painted;
+    const { white: WHITE_SLICE, black: BLACK_SLICE } = KEY_STYLES[this.style];
     const whiteBevel = painted ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width : 3;
     const blackBevel = painted ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width : 3;
     this.bevel = { white: whiteBevel, black: blackBevel };
-    const whiteShare = painted ? 1 - (2 * WHITE_SLICE.leftWidth) / painted.white.width : 0.92;
-    const blackShare = painted ? 1 - (2 * BLACK_SLICE.leftWidth) / painted.black.width : 0.92;
+    const whiteShare = painted
+      ? 1 - (WHITE_SLICE.leftWidth + WHITE_SLICE.rightWidth) / painted.white.width
+      : 0.92;
+    const blackShare = painted
+      ? 1 - (BLACK_SLICE.leftWidth + BLACK_SLICE.rightWidth) / painted.black.width
+      : 0.92;
     const whiteScale = Math.min(
       (whiteWidth * whiteShare) / WHITE_STICKER.width,
       (keyboardHeight - blackHeight - digitRoom - whiteBevel) / WHITE_STICKER.height
@@ -205,6 +276,8 @@ export class KeyboardLayer {
       sticker.y =
         keyboardTop + (key.black ? blackHeight - blackBevel : keyboardHeight - whiteBevel);
     }
+
+    this.placeRail(whiteWidth, keyboardTop + keyboardHeight, total);
 
     this.felt.removeChildren().forEach((child) => {
       child.destroy();
@@ -351,7 +424,8 @@ export class KeyboardLayer {
       for (const [pitch, sprite] of this.keySprites) {
         const isBlack = isBlackKey(pitch);
         sprite.texture = isBlack ? this.painted.black : this.painted.white;
-        Object.assign(sprite, isBlack ? BLACK_SLICE : WHITE_SLICE);
+        const slices = KEY_STYLES[this.style];
+        Object.assign(sprite, isBlack ? slices.black : slices.white);
       }
       return;
     }
@@ -367,6 +441,18 @@ export class KeyboardLayer {
     if (old) {
       for (const texture of [old.white, old.black, old.blackLit]) texture.destroy(true);
     }
+  }
+
+  /** The lacquered rail under the keys, for a style with one. */
+  private placeRail(whiteWidth: number, keysBottom: number, total: number): void {
+    const texture = this.railTexture;
+    this.rail.visible = texture !== undefined && whiteWidth > 0;
+    if (!texture || whiteWidth <= 0) return;
+    this.rail.texture = texture;
+    this.rail.x = 0;
+    this.rail.y = keysBottom;
+    this.rail.width = total;
+    this.rail.height = whiteWidth * RAIL_PER_WIDTH;
   }
 
   /** The key under a point of the keyboard, black keys first: they lie over the white ones. */

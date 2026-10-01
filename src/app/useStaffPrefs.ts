@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import type { KeyStyle } from "../render/KeyboardLayer";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { KeyRange } from "./useFallingView";
 
@@ -29,6 +30,8 @@ export interface StaffPrefs {
   readonly labels: boolean;
   /** The keys shown: fitted to the song, or a real keyboard's range. */
   readonly keyRange: KeyRange;
+  /** The look of the keys. */
+  readonly keyStyle: KeyStyle;
 }
 
 const STAFF_PREFS_KEY = "staff-prefs";
@@ -46,7 +49,8 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   road: false,
   noteCards: true,
   labels: true,
-  keyRange: "song"
+  keyRange: "song",
+  keyStyle: "classic"
 };
 
 function loadStaffPrefs(): StaffPrefs {

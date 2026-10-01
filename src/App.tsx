@@ -166,6 +166,10 @@ export function App() {
           onKeyRange={view.setKeyRange}
           showLabels={view.showLabels}
           onShowLabels={view.setShowLabels}
+          keyStyle={staffPrefs.keyStyle}
+          onKeyStyle={(keyStyle) => {
+            updateStaffPrefs({ keyStyle });
+          }}
           toggles={toggles}
         />
       )

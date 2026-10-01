@@ -10,6 +10,7 @@ import type { FallingNoteNames } from "./bakeLabels";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
+import type { KeyStyle } from "./KeyboardLayer";
 import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
 import { easePan, panToShow } from "./keyboardPan";
@@ -98,6 +99,7 @@ export class FallingNotesView {
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
   private cards = true;
+  private keyStyle: KeyStyle = "classic";
 
   async mount(host: HTMLElement): Promise<void> {
     await this.app.init({
@@ -162,7 +164,7 @@ export class FallingNotesView {
     stage.on("pointerupoutside", () => {
       keyboard.releaseMouse();
     });
-    await keyboard.loadPaintedFaces();
+    await keyboard.loadPaintedFaces(this.keyStyle);
     this.ready = true;
   }
 
@@ -170,6 +172,17 @@ export class FallingNotesView {
   setNoteNames(style: FallingNoteNames | undefined): void {
     this.noteNames = style;
     this.notesLayer?.setNoteNames(style);
+  }
+
+  /** The look of the keys: classic, or arcade in a case. */
+  setKeyStyle(style: KeyStyle): void {
+    if (style === this.keyStyle) return;
+    this.keyStyle = style;
+    const keyboard = this.keyboard;
+    if (!keyboard) return;
+    void keyboard.loadPaintedFaces(style).then(() => {
+      this.laidOutFor = { width: 0, height: 0 };
+    });
   }
 
   /** Each falling note carries a card with the note written on a staff; off, plain bars. */

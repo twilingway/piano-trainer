@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
 
 import type { KeyRange } from "../../app/useFallingView";
+import type { KeyStyle } from "../../render/KeyboardLayer";
 
 interface Props {
   readonly keyRange: KeyRange;
   readonly onKeyRange: (range: KeyRange) => void;
   readonly showLabels: boolean;
   readonly onShowLabels: (show: boolean) => void;
+  readonly keyStyle: KeyStyle;
+  readonly onKeyStyle: (style: KeyStyle) => void;
   /** The view toggles, the same as on the bar. */
   readonly toggles: ReactNode;
 }
@@ -17,6 +20,8 @@ export function KeyboardSettings({
   onKeyRange,
   showLabels,
   onShowLabels,
+  keyStyle,
+  onKeyStyle,
   toggles
 }: Props) {
   return (
@@ -34,6 +39,19 @@ export function KeyboardSettings({
           <option value="88">88 клавиш</option>
           <option value="61">61 клавиша</option>
           <option value="49">49 клавиш</option>
+        </select>
+      </label>
+      <label className="setting">
+        <span>Вид клавиш</span>
+        <select
+          className="game-select"
+          value={keyStyle}
+          onChange={(event) => {
+            onKeyStyle(event.target.value as KeyStyle);
+          }}
+        >
+          <option value="classic">Классика</option>
+          <option value="arcade">Аркада</option>
         </select>
       </label>
       <label className="setting">

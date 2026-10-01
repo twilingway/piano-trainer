@@ -88,6 +88,7 @@ export function useFallingView({
     });
     viewRef.current?.setRoad(staffPrefs.road);
     viewRef.current?.setNoteCards(staffPrefs.noteCards);
+    viewRef.current?.setKeyStyle(staffPrefs.keyStyle);
   }, [
     viewRef,
     trainerReady,
@@ -97,7 +98,8 @@ export function useFallingView({
     staffPrefs.keys,
     staffPrefs.hands,
     staffPrefs.road,
-    staffPrefs.noteCards
+    staffPrefs.noteCards,
+    staffPrefs.keyStyle
   ]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
