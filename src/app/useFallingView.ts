@@ -22,8 +22,9 @@ const FIXED_RANGES: Readonly<Record<Exclude<KeyRange, "song">, readonly [number,
 function songRange(song: Song): readonly [number, number] {
   const pitches = song.notes.map((note) => note.pitch);
   if (pitches.length === 0) return [48, 84];
-  let low = Math.floor((Math.min(...pitches) - 1) / 12) * 12;
-  let high = Math.ceil((Math.max(...pitches) + 1) / 12) * 12;
+  // A song that starts or ends on a C keeps that C: no octave more past it.
+  let low = Math.floor(Math.min(...pitches) / 12) * 12;
+  let high = Math.ceil(Math.max(...pitches) / 12) * 12;
   while (high - low < 24) {
     low -= 12;
     if (high - low < 24) high += 12;
