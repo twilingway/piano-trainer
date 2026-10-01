@@ -37,9 +37,15 @@ export interface Arrival {
  * flash and grows as it comes. The keyboard in front is not in that
  * perspective: it is the flat keyboard squashed in height.
  */
-const FAR_SHARE = 0.22;
-/** The horizon, as a share of the way down from the top of the view to the hit line. */
-const HORIZON_Y = 0.04;
+export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.22, horizon: 0.04 };
+
+/** The road's shape, the player's to tune: a wider keyboard wants a lower horizon. */
+export interface RoadShape {
+  /** The road's width at the horizon, as a share of its width at the hit line. */
+  readonly far: number;
+  /** The horizon, as a share of the way down from the top of the view to the hit line. */
+  readonly horizon: number;
+}
 /** The keyboard's height on the road, as a share of its flat height. */
 const KEYS_SQUASH = 0.9;
 const GLOW_STRENGTH = 10;
@@ -91,6 +97,7 @@ export class RoadLayer {
   /** The floor's perspective; undefined before the first layout. */
   private projection: RoadProjection | undefined;
   private horizonY = 0;
+  private shape: RoadShape = DEFAULT_ROAD_SHAPE;
   /** How far the view is scrolled along a keyboard wider than it, in the scene's pixels. */
   private pan = 0;
   /** The view's width: the scene (the whole keyboard) may be wider. */
@@ -142,8 +149,8 @@ export class RoadLayer {
     this.keys.visible = keysHeight >= 1;
     this.keysTexture.source.resize(viewWidth, Math.max(1, keysHeight), this.renderer.resolution);
     this.hitY = bottom - keysHeight * KEYS_SQUASH;
-    this.horizonY = this.hitY * HORIZON_Y;
-    this.projection = roadProjection(viewWidth, this.hitY, this.horizonY, FAR_SHARE);
+    this.horizonY = this.hitY * this.shape.horizon;
+    this.projection = roadProjection(viewWidth, this.hitY, this.horizonY, this.shape.far);
     // A resized texture keeps its object: the meshes take it again to pick up the new size.
     this.road.texture = this.texture;
     this.glow.texture = this.texture;
@@ -151,6 +158,11 @@ export class RoadLayer {
     this.keys.setCorners(0, this.hitY, viewWidth, this.hitY, viewWidth, bottom, 0, bottom);
     this.hit = { y: this.hitY, left: 0, right: viewWidth };
     this.setPan(this.pan, true);
+  }
+
+  /** A new shape for the road; it takes effect on the next layout. */
+  setShape(shape: RoadShape): void {
+    this.shape = shape;
   }
 
   /** Scrolls the view along the scene: the road slides under the view's fixed perspective. */

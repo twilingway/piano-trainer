@@ -167,6 +167,13 @@ export function App() {
           onKeyStyle={(keyStyle) => {
             updateStaffPrefs({ keyStyle });
           }}
+          road={{ far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon }}
+          onRoad={(road) => {
+            updateStaffPrefs({
+              ...(road.far === undefined ? {} : { roadFar: road.far }),
+              ...(road.horizon === undefined ? {} : { roadHorizon: road.horizon })
+            });
+          }}
           toggles={toggles}
         />
       )

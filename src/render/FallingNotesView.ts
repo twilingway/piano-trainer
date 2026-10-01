@@ -19,7 +19,7 @@ import { easePan, panToShow } from "./keyboardPan";
 import type { Span } from "./keyboardPan";
 import { HAND_COLOR, NotesLayer } from "./NotesLayer";
 import { RoadLayer } from "./RoadLayer";
-import type { Strike } from "./RoadLayer";
+import type { RoadShape, Strike } from "./RoadLayer";
 import { fitRange, viewGeometry } from "./viewGeometry";
 import type { Geometry, ViewParts } from "./viewGeometry";
 
@@ -241,6 +241,12 @@ export class FallingNotesView {
    * Notes cannot be clicked there: the lane is a picture laid on the road.
    * The keys are one too, so the stage finds the key under the mouse.
    */
+  /** How far the road reaches and how much it narrows towards the horizon. */
+  setRoadShape(shape: RoadShape): void {
+    this.road?.setShape(shape);
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
   setRoad(on: boolean): void {
     this.roadWanted = on;
     this.syncRoad();
