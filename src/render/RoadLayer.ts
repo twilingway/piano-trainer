@@ -204,6 +204,11 @@ export class RoadLayer {
     }
   }
 
+  /** The hit line's height on screen, where the road meets the keys. */
+  get hitLineY(): number {
+    return this.hitY;
+  }
+
   /** Where a point of the flat scene lands in perspective, and how much it shrinks there. */
   place(x: number, y: number): Projected | undefined {
     const camera = this.camera;

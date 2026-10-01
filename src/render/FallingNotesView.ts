@@ -3,12 +3,14 @@ import type { FederatedPointerEvent, Texture } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
+import type { ComboBoard, GradedStrike } from "../practice/combo";
 import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
 import { bakeDigits, bakeNames } from "./bakeLabels";
 import type { FallingNoteNames } from "./bakeLabels";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
+import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
 import type { KeyStyle } from "./KeyboardLayer";
 import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
@@ -38,6 +40,10 @@ export interface FrameState {
   readonly hands: ReadonlySet<Hand>;
   /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
+  /** The combo and accuracy board; none on a view that only mirrors another. */
+  readonly board?: ComboBoard;
+  /** Strikes graded since the last frame, shown over their keys at the hit line. */
+  readonly graded?: readonly GradedStrike[];
 }
 
 /** Seconds the scroll takes to go most of the way to where it is headed. */
@@ -69,6 +75,8 @@ export class FallingNotesView {
   private road: RoadLayer | undefined;
   private roadMode = false;
   private readonly hands = new HandsLayer();
+  /** The combo board and the strikes' grades, over everything. */
+  private readonly hud = new HudLayer();
   private digitTextures = new Map<Finger, Texture>();
   private badgeTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
@@ -146,7 +154,8 @@ export class FallingNotesView {
       notes.root,
       notes.cards,
       this.keysRoot,
-      this.road.effects
+      this.road.effects,
+      this.hud.container
     );
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
@@ -266,6 +275,7 @@ export class FallingNotesView {
     this.notesLayer?.setSong(song);
     this.song = song;
     this.songNotes = song.notes;
+    this.hud.clear();
     // The new song's keys are elsewhere: the scroll lands on them rather than gliding there.
     this.panSnap = true;
   }
@@ -303,6 +313,17 @@ export class FallingNotesView {
       }
       road.draw(this.notesLayer.root, this.keysRoot, strikes, this.app.ticker.deltaMS / 1000);
     }
+    // The board belongs to the lane: without the falling notes there is nothing to count over.
+    this.hud.draw(
+      this.parts.notes ? state.board : undefined,
+      state.graded ?? [],
+      (pitch) => {
+        const key = this.keys.get(pitch);
+        return key && key.x + key.width / 2 - this.pan;
+      },
+      road ? road.hitLineY : geometry.hitY,
+      this.app.ticker.deltaMS / 1000
+    );
   }
 
   /**
