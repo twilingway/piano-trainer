@@ -4,7 +4,7 @@ import type { Renderer } from "pixi.js";
 import type { Finger, Hand } from "../fingering/fingering";
 import type { NoteStatus } from "../practice/session";
 import { quartersAt } from "../song/song";
-import type { Song, SongNote } from "../song/song";
+import type { Song, SongBeat, SongNote } from "../song/song";
 import { nameKey } from "./bakeLabels";
 import type { FallingNoteNames } from "./bakeLabels";
 import { FINGER_COLOR } from "./fingerColors";
@@ -35,6 +35,11 @@ const TAIL_SHARE = 0.28;
 const TRAIL_SHARE = 0.86;
 /** A note flashes on the horizon for this share of the lane after it comes over. */
 const ARRIVAL_SHARE = 0.08;
+/** The road's lanes: a faint line between keys and a bar across at every beat. */
+const LANE_COLOR = 0x2f7bff;
+const LANE_ALPHA = 0.35;
+const BEAT_ALPHA = 0.18;
+const DOWNBEAT_ALPHA = 0.4;
 /** A note card's width, in white-key widths, and its limits in pixels. */
 const CARD_PER_WIDTH = 1.9;
 const CARD_MIN_PX = 34;
@@ -92,6 +97,11 @@ export class NotesLayer {
   readonly arrivals: Arrival[] = [];
   private readonly lane = new Container();
   private readonly guides = new Container();
+  /** The road's lanes and beat bars, under the notes; flat, the plain guides do. */
+  private readonly roadLanes = new Container();
+  private readonly beatBars = new Container();
+  private beats: readonly SongBeat[] = [];
+  private laneWidth = 0;
   private notes: NoteSprite[] = [];
   private readonly cardFrame: Texture;
   /** The left hand's frame, with a second ring. */
@@ -108,7 +118,7 @@ export class NotesLayer {
     private readonly labels: NoteLabels,
     private readonly onNoteClick: (noteId: string) => void
   ) {
-    this.root.addChild(this.guides, this.lane);
+    this.root.addChild(this.guides, this.roadLanes, this.beatBars, this.lane);
     this.cardFrame = bakeCardFrame(renderer);
     this.cardFrameLeft = bakeCardFrame(renderer, true);
     this.cardGlow = bakeCardGlow(renderer);
@@ -134,6 +144,7 @@ export class NotesLayer {
   }
 
   setSong(song: Song): void {
+    this.beats = song.beats;
     for (const sprite of this.notes) {
       sprite.body.destroy();
       sprite.digit.destroy();
@@ -207,6 +218,21 @@ export class NotesLayer {
       line.height = hitY;
       this.guides.addChild(line);
     }
+    this.roadLanes.removeChildren().forEach((child) => {
+      child.destroy();
+    });
+    // On the road every white key is a lane of its own, edged in faint blue.
+    for (const key of keys.values()) {
+      if (key.black) continue;
+      const edge = new Sprite(Texture.WHITE);
+      edge.tint = LANE_COLOR;
+      edge.alpha = LANE_ALPHA;
+      edge.x = key.x;
+      edge.width = 1.5;
+      edge.height = hitY;
+      this.roadLanes.addChild(edge);
+    }
+    this.laneWidth = total;
     const hitLine = new Sprite(Texture.WHITE);
     hitLine.tint = HIT_LINE;
     hitLine.alpha = 0.5;
@@ -231,6 +257,9 @@ export class NotesLayer {
     const cards = this.cardsOn;
     this.playing.clear();
     this.arrivals.length = 0;
+    this.roadLanes.visible = road !== undefined;
+    this.beatBars.visible = road !== undefined;
+    if (road) this.drawBeats(state.time, state.lookAhead, hitY, pixelsPerSecond);
     const cardWidth = Math.min(
       CARD_MAX_PX,
       Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
@@ -332,6 +361,31 @@ export class NotesLayer {
         name.y = bottom - 2 - digitHeight;
         name.alpha = body.alpha;
       }
+    }
+  }
+
+  /** A bar across the road at every beat in sight, the downbeats brighter; bars are reused. */
+  private drawBeats(time: number, lookAhead: number, hitY: number, pixelsPerSecond: number): void {
+    let used = 0;
+    for (const beat of this.beats) {
+      if (beat.time < time) continue;
+      if (beat.time > time + lookAhead) break;
+      let bar = this.beatBars.children[used] as Sprite | undefined;
+      if (!bar) {
+        bar = new Sprite(Texture.WHITE);
+        bar.tint = LANE_COLOR;
+        this.beatBars.addChild(bar);
+      }
+      bar.visible = true;
+      bar.alpha = beat.downbeat ? DOWNBEAT_ALPHA : BEAT_ALPHA;
+      bar.width = this.laneWidth;
+      bar.height = beat.downbeat ? 2 : 1;
+      bar.y = hitY - (beat.time - time) * pixelsPerSecond;
+      used++;
+    }
+    for (let index = used; index < this.beatBars.children.length; index++) {
+      const bar = this.beatBars.children[index];
+      if (bar) bar.visible = false;
     }
   }
 

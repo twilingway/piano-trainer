@@ -80,7 +80,7 @@ export function bakeTrailTile(): Texture {
   canvas.height = size;
   const context = canvas.getContext("2d");
   if (!context) return Texture.WHITE;
-  context.fillStyle = "rgba(255, 255, 255, 0.16)";
+  context.fillStyle = "rgba(255, 255, 255, 0.3)";
   context.fillRect(0, 0, size, size);
   const edge = 8;
   for (const [from, to] of [
