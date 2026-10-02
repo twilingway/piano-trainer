@@ -15,6 +15,7 @@ const TEXTURE_WIDTH = 96;
 const TEXTURE_HEIGHT = 192;
 const TOP_CAP = 36;
 const BOTTOM_CAP = 38;
+const GLASS_LIFT_SHARE = 0.28;
 // Keep every projected edge inside the opaque glass, away from the atlas halo.
 const SOLID_LEFT_U = 20 / TEXTURE_WIDTH;
 const SOLID_RIGHT_U = 75 / TEXTURE_WIDTH;
@@ -104,7 +105,7 @@ export class RoadGlassLayer {
       for (let column = 0; column < COLUMNS; column++) {
         // The 32-pixel sides contain the baked glow, edge and inner bevel.
         const offsetX = width * (column / (COLUMNS - 1) - 0.5);
-        const point = project(y, offsetX, width * 0.2);
+        const point = project(y, offsetX, width * GLASS_LIFT_SHARE);
         const index = (row * COLUMNS + column) * 2;
         positions[index] = point.x;
         positions[index + 1] = point.y;
@@ -133,7 +134,7 @@ export class RoadGlassLayer {
         const point = project(
           first ? firstY : secondY,
           first ? firstX : secondX,
-          corner < 2 ? width * 0.2 : 0
+          corner < 2 ? width * GLASS_LIFT_SHARE : 0
         );
         const index = (face * 4 + corner) * 2;
         entry.wallPositions[index] = point.x;
