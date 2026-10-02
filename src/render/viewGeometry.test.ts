@@ -4,6 +4,7 @@ import { layoutKeyboard, whiteKeysBetween } from "./keyboardLayout";
 import { fitRange, viewGeometry } from "./viewGeometry";
 
 const ALL = { notes: true, keys: true, hands: false };
+const WHITE_WIDTH = 44 / 0.6;
 
 describe("viewGeometry", () => {
   it("drops the notes to the bottom edge without keys", () => {
@@ -48,12 +49,12 @@ describe("viewGeometry", () => {
 
 describe("fitRange", () => {
   it.each([320, 667, 768, 2000])(
-    "keeps fixed bounds and 44px white keys on a %ipx viewport",
+    "keeps fixed bounds and 44px black keys on a %ipx viewport",
     (width) => {
       const fitted = fitRange(width, 60, 72, false);
-      expect(fitted).toEqual({ low: 60, high: 72, total: 8 * 44 });
+      expect(fitted).toEqual({ low: 60, high: 72, total: 8 * WHITE_WIDTH });
       for (const key of layoutKeyboard(fitted.total, fitted.low, fitted.high).values()) {
-        expect(key.width).toBeCloseTo(key.black ? 44 * 0.6 : 44);
+        expect(key.width).toBeCloseTo(key.black ? 44 : WHITE_WIDTH);
       }
     }
   );
@@ -65,19 +66,23 @@ describe("fitRange", () => {
       expect(fitted.low).toBeLessThanOrEqual(60);
       expect(fitted.high).toBeGreaterThanOrEqual(72);
       expect(fitted.total).toBeGreaterThanOrEqual(width);
-      expect(fitted.total).toBe(Math.max(8, Math.ceil(width / 44)) * 44);
+      expect(fitted.total).toBe(Math.max(8, Math.ceil(width / WHITE_WIDTH)) * WHITE_WIDTH);
       for (const key of layoutKeyboard(fitted.total, fitted.low, fitted.high).values()) {
-        expect(key.width).toBeCloseTo(key.black ? 44 * 0.6 : 44);
+        expect(key.width).toBeCloseTo(key.black ? 44 : WHITE_WIDTH);
       }
     }
   );
 
-  it.each([320, 667, 768, 2000, 4000])(
+  it.each([320, 667, 768, 2000, 4000, 6000])(
     "caps a wide song at 88 fixed-size keys on a %ipx viewport",
     (width) => {
       const fitted = fitRange(width, 21, 108, true, true);
-      expect(fitted).toEqual({ low: 21, high: 108, total: 52 * 44 });
-      expect(layoutKeyboard(fitted.total, fitted.low, fitted.high).size).toBe(88);
+      expect(fitted).toEqual({ low: 21, high: 108, total: 52 * WHITE_WIDTH });
+      const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
+      expect(keys.size).toBe(88);
+      for (const key of keys.values()) {
+        expect(key.width).toBeCloseTo(key.black ? 44 : WHITE_WIDTH);
+      }
     }
   );
 
@@ -89,12 +94,12 @@ describe("fitRange", () => {
       expect(keys.size).toBe(88);
       expect(keys.get(21)?.x).toBe(0);
       const last = keys.get(108);
-      expect((last?.x ?? 0) + (last?.width ?? 0)).toBeCloseTo(52 * 44);
+      expect((last?.x ?? 0) + (last?.width ?? 0)).toBeCloseTo(52 * WHITE_WIDTH);
       expect(fitted.total).toBeGreaterThan(width);
       for (const key of keys.values()) {
         expect(key.x).toBeGreaterThanOrEqual(0);
         expect(key.x + key.width).toBeLessThanOrEqual(fitted.total + 1e-9);
-        expect(key.width).toBeCloseTo(key.black ? 44 * 0.6 : 44);
+        expect(key.width).toBeCloseTo(key.black ? 44 : WHITE_WIDTH);
       }
     }
   );
@@ -106,11 +111,11 @@ describe("fitRange", () => {
     expect(keys.has(78)).toBe(true);
     expect(keys.has(60)).toBe(true);
     expect(keys.has(79)).toBe(true);
-    expect(fitted.total).toBe(12 * 44);
+    expect(fitted.total).toBe(12 * WHITE_WIDTH);
     for (const key of keys.values()) {
       expect(key.x).toBeGreaterThanOrEqual(0);
       expect(key.x + key.width).toBeLessThanOrEqual(fitted.total + 1e-9);
-      expect(key.width).toBeCloseTo(key.black ? 44 * 0.6 : 44);
+      expect(key.width).toBeCloseTo(key.black ? 44 : WHITE_WIDTH);
     }
   });
 

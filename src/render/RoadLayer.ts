@@ -11,8 +11,6 @@ import {
 import type { Renderer } from "pixi.js";
 import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";
-import { staffRoadX } from "./staffRoadGeometry";
-import type { ScorePlacement } from "../song/scorePlacement";
 import type { KeyRect } from "./keyboardLayout";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
@@ -105,7 +103,6 @@ export class RoadLayer {
   private readonly arrivals = new HorizonBurstLayer();
   private readonly staff: StaffRoadLayer;
   private readonly glass = new RoadGlassLayer();
-  private placements: ReadonlyMap<string, ScorePlacement> = new Map();
   /** Haze over the far road: lanes and notes come out of it as they near. */
   private readonly fog = new Sprite(bakeFog());
   private readonly sparkTexture: Texture;
@@ -157,17 +154,8 @@ export class RoadLayer {
     this.sparkTexture = bakeSpark(renderer);
   }
 
-  setScore(placements: ReadonlyMap<string, ScorePlacement>): void {
-    this.placements = placements;
-    if (this.viewWidth > 0) {
-      this.staff.configure(placements.values(), this.viewWidth);
-      if (this.projection) this.staff.draw(this.projection, this.pan);
-    }
-  }
-
   beginNotes(): void {
     this.glass.begin();
-    this.staff.begin();
   }
 
   setKeyboard(keys: ReadonlyMap<number, KeyRect>): void {
@@ -177,29 +165,16 @@ export class RoadLayer {
 
   endNotes(): void {
     this.glass.end();
-    this.staff.end();
   }
 
-  noteLaneX(placement: ScorePlacement | undefined, keyX: number, y: number): number {
-    const layout = this.staff.layout;
-    if (!layout || !placement || this.size.height <= 0) return keyX - this.pan;
-    const depth = Math.max(0, Math.min(1, y / this.size.height));
-    return staffRoadX(
-      layout.x(placement),
-      keyX - this.pan,
-      this.projection?.progressAt(depth) ?? depth
-    );
+  noteLaneX(keyX: number): number {
+    return keyX - this.pan;
   }
 
-  notePlace(
-    placement: ScorePlacement | undefined,
-    keyX: number,
-    y: number,
-    offset = 0
-  ): Projected | undefined {
+  notePlace(keyX: number, y: number, offset = 0): Projected | undefined {
     if (!this.projection || this.size.height <= 0) return undefined;
     return this.projection.at(
-      this.noteLaneX(placement, keyX, y) + offset,
+      this.noteLaneX(keyX) + offset,
       Math.max(0, Math.min(1, y / this.size.height))
     );
   }
@@ -209,7 +184,6 @@ export class RoadLayer {
   }
 
   drawHold(
-    placement: ScorePlacement | undefined,
     keyX: number,
     top: number,
     bottom: number,
@@ -224,14 +198,9 @@ export class RoadLayer {
       width,
       tint,
       alpha,
-      (y, offset) => this.notePlace(placement, keyX, y, offset) ?? { x: 0, y: 0 }
+      (y, offset) => this.notePlace(keyX, y, offset) ?? { x: 0, y: 0 }
     );
     return true;
-  }
-
-  drawLedger(placement: ScorePlacement | undefined, y: number): void {
-    if (placement && this.projection && this.size.height > 0)
-      this.staff.ledger(placement, y / this.size.height, this.projection);
   }
 
   get arrivalEffectsReady(): boolean {
@@ -282,7 +251,6 @@ export class RoadLayer {
     this.keys.texture = this.keysTexture;
     this.keys.setCorners(0, this.hitY, viewWidth, this.hitY, viewWidth, bottom, 0, bottom);
     this.hit = { y: this.hitY, left: 0, right: viewWidth };
-    this.staff.configure(this.placements.values(), viewWidth);
     this.staff.draw(this.projection, this.pan);
     this.setPan(this.pan, true);
   }

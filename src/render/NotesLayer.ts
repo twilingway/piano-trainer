@@ -257,8 +257,7 @@ export class NotesLayer {
     const cardScale = cardWidth / CARD_WIDTH;
     // On the road the glass follows the note until its duration has elapsed.
     const trail = road !== undefined && cards;
-    for (const { note, body, placement, beatSeconds, glow, frame, face, badge, digit, name } of this
-      .notes) {
+    for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
         this.playing.set(note.pitch, note);
       }
@@ -290,9 +289,7 @@ export class NotesLayer {
           : key.width - NOTE_GAP_PX * 2;
       const keyCentre = key.x + key.width / 2;
       const landingY = Math.min(bottom, hitY);
-      body.x =
-        (road ? road.noteLaneX(placement, keyCentre, landingY) + road.scenePan : keyCentre) -
-        barWidth / 2;
+      body.x = keyCentre - barWidth / 2;
       body.width = barWidth;
       // The tail runs the note's whole length, so lengths compare; the card's glass covers
       // its head.
@@ -323,24 +320,13 @@ export class NotesLayer {
           width: key.width,
           color: note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand],
           age,
-          screenX: road.notePlace(placement, keyCentre, 0)?.x
+          screenX: road.notePlace(keyCentre, 0)?.x
         });
       }
       body.alpha *= arrivalAlpha;
       if (road && bounds.bottom > bounds.top) {
-        if (
-          road.drawHold(
-            placement,
-            keyCentre,
-            bounds.top,
-            bounds.bottom,
-            barWidth,
-            body.tint,
-            arrivalAlpha
-          )
-        )
+        if (road.drawHold(keyCentre, bounds.top, bounds.bottom, barWidth, body.tint, arrivalAlpha))
           body.visible = false;
-        road.drawLedger(placement, landingY);
       }
 
       digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
@@ -353,7 +339,7 @@ export class NotesLayer {
         const centre = key.x + key.width / 2;
         // A sounding note's card waits on the hit line rather than sliding over the keys.
         const landing = Math.min(bottom, hitY);
-        const spot = road?.notePlace(placement, centre, landing);
+        const spot = road?.notePlace(centre, landing);
         // Far up the road a card is still in the fog; it clears as it nears.
         const seen = cardAlpha * arrivalAlpha * (road ? road.clarity(landing) : 1);
         const scale = cardScale * (spot?.scale ?? 1);

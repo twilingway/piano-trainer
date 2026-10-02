@@ -20,8 +20,8 @@ const BOTTOM_MARGIN_PER_WIDTH = 0.2;
 /** The felt strip's height, in white-key widths. */
 const FELT_PER_WIDTH = 0.22;
 
-/** White keys keep this CSS width on every viewport and in every range mode. */
-const WHITE_KEY_WIDTH_PX = 44;
+/** Black keys stay 44 CSS pixels wide; white keys preserve keyboardLayout's 0.6 ratio. */
+const WHITE_KEY_WIDTH_PX = 44 / 0.6;
 
 export interface Geometry {
   readonly keyboardTop: number;

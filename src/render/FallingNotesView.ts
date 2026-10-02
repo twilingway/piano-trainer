@@ -1,4 +1,3 @@
-import { scorePlacements } from "../song/scorePlacement";
 import { Application, Container } from "pixi.js";
 import type { FederatedPointerEvent, Texture } from "pixi.js";
 
@@ -157,7 +156,6 @@ export class FallingNotesView {
     keyboard.showStickers(this.labels);
     this.keyboard = keyboard;
     this.road = new RoadLayer(renderer);
-    if (this.song) this.road.setScore(scorePlacements(this.song));
     this.road.container.visible = false;
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, this.hands.container);
@@ -305,7 +303,6 @@ export class FallingNotesView {
   setSong(song: Song): void {
     this.hands.setSong(song);
     this.notesLayer?.setSong(song);
-    this.road?.setScore(scorePlacements(song));
     this.song = song;
     this.songNotes = song.notes;
     this.hud.clear();
