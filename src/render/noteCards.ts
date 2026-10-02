@@ -235,9 +235,10 @@ export function bakeCardFace(
   const root = new Container();
   root.addChild(staff, halo, g);
   const top = STAFF_BOTTOM - 4 * SPACING;
+  // Align the treble clef's G curl with the second line from the bottom.
   root.addChild(
     clef === "treble"
-      ? mark("\u{1D11E}", 38, 2, top - 13, CLEF_FONT)
+      ? mark("\u{1D11E}", 38, 2, top - 6.5, CLEF_FONT)
       : mark("\u{1D122}", 26, 3, top - 5, CLEF_FONT)
   );
   const accidental = placement?.accidental ?? (isBlackKey(pitch) ? "♯" : "");
