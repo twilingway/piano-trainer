@@ -434,6 +434,18 @@ export class RoadLayer {
     const { y: height, left, right } = this.hit;
     const line = this.hitLine;
     line.clear();
+    if (this.perspective && this.projection) {
+      const keyboardLeft = Math.max(left, this.projection.at(-this.pan, 1).x);
+      const keyboardRight = Math.min(right, this.projection.at(this.size.width - this.pan, 1).x);
+      if (keyboardRight <= keyboardLeft) return;
+      // Behind the projected keys, only a diffuse glow hints at the road edge.
+      for (let step = 7; step >= 1; step--) {
+        line
+          .rect(keyboardLeft, height - step * 3, keyboardRight - keyboardLeft, step * 6)
+          .fill({ color: HORIZON_COLOR, alpha: 0.008 });
+      }
+      return;
+    }
     // In place of the felt, as in the mockup: a glowing blue band over the keys under a bright
     // wire that crackles a little where a key is struck.
     for (let step = 1; step <= 6; step++) {
