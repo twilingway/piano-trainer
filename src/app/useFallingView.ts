@@ -9,13 +9,14 @@ import type { NoteNameStyle } from "../song/musicxml";
 import type { Song } from "../song/song";
 import type { StaffPrefs } from "./useStaffPrefs";
 
-export type KeyRange = "song" | "88" | "61" | "49";
+export type KeyRange = "song" | "88" | "61" | "49" | "25";
 
 /** Fixed ranges of real keyboards: 88 keys A0-C8, 61 keys C2-C7, 49 keys C2-C6. */
 const FIXED_RANGES: Readonly<Record<Exclude<KeyRange, "song">, readonly [number, number]>> = {
   "88": [21, 108],
   "61": [36, 96],
-  "49": [36, 84]
+  "49": [36, 84],
+  "25": [60, 84]
 };
 
 /** The song's notes from the C below them to the C above, at least two octaves wide. */
