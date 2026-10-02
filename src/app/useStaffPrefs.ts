@@ -73,20 +73,26 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
 };
 
 function loadStaffPrefs(): StaffPrefs {
+  const defaults = {
+    ...DEFAULT_STAFF_PREFS,
+    visible: !window.matchMedia("(max-width: 640px), (pointer: coarse) and (max-height: 640px)")
+      .matches
+  };
   try {
     const raw = localStorage.getItem(STAFF_PREFS_KEY);
     const saved = raw ? (JSON.parse(raw) as Partial<StaffPrefs>) : {};
     const color = (value: unknown, fallback: string) =>
       typeof value === "string" && /^#[\da-f]{6}$/i.test(value) ? value : fallback;
     return {
-      ...DEFAULT_STAFF_PREFS,
+      ...defaults,
       ...saved,
+      visible: typeof saved.visible === "boolean" ? saved.visible : defaults.visible,
       noteColor: color(saved.noteColor, DEFAULT_STAFF_PREFS.noteColor),
       scoreColor: color(saved.scoreColor, DEFAULT_STAFF_PREFS.scoreColor),
       fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono"
     };
   } catch {
-    return DEFAULT_STAFF_PREFS;
+    return defaults;
   }
 }
 
