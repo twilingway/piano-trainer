@@ -1,0 +1,417 @@
+{
+  "app": "arcadia-effects",
+  "v": 1,
+  "doc": {
+    "v": 1,
+    "id": "fx_note_hold_fire_loop",
+    "name": "Note Hold Fire Loop",
+    "comp": {
+      "w": 144,
+      "h": 192,
+      "dur": 3.2,
+      "fps": 60
+    },
+    "cam": {
+      "comp": 0
+    },
+    "exp": {
+      "cols": 6,
+      "rows": 4,
+      "frames": 24,
+      "cellW": 144,
+      "cellH": 192,
+      "t0": 1.6,
+      "t1": 3.2,
+      "mode": "rgba",
+      "thr": 0,
+      "ss": 2,
+      "pixelArt": false,
+      "cuts": null
+    },
+    "textures": [],
+    "layers": [
+      {
+        "id": "lr_note_hold_smoke",
+        "name": "Smoke wisps",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 3.2,
+        "blend": "screen",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 42,
+          "shape": "box",
+          "sx": 24,
+          "sy": 58,
+          "dir": "dir",
+          "angle": -90,
+          "spread": 38,
+          "speed": 35,
+          "speedRnd": 0.6,
+          "rate": 34,
+          "bursts": [],
+          "seed": 41,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.95,
+          "lifeRnd": 0.3,
+          "sprite": {
+            "kind": "shape",
+            "id": "smoke",
+            "p": {}
+          },
+          "size": 38,
+          "sizeRnd": 0.4,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.4
+              },
+              {
+                "t": 1,
+                "v": 1.4
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0
+              },
+              {
+                "t": 0.25,
+                "v": 0.22
+              },
+              {
+                "t": 0.7,
+                "v": 0.15
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [165, 165, 165]
+              }
+            ]
+          },
+          "tintTex": false,
+          "rot": 0,
+          "rotRnd": 1,
+          "spin": 0,
+          "spinRnd": 0,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": -30,
+          "drag": 0.8,
+          "turbAmp": 120,
+          "turbFreq": 1.2,
+          "squash": 0,
+          "glow": 0.2,
+          "glowSize": 1.6,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0,
+          "turbScale": 90,
+          "turbRise": 60,
+          "turbWind": 30,
+          "turbMode": "curl",
+          "turbOct": 3,
+          "turbSeed": 0,
+          "turbRamp": 0.2
+        },
+        "glowL": 0.12,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      },
+      {
+        "id": "lr_note_hold_flame",
+        "name": "Living flame",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 3.2,
+        "blend": "add",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 42,
+          "shape": "box",
+          "sx": 24,
+          "sy": 58,
+          "dir": "dir",
+          "angle": -90,
+          "spread": 24,
+          "speed": 58,
+          "speedRnd": 0.5,
+          "rate": 48,
+          "bursts": [],
+          "seed": 43,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.42,
+          "lifeRnd": 0.3,
+          "sprite": {
+            "kind": "shape",
+            "id": "flame",
+            "p": {}
+          },
+          "size": 31,
+          "sizeRnd": 0.3,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 1,
+                "v": 0.3
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.1
+              },
+              {
+                "t": 0.15,
+                "v": 0.72
+              },
+              {
+                "t": 0.65,
+                "v": 0.55
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [200, 200, 200]
+              }
+            ]
+          },
+          "tintTex": false,
+          "rot": 0,
+          "rotRnd": 1,
+          "spin": 0,
+          "spinRnd": 0,
+          "alignVel": true,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": -44,
+          "drag": 1,
+          "turbAmp": 90,
+          "turbFreq": 2,
+          "squash": 0,
+          "glow": 0.9,
+          "glowSize": 2,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0.55,
+          "zigzag": 0,
+          "turbScale": 60,
+          "turbRise": 110,
+          "turbWind": 50,
+          "turbMode": "curl",
+          "turbOct": 3,
+          "turbSeed": 0,
+          "turbRamp": 0.2,
+          "sizeOT": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.2
+              },
+              {
+                "t": 0.7,
+                "v": 1
+              },
+              {
+                "t": 1,
+                "v": 0.4
+              }
+            ]
+          }
+        },
+        "glowL": 0.65,
+        "glowLR": 12,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      },
+      {
+        "id": "lr_note_hold_embers",
+        "name": "Embers",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 3.2,
+        "blend": "add",
+        "opacity": 1,
+        "em": {
+          "x": 0,
+          "y": 42,
+          "shape": "box",
+          "sx": 24,
+          "sy": 58,
+          "dir": "dir",
+          "angle": -90,
+          "spread": 36,
+          "speed": 70,
+          "speedRnd": 0.8,
+          "rate": 24,
+          "bursts": [],
+          "seed": 47,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          }
+        },
+        "pt": {
+          "life": 0.6,
+          "lifeRnd": 0.5,
+          "sprite": {
+            "kind": "shape",
+            "id": "ember",
+            "p": {}
+          },
+          "size": 5,
+          "sizeRnd": 0.6,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 1
+              },
+              {
+                "t": 1,
+                "v": 0.3
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0
+              },
+              {
+                "t": 0.2,
+                "v": 0.9
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [180, 180, 180]
+              }
+            ]
+          },
+          "tintTex": false,
+          "rot": 0,
+          "rotRnd": 1,
+          "spin": 90,
+          "spinRnd": 1,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": -55,
+          "drag": 1,
+          "turbAmp": 700,
+          "turbFreq": 2,
+          "squash": 0,
+          "glow": 0.6,
+          "glowSize": 1.8,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0,
+          "turbScale": 55,
+          "turbRise": 70,
+          "turbWind": 40,
+          "turbMode": "curl",
+          "turbOct": 3,
+          "turbSeed": 0,
+          "turbRamp": 0.2
+        },
+        "glowL": 0.35,
+        "glowLR": 24,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 0,
+        "fadeR": 220,
+        "fadeSoft": 0.5
+      }
+    ]
+  },
+  "tex": {}
+}

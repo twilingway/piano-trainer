@@ -44,9 +44,8 @@ const TRAIL_SHARE = 0.86;
  */
 const CARD_NEON = new URL("../fx/card-neon.webp", import.meta.url).href;
 const CARD_NEON_FRAME = { width: 108, height: 128, cols: 8, count: 16, fps: 13.33 } as const;
-/** The road's lanes: a faint line between keys and a bar across at every beat. */
+/** The road's lanes: a faint line between keys and a bar at each measure start. */
 const LANE_COLOR = 0x2f7bff;
-const BEAT_ALPHA = 0.18;
 const DOWNBEAT_ALPHA = 0.4;
 /** A note card's width, in white-key widths, and its limits in pixels. */
 const CARD_PER_WIDTH = 1.9;
@@ -107,7 +106,7 @@ export class NotesLayer {
   readonly arrivals: Arrival[] = [];
   private readonly lane = new Container();
   private readonly guides = new Container();
-  /** The road's lanes and beat bars, under the notes; flat, the plain guides do. */
+  /** The road's lanes and measure bars, under the notes; flat, the plain guides do. */
   private readonly beatBars = new Container();
   private beats: readonly SongBeat[] = [];
   private laneWidth = 0;
@@ -250,6 +249,7 @@ export class NotesLayer {
     road?.beginNotes();
     this.playing.clear();
     this.arrivals.length = 0;
+    this.guides.visible = road === undefined && this.lane.visible;
     this.beatBars.visible = road !== undefined;
     if (road) this.drawBeats(state.time, state.lookAhead, hitY, pixelsPerSecond);
     const cardWidth = Math.min(
@@ -398,12 +398,13 @@ export class NotesLayer {
     road?.endNotes();
   }
 
-  /** A bar across the road at every beat in sight, the downbeats brighter; bars are reused. */
+  /** A bar across the road at each visible measure start; bars are reused. */
   private drawBeats(time: number, lookAhead: number, hitY: number, pixelsPerSecond: number): void {
     let used = 0;
     for (const beat of this.beats) {
       if (beat.time < time) continue;
       if (beat.time > time + lookAhead) break;
+      if (!beat.downbeat) continue;
       let bar = this.beatBars.children[used] as Sprite | undefined;
       if (!bar) {
         bar = new Sprite(Texture.WHITE);
@@ -411,9 +412,9 @@ export class NotesLayer {
         this.beatBars.addChild(bar);
       }
       bar.visible = true;
-      bar.alpha = beat.downbeat ? DOWNBEAT_ALPHA : BEAT_ALPHA;
+      bar.alpha = DOWNBEAT_ALPHA;
       bar.width = this.laneWidth;
-      bar.height = beat.downbeat ? 2 : 1;
+      bar.height = 2;
       bar.y = hitY - (beat.time - time) * pixelsPerSecond;
       used++;
     }

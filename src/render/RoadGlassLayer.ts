@@ -1,6 +1,12 @@
-import { Assets, Container, Mesh, MeshGeometry, Texture } from "pixi.js";
+import { Assets, Container, Mesh, MeshGeometry, Rectangle, Sprite, Texture } from "pixi.js";
 
 const GLASS = new URL("../fx/note-glass-block.webp", import.meta.url).href;
+const FIRE = new URL("../fx/note-hold-fire.webp", import.meta.url).href;
+const FIRE_FRAME_WIDTH = 144;
+const FIRE_FRAME_HEIGHT = 192;
+const FIRE_COLUMNS = 6;
+const FIRE_FRAMES = 24;
+const FIRE_FPS = 15;
 const COLUMNS = 4;
 const BODY_SEGMENTS = 16;
 const ROWS = BODY_SEGMENTS + 3;
@@ -8,6 +14,9 @@ const TEXTURE_WIDTH = 96;
 const TEXTURE_HEIGHT = 192;
 const TOP_CAP = 36;
 const BOTTOM_CAP = 38;
+// Arcadia's exported sprite has transparent padding above and below the solid glass.
+const SOLID_TOP_V = 29 / TEXTURE_HEIGHT;
+const SOLID_BOTTOM_V = 170 / TEXTURE_HEIGHT;
 
 type Project = (y: number, offsetX: number, lift?: number) => { x: number; y: number };
 
@@ -19,12 +28,14 @@ interface GlassMesh {
   walls: Mesh;
   wallGeometry: MeshGeometry;
   wallPositions: Float32Array;
+  smoke: Sprite;
 }
 
 /** Pooled glass solids: a beveled top, two sides and a luminous front wall. */
 export class RoadGlassLayer {
   readonly container = new Container({ sortableChildren: true });
   private texture: Texture | undefined;
+  private fireFrames: Texture[] = [];
   private readonly pool: GlassMesh[] = [];
   private used = 0;
   private disposed = false;
@@ -44,6 +55,25 @@ export class RoadGlassLayer {
     } catch (error) {
       console.warn("Road glass did not load; keeping plain duration bars", error);
     }
+    try {
+      const atlas = await Assets.load<Texture>(FIRE);
+      if (!this.disposed)
+        this.fireFrames = Array.from(
+          { length: FIRE_FRAMES },
+          (_, index) =>
+            new Texture({
+              source: atlas.source,
+              frame: new Rectangle(
+                (index % FIRE_COLUMNS) * FIRE_FRAME_WIDTH,
+                Math.floor(index / FIRE_COLUMNS) * FIRE_FRAME_HEIGHT,
+                FIRE_FRAME_WIDTH,
+                FIRE_FRAME_HEIGHT
+              )
+            })
+        );
+    } catch (error) {
+      console.warn("Road hold fire did not load; keeping steady glass", error);
+    }
   }
 
   begin(): void {
@@ -56,6 +86,7 @@ export class RoadGlassLayer {
     width: number,
     tint: number,
     alpha: number,
+    time: number,
     project: Project
   ): void {
     if (!this.ready || bottom <= top || width <= 0 || alpha <= 0) return;
@@ -118,13 +149,34 @@ export class RoadGlassLayer {
     entry.walls.alpha = Math.min(1, alpha);
     entry.walls.visible = true;
     entry.walls.zIndex = bottom * 2;
+    const smoke = entry.smoke;
+    smoke.visible = this.fireFrames.length > 0;
+    if (smoke.visible) {
+      const frame = Math.floor((time * FIRE_FPS + this.used * 5) % FIRE_FRAMES);
+      smoke.texture = this.fireFrames[frame] ?? Texture.EMPTY;
+      smoke.tint = tint;
+      smoke.alpha = Math.min(0.62, alpha * 0.62);
+      const middle = project((top + bottom) / 2, 0, width * 0.45);
+      const leftEdge = project(bottom, -width / 2, width * 0.2);
+      const rightEdge = project(bottom, width / 2, width * 0.2);
+      const topEdge = project(top, 0, width * 0.2);
+      const screenWidth = Math.abs(rightEdge.x - leftEdge.x);
+      smoke.position.set(middle.x, middle.y);
+      smoke.width = Math.max(8, screenWidth * 2.3);
+      smoke.height = Math.max(smoke.width * 1.25, Math.abs(topEdge.y - rightEdge.y) + screenWidth);
+      smoke.zIndex = bottom * 2 + 2;
+    }
   }
 
   end(): void {
     let index = 0;
     for (const entry of this.pool) {
       if (index++ >= this.used)
-        entry.mesh.visible = entry.backing.visible = entry.walls.visible = false;
+        entry.mesh.visible =
+          entry.backing.visible =
+          entry.walls.visible =
+          entry.smoke.visible =
+            false;
     }
   }
 
@@ -138,8 +190,11 @@ export class RoadGlassLayer {
       entry.geometry.destroy();
       if (!entry.walls.destroyed) entry.walls.destroy();
       entry.wallGeometry.destroy();
+      entry.smoke.destroy();
     }
     this.pool.length = 0;
+    for (const frame of this.fireFrames) frame.destroy();
+    this.fireFrames = [];
     this.texture = undefined;
     if (!this.container.destroyed) this.container.destroy();
   }
@@ -159,7 +214,7 @@ export class RoadGlassLayer {
       for (let column = 0; column < COLUMNS; column++) {
         const index = (row * COLUMNS + column) * 2;
         uvs[index] = 0.15 + (0.7 * column) / (COLUMNS - 1);
-        uvs[index + 1] = 0.07 + v * 0.86;
+        uvs[index + 1] = SOLID_TOP_V + v * (SOLID_BOTTOM_V - SOLID_TOP_V);
       }
     }
     let index = 0;
@@ -189,7 +244,7 @@ export class RoadGlassLayer {
     const wallUvs = new Float32Array(24);
     const wallIndices = new Uint32Array(18);
     for (let face = 0; face < 3; face++) {
-      wallUvs.set([0.15, 0.78, 0.85, 0.78, 0.85, 0.91, 0.15, 0.91], face * 8);
+      wallUvs.set([0.15, 0.78, 0.85, 0.78, 0.85, 0.88, 0.15, 0.88], face * 8);
       const vertex = face * 4;
       wallIndices.set([vertex, vertex + 1, vertex + 2, vertex, vertex + 2, vertex + 3], face * 6);
     }
@@ -201,8 +256,12 @@ export class RoadGlassLayer {
     const walls = new Mesh({ geometry: wallGeometry, texture: this.texture ?? Texture.WHITE });
     walls.eventMode = "none";
     walls.blendMode = "add";
-    this.container.addChild(walls, backing, mesh);
-    const entry = { backing, mesh, geometry, positions, walls, wallGeometry, wallPositions };
+    const smoke = new Sprite(Texture.EMPTY);
+    smoke.anchor.set(0.5);
+    smoke.blendMode = "add";
+    smoke.eventMode = "none";
+    this.container.addChild(walls, backing, mesh, smoke);
+    const entry = { backing, mesh, geometry, positions, walls, wallGeometry, wallPositions, smoke };
     this.pool.push(entry);
     return entry;
   }

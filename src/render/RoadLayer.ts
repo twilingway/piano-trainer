@@ -218,6 +218,7 @@ export class RoadLayer {
       width,
       tint,
       alpha,
+      this.clock,
       (y, offset, lift) => this.notePlace(keyX, y, offset, lift) ?? { x: 0, y: 0 }
     );
     return true;
