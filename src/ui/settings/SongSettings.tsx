@@ -24,12 +24,7 @@ interface Props {
 }
 
 /** The song tab: its key and the finger corrections. */
-export function SongSettings({
-  sourceKey,
-  transpose,
-  onTranspose,
-  onResetFingers
-}: Props) {
+export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers }: Props) {
   return (
     <div className="settings-list">
       {sourceKey && (

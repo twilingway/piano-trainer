@@ -38,8 +38,8 @@ export interface InputDiagnostic {
 
 const NOTHING: ReadonlySet<number> = new Set();
 
-/** Song seconds visible above the hit line. */
-const LOOK_AHEAD_S = 3;
+/** Six visible song seconds halve visual scroll speed while preserving the song clock. */
+const LOOK_AHEAD_S = 6;
 const SNAPSHOT_INTERVAL_MS = 150;
 
 /** Beat of the latest note that has started by `time`; notes are sorted by start. */
