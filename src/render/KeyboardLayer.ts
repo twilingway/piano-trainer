@@ -376,10 +376,18 @@ export class KeyboardLayer {
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
       hint.x = key.x + key.width / 2;
       if (!stickers) {
-        // Without stickers the key is free: a large digit, just above the front bevel.
-        hint.scale.set(Math.min((key.width * 0.7) / hint.texture.width, DIGIT_BARE_PX / 40));
+        // Fit the digit below the black keys and above the front bevel.
         const bevel = key.black ? this.bevel.black : this.bevel.white;
-        hint.y = keyboardTop + (key.black ? blackHeight : keyboardHeight) - bevel - 4;
+        const bottom = keyboardTop + (key.black ? blackHeight : keyboardHeight) - bevel - 4;
+        const top = keyboardTop + (key.black ? 4 : blackHeight + 4);
+        hint.scale.set(
+          Math.min(
+            (key.width * 0.7) / hint.texture.width,
+            DIGIT_BARE_PX / hint.texture.height,
+            Math.max(0, bottom - top) / hint.texture.height
+          )
+        );
+        hint.y = bottom;
       } else {
         hint.scale.set(Math.min(1, (key.width * 0.9) / 40, DIGIT_MAX_PX / 40));
         // The sticker fills the bottom of the key; the finger sits at the top of its free part.

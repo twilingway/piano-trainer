@@ -1,3 +1,4 @@
+import type { ScorePlacement } from "../song/scorePlacement";
 import { BlurFilter, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import type { Renderer } from "pixi.js";
 
@@ -160,7 +161,8 @@ export function bakeCardFace(
   renderer: Renderer,
   pitch: number,
   glyph: NoteGlyph,
-  clef: Clef
+  clef: Clef,
+  placement?: ScorePlacement
 ): Texture {
   const inner = CARD_WIDTH - FRAME * 2;
   let g = new Graphics();
@@ -174,7 +176,20 @@ export function bakeCardFace(
     const y = STAFF_BOTTOM - line * SPACING;
     g.moveTo(left, y).lineTo(right, y);
   }
-  const { position, octaveMark } = placeOnStaff(pitch, clef);
+  const fallback = placeOnStaff(pitch, clef);
+  let position = placement?.position ?? fallback.position;
+  let octaveMark = placement ? "" : fallback.octaveMark;
+  let octaveShift = 0;
+  while (position > 12) {
+    position -= 7;
+    octaveShift++;
+  }
+  while (position < -4) {
+    position += 7;
+    octaveShift--;
+  }
+  if (octaveShift)
+    octaveMark = `${Math.abs(octaveShift) === 1 ? "8" : "15"}${octaveShift > 0 ? "va" : "vb"}`;
   const x = inner * 0.62;
   const y = STAFF_BOTTOM - (position * SPACING) / 2;
   for (let ledger = -2; ledger >= position; ledger -= 2) {
@@ -225,7 +240,8 @@ export function bakeCardFace(
       ? mark("\u{1D11E}", 38, 2, top - 13, CLEF_FONT)
       : mark("\u{1D122}", 26, 3, top - 5, CLEF_FONT)
   );
-  if (isBlackKey(pitch)) root.addChild(mark("♯", 15, x - 17, y - 10));
+  const accidental = placement?.accidental ?? (isBlackKey(pitch) ? "♯" : "");
+  if (accidental) root.addChild(mark(accidental, 15, x - 17, y - 10));
   if (octaveMark !== "") {
     const above = octaveMark.endsWith("a");
     root.addChild(

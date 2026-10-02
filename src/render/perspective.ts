@@ -13,6 +13,9 @@ export interface Projected {
  * towards the player.
  */
 export interface RoadProjection {
+  /** Screen-space progress down the road, rather than the compressed source depth. */
+  readonly progressAt: (depth: number) => number;
+  readonly depthAt: (progress: number) => number;
   /**
    * Screen position and scale of a point `x` across the view and `t` of the
    * way down the lane: 0 at the horizon, 1 at the hit line. Equal steps of
@@ -32,6 +35,14 @@ export function roadProjection(
 ): RoadProjection {
   const middle = width / 2;
   return {
+    progressAt: (depth) => {
+      const shrink = 1 / (1 / farShare + (1 - 1 / farShare) * depth);
+      return (shrink - farShare) / (1 - farShare);
+    },
+    depthAt: (progress) => {
+      const shrink = farShare + (1 - farShare) * progress;
+      return (1 / shrink - 1 / farShare) / (1 - 1 / farShare);
+    },
     at: (x, t) => {
       // Depth runs evenly down the lane, from 1 / farShare at the horizon to 1 at the hit line;
       // things shrink as 1 / depth, which is the map PerspectiveMesh draws the lane with.

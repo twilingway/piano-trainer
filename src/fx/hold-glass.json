@@ -1,0 +1,336 @@
+{
+  "app": "arcadia-effects",
+  "v": 2,
+  "doc": {
+    "v": 2,
+    "id": "fx_hold_glass",
+    "name": "Стеклянная полоса удержания",
+    "comp": {
+      "w": 96,
+      "h": 192,
+      "dur": 1,
+      "fps": 1
+    },
+    "cam": {
+      "comp": 0
+    },
+    "exp": {
+      "cols": 1,
+      "rows": 1,
+      "frames": 1,
+      "cellW": 96,
+      "cellH": 192,
+      "t0": 0,
+      "t1": 1,
+      "mode": "rgba",
+      "thr": 0,
+      "ss": 2,
+      "pixelArt": false,
+      "cuts": null
+    },
+    "textures": [],
+    "layers": [
+      {
+        "id": "lr_hold_0",
+        "name": "Стеклянный центр",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.18,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 215.27272727272728,
+          "x": 0,
+          "y": 0,
+          "scale": 1,
+          "aspect": 0.3783783783783784,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_1",
+        "name": "Левая грань",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.16,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 215.27272727272728,
+          "x": -22,
+          "y": 0,
+          "scale": 1,
+          "aspect": 0.060810810810810814,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_2",
+        "name": "Правая грань",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.12,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 215.27272727272728,
+          "x": 23,
+          "y": 0,
+          "scale": 1,
+          "aspect": 0.0472972972972973,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_3",
+        "name": "Левое ребро",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.95,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 215.27272727272728,
+          "x": -28,
+          "y": 0,
+          "scale": 1,
+          "aspect": 0.012162162162162163,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0.7,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_4",
+        "name": "Правое ребро",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.88,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 215.27272727272728,
+          "x": 28,
+          "y": 0,
+          "scale": 1,
+          "aspect": 0.010810810810810811,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0.65,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_5",
+        "name": "Внутренний блик",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.38,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 215.27272727272728,
+          "x": -23,
+          "y": 0,
+          "scale": 1,
+          "aspect": 0.006756756756756757,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_6",
+        "name": "Заднее ребро",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.55,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 2.1818181818181817,
+          "x": 0,
+          "y": -74,
+          "scale": 1,
+          "aspect": 37.333333333333336,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0.3,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_7",
+        "name": "Передняя фаска",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.55,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 7.2727272727272725,
+          "x": 0,
+          "y": 71.5,
+          "scale": 1,
+          "aspect": 11.2,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_8",
+        "name": "Переднее ребро",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.95,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 2.1818181818181817,
+          "x": 0,
+          "y": 69,
+          "scale": 1,
+          "aspect": 37.333333333333336,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0.5,
+        "glowLR": 4,
+        "fadeOn": false
+      },
+      {
+        "id": "lr_hold_9",
+        "name": "Передний торец",
+        "type": "sprite",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 1,
+        "blend": "normal",
+        "opacity": 0.95,
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "square",
+            "p": {}
+          },
+          "size": 2.909090909090909,
+          "x": 0,
+          "y": 74,
+          "scale": 1,
+          "aspect": 28.0,
+          "rot": 0,
+          "color": [255, 255, 255],
+          "squash": 0,
+          "glow": 0
+        },
+        "glowL": 0.65,
+        "glowLR": 4,
+        "fadeOn": false
+      }
+    ]
+  },
+  "tex": {}
+}

@@ -7,6 +7,9 @@ import { quartersAt } from "../song/song";
 import type { Song, SongBeat, SongNote } from "../song/song";
 import { nameKey } from "./bakeLabels";
 import type { FallingNoteNames } from "./bakeLabels";
+import { holdBounds } from "./holdBounds";
+import { scorePlacements } from "../song/scorePlacement";
+import type { ScorePlacement } from "../song/scorePlacement";
 import { FINGER_COLOR } from "./fingerColors";
 import type { KeyRect } from "./keyboardLayout";
 import {
@@ -21,6 +24,7 @@ import {
   bakeTrailTile
 } from "./noteCards";
 import { noteGlyph } from "./noteGlyph";
+import { ARRIVAL_DURATION_S, arrivalCardAlpha, noteArrivalAge } from "./noteArrival";
 import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
@@ -31,10 +35,8 @@ const HIT_LINE = 0xffffff;
 const NOTE_GAP_PX = 1;
 /** With cards on, the bar behind a card is a tail this share of its key wide. */
 const TAIL_SHARE = 0.28;
-/** On the road a note trails a lane this share of its key wide, marked at every beat. */
+/** On the road a note trails a glass lane this share of its key wide. */
 const TRAIL_SHARE = 0.86;
-/** A note flashes on the horizon for this share of the lane after it comes over. */
-const ARRIVAL_SHARE = 0.08;
 /*
  * The cards' neon, baked by Arcadia Effector (src/fx/card-neon.json): a
  * breathing, flickering tube with a halo round the card, 16 frames of 108×128
@@ -44,7 +46,6 @@ const CARD_NEON = new URL("../fx/card-neon.webp", import.meta.url).href;
 const CARD_NEON_FRAME = { width: 108, height: 128, cols: 8, count: 16, fps: 13.33 } as const;
 /** The road's lanes: a faint line between keys and a bar across at every beat. */
 const LANE_COLOR = 0x2f7bff;
-const LANE_ALPHA = 0.35;
 const BEAT_ALPHA = 0.18;
 const DOWNBEAT_ALPHA = 0.4;
 /** A note card's width, in white-key widths, and its limits in pixels. */
@@ -56,6 +57,7 @@ interface NoteSprite {
   readonly note: SongNote;
   /** The bar, or on the road the trail: a tiled lane with a bar at every beat. */
   readonly body: TilingSprite;
+  readonly placement: ScorePlacement | undefined;
   /** Seconds of one quarter within the note: the trail's beat. */
   readonly beatSeconds: number;
   /** The note written on a little staff, at the head of the body, glowing in its colour. */
@@ -106,7 +108,6 @@ export class NotesLayer {
   private readonly lane = new Container();
   private readonly guides = new Container();
   /** The road's lanes and beat bars, under the notes; flat, the plain guides do. */
-  private readonly roadLanes = new Container();
   private readonly beatBars = new Container();
   private beats: readonly SongBeat[] = [];
   private laneWidth = 0;
@@ -125,10 +126,9 @@ export class NotesLayer {
 
   constructor(
     private readonly renderer: Renderer,
-    private readonly labels: NoteLabels,
-    private readonly onNoteClick: (noteId: string) => void
+    private readonly labels: NoteLabels
   ) {
-    this.root.addChild(this.guides, this.roadLanes, this.beatBars, this.lane);
+    this.root.addChild(this.guides, this.beatBars, this.lane);
     this.cardFrame = bakeCardFrame(renderer);
     this.cardFrameLeft = bakeCardFrame(renderer, true);
     this.cardGlow = bakeCardGlow(renderer);
@@ -155,6 +155,7 @@ export class NotesLayer {
 
   setSong(song: Song): void {
     this.beats = song.beats;
+    const placements = scorePlacements(song);
     for (const sprite of this.notes) {
       sprite.body.destroy();
       sprite.digit.destroy();
@@ -169,11 +170,8 @@ export class NotesLayer {
     this.cardFaces.clear();
     this.notes = song.notes.map((note, order) => {
       const body = new TilingSprite({ texture: Texture.WHITE, width: 1, height: 1 });
-      body.eventMode = "static";
-      body.cursor = "pointer";
-      body.on("pointertap", () => {
-        this.onNoteClick(note.id);
-      });
+      body.eventMode = "none";
+      const placement = placements.get(note.id);
       const digit = new Sprite(note.finger ? this.labels.digits.get(note.finger) : undefined);
       digit.anchor.set(0.5, 1);
       digit.eventMode = "none";
@@ -182,15 +180,11 @@ export class NotesLayer {
       name.eventMode = "none";
       const frame = new Sprite(note.hand === "left" ? this.cardFrameLeft : this.cardFrame);
       frame.anchor.set(0.5, 1);
-      frame.eventMode = "static";
-      frame.cursor = "pointer";
-      frame.on("pointertap", () => {
-        this.onNoteClick(note.id);
-      });
+      frame.eventMode = "none";
       const quarters = quartersAt(song, note.start + note.duration) - note.startBeat;
       const glyph = noteGlyph(quarters);
       const beatSeconds = note.duration / Math.max(quarters, 0.25);
-      const face = new Sprite(this.cardFace(note.pitch, glyph, note.hand));
+      const face = new Sprite(this.cardFace(note.pitch, glyph, note.hand, placement));
       face.anchor.set(0.5, 1);
       face.eventMode = "none";
       const badge = new Sprite(note.finger ? this.labels.badges.get(note.finger) : undefined);
@@ -209,7 +203,7 @@ export class NotesLayer {
       badge.zIndex = glow.zIndex + 3;
       this.lane.addChild(body, digit, name);
       this.cards.addChild(glow, frame, face, badge);
-      return { note, body, beatSeconds, glow, frame, face, badge, digit, name };
+      return { note, body, placement, beatSeconds, glow, frame, face, badge, digit, name };
     });
   }
 
@@ -227,20 +221,6 @@ export class NotesLayer {
       line.width = 1;
       line.height = hitY;
       this.guides.addChild(line);
-    }
-    this.roadLanes.removeChildren().forEach((child) => {
-      child.destroy();
-    });
-    // On the road every white key is a lane of its own, edged in faint blue.
-    for (const key of keys.values()) {
-      if (key.black) continue;
-      const edge = new Sprite(Texture.WHITE);
-      edge.tint = LANE_COLOR;
-      edge.alpha = LANE_ALPHA;
-      edge.x = key.x;
-      edge.width = 1.5;
-      edge.height = hitY;
-      this.roadLanes.addChild(edge);
     }
     this.laneWidth = total;
     const hitLine = new Sprite(Texture.WHITE);
@@ -265,9 +245,9 @@ export class NotesLayer {
     const { hitY } = geometry;
     const pixelsPerSecond = hitY / state.lookAhead;
     const cards = this.cardsOn;
+    road?.beginNotes();
     this.playing.clear();
     this.arrivals.length = 0;
-    this.roadLanes.visible = road !== undefined;
     this.beatBars.visible = road !== undefined;
     if (road) this.drawBeats(state.time, state.lookAhead, hitY, pixelsPerSecond);
     const cardWidth = Math.min(
@@ -275,9 +255,10 @@ export class NotesLayer {
       Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
     );
     const cardScale = cardWidth / CARD_WIDTH;
-    // On the road a note trails a lane of beats behind its card, as in the mockup.
+    // On the road the glass follows the note until its duration has elapsed.
     const trail = road !== undefined && cards;
-    for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
+    for (const { note, body, placement, beatSeconds, glow, frame, face, badge, digit, name } of this
+      .notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
         this.playing.set(note.pitch, note);
       }
@@ -286,6 +267,7 @@ export class NotesLayer {
       const noteHeight = Math.max(note.duration * pixelsPerSecond - NOTE_GAP_PX, 4);
       const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
       // With cards the bar thins to a tail behind the card: the length still shows.
+      const bounds = holdBounds(note.start, note.duration, state.time, state.lookAhead, hitY);
       body.visible = onScreen;
       // A note taken bursts on its key and its card is gone; the key's own light carries on.
       const struck =
@@ -306,7 +288,11 @@ export class NotesLayer {
         : cards
           ? key.width * TAIL_SHARE
           : key.width - NOTE_GAP_PX * 2;
-      body.x = key.x + (key.width - barWidth) / 2;
+      const keyCentre = key.x + key.width / 2;
+      const landingY = Math.min(bottom, hitY);
+      body.x =
+        (road ? road.noteLaneX(placement, keyCentre, landingY) + road.scenePan : keyCentre) -
+        barWidth / 2;
       body.width = barWidth;
       // The tail runs the note's whole length, so lengths compare; the card's glass covers
       // its head.
@@ -327,18 +313,39 @@ export class NotesLayer {
       const own =
         road && note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
-      body.alpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
-      if (road && bottom < hitY * ARRIVAL_SHARE) {
+      const cardAlpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
+      body.alpha = road !== undefined ? 1 : cardAlpha;
+      const age = noteArrivalAge(note.start, state.time, state.lookAhead);
+      const arrivalAlpha = road?.arrivalEffectsReady ? arrivalCardAlpha(age) : 1;
+      if (road && age >= 0 && age < ARRIVAL_DURATION_S) {
         this.arrivals.push({
           x: key.x + key.width / 2,
-          color: body.tint,
-          strength: (1 - bottom / (hitY * ARRIVAL_SHARE)) * body.alpha
+          width: key.width,
+          color: note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand],
+          age,
+          screenX: road.notePlace(placement, keyCentre, 0)?.x
         });
+      }
+      body.alpha *= arrivalAlpha;
+      if (road && bounds.bottom > bounds.top) {
+        if (
+          road.drawHold(
+            placement,
+            keyCentre,
+            bounds.top,
+            bounds.bottom,
+            barWidth,
+            body.tint,
+            arrivalAlpha
+          )
+        )
+          body.visible = false;
+        road.drawLedger(placement, landingY);
       }
 
       digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
-      digit.x = key.x + key.width / 2;
-      digit.y = bottom - 2;
+      digit.x = body.x + barWidth / 2;
+      digit.y = (road ? landingY : bottom) - 2;
       digit.alpha = body.alpha;
       if (cards) {
         // The card stands where the note lands; on the road it faces the player and
@@ -346,9 +353,9 @@ export class NotesLayer {
         const centre = key.x + key.width / 2;
         // A sounding note's card waits on the hit line rather than sliding over the keys.
         const landing = Math.min(bottom, hitY);
-        const spot = road?.place(centre, landing);
+        const spot = road?.notePlace(placement, centre, landing);
         // Far up the road a card is still in the fog; it clears as it nears.
-        const seen = body.alpha * (road ? road.clarity(landing) : 1);
+        const seen = cardAlpha * arrivalAlpha * (road ? road.clarity(landing) : 1);
         const scale = cardScale * (spot?.scale ?? 1);
         const x = spot?.x ?? centre;
         const y = spot?.y ?? landing;
@@ -384,11 +391,12 @@ export class NotesLayer {
         name.scale.set(Math.min(1, (key.width * 0.92) / Math.max(name.texture.width, 1)));
         const digitHeight = note.finger === undefined ? 0 : digit.height + 2;
         name.visible = noteHeight >= digitHeight + name.height + 4;
-        name.x = key.x + key.width / 2;
-        name.y = bottom - 2 - digitHeight;
+        name.x = body.x + barWidth / 2;
+        name.y = (road ? landingY : bottom) - 2 - digitHeight;
         name.alpha = body.alpha;
       }
     }
+    road?.endNotes();
   }
 
   /** A bar across the road at every beat in sight, the downbeats brighter; bars are reused. */
@@ -452,12 +460,17 @@ export class NotesLayer {
     return style ? (this.labels.names.get(nameKey(style, pitch)) ?? Texture.EMPTY) : Texture.EMPTY;
   }
 
-  private cardFace(pitch: number, glyph: ReturnType<typeof noteGlyph>, hand: Hand): Texture {
-    const key = `${String(pitch)}:${glyph.kind}:${String(glyph.dotted)}:${hand}`;
+  private cardFace(
+    pitch: number,
+    glyph: ReturnType<typeof noteGlyph>,
+    hand: Hand,
+    placement?: ScorePlacement
+  ): Texture {
+    const key = `${String(pitch)}:${glyph.kind}:${String(glyph.dotted)}:${hand}:${placement?.clef ?? ""}:${String(placement?.position)}:${placement?.accidental ?? ""}`;
     let texture = this.cardFaces.get(key);
     if (!texture) {
-      const clef = hand === "left" ? "bass" : "treble";
-      texture = bakeCardFace(this.renderer, pitch, glyph, clef);
+      const clef = placement?.clef ?? (hand === "left" ? "bass" : "treble");
+      texture = bakeCardFace(this.renderer, pitch, glyph, clef, placement);
       this.cardFaces.set(key, texture);
     }
     return texture;

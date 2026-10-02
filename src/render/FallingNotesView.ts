@@ -1,3 +1,4 @@
+import { scorePlacements } from "../song/scorePlacement";
 import { Application, Container } from "pixi.js";
 import type { FederatedPointerEvent, Texture } from "pixi.js";
 
@@ -139,11 +140,11 @@ export class FallingNotesView {
     // Light digits for the cards' smoked glass.
     this.badgeTextures = bakeDigits(renderer, 0xffffff);
     this.nameTextures = bakeNames(renderer);
-    const notes = new NotesLayer(
-      renderer,
-      { digits: this.digitTextures, badges: this.badgeTextures, names: this.nameTextures },
-      (noteId) => this.onNoteClick?.(noteId)
-    );
+    const notes = new NotesLayer(renderer, {
+      digits: this.digitTextures,
+      badges: this.badgeTextures,
+      names: this.nameTextures
+    });
     notes.setNoteNames(this.noteNames);
     notes.setCards(this.cards);
     notes.setVisible(this.parts.notes);
@@ -156,6 +157,7 @@ export class FallingNotesView {
     keyboard.showStickers(this.labels);
     this.keyboard = keyboard;
     this.road = new RoadLayer(renderer);
+    if (this.song) this.road.setScore(scorePlacements(this.song));
     this.road.container.visible = false;
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, this.hands.container);
@@ -174,7 +176,7 @@ export class FallingNotesView {
       this.fx.container,
       this.hud.container
     );
-    await Promise.all([this.fx.load(), notes.loadNeon()]);
+    await Promise.all([this.fx.load(), notes.loadNeon(), this.road.loadArrivalEffects()]);
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -303,6 +305,7 @@ export class FallingNotesView {
   setSong(song: Song): void {
     this.hands.setSong(song);
     this.notesLayer?.setSong(song);
+    this.road?.setScore(scorePlacements(song));
     this.song = song;
     this.songNotes = song.notes;
     this.hud.clear();

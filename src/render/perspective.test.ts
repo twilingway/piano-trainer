@@ -39,3 +39,12 @@ describe("roadProjection", () => {
     expect(road.at(500, 0.25).y - 200).toBeLessThan(800 - road.at(500, 0.75).y + 1e-9);
   });
 });
+
+it("places the transition at screen progress for different perspective shapes", () => {
+  for (const far of [0.05, 0.1, 0.4, 0.8]) {
+    const road = roadProjection(1000, 800, 200, far);
+    const depth = road.depthAt(0.78);
+    expect(road.progressAt(depth)).toBeCloseTo(0.78);
+    expect(road.at(500, depth).y).toBeCloseTo(200 + 600 * 0.78);
+  }
+});
