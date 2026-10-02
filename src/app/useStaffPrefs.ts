@@ -73,10 +73,13 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
 };
 
 function loadStaffPrefs(): StaffPrefs {
+  const mobile = window.matchMedia(
+    "(max-width: 640px), (pointer: coarse) and (max-height: 640px)"
+  ).matches;
   const defaults = {
     ...DEFAULT_STAFF_PREFS,
-    visible: !window.matchMedia("(max-width: 640px), (pointer: coarse) and (max-height: 640px)")
-      .matches
+    visible: !mobile,
+    labels: !mobile
   };
   try {
     const raw = localStorage.getItem(STAFF_PREFS_KEY);
@@ -87,6 +90,7 @@ function loadStaffPrefs(): StaffPrefs {
       ...defaults,
       ...saved,
       visible: typeof saved.visible === "boolean" ? saved.visible : defaults.visible,
+      labels: typeof saved.labels === "boolean" ? saved.labels : defaults.labels,
       noteColor: color(saved.noteColor, DEFAULT_STAFF_PREFS.noteColor),
       scoreColor: color(saved.scoreColor, DEFAULT_STAFF_PREFS.scoreColor),
       fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono"
