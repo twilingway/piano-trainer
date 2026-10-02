@@ -42,10 +42,10 @@
         "opacity": 1,
         "em": {
           "x": 0,
-          "y": 42,
+          "y": 12,
           "shape": "box",
           "sx": 24,
-          "sy": 58,
+          "sy": 48,
           "dir": "dir",
           "angle": -90,
           "spread": 38,
@@ -147,11 +147,11 @@
         },
         "glowL": 0.12,
         "glowLR": 24,
-        "fadeOn": false,
+        "fadeOn": true,
         "fadeX": 0,
-        "fadeY": 0,
-        "fadeR": 220,
-        "fadeSoft": 0.5
+        "fadeY": -4,
+        "fadeR": 99,
+        "fadeSoft": 0.45
       },
       {
         "id": "lr_note_hold_flame",
@@ -165,10 +165,10 @@
         "opacity": 1,
         "em": {
           "x": 0,
-          "y": 42,
+          "y": 12,
           "shape": "box",
           "sx": 24,
-          "sy": 58,
+          "sy": 48,
           "dir": "dir",
           "angle": -90,
           "spread": 24,
@@ -286,11 +286,11 @@
         },
         "glowL": 0.65,
         "glowLR": 12,
-        "fadeOn": false,
+        "fadeOn": true,
         "fadeX": 0,
-        "fadeY": 0,
-        "fadeR": 220,
-        "fadeSoft": 0.5
+        "fadeY": -4,
+        "fadeR": 99,
+        "fadeSoft": 0.45
       },
       {
         "id": "lr_note_hold_embers",
@@ -304,10 +304,10 @@
         "opacity": 1,
         "em": {
           "x": 0,
-          "y": 42,
+          "y": 12,
           "shape": "box",
           "sx": 24,
-          "sy": 58,
+          "sy": 48,
           "dir": "dir",
           "angle": -90,
           "spread": 36,
@@ -405,11 +405,11 @@
         },
         "glowL": 0.35,
         "glowLR": 24,
-        "fadeOn": false,
+        "fadeOn": true,
         "fadeX": 0,
-        "fadeY": 0,
-        "fadeR": 220,
-        "fadeSoft": 0.5
+        "fadeY": -4,
+        "fadeR": 99,
+        "fadeSoft": 0.45
       }
     ]
   },
