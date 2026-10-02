@@ -160,7 +160,7 @@ body {
 /*
  * Measure numbers and fingering are both small digits over the staff; they
  * must not read alike. Numbers: small grey italic sans. Fingers: bold, in the
- * colour of their hand as on the falling notes (OSMD ids staff lines -1 and -2).
+ * chosen fingering colour (OSMD ids staff lines -1 and -2).
  */
 .staff .measure-number text {
   fill: var(--muted);
@@ -170,13 +170,11 @@ body {
 }
 
 .staff .staffline[id$="-1"] > .vf-text text {
-  fill: var(--accent);
   font-family: system-ui, sans-serif;
   font-weight: 700;
 }
 
 .staff .staffline[id$="-2"] > .vf-text text {
-  fill: var(--finger-1);
   font-family: system-ui, sans-serif;
   font-weight: 700;
 }
@@ -248,11 +246,24 @@ body {
 }
 
 .workspace-main {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+}
+
+/* The road fills the scene; the transparent score floats over its sky and effects. */
+.workspace-main--overlay > .staves {
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  pointer-events: none;
+}
+
+.workspace-main--overlay .staff {
+  pointer-events: auto;
 }
 
 /* Only the keys: a strip of keyboard; nothing at all: the score gets the room. */
@@ -430,12 +441,13 @@ select:disabled {
 }
 
 .topbar-library {
-  flex: 1 1 160px;
+  flex: 1 1 120px;
   min-width: 0;
   max-width: 34vw;
 }
 
 .topbar-settings,
+.topbar-fullscreen,
 .topbar svg,
 .play-button__ring {
   flex-shrink: 0;
@@ -972,6 +984,17 @@ button.song-card.song-card__open {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.setting input[type="color"] {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 44px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-raised);
+  cursor: pointer;
+}
+
 .setting-control--views .view-toggle {
   display: flex;
   gap: 8px;
@@ -1332,6 +1355,10 @@ button.song-card.song-card__open {
     order: 2;
   }
 
+  .topbar-fullscreen {
+    order: 4;
+  }
+
   .compact-controls summary {
     list-style: none;
   }
@@ -1432,6 +1459,7 @@ button.song-card.song-card__open {
   .topbar-restart,
   .compact-hands,
   .topbar .play-button,
+  .topbar-fullscreen,
   .topbar-settings {
     flex: 0 0 44px;
     justify-content: center;

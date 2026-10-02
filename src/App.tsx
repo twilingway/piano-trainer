@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import { LESSONS } from "./app/lessons";
 import { useFallingView } from "./app/useFallingView";
+import { useFullscreen } from "./app/useFullscreen";
 import { useKeyInput } from "./app/useKeyInput";
 import { usePlayerLibrary } from "./app/usePlayerLibrary";
 import { useShortcuts } from "./app/useShortcuts";
@@ -28,6 +29,7 @@ import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
 
 export function App() {
+  const fullscreen = useFullscreen();
   /**
    * Song time practice starts from after a click on the staff; null = the beginning.
    * Kept across reloads (listen, speed, hand, mode), cleared by "Сначала" and a new song.
@@ -59,6 +61,8 @@ export function App() {
   });
   const input = useKeyInput(trainer.trainerRef);
   const view = useFallingView({
+    hostRef: trainer.hostRef,
+    hasScore: Boolean(score.staffXml),
     viewRef: trainer.viewRef,
     trainerRef: trainer.trainerRef,
     trainerReady: trainer.trainerReady,
@@ -203,7 +207,7 @@ export function App() {
   ];
 
   return (
-    <div className="app">
+    <div className="app" onClickCapture={fullscreen.onClickCapture}>
       <div className="shell-top">
         <PlayerTopBar
           title={song.title}
@@ -215,6 +219,8 @@ export function App() {
           board={board}
           midi={input.midiName}
           settingsOpen={settingsOpen}
+          fullscreen={fullscreen.active}
+          onFullscreen={() => void fullscreen.toggle()}
           toggles={toggles}
           onLibrary={() => {
             setLibraryOpen(true);
@@ -238,6 +244,11 @@ export function App() {
       </div>
 
       {library.loadError && <div className="toast toast--error">{library.loadError}</div>}
+      {fullscreen.error && (
+        <div className="toast toast--error" role="status">
+          {fullscreen.error}
+        </div>
+      )}
 
       {review && lastTake && (
         <ReviewBar

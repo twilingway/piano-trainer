@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from "react";
 
 import type { Scoreboard } from "../practice/scoreboard";
 import { CompactPracticeChoices, HAND_CHOICES, HandsPicture } from "./CompactPracticeChoices";
-import { GearIcon, LibraryIcon, PauseIcon, PlayIcon, RestartIcon } from "./icons";
+import { FullscreenIcon, GearIcon, LibraryIcon, PauseIcon, PlayIcon, RestartIcon } from "./icons";
 import { ViewHelp } from "./ViewHelp";
 
 export type PracticeModeChoice = "wait" | "tempo";
@@ -19,6 +19,8 @@ interface Props {
   /** The piano's name when one is connected. */
   readonly midi: string | undefined;
   readonly settingsOpen: boolean;
+  readonly fullscreen: boolean;
+  readonly onFullscreen: () => void;
   /** The view toggles, drawn on the bar's right. */
   readonly toggles: ReactNode;
   readonly onLibrary: () => void;
@@ -216,6 +218,17 @@ export function PlayerTopBar(props: Props) {
         </span>
       </div>
       <div className="topbar-toggles">{props.toggles}</div>
+      <button
+        type="button"
+        className="icon-button topbar-fullscreen"
+        data-fullscreen-toggle
+        aria-label={props.fullscreen ? "Свернуть" : "На весь экран"}
+        title={props.fullscreen ? "Свернуть" : "На весь экран"}
+        aria-pressed={props.fullscreen}
+        onClick={props.onFullscreen}
+      >
+        <FullscreenIcon active={props.fullscreen} />
+      </button>
       <button
         type="button"
         className="icon-button topbar-settings"
