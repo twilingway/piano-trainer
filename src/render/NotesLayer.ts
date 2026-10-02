@@ -126,8 +126,7 @@ export class NotesLayer {
 
   constructor(
     private readonly renderer: Renderer,
-    private readonly labels: NoteLabels,
-    private readonly onNoteClick: (noteId: string) => void
+    private readonly labels: NoteLabels
   ) {
     this.root.addChild(this.guides, this.beatBars, this.lane);
     this.cardFrame = bakeCardFrame(renderer);
@@ -172,11 +171,7 @@ export class NotesLayer {
     this.cardFaces.clear();
     this.notes = song.notes.map((note, order) => {
       const body = new TilingSprite({ texture: Texture.WHITE, width: 1, height: 1 });
-      body.eventMode = "static";
-      body.cursor = "pointer";
-      body.on("pointertap", () => {
-        this.onNoteClick(note.id);
-      });
+      body.eventMode = "none";
       const glass = this.glassHold.create();
       const digit = new Sprite(note.finger ? this.labels.digits.get(note.finger) : undefined);
       digit.anchor.set(0.5, 1);
@@ -186,11 +181,7 @@ export class NotesLayer {
       name.eventMode = "none";
       const frame = new Sprite(note.hand === "left" ? this.cardFrameLeft : this.cardFrame);
       frame.anchor.set(0.5, 1);
-      frame.eventMode = "static";
-      frame.cursor = "pointer";
-      frame.on("pointertap", () => {
-        this.onNoteClick(note.id);
-      });
+      frame.eventMode = "none";
       const quarters = quartersAt(song, note.start + note.duration) - note.startBeat;
       const glyph = noteGlyph(quarters);
       const beatSeconds = note.duration / Math.max(quarters, 0.25);

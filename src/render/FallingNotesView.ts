@@ -139,11 +139,11 @@ export class FallingNotesView {
     // Light digits for the cards' smoked glass.
     this.badgeTextures = bakeDigits(renderer, 0xffffff);
     this.nameTextures = bakeNames(renderer);
-    const notes = new NotesLayer(
-      renderer,
-      { digits: this.digitTextures, badges: this.badgeTextures, names: this.nameTextures },
-      (noteId) => this.onNoteClick?.(noteId)
-    );
+    const notes = new NotesLayer(renderer, {
+      digits: this.digitTextures,
+      badges: this.badgeTextures,
+      names: this.nameTextures
+    });
     notes.setNoteNames(this.noteNames);
     notes.setCards(this.cards);
     notes.setVisible(this.parts.notes);

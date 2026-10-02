@@ -28,7 +28,6 @@ export function SongSettings({
   sourceKey,
   transpose,
   onTranspose,
-  fingersChanged,
   onResetFingers
 }: Props) {
   return (
@@ -85,13 +84,14 @@ export function SongSettings({
           type="button"
           className="game-button"
           onClick={onResetFingers}
-          disabled={!fingersChanged}
+          disabled
+          title="Изменение пальцев временно отключено"
         >
           Сбросить пальцы
         </button>
       </div>
       <p className="setting-hint">
-        Клик по падающей ноте меняет палец; клик по нотам на стане — играть с этого места.
+        Изменение пальцев временно отключено. Клик по нотам на стане — играть с этого места.
       </p>
     </div>
   );
