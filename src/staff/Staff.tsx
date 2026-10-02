@@ -348,7 +348,8 @@ export function Staff({
 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
-    osmd.Zoom = latest.current.zoom;
+    const scale = Number.parseFloat(getComputedStyle(host).getPropertyValue("--staff-scale")) || 1;
+    osmd.Zoom = latest.current.zoom * scale;
     osmd.render();
     fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
     const page = pageRef.current;
@@ -437,8 +438,7 @@ export function Staff({
   useEffect(() => {
     const osmd = osmdRef.current;
     const host = hostRef.current;
-    if (!osmd || !host || osmd.Zoom === zoom) return;
-    osmd.Zoom = zoom;
+    if (!osmd || !host) return;
     relayout(osmd, host);
   }, [zoom]);
 

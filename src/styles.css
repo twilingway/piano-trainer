@@ -1217,6 +1217,12 @@ button.song-card.song-card__open {
   }
 }
 
+@media (width <= 640px) and (orientation: portrait) {
+  .staff {
+    --staff-scale: 0.6;
+  }
+}
+
 /* Touch targets stay large even on a tablet in landscape. */
 @media (pointer: coarse), (width <= 900px) {
   .game-button,
