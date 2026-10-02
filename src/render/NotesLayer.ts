@@ -37,6 +37,8 @@ const NOTE_GAP_PX = 1;
 const TAIL_SHARE = 0.28;
 /** On the road a note trails a glass lane this share of its key wide. */
 const TRAIL_SHARE = 0.86;
+/** Glass hold bars extend a little beyond their corresponding key. */
+const ROAD_HOLD_WIDTH_SHARE = 1.08;
 /*
  * The cards' neon, baked by Arcadia Effector (src/fx/card-neon.json): a
  * breathing, flickering tube with a halo round the card, 16 frames of 108×128
@@ -328,7 +330,16 @@ export class NotesLayer {
       }
       body.alpha *= arrivalAlpha;
       if (road && bounds.bottom > bounds.top) {
-        if (road.drawHold(keyCentre, bounds.top, bounds.bottom, barWidth, body.tint, arrivalAlpha))
+        if (
+          road.drawHold(
+            keyCentre,
+            bounds.top,
+            bounds.bottom,
+            key.width * ROAD_HOLD_WIDTH_SHARE,
+            body.tint,
+            arrivalAlpha
+          )
+        )
           body.visible = false;
       }
 
