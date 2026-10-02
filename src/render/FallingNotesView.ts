@@ -7,6 +7,7 @@ import type { ComboBoard, GradedStrike } from "../practice/combo";
 import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
 import { bakeDigits, bakeNames } from "./bakeLabels";
+import { bindKeyboardPointer } from "./bindKeyboardPointer";
 import type { FallingNoteNames } from "./bakeLabels";
 import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
@@ -110,6 +111,7 @@ export class FallingNotesView {
   private pan = 0;
   private ready = false;
   private resizeObserver: ResizeObserver | undefined;
+  private unbindKeyboardPointer: (() => void) | undefined;
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
   private cards = true;
@@ -175,18 +177,16 @@ export class FallingNotesView {
     const stage = this.app.stage;
     stage.eventMode = "static";
     stage.hitArea = this.app.screen;
-    stage.on("pointerdown", (event) => {
-      this.roadPointer(event);
-    });
-    stage.on("pointermove", (event) => {
-      if ((event.buttons & 1) === 1) this.roadPointer(event);
-    });
-    stage.on("pointerup", () => {
-      keyboard.releaseMouse();
-    });
-    stage.on("pointerupoutside", () => {
-      keyboard.releaseMouse();
-    });
+    this.unbindKeyboardPointer = bindKeyboardPointer(
+      stage,
+      this.app.canvas,
+      (event) => {
+        this.roadPointer(event);
+      },
+      () => {
+        keyboard.releaseMouse();
+      }
+    );
     await keyboard.loadPaintedFaces(this.keyStyle);
     this.ready = true;
   }
@@ -425,6 +425,7 @@ export class FallingNotesView {
   }
 
   destroy(): void {
+    this.unbindKeyboardPointer?.();
     this.ready = false;
     this.resizeObserver?.disconnect();
     // Off the stage in the road view, so the stage's own destroy would miss them.
@@ -453,7 +454,8 @@ export class FallingNotesView {
       width,
       this.range.low,
       this.range.high,
-      this.rangeFitsSong
+      this.rangeFitsSong,
+      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches
     );
     this.total = total;
     this.pan = Math.min(this.pan, Math.max(0, total - width));
@@ -473,5 +475,6 @@ export class FallingNotesView {
         this.road.effects.visible = false;
       }
     }
+    this.hud.layout(width, this.roadMode && this.road ? this.road.hitLineY : geometry.hitY);
   }
 }

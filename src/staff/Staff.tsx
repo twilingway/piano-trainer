@@ -1,4 +1,5 @@
 import { placeCursorLine, spotAt } from "./liveCursor";
+import { fitCompactStaff, staffZoom } from "./fitCompactStaff";
 import type { BeatSpot } from "./liveCursor";
 import { OpenSheetMusicDisplay, VexFlowGraphicalNote, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useRef } from "react";
@@ -73,7 +74,7 @@ function noteheadShapes(note: VexFlowGraphicalNote): SVGElement[] {
   return shapes;
 }
 
-/** Back to the review colour if the take marked it, to black if not. */
+/** Restore the review colour, or the score's default accent if unmarked. */
 function restoreFill(shape: SVGElement): void {
   const mark = shape.dataset.mark;
   if (mark) shape.style.fill = mark;
@@ -96,7 +97,7 @@ function highlightUnderCursor(
   return painted;
 }
 
-/** Colours noteheads by the review of the last take; notes it does not name go back to black. */
+/** Colours noteheads by the review of the last take; unmarked notes use the score's accent. */
 function paintMarks(
   heads: ReadonlyMap<string, readonly SVGElement[]>,
   marks: ReadonlyMap<string, string> | undefined
@@ -347,7 +348,9 @@ export function Staff({
 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
+    osmd.Zoom = staffZoom(host, latest.current.zoom);
     osmd.render();
+    fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
     const page = pageRef.current;
     if (page) {
       if (latest.current.singleLine) page.style.transform = "";
@@ -382,6 +385,7 @@ export function Staff({
     let resizeTimer = 0;
     const osmd = new OpenSheetMusicDisplay(page, {
       backend: "svg",
+      defaultColorMusic: getComputedStyle(host).getPropertyValue("--accent").trim(),
       // Re-flowing on resize is done below, so the line sizes are measured again too.
       autoResize: false,
       drawTitle: false,
@@ -408,18 +412,22 @@ export function Staff({
       osmdRef.current = osmd;
       relayout(osmd, host);
     });
-    // A wrapped page re-flows to a new width; a single line never needs to.
+    // Wrapped pages re-flow; a compact single line also fits the space above the keys.
     const onResize = () => {
       window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(() => {
-        if (osmdRef.current === osmd && !latest.current.singleLine) relayout(osmd, host);
+        if (osmdRef.current === osmd) relayout(osmd, host);
       }, 200);
     };
     window.addEventListener("resize", onResize);
+    const workspace = host.closest(".workspace-main");
+    const resizeObserver = new ResizeObserver(onResize);
+    if (workspace) resizeObserver.observe(workspace);
     return () => {
       cancelled = true;
       window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
+      resizeObserver.disconnect();
       osmdRef.current = null;
       osmd.clear();
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
@@ -430,8 +438,7 @@ export function Staff({
   useEffect(() => {
     const osmd = osmdRef.current;
     const host = hostRef.current;
-    if (!osmd || !host || osmd.Zoom === zoom) return;
-    osmd.Zoom = zoom;
+    if (!osmd || !host) return;
     relayout(osmd, host);
   }, [zoom]);
 

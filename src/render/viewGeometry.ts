@@ -21,7 +21,7 @@ const FELT_PER_WIDTH = 0.22;
 
 /*
  * With the keys fitted to the song, a white key is kept between these widths,
- * in CSS pixels, on any screen. A short song gets more keys round it rather
+ * in CSS pixels, on a roomy screen. A short song gets more keys round it rather
  * than giant ones; a wide one keeps playable keys and the view scrolls along
  * the keyboard to the keys to play next.
  */
@@ -90,15 +90,24 @@ export interface FittedRange {
  * Fits the keys `low`..`high` to a view `width` wide. A fixed range fills the
  * view as it is; one that follows the song keeps its white keys playable.
  */
-export function fitRange(width: number, low: number, high: number, fitsSong: boolean): FittedRange {
+export function fitRange(
+  width: number,
+  low: number,
+  high: number,
+  fitsSong: boolean,
+  fitWholeSong = false
+): FittedRange {
   if (!fitsSong) return { low, high, total: width };
+  if (fitWholeSong) {
+    [low, high] = widenRange(low, high, whiteKeysBetween(low, high) + 2);
+  }
   const whites = Math.max(1, whiteKeysBetween(low, high));
   if (width / whites > SONG_WHITE_MAX_PX) {
     // Few keys: more round the song, so none is giant.
     const [wideLow, wideHigh] = widenRange(low, high, Math.ceil(width / SONG_WHITE_MAX_PX));
     return { low: wideLow, high: wideHigh, total: width };
   }
-  if (width / whites < SONG_WHITE_MIN_PX) {
+  if (!fitWholeSong && width / whites < SONG_WHITE_MIN_PX) {
     // Many keys: keep them playable and scroll.
     return { low, high, total: whites * SONG_WHITE_MIN_PX };
   }

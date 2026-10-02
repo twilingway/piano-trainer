@@ -168,7 +168,12 @@ export class KeyboardLayer {
       });
       // Dragging across the keys with the button held plays each one: a glissando.
       sprite.on("pointerover", (event) => {
-        if (this.mouseKey !== undefined && (event.buttons & 1) === 1) this.pressWithMouse(pitch);
+        if (
+          this.mouseKey !== undefined &&
+          (event.buttons & 1) === 1 &&
+          document.elementFromPoint(event.clientX, event.clientY) === this.renderer.canvas
+        )
+          this.pressWithMouse(pitch);
       });
       sprite.on("pointerup", () => {
         this.releaseMouse();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { whiteKeysBetween } from "./keyboardLayout";
+import { layoutKeyboard, whiteKeysBetween } from "./keyboardLayout";
 import { fitRange, viewGeometry } from "./viewGeometry";
 
 const ALL = { notes: true, keys: true, hands: false };
@@ -62,5 +62,39 @@ describe("fitRange", () => {
   it("scrolls a wide song rather than shrink its keys", () => {
     const fitted = fitRange(500, 21, 108, true);
     expect(fitted).toEqual({ low: 21, high: 108, total: 52 * 56 });
+  });
+
+  it.each([320, 667, 768])("shows the entire song range on a compact %ipx screen", (width) => {
+    const fitted = fitRange(width, 21, 108, true, true);
+    const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
+    expect(keys.size).toBe(88);
+    expect(keys.get(21)?.x).toBe(0);
+    const last = keys.get(108);
+    expect((last?.x ?? 0) + (last?.width ?? 0)).toBeCloseTo(width);
+    for (const key of keys.values()) {
+      expect(key.x).toBeGreaterThanOrEqual(0);
+      expect(key.x + key.width).toBeLessThanOrEqual(width + 1e-9);
+    }
+  });
+
+  it("keeps songs with black-key edges entirely inside the compact view", () => {
+    const fitted = fitRange(320, 61, 78, true, true);
+    const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
+    expect(keys.has(61)).toBe(true);
+    expect(keys.has(78)).toBe(true);
+    for (const key of keys.values()) {
+      expect(key.x).toBeGreaterThanOrEqual(0);
+      expect(key.x + key.width).toBeLessThanOrEqual(320 + 1e-9);
+    }
+  });
+
+  it("leaves one extra white key on each side of the song in a compact view", () => {
+    const fitted = fitRange(667, 48, 79, true, true);
+    const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
+    expect(whiteKeysBetween(fitted.low, 47)).toBe(1);
+    expect(whiteKeysBetween(80, fitted.high)).toBe(1);
+    expect(keys.get(48)?.x).toBeGreaterThan(0);
+    const lastSongKey = keys.get(79);
+    expect((lastSongKey?.x ?? 0) + (lastSongKey?.width ?? 0)).toBeLessThan(667);
   });
 });

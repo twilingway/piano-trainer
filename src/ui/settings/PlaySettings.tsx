@@ -1,4 +1,5 @@
 import type { PracticeMode, PracticeStats } from "../../practice/session";
+import type { HandsChoice } from "../PlayerTopBar";
 
 interface Props {
   readonly metronome: boolean;
@@ -8,6 +9,11 @@ interface Props {
   readonly onListen: () => void;
   readonly stats: PracticeStats | undefined;
   readonly mode: PracticeMode;
+  readonly onMode: (mode: PracticeMode) => void;
+  readonly hands: HandsChoice;
+  readonly onHands: (hands: HandsChoice) => void;
+  readonly speed: number;
+  readonly onSpeed: (speed: number) => void;
   readonly autoReview: boolean;
   readonly onAutoReview: (on: boolean) => void;
 }
@@ -21,11 +27,63 @@ export function PlaySettings({
   onListen,
   stats,
   mode,
+  onMode,
+  hands,
+  onHands,
+  speed,
+  onSpeed,
   autoReview,
   onAutoReview
 }: Props) {
   return (
     <div className="settings-list">
+      <label className="setting">
+        <span>Режим</span>
+        <select
+          className="game-select"
+          aria-label="Режим"
+          value={mode}
+          onChange={(event) => {
+            onMode(event.target.value as PracticeMode);
+          }}
+        >
+          <option value="wait">Ждать ноту</option>
+          <option value="tempo">В темпе</option>
+        </select>
+      </label>
+      <label className="setting">
+        <span>Руки</span>
+        <select
+          className="game-select"
+          aria-label="Руки"
+          value={hands}
+          onChange={(event) => {
+            onHands(event.target.value as HandsChoice);
+          }}
+        >
+          <option value="right">Правая рука</option>
+          <option value="left">Левая рука</option>
+          <option value="both">Обе руки</option>
+          <option value="listen">Только слушать</option>
+        </select>
+      </label>
+      <label className="setting">
+        <span>Скорость</span>
+        <span className="setting-control">
+          <input
+            type="range"
+            aria-label="Скорость"
+            min={0.25}
+            max={1}
+            step={0.05}
+            value={speed}
+            onChange={(event) => {
+              onSpeed(Number(event.target.value));
+            }}
+          />
+          <span className="digits">{Math.round(speed * 100)}%</span>
+        </span>
+      </label>
       <label className="setting">
         <span>Метроном</span>
         <input
