@@ -13,6 +13,7 @@ import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";
 import { staffRoadX } from "./staffRoadGeometry";
 import type { ScorePlacement } from "../song/scorePlacement";
+import type { KeyRect } from "./keyboardLayout";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
 import { roadProjection } from "./perspective";
@@ -160,13 +161,18 @@ export class RoadLayer {
     this.placements = placements;
     if (this.viewWidth > 0) {
       this.staff.configure(placements.values(), this.viewWidth);
-      if (this.projection) this.staff.draw(this.projection);
+      if (this.projection) this.staff.draw(this.projection, this.pan);
     }
   }
 
   beginNotes(): void {
     this.glass.begin();
     this.staff.begin();
+  }
+
+  setKeyboard(keys: ReadonlyMap<number, KeyRect>): void {
+    this.staff.setKeys(keys);
+    if (this.projection) this.staff.draw(this.projection, this.pan);
   }
 
   endNotes(): void {
@@ -277,7 +283,7 @@ export class RoadLayer {
     this.keys.setCorners(0, this.hitY, viewWidth, this.hitY, viewWidth, bottom, 0, bottom);
     this.hit = { y: this.hitY, left: 0, right: viewWidth };
     this.staff.configure(this.placements.values(), viewWidth);
-    this.staff.draw(this.projection);
+    this.staff.draw(this.projection, this.pan);
     this.setPan(this.pan, true);
   }
 
@@ -293,6 +299,7 @@ export class RoadLayer {
     this.keysShift = new Matrix().translate(-pan, -this.size.height);
     const projection = this.projection;
     if (!projection) return;
+    this.staff.draw(projection, pan);
 
     const left = -pan;
     const right = this.size.width - pan;

@@ -5,6 +5,9 @@ import type { RoadProjection } from "./perspective";
 import { RoadLaneLayer } from "./RoadLaneLayer";
 import { createStaffRoadLayout } from "./staffRoadGeometry";
 import type { StaffRoadLayout } from "./staffRoadGeometry";
+import { staffRoadX } from "./staffRoadGeometry";
+import { staffLineTargets } from "./staffLineTargets";
+import type { KeyRect } from "./keyboardLayout";
 
 /** Two five-line staves, upright clef labels and short ledger lines on the floor. */
 export class StaffRoadLayer {
@@ -15,6 +18,8 @@ export class StaffRoadLayer {
   private readonly textures: Texture[];
   private readonly ledgers: Sprite[] = [];
   private used = 0;
+  private targets: readonly number[] = [];
+  private readonly joins: Sprite[] = [];
 
   constructor(renderer: Renderer) {
     this.textures = ["\u{1D122}", "\u{1D11E}"].map((text) => {
@@ -45,10 +50,53 @@ export class StaffRoadLayer {
     for (const line of this.lines.container.children) line.alpha = 0.65;
   }
 
-  draw(projection: RoadProjection): void {
+  setKeys(keys: ReadonlyMap<number, KeyRect>): void {
+    this.targets = staffLineTargets(keys);
+  }
+
+  draw(projection: RoadProjection, pan = 0): void {
     const layout = this.layout;
     if (!layout) return;
     this.lines.draw(projection, 0, projection.depthAt(0.78));
+    let used = 0;
+    for (let lineIndex = 0; lineIndex < layout.lines.length; lineIndex++) {
+      const staffX = layout.lines[lineIndex];
+      const target = this.targets[lineIndex];
+      if (staffX === undefined || target === undefined) continue;
+      for (let segment = 0; segment < 16; segment++) {
+        const progress = 0.78 + (0.22 * segment) / 16;
+        const next = 0.78 + (0.22 * (segment + 1)) / 16;
+        const top = projection.at(
+          staffRoadX(staffX, target - pan, progress),
+          projection.depthAt(progress)
+        );
+        const bottom = projection.at(
+          staffRoadX(staffX, target - pan, next),
+          projection.depthAt(next)
+        );
+        let line = this.joins[used];
+        if (!line) {
+          line = new Sprite(Texture.WHITE);
+          line.anchor.set(0.5, 0);
+          line.tint = 0x2f7bff;
+          line.alpha = 0.65;
+          this.joins.push(line);
+          this.container.addChild(line);
+        }
+        const dx = bottom.x - top.x;
+        const dy = bottom.y - top.y;
+        line.position.set(top.x, top.y);
+        line.rotation = Math.atan2(dy, dx) - Math.PI / 2;
+        line.width = 1;
+        line.height = Math.hypot(dx, dy);
+        line.visible = true;
+        used++;
+      }
+    }
+    for (let index = used; index < this.joins.length; index++) {
+      const line = this.joins[index];
+      if (line) line.visible = false;
+    }
     ["bass", "treble"].forEach((clef, index) => {
       const sprite = this.clefs[index];
       if (!sprite) return;

@@ -411,7 +411,7 @@ export class FallingNotesView {
    * the player's hands' first (every hand's when listening), smoothly.
    */
   private scroll(state: FrameState, width: number): void {
-    let pan = 0;
+    let pan = Math.min(0, (this.total - width) / 2);
     if (this.total > width) {
       const until = state.time + state.lookAhead * PAN_LOOK_AHEAD;
       const spans: Span[] = [];
@@ -487,6 +487,7 @@ export class FallingNotesView {
     // The road ends on the felt, where the notes meet the keys.
     if (this.road) {
       this.road.layout(total, geometry.hitY, height, width);
+      this.road.setKeyboard(this.keys);
       // The road shows itself when it fits; off, it stays hidden whatever the layout.
       if (!this.roadMode) {
         this.road.container.visible = false;
