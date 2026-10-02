@@ -7,6 +7,8 @@ import type { KeyRange } from "./useFallingView";
 
 export interface StaffPrefs {
   readonly zoom: number;
+  readonly noteColor: string;
+  readonly scoreColor: string;
   readonly singleLine: boolean;
   readonly follow: boolean;
   /** Measures on every line of a wrapped page; 0 lets the width decide. */
@@ -46,6 +48,8 @@ export interface StaffPrefs {
 const STAFF_PREFS_KEY = "staff-prefs";
 const DEFAULT_STAFF_PREFS: StaffPrefs = {
   zoom: 1,
+  noteColor: "#62d9ff",
+  scoreColor: "#62d9ff",
   singleLine: true,
   follow: true,
   measuresPerLine: 4,
@@ -69,9 +73,15 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
 function loadStaffPrefs(): StaffPrefs {
   try {
     const raw = localStorage.getItem(STAFF_PREFS_KEY);
-    return raw
-      ? { ...DEFAULT_STAFF_PREFS, ...(JSON.parse(raw) as Partial<StaffPrefs>) }
-      : DEFAULT_STAFF_PREFS;
+    const saved = raw ? (JSON.parse(raw) as Partial<StaffPrefs>) : {};
+    const color = (value: unknown) =>
+      typeof value === "string" && /^#[\da-f]{6}$/i.test(value) ? value : "#62d9ff";
+    return {
+      ...DEFAULT_STAFF_PREFS,
+      ...saved,
+      noteColor: color(saved.noteColor),
+      scoreColor: color(saved.scoreColor)
+    };
   } catch {
     return DEFAULT_STAFF_PREFS;
   }

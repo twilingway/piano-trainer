@@ -45,6 +45,8 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                 musicXml={props.staffXml}
                 beat={props.beat}
                 zoom={prefs.zoom}
+                noteColor={prefs.noteColor}
+                scoreColor={prefs.scoreColor}
                 singleLine={prefs.singleLine}
                 follow={prefs.follow}
                 fingers={prefs.fingers}
@@ -62,6 +64,8 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                   musicXml={transcription.musicXml}
                   beat={props.beat}
                   zoom={prefs.zoom}
+                  noteColor={prefs.noteColor}
+                  scoreColor={prefs.scoreColor}
                   singleLine={prefs.singleLine}
                   follow={prefs.follow}
                   fingers={prefs.fingers}

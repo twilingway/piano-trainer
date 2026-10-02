@@ -61,6 +61,40 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
         />
       </label>
       <label className="setting">
+        <span>Цвет нот</span>
+        <input
+          type="color"
+          aria-label="Цвет нот"
+          value={prefs.noteColor}
+          onChange={(event) => {
+            onChange({ noteColor: event.target.value });
+          }}
+        />
+      </label>
+      <label className="setting">
+        <span>Цвет партитуры</span>
+        <input
+          type="color"
+          aria-label="Цвет партитуры"
+          value={prefs.scoreColor}
+          onChange={(event) => {
+            onChange({ scoreColor: event.target.value });
+          }}
+        />
+      </label>
+      <div className="setting">
+        <span>Линии, ключи и обозначения</span>
+        <button
+          type="button"
+          className="game-button"
+          onClick={() => {
+            onChange({ noteColor: "#62d9ff", scoreColor: "#62d9ff" });
+          }}
+        >
+          Голубые цвета
+        </button>
+      </div>
+      <label className="setting">
         <span>Следовать за игрой</span>
         <input
           type="checkbox"
