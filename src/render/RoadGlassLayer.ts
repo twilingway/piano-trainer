@@ -82,6 +82,7 @@ export class RoadGlassLayer {
     tint: number,
     alpha: number,
     time: number,
+    hitY: number,
     project: Project
   ): void {
     if (!this.ready || bottom <= top || width <= 0 || alpha <= 0) return;
@@ -165,12 +166,13 @@ export class RoadGlassLayer {
         entry.smokeGeometry.getBuffer("aUV").update();
         entry.smokeFrame = frame;
       }
-      const fireTop = top - width * 0.8;
-      const fireBottom = bottom + width * 0.8;
+      const fireTop = top - height * 0.12 - width * 0.05;
+      // The atlas fades at its edges. Let only a short tail pass the glass, never the hit line.
+      const fireBottom = Math.min(hitY, bottom + height * 0.18 + width * 0.2);
       for (let row = 0; row < FIRE_ROWS; row++) {
         const y = fireTop + ((fireBottom - fireTop) * row) / FIRE_SEGMENTS;
-        const leftSmoke = project(y, -width * 1.5, width * 0.45);
-        const rightSmoke = project(y, width * 1.5, width * 0.45);
+        const leftSmoke = project(y, -width, width * 0.45);
+        const rightSmoke = project(y, width, width * 0.45);
         const index = row * 4;
         entry.smokePositions[index] = leftSmoke.x;
         entry.smokePositions[index + 1] = leftSmoke.y;
@@ -179,7 +181,7 @@ export class RoadGlassLayer {
       }
       entry.smokeGeometry.getBuffer("aPosition").update();
       smoke.tint = tint;
-      smoke.alpha = Math.min(0.62, alpha * 0.62);
+      smoke.alpha = Math.min(0.9, alpha * 0.9);
       smoke.zIndex = bottom * 2 + 2;
     }
   }
