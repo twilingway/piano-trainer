@@ -1,11 +1,17 @@
-export interface KeyEvent {
+export interface InputMetadata {
+  readonly timestamp?: number;
+  readonly source?: "midi" | "keyboard" | "pointer";
+  readonly deviceId?: string;
+}
+
+export interface KeyEvent extends InputMetadata {
   readonly type: "down" | "up";
   readonly pitch: number;
   readonly velocity: number;
 }
 
 /** The sustain pedal pressed or released. */
-export interface PedalEvent {
+export interface PedalEvent extends InputMetadata {
   readonly type: "pedal";
   readonly down: boolean;
 }
@@ -23,9 +29,11 @@ const CONTROL_CHANGE = 0xb0;
 const SUSTAIN_PEDAL = 64;
 /** A controller value from 64 up means "on". */
 const PEDAL_DOWN_FROM = 64;
+let midiRequestGeneration = 0;
 
 /** Turns one raw MIDI message into a key or pedal event; anything else is ignored. */
 export function parseMidiMessage(data: Uint8Array): MidiEvent | undefined {
+  if (data.length < 3 || (data[1] ?? 128) > 127 || (data[2] ?? 128) > 127) return undefined;
   const [status = 0, first = 0, second = 0] = data;
   const command = status & 0xf0;
   // Many keyboards send "note on, velocity 0" instead of a note off.
@@ -52,15 +60,28 @@ export async function listenToMidi(
   onKey: (event: MidiEvent, deviceId: string) => void,
   onDevices: (devices: MidiDevice[]) => void
 ): Promise<() => void> {
+  const generation = ++midiRequestGeneration;
   const access = await navigator.requestMIDIAccess();
+  // StrictMode may dispose a pending request before a newer request resolves.
+  if (generation !== midiRequestGeneration) return () => undefined;
+  let stopped = false;
+  const handlers = new Map<MIDIInput, (message: MIDIMessageEvent) => void>();
   const attach = () => {
+    if (stopped || generation !== midiRequestGeneration) return;
     const devices: MidiDevice[] = [];
     access.inputs.forEach((input) => {
-      input.onmidimessage = (message: MIDIMessageEvent) => {
+      const handler = (message: MIDIMessageEvent) => {
         if (!message.data) return;
         const event = parseMidiMessage(message.data);
-        if (event) onKey(event, input.id);
+        if (event && Number.isFinite(message.timeStamp)) {
+          onKey(
+            { ...event, timestamp: message.timeStamp, source: "midi", deviceId: input.id },
+            input.id
+          );
+        }
       };
+      input.onmidimessage = handler;
+      handlers.set(input, handler);
       devices.push({ id: input.id, name: input.name ?? input.id });
     });
     onDevices(devices);
@@ -68,10 +89,12 @@ export async function listenToMidi(
   attach();
   access.onstatechange = attach;
   return () => {
-    access.onstatechange = null;
-    access.inputs.forEach((input) => {
-      input.onmidimessage = null;
-    });
+    stopped = true;
+    if (access.onstatechange === attach) access.onstatechange = null;
+    for (const [input, handler] of handlers) {
+      if (input.onmidimessage === handler) input.onmidimessage = null;
+    }
+    handlers.clear();
   };
 }
 
@@ -122,11 +145,18 @@ export function listenToComputerKeyboard(onKey: (event: KeyEvent) => void): () =
     if (pitch === undefined || event.ctrlKey || event.metaKey || event.altKey) return;
     const target = event.target;
     if (target instanceof HTMLTextAreaElement) return;
-    if (target instanceof HTMLInputElement && target.type === "text") return;
+    if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) return;
     // A focused select would otherwise jump to the option starting with that letter.
     event.preventDefault();
     if (event.repeat) return;
-    onKey({ type, pitch, velocity: 90 });
+    onKey({
+      type,
+      pitch,
+      velocity: 90,
+      timestamp: event.timeStamp,
+      source: "keyboard",
+      deviceId: "keyboard"
+    });
   };
   const down = handle("down");
   const up = handle("up");

@@ -175,3 +175,126 @@ describe("listening", () => {
     expect(events).not.toContainEqual({ type: "autoNoteOn", pitch: 60 });
   });
 });
+
+describe("timestamp clock", () => {
+  it("gives the same event-time judgement at 15 and 60 FPS", () => {
+    const results = [15, 60].map((fps) => {
+      const run = session("tempo");
+      run.startClock(1000);
+      for (let frame = 1; frame <= Math.floor(2.22 * fps); frame++)
+        run.tick(1000 + (frame * 1000) / fps);
+      expect(run.statusOf("c4")).toBe("pending");
+      const hit = run.pressKeyAt(60, 3030, 3220);
+      expect(hit[0]?.type).toBe("hit");
+      expect(hit[0]?.type === "hit" ? hit[0].offset : NaN).toBeCloseTo(0.03);
+      return run.stats().game;
+    });
+    expect(results[0]?.grades.PERFECT).toBe(1);
+    expect(results[0]?.score).toBe(results[1]?.score);
+  });
+  it("expires pending notes after the delivery grace, not the last frame window", () => {
+    const run = session("tempo");
+    run.startClock(0);
+    run.tick(2399);
+    expect(run.statusOf("c4")).toBe("pending");
+    run.tick(2401);
+    expect(run.statusOf("c4")).toBe("missed");
+  });
+  it("adds positive input compensation to the callback delivery horizon", () => {
+    const run = session("tempo");
+    run.setInputGrace(110);
+    run.startClock(0);
+    // Raw event 2250 ms, callback 2500 ms, corrected attack 2140 ms.
+    run.tick(2500);
+    expect(run.statusOf("c4")).toBe("pending");
+    expect(run.pressKeyAt(60, 2250 - 110, 2500)[0]).toMatchObject({ type: "hit", judgement: "OK" });
+    const negative = session("tempo");
+    negative.setInputGrace(-100);
+    negative.startClock(0);
+    negative.tick(2401);
+    expect(negative.statusOf("c4")).toBe("missed");
+  });
+  it("anchors wait at the exact crossing and resumes without consuming waiting time", () => {
+    const run = session("wait");
+    run.startClock(0);
+    run.tick(9000);
+    expect(run.songTimeAt(8000)).toBe(0);
+    expect(run.performanceTimeAt(1)).toBeUndefined();
+    run.pressKeyAt(60, 9000);
+    run.tick(9500);
+    expect(run.time).toBe(0.5);
+    run.tick(12000);
+    expect(run.time).toBe(1);
+  });
+  it("maps speed and pause, rejects stale preseek events", () => {
+    const run = session("tempo", ["right"], 0.5);
+    run.startClock(0);
+    run.pauseClock(2000);
+    expect(run.time).toBe(-1);
+    run.tick(7000);
+    expect(run.time).toBe(-1);
+    run.resumeClock(7000);
+    run.tick(9000);
+    expect(run.time).toBe(0);
+    expect(run.songTimeAt(4000)).toBeUndefined();
+    expect(run.performanceTimeAt(1)).toBe(11000);
+    run.seek(1, 10000);
+    expect(run.pressKeyAt(64, 9000)).toEqual([]);
+  });
+  it("accepts a callback from before pause, but ignores keys physically pressed in pause", () => {
+    const run = session("tempo");
+    run.startClock(0);
+    run.pauseClock(2200);
+    expect(run.pressKeyAt(60, 2030, 2250)[0]?.type).toBe("hit");
+    expect(run.pressKeyAt(62, 2230)).toEqual([]);
+  });
+  it("caps a late pre-pause attack hold at pause and maps a physical release during pause", () => {
+    const run = session("tempo");
+    run.startClock(0);
+    run.pauseClock(2200);
+    run.pressKeyAt(60, 2030, 2250);
+    run.releaseKeyAt(60, 3000);
+    run.resumeClock(4000);
+    run.tick(4500);
+    expect(run.stats().hold?.heldSeconds).toBeCloseTo(0.17);
+    expect(run.stats().hold?.releasedNotes).toBe(1);
+    expect(run.stats().game?.holdScore).toBe(10);
+  });
+  it("ends accompaniment at the chosen segment boundary", () => {
+    const song = {
+      ...SONG,
+      notes: [{ ...note("long", 48, 0.5, "left"), duration: 5 }],
+      duration: 5.5
+    };
+    const run = new PracticeSession(song, {
+      mode: "tempo",
+      hands: new Set(),
+      speed: 1,
+      from: 0,
+      to: 1
+    });
+    run.startClock(0);
+    expect(run.tick(500)).toContainEqual({ type: "autoNoteOn", pitch: 48 });
+    expect(run.tick(1000)).toContainEqual({ type: "autoNoteOff", pitch: 48 });
+    expect(run.tick(1250)).toContainEqual({ type: "finished" });
+  });
+  it("ignores extra keys in a rest but breaks combo in an active window", () => {
+    const run = session("tempo");
+    run.startClock(0);
+    expect(run.pressKeyAt(62, 100)).toEqual([]);
+    expect(run.pressKeyAt(62, 2000)).toEqual([{ type: "wrong", pitch: 62 }]);
+  });
+  it("finalizes a partial chord once and stops hold bonus on an early release", () => {
+    const run = session("tempo");
+    run.startClock(0);
+    run.tick(2000);
+    run.pressKeyAt(60, 2000);
+    run.releaseKeyAt(60, 2250);
+    expect(run.stats().game?.holdScore).toBe(20);
+    run.tick(3000);
+    run.pressKeyAt(64, 3000);
+    run.tick(3450);
+    run.tick(3460);
+    expect(run.stats().game?.partialChords).toBe(1);
+  });
+});

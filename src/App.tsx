@@ -1,4 +1,9 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
+import { useGameRuntime } from "./app/useGameRuntime";
+import { useGameOptions } from "./app/useGameOptions";
+import { useTimingControls } from "./app/useTimingControls";
+import { GameSettings } from "./ui/GameSettings";
+import { GameBoard } from "./ui/GameBoard";
 
 import { LESSONS } from "./app/lessons";
 import { useFallingView } from "./app/useFallingView";
@@ -38,8 +43,19 @@ export function App() {
   const { sound, ensureSound } = useSound();
   const current = useSong(startFromRef);
   const { song, songKey } = current;
+  const game = useGameOptions(songKey, song.duration);
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
-  const score = useStaffScore(song, current.baseSong, staffPrefs);
+  const displayPrefs = game.performance
+    ? {
+        ...staffPrefs,
+        fingers: false,
+        hands: false,
+        labels: false,
+        noteNames: "off" as const,
+        chords: false
+      }
+    : staffPrefs;
+  const score = useStaffScore(song, current.baseSong, displayPrefs);
   const takes = useTakeReview(song, songKey, ensureSound, {
     withNames: score.withNames,
     fixedLines: score.fixedLines,
@@ -57,9 +73,27 @@ export function App() {
     lastTake: takes.lastTake,
     replayCount: takes.replayCount,
     comparing: takes.comparing,
-    onReplay: takes.replay
+    onReplay: takes.replay,
+    gameOptions: game.options,
+    ranked: game.ranked
   });
   const input = useKeyInput(trainer.trainerRef);
+  const timing = useTimingControls({
+    trainerRef: trainer.trainerRef,
+    ensureSound,
+    devices: input.devices,
+    deviceId: input.midiDeviceId,
+    snapshot: trainer.snapshot,
+    locked: game.ranked && (trainer.snapshot?.playing ?? false)
+  });
+  useGameRuntime(trainer.trainerRef, trainer.trainerReady, {
+    loop: game.range.loop,
+    ranked: game.ranked,
+    stopOnError: game.stopOnError,
+    rankedReady: timing.rankedReady,
+    performance: game.performance,
+    deviceId: timing.profile?.deviceId ?? ""
+  });
   const view = useFallingView({
     hostRef: trainer.hostRef,
     hasScore: Boolean(score.staffXml),
@@ -68,7 +102,7 @@ export function App() {
     trainerReady: trainer.trainerReady,
     song,
     baseSong: current.baseSong,
-    staffPrefs,
+    staffPrefs: displayPrefs,
     updateStaffPrefs,
     fallingNames: score.nameStyle,
     comparing: takes.comparing,
@@ -120,6 +154,27 @@ export function App() {
   );
 
   const settingsTabs = [
+    {
+      id: "rules",
+      title: "Правила",
+      content: (
+        <GameSettings
+          difficulty={game.difficulty}
+          ranked={game.ranked}
+          rankedReady={timing.rankedReady}
+          performance={game.performance}
+          stopOnError={game.stopOnError}
+          locked={playing}
+          from={game.range.from}
+          to={game.range.to}
+          duration={song.duration}
+          loop={game.range.loop}
+          onChange={game.update}
+          onRange={game.updateRange}
+        />
+      )
+    },
+    { id: "timing", title: "Точность", content: timing.settings },
     {
       id: "song",
       title: "Песня",
@@ -201,6 +256,7 @@ export function App() {
           deviceId={input.midiDeviceId}
           onDevice={input.setMidiDeviceId}
           midiError={input.midiError}
+          locked={game.ranked && playing}
         />
       )
     }
@@ -244,6 +300,20 @@ export function App() {
       </div>
 
       {library.loadError && <div className="toast toast--error">{library.loadError}</div>}
+      {game.ranked && !timing.rankedReady && (
+        <div className="toast">
+          Рейтинг недоступен: выберите устройство и выполните актуальную калибровку в настройках
+          точности.
+        </div>
+      )}
+      <GameBoard
+        game={snapshot?.stats.game}
+        mode={trainer.mode}
+        playing={playing}
+        onOverdrive={() => {
+          trainer.trainerRef.current?.activateOverdrive();
+        }}
+      />
       {fullscreen.error && (
         <div className="toast toast--error" role="status">
           {fullscreen.error}
@@ -272,7 +342,7 @@ export function App() {
 
       <Workspace
         staffXml={score.staffXml}
-        prefs={staffPrefs}
+        prefs={displayPrefs}
         fixedLines={score.fixedLines}
         beat={snapshot?.beat ?? 0}
         liveBeat={trainer.liveBeat}

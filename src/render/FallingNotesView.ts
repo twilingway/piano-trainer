@@ -41,6 +41,7 @@ export interface FrameState {
   /** The chord the player owes next, shown on the keyboard with its fingers. */
   readonly due: readonly SongNote[];
   readonly hands: ReadonlySet<Hand>;
+  readonly hints?: boolean;
   /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
   /** The combo and accuracy board; none on a view that only mirrors another. */
@@ -323,7 +324,13 @@ export class FallingNotesView {
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = this.notesLayer.playing;
     this.keyboard.draw(
-      { pressed: state.pressed, sounding: state.sounding, due: state.due, playing },
+      {
+        pressed: state.pressed,
+        sounding: state.sounding,
+        due: state.due,
+        playing,
+        ...(state.hints === undefined ? {} : { hints: state.hints })
+      },
       this.keys,
       geometry,
       this.labels

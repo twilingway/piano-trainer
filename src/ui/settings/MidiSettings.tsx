@@ -6,18 +6,20 @@ interface Props {
   readonly deviceId: string;
   readonly onDevice: (id: string) => void;
   readonly midiError: string | null;
+  readonly locked?: boolean;
 }
 
 /** The sound and MIDI tab: which piano plays, or why there is none. */
-export function MidiSettings({ devices, deviceId, onDevice, midiError }: Props) {
+export function MidiSettings({ devices, deviceId, onDevice, midiError, locked = false }: Props) {
   return (
     <div className="settings-list">
-      {devices.length > 1 ? (
+      {devices.length > 0 ? (
         <label className="setting">
           <span>Пианино</span>
           <select
             className="game-select"
             value={deviceId}
+            disabled={locked}
             onChange={(event) => {
               onDevice(event.target.value);
             }}

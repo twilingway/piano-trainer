@@ -1,4 +1,5 @@
 import * as Tone from "tone";
+import { cancelScheduledVoices, loadScheduledSamples } from "./scheduledVoices";
 
 /*
  * The hand the program plays, voiced by the Salamander grand samples Tone.js
@@ -23,6 +24,7 @@ let samplesReady = false;
 /** Must run from a user gesture: browsers keep audio suspended until then. */
 export async function startPianoSound(): Promise<void> {
   await Tone.start();
+  loadScheduledSamples(sampleUrls());
   sampler ??= new Tone.Sampler({
     urls: sampleUrls(),
     release: 1,
@@ -55,17 +57,20 @@ function noteName(pitch: number): string {
 }
 
 /** `velocity` is MIDI 1-127; without one the note sounds at full strength. */
-export function soundNoteOn(pitch: number, velocity?: number): void {
+export function soundNoteOn(pitch: number, velocity?: number, at?: number): void {
   if (!samplesReady) return;
-  sampler?.triggerAttack(noteName(pitch), undefined, velocity === undefined ? 1 : velocity / 127);
+  sampler?.triggerAttack(noteName(pitch), at, velocity === undefined ? 1 : velocity / 127);
 }
 
-export function soundNoteOff(pitch: number): void {
-  if (samplesReady) sampler?.triggerRelease(noteName(pitch));
+export function soundNoteOff(pitch: number, at?: number): void {
+  if (samplesReady) sampler?.triggerRelease(noteName(pitch), at);
 }
 
 export function soundAllOff(): void {
+  cancelScheduledVoices();
   sampler?.releaseAll();
+  click?.dispose();
+  click = undefined;
 }
 
 /*
@@ -74,11 +79,28 @@ export function soundAllOff(): void {
  */
 let click: Tone.Synth | undefined;
 
-export function soundClick(downbeat: boolean): void {
+export function soundClick(downbeat: boolean, at?: number): void {
   click ??= new Tone.Synth({
     oscillator: { type: "square" },
     envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 }
   }).toDestination();
   click.volume.value = downbeat ? -8 : -14;
-  click.triggerAttackRelease(downbeat ? "C7" : "G6", 0.03);
+  click.triggerAttackRelease(downbeat ? "C7" : "G6", 0.03, at);
+}
+
+export function audioTime(): number {
+  return Tone.getContext().immediate();
+}
+
+export function scheduleSound(at: number, action: (audioSeconds: number) => void): number {
+  return Tone.getContext().setTimeout(
+    () => {
+      action(at);
+    },
+    Math.max(0, at - Tone.now())
+  );
+}
+
+export function cancelScheduledSound(id: number): void {
+  Tone.getContext().clearTimeout(id);
 }

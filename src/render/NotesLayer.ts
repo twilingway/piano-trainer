@@ -74,6 +74,7 @@ export interface NotesFrame {
   readonly lookAhead: number;
   readonly statusOf: (noteId: string) => NoteStatus | undefined;
   readonly hands: ReadonlySet<Hand>;
+  readonly hints?: boolean;
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
 }
 
@@ -293,8 +294,8 @@ export class NotesLayer {
       frame.visible = onScreen && cards && !struck;
       face.visible = frame.visible;
       glow.visible = frame.visible;
-      badge.visible = frame.visible && note.finger !== undefined;
-      digit.visible = onScreen && !cards && note.finger !== undefined;
+      badge.visible = frame.visible && note.finger !== undefined && state.hints !== false;
+      digit.visible = onScreen && !cards && note.finger !== undefined && state.hints !== false;
       name.visible = false;
       if (!onScreen) continue;
 

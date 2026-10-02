@@ -112,6 +112,7 @@ export interface KeysFrame {
   readonly due: readonly SongNote[];
   /** Notes crossing the hit line right now, by pitch. */
   readonly playing: ReadonlyMap<number, SongNote>;
+  readonly hints?: boolean;
 }
 
 /**
@@ -370,7 +371,7 @@ export class KeyboardLayer {
       }
       const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
-      hint.visible = key !== undefined && shown?.finger !== undefined;
+      hint.visible = key !== undefined && shown?.finger !== undefined && frame.hints !== false;
       if (!key || shown?.finger === undefined) continue;
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
       hint.x = key.x + key.width / 2;
