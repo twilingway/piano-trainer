@@ -14,9 +14,11 @@ const TEXTURE_WIDTH = 96;
 const TEXTURE_HEIGHT = 192;
 const TOP_CAP = 36;
 const BOTTOM_CAP = 38;
-// Arcadia's exported sprite has transparent padding above and below the solid glass.
+// Keep every projected edge inside the opaque glass, away from the atlas halo.
+const SOLID_LEFT_U = 20 / TEXTURE_WIDTH;
+const SOLID_RIGHT_U = 75 / TEXTURE_WIDTH;
 const SOLID_TOP_V = 29 / TEXTURE_HEIGHT;
-const SOLID_BOTTOM_V = 170 / TEXTURE_HEIGHT;
+const SOLID_BOTTOM_V = 169 / TEXTURE_HEIGHT;
 
 type Project = (y: number, offsetX: number, lift?: number) => { x: number; y: number };
 
@@ -215,7 +217,7 @@ export class RoadGlassLayer {
               TEXTURE_HEIGHT;
       for (let column = 0; column < COLUMNS; column++) {
         const index = (row * COLUMNS + column) * 2;
-        uvs[index] = 0.15 + (0.7 * column) / (COLUMNS - 1);
+        uvs[index] = SOLID_LEFT_U + ((SOLID_RIGHT_U - SOLID_LEFT_U) * column) / (COLUMNS - 1);
         uvs[index + 1] = SOLID_TOP_V + v * (SOLID_BOTTOM_V - SOLID_TOP_V);
       }
     }
@@ -245,7 +247,10 @@ export class RoadGlassLayer {
     const wallUvs = new Float32Array(24);
     const wallIndices = new Uint32Array(18);
     for (let face = 0; face < 3; face++) {
-      wallUvs.set([0.15, 0.78, 0.85, 0.78, 0.85, 0.88, 0.15, 0.88], face * 8);
+      wallUvs.set(
+        [SOLID_LEFT_U, 0.78, SOLID_RIGHT_U, 0.78, SOLID_RIGHT_U, 0.88, SOLID_LEFT_U, 0.88],
+        face * 8
+      );
       const vertex = face * 4;
       wallIndices.set([vertex, vertex + 1, vertex + 2, vertex, vertex + 2, vertex + 3], face * 6);
     }
