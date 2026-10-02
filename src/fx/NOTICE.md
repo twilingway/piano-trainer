@@ -9,6 +9,11 @@ and shockwave are neutral white for the note's finger-colour tint; dark smoke is
 `horizon-explosion.webp` is a lossless RGBA atlas: 15 frames of 160×160, 5 columns and 3 rows, 30
 FPS over 0.5 seconds, with a centred anchor. The road selects its frame from song time.
 
+`hold-glass.json` is a static Arcadia composition of white glass, bevels and glow. `hold-glass.webp`
+is a lossless 96×192 RGBA frame, tinted per note. `GlassHold.ts` preserves its borders with
+NineSlice (32 pixels left/right, 36 top, 38 bottom), shrinking the caps proportionally for short
+notes.
+
 To bake again after editing an effect:
 
 1. Copy the JSON into `tools/arcadia-effects/Arcada Effects/library/` and run `node server.mjs`

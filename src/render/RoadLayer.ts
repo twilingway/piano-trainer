@@ -9,6 +9,7 @@ import {
   Texture
 } from "pixi.js";
 import type { Renderer } from "pixi.js";
+import { RoadLaneLayer } from "./RoadLaneLayer";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
 import { roadProjection } from "./perspective";
@@ -97,6 +98,7 @@ export class RoadLayer {
   /** The glowing horizon and the flashes of notes coming over it. */
   private readonly horizon = new Graphics();
   private readonly arrivals = new HorizonBurstLayer();
+  private readonly lanes = new RoadLaneLayer();
   /** Haze over the far road: lanes and notes come out of it as they near. */
   private readonly fog = new Sprite(bakeFog());
   private readonly sparkTexture: Texture;
@@ -133,6 +135,7 @@ export class RoadLayer {
     this.container.addChild(
       this.road,
       this.glows,
+      this.lanes.container,
       this.fog,
       this.horizon,
       this.arrivals.container,
@@ -143,6 +146,11 @@ export class RoadLayer {
     this.effects.addChild(this.hitLine);
     this.effects.eventMode = "none";
     this.sparkTexture = bakeSpark(renderer);
+  }
+
+  setLaneEdges(edges: readonly number[]): void {
+    this.lanes.setEdges(edges);
+    if (this.projection) this.lanes.draw(this.projection, this.pan);
   }
 
   get arrivalEffectsReady(): boolean {
@@ -208,6 +216,7 @@ export class RoadLayer {
     this.keysShift = new Matrix().translate(-pan, -this.size.height);
     const projection = this.projection;
     if (!projection) return;
+    this.lanes.draw(projection, pan);
     const left = -pan;
     const right = this.size.width - pan;
     const farLeft = projection.at(left, 0);

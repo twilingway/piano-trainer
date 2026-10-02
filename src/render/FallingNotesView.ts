@@ -174,7 +174,12 @@ export class FallingNotesView {
       this.fx.container,
       this.hud.container
     );
-    await Promise.all([this.fx.load(), notes.loadNeon(), this.road.loadArrivalEffects()]);
+    await Promise.all([
+      this.fx.load(),
+      notes.loadNeon(),
+      notes.loadGlass(),
+      this.road.loadArrivalEffects()
+    ]);
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -484,6 +489,12 @@ export class FallingNotesView {
     // The road ends on the felt, where the notes meet the keys.
     if (this.road) {
       this.road.layout(total, geometry.hitY, height, width);
+      const whites = [...this.keys.values()].filter((key) => !key.black);
+      const last = whites.at(-1);
+      this.road.setLaneEdges([
+        ...whites.map((key) => key.x),
+        ...(last ? [last.x + last.width] : [])
+      ]);
       // The road shows itself when it fits; off, it stays hidden whatever the layout.
       if (!this.roadMode) {
         this.road.container.visible = false;
