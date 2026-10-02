@@ -11,11 +11,14 @@ import {
 import type { Renderer } from "pixi.js";
 import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";
-import { staffRoadX } from "./staffRoadGeometry";
-import type { ScorePlacement } from "../song/scorePlacement";
+import type { KeyRect } from "./keyboardLayout";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
-import { roadProjection } from "./perspective";
+import { DEFAULT_CAMERA, normalizeCamera, worldCamera } from "./worldCamera";
+import type { CameraPrefs, WorldCamera } from "./worldCamera";
+import { PerspectiveKeyboardLayer } from "./PerspectiveKeyboardLayer";
+import type { Geometry } from "./viewGeometry";
+import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeometry";
 import type { Projected, RoadProjection } from "./perspective";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
@@ -24,6 +27,7 @@ export interface Strike {
   readonly pitch: number;
   readonly x: number;
   readonly color: number;
+  readonly screenY?: number | undefined;
 }
 
 /** A note coming over the horizon: where it appears and how bright its flash still is. */
@@ -35,18 +39,9 @@ export interface Arrival {
   readonly age: number;
   readonly width: number;
   readonly screenX?: number | undefined;
+  readonly screenY?: number | undefined;
 }
 
-/*
- * The road as in the mockup: one floor in perspective, a trapezoid that
- * spans the view at the hit line and narrows to this share of it at the
- * horizon, so every key's lane runs to a point of its own up there and the
- * lanes fan out towards the player. A note is born small at the horizon in a
- * flash and grows as it comes. The keyboard in front is not in that
- * perspective: it is the flat keyboard squashed in height.
- */
-/** Notes are born at most this share of their full size at the horizon, however wide the road. */
-const SIZE_FAR_SHARE = 0.12;
 /** The fog over the far road reaches this share of the way down to the keys. */
 const FOG_REACH = 0.5;
 const FOG_COLOR = 0x11131a;
@@ -60,8 +55,7 @@ export interface RoadShape {
   /** The horizon, as a share of the way down from the top of the view to the hit line. */
   readonly horizon: number;
 }
-/** The keyboard's height on the road, as a share of its flat height. */
-const KEYS_SQUASH = 0.9;
+
 const GLOW_STRENGTH = 10;
 /** The widest texture most GPUs, phones included, will take. */
 const MAX_TEXTURE_PX = 8192;
@@ -80,12 +74,8 @@ interface Spark {
   life: number;
 }
 
-/**
- * The trial "road" view: the flat lane of falling notes is drawn into a
- * texture and laid back in perspective, so the notes come out of the
- * horizon towards the keys. A blurred copy added over it makes them glow; a
- * crackling hit line and sparks in the finger's colour mark every strike.
- * The lane is still drawn by its owner; this only shows it.
+/** Shared world camera for the road, physical piano faces and every note/effect anchor.
+ * Existing flat layers supply baked materials; this layer only projects their geometry.
  */
 export class RoadLayer {
   readonly container = new Container();
@@ -93,7 +83,13 @@ export class RoadLayer {
   readonly effects = new Container();
   private readonly texture = RenderTexture.create({ width: 1, height: 1 });
   private readonly keysTexture = RenderTexture.create({ width: 1, height: 1 });
-  private readonly keys: PerspectiveMesh;
+  private readonly keys = new PerspectiveKeyboardLayer();
+  private readonly legacyKeys: PerspectiveMesh;
+  private perspective = false;
+  private shape: RoadShape = DEFAULT_ROAD_SHAPE;
+  private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
+  private camera: WorldCamera | undefined;
+  private readonly keyHeights = new Map<number, number>();
   /** The lane laid on the floor, and a blurred copy over it for the glow. */
   private readonly road: PerspectiveMesh;
   private readonly glow: PerspectiveMesh;
@@ -104,7 +100,6 @@ export class RoadLayer {
   private readonly arrivals = new HorizonBurstLayer();
   private readonly staff: StaffRoadLayer;
   private readonly glass = new RoadGlassLayer();
-  private placements: ReadonlyMap<string, ScorePlacement> = new Map();
   /** Haze over the far road: lanes and notes come out of it as they near. */
   private readonly fog = new Sprite(bakeFog());
   private readonly sparkTexture: Texture;
@@ -116,12 +111,12 @@ export class RoadLayer {
   /** The floor's perspective; undefined before the first layout. */
   private projection: RoadProjection | undefined;
   private horizonY = 0;
-  private shape: RoadShape = DEFAULT_ROAD_SHAPE;
   /** How far the view is scrolled along a keyboard wider than it, in the scene's pixels. */
   private pan = 0;
   /** The view's width: the scene (the whole keyboard) may be wider. */
   private viewWidth = 0;
   private hitY = 0;
+  private bottom = 0;
   private clock = 0;
   /** Sparks owed to each held key: the fraction of a spark carried to the next frame. */
   private held = new Map<number, number>();
@@ -133,7 +128,11 @@ export class RoadLayer {
       new BlurFilter({ strength: GLOW_STRENGTH, quality: 3, blendMode: "add" })
     ];
     this.glows.alpha = GLOW_ALPHA;
-    this.keys = new PerspectiveMesh({ texture: this.keysTexture, verticesX: 48, verticesY: 24 });
+    this.legacyKeys = new PerspectiveMesh({
+      texture: this.keysTexture,
+      verticesX: 48,
+      verticesY: 24
+    });
     this.road = new PerspectiveMesh({ texture: this.texture, verticesX: 32, verticesY: 64 });
     this.glow = new PerspectiveMesh({ texture: this.texture, verticesX: 32, verticesY: 64 });
     this.glows.addChild(this.glow);
@@ -147,7 +146,8 @@ export class RoadLayer {
       this.fog,
       this.horizon,
       this.arrivals.container,
-      this.keys
+      this.keys.container,
+      this.legacyKeys
     );
     this.container.eventMode = "none";
     this.hitLine.blendMode = "add";
@@ -156,45 +156,46 @@ export class RoadLayer {
     this.sparkTexture = bakeSpark(renderer);
   }
 
-  setScore(placements: ReadonlyMap<string, ScorePlacement>): void {
-    this.placements = placements;
-    if (this.viewWidth > 0) {
-      this.staff.configure(placements.values(), this.viewWidth);
-      if (this.projection) this.staff.draw(this.projection);
-    }
-  }
-
   beginNotes(): void {
     this.glass.begin();
-    this.staff.begin();
+  }
+
+  setKeyboard(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry): void {
+    this.keyHeights.clear();
+    for (const key of keys.values())
+      this.keyHeights.set(key.x + key.width / 2, key.black ? 36 : 22);
+    if (this.perspective) {
+      this.keysShift = new Matrix().translate(0, -geometry.keyboardTop);
+      this.keys.layout(keys, geometry, this.keysTexture);
+      if (this.camera) this.keys.draw(this.camera, this.pan);
+    }
+    this.staff.setKeys(keys);
+    if (this.projection) this.staff.draw(this.projection, this.pan);
   }
 
   endNotes(): void {
     this.glass.end();
-    this.staff.end();
   }
 
-  noteLaneX(placement: ScorePlacement | undefined, keyX: number, y: number): number {
-    const layout = this.staff.layout;
-    if (!layout || !placement || this.size.height <= 0) return keyX - this.pan;
-    const depth = Math.max(0, Math.min(1, y / this.size.height));
-    return staffRoadX(
-      layout.x(placement),
-      keyX - this.pan,
-      this.projection?.progressAt(depth) ?? depth
-    );
+  noteLaneX(keyX: number): number {
+    return keyX - this.pan;
   }
 
-  notePlace(
-    placement: ScorePlacement | undefined,
-    keyX: number,
-    y: number,
-    offset = 0
-  ): Projected | undefined {
+  notePlace(keyX: number, y: number, offset = 0, lift = 0): Projected | undefined {
     if (!this.projection || this.size.height <= 0) return undefined;
-    return this.projection.at(
-      this.noteLaneX(placement, keyX, y) + offset,
-      Math.max(0, Math.min(1, y / this.size.height))
+    if (!this.camera) {
+      const spot = this.projection.at(
+        keyX - this.pan + offset,
+        Math.max(0, Math.min(1, y / this.size.height))
+      );
+      return { ...spot, y: spot.y - lift * spot.scale };
+    }
+    const depth = Math.max(0, Math.min(1, y / this.size.height));
+    const keyHeight = this.keyHeights.get(keyX) ?? 22;
+    return this.camera.project(
+      this.camera.sourceX(keyX - this.pan + offset),
+      keyHeight + lift / 2,
+      142 + (1 - depth) * 1500 * Math.max(1, this.bottom / 375)
     );
   }
 
@@ -203,7 +204,6 @@ export class RoadLayer {
   }
 
   drawHold(
-    placement: ScorePlacement | undefined,
     keyX: number,
     top: number,
     bottom: number,
@@ -218,14 +218,9 @@ export class RoadLayer {
       width,
       tint,
       alpha,
-      (y, offset) => this.notePlace(placement, keyX, y, offset) ?? { x: 0, y: 0 }
+      (y, offset, lift) => this.notePlace(keyX, y, offset, lift) ?? { x: 0, y: 0 }
     );
     return true;
-  }
-
-  drawLedger(placement: ScorePlacement | undefined, y: number): void {
-    if (placement && this.projection && this.size.height > 0)
-      this.staff.ledger(placement, y / this.size.height, this.projection);
   }
 
   get arrivalEffectsReady(): boolean {
@@ -256,58 +251,69 @@ export class RoadLayer {
     this.texture.source.resize(width, height, resolution);
     const keysHeight = bottom - height;
     // Without keys the road runs down to the bottom and there is no keyboard to lay.
-    this.keys.visible = keysHeight >= 1;
-    this.keysTexture.source.resize(viewWidth, Math.max(1, keysHeight), this.renderer.resolution);
-    this.hitY = bottom - keysHeight * KEYS_SQUASH;
-    this.horizonY = this.hitY * this.shape.horizon;
-    this.projection = roadProjection(
-      viewWidth,
-      this.hitY,
-      this.horizonY,
-      this.shape.far,
-      Math.min(this.shape.far, SIZE_FAR_SHARE)
+    this.bottom = bottom;
+    this.keys.container.visible = this.perspective && keysHeight >= 1;
+    this.legacyKeys.visible = !this.perspective && keysHeight >= 1;
+    this.keysTexture.source.resize(
+      this.perspective ? width : viewWidth,
+      Math.max(1, keysHeight),
+      this.perspective ? resolution : this.renderer.resolution
     );
+    this.camera = this.perspective ? worldCamera(viewWidth, bottom, this.cameraPrefs) : undefined;
+    const legacy = legacyRoadProjection(viewWidth, height, bottom, this.shape);
+    this.projection = this.camera?.road ?? legacy.projection;
+    this.hitY = this.camera ? this.projection.at(viewWidth / 2, 1).y : legacy.hitY;
+    this.horizonY = this.camera ? this.projection.at(viewWidth / 2, 0).y : legacy.horizonY;
+    this.legacyKeys.texture = this.keysTexture;
+    this.legacyKeys.setCorners(0, this.hitY, viewWidth, this.hitY, viewWidth, bottom, 0, bottom);
     this.fog.position.set(0, this.horizonY);
     this.fog.width = viewWidth;
-    this.fog.height = (this.hitY - this.horizonY) * FOG_REACH;
-    // A resized texture keeps its object: the meshes take it again to pick up the new size.
+    this.fog.height = Math.max(1, (this.hitY - this.horizonY) * FOG_REACH);
     this.road.texture = this.texture;
     this.glow.texture = this.texture;
-    this.keys.texture = this.keysTexture;
-    this.keys.setCorners(0, this.hitY, viewWidth, this.hitY, viewWidth, bottom, 0, bottom);
     this.hit = { y: this.hitY, left: 0, right: viewWidth };
-    this.staff.configure(this.placements.values(), viewWidth);
-    this.staff.draw(this.projection);
+    this.staff.draw(this.projection, this.pan);
     this.setPan(this.pan, true);
   }
 
-  /** A new shape for the road; it takes effect on the next layout. */
+  setPerspective(on: boolean): void {
+    this.perspective = on;
+  }
+
   setShape(shape: RoadShape): void {
     this.shape = shape;
+  }
+
+  setCamera(prefs: CameraPrefs): void {
+    this.cameraPrefs = normalizeCamera(prefs);
   }
 
   /** Scrolls the view along the scene: the road slides under the view's fixed perspective. */
   setPan(pan: number, force = false): void {
     if (!force && pan === this.pan) return;
     this.pan = pan;
-    this.keysShift = new Matrix().translate(-pan, -this.size.height);
+    if (this.camera) this.keys.draw(this.camera, pan);
+    else this.keysShift = new Matrix().translate(-pan, -this.size.height);
     const projection = this.projection;
     if (!projection) return;
+    this.staff.draw(projection, pan);
 
     const left = -pan;
     const right = this.size.width - pan;
     const farLeft = projection.at(left, 0);
     const farRight = projection.at(right, 0);
+    const nearLeft = projection.at(left, 1);
+    const nearRight = projection.at(right, 1);
     for (const mesh of [this.road, this.glow]) {
       mesh.setCorners(
         farLeft.x,
         farLeft.y,
         farRight.x,
         farRight.y,
-        right,
-        this.hitY,
-        left,
-        this.hitY
+        nearRight.x,
+        nearRight.y,
+        nearLeft.x,
+        nearLeft.y
       );
     }
   }
@@ -332,13 +338,15 @@ export class RoadLayer {
 
   /** The point of the flat keyboard under a point of the laid keys on screen; undefined off them. */
   keysPointAt(x: number, y: number): { x: number; y: number } | undefined {
-    if (!this.keys.visible || this.size.width < 1 || y < this.hitY) return undefined;
-    return { x: x + this.pan, y: this.size.height + (y - this.hitY) / KEYS_SQUASH };
+    if (this.perspective) return this.keys.container.visible ? this.keys.pointAt(x, y) : undefined;
+    return this.legacyKeys.visible
+      ? legacyKeyboardPoint(x, y, this.pan, this.hitY, this.size.height)
+      : undefined;
   }
 
   /** Where a point on the flat hit line lands on screen. */
   private project(x: number): number {
-    return x - this.pan;
+    return this.notePlace(x, this.size.height)?.x ?? x - this.pan;
   }
 
   /**
@@ -363,7 +371,11 @@ export class RoadLayer {
       transform: this.keysShift
     });
     this.clock += deltaSeconds;
-    const strikes = flatStrikes.map((strike) => ({ ...strike, x: this.project(strike.x) }));
+    const strikes = flatStrikes.map((strike) => ({
+      ...strike,
+      x: this.project(strike.x),
+      screenY: this.notePlace(strike.x, this.size.height)?.y ?? this.hit.y
+    }));
     this.drawHorizon();
     if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
     this.drawHitLine(strikes);
@@ -386,7 +398,8 @@ export class RoadLayer {
     this.glass.destroy();
     for (const filter of this.glows.filters) filter.destroy();
     // A mesh's destroy leaves its geometry's buffers to the garbage collector; free them now.
-    for (const mesh of [this.road, this.glow, this.keys]) mesh.geometry.destroy();
+    this.keys.destroy();
+    for (const mesh of [this.road, this.glow, this.legacyKeys]) mesh.geometry.destroy();
     this.container.destroy({ children: true });
     this.effects.destroy({ children: true });
     this.texture.destroy(true);
@@ -436,7 +449,7 @@ export class RoadLayer {
       for (let ring = 1; ring <= 5; ring++) {
         const reach = ring * 26;
         line
-          .rect(strike.x - reach, height - 3 - ring, reach * 2, 6 + ring * 2)
+          .rect(strike.x - reach, (strike.screenY ?? height) - 3 - ring, reach * 2, 6 + ring * 2)
           .fill({ color: strike.color, alpha: 0.12 });
       }
     }
@@ -466,7 +479,7 @@ export class RoadLayer {
         this.sparks.push(spark);
       }
       spark.sprite.x = strike.x + (Math.random() - 0.5) * 10;
-      spark.sprite.y = this.hit.y;
+      spark.sprite.y = strike.screenY ?? this.hit.y;
       spark.sprite.tint = strike.color;
       spark.vx = (Math.random() - 0.5) * 140;
       spark.vy = -(80 + Math.random() * 260);

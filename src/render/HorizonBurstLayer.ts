@@ -60,7 +60,7 @@ export class HorizonBurstLayer {
       }
       const spot = projection.at(arrival.x - pan, 0);
       sprite.texture = texture;
-      sprite.position.set(arrival.screenX ?? spot.x, spot.y);
+      sprite.position.set(arrival.screenX ?? spot.x, arrival.screenY ?? spot.y);
       sprite.scale.set(Math.max(32, Math.min(72, arrival.width * 1.6)) / CELL_PX);
       sprite.tint = arrival.color;
       sprite.visible = true;

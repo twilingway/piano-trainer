@@ -1,3 +1,5 @@
+import { CameraSettings } from "./CameraSettings";
+import type { CameraPrefs } from "../../render/worldCamera";
 import type { ReactNode } from "react";
 
 import type { KeyRange } from "../../app/useFallingView";
@@ -10,9 +12,10 @@ interface Props {
   readonly onShowLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
-  /** The road's width at the horizon and the horizon's height, as shares. */
   readonly road: { readonly far: number; readonly horizon: number };
   readonly onRoad: (road: { far?: number; horizon?: number }) => void;
+  readonly camera: CameraPrefs;
+  readonly onCamera: (camera: CameraPrefs) => void;
   /** The view toggles, the same as on the bar. */
   readonly toggles: ReactNode;
 }
@@ -25,6 +28,8 @@ export function KeyboardSettings({
   onShowLabels,
   keyStyle,
   onKeyStyle,
+  camera,
+  onCamera,
   road,
   onRoad,
   toggles
@@ -52,46 +57,54 @@ export function KeyboardSettings({
         <select
           className="game-select"
           value={keyStyle}
+          aria-label="Вид клавиш"
           onChange={(event) => {
             onKeyStyle(event.target.value as KeyStyle);
           }}
         >
           <option value="classic">Классика</option>
           <option value="arcade">Аркада</option>
+          <option value="perspective">Перспектива (с дорогой)</option>
         </select>
       </label>
-      <label className="setting">
-        <span>Дорога: горизонт</span>
-        <span className="setting-control">
-          <input
-            type="range"
-            min={0}
-            max={0.6}
-            step={0.01}
-            value={road.horizon}
-            onChange={(event) => {
-              onRoad({ horizon: Number(event.target.value) });
-            }}
-          />
-          <span className="digits">{Math.round(road.horizon * 100)}%</span>
-        </span>
-      </label>
-      <label className="setting">
-        <span>Дорога: ширина у горизонта</span>
-        <span className="setting-control">
-          <input
-            type="range"
-            min={0.1}
-            max={0.9}
-            step={0.01}
-            value={road.far}
-            onChange={(event) => {
-              onRoad({ far: Number(event.target.value) });
-            }}
-          />
-          <span className="digits">{Math.round(road.far * 100)}%</span>
-        </span>
-      </label>
+      {keyStyle === "perspective" ? (
+        <CameraSettings camera={camera} onChange={onCamera} />
+      ) : (
+        <>
+          <label className="setting">
+            <span>Дорога: горизонт</span>
+            <span className="setting-control">
+              <input
+                type="range"
+                min={0}
+                max={0.6}
+                step={0.01}
+                value={road.horizon}
+                onChange={(event) => {
+                  onRoad({ horizon: Number(event.target.value) });
+                }}
+              />
+              <span className="digits">{Math.round(road.horizon * 100)}%</span>
+            </span>
+          </label>
+          <label className="setting">
+            <span>Дорога: ширина у горизонта</span>
+            <span className="setting-control">
+              <input
+                type="range"
+                min={0.1}
+                max={0.9}
+                step={0.01}
+                value={road.far}
+                onChange={(event) => {
+                  onRoad({ far: Number(event.target.value) });
+                }}
+              />
+              <span className="digits">{Math.round(road.far * 100)}%</span>
+            </span>
+          </label>
+        </>
+      )}
       <label className="setting">
         <span>Наклейки с названиями на клавишах</span>
         <input

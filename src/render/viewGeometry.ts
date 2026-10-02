@@ -1,4 +1,5 @@
-import { whiteKeysBetween, widenRange } from "./keyboardLayout";
+import { isBlackKey } from "../fingering/fingering";
+import { HIGHEST_PITCH, LOWEST_PITCH, whiteKeysBetween, widenRange } from "./keyboardLayout";
 
 /*
  * The keyboard's height follows its key width, like a real key, long and
@@ -19,14 +20,9 @@ const BOTTOM_MARGIN_PER_WIDTH = 0.2;
 /** The felt strip's height, in white-key widths. */
 const FELT_PER_WIDTH = 0.22;
 
-/*
- * With the keys fitted to the song, a white key is kept between these widths,
- * in CSS pixels, on a roomy screen. A short song gets more keys round it rather
- * than giant ones; a wide one keeps playable keys and the view scrolls along
- * the keyboard to the keys to play next.
- */
-const SONG_WHITE_MIN_PX = 56;
-const SONG_WHITE_MAX_PX = 90;
+/** Fit three octaves (22 whites including the final C), plus one guard on either side. */
+const COMPACT_WHITE_KEYS = 24;
+const WHITE_KEY_WIDTH_PX = 44;
 
 export interface Geometry {
   readonly keyboardTop: number;
@@ -87,8 +83,8 @@ export interface FittedRange {
 }
 
 /**
- * Fits the keys `low`..`high` to a view `width` wide. A fixed range fills the
- * view as it is; one that follows the song keeps its white keys playable.
+ * Fits three octaves and their guards on compact screens without stretching desktop keys.
+ * Wider ranges remain scrollable; a short song can grow to fill the viewport.
  */
 export function fitRange(
   width: number,
@@ -97,19 +93,18 @@ export function fitRange(
   fitsSong: boolean,
   fitWholeSong = false
 ): FittedRange {
-  if (!fitsSong) return { low, high, total: width };
+  const keyWidth = Math.min(WHITE_KEY_WIDTH_PX, width / COMPACT_WHITE_KEYS);
+  // Match layoutKeyboard's white edges when calculating the actual key count.
+  const first = Math.max(LOWEST_PITCH, isBlackKey(low) ? low - 1 : low);
+  const last = Math.min(HIGHEST_PITCH, isBlackKey(high) ? high + 1 : high);
+  if (!fitsSong) {
+    return { low, high, total: whiteKeysBetween(first, last) * keyWidth };
+  }
+  low = first;
+  high = last;
   if (fitWholeSong) {
     [low, high] = widenRange(low, high, whiteKeysBetween(low, high) + 2);
   }
-  const whites = Math.max(1, whiteKeysBetween(low, high));
-  if (width / whites > SONG_WHITE_MAX_PX) {
-    // Few keys: more round the song, so none is giant.
-    const [wideLow, wideHigh] = widenRange(low, high, Math.ceil(width / SONG_WHITE_MAX_PX));
-    return { low: wideLow, high: wideHigh, total: width };
-  }
-  if (!fitWholeSong && width / whites < SONG_WHITE_MIN_PX) {
-    // Many keys: keep them playable and scroll.
-    return { low, high, total: whites * SONG_WHITE_MIN_PX };
-  }
-  return { low, high, total: width };
+  [low, high] = widenRange(low, high, Math.ceil(width / keyWidth));
+  return { low, high, total: whiteKeysBetween(low, high) * keyWidth };
 }

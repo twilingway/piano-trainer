@@ -14,6 +14,11 @@ is a lossless 96×192 RGBA frame, tinted per note. `RoadGlassLayer.ts` preserves
 NineSlice (32 pixels left/right, 36 top, 38 bottom), shrinking the caps proportionally for short
 notes.
 
+`note-glass-block.json` is a brighter neutral Arcadia composition for the world-camera notes.
+`note-glass-block.webp` is its lossless 96×192 RGBA export from `AFX.Atlas.build`. The renderer
+projects a raised nine-slice top and separate front/side faces with the shared camera; all faces use
+this material and the finger tint. Its brightness persists for the entire hold.
+
 To bake again after editing an effect:
 
 1. Copy the JSON into `tools/arcadia-effects/Arcada Effects/library/` and run `node server.mjs`

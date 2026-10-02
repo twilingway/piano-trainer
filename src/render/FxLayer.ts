@@ -143,6 +143,7 @@ class AtlasPlayer {
 export interface FxKey {
   readonly pitch: number;
   readonly x: number;
+  readonly y?: number;
   readonly width: number;
   readonly color: number;
 }
@@ -185,7 +186,7 @@ export class FxLayer {
     deltaSeconds: number
   ): void {
     this.clock += deltaSeconds;
-    for (const key of struck) this.hit.play(key.x, hitY, key.width, key.color);
+    for (const key of struck) this.hit.play(key.x, key.y ?? hitY, key.width, key.color);
     const stillSounding = new Set<number>();
     for (const key of sounding) {
       const heldFor = (this.held.get(key.pitch) ?? 0) + deltaSeconds;
@@ -193,9 +194,9 @@ export class FxLayer {
       if (heldFor < HOLD_AFTER_S) continue;
       stillSounding.add(key.pitch);
       const due = (this.puffs.get(key.pitch) ?? 0) - deltaSeconds;
-      if (due <= 0) this.glitter.play(key.x, hitY, key.width, key.color, true);
+      if (due <= 0) this.glitter.play(key.x, key.y ?? hitY, key.width, key.color, true);
       this.puffs.set(key.pitch, due <= 0 ? due + GLITTER_EVERY_S : due);
-      this.light(key, hitY);
+      this.light(key, key.y ?? hitY);
     }
     for (const pitch of [...this.puffs.keys()]) {
       if (!stillSounding.has(pitch)) this.puffs.delete(pitch);

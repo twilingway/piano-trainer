@@ -36,7 +36,7 @@ const FELT_EDGE = 0xb33a3a;
  * Two styles: "classic" (src/render/keys) and "arcade" (src/render/keys-arcade),
  * thicker pseudo-3D keys over a lacquered rail.
  */
-export type KeyStyle = "classic" | "arcade";
+export type KeyStyle = "classic" | "arcade" | "perspective";
 
 type FaceName =
   | "white"
@@ -63,7 +63,7 @@ interface StyleSet {
   readonly rail?: string;
 }
 
-const KEY_STYLES: Readonly<Record<KeyStyle, StyleSet>> = {
+const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "perspective">, StyleSet>> = {
   classic: {
     faces: {
       white: new URL("./keys/white.webp", import.meta.url).href,
@@ -136,7 +136,7 @@ export class KeyboardLayer {
   /** The painted key faces once loaded; kept for good, never re-baked. */
   private painted: PaintedFaces | undefined;
   /** The style the painted faces are of. */
-  private style: KeyStyle = "classic";
+  private style: Exclude<KeyStyle, "perspective"> = "classic";
   /** The rail under the keys, for a style that has one. */
   private railTexture: Texture | undefined;
   private readonly rail = new Sprite();
@@ -214,7 +214,8 @@ export class KeyboardLayer {
    * were. The faces take effect on the next layout. Assets caches every load.
    */
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
-    const set = KEY_STYLES[style];
+    const paintedStyle = style === "perspective" ? "classic" : style;
+    const set = KEY_STYLES[paintedStyle];
     try {
       const names = Object.keys(set.faces) as FaceName[];
       const textures = await Promise.all(
@@ -226,7 +227,7 @@ export class KeyboardLayer {
         names.map((name, index) => [name, textures[index]])
       ) as unknown as PaintedFaces;
       this.railTexture = rail;
-      this.style = style;
+      this.style = paintedStyle;
     } catch (error) {
       console.warn("The painted key faces did not load; keeping the keys as they are", error);
     }

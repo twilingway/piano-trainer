@@ -201,8 +201,10 @@ export class NotesLayer {
       frame.zIndex = glow.zIndex + 1;
       face.zIndex = glow.zIndex + 2;
       badge.zIndex = glow.zIndex + 3;
-      this.lane.addChild(body, digit, name);
-      this.cards.addChild(glow, frame, face, badge);
+      digit.zIndex = glow.zIndex + 2;
+      name.zIndex = glow.zIndex + 3;
+      this.lane.addChild(body);
+      this.cards.addChild(glow, frame, face, badge, digit, name);
       return { note, body, placement, beatSeconds, glow, frame, face, badge, digit, name };
     });
   }
@@ -257,8 +259,7 @@ export class NotesLayer {
     const cardScale = cardWidth / CARD_WIDTH;
     // On the road the glass follows the note until its duration has elapsed.
     const trail = road !== undefined && cards;
-    for (const { note, body, placement, beatSeconds, glow, frame, face, badge, digit, name } of this
-      .notes) {
+    for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
         this.playing.set(note.pitch, note);
       }
@@ -290,9 +291,7 @@ export class NotesLayer {
           : key.width - NOTE_GAP_PX * 2;
       const keyCentre = key.x + key.width / 2;
       const landingY = Math.min(bottom, hitY);
-      body.x =
-        (road ? road.noteLaneX(placement, keyCentre, landingY) + road.scenePan : keyCentre) -
-        barWidth / 2;
+      body.x = keyCentre - barWidth / 2;
       body.width = barWidth;
       // The tail runs the note's whole length, so lengths compare; the card's glass covers
       // its head.
@@ -323,29 +322,27 @@ export class NotesLayer {
           width: key.width,
           color: note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand],
           age,
-          screenX: road.notePlace(placement, keyCentre, 0)?.x
+          screenX: road.notePlace(keyCentre, 0)?.x,
+          screenY: road.notePlace(keyCentre, 0)?.y
         });
       }
       body.alpha *= arrivalAlpha;
       if (road && bounds.bottom > bounds.top) {
-        if (
-          road.drawHold(
-            placement,
-            keyCentre,
-            bounds.top,
-            bounds.bottom,
-            barWidth,
-            body.tint,
-            arrivalAlpha
-          )
-        )
+        if (road.drawHold(keyCentre, bounds.top, bounds.bottom, barWidth, body.tint, arrivalAlpha))
           body.visible = false;
-        road.drawLedger(placement, landingY);
       }
 
-      digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
-      digit.x = body.x + barWidth / 2;
-      digit.y = (road ? landingY : bottom) - 2;
+      const labelY = Math.max(bounds.top, landingY - Math.min(noteHeight * 0.4, barWidth * 0.65));
+      const labelSpot = road?.notePlace(keyCentre, labelY, 0, barWidth * 0.2);
+      const labelScale = labelSpot?.scale ?? 1;
+      if (note.finger !== undefined) {
+        digit.texture =
+          (road ? this.labels.badges : this.labels.digits).get(note.finger) ?? Texture.EMPTY;
+      }
+      digit.scale.set(Math.min(1, (key.width * (road ? 0.5 : 0.9)) / 40) * labelScale);
+      digit.anchor.set(0.5, road ? 0.5 : 1);
+      digit.x = labelSpot?.x ?? keyCentre;
+      digit.y = (labelSpot?.y ?? bottom) - 2 * labelScale;
       digit.alpha = body.alpha;
       if (cards) {
         // The card stands where the note lands; on the road it faces the player and
@@ -353,7 +350,7 @@ export class NotesLayer {
         const centre = key.x + key.width / 2;
         // A sounding note's card waits on the hit line rather than sliding over the keys.
         const landing = Math.min(bottom, hitY);
-        const spot = road?.notePlace(placement, centre, landing);
+        const spot = road?.notePlace(centre, landing);
         // Far up the road a card is still in the fog; it clears as it nears.
         const seen = cardAlpha * arrivalAlpha * (road ? road.clarity(landing) : 1);
         const scale = cardScale * (spot?.scale ?? 1);
@@ -388,11 +385,13 @@ export class NotesLayer {
       }
       if (this.noteNames) {
         // Over the finger, when the note is tall enough to hold both.
-        name.scale.set(Math.min(1, (key.width * 0.92) / Math.max(name.texture.width, 1)));
+        name.scale.set(
+          Math.min(1, (key.width * 0.92) / Math.max(name.texture.width, 1)) * labelScale
+        );
         const digitHeight = note.finger === undefined ? 0 : digit.height + 2;
         name.visible = noteHeight >= digitHeight + name.height + 4;
-        name.x = body.x + barWidth / 2;
-        name.y = (road ? landingY : bottom) - 2 - digitHeight;
+        name.x = labelSpot?.x ?? keyCentre;
+        name.y = (labelSpot?.y ?? bottom) - 2 * labelScale - digitHeight;
         name.alpha = body.alpha;
       }
     }

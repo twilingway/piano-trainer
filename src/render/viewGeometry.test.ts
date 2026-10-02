@@ -4,6 +4,7 @@ import { layoutKeyboard, whiteKeysBetween } from "./keyboardLayout";
 import { fitRange, viewGeometry } from "./viewGeometry";
 
 const ALL = { notes: true, keys: true, hands: false };
+const whiteWidthAt = (width: number) => Math.min(44, width / 24);
 
 describe("viewGeometry", () => {
   it("drops the notes to the bottom edge without keys", () => {
@@ -47,54 +48,105 @@ describe("viewGeometry", () => {
 });
 
 describe("fitRange", () => {
-  it("keeps a fixed range as it is", () => {
-    expect(fitRange(2000, 60, 72, false)).toEqual({ low: 60, high: 72, total: 2000 });
-  });
-
-  it("adds keys round a short song so none is giant", () => {
-    const fitted = fitRange(2000, 60, 72, true);
-    expect(fitted.low).toBeLessThan(60);
-    expect(fitted.high).toBeGreaterThan(72);
-    expect(fitted.total).toBe(2000);
-    expect(2000 / whiteKeysBetween(fitted.low, fitted.high)).toBeLessThanOrEqual(90);
-  });
-
-  it("scrolls a wide song rather than shrink its keys", () => {
-    const fitted = fitRange(500, 21, 108, true);
-    expect(fitted).toEqual({ low: 21, high: 108, total: 52 * 56 });
-  });
-
-  it.each([320, 667, 768])("shows the entire song range on a compact %ipx screen", (width) => {
-    const fitted = fitRange(width, 21, 108, true, true);
-    const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
-    expect(keys.size).toBe(88);
-    expect(keys.get(21)?.x).toBe(0);
-    const last = keys.get(108);
-    expect((last?.x ?? 0) + (last?.width ?? 0)).toBeCloseTo(width);
-    for (const key of keys.values()) {
-      expect(key.x).toBeGreaterThanOrEqual(0);
-      expect(key.x + key.width).toBeLessThanOrEqual(width + 1e-9);
+  it.each([320, 390, 667, 768, 1056, 1920])(
+    "fits three octaves and both guards on a %ipx viewport",
+    (width) => {
+      const fitted = fitRange(width, 48, 84, true, true);
+      const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
+      expect(fitted.total).toBeLessThanOrEqual(width + 44);
+      const first = keys.get(48),
+        last = keys.get(84);
+      expect(first).toBeDefined();
+      expect(last).toBeDefined();
+      expect((last?.x ?? 0) + (last?.width ?? 0) - (first?.x ?? 0)).toBeLessThanOrEqual(width);
+      expect(whiteKeysBetween(fitted.low, 47)).toBeGreaterThanOrEqual(1);
+      expect(whiteKeysBetween(85, fitted.high)).toBeGreaterThanOrEqual(1);
+      if (width <= 1056) expect(fitted.total).toBeCloseTo(width);
     }
-  });
+  );
+  it.each([320, 667, 768, 2000])(
+    "keeps fixed bounds and responsive white keys on a %ipx viewport",
+    (width) => {
+      const WHITE_WIDTH = whiteWidthAt(width);
+      const fitted = fitRange(width, 60, 72, false);
+      expect(fitted).toEqual({ low: 60, high: 72, total: 8 * WHITE_WIDTH });
+      for (const key of layoutKeyboard(fitted.total, fitted.low, fitted.high).values()) {
+        expect(key.width).toBeCloseTo(key.black ? WHITE_WIDTH * 0.6 : WHITE_WIDTH);
+      }
+    }
+  );
 
-  it("keeps songs with black-key edges entirely inside the compact view", () => {
-    const fitted = fitRange(320, 61, 78, true, true);
+  it.each([320, 667, 768, 2000])(
+    "widens a short song to fill a %ipx viewport without stretching",
+    (width) => {
+      const WHITE_WIDTH = whiteWidthAt(width);
+      const fitted = fitRange(width, 60, 72, true);
+      expect(fitted.low).toBeLessThanOrEqual(60);
+      expect(fitted.high).toBeGreaterThanOrEqual(72);
+      expect(fitted.total).toBeGreaterThanOrEqual(width);
+      expect(fitted.total).toBe(Math.max(8, Math.ceil(width / WHITE_WIDTH)) * WHITE_WIDTH);
+      for (const key of layoutKeyboard(fitted.total, fitted.low, fitted.high).values()) {
+        expect(key.width).toBeCloseTo(key.black ? WHITE_WIDTH * 0.6 : WHITE_WIDTH);
+      }
+    }
+  );
+
+  it.each([320, 667, 768, 2000, 4000, 6000])(
+    "caps a wide song at 88 fixed-size keys on a %ipx viewport",
+    (width) => {
+      const WHITE_WIDTH = whiteWidthAt(width);
+      const fitted = fitRange(width, 21, 108, true, true);
+      expect(fitted).toEqual({ low: 21, high: 108, total: 52 * WHITE_WIDTH });
+      const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
+      expect(keys.size).toBe(88);
+      for (const key of keys.values()) {
+        expect(key.width).toBeCloseTo(key.black ? WHITE_WIDTH * 0.6 : WHITE_WIDTH);
+      }
+    }
+  );
+
+  it.each([320, 667, 768])(
+    "retains a scrollable whole-song keyboard on a compact %ipx screen",
+    (width) => {
+      const WHITE_WIDTH = whiteWidthAt(width);
+      const fitted = fitRange(width, 21, 108, true, true);
+      const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
+      expect(keys.size).toBe(88);
+      expect(keys.get(21)?.x).toBe(0);
+      const last = keys.get(108);
+      expect((last?.x ?? 0) + (last?.width ?? 0)).toBeCloseTo(52 * WHITE_WIDTH);
+      expect(fitted.total).toBeGreaterThan(width);
+      for (const key of keys.values()) {
+        expect(key.x).toBeGreaterThanOrEqual(0);
+        expect(key.x + key.width).toBeLessThanOrEqual(fitted.total + 1e-9);
+        expect(key.width).toBeCloseTo(key.black ? WHITE_WIDTH * 0.6 : WHITE_WIDTH);
+      }
+    }
+  );
+
+  it.each([false, true])("counts white neighbors of black edges in range mode %s", (fitsSong) => {
+    const WHITE_WIDTH = whiteWidthAt(320);
+    const fitted = fitRange(320, 61, 78, fitsSong);
     const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
     expect(keys.has(61)).toBe(true);
     expect(keys.has(78)).toBe(true);
+    expect(keys.has(60)).toBe(true);
+    expect(keys.has(79)).toBe(true);
+    expect(fitted.total).toBe((fitsSong ? 24 : 12) * WHITE_WIDTH);
     for (const key of keys.values()) {
       expect(key.x).toBeGreaterThanOrEqual(0);
-      expect(key.x + key.width).toBeLessThanOrEqual(320 + 1e-9);
+      expect(key.x + key.width).toBeLessThanOrEqual(fitted.total + 1e-9);
+      expect(key.width).toBeCloseTo(key.black ? WHITE_WIDTH * 0.6 : WHITE_WIDTH);
     }
   });
 
-  it("leaves one extra white key on each side of the song in a compact view", () => {
+  it("leaves at least one extra white key on each side of the song in a compact view", () => {
     const fitted = fitRange(667, 48, 79, true, true);
     const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
-    expect(whiteKeysBetween(fitted.low, 47)).toBe(1);
-    expect(whiteKeysBetween(80, fitted.high)).toBe(1);
+    expect(whiteKeysBetween(fitted.low, 47)).toBeGreaterThanOrEqual(1);
+    expect(whiteKeysBetween(80, fitted.high)).toBeGreaterThanOrEqual(1);
     expect(keys.get(48)?.x).toBeGreaterThan(0);
     const lastSongKey = keys.get(79);
-    expect((lastSongKey?.x ?? 0) + (lastSongKey?.width ?? 0)).toBeLessThan(667);
+    expect((lastSongKey?.x ?? 0) + (lastSongKey?.width ?? 0)).toBeLessThan(fitted.total);
   });
 });

@@ -1,4 +1,3 @@
-import { scorePlacements } from "../song/scorePlacement";
 import { Application, Container } from "pixi.js";
 import type { FederatedPointerEvent, Texture } from "pixi.js";
 
@@ -24,6 +23,8 @@ import type { Span } from "./keyboardPan";
 import { HAND_COLOR, NotesLayer } from "./NotesLayer";
 import { RoadLayer } from "./RoadLayer";
 import type { RoadShape, Strike } from "./RoadLayer";
+import { DEFAULT_CAMERA } from "./worldCamera";
+import type { CameraPrefs } from "./worldCamera";
 import { fitRange, viewGeometry } from "./viewGeometry";
 import type { Geometry, ViewParts } from "./viewGeometry";
 
@@ -119,6 +120,7 @@ export class FallingNotesView {
   private noteNames: FallingNoteNames | undefined;
   private cards = true;
   private keyStyle: KeyStyle = "classic";
+  private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
 
   async mount(host: HTMLElement): Promise<void> {
     await this.app.init({
@@ -157,7 +159,8 @@ export class FallingNotesView {
     keyboard.showStickers(this.labels);
     this.keyboard = keyboard;
     this.road = new RoadLayer(renderer);
-    if (this.song) this.road.setScore(scorePlacements(this.song));
+    this.road.setCamera(this.cameraPrefs);
+    this.road.setPerspective(this.keyStyle === "perspective");
     this.road.container.visible = false;
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, this.hands.container);
@@ -205,6 +208,8 @@ export class FallingNotesView {
   setKeyStyle(style: KeyStyle): void {
     if (style === this.keyStyle) return;
     this.keyStyle = style;
+    this.road?.setPerspective(style === "perspective");
+    this.laidOutFor = { width: 0, height: 0 };
     const keyboard = this.keyboard;
     if (!keyboard) return;
     void keyboard.loadPaintedFaces(style).then(() => {
@@ -253,16 +258,21 @@ export class FallingNotesView {
    * Notes cannot be clicked there: the lane is a picture laid on the road.
    * The keys are one too, so the stage finds the key under the mouse.
    */
-  /** How far the road reaches and how much it narrows towards the horizon. */
+  /** Keep the combo below an overlaid score without shortening the road behind it. */
+  setHudTop(top: number): void {
+    if (top === this.hudTop) return;
+    this.hudTop = top;
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
   setRoadShape(shape: RoadShape): void {
     this.road?.setShape(shape);
     this.laidOutFor = { width: 0, height: 0 };
   }
 
-  /** Keep the combo below an overlaid score without shortening the road behind it. */
-  setHudTop(top: number): void {
-    if (top === this.hudTop) return;
-    this.hudTop = top;
+  setCamera(prefs: CameraPrefs): void {
+    this.cameraPrefs = prefs;
+    this.road?.setCamera(prefs);
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -305,7 +315,6 @@ export class FallingNotesView {
   setSong(song: Song): void {
     this.hands.setSong(song);
     this.notesLayer?.setSong(song);
-    this.road?.setScore(scorePlacements(song));
     this.song = song;
     this.songNotes = song.notes;
     this.hud.clear();
@@ -371,7 +380,14 @@ export class FallingNotesView {
           : note
             ? HAND_COLOR[note.hand]
             : 0xffffff;
-      return { pitch, x: key.x + key.width / 2 - this.pan, width: key.width, color };
+      const projected = road?.notePlace(key.x + key.width / 2, geometry.hitY);
+      return {
+        pitch,
+        x: projected?.x ?? key.x + key.width / 2 - this.pan,
+        width: key.width * (projected?.scale ?? 1),
+        y: projected?.y ?? hitLineY,
+        color
+      };
     };
     const struck: FxKey[] = [];
     for (const strike of state.graded ?? []) {
@@ -399,7 +415,11 @@ export class FallingNotesView {
       state.graded ?? [],
       (pitch) => {
         const key = this.keys.get(pitch);
-        return key && key.x + key.width / 2 - this.pan;
+        return (
+          key &&
+          (road?.notePlace(key.x + key.width / 2, geometry.hitY)?.x ??
+            key.x + key.width / 2 - this.pan)
+        );
       },
       hitLineY,
       this.app.ticker.deltaMS / 1000
@@ -411,7 +431,7 @@ export class FallingNotesView {
    * the player's hands' first (every hand's when listening), smoothly.
    */
   private scroll(state: FrameState, width: number): void {
-    let pan = 0;
+    let pan = Math.min(0, (this.total - width) / 2);
     if (this.total > width) {
       const until = state.time + state.lookAhead * PAN_LOOK_AHEAD;
       const spans: Span[] = [];
@@ -487,6 +507,7 @@ export class FallingNotesView {
     // The road ends on the felt, where the notes meet the keys.
     if (this.road) {
       this.road.layout(total, geometry.hitY, height, width);
+      this.road.setKeyboard(this.keys, geometry);
       // The road shows itself when it fits; off, it stays hidden whatever the layout.
       if (!this.roadMode) {
         this.road.container.visible = false;
