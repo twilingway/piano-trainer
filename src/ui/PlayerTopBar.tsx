@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 import type { Scoreboard } from "../practice/scoreboard";
-import { CompactPracticeChoices } from "./CompactPracticeChoices";
+import { CompactPracticeChoices, HAND_CHOICES, HandsPicture } from "./CompactPracticeChoices";
 import { GearIcon, LibraryIcon, PauseIcon, PlayIcon, RestartIcon } from "./icons";
 import { ViewHelp } from "./ViewHelp";
 
@@ -37,9 +37,11 @@ interface Props {
  */
 export function PlayerTopBar(props: Props) {
   const { board } = props;
+  const controls = useRef<HTMLDetailsElement>(null);
+  const handTitle = HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки";
   return (
     <header className="topbar">
-      <details className="compact-controls">
+      <details className="compact-controls" ref={controls}>
         <summary className="icon-button" aria-label="Управление" title="Управление">
           <GearIcon />
         </summary>
@@ -82,9 +84,6 @@ export function PlayerTopBar(props: Props) {
           <button type="button" className="game-button" onClick={props.onLibrary}>
             <LibraryIcon /> Библиотека
           </button>
-          <button type="button" className="game-button" onClick={props.onRestart}>
-            <RestartIcon /> Сначала
-          </button>
           <button
             type="button"
             className="game-button"
@@ -95,6 +94,24 @@ export function PlayerTopBar(props: Props) {
           </button>
         </div>
       </details>
+      <button
+        type="button"
+        className="icon-button compact-hands"
+        aria-label={`Выбор рук: ${handTitle}`}
+        title={`${handTitle} — выбрать руки`}
+        onClick={() => {
+          const menu = controls.current;
+          if (!menu) return;
+          menu.open = true;
+          const choices = menu.querySelector(".compact-practice__hands");
+          choices?.scrollIntoView({ block: "nearest" });
+          choices
+            ?.querySelector<HTMLButtonElement>('[aria-checked="true"]')
+            ?.focus({ preventScroll: true });
+        }}
+      >
+        <HandsPicture hands={props.hands} />
+      </button>
       <button
         type="button"
         className="game-button topbar-library"

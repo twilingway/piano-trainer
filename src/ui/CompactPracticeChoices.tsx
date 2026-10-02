@@ -1,7 +1,7 @@
 import { HandIcon, ListenIcon } from "./icons";
 import type { HandsChoice, PracticeModeChoice } from "./PlayerTopBar";
 
-const HAND_CHOICES = [
+export const HAND_CHOICES = [
   { value: "left", label: "Левая", title: "Левая рука", hint: "Правую руку играет программа." },
   { value: "right", label: "Правая", title: "Правая рука", hint: "Левую руку играет программа." },
   { value: "both", label: "Обе", title: "Обе руки", hint: "Играйте обе партии самостоятельно." },
@@ -12,6 +12,17 @@ const HAND_CHOICES = [
     hint: "Нажмите ▶ — программа сыграет всю мелодию."
   }
 ] as const;
+
+/** The same hand silhouette identifies the selected party and its menu choice. */
+export function HandsPicture({ hands }: { readonly hands: HandsChoice }) {
+  return (
+    <span className="hands-picture" data-hands={hands} aria-hidden="true">
+      {hands === "listen" ? <ListenIcon /> : <HandIcon />}
+      {hands === "both" && <HandIcon />}
+      {(hands === "left" || hands === "right") && <small>{hands === "left" ? "Л" : "П"}</small>}
+    </span>
+  );
+}
 
 interface Props {
   readonly hands: HandsChoice;
@@ -64,10 +75,7 @@ export function CompactPracticeChoices({ hands, mode, onHands, onMode }: Props) 
               onHands(value);
             }}
           >
-            <span className="compact-practice__picture" data-hands={value}>
-              {value === "listen" ? <ListenIcon /> : <HandIcon />}
-              {value === "both" && <HandIcon />}
-            </span>
+            <HandsPicture hands={value} />
             <span>{label}</span>
           </button>
         ))}

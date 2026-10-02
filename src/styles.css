@@ -449,6 +449,10 @@ select:disabled {
   display: none;
 }
 
+.compact-hands {
+  display: none;
+}
+
 .view-help__trigger {
   position: relative;
   width: 44px;
@@ -501,19 +505,29 @@ select:disabled {
   color: var(--text);
 }
 
-.compact-practice__picture {
+.hands-picture {
+  position: relative;
   display: flex;
   justify-content: center;
   gap: 2px;
 }
 
-.compact-practice__picture[data-hands="left"] svg,
-.compact-practice__picture[data-hands="both"] svg:first-child {
+.hands-picture[data-hands="left"] svg,
+.hands-picture[data-hands="both"] svg:first-child {
   transform: scaleX(-1);
 }
 
-.compact-practice__picture[data-hands="both"] svg {
+.hands-picture[data-hands="both"] svg {
   width: 18px;
+}
+
+.hands-picture small {
+  position: absolute;
+  right: -8px;
+  bottom: -2px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .compact-practice__hint {
@@ -1292,7 +1306,6 @@ button.song-card.song-card__open {
   }
 
   .topbar > .topbar-library,
-  .topbar > .topbar-restart,
   .topbar > .topbar-settings {
     display: none;
   }
@@ -1300,7 +1313,17 @@ button.song-card.song-card__open {
   .compact-controls {
     position: static;
     display: block;
+    order: 3;
+  }
+
+  .topbar > .topbar-restart {
+    display: grid;
     order: 1;
+  }
+
+  .compact-hands {
+    display: grid;
+    order: 2;
   }
 
   .compact-controls summary {
@@ -1399,6 +1422,7 @@ button.song-card.song-card__open {
 
   .topbar-library,
   .topbar-restart,
+  .compact-hands,
   .topbar .play-button,
   .topbar-settings {
     flex: 0 0 44px;
