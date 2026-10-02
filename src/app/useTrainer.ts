@@ -20,6 +20,8 @@ const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
 };
 
 interface Options {
+  readonly gameOptions?: Pick<PracticeOptions, "difficulty" | "from" | "to">;
+  readonly ranked?: boolean;
   readonly song: Song;
   /** The song's key for the trainer's per-song state. */
   readonly songKey: string;
@@ -57,7 +59,9 @@ export function useTrainer({
   lastTake,
   replayCount,
   comparing,
-  onReplay
+  onReplay,
+  gameOptions,
+  ranked = false
 }: Options) {
   const hostRef = useRef<HTMLDivElement>(null);
   const trainerRef = useRef<Trainer | null>(null);
@@ -67,9 +71,22 @@ export function useTrainer({
   const [trainerReady, setTrainerReady] = useState(false);
   const [snapshot, setSnapshot] = useState<TrainerSnapshot | null>(null);
   // How the player last played, brought back from the previous visit.
-  const [mode, setMode] = useState<PracticeMode>(() => loadPlayerPrefs().mode);
-  const [handChoice, setHandChoice] = useState<HandChoice>(() => loadPlayerPrefs().handChoice);
-  const [speed, setSpeed] = useState(() => loadPlayerPrefs().speed);
+  const [storedMode, setMode] = useState<PracticeMode>(() => loadPlayerPrefs().mode);
+  const mode = ranked ? "tempo" : storedMode;
+  const [storedHandChoice, updateHandChoice] = useState<HandChoice>(
+    () => loadPlayerPrefs().handChoice
+  );
+  const handChoice = ranked && storedHandChoice === "listen" ? "both" : storedHandChoice;
+  const setHandChoice = (choice: HandChoice) => {
+    if (!ranked || !snapshot?.playing) updateHandChoice(choice);
+  };
+  const [storedSpeed, updateSpeed] = useState(() =>
+    Math.max(0.5, Math.min(1, loadPlayerPrefs().speed))
+  );
+  const setSpeed = (next: number) => {
+    updateSpeed(Math.max(0.5, Math.min(1, next)));
+  };
+  const speed = ranked ? 1 : storedSpeed;
   const [listening, setListening] = useState(false);
   const [metronome, setMetronome] = useState(() => loadPlayerPrefs().metronome);
   useEffect(() => {
@@ -87,7 +104,12 @@ export function useTrainer({
       // A clicked key has no voice of its own, unlike the piano.
       if (event.type === "down") soundNoteOn(event.pitch);
       else soundNoteOff(event.pitch);
-      trainerRef.current?.key(event);
+      trainerRef.current?.key({
+        ...event,
+        timestamp: performance.now(),
+        source: "pointer",
+        deviceId: "pointer"
+      });
     };
     let disposed = false;
     const mounted = view.mount(host).then(() => {
@@ -107,6 +129,7 @@ export function useTrainer({
     });
     return () => {
       disposed = true;
+      trainerRef.current?.destroy();
       trainerRef.current = null;
       setTrainerReady(false);
       void mounted.then(() => {
@@ -125,8 +148,8 @@ export function useTrainer({
     () =>
       listening
         ? { mode: "tempo", hands: new Set<Hand>(), speed }
-        : { mode, hands: new Set(HANDS[handChoice]), speed },
-    [listening, mode, handChoice, speed]
+        : { mode, hands: new Set(HANDS[handChoice]), speed, ...gameOptions },
+    [listening, mode, handChoice, speed, gameOptions]
   );
 
   // The take to play back while comparing. Outside comparing it stays undefined, so a take
@@ -192,6 +215,7 @@ export function useTrainer({
   };
 
   const toggleListening = async () => {
+    if (ranked) return;
     await ensureSound();
     setListening((current) => !current);
   };

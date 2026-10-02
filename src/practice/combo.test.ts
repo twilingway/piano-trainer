@@ -10,8 +10,9 @@ describe("ComboCounter", () => {
     expect(counter.record(hit(0))).toBe("perfect");
     expect(counter.record(hit(PERFECT_WINDOW_S))).toBe("perfect");
     expect(counter.record(hit(-PERFECT_WINDOW_S))).toBe("perfect");
-    expect(counter.record(hit(-0.1))).toBe("early");
-    expect(counter.record(hit(0.1))).toBe("late");
+    expect(counter.record(hit(-0.06))).toBe("great");
+    expect(counter.record(hit(-0.1))).toBe("good");
+    expect(counter.record(hit(0.15))).toBe("ok");
   });
 
   it("counts the run and breaks it on a miss or a stray key", () => {
@@ -19,10 +20,17 @@ describe("ComboCounter", () => {
     for (let index = 0; index < 3; index++) counter.record(hit(0));
     expect(counter.board().combo).toBe(3);
     expect(counter.record({ type: "wrong", pitch: 61 })).toBe("miss");
-    expect(counter.board()).toEqual({ combo: 0, best: 3, accuracy: 3 / 4 });
+    expect(counter.board()).toEqual({ combo: 0, best: 3, accuracy: 1 });
     counter.record(hit(0.1));
     expect(counter.record({ type: "miss", noteId: "m" })).toBe("miss");
-    expect(counter.board()).toEqual({ combo: 0, best: 3, accuracy: 4 / 6 });
+    expect(counter.board()).toEqual({ combo: 0, best: 3, accuracy: 0.7 });
+  });
+
+  it("uses the session difficulty judgement rather than regrading its offset", () => {
+    const counter = new ComboCounter();
+    expect(counter.record({ ...hit(0.04), judgement: "PERFECT" })).toBe("perfect");
+    expect(counter.record({ ...hit(0.02), judgement: "GREAT" })).toBe("great");
+    expect(counter.board().accuracy).toBe(0.9);
   });
 
   it("ignores events that are not strikes", () => {

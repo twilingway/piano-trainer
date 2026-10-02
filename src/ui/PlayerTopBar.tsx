@@ -184,7 +184,7 @@ export function PlayerTopBar(props: Props) {
         <input
           type="range"
           aria-label="Скорость"
-          min={0.25}
+          min={0.5}
           max={1}
           step={0.05}
           value={props.speed}

@@ -10,7 +10,14 @@ import type { Trainer } from "../practice/Trainer";
  * Keys into the trainer: the MIDI piano (keys and the sustain pedal) and the
  * computer keyboard, which also sounds the notes it plays.
  */
-export function useKeyInput(trainerRef: RefObject<Trainer | null>) {
+export function useKeyInput(
+  trainerRef: RefObject<Trainer | null>,
+  intercept?: (event: KeyEvent) => boolean
+) {
+  const interceptRef = useRef(intercept);
+  useEffect(() => {
+    interceptRef.current = intercept;
+  }, [intercept]);
   const [devices, setDevices] = useState<MidiDevice[]>([]);
   const [midiError, setMidiError] = useState<string | null>(() =>
     midiSupported()
@@ -25,7 +32,9 @@ export function useKeyInput(trainerRef: RefObject<Trainer | null>) {
   const midiDeviceRef = useRef("all");
 
   useEffect(() => {
-    const onKey = (event: KeyEvent) => trainerRef.current?.key(event);
+    const onKey = (event: KeyEvent) => {
+      if (!interceptRef.current?.(event)) trainerRef.current?.key(event);
+    };
     const stopWarmUp = startSoundOnFirstGesture();
     const stopKeyboard = listenToComputerKeyboard((event) => {
       // The computer keyboard has no voice of its own, unlike the piano.
@@ -39,7 +48,8 @@ export function useKeyInput(trainerRef: RefObject<Trainer | null>) {
       const onMidiKey = (event: MidiEvent, deviceId: string) => {
         const chosen = midiDeviceRef.current;
         if (chosen !== "all" && chosen !== deviceId) return;
-        if (event.type === "pedal") trainerRef.current?.pedal(event.down);
+        if (event.type === "pedal")
+          trainerRef.current?.pedal(event.down, event.timestamp, event.deviceId);
         else onKey(event);
       };
       listenToMidi(onMidiKey, setDevices).then(

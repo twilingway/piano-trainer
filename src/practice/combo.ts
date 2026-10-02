@@ -1,10 +1,11 @@
 import type { PracticeEvent } from "./session";
+import { ACCURACY_POINTS, judgeOffset } from "./gameRules";
 
 /** How a strike went, as the player is told at the hit line. */
-export type StrikeGrade = "perfect" | "early" | "late" | "miss";
+export type StrikeGrade = "perfect" | "great" | "good" | "ok" | "early" | "late" | "miss";
 
 /** Seconds off the note's start that still count as on time. */
-export const PERFECT_WINDOW_S = 0.06;
+export const PERFECT_WINDOW_S = 0.03;
 
 /** A strike graded this frame, on the key it was played on. */
 export interface GradedStrike {
@@ -16,7 +17,7 @@ export interface GradedStrike {
 export interface ComboBoard {
   readonly combo: number;
   readonly best: number;
-  /** Notes taken among notes owed and stray keys, 0 to 1; 1 before anything is played. */
+  /** Weighted attack accuracy among resolved expected notes, 0 to 1. */
   readonly accuracy: number;
 }
 
@@ -29,20 +30,29 @@ export class ComboCounter {
   private best = 0;
   private hits = 0;
   private slips = 0;
+  private accuracyPoints = 0;
 
   /** The grade of a hit, a miss or a stray key; undefined for every other event. */
   record(event: PracticeEvent): StrikeGrade | undefined {
     switch (event.type) {
       case "hit": {
+        const judgement = event.judgement ?? judgeOffset(event.offset * 1000);
+        if (judgement === "MISS") {
+          this.slips++;
+          this.combo = 0;
+          return "miss";
+        }
         this.hits++;
+        this.accuracyPoints += ACCURACY_POINTS[judgement];
         this.combo++;
         this.best = Math.max(this.best, this.combo);
-        if (Math.abs(event.offset) <= PERFECT_WINDOW_S) return "perfect";
-        return event.offset < 0 ? "early" : "late";
+        return judgement.toLowerCase() as StrikeGrade;
       }
       case "miss":
-      case "wrong":
         this.slips++;
+        this.combo = 0;
+        return "miss";
+      case "wrong":
         this.combo = 0;
         return "miss";
       default:
@@ -55,7 +65,7 @@ export class ComboCounter {
     return {
       combo: this.combo,
       best: this.best,
-      accuracy: total === 0 ? 1 : this.hits / total
+      accuracy: total === 0 ? 1 : this.accuracyPoints / (total * 100)
     };
   }
 
@@ -64,5 +74,6 @@ export class ComboCounter {
     this.best = 0;
     this.hits = 0;
     this.slips = 0;
+    this.accuracyPoints = 0;
   }
 }

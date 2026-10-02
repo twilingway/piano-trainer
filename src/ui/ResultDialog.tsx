@@ -33,11 +33,87 @@ interface Props {
 /** The end of a run: the accuracy, the notes that went wrong most, and what next. */
 export function ResultDialog({ open, stats, canReview, onClose, onAgain, onReview }: Props) {
   const played = stats ? stats.hits + stats.misses : 0;
-  const accuracy = stats && played + stats.wrong > 0 ? stats.hits / (played + stats.wrong) : 0;
+  const game = stats?.game;
+  const accuracy = game ? game.accuracy : stats && played > 0 ? (stats.hits / played) * 100 : null;
   return (
     <GameDialog open={open} title="Готово" className="result" onClose={onClose}>
-      <p className="result-score digits">{Math.round(accuracy * 100)}%</p>
-      <p className="result-caption">точность</p>
+      <p className="result-score digits">
+        {accuracy === null ? "Нет нот для оценки" : `${accuracy.toFixed(1)}%`}
+      </p>
+      <p className="result-caption">
+        {game ? "взвешенная точность" : "Тренировка · без рейтинга времени"}
+      </p>
+      {game && game.expectedNotes > 0 && (
+        <div className="game-result-details">
+          <p>
+            Очки <strong>{game.score}</strong> · Ранг <strong>{game.rank}</strong>
+          </p>
+          <p>
+            {game.stars === null ? "" : "★".repeat(game.stars)} · Эталон: {game.targetScore} очков
+            (идеальная игра без Overdrive)
+          </p>
+          <p>
+            Максимальная серия: {game.maxCombo} · Нот: {game.expectedNotes}
+            {game.perfectFullCombo
+              ? " · Идеальное Full Combo"
+              : game.fullCombo
+                ? " · Full Combo"
+                : ""}
+          </p>
+          <dl className="game-result-stats">
+            <dt>Идеально / Отлично / Хорошо / Зачтено / Пропущено</dt>
+            <dd>
+              {game.grades.PERFECT} / {game.grades.GREAT} / {game.grades.GOOD} / {game.grades.OK} /{" "}
+              {game.grades.MISS}
+            </dd>
+            <dt>Лишние клавиши</dt>
+            <dd>{game.wrong}</dd>
+            <dt>Аккорды: полные / частичные</dt>
+            <dd>
+              {game.chords - game.partialChords} / {game.partialChords}
+            </dd>
+            <dt>Средняя / медианная ошибка</dt>
+            <dd>
+              {milliseconds(game.timing.meanMs)} / {milliseconds(game.timing.medianMs)}
+            </dd>
+            <dt>Рано / Поздно / Точно в момент</dt>
+            <dd>
+              {game.timing.early} / {game.timing.late} / {game.timing.exact}
+            </dd>
+            <dt>Очки удержания / бонус Overdrive</dt>
+            <dd>
+              {game.holdScore} / {game.overdriveScore}
+            </dd>
+            {stats.hold && (
+              <>
+                <dt>Точность удержания</dt>
+                <dd>
+                  {stats.hold.accuracy === null ? "—" : `${stats.hold.accuracy.toFixed(1)}%`}
+                  {" · "}
+                  {stats.hold.heldSeconds.toFixed(2)} / {stats.hold.possibleSeconds.toFixed(2)} с
+                </dd>
+                <dt>Отпущено нот · средняя / медианная ошибка отпускания</dt>
+                <dd>
+                  {stats.hold.releasedNotes} · {milliseconds(stats.hold.meanReleaseOffsetMs)} /{" "}
+                  {milliseconds(stats.hold.medianReleaseOffsetMs)}
+                </dd>
+              </>
+            )}
+          </dl>
+          {game.timing.histogram.length > 0 && (
+            <details>
+              <summary>Распределение ошибки времени</summary>
+              <ul className="timing-histogram">
+                {game.timing.histogram.map(({ fromMs, count }) => (
+                  <li key={fromMs}>
+                    {fromMs}…{fromMs + 10} мс: {count}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
       {stats && stats.troubleSpots.length > 0 && (
         <p>
           Трудные ноты:{" "}
@@ -61,4 +137,8 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain, onRevie
       </div>
     </GameDialog>
   );
+}
+
+function milliseconds(value: number | null): string {
+  return value === null ? "—" : `${value > 0 ? "+" : ""}${value.toFixed(1)} мс`;
 }

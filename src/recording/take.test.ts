@@ -13,6 +13,88 @@ const settings: TakeSettings = {
 const WHEN = "2026-09-29T00:00:00Z";
 
 describe("TakeRecorder", () => {
+  it("keeps the old release API working when an attack includes input metadata", () => {
+    const recorder = new TakeRecorder(settings);
+    recorder.noteOn(60, 90, 1, 1, "piano", {
+      rawTimestampMs: 2100,
+      correctedTimestampMs: 2000,
+      inputOffsetMs: 100,
+      source: "midi"
+    });
+    recorder.noteOff(60, 1.5, 1.5, "piano");
+    expect(recorder.finish(2, 2, "legacy-off", WHEN).notes[0]?.end).toBe(1.5);
+  });
+  it("routes a late release to the old closed span without ending a newer attack", () => {
+    const recorder = new TakeRecorder(settings);
+    recorder.noteOn(60, 70, 0, 0, "piano");
+    recorder.noteOn(60, 75, 1, 1, "piano");
+    recorder.noteOff(60, 0.9, 0.9, "piano");
+    recorder.noteOff(60, 1.5, 1.5, "piano");
+    const take = recorder.finish(2, 2, "late-off", WHEN);
+    expect(take.notes.map((note) => [note.start, note.end])).toEqual([
+      [0, 0.9],
+      [1, 1.5]
+    ]);
+  });
+  it("does not overwrite a newer open attack with an older delivered note on", () => {
+    const recorder = new TakeRecorder(settings);
+    recorder.noteOn(60, 90, 1, 1, "piano");
+    recorder.noteOn(60, 70, 0.8, 0.8, "piano");
+    recorder.noteOff(60, 0.9, 0.9, "piano");
+    const take = recorder.finish(2, 2, "late-on", WHEN);
+    expect(take.notes).toEqual([
+      { deviceId: "piano", pitch: 60, velocity: 90, start: 1, end: 2, realStart: 1, realEnd: 2 }
+    ]);
+  });
+  it("uses corrected source timestamps to order events even when pause freezes both take clocks", () => {
+    const recorder = new TakeRecorder(settings);
+    const timing = (correctedTimestampMs: number) => ({
+      rawTimestampMs: correctedTimestampMs + 100,
+      correctedTimestampMs,
+      inputOffsetMs: 100,
+      source: "midi"
+    });
+    recorder.noteOn(60, 70, 1, 1, "piano", timing(1000));
+    recorder.noteOn(60, 90, 1, 1, "piano", timing(1100));
+    recorder.noteOff(60, 1, 1, "piano", timing(1050));
+    recorder.noteOff(60, 1.5, 1.5, "piano", timing(1500));
+    const take = recorder.finish(2, 2, "timestamps", WHEN);
+    expect(take.notes).toHaveLength(2);
+    expect(take.notes[0]?.inputTiming).toEqual(timing(1000));
+    expect(take.notes[1]?.end).toBe(1.5);
+  });
+  it("keeps simultaneous keys from two devices independent", () => {
+    const recorder = new TakeRecorder(settings);
+    recorder.noteOn(60, 70, 0, 0, "usb");
+    recorder.noteOn(60, 90, 0.1, 0.1, "ble");
+    recorder.noteOff(60, 0.5, 0.5, "usb");
+    const take = recorder.finish(1, 1, "devices", WHEN);
+    expect(take.notes.map((note) => [note.deviceId, note.end])).toEqual([
+      ["usb", 0.5],
+      ["ble", 1]
+    ]);
+  });
+  it("clamps note and pedal durations when finish or pedal release moves backwards", () => {
+    const recorder = new TakeRecorder(settings);
+    recorder.noteOn(60, 90, 1, 1);
+    recorder.setPedal(true, 1, 1);
+    recorder.setPedal(false, 0.5, 0.5);
+    const take = recorder.finish(0.5, 0.5, "backwards", WHEN);
+    expect(take.notes[0]?.end).toBe(1);
+    expect(take.notes[0]?.realEnd).toBe(1);
+    expect(take.pedal[0]).toEqual({ start: 1, realStart: 1, end: 1, realEnd: 1 });
+  });
+  it("rejects nonfinite note and pedal events without damaging a valid take", () => {
+    const recorder = new TakeRecorder(settings);
+    recorder.noteOn(60, 90, 1, 1);
+    recorder.noteOn(60, 90, NaN, 2);
+    recorder.noteOff(60, Infinity, 2);
+    recorder.setPedal(true, NaN, 1);
+    const take = recorder.finish(2, 2, "finite", WHEN);
+    expect(take.notes).toHaveLength(1);
+    expect(take.notes[0]?.end).toBe(2);
+    expect(take.pedal).toEqual([]);
+  });
   it("keeps each key's velocity and how long the finger held it, on both clocks", () => {
     const recorder = new TakeRecorder(settings);
     recorder.noteOn(60, 80, 0, 0.1);

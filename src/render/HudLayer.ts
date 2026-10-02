@@ -5,7 +5,10 @@ import type { ComboBoard, GradedStrike, StrikeGrade } from "../practice/combo";
 
 /** What each grade says over its key, and in what colour. */
 const GRADES: Readonly<Record<StrikeGrade, { readonly label: string; readonly color: number }>> = {
-  perfect: { label: "Точно!", color: 0x62d9ff },
+  perfect: { label: "Идеально!", color: 0x62d9ff },
+  great: { label: "Отлично", color: 0x6fe4bc },
+  good: { label: "Хорошо", color: 0xffd166 },
+  ok: { label: "Зачтено", color: 0xffa94d },
   early: { label: "Рано", color: 0xffd166 },
   late: { label: "Поздно", color: 0xffa94d },
   miss: { label: "Мимо", color: 0xff5d6c }
