@@ -123,7 +123,7 @@ export class RoadLayer {
 
   constructor(private readonly renderer: Renderer) {
     // One blur for every strip's glow; its last pass blends as the filter does: add, for a glow.
-    this.staff = new StaffRoadLayer(renderer);
+    this.staff = new StaffRoadLayer();
     this.glows.filters = [
       new BlurFilter({ strength: GLOW_STRENGTH, quality: 3, blendMode: "add" })
     ];
@@ -400,7 +400,6 @@ export class RoadLayer {
 
   destroy(): void {
     this.arrivals.destroy();
-    this.staff.destroy();
     this.glass.destroy();
     for (const filter of this.glows.filters) filter.destroy();
     // A mesh's destroy leaves its geometry's buffers to the garbage collector; free them now.
