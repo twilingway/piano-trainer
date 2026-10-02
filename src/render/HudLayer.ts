@@ -21,6 +21,8 @@ const POP_SWELL_S = 0.12;
 const POP_SWELL = 1.35;
 const DISPLAY_FONT = "'Russo One', system-ui, sans-serif";
 const BOARD_MARGIN_PX = 24;
+const MIN_BOARD_SCALE = 0.55;
+const FULL_BOARD_WIDTH_PX = 1600;
 const ACCENT = 0x3fd6ff;
 /** The divider under the combo, and how wide the board is. */
 const BOARD_WIDTH_PX = 190;
@@ -182,10 +184,11 @@ export class HudLayer {
 
   /** Keep the board inside the note lane, away from the keys on small screens. */
   layout(width: number, noteHeight: number, top = 0): void {
-    const scale = Math.max(0, Math.min(1, width / 640, (noteHeight - top - 8) / 194));
+    const widthScale = Math.max(MIN_BOARD_SCALE, width / FULL_BOARD_WIDTH_PX);
+    const scale = Math.max(0, Math.min(1, widthScale, width / 640, (noteHeight - top - 8) / 194));
     this.board.scale.set(scale);
     const margin = BOARD_MARGIN_PX * scale;
-    this.board.position.set(margin, top + margin);
+    this.board.position.set(margin, top + (scale < 1 ? Math.max(margin, 34) : margin));
   }
 
   private drawBoard(board: ComboBoard | undefined): void {
