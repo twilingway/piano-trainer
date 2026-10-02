@@ -13,6 +13,7 @@ import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
 import { FxLayer } from "./FxLayer";
 import type { FxKey } from "./FxLayer";
+import { FpsMeter } from "./FpsMeter";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
 import type { KeyStyle } from "./KeyboardLayer";
@@ -115,6 +116,7 @@ export class FallingNotesView {
   private pan = 0;
   private ready = false;
   private resizeObserver: ResizeObserver | undefined;
+  private fpsMeter: FpsMeter | undefined;
   private unbindKeyboardPointer: (() => void) | undefined;
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
@@ -132,6 +134,7 @@ export class FallingNotesView {
       autoDensity: true
     });
     host.appendChild(this.app.canvas);
+    this.fpsMeter = new FpsMeter(host, this.app.ticker);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
     this.resizeObserver = new ResizeObserver(() => {
       this.app.queueResize();
@@ -464,6 +467,7 @@ export class FallingNotesView {
 
   destroy(): void {
     this.unbindKeyboardPointer?.();
+    this.fpsMeter?.destroy();
     this.ready = false;
     this.resizeObserver?.disconnect();
     // Off the stage in the road view, so the stage's own destroy would miss them.
