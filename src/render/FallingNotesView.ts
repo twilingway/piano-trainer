@@ -174,7 +174,7 @@ export class FallingNotesView {
       this.fx.container,
       this.hud.container
     );
-    await Promise.all([this.fx.load(), notes.loadNeon()]);
+    await Promise.all([this.fx.load(), notes.loadNeon(), this.road.loadArrivalEffects()]);
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";

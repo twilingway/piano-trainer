@@ -21,6 +21,7 @@ import {
   bakeTrailTile
 } from "./noteCards";
 import { noteGlyph } from "./noteGlyph";
+import { ARRIVAL_DURATION_S, arrivalCardAlpha, noteArrivalAge } from "./noteArrival";
 import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
@@ -33,8 +34,6 @@ const NOTE_GAP_PX = 1;
 const TAIL_SHARE = 0.28;
 /** On the road a note trails a lane this share of its key wide, marked at every beat. */
 const TRAIL_SHARE = 0.86;
-/** A note flashes on the horizon for this share of the lane after it comes over. */
-const ARRIVAL_SHARE = 0.08;
 /*
  * The cards' neon, baked by Arcadia Effector (src/fx/card-neon.json): a
  * breathing, flickering tube with a halo round the card, 16 frames of 108×128
@@ -328,13 +327,17 @@ export class NotesLayer {
         road && note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       body.alpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
-      if (road && bottom < hitY * ARRIVAL_SHARE) {
+      const age = noteArrivalAge(note.start, state.time, state.lookAhead);
+      const arrivalAlpha = road?.arrivalEffectsReady ? arrivalCardAlpha(age) : 1;
+      if (road && age >= 0 && age < ARRIVAL_DURATION_S) {
         this.arrivals.push({
           x: key.x + key.width / 2,
-          color: body.tint,
-          strength: (1 - bottom / (hitY * ARRIVAL_SHARE)) * body.alpha
+          width: key.width,
+          color: note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand],
+          age
         });
       }
+      body.alpha *= arrivalAlpha;
 
       digit.scale.set(Math.min(1, (key.width * 0.9) / 40));
       digit.x = key.x + key.width / 2;

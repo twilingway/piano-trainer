@@ -9,6 +9,7 @@ import {
   Texture
 } from "pixi.js";
 import type { Renderer } from "pixi.js";
+import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
 import { roadProjection } from "./perspective";
 import type { Projected, RoadProjection } from "./perspective";
@@ -27,7 +28,8 @@ export interface Arrival {
   readonly x: number;
   readonly color: number;
   /** 1 as it appears, fading to 0 as it moves on. */
-  readonly strength: number;
+  readonly age: number;
+  readonly width: number;
 }
 
 /*
@@ -94,6 +96,7 @@ export class RoadLayer {
   private readonly hitLine = new Graphics();
   /** The glowing horizon and the flashes of notes coming over it. */
   private readonly horizon = new Graphics();
+  private readonly arrivals = new HorizonBurstLayer();
   /** Haze over the far road: lanes and notes come out of it as they near. */
   private readonly fog = new Sprite(bakeFog());
   private readonly sparkTexture: Texture;
@@ -127,12 +130,27 @@ export class RoadLayer {
     this.glows.addChild(this.glow);
     this.horizon.blendMode = "add";
     this.fog.tint = FOG_COLOR;
-    this.container.addChild(this.road, this.glows, this.fog, this.horizon, this.keys);
+    this.container.addChild(
+      this.road,
+      this.glows,
+      this.fog,
+      this.horizon,
+      this.arrivals.container,
+      this.keys
+    );
     this.container.eventMode = "none";
     this.hitLine.blendMode = "add";
     this.effects.addChild(this.hitLine);
     this.effects.eventMode = "none";
     this.sparkTexture = bakeSpark(renderer);
+  }
+
+  get arrivalEffectsReady(): boolean {
+    return this.arrivals.ready;
+  }
+
+  async loadArrivalEffects(): Promise<void> {
+    await this.arrivals.load();
   }
 
   /**
@@ -260,7 +278,8 @@ export class RoadLayer {
     });
     this.clock += deltaSeconds;
     const strikes = flatStrikes.map((strike) => ({ ...strike, x: this.project(strike.x) }));
-    this.drawHorizon(arrivals);
+    this.drawHorizon();
+    if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
     this.drawHitLine(strikes);
     const held = new Map<number, number>();
     for (const strike of strikes) {
@@ -276,6 +295,7 @@ export class RoadLayer {
   }
 
   destroy(): void {
+    this.arrivals.destroy();
     for (const filter of this.glows.filters) filter.destroy();
     // A mesh's destroy leaves its geometry's buffers to the garbage collector; free them now.
     for (const mesh of [this.road, this.glow, this.keys]) mesh.geometry.destroy();
@@ -287,7 +307,7 @@ export class RoadLayer {
   }
 
   /** The horizon glowing across the far end of the road, flashing where notes come over it. */
-  private drawHorizon(arrivals: readonly Arrival[]): void {
+  private drawHorizon(): void {
     const line = this.horizon;
     line.clear();
     const projection = this.projection;
@@ -301,18 +321,6 @@ export class RoadLayer {
     }
     line.rect(0, y - 1.5, width, 3).fill({ color: HORIZON_COLOR, alpha: 0.18 });
     line.rect(0, y - 0.5, width, 1).fill({ color: HORIZON_COLOR, alpha: 0.6 });
-    for (const arrival of arrivals) {
-      const spot = projection.at(arrival.x - this.pan, 0);
-      const strength = arrival.strength;
-      line
-        .circle(spot.x, y, 6 + 18 * strength)
-        .fill({ color: arrival.color, alpha: 0.3 * strength });
-      line.circle(spot.x, y, 2 + 6 * strength).fill({ color: 0xffffff, alpha: 0.9 * strength });
-      // A short streak along the horizon, like light catching an edge.
-      line
-        .rect(spot.x - 30 * strength, y - 1.5, 60 * strength, 3)
-        .fill({ color: arrival.color, alpha: 0.6 * strength });
-    }
   }
 
   private drawHitLine(strikes: readonly Strike[]): void {
