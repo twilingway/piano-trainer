@@ -3,7 +3,7 @@ import { VexFlowGraphicalNote } from "opensheetmusicdisplay";
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { describe, expect, it } from "vitest";
 
-import { highlightUnderCursor, paintMarks } from "./staffNoteColors";
+import { highlightUnderCursor, paintMarks, paintStaffFingerings } from "./staffNoteColors";
 
 function head() {
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -14,6 +14,36 @@ function head() {
 }
 
 describe("staff colour priorities", () => {
+  it("paints only fingering labels using the shared finger palette or score colour", () => {
+    const makeLabel = (digit: string) => {
+      const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.textContent = digit;
+      group.append(text);
+      return { SVGNode: group, Label: { text: digit } };
+    };
+    const labels = [makeLabel("1"), makeLabel("5"), makeLabel("1–2")];
+    const lyric = makeLabel("5");
+    const osmd = {
+      GraphicSheet: {
+        MeasureList: [[{ staffEntries: [{ FingeringEntries: labels, LyricsEntries: [lyric] }] }]]
+      }
+    } as unknown as OpenSheetMusicDisplay;
+    paintStaffFingerings(osmd, "fingers", "#ffffff");
+    expect(labels.map((label) => label.SVGNode.style.fill)).toEqual([
+      "#f5952e",
+      "#9b5cf0",
+      "#ffffff"
+    ]);
+    expect(lyric.SVGNode.style.fill).toBe("");
+    expect(labels[0]?.SVGNode.querySelector("text")?.style.fill).toBe("#f5952e");
+    paintStaffFingerings(osmd, "mono", "#a0ffcc");
+    expect(labels.map((label) => label.SVGNode.style.fill)).toEqual([
+      "#a0ffcc",
+      "#a0ffcc",
+      "#a0ffcc"
+    ]);
+  });
   it("restores the user note colour after clearing a review mark", () => {
     const { path } = head();
     const heads = new Map([["0:60", [path]]]);

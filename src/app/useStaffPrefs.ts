@@ -19,6 +19,7 @@ export interface StaffPrefs {
   readonly chords: boolean;
   /** Finger numbers on the staff. */
   readonly fingers: boolean;
+  readonly fingerColors: "mono" | "fingers";
   /** The staff on screen at all; hidden, the falling notes get the room. */
   readonly visible: boolean;
   /** The falling notes on screen. */
@@ -49,13 +50,14 @@ const STAFF_PREFS_KEY = "staff-prefs";
 const DEFAULT_STAFF_PREFS: StaffPrefs = {
   zoom: 1,
   noteColor: "#62d9ff",
-  scoreColor: "#62d9ff",
+  scoreColor: "#ffffff",
   singleLine: true,
   follow: true,
   measuresPerLine: 4,
   noteNames: "off",
   chords: false,
   fingers: true,
+  fingerColors: "mono",
   visible: true,
   lane: true,
   keys: true,
@@ -74,13 +76,14 @@ function loadStaffPrefs(): StaffPrefs {
   try {
     const raw = localStorage.getItem(STAFF_PREFS_KEY);
     const saved = raw ? (JSON.parse(raw) as Partial<StaffPrefs>) : {};
-    const color = (value: unknown) =>
-      typeof value === "string" && /^#[\da-f]{6}$/i.test(value) ? value : "#62d9ff";
+    const color = (value: unknown, fallback: string) =>
+      typeof value === "string" && /^#[\da-f]{6}$/i.test(value) ? value : fallback;
     return {
       ...DEFAULT_STAFF_PREFS,
       ...saved,
-      noteColor: color(saved.noteColor),
-      scoreColor: color(saved.scoreColor)
+      noteColor: color(saved.noteColor, DEFAULT_STAFF_PREFS.noteColor),
+      scoreColor: color(saved.scoreColor, DEFAULT_STAFF_PREFS.scoreColor),
+      fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono"
     };
   } catch {
     return DEFAULT_STAFF_PREFS;

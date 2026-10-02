@@ -82,18 +82,6 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
           }}
         />
       </label>
-      <div className="setting">
-        <span>Линии, ключи и обозначения</span>
-        <button
-          type="button"
-          className="game-button"
-          onClick={() => {
-            onChange({ noteColor: "#62d9ff", scoreColor: "#62d9ff" });
-          }}
-        >
-          Голубые цвета
-        </button>
-      </div>
       <label className="setting">
         <span>Следовать за игрой</span>
         <input
@@ -156,6 +144,21 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
             onChange({ chords: event.target.checked });
           }}
         />
+      </label>
+      <label className="setting">
+        <span>Цвет номеров пальцев</span>
+        <select
+          className="game-select"
+          value={prefs.fingerColors}
+          aria-label="Цвет номеров пальцев"
+          disabled={!prefs.fingers}
+          onChange={(event) => {
+            onChange({ fingerColors: event.target.value as StaffPrefs["fingerColors"] });
+          }}
+        >
+          <option value="mono">Одноцветные</option>
+          <option value="fingers">По цветам пальцев</option>
+        </select>
       </label>
     </div>
   );

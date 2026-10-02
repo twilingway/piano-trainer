@@ -5,6 +5,7 @@ import {
   highlightUnderCursor,
   noteheadShapes,
   paintMarks,
+  paintStaffFingerings,
   paintStaffNotes,
   setStaffColors
 } from "./staffNoteColors";
@@ -26,6 +27,7 @@ interface StaffProps {
   readonly follow: boolean;
   /** Finger numbers over and under the notes. */
   readonly fingers: boolean;
+  readonly fingerColors: "mono" | "fingers";
   /** Break lines where the score says so (the fixed measures-per-line layout) instead of by width. */
   readonly breaksFromScore: boolean;
   /** A click on the score: the beat of the note nearest to it. */
@@ -261,6 +263,7 @@ export function Staff({
   singleLine,
   follow,
   fingers,
+  fingerColors,
   breaksFromScore,
   onSeek,
   marks,
@@ -313,6 +316,7 @@ export function Staff({
     osmd.render();
     fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
     paintStaffNotes(osmd, noteColor);
+    paintStaffFingerings(osmd, fingerColors, scoreColor);
     const page = pageRef.current;
     if (page) {
       if (latest.current.singleLine) page.style.transform = "";
@@ -403,7 +407,7 @@ export function Staff({
     const host = hostRef.current;
     if (!osmd || !host) return;
     relayout(osmd, host);
-  }, [zoom, noteColor, scoreColor]);
+  }, [zoom, noteColor, scoreColor, fingerColors]);
 
   useEffect(() => {
     const osmd = osmdRef.current;

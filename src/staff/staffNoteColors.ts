@@ -1,7 +1,36 @@
 import { VexFlowGraphicalNote } from "opensheetmusicdisplay";
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
+import { FINGER_COLOR } from "../render/fingerColors";
+import type { Finger } from "../fingering/fingering";
 
 const HIGHLIGHT = "#e63946";
+
+/** Only OSMD's fingering labels are painted, leaving lyrics and measure numbers alone. */
+export function paintStaffFingerings(
+  osmd: OpenSheetMusicDisplay,
+  mode: "mono" | "fingers",
+  scoreColor: string
+): void {
+  for (const row of osmd.GraphicSheet.MeasureList) {
+    for (const measure of row) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!measure) continue;
+      for (const entry of measure.staffEntries) {
+        for (const label of entry.FingeringEntries) {
+          const node = label.SVGNode;
+          if (!(node instanceof SVGElement)) continue;
+          const digit = label.Label.text.trim();
+          const color =
+            mode === "fingers" && /^[1-5]$/.test(digit)
+              ? `#${FINGER_COLOR[Number(digit) as Finger].toString(16).padStart(6, "0")}`
+              : scoreColor;
+          node.style.fill = color;
+          for (const text of node.querySelectorAll("text")) text.style.fill = color;
+        }
+      }
+    }
+  }
+}
 
 /** A notehead and its paths, so review and live colours reach the entire glyph. */
 export function noteheadShapes(note: VexFlowGraphicalNote): SVGElement[] {
