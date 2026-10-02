@@ -234,7 +234,7 @@ export function App() {
           onShowLabels={view.setShowLabels}
           keyStyle={staffPrefs.keyStyle}
           onKeyStyle={(keyStyle) => {
-            updateStaffPrefs({ keyStyle });
+            updateStaffPrefs({ keyStyle, ...(keyStyle === "perspective" ? { road: true } : {}) });
           }}
           road={{ far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon }}
           onRoad={(road) => {
@@ -242,6 +242,10 @@ export function App() {
               ...(road.far === undefined ? {} : { roadFar: road.far }),
               ...(road.horizon === undefined ? {} : { roadHorizon: road.horizon })
             });
+          }}
+          camera={staffPrefs.camera}
+          onCamera={(camera) => {
+            updateStaffPrefs({ camera });
           }}
           toggles={toggles}
         />

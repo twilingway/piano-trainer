@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 import type { KeyStyle } from "../render/KeyboardLayer";
+import { DEFAULT_CAMERA, normalizeCamera } from "../render/worldCamera";
+import type { CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_ROAD_SHAPE } from "../render/RoadLayer";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { KeyRange } from "./useFallingView";
@@ -32,6 +34,7 @@ export interface StaffPrefs {
   readonly road: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
+  readonly noteCardsConfigured: boolean;
   /** Classroom stickers on the keys. */
   readonly labels: boolean;
   /** The keys shown: fitted to the song, or a real keyboard's range. */
@@ -42,6 +45,7 @@ export interface StaffPrefs {
   readonly autoReview: boolean;
   /** The road's width at the horizon, as a share of its width at the keys. */
   readonly roadFar: number;
+  readonly camera: CameraPrefs;
   /** The road's horizon, as a share of the way from the top down to the keys. */
   readonly roadHorizon: number;
 }
@@ -63,11 +67,13 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   keys: true,
   hands: false,
   road: true,
-  noteCards: true,
+  noteCards: false,
+  noteCardsConfigured: false,
   labels: true,
   keyRange: "song",
   keyStyle: "arcade",
   autoReview: false,
+  camera: DEFAULT_CAMERA,
   roadFar: DEFAULT_ROAD_SHAPE.far,
   roadHorizon: DEFAULT_ROAD_SHAPE.horizon
 };
@@ -93,6 +99,12 @@ function loadStaffPrefs(): StaffPrefs {
       labels: typeof saved.labels === "boolean" ? saved.labels : defaults.labels,
       noteColor: color(saved.noteColor, DEFAULT_STAFF_PREFS.noteColor),
       scoreColor: color(saved.scoreColor, DEFAULT_STAFF_PREFS.scoreColor),
+      camera: normalizeCamera(saved.camera),
+      noteCards: typeof saved.noteCards === "boolean" ? saved.noteCards : saved.road === false,
+      noteCardsConfigured:
+        typeof saved.noteCardsConfigured === "boolean"
+          ? saved.noteCardsConfigured
+          : typeof saved.noteCards === "boolean",
       fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono"
     };
   } catch {
@@ -112,7 +124,12 @@ function saveStaffPrefs(prefs: StaffPrefs): void {
 export function useStaffPrefs() {
   const [staffPrefs, setStaffPrefs] = useState<StaffPrefs>(loadStaffPrefs);
   const updateStaffPrefs = (change: Partial<StaffPrefs>) => {
-    const next = { ...staffPrefs, ...change };
+    const next = {
+      ...staffPrefs,
+      ...change,
+      ...(change.noteCards === undefined ? {} : { noteCardsConfigured: true })
+    };
+    if (change.road !== undefined && !next.noteCardsConfigured) next.noteCards = !change.road;
     saveStaffPrefs(next);
     setStaffPrefs(next);
   };

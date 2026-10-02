@@ -20,7 +20,8 @@ const BOTTOM_MARGIN_PER_WIDTH = 0.2;
 /** The felt strip's height, in white-key widths. */
 const FELT_PER_WIDTH = 0.22;
 
-/** White keys stay 44 CSS pixels wide on every viewport and in every range mode. */
+/** Fit three octaves (22 whites including the final C), plus one guard on either side. */
+const COMPACT_WHITE_KEYS = 24;
 const WHITE_KEY_WIDTH_PX = 44;
 
 export interface Geometry {
@@ -82,8 +83,8 @@ export interface FittedRange {
 }
 
 /**
- * Keeps every key at its fixed CSS width. A song range can grow to fill the
- * viewport, but a full piano never stretches and wide ranges remain scrollable.
+ * Fits three octaves and their guards on compact screens without stretching desktop keys.
+ * Wider ranges remain scrollable; a short song can grow to fill the viewport.
  */
 export function fitRange(
   width: number,
@@ -92,17 +93,18 @@ export function fitRange(
   fitsSong: boolean,
   fitWholeSong = false
 ): FittedRange {
+  const keyWidth = Math.min(WHITE_KEY_WIDTH_PX, width / COMPACT_WHITE_KEYS);
   // Match layoutKeyboard's white edges when calculating the actual key count.
   const first = Math.max(LOWEST_PITCH, isBlackKey(low) ? low - 1 : low);
   const last = Math.min(HIGHEST_PITCH, isBlackKey(high) ? high + 1 : high);
   if (!fitsSong) {
-    return { low, high, total: whiteKeysBetween(first, last) * WHITE_KEY_WIDTH_PX };
+    return { low, high, total: whiteKeysBetween(first, last) * keyWidth };
   }
   low = first;
   high = last;
   if (fitWholeSong) {
     [low, high] = widenRange(low, high, whiteKeysBetween(low, high) + 2);
   }
-  [low, high] = widenRange(low, high, Math.ceil(width / WHITE_KEY_WIDTH_PX));
-  return { low, high, total: whiteKeysBetween(low, high) * WHITE_KEY_WIDTH_PX };
+  [low, high] = widenRange(low, high, Math.ceil(width / keyWidth));
+  return { low, high, total: whiteKeysBetween(low, high) * keyWidth };
 }
