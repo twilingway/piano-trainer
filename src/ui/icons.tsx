@@ -132,3 +132,17 @@ export function CloseIcon() {
     </svg>
   );
 }
+
+export function FullscreenIcon({ active }: { readonly active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d={
+          active
+            ? "M3 8h5V3M16 3v5h5M21 16h-5v5M8 21v-5H3"
+            : "M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"
+        }
+      />
+    </svg>
+  );
+}

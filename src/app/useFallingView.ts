@@ -41,6 +41,8 @@ const GRADE_TINTS: Readonly<Record<Grade, number>> = {
 const EXTRA_TINT = 0xe63946;
 
 interface Options {
+  readonly hostRef: RefObject<HTMLDivElement | null>;
+  readonly hasScore: boolean;
   readonly viewRef: RefObject<FallingNotesView | null>;
   readonly trainerRef: RefObject<Trainer | null>;
   readonly trainerReady: boolean;
@@ -58,6 +60,8 @@ interface Options {
  * original on a second screen while a take is compared with it.
  */
 export function useFallingView({
+  hostRef,
+  hasScore,
   viewRef,
   trainerRef,
   trainerReady,
@@ -78,6 +82,36 @@ export function useFallingView({
     updateStaffPrefs({ keyRange: range });
   };
   const mirrorHostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !trainerReady) return;
+    const staves = host.closest(".workspace-main")?.querySelector(".staves");
+    const overlay = staffPrefs.road && staffPrefs.lane && staffPrefs.visible && !comparing;
+    const update = () => {
+      const top =
+        overlay && staves
+          ? Math.max(0, staves.getBoundingClientRect().bottom - host.getBoundingClientRect().top)
+          : 0;
+      viewRef.current?.setHudTop(top);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(host);
+    if (staves) observer.observe(staves);
+    return () => {
+      observer.disconnect();
+    };
+  }, [
+    hostRef,
+    viewRef,
+    trainerReady,
+    hasScore,
+    staffPrefs.road,
+    staffPrefs.lane,
+    staffPrefs.visible,
+    comparing
+  ]);
 
   useEffect(() => {
     viewRef.current?.setShowLabels(showLabels);

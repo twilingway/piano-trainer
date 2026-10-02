@@ -7,6 +7,8 @@ import type { KeyRange } from "./useFallingView";
 
 export interface StaffPrefs {
   readonly zoom: number;
+  readonly noteColor: string;
+  readonly scoreColor: string;
   readonly singleLine: boolean;
   readonly follow: boolean;
   /** Measures on every line of a wrapped page; 0 lets the width decide. */
@@ -17,6 +19,7 @@ export interface StaffPrefs {
   readonly chords: boolean;
   /** Finger numbers on the staff. */
   readonly fingers: boolean;
+  readonly fingerColors: "mono" | "fingers";
   /** The staff on screen at all; hidden, the falling notes get the room. */
   readonly visible: boolean;
   /** The falling notes on screen. */
@@ -46,12 +49,15 @@ export interface StaffPrefs {
 const STAFF_PREFS_KEY = "staff-prefs";
 const DEFAULT_STAFF_PREFS: StaffPrefs = {
   zoom: 1,
+  noteColor: "#62d9ff",
+  scoreColor: "#ffffff",
   singleLine: true,
   follow: true,
   measuresPerLine: 4,
   noteNames: "off",
   chords: false,
   fingers: true,
+  fingerColors: "mono",
   visible: true,
   lane: true,
   keys: true,
@@ -69,9 +75,16 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
 function loadStaffPrefs(): StaffPrefs {
   try {
     const raw = localStorage.getItem(STAFF_PREFS_KEY);
-    return raw
-      ? { ...DEFAULT_STAFF_PREFS, ...(JSON.parse(raw) as Partial<StaffPrefs>) }
-      : DEFAULT_STAFF_PREFS;
+    const saved = raw ? (JSON.parse(raw) as Partial<StaffPrefs>) : {};
+    const color = (value: unknown, fallback: string) =>
+      typeof value === "string" && /^#[\da-f]{6}$/i.test(value) ? value : fallback;
+    return {
+      ...DEFAULT_STAFF_PREFS,
+      ...saved,
+      noteColor: color(saved.noteColor, DEFAULT_STAFF_PREFS.noteColor),
+      scoreColor: color(saved.scoreColor, DEFAULT_STAFF_PREFS.scoreColor),
+      fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono"
+    };
   } catch {
     return DEFAULT_STAFF_PREFS;
   }

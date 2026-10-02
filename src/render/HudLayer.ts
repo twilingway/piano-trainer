@@ -181,11 +181,11 @@ export class HudLayer {
   }
 
   /** Keep the board inside the note lane, away from the keys on small screens. */
-  layout(width: number, noteHeight: number): void {
-    const scale = Math.max(0, Math.min(1, width / 640, (noteHeight - 8) / 194));
+  layout(width: number, noteHeight: number, top = 0): void {
+    const scale = Math.max(0, Math.min(1, width / 640, (noteHeight - top - 8) / 194));
     this.board.scale.set(scale);
     const margin = BOARD_MARGIN_PX * scale;
-    this.board.position.set(margin, margin);
+    this.board.position.set(margin, top + margin);
   }
 
   private drawBoard(board: ComboBoard | undefined): void {

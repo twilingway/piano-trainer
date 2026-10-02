@@ -104,6 +104,7 @@ export class FallingNotesView {
   /** The range follows the song, so the road may show more keys around it; a fixed range stays. */
   private rangeFitsSong = false;
   private laidOutFor = { width: 0, height: 0 };
+  private hudTop = 0;
   /** The next scroll lands on its target at once: a new song starts where its keys are. */
   private panSnap = true;
   /** The whole keyboard's width: wider than the view when it scrolls. */
@@ -253,6 +254,13 @@ export class FallingNotesView {
   /** How far the road reaches and how much it narrows towards the horizon. */
   setRoadShape(shape: RoadShape): void {
     this.road?.setShape(shape);
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  /** Keep the combo below an overlaid score without shortening the road behind it. */
+  setHudTop(top: number): void {
+    if (top === this.hudTop) return;
+    this.hudTop = top;
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -482,6 +490,10 @@ export class FallingNotesView {
         this.road.effects.visible = false;
       }
     }
-    this.hud.layout(width, this.roadMode && this.road ? this.road.hitLineY : geometry.hitY);
+    this.hud.layout(
+      width,
+      this.roadMode && this.road ? this.road.hitLineY : geometry.hitY,
+      this.hudTop
+    );
   }
 }

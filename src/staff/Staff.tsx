@@ -1,5 +1,14 @@
 import { placeCursorLine, spotAt } from "./liveCursor";
 import { fitCompactStaff, staffZoom } from "./fitCompactStaff";
+import { setStaffTempoLayout } from "./staffTempoLayout";
+import {
+  highlightUnderCursor,
+  noteheadShapes,
+  paintMarks,
+  paintStaffFingerings,
+  paintStaffNotes,
+  setStaffColors
+} from "./staffNoteColors";
 import type { BeatSpot } from "./liveCursor";
 import { OpenSheetMusicDisplay, VexFlowGraphicalNote, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useRef } from "react";
@@ -10,12 +19,15 @@ interface StaffProps {
   readonly beat: number;
   /** 1 = OSMD's own size. */
   readonly zoom: number;
+  readonly noteColor: string;
+  readonly scoreColor: string;
   /** One endless line that scrolls sideways, or systems wrapped to the width like a printed page. */
   readonly singleLine: boolean;
   /** Keep the cursor in view as the song plays. */
   readonly follow: boolean;
   /** Finger numbers over and under the notes. */
   readonly fingers: boolean;
+  readonly fingerColors: "mono" | "fingers";
   /** Break lines where the score says so (the fixed measures-per-line layout) instead of by width. */
   readonly breaksFromScore: boolean;
   /** A click on the score: the beat of the note nearest to it. */
@@ -29,7 +41,6 @@ interface StaffProps {
 }
 
 const BEAT_EPSILON = 1e-6;
-const HIGHLIGHT = "#e63946";
 /** Share of the remaining distance the view covers each frame: a glide, not a jump. */
 const GLIDE = 0.12;
 /** Share of the window the score may take; the lines that fit decide the exact height. */
@@ -58,57 +69,6 @@ function moveCursor(osmd: OpenSheetMusicDisplay, beat: number): void {
     peek.moveToNext();
     if (peek.EndReached || peek.currentTimeStamp.RealValue * 4 > beat + BEAT_EPSILON) break;
     cursor.next();
-  }
-}
-
-/** Colours the noteheads under the cursor; returns them so the next move can restore them. */
-/** A notehead and the paths it is drawn with: everything a colour has to reach. */
-function noteheadShapes(note: VexFlowGraphicalNote): SVGElement[] {
-  const shapes: SVGElement[] = [];
-  // OSMD types the heads as HTMLElement; in an SVG backend they are SVG groups.
-  for (const head of note.getNoteheadSVGs()) {
-    for (const shape of [head, ...Array.from(head.querySelectorAll("path"))]) {
-      if (shape instanceof SVGElement) shapes.push(shape);
-    }
-  }
-  return shapes;
-}
-
-/** Restore the review colour, or the score's default accent if unmarked. */
-function restoreFill(shape: SVGElement): void {
-  const mark = shape.dataset.mark;
-  if (mark) shape.style.fill = mark;
-  else shape.style.removeProperty("fill");
-}
-
-function highlightUnderCursor(
-  osmd: OpenSheetMusicDisplay,
-  previous: readonly SVGElement[]
-): SVGElement[] {
-  for (const element of previous) restoreFill(element);
-  const painted: SVGElement[] = [];
-  for (const note of osmd.cursor.GNotesUnderCursor()) {
-    if (!(note instanceof VexFlowGraphicalNote)) continue;
-    for (const shape of noteheadShapes(note)) {
-      shape.style.fill = HIGHLIGHT;
-      painted.push(shape);
-    }
-  }
-  return painted;
-}
-
-/** Colours noteheads by the review of the last take; unmarked notes use the score's accent. */
-function paintMarks(
-  heads: ReadonlyMap<string, readonly SVGElement[]>,
-  marks: ReadonlyMap<string, string> | undefined
-): void {
-  for (const [key, shapes] of heads) {
-    const mark = marks?.get(key);
-    for (const shape of shapes) {
-      if (mark) shape.dataset.mark = mark;
-      else delete shape.dataset.mark;
-      restoreFill(shape);
-    }
   }
 }
 
@@ -298,9 +258,12 @@ export function Staff({
   musicXml,
   beat,
   zoom,
+  noteColor,
+  scoreColor,
   singleLine,
   follow,
   fingers,
+  fingerColors,
   breaksFromScore,
   onSeek,
   marks,
@@ -348,9 +311,12 @@ export function Staff({
 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
+    setStaffColors(osmd, noteColor, scoreColor);
     osmd.Zoom = staffZoom(host, latest.current.zoom);
     osmd.render();
     fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
+    paintStaffNotes(osmd, noteColor);
+    paintStaffFingerings(osmd, fingerColors, scoreColor);
     const page = pageRef.current;
     if (page) {
       if (latest.current.singleLine) page.style.transform = "";
@@ -402,6 +368,7 @@ export function Staff({
     });
     void osmd.load(musicXml).then(() => {
       if (cancelled) return;
+      setStaffTempoLayout(osmd, musicXml);
       osmd.Zoom = latest.current.zoom;
       // Half the usual page margin: the view starts at the first line anyway.
       osmd.EngravingRules.PageTopMargin = 2;
@@ -440,7 +407,7 @@ export function Staff({
     const host = hostRef.current;
     if (!osmd || !host) return;
     relayout(osmd, host);
-  }, [zoom]);
+  }, [zoom, noteColor, scoreColor, fingerColors]);
 
   useEffect(() => {
     const osmd = osmdRef.current;

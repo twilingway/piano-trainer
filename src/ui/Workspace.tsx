@@ -34,9 +34,10 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const laneMode = prefs.lane ? "full" : prefs.keys ? "keys" : "hidden";
   // With the lane hidden or cut to its keys, the staff may take more of the screen.
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
+  const overlay = prefs.road && prefs.lane && !props.comparing;
   return (
     <div className="workspace">
-      <div className="workspace-main">
+      <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
         {props.staffXml && prefs.visible && (
           <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
             <div className="staff-slot">
@@ -45,9 +46,12 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                 musicXml={props.staffXml}
                 beat={props.beat}
                 zoom={prefs.zoom}
+                noteColor={prefs.noteColor}
+                scoreColor={prefs.scoreColor}
                 singleLine={prefs.singleLine}
                 follow={prefs.follow}
                 fingers={prefs.fingers}
+                fingerColors={prefs.fingerColors}
                 breaksFromScore={props.fixedLines}
                 onSeek={props.onSeek}
                 liveBeat={props.liveBeat}
@@ -62,9 +66,12 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                   musicXml={transcription.musicXml}
                   beat={props.beat}
                   zoom={prefs.zoom}
+                  noteColor={prefs.noteColor}
+                  scoreColor={prefs.scoreColor}
                   singleLine={prefs.singleLine}
                   follow={prefs.follow}
                   fingers={prefs.fingers}
+                  fingerColors={prefs.fingerColors}
                   breaksFromScore={props.fixedLines}
                   onSeek={props.onSeek}
                   liveBeat={props.liveBeat}
