@@ -22,7 +22,7 @@ this material and the finger tint. Its brightness persists for the entire hold.
 `note-hold-fire.json` is a looping Arcadia effect with smoke wisps, flame and embers. Its lossless
 `note-hold-fire.webp` atlas contains 24 frames of 144×192 pixels over 1.6 seconds. Each duration bar
 reuses the atlas, tints the effect to its note and animates it continuously while the bar is
-visible.
+visible. The road projects its fire mesh along the same perspective as the glass on every frame.
 
 To bake again after editing an effect:
 

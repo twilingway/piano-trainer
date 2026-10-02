@@ -1,12 +1,13 @@
-import { Assets, Container, Mesh, MeshGeometry, Rectangle, Sprite, Texture } from "pixi.js";
+import { Assets, Container, Mesh, MeshGeometry, Texture } from "pixi.js";
 
 const GLASS = new URL("../fx/note-glass-block.webp", import.meta.url).href;
 const FIRE = new URL("../fx/note-hold-fire.webp", import.meta.url).href;
-const FIRE_FRAME_WIDTH = 144;
-const FIRE_FRAME_HEIGHT = 192;
 const FIRE_COLUMNS = 6;
 const FIRE_FRAMES = 24;
+const FIRE_ATLAS_ROWS = FIRE_FRAMES / FIRE_COLUMNS;
 const FIRE_FPS = 15;
+const FIRE_SEGMENTS = 12;
+const FIRE_ROWS = FIRE_SEGMENTS + 1;
 const COLUMNS = 4;
 const BODY_SEGMENTS = 16;
 const ROWS = BODY_SEGMENTS + 3;
@@ -30,14 +31,18 @@ interface GlassMesh {
   walls: Mesh;
   wallGeometry: MeshGeometry;
   wallPositions: Float32Array;
-  smoke: Sprite;
+  smoke: Mesh;
+  smokeGeometry: MeshGeometry;
+  smokePositions: Float32Array;
+  smokeUvs: Float32Array;
+  smokeFrame: number;
 }
 
 /** Pooled glass solids: a beveled top, two sides and a luminous front wall. */
 export class RoadGlassLayer {
   readonly container = new Container({ sortableChildren: true });
   private texture: Texture | undefined;
-  private fireFrames: Texture[] = [];
+  private fireAtlas: Texture | undefined;
   private readonly pool: GlassMesh[] = [];
   private used = 0;
   private disposed = false;
@@ -59,20 +64,7 @@ export class RoadGlassLayer {
     }
     try {
       const atlas = await Assets.load<Texture>(FIRE);
-      if (!this.disposed)
-        this.fireFrames = Array.from(
-          { length: FIRE_FRAMES },
-          (_, index) =>
-            new Texture({
-              source: atlas.source,
-              frame: new Rectangle(
-                (index % FIRE_COLUMNS) * FIRE_FRAME_WIDTH,
-                Math.floor(index / FIRE_COLUMNS) * FIRE_FRAME_HEIGHT,
-                FIRE_FRAME_WIDTH,
-                FIRE_FRAME_HEIGHT
-              )
-            })
-        );
+      if (!this.disposed) this.fireAtlas = atlas;
     } catch (error) {
       console.warn("Road hold fire did not load; keeping steady glass", error);
     }
@@ -154,20 +146,39 @@ export class RoadGlassLayer {
     entry.walls.visible = true;
     entry.walls.zIndex = bottom * 2;
     const smoke = entry.smoke;
-    smoke.visible = this.fireFrames.length > 0;
-    if (smoke.visible) {
+    smoke.visible = this.fireAtlas !== undefined;
+    if (smoke.visible && this.fireAtlas) {
       const frame = Math.floor((time * FIRE_FPS + this.used * 5) % FIRE_FRAMES);
-      smoke.texture = this.fireFrames[frame] ?? Texture.EMPTY;
+      if (smoke.texture !== this.fireAtlas) smoke.texture = this.fireAtlas;
+      if (entry.smokeFrame !== frame) {
+        const frameU = (frame % FIRE_COLUMNS) / FIRE_COLUMNS;
+        const frameV = Math.floor(frame / FIRE_COLUMNS) / FIRE_ATLAS_ROWS;
+        for (let row = 0; row < FIRE_ROWS; row++) {
+          const v = frameV + row / (FIRE_SEGMENTS * FIRE_ATLAS_ROWS);
+          const index = row * 4;
+          entry.smokeUvs[index] = frameU;
+          entry.smokeUvs[index + 1] = v;
+          entry.smokeUvs[index + 2] = frameU + 1 / FIRE_COLUMNS;
+          entry.smokeUvs[index + 3] = v;
+        }
+        entry.smokeGeometry.getBuffer("aUV").update();
+        entry.smokeFrame = frame;
+      }
+      const fireTop = top - width * 0.8;
+      const fireBottom = bottom + width * 0.8;
+      for (let row = 0; row < FIRE_ROWS; row++) {
+        const y = fireTop + ((fireBottom - fireTop) * row) / FIRE_SEGMENTS;
+        const leftSmoke = project(y, -width * 1.5, width * 0.45);
+        const rightSmoke = project(y, width * 1.5, width * 0.45);
+        const index = row * 4;
+        entry.smokePositions[index] = leftSmoke.x;
+        entry.smokePositions[index + 1] = leftSmoke.y;
+        entry.smokePositions[index + 2] = rightSmoke.x;
+        entry.smokePositions[index + 3] = rightSmoke.y;
+      }
+      entry.smokeGeometry.getBuffer("aPosition").update();
       smoke.tint = tint;
       smoke.alpha = Math.min(0.62, alpha * 0.62);
-      const middle = project((top + bottom) / 2, 0, width * 0.45);
-      const leftEdge = project(bottom, -width / 2, width * 0.2);
-      const rightEdge = project(bottom, width / 2, width * 0.2);
-      const topEdge = project(top, 0, width * 0.2);
-      const screenWidth = Math.abs(rightEdge.x - leftEdge.x);
-      smoke.position.set(middle.x, middle.y);
-      smoke.width = Math.max(8, screenWidth * 2.3);
-      smoke.height = Math.max(smoke.width * 1.25, Math.abs(topEdge.y - rightEdge.y) + screenWidth);
       smoke.zIndex = bottom * 2 + 2;
     }
   }
@@ -195,10 +206,10 @@ export class RoadGlassLayer {
       if (!entry.walls.destroyed) entry.walls.destroy();
       entry.wallGeometry.destroy();
       entry.smoke.destroy();
+      entry.smokeGeometry.destroy();
     }
     this.pool.length = 0;
-    for (const frame of this.fireFrames) frame.destroy();
-    this.fireFrames = [];
+    this.fireAtlas = undefined;
     this.texture = undefined;
     if (!this.container.destroyed) this.container.destroy();
   }
@@ -262,12 +273,36 @@ export class RoadGlassLayer {
     const walls = new Mesh({ geometry: wallGeometry, texture: this.texture ?? Texture.WHITE });
     walls.eventMode = "none";
     walls.blendMode = "add";
-    const smoke = new Sprite(Texture.EMPTY);
-    smoke.anchor.set(0.5);
+    const smokePositions = new Float32Array(FIRE_ROWS * 4);
+    const smokeUvs = new Float32Array(smokePositions.length);
+    const smokeIndices = new Uint32Array(FIRE_SEGMENTS * 6);
+    for (let row = 0; row < FIRE_SEGMENTS; row++) {
+      const vertex = row * 2;
+      smokeIndices.set([vertex, vertex + 1, vertex + 3, vertex, vertex + 3, vertex + 2], row * 6);
+    }
+    const smokeGeometry = new MeshGeometry({
+      positions: smokePositions,
+      uvs: smokeUvs,
+      indices: smokeIndices
+    });
+    const smoke = new Mesh({ geometry: smokeGeometry, texture: this.fireAtlas ?? Texture.WHITE });
     smoke.blendMode = "add";
     smoke.eventMode = "none";
     this.container.addChild(walls, backing, mesh, smoke);
-    const entry = { backing, mesh, geometry, positions, walls, wallGeometry, wallPositions, smoke };
+    const entry = {
+      backing,
+      mesh,
+      geometry,
+      positions,
+      walls,
+      wallGeometry,
+      wallPositions,
+      smoke,
+      smokeGeometry,
+      smokePositions,
+      smokeUvs,
+      smokeFrame: -1
+    };
     this.pool.push(entry);
     return entry;
   }
