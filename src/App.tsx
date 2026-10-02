@@ -297,6 +297,14 @@ export function App() {
             trainer.seekToBeat(share * totalQuarters);
           }}
         />
+        <GameBoard
+          game={snapshot?.stats.game}
+          mode={trainer.mode}
+          playing={playing}
+          onOverdrive={() => {
+            trainer.trainerRef.current?.activateOverdrive();
+          }}
+        />{" "}
       </div>
 
       {library.loadError && <div className="toast toast--error">{library.loadError}</div>}
@@ -306,14 +314,7 @@ export function App() {
           точности.
         </div>
       )}
-      <GameBoard
-        game={snapshot?.stats.game}
-        mode={trainer.mode}
-        playing={playing}
-        onOverdrive={() => {
-          trainer.trainerRef.current?.activateOverdrive();
-        }}
-      />
+
       {fullscreen.error && (
         <div className="toast toast--error" role="status">
           {fullscreen.error}
