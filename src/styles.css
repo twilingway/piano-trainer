@@ -1044,6 +1044,44 @@ button.song-card.song-card__open {
   color: var(--muted);
 }
 
+.result-summary {
+  display: none;
+}
+
+@media (max-width: 640px), (pointer: coarse) and (max-height: 640px) {
+  .result-details,
+  .result-review-action {
+    display: none;
+  }
+
+  .result-summary {
+    display: block;
+    text-align: center;
+    padding: 12px 0;
+  }
+
+  .result-stars {
+    margin: 0 0 8px;
+    color: var(--accent);
+    font-size: 36px;
+    letter-spacing: 4px;
+  }
+
+  .result-stars span {
+    color: var(--muted);
+  }
+
+  .result-points {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 28px;
+  }
+
+  .result-actions {
+    justify-content: center;
+  }
+}
+
 .result-actions {
   display: flex;
   gap: 10px;

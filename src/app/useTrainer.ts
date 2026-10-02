@@ -210,6 +210,7 @@ export function useTrainer({
   };
 
   const togglePlay = async () => {
+    if (snapshot?.finished) restart();
     await ensureSound();
     trainerRef.current?.setPlaying(!(snapshot?.playing ?? false));
   };
