@@ -38,8 +38,8 @@ export interface InputDiagnostic {
 
 const NOTHING: ReadonlySet<number> = new Set();
 
-/** Eight visible song seconds slow visual scroll while preserving the song clock. */
-const LOOK_AHEAD_S = 8;
+/** Another 25% visual slowdown from eight seconds, preserving the song clock. */
+const LOOK_AHEAD_S = 8 / 0.75;
 const SNAPSHOT_INTERVAL_MS = 150;
 
 /** Beat of the latest note that has started by `time`; notes are sorted by start. */
