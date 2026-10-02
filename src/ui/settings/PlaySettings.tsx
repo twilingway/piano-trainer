@@ -1,4 +1,4 @@
-import type { PracticeMode, PracticeStats } from "../../practice/session";
+﻿import type { PracticeMode, PracticeStats } from "../../practice/session";
 import type { HandsChoice } from "../PlayerTopBar";
 
 interface Props {
@@ -73,9 +73,9 @@ export function PlaySettings({
           <input
             type="range"
             aria-label="Скорость"
-            min={0.5}
+            min={0.01}
             max={1}
-            step={0.05}
+            step={0.01}
             value={speed}
             onChange={(event) => {
               onSpeed(Number(event.target.value));

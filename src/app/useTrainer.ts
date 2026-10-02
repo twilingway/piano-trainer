@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
@@ -81,10 +81,10 @@ export function useTrainer({
     if (!ranked || !snapshot?.playing) updateHandChoice(choice);
   };
   const [storedSpeed, updateSpeed] = useState(() =>
-    Math.max(0.5, Math.min(1, loadPlayerPrefs().speed))
+    Math.max(0.01, Math.min(1, loadPlayerPrefs().speed))
   );
   const setSpeed = (next: number) => {
-    updateSpeed(Math.max(0.5, Math.min(1, next)));
+    updateSpeed(Math.max(0.01, Math.min(1, next)));
   };
   const speed = ranked ? 1 : storedSpeed;
   const [listening, setListening] = useState(false);
