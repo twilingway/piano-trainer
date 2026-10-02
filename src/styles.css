@@ -1351,6 +1351,8 @@ button.song-card.song-card__open {
     box-sizing: border-box;
     max-height: calc(100dvh - 88px);
     overflow: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
     padding: 8px;
     border: 1px solid var(--border);
     border-radius: 12px;
