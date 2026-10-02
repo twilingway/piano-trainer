@@ -277,7 +277,13 @@ export class RoadLayer {
   }
 
   setPerspective(on: boolean): void {
+    if (on === this.perspective) return;
     this.perspective = on;
+    if (on) {
+      this.container.addChildAt(this.hitLine, this.container.getChildIndex(this.keys.container));
+    } else {
+      this.effects.addChildAt(this.hitLine, 0);
+    }
   }
 
   setShape(shape: RoadShape): void {
