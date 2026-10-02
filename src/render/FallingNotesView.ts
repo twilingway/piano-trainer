@@ -1,3 +1,4 @@
+import { scorePlacements } from "../song/scorePlacement";
 import { Application, Container } from "pixi.js";
 import type { FederatedPointerEvent, Texture } from "pixi.js";
 
@@ -156,6 +157,7 @@ export class FallingNotesView {
     keyboard.showStickers(this.labels);
     this.keyboard = keyboard;
     this.road = new RoadLayer(renderer);
+    if (this.song) this.road.setScore(scorePlacements(this.song));
     this.road.container.visible = false;
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, this.hands.container);
@@ -174,12 +176,7 @@ export class FallingNotesView {
       this.fx.container,
       this.hud.container
     );
-    await Promise.all([
-      this.fx.load(),
-      notes.loadNeon(),
-      notes.loadGlass(),
-      this.road.loadArrivalEffects()
-    ]);
+    await Promise.all([this.fx.load(), notes.loadNeon(), this.road.loadArrivalEffects()]);
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -308,6 +305,7 @@ export class FallingNotesView {
   setSong(song: Song): void {
     this.hands.setSong(song);
     this.notesLayer?.setSong(song);
+    this.road?.setScore(scorePlacements(song));
     this.song = song;
     this.songNotes = song.notes;
     this.hud.clear();
@@ -489,12 +487,6 @@ export class FallingNotesView {
     // The road ends on the felt, where the notes meet the keys.
     if (this.road) {
       this.road.layout(total, geometry.hitY, height, width);
-      const whites = [...this.keys.values()].filter((key) => !key.black);
-      const last = whites.at(-1);
-      this.road.setLaneEdges([
-        ...whites.map((key) => key.x),
-        ...(last ? [last.x + last.width] : [])
-      ]);
       // The road shows itself when it fits; off, it stays hidden whatever the layout.
       if (!this.roadMode) {
         this.road.container.visible = false;

@@ -9,7 +9,10 @@ import {
   Texture
 } from "pixi.js";
 import type { Renderer } from "pixi.js";
-import { RoadLaneLayer } from "./RoadLaneLayer";
+import { StaffRoadLayer } from "./StaffRoadLayer";
+import { RoadGlassLayer } from "./RoadGlassLayer";
+import { staffRoadX } from "./staffRoadGeometry";
+import type { ScorePlacement } from "../song/scorePlacement";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
 import { roadProjection } from "./perspective";
@@ -31,6 +34,7 @@ export interface Arrival {
   /** 1 as it appears, fading to 0 as it moves on. */
   readonly age: number;
   readonly width: number;
+  readonly screenX?: number | undefined;
 }
 
 /*
@@ -98,7 +102,9 @@ export class RoadLayer {
   /** The glowing horizon and the flashes of notes coming over it. */
   private readonly horizon = new Graphics();
   private readonly arrivals = new HorizonBurstLayer();
-  private readonly lanes = new RoadLaneLayer();
+  private readonly staff: StaffRoadLayer;
+  private readonly glass = new RoadGlassLayer();
+  private placements: ReadonlyMap<string, ScorePlacement> = new Map();
   /** Haze over the far road: lanes and notes come out of it as they near. */
   private readonly fog = new Sprite(bakeFog());
   private readonly sparkTexture: Texture;
@@ -122,6 +128,7 @@ export class RoadLayer {
 
   constructor(private readonly renderer: Renderer) {
     // One blur for every strip's glow; its last pass blends as the filter does: add, for a glow.
+    this.staff = new StaffRoadLayer(renderer);
     this.glows.filters = [
       new BlurFilter({ strength: GLOW_STRENGTH, quality: 3, blendMode: "add" })
     ];
@@ -135,7 +142,8 @@ export class RoadLayer {
     this.container.addChild(
       this.road,
       this.glows,
-      this.lanes.container,
+      this.staff.container,
+      this.glass.container,
       this.fog,
       this.horizon,
       this.arrivals.container,
@@ -148,9 +156,76 @@ export class RoadLayer {
     this.sparkTexture = bakeSpark(renderer);
   }
 
-  setLaneEdges(edges: readonly number[]): void {
-    this.lanes.setEdges(edges);
-    if (this.projection) this.lanes.draw(this.projection, this.pan);
+  setScore(placements: ReadonlyMap<string, ScorePlacement>): void {
+    this.placements = placements;
+    if (this.viewWidth > 0) {
+      this.staff.configure(placements.values(), this.viewWidth);
+      if (this.projection) this.staff.draw(this.projection);
+    }
+  }
+
+  beginNotes(): void {
+    this.glass.begin();
+    this.staff.begin();
+  }
+
+  endNotes(): void {
+    this.glass.end();
+    this.staff.end();
+  }
+
+  noteLaneX(placement: ScorePlacement | undefined, keyX: number, y: number): number {
+    const layout = this.staff.layout;
+    if (!layout || !placement || this.size.height <= 0) return keyX - this.pan;
+    const depth = Math.max(0, Math.min(1, y / this.size.height));
+    return staffRoadX(
+      layout.x(placement),
+      keyX - this.pan,
+      this.projection?.progressAt(depth) ?? depth
+    );
+  }
+
+  notePlace(
+    placement: ScorePlacement | undefined,
+    keyX: number,
+    y: number,
+    offset = 0
+  ): Projected | undefined {
+    if (!this.projection || this.size.height <= 0) return undefined;
+    return this.projection.at(
+      this.noteLaneX(placement, keyX, y) + offset,
+      Math.max(0, Math.min(1, y / this.size.height))
+    );
+  }
+
+  get scenePan(): number {
+    return this.pan;
+  }
+
+  drawHold(
+    placement: ScorePlacement | undefined,
+    keyX: number,
+    top: number,
+    bottom: number,
+    width: number,
+    tint: number,
+    alpha: number
+  ): boolean {
+    if (!this.glass.ready || !this.projection || bottom <= top) return false;
+    this.glass.draw(
+      top,
+      bottom,
+      width,
+      tint,
+      alpha,
+      (y, offset) => this.notePlace(placement, keyX, y, offset) ?? { x: 0, y: 0 }
+    );
+    return true;
+  }
+
+  drawLedger(placement: ScorePlacement | undefined, y: number): void {
+    if (placement && this.projection && this.size.height > 0)
+      this.staff.ledger(placement, y / this.size.height, this.projection);
   }
 
   get arrivalEffectsReady(): boolean {
@@ -158,7 +233,7 @@ export class RoadLayer {
   }
 
   async loadArrivalEffects(): Promise<void> {
-    await this.arrivals.load();
+    await Promise.all([this.arrivals.load(), this.glass.load()]);
   }
 
   /**
@@ -201,6 +276,8 @@ export class RoadLayer {
     this.keys.texture = this.keysTexture;
     this.keys.setCorners(0, this.hitY, viewWidth, this.hitY, viewWidth, bottom, 0, bottom);
     this.hit = { y: this.hitY, left: 0, right: viewWidth };
+    this.staff.configure(this.placements.values(), viewWidth);
+    this.staff.draw(this.projection);
     this.setPan(this.pan, true);
   }
 
@@ -216,7 +293,7 @@ export class RoadLayer {
     this.keysShift = new Matrix().translate(-pan, -this.size.height);
     const projection = this.projection;
     if (!projection) return;
-    this.lanes.draw(projection, pan);
+
     const left = -pan;
     const right = this.size.width - pan;
     const farLeft = projection.at(left, 0);
@@ -305,6 +382,8 @@ export class RoadLayer {
 
   destroy(): void {
     this.arrivals.destroy();
+    this.staff.destroy();
+    this.glass.destroy();
     for (const filter of this.glows.filters) filter.destroy();
     // A mesh's destroy leaves its geometry's buffers to the garbage collector; free them now.
     for (const mesh of [this.road, this.glow, this.keys]) mesh.geometry.destroy();

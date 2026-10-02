@@ -10,7 +10,7 @@ and shockwave are neutral white for the note's finger-colour tint; dark smoke is
 FPS over 0.5 seconds, with a centred anchor. The road selects its frame from song time.
 
 `hold-glass.json` is a static Arcadia composition of white glass, bevels and glow. `hold-glass.webp`
-is a lossless 96×192 RGBA frame, tinted per note. `GlassHold.ts` preserves its borders with
+is a lossless 96×192 RGBA frame, tinted per note. `RoadGlassLayer.ts` preserves its borders with
 NineSlice (32 pixels left/right, 36 top, 38 bottom), shrinking the caps proportionally for short
 notes.
 

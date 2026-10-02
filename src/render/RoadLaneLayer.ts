@@ -20,12 +20,12 @@ export class RoadLaneLayer {
     });
   }
 
-  draw(projection: RoadProjection, pan: number): void {
+  draw(projection: RoadProjection, pan: number, endDepth = 1): void {
     this.edges.forEach((edge, index) => {
       const line = this.container.children[index];
       if (!line) return;
       const top = projection.at(edge - pan, 0);
-      const bottom = projection.at(edge - pan, 1);
+      const bottom = projection.at(edge - pan, endDepth);
       const dx = bottom.x - top.x;
       const dy = bottom.y - top.y;
       line.position.set(top.x, top.y);
