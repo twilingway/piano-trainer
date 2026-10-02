@@ -1,4 +1,4 @@
-/** The player's icons: small line drawings in the current text colour. */
+﻿/** The player's icons: small line drawings in the current text colour. */
 
 export function StaffIcon() {
   return (
@@ -120,7 +120,7 @@ export function GearIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="3.2" />
-      <path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M5.5 18.5l1.9-1.9M16.6 7.4l1.9-1.9" />
+      <path d="M19.21 9.93L21.88 10.44L21.88 13.56L19.21 14.07L18.56 15.64L20.09 17.88L17.88 20.09L15.64 18.56L14.07 19.21L13.56 21.88L10.44 21.88L9.93 19.21L8.36 18.56L6.12 20.09L3.91 17.88L5.44 15.64L4.79 14.07L2.12 13.56L2.12 10.44L4.79 9.93L5.44 8.36L3.91 6.12L6.12 3.91L8.36 5.44L9.93 4.79L10.44 2.12L13.56 2.12L14.07 4.79L15.64 5.44L17.88 3.91L20.09 6.12L18.56 8.36Z" />
     </svg>
   );
 }
