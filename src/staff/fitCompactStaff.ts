@@ -1,5 +1,11 @@
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 
+/** Apply the viewport scale while keeping the user's preference unchanged. */
+export function staffZoom(host: HTMLElement, zoom: number): number {
+  const scale = Number.parseFloat(getComputedStyle(host).getPropertyValue("--staff-scale")) || 1;
+  return zoom * scale;
+}
+
 /** Fit one complete system into the CSS height limit without changing the saved zoom. */
 export function fitCompactStaff(
   osmd: OpenSheetMusicDisplay,

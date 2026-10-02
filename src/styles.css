@@ -122,7 +122,7 @@ body {
   /* Room for the scrollbar is kept, so the score is never laid out a scrollbar too wide. */
   scrollbar-gutter: stable;
   resize: vertical;
-  background: #fbfaf5;
+  background: transparent;
 }
 
 .staff-page {
@@ -163,20 +163,20 @@ body {
  * colour of their hand as on the falling notes (OSMD ids staff lines -1 and -2).
  */
 .staff .measure-number text {
-  fill: #8a8f9c;
+  fill: var(--muted);
   font-family: system-ui, sans-serif;
   font-size: 11px;
   font-style: italic;
 }
 
 .staff .staffline[id$="-1"] > .vf-text text {
-  fill: #1669a8;
+  fill: var(--accent);
   font-family: system-ui, sans-serif;
   font-weight: 700;
 }
 
 .staff .staffline[id$="-2"] > .vf-text text {
-  fill: #b35a12;
+  fill: var(--finger-1);
   font-family: system-ui, sans-serif;
   font-weight: 700;
 }
