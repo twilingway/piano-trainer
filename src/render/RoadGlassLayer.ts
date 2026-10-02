@@ -121,7 +121,9 @@ export class RoadGlassLayer {
     entry.mesh.alpha = Math.min(1, alpha);
     entry.mesh.visible = true;
     entry.mesh.zIndex = bottom * 2 + 1;
-    entry.backing.alpha = Math.min(0.86, alpha * 0.86);
+    // A dark backing shows through the transparent bevel as black side stripes.
+    entry.backing.tint = tint;
+    entry.backing.alpha = Math.min(0.55, alpha * 0.55);
     entry.backing.visible = true;
     entry.backing.zIndex = bottom * 2 + 0.5;
     // Each face uses the same neutral Arcadia material, tinted by the finger.
@@ -236,7 +238,6 @@ export class RoadGlassLayer {
     // The opaque face hides the road markings beneath translucent luminous glass.
     const backing = new Mesh({ geometry, texture: Texture.WHITE });
     backing.eventMode = "none";
-    backing.tint = 0x071522;
     const mesh = new Mesh({ geometry, texture: this.texture ?? Texture.WHITE });
     mesh.eventMode = "none";
     mesh.blendMode = "add";
