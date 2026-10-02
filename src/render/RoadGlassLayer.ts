@@ -12,6 +12,7 @@ const BOTTOM_CAP = 38;
 type Project = (y: number, offsetX: number, lift?: number) => { x: number; y: number };
 
 interface GlassMesh {
+  backing: Mesh;
   mesh: Mesh;
   geometry: MeshGeometry;
   positions: Float32Array;
@@ -89,6 +90,9 @@ export class RoadGlassLayer {
     entry.mesh.alpha = Math.min(1, alpha);
     entry.mesh.visible = true;
     entry.mesh.zIndex = bottom * 2 + 1;
+    entry.backing.alpha = Math.min(0.86, alpha * 0.86);
+    entry.backing.visible = true;
+    entry.backing.zIndex = bottom * 2 + 0.5;
     // Each face uses the same neutral Arcadia material, tinted by the finger.
     const left = -width / 2;
     const right = width / 2;
@@ -119,7 +123,8 @@ export class RoadGlassLayer {
   end(): void {
     let index = 0;
     for (const entry of this.pool) {
-      if (index++ >= this.used) entry.mesh.visible = entry.walls.visible = false;
+      if (index++ >= this.used)
+        entry.mesh.visible = entry.backing.visible = entry.walls.visible = false;
     }
   }
 
@@ -128,6 +133,7 @@ export class RoadGlassLayer {
     this.disposed = true;
     for (const entry of this.pool) {
       // Mesh.destroy does not own its geometry or the shared Assets texture.
+      if (!entry.backing.destroyed) entry.backing.destroy();
       if (!entry.mesh.destroyed) entry.mesh.destroy();
       entry.geometry.destroy();
       if (!entry.walls.destroyed) entry.walls.destroy();
@@ -172,6 +178,10 @@ export class RoadGlassLayer {
       }
     }
     const geometry = new MeshGeometry({ positions, uvs, indices });
+    // The opaque face hides the road markings beneath translucent luminous glass.
+    const backing = new Mesh({ geometry, texture: Texture.WHITE });
+    backing.eventMode = "none";
+    backing.tint = 0x071522;
     const mesh = new Mesh({ geometry, texture: this.texture ?? Texture.WHITE });
     mesh.eventMode = "none";
     mesh.blendMode = "add";
@@ -191,8 +201,8 @@ export class RoadGlassLayer {
     const walls = new Mesh({ geometry: wallGeometry, texture: this.texture ?? Texture.WHITE });
     walls.eventMode = "none";
     walls.blendMode = "add";
-    this.container.addChild(walls, mesh);
-    const entry = { mesh, geometry, positions, walls, wallGeometry, wallPositions };
+    this.container.addChild(walls, backing, mesh);
+    const entry = { backing, mesh, geometry, positions, walls, wallGeometry, wallPositions };
     this.pool.push(entry);
     return entry;
   }

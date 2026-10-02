@@ -123,7 +123,7 @@ export class RoadLayer {
 
   constructor(private readonly renderer: Renderer) {
     // One blur for every strip's glow; its last pass blends as the filter does: add, for a glow.
-    this.staff = new StaffRoadLayer(renderer);
+    this.staff = new StaffRoadLayer();
     this.glows.filters = [
       new BlurFilter({ strength: GLOW_STRENGTH, quality: 3, blendMode: "add" })
     ];
@@ -277,7 +277,13 @@ export class RoadLayer {
   }
 
   setPerspective(on: boolean): void {
+    if (on === this.perspective) return;
     this.perspective = on;
+    if (on) {
+      this.container.addChildAt(this.hitLine, this.container.getChildIndex(this.keys.container));
+    } else {
+      this.effects.addChildAt(this.hitLine, 0);
+    }
   }
 
   setShape(shape: RoadShape): void {
@@ -394,7 +400,6 @@ export class RoadLayer {
 
   destroy(): void {
     this.arrivals.destroy();
-    this.staff.destroy();
     this.glass.destroy();
     for (const filter of this.glows.filters) filter.destroy();
     // A mesh's destroy leaves its geometry's buffers to the garbage collector; free them now.
@@ -428,6 +433,18 @@ export class RoadLayer {
     const { y: height, left, right } = this.hit;
     const line = this.hitLine;
     line.clear();
+    if (this.perspective && this.projection) {
+      const keyboardLeft = Math.max(left, this.projection.at(-this.pan, 1).x);
+      const keyboardRight = Math.min(right, this.projection.at(this.size.width - this.pan, 1).x);
+      if (keyboardRight <= keyboardLeft) return;
+      // Behind the projected keys, only a diffuse glow hints at the road edge.
+      for (let step = 7; step >= 1; step--) {
+        line
+          .rect(keyboardLeft, height - step * 3, keyboardRight - keyboardLeft, step * 6)
+          .fill({ color: HORIZON_COLOR, alpha: 0.008 });
+      }
+      return;
+    }
     // In place of the felt, as in the mockup: a glowing blue band over the keys under a bright
     // wire that crackles a little where a key is struck.
     for (let step = 1; step <= 6; step++) {
