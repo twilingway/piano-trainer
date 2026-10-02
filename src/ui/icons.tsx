@@ -68,6 +68,18 @@ export function HandIcon() {
   );
 }
 
+export function ListenIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 14v-3a8 8 0 0 1 16 0v3" />
+      <rect x="3" y="11" width="4" height="9" rx="2" />
+      <rect x="17" y="11" width="4" height="9" rx="2" />
+      <path d="M12 8v7m0-7 4 1" />
+      <ellipse cx="10.5" cy="15.5" rx="1.5" ry="1" className="filled" />
+    </svg>
+  );
+}
+
 export function LibraryIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -35,6 +35,7 @@ export function KeyboardSettings({
         <span>Клавиши</span>
         <select
           className="game-select"
+          aria-label="Клавиши"
           value={keyRange}
           onChange={(event) => {
             onKeyRange(event.target.value as KeyRange);
@@ -101,9 +102,9 @@ export function KeyboardSettings({
           }}
         />
       </label>
-      <div className="setting">
+      <div className="setting setting--views">
         <span>Что показывать</span>
-        <span className="setting-control">{toggles}</span>
+        <span className="setting-control setting-control--views">{toggles}</span>
       </div>
     </div>
   );

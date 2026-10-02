@@ -453,7 +453,8 @@ export class FallingNotesView {
       width,
       this.range.low,
       this.range.high,
-      this.rangeFitsSong
+      this.rangeFitsSong,
+      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches
     );
     this.total = total;
     this.pan = Math.min(this.pan, Math.max(0, total - width));
@@ -473,5 +474,6 @@ export class FallingNotesView {
         this.road.effects.visible = false;
       }
     }
+    this.hud.layout(width, this.roadMode && this.road ? this.road.hitLineY : geometry.hitY);
   }
 }

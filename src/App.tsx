@@ -141,6 +141,11 @@ export function App() {
           onListen={() => void trainer.toggleListening()}
           stats={stats}
           mode={trainer.mode}
+          onMode={trainer.setMode}
+          hands={trainer.handChoice}
+          onHands={trainer.setHandChoice}
+          speed={trainer.speed}
+          onSpeed={trainer.setSpeed}
           autoReview={staffPrefs.autoReview}
           onAutoReview={(autoReview) => {
             updateStaffPrefs({ autoReview });

@@ -1,4 +1,5 @@
 import { placeCursorLine, spotAt } from "./liveCursor";
+import { fitCompactStaff } from "./fitCompactStaff";
 import type { BeatSpot } from "./liveCursor";
 import { OpenSheetMusicDisplay, VexFlowGraphicalNote, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useRef } from "react";
@@ -347,7 +348,9 @@ export function Staff({
 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
+    osmd.Zoom = latest.current.zoom;
     osmd.render();
+    fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
     const page = pageRef.current;
     if (page) {
       if (latest.current.singleLine) page.style.transform = "";
@@ -408,18 +411,22 @@ export function Staff({
       osmdRef.current = osmd;
       relayout(osmd, host);
     });
-    // A wrapped page re-flows to a new width; a single line never needs to.
+    // Wrapped pages re-flow; a compact single line also fits the space above the keys.
     const onResize = () => {
       window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(() => {
-        if (osmdRef.current === osmd && !latest.current.singleLine) relayout(osmd, host);
+        if (osmdRef.current === osmd) relayout(osmd, host);
       }, 200);
     };
     window.addEventListener("resize", onResize);
+    const workspace = host.closest(".workspace-main");
+    const resizeObserver = new ResizeObserver(onResize);
+    if (workspace) resizeObserver.observe(workspace);
     return () => {
       cancelled = true;
       window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
+      resizeObserver.disconnect();
       osmdRef.current = null;
       osmd.clear();
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.

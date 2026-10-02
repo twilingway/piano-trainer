@@ -22,6 +22,7 @@ export function ViewToggles({ prefs, hasScore, onChange }: Props) {
       <button
         type="button"
         className="view-toggle"
+        aria-label="Нотный стан"
         aria-pressed={prefs.visible}
         title={prefs.visible ? "Скрыть нотный стан" : "Показать нотный стан"}
         disabled={!hasScore}
@@ -30,10 +31,12 @@ export function ViewToggles({ prefs, hasScore, onChange }: Props) {
         }}
       >
         <StaffIcon />
+        <span className="view-toggle__label">Нотный стан</span>
       </button>
       <button
         type="button"
         className="view-toggle"
+        aria-label="Падающие ноты"
         aria-pressed={prefs.lane}
         title={prefs.lane ? "Скрыть падающие ноты" : "Показать падающие ноты"}
         onClick={() => {
@@ -41,10 +44,12 @@ export function ViewToggles({ prefs, hasScore, onChange }: Props) {
         }}
       >
         <FallingNotesIcon />
+        <span className="view-toggle__label">Падающие ноты</span>
       </button>
       <button
         type="button"
         className="view-toggle"
+        aria-label="Клавиатура"
         aria-pressed={prefs.keys}
         title={prefs.keys ? "Скрыть клавиатуру" : "Показать клавиатуру"}
         onClick={() => {
@@ -52,10 +57,12 @@ export function ViewToggles({ prefs, hasScore, onChange }: Props) {
         }}
       >
         <KeyboardIcon />
+        <span className="view-toggle__label">Клавиатура</span>
       </button>
       <button
         type="button"
         className="view-toggle"
+        aria-label="Руки"
         aria-pressed={prefs.hands}
         disabled={!prefs.keys}
         title={prefs.hands ? "Скрыть руки" : "Показать руки"}
@@ -64,10 +71,12 @@ export function ViewToggles({ prefs, hasScore, onChange }: Props) {
         }}
       >
         <HandIcon />
+        <span className="view-toggle__label">Руки</span>
       </button>
       <button
         type="button"
         className="view-toggle"
+        aria-label="Дорога"
         aria-pressed={prefs.road}
         disabled={!prefs.lane}
         title={prefs.road ? "Обычный вид нот" : "Дорога: ноты в перспективе"}
@@ -76,10 +85,12 @@ export function ViewToggles({ prefs, hasScore, onChange }: Props) {
         }}
       >
         <RoadIcon />
+        <span className="view-toggle__label">Дорога</span>
       </button>
       <button
         type="button"
         className="view-toggle"
+        aria-label="Ноты на стане"
         aria-pressed={prefs.noteCards}
         disabled={!prefs.lane}
         title={prefs.noteCards ? "Падающие ноты полосками" : "Падающие ноты нотами на стане"}
@@ -88,6 +99,7 @@ export function ViewToggles({ prefs, hasScore, onChange }: Props) {
         }}
       >
         <NoteCardIcon />
+        <span className="view-toggle__label">Ноты на стане</span>
       </button>
     </>
   );

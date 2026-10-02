@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 
 import type { Scoreboard } from "../practice/scoreboard";
+import { CompactPracticeChoices } from "./CompactPracticeChoices";
 import { GearIcon, LibraryIcon, PauseIcon, PlayIcon, RestartIcon } from "./icons";
+import { ViewHelp } from "./ViewHelp";
 
 export type PracticeModeChoice = "wait" | "tempo";
 export type HandsChoice = "right" | "left" | "both" | "listen";
@@ -37,23 +39,95 @@ export function PlayerTopBar(props: Props) {
   const { board } = props;
   return (
     <header className="topbar">
-      <button type="button" className="game-button topbar-library" onClick={props.onLibrary}>
+      <details className="compact-controls">
+        <summary className="icon-button" aria-label="Управление" title="Управление">
+          <GearIcon />
+        </summary>
+        <div
+          className="compact-controls__menu"
+          onClick={(event) => {
+            if (
+              event.target instanceof Element &&
+              event.target.closest(".compact-controls__menu > .game-button")
+            ) {
+              const menu = event.currentTarget.parentElement;
+              if (menu instanceof HTMLDetailsElement) menu.open = false;
+            }
+          }}
+        >
+          <p className="compact-controls__stats">
+            {props.title}
+            <br />
+            {board.measure
+              ? `такт ${String(board.measure.current)}/${String(board.measure.total)}`
+              : board.clock}
+            {board.bpm === undefined ? "" : ` · ♩ ${String(board.bpm)}`} ·{" "}
+            {Math.round(props.speed * 100)}%
+            <br />
+            {props.midi ? `MIDI: ${props.midi}` : "MIDI не подключено"}
+          </p>
+          <CompactPracticeChoices
+            hands={props.hands}
+            mode={props.mode}
+            onHands={props.onHands}
+            onMode={props.onMode}
+          />
+          <div className="compact-controls__view-head">
+            <span>Вид</span>
+            <ViewHelp />
+          </div>
+          <div className="setting-control setting-control--views compact-controls__views">
+            {props.toggles}
+          </div>
+          <button type="button" className="game-button" onClick={props.onLibrary}>
+            <LibraryIcon /> Библиотека
+          </button>
+          <button type="button" className="game-button" onClick={props.onRestart}>
+            <RestartIcon /> Сначала
+          </button>
+          <button
+            type="button"
+            className="game-button"
+            onClick={props.onSettings}
+            aria-pressed={props.settingsOpen}
+          >
+            <GearIcon /> Настройки
+          </button>
+        </div>
+      </details>
+      <button
+        type="button"
+        className="game-button topbar-library"
+        aria-label={`Библиотека: ${props.title}`}
+        title="Библиотека"
+        onClick={props.onLibrary}
+      >
         <LibraryIcon />
         <span className="topbar-title">{props.title}</span>
       </button>
-      <button type="button" className="game-button" onClick={props.onRestart}>
+      <button
+        type="button"
+        className="game-button topbar-restart"
+        aria-label="Сначала"
+        title="Сначала"
+        onClick={props.onRestart}
+      >
         <RestartIcon />
-        Сначала
+        <span className="topbar-restart__label">Сначала</span>
       </button>
       <button
         type="button"
         className="play-button"
         data-playing={props.playing}
+        aria-label={props.soundLoading ? "Звук…" : props.playing ? "Пауза" : "Играть"}
+        title={props.playing ? "Пауза" : "Играть"}
         disabled={props.soundLoading}
         onClick={props.onTogglePlay}
       >
         <span className="play-button__ring">{props.playing ? <PauseIcon /> : <PlayIcon />}</span>
-        {props.soundLoading ? "Звук…" : props.playing ? "Пауза" : "Играть"}
+        <span className="play-button__label">
+          {props.soundLoading ? "Звук…" : props.playing ? "Пауза" : "Играть"}
+        </span>
       </button>
       <div className="segmented" role="radiogroup" aria-label="Режим">
         {(
@@ -127,7 +201,7 @@ export function PlayerTopBar(props: Props) {
       <div className="topbar-toggles">{props.toggles}</div>
       <button
         type="button"
-        className="icon-button"
+        className="icon-button topbar-settings"
         aria-label="Настройки"
         title="Настройки"
         aria-pressed={props.settingsOpen}
