@@ -6,7 +6,7 @@ import { FINGER_COLOR } from "./fingerColors";
 import { HAND_SPRITES } from "./handSpriteCatalog";
 import type { HandSpriteDefinition } from "./handSpriteCatalog";
 import { fitPose } from "./handSprites";
-import { easePose, handPose, upcomingChord } from "./handPose";
+import { easePose, handPose, handHintChord } from "./handPose";
 import type { HandPose, Tip } from "./handPose";
 import type { KeyRect } from "./keyboardLayout";
 
@@ -117,7 +117,8 @@ export class HandsLayer {
     hands: ReadonlySet<Hand>,
     keys: ReadonlyMap<number, KeyRect>,
     geometry: HandsGeometry,
-    project: HandProject
+    project: HandProject,
+    waitingFor: readonly SongNote[] = []
   ): void {
     const available = this.available;
     for (const hand of HANDS) {
@@ -129,7 +130,11 @@ export class HandsLayer {
         for (const marker of visual.markers.values()) marker.visible = false;
         continue;
       }
-      const chord = upcomingChord(this.notes[hand], time);
+      const chord = handHintChord(
+        this.notes[hand],
+        time,
+        waitingFor.filter((note) => note.hand === hand)
+      );
       const target = handPose(hand, chord?.notes ?? [], keys, this.poses.get(hand));
       if (!target) continue;
       const pose = easePose(this.poses.get(hand), target, deltaSeconds, MOVE_SMOOTHING_S);

@@ -372,6 +372,7 @@ export class Trainer {
       pressed: this.pressed,
       sounding: this.sounding,
       due: this.playing || session.time < 0 ? session.nextDue() : [],
+      waitingFor: session.waiting ? session.nextDue() : [],
       hands: session.options.hands,
       hints: !this.performanceMode,
       colorOf: this.comparison?.colorOf,
