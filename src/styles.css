@@ -1951,3 +1951,62 @@ button.song-card.song-card__open {
     grid-template-columns: 1fr;
   }
 }
+
+/* Computer keyboard assignments are settings, not part of the animation loop. */
+.computer-keyboard-settings {
+  display: grid;
+  gap: 12px;
+}
+.computer-keyboard-help {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+.computer-keyboard-scroll {
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.computer-keyboard-map {
+  display: grid;
+  gap: 5px;
+  min-width: 580px;
+}
+.computer-keyboard-row {
+  display: flex;
+  gap: 4px;
+}
+.computer-key {
+  flex: 1;
+  min-width: 34px;
+  min-height: 52px;
+  display: grid;
+  gap: 5px;
+  padding: 6px 3px;
+  border: 1px solid #54717a;
+  border-radius: 5px;
+  background: #172b34;
+  color: #e9f5f6;
+  cursor: pointer;
+}
+.computer-key:hover,
+.computer-key:focus-visible {
+  border-color: #6ce6d3;
+  background: #24444e;
+}
+.computer-key:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.computer-key small {
+  color: #85e2d3;
+  font-size: 10px;
+}
+.computer-key--space {
+  flex: 4;
+}
+.computer-keyboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

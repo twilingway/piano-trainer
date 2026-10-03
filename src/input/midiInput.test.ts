@@ -130,7 +130,7 @@ describe("MIDI input metadata", () => {
     expect(received).toHaveBeenCalledOnce();
     expect(received).toHaveBeenCalledWith({
       type: "down",
-      pitch: 60,
+      pitch: 71,
       velocity: 90,
       timestamp: event.timeStamp,
       source: "keyboard",

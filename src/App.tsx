@@ -9,6 +9,8 @@ import { LESSONS } from "./app/lessons";
 import { useFallingView } from "./app/useFallingView";
 import { useFullscreen } from "./app/useFullscreen";
 import { useKeyInput } from "./app/useKeyInput";
+import { useComputerKeyboard } from "./app/useComputerKeyboard";
+import { ComputerKeyboardSettings } from "./ui/settings/ComputerKeyboardSettings";
 import { usePlayerLibrary } from "./app/usePlayerLibrary";
 import { useShortcuts } from "./app/useShortcuts";
 import { useSong } from "./app/useSong";
@@ -77,7 +79,8 @@ export function App() {
     gameOptions: game.options,
     ranked: game.ranked
   });
-  const input = useKeyInput(trainer.trainerRef);
+  const computerKeyboard = useComputerKeyboard();
+  const input = useKeyInput(trainer.trainerRef, computerKeyboard.options);
   const timing = useTimingControls({
     trainerRef: trainer.trainerRef,
     ensureSound,
@@ -139,10 +142,7 @@ export function App() {
   };
   useShortcuts({
     play,
-    startOver,
-    openLibrary: () => {
-      setLibraryOpen(true);
-    }
+    blocked: computerKeyboard.editing
   });
 
   const toggles = (
@@ -256,6 +256,11 @@ export function App() {
       )
     },
     {
+      id: "computer",
+      title: "Ввод с ПК",
+      content: <ComputerKeyboardSettings controls={computerKeyboard} />
+    },
+    {
       id: "midi",
       title: "Звук и MIDI",
       content: (
@@ -295,6 +300,7 @@ export function App() {
           onHands={trainer.setHandChoice}
           onSpeed={trainer.setSpeed}
           onSettings={() => {
+            computerKeyboard.endEditing();
             setSettingsOpen((open) => !open);
           }}
         />
@@ -394,6 +400,7 @@ export function App() {
       <SettingsPanel
         open={settingsOpen}
         onClose={() => {
+          computerKeyboard.endEditing();
           setSettingsOpen(false);
         }}
         tabs={settingsTabs}
