@@ -131,12 +131,8 @@ export class HandsLayer {
         for (const marker of visual.markers.values()) marker.visible = false;
         continue;
       }
-      const chord = handHintChord(
-        this.notes[hand],
-        time,
-        waitingFor.filter((note) => note.hand === hand),
-        waitingFor.length > 0
-      );
+      const pending = waitingFor.filter((note) => note.hand === hand);
+      const chord = handHintChord(this.notes[hand], time, pending, waitingFor.length > 0);
       const target = handPose(hand, chord?.notes ?? [], keys, this.poses.get(hand));
       if (!target) continue;
       const pose = easePose(this.poses.get(hand), target, deltaSeconds, MOVE_SMOOTHING_S);
@@ -185,7 +181,10 @@ export class HandsLayer {
       const pressing = chord !== undefined && chord.start <= time;
       const pulse = 0.65 + 0.35 * Math.sin(time * Math.PI * 2 * PULSE_HZ);
       for (const [finger, marker] of visual.markers) {
-        marker.visible = target.down.has(finger);
+        marker.visible =
+          pending.length > 0
+            ? pending.some((note) => note.finger === finger)
+            : target.down.has(finger);
         if (!marker.visible) continue;
         // Hints sit on the owed keys even while the whole hand is still moving there.
         const tip = { x: target.tips[finger].x, reach: pose.tips[finger].reach };

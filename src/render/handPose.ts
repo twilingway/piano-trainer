@@ -122,8 +122,20 @@ export function handHintChord<T extends { readonly start: number; readonly durat
   waitingFor: readonly T[],
   sessionWaiting = false
 ): { readonly start: number; readonly notes: readonly T[] } | undefined {
-  if (waitingFor.length > 0)
-    return { start: Math.min(...waitingFor.map((note) => note.start)), notes: waitingFor };
+  if (waitingFor.length > 0) {
+    const pendingStart = Math.min(...waitingFor.map((note) => note.start));
+    let start = notes[0]?.start ?? pendingStart;
+    for (const note of notes) {
+      if (note.start - start <= CHORD_WINDOW_S) continue;
+      if (pendingStart <= start + CHORD_WINDOW_S) break;
+      start = note.start;
+    }
+    // Already played members still define the hand's chord shape while the rest are pending.
+    const chord = notes.filter(
+      (note) => note.start >= start && note.start - start <= CHORD_WINDOW_S
+    );
+    return { start, notes: chord.length > 0 ? chord : waitingFor };
+  }
   // The other hand keeps its resting pose while input for this chord is still missing.
   if (sessionWaiting) return undefined;
   return upcomingChord(notes, time);
