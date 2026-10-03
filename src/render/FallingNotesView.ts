@@ -111,6 +111,7 @@ export class FallingNotesView {
   private range = { low: LOWEST_PITCH, high: HIGHEST_PITCH };
   /** The range follows the song, so the road may show more keys around it; a fixed range stays. */
   private rangeFitsSong = false;
+  private rangeFitsViewport = false;
   private laidOutFor = { width: 0, height: 0 };
   private hudTop = 0;
   /** The next scroll lands on its target at once: a new song starts where its keys are. */
@@ -253,9 +254,10 @@ export class FallingNotesView {
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */
-  setRange(low: number, high: number, fitsSong = false): void {
+  setRange(low: number, high: number, fitsSong = false, fitsViewport = false): void {
     this.range = { low, high };
     this.rangeFitsSong = fitsSong;
+    this.rangeFitsViewport = fitsViewport;
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -526,7 +528,7 @@ export class FallingNotesView {
   }
 
   private geometry(height: number): Geometry {
-    return viewGeometry(height, this.whiteWidth, this.parts, this.labels);
+    return viewGeometry(height, this.whiteWidth, this.parts, this.labels, this.rangeFitsViewport);
   }
 
   private layout(width: number, height: number): void {
@@ -536,7 +538,8 @@ export class FallingNotesView {
       this.range.low,
       this.range.high,
       this.rangeFitsSong,
-      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches
+      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches,
+      this.rangeFitsViewport
     );
     this.total = total;
     this.pan = Math.min(this.pan, Math.max(0, total - width));

@@ -48,6 +48,24 @@ describe("viewGeometry", () => {
 });
 
 describe("fitRange", () => {
+  it.each([320, 390, 667, 1920])("fills a %ipx viewport with complete octave ranges", (width) => {
+    for (const [low, high, whites] of [
+      [48, 83, 21],
+      [36, 83, 28]
+    ] as const) {
+      const fitted = fitRange(width, low, high, false, false, true);
+      const keys = layoutKeyboard(fitted.total, fitted.low, fitted.high);
+      expect(fitted).toEqual({ low, high, total: width });
+      expect(keys.size).toBe((whites / 7) * 12);
+      const last = keys.get(high);
+      expect((last?.x ?? 0) + (last?.width ?? 0)).toBeCloseTo(width);
+      const whiteWidth = keys.get(low)?.width ?? 0;
+      expect(whiteWidth).toBeCloseTo(width / whites);
+      const geometry = viewGeometry(800, whiteWidth, ALL, false, true);
+      expect(geometry.keyboardHeight).toBeCloseTo(Math.max(110, whiteWidth * 3));
+      if (width === 1920) expect(whiteWidth).toBeGreaterThan(44);
+    }
+  });
   it.each([320, 390, 667, 768, 1056, 1920])(
     "fits three octaves and both guards on a %ipx viewport",
     (width) => {
