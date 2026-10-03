@@ -7,7 +7,7 @@ import { quartersAt } from "../song/song";
 import type { Song, SongBeat, SongNote } from "../song/song";
 import { nameKey } from "./bakeLabels";
 import type { FallingNoteNames } from "./bakeLabels";
-import { holdBounds } from "./holdBounds";
+import { flatHoldBounds, holdBounds } from "./holdBounds";
 import { scorePlacements } from "../song/scorePlacement";
 import type { ScorePlacement } from "../song/scorePlacement";
 import { FINGER_COLOR } from "./fingerColors";
@@ -271,7 +271,16 @@ export class NotesLayer {
       const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
       // With cards the bar thins to a tail behind the card: the length still shows.
       const bounds = holdBounds(note.start, note.duration, state.time, state.lookAhead, hitY);
-      const visibleHeight = Math.max(0, bounds.bottom - bounds.top - NOTE_GAP_PX);
+      const bodyBounds = flatHoldBounds(
+        note.start,
+        note.duration,
+        state.time,
+        state.lookAhead,
+        hitY,
+        NOTE_GAP_PX,
+        4
+      );
+      const visibleHeight = Math.max(0, bodyBounds.bottom - bodyBounds.top);
       body.visible = onScreen && visibleHeight > 0;
       // A note taken bursts on its key and its card is gone; the key's own light carries on.
       const struck =
@@ -302,7 +311,7 @@ export class NotesLayer {
       body.x = keyCentre - barWidth / 2;
       body.width = barWidth;
       // Consume duration at the hit line, including the flat view's extra room for hands.
-      body.y = bounds.top;
+      body.y = bodyBounds.top;
       body.height = visibleHeight;
       if (body.texture !== (trail ? this.trailTile : Texture.WHITE)) {
         body.texture = trail ? this.trailTile : Texture.WHITE;
