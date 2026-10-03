@@ -12,6 +12,14 @@
 | octave_layout  | C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 | C3 D3 E3 F3 G3 A3 B3 C4 D4 E4 | C2 D2 E2 F2 G2 A2 B2 C3 D3 E3 |
 | bass_chords    | C3 D3 E3 F3 G3 C5 D5 E5 F5 G5 | F2 G2 A2 B2 C3 F4 G4 A4 B4 C5 | C2 D2 E2 F2 G2 C4 D4 E4 F4 G4 |
 
+В bass_chords тренажёр SHALL дополнительно назначать 5 цифрового ряда на A3, 6 — на B3, сохраняя
+остальные назначения и применяя к дополнительным нотам Shift/Alt.
+
+#### Scenario: Ля и си в третьей октаве
+
+- **WHEN** выбран bass_chords и игрок нажимает 5 и 6 цифрового ряда
+- **THEN** звучат A3 и B3 соответственно; Shift+6 играет C4, Alt+5 играет A♭3
+
 #### Scenario: Полный диапазон
 
 - **WHEN** выбран extended_range и игрок нажимает Z и P

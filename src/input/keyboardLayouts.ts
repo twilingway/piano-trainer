@@ -170,11 +170,18 @@ const PITCHES: Record<KeyboardPreset, readonly number[]> = {
     43, 60, 62, 64, 65, 67
   ]
 };
+const PRESET_EXTRA_BINDINGS: Partial<Record<KeyboardPreset, KeyboardBindings>> = {
+  bass_chords: {
+    Digit5: { type: "note", pitch: 57 },
+    Digit6: { type: "note", pitch: 59 }
+  }
+};
 export function presetBindings(preset: KeyboardPreset): KeyboardBindings {
   const bindings: Record<string, KeyBinding> = {
     Space: { type: "sustain" },
     ArrowDown: { type: "octaveDown" },
-    ArrowUp: { type: "octaveUp" }
+    ArrowUp: { type: "octaveUp" },
+    ...PRESET_EXTRA_BINDINGS[preset]
   };
   NOTE_CODES.forEach((code, i) => {
     bindings[code] = { type: "note", pitch: PITCHES[preset][i] ?? 60 };
