@@ -104,7 +104,7 @@ export class NotesLayer {
    * where the notes are, on the road they stand upright where the notes land.
    */
   readonly cards = new Container({ sortableChildren: true });
-  /** Practiced notes crossing the hit line, or all notes when listening, by pitch. */
+  /** All notes crossing the hit line, including accompaniment, by pitch. */
   readonly playing = new Map<number, SongNote>();
   /** Notes coming over the road's horizon in the last frame drawn, with their flash. */
   readonly arrivals: Arrival[] = [];
@@ -271,12 +271,12 @@ export class NotesLayer {
     const flat = !cards && !road?.isPerspective;
     this.flatBlocks.begin();
     for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
-      if (
-        (state.hands.size === 0 || state.hands.has(note.hand)) &&
-        note.start <= state.time &&
-        state.time < note.start + note.duration
-      ) {
-        this.playing.set(note.pitch, note);
+      if (note.start <= state.time && state.time < note.start + note.duration) {
+        const previous = this.playing.get(note.pitch);
+        // At a shared pitch the player's fingering takes priority over accompaniment.
+        if (!previous || state.hands.has(note.hand) || !state.hands.has(previous.hand)) {
+          this.playing.set(note.pitch, note);
+        }
       }
       const key = keys.get(note.pitch);
       const bottom = hitY - (note.start - state.time) * pixelsPerSecond;

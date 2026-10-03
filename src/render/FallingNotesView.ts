@@ -333,6 +333,7 @@ export class FallingNotesView {
     this.songNotes = song.notes;
     this.hud.clear();
     this.fx.clear();
+    this.wasSounding.clear();
     // The new song's keys are elsewhere: the scroll lands on them rather than gliding there.
     this.panSnap = true;
   }
@@ -343,9 +344,7 @@ export class FallingNotesView {
     const state = {
       ...frame,
       lookAhead:
-        this.roadMode && this.keyStyle === "perspective" ? frame.lookAhead * 2 : frame.lookAhead,
-      // Accompaniment stays audible, but only the practiced hands light up the keys.
-      sounding: frame.hands.size === 0 ? frame.sounding : NO_SOUNDING_KEYS
+        this.roadMode && this.keyStyle === "perspective" ? frame.lookAhead * 2 : frame.lookAhead
     };
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
@@ -360,7 +359,8 @@ export class FallingNotesView {
     this.keyboard.draw(
       {
         pressed: state.pressed,
-        sounding: state.sounding,
+        // Only the key-colour layer hides accompaniment; fire follows every sounding note.
+        sounding: state.hands.size === 0 ? state.sounding : NO_SOUNDING_KEYS,
         due: state.due,
         playing,
         ...(state.hints === undefined ? {} : { hints: state.hints })

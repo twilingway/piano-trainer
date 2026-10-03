@@ -8,6 +8,8 @@ interface AtlasEffect {
   readonly cols: number;
   readonly frames: number;
   readonly fps: number;
+  /** Skip the quiet emitter buildup when a held note has already flashed. */
+  readonly startFrame?: number;
   /** Where the key's point is in a frame, as a share of its height. */
   readonly anchorY: number;
   /** The effect's width on screen, in key widths. */
@@ -26,7 +28,7 @@ const HIT: AtlasEffect = {
   fps: 24,
   // The effect's origin sits 50 of 384 below the middle of its frame.
   anchorY: 0.5 + 50 / 384,
-  perKeyWidth: 6,
+  perKeyWidth: 7.2,
   pool: 24
 };
 /** Glitter, wisps and haze whirling up off a sounding key (src/fx/piano-glitter.json). */
@@ -36,18 +38,19 @@ const GLITTER: AtlasEffect = {
   frameHeight: 192,
   cols: 6,
   frames: 24,
-  fps: 15,
+  fps: 24,
+  startFrame: 2,
   // The emitter sits 200 of 512 below the middle of its frame.
   anchorY: 0.5 + 200 / 512,
-  perKeyWidth: 3.6,
+  perKeyWidth: 5.4,
   pool: 160
 };
 /** A held key sends up a new puff of glitter this often, so the column never breaks. */
-const GLITTER_EVERY_S = 0.16;
+const GLITTER_EVERY_S = 0.08;
 /** The hold's light and glitter wait this long after the strike, so the burst is seen first. */
-const HOLD_AFTER_S = 0.3;
+const HOLD_AFTER_S = 0.04;
 /** The light on a sounding key: its size in key widths, and how it breathes. */
-const HALO_PER_WIDTH = 2.6;
+const HALO_PER_WIDTH = 3.4;
 const HALO_PULSE = 0.08;
 const HALO_PULSE_HZ = 2.2;
 
@@ -89,7 +92,8 @@ class AtlasPlayer {
 
   /** Plays the effect at a point; `vary` gives it a random lean, size, side and offset. */
   play(x: number, y: number, keyWidth: number, color: number, vary = false): void {
-    const first = this.frames[0];
+    const startFrame = this.effect.startFrame ?? 0;
+    const first = this.frames[startFrame];
     if (!first) return;
     let item = this.playing.find((candidate) => !candidate.sprite.visible);
     if (!item && this.playing.length >= this.effect.pool) {
@@ -105,7 +109,7 @@ class AtlasPlayer {
       item = { sprite, age: 0 };
       this.playing.push(item);
     }
-    item.age = 0;
+    item.age = startFrame / this.effect.fps;
     const sprite = item.sprite;
     sprite.texture = first;
     const size = (keyWidth * this.effect.perKeyWidth) / this.effect.frameWidth;
