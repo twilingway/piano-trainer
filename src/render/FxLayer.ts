@@ -8,6 +8,7 @@ interface AtlasEffect {
   readonly cols: number;
   readonly frames: number;
   readonly fps: number;
+  readonly opacity: number;
   /** Skip the quiet emitter buildup when a held note has already flashed. */
   readonly startFrame?: number;
   /** Where the key's point is in a frame, as a share of its height. */
@@ -26,6 +27,7 @@ const HIT: AtlasEffect = {
   cols: 4,
   frames: 12,
   fps: 24,
+  opacity: 0.7,
   // The effect's origin sits 50 of 384 below the middle of its frame.
   anchorY: 0.5 + 50 / 384,
   perKeyWidth: 7.2,
@@ -39,6 +41,7 @@ const GLITTER: AtlasEffect = {
   cols: 6,
   frames: 24,
   fps: 24,
+  opacity: 0.35,
   startFrame: 2,
   // The emitter sits 200 of 512 below the middle of its frame.
   anchorY: 0.5 + 200 / 512,
@@ -125,6 +128,7 @@ class AtlasPlayer {
       sprite.scale.set(size);
     }
     sprite.tint = color;
+    sprite.alpha = this.effect.opacity;
     sprite.visible = true;
   }
 
@@ -245,10 +249,12 @@ export class FxLayer {
     const breath = 1 + HALO_PULSE * Math.sin(this.clock * Math.PI * 2 * HALO_PULSE_HZ);
     const size = (key.width * HALO_PER_WIDTH * breath) / this.haloTexture.width;
     light.glow.tint = key.color;
+    light.glow.alpha = 0.5;
     light.glow.scale.set(size);
     light.glow.position.set(key.x, hitY);
     // A white-hot middle, a third of the glow.
     light.core.tint = 0xffffff;
+    light.core.alpha = 0.65;
     light.core.scale.set(size * 0.34);
     light.core.position.set(key.x, hitY);
   }
