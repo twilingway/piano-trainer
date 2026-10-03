@@ -354,7 +354,8 @@ export class NotesLayer {
       const own = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       const cardAlpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
-      body.alpha = road !== undefined ? 1 : cardAlpha;
+      const blockAlpha = custom !== undefined || playerNote ? 1 : 0.82;
+      body.alpha = road !== undefined ? 1 : cards ? cardAlpha : blockAlpha;
       const age = noteArrivalAge(note.start, state.time, state.lookAhead);
       const arrivalAlpha = road?.arrivalEffectsReady ? arrivalCardAlpha(age) : 1;
       if (road && age >= 0 && age < ARRIVAL_DURATION_S) {
@@ -376,7 +377,7 @@ export class NotesLayer {
           key.width * 0.84,
           visibleHeight * ratio,
           body.tint,
-          custom !== undefined ? 1 : !playerNote ? 0.82 : status === "hit" ? 0.75 : 1
+          body.alpha
         );
         body.visible = false;
       }
