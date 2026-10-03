@@ -19,3 +19,7 @@ local-lessons/
 
 # Agents' worktrees: copies of the repository, created and removed by the harness.
 .claude/worktrees/
+
+# Browser inspection output and temporary MCP diagnostics.
+.browser-artifacts/
+.playwright-mcp/
