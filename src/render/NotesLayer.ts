@@ -6,6 +6,7 @@ import type { NoteStatus } from "../practice/session";
 import { quartersAt } from "../song/song";
 import type { Song, SongBeat, SongNote } from "../song/song";
 import { nameKey } from "./bakeLabels";
+import { FlatNoteBlocks } from "./FlatNoteBlocks";
 import type { FallingNoteNames } from "./bakeLabels";
 import { flatHoldBounds, holdBounds } from "./holdBounds";
 import { repeatedNoteEnds, repeatGap } from "./noteSeparation";
@@ -125,6 +126,7 @@ export class NotesLayer {
   /** Card faces by pitch and written value, baked the first time a song needs one. */
   private readonly cardFaces = new Map<string, Texture>();
   private cardsOn = true;
+  private readonly flatBlocks = new FlatNoteBlocks();
   private noteNames: FallingNoteNames | undefined;
 
   constructor(
@@ -136,6 +138,8 @@ export class NotesLayer {
     this.cardFrameLeft = bakeCardFrame(renderer, true);
     this.cardGlow = bakeCardGlow(renderer);
     this.trailTile = bakeTrailTile();
+    this.flatBlocks.container.zIndex = -Infinity;
+    this.cards.addChild(this.flatBlocks.container);
   }
 
   /** Shows or hides the notes, their cards and the guides. */
@@ -264,6 +268,8 @@ export class NotesLayer {
     const cardScale = cardWidth / CARD_WIDTH;
     // On the road the glass follows the note until its duration has elapsed.
     const trail = road !== undefined && cards;
+    const flat = !cards && !road?.isPerspective;
+    this.flatBlocks.begin();
     for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
       if (
         (state.hands.size === 0 || state.hands.has(note.hand)) &&
@@ -359,7 +365,23 @@ export class NotesLayer {
         });
       }
       body.alpha *= arrivalAlpha;
-      if (road && bounds.bottom > bounds.top) {
+      if (flat && visibleHeight > 0) {
+        const ratio = road ? road.hitLineY / hitY : 1;
+        const neon = this.neonFrames;
+        const texture =
+          neon[Math.floor(state.time * CARD_NEON_FRAME.fps) % neon.length] ?? this.cardGlow;
+        this.flatBlocks.draw(
+          keyCentre - (road?.scenePan ?? 0),
+          bodyBounds.top * ratio,
+          key.width * 0.84,
+          visibleHeight * ratio,
+          body.tint,
+          cardAlpha,
+          texture
+        );
+        body.visible = false;
+      }
+      if (road && !flat && bounds.bottom > bounds.top) {
         if (
           road.drawHold(
             keyCentre,
@@ -374,7 +396,10 @@ export class NotesLayer {
       }
 
       const labelY = Math.max(bounds.top, landingY - Math.min(noteHeight * 0.4, barWidth * 0.65));
-      const labelSpot = road?.notePlace(keyCentre, labelY, 0, barWidth * 0.2);
+      const labelSpot =
+        flat && road
+          ? { x: keyCentre - road.scenePan, y: (landingY * road.hitLineY) / hitY, scale: 1 }
+          : road?.notePlace(keyCentre, labelY, 0, barWidth * 0.2);
       const labelScale = labelSpot?.scale ?? 1;
       if (note.finger !== undefined) {
         digit.texture =
@@ -436,6 +461,7 @@ export class NotesLayer {
         name.alpha = body.alpha;
       }
     }
+    this.flatBlocks.end();
     road?.endNotes();
   }
 
@@ -490,6 +516,7 @@ export class NotesLayer {
 
   /** Frees the textures the notes baked for themselves; the shared labels are the view's. */
   destroy(): void {
+    this.flatBlocks.destroy();
     for (const texture of this.cardFaces.values()) texture.destroy(true);
     for (const texture of [this.cardFrame, this.cardFrameLeft, this.cardGlow, this.trailTile]) {
       if (texture !== Texture.WHITE) texture.destroy(true);

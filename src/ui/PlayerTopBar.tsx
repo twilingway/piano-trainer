@@ -122,8 +122,11 @@ export function PlayerTopBar(props: Props) {
         onClick={props.onLibrary}
       >
         <LibraryIcon />
-        <span className="topbar-title">{props.title}</span>
+        <span className="topbar-library__label">Библиотека</span>
       </button>
+      <span className="topbar-title" title={props.title}>
+        {props.title}
+      </span>
       <button
         type="button"
         className="game-button topbar-restart"

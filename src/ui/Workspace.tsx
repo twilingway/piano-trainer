@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import type { StaffPrefs } from "../app/useStaffPrefs";
 import type { SplitDirection, TakeStaff } from "../app/useTakeReview";
@@ -25,6 +25,7 @@ interface Props {
   readonly hostRef: RefObject<HTMLDivElement | null>;
   /** Where the original mounts while a take is compared with it. */
   readonly mirrorHostRef: RefObject<HTMLDivElement | null>;
+  readonly gameBoard?: ReactNode;
 }
 
 /** The game: the staff (and the take's own) over the falling notes (and the original's). */
@@ -34,7 +35,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const laneMode = prefs.lane ? "full" : prefs.keys ? "keys" : "hidden";
   // With the lane hidden or cut to its keys, the staff may take more of the screen.
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
-  const overlay = prefs.road && prefs.lane && !props.comparing;
+  const overlay = prefs.keyStyle === "perspective" && prefs.road && prefs.lane && !props.comparing;
   return (
     <div className="workspace">
       <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
@@ -94,7 +95,11 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
               <span className="lane-label">Оригинал</span>
             </div>
           )}
+          {!props.comparing && laneMode !== "hidden" && props.gameBoard}
         </div>
+        {!props.comparing && laneMode === "hidden" && (
+          <div className="game-score-dock">{props.gameBoard}</div>
+        )}
       </div>
     </div>
   );

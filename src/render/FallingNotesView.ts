@@ -439,9 +439,9 @@ export class FallingNotesView {
       if (key) sounding.push(key);
     }
     this.fx.draw(struck, sounding, hitLineY, this.app.ticker.deltaMS / 1000);
-    // The board belongs to the lane: without the falling notes there is nothing to count over.
+    // React's GameBoard owns the score panels; Pixi only draws transient strike grades.
     this.hud.draw(
-      this.parts.notes ? state.board : undefined,
+      undefined,
       state.graded ?? [],
       (pitch) => {
         const key = this.keys.get(pitch);

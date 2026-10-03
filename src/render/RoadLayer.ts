@@ -205,6 +205,10 @@ export class RoadLayer {
     return this.pan;
   }
 
+  get isPerspective(): boolean {
+    return this.perspective;
+  }
+
   drawHold(
     keyX: number,
     top: number,
