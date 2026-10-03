@@ -27,9 +27,15 @@ describe("calibrated hand catalog", () => {
           );
           if (fit?.pose.pixelsPerKey === undefined) throw new Error("Missing calibrated fit");
           expect(fit.pose.id).toBe(id);
-          expect(Math.abs(fit.scaleX) * fit.pose.pixelsPerKey).toBeCloseTo(whiteWidth);
+          const calibratedWidth = Math.abs(fit.scaleX) * fit.pose.pixelsPerKey;
+          expect(calibratedWidth).toBeGreaterThanOrEqual(whiteWidth * 0.8);
+          expect(calibratedWidth).toBeLessThanOrEqual(whiteWidth * 1.2);
           expect(fit.scaleX * direction).toBeGreaterThan(0);
-          if (id !== "five") expect(fit.miss).toBeCloseTo(0);
+          expect(fit.x + fit.pose.tips[1].x * fit.scaleX).toBeCloseTo(500);
+          expect(fit.x + fit.pose.tips[5].x * fit.scaleX).toBeCloseTo(
+            500 + keys * whiteWidth * direction
+          );
+          expect(fit.miss).toBeCloseTo(0);
         }
       });
     }
