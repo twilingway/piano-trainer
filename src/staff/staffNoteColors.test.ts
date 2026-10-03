@@ -31,12 +31,12 @@ describe("staff colour priorities", () => {
     } as unknown as OpenSheetMusicDisplay;
     paintStaffFingerings(osmd, "fingers", "#ffffff");
     expect(labels.map((label) => label.SVGNode.style.fill)).toEqual([
-      "#ff9d00",
-      "#d900ff",
+      "#b54cff",
+      "#00e89c",
       "#ffffff"
     ]);
     expect(lyric.SVGNode.style.fill).toBe("");
-    expect(labels[0]?.SVGNode.querySelector("text")?.style.fill).toBe("#ff9d00");
+    expect(labels[0]?.SVGNode.querySelector("text")?.style.fill).toBe("#b54cff");
     paintStaffFingerings(osmd, "mono", "#a0ffcc");
     expect(labels.map((label) => label.SVGNode.style.fill)).toEqual([
       "#a0ffcc",

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import { soundNoteOff, soundNoteOn, startSoundOnFirstGesture } from "../audio/pianoSound";
-import { listenToComputerKeyboard, listenToMidi, midiSupported } from "../input/midiInput";
+import { listenToMidi, midiSupported } from "../input/midiInput";
+import { listenToComputerKeyboard } from "../input/computerKeyboard";
+import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import type { KeyEvent, MidiDevice, MidiEvent } from "../input/midiInput";
 import type { Trainer } from "../practice/Trainer";
 
@@ -12,6 +14,7 @@ import type { Trainer } from "../practice/Trainer";
  */
 export function useKeyInput(
   trainerRef: RefObject<Trainer | null>,
+  keyboardOptions: KeyboardInputOptions,
   intercept?: (event: KeyEvent) => boolean
 ) {
   const interceptRef = useRef(intercept);
@@ -36,12 +39,6 @@ export function useKeyInput(
       if (!interceptRef.current?.(event)) trainerRef.current?.key(event);
     };
     const stopWarmUp = startSoundOnFirstGesture();
-    const stopKeyboard = listenToComputerKeyboard((event) => {
-      // The computer keyboard has no voice of its own, unlike the piano.
-      if (event.type === "down") soundNoteOn(event.pitch);
-      else soundNoteOff(event.pitch);
-      onKey(event);
-    });
     let stopMidi: (() => void) | undefined;
     let disposed = false;
     if (midiSupported()) {
@@ -65,10 +62,31 @@ export function useKeyInput(
     return () => {
       disposed = true;
       stopWarmUp();
-      stopKeyboard();
       stopMidi?.();
     };
   }, [trainerRef]);
+
+  useEffect(() => {
+    let sustain = false;
+    const deferred = new Set<number>();
+    return listenToComputerKeyboard((event) => {
+      if (event.type === "pedal") {
+        sustain = event.down;
+        trainerRef.current?.pedal(event.down, event.timestamp, "keyboard");
+        if (!sustain) {
+          for (const pitch of deferred) soundNoteOff(pitch);
+          deferred.clear();
+        }
+        return;
+      }
+      if (event.type === "down") {
+        deferred.delete(event.pitch);
+        soundNoteOn(event.pitch);
+      } else if (sustain) deferred.add(event.pitch);
+      else soundNoteOff(event.pitch);
+      if (!interceptRef.current?.(event)) trainerRef.current?.key(event);
+    }, keyboardOptions);
+  }, [trainerRef, keyboardOptions]);
 
   useEffect(() => {
     midiDeviceRef.current = midiDeviceId;
