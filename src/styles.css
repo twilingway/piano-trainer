@@ -1963,6 +1963,7 @@ button.song-card.song-card__open {
 
   .topbar {
     gap: 3px;
+    align-items: center;
     padding: 3px;
     border-radius: 9px;
   }
@@ -1972,15 +1973,28 @@ button.song-card.song-card__open {
   .compact-hands,
   .topbar .play-button,
   .topbar-fullscreen,
-  .topbar-settings {
+  .topbar-settings,
+  .compact-controls > summary {
     flex-basis: 34px;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
     width: 34px;
     height: 34px;
     min-height: 34px;
+    margin: 0;
+    padding: 0;
     border-radius: 8px;
   }
 
+  .topbar > .compact-controls {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+  }
+
   .topbar .play-button__ring {
+    box-sizing: border-box;
     width: 28px;
     height: 28px;
   }
@@ -1998,12 +2012,25 @@ button.song-card.song-card__open {
     --mobile-score-top: calc(68px + env(safe-area-inset-top));
   }
 
+  .workspace-main:has(> .staves)::before {
+    position: absolute;
+    z-index: 2;
+    inset: 0 0 auto;
+    height: var(--mobile-score-top);
+    background: #020b12;
+    content: "";
+    pointer-events: none;
+  }
+
   .workspace-main:has(> .lanes:not(.lanes--hidden)) > .staves {
     position: absolute;
     z-index: 2;
     inset: var(--mobile-score-top) 0 auto;
     max-height: min(34cqh, 150px);
     padding: 0;
+    border-bottom: 1px solid var(--border);
+    background: #020b12;
+    box-shadow: 0 6px 14px rgb(0 0 0 / 45%);
     pointer-events: none;
   }
 
