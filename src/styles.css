@@ -1754,17 +1754,20 @@ button.song-card.song-card__open {
   gap: 6px;
 }
 .game-score-dock .game-score-panel {
-  flex: 1 1 220px;
+  flex: 0 1 auto;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
   gap: 6px 12px;
 }
 .game-score-dock .game-score-panel--points {
+  margin-left: auto;
   justify-content: flex-end;
 }
 .game-score-dock .game-energy {
-  flex: 1 1 80px;
-  max-width: 220px;
+  flex: 0 1 120px;
+  width: 120px;
+  min-width: 72px;
+  max-width: 120px;
 }
 .game-score-dock .game-energy__track {
   height: 6px;
