@@ -256,9 +256,8 @@ export class RoadGlassLayer {
     backing.eventMode = "none";
     const mesh = new Mesh({ geometry, texture: this.texture ?? Texture.WHITE });
     mesh.eventMode = "none";
-    // The face carries the hue; additive fire and walls provide the glow.
-    // Adding the face to its tinted backing clipped orange into yellow.
-    mesh.blendMode = "normal";
+    // Emit light like the hit and hold effects; the faint backing avoids double exposure.
+    mesh.blendMode = "add";
     const wallPositions = new Float32Array(24);
     const wallUvs = new Float32Array(24);
     const wallIndices = new Uint32Array(18);

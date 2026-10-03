@@ -113,6 +113,8 @@ export class FlatNoteBlocks {
         topHeight: 12,
         bottomHeight: 12
       });
+      // Like the hit and hold effects, the whole face emits coloured light.
+      fill.blendMode = "add";
       const glow = new NineSliceSprite({
         texture: this.halo,
         leftWidth: 52,
