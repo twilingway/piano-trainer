@@ -21,7 +21,6 @@ export type HandProject = (x: number, y: number, reach?: number) => { x: number;
 const HANDS: readonly Hand[] = ["left", "right"];
 const HAND_ALPHA = 0.58;
 const MOVE_SMOOTHING_S = 0.12;
-const ANTICIPATION_S = 0.2;
 const CHANGE_S = 0.18;
 const PULSE_HZ = 2.5;
 const TIP_RADIUS = 0.22;
@@ -130,7 +129,7 @@ export class HandsLayer {
         for (const marker of visual.markers.values()) marker.visible = false;
         continue;
       }
-      const chord = upcomingChord(this.notes[hand], time + ANTICIPATION_S);
+      const chord = upcomingChord(this.notes[hand], time);
       const target = handPose(hand, chord?.notes ?? [], keys, this.poses.get(hand));
       if (!target) continue;
       const pose = easePose(this.poses.get(hand), target, deltaSeconds, MOVE_SMOOTHING_S);
