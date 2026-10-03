@@ -2060,6 +2060,11 @@ button.song-card.song-card__open {
     height: 34px;
   }
 
+  .topbar > .play-button,
+  .topbar > .topbar-restart {
+    grid-area: auto;
+  }
+
   .topbar .play-button__ring {
     box-sizing: border-box;
     width: 28px;
@@ -2080,9 +2085,23 @@ button.song-card.song-card__open {
     max-height: calc(100dvh - 64px - env(safe-area-inset-top));
   }
 
+  .compact-controls__views {
+    grid-template-columns: repeat(3, 44px);
+    justify-content: space-around;
+  }
+
+  .compact-practice__hands {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compact-practice .segmented button {
+    padding-inline: 4px;
+    font-size: 12px;
+  }
+
   .workspace-main {
     --mobile-score-top: max(4px, env(safe-area-inset-top));
-    --mobile-rail-width: calc(112px + env(safe-area-inset-left));
+    --mobile-rail-width: calc(128px + env(safe-area-inset-left));
   }
 
   .workspace-main:has(> .staves)::before {
@@ -2140,7 +2159,7 @@ button.song-card.song-card__open {
     z-index: 4;
     top: calc(128px + env(safe-area-inset-top));
     left: max(8px, env(safe-area-inset-left));
-    width: 96px;
+    width: 112px;
     padding: 0;
     background: transparent;
     pointer-events: none;
@@ -2195,6 +2214,10 @@ button.song-card.song-card__open {
   .game-score-dock :is(.game-combo__value, .game-accuracy strong, .game-points strong) {
     font-size: 14px;
     line-height: 1.2;
+  }
+
+  .game-score-dock .game-accuracy strong {
+    font-size: 13px;
   }
 
   .game-score-dock .game-multiplier strong {
