@@ -8,6 +8,7 @@ import type { Song, SongBeat, SongNote } from "../song/song";
 import { nameKey } from "./bakeLabels";
 import type { FallingNoteNames } from "./bakeLabels";
 import { flatHoldBounds, holdBounds } from "./holdBounds";
+import { repeatedNoteEnds, repeatGap } from "./noteSeparation";
 import { scorePlacements } from "../song/scorePlacement";
 import type { ScorePlacement } from "../song/scorePlacement";
 import { FINGER_COLOR } from "./fingerColors";
@@ -113,6 +114,7 @@ export class NotesLayer {
   private beats: readonly SongBeat[] = [];
   private laneWidth = 0;
   private notes: NoteSprite[] = [];
+  private repeated: ReadonlySet<string> = new Set();
   private readonly cardFrame: Texture;
   /** The left hand's frame, with a second ring. */
   private readonly cardFrameLeft: Texture;
@@ -156,6 +158,7 @@ export class NotesLayer {
 
   setSong(song: Song): void {
     this.beats = song.beats;
+    this.repeated = repeatedNoteEnds(song.notes);
     const placements = scorePlacements(song);
     for (const sprite of this.notes) {
       sprite.body.destroy();
@@ -280,6 +283,20 @@ export class NotesLayer {
         NOTE_GAP_PX,
         4
       );
+      if (this.repeated.has(note.id) && bounds.top > 0) {
+        const centre = key ? key.x + key.width / 2 : 0;
+        const spot = road?.notePlace(centre, bounds.top);
+        const next = road?.notePlace(centre, bounds.top + 1);
+        const slope = spot && next ? next.y - spot.y : 1;
+        const gap = repeatGap(
+          bounds.bottom - bounds.top,
+          key?.width ?? 44,
+          slope,
+          spot?.scale ?? 1
+        );
+        bounds.top += gap;
+        bodyBounds.top += Math.min(gap, Math.max(0, bodyBounds.bottom - bodyBounds.top) * 0.25);
+      }
       const visibleHeight = Math.max(0, bodyBounds.bottom - bodyBounds.top);
       body.visible = onScreen && visibleHeight > 0;
       // A note taken bursts on its key and its card is gone; the key's own light carries on.
