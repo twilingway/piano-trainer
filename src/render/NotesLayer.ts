@@ -13,6 +13,8 @@ import { repeatedNoteEnds, repeatGap } from "./noteSeparation";
 import { scorePlacements } from "../song/scorePlacement";
 import type { ScorePlacement } from "../song/scorePlacement";
 import { FINGER_COLOR } from "./fingerColors";
+import { fitNoteLabel, noteLabelInset } from "./noteLabelLayout";
+import { GLASS_LIFT_SHARE } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
 import {
   CARD_FACE_OFFSET,
@@ -329,7 +331,6 @@ export class NotesLayer {
           ? key.width * TAIL_SHARE
           : key.width - NOTE_GAP_PX * 2;
       const keyCentre = key.x + key.width / 2;
-      const landingY = Math.min(bottom, hitY);
       body.x = keyCentre - barWidth / 2;
       body.width = barWidth;
       // Consume duration at the hit line, including the flat view's extra room for hands.
@@ -394,21 +395,34 @@ export class NotesLayer {
           body.visible = false;
       }
 
-      const labelY = Math.max(bounds.top, landingY - Math.min(noteHeight * 0.4, barWidth * 0.65));
-      const labelSpot =
-        flat && road
-          ? { x: keyCentre - road.scenePan, y: (landingY * road.hitLineY) / hitY, scale: 1 }
-          : road?.notePlace(keyCentre, labelY, 0, barWidth * 0.2);
-      const labelScale = labelSpot?.scale ?? 1;
+      const flatRatio = flat && road ? road.hitLineY / hitY : 1;
+      const lift = key.width * ROAD_HOLD_WIDTH_SHARE * GLASS_LIFT_SHARE;
+      const labelSpot = !flat ? road?.notePlace(keyCentre, bounds.bottom, 0, lift) : undefined;
+      const labelTopSpot = !flat ? road?.notePlace(keyCentre, bounds.top, 0, lift) : undefined;
+      const labelBottom = labelSpot?.y ?? bodyBounds.bottom * flatRatio;
+      const labelTop = labelTopSpot?.y ?? bodyBounds.top * flatRatio;
+      const labelWidth =
+        key.width * (flat ? 0.84 : ROAD_HOLD_WIDTH_SHARE) * (labelSpot?.scale ?? 1);
+      const labelHeight = Math.max(0, labelBottom - labelTop);
+      const inset = noteLabelInset(labelWidth, labelHeight);
+      const labelX = labelSpot?.x ?? keyCentre - (road?.scenePan ?? 0);
       if (note.finger !== undefined) {
         digit.texture =
           (road || flat ? this.labels.badges : this.labels.digits).get(note.finger) ??
           Texture.EMPTY;
       }
-      digit.scale.set(Math.min(1, (key.width * (road ? 0.5 : 0.9)) / 40) * labelScale);
-      digit.anchor.set(0.5, road ? 0.5 : 1);
-      digit.x = labelSpot?.x ?? keyCentre;
-      digit.y = (labelSpot?.y ?? landingY) - 2 * labelScale;
+      const digitScale = fitNoteLabel(
+        labelWidth - inset * 2,
+        labelHeight - inset * 2,
+        digit.texture.width,
+        digit.texture.height,
+        24
+      );
+      digit.scale.set(digitScale);
+      digit.visible = digit.visible && digitScale > 0;
+      digit.anchor.set(0.5, 1);
+      digit.x = labelX;
+      digit.y = labelBottom - inset;
       digit.alpha = body.alpha;
       if (cards) {
         // The card stands where the note lands; on the road it faces the player and
@@ -451,13 +465,19 @@ export class NotesLayer {
       }
       if (this.noteNames) {
         // Over the finger, when the note is tall enough to hold both.
-        name.scale.set(
-          Math.min(1, (key.width * 0.92) / Math.max(name.texture.width, 1)) * labelScale
+        const digitHeight = digit.visible ? digit.height + 2 : 0;
+        const nameScale = fitNoteLabel(
+          labelWidth - inset * 2,
+          labelHeight - inset * 2 - digitHeight,
+          name.texture.width,
+          name.texture.height,
+          16
         );
-        const digitHeight = note.finger === undefined ? 0 : digit.height + 2;
-        name.visible = visibleHeight >= digitHeight + name.height + 4;
-        name.x = labelSpot?.x ?? keyCentre;
-        name.y = (labelSpot?.y ?? landingY) - 2 * labelScale - digitHeight;
+        name.scale.set(nameScale);
+        name.visible = nameScale > 0;
+        name.anchor.set(0.5, 1);
+        name.x = labelX;
+        name.y = labelBottom - inset - digitHeight;
         name.alpha = body.alpha;
       }
     }

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
-import { Container, Sprite, Texture, TilingSprite } from "pixi.js";
+import { Container, Sprite, Texture, TextureSource, TilingSprite } from "pixi.js";
 
 import type { Hand } from "../fingering/fingering";
 import type { SongNote } from "../song/song";
@@ -12,7 +12,20 @@ import type { FxLayer } from "./FxLayer";
 import type { RoadLayer } from "./RoadLayer";
 
 function notesHarness(songNotes: readonly SongNote[] = notes) {
-  return Object.assign(Object.create(NotesLayer.prototype) as object, {
+  const digitTexture = new Texture({ source: new TextureSource({ width: 24, height: 40 }) });
+  const nameTexture = new Texture({ source: new TextureSource({ width: 52, height: 22 }) });
+  const sprites = songNotes.map((note) => ({
+    note,
+    beatSeconds: 1,
+    body: new TilingSprite({ texture: Texture.WHITE, width: 1, height: 1 }),
+    glow: new Sprite(),
+    frame: new Sprite(),
+    face: new Sprite(),
+    badge: new Sprite(),
+    digit: new Sprite(digitTexture),
+    name: new Sprite(nameTexture)
+  }));
+  const layer = Object.assign(Object.create(NotesLayer.prototype) as object, {
     playing: new Map<number, SongNote>(),
     arrivals: [],
     cardsOn: false,
@@ -24,19 +37,21 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     beats: [],
     neonFrames: [],
     cardGlow: Texture.WHITE,
-    labels: { digits: new Map(), badges: new Map(), names: new Map() },
-    notes: songNotes.map((note) => ({
-      note,
-      beatSeconds: 1,
-      body: new TilingSprite({ texture: Texture.WHITE, width: 1, height: 1 }),
-      glow: new Sprite(),
-      frame: new Sprite(),
-      face: new Sprite(),
-      badge: new Sprite(),
-      digit: new Sprite(),
-      name: new Sprite()
-    }))
+    noteNames: "ru",
+    labels: {
+      digits: new Map([
+        [1, digitTexture],
+        [5, digitTexture]
+      ]),
+      badges: new Map([
+        [1, digitTexture],
+        [5, digitTexture]
+      ]),
+      names: new Map()
+    },
+    notes: sprites
   }) as unknown as NotesLayer;
+  return { layer, sprites };
 }
 
 const notes: SongNote[] = [
@@ -48,6 +63,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
   const keyboardDraw = vi.fn<KeyboardLayer["draw"]>();
   const effectsDraw = vi.fn<FxLayer["draw"]>();
   const roadDraw = vi.fn<RoadLayer["draw"]>();
+  const { layer, sprites } = notesHarness(songNotes);
   // Exercise frame wiring with real draw(), substituting only the GPU-backed layers.
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
     ready: true,
@@ -57,7 +73,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
     scroll: vi.fn(),
     pan: 0,
     keys: new Map(songNotes.map((note, index) => [note.pitch, { x: index * 80, width: 40 }])),
-    notesLayer: notesHarness(songNotes),
+    notesLayer: layer,
     keyboard: { draw: keyboardDraw },
     hands: { container: { visible: false } },
     fx: { draw: effectsDraw },
@@ -73,10 +89,40 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
     },
     wasSounding: new Set<number>()
   }) as unknown as FallingNotesView;
-  return { view, keyboardDraw, effectsDraw, roadDraw };
+  return { view, keyboardDraw, effectsDraw, roadDraw, sprites };
 }
 
 describe("accompaniment fire independent of key colours", () => {
+  it("keeps identical digits and names inside the lower end with and without the road", () => {
+    const layouts = [false, true].map((roadMode) => {
+      const { view, sprites } = viewHarness(roadMode);
+      view.draw({
+        time: 0.1,
+        lookAhead: 2,
+        statusOf: () => undefined,
+        pressed: new Set(),
+        sounding: new Set(),
+        due: [],
+        hands: new Set(["right"])
+      });
+      return sprites.map(({ body, digit, name }) => {
+        expect(digit.visible).toBe(true);
+        expect(name.visible).toBe(true);
+        expect(digit.anchor.y).toBe(1);
+        expect(digit.y).toBeLessThan(body.y + body.height);
+        expect(digit.y - digit.height).toBeGreaterThanOrEqual(body.y);
+        expect(name.y - name.height).toBeGreaterThanOrEqual(body.y);
+        expect(name.width).toBeLessThan(body.width);
+        return {
+          digitY: digit.y,
+          digitHeight: digit.height,
+          nameY: name.y,
+          nameHeight: name.height
+        };
+      });
+    });
+    expect(layouts[0]).toEqual(layouts[1]);
+  });
   it("keeps the player's finger and fire when accompaniment shares the pitch", () => {
     const songNotes: SongNote[] = [
       { id: "own", pitch: 60, hand: "right", finger: 1, start: 0, startBeat: 0, duration: 2 },

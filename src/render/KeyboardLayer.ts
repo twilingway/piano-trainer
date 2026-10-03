@@ -239,7 +239,7 @@ export class KeyboardLayer {
     this.felt.visible = show;
   }
 
-  /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
+  /** Compact Latin and solfege note names on every key. */
   showStickers(show: boolean): void {
     this.stickers.visible = show;
   }
@@ -263,18 +263,16 @@ export class KeyboardLayer {
     const whiteBevel = painted ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width : 3;
     const blackBevel = painted ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width : 3;
     this.bevel = { white: whiteBevel, black: blackBevel };
-    const whiteShare = painted
-      ? 1 - (WHITE_SLICE.leftWidth + WHITE_SLICE.rightWidth) / painted.white.width
-      : 0.92;
-    const blackShare = painted
-      ? 1 - (BLACK_SLICE.leftWidth + BLACK_SLICE.rightWidth) / painted.black.width
-      : 0.92;
+    // Nine-slice border bands include broad flat areas, especially on arcade keys.
+    // Only reserve the narrow visible rim, rather than shrinking to their centre slice.
+    const whiteLabelWidth = Math.max(0, whiteWidth - Math.max(4, whiteWidth * 0.12));
+    const blackLabelWidth = Math.max(0, blackWidth - Math.max(3, blackWidth * 0.14));
     const whiteScale = Math.min(
-      (whiteWidth * whiteShare) / WHITE_STICKER.width,
+      whiteLabelWidth / WHITE_STICKER.width,
       (keyboardHeight - blackHeight - digitRoom - whiteBevel) / WHITE_STICKER.height
     );
     const blackScale = Math.min(
-      (blackWidth * blackShare) / BLACK_STICKER.width,
+      blackLabelWidth / BLACK_STICKER.width,
       (blackHeight - digitRoom - blackBevel) / BLACK_STICKER.height
     );
 
