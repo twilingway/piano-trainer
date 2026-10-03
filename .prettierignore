@@ -13,3 +13,5 @@ public/generated/
 
 # Agents' worktrees: copies of the repository.
 .claude/worktrees/
+.worktrees/
+.pnpm-store/

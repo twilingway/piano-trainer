@@ -84,6 +84,8 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           </div>
         )}
 
+        {!props.comparing && <div className="game-score-dock">{props.gameBoard}</div>}
+
         {/* Hidden, not removed: the view under it keeps the keys, the sound and the take going. */}
         <div className={`lanes lanes--${props.splitDirection} lanes--${laneMode}`}>
           <div className="lane" ref={hostRef}>
@@ -95,11 +97,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
               <span className="lane-label">Оригинал</span>
             </div>
           )}
-          {!props.comparing && laneMode !== "hidden" && props.gameBoard}
         </div>
-        {!props.comparing && laneMode === "hidden" && (
-          <div className="game-score-dock">{props.gameBoard}</div>
-        )}
       </div>
     </div>
   );

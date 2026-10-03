@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   // `host: true` listens on every interface, so the page opens by LAN address too.
   server: { port: 5190, host: true },
-  // Agents' worktrees are full copies of the repository: their tests are not ours.
-  test: { exclude: [...configDefaults.exclude, ".claude/**", "tools/**"] }
+  // Test only product source, not copies cached by pnpm or agents' worktrees.
+  test: {
+    include: ["src/**/*.test.{ts,tsx}"],
+    exclude: [...configDefaults.exclude, "**/.claude/**", "**/.worktrees/**", "tools/**"]
+  }
 });

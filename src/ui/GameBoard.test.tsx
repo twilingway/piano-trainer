@@ -85,7 +85,18 @@ describe("game score presentation", () => {
     expect(markup).toContain('disabled=""');
   });
 
-  it("keeps the score and Overdrive outside the hidden lane in score-only view", () => {
+  it("fills the energy meter at the activation threshold", () => {
+    const score = new GameScore(25);
+    for (let index = 0; index < 25; index++) score.hit(String(index), 0, index);
+    const markup = renderToStaticMarkup(
+      <GameBoard mode="tempo" playing onOverdrive={vi.fn()} game={score.snapshot(25)} />
+    );
+    expect(markup).toContain('aria-valuemax="50"');
+    expect(markup).toContain('aria-valuenow="50"');
+    expect(markup).toContain('style="width:100%"');
+  });
+
+  it.each([true, false])("keeps the score and Overdrive outside the lane (visible: %s)", (lane) => {
     const prefs: StaffPrefs = {
       zoom: 1,
       noteColor: "#00d4ff",
@@ -98,7 +109,7 @@ describe("game score presentation", () => {
       fingers: true,
       fingerColors: "mono",
       visible: true,
-      lane: false,
+      lane,
       keys: false,
       hands: false,
       road: true,
@@ -140,7 +151,7 @@ describe("game score presentation", () => {
     );
     const window = new Window();
     window.document.body.innerHTML = markup;
-    expect(window.document.querySelector(".lanes--hidden .game-score-board")).toBeNull();
+    expect(window.document.querySelector(".lanes .game-score-board")).toBeNull();
     expect(window.document.querySelectorAll(".game-score-board")).toHaveLength(1);
     expect(window.document.querySelector(".game-score-dock .game-overdrive")).not.toBeNull();
     window.close();

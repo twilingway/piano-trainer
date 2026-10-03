@@ -12,7 +12,9 @@ export default tseslint.config(
       ".agents/**",
       "tools/arcadia-effects/**",
       "public/generated/**",
-      ".claude/**"
+      ".claude/**",
+      ".worktrees/**",
+      ".pnpm-store/**"
     ]
   },
   eslint.configs.recommended,

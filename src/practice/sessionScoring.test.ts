@@ -25,7 +25,7 @@ describe("chronological score log", () => {
     const score = new SessionScoring(expected, "normal");
     for (let index = 0; index < 25; index++) score.hit(String(index), 0, index * 0.1);
     expect(score.activateOverdrive(5)).toBe(true);
-    expect(score.snapshot(5).energy).toBe(0);
+    expect(score.snapshot(5).energy).toBe(25);
     expect(score.snapshot(5).overdriveActive).toBe(true);
     expect(score.activateOverdrive(5.1)).toBe(false);
   });

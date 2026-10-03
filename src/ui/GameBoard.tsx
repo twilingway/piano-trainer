@@ -70,7 +70,10 @@ export function GameBoard({ game, mode, playing, onOverdrive }: Props) {
           <strong>×{game.multiplier}</strong>
           <span>Множитель</span>
         </div>
-        <div className="game-energy" title="Энергия: идеально +2, отлично +1">
+        <div
+          className="game-energy"
+          title="Энергия за точные попадания: до трёх зарядов за композицию; отлично даёт половину идеального"
+        >
           <div>
             <span className="game-score-label">Энергия</span>
             <strong>{game.energy}</strong>
@@ -80,10 +83,14 @@ export function GameBoard({ game, mode, playing, onOverdrive }: Props) {
             role="meter"
             aria-label="Запас энергии"
             aria-valuemin={0}
-            aria-valuemax={Math.max(100, game.energy)}
+            aria-valuemax={Math.max(GAME_RULES.overdriveCost, game.energy)}
             aria-valuenow={game.energy}
           >
-            <span style={{ width: `${String(Math.min(100, Math.max(0, game.energy)))}%` }} />
+            <span
+              style={{
+                width: `${String(Math.min(100, (Math.max(0, game.energy) / GAME_RULES.overdriveCost) * 100))}%`
+              }}
+            />
           </div>
         </div>
         <button

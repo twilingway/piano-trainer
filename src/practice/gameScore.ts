@@ -12,6 +12,7 @@ import type { GameRank, TimingStatistics } from "./gameResults";
 export interface GameScoreOptions {
   readonly difficulty?: Difficulty;
   readonly targetScore?: number;
+  readonly perfectEnergy?: number;
 }
 
 export interface GameScoreSnapshot {
@@ -44,6 +45,7 @@ export interface GameScoreSnapshot {
 export class GameScore {
   private readonly difficulty: Difficulty;
   private readonly targetScore: number;
+  private readonly perfectEnergy: number;
   private score = 0;
   private combo = 0;
   private maxCombo = 0;
@@ -78,6 +80,7 @@ export class GameScore {
     }
     this.difficulty = options.difficulty ?? "normal";
     this.targetScore = options.targetScore ?? 0;
+    this.perfectEnergy = options.perfectEnergy ?? 2;
   }
 
   hit(noteId: string, offsetMs: number, atSeconds: number): Judgement {
@@ -99,7 +102,7 @@ export class GameScore {
     this.score += STREAK_BONUSES[this.combo] ?? 0;
     if (grade === "PERFECT" || grade === "GREAT") {
       this.flowStreak++;
-      this.energy += grade === "PERFECT" ? 2 : 1;
+      this.energy += this.perfectEnergy * (grade === "PERFECT" ? 1 : 0.5);
     } else {
       this.flowStreak = 0;
     }
@@ -143,8 +146,8 @@ export class GameScore {
 
   activateOverdrive(atSeconds: number): boolean {
     if (!Number.isFinite(atSeconds) || atSeconds < this.overdriveUntil) return false;
-    if (this.energy < GAME_RULES.overdriveCost) return false;
-    this.energy -= GAME_RULES.overdriveCost;
+    if (this.energy + 1e-9 < GAME_RULES.overdriveCost) return false;
+    this.energy = Math.max(0, this.energy - GAME_RULES.overdriveCost);
     this.overdriveUntil = atSeconds + GAME_RULES.overdriveSeconds;
     this.overdriveIntervals.push({ start: atSeconds, end: this.overdriveUntil });
     return true;
@@ -166,7 +169,7 @@ export class GameScore {
       combo: this.combo,
       multiplier: comboMultiplier(this.combo) * (overdriveActive ? 2 : 1),
       maxCombo: this.maxCombo,
-      energy: this.energy,
+      energy: Math.floor(this.energy + 1e-9),
       flow: this.flowStreak >= GAME_RULES.flowStreak,
       overdriveActive,
       overdriveUntil: Number.isFinite(this.overdriveUntil) ? this.overdriveUntil : 0,
