@@ -61,6 +61,8 @@ const PAN_SMOOTHING_S = 0.35;
 const PAN_LOOK_AHEAD = 0.6;
 /** Keys the scroll considers at most, earliest first. */
 const PAN_NOTES = 24;
+/** The road needs a longer approach so distant notes are readable before reaching the keys. */
+const ROAD_LOOK_AHEAD_FACTOR = 4;
 const NO_SOUNDING_KEYS: ReadonlySet<number> = new Set();
 
 /**
@@ -357,7 +359,12 @@ export class FallingNotesView {
     const geometry = this.geometry(height);
     this.scroll(state, width);
     const road = this.roadMode ? this.road : undefined;
-    this.notesLayer.draw(state, this.keys, geometry, road);
+    this.notesLayer.draw(
+      road ? { ...state, lookAhead: state.lookAhead * ROAD_LOOK_AHEAD_FACTOR } : state,
+      this.keys,
+      geometry,
+      road
+    );
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = this.notesLayer.playing;
     this.keyboard.draw(

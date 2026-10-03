@@ -184,7 +184,7 @@ describe("accompaniment fire independent of key colours", () => {
       expect(line.y).toBeCloseTo(note?.y ?? NaN);
     }
   });
-  it.each([false, true])("preserves the song-time window with road=%s", (roadMode) => {
+  it.each([false, true])("extends only the visual preview with road=%s", (roadMode) => {
     const { view, notesDraw } = viewHarness(roadMode);
     view.draw({
       time: 0.1,
@@ -195,8 +195,39 @@ describe("accompaniment fire independent of key colours", () => {
       due: [],
       hands: new Set(["right"])
     });
-    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(2);
+    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(roadMode ? 8 : 2);
     expect(notesDraw.mock.calls[0]?.[0].time).toBe(0.1);
+  });
+  it("shows notes six seconds early and approaches evenly until the scheduled hit", () => {
+    const note: SongNote = {
+      id: "early",
+      pitch: 72,
+      hand: "right",
+      finger: 1,
+      start: 6,
+      startBeat: 6,
+      duration: 1
+    };
+    const road = viewHarness(true, [note]);
+    const flat = viewHarness(false, [note]);
+    const frame: FrameState = {
+      time: 0,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(["right"])
+    };
+    flat.view.draw(frame);
+    expect(flat.sprites[0]?.body.visible).toBe(false);
+    for (const time of [0, 1, 2, 3, 4, 5, 6]) {
+      road.view.draw({ ...frame, time });
+      const body = road.sprites[0]?.body;
+      expect(body?.visible).toBe(true);
+      expect((body?.y ?? NaN) + (body?.height ?? NaN)).toBeCloseTo(100 + time * 50);
+      expect(road.notesDraw.mock.lastCall?.[0].time).toBe(time);
+    }
   });
   it("keeps digits and names inside the lower end with and without the road", () => {
     const layouts = [false, true].map((roadMode) => {
