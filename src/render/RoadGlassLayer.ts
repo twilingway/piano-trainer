@@ -114,12 +114,12 @@ export class RoadGlassLayer {
     }
     entry.geometry.getBuffer("aPosition").update();
     entry.mesh.tint = tint;
-    entry.mesh.alpha = Math.min(0.62, alpha * 0.62);
+    entry.mesh.alpha = Math.min(0.86, alpha * 0.86);
     entry.mesh.visible = true;
     entry.mesh.zIndex = bottom * 2 + 1;
     // A dark backing shows through the transparent bevel as black side stripes.
     entry.backing.tint = tint;
-    entry.backing.alpha = Math.min(0.18, alpha * 0.18);
+    entry.backing.alpha = Math.min(0.08, alpha * 0.08);
     entry.backing.visible = true;
     entry.backing.zIndex = bottom * 2 + 0.5;
     // Each face uses the same neutral Arcadia material, tinted by the finger.
@@ -181,7 +181,7 @@ export class RoadGlassLayer {
       }
       entry.smokeGeometry.getBuffer("aPosition").update();
       smoke.tint = tint;
-      smoke.alpha = Math.min(0.45, alpha * 0.45);
+      smoke.alpha = Math.min(0.6, alpha * 0.6);
       smoke.zIndex = bottom * 2 + 2;
     }
   }

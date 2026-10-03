@@ -1,6 +1,6 @@
 import { Container, NineSliceSprite, Texture } from "pixi.js";
 
-/** Arcadia's card tube is stretched by its middle, preserving the rounded ends. */
+/** Luminous glass is baked once and stretched with its rounded ends intact. */
 export class FlatNoteBlocks {
   readonly container = new Container();
   private readonly fill: Texture;
@@ -18,16 +18,16 @@ export class FlatNoteBlocks {
     if (context) {
       const gradient = context.createLinearGradient(0, 0, 64, 0);
       gradient.addColorStop(0, "rgba(255,255,255,0.9)");
-      gradient.addColorStop(0.14, "rgba(255,255,255,0.6)");
-      gradient.addColorStop(0.3, "rgba(255,255,255,0.22)");
-      gradient.addColorStop(0.7, "rgba(255,255,255,0.36)");
-      gradient.addColorStop(0.86, "rgba(255,255,255,0.68)");
+      gradient.addColorStop(0.14, "rgba(255,255,255,0.88)");
+      gradient.addColorStop(0.3, "rgba(255,255,255,0.86)");
+      gradient.addColorStop(0.7, "rgba(255,255,255,0.9)");
+      gradient.addColorStop(0.86, "rgba(255,255,255,0.94)");
       gradient.addColorStop(1, "rgba(255,255,255,0.95)");
       context.fillStyle = gradient;
       context.beginPath();
       context.roundRect(2, 2, 60, 80, 8);
       context.fill();
-      // Baked bevels and a narrow reflection leave the middle transparent.
+      // Bright coloured glass transmits a little of the road beneath it.
       context.save();
       context.clip();
       context.fillStyle = "rgba(255,255,255,0.16)";
@@ -51,6 +51,16 @@ export class FlatNoteBlocks {
     rimCanvas.height = 84;
     const rimContext = rimCanvas.getContext("2d");
     if (rimContext) {
+      // White emission is concentrated at the foot, leaving the main hue saturated.
+      const emission = rimContext.createLinearGradient(0, 2, 0, 82);
+      emission.addColorStop(0, "rgba(255,255,255,0.02)");
+      emission.addColorStop(0.6, "rgba(255,255,255,0.06)");
+      emission.addColorStop(0.86, "rgba(255,255,255,0.24)");
+      emission.addColorStop(1, "rgba(255,255,255,0.65)");
+      rimContext.fillStyle = emission;
+      rimContext.beginPath();
+      rimContext.roundRect(2, 2, 60, 80, 8);
+      rimContext.fill();
       rimContext.strokeStyle = "white";
       rimContext.lineWidth = 2.4;
       rimContext.beginPath();
@@ -59,29 +69,29 @@ export class FlatNoteBlocks {
     }
     this.rim = Texture.from(rimCanvas);
     const haloCanvas = document.createElement("canvas");
-    haloCanvas.width = 108;
-    haloCanvas.height = 128;
+    haloCanvas.width = 144;
+    haloCanvas.height = 164;
     const haloContext = haloCanvas.getContext("2d");
     if (haloContext) {
-      haloContext.strokeStyle = haloContext.shadowColor = "white";
+      haloContext.fillStyle = haloContext.shadowColor = "white";
       for (const [blur, opacity] of [
-        [18, 0.45],
-        [9, 0.65],
-        [3, 0.9]
+        [32, 0.7],
+        [14, 0.65],
+        [4, 0.9]
       ] as const) {
         haloContext.shadowBlur = blur;
         haloContext.globalAlpha = opacity;
-        haloContext.lineWidth = 2;
         haloContext.beginPath();
-        haloContext.roundRect(24, 24, 60, 80, 8);
-        haloContext.stroke();
+        haloContext.roundRect(42, 42, 60, 80, 8);
+        // A filled light source produces a broad halo; a thin stroke barely blooms.
+        haloContext.fill();
       }
-      // Only the outline emits light; the interior keeps its transparency and hue.
+      // Keep exterior bloom separate from the face's controlled interior emission.
       haloContext.globalAlpha = 1;
       haloContext.shadowBlur = 0;
       haloContext.globalCompositeOperation = "destination-out";
       haloContext.beginPath();
-      haloContext.roundRect(26, 26, 56, 76, 6);
+      haloContext.roundRect(44, 44, 56, 76, 6);
       haloContext.fill();
     }
     this.halo = Texture.from(haloCanvas);
@@ -105,10 +115,10 @@ export class FlatNoteBlocks {
       });
       const glow = new NineSliceSprite({
         texture: this.halo,
-        leftWidth: 34,
-        rightWidth: 34,
-        topHeight: 34,
-        bottomHeight: 34
+        leftWidth: 52,
+        rightWidth: 52,
+        topHeight: 52,
+        bottomHeight: 52
       });
       glow.blendMode = "add";
       const rim = new NineSliceSprite({
@@ -125,13 +135,13 @@ export class FlatNoteBlocks {
     }
     // Scale the corners with key width; short notes reduce them rather than overlap caps.
     const scale = Math.min(1, width / 64, height / 24);
-    const margin = 22 * scale;
+    const margin = 40 * scale;
     item.fill.visible = item.neon.visible = true;
     item.rim.visible = true;
     item.fill.tint = item.neon.tint = tint;
     item.fill.alpha = alpha;
     item.neon.alpha = alpha;
-    item.rim.tint = 0xf0fbff;
+    item.rim.tint = 0xffffff;
     item.rim.alpha = alpha;
     item.fill.scale.set(scale);
     item.neon.scale.set(scale);
@@ -141,7 +151,7 @@ export class FlatNoteBlocks {
     item.rim.position.copyFrom(item.fill.position);
     item.rim.setSize(width / scale, height / scale);
     item.neon.position.set(x - width / 2 - margin, top - margin);
-    item.neon.setSize(width / scale + 44, height / scale + 44);
+    item.neon.setSize(width / scale + 80, height / scale + 80);
   }
 
   end(): void {
