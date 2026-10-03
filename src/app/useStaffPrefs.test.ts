@@ -108,3 +108,32 @@ describe("FPS preference", () => {
     expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({ fps: false });
   });
 });
+
+describe("falling note defaults", () => {
+  it.each([null, { road: false }])(
+    "starts with plain falling notes for saved prefs %j",
+    async (saved) => {
+      if (saved) localStorage.setItem("staff-prefs", JSON.stringify(saved));
+      await mount();
+      expect(prefs.staffPrefs).toMatchObject({ lane: true, road: false, noteCards: false });
+      await act(async () => {
+        prefs.updateStaffPrefs({ road: true });
+        await Promise.resolve();
+      });
+      await act(async () => {
+        prefs.updateStaffPrefs({ road: false });
+        await Promise.resolve();
+      });
+      expect(prefs.staffPrefs.noteCards).toBe(false);
+    }
+  );
+
+  it("preserves explicitly saved views", async () => {
+    localStorage.setItem(
+      "staff-prefs",
+      JSON.stringify({ lane: false, road: true, noteCards: true })
+    );
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({ lane: false, road: true, noteCards: true });
+  });
+});
