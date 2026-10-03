@@ -271,7 +271,8 @@ export class NotesLayer {
       const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
       // With cards the bar thins to a tail behind the card: the length still shows.
       const bounds = holdBounds(note.start, note.duration, state.time, state.lookAhead, hitY);
-      body.visible = onScreen;
+      const visibleHeight = Math.max(0, bounds.bottom - bounds.top - NOTE_GAP_PX);
+      body.visible = onScreen && visibleHeight > 0;
       // A note taken bursts on its key and its card is gone; the key's own light carries on.
       const struck =
         state.statusOf(note.id) === "hit" ||
@@ -280,7 +281,12 @@ export class NotesLayer {
       face.visible = frame.visible;
       glow.visible = frame.visible;
       badge.visible = frame.visible && note.finger !== undefined && state.hints !== false;
-      digit.visible = onScreen && !cards && note.finger !== undefined && state.hints !== false;
+      digit.visible =
+        onScreen &&
+        visibleHeight > 0 &&
+        !cards &&
+        note.finger !== undefined &&
+        state.hints !== false;
       name.visible = false;
       if (!onScreen) continue;
 
@@ -295,10 +301,9 @@ export class NotesLayer {
       const landingY = Math.min(bottom, hitY);
       body.x = keyCentre - barWidth / 2;
       body.width = barWidth;
-      // The tail runs the note's whole length, so lengths compare; the card's glass covers
-      // its head.
-      body.y = bottom - noteHeight;
-      body.height = noteHeight;
+      // Consume duration at the hit line, including the flat view's extra room for hands.
+      body.y = bounds.top;
+      body.height = visibleHeight;
       if (body.texture !== (trail ? this.trailTile : Texture.WHITE)) {
         body.texture = trail ? this.trailTile : Texture.WHITE;
         body.blendMode = trail ? "add" : "normal";
@@ -353,7 +358,7 @@ export class NotesLayer {
       digit.scale.set(Math.min(1, (key.width * (road ? 0.5 : 0.9)) / 40) * labelScale);
       digit.anchor.set(0.5, road ? 0.5 : 1);
       digit.x = labelSpot?.x ?? keyCentre;
-      digit.y = (labelSpot?.y ?? bottom) - 2 * labelScale;
+      digit.y = (labelSpot?.y ?? landingY) - 2 * labelScale;
       digit.alpha = body.alpha;
       if (cards) {
         // The card stands where the note lands; on the road it faces the player and
@@ -400,9 +405,9 @@ export class NotesLayer {
           Math.min(1, (key.width * 0.92) / Math.max(name.texture.width, 1)) * labelScale
         );
         const digitHeight = note.finger === undefined ? 0 : digit.height + 2;
-        name.visible = noteHeight >= digitHeight + name.height + 4;
+        name.visible = visibleHeight >= digitHeight + name.height + 4;
         name.x = labelSpot?.x ?? keyCentre;
-        name.y = (labelSpot?.y ?? bottom) - 2 * labelScale - digitHeight;
+        name.y = (labelSpot?.y ?? landingY) - 2 * labelScale - digitHeight;
         name.alpha = body.alpha;
       }
     }
