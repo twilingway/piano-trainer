@@ -1,25 +1,19 @@
 import { useEffect, useEffectEvent } from "react";
+import { isTypingTarget } from "../input/computerKeyboard";
 
 interface Actions {
   readonly play: () => void;
-  readonly startOver: () => void;
-  readonly openLibrary: () => void;
+  readonly blocked?: boolean;
 }
 
-/** Keys play notes: the shortcuts take Ctrl or Alt, never a lone key or the space bar. */
-export function useShortcuts({ play, startOver, openLibrary }: Actions) {
+/** Alt belongs to flat notes; transport keeps only Ctrl+Space. */
+export function useShortcuts({ play, blocked = false }: Actions) {
   const onShortcut = useEffectEvent((event: KeyboardEvent) => {
-    const pause =
-      (event.ctrlKey && event.code === "Space") || (event.altKey && event.code === "KeyP");
+    if (blocked || event.defaultPrevented || event.repeat || isTypingTarget(event.target)) return;
+    const pause = event.ctrlKey && !event.altKey && !event.metaKey && event.code === "Space";
     if (pause) {
       event.preventDefault();
       play();
-    } else if (event.altKey && event.code === "KeyR") {
-      event.preventDefault();
-      startOver();
-    } else if (event.altKey && event.code === "KeyL") {
-      event.preventDefault();
-      openLibrary();
     }
   });
   useEffect(() => {
