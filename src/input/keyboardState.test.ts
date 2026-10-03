@@ -9,7 +9,13 @@ describe("physical keyboard hold ownership", () => {
     ["extended_range", "KeyQ", true, false, 72],
     ["extended_range", "KeyG", false, true, 59],
     ["bass_chords", "KeyN", true, true, 60],
-    ["bass_chords", "Comma", false, true, 63]
+    ["bass_chords", "Comma", false, true, 63],
+    ["bass_chords", "Digit5", false, false, 57],
+    ["bass_chords", "Digit5", true, false, 58],
+    ["bass_chords", "Digit5", false, true, 56],
+    ["bass_chords", "Digit6", false, false, 59],
+    ["bass_chords", "Digit6", true, false, 60],
+    ["bass_chords", "Digit6", false, true, 58]
   ] as const)(
     "%s %s applies modifiers and releases its attacked pitch",
     (preset, code, shift, alt, pitch) => {

@@ -23,7 +23,8 @@ const expected: Record<KeyboardPreset, string[]> = {
   bass_chords: [
     "Q:48 W:50 E:52 R:53 T:55 Y:72 U:74 I:76 O:77 P:79",
     "A:41 S:43 D:45 F:47 G:48 H:65 J:67 K:69 L:71 Semicolon:72",
-    "Z:36 X:38 C:40 V:41 B:43 N:60 M:62 Comma:64 Period:65 Slash:67"
+    "Z:36 X:38 C:40 V:41 B:43 N:60 M:62 Comma:64 Period:65 Slash:67",
+    "Digit5:57 Digit6:59"
   ]
 };
 
@@ -39,9 +40,11 @@ describe("keyboard preset acceptance table", () => {
         });
       });
     }
-    it(`${preset} has exactly 30 note bindings and the default controls`, () => {
+    it(`${preset} has its expected note count and the default controls`, () => {
       const bindings = presetBindings(preset as KeyboardPreset);
-      expect(Object.values(bindings).filter((binding) => binding.type === "note")).toHaveLength(30);
+      expect(Object.values(bindings).filter((binding) => binding.type === "note")).toHaveLength(
+        preset === "bass_chords" ? 32 : 30
+      );
       expect(bindings.Space).toEqual({ type: "sustain" });
       expect(bindings.ArrowDown).toEqual({ type: "octaveDown" });
       expect(bindings.ArrowUp).toEqual({ type: "octaveUp" });
