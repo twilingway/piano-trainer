@@ -38,8 +38,8 @@ export interface InputDiagnostic {
 
 const NOTHING: ReadonlySet<number> = new Set();
 
-/** Another 25% visual slowdown from eight seconds, preserving the song clock. */
-const LOOK_AHEAD_S = 8 / 0.75;
+/** Two seconds fill the lane: at 114 BPM a quarter spans about 79 px of a 300 px lane. */
+const LOOK_AHEAD_S = 2;
 const SNAPSHOT_INTERVAL_MS = 150;
 
 /** Beat of the latest note that has started by `time`; notes are sorted by start. */
