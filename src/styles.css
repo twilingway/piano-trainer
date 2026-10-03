@@ -13,11 +13,11 @@
   --good: #00ff7b;
   --early: #ffee00;
   --miss: #ff2454;
-  --finger-1: #ff9d00;
-  --finger-2: #ffee00;
-  --finger-3: #00ff7b;
-  --finger-4: #00d9ff;
-  --finger-5: #d900ff;
+  --finger-1: #ff780a;
+  --finger-2: #ffe052;
+  --finger-3: #00e89c;
+  --finger-4: #00baff;
+  --finger-5: #b54cff;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --font-ui: "Manrope", system-ui, sans-serif;
   --font-display: "Russo One", "Manrope", system-ui, sans-serif;

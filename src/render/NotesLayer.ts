@@ -32,7 +32,10 @@ import { ARRIVAL_DURATION_S, arrivalCardAlpha, noteArrivalAge } from "./noteArri
 import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
-export const HAND_COLOR: Readonly<Record<Hand, number>> = { right: 0x00d9ff, left: 0xff9d00 };
+export const HAND_COLOR: Readonly<Record<Hand, number>> = {
+  right: FINGER_COLOR[4],
+  left: FINGER_COLOR[1]
+};
 const MISSED_COLOR = 0xff2454;
 const OCTAVE_LINE = 0x008cff;
 const HIT_LINE = 0x00e5ff;

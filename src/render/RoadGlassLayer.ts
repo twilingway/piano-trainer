@@ -144,7 +144,7 @@ export class RoadGlassLayer {
     }
     entry.wallGeometry.getBuffer("aPosition").update();
     entry.walls.tint = tint;
-    entry.walls.alpha = Math.min(1, alpha);
+    entry.walls.alpha = Math.min(0.65, alpha * 0.65);
     entry.walls.visible = true;
     entry.walls.zIndex = bottom * 2;
     const smoke = entry.smoke;
@@ -181,7 +181,7 @@ export class RoadGlassLayer {
       }
       entry.smokeGeometry.getBuffer("aPosition").update();
       smoke.tint = tint;
-      smoke.alpha = Math.min(0.9, alpha * 0.9);
+      smoke.alpha = Math.min(0.3, alpha * 0.3);
       smoke.zIndex = bottom * 2 + 2;
     }
   }
@@ -256,7 +256,9 @@ export class RoadGlassLayer {
     backing.eventMode = "none";
     const mesh = new Mesh({ geometry, texture: this.texture ?? Texture.WHITE });
     mesh.eventMode = "none";
-    mesh.blendMode = "add";
+    // The face carries the hue; additive fire and walls provide the glow.
+    // Adding the face to its tinted backing clipped orange into yellow.
+    mesh.blendMode = "normal";
     const wallPositions = new Float32Array(24);
     const wallUvs = new Float32Array(24);
     const wallIndices = new Uint32Array(18);
