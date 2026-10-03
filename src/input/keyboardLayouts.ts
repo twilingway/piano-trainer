@@ -11,7 +11,7 @@ export interface KeyboardPrefs {
 }
 export const DEFAULT_KEYBOARD_PREFS: KeyboardPrefs = {
   version: 1,
-  preset: "extended_range",
+  preset: "octave_layout",
   overrides: {}
 };
 export const PRESET_TITLES: Record<KeyboardPreset, string> = {

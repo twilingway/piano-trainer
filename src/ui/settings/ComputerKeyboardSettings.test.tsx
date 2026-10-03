@@ -115,7 +115,7 @@ describe("computer keyboard assignment interactions", () => {
     await key("KeyG");
     const context = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
     await act(async () => {
-      button("G: C4").dispatchEvent(context);
+      button("G: G3").dispatchEvent(context);
       await Promise.resolve();
     });
     expect(context.defaultPrevented).toBe(true);
@@ -125,9 +125,9 @@ describe("computer keyboard assignment interactions", () => {
     expect(events.map((event) => event.type)).toEqual(["down", "up"]);
     await select("Нота и октава", "65");
     await click("Отмена");
-    expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 60 });
+    expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 55 });
     expect(localStorage.getItem("computer-keyboard-v1")).toBeNull();
-    await editNote("G: C4", 65);
+    await editNote("G: G3", 65);
     expect(button("G: F4")).toBeDefined();
     await key("KeyG");
     expect(events.at(-1)).toMatchObject({ type: "down", pitch: 65 });
@@ -136,21 +136,21 @@ describe("computer keyboard assignment interactions", () => {
 
   it("captures a different existing physical key, shows its assignment and only changes the captured key", async () => {
     await mount();
-    await click("G: C4");
+    await click("G: G3");
     await select("Нота и октава", "65");
     await click("Перехватить клавишу");
     expect(button("Сохранить").disabled).toBe(true);
     const captured = await key("KeyP");
     expect(captured.defaultPrevented).toBe(true);
     expect(controls.capturedCode).toBe("KeyP");
-    expect(host.querySelector("[data-keyboard-editor]")?.textContent).toContain("Сейчас: D6.");
+    expect(host.querySelector("[data-keyboard-editor]")?.textContent).toContain("Сейчас: E5.");
     expect(events).toEqual([]);
     expect(host.querySelector<HTMLSelectElement>("select[aria-label='Нота и октава']")?.value).toBe(
-      "86"
+      "76"
     );
     await select("Нота и октава", "65");
     await click("Сохранить");
-    expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 60 });
+    expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 55 });
     expect(controls.bindings.KeyP).toEqual({ type: "note", pitch: 65 });
     await key("KeyP", "keyup");
     await key("KeyP");
@@ -159,7 +159,7 @@ describe("computer keyboard assignment interactions", () => {
 
   it("cancels capture with Escape while leaving the editor draft intact", async () => {
     await mount();
-    await click("G: C4");
+    await click("G: G3");
     await click("Перехватить клавишу");
     await key("Escape");
     expect(controls.capturing).toBe(false);
@@ -171,25 +171,25 @@ describe("computer keyboard assignment interactions", () => {
 
   it("releases editing when settings unmount without disabling subsequent piano input", async () => {
     await mount();
-    await click("G: C4");
+    await click("G: G3");
     await click("Перехватить клавишу");
     expect(controls.options.blocked).toBe(true);
     await mount(false);
     expect(controls.options.blocked).toBe(false);
     expect(controls.capturing).toBe(false);
     await key("KeyG");
-    expect(events.at(-1)).toMatchObject({ type: "down", pitch: 60 });
+    expect(events.at(-1)).toMatchObject({ type: "down", pitch: 55 });
   });
 
   it("retains independent presets through reset and reload", async () => {
     await mount();
-    await editNote("G: C4", 65);
+    await editNote("G: G3", 65);
     await select("Раскладка компьютера", "bass_chords");
     expect(button("G: C3")).toBeDefined();
     await editNote("G: C3", 66);
     await click("Сбросить эту раскладку");
     expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 48 });
-    await select("Раскладка компьютера", "extended_range");
+    await select("Раскладка компьютера", "octave_layout");
     expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 65 });
     await act(async () => {
       root.unmount();
@@ -197,7 +197,7 @@ describe("computer keyboard assignment interactions", () => {
     });
     root = createRoot(host);
     await mount();
-    expect(controls.prefs.preset).toBe("extended_range");
+    expect(controls.prefs.preset).toBe("octave_layout");
     expect(button("G: F4")).toBeDefined();
     await select("Раскладка компьютера", "bass_chords");
     expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 48 });
@@ -212,7 +212,7 @@ describe("computer keyboard assignment interactions", () => {
         throw new Error("quota");
       }
     });
-    await editNote("G: C4", 65);
+    await editNote("G: G3", 65);
     expect(host.querySelector("[role='alert']")?.textContent).toContain(
       "Не удалось сохранить раскладку"
     );
@@ -223,7 +223,7 @@ describe("computer keyboard assignment interactions", () => {
 
   it("initializes a captured Space editor with its sustain assignment", async () => {
     await mount();
-    await click("G: C4");
+    await click("G: G3");
     await click("Перехватить клавишу");
     await key("Space");
     expect(host.querySelector<HTMLSelectElement>("select[aria-label='Назначение']")?.value).toBe(
@@ -232,12 +232,12 @@ describe("computer keyboard assignment interactions", () => {
     expect(host.querySelector("select[aria-label='Нота и октава']")).toBeNull();
     await click("Сохранить");
     expect(controls.bindings.Space).toEqual({ type: "sustain" });
-    expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 60 });
+    expect(controls.bindings.KeyG).toEqual({ type: "note", pitch: 55 });
   });
 
   it("blocks Ctrl+Space on the editor close button and resumes shortcuts after closing", async () => {
     await mount();
-    await click("G: C4");
+    await click("G: G3");
     const close = button("Закрыть");
     const pause = new KeyboardEvent("keydown", {
       code: "Space",

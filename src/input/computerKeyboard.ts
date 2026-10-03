@@ -1,6 +1,6 @@
 import { KeyboardState } from "./keyboardState";
 import type { KeyboardAction } from "./keyboardState";
-import { isAssignableCode, presetBindings } from "./keyboardLayouts";
+import { DEFAULT_KEYBOARD_PREFS, isAssignableCode, presetBindings } from "./keyboardLayouts";
 import type { KeyboardBindings } from "./keyboardLayouts";
 import type { MidiEvent } from "./midiInput";
 
@@ -22,7 +22,7 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 export function listenToComputerKeyboard(
   onEvent: (event: MidiEvent) => void,
-  options: KeyboardInputOptions = { bindings: presetBindings("extended_range") }
+  options: KeyboardInputOptions = { bindings: presetBindings(DEFAULT_KEYBOARD_PREFS.preset) }
 ): () => void {
   const state = new KeyboardState();
   const emit = (actions: KeyboardAction[], timestamp: number) => {

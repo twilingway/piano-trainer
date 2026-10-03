@@ -47,8 +47,8 @@ describe("keyboard preset acceptance table", () => {
       expect(bindings.ArrowUp).toEqual({ type: "octaveUp" });
     });
   }
-  it("uses extended range by default with 30 unique pitches", () => {
-    expect(DEFAULT_KEYBOARD_PREFS.preset).toBe("extended_range");
+  it("uses octave layout by default and keeps extended range's 30 unique pitches", () => {
+    expect(DEFAULT_KEYBOARD_PREFS.preset).toBe("octave_layout");
     const pitches = Object.values(presetBindings("extended_range"))
       .filter((binding) => binding.type === "note")
       .map((binding) => binding.pitch);
