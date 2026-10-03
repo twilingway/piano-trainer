@@ -25,11 +25,11 @@ describe("physical keyboard hold ownership", () => {
   it("keeps a shared pitch until the final physical key is released", () => {
     const state = new KeyboardState();
     const bindings = presetBindings("octave_layout");
-    expect(state.press("KeyA", bindings, natural)).toEqual([{ type: "down", pitch: 60 }]);
+    expect(state.press("KeyA", bindings, natural)).toEqual([{ type: "down", pitch: 48 }]);
     expect(state.press("Comma", bindings, natural)).toEqual([]);
     expect(state.release("KeyA")).toEqual([]);
     expect(state.has("Comma")).toBe(true);
-    expect(state.release("Comma")).toEqual([{ type: "up", pitch: 60 }]);
+    expect(state.release("Comma")).toEqual([{ type: "up", pitch: 48 }]);
   });
 
   it("ignores autorepeat and retains the pitch if modifiers or bindings change", () => {
@@ -78,12 +78,12 @@ describe("physical keyboard hold ownership", () => {
     state.press("Comma", bindings, natural);
     state.press("ArrowUp", bindings, natural);
     expect(state.clear()).toEqual([
-      { type: "up", pitch: 60 },
+      { type: "up", pitch: 48 },
       { type: "pedal", down: false }
     ]);
     expect(state.clear()).toEqual([]);
     expect(state.release("Comma")).toEqual([]);
-    expect(state.press("KeyA", bindings, natural)).toEqual([{ type: "down", pitch: 60 }]);
+    expect(state.press("KeyA", bindings, natural)).toEqual([{ type: "down", pitch: 48 }]);
   });
 
   it("ignores disabled and unassigned keys", () => {

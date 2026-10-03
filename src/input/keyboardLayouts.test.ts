@@ -16,9 +16,9 @@ const expected: Record<KeyboardPreset, string[]> = {
     "Z:36 X:38 C:40 V:41 B:43 N:45 M:47 Comma:48 Period:50 Slash:52"
   ],
   octave_layout: [
-    "Q:72 W:74 E:76 R:77 T:79 Y:81 U:83 I:84 O:86 P:88",
-    "A:60 S:62 D:64 F:65 G:67 H:69 J:71 K:72 L:74 Semicolon:76",
-    "Z:48 X:50 C:52 V:53 B:55 N:57 M:59 Comma:60 Period:62 Slash:64"
+    "Q:60 W:62 E:64 R:65 T:67 Y:69 U:71 I:72 O:74 P:76",
+    "A:48 S:50 D:52 F:53 G:55 H:57 J:59 K:60 L:62 Semicolon:64",
+    "Z:36 X:38 C:40 V:41 B:43 N:45 M:47 Comma:48 Period:50 Slash:52"
   ],
   bass_chords: [
     "Q:48 W:50 E:52 R:53 T:55 Y:72 U:74 I:76 O:77 P:79",

@@ -135,10 +135,10 @@ describe("browser computer keyboard input", () => {
     send("keydown", "KeyA", { repeat: true, shiftKey: true });
     send("keydown", "Comma");
     send("keyup", "KeyA");
-    expect(events).toEqual([expect.objectContaining({ type: "down", pitch: 60 })]);
+    expect(events).toEqual([expect.objectContaining({ type: "down", pitch: 48 })]);
     send("keyup", "Comma");
     expect(events).toHaveLength(2);
-    expect(events[1]).toMatchObject({ type: "up", pitch: 60 });
+    expect(events[1]).toMatchObject({ type: "up", pitch: 48 });
   });
 
   it.each(["blur", "hidden", "dispose"])("clears notes and pedal on %s", (trigger) => {

@@ -9,7 +9,7 @@
 | Пресет         | Q W E R T Y U I O P           | A S D F G H J K L ;           | Z X C V B N M , . /           |
 | -------------- | ----------------------------- | ----------------------------- | ----------------------------- |
 | extended_range | B4 C5 D5 E5 F5 G5 A5 B5 C6 D6 | F3 G3 A3 B3 C4 D4 E4 F4 G4 A4 | C2 D2 E2 F2 G2 A2 B2 C3 D3 E3 |
-| octave_layout  | C5 D5 E5 F5 G5 A5 B5 C6 D6 E6 | C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 | C3 D3 E3 F3 G3 A3 B3 C4 D4 E4 |
+| octave_layout  | C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 | C3 D3 E3 F3 G3 A3 B3 C4 D4 E4 | C2 D2 E2 F2 G2 A2 B2 C3 D3 E3 |
 | bass_chords    | C3 D3 E3 F3 G3 C5 D5 E5 F5 G5 | F2 G2 A2 B2 C3 F4 G4 A4 B4 C5 | C2 D2 E2 F2 G2 C4 D4 E4 F4 G4 |
 
 #### Scenario: Полный диапазон
@@ -88,8 +88,8 @@ SHALL восстанавливать только выбранный пресе�
 
 #### Scenario: Общая нота двух клавиш
 
-- **WHEN** в octave_layout одновременно удерживаются A и Comma (C4), затем A отпущена
-- **THEN** C4 продолжает звучать и считаться удержанной до отпускания Comma
+- **WHEN** в octave_layout одновременно удерживаются A и Comma (C3), затем A отпущена
+- **THEN** C3 продолжает звучать и считаться удержанной до отпускания Comma
 
 #### Scenario: Модификатор отпущен раньше
 
