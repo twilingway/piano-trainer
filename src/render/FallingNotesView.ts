@@ -336,8 +336,13 @@ export class FallingNotesView {
     this.panSnap = true;
   }
 
-  draw(state: FrameState): void {
+  draw(frame: FrameState): void {
     if (!this.ready || !this.notesLayer || !this.keyboard) return;
+    // A wider time window halves road speed and hold length without changing song time.
+    const state =
+      this.roadMode && this.keyStyle === "perspective"
+        ? { ...frame, lookAhead: frame.lookAhead * 2 }
+        : frame;
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
