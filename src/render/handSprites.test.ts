@@ -72,6 +72,71 @@ describe("fitPose", () => {
     expect(fit?.x).toBeCloseTo(200);
   });
 
+  it.each(["right", "left"] as const)("stretches a %s hand onto a wider chord", (hand) => {
+    const direction = hand === "right" ? 1 : -1;
+    const targets = new Map<Finger, number>([
+      [1, 200],
+      [5, 200 + direction * 88]
+    ]);
+    const fit = fitPose([five], hand, targets, 20, 100);
+    expect(fit).toBeDefined();
+    if (!fit) return;
+    for (const [finger, x] of targets) {
+      expect(fit.x + five.tips[finger].x * fit.scaleX).toBeCloseTo(x);
+    }
+    expect(Math.abs(fit.scaleX)).toBeCloseTo(0.22);
+  });
+
+  it("limits stretching for an unreachable chord rather than distorting the hand", () => {
+    const fit = fitPose(
+      [five],
+      "right",
+      new Map([
+        [1, 100],
+        [5, 500]
+      ]),
+      20,
+      100
+    );
+    expect(fit?.scaleX).toBeCloseTo(0.24);
+    expect(fit?.miss).toBeGreaterThan(0);
+  });
+
+  it("anchors the only active fingertip exactly in both axes", () => {
+    const drawn = { ...five, tips: { ...five.tips, 1: { x: 100, y: 300 } } };
+    const fit = fitPose([drawn], "right", new Map([[1, 150]]), 20, 100, new Map([[1, 250]]));
+    expect(fit).toBeDefined();
+    if (!fit) return;
+    expect(fit.x + drawn.tips[1].x * fit.scaleX).toBeCloseTo(150);
+    expect(fit.y + drawn.tips[1].y * fit.scaleY).toBeCloseTo(250);
+  });
+
+  it("compresses a chord vertically and never drops active fingertips below their keys", () => {
+    const drawn = { ...five, tips: { ...five.tips, 1: { x: 0, y: 300 }, 5: { x: 400, y: 100 } } };
+    const ys = new Map<Finger, number>([
+      [1, 250],
+      [5, 250]
+    ]);
+    const fit = fitPose(
+      [drawn],
+      "right",
+      new Map([
+        [1, 100],
+        [5, 180]
+      ]),
+      20,
+      100,
+      ys
+    );
+    expect(fit).toBeDefined();
+    if (!fit) return;
+    expect(fit.scaleY).toBeCloseTo(0.16);
+    for (const [finger, y] of ys) {
+      expect(fit.y + drawn.tips[finger].y * fit.scaleY).toBeLessThanOrEqual(y);
+    }
+    expect(fit.y + drawn.tips[1].y * fit.scaleY).toBeCloseTo(250);
+  });
+
   it("prefers a pose that presses the placed fingers over one that only lies near", () => {
     // Same tips, only which fingers press differs: the one pressing 1 and 5 wins.
     const lying = pose("lying", [0, 100, 200, 300, 400], [2, 3, 4]);
@@ -102,6 +167,9 @@ describe("fitPose", () => {
     expect(fitPose(poses, "right", new Map([[1, Infinity]]), 20, 100)).toBeUndefined();
     expect(fitPose(poses, "right", new Map([[1, 110]]), Infinity, 100)).toBeUndefined();
     expect(fitPose(poses, "right", new Map([[1, 110]]), 20, Infinity)).toBeUndefined();
+    expect(
+      fitPose(poses, "right", new Map([[1, 110]]), 20, 100, new Map([[1, NaN]]))
+    ).toBeUndefined();
   });
 
   it("skips invalid calibration and measured fingertips rather than returning NaN", () => {

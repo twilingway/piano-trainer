@@ -24,13 +24,14 @@ const MOVE_SMOOTHING_S = 0.12;
 const CHANGE_S = 0.18;
 const PULSE_HZ = 2.5;
 const TIP_RADIUS = 0.22;
-const CHORD_DROP_KEYS = 0.5;
 
 interface Picture {
   readonly mesh: PerspectiveMesh;
   definition?: HandSpriteDefinition;
   x: number;
   y: number;
+  scaleX: number;
+  scaleY: number;
 }
 interface Visual {
   readonly pictures: readonly [Picture, Picture];
@@ -58,7 +59,7 @@ export class HandsLayer {
         mesh.eventMode = "none";
         mesh.visible = false;
         this.container.addChild(mesh);
-        return { mesh, x: 0, y: 0 };
+        return { mesh, x: 0, y: 0, scaleX: 1, scaleY: 1 };
       }) as [Picture, Picture];
       const markers = new Map<Finger, Sprite>();
       for (const finger of [1, 2, 3, 4, 5] as const) {
@@ -138,7 +139,10 @@ export class HandsLayer {
       const pose = easePose(this.poses.get(hand), target, deltaSeconds, MOVE_SMOOTHING_S);
       this.poses.set(hand, pose);
       const targets = new Map([...target.down].map((finger) => [finger, target.tips[finger].x]));
-      const fit = fitPose(available, hand, targets, geometry.whiteWidth, 1);
+      const targetYs = new Map(
+        [...target.down].map((finger) => [finger, tipY(target.tips[finger], geometry)])
+      );
+      const fit = fitPose(available, hand, targets, geometry.whiteWidth, 1, targetYs);
       const chosen = fit && available.find((definition) => definition.id === fit.pose.id);
       if (
         fit &&
@@ -152,7 +156,9 @@ export class HandsLayer {
         picture.definition = chosen;
         picture.mesh.texture = this.textures.get(fit.pose.id) ?? Texture.WHITE;
         picture.x = fit.x;
-        picture.y = fitY(picture.definition, target, geometry, fit.scaleY);
+        picture.y = fit.y;
+        picture.scaleX = fit.scaleX;
+        picture.scaleY = fit.scaleY;
         visual.blend = hadPicture ? 0 : 1;
       }
       visual.blend = Math.min(1, visual.blend + deltaSeconds / CHANGE_S);
@@ -163,15 +169,23 @@ export class HandsLayer {
         picture.mesh.visible = opacity > 0;
         if (!picture.mesh.visible) continue;
         picture.mesh.alpha = opacity * HAND_ALPHA;
-        const placed = fitPose([picture.definition], hand, targets, geometry.whiteWidth, 1);
-        const scale = geometry.whiteWidth / picture.definition.pixelsPerKey;
+        const placed = fitPose(
+          [picture.definition],
+          hand,
+          targets,
+          geometry.whiteWidth,
+          1,
+          targetYs
+        );
         if (placed) {
           const share = 1 - Math.exp(-deltaSeconds / MOVE_SMOOTHING_S);
           picture.x += (placed.x - picture.x) * share;
-          picture.y += (fitY(picture.definition, target, geometry, scale) - picture.y) * share;
+          picture.y += (placed.y - picture.y) * share;
+          picture.scaleX += (placed.scaleX - picture.scaleX) * share;
+          picture.scaleY += (placed.scaleY - picture.scaleY) * share;
         }
-        const w = picture.mesh.texture.width * scale * (hand === "right" ? 1 : -1);
-        const h = picture.mesh.texture.height * scale;
+        const w = picture.mesh.texture.width * picture.scaleX;
+        const h = picture.mesh.texture.height * picture.scaleY;
         const a = project(picture.x, picture.y);
         const b = project(picture.x + w, picture.y);
         const c = project(picture.x + w, picture.y + h);
@@ -213,26 +227,6 @@ function tipY(tip: Tip, geometry: HandsGeometry): number {
   const white = keyboardTop + blackHeight + (keyboardHeight - blackHeight) * 0.45;
   const black = keyboardTop + blackHeight * 0.72;
   return white + (black - white) * tip.reach;
-}
-
-function fitY(
-  definition: HandSpriteDefinition | undefined,
-  pose: HandPose,
-  geometry: HandsGeometry,
-  scale: number
-): number {
-  if (!definition || pose.down.size === 0) return geometry.keyboardTop;
-  // The frontmost active pad anchors the whole hand; averaging would put a short thumb off the keys.
-  let anchor: Finger | undefined;
-  for (const finger of pose.down) {
-    if (anchor === undefined || definition.tips[finger].y > definition.tips[anchor].y)
-      anchor = finger;
-  }
-  return anchor === undefined
-    ? geometry.keyboardTop
-    : tipY(pose.tips[anchor], geometry) -
-        definition.tips[anchor].y * scale +
-        (pose.down.size > 1 ? geometry.whiteWidth * CHORD_DROP_KEYS : 0);
 }
 
 /** Static wrist fade is baked once, so no mask/filter is evaluated every frame. */
