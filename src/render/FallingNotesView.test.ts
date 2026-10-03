@@ -7,12 +7,14 @@ import type { SongNote } from "../song/song";
 import { FallingNotesView } from "./FallingNotesView";
 import type { FrameState } from "./FallingNotesView";
 import { NotesLayer } from "./NotesLayer";
+import type { FlatNoteBlocks } from "./FlatNoteBlocks";
 import type { KeyboardLayer } from "./KeyboardLayer";
 import type { FxLayer } from "./FxLayer";
 import { RoadLayer } from "./RoadLayer";
 import { worldCamera } from "./worldCamera";
 
 function notesHarness(songNotes: readonly SongNote[] = notes) {
+  const flatDraw = vi.fn<FlatNoteBlocks["draw"]>();
   const digitTexture = new Texture({ source: new TextureSource({ width: 24, height: 40 }) });
   const nameTexture = new Texture({ source: new TextureSource({ width: 52, height: 22 }) });
   const sprites = songNotes.map((note) => ({
@@ -33,7 +35,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     guides: new Container(),
     beatBars: new Container(),
     lane: new Container(),
-    flatBlocks: { begin: vi.fn(), draw: vi.fn(), end: vi.fn() },
+    flatBlocks: { begin: vi.fn(), draw: flatDraw, end: vi.fn() },
     repeated: new Set<string>(),
     beats: [],
     neonFrames: [],
@@ -53,7 +55,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     },
     notes: sprites
   }) as unknown as NotesLayer;
-  return { layer, sprites };
+  return { layer, sprites, flatDraw };
 }
 
 const notes: SongNote[] = [
@@ -65,7 +67,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
   const keyboardDraw = vi.fn<KeyboardLayer["draw"]>();
   const effectsDraw = vi.fn<FxLayer["draw"]>();
   const roadDraw = vi.fn<RoadLayer["draw"]>();
-  const { layer, sprites } = notesHarness(songNotes);
+  const { layer, sprites, flatDraw } = notesHarness(songNotes);
   // Exercise frame wiring with real draw(), substituting only the GPU-backed layers.
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
     ready: true,
@@ -96,10 +98,41 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
     wasSounding: new Set<number>()
   }) as unknown as FallingNotesView;
   const notesDraw = vi.spyOn(layer, "draw");
-  return { view, keyboardDraw, effectsDraw, roadDraw, sprites, notesDraw, layer };
+  return { view, keyboardDraw, effectsDraw, roadDraw, sprites, flatDraw, notesDraw, layer };
 }
 
 describe("accompaniment fire independent of key colours", () => {
+  it("keeps a struck hold and its label bright until its duration is consumed", () => {
+    const note: SongNote = {
+      id: "hold",
+      pitch: 72,
+      hand: "right",
+      finger: 1,
+      start: 1,
+      startBeat: 1,
+      duration: 2
+    };
+    const { view, sprites, flatDraw } = viewHarness(false, [note]);
+    const frame: FrameState = {
+      time: 0.9,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(["right"])
+    };
+    view.draw(frame);
+    const before = flatDraw.mock.lastCall?.[5];
+    view.draw({ ...frame, time: 1.2, statusOf: () => "hit", pressed: new Set([72]) });
+    expect(before).toBe(1);
+    expect(flatDraw.mock.lastCall?.[5]).toBe(before);
+    expect(sprites[0]?.digit.alpha).toBe(1);
+    flatDraw.mockClear();
+    view.draw({ ...frame, time: 3.1, statusOf: () => "hit" });
+    expect(flatDraw).not.toHaveBeenCalled();
+    expect(sprites[0]?.digit.visible).toBe(false);
+  });
   it.each([false, true])("shows the original road geometry earlier with cards=%s", (cards) => {
     const note: SongNote = {
       id: "early",

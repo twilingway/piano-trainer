@@ -1,46 +1,33 @@
-import { Container, NineSliceSprite, Texture } from "pixi.js";
+﻿import { Container, NineSliceSprite, Texture } from "pixi.js";
+import { bakeNoteMaterial, NOTE_BLOOM_MARGIN } from "./bakeNoteMaterial";
 
-/** Arcadia's card tube is stretched by its middle, preserving the rounded ends. */
+interface NoteBlock {
+  fill: NineSliceSprite;
+  emission: NineSliceSprite;
+  bloom: NineSliceSprite;
+  bevel: NineSliceSprite;
+}
+
+/** Glass colour, luminous core and bloom are independent baked layers. */
 export class FlatNoteBlocks {
-  readonly container = new Container();
-  private readonly fill: Texture;
-  private readonly rim: Texture;
-  private readonly pool: { fill: NineSliceSprite; neon: NineSliceSprite; rim: NineSliceSprite }[] =
-    [];
+  readonly container = new Container({ sortableChildren: true });
+  private readonly textures: Record<keyof NoteBlock, Texture>;
+  private readonly pool: NoteBlock[] = [];
   private used = 0;
 
   constructor() {
-    const canvas = document.createElement("canvas");
-    canvas.width = 64;
-    canvas.height = 84;
-    const context = canvas.getContext("2d");
-    if (context) {
-      const gradient = context.createLinearGradient(0, 0, 64, 0);
-      gradient.addColorStop(0, "#ffffff");
-      gradient.addColorStop(0.3, "#a6a6a6");
-      gradient.addColorStop(0.7, "#d1d1d1");
-      gradient.addColorStop(1, "#ffffff");
-      context.fillStyle = gradient;
-      context.beginPath();
-      context.roundRect(2, 2, 60, 80, 8);
-      context.fill();
-      context.strokeStyle = "white";
-      context.lineWidth = 2;
-      context.stroke();
-    }
-    this.fill = Texture.from(canvas);
-    const rimCanvas = document.createElement("canvas");
-    rimCanvas.width = 64;
-    rimCanvas.height = 84;
-    const rimContext = rimCanvas.getContext("2d");
-    if (rimContext) {
-      rimContext.strokeStyle = "white";
-      rimContext.lineWidth = 2.4;
-      rimContext.beginPath();
-      rimContext.roundRect(2, 2, 60, 80, 8);
-      rimContext.stroke();
-    }
-    this.rim = Texture.from(rimCanvas);
+    const material = bakeNoteMaterial((width, height) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    });
+    this.textures = {
+      fill: Texture.from(material.face),
+      emission: Texture.from(material.emission),
+      bloom: Texture.from(material.bloom),
+      bevel: Texture.from(material.bevel)
+    };
     this.container.eventMode = "none";
   }
 
@@ -48,78 +35,79 @@ export class FlatNoteBlocks {
     this.used = 0;
   }
 
-  draw(
-    x: number,
-    top: number,
-    width: number,
-    height: number,
-    tint: number,
-    alpha: number,
-    neon: Texture
-  ): void {
+  draw(x: number, top: number, width: number, height: number, tint: number, alpha: number): void {
     if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height)) return;
     let item = this.pool[this.used++];
     if (!item) {
-      const fill = new NineSliceSprite({
-        texture: this.fill,
-        leftWidth: 12,
-        rightWidth: 12,
-        topHeight: 12,
-        bottomHeight: 12
-      });
-      const glow = new NineSliceSprite({
-        texture: neon,
-        leftWidth: 34,
-        rightWidth: 34,
-        topHeight: 34,
-        bottomHeight: 34
-      });
-      glow.blendMode = "add";
-      const rim = new NineSliceSprite({
-        texture: this.rim,
-        leftWidth: 12,
-        rightWidth: 12,
-        topHeight: 12,
-        bottomHeight: 12
-      });
-      rim.blendMode = "add";
-      item = { fill, neon: glow, rim };
+      const layer = (texture: Texture, zIndex: number, margin = 0) => {
+        const sprite = new NineSliceSprite({
+          texture,
+          leftWidth: 12 + margin,
+          rightWidth: 12 + margin,
+          topHeight: 12 + margin,
+          bottomHeight: 12 + margin
+        });
+        sprite.zIndex = zIndex;
+        if (zIndex !== 1) sprite.blendMode = "add";
+        return sprite;
+      };
+      item = {
+        fill: layer(this.textures.fill, 1),
+        emission: layer(this.textures.emission, 2),
+        bloom: layer(this.textures.bloom, 0, NOTE_BLOOM_MARGIN),
+        bevel: layer(this.textures.bevel, 3)
+      };
       this.pool.push(item);
-      this.container.addChild(fill, glow, rim);
+      // Every halo stays below every face, including neighbouring and repeated notes.
+      this.container.addChild(item.fill, item.emission, item.bloom, item.bevel);
     }
-    // Scale the corners with key width; short notes reduce them rather than overlap caps.
     const scale = Math.min(1, width / 64, height / 24);
-    const margin = 22 * scale;
-    item.fill.visible = item.neon.visible = true;
-    item.rim.visible = true;
-    item.fill.tint = item.neon.tint = tint;
-    item.fill.alpha = alpha;
-    // Keep the halo from clipping the fill's channels and erasing its hue.
-    item.neon.alpha = alpha * 0.3;
-    item.rim.tint = 0xf0fbff;
-    item.rim.alpha = alpha;
-    item.fill.scale.set(scale);
-    item.neon.scale.set(scale);
-    item.rim.scale.set(scale);
-    item.fill.position.set(x - width / 2, top);
-    item.fill.setSize(width / scale, height / scale);
-    item.rim.position.copyFrom(item.fill.position);
-    item.rim.setSize(width / scale, height / scale);
-    item.neon.texture = neon;
-    item.neon.position.set(x - width / 2 - margin, top - margin);
-    item.neon.setSize(width / scale + 44, height / scale + 44);
+    // Reuse each layer without allocations in the animation loop.
+    this.placeFace(item.fill, x, top, width, height, scale, tint, alpha);
+    this.placeFace(item.emission, x, top, width, height, scale, tint, alpha);
+    this.placeFace(item.bevel, x, top, width, height, scale, 0xffffff, alpha);
+    // A short note still emits a halo of the same radius as its key's other notes.
+    const bloomScale = Math.min(1, width / 64);
+    const margin = NOTE_BLOOM_MARGIN * bloomScale;
+    item.bloom.visible = true;
+    item.bloom.tint = tint;
+    item.bloom.alpha = alpha;
+    item.bloom.scale.set(bloomScale);
+    item.bloom.position.set(x - width / 2 - margin, top - margin);
+    item.bloom.setSize(
+      width / bloomScale + NOTE_BLOOM_MARGIN * 2,
+      height / bloomScale + NOTE_BLOOM_MARGIN * 2
+    );
   }
 
   end(): void {
     for (let index = this.used; index < this.pool.length; index++) {
       const item = this.pool[index];
-      if (item) item.fill.visible = item.neon.visible = item.rim.visible = false;
+      if (item)
+        item.fill.visible = item.emission.visible = item.bloom.visible = item.bevel.visible = false;
     }
+  }
+
+  private placeFace(
+    sprite: NineSliceSprite,
+    x: number,
+    top: number,
+    width: number,
+    height: number,
+    scale: number,
+    tint: number,
+    alpha: number
+  ): void {
+    sprite.visible = true;
+    sprite.tint = tint;
+    sprite.alpha = alpha;
+    sprite.scale.set(scale);
+    sprite.position.set(x - width / 2, top);
+    sprite.setSize(width / scale, height / scale);
   }
 
   destroy(): void {
     this.container.destroy({ children: true });
-    this.fill.destroy(true);
-    this.rim.destroy(true);
+    for (const texture of Object.values(this.textures)) texture.destroy(true);
   }
 }

@@ -33,8 +33,8 @@ import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
 export const HAND_COLOR: Readonly<Record<Hand, number>> = {
-  right: FINGER_COLOR[4],
-  left: FINGER_COLOR[1]
+  right: FINGER_COLOR[3],
+  left: FINGER_COLOR[4]
 };
 const MISSED_COLOR = 0xff2454;
 const OCTAVE_LINE = 0x008cff;
@@ -354,7 +354,8 @@ export class NotesLayer {
       const own = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       const cardAlpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
-      body.alpha = road !== undefined ? 1 : cardAlpha;
+      const blockAlpha = custom !== undefined || playerNote ? 1 : 0.82;
+      body.alpha = road !== undefined ? 1 : cards ? cardAlpha : blockAlpha;
       const age = noteArrivalAge(note.start, state.time, state.lookAhead);
       const arrivalAlpha = road?.arrivalEffectsReady ? arrivalCardAlpha(age) : 1;
       if (road && age >= 0 && age < ARRIVAL_DURATION_S) {
@@ -369,17 +370,13 @@ export class NotesLayer {
       }
       body.alpha *= arrivalAlpha;
       if (flat && visibleHeight > 0) {
-        const neon = this.neonFrames;
-        const texture =
-          neon[Math.floor(state.time * CARD_NEON_FRAME.fps) % neon.length] ?? this.cardGlow;
         this.flatBlocks.draw(
           keyCentre,
           bodyBounds.top,
           key.width * 0.84,
           visibleHeight,
           body.tint,
-          custom !== undefined ? 1 : !playerNote ? 0.82 : status === "hit" ? 0.75 : 1,
-          texture
+          body.alpha
         );
         body.visible = false;
       }

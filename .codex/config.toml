@@ -2,3 +2,17 @@
 enabled = true
 max_concurrent_threads_per_session = 3
 interrupt_message = true
+
+[mcp_servers.playwright]
+command = "node"
+args = ["node_modules/@playwright/mcp/cli.js", "--browser", "chrome", "--isolated", "--output-dir", ".browser-artifacts"]
+cwd = 'E:\MySource\ReactJS\piano-trainer'
+startup_timeout_sec = 60
+tool_timeout_sec = 60
+
+[mcp_servers.chrome-devtools]
+command = "node"
+args = ["node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js", "--isolated", "--no-usage-statistics", "--no-performance-crux", "--workspace", "."]
+cwd = 'E:\MySource\ReactJS\piano-trainer'
+startup_timeout_sec = 60
+tool_timeout_sec = 60
