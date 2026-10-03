@@ -279,6 +279,7 @@ export class KeyboardLayer {
       (blackHeight - digitRoom - blackBevel) / BLACK_STICKER.height
     );
 
+    const whiteGap = this.painted && this.style === "arcade" ? 0.4 : 1;
     for (const [pitch, sprite] of this.keySprites) {
       const key = keys.get(pitch);
       const sticker = this.stickerSprites.get(pitch);
@@ -287,9 +288,9 @@ export class KeyboardLayer {
       if (!key) continue;
       this.placeKey(
         sprite,
-        key.x + (key.black ? 0 : 0.5),
+        key.x + (key.black ? 0 : whiteGap / 2),
         keyboardTop,
-        key.width - (key.black ? 0 : 1),
+        key.width - (key.black ? 0 : whiteGap),
         key.black ? blackHeight : keyboardHeight
       );
       if (!sticker) continue;
@@ -427,8 +428,10 @@ export class KeyboardLayer {
       return;
     }
     const scale = width / sprite.texture.width;
-    sprite.scale.set(scale);
-    sprite.setSize(sprite.texture.width, height / scale);
+    // Stretch the centre horizontally to keep arcade rims thin at every key width.
+    const centreStretch = this.style === "arcade" ? 2 : 1;
+    sprite.scale.set(scale / centreStretch, scale);
+    sprite.setSize(sprite.texture.width * centreStretch, height / scale);
   }
 
   /** Key faces at this keyboard's size; the old ones are freed once replaced. */
