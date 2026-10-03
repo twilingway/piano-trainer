@@ -61,6 +61,7 @@ const PAN_SMOOTHING_S = 0.35;
 const PAN_LOOK_AHEAD = 0.6;
 /** Keys the scroll considers at most, earliest first. */
 const PAN_NOTES = 24;
+const NO_SOUNDING_KEYS: ReadonlySet<number> = new Set();
 
 /**
  * The Synthesia-style picture: notes fall onto a keyboard, each carrying the
@@ -339,10 +340,13 @@ export class FallingNotesView {
   draw(frame: FrameState): void {
     if (!this.ready || !this.notesLayer || !this.keyboard) return;
     // A wider time window halves road speed and hold length without changing song time.
-    const state =
-      this.roadMode && this.keyStyle === "perspective"
-        ? { ...frame, lookAhead: frame.lookAhead * 2 }
-        : frame;
+    const state = {
+      ...frame,
+      lookAhead:
+        this.roadMode && this.keyStyle === "perspective" ? frame.lookAhead * 2 : frame.lookAhead,
+      // Accompaniment stays audible, but only the practiced hands light up the keys.
+      sounding: frame.hands.size === 0 ? frame.sounding : NO_SOUNDING_KEYS
+    };
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
