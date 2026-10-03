@@ -24,6 +24,7 @@ const MOVE_SMOOTHING_S = 0.12;
 const CHANGE_S = 0.18;
 const PULSE_HZ = 2.5;
 const TIP_RADIUS = 0.22;
+const CHORD_DROP_KEYS = 0.5;
 
 interface Picture {
   readonly mesh: PerspectiveMesh;
@@ -230,7 +231,9 @@ function fitY(
   }
   return anchor === undefined
     ? geometry.keyboardTop
-    : tipY(pose.tips[anchor], geometry) - definition.tips[anchor].y * scale;
+    : tipY(pose.tips[anchor], geometry) -
+        definition.tips[anchor].y * scale +
+        (pose.down.size > 1 ? geometry.whiteWidth * CHORD_DROP_KEYS : 0);
 }
 
 /** Static wrist fade is baked once, so no mask/filter is evaluated every frame. */
