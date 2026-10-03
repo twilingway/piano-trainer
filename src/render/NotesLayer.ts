@@ -283,17 +283,12 @@ export class NotesLayer {
         NOTE_GAP_PX,
         4
       );
-      if (this.repeated.has(note.id) && bounds.top > 0) {
-        const centre = key ? key.x + key.width / 2 : 0;
+      if (onScreen && key && this.repeated.has(note.id) && bounds.top > 0) {
+        const centre = key.x + key.width / 2;
         const spot = road?.notePlace(centre, bounds.top);
         const next = road?.notePlace(centre, bounds.top + 1);
         const slope = spot && next ? next.y - spot.y : 1;
-        const gap = repeatGap(
-          bounds.bottom - bounds.top,
-          key?.width ?? 44,
-          slope,
-          spot?.scale ?? 1
-        );
+        const gap = repeatGap(bounds.bottom - bounds.top, key.width, slope, spot?.scale ?? 1);
         bounds.top += gap;
         bodyBounds.top += Math.min(gap, Math.max(0, bodyBounds.bottom - bodyBounds.top) * 0.25);
       }
