@@ -103,7 +103,7 @@ export class NotesLayer {
    * where the notes are, on the road they stand upright where the notes land.
    */
   readonly cards = new Container({ sortableChildren: true });
-  /** Notes crossing the hit line in the last frame drawn, by pitch. */
+  /** Practiced notes crossing the hit line, or all notes when listening, by pitch. */
   readonly playing = new Map<number, SongNote>();
   /** Notes coming over the road's horizon in the last frame drawn, with their flash. */
   readonly arrivals: Arrival[] = [];
@@ -265,7 +265,11 @@ export class NotesLayer {
     // On the road the glass follows the note until its duration has elapsed.
     const trail = road !== undefined && cards;
     for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
-      if (note.start <= state.time && state.time < note.start + note.duration) {
+      if (
+        (state.hands.size === 0 || state.hands.has(note.hand)) &&
+        note.start <= state.time &&
+        state.time < note.start + note.duration
+      ) {
         this.playing.set(note.pitch, note);
       }
       const key = keys.get(note.pitch);
