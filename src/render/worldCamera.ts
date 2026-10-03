@@ -1,4 +1,5 @@
 import type { Projected, RoadProjection } from "./perspective";
+import { depthAtScreenProgress } from "./perspective";
 
 export interface CameraPrefs {
   readonly fov: number;
@@ -46,6 +47,14 @@ export interface WorldCamera {
   readonly project: (x: number, y: number, z: number) => Projected;
   readonly road: RoadProjection;
   readonly sourceX: (x: number) => number;
+  readonly roadFarZ: number;
+  readonly projectAtProgress: (
+    x: number,
+    y: number,
+    nearZ: number,
+    farZ: number,
+    progress: number
+  ) => Projected;
 }
 const rad = (angle: number) => (angle * Math.PI) / 180;
 /** One calibrated XYZ camera: source pixels map to half-millimetre world coordinates. */
@@ -87,12 +96,26 @@ export function worldCamera(
     };
   };
   const sourceX = (x: number) => (x - width / 2) / 2;
+  const projectAtProgress = (
+    x: number,
+    y: number,
+    nearZ: number,
+    farZ: number,
+    progress: number
+  ): Projected => {
+    const yy = y * prefs.scale - prefs.height * fit;
+    const nearDepth = -yy * sa + (nearZ * prefs.scale + prefs.distance * fit) * ca;
+    const farDepth = -yy * sa + (farZ * prefs.scale + prefs.distance * fit) * ca;
+    const depth = depthAtScreenProgress(progress, nearDepth, farDepth);
+    return project(x, y, farZ + (nearZ - farZ) * depth);
+  };
+  const roadFarZ = 142 + 1500 * fit;
   const road: RoadProjection = {
-    at: (x, t) => project(sourceX(x), 22, 142 + (1 - t) * 1500 * fit),
+    at: (x, t) => project(sourceX(x), 22, 142 + (1 - t) * (roadFarZ - 142)),
     progressAt: (depth) => depth,
     depthAt: (progress) => progress
   };
-  return { project, sourceX, road };
+  return { project, projectAtProgress, sourceX, roadFarZ, road };
 }
 export function insidePolygon(x: number, y: number, points: readonly Projected[]): boolean {
   let inside = false;

@@ -8,6 +8,24 @@ import {
 } from "./worldCamera";
 
 describe("shared world camera", () => {
+  it.each([22, 36, 48])(
+    "moves a note at height %s uniformly on screen without moving its hit point",
+    (keyHeight) => {
+      for (const prefs of [DEFAULT_CAMERA, { ...DEFAULT_CAMERA, pitch: 40, fov: 30 }]) {
+        const camera = worldCamera(1920, 1080, prefs);
+        const nearZ = 142;
+        const farZ = nearZ + 1500 * (1080 / 375);
+        const far = camera.project(0, keyHeight, farZ);
+        const near = camera.project(0, keyHeight, nearZ);
+        for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
+          const point = camera.projectAtProgress(0, keyHeight, nearZ, farZ, progress);
+          expect(point.y).toBeCloseTo(far.y + (near.y - far.y) * progress);
+          expect(point.scale).toBeGreaterThan(0);
+        }
+        expect(camera.projectAtProgress(0, keyHeight, nearZ, farZ, 1)).toEqual(near);
+      }
+    }
+  );
   it.each([320, 390, 667, 768, 1920])("matches adaptive front widths at %spx", (width) => {
     const camera = worldCamera(width, 375);
     const whiteWidth = Math.min(44, width / 24);

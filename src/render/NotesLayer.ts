@@ -262,7 +262,7 @@ export class NotesLayer {
     this.arrivals.length = 0;
     this.guides.visible = road === undefined && this.lane.visible;
     this.beatBars.visible = road !== undefined;
-    if (road) this.drawBeats(state.time, state.lookAhead, hitY, pixelsPerSecond);
+    if (road) this.drawBeats(state.time, state.lookAhead, hitY, pixelsPerSecond, road);
     const cardWidth = Math.min(
       CARD_MAX_PX,
       Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
@@ -486,7 +486,13 @@ export class NotesLayer {
   }
 
   /** A bar across the road at each visible measure start; bars are reused. */
-  private drawBeats(time: number, lookAhead: number, hitY: number, pixelsPerSecond: number): void {
+  private drawBeats(
+    time: number,
+    lookAhead: number,
+    hitY: number,
+    pixelsPerSecond: number,
+    road: RoadLayer
+  ): void {
     let used = 0;
     for (const beat of this.beats) {
       if (beat.time < time) continue;
@@ -502,7 +508,7 @@ export class NotesLayer {
       bar.alpha = DOWNBEAT_ALPHA;
       bar.width = this.laneWidth;
       bar.height = 2;
-      bar.y = hitY - (beat.time - time) * pixelsPerSecond;
+      bar.y = road.beatY(hitY - (beat.time - time) * pixelsPerSecond);
       used++;
     }
     for (let index = used; index < this.beatBars.children.length; index++) {

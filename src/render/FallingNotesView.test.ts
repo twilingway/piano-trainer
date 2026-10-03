@@ -9,7 +9,8 @@ import type { FrameState } from "./FallingNotesView";
 import { NotesLayer } from "./NotesLayer";
 import type { KeyboardLayer } from "./KeyboardLayer";
 import type { FxLayer } from "./FxLayer";
-import type { RoadLayer } from "./RoadLayer";
+import { RoadLayer } from "./RoadLayer";
+import { worldCamera } from "./worldCamera";
 
 function notesHarness(songNotes: readonly SongNote[] = notes) {
   const digitTexture = new Texture({ source: new TextureSource({ width: 24, height: 40 }) });
@@ -79,20 +80,54 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
     fx: { draw: effectsDraw },
     hud: { draw: vi.fn() },
     roadMode,
+    keyStyle: "perspective",
     road: {
       draw: roadDraw,
       hitLineY: 400,
       notePlace: (x: number, y: number) => ({ x, y, scale: 1 }),
+      beatY: (y: number) => y,
       beginNotes: vi.fn(),
       endNotes: vi.fn(),
       scenePan: 0
     },
     wasSounding: new Set<number>()
   }) as unknown as FallingNotesView;
-  return { view, keyboardDraw, effectsDraw, roadDraw, sprites };
+  const notesDraw = vi.spyOn(layer, "draw");
+  return { view, keyboardDraw, effectsDraw, roadDraw, sprites, notesDraw };
 }
 
 describe("accompaniment fire independent of key colours", () => {
+  it.each([0, 100])("keeps measure lines with notes with handRoom=%s", (handRoom) => {
+    const camera = worldCamera(800, 600 - handRoom);
+    const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+      camera,
+      projection: camera.road,
+      size: { width: 800, height: 400 },
+      bottom: 600,
+      pan: 0,
+      keyHeights: new Map()
+    }) as unknown as RoadLayer;
+    for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
+      const sourceY = road.beatY(progress * 400);
+      const line = camera.road.at(400, sourceY / 400);
+      const note = road.notePlace(400, progress * 400);
+      expect(line.y).toBeCloseTo(note?.y ?? NaN);
+    }
+  });
+  it.each([false, true])("preserves the song-time window with road=%s", (roadMode) => {
+    const { view, notesDraw } = viewHarness(roadMode);
+    view.draw({
+      time: 0.1,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(["right"])
+    });
+    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(2);
+    expect(notesDraw.mock.calls[0]?.[0].time).toBe(0.1);
+  });
   it("keeps identical digits and names inside the lower end with and without the road", () => {
     const layouts = [false, true].map((roadMode) => {
       const { view, sprites } = viewHarness(roadMode);

@@ -340,12 +340,8 @@ export class FallingNotesView {
 
   draw(frame: FrameState): void {
     if (!this.ready || !this.notesLayer || !this.keyboard) return;
-    // A wider time window halves road speed and hold length without changing song time.
-    const state = {
-      ...frame,
-      lookAhead:
-        this.roadMode && this.keyStyle === "perspective" ? frame.lookAhead * 2 : frame.lookAhead
-    };
+    // Both views share the song-time window; the camera compensates perspective acceleration.
+    const state = frame;
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
