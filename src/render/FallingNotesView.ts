@@ -120,6 +120,7 @@ export class FallingNotesView {
   private ready = false;
   private resizeObserver: ResizeObserver | undefined;
   private fpsMeter: FpsMeter | undefined;
+  private fpsVisible = false;
   private unbindKeyboardPointer: (() => void) | undefined;
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
@@ -138,6 +139,7 @@ export class FallingNotesView {
     });
     host.appendChild(this.app.canvas);
     this.fpsMeter = new FpsMeter(host, this.app.ticker);
+    this.fpsMeter.setVisible(this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
     this.resizeObserver = new ResizeObserver(() => {
       this.app.queueResize();
@@ -240,6 +242,12 @@ export class FallingNotesView {
     this.labels = show;
     this.keyboard?.showStickers(show);
     this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  /** Renderer diagnostics do not affect song time or the scene layout. */
+  setFpsVisible(visible: boolean): void {
+    this.fpsVisible = visible;
+    this.fpsMeter?.setVisible(visible);
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */

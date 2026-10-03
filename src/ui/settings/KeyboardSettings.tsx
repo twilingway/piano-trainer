@@ -10,6 +10,8 @@ interface Props {
   readonly onKeyRange: (range: KeyRange) => void;
   readonly showLabels: boolean;
   readonly onShowLabels: (show: boolean) => void;
+  readonly fps: boolean;
+  readonly onFps: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
   readonly road: { readonly far: number; readonly horizon: number };
@@ -26,6 +28,8 @@ export function KeyboardSettings({
   onKeyRange,
   showLabels,
   onShowLabels,
+  fps,
+  onFps,
   keyStyle,
   onKeyStyle,
   camera,
@@ -36,6 +40,16 @@ export function KeyboardSettings({
 }: Props) {
   return (
     <div className="settings-list">
+      <label className="setting">
+        <span>Показывать FPS</span>
+        <input
+          type="checkbox"
+          checked={fps}
+          onChange={(event) => {
+            onFps(event.target.checked);
+          }}
+        />
+      </label>
       <label className="setting">
         <span>Клавиши</span>
         <select

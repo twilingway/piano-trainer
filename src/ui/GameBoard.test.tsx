@@ -116,6 +116,7 @@ describe("game score presentation", () => {
       noteCards: false,
       noteCardsConfigured: false,
       labels: true,
+      fps: false,
       keyRange: "song",
       keyStyle: "arcade",
       autoReview: false,

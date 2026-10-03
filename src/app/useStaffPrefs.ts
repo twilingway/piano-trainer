@@ -37,6 +37,8 @@ export interface StaffPrefs {
   readonly noteCardsConfigured: boolean;
   /** Classroom stickers on the keys. */
   readonly labels: boolean;
+  /** Optional renderer diagnostics. */
+  readonly fps: boolean;
   /** The keys shown: fitted to the song, or a real keyboard's range. */
   readonly keyRange: KeyRange;
   /** The look of the keys. */
@@ -70,6 +72,7 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   noteCards: false,
   noteCardsConfigured: false,
   labels: false,
+  fps: false,
   keyRange: "song",
   keyStyle: "arcade",
   autoReview: false,
@@ -96,6 +99,7 @@ function loadStaffPrefs(): StaffPrefs {
       ...saved,
       visible: typeof saved.visible === "boolean" ? saved.visible : defaults.visible,
       labels: typeof saved.labels === "boolean" ? saved.labels : defaults.labels,
+      fps: typeof saved.fps === "boolean" ? saved.fps : defaults.fps,
       noteColor: color(saved.noteColor, DEFAULT_STAFF_PREFS.noteColor),
       scoreColor: color(saved.scoreColor, DEFAULT_STAFF_PREFS.scoreColor),
       camera: normalizeCamera(saved.camera),

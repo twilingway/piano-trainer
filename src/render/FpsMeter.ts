@@ -7,6 +7,7 @@ export class FpsMeter {
   private readonly element = document.createElement("output");
   private sampleStart = 0;
   private frames = 0;
+  private visible = false;
 
   constructor(
     host: HTMLElement,
@@ -15,8 +16,19 @@ export class FpsMeter {
     this.element.className = "lane-fps";
     this.element.title = "Частота отрисовки игры";
     this.element.textContent = "FPS —";
+    this.element.hidden = true;
     host.appendChild(this.element);
-    ticker.add(this.onFrame);
+  }
+
+  setVisible(visible: boolean): void {
+    if (visible === this.visible) return;
+    this.visible = visible;
+    this.element.hidden = !visible;
+    this.sampleStart = 0;
+    this.frames = 0;
+    this.element.textContent = "FPS —";
+    if (visible) this.ticker.add(this.onFrame);
+    else this.ticker.remove(this.onFrame);
   }
 
   destroy(): void {

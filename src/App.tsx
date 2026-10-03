@@ -232,6 +232,10 @@ export function App() {
           onKeyRange={view.setKeyRange}
           showLabels={view.showLabels}
           onShowLabels={view.setShowLabels}
+          fps={staffPrefs.fps}
+          onFps={(fps) => {
+            updateStaffPrefs({ fps });
+          }}
           keyStyle={staffPrefs.keyStyle}
           onKeyStyle={(keyStyle) => {
             updateStaffPrefs({ keyStyle, ...(keyStyle === "perspective" ? { road: true } : {}) });

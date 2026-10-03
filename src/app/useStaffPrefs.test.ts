@@ -79,3 +79,32 @@ describe("key sticker preference", () => {
     });
   });
 });
+
+describe("FPS preference", () => {
+  it("starts disabled and ignores invalid saved values", async () => {
+    localStorage.setItem("staff-prefs", JSON.stringify({ fps: "true" }));
+    await mount();
+    expect(prefs.staffPrefs.fps).toBe(false);
+  });
+
+  it("preserves the toggle after a reload", async () => {
+    await mount();
+    expect(prefs.staffPrefs.fps).toBe(false);
+    await act(async () => {
+      prefs.updateStaffPrefs({ fps: true });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs.fps).toBe(true);
+    await act(async () => {
+      prefs.updateStaffPrefs({ fps: false });
+      await Promise.resolve();
+    });
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({ fps: false });
+  });
+});

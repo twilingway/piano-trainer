@@ -115,6 +115,7 @@ export function useFallingView({
   ]);
 
   useEffect(() => {
+    viewRef.current?.setFpsVisible(staffPrefs.fps);
     viewRef.current?.setShowLabels(showLabels);
     viewRef.current?.setNoteNames(fallingNames);
     viewRef.current?.setParts({
@@ -131,6 +132,7 @@ export function useFallingView({
     viewRef,
     trainerReady,
     showLabels,
+    staffPrefs.fps,
     fallingNames,
     staffPrefs.lane,
     staffPrefs.keys,
@@ -166,6 +168,7 @@ export function useFallingView({
       if (disposed) return;
       mirror.setSong(song);
       mirror.setShowLabels(showLabels);
+      mirror.setFpsVisible(staffPrefs.fps);
       mirror.setNoteNames(fallingNames);
       // The same parts as the main view, or the two lanes run at different speeds.
       mirror.setParts({ notes: staffPrefs.lane, keys: staffPrefs.keys, hands: staffPrefs.hands });
@@ -188,6 +191,7 @@ export function useFallingView({
     lastTake,
     song,
     showLabels,
+    staffPrefs.fps,
     rangeLow,
     rangeHigh,
     fallingNames,

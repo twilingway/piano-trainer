@@ -1378,10 +1378,10 @@ button.song-card.song-card__open {
   }
 
   .shell-top {
-    position: absolute;
-    top: max(8px, env(safe-area-inset-top));
-    right: max(8px, env(safe-area-inset-right));
-    left: auto;
+    position: relative;
+    align-self: flex-end;
+    margin: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 4px
+      max(8px, env(safe-area-inset-left));
     display: block;
   }
 
@@ -1551,7 +1551,7 @@ button.song-card.song-card__open {
   }
 
   .staff--wrapped .staff-page {
-    padding-top: 64px;
+    padding-top: 0;
   }
 }
 
