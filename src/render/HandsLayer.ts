@@ -6,7 +6,7 @@ import { FINGER_COLOR } from "./fingerColors";
 import { HAND_SPRITES } from "./handSpriteCatalog";
 import type { HandSpriteDefinition } from "./handSpriteCatalog";
 import { fitPose } from "./handSprites";
-import { easePose, handPose, upcomingChord } from "./handPose";
+import { easePose, handPose, handHintChord } from "./handPose";
 import type { HandPose, Tip } from "./handPose";
 import type { KeyRect } from "./keyboardLayout";
 
@@ -21,10 +21,10 @@ export type HandProject = (x: number, y: number, reach?: number) => { x: number;
 const HANDS: readonly Hand[] = ["left", "right"];
 const HAND_ALPHA = 0.58;
 const MOVE_SMOOTHING_S = 0.12;
-const ANTICIPATION_S = 0.2;
 const CHANGE_S = 0.18;
 const PULSE_HZ = 2.5;
 const TIP_RADIUS = 0.22;
+const CHORD_DROP_KEYS = 0.5;
 
 interface Picture {
   readonly mesh: PerspectiveMesh;
@@ -118,7 +118,8 @@ export class HandsLayer {
     hands: ReadonlySet<Hand>,
     keys: ReadonlyMap<number, KeyRect>,
     geometry: HandsGeometry,
-    project: HandProject
+    project: HandProject,
+    waitingFor: readonly SongNote[] = []
   ): void {
     const available = this.available;
     for (const hand of HANDS) {
@@ -130,7 +131,8 @@ export class HandsLayer {
         for (const marker of visual.markers.values()) marker.visible = false;
         continue;
       }
-      const chord = upcomingChord(this.notes[hand], time + ANTICIPATION_S);
+      const pending = waitingFor.filter((note) => note.hand === hand);
+      const chord = handHintChord(this.notes[hand], time, pending, waitingFor.length > 0);
       const target = handPose(hand, chord?.notes ?? [], keys, this.poses.get(hand));
       if (!target) continue;
       const pose = easePose(this.poses.get(hand), target, deltaSeconds, MOVE_SMOOTHING_S);
@@ -179,7 +181,10 @@ export class HandsLayer {
       const pressing = chord !== undefined && chord.start <= time;
       const pulse = 0.65 + 0.35 * Math.sin(time * Math.PI * 2 * PULSE_HZ);
       for (const [finger, marker] of visual.markers) {
-        marker.visible = target.down.has(finger);
+        marker.visible =
+          pending.length > 0
+            ? pending.some((note) => note.finger === finger)
+            : target.down.has(finger);
         if (!marker.visible) continue;
         // Hints sit on the owed keys even while the whole hand is still moving there.
         const tip = { x: target.tips[finger].x, reach: pose.tips[finger].reach };
@@ -225,7 +230,9 @@ function fitY(
   }
   return anchor === undefined
     ? geometry.keyboardTop
-    : tipY(pose.tips[anchor], geometry) - definition.tips[anchor].y * scale;
+    : tipY(pose.tips[anchor], geometry) -
+        definition.tips[anchor].y * scale +
+        (pose.down.size > 1 ? geometry.whiteWidth * CHORD_DROP_KEYS : 0);
 }
 
 /** Static wrist fade is baked once, so no mask/filter is evaluated every frame. */

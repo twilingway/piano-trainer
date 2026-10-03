@@ -115,6 +115,32 @@ export function upcomingChord<T extends { readonly start: number; readonly durat
   return { start: first, notes: chord };
 }
 
+/** Waiting for input overrides the visual clock, including calibration offsets and note ends. */
+export function handHintChord<T extends { readonly start: number; readonly duration: number }>(
+  notes: readonly T[],
+  time: number,
+  waitingFor: readonly T[],
+  sessionWaiting = false
+): { readonly start: number; readonly notes: readonly T[] } | undefined {
+  if (waitingFor.length > 0) {
+    const pendingStart = Math.min(...waitingFor.map((note) => note.start));
+    let start = notes[0]?.start ?? pendingStart;
+    for (const note of notes) {
+      if (note.start - start <= CHORD_WINDOW_S) continue;
+      if (pendingStart <= start + CHORD_WINDOW_S) break;
+      start = note.start;
+    }
+    // Already played members still define the hand's chord shape while the rest are pending.
+    const chord = notes.filter(
+      (note) => note.start >= start && note.start - start <= CHORD_WINDOW_S
+    );
+    return { start, notes: [...new Set([...chord, ...waitingFor])] };
+  }
+  // The other hand keeps its resting pose while input for this chord is still missing.
+  if (sessionWaiting) return undefined;
+  return upcomingChord(notes, time);
+}
+
 /**
  * Moves `current` towards `target` by an exponential ease: `smoothing`
  * seconds carry it about two thirds of the way, whatever the frame rate.

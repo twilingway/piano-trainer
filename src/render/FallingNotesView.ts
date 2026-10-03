@@ -43,6 +43,8 @@ export interface FrameState {
   readonly sounding: ReadonlySet<number>;
   /** The chord the player owes next, shown on the keyboard with its fingers. */
   readonly due: readonly SongNote[];
+  /** Pending notes that currently freeze the session in wait mode. */
+  readonly waitingFor?: readonly SongNote[];
   readonly hands: ReadonlySet<Hand>;
   readonly hints?: boolean;
   /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
@@ -334,8 +336,13 @@ export class FallingNotesView {
     this.panSnap = true;
   }
 
-  draw(state: FrameState): void {
+  draw(frame: FrameState): void {
     if (!this.ready || !this.notesLayer || !this.keyboard) return;
+    // A wider time window halves road speed and hold length without changing song time.
+    const state =
+      this.roadMode && this.keyStyle === "perspective"
+        ? { ...frame, lookAhead: frame.lookAhead * 2 }
+        : frame;
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
@@ -365,7 +372,8 @@ export class FallingNotesView {
         state.hands,
         this.keys,
         geometry,
-        (x, y, reach) => (road ? road.handPlace(x, y, geometry, reach) : { x: x - this.pan, y })
+        (x, y, reach) => (road ? road.handPlace(x, y, geometry, reach) : { x: x - this.pan, y }),
+        state.waitingFor ?? []
       );
     }
     // The road takes a picture of the keys; whole hands stay in their own projected overlay.
