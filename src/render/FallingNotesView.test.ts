@@ -11,6 +11,7 @@ import type { KeyboardLayer } from "./KeyboardLayer";
 import type { FxLayer } from "./FxLayer";
 import { RoadLayer } from "./RoadLayer";
 import { worldCamera } from "./worldCamera";
+import { roadProjection } from "./perspective";
 
 function notesHarness(songNotes: readonly SongNote[] = notes) {
   const digitTexture = new Texture({ source: new TextureSource({ width: 24, height: 40 }) });
@@ -38,6 +39,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     beats: [],
     neonFrames: [],
     cardGlow: Texture.WHITE,
+    trailTile: Texture.WHITE,
     noteNames: "ru",
     labels: {
       digits: new Map([
@@ -88,6 +90,8 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
       beatY: (y: number) => y,
       beginNotes: vi.fn(),
       endNotes: vi.fn(),
+      drawHold: vi.fn(() => false),
+      clarity: () => 1,
       scenePan: 0
     },
     wasSounding: new Set<number>()
@@ -97,6 +101,72 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
 }
 
 describe("accompaniment fire independent of key colours", () => {
+  it("keeps equal screen-time steps on the road with the flat keyboard", () => {
+    const projection = roadProjection(800, 400, 80, 0.1);
+    const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+      projection,
+      size: { width: 800, height: 400 },
+      pan: 0
+    }) as unknown as RoadLayer;
+    for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
+      const note = road.notePlace(100, progress * 400);
+      expect(note?.y).toBeCloseTo(80 + 320 * progress);
+      const beat = projection.at(100, road.beatY(progress * 400) / 400);
+      expect(beat.y).toBeCloseTo(note?.y ?? NaN);
+    }
+  });
+  it.each([false, true])("projects holds on the road with cards=%s", (cards) => {
+    const { layer, sprites } = notesHarness();
+    layer.setCards(cards);
+    const drawHold = vi.fn(() => true);
+    const road = {
+      isPerspective: false,
+      beginNotes: vi.fn(),
+      endNotes: vi.fn(),
+      drawHold,
+      notePlace: (x: number, y: number) => ({ x: x / 2, y: y / 2, scale: 0.5 }),
+      beatY: (y: number) => y,
+      clarity: () => 1
+    } as unknown as RoadLayer;
+    layer.draw(
+      { time: 0.1, lookAhead: 2, statusOf: () => undefined, hands: new Set(["right"]) },
+      new Map([
+        [48, { pitch: 48, black: false, x: 0, width: 40 }],
+        [72, { pitch: 72, black: false, x: 80, width: 40 }]
+      ]),
+      { hitY: 400, whiteWidth: 40 } as Parameters<NotesLayer["draw"]>[2],
+      road
+    );
+    expect(drawHold).toHaveBeenCalledTimes(2);
+    expect(sprites.every(({ body }) => !body.visible)).toBe(true);
+    expect(sprites[1]?.digit.x).toBe(50);
+  });
+  it("prewarps the fallback bars while the glass material is unavailable", () => {
+    const { layer, sprites } = notesHarness([
+      { id: "fallback", pitch: 72, hand: "right", finger: 1, start: 1, startBeat: 1, duration: 0.5 }
+    ]);
+    const projection = roadProjection(800, 400, 80, 0.1);
+    const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+      projection,
+      size: { width: 800, height: 400 },
+      pan: 0,
+      arrivals: { ready: false },
+      beginNotes: vi.fn(),
+      endNotes: vi.fn(),
+      drawHold: () => false
+    }) as unknown as RoadLayer;
+    layer.draw(
+      { time: 0, lookAhead: 2, statusOf: () => undefined, hands: new Set(["right"]) },
+      new Map([[72, { pitch: 72, black: false, x: 80, width: 40 }]]),
+      { hitY: 400, whiteWidth: 40 } as Parameters<NotesLayer["draw"]>[2],
+      road
+    );
+    const body = sprites[0]?.body;
+    if (!body) throw new Error("Missing fallback note");
+    expect(body.visible).toBe(true);
+    expect(projection.at(100, (body.y + body.height) / 400).y).toBeCloseTo(240);
+    expect(projection.at(100, body.y / 400).y).toBeCloseTo(80 + (320 * 101) / 400);
+  });
   it.each([0, 100])("keeps measure lines with notes with handRoom=%s", (handRoom) => {
     const camera = worldCamera(800, 600 - handRoom);
     const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
@@ -128,7 +198,7 @@ describe("accompaniment fire independent of key colours", () => {
     expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(2);
     expect(notesDraw.mock.calls[0]?.[0].time).toBe(0.1);
   });
-  it("keeps identical digits and names inside the lower end with and without the road", () => {
+  it("keeps digits and names inside the lower end with and without the road", () => {
     const layouts = [false, true].map((roadMode) => {
       const { view, sprites } = viewHarness(roadMode);
       view.draw({
@@ -156,7 +226,7 @@ describe("accompaniment fire independent of key colours", () => {
         };
       });
     });
-    expect(layouts[0]).toEqual(layouts[1]);
+    for (const layout of layouts) expect(layout[0]).toEqual(layout[1]);
   });
   it("keeps the player's finger and fire when accompaniment shares the pitch", () => {
     const songNotes: SongNote[] = [

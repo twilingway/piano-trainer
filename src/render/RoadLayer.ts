@@ -187,10 +187,8 @@ export class RoadLayer {
   notePlace(keyX: number, y: number, offset = 0, lift = 0): Projected | undefined {
     if (!this.projection || this.size.height <= 0) return undefined;
     if (!this.camera) {
-      const spot = this.projection.at(
-        keyX - this.pan + offset,
-        Math.max(0, Math.min(1, y / this.size.height))
-      );
+      const progress = Math.max(0, Math.min(1, y / this.size.height));
+      const spot = this.projection.at(keyX - this.pan + offset, this.projection.depthAt(progress));
       return { ...spot, y: spot.y - lift * spot.scale };
     }
     const progress = Math.max(0, Math.min(1, y / this.size.height));
@@ -210,7 +208,8 @@ export class RoadLayer {
 
   /** Prewarp texture-space measure lines to follow the notes' screen-time progress. */
   beatY(y: number): number {
-    if (!this.camera || !this.projection || this.size.height <= 0) return y;
+    if (!this.projection || this.size.height <= 0) return y;
+    if (!this.camera) return this.size.height * this.projection.depthAt(y / this.size.height);
     const near = this.projection.at(0, 1);
     const far = this.projection.at(0, 0);
     return (

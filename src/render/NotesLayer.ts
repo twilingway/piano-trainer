@@ -270,7 +270,7 @@ export class NotesLayer {
     const cardScale = cardWidth / CARD_WIDTH;
     // On the road the glass follows the note until its duration has elapsed.
     const trail = road !== undefined && cards;
-    const flat = !cards && !road?.isPerspective;
+    const flat = !cards && road === undefined;
     this.flatBlocks.begin();
     for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
@@ -334,8 +334,8 @@ export class NotesLayer {
       body.x = keyCentre - barWidth / 2;
       body.width = barWidth;
       // Consume duration at the hit line, including the flat view's extra room for hands.
-      body.y = bodyBounds.top;
-      body.height = visibleHeight;
+      body.y = road?.beatY(bodyBounds.top) ?? bodyBounds.top;
+      body.height = (road?.beatY(bodyBounds.bottom) ?? bodyBounds.bottom) - body.y;
       if (body.texture !== (trail ? this.trailTile : Texture.WHITE)) {
         body.texture = trail ? this.trailTile : Texture.WHITE;
         body.blendMode = trail ? "add" : "normal";
@@ -366,15 +366,14 @@ export class NotesLayer {
       }
       body.alpha *= arrivalAlpha;
       if (flat && visibleHeight > 0) {
-        const ratio = road ? road.hitLineY / hitY : 1;
         const neon = this.neonFrames;
         const texture =
           neon[Math.floor(state.time * CARD_NEON_FRAME.fps) % neon.length] ?? this.cardGlow;
         this.flatBlocks.draw(
-          keyCentre - (road?.scenePan ?? 0),
-          bodyBounds.top * ratio,
+          keyCentre,
+          bodyBounds.top,
           key.width * 0.84,
-          visibleHeight * ratio,
+          visibleHeight,
           body.tint,
           custom !== undefined ? 1 : !playerNote ? 0.82 : status === "hit" ? 0.75 : 1,
           texture
@@ -395,12 +394,11 @@ export class NotesLayer {
           body.visible = false;
       }
 
-      const flatRatio = flat && road ? road.hitLineY / hitY : 1;
       const lift = key.width * ROAD_HOLD_WIDTH_SHARE * GLASS_LIFT_SHARE;
       const labelSpot = !flat ? road?.notePlace(keyCentre, bounds.bottom, 0, lift) : undefined;
       const labelTopSpot = !flat ? road?.notePlace(keyCentre, bounds.top, 0, lift) : undefined;
-      const labelBottom = labelSpot?.y ?? bodyBounds.bottom * flatRatio;
-      const labelTop = labelTopSpot?.y ?? bodyBounds.top * flatRatio;
+      const labelBottom = labelSpot?.y ?? bodyBounds.bottom;
+      const labelTop = labelTopSpot?.y ?? bodyBounds.top;
       const labelWidth =
         key.width * (flat ? 0.84 : ROAD_HOLD_WIDTH_SHARE) * (labelSpot?.scale ?? 1);
       const labelHeight = Math.max(0, labelBottom - labelTop);
