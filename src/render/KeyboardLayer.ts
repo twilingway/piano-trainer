@@ -6,6 +6,7 @@ import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
 import type { SongNote } from "../song/song";
 import { FINGER_COLOR } from "./fingerColors";
+import { keyHintNote } from "./keyFeedback";
 import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
 import { KEY_LIGHT_PAD, bakeKeyLight, keyShape, shapeId } from "./keyLightShapes";
 import type { KeyRect } from "./keyboardLayout";
@@ -335,10 +336,9 @@ export class KeyboardLayer {
     for (const note of frame.due) dueByPitch.set(note.pitch, note);
     for (const [pitch, sprite] of this.keySprites) {
       const due = dueByPitch.get(pitch);
-      // The owed note wins: it is the one the player has to find next.
-      const shown = due ?? frame.playing.get(pitch);
       const pressed = frame.pressed.has(pitch);
       const sounding = pressed || frame.sounding.has(pitch);
+      const shown = keyHintNote(due, frame.playing.get(pitch), sounding);
       // A key with a fingered note is its finger's colour whoever plays it; the press and
       // the program's own colours are for keys without one.
       const color =
