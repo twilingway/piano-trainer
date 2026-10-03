@@ -1951,3 +1951,193 @@ button.song-card.song-card__open {
     grid-template-columns: 1fr;
   }
 }
+
+/* Compact controls and scores float above the full-height mobile playfield. */
+@media (height <= 500px), (width <= 640px) {
+  .shell-top {
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    margin: 0;
+  }
+
+  .topbar {
+    gap: 3px;
+    padding: 3px;
+    border-radius: 9px;
+  }
+
+  .topbar-library,
+  .topbar-restart,
+  .compact-hands,
+  .topbar .play-button,
+  .topbar-fullscreen,
+  .topbar-settings {
+    flex-basis: 34px;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    border-radius: 8px;
+  }
+
+  .topbar .play-button__ring {
+    width: 28px;
+    height: 28px;
+  }
+
+  .topbar svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .compact-controls__menu {
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top));
+  }
+
+  .workspace-main {
+    --mobile-score-top: calc(68px + env(safe-area-inset-top));
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) > .staves {
+    position: absolute;
+    z-index: 2;
+    inset: var(--mobile-score-top) 0 auto;
+    max-height: min(34cqh, 150px);
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) .staff {
+    width: 100%;
+    max-height: min(34cqh, 150px);
+    pointer-events: auto;
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) .staves--column .staff {
+    max-height: min(17cqh, 75px);
+  }
+
+  .workspace-main:has(> .lanes--hidden) > .staves {
+    margin-top: var(--mobile-score-top);
+    max-height: calc(100cqh - var(--mobile-score-top));
+  }
+
+  .workspace-main:has(> .lanes--hidden) .staff {
+    max-height: calc(100cqh - var(--mobile-score-top));
+  }
+
+  .workspace-main:has(> .lanes--hidden) .staves--column .staff {
+    max-height: calc((100cqh - var(--mobile-score-top)) / 2);
+  }
+
+  .lanes--keys {
+    margin-top: auto;
+  }
+
+  .game-score-dock {
+    position: fixed;
+    z-index: 4;
+    top: max(8px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    width: min(420px, calc(100% - 216px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    padding: 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .game-score-dock .game-score-board {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .game-score-dock .game-score-panel {
+    justify-content: flex-start;
+    gap: 3px 8px;
+    max-width: 100%;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 4px;
+    background: rgb(2 13 22 / 75%);
+    text-align: left;
+  }
+
+  .game-score-dock .game-score-panel--points {
+    margin-left: 0;
+  }
+
+  .game-score-dock :is(.game-combo, .game-accuracy, .game-points) {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .game-score-dock .game-score-label {
+    font-size: 9px;
+  }
+
+  .game-score-dock :is(.game-combo__value, .game-accuracy strong, .game-points strong) {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .game-score-dock .game-multiplier strong {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  .game-score-dock .game-energy {
+    flex: 0 1 52px;
+    width: 52px;
+    min-width: 40px;
+  }
+
+  .game-score-dock .game-energy > div:first-child {
+    margin-bottom: 2px;
+  }
+
+  .game-score-dock .game-energy__track {
+    height: 3px;
+  }
+
+  .game-score-dock .game-overdrive {
+    display: block;
+    flex: 0 0 80px;
+    box-sizing: border-box;
+    width: 80px;
+    min-height: 32px;
+    overflow: hidden;
+    padding: 0 5px;
+    font-size: 9px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .game-score-dock .game-score-board--message {
+    font-size: 10px;
+    padding: 4px;
+  }
+}
+
+@media (width <= 640px) and (orientation: portrait), (width <= 540px) {
+  .workspace-main {
+    --mobile-score-top: calc(128px + env(safe-area-inset-top));
+  }
+
+  .game-score-dock {
+    top: calc(54px + env(safe-area-inset-top));
+    width: calc(100% - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) > .staves,
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) .staff {
+    max-height: min(30cqh, 200px);
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) .staves--column .staff {
+    max-height: min(15cqh, 100px);
+  }
+}
