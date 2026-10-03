@@ -15,19 +15,19 @@ import { bakeKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
 
-const HAND_HINT: Readonly<Record<Hand, number>> = { right: 0xbdeefb, left: 0xfbdcc0 };
-const PRESSED_COLOR = 0xffd166;
-const SOUNDING_COLOR = 0xb8b8ff;
+const HAND_HINT: Readonly<Record<Hand, number>> = { right: 0x00d9ff, left: 0xff9d00 };
+const PRESSED_COLOR = 0xffee00;
+const SOUNDING_COLOR = 0xd900ff;
 /*
  * A key keeps its own face and its colour is a light laid over it, the key's
  * own shape with a neon edge: faint while the key waits to be played, full
  * once it sounds. On a black key the light is added, so it glows.
  */
-const LIGHT_WAITING = { white: 0.38, black: 0.55 } as const;
+const LIGHT_WAITING = { white: 0.7, black: 0.85 } as const;
 const LIGHT_SOUNDING = { white: 1, black: 1 } as const;
-/** The dark red felt strip over the keys, as on a real piano. */
-const FELT = 0x6e1616;
-const FELT_EDGE = 0xb33a3a;
+/** Deep-blue felt capped by the neon hit line. */
+const FELT = 0x003b62;
+const FELT_EDGE = 0x00e5ff;
 /*
  * Key faces painted after the approved mockup, stretched as nine-slice
  * sprites: corners and the front bevel keep their size, the middle stretches.

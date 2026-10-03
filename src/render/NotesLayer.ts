@@ -30,10 +30,10 @@ import { ARRIVAL_DURATION_S, arrivalCardAlpha, noteArrivalAge } from "./noteArri
 import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
-export const HAND_COLOR: Readonly<Record<Hand, number>> = { right: 0x4cc9f0, left: 0xf4a261 };
-const MISSED_COLOR = 0xe63946;
-const OCTAVE_LINE = 0x2a2f3d;
-const HIT_LINE = 0xffffff;
+export const HAND_COLOR: Readonly<Record<Hand, number>> = { right: 0x00d9ff, left: 0xff9d00 };
+const MISSED_COLOR = 0xff2454;
+const OCTAVE_LINE = 0x008cff;
+const HIT_LINE = 0x00e5ff;
 const NOTE_GAP_PX = 1;
 /** With cards on, the bar behind a card is a tail this share of its key wide. */
 const TAIL_SHARE = 0.28;
@@ -222,11 +222,11 @@ export class NotesLayer {
     this.guides.removeChildren().forEach((child) => {
       child.destroy();
     });
-    // A faint line at every C, so the eye finds octaves on the way down.
+    // Electric-blue lane guides, with a stronger edge at each octave.
     for (const [pitch, key] of keys) {
-      if (pitch % 12 !== 0) continue;
       const line = new Sprite(Texture.WHITE);
       line.tint = OCTAVE_LINE;
+      line.alpha = pitch % 12 === 0 ? 0.5 : 0.18;
       line.x = key.x;
       line.width = 1;
       line.height = hitY;
@@ -235,7 +235,7 @@ export class NotesLayer {
     this.laneWidth = total;
     const hitLine = new Sprite(Texture.WHITE);
     hitLine.tint = HIT_LINE;
-    hitLine.alpha = 0.5;
+    hitLine.alpha = 1;
     hitLine.y = hitY - 1;
     hitLine.width = total;
     hitLine.height = 2;
@@ -347,8 +347,7 @@ export class NotesLayer {
         body.tilePosition.set(0, noteHeight % beatPx);
       }
       const custom = state.colorOf?.(note);
-      const own =
-        road && note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
+      const own = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       const cardAlpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
       body.alpha = road !== undefined ? 1 : cardAlpha;
@@ -376,7 +375,7 @@ export class NotesLayer {
           key.width * 0.84,
           visibleHeight * ratio,
           body.tint,
-          cardAlpha,
+          custom !== undefined ? 1 : !playerNote ? 0.82 : status === "hit" ? 0.75 : 1,
           texture
         );
         body.visible = false;
@@ -403,7 +402,8 @@ export class NotesLayer {
       const labelScale = labelSpot?.scale ?? 1;
       if (note.finger !== undefined) {
         digit.texture =
-          (road ? this.labels.badges : this.labels.digits).get(note.finger) ?? Texture.EMPTY;
+          (road || flat ? this.labels.badges : this.labels.digits).get(note.finger) ??
+          Texture.EMPTY;
       }
       digit.scale.set(Math.min(1, (key.width * (road ? 0.5 : 0.9)) / 40) * labelScale);
       digit.anchor.set(0.5, road ? 0.5 : 1);

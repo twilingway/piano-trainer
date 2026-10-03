@@ -130,7 +130,7 @@ export class FallingNotesView {
   async mount(host: HTMLElement): Promise<void> {
     await this.app.init({
       resizeTo: host,
-      background: 0x11131a,
+      background: 0x020c18,
       antialias: true,
       // Draw at the screen's pixel density, or text is blurred on scaled displays.
       resolution: window.devicePixelRatio,

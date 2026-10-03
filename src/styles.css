@@ -1,23 +1,23 @@
 :root {
   color-scheme: dark;
-  /* The stage desk: a dark, quiet field, dense panels, one cool accent, glow only for actions. */
-  --bg: #020d16;
-  --panel: #061521;
-  --panel-raised: #0b2333;
+  /* Electric cyan controls and saturated finger colours over a deep blue stage. */
+  --bg: #020c18;
+  --panel: #041b2c;
+  --panel-raised: #07334b;
   --glass: rgb(27 32 48 / 86%);
-  --border: #20465d;
+  --border: #087ba1;
   --text: #f2f5ff;
-  --muted: #aeb9d0;
-  --accent: #00d4ff;
-  --accent-soft: rgb(98 217 255 / 18%);
-  --good: #69d88b;
-  --early: #ffd166;
-  --miss: #ff7488;
-  --finger-1: #f5952e;
-  --finger-2: #f2d43a;
-  --finger-3: #4cc45a;
-  --finger-4: #3fb8f0;
-  --finger-5: #9b5cf0;
+  --muted: #b4deff;
+  --accent: #00e5ff;
+  --accent-soft: rgb(0 229 255 / 24%);
+  --good: #00ff7b;
+  --early: #ffee00;
+  --miss: #ff2454;
+  --finger-1: #ff9d00;
+  --finger-2: #ffee00;
+  --finger-3: #00ff7b;
+  --finger-4: #00d9ff;
+  --finger-5: #d900ff;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --font-ui: "Manrope", system-ui, sans-serif;
   --font-display: "Russo One", "Manrope", system-ui, sans-serif;
@@ -1623,19 +1623,19 @@ button.song-card.song-card__open {
   color: var(--text);
 }
 .game-grades [data-grade="PERFECT"] {
-  --grade-color: #00d4ff;
+  --grade-color: #00e5ff;
 }
 .game-grades [data-grade="GREAT"] {
-  --grade-color: #00ee93;
+  --grade-color: #00ff7b;
 }
 .game-grades [data-grade="GOOD"] {
-  --grade-color: #ffe05b;
+  --grade-color: #ffee00;
 }
 .game-grades [data-grade="OK"] {
-  --grade-color: #ffa936;
+  --grade-color: #ff9d00;
 }
 .game-grades [data-grade="MISS"] {
-  --grade-color: #ff496c;
+  --grade-color: #ff2454;
 }
 .game-grade-light {
   width: 12px;
@@ -1666,7 +1666,7 @@ button.song-card.song-card__open {
   border-right-color: var(--accent);
   border-top-color: var(--accent);
   border-radius: 50%;
-  color: #ffd15c;
+  color: #ffee00;
   font-size: 36px;
   box-shadow: 0 0 12px rgb(0 212 255 / 24%);
 }
@@ -1693,12 +1693,12 @@ button.song-card.song-card__open {
   box-shadow: 0 0 12px var(--accent);
 }
 .game-flow {
-  color: #00ee93;
+  color: #00ff7b;
   font-weight: 700;
   text-shadow: 0 0 10px rgb(0 238 147 / 70%);
 }
 .game-score-board[data-overdrive="true"] .game-multiplier strong {
-  border-color: #ffd15c;
+  border-color: #ffee00;
   box-shadow: 0 0 18px rgb(255 209 92 / 50%);
 }
 .game-score-board--message {

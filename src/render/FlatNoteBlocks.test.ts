@@ -45,9 +45,10 @@ describe("flat neon blocks", () => {
     blocks.begin();
     blocks.draw(100, 0, 20, 4, 0xffffff, 1, Texture.WHITE);
     blocks.end();
-    expect(blocks.container.children).toHaveLength(4);
+    expect(blocks.container.children).toHaveLength(6);
     expect(blocks.container.children[0]).toBe(first);
-    expect(blocks.container.children[2]?.visible).toBe(false);
     expect(blocks.container.children[3]?.visible).toBe(false);
+    expect(blocks.container.children[4]?.visible).toBe(false);
+    expect(blocks.container.children[5]?.visible).toBe(false);
   });
 });

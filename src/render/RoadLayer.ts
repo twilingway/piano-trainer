@@ -46,7 +46,7 @@ export interface Arrival {
 
 /** The fog over the far road reaches this share of the way down to the keys. */
 const FOG_REACH = 0.5;
-const FOG_COLOR = 0x11131a;
+const FOG_COLOR = 0x020c18;
 
 export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
 
