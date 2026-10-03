@@ -15,7 +15,7 @@ const TEXTURE_WIDTH = 96;
 const TEXTURE_HEIGHT = 192;
 const TOP_CAP = 36;
 const BOTTOM_CAP = 38;
-const GLASS_LIFT_SHARE = 0.28;
+export const GLASS_LIFT_SHARE = 0.28;
 // Keep every projected edge inside the opaque glass, away from the atlas halo.
 const SOLID_LEFT_U = 20 / TEXTURE_WIDTH;
 const SOLID_RIGHT_U = 75 / TEXTURE_WIDTH;

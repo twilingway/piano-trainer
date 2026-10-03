@@ -27,7 +27,9 @@ export function bakeNames(renderer: Renderer): Map<string, Texture> {
           fontFamily: "system-ui, sans-serif",
           fontSize: 22,
           fontWeight: "700",
-          fill: 0x10121a
+          fill: 0xffffff,
+          stroke: { color: 0x00314f, width: 2 },
+          dropShadow: { color: 0x00d9ff, blur: 6, distance: 0, alpha: 0.8 }
         },
         resolution: 2
       });
@@ -51,7 +53,13 @@ export function bakeDigits(renderer: Renderer, fill = 0x10121a): Map<Finger, Tex
         fontFamily: "system-ui, sans-serif",
         fontSize: 32,
         fontWeight: "700",
-        fill
+        fill,
+        ...(fill === 0x10121a
+          ? {}
+          : {
+              stroke: { color: 0x00314f, width: 2 },
+              dropShadow: { color: 0x00d9ff, blur: 7, distance: 0, alpha: 0.8 }
+            })
       },
       resolution: 2
     });

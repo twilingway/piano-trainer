@@ -301,14 +301,6 @@ export function App() {
             trainer.seekToBeat(share * totalQuarters);
           }}
         />
-        <GameBoard
-          game={snapshot?.stats.game}
-          mode={trainer.mode}
-          playing={playing}
-          onOverdrive={() => {
-            trainer.trainerRef.current?.activateOverdrive();
-          }}
-        />{" "}
       </div>
 
       {library.loadError && <div className="toast toast--error">{library.loadError}</div>}
@@ -346,6 +338,16 @@ export function App() {
       )}
 
       <Workspace
+        gameBoard={
+          <GameBoard
+            game={snapshot?.stats.game}
+            mode={trainer.mode}
+            playing={playing}
+            onOverdrive={() => {
+              trainer.trainerRef.current?.activateOverdrive();
+            }}
+          />
+        }
         staffXml={score.staffXml}
         prefs={displayPrefs}
         fixedLines={score.fixedLines}

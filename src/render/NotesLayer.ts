@@ -6,12 +6,15 @@ import type { NoteStatus } from "../practice/session";
 import { quartersAt } from "../song/song";
 import type { Song, SongBeat, SongNote } from "../song/song";
 import { nameKey } from "./bakeLabels";
+import { FlatNoteBlocks } from "./FlatNoteBlocks";
 import type { FallingNoteNames } from "./bakeLabels";
 import { flatHoldBounds, holdBounds } from "./holdBounds";
 import { repeatedNoteEnds, repeatGap } from "./noteSeparation";
 import { scorePlacements } from "../song/scorePlacement";
 import type { ScorePlacement } from "../song/scorePlacement";
 import { FINGER_COLOR } from "./fingerColors";
+import { fitNoteLabel, noteLabelInset } from "./noteLabelLayout";
+import { GLASS_LIFT_SHARE } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
 import {
   CARD_FACE_OFFSET,
@@ -29,10 +32,10 @@ import { ARRIVAL_DURATION_S, arrivalCardAlpha, noteArrivalAge } from "./noteArri
 import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
-export const HAND_COLOR: Readonly<Record<Hand, number>> = { right: 0x4cc9f0, left: 0xf4a261 };
-const MISSED_COLOR = 0xe63946;
-const OCTAVE_LINE = 0x2a2f3d;
-const HIT_LINE = 0xffffff;
+export const HAND_COLOR: Readonly<Record<Hand, number>> = { right: 0x00d9ff, left: 0xff9d00 };
+const MISSED_COLOR = 0xff2454;
+const OCTAVE_LINE = 0x008cff;
+const HIT_LINE = 0x00e5ff;
 const NOTE_GAP_PX = 1;
 /** With cards on, the bar behind a card is a tail this share of its key wide. */
 const TAIL_SHARE = 0.28;
@@ -103,7 +106,7 @@ export class NotesLayer {
    * where the notes are, on the road they stand upright where the notes land.
    */
   readonly cards = new Container({ sortableChildren: true });
-  /** Practiced notes crossing the hit line, or all notes when listening, by pitch. */
+  /** All notes crossing the hit line, including accompaniment, by pitch. */
   readonly playing = new Map<number, SongNote>();
   /** Notes coming over the road's horizon in the last frame drawn, with their flash. */
   readonly arrivals: Arrival[] = [];
@@ -125,6 +128,7 @@ export class NotesLayer {
   /** Card faces by pitch and written value, baked the first time a song needs one. */
   private readonly cardFaces = new Map<string, Texture>();
   private cardsOn = true;
+  private readonly flatBlocks = new FlatNoteBlocks();
   private noteNames: FallingNoteNames | undefined;
 
   constructor(
@@ -136,6 +140,8 @@ export class NotesLayer {
     this.cardFrameLeft = bakeCardFrame(renderer, true);
     this.cardGlow = bakeCardGlow(renderer);
     this.trailTile = bakeTrailTile();
+    this.flatBlocks.container.zIndex = -Infinity;
+    this.cards.addChild(this.flatBlocks.container);
   }
 
   /** Shows or hides the notes, their cards and the guides. */
@@ -218,11 +224,11 @@ export class NotesLayer {
     this.guides.removeChildren().forEach((child) => {
       child.destroy();
     });
-    // A faint line at every C, so the eye finds octaves on the way down.
+    // Electric-blue lane guides, with a stronger edge at each octave.
     for (const [pitch, key] of keys) {
-      if (pitch % 12 !== 0) continue;
       const line = new Sprite(Texture.WHITE);
       line.tint = OCTAVE_LINE;
+      line.alpha = pitch % 12 === 0 ? 0.5 : 0.18;
       line.x = key.x;
       line.width = 1;
       line.height = hitY;
@@ -231,7 +237,7 @@ export class NotesLayer {
     this.laneWidth = total;
     const hitLine = new Sprite(Texture.WHITE);
     hitLine.tint = HIT_LINE;
-    hitLine.alpha = 0.5;
+    hitLine.alpha = 1;
     hitLine.y = hitY - 1;
     hitLine.width = total;
     hitLine.height = 2;
@@ -256,7 +262,7 @@ export class NotesLayer {
     this.arrivals.length = 0;
     this.guides.visible = road === undefined && this.lane.visible;
     this.beatBars.visible = road !== undefined;
-    if (road) this.drawBeats(state.time, state.lookAhead, hitY, pixelsPerSecond);
+    if (road) this.drawBeats(state.time, state.lookAhead, hitY, pixelsPerSecond, road);
     const cardWidth = Math.min(
       CARD_MAX_PX,
       Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
@@ -264,13 +270,15 @@ export class NotesLayer {
     const cardScale = cardWidth / CARD_WIDTH;
     // On the road the glass follows the note until its duration has elapsed.
     const trail = road !== undefined && cards;
+    const flat = !cards && !road?.isPerspective;
+    this.flatBlocks.begin();
     for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
-      if (
-        (state.hands.size === 0 || state.hands.has(note.hand)) &&
-        note.start <= state.time &&
-        state.time < note.start + note.duration
-      ) {
-        this.playing.set(note.pitch, note);
+      if (note.start <= state.time && state.time < note.start + note.duration) {
+        const previous = this.playing.get(note.pitch);
+        // At a shared pitch the player's fingering takes priority over accompaniment.
+        if (!previous || state.hands.has(note.hand) || !state.hands.has(previous.hand)) {
+          this.playing.set(note.pitch, note);
+        }
       }
       const key = keys.get(note.pitch);
       const bottom = hitY - (note.start - state.time) * pixelsPerSecond;
@@ -323,7 +331,6 @@ export class NotesLayer {
           ? key.width * TAIL_SHARE
           : key.width - NOTE_GAP_PX * 2;
       const keyCentre = key.x + key.width / 2;
-      const landingY = Math.min(bottom, hitY);
       body.x = keyCentre - barWidth / 2;
       body.width = barWidth;
       // Consume duration at the hit line, including the flat view's extra room for hands.
@@ -341,8 +348,7 @@ export class NotesLayer {
         body.tilePosition.set(0, noteHeight % beatPx);
       }
       const custom = state.colorOf?.(note);
-      const own =
-        road && note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
+      const own = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       const cardAlpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
       body.alpha = road !== undefined ? 1 : cardAlpha;
@@ -359,7 +365,23 @@ export class NotesLayer {
         });
       }
       body.alpha *= arrivalAlpha;
-      if (road && bounds.bottom > bounds.top) {
+      if (flat && visibleHeight > 0) {
+        const ratio = road ? road.hitLineY / hitY : 1;
+        const neon = this.neonFrames;
+        const texture =
+          neon[Math.floor(state.time * CARD_NEON_FRAME.fps) % neon.length] ?? this.cardGlow;
+        this.flatBlocks.draw(
+          keyCentre - (road?.scenePan ?? 0),
+          bodyBounds.top * ratio,
+          key.width * 0.84,
+          visibleHeight * ratio,
+          body.tint,
+          custom !== undefined ? 1 : !playerNote ? 0.82 : status === "hit" ? 0.75 : 1,
+          texture
+        );
+        body.visible = false;
+      }
+      if (road && !flat && bounds.bottom > bounds.top) {
         if (
           road.drawHold(
             keyCentre,
@@ -373,17 +395,34 @@ export class NotesLayer {
           body.visible = false;
       }
 
-      const labelY = Math.max(bounds.top, landingY - Math.min(noteHeight * 0.4, barWidth * 0.65));
-      const labelSpot = road?.notePlace(keyCentre, labelY, 0, barWidth * 0.2);
-      const labelScale = labelSpot?.scale ?? 1;
+      const flatRatio = flat && road ? road.hitLineY / hitY : 1;
+      const lift = key.width * ROAD_HOLD_WIDTH_SHARE * GLASS_LIFT_SHARE;
+      const labelSpot = !flat ? road?.notePlace(keyCentre, bounds.bottom, 0, lift) : undefined;
+      const labelTopSpot = !flat ? road?.notePlace(keyCentre, bounds.top, 0, lift) : undefined;
+      const labelBottom = labelSpot?.y ?? bodyBounds.bottom * flatRatio;
+      const labelTop = labelTopSpot?.y ?? bodyBounds.top * flatRatio;
+      const labelWidth =
+        key.width * (flat ? 0.84 : ROAD_HOLD_WIDTH_SHARE) * (labelSpot?.scale ?? 1);
+      const labelHeight = Math.max(0, labelBottom - labelTop);
+      const inset = noteLabelInset(labelWidth, labelHeight);
+      const labelX = labelSpot?.x ?? keyCentre - (road?.scenePan ?? 0);
       if (note.finger !== undefined) {
         digit.texture =
-          (road ? this.labels.badges : this.labels.digits).get(note.finger) ?? Texture.EMPTY;
+          (road || flat ? this.labels.badges : this.labels.digits).get(note.finger) ??
+          Texture.EMPTY;
       }
-      digit.scale.set(Math.min(1, (key.width * (road ? 0.5 : 0.9)) / 40) * labelScale);
-      digit.anchor.set(0.5, road ? 0.5 : 1);
-      digit.x = labelSpot?.x ?? keyCentre;
-      digit.y = (labelSpot?.y ?? landingY) - 2 * labelScale;
+      const digitScale = fitNoteLabel(
+        labelWidth - inset * 2,
+        labelHeight - inset * 2,
+        digit.texture.width,
+        digit.texture.height,
+        24
+      );
+      digit.scale.set(digitScale);
+      digit.visible = digit.visible && digitScale > 0;
+      digit.anchor.set(0.5, 1);
+      digit.x = labelX;
+      digit.y = labelBottom - inset;
       digit.alpha = body.alpha;
       if (cards) {
         // The card stands where the note lands; on the road it faces the player and
@@ -426,21 +465,34 @@ export class NotesLayer {
       }
       if (this.noteNames) {
         // Over the finger, when the note is tall enough to hold both.
-        name.scale.set(
-          Math.min(1, (key.width * 0.92) / Math.max(name.texture.width, 1)) * labelScale
+        const digitHeight = digit.visible ? digit.height + 2 : 0;
+        const nameScale = fitNoteLabel(
+          labelWidth - inset * 2,
+          labelHeight - inset * 2 - digitHeight,
+          name.texture.width,
+          name.texture.height,
+          16
         );
-        const digitHeight = note.finger === undefined ? 0 : digit.height + 2;
-        name.visible = visibleHeight >= digitHeight + name.height + 4;
-        name.x = labelSpot?.x ?? keyCentre;
-        name.y = (labelSpot?.y ?? landingY) - 2 * labelScale - digitHeight;
+        name.scale.set(nameScale);
+        name.visible = nameScale > 0;
+        name.anchor.set(0.5, 1);
+        name.x = labelX;
+        name.y = labelBottom - inset - digitHeight;
         name.alpha = body.alpha;
       }
     }
+    this.flatBlocks.end();
     road?.endNotes();
   }
 
   /** A bar across the road at each visible measure start; bars are reused. */
-  private drawBeats(time: number, lookAhead: number, hitY: number, pixelsPerSecond: number): void {
+  private drawBeats(
+    time: number,
+    lookAhead: number,
+    hitY: number,
+    pixelsPerSecond: number,
+    road: RoadLayer
+  ): void {
     let used = 0;
     for (const beat of this.beats) {
       if (beat.time < time) continue;
@@ -456,7 +508,7 @@ export class NotesLayer {
       bar.alpha = DOWNBEAT_ALPHA;
       bar.width = this.laneWidth;
       bar.height = 2;
-      bar.y = hitY - (beat.time - time) * pixelsPerSecond;
+      bar.y = road.beatY(hitY - (beat.time - time) * pixelsPerSecond);
       used++;
     }
     for (let index = used; index < this.beatBars.children.length; index++) {
@@ -490,6 +542,7 @@ export class NotesLayer {
 
   /** Frees the textures the notes baked for themselves; the shared labels are the view's. */
   destroy(): void {
+    this.flatBlocks.destroy();
     for (const texture of this.cardFaces.values()) texture.destroy(true);
     for (const texture of [this.cardFrame, this.cardFrameLeft, this.cardGlow, this.trailTile]) {
       if (texture !== Texture.WHITE) texture.destroy(true);

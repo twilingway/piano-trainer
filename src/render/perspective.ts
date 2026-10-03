@@ -26,6 +26,17 @@ export interface RoadProjection {
   readonly at: (x: number, t: number) => Projected;
 }
 
+/** Undo perspective acceleration so equal time steps cover equal screen distances. */
+export function depthAtScreenProgress(
+  progress: number,
+  nearDepth: number,
+  farDepth: number
+): number {
+  const p = Math.max(0, Math.min(1, progress));
+  const denominator = (1 - p) * nearDepth + p * farDepth;
+  return denominator > 0 ? (p * farDepth) / denominator : p;
+}
+
 export function roadProjection(
   width: number,
   hitY: number,

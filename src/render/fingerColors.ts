@@ -5,9 +5,9 @@ import type { Finger } from "../fingering/fingering";
  * look at the colour and you know which finger plays.
  */
 export const FINGER_COLOR: Readonly<Record<Finger, number>> = {
-  1: 0xf5952e,
-  2: 0xf2d43a,
-  3: 0x4cc45a,
-  4: 0x3fb8f0,
-  5: 0x9b5cf0
+  1: 0xff9d00,
+  2: 0xffee00,
+  3: 0x00ff7b,
+  4: 0x00d9ff,
+  5: 0xd900ff
 };

@@ -79,7 +79,7 @@ export function bakeKeyLight(renderer: Renderer, shape: KeyShape): Texture {
       .closePath();
     return g;
   };
-  const fill = outline(new Graphics()).fill({ color: 0xffffff, alpha: 0.42 });
+  const fill = outline(new Graphics()).fill({ color: 0xffffff, alpha: 0.85 });
   // The front of the key, below the black keys, lit more: the light gathers towards the player.
   const front = new Graphics()
     .roundRect(

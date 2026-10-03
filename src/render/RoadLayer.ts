@@ -20,6 +20,7 @@ import { PerspectiveKeyboardLayer } from "./PerspectiveKeyboardLayer";
 import type { Geometry } from "./viewGeometry";
 import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeometry";
 import type { Projected, RoadProjection } from "./perspective";
+import { depthAtScreenProgress } from "./perspective";
 import { handSurface } from "./handProjection";
 import type { HandsGeometry } from "./HandsLayer";
 
@@ -46,7 +47,7 @@ export interface Arrival {
 
 /** The fog over the far road reaches this share of the way down to the keys. */
 const FOG_REACH = 0.5;
-const FOG_COLOR = 0x11131a;
+const FOG_COLOR = 0x020c18;
 
 export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
 
@@ -192,17 +193,33 @@ export class RoadLayer {
       );
       return { ...spot, y: spot.y - lift * spot.scale };
     }
-    const depth = Math.max(0, Math.min(1, y / this.size.height));
+    const progress = Math.max(0, Math.min(1, y / this.size.height));
     const keyHeight = this.keyHeights.get(keyX) ?? 22;
-    return this.camera.project(
+    return this.camera.projectAtProgress(
       this.camera.sourceX(keyX - this.pan + offset),
       keyHeight + lift / 2,
-      142 + (1 - depth) * 1500 * Math.max(1, this.bottom / 375)
+      142,
+      this.camera.roadFarZ,
+      progress
     );
   }
 
   get scenePan(): number {
     return this.pan;
+  }
+
+  /** Prewarp texture-space measure lines to follow the notes' screen-time progress. */
+  beatY(y: number): number {
+    if (!this.camera || !this.projection || this.size.height <= 0) return y;
+    const near = this.projection.at(0, 1);
+    const far = this.projection.at(0, 0);
+    return (
+      this.size.height * depthAtScreenProgress(y / this.size.height, 1 / near.scale, 1 / far.scale)
+    );
+  }
+
+  get isPerspective(): boolean {
+    return this.perspective;
   }
 
   drawHold(

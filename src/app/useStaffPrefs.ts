@@ -69,7 +69,7 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   road: true,
   noteCards: false,
   noteCardsConfigured: false,
-  labels: true,
+  labels: false,
   keyRange: "song",
   keyStyle: "arcade",
   autoReview: false,
@@ -84,8 +84,7 @@ function loadStaffPrefs(): StaffPrefs {
   ).matches;
   const defaults = {
     ...DEFAULT_STAFF_PREFS,
-    visible: !mobile,
-    labels: !mobile
+    visible: !mobile
   };
   try {
     const raw = localStorage.getItem(STAFF_PREFS_KEY);

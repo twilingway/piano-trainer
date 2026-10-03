@@ -15,19 +15,19 @@ import { bakeKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
 
-const HAND_HINT: Readonly<Record<Hand, number>> = { right: 0xbdeefb, left: 0xfbdcc0 };
-const PRESSED_COLOR = 0xffd166;
-const SOUNDING_COLOR = 0xb8b8ff;
+const HAND_HINT: Readonly<Record<Hand, number>> = { right: 0x00d9ff, left: 0xff9d00 };
+const PRESSED_COLOR = 0xffee00;
+const SOUNDING_COLOR = 0xd900ff;
 /*
  * A key keeps its own face and its colour is a light laid over it, the key's
  * own shape with a neon edge: faint while the key waits to be played, full
  * once it sounds. On a black key the light is added, so it glows.
  */
-const LIGHT_WAITING = { white: 0.38, black: 0.55 } as const;
+const LIGHT_WAITING = { white: 0.7, black: 0.85 } as const;
 const LIGHT_SOUNDING = { white: 1, black: 1 } as const;
-/** The dark red felt strip over the keys, as on a real piano. */
-const FELT = 0x6e1616;
-const FELT_EDGE = 0xb33a3a;
+/** Deep-blue felt capped by the neon hit line. */
+const FELT = 0x003b62;
+const FELT_EDGE = 0x00e5ff;
 /*
  * Key faces painted after the approved mockup, stretched as nine-slice
  * sprites: corners and the front bevel keep their size, the middle stretches.
@@ -239,7 +239,7 @@ export class KeyboardLayer {
     this.felt.visible = show;
   }
 
-  /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
+  /** Compact Latin and solfege note names on every key. */
   showStickers(show: boolean): void {
     this.stickers.visible = show;
   }
@@ -263,18 +263,16 @@ export class KeyboardLayer {
     const whiteBevel = painted ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width : 3;
     const blackBevel = painted ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width : 3;
     this.bevel = { white: whiteBevel, black: blackBevel };
-    const whiteShare = painted
-      ? 1 - (WHITE_SLICE.leftWidth + WHITE_SLICE.rightWidth) / painted.white.width
-      : 0.92;
-    const blackShare = painted
-      ? 1 - (BLACK_SLICE.leftWidth + BLACK_SLICE.rightWidth) / painted.black.width
-      : 0.92;
+    // Nine-slice border bands include broad flat areas, especially on arcade keys.
+    // Only reserve the narrow visible rim, rather than shrinking to their centre slice.
+    const whiteLabelWidth = Math.max(0, whiteWidth - Math.max(4, whiteWidth * 0.12));
+    const blackLabelWidth = Math.max(0, blackWidth - Math.max(3, blackWidth * 0.14));
     const whiteScale = Math.min(
-      (whiteWidth * whiteShare) / WHITE_STICKER.width,
+      whiteLabelWidth / WHITE_STICKER.width,
       (keyboardHeight - blackHeight - digitRoom - whiteBevel) / WHITE_STICKER.height
     );
     const blackScale = Math.min(
-      (blackWidth * blackShare) / BLACK_STICKER.width,
+      blackLabelWidth / BLACK_STICKER.width,
       (blackHeight - digitRoom - blackBevel) / BLACK_STICKER.height
     );
 

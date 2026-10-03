@@ -130,7 +130,7 @@ export class FallingNotesView {
   async mount(host: HTMLElement): Promise<void> {
     await this.app.init({
       resizeTo: host,
-      background: 0x11131a,
+      background: 0x020c18,
       antialias: true,
       // Draw at the screen's pixel density, or text is blurred on scaled displays.
       resolution: window.devicePixelRatio,
@@ -333,20 +333,15 @@ export class FallingNotesView {
     this.songNotes = song.notes;
     this.hud.clear();
     this.fx.clear();
+    this.wasSounding.clear();
     // The new song's keys are elsewhere: the scroll lands on them rather than gliding there.
     this.panSnap = true;
   }
 
   draw(frame: FrameState): void {
     if (!this.ready || !this.notesLayer || !this.keyboard) return;
-    // A wider time window halves road speed and hold length without changing song time.
-    const state = {
-      ...frame,
-      lookAhead:
-        this.roadMode && this.keyStyle === "perspective" ? frame.lookAhead * 2 : frame.lookAhead,
-      // Accompaniment stays audible, but only the practiced hands light up the keys.
-      sounding: frame.hands.size === 0 ? frame.sounding : NO_SOUNDING_KEYS
-    };
+    // Both views share the song-time window; the camera compensates perspective acceleration.
+    const state = frame;
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
@@ -360,7 +355,8 @@ export class FallingNotesView {
     this.keyboard.draw(
       {
         pressed: state.pressed,
-        sounding: state.sounding,
+        // Only the key-colour layer hides accompaniment; fire follows every sounding note.
+        sounding: state.hands.size === 0 ? state.sounding : NO_SOUNDING_KEYS,
         due: state.due,
         playing,
         ...(state.hints === undefined ? {} : { hints: state.hints })
@@ -439,9 +435,9 @@ export class FallingNotesView {
       if (key) sounding.push(key);
     }
     this.fx.draw(struck, sounding, hitLineY, this.app.ticker.deltaMS / 1000);
-    // The board belongs to the lane: without the falling notes there is nothing to count over.
+    // React's GameBoard owns the score panels; Pixi only draws transient strike grades.
     this.hud.draw(
-      this.parts.notes ? state.board : undefined,
+      undefined,
       state.graded ?? [],
       (pitch) => {
         const key = this.keys.get(pitch);
