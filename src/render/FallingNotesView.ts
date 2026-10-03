@@ -127,7 +127,7 @@ export class FallingNotesView {
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
   private cards = true;
-  private keyStyle: KeyStyle = "classic";
+  private keyStyle: KeyStyle = "arcade";
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
 
   async mount(host: HTMLElement): Promise<void> {

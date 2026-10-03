@@ -227,8 +227,9 @@ export class NotesLayer {
     this.guides.removeChildren().forEach((child) => {
       child.destroy();
     });
-    // Electric-blue lane guides, with a stronger edge at each octave.
+    // White-key boundaries form the lanes; each octave has a stronger edge.
     for (const [pitch, key] of keys) {
+      if (key.black) continue;
       const line = new Sprite(Texture.WHITE);
       line.tint = OCTAVE_LINE;
       line.alpha = pitch % 12 === 0 ? 0.5 : 0.18;
