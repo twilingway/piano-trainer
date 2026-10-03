@@ -67,8 +67,26 @@ describe("the anthem", () => {
     expect(right.at(-1)).toMatchObject({ pitch: 72, startBeat: 0.5 + 20 * 4 });
     // The upbeat gets no click; the first downbeat lands on "Рос-".
     expect(song.beats[0]).toMatchObject({ downbeat: true });
-    expect(song.beats[0]?.time).toBeCloseTo((0.5 * 60) / 152);
+    expect(song.beats[0]?.time).toBeCloseTo((0.5 * 60) / 76);
   });
+
+  it.each(["easy", "medium", "hard"])(
+    "plays %s at the original quarter-note tempo of 76",
+    (level) => {
+      const song = lesson("anthem-ru", level);
+      const right = song.notes.filter((note) => note.hand === "right");
+      const score = new DOMParser().parseFromString(song.musicXml ?? "", "application/xml");
+      expect(score.querySelector("metronome > beat-unit")?.textContent).toBe("quarter");
+      expect(score.querySelector("metronome > per-minute")?.textContent).toBe("76");
+      expect(score.querySelector("sound")?.getAttribute("tempo")).toBe("76");
+      // Eighth-note pickup, quarter, dotted eighth and sixteenth in the opening phrase.
+      [0.5, 1, 0.75, 0.25].forEach((beats, index) => {
+        expect(right[index]?.duration).toBeCloseTo((beats * 60) / 76);
+      });
+      expect(right[1]?.start).toBeCloseTo((0.5 * 60) / 76);
+      expect(song.duration).toBeCloseTo((84.5 * 60) / 76);
+    }
+  );
 
   it("keeps the same melody on every level", () => {
     const melody = (level: LevelId) =>

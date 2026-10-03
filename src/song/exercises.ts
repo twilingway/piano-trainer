@@ -311,8 +311,11 @@ function leftHand(harmony: string, style: "root" | "octave" | "chord"): string {
     .join(" | ");
 }
 
-/** Official edition: "Широко. Торжественно", half note = 76. */
-const ANTHEM_TEMPO = 152;
+/**
+ * Official 2001 edition: "Широко. Торжественно", quarter note = 76.
+ * https://commons.wikimedia.org/wiki/File:Hymn_of_Russia_sheet_music_2001.png
+ */
+const ANTHEM_TEMPO = 76;
 
 const ANTHEM_TITLE = "Гимн России";
 
