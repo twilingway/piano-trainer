@@ -110,7 +110,23 @@ describe("handHintChord", () => {
     expect(handHintChord([thumb, index], 0.15, [thumb])?.notes).toEqual([thumb]);
   });
   it("pins every pending chord member until it is played", () => {
-    expect(handHintChord([thumb, index], 1, [thumb, index])?.notes).toEqual([thumb, index]);
+    const chordIndex = { ...index, start: 0 };
+    expect(handHintChord([thumb, chordIndex], 1, [thumb, chordIndex])?.notes).toEqual([
+      thumb,
+      chordIndex
+    ]);
+  });
+  it("retains the full chord pose as its notes are pressed separately", () => {
+    const chordIndex = { ...index, start: 0.02 };
+    const chord = [thumb, chordIndex];
+    expect(handHintChord(chord, 1, chord)?.notes).toEqual(chord);
+    expect(handHintChord(chord, 1, [chordIndex])?.notes).toEqual(chord);
+    expect(handHintChord(chord, 1, [thumb])?.notes).toEqual(chord);
+  });
+  it("does not reuse played members of a previous nearby chord", () => {
+    const chordIndex = { ...index, start: 0.02 };
+    const next = { ...index, start: 0.04 };
+    expect(handHintChord([thumb, chordIndex, next], 1, [next])?.notes).toEqual([next]);
   });
   it("resumes the visual melody when the session no longer waits", () => {
     expect(handHintChord([thumb, index], 0.15, [])?.notes).toEqual([index]);
