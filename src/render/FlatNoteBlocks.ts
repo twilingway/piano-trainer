@@ -17,8 +17,8 @@ export class FlatNoteBlocks {
     if (context) {
       const gradient = context.createLinearGradient(0, 0, 64, 0);
       gradient.addColorStop(0, "#ffffff");
-      gradient.addColorStop(0.3, "#d9d9d9");
-      gradient.addColorStop(0.7, "#eeeeee");
+      gradient.addColorStop(0.3, "#a6a6a6");
+      gradient.addColorStop(0.7, "#d1d1d1");
       gradient.addColorStop(1, "#ffffff");
       context.fillStyle = gradient;
       context.beginPath();
@@ -93,7 +93,9 @@ export class FlatNoteBlocks {
     item.fill.visible = item.neon.visible = true;
     item.rim.visible = true;
     item.fill.tint = item.neon.tint = tint;
-    item.fill.alpha = item.neon.alpha = alpha;
+    item.fill.alpha = alpha;
+    // Keep the halo from clipping the fill's channels and erasing its hue.
+    item.neon.alpha = alpha * 0.3;
     item.rim.tint = 0xf0fbff;
     item.rim.alpha = alpha;
     item.fill.scale.set(scale);
