@@ -128,6 +128,15 @@ describe("handHintChord", () => {
     const next = { ...index, start: 0.04 };
     expect(handHintChord([thumb, chordIndex, next], 1, [next])?.notes).toEqual([next]);
   });
+  it("includes every pending member when the session's chord window advances", () => {
+    const chordIndex = { ...index, start: 0.02 };
+    const next = { ...index, start: 0.04 };
+    expect(handHintChord([thumb, chordIndex, next], 1, [chordIndex, next])?.notes).toEqual([
+      thumb,
+      chordIndex,
+      next
+    ]);
+  });
   it("resumes the visual melody when the session no longer waits", () => {
     expect(handHintChord([thumb, index], 0.15, [])?.notes).toEqual([index]);
   });

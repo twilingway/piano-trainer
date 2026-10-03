@@ -134,7 +134,7 @@ export function handHintChord<T extends { readonly start: number; readonly durat
     const chord = notes.filter(
       (note) => note.start >= start && note.start - start <= CHORD_WINDOW_S
     );
-    return { start, notes: chord.length > 0 ? chord : waitingFor };
+    return { start, notes: [...new Set([...chord, ...waitingFor])] };
   }
   // The other hand keeps its resting pose while input for this chord is still missing.
   if (sessionWaiting) return undefined;
