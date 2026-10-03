@@ -12,7 +12,7 @@ describe("flat neon blocks", () => {
     vi.spyOn(Texture, "from").mockReturnValue(Texture.WHITE);
     const blocks = new FlatNoteBlocks();
     blocks.begin();
-    blocks.draw(100, 0, 40, 0, 0xffffff, 1, Texture.WHITE);
+    blocks.draw(100, 0, 40, 0, 0xffffff, 1);
     blocks.end();
     expect(blocks.container.children).toHaveLength(0);
   });
@@ -24,7 +24,7 @@ describe("flat neon blocks", () => {
     vi.spyOn(Texture, "from").mockReturnValue(Texture.WHITE);
     const blocks = new FlatNoteBlocks();
     blocks.begin();
-    blocks.draw(100, 30, width, height, 0x00ccff, 0.7, Texture.WHITE);
+    blocks.draw(100, 30, width, height, 0x00ccff, 0.7);
     const fill = blocks.container.children[0] as NineSliceSprite;
     expect(fill.width * fill.scale.x).toBeCloseTo(width);
     expect(fill.height * fill.scale.y).toBeCloseTo(height);
@@ -38,12 +38,12 @@ describe("flat neon blocks", () => {
     vi.spyOn(Texture, "from").mockReturnValue(Texture.WHITE);
     const blocks = new FlatNoteBlocks();
     blocks.begin();
-    blocks.draw(100, 0, 40, 100, 0xffffff, 1, Texture.WHITE);
-    blocks.draw(150, 0, 40, 100, 0xffffff, 1, Texture.WHITE);
+    blocks.draw(100, 0, 40, 100, 0xffffff, 1);
+    blocks.draw(150, 0, 40, 100, 0xffffff, 1);
     blocks.end();
     const first = blocks.container.children[0];
     blocks.begin();
-    blocks.draw(100, 0, 20, 4, 0xffffff, 1, Texture.WHITE);
+    blocks.draw(100, 0, 20, 4, 0xffffff, 1);
     blocks.end();
     expect(blocks.container.children).toHaveLength(6);
     expect(blocks.container.children[0]).toBe(first);

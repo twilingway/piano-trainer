@@ -370,17 +370,13 @@ export class NotesLayer {
       body.alpha *= arrivalAlpha;
       if (flat && visibleHeight > 0) {
         const ratio = road ? road.hitLineY / hitY : 1;
-        const neon = this.neonFrames;
-        const texture =
-          neon[Math.floor(state.time * CARD_NEON_FRAME.fps) % neon.length] ?? this.cardGlow;
         this.flatBlocks.draw(
           keyCentre - (road?.scenePan ?? 0),
           bodyBounds.top * ratio,
           key.width * 0.84,
           visibleHeight * ratio,
           body.tint,
-          custom !== undefined ? 1 : !playerNote ? 0.82 : status === "hit" ? 0.75 : 1,
-          texture
+          custom !== undefined ? 1 : !playerNote ? 0.82 : status === "hit" ? 0.75 : 1
         );
         body.visible = false;
       }
