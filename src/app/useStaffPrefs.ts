@@ -68,9 +68,9 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   lane: true,
   keys: true,
   hands: false,
-  road: true,
+  road: false,
   noteCards: false,
-  noteCardsConfigured: false,
+  noteCardsConfigured: true,
   labels: false,
   fps: false,
   keyRange: "song",
@@ -103,11 +103,11 @@ function loadStaffPrefs(): StaffPrefs {
       noteColor: color(saved.noteColor, DEFAULT_STAFF_PREFS.noteColor),
       scoreColor: color(saved.scoreColor, DEFAULT_STAFF_PREFS.scoreColor),
       camera: normalizeCamera(saved.camera),
-      noteCards: typeof saved.noteCards === "boolean" ? saved.noteCards : saved.road === false,
+      noteCards: typeof saved.noteCards === "boolean" ? saved.noteCards : defaults.noteCards,
       noteCardsConfigured:
         typeof saved.noteCardsConfigured === "boolean"
           ? saved.noteCardsConfigured
-          : typeof saved.noteCards === "boolean",
+          : defaults.noteCardsConfigured,
       fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono"
     };
   } catch {

@@ -26,11 +26,11 @@ export function bakeNoteMaterial(createCanvas: CanvasFactory) {
   }
   const emissionContext = emission.getContext("2d");
   if (emissionContext) {
-    // Light comes from a broad coloured core, rather than just its outline.
+    // Keep the centre darker than the luminous edges, so the hue survives additive light.
     const gradient = emissionContext.createLinearGradient(2, 0, 62, 0);
-    gradient.addColorStop(0, "rgba(255,255,255,0.65)");
-    gradient.addColorStop(0.45, "rgba(255,255,255,0.78)");
-    gradient.addColorStop(1, "rgba(255,255,255,0.68)");
+    gradient.addColorStop(0, "rgba(255,255,255,0.60)");
+    gradient.addColorStop(0.45, "rgba(255,255,255,0.46)");
+    gradient.addColorStop(1, "rgba(255,255,255,0.62)");
     emissionContext.fillStyle = gradient;
     emissionContext.beginPath();
     emissionContext.roundRect(3, 3, 58, 78, 7);
@@ -76,8 +76,8 @@ export function bakeNoteMaterial(createCanvas: CanvasFactory) {
         const inwardFade = distance < 0 ? Math.exp(-(distance * distance) / 18) : 1;
         const light =
           inwardFade *
-          (0.38 * Math.exp(-(outside * outside) / (2 * 18 * 18)) +
-            0.55 * Math.exp(-(outside * outside) / (2 * 5 * 5)));
+          (0.23 * Math.exp(-(outside * outside) / (2 * 18 * 18)) +
+            0.42 * Math.exp(-(outside * outside) / (2 * 5 * 5)));
         const index = (y * bloom.width + x) * 4;
         pixels.data[index] = pixels.data[index + 1] = pixels.data[index + 2] = 255;
         pixels.data[index + 3] = Math.round(Math.min(1, light) * 255);
