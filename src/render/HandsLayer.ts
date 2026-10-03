@@ -1,64 +1,95 @@
-import { AlphaFilter, Container, Graphics } from "pixi.js";
+import { Assets, Container, PerspectiveMesh, Sprite, Texture } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import type { Song, SongNote } from "../song/song";
 import { FINGER_COLOR } from "./fingerColors";
-import { FINGERS, easePose, handPose, upcomingChord } from "./handPose";
+import { HAND_SPRITES } from "./handSpriteCatalog";
+import type { HandSpriteDefinition } from "./handSpriteCatalog";
+import { fitPose } from "./handSprites";
+import { easePose, handPose, upcomingChord } from "./handPose";
 import type { HandPose, Tip } from "./handPose";
 import type { KeyRect } from "./keyboardLayout";
 
-/** Where the hands are drawn: the keyboard, and the strip under it the palms reach into. */
 export interface HandsGeometry {
   readonly keyboardTop: number;
   readonly keyboardHeight: number;
   readonly blackHeight: number;
   readonly whiteWidth: number;
 }
+export type HandProject = (x: number, y: number, reach?: number) => { x: number; y: number };
 
 const HANDS: readonly Hand[] = ["left", "right"];
-const OUTLINE = 0xd5dce8;
-const FILL = 0x3a4150;
-/** The whole hand at once, so the keys and their hints show through it. */
-const HAND_ALPHA = 0.72;
-/** Seconds the hand takes to move most of the way to its next position. */
+const HAND_ALPHA = 0.58;
 const MOVE_SMOOTHING_S = 0.12;
-/**
- * How early the hand sets off for the next chord, so that played legato it
- * is over the keys when they are struck rather than still gliding there.
- */
 const ANTICIPATION_S = 0.2;
-/** In white-key widths: knuckles from the white fingertips, spacing of the knuckles. */
-const KNUCKLE_DROP = 2.4;
-const KNUCKLE_SPACING = 1.1;
-const FINGER_WIDTH = 0.62;
-const THUMB_WIDTH = 0.7;
-const TIP_RADIUS = 0.26;
-const OUTLINE_PX = 2;
-/** Pulses a second, for the finger that plays next. */
+const CHANGE_S = 0.18;
 const PULSE_HZ = 2.5;
+const TIP_RADIUS = 0.22;
 
-/**
- * Schematic hands lying over the keyboard, drawn in outline: every fingertip
- * over the key it plays next, in its finger's colour, lit while it presses
- * and pulsing just before. Only the hands the player plays are drawn.
- */
+interface Picture {
+  readonly mesh: PerspectiveMesh;
+  definition?: HandSpriteDefinition;
+  x: number;
+  y: number;
+}
+interface Visual {
+  readonly pictures: readonly [Picture, Picture];
+  readonly markers: ReadonlyMap<Finger, Sprite>;
+  front: 0 | 1;
+  blend: number;
+}
+
+/** Whole baked hand poses, with precise fingertip hints independently projected onto the keys. */
 export class HandsLayer {
-  readonly container = new Container();
-  private readonly graphics: Record<Hand, Graphics> = {
-    left: new Graphics(),
-    right: new Graphics()
-  };
-  private notes: Record<Hand, SongNote[]> = { left: [], right: [] };
+  readonly container = new Container({ eventMode: "none" });
+  private readonly visuals = new Map<Hand, Visual>();
+  private readonly textures = new Map<string, Texture>();
+  private readonly available: HandSpriteDefinition[] = [];
+  private readonly markerTexture = bakeMarker();
   private readonly poses = new Map<Hand, HandPose>();
+  private notes: Record<Hand, SongNote[]> = { left: [], right: [] };
+  private disposed = false;
 
   constructor() {
-    this.container.eventMode = "none";
+    const markersRoot = new Container({ eventMode: "none" });
     for (const hand of HANDS) {
-      const graphics = this.graphics[hand];
-      // A filter, not `alpha`: alpha would show the hidden strokes through the fills.
-      graphics.filters = [new AlphaFilter({ alpha: HAND_ALPHA })];
-      this.container.addChild(graphics);
+      const pictures = [0, 1].map((): Picture => {
+        const mesh = new PerspectiveMesh({ texture: Texture.WHITE, verticesX: 8, verticesY: 16 });
+        mesh.eventMode = "none";
+        mesh.visible = false;
+        this.container.addChild(mesh);
+        return { mesh, x: 0, y: 0 };
+      }) as [Picture, Picture];
+      const markers = new Map<Finger, Sprite>();
+      for (const finger of [1, 2, 3, 4, 5] as const) {
+        const marker = new Sprite(this.markerTexture);
+        marker.anchor.set(0.5);
+        marker.tint = FINGER_COLOR[finger];
+        marker.eventMode = "none";
+        marker.visible = false;
+        markersRoot.addChild(marker);
+        markers.set(finger, marker);
+      }
+      this.visuals.set(hand, { pictures, markers, front: 0, blend: 1 });
     }
+    this.container.addChild(markersRoot);
+  }
+
+  async load(): Promise<void> {
+    await Promise.all(
+      HAND_SPRITES.map(async (definition) => {
+        try {
+          const original = await Assets.load<Texture>(definition.url);
+          if (!this.disposed) {
+            this.textures.set(definition.id, fadeWrist(original));
+          }
+        } catch (error) {
+          console.warn(`Hand pose ${definition.id} did not load; using remaining poses`, error);
+        }
+      })
+    );
+    if (!this.disposed)
+      this.available.push(...HAND_SPRITES.filter((pose) => this.textures.has(pose.id)));
   }
 
   setSong(song: Song): void {
@@ -66,13 +97,19 @@ export class HandsLayer {
       left: song.notes.filter((note) => note.hand === "left"),
       right: song.notes.filter((note) => note.hand === "right")
     };
-    this.poses.clear();
+    this.reset();
   }
 
-  /** Forgets where the hands were: their pixels belong to a keyboard laid out anew, or hidden. */
   reset(): void {
     this.poses.clear();
-    for (const hand of HANDS) this.graphics[hand].clear();
+    for (const visual of this.visuals.values()) {
+      for (const picture of visual.pictures) {
+        picture.mesh.visible = false;
+        delete picture.definition;
+      }
+      for (const marker of visual.markers.values()) marker.visible = false;
+      visual.blend = 1;
+    }
   }
 
   draw(
@@ -80,13 +117,17 @@ export class HandsLayer {
     deltaSeconds: number,
     hands: ReadonlySet<Hand>,
     keys: ReadonlyMap<number, KeyRect>,
-    geometry: HandsGeometry
+    geometry: HandsGeometry,
+    project: HandProject
   ): void {
+    const available = this.available;
     for (const hand of HANDS) {
-      const graphics = this.graphics[hand];
-      graphics.clear();
+      const visual = this.visuals.get(hand);
+      if (!visual) continue;
       if (!hands.has(hand)) {
         this.poses.delete(hand);
+        for (const picture of visual.pictures) picture.mesh.visible = false;
+        for (const marker of visual.markers.values()) marker.visible = false;
         continue;
       }
       const chord = upcomingChord(this.notes[hand], time + ANTICIPATION_S);
@@ -94,10 +135,71 @@ export class HandsLayer {
       if (!target) continue;
       const pose = easePose(this.poses.get(hand), target, deltaSeconds, MOVE_SMOOTHING_S);
       this.poses.set(hand, pose);
+      const targets = new Map([...target.down].map((finger) => [finger, target.tips[finger].x]));
+      const fit = fitPose(available, hand, targets, geometry.whiteWidth, 1);
+      const chosen = fit && available.find((definition) => definition.id === fit.pose.id);
+      if (
+        fit &&
+        chosen &&
+        visual.blend >= 1 &&
+        visual.pictures[visual.front].definition?.id !== fit.pose.id
+      ) {
+        const hadPicture = visual.pictures[visual.front].definition !== undefined;
+        visual.front = visual.front === 0 ? 1 : 0;
+        const picture = visual.pictures[visual.front];
+        picture.definition = chosen;
+        picture.mesh.texture = this.textures.get(fit.pose.id) ?? Texture.WHITE;
+        picture.x = fit.x;
+        picture.y = fitY(picture.definition, target, geometry, fit.scaleY);
+        visual.blend = hadPicture ? 0 : 1;
+      }
+      visual.blend = Math.min(1, visual.blend + deltaSeconds / CHANGE_S);
+      for (let index = 0; index < visual.pictures.length; index++) {
+        const picture = visual.pictures[index];
+        if (!picture?.definition) continue;
+        const opacity = index === visual.front ? visual.blend : 1 - visual.blend;
+        picture.mesh.visible = opacity > 0;
+        if (!picture.mesh.visible) continue;
+        picture.mesh.alpha = opacity * HAND_ALPHA;
+        const placed = fitPose([picture.definition], hand, targets, geometry.whiteWidth, 1);
+        const scale = geometry.whiteWidth / picture.definition.pixelsPerKey;
+        if (placed) {
+          const share = 1 - Math.exp(-deltaSeconds / MOVE_SMOOTHING_S);
+          picture.x += (placed.x - picture.x) * share;
+          picture.y += (fitY(picture.definition, target, geometry, scale) - picture.y) * share;
+        }
+        const w = picture.mesh.texture.width * scale * (hand === "right" ? 1 : -1);
+        const h = picture.mesh.texture.height * scale;
+        const a = project(picture.x, picture.y);
+        const b = project(picture.x + w, picture.y);
+        const c = project(picture.x + w, picture.y + h);
+        const d = project(picture.x, picture.y + h);
+        picture.mesh.setCorners(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
+      }
       const pressing = chord !== undefined && chord.start <= time;
-      const pulse = 0.55 + 0.45 * Math.sin(time * Math.PI * 2 * PULSE_HZ);
-      drawHand(graphics, pose, geometry, pressing ? 1 : pulse);
+      const pulse = 0.65 + 0.35 * Math.sin(time * Math.PI * 2 * PULSE_HZ);
+      for (const [finger, marker] of visual.markers) {
+        marker.visible = target.down.has(finger);
+        if (!marker.visible) continue;
+        // Hints sit on the owed keys even while the whole hand is still moving there.
+        const tip = { x: target.tips[finger].x, reach: pose.tips[finger].reach };
+        const y = tipY(tip, geometry);
+        const spot = project(tip.x, y, tip.reach);
+        const edge = project(tip.x + geometry.whiteWidth * TIP_RADIUS, y, tip.reach);
+        const radius = Math.max(2, Math.hypot(edge.x - spot.x, edge.y - spot.y));
+        marker.position.set(spot.x, spot.y);
+        marker.width = radius * 2;
+        marker.height = radius * 2;
+        marker.alpha = pressing ? 1 : pulse;
+      }
     }
+  }
+
+  destroy(): void {
+    this.disposed = true;
+    for (const texture of this.textures.values()) texture.destroy(true);
+    this.textures.clear();
+    this.markerTexture.destroy(true);
   }
 }
 
@@ -108,60 +210,51 @@ function tipY(tip: Tip, geometry: HandsGeometry): number {
   return white + (black - white) * tip.reach;
 }
 
-/**
- * One hand, outlined as a single shape: every part's outline first, then every
- * part's fill over it, so only the outer edge of the union stays visible.
- */
-function drawHand(
-  graphics: Graphics,
+function fitY(
+  definition: HandSpriteDefinition | undefined,
   pose: HandPose,
   geometry: HandsGeometry,
-  downAlpha: number
-): void {
-  const w = geometry.whiteWidth;
-  const dir = pose.hand === "right" ? 1 : -1;
-  const whiteTipY = tipY({ x: 0, reach: 0 }, geometry);
-  const knuckleY = whiteTipY + KNUCKLE_DROP * w;
-  const palmX = (pose.tips[2].x + pose.tips[3].x + pose.tips[4].x + pose.tips[5].x) / 4;
-
-  const base = (finger: Finger): { x: number; y: number } =>
-    finger === 1
-      ? { x: palmX - dir * 2.3 * w, y: knuckleY + 1.3 * w }
-      : { x: palmX + dir * (finger - 3.5) * KNUCKLE_SPACING * w, y: knuckleY };
-  const palm = [
-    palmX - dir * 2.1 * w,
-    knuckleY - 0.2 * w,
-    palmX + dir * 2.2 * w,
-    knuckleY - 0.2 * w,
-    palmX + dir * 2.0 * w,
-    knuckleY + 2.4 * w,
-    palmX + dir * 1.5 * w,
-    knuckleY + 5 * w,
-    palmX - dir * 1.5 * w,
-    knuckleY + 5 * w,
-    palmX - dir * 2.5 * w,
-    knuckleY + 2 * w
-  ];
-  const finger = (f: Finger, extra: number, color: number) => {
-    const from = base(f);
-    const tip = pose.tips[f];
-    graphics
-      .moveTo(from.x, from.y)
-      .lineTo(tip.x, tipY(tip, geometry))
-      .stroke({ width: (f === 1 ? THUMB_WIDTH : FINGER_WIDTH) * w + extra, color, cap: "round" });
-  };
-
-  graphics.poly(palm).stroke({ width: OUTLINE_PX * 2, color: OUTLINE, join: "round" });
-  for (const f of FINGERS) finger(f, OUTLINE_PX * 2, FINGER_COLOR[f]);
-  graphics.poly(palm).fill({ color: FILL });
-  for (const f of FINGERS) finger(f, 0, FILL);
-
-  for (const f of FINGERS) {
-    const tip = pose.tips[f];
-    const y = tipY(tip, geometry);
-    const down = pose.down.has(f);
-    graphics
-      .circle(tip.x, y, TIP_RADIUS * w)
-      .fill({ color: FINGER_COLOR[f], alpha: down ? downAlpha : 0.25 });
+  scale: number
+): number {
+  if (!definition || pose.down.size === 0) return geometry.keyboardTop;
+  // The frontmost active pad anchors the whole hand; averaging would put a short thumb off the keys.
+  let anchor: Finger | undefined;
+  for (const finger of pose.down) {
+    if (anchor === undefined || definition.tips[finger].y > definition.tips[anchor].y)
+      anchor = finger;
   }
+  return anchor === undefined
+    ? geometry.keyboardTop
+    : tipY(pose.tips[anchor], geometry) - definition.tips[anchor].y * scale;
+}
+
+/** Static wrist fade is baked once, so no mask/filter is evaluated every frame. */
+function fadeWrist(original: Texture): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = original.width;
+  canvas.height = original.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Cannot bake hand wrist fade");
+  context.drawImage(original.source.resource as CanvasImageSource, 0, 0);
+  context.globalCompositeOperation = "destination-in";
+  const fade = context.createLinearGradient(0, canvas.height * 0.7, 0, canvas.height);
+  fade.addColorStop(0, "white");
+  fade.addColorStop(1, "transparent");
+  context.fillStyle = fade;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  return Texture.from(canvas);
+}
+
+function bakeMarker(): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 48;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Cannot bake finger marker");
+  const glow = context.createRadialGradient(24, 24, 0, 24, 24, 24);
+  glow.addColorStop(0, "white");
+  glow.addColorStop(0.4, "white");
+  glow.addColorStop(1, "transparent");
+  context.fillStyle = glow;
+  context.fillRect(0, 0, 48, 48);
+  return Texture.from(canvas);
 }
