@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { easePose, handPose, upcomingChord } from "./handPose";
+import { easePose, handPose, handHintChord, upcomingChord } from "./handPose";
 import { layoutKeyboard } from "./keyboardLayout";
 
 // C4 to C6: fifteen white keys of 20 px.
@@ -100,6 +100,20 @@ describe("upcomingChord", () => {
     expect(upcomingChord(bass, 1.2)).toMatchObject({ start: 1, notes: [{ id: "x" }] });
     expect(upcomingChord(bass, 2.1)).toMatchObject({ start: 2, notes: [{ id: "y" }] });
     expect(upcomingChord(bass, 3)).toMatchObject({ start: 0, notes: [{ id: "bass" }] });
+  });
+});
+
+describe("handHintChord", () => {
+  const thumb = { start: 0, duration: 0.1, finger: 1 };
+  const index = { start: 0.1, duration: 0.1, finger: 2 };
+  it("pins the pending note even when the visual clock has passed its end", () => {
+    expect(handHintChord([thumb, index], 0.15, [thumb])?.notes).toEqual([thumb]);
+  });
+  it("pins every pending chord member until it is played", () => {
+    expect(handHintChord([thumb, index], 1, [thumb, index])?.notes).toEqual([thumb, index]);
+  });
+  it("resumes the visual melody when the session no longer waits", () => {
+    expect(handHintChord([thumb, index], 0.15, [])?.notes).toEqual([index]);
   });
 });
 

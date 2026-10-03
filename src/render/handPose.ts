@@ -115,6 +115,17 @@ export function upcomingChord<T extends { readonly start: number; readonly durat
   return { start: first, notes: chord };
 }
 
+/** Waiting for input overrides the visual clock, including calibration offsets and note ends. */
+export function handHintChord<T extends { readonly start: number; readonly duration: number }>(
+  notes: readonly T[],
+  time: number,
+  waitingFor: readonly T[]
+): { readonly start: number; readonly notes: readonly T[] } | undefined {
+  if (waitingFor.length > 0)
+    return { start: Math.min(...waitingFor.map((note) => note.start)), notes: waitingFor };
+  return upcomingChord(notes, time);
+}
+
 /**
  * Moves `current` towards `target` by an exponential ease: `smoothing`
  * seconds carry it about two thirds of the way, whatever the frame rate.

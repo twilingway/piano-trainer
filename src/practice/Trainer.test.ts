@@ -66,6 +66,27 @@ function down(trainer: Trainer, timestamp: number, pitch = 60, deviceId = "piano
   trainer.key({ type: "down", pitch, velocity: 90, timestamp, source: "midi", deviceId });
 }
 describe("Trainer input timestamps", () => {
+  it("pins hand hints to unplayed wait-mode notes despite a visual offset", () => {
+    const run = harness();
+    run.trainer.configureTiming({
+      inputOffsets: {},
+      manualInputOffsetMs: 0,
+      audioOffsetMs: 0,
+      visualOffsetMs: -750
+    });
+    run.trainer.load(SONG, { mode: "wait", hands: new Set(["right"]), speed: 1 }, "fixture");
+    run.trainer.setPlaying(true);
+    run.frame(4000);
+    expect(run.view.draw.mock.lastCall?.[0]).toMatchObject({
+      time: 0.75,
+      waitingFor: [SONG.notes[0]]
+    });
+    run.frame(5000);
+    expect(run.view.draw.mock.lastCall?.[0]).toMatchObject({ waitingFor: [SONG.notes[0]] });
+    down(run.trainer, 5000);
+    run.frame(5010);
+    expect(run.view.draw.mock.lastCall?.[0]).toMatchObject({ waitingFor: [] });
+  });
   it("grades the original timestamp when callback arrives 200 ms later", () => {
     const run = harness();
     run.trainer.setPlaying(true);
