@@ -61,6 +61,8 @@ export function KeyboardSettings({
           }}
         >
           <option value="song">По песне</option>
+          <option value="3oct">3 октавы</option>
+          <option value="4oct">4 октавы</option>
           <option value="88">88 клавиш</option>
           <option value="61">61 клавиша</option>
           <option value="49">49 клавиш</option>
