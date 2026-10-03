@@ -33,8 +33,8 @@ import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
 export const HAND_COLOR: Readonly<Record<Hand, number>> = {
-  right: FINGER_COLOR[4],
-  left: FINGER_COLOR[1]
+  right: FINGER_COLOR[3],
+  left: FINGER_COLOR[4]
 };
 const MISSED_COLOR = 0xff2454;
 const OCTAVE_LINE = 0x008cff;
