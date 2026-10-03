@@ -20,6 +20,8 @@ import { PerspectiveKeyboardLayer } from "./PerspectiveKeyboardLayer";
 import type { Geometry } from "./viewGeometry";
 import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeometry";
 import type { Projected, RoadProjection } from "./perspective";
+import { handSurface } from "./handProjection";
+import type { HandsGeometry } from "./HandsLayer";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
 export interface Strike {
@@ -238,7 +240,7 @@ export class RoadLayer {
    * `height`, the keys under it down to `bottom` — on the floor in
    * perspective, seen through a view `viewWidth` wide.
    */
-  layout(width: number, height: number, bottom: number, viewWidth: number): void {
+  layout(width: number, height: number, bottom: number, viewWidth: number, handRoom = 0): void {
     // Too little room for a road: hide it rather than draw the last layout's.
     this.container.visible = width >= 1 && viewWidth >= 1 && height >= 1 && bottom >= height;
     this.effects.visible = this.container.visible;
@@ -261,7 +263,9 @@ export class RoadLayer {
       Math.max(1, keysHeight),
       this.perspective ? resolution : this.renderer.resolution
     );
-    this.camera = this.perspective ? worldCamera(viewWidth, bottom, this.cameraPrefs) : undefined;
+    this.camera = this.perspective
+      ? worldCamera(viewWidth, Math.max(1, bottom - handRoom), this.cameraPrefs)
+      : undefined;
     const legacy = legacyRoadProjection(viewWidth, height, bottom, this.shape);
     this.projection = this.camera?.road ?? legacy.projection;
     this.hitY = this.camera ? this.projection.at(viewWidth / 2, 1).y : legacy.hitY;
@@ -342,6 +346,16 @@ export class RoadLayer {
     const projection = this.projection;
     if (!projection || this.size.height <= 0) return undefined;
     return projection.at(x - this.pan, Math.max(0, Math.min(1, y / this.size.height)));
+  }
+
+  /** Whole hands are a separate overlay, never cut into individual key materials. */
+  handPlace(x: number, y: number, geometry: HandsGeometry, reach?: number): Projected {
+    if (this.camera) {
+      const surface = handSurface(geometry, y, reach);
+      return this.camera.project(this.camera.sourceX(x - this.pan), surface.height, surface.depth);
+    }
+    const share = (y - this.size.height) / Math.max(1, this.bottom - this.size.height);
+    return { x: x - this.pan, y: this.hitY + share * (this.bottom - this.hitY), scale: 1 };
   }
 
   /** The point of the flat keyboard under a point of the laid keys on screen; undefined off them. */

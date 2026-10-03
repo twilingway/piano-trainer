@@ -97,4 +97,19 @@ describe("fitPose", () => {
   it("has nothing to fit without a placed finger", () => {
     expect(fitPose(poses, "right", new Map(), 20, 100)).toBeUndefined();
   });
+
+  it("rejects infinite keyboard geometry and target coordinates", () => {
+    expect(fitPose(poses, "right", new Map([[1, Infinity]]), 20, 100)).toBeUndefined();
+    expect(fitPose(poses, "right", new Map([[1, 110]]), Infinity, 100)).toBeUndefined();
+    expect(fitPose(poses, "right", new Map([[1, 110]]), 20, Infinity)).toBeUndefined();
+  });
+
+  it("skips invalid calibration and measured fingertips rather than returning NaN", () => {
+    const invalid = { ...five, pixelsPerKey: 0 };
+    const invalidTip = { ...five, tips: { ...five.tips, 1: { x: Number.NaN, y: 0 } } };
+    const fit = fitPose([invalid, invalidTip, five], "right", new Map([[1, 110]]), 20, 100);
+    expect(fit?.pose).toBe(five);
+    expect(Number.isFinite(fit?.x)).toBe(true);
+    expect(Number.isFinite(fit?.miss)).toBe(true);
+  });
 });
