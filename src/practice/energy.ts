@@ -2,7 +2,7 @@ import type { SongNote } from "../song/song";
 import { GAME_RULES } from "./gameRules";
 
 /** Fixed once for the assessed passage; notes are already scaled to performance seconds. */
-export function perfectEnergyPerNote(notes: readonly SongNote[]): number {
+export function energyPerHit(notes: readonly SongNote[]): number {
   if (notes.length === 0) return 0;
   let first = Infinity;
   let last = -Infinity;
@@ -11,6 +11,6 @@ export function perfectEnergyPerNote(notes: readonly SongNote[]): number {
     last = Math.max(last, note.start + note.duration);
   }
   const duration = Math.max(0, last - first);
-  const budget = duration < 30 ? 75 : duration < 45 ? 125 : 175;
+  const budget = duration < 30 ? 125 : 175;
   return Math.min(budget / notes.length, GAME_RULES.overdriveCost);
 }

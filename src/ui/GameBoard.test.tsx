@@ -70,8 +70,8 @@ describe("game score presentation", () => {
     expect(markup).toContain(`${(game.accuracy ?? 0).toFixed(1)}%`);
     expect(markup).toContain('data-grade="PERFECT"');
     expect(markup).toContain("<dd>60</dd>");
-    expect(markup).toContain("<strong>120</strong>");
-    expect(markup).toContain('aria-valuenow="120"');
+    expect(markup).toContain("<strong>122</strong>");
+    expect(markup).toContain('aria-valuenow="122"');
     expect(markup).toContain('style="width:100%"');
     expect(markup).not.toContain('disabled=""');
   });

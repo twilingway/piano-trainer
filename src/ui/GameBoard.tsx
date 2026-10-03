@@ -72,7 +72,7 @@ export function GameBoard({ game, mode, playing, onOverdrive }: Props) {
         </div>
         <div
           className="game-energy"
-          title="Энергия за точные попадания: до трёх зарядов за композицию; отлично даёт половину идеального"
+          title="Энергия за каждую засчитанную ноту: два заряда в короткой композиции, три в обычной; прибавка рассчитана по выбранной партии"
         >
           <div>
             <span className="game-score-label">Энергия</span>

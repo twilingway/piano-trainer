@@ -119,7 +119,7 @@ describe("Flow and Overdrive", () => {
     score.hit("19", 40, 19);
     expect(score.snapshot(19).flow).toBe(true);
     score.hit("20", 80, 20);
-    expect(score.snapshot(20)).toMatchObject({ flow: false, combo: 21, energy: 20 });
+    expect(score.snapshot(20)).toMatchObject({ flow: false, combo: 21, energy: 42 });
   });
 
   it("costs fifty energy, lasts ten seconds and adds only its incremental score", () => {

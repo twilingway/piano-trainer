@@ -12,7 +12,7 @@ import type { GameRank, TimingStatistics } from "./gameResults";
 export interface GameScoreOptions {
   readonly difficulty?: Difficulty;
   readonly targetScore?: number;
-  readonly perfectEnergy?: number;
+  readonly energyPerHit?: number;
 }
 
 export interface GameScoreSnapshot {
@@ -45,7 +45,7 @@ export interface GameScoreSnapshot {
 export class GameScore {
   private readonly difficulty: Difficulty;
   private readonly targetScore: number;
-  private readonly perfectEnergy: number;
+  private readonly energyPerHit: number;
   private score = 0;
   private combo = 0;
   private maxCombo = 0;
@@ -80,7 +80,7 @@ export class GameScore {
     }
     this.difficulty = options.difficulty ?? "normal";
     this.targetScore = options.targetScore ?? 0;
-    this.perfectEnergy = options.perfectEnergy ?? 2;
+    this.energyPerHit = options.energyPerHit ?? 2;
   }
 
   hit(noteId: string, offsetMs: number, atSeconds: number): Judgement {
@@ -100,9 +100,9 @@ export class GameScore {
     this.maxCombo = Math.max(this.maxCombo, this.combo);
     this.addPoints(ACCURACY_POINTS[grade], atSeconds);
     this.score += STREAK_BONUSES[this.combo] ?? 0;
+    this.energy += this.energyPerHit;
     if (grade === "PERFECT" || grade === "GREAT") {
       this.flowStreak++;
-      this.energy += this.perfectEnergy * (grade === "PERFECT" ? 1 : 0.5);
     } else {
       this.flowStreak = 0;
     }

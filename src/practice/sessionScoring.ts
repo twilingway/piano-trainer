@@ -1,5 +1,5 @@
 import type { SongNote } from "../song/song";
-import { perfectEnergyPerNote } from "./energy";
+import { energyPerHit } from "./energy";
 import { GameScore } from "./gameScore";
 import { idealScore } from "./gameResults";
 import { GAME_RULES } from "./gameRules";
@@ -21,14 +21,14 @@ export class SessionScoring {
   private scorer: GameScore;
   private dirty = false;
   private readonly targetScore: number;
-  private readonly perfectEnergy: number;
+  private readonly energyPerHit: number;
   private lastApplied: Command | undefined;
   constructor(
     private readonly notes: readonly SongNote[],
     private readonly difficulty: Difficulty
   ) {
     this.targetScore = idealScore(notes);
-    this.perfectEnergy = perfectEnergyPerNote(notes);
+    this.energyPerHit = energyPerHit(notes);
     this.scorer = this.create();
   }
   hit(id: string, offset: number, at: number): void {
@@ -85,7 +85,7 @@ export class SessionScoring {
     return new GameScore(this.notes.length, {
       difficulty: this.difficulty,
       targetScore: this.targetScore,
-      perfectEnergy: this.perfectEnergy
+      energyPerHit: this.energyPerHit
     });
   }
   private rebuild(): void {
