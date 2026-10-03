@@ -199,6 +199,17 @@ body {
   overflow-y: hidden;
 }
 
+@media (width > 640px) and (height > 500px) {
+  .staff--single {
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+  }
+
+  .staff--single::-webkit-scrollbar {
+    height: 0;
+  }
+}
+
 /* One line: half a screen of margin on each side, so any note can sit in the middle. */
 .staff--single .staff-page {
   display: inline-block;
