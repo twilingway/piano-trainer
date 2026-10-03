@@ -6,6 +6,8 @@ export interface PoseSprite {
   readonly tips: Readonly<Record<Finger, { readonly x: number; readonly y: number }>>;
   /** Fingers the picture shows pressing. */
   readonly pressed: ReadonlySet<Finger>;
+  /** This picture's calibrated pixels per white key; older poses use the fit fallback. */
+  readonly pixelsPerKey?: number;
 }
 
 /** Where a pose goes on screen: which picture, its scale, and where its origin lands. */
@@ -25,9 +27,9 @@ const UNPRESSED_PENALTY = 0.5;
 
 /**
  * The pose whose fingertips land nearest the keys the hand plays, and where to
- * put it. `pixelsPerKey` is how many picture pixels one white key spans, so
- * every pose is drawn at the same size; the picture only slides along the
- * keyboard, it is never stretched to fit.
+ * put it. Each pose uses its measured pixels per white key, falling back to
+ * `pixelsPerKey` for older pictures. The picture only slides along the keyboard;
+ * its proportions are never stretched to fit the targets.
  */
 export function fitPose(
   poses: readonly PoseSprite[],
@@ -37,11 +39,17 @@ export function fitPose(
   pixelsPerKey: number
 ): PoseFit | undefined {
   // Also refuses NaN: a pose measured wrong must not place a hand nowhere.
-  if (targets.size === 0 || !(pixelsPerKey > 0) || !(whiteWidth > 0)) return undefined;
-  const scale = whiteWidth / pixelsPerKey;
-  const scaleX = hand === "right" ? scale : -scale;
+  if (targets.size === 0 || !Number.isFinite(whiteWidth) || !(whiteWidth > 0)) return undefined;
+  for (const x of targets.values()) if (!Number.isFinite(x)) return undefined;
   let best: PoseFit | undefined;
   for (const pose of poses) {
+    const calibration = pose.pixelsPerKey ?? pixelsPerKey;
+    if (!Number.isFinite(calibration) || !(calibration > 0)) continue;
+    if (Object.values(pose.tips).some((tip) => !Number.isFinite(tip.x) || !Number.isFinite(tip.y)))
+      continue;
+    const scale = whiteWidth / calibration;
+    if (!Number.isFinite(scale) || !(scale > 0)) continue;
+    const scaleX = hand === "right" ? scale : -scale;
     let shift = 0;
     for (const [finger, x] of targets) shift += x - pose.tips[finger].x * scaleX;
     shift /= targets.size;
@@ -50,7 +58,8 @@ export function fitPose(
       miss += Math.abs(pose.tips[finger].x * scaleX + shift - x);
       if (!pose.pressed.has(finger)) miss += whiteWidth * UNPRESSED_PENALTY;
     }
-    if (!best || miss < best.miss) best = { pose, scaleX, scaleY: scale, x: shift, miss };
+    if (Number.isFinite(shift) && Number.isFinite(miss) && (!best || miss < best.miss))
+      best = { pose, scaleX, scaleY: scale, x: shift, miss };
   }
   return best;
 }

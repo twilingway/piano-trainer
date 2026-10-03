@@ -166,7 +166,7 @@ export class FallingNotesView {
     this.road.setPerspective(this.keyStyle === "perspective");
     this.road.container.visible = false;
     this.road.effects.visible = false;
-    this.keysRoot.addChild(keyboard.container, this.hands.container);
+    this.keysRoot.addChild(keyboard.container);
     // Pixi draws a Text the first time it is shown: wait for the web fonts, or the board is set
     // in a fallback face. Offline they never come, and the fallback is fine.
     await Promise.all([
@@ -179,10 +179,16 @@ export class FallingNotesView {
       notes.cards,
       this.keysRoot,
       this.road.effects,
+      this.hands.container,
       this.fx.container,
       this.hud.container
     );
-    await Promise.all([this.fx.load(), notes.loadNeon(), this.road.loadArrivalEffects()]);
+    await Promise.all([
+      this.fx.load(),
+      notes.loadNeon(),
+      this.road.loadArrivalEffects(),
+      this.hands.load()
+    ]);
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -191,7 +197,7 @@ export class FallingNotesView {
       stage,
       this.app.canvas,
       (event) => {
-        this.roadPointer(event);
+        this.keysPointer(event);
       },
       () => {
         keyboard.releaseMouse();
@@ -300,10 +306,12 @@ export class FallingNotesView {
     this.laidOutFor = { width: 0, height: 0 };
   }
 
-  /** Plays the key under the mouse on the road's picture of the keyboard. */
-  private roadPointer(event: FederatedPointerEvent): void {
-    if (!this.roadMode || event.target !== this.app.stage || !this.parts.keys) return;
-    const point = this.road?.keysPointAt(event.global.x, event.global.y);
+  /** Physical/legacy keys and the flat key fallback share the stage's pointer gesture. */
+  private keysPointer(event: FederatedPointerEvent): void {
+    if (event.target !== this.app.stage || !this.parts.keys) return;
+    const point = this.roadMode
+      ? this.road?.keysPointAt(event.global.x, event.global.y)
+      : { x: event.global.x + this.pan, y: event.global.y };
     const pitch = point && this.keyboard?.pitchAt(point.x, point.y);
     if (pitch !== undefined) this.keyboard?.pressWithMouse(pitch);
   }
@@ -351,9 +359,16 @@ export class FallingNotesView {
       this.labels
     );
     if (this.hands.container.visible) {
-      this.hands.draw(state.time, this.app.ticker.deltaMS / 1000, state.hands, this.keys, geometry);
+      this.hands.draw(
+        state.time,
+        this.app.ticker.deltaMS / 1000,
+        state.hands,
+        this.keys,
+        geometry,
+        (x, y, reach) => (road ? road.handPlace(x, y, geometry, reach) : { x: x - this.pan, y })
+      );
     }
-    // Last, once the keys and hands of this frame are drawn: the road takes a picture of them.
+    // The road takes a picture of the keys; whole hands stay in their own projected overlay.
     if (road) {
       const strikes: Strike[] = [];
       for (const [pitch, note] of playing) {
@@ -476,6 +491,7 @@ export class FallingNotesView {
       this.keysRoot.destroy({ children: true });
     }
     this.road?.destroy();
+    this.hands.destroy();
     this.notesLayer?.destroy();
     const baked = [
       ...this.digitTextures.values(),
@@ -510,7 +526,10 @@ export class FallingNotesView {
     this.notesLayer?.layout(this.keys, geometry.hitY, total);
     // The road ends on the felt, where the notes meet the keys.
     if (this.road) {
-      this.road.layout(total, geometry.hitY, height, width);
+      const handRoom = this.parts.hands
+        ? height - geometry.keyboardTop - geometry.keyboardHeight
+        : 0;
+      this.road.layout(total, geometry.hitY, height, width, handRoom);
       this.road.setKeyboard(this.keys, geometry);
       // The road shows itself when it fits; off, it stays hidden whatever the layout.
       if (!this.roadMode) {
