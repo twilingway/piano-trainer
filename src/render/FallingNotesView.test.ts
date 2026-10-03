@@ -40,6 +40,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     beats: [],
     neonFrames: [],
     cardGlow: Texture.WHITE,
+    trailTile: Texture.WHITE,
     noteNames: "ru",
     labels: {
       digits: new Map([
@@ -90,12 +91,14 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
       beatY: (y: number) => y,
       beginNotes: vi.fn(),
       endNotes: vi.fn(),
+      drawHold: vi.fn(() => false),
+      clarity: () => 1,
       scenePan: 0
     },
     wasSounding: new Set<number>()
   }) as unknown as FallingNotesView;
   const notesDraw = vi.spyOn(layer, "draw");
-  return { view, keyboardDraw, effectsDraw, roadDraw, sprites, flatDraw, notesDraw };
+  return { view, keyboardDraw, effectsDraw, roadDraw, sprites, flatDraw, notesDraw, layer };
 }
 
 describe("accompaniment fire independent of key colours", () => {
@@ -130,6 +133,39 @@ describe("accompaniment fire independent of key colours", () => {
     expect(flatDraw).not.toHaveBeenCalled();
     expect(sprites[0]?.digit.visible).toBe(false);
   });
+  it.each([false, true])("shows the original road geometry earlier with cards=%s", (cards) => {
+    const note: SongNote = {
+      id: "early",
+      pitch: 72,
+      hand: "right",
+      finger: 1,
+      start: 12,
+      startBeat: 12,
+      duration: 1
+    };
+    const { view, sprites, layer } = viewHarness(true, [note]);
+    layer.setCards(cards);
+    const frame: FrameState = {
+      time: 0,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(["right"])
+    };
+    view.draw({ ...frame, time: 3 });
+    expect(sprites[0]?.body.visible).toBe(false);
+    for (const time of [4.1, 6, 8, 10, 12]) {
+      view.draw({ ...frame, time });
+      const body = sprites[0]?.body;
+      expect(body?.visible).toBe(true);
+      expect((body?.y ?? NaN) + (body?.height ?? NaN)).toBeCloseTo((time - 4) * 50);
+      if (cards) expect(sprites[0]?.frame.y).toBeCloseTo((time - 4) * 50);
+    }
+    expect(frame.time).toBe(0);
+    expect(frame.lookAhead).toBe(2);
+  });
   it.each([0, 100])("keeps measure lines with notes with handRoom=%s", (handRoom) => {
     const camera = worldCamera(800, 600 - handRoom);
     const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
@@ -147,7 +183,7 @@ describe("accompaniment fire independent of key colours", () => {
       expect(line.y).toBeCloseTo(note?.y ?? NaN);
     }
   });
-  it.each([false, true])("preserves the song-time window with road=%s", (roadMode) => {
+  it.each([false, true])("extends only the visual preview with road=%s", (roadMode) => {
     const { view, notesDraw } = viewHarness(roadMode);
     view.draw({
       time: 0.1,
@@ -158,10 +194,10 @@ describe("accompaniment fire independent of key colours", () => {
       due: [],
       hands: new Set(["right"])
     });
-    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(2);
+    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(roadMode ? 8 : 2);
     expect(notesDraw.mock.calls[0]?.[0].time).toBe(0.1);
   });
-  it("keeps identical digits and names inside the lower end with and without the road", () => {
+  it("keeps digits and names inside the lower end with and without the road", () => {
     const layouts = [false, true].map((roadMode) => {
       const { view, sprites } = viewHarness(roadMode);
       view.draw({
@@ -189,7 +225,7 @@ describe("accompaniment fire independent of key colours", () => {
         };
       });
     });
-    expect(layouts[0]).toEqual(layouts[1]);
+    for (const layout of layouts) expect(layout[0]).toEqual(layout[1]);
   });
   it("keeps the player's finger and fire when accompaniment shares the pitch", () => {
     const songNotes: SongNote[] = [

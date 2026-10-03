@@ -9,14 +9,16 @@ import type { NoteNameStyle } from "../song/musicxml";
 import type { Song } from "../song/song";
 import type { StaffPrefs } from "./useStaffPrefs";
 
-export type KeyRange = "song" | "88" | "61" | "49" | "25";
+export type KeyRange = "song" | "88" | "61" | "49" | "25" | "3oct" | "4oct";
 
 /** Fixed ranges of real keyboards: 88 keys A0-C8, 61 keys C2-C7, 49 keys C2-C6. */
 const FIXED_RANGES: Readonly<Record<Exclude<KeyRange, "song">, readonly [number, number]>> = {
   "88": [21, 108],
   "61": [36, 96],
   "49": [36, 84],
-  "25": [60, 84]
+  "25": [60, 84],
+  "3oct": [48, 83],
+  "4oct": [36, 83]
 };
 
 /** The song's notes from the C below them to the C above, at least two octaves wide. */
@@ -147,7 +149,12 @@ export function useFallingView({
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {
-    viewRef.current?.setRange(rangeLow, rangeHigh, keyRange === "song");
+    viewRef.current?.setRange(
+      rangeLow,
+      rangeHigh,
+      keyRange === "song",
+      keyRange === "3oct" || keyRange === "4oct"
+    );
   }, [viewRef, trainerReady, rangeLow, rangeHigh, keyRange]);
 
   // The original on a second screen, drawn by the trainer at the take's song time.
@@ -172,7 +179,7 @@ export function useFallingView({
       mirror.setNoteNames(fallingNames);
       // The same parts as the main view, or the two lanes run at different speeds.
       mirror.setParts({ notes: staffPrefs.lane, keys: staffPrefs.keys, hands: staffPrefs.hands });
-      mirror.setRange(rangeLow, rangeHigh);
+      mirror.setRange(rangeLow, rangeHigh, false, keyRange === "3oct" || keyRange === "4oct");
       trainer.setComparison({
         colorOf: (note) => playedTint.get(note.id),
         mirror: { view: mirror, colorOf: (note) => gradeOf.get(note.id) }
@@ -194,6 +201,7 @@ export function useFallingView({
     staffPrefs.fps,
     rangeLow,
     rangeHigh,
+    keyRange,
     fallingNames,
     staffPrefs.lane,
     staffPrefs.keys,

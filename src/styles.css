@@ -199,6 +199,17 @@ body {
   overflow-y: hidden;
 }
 
+@media (width > 640px) and (height > 500px) {
+  .staff--single {
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+  }
+
+  .staff--single::-webkit-scrollbar {
+    height: 0;
+  }
+}
+
 /* One line: half a screen of margin on each side, so any note can sit in the middle. */
 .staff--single .staff-page {
   display: inline-block;
@@ -2014,4 +2025,258 @@ button.song-card.song-card__open {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+/* A compact left rail leaves the top of the mobile screen to the score. */
+@media (height <= 500px), (width <= 640px) {
+  .shell-top {
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    right: auto;
+    left: max(8px, env(safe-area-inset-left));
+    margin: 0;
+  }
+
+  .topbar {
+    display: grid;
+    grid-template-columns: repeat(2, 34px);
+    gap: 3px;
+    align-items: center;
+    padding: 3px;
+    border-radius: 9px;
+  }
+
+  .topbar-library,
+  .topbar-restart,
+  .compact-hands,
+  .topbar .play-button,
+  .topbar-fullscreen,
+  .topbar-settings,
+  .compact-controls > summary {
+    flex-basis: 34px;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    margin: 0;
+    padding: 0;
+    border-radius: 8px;
+  }
+
+  .topbar > .compact-controls {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .topbar > .play-button,
+  .topbar > .topbar-restart {
+    grid-area: auto;
+  }
+
+  .topbar .play-button__ring {
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
+  }
+
+  .topbar svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .compact-controls__menu {
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
+    width: min(320px, calc(100vw - 104px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top));
+  }
+
+  .compact-controls__views {
+    grid-template-columns: repeat(3, 44px);
+    justify-content: space-around;
+  }
+
+  .compact-practice__hands {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compact-practice .segmented button {
+    padding-inline: 4px;
+    font-size: 12px;
+  }
+
+  .workspace-main {
+    --mobile-score-top: max(4px, env(safe-area-inset-top));
+    --mobile-rail-width: calc(128px + env(safe-area-inset-left));
+  }
+
+  .workspace-main:has(> .staves)::before {
+    position: absolute;
+    z-index: 2;
+    inset: 0 0 auto;
+    height: var(--mobile-score-top);
+    background: #020b12;
+    content: "";
+    pointer-events: none;
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) > .staves {
+    position: absolute;
+    z-index: 2;
+    inset: var(--mobile-score-top) 0 auto var(--mobile-rail-width);
+    max-height: min(34cqh, 150px);
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    background: #020b12;
+    box-shadow: 0 6px 14px rgb(0 0 0 / 45%);
+    pointer-events: none;
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) .staff {
+    width: 100%;
+    max-height: min(34cqh, 150px);
+    pointer-events: auto;
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) .staves--column .staff {
+    max-height: min(17cqh, 75px);
+  }
+
+  .workspace-main:has(> .lanes--hidden) > .staves {
+    margin-top: var(--mobile-score-top);
+    margin-left: var(--mobile-rail-width);
+    max-height: calc(100cqh - var(--mobile-score-top));
+  }
+
+  .workspace-main:has(> .lanes--hidden) .staff {
+    max-height: calc(100cqh - var(--mobile-score-top));
+  }
+
+  .workspace-main:has(> .lanes--hidden) .staves--column .staff {
+    max-height: calc((100cqh - var(--mobile-score-top)) / 2);
+  }
+
+  .lanes--keys {
+    margin-top: auto;
+  }
+
+  .game-score-dock {
+    position: fixed;
+    z-index: 4;
+    top: calc(128px + env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    width: 112px;
+    padding: 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .game-score-dock .game-score-board {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .game-score-dock .game-score-panel {
+    justify-content: flex-start;
+    gap: 3px 8px;
+    max-width: 100%;
+    width: 100%;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 4px;
+    background: rgb(2 13 22 / 75%);
+    text-align: left;
+  }
+
+  .game-score-dock .game-score-panel--points {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    margin-left: 0;
+  }
+
+  .game-score-dock .game-score-panel--combo {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .game-score-dock :is(.game-points, .game-overdrive) {
+    grid-column: 1 / -1;
+  }
+
+  .game-score-dock :is(.game-combo, .game-accuracy, .game-points) {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .game-score-dock .game-score-label {
+    font-size: 9px;
+  }
+
+  .game-score-dock :is(.game-combo__value, .game-accuracy strong, .game-points strong) {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .game-score-dock .game-accuracy strong {
+    font-size: 13px;
+  }
+
+  .game-score-dock .game-multiplier strong {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  .game-score-dock .game-energy {
+    flex: 0 1 52px;
+    width: 52px;
+    min-width: 40px;
+  }
+
+  .game-score-dock .game-energy > div:first-child {
+    margin-bottom: 2px;
+  }
+
+  .game-score-dock .game-energy__track {
+    height: 3px;
+  }
+
+  .game-score-dock .game-overdrive {
+    display: block;
+    flex: 0 0 80px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 32px;
+    overflow: hidden;
+    padding: 0 5px;
+    font-size: 9px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .game-score-dock .game-score-board--message {
+    font-size: 10px;
+    padding: 4px;
+  }
+}
+
+@media (width <= 640px) and (orientation: portrait), (width <= 540px) {
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) > .staves,
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) .staff {
+    max-height: min(30cqh, 200px);
+  }
+
+  .workspace-main:has(> .lanes:not(.lanes--hidden)) .staves--column .staff {
+    max-height: min(15cqh, 100px);
+  }
 }
