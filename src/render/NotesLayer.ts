@@ -283,7 +283,7 @@ export class NotesLayer {
         NOTE_GAP_PX,
         4
       );
-      if (onScreen && key && this.repeated.has(note.id) && bounds.top > 0) {
+      if (onScreen && this.repeated.has(note.id) && bounds.top > 0) {
         const centre = key.x + key.width / 2;
         const spot = road?.notePlace(centre, bounds.top);
         const next = road?.notePlace(centre, bounds.top + 1);
