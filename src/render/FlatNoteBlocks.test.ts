@@ -45,10 +45,31 @@ describe("flat neon blocks", () => {
     blocks.begin();
     blocks.draw(100, 0, 20, 4, 0xffffff, 1);
     blocks.end();
-    expect(blocks.container.children).toHaveLength(6);
+    expect(blocks.container.children).toHaveLength(8);
     expect(blocks.container.children[0]).toBe(first);
-    expect(blocks.container.children[3]?.visible).toBe(false);
     expect(blocks.container.children[4]?.visible).toBe(false);
     expect(blocks.container.children[5]?.visible).toBe(false);
+    expect(blocks.container.children[6]?.visible).toBe(false);
+    expect(blocks.container.children[7]?.visible).toBe(false);
+  });
+
+  it("keeps a short note's bloom radius and draws every halo below the faces", () => {
+    vi.spyOn(Texture, "from").mockReturnValue(Texture.WHITE);
+    const blocks = new FlatNoteBlocks();
+    blocks.begin();
+    blocks.draw(100, 30, 36, 150, 0x00ccff, 1);
+    const bloom = blocks.container.children.find((child) => child.zIndex === 0) as NineSliceSprite;
+    const longWidth = bloom.width * bloom.scale.x;
+    const longX = bloom.x;
+    blocks.begin();
+    blocks.draw(100, 30, 36, 4, 0x00ccff, 1);
+    blocks.draw(138, 30, 36, 80, 0xff780a, 1);
+    blocks.end();
+    expect(bloom.width * bloom.scale.x).toBeCloseTo(longWidth);
+    expect(bloom.x).toBeCloseTo(longX);
+    blocks.container.sortChildren();
+    const layers = blocks.container.children.map((child) => child.zIndex);
+    expect(layers.lastIndexOf(0)).toBeLessThan(layers.indexOf(1));
+    expect(layers.lastIndexOf(1)).toBeLessThan(layers.indexOf(2));
   });
 });
