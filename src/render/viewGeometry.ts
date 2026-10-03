@@ -46,7 +46,8 @@ export function viewGeometry(
   height: number,
   whiteWidth: number,
   parts: ViewParts,
-  stickers: boolean
+  stickers: boolean,
+  fitsViewport = false
 ): Geometry {
   if (!parts.keys) {
     const none = { keyboardHeight: 0, blackHeight: 0, feltHeight: 0 };
@@ -60,7 +61,7 @@ export function viewGeometry(
   const strip = parts.hands
     ? Math.max(margin, Math.min(whiteWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE))
     : margin;
-  const wanted = Math.max(KEYBOARD_MIN_PX, whiteWidth * KEY_LENGTH_PER_WIDTH);
+  const wanted = Math.max(KEYBOARD_MIN_PX, whiteWidth * (fitsViewport ? 3 : KEY_LENGTH_PER_WIDTH));
   // Only the keys: they keep their length, not stretched over the view, and may use all of it.
   const room = parts.notes ? height * MAX_KEYBOARD_SHARE : height - strip - feltHeight;
   const keyboardHeight = Math.max(0, Math.min(wanted, room));
@@ -91,12 +92,14 @@ export function fitRange(
   low: number,
   high: number,
   fitsSong: boolean,
-  fitWholeSong = false
+  fitWholeSong = false,
+  fitsViewport = false
 ): FittedRange {
   const keyWidth = Math.min(WHITE_KEY_WIDTH_PX, width / COMPACT_WHITE_KEYS);
   // Match layoutKeyboard's white edges when calculating the actual key count.
   const first = Math.max(LOWEST_PITCH, isBlackKey(low) ? low - 1 : low);
   const last = Math.min(HIGHEST_PITCH, isBlackKey(high) ? high + 1 : high);
+  if (fitsViewport) return { low: first, high: last, total: width };
   if (!fitsSong) {
     return { low, high, total: whiteKeysBetween(first, last) * keyWidth };
   }
