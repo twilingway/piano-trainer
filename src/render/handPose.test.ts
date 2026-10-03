@@ -115,6 +115,11 @@ describe("handHintChord", () => {
   it("resumes the visual melody when the session no longer waits", () => {
     expect(handHintChord([thumb, index], 0.15, [])?.notes).toEqual([index]);
   });
+  it("does not predict the other hand while any note of the current chord is unplayed", () => {
+    expect(handHintChord([index], 0, [], true)).toBeUndefined();
+    expect(handHintChord([thumb], 0, [thumb], true)?.notes).toEqual([thumb]);
+    expect(handHintChord([index], 0, [], false)?.notes).toEqual([index]);
+  });
 });
 
 describe("easePose", () => {

@@ -119,10 +119,13 @@ export function upcomingChord<T extends { readonly start: number; readonly durat
 export function handHintChord<T extends { readonly start: number; readonly duration: number }>(
   notes: readonly T[],
   time: number,
-  waitingFor: readonly T[]
+  waitingFor: readonly T[],
+  sessionWaiting = false
 ): { readonly start: number; readonly notes: readonly T[] } | undefined {
   if (waitingFor.length > 0)
     return { start: Math.min(...waitingFor.map((note) => note.start)), notes: waitingFor };
+  // The other hand keeps its resting pose while input for this chord is still missing.
+  if (sessionWaiting) return undefined;
   return upcomingChord(notes, time);
 }
 

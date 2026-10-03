@@ -133,7 +133,8 @@ export class HandsLayer {
       const chord = handHintChord(
         this.notes[hand],
         time,
-        waitingFor.filter((note) => note.hand === hand)
+        waitingFor.filter((note) => note.hand === hand),
+        waitingFor.length > 0
       );
       const target = handPose(hand, chord?.notes ?? [], keys, this.poses.get(hand));
       if (!target) continue;
