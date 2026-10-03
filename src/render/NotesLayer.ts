@@ -8,7 +8,7 @@ import type { Song, SongBeat, SongNote } from "../song/song";
 import { nameKey } from "./bakeLabels";
 import { FlatNoteBlocks } from "./FlatNoteBlocks";
 import type { FallingNoteNames } from "./bakeLabels";
-import { visibleHold } from "./holdBounds";
+import { flatHoldBounds, holdBounds } from "./holdBounds";
 import { repeatedNoteEnds, repeatGap } from "./noteSeparation";
 import { scorePlacements } from "../song/scorePlacement";
 import type { ScorePlacement } from "../song/scorePlacement";
@@ -117,7 +117,6 @@ export class NotesLayer {
   private beats: readonly SongBeat[] = [];
   private laneWidth = 0;
   private notes: NoteSprite[] = [];
-  private longestHold = 0;
   private repeated: ReadonlySet<string> = new Set();
   private readonly cardFrame: Texture;
   /** The left hand's frame, with a second ring. */
@@ -164,7 +163,6 @@ export class NotesLayer {
   }
 
   setSong(song: Song): void {
-    this.longestHold = song.notes.reduce((longest, note) => Math.max(longest, note.duration), 0);
     this.beats = song.beats;
     this.repeated = repeatedNoteEnds(song.notes);
     const placements = scorePlacements(song);
@@ -257,16 +255,14 @@ export class NotesLayer {
     road: RoadLayer | undefined
   ): void {
     const { hitY } = geometry;
-    // Reserve room for the whole longest bar before any head starts its approach.
-    const lookAhead = state.lookAhead + (road ? this.longestHold : 0);
-    const pixelsPerSecond = hitY / lookAhead;
+    const pixelsPerSecond = hitY / state.lookAhead;
     const cards = this.cardsOn;
     road?.beginNotes();
     this.playing.clear();
     this.arrivals.length = 0;
     this.guides.visible = road === undefined && this.lane.visible;
     this.beatBars.visible = road !== undefined;
-    if (road) this.drawBeats(state.time, lookAhead, hitY, pixelsPerSecond, road);
+    if (road) this.drawBeats(state.time, state.lookAhead, hitY, pixelsPerSecond, road);
     const cardWidth = Math.min(
       CARD_MAX_PX,
       Math.max(CARD_MIN_PX, geometry.whiteWidth * CARD_PER_WIDTH)
@@ -285,23 +281,25 @@ export class NotesLayer {
         }
       }
       const key = keys.get(note.pitch);
-      const { bottom, noteHeight, visible, bounds, bodyBounds } = visibleHold(
+      const bottom = hitY - (note.start - state.time) * pixelsPerSecond;
+      const noteHeight = Math.max(note.duration * pixelsPerSecond - NOTE_GAP_PX, 4);
+      const onScreen = key !== undefined && bottom > 0 && bottom - noteHeight < hitY;
+      // With cards the bar thins to a tail behind the card: the length still shows.
+      const bounds = holdBounds(note.start, note.duration, state.time, state.lookAhead, hitY);
+      const bodyBounds = flatHoldBounds(
         note.start,
         note.duration,
         state.time,
-        lookAhead,
+        state.lookAhead,
         hitY,
         NOTE_GAP_PX,
-        4,
-        road !== undefined
+        4
       );
-      const onScreen = key !== undefined && visible;
-      if (onScreen && this.repeated.has(note.id) && (road !== undefined || bounds.top > 0)) {
+      if (onScreen && this.repeated.has(note.id) && bounds.top > 0) {
         const centre = key.x + key.width / 2;
-        // Repeated notes keep a fixed pre-hit gap instead of stretching with their distance.
-        const spot = road?.notePlace(centre, hitY);
-        const next = road?.notePlace(centre, hitY - 1);
-        const slope = spot && next ? spot.y - next.y : 1;
+        const spot = road?.notePlace(centre, bounds.top);
+        const next = road?.notePlace(centre, bounds.top + 1);
+        const slope = spot && next ? next.y - spot.y : 1;
         const gap = repeatGap(bounds.bottom - bounds.top, key.width, slope, spot?.scale ?? 1);
         bounds.top += gap;
         bodyBounds.top += Math.min(gap, Math.max(0, bodyBounds.bottom - bodyBounds.top) * 0.25);
@@ -336,8 +334,8 @@ export class NotesLayer {
       body.x = keyCentre - barWidth / 2;
       body.width = barWidth;
       // Consume duration at the hit line, including the flat view's extra room for hands.
-      body.y = road?.beatY(bodyBounds.top) ?? bodyBounds.top;
-      body.height = (road?.beatY(bodyBounds.bottom) ?? bodyBounds.bottom) - body.y;
+      body.y = bodyBounds.top;
+      body.height = visibleHeight;
       if (body.texture !== (trail ? this.trailTile : Texture.WHITE)) {
         body.texture = trail ? this.trailTile : Texture.WHITE;
         body.blendMode = trail ? "add" : "normal";
@@ -354,11 +352,7 @@ export class NotesLayer {
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       const cardAlpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
       body.alpha = road !== undefined ? 1 : cardAlpha;
-      const age = noteArrivalAge(
-        road ? note.start + note.duration : note.start,
-        state.time,
-        lookAhead
-      );
+      const age = noteArrivalAge(note.start, state.time, state.lookAhead);
       const arrivalAlpha = road?.arrivalEffectsReady ? arrivalCardAlpha(age) : 1;
       if (road && age >= 0 && age < ARRIVAL_DURATION_S) {
         this.arrivals.push({
