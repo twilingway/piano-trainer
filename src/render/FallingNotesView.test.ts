@@ -12,6 +12,7 @@ import type { FxLayer } from "./FxLayer";
 import { RoadLayer } from "./RoadLayer";
 import { worldCamera } from "./worldCamera";
 import { roadProjection } from "./perspective";
+import { repeatedNoteEnds } from "./noteSeparation";
 
 function notesHarness(songNotes: readonly SongNote[] = notes) {
   const digitTexture = new Texture({ source: new TextureSource({ width: 24, height: 40 }) });
@@ -35,7 +36,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     beatBars: new Container(),
     lane: new Container(),
     flatBlocks: { begin: vi.fn(), draw: vi.fn(), end: vi.fn() },
-    repeated: new Set<string>(),
+    repeated: repeatedNoteEnds(songNotes),
     beats: [],
     neonFrames: [],
     cardGlow: Texture.WHITE,
@@ -52,7 +53,8 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
       ]),
       names: new Map()
     },
-    notes: sprites
+    notes: sprites,
+    longestHold: songNotes.reduce((longest, note) => Math.max(longest, note.duration), 0)
   }) as unknown as NotesLayer;
   return { layer, sprites };
 }
@@ -97,10 +99,89 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
     wasSounding: new Set<number>()
   }) as unknown as FallingNotesView;
   const notesDraw = vi.spyOn(layer, "draw");
-  return { view, keyboardDraw, effectsDraw, roadDraw, sprites, notesDraw };
+  return { view, keyboardDraw, effectsDraw, roadDraw, sprites, notesDraw, layer };
 }
 
 describe("accompaniment fire independent of key colours", () => {
+  it("keeps repeated glass bars at a constant pre-hit length through the real projection", () => {
+    const first: SongNote = {
+      id: "repeat",
+      pitch: 72,
+      hand: "right",
+      finger: 1,
+      start: 20,
+      startBeat: 20,
+      duration: 4
+    };
+    const { layer } = notesHarness([first, { ...first, id: "next", start: 24, duration: 1 }]);
+    const glassDraw = vi.fn();
+    const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+      projection: roadProjection(800, 400, 80, 0.1),
+      size: { width: 800, height: 400 },
+      pan: 0,
+      clock: 0,
+      arrivals: { ready: false },
+      glass: { ready: true, draw: glassDraw },
+      beginNotes: vi.fn(),
+      endNotes: vi.fn()
+    }) as unknown as RoadLayer;
+    const lengths: number[] = [];
+    for (const time of [12, 14, 18]) {
+      glassDraw.mockClear();
+      layer.draw(
+        { time, lookAhead: 8, statusOf: () => undefined, hands: new Set(["right"]) },
+        new Map([[72, { pitch: 72, black: false, x: 80, width: 40 }]]),
+        { hitY: 400, whiteWidth: 40 } as Parameters<NotesLayer["draw"]>[2],
+        road
+      );
+      const call = glassDraw.mock.calls[0];
+      if (!call) throw new Error("Missing repeated glass bar");
+      const top = call[0] as number;
+      const bottom = call[1] as number;
+      lengths.push(bottom - top);
+      expect(road.notePlace(100, bottom)?.y).toBeCloseTo(80 + (320 * (time - 8)) / 12);
+    }
+    expect(lengths[0]).toBeGreaterThan(0);
+    for (const length of lengths) expect(length).toBeCloseTo(lengths[0] ?? NaN);
+  });
+  it.each([false, true])(
+    "reveals complete bars and keeps chord heads together with cards=%s",
+    (cards) => {
+      const chord: SongNote[] = [
+        { id: "short", pitch: 60, hand: "right", finger: 1, start: 20, startBeat: 20, duration: 1 },
+        { id: "long", pitch: 72, hand: "right", finger: 5, start: 20, startBeat: 20, duration: 4 }
+      ];
+      const { view, layer, sprites } = viewHarness(true, chord);
+      layer.setCards(cards);
+      const frame: FrameState = {
+        time: 0,
+        lookAhead: 2,
+        statusOf: () => undefined,
+        pressed: new Set(),
+        sounding: new Set(),
+        due: [],
+        hands: new Set(["right"])
+      };
+      view.draw({ ...frame, time: 11.999 });
+      expect(sprites[1]?.body.visible).toBe(false);
+      for (const time of [12, 14, 16, 18, 20]) {
+        view.draw({ ...frame, time });
+        for (const [index, duration] of [1, 4].entries()) {
+          const body = sprites[index]?.body;
+          expect(body?.visible).toBe(true);
+          expect(body?.height).toBeCloseTo((duration * 400) / 12 - 1);
+          expect((body?.y ?? NaN) + (body?.height ?? NaN)).toBeCloseTo(
+            400 - ((20 - time) * 400) / 12
+          );
+          if (cards) expect(sprites[index]?.frame.y).toBeCloseTo(400 - ((20 - time) * 400) / 12);
+        }
+      }
+      view.draw({ ...frame, time: 24 });
+      expect(sprites.every(({ body }) => !body.visible)).toBe(true);
+      view.draw({ ...frame, time: 12 });
+      expect(sprites[1]?.body.height).toBeCloseTo((4 * 400) / 12 - 1);
+    }
+  );
   it("keeps equal screen-time steps on the road with the flat keyboard", () => {
     const projection = roadProjection(800, 400, 80, 0.1);
     const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
@@ -164,8 +245,8 @@ describe("accompaniment fire independent of key colours", () => {
     const body = sprites[0]?.body;
     if (!body) throw new Error("Missing fallback note");
     expect(body.visible).toBe(true);
-    expect(projection.at(100, (body.y + body.height) / 400).y).toBeCloseTo(240);
-    expect(projection.at(100, body.y / 400).y).toBeCloseTo(80 + (320 * 101) / 400);
+    expect(projection.at(100, (body.y + body.height) / 400).y).toBeCloseTo(272);
+    expect(projection.at(100, body.y / 400).y).toBeCloseTo(80 + (320 * 161) / 400);
   });
   it.each([0, 100])("keeps measure lines with notes with handRoom=%s", (handRoom) => {
     const camera = worldCamera(800, 600 - handRoom);
@@ -225,7 +306,7 @@ describe("accompaniment fire independent of key colours", () => {
       road.view.draw({ ...frame, time });
       const body = road.sprites[0]?.body;
       expect(body?.visible).toBe(true);
-      expect((body?.y ?? NaN) + (body?.height ?? NaN)).toBeCloseTo(100 + time * 50);
+      expect((body?.y ?? NaN) + (body?.height ?? NaN)).toBeCloseTo(400 - ((6 - time) * 400) / 9);
       expect(road.notesDraw.mock.lastCall?.[0].time).toBe(time);
     }
   });

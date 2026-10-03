@@ -350,7 +350,7 @@ export class FallingNotesView {
 
   draw(frame: FrameState): void {
     if (!this.ready || !this.notesLayer || !this.keyboard) return;
-    // Both views share the song-time window; the camera compensates perspective acceleration.
+    // Song time is shared; the road alone previews a longer approach.
     const state = frame;
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
