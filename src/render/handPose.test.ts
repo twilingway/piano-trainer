@@ -72,6 +72,15 @@ describe("handPose", () => {
 });
 
 describe("upcomingChord", () => {
+  it("keeps a short active note until its end before moving to the next finger", () => {
+    const melody = [
+      { id: "thumb", start: 0, duration: 0.18, finger: 1 },
+      { id: "index", start: 0.18, duration: 0.18, finger: 2 }
+    ];
+    expect(upcomingChord(melody, 0)?.notes.map((n) => n.finger)).toEqual([1]);
+    expect(upcomingChord(melody, 0.17)?.notes.map((n) => n.finger)).toEqual([1]);
+    expect(upcomingChord(melody, 0.18)?.notes.map((n) => n.finger)).toEqual([2]);
+  });
   const note = (id: string, start: number, duration = 0.5) => ({ id, start, duration });
   const notes = [note("a", 0), note("b", 0.01), note("c", 1), note("d", 2)];
 
