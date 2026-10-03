@@ -15,9 +15,12 @@ import { bakeKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
 
-const HAND_HINT: Readonly<Record<Hand, number>> = { right: 0x00d9ff, left: 0xff9d00 };
-const PRESSED_COLOR = 0xffee00;
-const SOUNDING_COLOR = 0xd900ff;
+const HAND_HINT: Readonly<Record<Hand, number>> = {
+  right: FINGER_COLOR[3],
+  left: FINGER_COLOR[4]
+};
+const PRESSED_COLOR = FINGER_COLOR[2];
+const SOUNDING_COLOR = FINGER_COLOR[1];
 /*
  * A key keeps its own face and its colour is a light laid over it, the key's
  * own shape with a neon edge: faint while the key waits to be played, full

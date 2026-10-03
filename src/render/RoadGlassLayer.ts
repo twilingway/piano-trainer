@@ -1,4 +1,10 @@
 import { Assets, Container, Mesh, MeshGeometry, Texture } from "pixi.js";
+import {
+  bakeNoteMaterial,
+  NOTE_BLOOM_MARGIN,
+  NOTE_FACE_HEIGHT,
+  NOTE_FACE_WIDTH
+} from "./bakeNoteMaterial";
 
 const GLASS = new URL("../fx/note-glass-block.webp", import.meta.url).href;
 const FIRE = new URL("../fx/note-hold-fire.webp", import.meta.url).href;
@@ -19,14 +25,16 @@ export const GLASS_LIFT_SHARE = 0.28;
 // Keep every projected edge inside the opaque glass, away from the atlas halo.
 const SOLID_LEFT_U = 20 / TEXTURE_WIDTH;
 const SOLID_RIGHT_U = 75 / TEXTURE_WIDTH;
-const SOLID_TOP_V = 29 / TEXTURE_HEIGHT;
-const SOLID_BOTTOM_V = 169 / TEXTURE_HEIGHT;
 
 type Project = (y: number, offsetX: number, lift?: number) => { x: number; y: number };
 
 interface GlassMesh {
-  backing: Mesh;
   mesh: Mesh;
+  emission: Mesh;
+  bevel: Mesh;
+  bloom: Mesh;
+  bloomGeometry: MeshGeometry;
+  bloomPositions: Float32Array;
   geometry: MeshGeometry;
   positions: Float32Array;
   walls: Mesh;
@@ -44,16 +52,29 @@ export class RoadGlassLayer {
   readonly container = new Container({ sortableChildren: true });
   private texture: Texture | undefined;
   private fireAtlas: Texture | undefined;
+  private readonly material: Record<"face" | "emission" | "bloom" | "bevel", Texture>;
   private readonly pool: GlassMesh[] = [];
   private used = 0;
   private disposed = false;
 
   constructor() {
     this.container.eventMode = "none";
+    const masks = bakeNoteMaterial((width, height) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    });
+    this.material = {
+      face: Texture.from(masks.face),
+      emission: Texture.from(masks.emission),
+      bloom: Texture.from(masks.bloom),
+      bevel: Texture.from(masks.bevel)
+    };
   }
 
   get ready(): boolean {
-    return this.texture !== undefined && !this.disposed;
+    return !this.disposed;
   }
 
   async load(): Promise<void> {
@@ -61,7 +82,7 @@ export class RoadGlassLayer {
       const texture = await Assets.load<Texture>(GLASS);
       if (!this.disposed) this.texture = texture;
     } catch (error) {
-      console.warn("Road glass did not load; keeping plain duration bars", error);
+      console.warn("Road glass did not load; keeping baked light and plain side walls", error);
     }
     try {
       const atlas = await Assets.load<Texture>(FIRE);
@@ -104,7 +125,7 @@ export class RoadGlassLayer {
             ? bottom
             : top + topSize + (bodyHeight * (row - 1)) / BODY_SEGMENTS;
       for (let column = 0; column < COLUMNS; column++) {
-        // The 32-pixel sides contain the baked glow, edge and inner bevel.
+        // All material layers share the original projected duration surface.
         const offsetX = width * (column / (COLUMNS - 1) - 0.5);
         const point = project(y, offsetX, width * GLASS_LIFT_SHARE);
         const index = (row * COLUMNS + column) * 2;
@@ -114,14 +135,48 @@ export class RoadGlassLayer {
     }
     entry.geometry.getBuffer("aPosition").update();
     entry.mesh.tint = tint;
-    entry.mesh.alpha = Math.min(1, alpha);
+    entry.mesh.alpha = alpha;
     entry.mesh.visible = true;
     entry.mesh.zIndex = bottom * 2 + 1;
-    // A dark backing shows through the transparent bevel as black side stripes.
-    entry.backing.tint = tint;
-    entry.backing.alpha = Math.min(0.55, alpha * 0.55);
-    entry.backing.visible = true;
-    entry.backing.zIndex = bottom * 2 + 0.5;
+    entry.emission.tint = tint;
+    entry.emission.alpha = alpha * 0.9;
+    entry.emission.visible = true;
+    entry.emission.zIndex = bottom * 2 + 1.1;
+    entry.bevel.alpha = alpha * 0.9;
+    entry.bevel.visible = true;
+    entry.bevel.zIndex = bottom * 2 + 1.2;
+    const margin = (width * NOTE_BLOOM_MARGIN) / NOTE_FACE_WIDTH;
+    for (let row = 0; row < ROWS + 2; row++) {
+      const y =
+        row === 0
+          ? top - margin
+          : row === ROWS + 1
+            ? bottom + margin
+            : row === 1
+              ? top
+              : row === ROWS
+                ? bottom
+                : top + topSize + (bodyHeight * (row - 2)) / BODY_SEGMENTS;
+      for (let column = 0; column < COLUMNS; column++) {
+        const offsetX =
+          column === 0
+            ? -width / 2 - margin
+            : column === 3
+              ? width / 2 + margin
+              : column === 1
+                ? -width / 2
+                : width / 2;
+        const point = project(y, offsetX, width * GLASS_LIFT_SHARE);
+        const index = (row * COLUMNS + column) * 2;
+        entry.bloomPositions[index] = point.x;
+        entry.bloomPositions[index + 1] = point.y;
+      }
+    }
+    entry.bloomGeometry.getBuffer("aPosition").update();
+    entry.bloom.tint = tint;
+    entry.bloom.alpha = alpha * 0.65;
+    entry.bloom.visible = true;
+    entry.bloom.zIndex = -Infinity;
     // Each face uses the same neutral Arcadia material, tinted by the finger.
     const left = -width / 2;
     const right = width / 2;
@@ -143,8 +198,9 @@ export class RoadGlassLayer {
       }
     }
     entry.wallGeometry.getBuffer("aPosition").update();
+    entry.walls.texture = this.texture ?? Texture.WHITE;
     entry.walls.tint = tint;
-    entry.walls.alpha = Math.min(1, alpha);
+    entry.walls.alpha = Math.min(0.8, alpha * 0.8);
     entry.walls.visible = true;
     entry.walls.zIndex = bottom * 2;
     const smoke = entry.smoke;
@@ -181,7 +237,7 @@ export class RoadGlassLayer {
       }
       entry.smokeGeometry.getBuffer("aPosition").update();
       smoke.tint = tint;
-      smoke.alpha = Math.min(0.9, alpha * 0.9);
+      smoke.alpha = Math.min(0.6, alpha * 0.6);
       smoke.zIndex = bottom * 2 + 2;
     }
   }
@@ -191,7 +247,9 @@ export class RoadGlassLayer {
     for (const entry of this.pool) {
       if (index++ >= this.used)
         entry.mesh.visible =
-          entry.backing.visible =
+          entry.emission.visible =
+          entry.bevel.visible =
+          entry.bloom.visible =
           entry.walls.visible =
           entry.smoke.visible =
             false;
@@ -203,8 +261,11 @@ export class RoadGlassLayer {
     this.disposed = true;
     for (const entry of this.pool) {
       // Mesh.destroy does not own its geometry or the shared Assets texture.
-      if (!entry.backing.destroyed) entry.backing.destroy();
       if (!entry.mesh.destroyed) entry.mesh.destroy();
+      entry.emission.destroy();
+      entry.bevel.destroy();
+      entry.bloom.destroy();
+      entry.bloomGeometry.destroy();
       entry.geometry.destroy();
       if (!entry.walls.destroyed) entry.walls.destroy();
       entry.wallGeometry.destroy();
@@ -214,6 +275,7 @@ export class RoadGlassLayer {
     this.pool.length = 0;
     this.fireAtlas = undefined;
     this.texture = undefined;
+    for (const texture of Object.values(this.material)) texture.destroy(true);
     if (!this.container.destroyed) this.container.destroy();
   }
 
@@ -231,8 +293,8 @@ export class RoadGlassLayer {
               TEXTURE_HEIGHT;
       for (let column = 0; column < COLUMNS; column++) {
         const index = (row * COLUMNS + column) * 2;
-        uvs[index] = SOLID_LEFT_U + ((SOLID_RIGHT_U - SOLID_LEFT_U) * column) / (COLUMNS - 1);
-        uvs[index + 1] = SOLID_TOP_V + v * (SOLID_BOTTOM_V - SOLID_TOP_V);
+        uvs[index] = column / (COLUMNS - 1);
+        uvs[index + 1] = v;
       }
     }
     let index = 0;
@@ -251,12 +313,63 @@ export class RoadGlassLayer {
       }
     }
     const geometry = new MeshGeometry({ positions, uvs, indices });
-    // The opaque face hides the road markings beneath translucent luminous glass.
-    const backing = new Mesh({ geometry, texture: Texture.WHITE });
-    backing.eventMode = "none";
-    const mesh = new Mesh({ geometry, texture: this.texture ?? Texture.WHITE });
+    const mesh = new Mesh({ geometry, texture: this.material.face });
     mesh.eventMode = "none";
-    mesh.blendMode = "add";
+    mesh.blendMode = "normal";
+    const emission = new Mesh({ geometry, texture: this.material.emission });
+    emission.eventMode = "none";
+    emission.blendMode = "add";
+    const bevel = new Mesh({ geometry, texture: this.material.bevel });
+    bevel.eventMode = "none";
+    bevel.blendMode = "add";
+    const bloomPositions = new Float32Array((ROWS + 2) * COLUMNS * 2);
+    const bloomUvs = new Float32Array(bloomPositions.length);
+    const bloomIndices = new Uint32Array((ROWS + 1) * (COLUMNS - 1) * 6);
+    for (let row = 0; row < ROWS + 2; row++) {
+      const faceRow = Math.max(0, Math.min(ROWS - 1, row - 1));
+      const faceV = uvs[faceRow * COLUMNS * 2 + 1] ?? 0;
+      const v =
+        row === 0
+          ? 0
+          : row === ROWS + 1
+            ? 1
+            : (NOTE_BLOOM_MARGIN + faceV * NOTE_FACE_HEIGHT) /
+              (NOTE_FACE_HEIGHT + 2 * NOTE_BLOOM_MARGIN);
+      for (let column = 0; column < COLUMNS; column++) {
+        const u =
+          column === 0
+            ? 0
+            : column === 3
+              ? 1
+              : (NOTE_BLOOM_MARGIN + (column - 1) * NOTE_FACE_WIDTH) /
+                (NOTE_FACE_WIDTH + 2 * NOTE_BLOOM_MARGIN);
+        const vertex = row * COLUMNS + column;
+        bloomUvs[vertex * 2] = u;
+        bloomUvs[vertex * 2 + 1] = v;
+        if (row < ROWS + 1 && column < COLUMNS - 1) {
+          const offset = (row * (COLUMNS - 1) + column) * 6;
+          bloomIndices.set(
+            [
+              vertex,
+              vertex + 1,
+              vertex + COLUMNS + 1,
+              vertex,
+              vertex + COLUMNS + 1,
+              vertex + COLUMNS
+            ],
+            offset
+          );
+        }
+      }
+    }
+    const bloomGeometry = new MeshGeometry({
+      positions: bloomPositions,
+      uvs: bloomUvs,
+      indices: bloomIndices
+    });
+    const bloom = new Mesh({ geometry: bloomGeometry, texture: this.material.bloom });
+    bloom.eventMode = "none";
+    bloom.blendMode = "add";
     const wallPositions = new Float32Array(24);
     const wallUvs = new Float32Array(24);
     const wallIndices = new Uint32Array(18);
@@ -291,10 +404,14 @@ export class RoadGlassLayer {
     const smoke = new Mesh({ geometry: smokeGeometry, texture: this.fireAtlas ?? Texture.WHITE });
     smoke.blendMode = "add";
     smoke.eventMode = "none";
-    this.container.addChild(walls, backing, mesh, smoke);
+    this.container.addChild(bloom, walls, mesh, emission, bevel, smoke);
     const entry = {
-      backing,
       mesh,
+      emission,
+      bevel,
+      bloom,
+      bloomGeometry,
+      bloomPositions,
       geometry,
       positions,
       walls,
