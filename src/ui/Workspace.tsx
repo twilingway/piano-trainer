@@ -145,6 +145,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
               <TickerSlot
                 gap={props.layout.tickerGap}
                 x={props.layout.tickerX}
+                scale={props.layout.tickerScale}
                 onLayout={props.onLayout}
               >
                 {props.wordTicker}

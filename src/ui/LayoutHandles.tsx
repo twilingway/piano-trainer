@@ -103,6 +103,7 @@ export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayo
 export function TickerSlot(props: {
   gap: number;
   x: number;
+  scale: number;
   onLayout: OnLayout;
   children: ReactNode;
 }) {
@@ -121,14 +122,41 @@ export function TickerSlot(props: {
       style={
         {
           "--ticker-gap": `${String(props.gap)}px`,
-          "--ticker-x": `${String(props.x)}px`
+          "--ticker-x": `${String(props.x)}px`,
+          "--ticker-scale": String(props.scale)
         } as CSSProperties
       }
       title="Тяните, чтобы поднять или опустить строку"
       {...drag}
     >
       {props.children}
-      <Grip label="Строка" />
+      <div className="ticker-tools">
+        <Grip label="Строка" />
+        {(
+          [
+            ["A−", -0.1, "Уменьшить текст"],
+            ["A+", 0.1, "Увеличить текст"]
+          ] as const
+        ).map(([text, step, label]) => (
+          <button
+            key={text}
+            type="button"
+            className="ticker-zoom"
+            aria-label={label}
+            title={label}
+            // The buttons size the text; only the line itself drags.
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={() => {
+              const scale = Math.round((props.scale + step) * 10) / 10;
+              props.onLayout({ tickerScale: clampLayout("tickerScale", scale) });
+            }}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

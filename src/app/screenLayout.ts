@@ -16,6 +16,8 @@ export interface ScreenLayout {
   readonly tickerGap: number;
   /** The running line moved sideways from the middle, in pixels. */
   readonly tickerX: number;
+  /** The running line's text size against the usual one. */
+  readonly tickerScale: number;
   /** Without the staff, the lane's top lowered by this share of the screen's height. */
   readonly laneTop: number;
 }
@@ -32,6 +34,7 @@ export const DEFAULT_SCREEN_LAYOUT: ScreenLayout = {
   keysY: 0,
   tickerGap: 12,
   tickerX: 0,
+  tickerScale: 1,
   laneTop: 0
 };
 export const LAYOUT_LIMITS = {
@@ -42,6 +45,7 @@ export const LAYOUT_LIMITS = {
   keysY: [-2000, 2000],
   tickerGap: [-1000, 2000],
   tickerX: [-2000, 2000],
+  tickerScale: [0.6, 2.5],
   laneTop: [0, 0.5]
 } as const;
 
@@ -72,6 +76,7 @@ export function normalizeLayout(value: unknown): ScreenLayout {
     keysY: number("keysY", 0),
     tickerGap: number("tickerGap", DEFAULT_SCREEN_LAYOUT.tickerGap),
     tickerX: number("tickerX", 0),
+    tickerScale: number("tickerScale", 1),
     laneTop: number("laneTop", DEFAULT_SCREEN_LAYOUT.laneTop)
   };
 }
