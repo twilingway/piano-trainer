@@ -2,7 +2,8 @@
 
 ## Purpose
 
-TBD - created by archiving change word-typing. Update Purpose after archive.
+Исполнять выбранную монофоническую партию как текст из русских или английских слов с постоянной,
+автоматически построенной клавиатурой, независимой от настроек обычного пианино.
 
 ## Requirements
 
