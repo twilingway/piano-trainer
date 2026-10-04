@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { layoutKeyboard, whiteKeysBetween } from "./keyboardLayout";
-import { fitRange, viewGeometry } from "./viewGeometry";
+import { USUAL_PLACEMENT, fitRange, viewGeometry } from "./viewGeometry";
 
 const ALL = { notes: true, keys: true, hands: false };
 const whiteWidthAt = (width: number) => Math.min(44, width / 24);
@@ -21,16 +21,28 @@ describe("viewGeometry", () => {
 
   it("lifts the keys off the bottom and sizes them as the player places them", () => {
     const usual = viewGeometry(1000, 40, ALL, false);
-    const lifted = viewGeometry(1000, 40, ALL, false, false, { lift: 0.2, scale: 1 });
+    const lifted = viewGeometry(1000, 40, ALL, false, false, {
+      ...USUAL_PLACEMENT,
+      lift: 0.2,
+      scale: 1
+    });
     expect(lifted.keyboardHeight).toBeCloseTo(usual.keyboardHeight);
     expect(lifted.keyboardTop).toBeCloseTo(usual.keyboardTop - 200);
-    const bigger = viewGeometry(1000, 40, ALL, false, false, { lift: 0, scale: 1.5 });
+    const bigger = viewGeometry(1000, 40, ALL, false, false, {
+      ...USUAL_PLACEMENT,
+      lift: 0,
+      scale: 1.5
+    });
     expect(bigger.keyboardHeight).toBeCloseTo(usual.keyboardHeight * 1.5);
     expect(bigger.keyboardTop + bigger.keyboardHeight).toBeCloseTo(992);
   });
 
   it("leaves the falling notes a quarter of the view however the keys are placed", () => {
-    const geometry = viewGeometry(400, 40, ALL, false, false, { lift: 0.4, scale: 1.8 });
+    const geometry = viewGeometry(400, 40, ALL, false, false, {
+      ...USUAL_PLACEMENT,
+      lift: 0.4,
+      scale: 1.8
+    });
     expect(geometry.hitY).toBeGreaterThanOrEqual(100 - 1e-6);
   });
 

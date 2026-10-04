@@ -9,8 +9,13 @@ export interface ScreenLayout {
   readonly keysLift: number;
   /** The keys' size against the usual one. */
   readonly keysScale: number;
+  /** The keys moved off the hit line, in pixels; 0, 0 keeps them on it. */
+  readonly keysX: number;
+  readonly keysY: number;
   /** The running line's gap over the hit line, in pixels. */
   readonly tickerGap: number;
+  /** Without the staff, the lane's top lowered by this share of the screen's height. */
+  readonly laneTop: number;
 }
 
 export type ScreenLayouts = Readonly<Record<LayoutMode, ScreenLayout>>;
@@ -21,13 +26,19 @@ export const DEFAULT_SCREEN_LAYOUT: ScreenLayout = {
   staffShare: undefined,
   keysLift: 0,
   keysScale: 1,
-  tickerGap: 12
+  keysX: 0,
+  keysY: 0,
+  tickerGap: 12,
+  laneTop: 0
 };
 export const LAYOUT_LIMITS = {
   staffShare: [0.12, 0.8],
   keysLift: [0, 0.4],
   keysScale: [0.6, 1.8],
-  tickerGap: [0, 400]
+  keysX: [-2000, 2000],
+  keysY: [-2000, 2000],
+  tickerGap: [0, 400],
+  laneTop: [0, 0.5]
 } as const;
 
 const KEY = "screen-layout";
@@ -53,7 +64,10 @@ export function normalizeLayout(value: unknown): ScreenLayout {
         : undefined,
     keysLift: number("keysLift", DEFAULT_SCREEN_LAYOUT.keysLift),
     keysScale: number("keysScale", DEFAULT_SCREEN_LAYOUT.keysScale),
-    tickerGap: number("tickerGap", DEFAULT_SCREEN_LAYOUT.tickerGap)
+    keysX: number("keysX", 0),
+    keysY: number("keysY", 0),
+    tickerGap: number("tickerGap", DEFAULT_SCREEN_LAYOUT.tickerGap),
+    laneTop: number("laneTop", DEFAULT_SCREEN_LAYOUT.laneTop)
   };
 }
 

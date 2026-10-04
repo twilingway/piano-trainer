@@ -99,8 +99,6 @@ export class FallingNotesView {
   private hudTop = 0;
   /** Where the player dragged the keys: lifted off the bottom, larger or smaller. */
   private placement: KeysPlacement = USUAL_PLACEMENT;
-  /** The element the view fills: it carries the hit line for the page's overlays. */
-  private host: HTMLElement | undefined;
   /** The next scroll lands on its target at once: a new song starts where its keys are. */
   private panSnap = true;
   /** The whole keyboard's width: wider than the view when it scrolls. */
@@ -128,7 +126,6 @@ export class FallingNotesView {
       autoDensity: true
     });
     host.appendChild(this.app.canvas);
-    this.host = host;
     this.fpsMeter = new FpsMeter(host, this.app.ticker);
     this.fpsMeter.setVisible(this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
@@ -283,9 +280,11 @@ export class FallingNotesView {
   }
 
   setKeysPlacement(placement: KeysPlacement): void {
-    if (placement.lift === this.placement.lift && placement.scale === this.placement.scale) return;
+    // Moved keys only shift with the scroll; a lift or a size lays the view out again.
+    const resized =
+      placement.lift !== this.placement.lift || placement.scale !== this.placement.scale;
     this.placement = placement;
-    this.laidOutFor = { width: 0, height: 0 };
+    if (resized) this.laidOutFor = { width: 0, height: 0 };
   }
 
   setRoadShape(shape: RoadShape): void {
@@ -326,7 +325,7 @@ export class FallingNotesView {
     if (event.target !== this.app.stage || !this.parts.keys) return;
     const point = this.roadMode
       ? this.road?.keysPointAt(event.global.x, event.global.y)
-      : { x: event.global.x + this.pan, y: event.global.y };
+      : { x: event.global.x + this.pan - this.placement.x, y: event.global.y - this.placement.y };
     const pitch = point && this.keysLayer?.pitchAt(point.x, point.y);
     if (pitch !== undefined) this.keysLayer?.pressWithMouse(pitch);
   }
@@ -532,7 +531,10 @@ export class FallingNotesView {
       this.notesLayer.root.x = flat;
       this.notesLayer.cards.x = flat;
     }
-    this.keysRoot.x = flat;
+    // Flat keys may be moved off the hit line, the hands with them; the road keeps its own.
+    const { x, y } = this.roadMode ? USUAL_PLACEMENT : this.placement;
+    this.keysRoot.position.set(flat + x, y);
+    this.hands.container.position.set(x, y);
     if (this.roadMode) this.road?.setPan(pan);
   }
 
@@ -599,8 +601,8 @@ export class FallingNotesView {
     const hitLineY = this.roadMode && this.road ? this.road.hitLineY : geometry.hitY;
     this.hud.layout(width, hitLineY, this.hudTop);
     // Where the notes meet the keys, for the page's overlays: the word mode's text sits over it.
-    this.host?.style.setProperty("--hit-line", `${String(hitLineY)}px`);
-    this.host?.style.setProperty("--keys-bottom", `${String(keysBottom)}px`);
+    this.app.canvas.parentElement?.style.setProperty("--hit-line", `${String(hitLineY)}px`);
+    this.app.canvas.parentElement?.style.setProperty("--keys-bottom", `${String(keysBottom)}px`);
   }
 
   /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */

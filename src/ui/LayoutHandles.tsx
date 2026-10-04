@@ -12,8 +12,36 @@ const laneOf = (element: HTMLElement) => element.parentElement ?? element;
 const laneLength = (lane: HTMLElement, name: string) =>
   Number.parseFloat(getComputedStyle(lane).getPropertyValue(name)) || 0;
 
-/** The lines over and under the keys: the upper lifts the keyboard, the lower sizes it. */
+/** What tells a line can be dragged: an arrow always, its name on hover. */
+function Grip({ label }: { label: string }) {
+  return (
+    <span className="layout-grip" aria-hidden="true">
+      ⇕<span className="layout-grip__label">{label}</span>
+    </span>
+  );
+}
+
+/** Within this many pixels of the hit line, moved keys stick back to it. */
+const SNAP_PX = 16;
+
+/**
+ * The lines over and under the keys: the upper lifts the keyboard with the hit line, the lower
+ * sizes it; a grip moves the keys alone, off the line and back.
+ */
 export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayout: OnLayout }) {
+  const move = useVerticalDrag({
+    start: () => ({ x: layout.keysX, y: layout.keysY }),
+    move: (dy, from, _element, dx) => {
+      const x = from.x + dx;
+      const y = from.y + dy;
+      const stuck = Math.hypot(x, y) < SNAP_PX;
+      onLayout({
+        keysX: stuck ? 0 : clampLayout("keysX", x),
+        keysY: stuck ? 0 : clampLayout("keysY", y)
+      });
+    }
+  });
+  const offset = { "--keys-y": `${String(layout.keysY)}px` } as CSSProperties;
   const lift = useVerticalDrag({
     start: (element) => ({ lift: layout.keysLift, height: laneOf(element).clientHeight || 1 }),
     move: (dy, from) => {
@@ -46,12 +74,27 @@ export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayo
         className="layout-handle layout-handle--keys-top"
         title="Тяните, чтобы поднять или опустить клавиатуру"
         {...lift}
-      />
+      >
+        <Grip label="Поднять клавиатуру" />
+      </div>
       <div
         className="layout-handle layout-handle--keys-bottom"
         title="Тяните, чтобы изменить высоту клавиатуры"
+        style={offset}
         {...size}
-      />
+      >
+        <Grip label="Высота клавиатуры" />
+      </div>
+      <div
+        className="layout-move"
+        title="Тяните, чтобы сдвинуть клавиатуру с линии нот; у линии она прилипнет обратно"
+        style={offset}
+        {...move}
+      >
+        <span className="layout-grip">
+          ✥<span className="layout-grip__label">Двигать клавиатуру</span>
+        </span>
+      </div>
     </>
   );
 }
@@ -72,6 +115,7 @@ export function TickerSlot(props: { gap: number; onLayout: OnLayout; children: R
       {...drag}
     >
       {props.children}
+      <Grip label="Строка" />
     </div>
   );
 }
@@ -118,6 +162,30 @@ export function StaffHandle(props: StaffHandleProps) {
       className="layout-handle layout-handle--staff"
       title="Тяните, чтобы изменить высоту нотного стана"
       {...drag}
-    />
+    >
+      <Grip label="Высота стана" />
+    </div>
+  );
+}
+
+/** Without the staff, the lane's top edge: dragged down, the falling notes start lower. */
+export function LaneTopHandle({ top, onLayout }: { top: number; onLayout: OnLayout }) {
+  const drag = useVerticalDrag({
+    start: (element) => ({
+      top,
+      height: laneOf(element).parentElement?.clientHeight ?? 1
+    }),
+    move: (dy, from) => {
+      onLayout({ laneTop: clampLayout("laneTop", from.top + dy / Math.max(1, from.height)) });
+    }
+  });
+  return (
+    <div
+      className="layout-handle layout-handle--lane-top"
+      title="Тяните, чтобы опустить или поднять верх падающих нот"
+      {...drag}
+    >
+      <Grip label="Верх дорожки" />
+    </div>
   );
 }

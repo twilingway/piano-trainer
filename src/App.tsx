@@ -121,7 +121,12 @@ export function App() {
     comparing: takes.comparing,
     lastTake: takes.lastTake,
     computerKeys: word.keyboard,
-    placement: { lift: screen.layout.keysLift, scale: screen.layout.keysScale }
+    placement: {
+      lift: screen.layout.keysLift,
+      scale: screen.layout.keysScale,
+      x: screen.layout.keysX,
+      y: screen.layout.keysY
+    }
   });
   const library = usePlayerLibrary({
     showSong: current.showSong,
@@ -322,6 +327,7 @@ export function App() {
         prefs={displayPrefs}
         layout={screen.layout}
         onLayout={screen.updateLayout}
+        onResetLayout={screen.resetLayout}
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}

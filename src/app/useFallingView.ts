@@ -159,10 +159,10 @@ export function useFallingView({
     viewRef.current?.setComputerKeys(computerKeys);
   }, [viewRef, trainerReady, computerKeys]);
 
-  const { lift, scale } = placement;
+  const { lift, scale, x, y } = placement;
   useEffect(() => {
-    viewRef.current?.setKeysPlacement({ lift, scale });
-  }, [viewRef, trainerReady, lift, scale]);
+    viewRef.current?.setKeysPlacement({ lift, scale, x, y });
+  }, [viewRef, trainerReady, lift, scale, x, y]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {

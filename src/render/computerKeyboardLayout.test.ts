@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { KEYBOARD_ROWS, keyColumn } from "../wordTyping/keyboardRows";
 import { computerGeometry, computerWidth, layoutComputerKeys } from "./computerKeyboardLayout";
+import { USUAL_PLACEMENT } from "./viewGeometry";
 
 const ALL = { notes: true, keys: true, hands: false };
 
@@ -49,13 +50,13 @@ describe("computer keyboard layout", () => {
     expect(computerWidth(600)).toBe(600);
     expect(computerWidth(1920)).toBeLessThan(900);
     expect(computerGeometry(300, total, ALL).keyboardHeight).toBeLessThanOrEqual(300 * 0.4);
-    const lifted = computerGeometry(800, total, ALL, { lift: 0.25, scale: 1 });
+    const lifted = computerGeometry(800, total, ALL, { ...USUAL_PLACEMENT, lift: 0.25, scale: 1 });
     expect(lifted.keyboardHeight).toBeCloseTo(geometry.keyboardHeight);
     expect(lifted.keyboardTop).toBeCloseTo(geometry.keyboardTop - 200);
     expect(computerWidth(2000, 1.5)).toBe(15 * 56 * 1.5);
-    expect(computerGeometry(300, total, ALL, { lift: 0.4, scale: 1 }).hitY).toBeGreaterThanOrEqual(
-      75 - 1e-6
-    );
+    expect(
+      computerGeometry(300, total, ALL, { ...USUAL_PLACEMENT, lift: 0.4, scale: 1 }).hitY
+    ).toBeGreaterThanOrEqual(75 - 1e-6);
     expect(computerGeometry(300, total, { ...ALL, notes: false }).keyboardHeight).toBeGreaterThan(
       120
     );

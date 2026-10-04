@@ -39,8 +39,11 @@ export interface KeysPlacement {
   /** As a share of the view's height. */
   readonly lift: number;
   readonly scale: number;
+  /** The keys moved off the hit line, in pixels: the notes still end on the line. */
+  readonly x: number;
+  readonly y: number;
 }
-export const USUAL_PLACEMENT: KeysPlacement = { lift: 0, scale: 1 };
+export const USUAL_PLACEMENT: KeysPlacement = { lift: 0, scale: 1, x: 0, y: 0 };
 /** However the keys are placed, the falling notes keep at least this share of the view. */
 export const MIN_NOTES_SHARE = 0.25;
 

@@ -25,9 +25,16 @@ describe("screen layout", () => {
   });
 
   it("pulls values out of range back in", () => {
-    expect(normalizeLayout({ staffShare: 5, keysLift: -1, keysScale: 9, tickerGap: 1000 })).toEqual(
-      { staffShare: 0.8, keysLift: 0, keysScale: 1.8, tickerGap: 400 }
-    );
+    expect(
+      normalizeLayout({ staffShare: 5, keysLift: -1, keysScale: 9, tickerGap: 1000, laneTop: 2 })
+    ).toEqual({
+      ...DEFAULT_SCREEN_LAYOUT,
+      staffShare: 0.8,
+      keysLift: 0,
+      keysScale: 1.8,
+      tickerGap: 400,
+      laneTop: 0.5
+    });
   });
 
   it("keeps each mode's layout apart", () => {
