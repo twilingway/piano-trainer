@@ -230,6 +230,67 @@ describe("bounded generator", () => {
   });
 });
 
+describe("per-word layout and variants", () => {
+  it("keeps a letter on one pitch inside a word and lets the next word move it", () => {
+    const notes = line([60, 62, 60, 62, 64, 65, 64, 65]);
+    const dictionary = normalizeWords(["abab"], "en");
+    const result = generateWordTyping(notes, dictionary, "en", {}, undefined, { layout: "word" });
+    expect(result.mode).toBe("word");
+    expect(result.text).toBe("abab abab");
+    expect(result.tokenToPitch).toEqual({});
+    const pitchOf = (wordIndex: number, display: string) => [
+      ...new Set(
+        result.tokens
+          .filter((token) => token.wordIndex === wordIndex && token.input.display === display)
+          .map((token) => token.pitch)
+      )
+    ];
+    expect(pitchOf(0, "a")).toEqual([60]);
+    expect(pitchOf(1, "a")).toEqual([64]);
+    expect(pitchOf(1, "b")).toEqual([65]);
+    const song = generateWordTyping(notes, dictionary, "en");
+    expect(song.mode).toBe("strict");
+    expect(song.metrics.dictionaryCoveredNotes).toBe(4);
+  });
+
+  it("types every fallback on the left index finger's home key", () => {
+    const notes = line([60, 62, 64]);
+    for (const language of ["en", "ru"] as const) {
+      const result = generateWordTyping(notes, [], language, {}, undefined, { layout: "word" });
+      expect(result.tokens.map((token) => [token.input.physicalKey, token.pitch])).toEqual([
+        ["KeyF", 60],
+        ["KeyF", 62],
+        ["KeyF", 64]
+      ]);
+    }
+  });
+
+  it("prefers a word the text has not used yet", () => {
+    const notes = line([60, 62, 64, 65, 60, 62, 64, 65]);
+    const dictionary = normalizeWords(["rain", "cold"], "en");
+    const result = generateWordTyping(notes, dictionary, "en", {}, undefined, { layout: "word" });
+    expect(result.text).toBe("rain cold");
+  });
+
+  it("gives the first variant by default, repeats a variant and varies the text across them", () => {
+    const notes = line([60, 62, 64, 65]);
+    const dictionary = normalizeWords(["rain", "cold", "warm", "blue", "fast"], "en");
+    const generate = (variant: number) =>
+      generateWordTyping(notes, dictionary, "en", {}, undefined, { layout: "word", variant });
+    expect(generate(0)).toEqual(
+      generateWordTyping(notes, dictionary, "en", {}, undefined, { layout: "word" })
+    );
+    expect(generate(0).text).toBe("rain");
+    // The same text for a variant whatever was generated before it: no hidden state, no randomness.
+    const forward = Array.from({ length: 8 }, (_, index) => generate(index + 1).text);
+    const backward = Array.from({ length: 8 }, (_, index) => generate(8 - index).text).reverse();
+    expect(backward).toEqual(forward);
+    expect(new Set(forward).size).toBeGreaterThan(1);
+    expect(() => generate(-1)).toThrow("варианта");
+    expect(() => generate(2 ** 32)).toThrow("варианта");
+  });
+});
+
 describe("scoring and quality", () => {
   it("prefers frequent words and rewards long words over excessive short words", () => {
     expect(wordScore({ word: "hello", rank: 1 }, 3000, DEFAULT_CONFIG)).toBeGreaterThan(

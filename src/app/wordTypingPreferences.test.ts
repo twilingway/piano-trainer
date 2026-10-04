@@ -12,11 +12,24 @@ describe("separate word typing preferences", () => {
     const prefs = {
       enabled: true,
       language: "en",
-      accompaniment: true
+      accompaniment: true,
+      layout: "song"
     } as const;
     expect(saveWordTypingPrefs(prefs)).toBe(true);
     expect(loadWordTypingPrefs()).toEqual(prefs);
     expect(localStorage.getItem("computer-keyboard-prefs")).toBe("custom");
+  });
+  it("reads settings saved before the layout choice as the per-word layout", () => {
+    localStorage.setItem(
+      "word-typing-prefs-v1",
+      JSON.stringify({ enabled: true, language: "en", accompaniment: true })
+    );
+    expect(loadWordTypingPrefs()).toEqual({
+      enabled: true,
+      language: "en",
+      accompaniment: true,
+      layout: "word"
+    });
   });
   it("rejects invalid persisted values and tolerates unavailable storage", () => {
     localStorage.setItem(
@@ -26,7 +39,8 @@ describe("separate word typing preferences", () => {
     expect(loadWordTypingPrefs()).toEqual({
       enabled: false,
       language: "ru",
-      accompaniment: false
+      accompaniment: false,
+      layout: "word"
     });
     vi.spyOn(localStorage, "setItem").mockImplementation(() => {
       throw new Error("quota");
@@ -35,7 +49,8 @@ describe("separate word typing preferences", () => {
       saveWordTypingPrefs({
         enabled: false,
         language: "ru",
-        accompaniment: false
+        accompaniment: false,
+        layout: "word"
       })
     ).toBe(false);
   });

@@ -10,8 +10,19 @@ export interface KeyboardInputOptions {
   readonly blocked?: boolean;
   readonly capture?: (code: string) => void;
   readonly cancelCapture?: () => void;
-  /** Independent STRICT tokens; bypasses all piano bindings and modifiers. */
-  readonly wordMapping?: Readonly<Record<string, number>>;
+  /**
+   * The pitch of a word-mode token ("modifier:code") while the player owes `owedNoteId`; bypasses
+   * all piano bindings and modifiers. Undefined = the key plays nothing.
+   */
+  readonly wordPitch?: (tokenId: string, owedNoteId: string | undefined) => number | undefined;
+  /** The note the player owes now, for a per-word layout. */
+  readonly owedNoteId?: () => string | undefined;
+}
+/** A key event as a word-mode token ("modifier:code"); Shift with Alt types nothing. */
+export function wordTokenId(event: KeyboardEvent): string | undefined {
+  const alt = event.altKey || event.getModifierState("AltGraph");
+  if (event.shiftKey && alt) return undefined;
+  return `${alt ? "alt" : event.shiftKey ? "shift" : "none"}:${event.code}`;
 }
 export function isTypingTarget(target: EventTarget | null): boolean {
   return (
@@ -29,7 +40,7 @@ export function listenToComputerKeyboard(
 ): () => void {
   const pianoState = new KeyboardState();
   const wordState = new WordKeyboardState();
-  const state = options.wordMapping ? wordState : pianoState;
+  const state = options.wordPitch ? wordState : pianoState;
   const emit = (actions: KeyboardAction[], timestamp: number) => {
     for (const action of actions) {
       const metadata = { timestamp, source: "keyboard" as const, deviceId: "keyboard" };
@@ -54,10 +65,10 @@ export function listenToComputerKeyboard(
       event.preventDefault();
       return;
     }
-    if (options.wordMapping) {
-      if (event.shiftKey && (event.altKey || altGraph)) return;
-      const modifier = event.altKey || altGraph ? "alt" : event.shiftKey ? "shift" : "none";
-      const pitch = options.wordMapping[`${modifier}:${event.code}`];
+    if (options.wordPitch) {
+      const tokenId = wordTokenId(event);
+      if (tokenId === undefined) return;
+      const pitch = options.wordPitch(tokenId, options.owedNoteId?.());
       if (pitch === undefined) return;
       event.preventDefault();
       event.stopImmediatePropagation();

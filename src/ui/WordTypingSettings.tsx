@@ -1,13 +1,18 @@
-import type { Language, Part } from "../wordTyping/types";
+import type { Language, Layout, Part } from "../wordTyping/types";
 
 interface Props {
   readonly language: Language;
   readonly part: Part;
   readonly accompaniment: boolean;
+  readonly layout: Layout;
   readonly locked: boolean;
+  /** The words are being chosen. */
+  readonly pending: boolean;
   readonly onLanguage: (language: Language) => void;
   readonly onPart: (part: Part) => void;
   readonly onAccompaniment: (on: boolean) => void;
+  readonly onLayout: (layout: Layout) => void;
+  readonly onRegenerate: () => void;
 }
 
 export function WordTypingSettings(props: Props) {
@@ -43,6 +48,29 @@ export function WordTypingSettings(props: Props) {
           <option value="bass">Бас</option>
         </select>
       </label>
+      <label title="На слово: буква играет одну ноту только внутри своего слова, слова длиннее">
+        Раскладка
+        <select
+          className="game-select"
+          aria-label="Раскладка букв"
+          value={props.layout}
+          disabled={props.locked}
+          onChange={(event) => {
+            props.onLayout(event.target.value as Layout);
+          }}
+        >
+          <option value="word">На слово</option>
+          <option value="song">На песню</option>
+        </select>
+      </label>
+      <button
+        type="button"
+        className="game-button"
+        disabled={props.locked || props.pending}
+        onClick={props.onRegenerate}
+      >
+        Другие слова
+      </button>
       <label title="Вторая рука песни играет сама под печатаемую партию">
         <input
           type="checkbox"

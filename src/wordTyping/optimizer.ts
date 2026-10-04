@@ -11,12 +11,21 @@ import type {
   GeneratedToken,
   InputToken,
   Language,
+  Layout,
   OptimizerConfig,
   WordTypingResult
 } from "./types";
 
 export { DEFAULT_CONFIG } from "./scoring";
-export const ALGORITHM_VERSION = "word-typing-v3";
+export const ALGORITHM_VERSION = "word-typing-v4";
+/** How many of the latest blocks (words and fallbacks) a repeated word is looked for among. */
+const RECENT_BLOCKS = 16;
+
+export interface GenerationOptions {
+  readonly layout?: Layout;
+  /** 0 is the best text; another number gives another, equally reproducible, text. */
+  readonly variant?: number;
+}
 
 interface Segment {
   readonly start: number;
@@ -32,7 +41,7 @@ interface State {
 }
 
 interface Candidate {
-  readonly mapping: number[];
+  readonly mapping: readonly number[];
   readonly entry: DictionaryEntry;
   readonly indexes: readonly number[];
   readonly score: number;
@@ -44,12 +53,18 @@ function requiredAt<T>(values: readonly T[], index: number): T {
   return value;
 }
 
-function prune(states: readonly State[], width: number): State[] {
+function prune(states: readonly State[], width: number, layout: Layout): State[] {
   const ordered = [...states].sort((a, b) => b.score - a.score);
   const seen = new Set<string>();
   const result: State[] = [];
   for (const state of ordered) {
-    const key = state.mapping.join(",");
+    // Every word starts from an empty mapping: only the words before (for the pair bonus and the
+    // repeat penalty) tell states apart. The last two blocks keep apart states the last one alone
+    // would merge, such as every state ending in a fallback.
+    const key =
+      layout === "word"
+        ? `${String(state.segment?.entry?.rank ?? -1)}:${String(state.previous?.segment?.entry?.rank ?? -1)}`
+        : state.mapping.join(",");
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(state);
@@ -58,28 +73,50 @@ function prune(states: readonly State[], width: number): State[] {
   return result;
 }
 
-function wordCandidates(
+/** A stable number in [0, 1) for a variant and a word. */
+function variantShare(variant: number, rank: number): number {
+  let hash = Math.imul(variant ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(rank, 0xc2b2ae35);
+  hash = Math.imul(hash ^ (hash >>> 16), 0x7feb352d);
+  hash = Math.imul(hash ^ (hash >>> 15), 0x846ca68b);
+  return ((hash ^ (hash >>> 16)) >>> 0) / 2 ** 32;
+}
+
+function recentWords(state: State): Set<number> {
+  const ranks = new Set<number>();
+  let blocks = 0;
+  for (let item: State | undefined = state; item?.segment && blocks < RECENT_BLOCKS; blocks++) {
+    const rank = item.segment.entry?.rank;
+    if (rank !== undefined) ranks.add(rank);
+    item = item.previous;
+  }
+  return ranks;
+}
+
+/** The words that fit the notes from `position` under `start`, scored without the word before. */
+function fittingWords(
   trie: TrieNode,
   notes: readonly SongNote[],
   position: number,
-  state: State,
+  start: readonly number[],
   letterIndexes: ReadonlyMap<string, number>,
   pool: readonly InputToken[],
   dictionarySize: number,
   totalPitches: number,
   config: OptimizerConfig,
-  bigrams: BigramTable
+  variant: number
 ): Candidate[] {
-  // A word after a word: a pair that real sentences use reads as a phrase.
-  const previous = state.segment?.entry;
-  const mapping = [...state.mapping];
+  const mapping = [...start];
   const indexes: number[] = [];
   const candidates: Candidate[] = [];
+  // No pitch to keep room for: the per-word layout, whose words leave no mapping behind.
+  const perWord = totalPitches === 0;
   function visit(node: TrieNode, offset: number): void {
     if (node.entry && offset > 0) {
       // Aliases must leave enough unassigned inputs for every pitch still to come.
-      const assigned = mapping.filter((pitch) => pitch !== -1);
-      if (mapping.length - assigned.length + new Set(assigned).size < totalPitches) return;
+      if (!perWord) {
+        const assigned = mapping.filter((pitch) => pitch !== -1);
+        if (mapping.length - assigned.length + new Set(assigned).size < totalPitches) return;
+      }
       const last = notes[position + offset - 1];
       const next = notes[position + offset];
       const boundary =
@@ -90,20 +127,14 @@ function wordCandidates(
         (sum, index) => sum + comfortBonus(requiredAt(pool, index), config),
         0
       );
+      const noise = variant
+        ? config.variantNoise * node.entry.word.length * variantShare(variant, node.entry.rank)
+        : 0;
       candidates.push({
-        mapping: [...mapping],
+        mapping: perWord ? start : [...mapping],
         entry: node.entry,
         indexes: [...indexes],
-        score:
-          wordScore(node.entry, dictionarySize, config) +
-          boundary +
-          comfort +
-          // Per letter, so that splitting a line into many short linked pairs earns nothing.
-          (previous
-            ? config.bigramWeight *
-              node.entry.word.length *
-              bigrams.strength(previous.rank, node.entry.rank)
-            : 0)
+        score: wordScore(node.entry, dictionarySize, config) + boundary + comfort + noise
       });
     }
     if (offset >= config.maxWordLength) return;
@@ -122,8 +153,37 @@ function wordCandidates(
     }
   }
   visit(trie, 0);
-  return candidates
-    .sort((a, b) => b.score - a.score || a.entry.rank - b.entry.rank)
+  return candidates;
+}
+
+function byScore(a: Candidate, b: Candidate): number {
+  return b.score - a.score || a.entry.rank - b.entry.rank;
+}
+
+/** The best words after this state: a pair real sentences use reads as a phrase, a repeat does not. */
+function wordCandidates(
+  fitting: readonly Candidate[],
+  state: State,
+  config: OptimizerConfig,
+  bigrams: BigramTable
+): Candidate[] {
+  const previous = state.segment?.entry;
+  const recent = recentWords(state);
+  return fitting
+    .map((candidate) => {
+      const length = candidate.entry.word.length;
+      return {
+        ...candidate,
+        score:
+          candidate.score -
+          (recent.has(candidate.entry.rank) ? config.repeatPenalty * length : 0) +
+          // Per letter, so that splitting a line into many short linked pairs earns nothing.
+          (previous
+            ? config.bigramWeight * length * bigrams.strength(previous.rank, candidate.entry.rank)
+            : 0)
+      };
+    })
+    .sort(byScore)
     .slice(0, config.maxCandidatesPerState);
 }
 
@@ -133,9 +193,10 @@ function fallbackState(
   note: SongNote,
   pool: readonly InputToken[],
   letterCount: number,
-  config: OptimizerConfig
+  config: OptimizerConfig,
+  fixedIndex?: number
 ): State {
-  let index = state.mapping.findIndex((pitch) => pitch === note.pitch);
+  let index = fixedIndex ?? state.mapping.findIndex((pitch) => pitch === note.pitch);
   if (index < 0) index = state.mapping.findIndex((pitch) => pitch === -1);
   const input = pool[index];
   if (!input) throw new Error("Недостаточно клавиш для всех высот мелодии");
@@ -154,7 +215,8 @@ function renderResult(
   notes: readonly SongNote[],
   pool: readonly InputToken[],
   language: Language,
-  bigrams: BigramTable
+  bigrams: BigramTable,
+  layout: Layout
 ): WordTypingResult {
   const segments: Segment[] = [];
   for (let state = final; state.previous; state = state.previous) {
@@ -201,7 +263,7 @@ function renderResult(
   });
   return {
     language,
-    mode: "strict",
+    mode: layout === "word" ? "word" : "strict",
     text: blocks.join(" "),
     tokens,
     tokenToPitch,
@@ -211,17 +273,21 @@ function renderResult(
 }
 
 /**
- * Bounded word-boundary beam search; mapping is permanent for the entire line. `bigrams` favour
- * words that commonly follow the word before them.
+ * Bounded word-boundary beam search; mapping is permanent for the entire line, or for one word in
+ * the "word" layout. `bigrams` favour words that commonly follow the word before them.
  */
 export function generateWordTyping(
   notes: readonly SongNote[],
   dictionary: readonly DictionaryEntry[],
   language: Language,
   overrides: Partial<OptimizerConfig> = {},
-  bigrams: BigramTable = NO_BIGRAMS
+  bigrams: BigramTable = NO_BIGRAMS,
+  { layout = "song", variant = 0 }: GenerationOptions = {}
 ): WordTypingResult {
   const config = resolveConfig(overrides);
+  // The variant noise hashes 32 bits: a larger number would repeat a smaller one's text.
+  if (!Number.isInteger(variant) || variant < 0 || variant >= 2 ** 32)
+    throw new Error("Неверный номер варианта текста");
   if (!notes.length) throw new Error("Выбранная партия не содержит нот");
   for (const note of notes) {
     if (
@@ -239,6 +305,7 @@ export function generateWordTyping(
   const pool = tokenPool(language);
   const totalPitches = new Set(notes.map((note) => note.pitch)).size;
   if (totalPitches > pool.length) throw new Error("Недостаточно клавиш для всех высот мелодии");
+  const empty = pool.map(() => -1);
   const letters = languageTokens(language);
   const letterIndexes = new Map(letters.map((token, index) => [token.display, index]));
   // A letter on the digit row (ё) is far from the hands: no word asks for it. Nearly every such
@@ -254,42 +321,74 @@ export function generateWordTyping(
       Array.from(entry.word).every((letter) => letterIndexes.has(letter) && !farLetters.has(letter))
   );
   const trie = buildTrie(validEntries);
+  // The per-word layout keeps no mapping, so every fallback can take the same key: the left
+  // index finger's home key rather than the cascade's first, a pinky on the top row.
+  const fallbackIndex =
+    layout === "word"
+      ? pool.findIndex((token) => token.physicalKey === "KeyF" && token.modifier === "none")
+      : undefined;
   const beams: State[][] = Array.from({ length: notes.length + 1 }, () => []);
-  requiredAt(beams, 0).push({ mapping: pool.map(() => -1), score: 0 });
+  requiredAt(beams, 0).push({ mapping: empty, score: 0 });
   for (let position = 0; position < notes.length; position++) {
-    const states = prune(beams[position] ?? [], config.beamWidth);
+    const states = prune(beams[position] ?? [], config.beamWidth, layout);
     beams[position] = [];
     const note = requiredAt(notes, position);
-    for (const state of states) {
-      for (const candidate of wordCandidates(
+    const fitting = (start: readonly number[], pitches: number) =>
+      fittingWords(
         trie,
         notes,
         position,
-        state,
+        start,
         letterIndexes,
         pool,
         validEntries.length,
-        totalPitches,
+        pitches,
+        config,
+        variant
+      );
+    // A word's own mapping starts empty, so the words that fit are the same after every state and
+    // are found once. The cut is a trade: a pair bonus can lift a word from below it, so some
+    // linked pairs are lost for a much faster search; cuts of 16 and 32 times gained nothing on
+    // the anthem and took up to 1.7 times as long.
+    const shared =
+      layout === "word"
+        ? fitting(empty, 0)
+            .sort(byScore)
+            .slice(0, config.maxCandidatesPerState * 8)
+        : undefined;
+    for (const state of states) {
+      for (const candidate of wordCandidates(
+        shared ?? fitting(state.mapping, totalPitches),
+        state,
         config,
         bigrams
       )) {
         const target = position + candidate.indexes.length;
         const bucket = requiredAt(beams, target);
         bucket.push({
-          mapping: candidate.mapping,
+          mapping: layout === "word" ? empty : candidate.mapping,
           score: state.score + candidate.score,
           previous: state,
           segment: { start: position, indexes: candidate.indexes, entry: candidate.entry }
         });
         if (bucket.length > config.beamWidth * 8)
-          beams[target] = prune(bucket, config.beamWidth * 2);
+          beams[target] = prune(bucket, config.beamWidth * 2, layout);
       }
+      const fallback = fallbackState(
+        state,
+        position,
+        note,
+        pool,
+        letters.length,
+        config,
+        fallbackIndex
+      );
       requiredAt(beams, position + 1).push(
-        fallbackState(state, position, note, pool, letters.length, config)
+        layout === "word" ? { ...fallback, mapping: empty } : fallback
       );
     }
   }
-  const final = prune(beams[notes.length] ?? [], 1)[0];
+  const final = prune(beams[notes.length] ?? [], 1, layout)[0];
   if (!final) throw new Error("Не удалось построить текст для партии");
-  return renderResult(final, notes, pool, language, bigrams);
+  return renderResult(final, notes, pool, language, bigrams, layout);
 }

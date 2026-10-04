@@ -12,7 +12,7 @@ import type { Song } from "../song/song";
 import type * as ExtractLineModule from "../wordTyping/extractLine";
 import type * as OptimizerModule from "../wordTyping/optimizer";
 import type * as BigramsModule from "../wordTyping/bigrams";
-import type { WordTypingResult } from "../wordTyping/types";
+import type { Layout, WordTypingResult } from "../wordTyping/types";
 import type { DictionaryResource } from "./dictionarySource";
 
 interface Arguments {
@@ -27,6 +27,7 @@ interface BenchmarkRow {
   readonly bigrams: boolean;
   readonly dictionaryVersion: string;
   readonly part: "melody" | "bass";
+  readonly layout: Layout;
   readonly discardedNotes: number;
   readonly runtimeMs: number;
   readonly result: WordTypingResult;
@@ -118,8 +119,8 @@ function renderReport(
   rows: readonly BenchmarkRow[]
 ): string {
   const table = [
-    "| Язык | Биграммы | Партия | Ноты | Высоты | Слова % | Буквы % | Верхний ряд % | Shift % | Alt % | Ср. длина | Макс. длина | Ср. ранг | Связные пары % | Читаемость | Удобство | Качество | Звёзды | мс |",
-    "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+    "| Язык | Биграммы | Партия | Раскладка | Ноты | Высоты | Слова % | Буквы % | Верхний ряд % | Shift % | Alt % | Ср. длина | Макс. длина | Ср. ранг | Связные пары % | Читаемость | Удобство | Качество | Звёзды | мс |",
+    "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
   ];
   const details: string[] = [];
   for (const row of rows) {
@@ -129,10 +130,10 @@ function renderReport(
       ""
     );
     table.push(
-      `| ${row.language.toUpperCase()} | ${row.bigrams ? "да" : "нет"} | ${row.part} | ${String(metrics.totalNotes)} | ${String(metrics.uniquePitches)} | ${metrics.dictionaryCoveragePercent.toFixed(1)}% | ${percent(metrics.normalLetterCount, metrics.totalNotes)} | ${percent(metrics.topRowCount, metrics.totalNotes)} | ${percent(metrics.shiftCount, metrics.totalNotes)} | ${percent(metrics.altCount, metrics.totalNotes)} | ${metrics.averageWordLength.toFixed(2)} | ${String(metrics.longestWordLength)} | ${metrics.averageWordRank.toFixed(1)} | ${metrics.linkedPairsPercent.toFixed(1)}% | ${metrics.readabilityScore.toFixed(1)} | ${metrics.typingComfortScore.toFixed(1)} | ${metrics.totalScore.toFixed(1)} | ${String(metrics.stars)} | ${row.runtimeMs.toFixed(1)} |`
+      `| ${row.language.toUpperCase()} | ${row.bigrams ? "да" : "нет"} | ${row.part} | ${row.layout === "word" ? "слово" : "песня"} | ${String(metrics.totalNotes)} | ${String(metrics.uniquePitches)} | ${metrics.dictionaryCoveragePercent.toFixed(1)}% | ${percent(metrics.normalLetterCount, metrics.totalNotes)} | ${percent(metrics.topRowCount, metrics.totalNotes)} | ${percent(metrics.shiftCount, metrics.totalNotes)} | ${percent(metrics.altCount, metrics.totalNotes)} | ${metrics.averageWordLength.toFixed(2)} | ${String(metrics.longestWordLength)} | ${metrics.averageWordRank.toFixed(1)} | ${metrics.linkedPairsPercent.toFixed(1)}% | ${metrics.readabilityScore.toFixed(1)} | ${metrics.typingComfortScore.toFixed(1)} | ${metrics.totalScore.toFixed(1)} | ${String(metrics.stars)} | ${row.runtimeMs.toFixed(1)} |`
     );
     details.push(
-      `## ${row.language.toUpperCase()} ${row.bigrams ? "с биграммами" : "без биграмм"} ${row.part}`,
+      `## ${row.language.toUpperCase()} ${row.bigrams ? "с биграммами" : "без биграмм"} ${row.part}, раскладка ${row.layout === "word" ? "на слово" : "на песню"}`,
       "",
       `Словарь: ${row.dictionaryVersion}. Исключено одновременных нот: ${String(row.discardedNotes)}.`,
       "",
@@ -259,24 +260,28 @@ async function main(): Promise<void> {
       const table = pairsModule.decodeBigrams(pairs as number[], dictionary.entries.length);
       for (const bigrams of [false, true]) {
         for (const part of ["melody", "bass"] as const) {
-          const line = extraction.extractLine(song, part);
-          const started = performance.now();
-          const result = core.generateWordTyping(
-            line.notes,
-            dictionary.entries,
-            language,
-            { beamWidth: args.beamWidth },
-            bigrams ? table : pairsModule.NO_BIGRAMS
-          );
-          rows.push({
-            language,
-            bigrams,
-            dictionaryVersion: dictionary.version,
-            part,
-            discardedNotes: line.discardedNotes,
-            runtimeMs: performance.now() - started,
-            result
-          });
+          for (const layout of ["song", "word"] as const) {
+            const line = extraction.extractLine(song, part);
+            const started = performance.now();
+            const result = core.generateWordTyping(
+              line.notes,
+              dictionary.entries,
+              language,
+              { beamWidth: args.beamWidth },
+              bigrams ? table : pairsModule.NO_BIGRAMS,
+              { layout }
+            );
+            rows.push({
+              language,
+              bigrams,
+              dictionaryVersion: dictionary.version,
+              part,
+              layout,
+              discardedNotes: line.discardedNotes,
+              runtimeMs: performance.now() - started,
+              result
+            });
+          }
         }
       }
     }

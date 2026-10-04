@@ -265,6 +265,22 @@ export class PracticeSession {
     );
   }
 
+  /**
+   * The note a key answers now: the first owed in the wait mode; in the tempo mode the pending
+   * note nearest to the song time, so a note waiting out its late window does not hold back the
+   * next one.
+   */
+  owedNote(): SongNote | undefined {
+    if (this.options.mode === "wait") return this.nextDue()[0];
+    let best: SongNote | undefined;
+    for (const note of this.playerNotes) {
+      if (this.status.get(note.id) !== "pending") continue;
+      if (best && Math.abs(note.start - this.time) >= Math.abs(best.start - this.time)) break;
+      best = note;
+    }
+    return best;
+  }
+
   /** All pending key cues, so a late attack cannot hide the following preparation. */
   keyHints(): SongNote[] {
     this.hintNotes.length = 0;

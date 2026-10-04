@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Song, SongNote } from "../song/song";
+import { inputTokenId, tokenPool } from "../wordTyping/inputTokens";
 import { keyColumn } from "../wordTyping/keyboardRows";
 import type { GeneratedToken, Modifier } from "../wordTyping/types";
+import { wordKeyPitch } from "../wordTyping/wordInput";
 import { ComputerKeys } from "./computerKeys";
 import type { FrameState } from "./FallingNotesView";
 import { TYPING_FINGER_COLOR } from "./fingerColors";
@@ -169,5 +171,46 @@ describe("ComputerKeys", () => {
     expect(keys.press(L)).toBe(67);
     expect(keys.release()).toBe(67);
     expect(keys.release()).toBeUndefined();
+  });
+});
+
+describe("ComputerKeys in the per-word layout", () => {
+  // «a b» is the first word, «c» the second: L plays 67 in the first, 62 in the second.
+  const tokens = [
+    token("a", "KeyL", 67),
+    token("b", "KeyM", 64),
+    { ...token("c", "KeyL", 62), wordIndex: 1 }
+  ];
+  const keyboard = new Set(tokenPool("ru").map(inputTokenId));
+  const keys = new ComputerKeys(tokens, "ru", undefined, (id, owed) =>
+    wordKeyPitch(tokens, owed, id, keyboard)
+  );
+  keys.mapSong(song);
+  const R = keyColumn("KeyR") ?? -1;
+
+  it("plays the owed word's letter for a mouse press, not the song's first", () => {
+    keys.frame(frame({ owedNoteId: "a" }));
+    expect(keys.press(L)).toBe(67);
+    expect(keys.release()).toBe(67);
+    keys.frame(frame({ owedNoteId: "c" }));
+    expect(keys.press(L)).toBe(62);
+    expect(keys.release()).toBe(62);
+  });
+
+  it("lights and strikes a key the word lacks on the stray pitch it played", () => {
+    keys.frame(frame({ owedNoteId: "a" }));
+    keys.hold("KeyR", true, "none:KeyR");
+    const stray = wordKeyPitch(tokens, "a", "none:KeyR", keyboard) ?? -1;
+    const told = keys.frame(
+      frame({
+        owedNoteId: "a",
+        pressed: new Set([stray]),
+        graded: [{ grade: "miss", pitch: stray }]
+      })
+    );
+    expect([...told.pressed]).toEqual([R]);
+    expect(told.graded).toEqual([{ grade: "miss", pitch: R }]);
+    keys.hold("KeyR", false);
+    expect(keys.frame(frame({ owedNoteId: "a" })).pressed.size).toBe(0);
   });
 });

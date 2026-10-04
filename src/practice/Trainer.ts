@@ -145,6 +145,11 @@ export class Trainer {
     this.publish();
   }
 
+  /** The note a key answers now, if any (PracticeSession.owedNote). */
+  nextDueNoteId(): string | undefined {
+    return this.session?.owedNote()?.id;
+  }
+
   /** Restarts the run from song time `from`, keeping play or pause as it was. */
   seek(from: number): void {
     if (!this.session) return;
@@ -387,6 +392,7 @@ export class Trainer {
       pressed: this.pressed,
       sounding: this.sounding,
       due: this.playing || session.time < 0 ? session.nextDue() : [],
+      owedNoteId: session.owedNote()?.id,
       waitingFor: session.waiting ? session.nextDue() : [],
       hands: session.options.hands,
       hints: !this.performanceMode,

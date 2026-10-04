@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
+import type { ComputerKeyboard } from "../render/computerKeys";
 import type { Song } from "../song/song";
 import { extractLine, withAccompaniment } from "../wordTyping/extractLine";
+import { inputTokenId, tokenPool } from "../wordTyping/inputTokens";
 import { ALGORITHM_VERSION } from "../wordTyping/optimizer";
 import { DEFAULT_CONFIG } from "../wordTyping/scoring";
 import type { GeneratedToken, Part, WordTypingResult } from "../wordTyping/types";
+import { wordKeyPitch } from "../wordTyping/wordInput";
 import { loadWordTypingPrefs, saveWordTypingPrefs } from "./wordTypingPreferences";
 import type { WordTypingPrefs } from "./wordTypingPreferences";
 
@@ -33,19 +36,32 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     () => (prefs.accompaniment ? withAccompaniment(song, line.song, part) : line.song),
     [prefs.accompaniment, song, line, part]
   );
-  const key = useMemo(
+  // A variant belongs to one line, language and layout; any change starts from the first again.
+  const base = useMemo(
     () =>
       JSON.stringify({
         notes: line.notes.map(({ id, pitch, start, duration }) => [id, pitch, start, duration]),
         part,
         language: prefs.language,
+        layout: prefs.layout
+      }),
+    [line, part, prefs.language, prefs.layout]
+  );
+  const [chosen, setChosen] = useState({ base, variant: 0, previousText: "" });
+  // Reset during render, so a base that comes back does not bring its old variant with it.
+  if (chosen.base !== base) setChosen({ base, variant: 0, previousText: "" });
+  const variant = chosen.base === base ? chosen.variant : 0;
+  const key = useMemo(
+    () =>
+      JSON.stringify({
+        base,
+        variant,
         pairs: BIGRAM_VERSION,
         dictionary: DICTIONARY_VERSION,
         algorithm: ALGORITHM_VERSION,
-        scope: "strict",
         config: DEFAULT_CONFIG
       }),
-    [line, part, prefs.language]
+    [base, variant]
   );
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -74,25 +90,48 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     };
     worker.postMessage({
       notes: line.notes,
-      language: prefs.language
+      language: prefs.language,
+      layout: prefs.layout,
+      variant
     });
     return () => {
       worker.terminate();
     };
-  }, [prefs.enabled, prefs.language, key, empty, line]);
+  }, [prefs.enabled, prefs.language, prefs.layout, variant, key, empty, line]);
 
-  const keyboardOptions = useMemo<KeyboardInputOptions>(
-    () => ({
-      bindings: {},
-      wordMapping: current?.result?.tokenToPitch ?? {},
-      blocked: blocked || pending || Boolean(error)
-    }),
-    [current, pending, error, blocked]
-  );
   const tokens = current?.result?.tokens ?? NO_TOKENS;
-  const keyboard = useMemo(
-    () => (prefs.enabled ? { tokens, language: prefs.language } : undefined),
-    [prefs.enabled, prefs.language, tokens]
+  const wordKeys = useMemo(
+    () => new Set(tokenPool(prefs.language).map(inputTokenId)),
+    [prefs.language]
+  );
+  const keyboardOptions = useMemo<KeyboardInputOptions>(() => {
+    const mapping = current?.result?.tokenToPitch ?? {};
+    return {
+      bindings: {},
+      wordPitch:
+        current?.result?.mode === "word"
+          ? (id, owed) => wordKeyPitch(tokens, owed, id, wordKeys)
+          : (id) => mapping[id],
+      blocked: blocked || pending || Boolean(error)
+    };
+  }, [current, tokens, wordKeys, pending, error, blocked]);
+  const text = current?.result?.text;
+  const notice =
+    variant > 0 && text !== undefined && text === chosen.previousText
+      ? "Другой текст для этой партии подобрать не удалось."
+      : undefined;
+  const mode = current?.result?.mode;
+  const keyboard = useMemo<ComputerKeyboard | undefined>(
+    () =>
+      prefs.enabled
+        ? {
+            tokens,
+            language: prefs.language,
+            wordPitch:
+              mode === "word" ? (id, owed) => wordKeyPitch(tokens, owed, id, wordKeys) : undefined
+          }
+        : undefined,
+    [prefs.enabled, prefs.language, tokens, mode, wordKeys]
   );
   const update = (change: Partial<WordTypingPrefs>) => {
     const next = { ...prefs, ...change };
@@ -109,6 +148,7 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     runtimeMs: current?.runtimeMs,
     pending,
     error,
+    notice,
     storageError,
     keyboardOptions,
     update,
@@ -117,6 +157,10 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     },
     setAccompaniment: (accompaniment: boolean) => {
       update({ accompaniment });
+    },
+    /** Another text for the same line; the first one comes back after any other change. */
+    regenerate: () => {
+      setChosen({ base, variant: variant + 1, previousText: text ?? "" });
     },
     practiceSong: prefs.enabled ? practice : song,
     practiceKey: prefs.enabled

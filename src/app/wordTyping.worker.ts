@@ -1,16 +1,18 @@
 import { decodeBigrams } from "../wordTyping/bigrams";
 import { generateWordTyping } from "../wordTyping/optimizer";
-import type { DictionaryEntry, Language } from "../wordTyping/types";
+import type { DictionaryEntry, Language, Layout } from "../wordTyping/types";
 import type { SongNote } from "../song/song";
 
 interface Request {
   readonly notes: readonly SongNote[];
   readonly language: Language;
+  readonly layout: Layout;
+  readonly variant: number;
 }
 
 self.onmessage = async (event: MessageEvent<Request>) => {
   try {
-    const { notes, language } = event.data;
+    const { notes, language, layout, variant } = event.data;
     const base = `${import.meta.env.BASE_URL}word-typing/${language}`;
     const [response, pairsResponse] = await Promise.all([
       fetch(`${base}.json`),
@@ -30,7 +32,8 @@ self.onmessage = async (event: MessageEvent<Request>) => {
       dictionary.entries,
       language,
       {},
-      decodeBigrams(pairs, dictionary.entries.length)
+      decodeBigrams(pairs, dictionary.entries.length),
+      { layout, variant }
     );
     self.postMessage({
       result,
