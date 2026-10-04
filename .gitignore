@@ -23,3 +23,6 @@ local-lessons/
 # Browser inspection output and temporary MCP diagnostics.
 .browser-artifacts/
 .playwright-mcp/
+
+# Generated art (codex-visual output and its slicing data): kept locally, never committed.
+public/generated/
