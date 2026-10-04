@@ -52,6 +52,15 @@ export function languageTokens(language: Language): InputToken[] {
   return tokens;
 }
 
+/** What a key types without a modifier in `language`: its letter, else its digit or sign. */
+export function keyDisplay(physicalKey: string, language: Language): string {
+  return (
+    languageTokens(language).find((token) => token.physicalKey === physicalKey)?.display ??
+    [...TOP_ROW, ...PUNCTUATION].find(([code]) => code === physicalKey)?.[1] ??
+    ""
+  );
+}
+
 /** Cheap unused assignments are exhausted before any modified token is allocated. */
 export function tokenPool(language: Language): InputToken[] {
   const letters = languageTokens(language);

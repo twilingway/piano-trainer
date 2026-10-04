@@ -1,18 +1,18 @@
-import { Application, Container } from "pixi.js";
-import type { FederatedPointerEvent, Texture } from "pixi.js";
+import { Application, Container, Texture } from "pixi.js";
+import type { FederatedPointerEvent } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
 import type { ComboBoard, GradedStrike } from "../practice/combo";
 import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
-import type { GeneratedToken } from "../wordTyping/types";
 import { bakeDigits, bakeNames } from "./bakeLabels";
 import { bindKeyboardPointer } from "./bindKeyboardPointer";
 import { ComputerKeyboardLayer } from "./ComputerKeyboardLayer";
 import type { KeysLayer } from "./ComputerKeyboardLayer";
-import { computerGeometry, layoutComputerKeys } from "./computerKeyboardLayout";
+import { computerGeometry, computerWidth, layoutComputerKeys } from "./computerKeyboardLayout";
 import { ComputerKeys, noteColor } from "./computerKeys";
+import type { ComputerKeyboard } from "./computerKeys";
 import type { FallingNoteNames } from "./bakeLabels";
 import { HandsLayer } from "./HandsLayer";
 import { FxLayer } from "./FxLayer";
@@ -348,9 +348,10 @@ export class FallingNotesView {
    * The word mode: the computer keys in place of the piano's, each a column of the falling notes
    * (`tokens` say what each key types and plays); undefined brings the piano back.
    */
-  setComputerKeys(tokens: readonly GeneratedToken[] | undefined): void {
+  setComputerKeys(keys: ComputerKeyboard | undefined): void {
     this.keysLayer?.releaseMouse();
-    this.computer = tokens ? new ComputerKeys(tokens) : undefined;
+    const letter = (text: string) => this.computerKeyboard?.letter(text) ?? Texture.EMPTY;
+    this.computer = keys ? new ComputerKeys(keys.tokens, keys.language, letter) : undefined;
     this.computerKeyboard?.setKeys(this.computer);
     this.syncKeyboards();
     if (this.song) this.setSong(this.song);
@@ -383,7 +384,7 @@ export class FallingNotesView {
     // The word mode draws the song one column a computer key.
     const shown = this.computer?.mapSong(song) ?? song;
     this.hands.setSong(shown);
-    this.notesLayer?.setSong(shown, this.computer?.writtenPitch);
+    this.notesLayer?.setSong(shown, this.computer?.look);
     this.song = song;
     this.songNotes = shown.notes;
     this.hud.clear();
@@ -574,7 +575,7 @@ export class FallingNotesView {
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
     // The computer keys fill the width; the piano's range may be wider and scroll.
-    const total = this.computer ? width : this.fitPiano(width);
+    const total = this.computer ? computerWidth(width) : this.fitPiano(width);
     this.total = total;
     this.pan = Math.min(this.pan, Math.max(0, total - width));
     const geometry = this.geometry(height);

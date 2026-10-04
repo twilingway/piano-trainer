@@ -2,32 +2,70 @@ import { KEYBOARD_ROWS, keyColumn } from "../wordTyping/keyboardRows";
 import type { KeyRect } from "./keyboardLayout";
 import type { Geometry, ViewParts } from "./viewGeometry";
 
-/** A computer key on screen: its code, its column's stand-in pitch and its face. */
+/** A key on screen: a typing key has its column's stand-in pitch, a service key its caption. */
 export interface KeyFace {
   readonly code: string;
-  readonly pitch: number;
+  readonly pitch?: number;
+  /** A service key's caption (Tab, Shift…); a typing key shows what it types instead. */
+  readonly caption?: string;
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
 }
 
+interface Slot {
+  readonly code: string;
+  /** In key widths. */
+  readonly width: number;
+  readonly caption?: string;
+}
+
+const key = (code: string, width = 1): Slot => ({ code, width });
+const service = (code: string, width: number, caption = ""): Slot => ({ code, width, caption });
+const row = (index: number) => (KEYBOARD_ROWS[index] ?? []).map((code) => key(code));
+
 /**
- * How far each row is set in, in key widths, as on a real keyboard: the letter rows start after
- * Tab, Caps Lock and Shift, which the mode does not use and leaves as room.
+ * A full keyboard, 15 key widths a row, as it lies under the hands: the typing keys of the mode
+ * among the service keys around them, which only show where the hands are.
  */
-const ROW_OFFSET = [0, 1.5, 1.75, 2.25] as const;
-/** The widest row with its offset (Tab, the letters and the backslash), in key widths. */
-const UNITS = 14.5;
-/** The gap between keys, as a share of a key. */
-const GAP_SHARE = 0.08;
-/** A key's face height, in key widths, before the view's height caps it. */
-const ROW_PER_UNIT = 0.78;
+const LAYOUT: readonly (readonly Slot[])[] = [
+  [...row(0), service("Backspace", 2, "⟵ Backspace")],
+  [
+    service("Tab", 1.5, "Tab"),
+    ...row(1).map((slot) => (slot.code === "Backslash" ? key("Backslash", 1.5) : slot))
+  ],
+  [service("CapsLock", 1.75, "Caps Lock"), ...row(2), service("Enter", 2.25, "Enter ⏎")],
+  [service("ShiftLeft", 2.25, "⇧ Shift"), ...row(3), service("ShiftRight", 2.75, "⇧ Shift")],
+  [
+    service("ControlLeft", 1.25, "Ctrl"),
+    service("MetaLeft", 1.25, "Win"),
+    service("AltLeft", 1.25, "Alt"),
+    service("Space", 6.25),
+    service("AltRight", 1.25, "Alt"),
+    service("MetaRight", 1.25, "Win"),
+    service("ContextMenu", 1.25, "☰"),
+    service("ControlRight", 1.25, "Ctrl")
+  ]
+];
+/** Key widths across a row. */
+const UNITS = 15;
+/** The gap between keys, as a share of a key width. */
+const GAP_SHARE = 0.1;
+/** A row's height, in key widths, before the view's height caps it. */
+const ROW_PER_UNIT = 0.8;
+/** A key at most this wide: a wide screen does not blow the keyboard up. */
+const MAX_UNIT_PX = 56;
 /** Of the view, the keys take at most this share while the notes fall above them. */
-const MAX_KEYBOARD_SHARE = 0.42;
+const MAX_KEYBOARD_SHARE = 0.4;
 /** The felt over the keys and the margin under them, in key widths. */
 const FELT_PER_UNIT = 0.06;
-const MARGIN_PER_UNIT = 0.12;
+const MARGIN_PER_UNIT = 0.15;
+
+/** The keyboard's width in a view `width` wide: as wide as a real one at most, centred. */
+export function computerWidth(width: number): number {
+  return Math.min(width, UNITS * MAX_UNIT_PX);
+}
 
 /** Where the keys, the felt and the hit line go for a computer keyboard `total` pixels wide. */
 export function computerGeometry(height: number, total: number, parts: ViewParts): Geometry {
@@ -45,7 +83,7 @@ export function computerGeometry(height: number, total: number, parts: ViewParts
   const feltHeight = Math.max(3, unit * FELT_PER_UNIT);
   const margin = unit * MARGIN_PER_UNIT;
   const room = parts.notes ? height * MAX_KEYBOARD_SHARE : height - margin - feltHeight;
-  const keyboardHeight = Math.max(0, Math.min(unit * ROW_PER_UNIT * KEYBOARD_ROWS.length, room));
+  const keyboardHeight = Math.max(0, Math.min(unit * ROW_PER_UNIT * LAYOUT.length, room));
   const keyboardTop = height - margin - keyboardHeight;
   return {
     keyboardTop,
@@ -58,33 +96,38 @@ export function computerGeometry(height: number, total: number, parts: ViewParts
 }
 
 /**
- * The computer keys in their four staggered rows across `total` pixels, the rows sharing
- * `geometry`'s keyboard height; and each key's column for the falling notes, as wide as its face.
+ * Every key across `total` pixels in its row, the rows sharing `geometry`'s keyboard height;
+ * and each typing key's column for the falling notes, as wide as its face.
  */
 export function layoutComputerKeys(
   total: number,
   geometry: Geometry
 ): { readonly faces: readonly KeyFace[]; readonly keys: Map<number, KeyRect> } {
   const unit = total / UNITS;
-  const rowHeight = geometry.keyboardHeight / KEYBOARD_ROWS.length;
+  const rowHeight = geometry.keyboardHeight / LAYOUT.length;
+  const gap = unit * GAP_SHARE;
+  // A short keyboard keeps its rows apart without crushing them.
+  const rowGap = Math.min(gap, rowHeight * 0.14);
   const faces: KeyFace[] = [];
   const keys = new Map<number, KeyRect>();
-  KEYBOARD_ROWS.forEach((row, rowIndex) => {
-    row.forEach((code, index) => {
-      const pitch = keyColumn(code);
-      if (pitch === undefined) return;
-      const x = (ROW_OFFSET[rowIndex] ?? 0) * unit + index * unit + (unit * GAP_SHARE) / 2;
-      const width = unit * (1 - GAP_SHARE);
+  LAYOUT.forEach((slots, line) => {
+    let left = 0;
+    for (const slot of slots) {
+      const x = left * unit + gap / 2;
+      const width = slot.width * unit - gap;
+      const pitch = slot.caption === undefined ? keyColumn(slot.code) : undefined;
       faces.push({
-        code,
-        pitch,
+        code: slot.code,
+        ...(pitch === undefined ? {} : { pitch }),
+        ...(slot.caption === undefined ? {} : { caption: slot.caption }),
         x,
-        y: geometry.keyboardTop + rowIndex * rowHeight + (rowHeight * GAP_SHARE) / 2,
+        y: geometry.keyboardTop + line * rowHeight + rowGap / 2,
         width,
-        height: rowHeight * (1 - GAP_SHARE)
+        height: rowHeight - rowGap
       });
-      keys.set(pitch, { pitch, black: false, x, width });
-    });
+      if (pitch !== undefined) keys.set(pitch, { pitch, black: false, x, width });
+      left += slot.width;
+    }
   });
   return { faces, keys };
 }

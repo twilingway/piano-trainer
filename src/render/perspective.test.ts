@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { roadProjection } from "./perspective";
+import { quadPoint, roadProjection } from "./perspective";
 
 describe("roadProjection", () => {
   // A 1000-wide view, the hit line at y 800, the horizon at y 200, the far edge 0.4 as wide.
@@ -47,4 +47,36 @@ it("places the transition at screen progress for different perspective shapes", 
     expect(road.progressAt(depth)).toBeCloseTo(0.78);
     expect(road.at(500, depth).y).toBeCloseTo(200 + 600 * 0.78);
   }
+});
+
+describe("quadPoint", () => {
+  // Any projective map: the corners of the unit square and a point inside go through it.
+  const map = (u: number, v: number) => {
+    const w = 0.001 * u * 100 + 0.002 * v * 100 + 1;
+    return {
+      x: (2 * u * 100 + 0.5 * v * 100 + 10) / w,
+      y: (0.2 * u * 100 + 1.5 * v * 100 + 20) / w,
+      scale: 1
+    };
+  };
+  const quad = [map(0, 0), map(1, 0), map(1, 1), map(0, 1)] as const;
+
+  it("finds a point's place on a quad drawn in perspective", () => {
+    for (const [u, v] of [
+      [0.3, 0.7],
+      [0, 0],
+      [1, 1],
+      [0.9, 0.1]
+    ] as const) {
+      const point = map(u, v);
+      const found = quadPoint(point.x, point.y, quad);
+      expect(found?.u).toBeCloseTo(u, 6);
+      expect(found?.v).toBeCloseTo(v, 6);
+    }
+  });
+
+  it("knows nothing of a flattened quad", () => {
+    const flat = { x: 0, y: 0, scale: 1 };
+    expect(quadPoint(1, 1, [flat, flat, flat, flat])).toBeUndefined();
+  });
 });

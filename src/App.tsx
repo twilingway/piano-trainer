@@ -124,7 +124,7 @@ export function App() {
     fallingNames: score.nameStyle,
     comparing: takes.comparing,
     lastTake: takes.lastTake,
-    computerTokens: word.keyTokens
+    computerKeys: word.keyboard
   });
   const library = usePlayerLibrary({
     showSong: current.showSong,

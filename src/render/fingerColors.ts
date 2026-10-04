@@ -12,6 +12,12 @@ export const FINGER_COLOR: Readonly<Record<Finger, number>> = {
   5: 0x00df50
 };
 
+/** A note without a finger: its hand's colour. */
+export const HAND_COLOR: Readonly<Record<Hand, number>> = {
+  right: FINGER_COLOR[3],
+  left: FINGER_COLOR[4]
+};
+
 /**
  * The word-typing palette, as on a touch-typing chart: the index fingers tell the hands apart
  * (left orange, right yellow), the other fingers share a colour on both hands; no thumbs type,
@@ -33,3 +39,12 @@ export const TYPING_FINGER_COLOR: Readonly<Record<Hand, Readonly<Record<Finger, 
     5: FINGER_COLOR[5]
   }
 };
+
+/** A colour `share` of the way to white. */
+export function towardWhite(color: number, share: number): number {
+  const channel = (shift: number) => {
+    const value = (color >> shift) & 0xff;
+    return Math.round(value + (255 - value) * share) << shift;
+  };
+  return channel(16) | channel(8) | channel(0);
+}

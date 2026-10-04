@@ -88,6 +88,11 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     }),
     [current, pending, error, blocked]
   );
+  const tokens = current?.result?.tokens ?? NO_TOKENS;
+  const keyboard = useMemo(
+    () => (prefs.enabled ? { tokens, language: prefs.language } : undefined),
+    [prefs.enabled, prefs.language, tokens]
+  );
   const update = (change: Partial<WordTypingPrefs>) => {
     const next = { ...prefs, ...change };
     setPrefs(next);
@@ -99,7 +104,7 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     line,
     result: current?.result,
     /** The computer keys' inputs while the mode is on; none yet while the words are chosen. */
-    keyTokens: prefs.enabled ? (current?.result?.tokens ?? NO_TOKENS) : undefined,
+    keyboard,
     runtimeMs: current?.runtimeMs,
     pending,
     error,

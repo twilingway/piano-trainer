@@ -3,10 +3,18 @@ import type { Song, SongNote } from "../song/song";
 import { inputTokenId } from "../wordTyping/inputTokens";
 import { columnKey, keyColumn } from "../wordTyping/keyboardRows";
 import { laneSong } from "../wordTyping/laneSong";
-import type { GeneratedToken, Modifier } from "../wordTyping/types";
+import type { GeneratedToken, Language, Modifier } from "../wordTyping/types";
+import type { Texture } from "pixi.js";
 import type { FrameState } from "./FallingNotesView";
-import { FINGER_COLOR, TYPING_FINGER_COLOR } from "./fingerColors";
-import { HAND_COLOR } from "./NotesLayer";
+import { TYPING_FINGER_COLOR } from "./fingerColors";
+import { PIANO_LOOK } from "./noteLook";
+import type { NoteLook } from "./noteLook";
+
+/** The word mode's keyboard: what each key types and plays, and in which language. */
+export interface ComputerKeyboard {
+  readonly tokens: readonly GeneratedToken[];
+  readonly language: Language;
+}
 
 const BOTH_HANDS: ReadonlySet<Hand> = new Set(["left", "right"]);
 const NOTHING: ReadonlySet<number> = new Set();
@@ -21,6 +29,8 @@ export class ComputerKeys {
   readonly byColumn: ReadonlyMap<number, readonly GeneratedToken[]>;
   private readonly byNote: ReadonlyMap<string, GeneratedToken>;
   private realPitch: ReadonlyMap<string, number> = new Map();
+  /** The song's own notes by id: what the cards and the names show. */
+  private realNotes = new Map<string, SongNote>();
   private laneById = new Map<string, SongNote>();
   /** The lane's notes of each real pitch, earliest first. */
   private byRealPitch = new Map<number, SongNote[]>();
@@ -29,8 +39,20 @@ export class ComputerKeys {
   private due: readonly SongNote[] = [];
   /** The real pitch a mouse press sounded, for its release. */
   private pressed: number | undefined;
+  /** The key the mouse holds, as a column. */
+  private mouseColumn: number | undefined;
+  /** Keys held down now, by column, the latest last: they light, and strikes land on them. */
+  private held: number[] = [];
 
-  constructor(tokens: readonly GeneratedToken[]) {
+  /**
+   * `language` says what the keys without an input type, for their captions; `letter` draws the
+   * letter a note carries, once a letter.
+   */
+  constructor(
+    tokens: readonly GeneratedToken[],
+    readonly language: Language,
+    private readonly letter?: (text: string) => Texture
+  ) {
     this.byNote = new Map(tokens.map((token) => [token.noteId, token]));
     const byColumn = new Map<number, GeneratedToken[]>();
     const seen = new Set<string>();
@@ -47,13 +69,22 @@ export class ComputerKeys {
     this.byColumn = byColumn;
   }
 
-  /** A lane note's real pitch: what its card and its name show. */
-  readonly writtenPitch = (note: SongNote): number => this.realPitch.get(note.id) ?? note.pitch;
+  /** The lane's look: the touch-typing palette; cards and names show the note itself. */
+  readonly look: NoteLook = {
+    written: (note) => this.realNotes.get(note.id) ?? note,
+    color: (note) => this.colorOf(note) ?? PIANO_LOOK.color(note),
+    // The letter to press, not the finger: the colour already tells the finger.
+    badge: (note) => {
+      const token = this.byNote.get(note.id);
+      return token && this.letter?.(letterOf(token));
+    }
+  };
 
   /** The song as the lane draws it, one column a key; the frames are told against it. */
   mapSong(song: Song): Song {
     const lane = laneSong(song, [...this.byNote.values()]);
     this.realPitch = lane.realPitch;
+    this.realNotes = new Map(song.notes.map((note) => [note.id, note]));
     this.order = lane.song.notes;
     this.laneById = new Map(lane.song.notes.map((note) => [note.id, note]));
     this.byRealPitch = new Map();
@@ -70,10 +101,21 @@ export class ComputerKeys {
   frame(frame: FrameState): FrameState {
     const due = this.inLane(frame.due);
     this.due = due;
-    const pressed = new Set<number>();
+    // The keys held light themselves; a pitch no held key plays (a MIDI piano) lights a guess.
+    const pressed = new Set<number>(this.held.filter((column) => this.byColumn.has(column)));
     for (const pitch of frame.pressed) {
+      if (this.heldColumn(pitch) !== undefined) continue;
       const column = this.columnOf(pitch, frame.time, due);
       if (column !== undefined) pressed.add(column);
+    }
+    // Listening, the program plays every note: its keys light as they sound.
+    const listening = frame.hands.size === 0;
+    const sounding = new Set<number>();
+    if (listening) {
+      for (const pitch of frame.sounding) {
+        const column = this.columnOf(pitch, frame.time, due);
+        if (column !== undefined) sounding.add(column);
+      }
     }
     const graded = frame.graded?.flatMap((strike) => {
       const column = this.columnOf(strike.pitch, frame.time, due);
@@ -83,13 +125,10 @@ export class ComputerKeys {
       ...frame,
       due,
       pressed,
-      // The accompaniment sounds off the lane: no key of it lights.
-      sounding: NOTHING,
+      // Practising, the accompaniment sounds off the lane: no key of it lights.
+      sounding: listening ? sounding : NOTHING,
       // Every note of the lane is the player's, whichever hand types it.
-      hands: BOTH_HANDS,
-      colorOf:
-        frame.colorOf ??
-        ((note) => (frame.statusOf(note.id) === "missed" ? undefined : this.colorOf(note))),
+      hands: listening ? frame.hands : BOTH_HANDS,
       ...(frame.waitingFor ? { waitingFor: this.inLane(frame.waitingFor) } : {}),
       ...(graded ? { graded } : {})
     };
@@ -108,6 +147,19 @@ export class ComputerKeys {
     return index < 0 ? undefined : this.order[index + 1];
   }
 
+  /** A computer key down or up, as the keyboard says: shown only, the input plays it. */
+  hold(code: string, down: boolean): void {
+    const column = keyColumn(code);
+    if (column === undefined) return;
+    this.held = this.held.filter((item) => item !== column);
+    if (down) this.held.push(column);
+  }
+
+  /** Every key up: the window lost the keyboard. */
+  releaseAll(): void {
+    this.held = [];
+  }
+
   /** The real pitch a mouse press on a key plays: the owed input if it is on that key. */
   press(column: number): number | undefined {
     const tokens = this.byColumn.get(column);
@@ -117,6 +169,10 @@ export class ComputerKeys {
         ? owed
         : (tokens?.find((item) => item.input.modifier === "none") ?? tokens?.[0]);
     this.pressed = token?.pitch;
+    if (this.pressed !== undefined) {
+      this.mouseColumn = column;
+      this.held = [...this.held.filter((item) => item !== column), column];
+    }
     return this.pressed;
   }
 
@@ -124,6 +180,8 @@ export class ComputerKeys {
   release(): number | undefined {
     const pitch = this.pressed;
     this.pressed = undefined;
+    this.held = this.held.filter((item) => item !== this.mouseColumn);
+    this.mouseColumn = undefined;
     return pitch;
   }
 
@@ -131,8 +189,22 @@ export class ComputerKeys {
     return notes.flatMap((note) => this.laneById.get(note.id) ?? []);
   }
 
-  /** The column a real pitch is played on now: the owed note's, else the latest begun's. */
+  /** The latest held key that plays a real pitch. */
+  private heldColumn(real: number): number | undefined {
+    for (let index = this.held.length - 1; index >= 0; index--) {
+      const column = this.held[index] ?? -1;
+      if (this.byColumn.get(column)?.some((token) => token.pitch === real)) return column;
+    }
+    return undefined;
+  }
+
+  /**
+   * The column a real pitch is played on now: the held key that plays it, else the owed note's,
+   * else the latest begun's.
+   */
   private columnOf(real: number, time: number, due: readonly SongNote[]): number | undefined {
+    const held = this.heldColumn(real);
+    if (held !== undefined) return held;
     for (const note of due) if (this.realPitch.get(note.id) === real) return note.pitch;
     const notes = this.byRealPitch.get(real);
     let found = notes?.[0];
@@ -146,8 +218,13 @@ export class ComputerKeys {
 
 /** A note's colour on the keys and in the effects: its finger's, by the mode's palette. */
 export function noteColor(note: SongNote, computer: ComputerKeys | undefined): number {
-  return (
-    computer?.colorOf(note) ??
-    (note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand])
-  );
+  return (computer?.look ?? PIANO_LOOK).color(note);
+}
+
+/** What a token is typed as on a falling note: its letter, Shift and Alt as ⇧ and ⌥. */
+export function letterOf(token: GeneratedToken): string {
+  return token.input.display
+    .replace(/^Shift\+/, "⇧")
+    .replace(/^Alt\+/, "⌥")
+    .toUpperCase();
 }
