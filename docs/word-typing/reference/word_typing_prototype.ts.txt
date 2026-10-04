@@ -1,0 +1,360 @@
+#!/usr/bin/env node
+
+import { readFile } from "node:fs/promises";
+
+type Language = "en" | "ru";
+type Modifier = "none" | "shift" | "alt";
+
+export interface InputToken {
+  physicalKey: string;
+  modifier: Modifier;
+  display: string;
+}
+
+export interface NoteEvent {
+  pitchName: string;
+  duration?: number;
+  measure?: number;
+  voice?: string;
+}
+
+export interface SearchState {
+  pos: number;
+  letterToPitch: Map<string, string>;
+  tokens: string[];
+  score: number;
+  letters: number;
+  fallback: number;
+  shiftAlt: number;
+}
+
+export interface QualityMetrics {
+  totalNotes: number;
+  uniquePitches: number;
+  dictionaryCoveragePercent: number;
+  fallbackPercent: number;
+  shiftAltPercent: number;
+  quality: number;
+}
+
+const EN_FALLBACK = `
+the of and to in for is on that by this with you it not or be are from at as your all have new more
+was we will home can us about if page my has free but our one other do no time they site he up may
+what which their news out use any there see only so his when here who also now help get first been
+would how were me some these like than find back top people had list name just over state year day
+into two world next used go work last most music make them should after good where high each she
+very read need many said does set under water little house right because those using results family
+today project found great united center store travel report before local design women south love
+play song sound light heart life hand eyes night morning summer river green beautiful together again
+always never power might face body move taking among
+`.trim().split(/\s+/);
+
+const RU_FALLBACK = `
+и в не на я быть он с что а по это она этот к но они мы как из у который то за свой весь год от так
+о для ты же все тот мочь вы человек такой его сказать только или еще бы себя один уже до время если
+сам когда другой вот говорить наш мой знать стать при чтобы дело жизнь кто первый очень два день ее
+новый рука даже со раз где какой после их работа без самый потом надо хотеть ли слово идти большой
+должен место иметь сейчас тут лицо каждый друг видеть вопрос дом мир страна музыка песня играть
+любовь сердце свет небо земля вода река утро вечер ночь день вместе снова всегда никогда свобода
+сила слава народ родина отец мать друзья дружба красивый прекрасный тихий сильный новый старый
+молодой путь вперед назад рядом далеко близко голос звуки мелодия ритм такт нота
+`.trim().split(/\s+/);
+
+const TOP_ROW = ["Backquote", ...Array.from({ length: 10 }, (_, i) => `Digit${(i + 1) % 10}`), "Minus", "Equal"];
+
+function normalizeWord(word: string, lang: Language): string | null {
+  const w = word.trim().toLowerCase();
+  const pattern = lang === "en" ? /^[a-z]+$/u : /^[а-яё]+$/u;
+  return pattern.test(w) ? w : null;
+}
+
+export async function loadWords(path: string | undefined, lang: Language): Promise<string[]> {
+  let raw: string[];
+  if (path) {
+    const text = await readFile(path, "utf8");
+    raw = text.split(/\r?\n/).map(line => line.trim().split(/[\s,;\t]+/u)[0] ?? "");
+  } else {
+    raw = lang === "en" ? EN_FALLBACK : RU_FALLBACK;
+  }
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    const word = normalizeWord(item, lang);
+    if (!word || word.length < 2 || word.length > 14 || seen.has(word)) continue;
+    seen.add(word);
+    out.push(word);
+  }
+  return out;
+}
+
+function localName(tagName: string): string {
+  const colon = tagName.indexOf(":");
+  return colon >= 0 ? tagName.slice(colon + 1) : tagName;
+}
+
+/**
+ * Dependency-free MusicXML prototype parser.
+ * It is intentionally simple: for production, prefer the project's existing
+ * MusicXML parser and adapt its events to NoteEvent[].
+ */
+export function extractMusicXmlVoice(xml: string, voice: number): NoteEvent[] {
+  const noteBlocks = [...xml.matchAll(/<note\b[\s\S]*?<\/note>/giu)].map(m => m[0]);
+  const result: NoteEvent[] = [];
+
+  for (const noteXml of noteBlocks) {
+    if (/<rest\b/iu.test(noteXml) || /<chord\b/iu.test(noteXml)) continue;
+
+    const voiceMatch = noteXml.match(/<voice>([^<]+)<\/voice>/iu);
+    if ((voiceMatch?.[1]?.trim() ?? "") !== String(voice)) continue;
+
+    const step = noteXml.match(/<step>([A-G])<\/step>/iu)?.[1]?.toUpperCase();
+    const octave = noteXml.match(/<octave>(-?\d+)<\/octave>/iu)?.[1];
+    if (!step || octave === undefined) continue;
+
+    const alter = Number(noteXml.match(/<alter>(-?\d+)<\/alter>/iu)?.[1] ?? "0");
+    const accidental = alter > 0 ? "#" : alter < 0 ? "b" : "";
+    const duration = Number(noteXml.match(/<duration>(\d+)<\/duration>/iu)?.[1] ?? "0");
+
+    result.push({
+      pitchName: `${step}${accidental}${octave}`,
+      duration,
+      voice: String(voice),
+    });
+  }
+  return result;
+}
+
+function compatible(
+  word: string,
+  pitches: readonly string[],
+  mapping: ReadonlyMap<string, string>,
+): Map<string, string> | null {
+  const next = new Map(mapping);
+  const chars = [...word];
+
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i]!;
+    const pitch = pitches[i]!;
+    const existing = next.get(ch);
+    if (existing !== undefined && existing !== pitch) return null;
+    next.set(ch, pitch);
+  }
+  return next;
+}
+
+interface IndexedWord {
+  word: string;
+  frequencyBonus: number;
+}
+
+function indexWords(words: readonly string[]): Map<number, IndexedWord[]> {
+  const index = new Map<number, IndexedWord[]>();
+  words.forEach((word, rank) => {
+    const list = index.get([...word].length) ?? [];
+    list.push({
+      word,
+      frequencyBonus: Math.max(0, 5 - Math.log10(rank + 10)),
+    });
+    index.set([...word].length, list);
+  });
+  return index;
+}
+
+function mappingKey(mapping: ReadonlyMap<string, string>): string {
+  return [...mapping.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([letter, pitch]) => `${letter}:${pitch}`)
+    .join("|");
+}
+
+function fallbackDisplay(index: number): { display: string; penalty: number; shiftAlt: number } {
+  const tierSize = TOP_ROW.length;
+  if (index < tierSize) {
+    return { display: `[${TOP_ROW[index]}]`, penalty: 22, shiftAlt: 0 };
+  }
+  if (index < tierSize * 2) {
+    return { display: `[Shift+${TOP_ROW[index - tierSize]}]`, penalty: 45, shiftAlt: 1 };
+  }
+  const key = TOP_ROW[(index - tierSize * 2) % tierSize]!;
+  return { display: `[Alt+${key}]`, penalty: 70, shiftAlt: 1 };
+}
+
+export function optimize(
+  sequence: readonly string[],
+  words: readonly string[],
+  options: { beam?: number; maxWord?: number } = {},
+): SearchState | null {
+  const beam = options.beam ?? 600;
+  const maxWord = options.maxWord ?? 14;
+  const index = indexWords(words);
+  const beams = new Map<number, SearchState[]>([[0, [{
+    pos: 0,
+    letterToPitch: new Map(),
+    tokens: [],
+    score: 0,
+    letters: 0,
+    fallback: 0,
+    shiftAlt: 0,
+  }]]]);
+
+  for (let pos = 0; pos < sequence.length; pos++) {
+    const states = beams.get(pos) ?? [];
+    if (states.length === 0) continue;
+
+    const buckets = new Map<number, SearchState[]>();
+
+    for (const state of states) {
+      for (let length = Math.min(maxWord, sequence.length - pos); length >= 2; length--) {
+        for (const candidate of index.get(length) ?? []) {
+          const nextMapping = compatible(
+            candidate.word,
+            sequence.slice(pos, pos + length),
+            state.letterToPitch,
+          );
+          if (!nextMapping) continue;
+
+          const score =
+            state.score +
+            length * 12 +
+            Math.pow(length, 1.35) * 2 +
+            candidate.frequencyBonus;
+
+          const next: SearchState = {
+            pos: pos + length,
+            letterToPitch: nextMapping,
+            tokens: [...state.tokens, candidate.word],
+            score,
+            letters: state.letters + length,
+            fallback: state.fallback,
+            shiftAlt: state.shiftAlt,
+          };
+          const list = buckets.get(next.pos) ?? [];
+          list.push(next);
+          buckets.set(next.pos, list);
+        }
+      }
+
+      const fb = fallbackDisplay(state.fallback);
+      const fallbackState: SearchState = {
+        pos: pos + 1,
+        letterToPitch: new Map(state.letterToPitch),
+        tokens: [...state.tokens, fb.display],
+        score: state.score - fb.penalty,
+        letters: state.letters,
+        fallback: state.fallback + 1,
+        shiftAlt: state.shiftAlt + fb.shiftAlt,
+      };
+      const list = buckets.get(fallbackState.pos) ?? [];
+      list.push(fallbackState);
+      buckets.set(fallbackState.pos, list);
+    }
+
+    for (const [targetPos, candidates] of buckets) {
+      const merged = [...(beams.get(targetPos) ?? []), ...candidates];
+      const bestByMapping = new Map<string, SearchState>();
+
+      for (const state of merged) {
+        const key = mappingKey(state.letterToPitch);
+        const previous = bestByMapping.get(key);
+        if (!previous || state.score > previous.score) bestByMapping.set(key, state);
+      }
+
+      beams.set(
+        targetPos,
+        [...bestByMapping.values()]
+          .sort((a, b) => b.score - a.score)
+          .slice(0, beam),
+      );
+    }
+  }
+
+  const finals = beams.get(sequence.length);
+  if (!finals?.length) return null;
+  return finals.reduce((best, state) => state.score > best.score ? state : best);
+}
+
+export function quality(state: SearchState, sequence: readonly string[]): QualityMetrics {
+  const total = sequence.length;
+  const coverage = total ? (100 * state.letters) / total : 0;
+  const fallback = total ? (100 * state.fallback) / total : 0;
+  const modifiers = total ? (100 * state.shiftAlt) / total : 0;
+  const q = Math.max(0, Math.min(100, coverage - fallback * 0.35 - modifiers * 0.25));
+
+  return {
+    totalNotes: total,
+    uniquePitches: new Set(sequence).size,
+    dictionaryCoveragePercent: coverage,
+    fallbackPercent: fallback,
+    shiftAltPercent: modifiers,
+    quality: q,
+  };
+}
+
+export async function runPrototype(options: {
+  musicXmlPath: string;
+  voice: number;
+  lang: Language;
+  dictionaryPath?: string;
+  beam?: number;
+}): Promise<void> {
+  const xml = await readFile(options.musicXmlPath, "utf8");
+  const events = extractMusicXmlVoice(xml, options.voice);
+  const sequence = events.map(e => e.pitchName);
+  const words = await loadWords(options.dictionaryPath, options.lang);
+  const state = optimize(sequence, words, { beam: options.beam ?? 600 });
+
+  if (!state) throw new Error("No optimization result.");
+
+  const metrics = quality(state, sequence);
+  console.log(
+    `Language=${options.lang.toUpperCase()} voice=${options.voice} ` +
+    `events=${metrics.totalNotes} pitches=${metrics.uniquePitches} dictionary=${words.length}`,
+  );
+  console.log("TEXT:", state.tokens.join(" "));
+  console.log(
+    `QUALITY=${metrics.quality.toFixed(1)}/100 ` +
+    `word_coverage=${metrics.dictionaryCoveragePercent.toFixed(1)}% ` +
+    `fallback=${metrics.fallbackPercent.toFixed(1)}% ` +
+    `shift_alt=${metrics.shiftAltPercent.toFixed(1)}%`,
+  );
+
+  const byPitch = new Map<string, string[]>();
+  for (const [letter, pitch] of state.letterToPitch) {
+    const letters = byPitch.get(pitch) ?? [];
+    letters.push(letter);
+    byPitch.set(pitch, letters);
+  }
+
+  console.log("MAP:");
+  for (const pitch of [...byPitch.keys()].sort()) {
+    console.log(`  ${pitch}: ${(byPitch.get(pitch) ?? []).sort().join(" ")}`);
+  }
+}
+
+// Minimal dependency-free CLI:
+// npx tsx word_typing_prototype.ts song.musicxml --voice 1 --lang en --dict words.txt --beam 600
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const args = process.argv.slice(2);
+  const musicXmlPath = args[0];
+  if (!musicXmlPath) {
+    console.error("Usage: word_typing_prototype.ts <musicxml> [--voice N] [--lang en|ru] [--dict path] [--beam N]");
+    process.exit(1);
+  }
+
+  const getArg = (name: string): string | undefined => {
+    const i = args.indexOf(name);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+
+  const langArg = getArg("--lang") ?? "en";
+  if (langArg !== "en" && langArg !== "ru") throw new Error(`Unsupported language: ${langArg}`);
+
+  await runPrototype({
+    musicXmlPath,
+    voice: Number(getArg("--voice") ?? "1"),
+    lang: langArg,
+    dictionaryPath: getArg("--dict"),
+    beam: Number(getArg("--beam") ?? "600"),
+  });
+}
