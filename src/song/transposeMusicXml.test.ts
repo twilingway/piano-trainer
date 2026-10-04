@@ -288,6 +288,20 @@ describe("score transposition", () => {
     expectInterval(original, moved, 2);
   });
 
+  it("fills a key with a mode but missing fifths from the inferred source", () => {
+    const original = score(note("A") + note("C", 0, 5), 0, "minor").replace(
+      "<fifths>0</fifths>",
+      ""
+    );
+    const moved = transposeMusicXml(original, -3, 0);
+    expect(moved).toContain("<key><fifths>3</fifths><mode>minor</mode></key>");
+    expect(pitches(moved)).toEqual([
+      ["F", 1],
+      ["A", 0]
+    ]);
+    expectInterval(original, moved, -3);
+  });
+
   it.each(["bad", "", "1e0", "0x1", "8", "1.5"])(
     "uses the fallback for malformed fifths %s",
     (invalid) => {

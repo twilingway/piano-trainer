@@ -38,8 +38,15 @@ export function transposeMusicXml(xml: string, semitones: number, fallbackFifths
   const document = new DOMParser().parseFromString(xml, "application/xml");
   const walk = (element: Element, context: KeyContext): void => {
     if (element.tagName === "key") {
-      const node = element.querySelector(":scope > fifths");
-      if (!node) return;
+      if (element.querySelector(":scope > key-step, :scope > key-alter")) return;
+      let node = element.querySelector(":scope > fifths");
+      if (!node) {
+        node = document.createElementNS(element.namespaceURI, "fifths");
+        node.textContent = String(fallbackFifths);
+        const cancel = element.querySelector(":scope > cancel");
+        if (cancel) cancel.after(node);
+        else element.prepend(node);
+      }
       const original = traditionalFifths(node, fallbackFifths);
       node.textContent = String(transposeFifths(original, semitones));
       const number = element.getAttribute("number");
