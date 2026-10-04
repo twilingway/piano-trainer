@@ -156,6 +156,11 @@
   cursor: move;
   touch-action: none;
 }
+/* Off the edit mode the line stays put and lets touches through to the keys. */
+.word-ticker-slot:not([data-editing]) {
+  cursor: auto;
+  pointer-events: none;
+}
 /* The line may be dragged out of the lane, over the staff. */
 .lane:has(> .word-ticker-slot) {
   overflow: visible;

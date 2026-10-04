@@ -20,6 +20,7 @@ const onRange = vi.fn();
 const onTranspose = vi.fn();
 const onDevice = vi.fn();
 const onResetLayout = vi.fn();
+const onToggleEditing = vi.fn();
 const noop = () => undefined;
 
 function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
@@ -96,6 +97,8 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
       }}
       synchronization={<p>Калибровка задержки</p>}
       onResetLayout={onResetLayout}
+      editing={false}
+      onToggleEditing={onToggleEditing}
     />
   );
 }
@@ -163,6 +166,15 @@ describe("player settings organization", () => {
       reset?.click();
     });
     expect(onResetLayout).toHaveBeenCalledOnce();
+    const edit = Array.from(host.querySelectorAll("button")).find((button) =>
+      button.textContent.includes("Редактировать интерфейс")
+    );
+    expect(edit?.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => {
+      await Promise.resolve();
+      edit?.click();
+    });
+    expect(onToggleEditing).toHaveBeenCalledOnce();
     await section("Синхронизация");
     expect(host.querySelector("[role=tabpanel]")?.textContent).toContain("Калибровка задержки");
   });

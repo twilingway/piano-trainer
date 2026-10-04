@@ -23,6 +23,11 @@ interface Props {
   readonly onFullscreen: () => void;
   /** The view toggles, drawn on the bar's right. */
   readonly toggles: ReactNode;
+  /** The mode's own controls, which the phone's menu holds instead of a strip of their own. */
+  readonly menuExtra?: ReactNode;
+  /** The screen's parts show their handles and drag. */
+  readonly editing: boolean;
+  readonly onToggleEditing: () => void;
   readonly onLibrary: () => void;
   readonly onRestart: () => void;
   readonly onTogglePlay: () => void;
@@ -76,6 +81,7 @@ export function PlayerTopBar(props: Props) {
             onHands={props.onHands}
             onMode={props.onMode}
           />
+          {props.menuExtra}
           <div className="compact-controls__view-head">
             <span>Вид</span>
             <ViewHelp />
@@ -83,6 +89,14 @@ export function PlayerTopBar(props: Props) {
           <div className="setting-control setting-control--views compact-controls__views">
             {props.toggles}
           </div>
+          <button
+            type="button"
+            className="game-button"
+            aria-pressed={props.editing}
+            onClick={props.onToggleEditing}
+          >
+            ✎ Редактировать интерфейс
+          </button>
           <button type="button" className="game-button" onClick={props.onLibrary}>
             <LibraryIcon /> Библиотека
           </button>

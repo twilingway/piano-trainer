@@ -213,6 +213,8 @@ export function App() {
           fullscreen={fullscreen.active}
           onFullscreen={() => void fullscreen.toggle()}
           toggles={toggles}
+          editing={screen.editing}
+          onToggleEditing={screen.toggleEditing}
           onLibrary={() => {
             setLibraryOpen(true);
           }}
@@ -329,6 +331,7 @@ export function App() {
         onLayout={screen.updateLayout}
         onResetLayout={screen.resetLayout}
         layoutMoved={screen.moved}
+        editing={screen.editing}
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}
@@ -461,6 +464,8 @@ export function App() {
         }}
         synchronization={timing.settings}
         onResetLayout={screen.resetLayout}
+        editing={screen.editing}
+        onToggleEditing={screen.toggleEditing}
       />
 
       <ResultDialog
