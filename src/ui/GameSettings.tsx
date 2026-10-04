@@ -27,7 +27,7 @@ interface Props {
 export function GameSettings(props: Props) {
   return (
     <section className="settings-list">
-      <h3>Правила исполнения</h3>
+      <h3 className="settings-group__title">Правила и очки</h3>
       <label className="setting">
         Сложность
         <select
@@ -64,7 +64,7 @@ export function GameSettings(props: Props) {
       )}
       {!props.practiceOnly && !props.rankedReady && (
         <p className="setting-hint">
-          Для рейтинга выберите одно устройство и выполните калибровку во вкладке «Точность».
+          Для рейтинга выберите одно устройство и выполните калибровку в разделе «Синхронизация».
           Рейтинг играет в темпе на скорости 100 %, без Loop.
         </p>
       )}

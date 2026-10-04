@@ -12,12 +12,15 @@ import { PracticeSession } from "./session";
 import type { NoteStatus, PracticeEvent, PracticeOptions, PracticeStats } from "./session";
 import type { TimingConfig } from "./timingConfig";
 import { SongTimeline } from "./timing";
+import { timingPolicy } from "./timingPolicy";
+import type { TimingPolicy } from "./timingPolicy";
 
 export interface TrainerSnapshot {
   readonly playing: boolean;
   readonly waiting: boolean;
   readonly finished: boolean;
   readonly time: number;
+  readonly timingPolicy: TimingPolicy;
   /** Beat of the last note that has started; what the staff cursor follows. */
   readonly beat: number;
   readonly stats: PracticeStats;
@@ -475,6 +478,7 @@ export class Trainer {
       finished: session.finished,
       time: session.time,
       beat: this.lastBeat,
+      timingPolicy: timingPolicy(session.options),
       stats,
       ...(this.textNoteIds.length > 0
         ? {

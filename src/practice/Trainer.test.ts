@@ -66,6 +66,28 @@ function down(trainer: Trainer, timestamp: number, pitch = 60, deviceId = "piano
   trainer.key({ type: "down", pitch, velocity: 90, timestamp, source: "midi", deviceId });
 }
 describe("Trainer input timestamps", () => {
+  it("publishes the applied policy rather than a stored learning preference", () => {
+    const run = harness();
+    expect(run.latest()?.timingPolicy).toBe("strict");
+    run.trainer.load(
+      SONG,
+      { mode: "tempo", hands: new Set(["right"]), speed: 1, learningWindow: true },
+      "fixture"
+    );
+    expect(run.latest()?.timingPolicy).toBe("learning");
+    run.trainer.load(
+      SONG,
+      { mode: "wait", hands: new Set(["right"]), speed: 1, learningWindow: true },
+      "fixture"
+    );
+    expect(run.latest()?.timingPolicy).toBe("waiting");
+    run.trainer.load(
+      SONG,
+      { mode: "tempo", hands: new Set(), speed: 1, learningWindow: true },
+      "fixture"
+    );
+    expect(run.latest()?.timingPolicy).toBe("listening");
+  });
   it("keeps hint time independent of visual offset and records educational late hits", () => {
     const run = harness();
     run.trainer.configureTiming({
