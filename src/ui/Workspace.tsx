@@ -2,7 +2,10 @@ import type { ReactNode, RefObject } from "react";
 
 import type { StaffPrefs } from "../app/useStaffPrefs";
 import type { SplitDirection, TakeStaff } from "../app/useTakeReview";
+import { DEFAULT_STAFF_SHARE } from "../app/screenLayout";
+import type { ScreenLayout } from "../app/screenLayout";
 import { Staff } from "../staff/Staff";
+import { KeysHandles, StaffHandle, TickerSlot } from "./LayoutHandles";
 
 interface Props {
   /** The score on the staff; a MIDI song has none. */
@@ -29,6 +32,11 @@ interface Props {
   readonly wordBoard?: ReactNode;
   /** The word mode's running line: over the keys when the lane shows its notes. */
   readonly wordTicker?: ReactNode;
+  /** Where the player dragged the staff's edge, the keys and the running line. */
+  readonly layout: ScreenLayout;
+  readonly onLayout: (change: Partial<ScreenLayout>) => void;
+  /** A one-line staff's edge changes its zoom. */
+  readonly onZoom: (zoom: number) => void;
 }
 
 /** The game: the staff (and the take's own) over the falling notes (and the original's). */
@@ -39,6 +47,11 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   // With the lane hidden or cut to its keys, the staff may take more of the screen.
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
   const overlay = prefs.keyStyle === "perspective" && prefs.road && prefs.lane && !props.comparing;
+  const share = props.layout.staffShare ?? DEFAULT_STAFF_SHARE;
+  // Two staves in a column share what one would take.
+  const staffShare =
+    (transcription && takeStaff === "column" ? (share * 0.26) / DEFAULT_STAFF_SHARE : share) *
+    staffRoom;
   return (
     <div className="workspace">
       <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
@@ -63,7 +76,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                 onSeek={props.onSeek}
                 liveBeat={props.liveBeat}
                 marks={props.reviewMarks}
-                maxShare={(transcription && takeStaff === "column" ? 0.26 : 0.45) * staffRoom}
+                maxShare={staffShare}
               />
             </div>
             {transcription && (
@@ -83,10 +96,17 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                   onSeek={props.onSeek}
                   liveBeat={props.liveBeat}
                   marks={transcription.marks}
-                  maxShare={(takeStaff === "column" ? 0.26 : 0.45) * staffRoom}
+                  maxShare={staffShare}
                 />
               </div>
             )}
+            <StaffHandle
+              singleLine={prefs.singleLine}
+              zoom={prefs.zoom}
+              room={staffRoom}
+              onLayout={props.onLayout}
+              onZoom={props.onZoom}
+            />
           </div>
         )}
 
@@ -97,7 +117,14 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           <div className="lane" ref={hostRef}>
             {props.comparing && <span className="lane-label">Твой дубль</span>}
             {props.waiting && <span className="waiting-pill">Жду ноту</span>}
-            {laneMode === "full" && props.wordTicker}
+            {prefs.keys && laneMode !== "hidden" && !props.comparing && (
+              <KeysHandles layout={props.layout} onLayout={props.onLayout} />
+            )}
+            {laneMode === "full" && props.wordTicker && (
+              <TickerSlot gap={props.layout.tickerGap} onLayout={props.onLayout}>
+                {props.wordTicker}
+              </TickerSlot>
+            )}
           </div>
           {props.comparing && (
             <div className="lane" ref={mirrorHostRef}>

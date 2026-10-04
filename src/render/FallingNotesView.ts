@@ -29,8 +29,8 @@ import { RoadLayer } from "./RoadLayer";
 import type { RoadShape, Strike } from "./RoadLayer";
 import { DEFAULT_CAMERA } from "./worldCamera";
 import type { CameraPrefs } from "./worldCamera";
-import { fitRange, viewGeometry } from "./viewGeometry";
-import type { Geometry, ViewParts } from "./viewGeometry";
+import { USUAL_PLACEMENT, fitRange, viewGeometry } from "./viewGeometry";
+import type { Geometry, KeysPlacement, ViewParts } from "./viewGeometry";
 
 export type { FallingNoteNames } from "./bakeLabels";
 export type { FrameState } from "./frameState";
@@ -97,6 +97,8 @@ export class FallingNotesView {
   private rangeFitsViewport = false;
   private laidOutFor = { width: 0, height: 0 };
   private hudTop = 0;
+  /** Where the player dragged the keys: lifted off the bottom, larger or smaller. */
+  private placement: KeysPlacement = USUAL_PLACEMENT;
   /** The element the view fills: it carries the hit line for the page's overlays. */
   private host: HTMLElement | undefined;
   /** The next scroll lands on its target at once: a new song starts where its keys are. */
@@ -277,6 +279,12 @@ export class FallingNotesView {
   setHudTop(top: number): void {
     if (top === this.hudTop) return;
     this.hudTop = top;
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  setKeysPlacement(placement: KeysPlacement): void {
+    if (placement.lift === this.placement.lift && placement.scale === this.placement.scale) return;
+    this.placement = placement;
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -552,15 +560,15 @@ export class FallingNotesView {
   }
 
   private geometry(height: number): Geometry {
-    return this.computer
-      ? computerGeometry(height, this.total, this.parts)
-      : viewGeometry(height, this.whiteWidth, this.parts, this.labels, this.rangeFitsViewport);
+    const { parts, placement, labels, rangeFitsViewport: fits } = this;
+    if (this.computer) return computerGeometry(height, this.total, parts, placement);
+    return viewGeometry(height, this.whiteWidth, parts, labels, fits, placement);
   }
 
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
     // The computer keys fill the width; the piano's range may be wider and scroll.
-    const total = this.computer ? computerWidth(width) : this.fitPiano(width);
+    const total = this.computer ? computerWidth(width, this.placement.scale) : this.fitPiano(width);
     this.total = total;
     this.pan = Math.min(this.pan, Math.max(0, total - width));
     const geometry = this.geometry(height);
@@ -571,11 +579,12 @@ export class FallingNotesView {
     // The computer keys lie in staggered rows: no lane guides between them, only the hit line.
     this.notesLayer?.layout(this.computer ? new Map() : this.keys, geometry.hitY, total);
     // The road ends on the felt, where the notes meet the keys.
+    // Lifted keys leave the floor under them empty: the road and its keys end above it.
+    const floor = this.parts.keys ? height * this.placement.lift : 0;
+    const keysBottom = geometry.keyboardTop + geometry.keyboardHeight;
     if (this.road) {
-      const handRoom = this.parts.hands
-        ? height - geometry.keyboardTop - geometry.keyboardHeight
-        : 0;
-      this.road.layout(total, geometry.hitY, height, width, handRoom);
+      const handRoom = this.parts.hands ? height - floor - keysBottom : 0;
+      this.road.layout(total, geometry.hitY, height - floor, width, handRoom);
       // On the road the computer keyboard is one slab, its picture its face.
       this.road.setKeyboard(
         this.computer ? new Map([[0, { pitch: 0, black: false, x: 0, width: total }]]) : this.keys,
@@ -591,6 +600,7 @@ export class FallingNotesView {
     this.hud.layout(width, hitLineY, this.hudTop);
     // Where the notes meet the keys, for the page's overlays: the word mode's text sits over it.
     this.host?.style.setProperty("--hit-line", `${String(hitLineY)}px`);
+    this.host?.style.setProperty("--keys-bottom", `${String(keysBottom)}px`);
   }
 
   /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */

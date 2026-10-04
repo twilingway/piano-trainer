@@ -19,6 +19,21 @@ describe("viewGeometry", () => {
     expect(geometry.hitY).toBeCloseTo(geometry.keyboardTop - geometry.feltHeight);
   });
 
+  it("lifts the keys off the bottom and sizes them as the player places them", () => {
+    const usual = viewGeometry(1000, 40, ALL, false);
+    const lifted = viewGeometry(1000, 40, ALL, false, false, { lift: 0.2, scale: 1 });
+    expect(lifted.keyboardHeight).toBeCloseTo(usual.keyboardHeight);
+    expect(lifted.keyboardTop).toBeCloseTo(usual.keyboardTop - 200);
+    const bigger = viewGeometry(1000, 40, ALL, false, false, { lift: 0, scale: 1.5 });
+    expect(bigger.keyboardHeight).toBeCloseTo(usual.keyboardHeight * 1.5);
+    expect(bigger.keyboardTop + bigger.keyboardHeight).toBeCloseTo(992);
+  });
+
+  it("leaves the falling notes a quarter of the view however the keys are placed", () => {
+    const geometry = viewGeometry(400, 40, ALL, false, false, { lift: 0.4, scale: 1.8 });
+    expect(geometry.hitY).toBeGreaterThanOrEqual(100 - 1e-6);
+  });
+
   it("keeps the keys' length to their width, within a share of the view", () => {
     expect(viewGeometry(1000, 40, ALL, false).keyboardHeight).toBeCloseTo(144);
     expect(viewGeometry(200, 40, ALL, false).keyboardHeight).toBeCloseTo(120);

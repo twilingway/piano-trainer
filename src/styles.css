@@ -145,12 +145,19 @@
   font: 600 clamp(18px, 2vw, 24px)/1.4 var(--font-digits);
   pointer-events: none;
 }
-.lane > .word-ticker {
+/* Over the lane the line hangs the player's gap over the hit line and drags up and down. */
+.word-ticker-slot {
   position: absolute;
-  z-index: 2;
-  bottom: calc(100% - var(--hit-line, 100%) + 12px);
+  z-index: 3;
+  bottom: calc(100% - var(--hit-line, 100%) + var(--ticker-gap, 12px));
   left: 50%;
+  width: min(900px, calc(100% - 32px));
   transform: translateX(-50%);
+  cursor: ns-resize;
+  touch-action: none;
+}
+.word-ticker-slot > .word-ticker {
+  width: 100%;
 }
 .word-ticker__track {
   position: relative;
@@ -439,6 +446,7 @@ body {
 
 /* The score, or the score and the take written out: side by side or stacked. */
 .staves {
+  position: relative;
   display: flex;
   flex: 0 0 auto;
   gap: 4px;
@@ -501,6 +509,49 @@ body {
 
 .workspace-main--overlay .staff {
   pointer-events: auto;
+}
+
+/* Lines the player drags: the staff's lower edge, and the keys' upper and lower edges. */
+.layout-handle {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: 0;
+  height: 12px;
+  cursor: row-resize;
+  touch-action: none;
+  pointer-events: auto;
+}
+.layout-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.3;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 0.15s,
+    width 0.15s;
+}
+.layout-handle:hover::after,
+.layout-handle[data-dragging]::after {
+  width: 100%;
+  height: 2px;
+  opacity: 0.9;
+  box-shadow: 0 0 10px var(--accent-soft);
+}
+.layout-handle--staff {
+  bottom: -6px;
+}
+.layout-handle--keys-top {
+  top: calc(var(--hit-line, -100px) - 6px);
+}
+.layout-handle--keys-bottom {
+  top: calc(var(--keys-bottom, -100px) - 6px);
 }
 
 /* Only the keys: a strip of keyboard; nothing at all: the score gets the room. */

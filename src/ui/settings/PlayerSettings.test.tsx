@@ -19,6 +19,7 @@ const onRules = vi.fn();
 const onRange = vi.fn();
 const onTranspose = vi.fn();
 const onDevice = vi.fn();
+const onResetLayout = vi.fn();
 const noop = () => undefined;
 
 function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
@@ -94,6 +95,7 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
         midiError: null
       }}
       synchronization={<p>Калибровка задержки</p>}
+      onResetLayout={onResetLayout}
     />
   );
 }
@@ -153,6 +155,14 @@ describe("player settings organization", () => {
     expect(host.textContent).toContain("Нотная запись");
     expect(host.textContent).toContain("Клавиатура и отображение");
     expect(select("Клавиши")).toBeDefined();
+    const reset = Array.from(host.querySelectorAll("button")).find(
+      (button) => button.textContent === "Сбросить расположение"
+    );
+    await act(async () => {
+      await Promise.resolve();
+      reset?.click();
+    });
+    expect(onResetLayout).toHaveBeenCalledOnce();
     await section("Синхронизация");
     expect(host.querySelector("[role=tabpanel]")?.textContent).toContain("Калибровка задержки");
   });

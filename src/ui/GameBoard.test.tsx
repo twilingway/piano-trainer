@@ -3,6 +3,7 @@ import { Window } from "happy-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { GameScore } from "../practice/gameScore";
+import { DEFAULT_SCREEN_LAYOUT } from "../app/screenLayout";
 import type { StaffPrefs } from "../app/useStaffPrefs";
 import { DEFAULT_CAMERA } from "../render/worldCamera";
 import { GameBoard } from "./GameBoard";
@@ -140,6 +141,9 @@ describe("game score presentation", () => {
         waiting={false}
         hostRef={{ current: null }}
         mirrorHostRef={{ current: null }}
+        layout={DEFAULT_SCREEN_LAYOUT}
+        onLayout={vi.fn()}
+        onZoom={vi.fn()}
         gameBoard={
           <GameBoard
             mode="tempo"
