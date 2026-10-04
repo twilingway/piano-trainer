@@ -1,7 +1,7 @@
 import { soundAllOff } from "../audio/pianoSound";
 import { SessionAudio } from "../audio/sessionAudio";
 import type { KeyEvent } from "../input/midiInput";
-import type { FallingNotesView, FrameState } from "../render/FallingNotesView";
+import type { FallingNotesView } from "../render/FallingNotesView";
 import { TakeRecorder } from "../recording/take";
 import type { Take } from "../recording/take";
 import { quartersAt } from "../song/song";
@@ -116,8 +116,6 @@ export class Trainer {
   private sinceSnapshot = 0;
   private lastBeat = -1;
   private readonly view: FallingNotesView;
-  /** A second picture of the same frames: the word-typing lane. */
-  private lane: { draw(frame: FrameState): void } | undefined;
 
   constructor(view: FallingNotesView) {
     this.view = view;
@@ -332,11 +330,6 @@ export class Trainer {
       : 0;
   }
 
-  /** Draws every frame the view draws into `lane` too; undefined stops it. */
-  setLane(lane: { draw(frame: FrameState): void } | undefined): void {
-    this.lane = lane;
-  }
-
   /** Only the text mode needs note statuses in the throttled React snapshot. */
   observeTextNotes(noteIds: readonly string[]): void {
     this.textNoteIds = noteIds;
@@ -379,7 +372,7 @@ export class Trainer {
       const now = performance.now();
       this.apply(session.tick(now));
     }
-    const state: FrameState = {
+    this.view.draw({
       time: session.time - (this.timing.visualOffsetMs / 1000) * session.options.speed,
       lookAhead: LOOK_AHEAD_S,
       statusOf: (id) => session.statusOf(id),
@@ -392,9 +385,7 @@ export class Trainer {
       colorOf: this.comparison?.colorOf,
       board: this.board ?? this.combo.board(),
       graded: this.graded
-    };
-    this.view.draw(state);
-    this.lane?.draw(state);
+    });
     // The view has shown them: next frame grades only its own strikes.
     this.graded = [];
     const mirror = this.comparison?.mirror;

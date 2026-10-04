@@ -7,6 +7,7 @@ import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { Song } from "../song/song";
+import type { GeneratedToken } from "../wordTyping/types";
 import type { StaffPrefs } from "./useStaffPrefs";
 
 export type KeyRange = "song" | "88" | "61" | "49" | "25" | "3oct" | "4oct";
@@ -56,6 +57,8 @@ interface Options {
   readonly fallingNames: NoteNameStyle | undefined;
   readonly comparing: boolean;
   readonly lastTake: { readonly take: Take; readonly review: TakeReview } | null;
+  /** The word mode's inputs: the computer keys stand in for the piano's while they are set. */
+  readonly computerTokens?: readonly GeneratedToken[] | undefined;
 }
 
 /**
@@ -74,7 +77,8 @@ export function useFallingView({
   updateStaffPrefs,
   fallingNames,
   comparing,
-  lastTake
+  lastTake,
+  computerTokens
 }: Options) {
   // Kept with the other view settings, so a reload brings them back.
   const { labels: showLabels, keyRange } = staffPrefs;
@@ -146,6 +150,10 @@ export function useFallingView({
     staffPrefs.roadFar,
     staffPrefs.roadHorizon
   ]);
+
+  useEffect(() => {
+    viewRef.current?.setComputerKeys(computerTokens);
+  }, [viewRef, trainerReady, computerTokens]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {

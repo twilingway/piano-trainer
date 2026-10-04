@@ -52,31 +52,38 @@
   font-size: 12px;
   color: var(--muted);
 }
-.workspace-main--word {
-  overflow: auto;
-}
-.workspace-main--word > .lanes {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
 .app--word .compact-hands,
 .app--word .compact-practice__hands,
 .app--word .topbar > select[aria-label="Руки"] {
   display: none;
 }
+/* The typed text over the usual staff and lane: the keys are the view's own. */
 .word-board {
   box-sizing: border-box;
   display: flex;
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
   width: min(1120px, 100%);
   margin: 0 auto;
-  padding: clamp(10px, 2vw, 20px);
+  padding: 8px clamp(8px, 2vw, 16px);
+}
+.word-board__info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.word-quality {
+  color: var(--finger-2);
+  white-space: nowrap;
+  font-size: 15px;
+}
+.word-quality small {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .app--word .shell-top {
@@ -133,61 +140,6 @@
 .word-character--fallback {
   font-size: 0.7em;
 }
-.word-keyboard {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.word-keyboard__row {
-  display: grid;
-  grid-template-columns: repeat(13, minmax(0, 1fr));
-  gap: 6px;
-}
-.word-keyboard__row:nth-child(3) {
-  padding-left: 3%;
-}
-.word-keyboard__row:nth-child(4) {
-  padding-left: 6%;
-}
-.word-keyboard__key {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-  min-height: 62px;
-}
-.word-keyboard__key--empty {
-  border-color: color-mix(in srgb, var(--border) 25%, transparent);
-  align-items: center;
-  justify-content: center;
-  color: var(--border);
-}
-.word-keyboard__assigned {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 0;
-  padding: 8px 2px;
-  color: var(--text);
-  cursor: pointer;
-  touch-action: none;
-  font: 600 16px var(--font-digits);
-}
-.word-keyboard__assigned small {
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--muted);
-}
-.word-keyboard__assigned--current {
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
-  color: var(--accent);
-}
 /* The touch-typing finger of a key, as on a typing chart: the index fingers tell the hands apart. */
 .word-finger-left-2 {
   --typing-finger: var(--finger-4);
@@ -206,38 +158,6 @@
 .word-finger-left-5,
 .word-finger-right-5 {
   --typing-finger: var(--finger-5);
-}
-.word-keyboard__key[class*="word-finger-"] {
-  border-color: color-mix(in srgb, var(--typing-finger) 55%, transparent);
-  background: color-mix(in srgb, var(--typing-finger) 10%, var(--panel));
-}
-.word-keyboard__key[class*="word-finger-"] .word-keyboard__assigned {
-  color: var(--typing-finger);
-}
-.word-keyboard__key[class*="word-finger-"] .word-keyboard__assigned--current {
-  background: color-mix(in srgb, var(--typing-finger) 85%, transparent);
-  box-shadow:
-    inset 0 0 0 2px var(--typing-finger),
-    0 0 22px var(--typing-finger);
-  color: var(--bg);
-}
-.word-keyboard__key[class*="word-finger-"] .word-keyboard__assigned--next {
-  background: color-mix(in srgb, var(--typing-finger) 30%, transparent);
-  box-shadow:
-    inset 0 0 0 1px var(--typing-finger),
-    0 0 10px color-mix(in srgb, var(--typing-finger) 50%, transparent);
-}
-.word-keyboard__key[class*="word-finger-"] .word-keyboard__assigned--current small {
-  color: var(--bg);
-}
-.word-lane {
-  flex: 1 1 auto;
-  min-height: 180px;
-  overflow: hidden;
-  border-radius: 12px;
-}
-.word-lane canvas {
-  display: block;
 }
 .word-legend {
   display: flex;
@@ -284,23 +204,6 @@
     padding: 8px 10px;
     gap: 4px 10px;
     max-height: 72px;
-  }
-  .word-keyboard__row {
-    gap: 3px;
-  }
-  .word-keyboard__key {
-    min-height: 44px;
-    border-radius: 4px;
-  }
-  .word-keyboard__assigned {
-    font-size: 11px;
-    padding: 5px 0;
-  }
-  .word-keyboard__assigned small {
-    font-size: 7px;
-  }
-  .word-lane {
-    min-height: 140px;
   }
 }
 

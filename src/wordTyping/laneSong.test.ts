@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Song } from "../song/song";
+import { keyColumn } from "./keyboardRows";
 import { laneSong } from "./laneSong";
 import type { GeneratedToken } from "./types";
 
@@ -35,11 +36,10 @@ describe("laneSong", () => {
   const lane = laneSong(song, [token("a", "KeyL"), token("b", "KeyM"), token("c", "KeyL")]);
 
   it("gives each computer key its own column, even for one pitch on two keys", () => {
-    expect([...lane.columns]).toEqual([
-      ["KeyL", 36],
-      ["KeyM", 37]
-    ]);
-    expect(lane.song.notes.map((note) => note.pitch)).toEqual([36, 37, 36]);
+    const l = keyColumn("KeyL");
+    const m = keyColumn("KeyM");
+    expect(l).not.toBe(m);
+    expect(lane.song.notes.map((note) => note.pitch)).toEqual([l, m, l]);
     expect([...lane.realPitch]).toEqual([
       ["a", 67],
       ["b", 67],
@@ -50,7 +50,7 @@ describe("laneSong", () => {
   it("keeps the timing and takes the touch-typing finger and hand", () => {
     expect(lane.song.notes[1]).toEqual({
       id: "b",
-      pitch: 37,
+      pitch: keyColumn("KeyM"),
       start: 0.5,
       duration: 1,
       startBeat: 1,
@@ -60,8 +60,8 @@ describe("laneSong", () => {
     expect(lane.song.notes[0]).toMatchObject({ hand: "right", finger: 4 });
   });
 
-  it("leaves out notes without a token and the score", () => {
+  it("leaves out notes without a token and keeps the score", () => {
     expect(lane.song.notes.map((note) => note.id)).toEqual(["a", "b", "c"]);
-    expect(lane.song.musicXml).toBeUndefined();
+    expect(lane.song.musicXml).toBe("<score-partwise/>");
   });
 });

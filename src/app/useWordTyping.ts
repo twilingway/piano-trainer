@@ -4,7 +4,7 @@ import type { Song } from "../song/song";
 import { extractLine, withAccompaniment } from "../wordTyping/extractLine";
 import { ALGORITHM_VERSION } from "../wordTyping/optimizer";
 import { DEFAULT_CONFIG } from "../wordTyping/scoring";
-import type { Part, WordTypingResult } from "../wordTyping/types";
+import type { GeneratedToken, Part, WordTypingResult } from "../wordTyping/types";
 import { loadWordTypingPrefs, saveWordTypingPrefs } from "./wordTypingPreferences";
 import type { WordTypingPrefs } from "./wordTypingPreferences";
 
@@ -17,6 +17,7 @@ interface Generation {
   readonly error?: string;
 }
 const cache = new Map<string, Generation>();
+const NO_TOKENS: readonly GeneratedToken[] = [];
 
 export function useWordTyping(song: Song, songKey: string, blocked = false) {
   const [prefs, setPrefs] = useState(loadWordTypingPrefs);
@@ -97,6 +98,8 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     part,
     line,
     result: current?.result,
+    /** The computer keys' inputs while the mode is on; none yet while the words are chosen. */
+    keyTokens: prefs.enabled ? (current?.result?.tokens ?? NO_TOKENS) : undefined,
     runtimeMs: current?.runtimeMs,
     pending,
     error,

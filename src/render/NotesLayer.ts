@@ -133,6 +133,8 @@ export class NotesLayer {
   private cardsOn = true;
   private readonly flatBlocks = new FlatNoteBlocks();
   private noteNames: FallingNoteNames | undefined;
+  /** The pitch a note is written and named as; in the word mode its key's column stands apart. */
+  private writtenPitch = (note: SongNote) => note.pitch;
 
   constructor(
     private readonly renderer: Renderer,
@@ -157,7 +159,8 @@ export class NotesLayer {
   /** Note names on the falling notes, over the finger; undefined hides them. */
   setNoteNames(style: FallingNoteNames | undefined): void {
     this.noteNames = style;
-    for (const { note, name } of this.notes) name.texture = this.nameTexture(note.pitch);
+    for (const { note, name } of this.notes)
+      name.texture = this.nameTexture(this.writtenPitch(note));
   }
 
   /** Each falling note carries a card with the note written on a staff; off, plain bars. */
@@ -165,10 +168,13 @@ export class NotesLayer {
     this.cardsOn = on;
   }
 
-  setSong(song: Song): void {
+  /** The notes of `song`, each on the key of its pitch, written as `writtenPitch` says. */
+  setSong(song: Song, writtenPitch = (note: SongNote) => note.pitch): void {
+    this.writtenPitch = writtenPitch;
     this.beats = song.beats;
     this.repeated = repeatedNoteEnds(song.notes);
-    const placements = scorePlacements(song);
+    const written = song.notes.map((note) => ({ ...note, pitch: writtenPitch(note) }));
+    const placements = scorePlacements({ ...song, notes: written });
     for (const sprite of this.notes) {
       sprite.body.destroy();
       sprite.digit.destroy();
@@ -188,7 +194,7 @@ export class NotesLayer {
       const digit = new Sprite(note.finger ? this.labels.digits.get(note.finger) : undefined);
       digit.anchor.set(0.5, 1);
       digit.eventMode = "none";
-      const name = new Sprite(this.nameTexture(note.pitch));
+      const name = new Sprite(this.nameTexture(writtenPitch(note)));
       name.anchor.set(0.5, 1);
       name.eventMode = "none";
       const frame = new Sprite(note.hand === "left" ? this.cardFrameLeft : this.cardFrame);
@@ -197,7 +203,7 @@ export class NotesLayer {
       const quarters = quartersAt(song, note.start + note.duration) - note.startBeat;
       const glyph = noteGlyph(quarters);
       const beatSeconds = note.duration / Math.max(quarters, 0.25);
-      const face = new Sprite(this.cardFace(note.pitch, glyph, note.hand, placement));
+      const face = new Sprite(this.cardFace(writtenPitch(note), glyph, note.hand, placement));
       face.anchor.set(0.5, 1);
       face.eventMode = "none";
       const badge = new Sprite(note.finger ? this.labels.badges.get(note.finger) : undefined);

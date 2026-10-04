@@ -36,7 +36,6 @@ import { SongProgress } from "./ui/SongProgress";
 import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
 import { useWordTyping } from "./app/useWordTyping";
-import { useWordTypingPointer } from "./app/useWordTypingPointer";
 import { WordTypingBoard } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
 import { GameModeSwitch } from "./ui/GameModeSwitch";
@@ -95,12 +94,6 @@ export function App() {
     trainer.trainerRef,
     word.enabled ? word.keyboardOptions : computerKeyboard.options
   );
-  const wordPointer = useWordTypingPointer(
-    trainer.trainerRef,
-    word.result,
-    word.enabled,
-    libraryOpen || settingsOpen || word.pending || Boolean(word.error)
-  );
   const timing = useTimingControls({
     trainerRef: trainer.trainerRef,
     ensureSound,
@@ -130,7 +123,8 @@ export function App() {
     updateStaffPrefs,
     fallingNames: score.nameStyle,
     comparing: takes.comparing,
-    lastTake: takes.lastTake
+    lastTake: takes.lastTake,
+    computerTokens: word.keyTokens
   });
   const library = usePlayerLibrary({
     showSong: current.showSong,
@@ -437,10 +431,6 @@ export function App() {
               listening={listening}
               pending={word.pending}
               error={word.error}
-              song={word.line.song}
-              attachLane={trainer.attachLane}
-              onPress={wordPointer.press}
-              onRelease={wordPointer.release}
             />
           ) : undefined
         }
