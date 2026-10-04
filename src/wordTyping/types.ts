@@ -40,6 +40,8 @@ export interface QualityMetrics {
   readonly averageWordLength: number;
   readonly longestWordLength: number;
   readonly averageWordRank: number;
+  /** Of the pairs of neighbouring words, the share seen together in real sentences. */
+  readonly linkedPairsPercent: number;
   readonly readabilityScore: number;
   readonly typingComfortScore: number;
   readonly totalScore: number;
@@ -70,4 +72,6 @@ export interface OptimizerConfig {
   readonly altPenalty: number;
   readonly homeRowBonus: number;
   readonly phraseBoundaryBonus: number;
+  /** The bonus a letter for a word that commonly follows the one before it, at full strength. */
+  readonly bigramWeight: number;
 }

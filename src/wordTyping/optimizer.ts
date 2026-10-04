@@ -1,4 +1,6 @@
 import type { SongNote } from "../song/song";
+import { NO_BIGRAMS } from "./bigrams";
+import type { BigramTable } from "./bigrams";
 import { buildTrie } from "./dictionary";
 import type { TrieNode } from "./dictionary";
 import { inputTokenId, languageTokens, tokenPool } from "./inputTokens";
@@ -14,7 +16,7 @@ import type {
 } from "./types";
 
 export { DEFAULT_CONFIG } from "./scoring";
-export const ALGORITHM_VERSION = "word-typing-v1";
+export const ALGORITHM_VERSION = "word-typing-v3";
 
 interface Segment {
   readonly start: number;
@@ -65,8 +67,11 @@ function wordCandidates(
   pool: readonly InputToken[],
   dictionarySize: number,
   totalPitches: number,
-  config: OptimizerConfig
+  config: OptimizerConfig,
+  bigrams: BigramTable
 ): Candidate[] {
+  // A word after a word: a pair that real sentences use reads as a phrase.
+  const previous = state.segment?.entry;
   const mapping = [...state.mapping];
   const indexes: number[] = [];
   const candidates: Candidate[] = [];
@@ -89,7 +94,16 @@ function wordCandidates(
         mapping: [...mapping],
         entry: node.entry,
         indexes: [...indexes],
-        score: wordScore(node.entry, dictionarySize, config) + boundary + comfort
+        score:
+          wordScore(node.entry, dictionarySize, config) +
+          boundary +
+          comfort +
+          // Per letter, so that splitting a line into many short linked pairs earns nothing.
+          (previous
+            ? config.bigramWeight *
+              node.entry.word.length *
+              bigrams.strength(previous.rank, node.entry.rank)
+            : 0)
       });
     }
     if (offset >= config.maxWordLength) return;
@@ -139,13 +153,21 @@ function renderResult(
   final: State,
   notes: readonly SongNote[],
   pool: readonly InputToken[],
-  language: Language
+  language: Language,
+  bigrams: BigramTable
 ): WordTypingResult {
   const segments: Segment[] = [];
   for (let state = final; state.previous; state = state.previous) {
     if (state.segment) segments.push(state.segment);
   }
   segments.reverse();
+  const pairs = { total: 0, linked: 0 };
+  segments.forEach((segment, index) => {
+    const before = segments[index - 1]?.entry;
+    if (!before || !segment.entry) return;
+    pairs.total++;
+    if (bigrams.strength(before.rank, segment.entry.rank) > 0) pairs.linked++;
+  });
   const tokens: GeneratedToken[] = [];
   const blocks: string[] = [];
   const words: DictionaryEntry[] = [];
@@ -184,16 +206,20 @@ function renderResult(
     tokens,
     tokenToPitch,
     pitchToTokens,
-    metrics: qualityMetrics(tokens, words, language)
+    metrics: qualityMetrics(tokens, words, language, pairs)
   };
 }
 
-/** Bounded word-boundary beam search; mapping is permanent for the entire line. */
+/**
+ * Bounded word-boundary beam search; mapping is permanent for the entire line. `bigrams` favour
+ * words that commonly follow the word before them.
+ */
 export function generateWordTyping(
   notes: readonly SongNote[],
   dictionary: readonly DictionaryEntry[],
   language: Language,
-  overrides: Partial<OptimizerConfig> = {}
+  overrides: Partial<OptimizerConfig> = {},
+  bigrams: BigramTable = NO_BIGRAMS
 ): WordTypingResult {
   const config = resolveConfig(overrides);
   if (!notes.length) throw new Error("Выбранная партия не содержит нот");
@@ -215,12 +241,17 @@ export function generateWordTyping(
   if (totalPitches > pool.length) throw new Error("Недостаточно клавиш для всех высот мелодии");
   const letters = languageTokens(language);
   const letterIndexes = new Map(letters.map((token, index) => [token.display, index]));
+  // A letter on the digit row (ё) is far from the hands: no word asks for it. Nearly every such
+  // word has its spelling without it (еще, все), and the key stays free for a fallback.
+  const farLetters = new Set(
+    letters.filter((token) => token.physicalKey === "Backquote").map((token) => token.display)
+  );
   const validEntries = dictionary.filter(
     (entry) =>
       entry.word.length > 0 &&
       Number.isFinite(entry.rank) &&
       entry.rank >= 1 &&
-      Array.from(entry.word).every((letter) => letterIndexes.has(letter))
+      Array.from(entry.word).every((letter) => letterIndexes.has(letter) && !farLetters.has(letter))
   );
   const trie = buildTrie(validEntries);
   const beams: State[][] = Array.from({ length: notes.length + 1 }, () => []);
@@ -239,7 +270,8 @@ export function generateWordTyping(
         pool,
         validEntries.length,
         totalPitches,
-        config
+        config,
+        bigrams
       )) {
         const target = position + candidate.indexes.length;
         const bucket = requiredAt(beams, target);
@@ -259,5 +291,5 @@ export function generateWordTyping(
   }
   const final = prune(beams[notes.length] ?? [], 1)[0];
   if (!final) throw new Error("Не удалось построить текст для партии");
-  return renderResult(final, notes, pool, language);
+  return renderResult(final, notes, pool, language, bigrams);
 }

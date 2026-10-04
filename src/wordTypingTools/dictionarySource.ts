@@ -72,7 +72,8 @@ async function readCachedSource(path: string): Promise<string | undefined> {
 /** Cache is keyed by the immutable upstream Git revision. */
 export async function prepareDictionary(
   projectRoot: string,
-  language: DictionaryLanguage
+  language: DictionaryLanguage,
+  limit = 3000
 ): Promise<DictionaryResource> {
   const source = `https://raw.githubusercontent.com/hermitdave/FrequencyWords/${SOURCE_REVISION}/content/2018/${language}/${language}_50k.txt`;
   const cacheDirectory = resolve(
@@ -96,6 +97,6 @@ export async function prepareDictionary(
     version: DICTIONARY_VERSION,
     source,
     license: "CC BY-SA 4.0",
-    entries: normalizeFrequencyList(raw, language)
+    entries: normalizeFrequencyList(raw, language, limit)
   };
 }

@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import type { Song } from "../song/song";
-import { extractLine } from "../wordTyping/extractLine";
+import { extractLine, withAccompaniment } from "../wordTyping/extractLine";
 import { ALGORITHM_VERSION } from "../wordTyping/optimizer";
 import { DEFAULT_CONFIG } from "../wordTyping/scoring";
-import type { Part, WordTypingResult } from "../wordTyping/types";
+import type { GeneratedToken, Part, WordTypingResult } from "../wordTyping/types";
 import { loadWordTypingPrefs, saveWordTypingPrefs } from "./wordTypingPreferences";
 import type { WordTypingPrefs } from "./wordTypingPreferences";
 
+/** The pairs' resource, from Tatoeba's export of that day (src/wordTypingTools/prepare.ts). */
+const BIGRAM_VERSION = "Tatoeba-2026-10-03-pairs-v1";
 const DICTIONARY_VERSION =
   "FrequencyWords-2018-525f9b560de45753a5ea01069454e72e9aa541c6-filtered-v1";
 interface Generation {
@@ -17,6 +19,7 @@ interface Generation {
   readonly error?: string;
 }
 const cache = new Map<string, Generation>();
+const NO_TOKENS: readonly GeneratedToken[] = [];
 
 export function useWordTyping(song: Song, songKey: string, blocked = false) {
   const [prefs, setPrefs] = useState(loadWordTypingPrefs);
@@ -26,19 +29,23 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
   });
   const part = selection.songKey === songKey ? selection.part : "melody";
   const line = useMemo(() => extractLine(song, part), [song, part]);
+  const practice = useMemo(
+    () => (prefs.accompaniment ? withAccompaniment(song, line.song, part) : line.song),
+    [prefs.accompaniment, song, line, part]
+  );
   const key = useMemo(
     () =>
       JSON.stringify({
         notes: line.notes.map(({ id, pitch, start, duration }) => [id, pitch, start, duration]),
         part,
         language: prefs.language,
-        size: prefs.dictionarySize,
+        pairs: BIGRAM_VERSION,
         dictionary: DICTIONARY_VERSION,
         algorithm: ALGORITHM_VERSION,
         scope: "strict",
         config: DEFAULT_CONFIG
       }),
-    [line, part, prefs.language, prefs.dictionarySize]
+    [line, part, prefs.language]
   );
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -67,13 +74,12 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     };
     worker.postMessage({
       notes: line.notes,
-      language: prefs.language,
-      dictionarySize: prefs.dictionarySize
+      language: prefs.language
     });
     return () => {
       worker.terminate();
     };
-  }, [prefs.enabled, prefs.language, prefs.dictionarySize, key, empty, line]);
+  }, [prefs.enabled, prefs.language, key, empty, line]);
 
   const keyboardOptions = useMemo<KeyboardInputOptions>(
     () => ({
@@ -82,6 +88,11 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
       blocked: blocked || pending || Boolean(error)
     }),
     [current, pending, error, blocked]
+  );
+  const tokens = current?.result?.tokens ?? NO_TOKENS;
+  const keyboard = useMemo(
+    () => (prefs.enabled ? { tokens, language: prefs.language } : undefined),
+    [prefs.enabled, prefs.language, tokens]
   );
   const update = (change: Partial<WordTypingPrefs>) => {
     const next = { ...prefs, ...change };
@@ -93,6 +104,8 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     part,
     line,
     result: current?.result,
+    /** The computer keys' inputs while the mode is on; none yet while the words are chosen. */
+    keyboard,
     runtimeMs: current?.runtimeMs,
     pending,
     error,
@@ -102,8 +115,13 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     choosePart: (next: Part) => {
       setSelection({ songKey, part: next });
     },
-    practiceSong: prefs.enabled ? line.song : song,
-    practiceKey: prefs.enabled ? `${songKey}:word-typing:${part}` : songKey
+    setAccompaniment: (accompaniment: boolean) => {
+      update({ accompaniment });
+    },
+    practiceSong: prefs.enabled ? practice : song,
+    practiceKey: prefs.enabled
+      ? `${songKey}:word-typing:${part}${prefs.accompaniment ? ":accompaniment" : ""}`
+      : songKey
   };
 }
 export type WordTypingControls = ReturnType<typeof useWordTyping>;

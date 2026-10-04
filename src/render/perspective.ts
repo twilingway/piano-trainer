@@ -69,3 +69,38 @@ export function roadProjection(
     }
   };
 }
+
+/**
+ * Where a screen point lies on a quad drawn in perspective, as (u, v) from 0 to 1 across its
+ * top-left, top-right, bottom-right and bottom-left corners: the inverse of the projective map a
+ * perspective mesh lays its texture by. Undefined for a degenerate quad.
+ */
+export function quadPoint(
+  x: number,
+  y: number,
+  quad: readonly [Projected, Projected, Projected, Projected]
+): { u: number; v: number } | undefined {
+  const [p0, p1, p2, p3] = quad;
+  const dx1 = p1.x - p2.x;
+  const dx2 = p3.x - p2.x;
+  const dx3 = p0.x - p1.x + p2.x - p3.x;
+  const dy1 = p1.y - p2.y;
+  const dy2 = p3.y - p2.y;
+  const dy3 = p0.y - p1.y + p2.y - p3.y;
+  const det = dx1 * dy2 - dx2 * dy1;
+  if (Math.abs(det) < 1e-9) return undefined;
+  const g = (dx3 * dy2 - dx2 * dy3) / det;
+  const h = (dx1 * dy3 - dx3 * dy1) / det;
+  // The square-to-quad map [[a, b, c], [d, e, f], [g, h, 1]], inverted by its adjugate.
+  const a = p1.x - p0.x + g * p1.x;
+  const b = p3.x - p0.x + h * p3.x;
+  const c = p0.x;
+  const d = p1.y - p0.y + g * p1.y;
+  const e = p3.y - p0.y + h * p3.y;
+  const f = p0.y;
+  const u = (e - f * h) * x + (c * h - b) * y + (b * f - c * e);
+  const v = (f * g - d) * x + (a - c * g) * y + (c * d - a * f);
+  const w = (d * h - e * g) * x + (b * g - a * h) * y + (a * e - b * d);
+  if (Math.abs(w) < 1e-12) return undefined;
+  return { u: u / w, v: v / w };
+}

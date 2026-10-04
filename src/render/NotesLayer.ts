@@ -12,7 +12,8 @@ import { flatHoldBounds, holdBounds } from "./holdBounds";
 import { repeatedNoteEnds, repeatGap } from "./noteSeparation";
 import { scorePlacements } from "../song/scorePlacement";
 import type { ScorePlacement } from "../song/scorePlacement";
-import { FINGER_COLOR } from "./fingerColors";
+import { PIANO_LOOK } from "./noteLook";
+import type { NoteLook } from "./noteLook";
 import { fitNoteLabel, noteLabelInset } from "./noteLabelLayout";
 import { GLASS_LIFT_SHARE } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
@@ -32,10 +33,8 @@ import { ARRIVAL_DURATION_S, arrivalCardAlpha, noteArrivalAge } from "./noteArri
 import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 
-export const HAND_COLOR: Readonly<Record<Hand, number>> = {
-  right: FINGER_COLOR[3],
-  left: FINGER_COLOR[4]
-};
+export { HAND_COLOR } from "./fingerColors";
+import { towardWhite } from "./fingerColors";
 const MISSED_COLOR = 0xff2454;
 const OCTAVE_LINE = 0x008cff;
 const HIT_LINE = 0x00e5ff;
@@ -133,6 +132,8 @@ export class NotesLayer {
   private cardsOn = true;
   private readonly flatBlocks = new FlatNoteBlocks();
   private noteNames: FallingNoteNames | undefined;
+  /** How a note is written and coloured; in the word mode its key's column stands apart. */
+  private look: NoteLook = PIANO_LOOK;
 
   constructor(
     private readonly renderer: Renderer,
@@ -157,7 +158,8 @@ export class NotesLayer {
   /** Note names on the falling notes, over the finger; undefined hides them. */
   setNoteNames(style: FallingNoteNames | undefined): void {
     this.noteNames = style;
-    for (const { note, name } of this.notes) name.texture = this.nameTexture(note.pitch);
+    for (const { note, name } of this.notes)
+      name.texture = this.nameTexture(this.look.written(note).pitch);
   }
 
   /** Each falling note carries a card with the note written on a staff; off, plain bars. */
@@ -165,10 +167,13 @@ export class NotesLayer {
     this.cardsOn = on;
   }
 
-  setSong(song: Song): void {
+  /** The notes of `song`, each on the key of its pitch, written and coloured as `look` says. */
+  setSong(song: Song, look: NoteLook = PIANO_LOOK): void {
+    this.look = look;
     this.beats = song.beats;
     this.repeated = repeatedNoteEnds(song.notes);
-    const placements = scorePlacements(song);
+    const written = song.notes.map(look.written);
+    const placements = scorePlacements({ ...song, notes: written });
     for (const sprite of this.notes) {
       sprite.body.destroy();
       sprite.digit.destroy();
@@ -185,10 +190,14 @@ export class NotesLayer {
       const body = new TilingSprite({ texture: Texture.WHITE, width: 1, height: 1 });
       body.eventMode = "none";
       const placement = placements.get(note.id);
-      const digit = new Sprite(note.finger ? this.labels.digits.get(note.finger) : undefined);
+      const own = look.badge?.(note);
+      const digit = new Sprite(
+        own ?? (note.finger ? this.labels.digits.get(note.finger) : undefined)
+      );
       digit.anchor.set(0.5, 1);
       digit.eventMode = "none";
-      const name = new Sprite(this.nameTexture(note.pitch));
+      const shown = look.written(note);
+      const name = new Sprite(this.nameTexture(shown.pitch));
       name.anchor.set(0.5, 1);
       name.eventMode = "none";
       const frame = new Sprite(note.hand === "left" ? this.cardFrameLeft : this.cardFrame);
@@ -197,10 +206,12 @@ export class NotesLayer {
       const quarters = quartersAt(song, note.start + note.duration) - note.startBeat;
       const glyph = noteGlyph(quarters);
       const beatSeconds = note.duration / Math.max(quarters, 0.25);
-      const face = new Sprite(this.cardFace(note.pitch, glyph, note.hand, placement));
+      const face = new Sprite(this.cardFace(shown.pitch, glyph, shown.hand, placement));
       face.anchor.set(0.5, 1);
       face.eventMode = "none";
-      const badge = new Sprite(note.finger ? this.labels.badges.get(note.finger) : undefined);
+      const badge = new Sprite(
+        own ?? (note.finger ? this.labels.badges.get(note.finger) : undefined)
+      );
       badge.anchor.set(0.5, 0);
       badge.eventMode = "none";
       // Nearer notes in front: on the road the earlier note is the closer one. By order in
@@ -352,7 +363,7 @@ export class NotesLayer {
         body.tilePosition.set(0, noteHeight % beatPx);
       }
       const custom = state.colorOf?.(note);
-      const own = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
+      const own = this.look.color(note);
       body.tint = custom ?? (status === "missed" ? MISSED_COLOR : own);
       const cardAlpha = custom !== undefined ? 1 : !playerNote ? 0.45 : status === "hit" ? 0.3 : 1;
       const blockAlpha = custom !== undefined || playerNote ? 1 : 0.82;
@@ -363,7 +374,7 @@ export class NotesLayer {
         this.arrivals.push({
           x: key.x + key.width / 2,
           width: key.width,
-          color: note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand],
+          color: own,
           age,
           screenX: road.notePlace(keyCentre, 0)?.x,
           screenY: road.notePlace(keyCentre, 0)?.y
@@ -407,6 +418,7 @@ export class NotesLayer {
       const labelX = labelSpot?.x ?? keyCentre - (road?.scenePan ?? 0);
       if (note.finger !== undefined) {
         digit.texture =
+          this.look.badge?.(note) ??
           (road || flat ? this.labels.badges : this.labels.digits).get(note.finger) ??
           Texture.EMPTY;
       }
@@ -568,13 +580,4 @@ export class NotesLayer {
     }
     return texture;
   }
-}
-
-/** A colour `share` of the way to white. */
-function towardWhite(color: number, share: number): number {
-  const channel = (shift: number) => {
-    const value = (color >> shift) & 0xff;
-    return Math.round(value + (255 - value) * share) << shift;
-  };
-  return channel(16) | channel(8) | channel(0);
 }

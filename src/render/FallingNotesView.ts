@@ -1,5 +1,5 @@
-import { Application, Container } from "pixi.js";
-import type { FederatedPointerEvent, Texture } from "pixi.js";
+import { Application, Container, Texture } from "pixi.js";
+import type { FederatedPointerEvent } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
@@ -8,8 +8,12 @@ import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
 import { bakeDigits, bakeNames } from "./bakeLabels";
 import { bindKeyboardPointer } from "./bindKeyboardPointer";
+import { ComputerKeyboardLayer } from "./ComputerKeyboardLayer";
+import type { KeysLayer } from "./ComputerKeyboardLayer";
+import { computerGeometry, computerWidth, layoutComputerKeys } from "./computerKeyboardLayout";
+import { ComputerKeys, noteColor } from "./computerKeys";
+import type { ComputerKeyboard } from "./computerKeys";
 import type { FallingNoteNames } from "./bakeLabels";
-import { FINGER_COLOR } from "./fingerColors";
 import { HandsLayer } from "./HandsLayer";
 import { FxLayer } from "./FxLayer";
 import type { FxKey } from "./FxLayer";
@@ -21,7 +25,7 @@ import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
 import { easePan, panToShow } from "./keyboardPan";
 import type { Span } from "./keyboardPan";
-import { HAND_COLOR, NotesLayer } from "./NotesLayer";
+import { NotesLayer } from "./NotesLayer";
 import { RoadLayer } from "./RoadLayer";
 import type { RoadShape, Strike } from "./RoadLayer";
 import { DEFAULT_CAMERA } from "./worldCamera";
@@ -84,6 +88,9 @@ export class FallingNotesView {
   /** The keys and everything drawn on them: on the stage flat, or laid back under the road. */
   private readonly keysRoot = new Container();
   private keyboard: KeyboardLayer | undefined;
+  /** The word mode's computer keys, standing in for the piano's while `computer` is set. */
+  private computerKeyboard: ComputerKeyboardLayer | undefined;
+  private computer: ComputerKeys | undefined;
   private road: RoadLayer | undefined;
   private roadMode = false;
   private readonly hands = new HandsLayer();
@@ -166,15 +173,21 @@ export class FallingNotesView {
     const keyboard = new KeyboardLayer(renderer, this.digitTextures, (event) =>
       this.onKeyPointer?.(event)
     );
-    keyboard.container.visible = this.parts.keys;
     keyboard.showStickers(this.labels);
     this.keyboard = keyboard;
+    const computerKeyboard = new ComputerKeyboardLayer(renderer, (event) => {
+      this.onKeyPointer?.(event);
+    });
+    computerKeyboard.setKeys(this.computer);
+    computerKeyboard.showStickers(this.labels);
+    this.computerKeyboard = computerKeyboard;
     this.road = new RoadLayer(renderer);
     this.road.setCamera(this.cameraPrefs);
     this.road.setPerspective(this.keyStyle === "perspective");
     this.road.container.visible = false;
     this.road.effects.visible = false;
-    this.keysRoot.addChild(keyboard.container);
+    this.keysRoot.addChild(keyboard.container, computerKeyboard.container);
+    this.syncKeyboards();
     // Pixi draws a Text the first time it is shown: wait for the web fonts, or the board is set
     // in a fallback face. Offline they never come, and the fallback is fine.
     await Promise.all([
@@ -208,7 +221,7 @@ export class FallingNotesView {
         this.keysPointer(event);
       },
       () => {
-        keyboard.releaseMouse();
+        this.keysLayer?.releaseMouse();
       }
     );
     await keyboard.loadPaintedFaces(this.keyStyle);
@@ -244,6 +257,7 @@ export class FallingNotesView {
   setShowLabels(show: boolean): void {
     this.labels = show;
     this.keyboard?.showStickers(show);
+    this.computerKeyboard?.showStickers(show);
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -268,10 +282,8 @@ export class FallingNotesView {
    */
   setParts(parts: { notes: boolean; keys: boolean; hands?: boolean }): void {
     this.parts = { notes: parts.notes, keys: parts.keys, hands: parts.hands === true };
-    this.hands.container.visible = this.parts.hands && parts.keys;
     this.notesLayer?.setVisible(parts.notes);
-    if (this.keyboard) this.keyboard.container.visible = parts.keys;
-    if (!this.hands.container.visible) this.hands.reset();
+    this.syncKeyboards();
     this.syncRoad();
     this.laidOutFor = { width: 0, height: 0 };
   }
@@ -311,6 +323,7 @@ export class FallingNotesView {
     if (!this.road || !this.notesLayer || on === this.roadMode) return;
     this.roadMode = on;
     this.keyboard?.showFelt(!on);
+    this.computerKeyboard?.showFelt(!on);
     this.road.container.visible = on;
     this.road.effects.visible = on;
     if (on) this.app.stage.removeChild(this.notesLayer.root, this.keysRoot);
@@ -327,8 +340,37 @@ export class FallingNotesView {
     const point = this.roadMode
       ? this.road?.keysPointAt(event.global.x, event.global.y)
       : { x: event.global.x + this.pan, y: event.global.y };
-    const pitch = point && this.keyboard?.pitchAt(point.x, point.y);
-    if (pitch !== undefined) this.keyboard?.pressWithMouse(pitch);
+    const pitch = point && this.keysLayer?.pitchAt(point.x, point.y);
+    if (pitch !== undefined) this.keysLayer?.pressWithMouse(pitch);
+  }
+
+  /**
+   * The word mode: the computer keys in place of the piano's, each a column of the falling notes
+   * (`tokens` say what each key types and plays); undefined brings the piano back.
+   */
+  setComputerKeys(keys: ComputerKeyboard | undefined): void {
+    this.keysLayer?.releaseMouse();
+    const letter = (text: string) => this.computerKeyboard?.letter(text) ?? Texture.EMPTY;
+    this.computer = keys ? new ComputerKeys(keys.tokens, keys.language, letter) : undefined;
+    this.computerKeyboard?.setKeys(this.computer);
+    this.syncKeyboards();
+    if (this.song) this.setSong(this.song);
+    this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  /** The keyboard on screen: the computer's in the word mode, else the piano's. */
+  private get keysLayer(): KeysLayer | undefined {
+    return this.computer ? this.computerKeyboard : this.keyboard;
+  }
+
+  /** Shows the keyboard of the mode; the hands lie over piano keys only. */
+  private syncKeyboards(): void {
+    const computer = this.computer !== undefined;
+    if (this.keyboard) this.keyboard.container.visible = this.parts.keys && !computer;
+    if (this.computerKeyboard)
+      this.computerKeyboard.container.visible = this.parts.keys && computer;
+    this.hands.container.visible = this.parts.hands && this.parts.keys && !computer;
+    if (!this.hands.container.visible) this.hands.reset();
   }
 
   /** Runs `onFrame` with real milliseconds before every draw. */
@@ -339,10 +381,12 @@ export class FallingNotesView {
   }
 
   setSong(song: Song): void {
-    this.hands.setSong(song);
-    this.notesLayer?.setSong(song);
+    // The word mode draws the song one column a computer key.
+    const shown = this.computer?.mapSong(song) ?? song;
+    this.hands.setSong(shown);
+    this.notesLayer?.setSong(shown, this.computer?.look);
     this.song = song;
-    this.songNotes = song.notes;
+    this.songNotes = shown.notes;
     this.hud.clear();
     this.fx.clear();
     this.wasSounding.clear();
@@ -353,7 +397,7 @@ export class FallingNotesView {
   draw(frame: FrameState): void {
     if (!this.ready || !this.notesLayer || !this.keyboard) return;
     // Song time is shared; the road alone previews a longer approach.
-    const state = frame;
+    const state = this.computer?.frame(frame) ?? frame;
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
@@ -369,7 +413,7 @@ export class FallingNotesView {
     );
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = this.notesLayer.playing;
-    this.keyboard.draw(
+    this.keysLayer?.draw(
       {
         pressed: state.pressed,
         // Only the key-colour layer hides accompaniment; fire follows every sounding note.
@@ -401,8 +445,7 @@ export class FallingNotesView {
         // The player's own notes while held, and the program's while it sounds them.
         const own = state.hands.has(note.hand) && state.pressed.has(pitch);
         if (!key || !(own || state.sounding.has(pitch))) continue;
-        const color = note.finger !== undefined ? FINGER_COLOR[note.finger] : HAND_COLOR[note.hand];
-        strikes.push({ pitch, x: key.x + key.width / 2, color });
+        strikes.push({ pitch, x: key.x + key.width / 2, color: noteColor(note, this.computer) });
       }
       road.draw(
         this.notesLayer.root,
@@ -417,12 +460,7 @@ export class FallingNotesView {
       const key = this.keys.get(pitch);
       if (!key) return undefined;
       const note = playing.get(pitch) ?? state.due.find((item) => item.pitch === pitch);
-      const color =
-        note?.finger !== undefined
-          ? FINGER_COLOR[note.finger]
-          : note
-            ? HAND_COLOR[note.hand]
-            : 0xffffff;
+      const color = note ? noteColor(note, this.computer) : 0xffffff;
       const projected = road?.notePlace(key.x + key.width / 2, geometry.hitY);
       return {
         pitch,
@@ -516,6 +554,7 @@ export class FallingNotesView {
       this.keysRoot.destroy({ children: true });
     }
     this.road?.destroy();
+    this.computerKeyboard?.destroy();
     this.hands.destroy();
     this.notesLayer?.destroy();
     const baked = [
@@ -528,35 +567,35 @@ export class FallingNotesView {
   }
 
   private geometry(height: number): Geometry {
-    return viewGeometry(height, this.whiteWidth, this.parts, this.labels, this.rangeFitsViewport);
+    return this.computer
+      ? computerGeometry(height, this.total, this.parts)
+      : viewGeometry(height, this.whiteWidth, this.parts, this.labels, this.rangeFitsViewport);
   }
 
   private layout(width: number, height: number): void {
     this.laidOutFor = { width, height };
-    const { low, high, total } = fitRange(
-      width,
-      this.range.low,
-      this.range.high,
-      this.rangeFitsSong,
-      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches,
-      this.rangeFitsViewport
-    );
+    // The computer keys fill the width; the piano's range may be wider and scroll.
+    const total = this.computer ? computerWidth(width) : this.fitPiano(width);
     this.total = total;
     this.pan = Math.min(this.pan, Math.max(0, total - width));
-    this.keys = layoutKeyboard(total, low, high);
-    this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
     const geometry = this.geometry(height);
-    this.keyboard?.layout(this.keys, geometry, total);
+    if (this.computer) this.keys = layoutComputerKeys(total, geometry).keys;
+    this.keysLayer?.layout(this.keys, geometry, total);
     // The hands' pixels belong to the old layout.
     this.hands.reset();
-    this.notesLayer?.layout(this.keys, geometry.hitY, total);
+    // The computer keys lie in staggered rows: no lane guides between them, only the hit line.
+    this.notesLayer?.layout(this.computer ? new Map() : this.keys, geometry.hitY, total);
     // The road ends on the felt, where the notes meet the keys.
     if (this.road) {
       const handRoom = this.parts.hands
         ? height - geometry.keyboardTop - geometry.keyboardHeight
         : 0;
       this.road.layout(total, geometry.hitY, height, width, handRoom);
-      this.road.setKeyboard(this.keys, geometry);
+      // On the road the computer keyboard is one slab, its picture its face.
+      this.road.setKeyboard(
+        this.computer ? new Map([[0, { pitch: 0, black: false, x: 0, width: total }]]) : this.keys,
+        geometry
+      );
       // The road shows itself when it fits; off, it stays hidden whatever the layout.
       if (!this.roadMode) {
         this.road.container.visible = false;
@@ -568,5 +607,20 @@ export class FallingNotesView {
       this.roadMode && this.road ? this.road.hitLineY : geometry.hitY,
       this.hudTop
     );
+  }
+
+  /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */
+  private fitPiano(width: number): number {
+    const { low, high, total } = fitRange(
+      width,
+      this.range.low,
+      this.range.high,
+      this.rangeFitsSong,
+      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches,
+      this.rangeFitsViewport
+    );
+    this.keys = layoutKeyboard(total, low, high);
+    this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
+    return total;
   }
 }

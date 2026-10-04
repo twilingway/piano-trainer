@@ -52,28 +52,38 @@
   font-size: 12px;
   color: var(--muted);
 }
-.workspace-main--word {
-  overflow: auto;
-}
-.workspace-main--word > .lanes {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
 .app--word .compact-hands,
 .app--word .compact-practice__hands,
 .app--word .topbar > select[aria-label="Руки"] {
   display: none;
 }
+/* The typed text over the usual staff and lane: the keys are the view's own. */
 .word-board {
   box-sizing: border-box;
+  display: flex;
   flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
   width: min(1120px, 100%);
-  margin: auto;
-  padding: clamp(14px, 3vw, 38px);
+  margin: 0 auto;
+  padding: 8px clamp(8px, 2vw, 16px);
+}
+.word-board__info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.word-quality {
+  color: var(--finger-2);
+  white-space: nowrap;
+  font-size: 15px;
+}
+.word-quality small {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .app--word .shell-top {
@@ -91,50 +101,19 @@
   grid-template-columns: none;
   width: auto;
 }
-.word-board__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.word-eyebrow {
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-}
-.word-board h1 {
-  font-size: clamp(22px, 3vw, 36px);
-  margin: 8px 0;
-}
-.word-quality {
-  color: var(--finger-2);
-  white-space: nowrap;
-  font-size: 23px;
-}
-.word-quality small {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-}
-.word-board__help,
-.word-board__foot {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
 .word-text {
   display: flex;
   flex-wrap: wrap;
   align-content: start;
-  gap: 12px 20px;
-  min-height: 100px;
-  max-height: 220px;
+  gap: 6px 14px;
+  flex: 0 0 auto;
+  max-height: 96px;
   overflow: auto;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px;
-  font: 600 clamp(22px, 3vw, 34px)/1.55 var(--font-digits);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: 600 clamp(15px, 1.6vw, 19px)/1.5 var(--font-digits);
 }
 .word-text__word {
   white-space: nowrap;
@@ -161,77 +140,44 @@
 .word-character--fallback {
   font-size: 0.7em;
 }
-.word-next {
+/* The touch-typing finger of a key, as on a typing chart: the index fingers tell the hands apart. */
+.word-finger-left-2 {
+  --typing-finger: var(--finger-4);
+}
+.word-finger-right-2 {
+  --typing-finger: var(--finger-2);
+}
+.word-finger-left-3,
+.word-finger-right-3 {
+  --typing-finger: var(--finger-1);
+}
+.word-finger-left-4,
+.word-finger-right-4 {
+  --typing-finger: var(--finger-3);
+}
+.word-finger-left-5,
+.word-finger-right-5 {
+  --typing-finger: var(--finger-5);
+}
+.word-legend {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 0;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   color: var(--muted);
   font-size: 12px;
 }
-.word-next strong {
-  color: var(--text);
-  font: 600 18px var(--font-digits);
-}
-.word-next progress {
-  width: 100px;
-  accent-color: var(--accent);
-}
-.word-keyboard {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.word-keyboard__row {
-  display: grid;
-  grid-template-columns: repeat(13, minmax(0, 1fr));
-  gap: 6px;
-}
-.word-keyboard__row:nth-child(3) {
-  padding-left: 3%;
-}
-.word-keyboard__row:nth-child(4) {
-  padding-left: 6%;
-}
-.word-keyboard__key {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-  min-height: 62px;
-}
-.word-keyboard__key--empty {
-  border-color: color-mix(in srgb, var(--border) 25%, transparent);
-  align-items: center;
-  justify-content: center;
-  color: var(--border);
-}
-.word-keyboard__assigned {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 0;
-  padding: 8px 2px;
-  color: var(--text);
-  cursor: pointer;
-  touch-action: none;
-  font: 600 16px var(--font-digits);
-}
-.word-keyboard__assigned small {
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--muted);
-}
-.word-keyboard__assigned--current {
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
-  color: var(--accent);
+.word-legend li[class*="word-finger-"]::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 3px;
+  background: var(--typing-finger);
+  box-shadow: 0 0 8px var(--typing-finger);
 }
 @media (width <= 640px) {
   .game-mode-strip .game-select {
@@ -254,36 +200,10 @@
     font-size: 11px;
     padding: 5px;
   }
-  .word-board__heading {
-    align-items: start;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .word-quality {
-    font-size: 16px;
-  }
-  .word-quality small {
-    display: inline;
-    margin-left: 8px;
-  }
   .word-text {
-    padding: 12px;
-    gap: 6px 12px;
-    max-height: 160px;
-  }
-  .word-keyboard__row {
-    gap: 3px;
-  }
-  .word-keyboard__key {
-    min-height: 44px;
-    border-radius: 4px;
-  }
-  .word-keyboard__assigned {
-    font-size: 11px;
-    padding: 5px 0;
-  }
-  .word-keyboard__assigned small {
-    font-size: 7px;
+    padding: 8px 10px;
+    gap: 4px 10px;
+    max-height: 72px;
   }
 }
 

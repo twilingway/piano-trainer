@@ -36,7 +36,6 @@ import { SongProgress } from "./ui/SongProgress";
 import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
 import { useWordTyping } from "./app/useWordTyping";
-import { useWordTypingPointer } from "./app/useWordTypingPointer";
 import { WordTypingBoard } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
 import { GameModeSwitch } from "./ui/GameModeSwitch";
@@ -95,12 +94,6 @@ export function App() {
     trainer.trainerRef,
     word.enabled ? word.keyboardOptions : computerKeyboard.options
   );
-  const wordPointer = useWordTypingPointer(
-    trainer.trainerRef,
-    word.result,
-    word.enabled,
-    libraryOpen || settingsOpen || word.pending || Boolean(word.error)
-  );
   const timing = useTimingControls({
     trainerRef: trainer.trainerRef,
     ensureSound,
@@ -130,7 +123,8 @@ export function App() {
     updateStaffPrefs,
     fallingNames: score.nameStyle,
     comparing: takes.comparing,
-    lastTake: takes.lastTake
+    lastTake: takes.lastTake,
+    computerKeys: word.keyboard
   });
   const library = usePlayerLibrary({
     showSong: current.showSong,
@@ -177,7 +171,8 @@ export function App() {
     <WordTypingSettings
       language={word.language}
       part={word.part}
-      dictionarySize={word.dictionarySize}
+      accompaniment={word.accompaniment}
+      onAccompaniment={word.setAccompaniment}
       locked={playing}
       onLanguage={(language) => {
         word.update({ language });
@@ -185,9 +180,6 @@ export function App() {
       onPart={(part) => {
         startFromRef.current = null;
         word.choosePart(part);
-      }}
-      onSize={(dictionarySize) => {
-        word.update({ dictionarySize });
       }}
     />
   );
@@ -432,14 +424,9 @@ export function App() {
               result={word.result}
               statuses={snapshot?.noteStatuses}
               time={snapshot?.time ?? -2}
-              playing={playing}
               listening={listening}
               pending={word.pending}
               error={word.error}
-              discardedNotes={word.line.discardedNotes}
-              runtimeMs={word.runtimeMs}
-              onPress={wordPointer.press}
-              onRelease={wordPointer.release}
             />
           ) : undefined
         }

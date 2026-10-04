@@ -3,14 +3,15 @@ import type { InputToken, Language } from "./types";
 const EN_LETTERS = "qwertyuiopasdfghjklzxcvbnm";
 const RU_LETTERS = "йцукенгшщзфывапролдячсмить";
 const LETTER_CODES = Array.from(EN_LETTERS).map((letter) => `Key${letter.toUpperCase()}`);
+/** ё last: it lies far off on the digit row, so every nearer letter is taken before it. */
 const RU_EXTRA = [
-  ["Backquote", "ё"],
   ["BracketLeft", "х"],
   ["BracketRight", "ъ"],
   ["Semicolon", "ж"],
   ["Quote", "э"],
   ["Comma", "б"],
-  ["Period", "ю"]
+  ["Period", "ю"],
+  ["Backquote", "ё"]
 ] as const;
 const TOP_ROW = [
   ["Backquote", "`"],
@@ -50,6 +51,15 @@ export function languageTokens(language: Language): InputToken[] {
     );
   }
   return tokens;
+}
+
+/** What a key types without a modifier in `language`: its letter, else its digit or sign. */
+export function keyDisplay(physicalKey: string, language: Language): string {
+  return (
+    languageTokens(language).find((token) => token.physicalKey === physicalKey)?.display ??
+    [...TOP_ROW, ...PUNCTUATION].find(([code]) => code === physicalKey)?.[1] ??
+    ""
+  );
 }
 
 /** Cheap unused assignments are exhausted before any modified token is allocated. */

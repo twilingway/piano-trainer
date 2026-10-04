@@ -7,6 +7,7 @@ import type { SongNote } from "../song/song";
 import { FallingNotesView } from "./FallingNotesView";
 import type { FrameState } from "./FallingNotesView";
 import { NotesLayer } from "./NotesLayer";
+import { PIANO_LOOK } from "./noteLook";
 import type { FlatNoteBlocks } from "./FlatNoteBlocks";
 import type { KeyboardLayer } from "./KeyboardLayer";
 import type { FxLayer } from "./FxLayer";
@@ -42,6 +43,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     cardGlow: Texture.WHITE,
     trailTile: Texture.WHITE,
     noteNames: "ru",
+    look: PIANO_LOOK,
     labels: {
       digits: new Map([
         [1, digitTexture],

@@ -33,17 +33,25 @@ export function bindKeyboardPointer(
   const cancel = (event: PointerEvent) => {
     if (event.pointerId === pointerId) stop();
   };
+  // Alt+Tab or a hidden tab never sends the pointer up: a held key would sound on.
+  const leave = () => {
+    if (pointerId !== undefined && (document.hidden || !document.hasFocus())) stop();
+  };
   stage.on("pointerdown", down);
   stage.on("pointermove", move);
   stage.on("pointerup", up);
   stage.on("pointerupoutside", up);
   window.addEventListener("pointercancel", cancel, true);
+  window.addEventListener("blur", leave);
+  document.addEventListener("visibilitychange", leave);
   return () => {
     stage.off("pointerdown", down);
     stage.off("pointermove", move);
     stage.off("pointerup", up);
     stage.off("pointerupoutside", up);
     window.removeEventListener("pointercancel", cancel, true);
+    window.removeEventListener("blur", leave);
+    document.removeEventListener("visibilitychange", leave);
     stop();
   };
 }

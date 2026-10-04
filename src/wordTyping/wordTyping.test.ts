@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Song, SongNote } from "../song/song";
 import { buildTrie, normalizeWords } from "./dictionary";
-import { extractLine } from "./extractLine";
+import { extractLine, withAccompaniment } from "./extractLine";
 import { inputTokenId, languageTokens, tokenPool } from "./inputTokens";
 import { generateWordTyping } from "./optimizer";
 import { DEFAULT_CONFIG, inputPenalty, wordScore } from "./scoring";
@@ -97,6 +97,35 @@ describe("mono line extraction", () => {
     const bass = extractLine(song(line([60, 62])), "bass");
     expect(bass.notes).toEqual([]);
     expect(bass.song.duration).toBe(0);
+  });
+
+  it("adds the other hand as the session's own accompaniment", () => {
+    const notes = line([72, 74, 48, 50]);
+    const original = song([
+      noteAt(notes, 0),
+      noteAt(notes, 1),
+      { ...noteAt(notes, 2), start: 0.5, duration: 4, hand: "left" },
+      { ...noteAt(notes, 3), start: 1, hand: "left" }
+    ]);
+    const melody = extractLine(original, "melody");
+    const full = withAccompaniment(original, melody.song, "melody");
+    expect(full.notes.map((note) => [note.pitch, note.hand])).toEqual([
+      [72, "right"],
+      [48, "left"],
+      [50, "left"],
+      [74, "right"]
+    ]);
+    expect(full.duration).toBe(4.5);
+    const bass = extractLine(original, "bass");
+    expect(
+      withAccompaniment(original, bass.song, "bass").notes.map((note) => [note.pitch, note.hand])
+    ).toEqual([
+      [72, "left"],
+      [48, "right"],
+      [50, "right"],
+      [74, "left"]
+    ]);
+    expect(withAccompaniment(song(line([60])), melody.song, "melody")).toBe(melody.song);
   });
 });
 
@@ -232,5 +261,16 @@ describe("scoring and quality", () => {
     expect(words.metrics.averageWordRank).toBe(1);
     expect(words.metrics.totalScore).toBeGreaterThanOrEqual(0);
     expect(words.metrics.totalScore).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("the far letter ё", () => {
+  it("never asks for ё, even for the most frequent word, and leaves its key last", () => {
+    // ещё would fit three notes best; еще, without ё, must take its place.
+    const dictionary = normalizeWords(["ещё", "еще"], "ru");
+    const result = generateWordTyping(line([60, 62, 60]), dictionary, "ru");
+    expect(result.text).toBe("еще");
+    expect(result.tokens.some((token) => token.input.physicalKey === "Backquote")).toBe(false);
+    expect(languageTokens("ru").at(-1)?.physicalKey).toBe("Backquote");
   });
 });

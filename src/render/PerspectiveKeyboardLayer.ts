@@ -1,6 +1,7 @@
 import { Container, PerspectiveMesh, Rectangle, Texture } from "pixi.js";
 import type { KeyRect } from "./keyboardLayout";
 import type { Geometry } from "./viewGeometry";
+import { quadPoint } from "./perspective";
 import type { Projected } from "./perspective";
 import { insidePolygon, keySurface } from "./worldCamera";
 import type { WorldCamera } from "./worldCamera";
@@ -11,6 +12,9 @@ interface Face {
   readonly front: PerspectiveMesh;
   readonly side: PerspectiveMesh;
   polygon: readonly Projected[];
+  /** The top face's corners on screen and the part of the flat keys it shows. */
+  topCorners?: readonly [Projected, Projected, Projected, Projected];
+  readonly source: { readonly y: number; readonly height: number };
 }
 /** Physical piano faces, with the existing baked colours, digits and stickers as their material. */
 export class PerspectiveKeyboardLayer {
@@ -44,7 +48,14 @@ export class PerspectiveKeyboardLayer {
         side.tint = black ? 0x444956 : 0xa5a8ad;
         side.visible = black;
         this.container.addChild(side, front, top);
-        this.faces.push({ key, top, front, side, polygon: [] });
+        this.faces.push({
+          key,
+          top,
+          front,
+          side,
+          polygon: [],
+          source: { y: sourceY, height: Math.max(1, sourceHeight) }
+        });
       }
     }
   }
@@ -59,6 +70,7 @@ export class PerspectiveKeyboardLayer {
       this.corners(face.front, surface.front);
       this.corners(face.side, surface.side);
       face.polygon = surface.outline;
+      face.topCorners = surface.top;
     }
   }
 
@@ -68,13 +80,22 @@ export class PerspectiveKeyboardLayer {
     // Raised black faces cover the whites, so test the paint order backwards.
     for (let i = this.faces.length - 1; i >= 0; i--) {
       const face = this.faces[i];
-      if (face && insidePolygon(x, y, face.polygon))
-        return {
-          x: face.key.x + face.key.width / 2,
-          y:
-            geometry.keyboardTop +
-            (face.key.black ? geometry.blackHeight / 2 : geometry.blackHeight + 1)
-        };
+      if (!face || !insidePolygon(x, y, face.polygon)) continue;
+      // The point of the flat keys under the pointer: a wide face (the computer keyboard laid
+      // as one slab) holds many keys. A press on the front edge counts as its nearest row.
+      const place = face.topCorners && quadPoint(x, y, face.topCorners);
+      const clamp = (value: number) => Math.max(0, Math.min(1, value));
+      return place
+        ? {
+            x: face.key.x + clamp(place.u) * face.key.width,
+            y: geometry.keyboardTop + face.source.y + clamp(place.v) * (face.source.height - 1)
+          }
+        : {
+            x: face.key.x + face.key.width / 2,
+            y:
+              geometry.keyboardTop +
+              (face.key.black ? geometry.blackHeight / 2 : geometry.blackHeight + 1)
+          };
     }
     return undefined;
   }

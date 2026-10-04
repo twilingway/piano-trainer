@@ -1,3 +1,4 @@
+import { sortNotes } from "../song/song";
 import type { Song, SongNote } from "../song/song";
 import type { Part } from "./types";
 
@@ -41,4 +42,19 @@ export function extractLine(
     notes,
     discardedNotes: candidates.length - notes.length
   };
+}
+
+/**
+ * The line with the other hand's notes added as its left hand, which the session plays itself
+ * (the line is the right hand). Without such notes the line is returned as it is.
+ */
+export function withAccompaniment(song: Song, line: Song, part: Part): Song {
+  const other = part === "melody" ? "left" : "right";
+  const accompaniment = song.notes
+    .filter((note) => note.hand === other)
+    .map((note) => ({ ...note, hand: "left" as const }));
+  if (accompaniment.length === 0) return line;
+  const notes = sortNotes([...line.notes, ...accompaniment]);
+  const duration = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
+  return { ...line, notes, duration };
 }
