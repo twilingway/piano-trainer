@@ -15,6 +15,8 @@ export interface FrameState {
   readonly sounding: ReadonlySet<number>;
   /** The chord the player owes next, shown on the keyboard with its fingers. */
   readonly due: readonly SongNote[];
+  /** The note a key answers now, which a per-word layout reads its letters from. */
+  readonly owedNoteId?: string | undefined;
   /** All nearby pending player notes, including those behind an earlier unjudged note. */
   readonly hintNotes?: readonly SongNote[];
   /** Unshifted session seconds and playback rate used only for key cues. */

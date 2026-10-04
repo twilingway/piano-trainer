@@ -1,6 +1,7 @@
 import { Container, NineSliceSprite, Sprite, Text, Texture } from "pixi.js";
 import type { Renderer } from "pixi.js";
 
+import { wordTokenId } from "../input/computerKeyboard";
 import { pitchLabel } from "../input/keyboardLayouts";
 import type { KeyEvent } from "../input/midiInput";
 import { keyDisplay } from "../wordTyping/inputTokens";
@@ -128,7 +129,7 @@ export class ComputerKeyboardLayer implements KeysLayer {
    * is the one that sinks and bursts. Shown only: the input listener plays the notes.
    */
   private readonly onKeyDown = (event: KeyboardEvent) => {
-    if (!event.repeat) this.computer?.hold(event.code, true);
+    if (!event.repeat) this.computer?.hold(event.code, true, wordTokenId(event));
   };
   private readonly onKeyUp = (event: KeyboardEvent) => {
     this.computer?.hold(event.code, false);

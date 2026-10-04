@@ -47,6 +47,14 @@ describe("per-word key input", () => {
     expect(wordKeyPitch([], "n0", "none:KeyV", keyboard)).toBeUndefined();
   });
 
+  it("skips a pitch a nearby note has, so a stray key never hits it", () => {
+    const close = tokens.map((token) => (token.noteId === "n2" ? { ...token, pitch: 61 } : token));
+    expect(wordKeyPitch(close, "n1", "none:KeyR", keyboard)).toBe(63);
+    // Far notes do not count: n6 (67) is 5 s from n1.
+    const far = tokens.map((token) => (token.noteId === "n6" ? { ...token, pitch: 61 } : token));
+    expect(wordKeyPitch(far, "n1", "none:KeyR", keyboard)).toBe(61);
+  });
+
   it("goes a semitone up from the lowest pitch", () => {
     const low = tokens.map((token) => ({ ...token, pitch: 0 }));
     expect(wordKeyPitch(low, "n0", "none:KeyR", keyboard)).toBe(1);

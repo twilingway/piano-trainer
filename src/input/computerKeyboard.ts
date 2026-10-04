@@ -18,6 +18,12 @@ export interface KeyboardInputOptions {
   /** The note the player owes now, for a per-word layout. */
   readonly owedNoteId?: () => string | undefined;
 }
+/** A key event as a word-mode token ("modifier:code"); Shift with Alt types nothing. */
+export function wordTokenId(event: KeyboardEvent): string | undefined {
+  const alt = event.altKey || event.getModifierState("AltGraph");
+  if (event.shiftKey && alt) return undefined;
+  return `${alt ? "alt" : event.shiftKey ? "shift" : "none"}:${event.code}`;
+}
 export function isTypingTarget(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
@@ -60,9 +66,9 @@ export function listenToComputerKeyboard(
       return;
     }
     if (options.wordPitch) {
-      if (event.shiftKey && (event.altKey || altGraph)) return;
-      const modifier = event.altKey || altGraph ? "alt" : event.shiftKey ? "shift" : "none";
-      const pitch = options.wordPitch(`${modifier}:${event.code}`, options.owedNoteId?.());
+      const tokenId = wordTokenId(event);
+      if (tokenId === undefined) return;
+      const pitch = options.wordPitch(tokenId, options.owedNoteId?.());
       if (pitch === undefined) return;
       event.preventDefault();
       event.stopImmediatePropagation();

@@ -327,7 +327,9 @@ export class FallingNotesView {
   setComputerKeys(keys: ComputerKeyboard | undefined): void {
     this.keysLayer?.releaseMouse();
     const letter = (text: string) => this.computerKeyboard?.letter(text) ?? Texture.EMPTY;
-    this.computer = keys ? new ComputerKeys(keys.tokens, keys.language, letter) : undefined;
+    this.computer = keys
+      ? new ComputerKeys(keys.tokens, keys.language, letter, keys.wordPitch)
+      : undefined;
     this.computerKeyboard?.setKeys(this.computer);
     this.syncKeyboards();
     if (this.song) this.setSong(this.song);

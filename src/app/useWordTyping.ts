@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
+import type { ComputerKeyboard } from "../render/computerKeys";
 import type { Song } from "../song/song";
 import { extractLine, withAccompaniment } from "../wordTyping/extractLine";
 import { inputTokenId, tokenPool } from "../wordTyping/inputTokens";
@@ -46,7 +47,9 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
       }),
     [line, part, prefs.language, prefs.layout]
   );
-  const [chosen, setChosen] = useState({ base: "", variant: 0, previousText: "" });
+  const [chosen, setChosen] = useState({ base, variant: 0, previousText: "" });
+  // Reset during render, so a base that comes back does not bring its old variant with it.
+  if (chosen.base !== base) setChosen({ base, variant: 0, previousText: "" });
   const variant = chosen.base === base ? chosen.variant : 0;
   const key = useMemo(
     () =>
@@ -117,9 +120,18 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     variant > 0 && text !== undefined && text === chosen.previousText
       ? "Другой текст для этой партии подобрать не удалось."
       : undefined;
-  const keyboard = useMemo(
-    () => (prefs.enabled ? { tokens, language: prefs.language } : undefined),
-    [prefs.enabled, prefs.language, tokens]
+  const mode = current?.result?.mode;
+  const keyboard = useMemo<ComputerKeyboard | undefined>(
+    () =>
+      prefs.enabled
+        ? {
+            tokens,
+            language: prefs.language,
+            wordPitch:
+              mode === "word" ? (id, owed) => wordKeyPitch(tokens, owed, id, wordKeys) : undefined
+          }
+        : undefined,
+    [prefs.enabled, prefs.language, tokens, mode, wordKeys]
   );
   const update = (change: Partial<WordTypingPrefs>) => {
     const next = { ...prefs, ...change };
