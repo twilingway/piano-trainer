@@ -3,6 +3,8 @@ import type { RefObject } from "react";
 
 import type { Finger } from "../fingering/fingering";
 import { detectKey } from "../song/harmony";
+import { fifthsForKey } from "../song/keySignature";
+import type { Key } from "../song/keySignature";
 import { songFromMusicXml, transposeMusicXml } from "../song/musicxml";
 import { withFingering } from "../song/song";
 import type { Song } from "../song/song";
@@ -42,12 +44,17 @@ function saveOverrides(song: Song, overrides: ReadonlyMap<string, Finger>): void
  * The song moved by `semitones`. A score is respelled and re-read, so its
  * staff, fingering and names all follow; a MIDI song just shifts its keys.
  */
-function transposeSong(song: Song, semitones: number): Song {
+function transposeSong(song: Song, semitones: number, sourceKey: Key | undefined): Song {
   if (semitones === 0) return song;
   const sign = semitones > 0 ? "+" : "−";
   const title = `${song.title} (${sign}${String(Math.abs(semitones))})`;
   if (song.musicXml) {
-    return { ...songFromMusicXml(transposeMusicXml(song.musicXml, semitones), title), title };
+    const xml = transposeMusicXml(
+      song.musicXml,
+      semitones,
+      sourceKey ? fifthsForKey(sourceKey) : 0
+    );
+    return { ...songFromMusicXml(xml, title), title };
   }
   return {
     ...song,
@@ -70,8 +77,11 @@ export function useSong(startFromRef: RefObject<number | null>) {
   /** The song as loaded; `baseSong` is it in the chosen key. */
   const [sourceSong, setSourceSong] = useState<Song>(() => lessonSong(startingLesson()));
   const [transpose, setTranspose] = useState(0);
-  const baseSong = useMemo(() => transposeSong(sourceSong, transpose), [sourceSong, transpose]);
   const sourceKey = useMemo(() => detectKey(sourceSong), [sourceSong]);
+  const baseSong = useMemo(
+    () => transposeSong(sourceSong, transpose, sourceKey),
+    [sourceSong, transpose, sourceKey]
+  );
   const [overrides, setOverrides] = useState<Map<string, Finger>>(() => loadOverrides(baseSong));
   // Corrections belong to a song in a key: another key starts from its own.
   const [overridesOf, setOverridesOf] = useState(() => overridesKey(baseSong));
