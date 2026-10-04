@@ -14,8 +14,10 @@ describe("typingFinger", () => {
   it("follows the standard zones", () => {
     expect(typingFinger("KeyA")).toEqual({ hand: "left", finger: 5 });
     expect(typingFinger("KeyL")).toEqual({ hand: "right", finger: 4 });
-    expect(typingFinger("Digit6")).toEqual({ hand: "right", finger: 2 });
-    expect(typingFinger("Digit5")).toEqual({ hand: "left", finger: 2 });
+    expect(typingFinger("Digit2")).toEqual({ hand: "left", finger: 5 });
+    expect(typingFinger("Digit4")).toEqual({ hand: "left", finger: 3 });
+    expect(typingFinger("Digit6")).toEqual({ hand: "left", finger: 2 });
+    expect(typingFinger("Digit7")).toEqual({ hand: "right", finger: 2 });
     expect(typingFinger("Comma")).toEqual({ hand: "right", finger: 3 });
     expect(typingFinger("Quote")).toEqual({ hand: "right", finger: 5 });
   });

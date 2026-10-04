@@ -40,6 +40,11 @@ describe("laneSong", () => {
       ["KeyM", 37]
     ]);
     expect(lane.song.notes.map((note) => note.pitch)).toEqual([36, 37, 36]);
+    expect([...lane.realPitch]).toEqual([
+      ["a", 67],
+      ["b", 67],
+      ["c", 62]
+    ]);
   });
 
   it("keeps the timing and takes the touch-typing finger and hand", () => {

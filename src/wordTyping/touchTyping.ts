@@ -6,15 +6,16 @@ export interface TypingFinger {
 }
 
 /**
- * The standard touch-typing zones by physical key, the same for ЙЦУКЕН and QWERTY:
- * index 2, middle 3, ring 4, pinky 5 (the piano numbering, so the colours match).
+ * The touch-typing zones by physical key, the same for ЙЦУКЕН and QWERTY, as on the usual
+ * Russian chart (1 and 2 for the left pinky, 5 and 6 for the left index):
+ * index 2, middle 3, ring 4, pinky 5 (the piano numbering, so the digits match).
  */
 const ZONES: readonly (readonly [Hand, Finger, readonly string[]])[] = [
-  ["left", 5, ["Backquote", "Digit1", "KeyQ", "KeyA", "KeyZ"]],
-  ["left", 4, ["Digit2", "KeyW", "KeyS", "KeyX"]],
-  ["left", 3, ["Digit3", "KeyE", "KeyD", "KeyC"]],
-  ["left", 2, ["Digit4", "Digit5", "KeyR", "KeyT", "KeyF", "KeyG", "KeyV", "KeyB"]],
-  ["right", 2, ["Digit6", "Digit7", "KeyY", "KeyU", "KeyH", "KeyJ", "KeyN", "KeyM"]],
+  ["left", 5, ["Backquote", "Digit1", "Digit2", "KeyQ", "KeyA", "KeyZ"]],
+  ["left", 4, ["Digit3", "KeyW", "KeyS", "KeyX"]],
+  ["left", 3, ["Digit4", "KeyE", "KeyD", "KeyC"]],
+  ["left", 2, ["Digit5", "Digit6", "KeyR", "KeyT", "KeyF", "KeyG", "KeyV", "KeyB"]],
+  ["right", 2, ["Digit7", "KeyY", "KeyU", "KeyH", "KeyJ", "KeyN", "KeyM"]],
   ["right", 3, ["Digit8", "KeyI", "KeyK", "Comma"]],
   ["right", 4, ["Digit9", "KeyO", "KeyL", "Period"]],
   [

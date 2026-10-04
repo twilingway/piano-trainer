@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import type { Finger } from "../fingering/fingering";
+import { useEffect, useRef, useState } from "react";
+import type { Finger, Hand } from "../fingering/fingering";
 import { pitchLabel } from "../input/keyboardLayouts";
 import type { NoteStatus } from "../practice/session";
 import type { Song } from "../song/song";
@@ -7,14 +7,16 @@ import type { GeneratedToken, InputToken, WordTypingResult } from "../wordTyping
 import { inputTokenId } from "../wordTyping/inputTokens";
 import { textProgress } from "../wordTyping/progress";
 import { typingFinger } from "../wordTyping/touchTyping";
+import type { WordLaneView } from "../render/WordLaneView";
 import { WordTypingLane } from "./WordTypingLane";
 
-/** The legend: one colour a finger, the same on both hands. */
-const FINGERS: readonly (readonly [Finger, string])[] = [
-  [5, "мизинец"],
-  [4, "безымянный"],
-  [3, "средний"],
-  [2, "указательный"]
+/** The legend: the index fingers differ by hand, the others share a colour. */
+const FINGERS: readonly (readonly [Hand, Finger, string])[] = [
+  ["left", 5, "мизинцы"],
+  ["left", 4, "безымянные"],
+  ["left", 3, "средние"],
+  ["left", 2, "левый указательный"],
+  ["right", 2, "правый указательный"]
 ];
 const ROWS = [
   [
@@ -59,8 +61,8 @@ interface Props {
   readonly error: string | undefined;
   /** The line being typed, for the falling notes. */
   readonly song: Song;
-  /** Song seconds the view shows now, for the falling notes. */
-  readonly liveTime: () => number;
+  /** Hands the falling-notes lane to the trainer, which draws its frames there. */
+  readonly attachLane: (lane: WordLaneView | undefined) => void;
   readonly onPress: (token: InputToken) => void;
   readonly onRelease: (token: InputToken) => void;
 }
@@ -70,8 +72,13 @@ export function WordTypingBoard(props: Props) {
   const keyboardRef = useRef<HTMLDivElement>(null);
   const { result, statuses } = props;
   const progress = textProgress(result?.tokens ?? [], statuses, props.time, props.listening);
-  const { index } = progress;
+  // The trainer's due note, every frame, lights the keys before the throttled snapshot catches up.
+  const [dueId, setDueId] = useState<string>();
+  const dueIndex = dueId ? (result?.tokens.findIndex((token) => token.noteId === dueId) ?? -1) : -1;
+  const index = !props.listening && dueIndex >= 0 ? dueIndex : progress.index;
   const current = result?.tokens[index];
+  // The note after it, lit dimmer in advance.
+  const next = index >= 0 ? result?.tokens[index + 1] : undefined;
   const groups = new Map<number, GeneratedToken[]>();
   const inputs = new Map<string, InputToken>();
   for (const token of result?.tokens ?? []) {
@@ -119,8 +126,8 @@ export function WordTypingBoard(props: Props) {
             <WordTypingLane
               song={props.song}
               tokens={result.tokens}
-              statuses={statuses}
-              liveTime={props.liveTime}
+              onAttach={props.attachLane}
+              onDue={setDueId}
               keyboardRef={keyboardRef}
             />
           )}
@@ -135,10 +142,10 @@ export function WordTypingBoard(props: Props) {
                   const assigned = [...inputs.values()].filter(
                     (input) => input.physicalKey === code
                   );
-                  const finger = typingFinger(code)?.finger;
+                  const typing = typingFinger(code);
                   return (
                     <div
-                      className={`word-keyboard__key${assigned.length === 0 ? " word-keyboard__key--empty" : finger ? ` word-finger-${String(finger)}` : ""}`}
+                      className={`word-keyboard__key${assigned.length === 0 ? " word-keyboard__key--empty" : typing ? ` word-finger-${typing.hand}-${String(typing.finger)}` : ""}`}
                       key={code}
                       data-code={code}
                     >
@@ -152,7 +159,9 @@ export function WordTypingBoard(props: Props) {
                             className={
                               current && inputTokenId(current.input) === inputTokenId(token)
                                 ? "word-keyboard__assigned word-keyboard__assigned--current"
-                                : "word-keyboard__assigned"
+                                : next && inputTokenId(next.input) === inputTokenId(token)
+                                  ? "word-keyboard__assigned word-keyboard__assigned--next"
+                                  : "word-keyboard__assigned"
                             }
                             aria-label={`${token.display}: ${pitchLabel(result?.tokenToPitch[inputTokenId(token)] ?? 0)}`}
                             onPointerDown={(event) => {
@@ -185,12 +194,11 @@ export function WordTypingBoard(props: Props) {
             ))}
           </div>
           <ul className="word-legend" aria-label="Цвета пальцев">
-            {FINGERS.map(([finger, name]) => (
-              <li key={finger} className={`word-finger-${String(finger)}`}>
+            {FINGERS.map(([hand, finger, name]) => (
+              <li key={name} className={`word-finger-${hand}-${String(finger)}`}>
                 {name}
               </li>
             ))}
-            <li className="word-legend__note">левая и правая рука — одинаково</li>
           </ul>
         </>
       )}

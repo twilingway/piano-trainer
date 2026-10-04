@@ -8,9 +8,13 @@ import { Trainer } from "../practice/Trainer";
 import type { TrainerSnapshot } from "../practice/Trainer";
 import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
+import type { FrameState } from "../render/FallingNotesView";
 import type { Song } from "../song/song";
 import { loadPlayerPrefs, savePlayerPrefs } from "./playerPrefs";
 import type { HandChoice } from "./playerPrefs";
+
+/** A picture that draws the trainer's frames besides its own view. */
+type WordLane = { draw(frame: FrameState): void } | undefined;
 
 const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
   right: ["right"],
@@ -67,6 +71,8 @@ export function useTrainer({
 }: Options) {
   const hostRef = useRef<HTMLDivElement>(null);
   const trainerRef = useRef<Trainer | null>(null);
+  // The word-typing lane draws the trainer's frames too, whenever the trainer exists.
+  const laneRef = useRef<WordLane>(undefined);
   const viewRef = useRef<FallingNotesView | null>(null);
   const noteClickRef = useRef<(noteId: string) => void>(() => undefined);
   const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
@@ -126,6 +132,7 @@ export function useTrainer({
         // A listen-through ends by handing the song back for practice.
         if (next.finished) setListening(false);
       };
+      trainer.setLane(laneRef.current);
       trainerRef.current = trainer;
       setTrainerReady(true);
     });
@@ -200,8 +207,10 @@ export function useTrainer({
 
   // Read by the staff every frame; stable, so the staff never re-subscribes.
   const liveBeat = useCallback(() => trainerRef.current?.quarters() ?? 0, []);
-  // Read by the word-typing lane every frame.
-  const liveTime = useCallback(() => trainerRef.current?.visualTime() ?? 0, []);
+  const attachLane = useCallback((lane: WordLane) => {
+    laneRef.current = lane;
+    trainerRef.current?.setLane(lane);
+  }, []);
 
   /** A click on the staff: play from the first note at or after that beat. */
   const seekToBeat = (beat: number) => {
@@ -253,7 +262,7 @@ export function useTrainer({
     metronome,
     setMetronome,
     liveBeat,
-    liveTime,
+    attachLane,
     seekToBeat,
     togglePlay,
     toggleListening,

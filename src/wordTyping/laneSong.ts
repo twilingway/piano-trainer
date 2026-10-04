@@ -10,6 +10,8 @@ export interface LaneSong {
   readonly song: Song;
   /** The stand-in pitch of each physical key the line uses. */
   readonly columns: ReadonlyMap<string, number>;
+  /** Each note's real pitch, by note id: what the keys and the grades speak in. */
+  readonly realPitch: ReadonlyMap<string, number>;
 }
 
 /**
@@ -21,12 +23,14 @@ export function laneSong(song: Song, tokens: readonly GeneratedToken[]): LaneSon
   const byNote = new Map(tokens.map((token) => [token.noteId, token]));
   const columns = new Map<string, number>();
   const notes: SongNote[] = [];
+  const realPitch = new Map<string, number>();
   for (const note of song.notes) {
     const token = byNote.get(note.id);
     if (!token) continue;
     const key = token.input.physicalKey;
     const pitch = columns.get(key) ?? FIRST_COLUMN + columns.size;
     columns.set(key, pitch);
+    realPitch.set(note.id, note.pitch);
     const typing = typingFinger(key);
     notes.push({
       id: note.id,
@@ -47,6 +51,7 @@ export function laneSong(song: Song, tokens: readonly GeneratedToken[]): LaneSon
       measures: song.measures,
       duration: song.duration
     },
-    columns
+    columns,
+    realPitch
   };
 }

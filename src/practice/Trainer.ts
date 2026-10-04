@@ -1,7 +1,7 @@
 import { soundAllOff } from "../audio/pianoSound";
 import { SessionAudio } from "../audio/sessionAudio";
 import type { KeyEvent } from "../input/midiInput";
-import type { FallingNotesView } from "../render/FallingNotesView";
+import type { FallingNotesView, FrameState } from "../render/FallingNotesView";
 import { TakeRecorder } from "../recording/take";
 import type { Take } from "../recording/take";
 import { quartersAt } from "../song/song";
@@ -40,7 +40,7 @@ export interface InputDiagnostic {
 const NOTHING: ReadonlySet<number> = new Set();
 
 /** Two seconds fill the lane: at 114 BPM a quarter spans about 79 px of a 300 px lane. */
-export const LOOK_AHEAD_S = 2;
+const LOOK_AHEAD_S = 2;
 const SNAPSHOT_INTERVAL_MS = 150;
 
 /** Beat of the latest note that has started by `time`; notes are sorted by start. */
@@ -116,6 +116,8 @@ export class Trainer {
   private sinceSnapshot = 0;
   private lastBeat = -1;
   private readonly view: FallingNotesView;
+  /** A second picture of the same frames: the word-typing lane. */
+  private lane: { draw(frame: FrameState): void } | undefined;
 
   constructor(view: FallingNotesView) {
     this.view = view;
@@ -330,11 +332,9 @@ export class Trainer {
       : 0;
   }
 
-  /** Song seconds the view shows now: session time with the same visual offset as quarters(). */
-  visualTime(): number {
-    return this.session
-      ? this.session.time - (this.timing.visualOffsetMs / 1000) * this.session.options.speed
-      : 0;
+  /** Draws every frame the view draws into `lane` too; undefined stops it. */
+  setLane(lane: { draw(frame: FrameState): void } | undefined): void {
+    this.lane = lane;
   }
 
   /** Only the text mode needs note statuses in the throttled React snapshot. */
@@ -379,7 +379,7 @@ export class Trainer {
       const now = performance.now();
       this.apply(session.tick(now));
     }
-    this.view.draw({
+    const state: FrameState = {
       time: session.time - (this.timing.visualOffsetMs / 1000) * session.options.speed,
       lookAhead: LOOK_AHEAD_S,
       statusOf: (id) => session.statusOf(id),
@@ -392,7 +392,9 @@ export class Trainer {
       colorOf: this.comparison?.colorOf,
       board: this.board ?? this.combo.board(),
       graded: this.graded
-    });
+    };
+    this.view.draw(state);
+    this.lane?.draw(state);
     // The view has shown them: next frame grades only its own strikes.
     this.graded = [];
     const mirror = this.comparison?.mirror;

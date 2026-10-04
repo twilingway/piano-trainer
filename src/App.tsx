@@ -436,7 +436,7 @@ export function App() {
               pending={word.pending}
               error={word.error}
               song={word.line.song}
-              liveTime={trainer.liveTime}
+              attachLane={trainer.attachLane}
               onPress={wordPointer.press}
               onRelease={wordPointer.release}
             />
