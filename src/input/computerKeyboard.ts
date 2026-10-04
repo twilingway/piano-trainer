@@ -3,12 +3,15 @@ import type { KeyboardAction } from "./keyboardState";
 import { DEFAULT_KEYBOARD_PREFS, isAssignableCode, presetBindings } from "./keyboardLayouts";
 import type { KeyboardBindings } from "./keyboardLayouts";
 import type { MidiEvent } from "./midiInput";
+import { WordKeyboardState } from "./wordKeyboardState";
 
 export interface KeyboardInputOptions {
   readonly bindings: KeyboardBindings;
   readonly blocked?: boolean;
   readonly capture?: (code: string) => void;
   readonly cancelCapture?: () => void;
+  /** Independent STRICT tokens; bypasses all piano bindings and modifiers. */
+  readonly wordMapping?: Readonly<Record<string, number>>;
 }
 export function isTypingTarget(target: EventTarget | null): boolean {
   return (
@@ -24,7 +27,9 @@ export function listenToComputerKeyboard(
   onEvent: (event: MidiEvent) => void,
   options: KeyboardInputOptions = { bindings: presetBindings(DEFAULT_KEYBOARD_PREFS.preset) }
 ): () => void {
-  const state = new KeyboardState();
+  const pianoState = new KeyboardState();
+  const wordState = new WordKeyboardState();
+  const state = options.wordMapping ? wordState : pianoState;
   const emit = (actions: KeyboardAction[], timestamp: number) => {
     for (const action of actions) {
       const metadata = { timestamp, source: "keyboard" as const, deviceId: "keyboard" };
@@ -49,13 +54,23 @@ export function listenToComputerKeyboard(
       event.preventDefault();
       return;
     }
+    if (options.wordMapping) {
+      if (event.shiftKey && (event.altKey || altGraph)) return;
+      const modifier = event.altKey || altGraph ? "alt" : event.shiftKey ? "shift" : "none";
+      const pitch = options.wordMapping[`${modifier}:${event.code}`];
+      if (pitch === undefined) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) emit(wordState.press(event.code, pitch), event.timeStamp);
+      return;
+    }
     const binding = options.bindings[event.code];
     if (!binding || binding.type === "disabled") return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (!event.repeat)
       emit(
-        state.press(event.code, options.bindings, {
+        pianoState.press(event.code, options.bindings, {
           shift: event.shiftKey,
           alt: event.altKey || altGraph
         }),

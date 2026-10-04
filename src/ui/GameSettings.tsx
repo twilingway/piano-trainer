@@ -1,6 +1,7 @@
 import type { Difficulty } from "../practice/gameRules";
 
 interface Props {
+  readonly practiceOnly?: boolean;
   readonly difficulty: Difficulty;
   readonly ranked: boolean;
   readonly rankedReady: boolean;
@@ -41,18 +42,25 @@ export function GameSettings(props: Props) {
           <option value="expert">Эксперт</option>
         </select>
       </label>
-      <label className="setting">
-        Рейтинговое исполнение
-        <input
-          type="checkbox"
-          checked={props.ranked}
-          disabled={props.locked || (!props.ranked && !props.rankedReady)}
-          onChange={(event) => {
-            props.onChange({ ranked: event.target.checked });
-          }}
-        />
-      </label>
-      {!props.rankedReady && (
+      {!props.practiceOnly && (
+        <label className="setting">
+          Рейтинговое исполнение
+          <input
+            type="checkbox"
+            checked={props.ranked}
+            disabled={props.locked || (!props.ranked && !props.rankedReady)}
+            onChange={(event) => {
+              props.onChange({ ranked: event.target.checked });
+            }}
+          />
+        </label>
+      )}
+      {props.practiceOnly && (
+        <p className="setting-hint">
+          Печатать мелодию — учебный прототип без рейтингового исполнения.
+        </p>
+      )}
+      {!props.practiceOnly && !props.rankedReady && (
         <p className="setting-hint">
           Для рейтинга выберите одно устройство и выполните калибровку во вкладке «Точность».
           Рейтинг играет в темпе на скорости 100 %, без Loop.

@@ -9,7 +9,7 @@ import type { Song, SongNote } from "../song/song";
 import { ComboCounter } from "./combo";
 import type { ComboBoard, GradedStrike } from "./combo";
 import { PracticeSession } from "./session";
-import type { PracticeEvent, PracticeOptions, PracticeStats } from "./session";
+import type { NoteStatus, PracticeEvent, PracticeOptions, PracticeStats } from "./session";
 import type { TimingConfig } from "./timingConfig";
 import { SongTimeline } from "./timing";
 
@@ -22,6 +22,7 @@ export interface TrainerSnapshot {
   readonly beat: number;
   readonly stats: PracticeStats;
   readonly diagnostic?: InputDiagnostic;
+  readonly noteStatuses?: Readonly<Record<string, NoteStatus | undefined>>;
 }
 
 export type TrainerTiming = TimingConfig;
@@ -85,6 +86,7 @@ export class Trainer {
   private board: ComboBoard | undefined;
   private allowedDeviceId: string | undefined;
   private performanceMode = false;
+  private textNoteIds: readonly string[] = [];
   private readonly audio = new SessionAudio();
 
   private session: PracticeSession | undefined;
@@ -328,6 +330,11 @@ export class Trainer {
       : 0;
   }
 
+  /** Only the text mode needs note statuses in the throttled React snapshot. */
+  observeTextNotes(noteIds: readonly string[]): void {
+    this.textNoteIds = noteIds;
+  }
+
   pedal(down: boolean, timestamp = performance.now(), deviceId = ""): void {
     if (this.recorder && this.session) {
       if (performance.now() - timestamp > 250) return;
@@ -454,6 +461,13 @@ export class Trainer {
       time: session.time,
       beat: this.lastBeat,
       stats,
+      ...(this.textNoteIds.length > 0
+        ? {
+            noteStatuses: Object.fromEntries(
+              this.textNoteIds.map((id) => [id, session.statusOf(id)])
+            )
+          }
+        : {}),
       ...(this.diagnostic ? { diagnostic: this.diagnostic } : {})
     });
   }
