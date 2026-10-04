@@ -192,8 +192,10 @@ export class Trainer {
           hands: [...session.options.hands],
           from: session.startedFrom,
           timing: {
-            rulesVersion: 1,
+            rulesVersion: 2,
             difficulty: session.options.difficulty ?? "normal",
+            learningWindow:
+              session.options.mode === "tempo" && session.options.learningWindow === true,
             ...this.timing
           }
         });
@@ -374,6 +376,9 @@ export class Trainer {
     }
     this.view.draw({
       time: session.time - (this.timing.visualOffsetMs / 1000) * session.options.speed,
+      hintTime: session.time,
+      hintSpeed: session.options.speed,
+      hintNotes: session.keyHints(),
       lookAhead: LOOK_AHEAD_S,
       statusOf: (id) => session.statusOf(id),
       pressed: this.pressed,
@@ -391,6 +396,9 @@ export class Trainer {
     const mirror = this.comparison?.mirror;
     mirror?.view.draw({
       time: session.time,
+      hintTime: session.time,
+      hintSpeed: session.options.speed,
+      hintNotes: [],
       lookAhead: LOOK_AHEAD_S,
       statusOf: () => undefined,
       pressed: NOTHING,
@@ -429,7 +437,14 @@ export class Trainer {
         case "wrong": {
           const grade = this.combo.record(event);
           const pitch = event.type === "wrong" ? event.pitch : this.pitchOf.get(event.noteId);
-          if (grade && pitch !== undefined) this.graded.push({ grade, pitch });
+          if (grade && pitch !== undefined)
+            this.graded.push({
+              grade,
+              pitch,
+              ...(event.type === "hit"
+                ? { offsetMs: event.offset * 1000, assisted: event.assisted }
+                : {})
+            });
           if (event.type !== "hit" && this.stopOnError) this.setPlaying(false);
           break;
         }

@@ -11,6 +11,8 @@ export const PERFECT_WINDOW_S = 0.03;
 export interface GradedStrike {
   readonly grade: StrikeGrade;
   readonly pitch: number;
+  readonly offsetMs?: number;
+  readonly assisted?: boolean;
 }
 
 /** The board over the lane: the run of notes taken without a slip, and the share taken. */

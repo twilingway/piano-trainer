@@ -37,6 +37,7 @@ export interface Take {
   readonly timing?: TimingConfig & {
     readonly rulesVersion: number;
     readonly difficulty: Difficulty;
+    readonly learningWindow?: boolean;
   };
   readonly id: string;
   /** Which song this is a take of: the same key the finger corrections use. */

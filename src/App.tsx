@@ -195,6 +195,7 @@ export function App() {
           ranked={game.ranked}
           rankedReady={timing.rankedReady}
           performance={game.performance}
+          learningWindow={game.learningWindow}
           stopOnError={game.stopOnError}
           locked={playing}
           from={game.range.from}

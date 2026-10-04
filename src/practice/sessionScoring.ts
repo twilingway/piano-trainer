@@ -25,7 +25,8 @@ export class SessionScoring {
   private lastApplied: Command | undefined;
   constructor(
     private readonly notes: readonly SongNote[],
-    private readonly difficulty: Difficulty
+    private readonly difficulty: Difficulty,
+    private readonly learningWindow = false
   ) {
     this.targetScore = idealScore(notes);
     this.energyPerHit = energyPerHit(notes);
@@ -84,6 +85,7 @@ export class SessionScoring {
   private create(): GameScore {
     return new GameScore(this.notes.length, {
       difficulty: this.difficulty,
+      learningWindow: this.learningWindow,
       targetScore: this.targetScore,
       energyPerHit: this.energyPerHit
     });

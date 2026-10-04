@@ -4,6 +4,7 @@ interface Props {
   readonly practiceOnly?: boolean;
   readonly difficulty: Difficulty;
   readonly ranked: boolean;
+  readonly learningWindow: boolean;
   readonly rankedReady: boolean;
   readonly performance: boolean;
   readonly stopOnError: boolean;
@@ -16,6 +17,7 @@ interface Props {
     change: Partial<{
       difficulty: Difficulty;
       ranked: boolean;
+      learningWindow: boolean;
       performance: boolean;
       stopOnError: boolean;
     }>
@@ -66,6 +68,21 @@ export function GameSettings(props: Props) {
           Рейтинг играет в темпе на скорости 100 %, без Loop.
         </p>
       )}
+      <label className="setting">
+        Учебное окно +300 мс
+        <input
+          type="checkbox"
+          checked={props.learningWindow && !props.ranked}
+          disabled={props.ranked || props.locked}
+          onChange={(event) => {
+            props.onChange({ learningWindow: event.target.checked });
+          }}
+        />
+      </label>
+      <p className="setting-hint">
+        Позднее нажатие до +300 мс даёт OK: 25 базовых очков. Точное попадание ценнее. Клавиша
+        постепенно подсвечивается за 300 мс до ноты. В рейтинге окно остаётся строгим.
+      </p>
       <label className="setting">
         Performance: скрыть подсказки
         <input

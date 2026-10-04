@@ -6,12 +6,14 @@ interface Preferences {
   performance: boolean;
   stopOnError: boolean;
   ranked: boolean;
+  learningWindow: boolean;
 }
 const DEFAULTS: Preferences = {
   difficulty: "normal",
   performance: false,
   stopOnError: false,
-  ranked: false
+  ranked: false,
+  learningWindow: true
 };
 function load(): Preferences {
   try {
@@ -24,7 +26,8 @@ function load(): Preferences {
         : "normal",
       performance: raw.performance === true,
       stopOnError: raw.stopOnError === true,
-      ranked: raw.ranked === true
+      ranked: raw.ranked === true,
+      learningWindow: typeof raw.learningWindow === "boolean" ? raw.learningWindow : true
     };
   } catch {
     return DEFAULTS;
@@ -55,10 +58,11 @@ export function useGameOptions(songKey: string, duration: number, practiceOnly =
   const options = useMemo(
     () => ({
       difficulty: preferences.difficulty,
+      learningWindow: preferences.learningWindow && !ranked,
       from: ranked ? 0 : range.from,
       to: ranked ? duration : range.to
     }),
-    [preferences.difficulty, ranked, range.from, range.to, duration]
+    [preferences.difficulty, preferences.learningWindow, ranked, range.from, range.to, duration]
   );
   return { ...preferences, ranked, range, options, update, updateRange };
 }
