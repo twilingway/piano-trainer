@@ -35,6 +35,12 @@
       сохранением, галочка в полосе настроек; тесты `wordTyping.test.ts`,
       `wordTypingPreferences.test.ts`
 
+## 4a. Словарь 10K
+
+- [x] 4a.1 Подготовка 10K и малого ресурса из одного списка без отступов, `dictionaryFile`, размер
+      `DictionarySize` в настройках, воркере и benchmark; тест `wordTyping.test.ts`; benchmark на
+      гимне (RU мелодия 10K: 100 % нот в словах, 352 мс против 181 мс у 3K)
+
 ## 5. Интеграция
 
 - [x] 5.1 `pnpm check` и `pnpm spec:validate` зелёные
