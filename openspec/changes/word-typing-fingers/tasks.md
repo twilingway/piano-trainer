@@ -28,6 +28,12 @@
 - [ ] 3.1 Убрать заголовок, оценку, пояснения и строку текущей ноты, текст мельче, полоса
       растягивается, легенда пальцев; проверка `pnpm typecheck` и глазами
 
+## 4. Аккомпанемент
+
+- [x] 4.0 `withAccompaniment` в `src/wordTyping/extractLine.ts`, флаг в настройках режима с
+      сохранением, галочка в полосе настроек; тесты `wordTyping.test.ts`,
+      `wordTypingPreferences.test.ts`
+
 ## 4. Интеграция
 
 - [x] 4.1 `pnpm check` и `pnpm spec:validate` зелёные
