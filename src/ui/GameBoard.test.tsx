@@ -145,6 +145,7 @@ describe("game score presentation", () => {
         onLayout={vi.fn()}
         onZoom={vi.fn()}
         onResetLayout={vi.fn()}
+        layoutMoved={false}
         gameBoard={
           <GameBoard
             mode="tempo"

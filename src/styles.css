@@ -140,7 +140,7 @@
   overflow: hidden;
   padding: 6px 0;
   border-radius: 12px;
-  background: rgb(2 12 24 / 72%);
+  background: transparent;
   mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
   font: 600 calc(clamp(18px, 2vw, 24px) * var(--ticker-scale, 1)) / 1.4 var(--font-digits);
   pointer-events: none;

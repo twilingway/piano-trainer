@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import {
-  DEFAULT_SCREEN_LAYOUT,
+  DEFAULT_SCREEN_LAYOUTS,
   loadScreenLayouts,
   normalizeLayout,
   saveScreenLayouts
@@ -19,13 +19,19 @@ export function useScreenLayout(mode: LayoutMode) {
       return next;
     });
   };
+  const layout = layouts[mode];
+  const defaults = DEFAULT_SCREEN_LAYOUTS[mode];
   return {
-    layout: layouts[mode],
+    layout,
+    /** Something differs from where reset would put it. */
+    moved: (Object.keys(defaults) as (keyof ScreenLayout)[]).some(
+      (key) => layout[key] !== defaults[key]
+    ),
     updateLayout: (change: Partial<ScreenLayout>) => {
-      store((previous) => normalizeLayout({ ...previous, ...change }));
+      store((previous) => normalizeLayout({ ...previous, ...change }, defaults));
     },
     resetLayout: () => {
-      store(() => DEFAULT_SCREEN_LAYOUT);
+      store(() => defaults);
     }
   };
 }

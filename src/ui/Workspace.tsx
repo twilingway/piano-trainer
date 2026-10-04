@@ -2,7 +2,7 @@ import type { ReactNode, RefObject } from "react";
 
 import type { StaffPrefs } from "../app/useStaffPrefs";
 import type { SplitDirection, TakeStaff } from "../app/useTakeReview";
-import { DEFAULT_SCREEN_LAYOUT, DEFAULT_STAFF_SHARE } from "../app/screenLayout";
+import { DEFAULT_STAFF_SHARE } from "../app/screenLayout";
 import type { ScreenLayout } from "../app/screenLayout";
 import { Staff } from "../staff/Staff";
 import { KeysHandles, LaneTopHandle, StaffHandle, TickerSlot } from "./LayoutHandles";
@@ -37,6 +37,8 @@ interface Props {
   readonly onLayout: (change: Partial<ScreenLayout>) => void;
   /** A one-line staff's edge changes its zoom. */
   readonly onZoom: (zoom: number) => void;
+  /** Something is off its reset place: the lane offers the reset. */
+  readonly layoutMoved: boolean;
   /** Puts the dragged parts back where they were. */
   readonly onResetLayout: () => void;
 }
@@ -57,9 +59,6 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const staffShown = Boolean(props.staffXml) && prefs.visible;
   // Without the staff the lane's own top edge drags, leaving room over it.
   const laneTop = !staffShown && laneMode !== "hidden" && !props.comparing;
-  const moved = (Object.keys(DEFAULT_SCREEN_LAYOUT) as (keyof typeof DEFAULT_SCREEN_LAYOUT)[]).some(
-    (key) => props.layout[key] !== DEFAULT_SCREEN_LAYOUT[key]
-  );
   return (
     <div className="workspace">
       <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
@@ -136,7 +135,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             {prefs.keys && laneMode !== "hidden" && !props.comparing && (
               <KeysHandles layout={props.layout} onLayout={props.onLayout} />
             )}
-            {moved && !props.comparing && (
+            {props.layoutMoved && !props.comparing && (
               <button type="button" className="layout-reset" onClick={props.onResetLayout}>
                 ↺ Сбросить расположение
               </button>

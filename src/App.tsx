@@ -328,6 +328,7 @@ export function App() {
         layout={screen.layout}
         onLayout={screen.updateLayout}
         onResetLayout={screen.resetLayout}
+        layoutMoved={screen.moved}
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}

@@ -37,6 +37,22 @@ export const DEFAULT_SCREEN_LAYOUT: ScreenLayout = {
   tickerScale: 1,
   laneTop: 0
 };
+/**
+ * Where reset puts each mode: the piano as drawn; the computer keys lifted off the bottom and
+ * moved under the running line, the line large and below the hit line (the player's own layout).
+ */
+export const DEFAULT_SCREEN_LAYOUTS: ScreenLayouts = {
+  piano: DEFAULT_SCREEN_LAYOUT,
+  typing: {
+    ...DEFAULT_SCREEN_LAYOUT,
+    keysLift: 0.222,
+    keysX: -1,
+    keysY: 101,
+    tickerGap: -83,
+    tickerX: -8,
+    tickerScale: 1.7
+  }
+};
 export const LAYOUT_LIMITS = {
   staffShare: [0.12, 0.8],
   keysLift: [0, 0.4],
@@ -57,8 +73,11 @@ export function clampLayout(key: keyof typeof LAYOUT_LIMITS, value: number): num
 }
 
 /** A saved layout as far as it makes sense: a broken value falls back, one out of range is pulled in. */
-export function normalizeLayout(value: unknown): ScreenLayout {
-  if (!value || typeof value !== "object") return DEFAULT_SCREEN_LAYOUT;
+export function normalizeLayout(
+  value: unknown,
+  defaults: ScreenLayout = DEFAULT_SCREEN_LAYOUT
+): ScreenLayout {
+  if (!value || typeof value !== "object") return defaults;
   const saved = value as Record<string, unknown>;
   const number = (key: keyof typeof LAYOUT_LIMITS, fallback: number) => {
     const raw = saved[key];
@@ -69,15 +88,15 @@ export function normalizeLayout(value: unknown): ScreenLayout {
     staffShare:
       typeof share === "number" && Number.isFinite(share)
         ? clampLayout("staffShare", share)
-        : undefined,
-    keysLift: number("keysLift", DEFAULT_SCREEN_LAYOUT.keysLift),
-    keysScale: number("keysScale", DEFAULT_SCREEN_LAYOUT.keysScale),
-    keysX: number("keysX", 0),
-    keysY: number("keysY", 0),
-    tickerGap: number("tickerGap", DEFAULT_SCREEN_LAYOUT.tickerGap),
-    tickerX: number("tickerX", 0),
-    tickerScale: number("tickerScale", 1),
-    laneTop: number("laneTop", DEFAULT_SCREEN_LAYOUT.laneTop)
+        : defaults.staffShare,
+    keysLift: number("keysLift", defaults.keysLift),
+    keysScale: number("keysScale", defaults.keysScale),
+    keysX: number("keysX", defaults.keysX),
+    keysY: number("keysY", defaults.keysY),
+    tickerGap: number("tickerGap", defaults.tickerGap),
+    tickerX: number("tickerX", defaults.tickerX),
+    tickerScale: number("tickerScale", defaults.tickerScale),
+    laneTop: number("laneTop", defaults.laneTop)
   };
 }
 
@@ -85,9 +104,12 @@ export function loadScreenLayouts(): ScreenLayouts {
   try {
     const raw: unknown = JSON.parse(localStorage.getItem(KEY) ?? "null");
     const saved = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-    return { piano: normalizeLayout(saved.piano), typing: normalizeLayout(saved.typing) };
+    return {
+      piano: normalizeLayout(saved.piano, DEFAULT_SCREEN_LAYOUTS.piano),
+      typing: normalizeLayout(saved.typing, DEFAULT_SCREEN_LAYOUTS.typing)
+    };
   } catch {
-    return { piano: DEFAULT_SCREEN_LAYOUT, typing: DEFAULT_SCREEN_LAYOUT };
+    return DEFAULT_SCREEN_LAYOUTS;
   }
 }
 
