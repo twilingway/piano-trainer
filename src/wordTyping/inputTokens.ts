@@ -3,14 +3,15 @@ import type { InputToken, Language } from "./types";
 const EN_LETTERS = "qwertyuiopasdfghjklzxcvbnm";
 const RU_LETTERS = "йцукенгшщзфывапролдячсмить";
 const LETTER_CODES = Array.from(EN_LETTERS).map((letter) => `Key${letter.toUpperCase()}`);
+/** ё last: it lies far off on the digit row, so every nearer letter is taken before it. */
 const RU_EXTRA = [
-  ["Backquote", "ё"],
   ["BracketLeft", "х"],
   ["BracketRight", "ъ"],
   ["Semicolon", "ж"],
   ["Quote", "э"],
   ["Comma", "б"],
-  ["Period", "ю"]
+  ["Period", "ю"],
+  ["Backquote", "ё"]
 ] as const;
 const TOP_ROW = [
   ["Backquote", "`"],

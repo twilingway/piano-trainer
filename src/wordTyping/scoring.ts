@@ -6,16 +6,15 @@ export const DEFAULT_CONFIG: OptimizerConfig = {
   maxCandidatesPerState: 48,
   coverageWeight: 20,
   frequencyWeight: 12,
-  longWordWeight: 3,
-  shortWordPenalty: 15,
+  longWordWeight: 5,
+  shortWordPenalty: 25,
   fallbackPenalty: 18,
   topRowPenalty: 10,
   shiftPenalty: 30,
   altPenalty: 50,
   homeRowBonus: 0.3,
-  digitRowLetterPenalty: 25,
   phraseBoundaryBonus: 3,
-  bigramWeight: 40
+  bigramWeight: 14
 };
 
 const HOME_ROW = new Set([
@@ -59,7 +58,6 @@ export function inputPenalty(
 
 export function comfortBonus(token: InputToken, config: OptimizerConfig): number {
   if (token.modifier !== "none") return 0;
-  if (token.physicalKey === "Backquote") return -config.digitRowLetterPenalty;
   return HOME_ROW.has(token.physicalKey) ? config.homeRowBonus : 0;
 }
 

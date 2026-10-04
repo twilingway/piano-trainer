@@ -1,8 +1,6 @@
 export type Language = "en" | "ru";
 export type Part = "melody" | "bass";
 export type Modifier = "none" | "shift" | "alt";
-/** Words of the dictionary the generator may use, the most frequent first. */
-export type DictionarySize = 1000 | 3000 | 10000;
 
 export interface InputToken {
   readonly physicalKey: string;
@@ -73,9 +71,7 @@ export interface OptimizerConfig {
   readonly shiftPenalty: number;
   readonly altPenalty: number;
   readonly homeRowBonus: number;
-  /** A letter on the digit row (ё), at every use: the other letters are nearer. */
-  readonly digitRowLetterPenalty: number;
   readonly phraseBoundaryBonus: number;
-  /** The bonus for a word that commonly follows the one before it, at full strength. */
+  /** The bonus a letter for a word that commonly follows the one before it, at full strength. */
   readonly bigramWeight: number;
 }

@@ -8,6 +8,8 @@ import type { GeneratedToken, Part, WordTypingResult } from "../wordTyping/types
 import { loadWordTypingPrefs, saveWordTypingPrefs } from "./wordTypingPreferences";
 import type { WordTypingPrefs } from "./wordTypingPreferences";
 
+/** The pairs' resource, from Tatoeba's export of that day (src/wordTypingTools/prepare.ts). */
+const BIGRAM_VERSION = "Tatoeba-2026-10-03-pairs-v1";
 const DICTIONARY_VERSION =
   "FrequencyWords-2018-525f9b560de45753a5ea01069454e72e9aa541c6-filtered-v1";
 interface Generation {
@@ -37,13 +39,13 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
         notes: line.notes.map(({ id, pitch, start, duration }) => [id, pitch, start, duration]),
         part,
         language: prefs.language,
-        size: prefs.dictionarySize,
+        pairs: BIGRAM_VERSION,
         dictionary: DICTIONARY_VERSION,
         algorithm: ALGORITHM_VERSION,
         scope: "strict",
         config: DEFAULT_CONFIG
       }),
-    [line, part, prefs.language, prefs.dictionarySize]
+    [line, part, prefs.language]
   );
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
@@ -72,13 +74,12 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     };
     worker.postMessage({
       notes: line.notes,
-      language: prefs.language,
-      dictionarySize: prefs.dictionarySize
+      language: prefs.language
     });
     return () => {
       worker.terminate();
     };
-  }, [prefs.enabled, prefs.language, prefs.dictionarySize, key, empty, line]);
+  }, [prefs.enabled, prefs.language, key, empty, line]);
 
   const keyboardOptions = useMemo<KeyboardInputOptions>(
     () => ({

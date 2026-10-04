@@ -16,7 +16,7 @@ import type {
 } from "./types";
 
 export { DEFAULT_CONFIG } from "./scoring";
-export const ALGORITHM_VERSION = "word-typing-v2";
+export const ALGORITHM_VERSION = "word-typing-v3";
 
 interface Segment {
   readonly start: number;
@@ -98,7 +98,12 @@ function wordCandidates(
           wordScore(node.entry, dictionarySize, config) +
           boundary +
           comfort +
-          (previous ? config.bigramWeight * bigrams.strength(previous.rank, node.entry.rank) : 0)
+          // Per letter, so that splitting a line into many short linked pairs earns nothing.
+          (previous
+            ? config.bigramWeight *
+              node.entry.word.length *
+              bigrams.strength(previous.rank, node.entry.rank)
+            : 0)
       });
     }
     if (offset >= config.maxWordLength) return;
@@ -236,12 +241,17 @@ export function generateWordTyping(
   if (totalPitches > pool.length) throw new Error("Недостаточно клавиш для всех высот мелодии");
   const letters = languageTokens(language);
   const letterIndexes = new Map(letters.map((token, index) => [token.display, index]));
+  // A letter on the digit row (ё) is far from the hands: no word asks for it. Nearly every such
+  // word has its spelling without it (еще, все), and the key stays free for a fallback.
+  const farLetters = new Set(
+    letters.filter((token) => token.physicalKey === "Backquote").map((token) => token.display)
+  );
   const validEntries = dictionary.filter(
     (entry) =>
       entry.word.length > 0 &&
       Number.isFinite(entry.rank) &&
       entry.rank >= 1 &&
-      Array.from(entry.word).every((letter) => letterIndexes.has(letter))
+      Array.from(entry.word).every((letter) => letterIndexes.has(letter) && !farLetters.has(letter))
   );
   const trie = buildTrie(validEntries);
   const beams: State[][] = Array.from({ length: notes.length + 1 }, () => []);

@@ -12,7 +12,6 @@ describe("separate word typing preferences", () => {
     const prefs = {
       enabled: true,
       language: "en",
-      dictionarySize: 3000,
       accompaniment: true
     } as const;
     expect(saveWordTypingPrefs(prefs)).toBe(true);
@@ -22,12 +21,11 @@ describe("separate word typing preferences", () => {
   it("rejects invalid persisted values and tolerates unavailable storage", () => {
     localStorage.setItem(
       "word-typing-prefs-v1",
-      JSON.stringify({ enabled: "true", language: "bad", dictionarySize: 20, accompaniment: 1 })
+      JSON.stringify({ enabled: "true", language: "bad", dictionarySize: 3000, accompaniment: 1 })
     );
     expect(loadWordTypingPrefs()).toEqual({
       enabled: false,
       language: "ru",
-      dictionarySize: 1000,
       accompaniment: false
     });
     vi.spyOn(localStorage, "setItem").mockImplementation(() => {
@@ -37,7 +35,6 @@ describe("separate word typing preferences", () => {
       saveWordTypingPrefs({
         enabled: false,
         language: "ru",
-        dictionarySize: 1000,
         accompaniment: false
       })
     ).toBe(false);

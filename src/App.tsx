@@ -171,7 +171,6 @@ export function App() {
     <WordTypingSettings
       language={word.language}
       part={word.part}
-      dictionarySize={word.dictionarySize}
       accompaniment={word.accompaniment}
       onAccompaniment={word.setAccompaniment}
       locked={playing}
@@ -181,9 +180,6 @@ export function App() {
       onPart={(part) => {
         startFromRef.current = null;
         word.choosePart(part);
-      }}
-      onSize={(dictionarySize) => {
-        word.update({ dictionarySize });
       }}
     />
   );

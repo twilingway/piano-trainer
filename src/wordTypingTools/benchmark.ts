@@ -11,8 +11,8 @@ import type * as MusicXmlModule from "../song/musicxml";
 import type { Song } from "../song/song";
 import type * as ExtractLineModule from "../wordTyping/extractLine";
 import type * as OptimizerModule from "../wordTyping/optimizer";
-import type * as DictionaryModule from "../wordTyping/dictionary";
-import type { DictionarySize, WordTypingResult } from "../wordTyping/types";
+import type * as BigramsModule from "../wordTyping/bigrams";
+import type { WordTypingResult } from "../wordTyping/types";
 import type { DictionaryResource } from "./dictionarySource";
 
 interface Arguments {
@@ -23,7 +23,8 @@ interface Arguments {
 
 interface BenchmarkRow {
   readonly language: "en" | "ru";
-  readonly dictionarySize: DictionarySize;
+  /** The generator weighed word pairs from real sentences. */
+  readonly bigrams: boolean;
   readonly dictionaryVersion: string;
   readonly part: "melody" | "bass";
   readonly discardedNotes: number;
@@ -62,11 +63,7 @@ function parseArguments(args: readonly string[]): Arguments {
   return { input, beamWidth, output };
 }
 
-function validateDictionary(
-  value: unknown,
-  language: "en" | "ru",
-  size: DictionarySize
-): DictionaryResource {
+function validateDictionary(value: unknown, language: "en" | "ru"): DictionaryResource {
   if (
     typeof value !== "object" ||
     value === null ||
@@ -80,7 +77,7 @@ function validateDictionary(
     typeof value.source !== "string" ||
     !("entries" in value) ||
     !Array.isArray(value.entries) ||
-    value.entries.length < size
+    value.entries.length < 10000
   ) {
     throw new Error(
       `Неверный ресурс ${language}; сначала запустите src/wordTypingTools/prepare.ts`
@@ -121,8 +118,8 @@ function renderReport(
   rows: readonly BenchmarkRow[]
 ): string {
   const table = [
-    "| Язык | Словарь | Партия | Ноты | Высоты | Слова % | Буквы % | Верхний ряд % | Shift % | Alt % | Ср. длина | Макс. длина | Ср. ранг | Читаемость | Удобство | Качество | Звёзды | мс |",
-    "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+    "| Язык | Биграммы | Партия | Ноты | Высоты | Слова % | Буквы % | Верхний ряд % | Shift % | Alt % | Ср. длина | Макс. длина | Ср. ранг | Связные пары % | Читаемость | Удобство | Качество | Звёзды | мс |",
+    "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
   ];
   const details: string[] = [];
   for (const row of rows) {
@@ -132,10 +129,10 @@ function renderReport(
       ""
     );
     table.push(
-      `| ${row.language.toUpperCase()} | ${String(row.dictionarySize)} | ${row.part} | ${String(metrics.totalNotes)} | ${String(metrics.uniquePitches)} | ${metrics.dictionaryCoveragePercent.toFixed(1)}% | ${percent(metrics.normalLetterCount, metrics.totalNotes)} | ${percent(metrics.topRowCount, metrics.totalNotes)} | ${percent(metrics.shiftCount, metrics.totalNotes)} | ${percent(metrics.altCount, metrics.totalNotes)} | ${metrics.averageWordLength.toFixed(2)} | ${String(metrics.longestWordLength)} | ${metrics.averageWordRank.toFixed(1)} | ${metrics.readabilityScore.toFixed(1)} | ${metrics.typingComfortScore.toFixed(1)} | ${metrics.totalScore.toFixed(1)} | ${String(metrics.stars)} | ${row.runtimeMs.toFixed(1)} |`
+      `| ${row.language.toUpperCase()} | ${row.bigrams ? "да" : "нет"} | ${row.part} | ${String(metrics.totalNotes)} | ${String(metrics.uniquePitches)} | ${metrics.dictionaryCoveragePercent.toFixed(1)}% | ${percent(metrics.normalLetterCount, metrics.totalNotes)} | ${percent(metrics.topRowCount, metrics.totalNotes)} | ${percent(metrics.shiftCount, metrics.totalNotes)} | ${percent(metrics.altCount, metrics.totalNotes)} | ${metrics.averageWordLength.toFixed(2)} | ${String(metrics.longestWordLength)} | ${metrics.averageWordRank.toFixed(1)} | ${metrics.linkedPairsPercent.toFixed(1)}% | ${metrics.readabilityScore.toFixed(1)} | ${metrics.typingComfortScore.toFixed(1)} | ${metrics.totalScore.toFixed(1)} | ${String(metrics.stars)} | ${row.runtimeMs.toFixed(1)} |`
     );
     details.push(
-      `## ${row.language.toUpperCase()} ${String(row.dictionarySize)} ${row.part}`,
+      `## ${row.language.toUpperCase()} ${row.bigrams ? "с биграммами" : "без биграмм"} ${row.part}`,
       "",
       `Словарь: ${row.dictionaryVersion}. Исключено одновременных нот: ${String(row.discardedNotes)}.`,
       "",
@@ -238,31 +235,42 @@ async function main(): Promise<void> {
     }
     if (song.notes.length === 0) throw new Error("В музыкальном файле не найдено нот");
     const rows: BenchmarkRow[] = [];
-    const files = (await server.ssrLoadModule(
-      "/src/wordTyping/dictionary.ts"
-    )) as typeof DictionaryModule;
+    const pairsModule = (await server.ssrLoadModule(
+      "/src/wordTyping/bigrams.ts"
+    )) as typeof BigramsModule;
     for (const language of ["en", "ru"] as const) {
-      for (const dictionarySize of [1000, 3000, 10000] as const) {
-        const file = files.dictionaryFile(language, dictionarySize);
-        const dictionary = validateDictionary(
-          JSON.parse(
-            await readFile(resolve(projectRoot, `public/word-typing/${file}`), "utf8")
-          ) as unknown,
-          language,
-          dictionarySize
-        );
+      const dictionary = validateDictionary(
+        JSON.parse(
+          await readFile(resolve(projectRoot, `public/word-typing/${language}.json`), "utf8")
+        ) as unknown,
+        language
+      );
+      const pairs = (
+        JSON.parse(
+          await readFile(
+            resolve(projectRoot, `public/word-typing/${language}-bigrams.json`),
+            "utf8"
+          )
+        ) as { pairs?: unknown }
+      ).pairs;
+      if (!Array.isArray(pairs) || !pairs.every((item) => Number.isInteger(item))) {
+        throw new Error(`Неверный ресурс биграмм ${language}; сначала запустите prepare.ts`);
+      }
+      const table = pairsModule.decodeBigrams(pairs as number[], dictionary.entries.length);
+      for (const bigrams of [false, true]) {
         for (const part of ["melody", "bass"] as const) {
           const line = extraction.extractLine(song, part);
           const started = performance.now();
           const result = core.generateWordTyping(
             line.notes,
-            dictionary.entries.slice(0, dictionarySize),
+            dictionary.entries,
             language,
-            { beamWidth: args.beamWidth }
+            { beamWidth: args.beamWidth },
+            bigrams ? table : pairsModule.NO_BIGRAMS
           );
           rows.push({
             language,
-            dictionarySize,
+            bigrams,
             dictionaryVersion: dictionary.version,
             part,
             discardedNotes: line.discardedNotes,
