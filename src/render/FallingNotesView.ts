@@ -97,6 +97,8 @@ export class FallingNotesView {
   private rangeFitsViewport = false;
   private laidOutFor = { width: 0, height: 0 };
   private hudTop = 0;
+  /** The element the view fills: it carries the hit line for the page's overlays. */
+  private host: HTMLElement | undefined;
   /** The next scroll lands on its target at once: a new song starts where its keys are. */
   private panSnap = true;
   /** The whole keyboard's width: wider than the view when it scrolls. */
@@ -124,6 +126,7 @@ export class FallingNotesView {
       autoDensity: true
     });
     host.appendChild(this.app.canvas);
+    this.host = host;
     this.fpsMeter = new FpsMeter(host, this.app.ticker);
     this.fpsMeter.setVisible(this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
@@ -584,11 +587,10 @@ export class FallingNotesView {
         this.road.effects.visible = false;
       }
     }
-    this.hud.layout(
-      width,
-      this.roadMode && this.road ? this.road.hitLineY : geometry.hitY,
-      this.hudTop
-    );
+    const hitLineY = this.roadMode && this.road ? this.road.hitLineY : geometry.hitY;
+    this.hud.layout(width, hitLineY, this.hudTop);
+    // Where the notes meet the keys, for the page's overlays: the word mode's text sits over it.
+    this.host?.style.setProperty("--hit-line", `${String(hitLineY)}px`);
   }
 
   /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */

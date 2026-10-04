@@ -131,22 +131,39 @@
   grid-template-columns: none;
   width: auto;
 }
-.word-text {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: start;
-  gap: 6px 14px;
+/* The text as a running line just over the keys; without the lane, under the board. */
+.word-ticker {
+  box-sizing: border-box;
   flex: 0 0 auto;
-  max-height: 96px;
-  overflow: auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  width: min(900px, calc(100% - 32px));
+  margin: 0 auto;
+  overflow: hidden;
+  padding: 6px 0;
   border-radius: 12px;
-  padding: 10px 14px;
-  font: 600 clamp(15px, 1.6vw, 19px)/1.5 var(--font-digits);
+  background: rgb(2 12 24 / 72%);
+  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  font: 600 clamp(18px, 2vw, 24px)/1.4 var(--font-digits);
+  pointer-events: none;
 }
-.word-text__word {
+.lane > .word-ticker {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% - var(--hit-line, 100%) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+.word-ticker__track {
+  position: relative;
+  display: flex;
+  gap: 0.9em;
+  width: max-content;
   white-space: nowrap;
+  transition: transform 0.22s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .word-ticker__track {
+    transition: none;
+  }
 }
 .word-character {
   color: var(--muted);
@@ -229,11 +246,6 @@
     min-width: 0;
     font-size: 11px;
     padding: 5px;
-  }
-  .word-text {
-    padding: 8px 10px;
-    gap: 4px 10px;
-    max-height: 72px;
   }
 }
 

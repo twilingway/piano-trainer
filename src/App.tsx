@@ -28,7 +28,7 @@ import { SongProgress } from "./ui/SongProgress";
 import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
 import { useWordTyping } from "./app/useWordTyping";
-import { WordTypingBoard } from "./ui/WordTypingBoard";
+import { WordTicker, WordTypingBoard } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
 import { GameModeSwitch } from "./ui/GameModeSwitch";
 import { PracticeTimingStatus } from "./ui/PracticeTimingStatus";
@@ -290,6 +290,18 @@ export function App() {
               pending={word.pending}
               error={word.error}
               notice={word.notice}
+            />
+          ) : undefined
+        }
+        wordTicker={
+          word.enabled && !comparing ? (
+            <WordTicker
+              result={word.result}
+              statuses={snapshot?.noteStatuses}
+              time={snapshot?.time ?? -2}
+              listening={listening}
+              pending={word.pending}
+              error={word.error}
             />
           ) : undefined
         }

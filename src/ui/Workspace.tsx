@@ -27,6 +27,8 @@ interface Props {
   readonly mirrorHostRef: RefObject<HTMLDivElement | null>;
   readonly gameBoard?: ReactNode;
   readonly wordBoard?: ReactNode;
+  /** The word mode's running line: over the keys when the lane shows its notes. */
+  readonly wordTicker?: ReactNode;
 }
 
 /** The game: the staff (and the take's own) over the falling notes (and the original's). */
@@ -42,6 +44,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
       <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
         {/* The word mode's text over the usual staff and lane, whose keys turn computer keys. */}
         {props.wordBoard}
+        {laneMode !== "full" && props.wordTicker}
         {props.staffXml && prefs.visible && (
           <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
             <div className="staff-slot">
@@ -94,6 +97,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           <div className="lane" ref={hostRef}>
             {props.comparing && <span className="lane-label">Твой дубль</span>}
             {props.waiting && <span className="waiting-pill">Жду ноту</span>}
+            {laneMode === "full" && props.wordTicker}
           </div>
           {props.comparing && (
             <div className="lane" ref={mirrorHostRef}>
