@@ -178,6 +178,8 @@ export function App() {
       language={word.language}
       part={word.part}
       dictionarySize={word.dictionarySize}
+      accompaniment={word.accompaniment}
+      onAccompaniment={word.setAccompaniment}
       locked={playing}
       onLanguage={(language) => {
         word.update({ language });

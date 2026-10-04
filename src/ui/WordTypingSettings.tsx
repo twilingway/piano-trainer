@@ -4,10 +4,12 @@ interface Props {
   readonly language: Language;
   readonly part: Part;
   readonly dictionarySize: 1000 | 3000;
+  readonly accompaniment: boolean;
   readonly locked: boolean;
   readonly onLanguage: (language: Language) => void;
   readonly onPart: (part: Part) => void;
   readonly onSize: (size: 1000 | 3000) => void;
+  readonly onAccompaniment: (on: boolean) => void;
 }
 
 export function WordTypingSettings(props: Props) {
@@ -57,6 +59,17 @@ export function WordTypingSettings(props: Props) {
           <option value="1000">1 000 слов</option>
           <option value="3000">3 000 слов</option>
         </select>
+      </label>
+      <label title="Вторая рука песни играет сама под печатаемую партию">
+        <input
+          type="checkbox"
+          checked={props.accompaniment}
+          disabled={props.locked}
+          onChange={(event) => {
+            props.onAccompaniment(event.target.checked);
+          }}
+        />
+        Аккомпанемент второй руки
       </label>
     </div>
   );

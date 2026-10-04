@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import type { Song } from "../song/song";
-import { extractLine } from "../wordTyping/extractLine";
+import { extractLine, withAccompaniment } from "../wordTyping/extractLine";
 import { ALGORITHM_VERSION } from "../wordTyping/optimizer";
 import { DEFAULT_CONFIG } from "../wordTyping/scoring";
 import type { Part, WordTypingResult } from "../wordTyping/types";
@@ -26,6 +26,10 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
   });
   const part = selection.songKey === songKey ? selection.part : "melody";
   const line = useMemo(() => extractLine(song, part), [song, part]);
+  const practice = useMemo(
+    () => (prefs.accompaniment ? withAccompaniment(song, line.song, part) : line.song),
+    [prefs.accompaniment, song, line, part]
+  );
   const key = useMemo(
     () =>
       JSON.stringify({
@@ -102,8 +106,13 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     choosePart: (next: Part) => {
       setSelection({ songKey, part: next });
     },
-    practiceSong: prefs.enabled ? line.song : song,
-    practiceKey: prefs.enabled ? `${songKey}:word-typing:${part}` : songKey
+    setAccompaniment: (accompaniment: boolean) => {
+      update({ accompaniment });
+    },
+    practiceSong: prefs.enabled ? practice : song,
+    practiceKey: prefs.enabled
+      ? `${songKey}:word-typing:${part}${prefs.accompaniment ? ":accompaniment" : ""}`
+      : songKey
   };
 }
 export type WordTypingControls = ReturnType<typeof useWordTyping>;
