@@ -931,6 +931,25 @@ select:disabled {
   background: var(--accent-soft);
 }
 
+/* A level and its downloads: the level fills the row, the file chips trail it. */
+.level-row {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.level-row > .level-chip:first-child {
+  flex: 1 1 auto;
+  text-align: left;
+}
+
+.level-export {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .song-card__open {
   padding: 0;
   border: 0;

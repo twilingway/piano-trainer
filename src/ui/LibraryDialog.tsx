@@ -17,6 +17,12 @@ interface Props {
   /** The library song on screen: `my:<id>` or `dir:<path>`. */
   readonly currentSource: string | null;
   readonly onLesson: (exerciseId: string, levelId: string) => void;
+  /** Saves a lesson level as a file; the library stays open and the lesson on screen stays. */
+  readonly onExportLesson: (
+    exerciseId: string,
+    levelId: string,
+    format: "musicxml" | "midi"
+  ) => void;
   readonly mySongs: readonly { readonly id: string; readonly title: string }[];
   readonly onMySong: (id: string) => void;
   readonly onDeleteMySong: (id: string) => void;
@@ -74,19 +80,42 @@ export function LibraryDialog(props: Props) {
             <strong>{lesson.title}</strong>
             <div className="song-card__levels">
               {lesson.levels.map((level) => (
-                <button
-                  key={level.id}
-                  type="button"
-                  className="level-chip"
-                  aria-pressed={
-                    props.current?.exerciseId === lesson.id && props.current.levelId === level.id
-                  }
-                  onClick={choose(() => {
-                    props.onLesson(lesson.id, level.id);
-                  })}
-                >
-                  {level.title}
-                </button>
+                <div key={level.id} className="level-row">
+                  <button
+                    type="button"
+                    className="level-chip"
+                    aria-pressed={
+                      props.current?.exerciseId === lesson.id && props.current.levelId === level.id
+                    }
+                    onClick={choose(() => {
+                      props.onLesson(lesson.id, level.id);
+                    })}
+                  >
+                    {level.title}
+                  </button>
+                  <button
+                    type="button"
+                    className="level-chip level-export"
+                    aria-label={`Скачать «${lesson.title} · ${level.title}» как MusicXML`}
+                    title="Скачать MusicXML"
+                    onClick={() => {
+                      props.onExportLesson(lesson.id, level.id, "musicxml");
+                    }}
+                  >
+                    MusicXML
+                  </button>
+                  <button
+                    type="button"
+                    className="level-chip level-export"
+                    aria-label={`Скачать «${lesson.title} · ${level.title}» как MIDI`}
+                    title="Скачать MIDI"
+                    onClick={() => {
+                      props.onExportLesson(lesson.id, level.id, "midi");
+                    }}
+                  >
+                    MIDI
+                  </button>
+                </div>
               ))}
             </div>
           </div>

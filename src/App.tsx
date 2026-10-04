@@ -5,6 +5,8 @@ import { useTimingControls } from "./app/useTimingControls";
 import { GameSettings } from "./ui/GameSettings";
 import { GameBoard } from "./ui/GameBoard";
 
+import { lessonExportFile } from "./app/lessonExport";
+import type { LessonExportFormat } from "./app/lessonExport";
 import { LESSONS } from "./app/lessons";
 import { useFallingView } from "./app/useFallingView";
 import { useFullscreen } from "./app/useFullscreen";
@@ -34,6 +36,20 @@ import { StaffSettings } from "./ui/settings/StaffSettings";
 import { SongProgress } from "./ui/SongProgress";
 import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
+
+/** Hands a lesson level to the browser as a file to save. */
+function downloadLesson(exerciseId: string, levelId: string, format: LessonExportFormat): void {
+  const { name, data } = lessonExportFile({ exerciseId, levelId }, format);
+  const type = format === "midi" ? "audio/midi" : "application/vnd.recordare.musicxml+xml";
+  const url = URL.createObjectURL(
+    new Blob([typeof data === "string" ? data : new Uint8Array(data)], { type })
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export function App() {
   const fullscreen = useFullscreen();
@@ -385,6 +401,7 @@ export function App() {
         onLesson={(exerciseId, levelId) => {
           current.openLesson({ exerciseId, levelId });
         }}
+        onExportLesson={downloadLesson}
         mySongs={library.mySongs}
         onMySong={(id) => void library.openMySong(id)}
         onDeleteMySong={(id) => void library.deleteMySong(id)}
