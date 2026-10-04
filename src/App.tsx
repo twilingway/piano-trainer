@@ -5,8 +5,7 @@ import { useTimingControls } from "./app/useTimingControls";
 import { GameSettings } from "./ui/GameSettings";
 import { GameBoard } from "./ui/GameBoard";
 
-import { lessonExportFile } from "./app/lessonExport";
-import type { LessonExportFormat } from "./app/lessonExport";
+import { downloadLesson } from "./app/lessonExport";
 import { LESSONS } from "./app/lessons";
 import { useFallingView } from "./app/useFallingView";
 import { useFullscreen } from "./app/useFullscreen";
@@ -41,20 +40,6 @@ import { useWordTypingPointer } from "./app/useWordTypingPointer";
 import { WordTypingBoard } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
 import { GameModeSwitch } from "./ui/GameModeSwitch";
-
-/** Hands a lesson level to the browser as a file to save. */
-function downloadLesson(exerciseId: string, levelId: string, format: LessonExportFormat): void {
-  const { name, data } = lessonExportFile({ exerciseId, levelId }, format);
-  const type = format === "midi" ? "audio/midi" : "application/vnd.recordare.musicxml+xml";
-  const url = URL.createObjectURL(
-    new Blob([typeof data === "string" ? data : new Uint8Array(data)], { type })
-  );
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  URL.revokeObjectURL(url);
-}
 
 export function App() {
   const fullscreen = useFullscreen();

@@ -31,3 +31,21 @@ export function lessonExportFile(
   if (format === "midi") return { name, data: songToMidi(fingered) };
   return { name, data: musicXmlWithFingering(song.musicXml ?? "", fingered.notes) };
 }
+
+/** Hands a lesson level to the browser as a file to save. */
+export function downloadLesson(
+  exerciseId: string,
+  levelId: string,
+  format: LessonExportFormat
+): void {
+  const { name, data } = lessonExportFile({ exerciseId, levelId }, format);
+  const type = format === "midi" ? "audio/midi" : "application/vnd.recordare.musicxml+xml";
+  const url = URL.createObjectURL(
+    new Blob([typeof data === "string" ? data : new Uint8Array(data)], { type })
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
