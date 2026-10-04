@@ -227,12 +227,12 @@ export class NotesLayer {
     this.guides.removeChildren().forEach((child) => {
       child.destroy();
     });
-    // Octave boundaries align with the left edge of each C key.
+    // White-key boundaries form the lanes; each octave has a stronger edge.
     for (const [pitch, key] of keys) {
-      if (pitch % 12 !== 0) continue;
+      if (key.black) continue;
       const line = new Sprite(Texture.WHITE);
       line.tint = OCTAVE_LINE;
-      line.alpha = 0.5;
+      line.alpha = pitch % 12 === 0 ? 0.5 : 0.18;
       line.x = key.x;
       line.width = 1;
       line.height = hitY;
