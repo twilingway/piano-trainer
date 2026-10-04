@@ -14,7 +14,9 @@ export const DEFAULT_CONFIG: OptimizerConfig = {
   altPenalty: 50,
   homeRowBonus: 0.3,
   phraseBoundaryBonus: 3,
-  bigramWeight: 14
+  bigramWeight: 14,
+  repeatPenalty: 12,
+  variantNoise: 10
 };
 
 const HOME_ROW = new Set([
