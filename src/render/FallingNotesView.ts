@@ -281,10 +281,10 @@ export class FallingNotesView {
 
   setKeysPlacement(placement: KeysPlacement): void {
     // Moved keys only shift with the scroll; a lift or a size lays the view out again.
-    const resized =
-      placement.lift !== this.placement.lift || placement.scale !== this.placement.scale;
+    const { lift, scale } = this.placement;
     this.placement = placement;
-    if (resized) this.laidOutFor = { width: 0, height: 0 };
+    if (placement.lift !== lift || placement.scale !== scale)
+      this.laidOutFor = { width: 0, height: 0 };
   }
 
   setRoadShape(shape: RoadShape): void {
@@ -531,10 +531,10 @@ export class FallingNotesView {
       this.notesLayer.root.x = flat;
       this.notesLayer.cards.x = flat;
     }
-    // Flat keys may be moved off the hit line, the hands with them; the road keeps its own.
-    const { x, y } = this.roadMode ? USUAL_PLACEMENT : this.placement;
-    this.keysRoot.position.set(flat + x, y);
-    this.hands.container.position.set(x, y);
+    // The keys may be moved off the hit line, the hands with them; the notes stay on it.
+    this.keysRoot.position.set(flat + this.placement.x, this.placement.y);
+    this.hands.container.position.copyFrom(this.placement);
+    this.road?.setKeysOffset(this.placement);
     if (this.roadMode) this.road?.setPan(pan);
   }
 
