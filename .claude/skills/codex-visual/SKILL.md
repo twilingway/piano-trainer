@@ -38,9 +38,10 @@ If Codex is unavailable, continue alone and tell the user that the extra check d
 - **No code edits** during a consultation or an audit.
 - **Scores and samples.** `local-lessons/` holds scores that may not be published; Codex may read
   them for context but never copies their music into generated files.
-- **Where generated files go:** `public/generated/<name>.png`. Claude looks at every generated file
-  (Read) before using it, and the user confirms it may be committed, because the repository is
-  public.
+- **Where generated files go:** `public/generated/<name>.png`, a git-ignored scratch area that is
+  never committed. Claude looks at every generated file (Read) before using it. An asset the app
+  uses moves into the module that imports it (for example `src/render/keys/`) and is committed there
+  only after the user confirms, because the repository is public.
 - **When to call.** Substantial visual decisions and the final check, not every small edit.
 - **Running a call.** Calls take minutes: run them in the background, save the answer with
   `-o <scratchpad>/codex-<topic>.md`, summarise it for the user with the token count from the end of
