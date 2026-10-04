@@ -2,6 +2,7 @@
 import type { HandsChoice } from "../PlayerTopBar";
 
 interface Props {
+  readonly wordTyping?: boolean;
   readonly metronome: boolean;
   readonly onMetronome: (on: boolean) => void;
   readonly listening: boolean;
@@ -33,7 +34,8 @@ export function PlaySettings({
   speed,
   onSpeed,
   autoReview,
-  onAutoReview
+  onAutoReview,
+  wordTyping = false
 }: Props) {
   return (
     <div className="settings-list">
@@ -51,22 +53,24 @@ export function PlaySettings({
           <option value="tempo">В темпе</option>
         </select>
       </label>
-      <label className="setting">
-        <span>Руки</span>
-        <select
-          className="game-select"
-          aria-label="Руки"
-          value={hands}
-          onChange={(event) => {
-            onHands(event.target.value as HandsChoice);
-          }}
-        >
-          <option value="right">Правая рука</option>
-          <option value="left">Левая рука</option>
-          <option value="both">Обе руки</option>
-          <option value="listen">Только слушать</option>
-        </select>
-      </label>
+      {!wordTyping && (
+        <label className="setting">
+          <span>Руки</span>
+          <select
+            className="game-select"
+            aria-label="Руки"
+            value={hands}
+            onChange={(event) => {
+              onHands(event.target.value as HandsChoice);
+            }}
+          >
+            <option value="right">Правая рука</option>
+            <option value="left">Левая рука</option>
+            <option value="both">Обе руки</option>
+            <option value="listen">Только слушать</option>
+          </select>
+        </label>
+      )}
       <label className="setting">
         <span>Скорость</span>
         <span className="setting-control">
@@ -118,10 +122,7 @@ export function PlaySettings({
             : ""}
         </p>
       )}
-      <p className="setting-hint">
-        Горячие клавиши: Ctrl+Пробел или Alt+P — играть и пауза, Alt+R — сначала, Alt+L —
-        библиотека.
-      </p>
+      <p className="setting-hint">Ctrl+Пробел — играть и пауза.</p>
     </div>
   );
 }

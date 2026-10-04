@@ -20,6 +20,7 @@ const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
 };
 
 interface Options {
+  readonly wordTyping?: boolean;
   readonly gameOptions?: Pick<PracticeOptions, "difficulty" | "from" | "to">;
   readonly ranked?: boolean;
   readonly song: Song;
@@ -61,7 +62,8 @@ export function useTrainer({
   comparing,
   onReplay,
   gameOptions,
-  ranked = false
+  ranked = false,
+  wordTyping = false
 }: Options) {
   const hostRef = useRef<HTMLDivElement>(null);
   const trainerRef = useRef<Trainer | null>(null);
@@ -148,8 +150,8 @@ export function useTrainer({
     () =>
       listening
         ? { mode: "tempo", hands: new Set<Hand>(), speed }
-        : { mode, hands: new Set(HANDS[handChoice]), speed, ...gameOptions },
-    [listening, mode, handChoice, speed, gameOptions]
+        : { mode, hands: new Set(HANDS[wordTyping ? "right" : handChoice]), speed, ...gameOptions },
+    [listening, mode, handChoice, speed, gameOptions, wordTyping]
   );
 
   // The take to play back while comparing. Outside comparing it stays undefined, so a take
@@ -165,6 +167,7 @@ export function useTrainer({
   useEffect(() => {
     const trainer = trainerRef.current;
     if (!trainer) return;
+    trainer.observeTextNotes(wordTyping ? song.notes.map((note) => note.id) : []);
     if (replaying) {
       trainer.load(
         replaying.song,
@@ -187,7 +190,8 @@ export function useTrainer({
     songKey,
     startFromRef,
     replaying,
-    replayCount
+    replayCount,
+    wordTyping
   ]);
 
   useEffect(() => {

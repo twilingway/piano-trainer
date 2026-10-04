@@ -5,43 +5,42 @@
 Реализуй эту задачу на **TypeScript / Node.js**, а не на TypeScript.
 
 - Используй TypeScript `strict`.
-- Используй существующий package manager проекта (`pnpm`/`npm`/`yarn`) и существующий test runner, если они уже есть.
+- Используй существующий package manager проекта (`pnpm`/`npm`/`yarn`) и существующий test runner,
+  если они уже есть.
 - Не добавляй TypeScript-прототипы, TypeScript CLI или TypeScript-зависимости для этой задачи.
-- Все новые модули Word Typing, CLI, benchmark, downloader/cache словарей, parser adapters, Trie, Beam Search, scoring и metrics должны быть TypeScript.
-- Если в проекте уже есть JS/TS музыкальная инфраструктура, интегрируйся с ней вместо создания параллельной реализации.
+- Все новые модули Word Typing, CLI, benchmark, downloader/cache словарей, parser adapters, Trie,
+  Beam Search, scoring и metrics должны быть TypeScript.
+- Если в проекте уже есть JS/TS музыкальная инфраструктура, интегрируйся с ней вместо создания
+  параллельной реализации.
 
-Изучи существующий проект целиком перед изменениями. Не переписывай
-архитектуру без необходимости и не ломай существующие piano-layout
-режимы.
+Изучи существующий проект целиком перед изменениями. Не переписывай архитектуру без необходимости и
+не ломай существующие piano-layout режимы.
 
-В репозитории должна быть/будет спецификация `WORD_TYPING_SKILL.md`.
-Считай её главным техническим документом этой задачи и реализуй прототип
-согласно ей.
+В репозитории должна быть/будет спецификация `WORD_TYPING_SKILL.md`. Считай её главным техническим
+документом этой задачи и реализуй прототип согласно ей.
 
 ## Цель
 
-Добавить универсальный генератор `Word Typing`, который преобразует
-монофоническую музыкальную линию из MIDI/MusicXML в последовательность
-читаемых английских или русских слов.
+Добавить универсальный генератор `Word Typing`, который преобразует монофоническую музыкальную линию
+из MIDI/MusicXML в последовательность читаемых английских или русских слов.
 
-Игрок видит и вслепую печатает текст, а каждая физическая клавиша
-воспроизводит требуемую ноту.
+Игрок видит и вслепую печатает текст, а каждая физическая клавиша воспроизводит требуемую ноту.
 
 Ключевая модель:
 
-``` text
+```text
 InputToken → exactly one Pitch
 Pitch → many InputTokens
 ```
 
-То есть одной высоте можно назначить несколько букв/клавиш, но
-конкретный InputToken в рамках mapping всегда означает одну высоту.
+То есть одной высоте можно назначить несколько букв/клавиш, но конкретный InputToken в рамках
+mapping всегда означает одну высоту.
 
 ## Важно
 
 Не путай Word Typing с обычным piano mode:
 
-``` text
+```text
 обычный piano:
 Shift = sharp
 Alt = flat
@@ -54,7 +53,7 @@ Shift/Alt = дополнительные InputToken и используются 
 
 Использовать каскад:
 
-``` text
+```text
 1. обычные буквы языка
 2. `1234567890-=
 3. Shift + key
@@ -67,13 +66,13 @@ Shift/Alt = дополнительные InputToken и используются 
 
 Хорошо:
 
-``` text
+```text
 BEAUTIFUL MUSIC [7] AGAIN
 ```
 
 Плохо:
 
-``` text
+```text
 BEAU7IFUL MUS1C
 ```
 
@@ -81,53 +80,50 @@ BEAU7IFUL MUS1C
 
 Поддержать:
 
-``` text
+```text
 en
 ru
 ```
 
 Нужны частотные словари и возможность benchmark:
 
-``` text
+```text
 EN 1000
 EN 3000
 RU 1000
 RU 3000
 ```
 
-Найди подходящие публичные frequency word lists самостоятельно, реализуй
-downloader/cache и сохраняй источник/версию словаря.
+Найди подходящие публичные frequency word lists самостоятельно, реализуй downloader/cache и сохраняй
+источник/версию словаря.
 
-Top 1000 и top 3000 для одного языка должны быть срезами одного и того
-же упорядоченного frequency list, чтобы benchmark был честным.
+Top 1000 и top 3000 для одного языка должны быть срезами одного и того же упорядоченного frequency
+list, чтобы benchmark был честным.
 
-Если сеть недоступна во время runtime, используй уже скачанный cache. Не
-выдавай маленький fallback-словарь за полноценный 1K/3K benchmark.
+Если сеть недоступна во время runtime, используй уже скачанный cache. Не выдавай маленький
+fallback-словарь за полноценный 1K/3K benchmark.
 
 ## Музыка
 
-Поддержи существующий формат проекта. Если уже есть MusicXML/MIDI parser
---- используй его.
+Поддержи существующий формат проекта. Если уже есть MusicXML/MIDI parser --- используй его.
 
 Не создавай второй parser без необходимости.
 
 Для Word Typing:
 
-``` text
+```text
 1 note-on = 1 символ
 ```
 
-Длительность ноты влияет на время удержания, но не создаёт повторные
-буквы.
+Длительность ноты влияет на время удержания, но не создаёт повторные буквы.
 
 Слова могут свободно пересекать границы тактов.
 
 Паузы являются мягкими предпочтительными границами слов/фраз.
 
-Аккорды пока не решаем. Для полифонического файла нужно уметь отдельно
-выбрать/извлечь:
+Аккорды пока не решаем. Для полифонического файла нужно уметь отдельно выбрать/извлечь:
 
-``` text
+```text
 melody
 bass
 ```
@@ -138,7 +134,7 @@ bass
 
 Реализуй:
 
-``` text
+```text
 Beam Search + Trie
 ```
 
@@ -146,25 +142,24 @@ Beam Search + Trie
 
 State должен учитывать:
 
--   позицию в нотах;
--   существующий InputToken → Pitch mapping;
--   Pitch → InputTokens;
--   выбранные слова;
--   score;
--   fallback;
--   Shift;
--   Alt.
+- позицию в нотах;
+- существующий InputToken → Pitch mapping;
+- Pitch → InputTokens;
+- выбранные слова;
+- score;
+- fallback;
+- Shift;
+- Alt.
 
 Beam width должен быть конфигурируемым.
 
-Оптимизируй representation, если копирование Map на каждом состоянии
-становится bottleneck.
+Оптимизируй representation, если копирование Map на каждом состоянии становится bottleneck.
 
 ## Scoring
 
 Основной порядок ценностей:
 
-``` text
+```text
 readable real words
 frequency/commonness
 longer words
@@ -175,7 +170,7 @@ typing comfort
 
 Очень сильно штрафуй:
 
-``` text
+```text
 top-row fallback
 Shift
 Alt
@@ -184,12 +179,12 @@ garbage
 
 Причём:
 
-``` text
+```text
 Alt penalty > Shift penalty > top-row penalty > normal letter
 ```
 
-Добавь штраф за чрезмерное количество коротких слов (`of in is to...`),
-чтобы генератор предпочитал длинные общеупотребительные слова.
+Добавь штраф за чрезмерное количество коротких слов (`of in is to...`), чтобы генератор предпочитал
+длинные общеупотребительные слова.
 
 Все веса вынеси в config.
 
@@ -197,7 +192,7 @@ Alt penalty > Shift penalty > top-row penalty > normal letter
 
 Для каждого результата посчитать минимум:
 
-``` text
+```text
 total notes
 unique pitches
 dictionary coverage %
@@ -221,11 +216,11 @@ runtime
 
 Генератор должен вернуть:
 
--   получившийся текст;
--   token-by-token sequence;
--   InputToken → Pitch mapping;
--   Pitch → InputTokens mapping;
--   quality metrics.
+- получившийся текст;
+- token-by-token sequence;
+- InputToken → Pitch mapping;
+- Pitch → InputTokens mapping;
+- quality metrics.
 
 Результат должен быть сериализуемым в JSON.
 
@@ -235,7 +230,7 @@ runtime
 
 Cache key должен учитывать:
 
-``` text
+```text
 music hash
 selected part
 language
@@ -248,10 +243,9 @@ mapping scope
 
 ## Benchmark CLI
 
-Добавь удобную команду/скрипт, которая принимает MusicXML/MIDI и
-автоматически прогоняет:
+Добавь удобную команду/скрипт, которая принимает MusicXML/MIDI и автоматически прогоняет:
 
-``` text
+```text
 EN-1000
 EN-3000
 RU-1000
@@ -262,7 +256,7 @@ RU-3000
 
 Выведи таблицу:
 
-``` text
+```text
 language
 dictionary size
 part
@@ -279,8 +273,7 @@ quality
 runtime
 ```
 
-После таблицы покажи полный сгенерированный текст и mapping каждого
-прогона.
+После таблицы покажи полный сгенерированный текст и mapping каждого прогона.
 
 Сохрани machine-readable benchmark JSON рядом с human-readable report.
 
@@ -288,7 +281,7 @@ runtime
 
 Используй файл:
 
-``` text
+```text
 Гимн России · Лёгкий — бас одной нотой.musicxml
 ```
 
@@ -296,7 +289,7 @@ runtime
 
 В предыдущем эксперименте ориентировочно было:
 
-``` text
+```text
 melody ≈ 98 note-on / 11 pitches
 bass ≈ 36 note-on / 5 pitches
 ```
@@ -312,27 +305,24 @@ bass ≈ 36 note-on / 5 pitches
 3.  Реализуй dictionary downloader/cache.
 4.  Реализуй нормализацию EN/RU.
 5.  Реализуй Trie.
-6.  Реализуй extraction melody/bass через существующую музыкальную
-    инфраструктуру.
+6.  Реализуй extraction melody/bass через существующую музыкальную инфраструктуру.
 7.  Реализуй Word Typing optimizer.
 8.  Реализуй scoring.
 9.  Реализуй metrics.
 10. Реализуй cache результатов.
 11. Реализуй benchmark CLI.
-12. Добавь unit tests для mapping invariants, dictionary normalization,
-    scoring и deterministic generation.
+12. Добавь unit tests для mapping invariants, dictionary normalization, scoring и deterministic
+    generation.
 13. Прогони benchmark на гимне для 1K/3K EN/RU.
 14. Покажи фактические результаты, а не предполагаемые.
-15. Если 3K даёт хуже читаемость, проанализируй почему и поправь
-    scoring.
-16. Не трогай UI сверх необходимого для прототипа, если задача может
-    быть проверена CLI/тестами.
+15. Если 3K даёт хуже читаемость, проанализируй почему и поправь scoring.
+16. Не трогай UI сверх необходимого для прототипа, если задача может быть проверена CLI/тестами.
 
 ## Инварианты
 
 Обязательно:
 
-``` text
+```text
 один InputToken не может играть две разные высоты
 одна высота может иметь много InputToken
 каждый note-on должен получить игровой InputToken
@@ -345,10 +335,10 @@ Shift/Alt используются только после исчерпания 
 
 ## Definition of Done
 
-Задача считается выполненной, когда я могу выполнить одну команду на
-MusicXML гимна и получить реальные результаты:
+Задача считается выполненной, когда я могу выполнить одну команду на MusicXML гимна и получить
+реальные результаты:
 
-``` text
+```text
 EN 1K melody
 EN 3K melody
 RU 1K melody

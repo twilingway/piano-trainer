@@ -33,6 +33,37 @@ function send(
 }
 
 describe("browser computer keyboard input", () => {
+  it("uses word tokens instead of custom bindings, sustain and semitone modifiers", () => {
+    const events = start({ wordMapping: { "none:KeyA": 72, "shift:KeyA": 55, "alt:KeyB": 90 } });
+    send("keydown", "KeyA", { key: "ф", shiftKey: true });
+    send("keyup", "KeyA");
+    send("keydown", "KeyA");
+    send("keyup", "KeyA");
+    send("keydown", "KeyB", { altKey: true });
+    send("keyup", "KeyB");
+    send("keydown", "Space");
+    send("keydown", "KeyG");
+    send("keydown", "KeyA", { shiftKey: true, altKey: true });
+    expect(
+      events.map((event) => (event.type === "pedal" ? event : [event.type, event.pitch]))
+    ).toEqual([
+      ["down", 55],
+      ["up", 55],
+      ["down", 72],
+      ["up", 72],
+      ["down", 90],
+      ["up", 90]
+    ]);
+  });
+  it("keeps alias attacks and releases word notes when the mapping changes", () => {
+    const events = start({ wordMapping: { "none:KeyA": 60, "none:KeyB": 60 } });
+    send("keydown", "KeyA");
+    send("keydown", "KeyB");
+    send("keyup", "KeyA");
+    expect(events).toHaveLength(2);
+    disposers.pop()?.();
+    expect(events.at(-1)).toMatchObject({ type: "up", pitch: 60 });
+  });
   it("uses physical codes for Russian input and emits keyboard metadata", () => {
     const events = start();
     const attack = send("keydown", "KeyQ", { key: "й" });
