@@ -11,17 +11,24 @@ const { prepareDictionary } = (await import(
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
+/** The large list; the small resource is its first 3000 words, so 1K, 3K and 10K agree. */
+const LARGE = 10000;
+const SMALL = 3000;
+
 async function main(): Promise<void> {
   const directory = resolve(projectRoot, "public/word-typing");
   await mkdir(directory, { recursive: true });
   for (const language of ["en", "ru"] as const) {
-    const dictionary = await prepareDictionary(projectRoot, language);
-    await writeFile(
-      resolve(directory, `${language}.json`),
-      `${JSON.stringify(dictionary, null, 2)}\n`,
-      "utf8"
-    );
-    console.log(`${language}: ${String(dictionary.entries.length)} слов, ${dictionary.version}`);
+    const large = await prepareDictionary(projectRoot, language, LARGE);
+    const small = { ...large, entries: large.entries.slice(0, SMALL) };
+    // Without indentation: the browser loads these, and spaces were 40 % of the bytes.
+    for (const [file, dictionary] of [
+      [`${language}.json`, small],
+      [`${language}-10k.json`, large]
+    ] as const) {
+      await writeFile(resolve(directory, file), `${JSON.stringify(dictionary)}\n`, "utf8");
+      console.log(`${file}: ${String(dictionary.entries.length)} слов, ${dictionary.version}`);
+    }
   }
 }
 

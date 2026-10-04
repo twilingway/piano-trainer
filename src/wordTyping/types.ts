@@ -1,6 +1,8 @@
 export type Language = "en" | "ru";
 export type Part = "melody" | "bass";
 export type Modifier = "none" | "shift" | "alt";
+/** Words of the dictionary the generator may use, the most frequent first. */
+export type DictionarySize = 1000 | 3000 | 10000;
 
 export interface InputToken {
   readonly physicalKey: string;

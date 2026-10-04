@@ -11,7 +11,8 @@ import type * as MusicXmlModule from "../song/musicxml";
 import type { Song } from "../song/song";
 import type * as ExtractLineModule from "../wordTyping/extractLine";
 import type * as OptimizerModule from "../wordTyping/optimizer";
-import type { WordTypingResult } from "../wordTyping/types";
+import type * as DictionaryModule from "../wordTyping/dictionary";
+import type { DictionarySize, WordTypingResult } from "../wordTyping/types";
 import type { DictionaryResource } from "./dictionarySource";
 
 interface Arguments {
@@ -22,7 +23,7 @@ interface Arguments {
 
 interface BenchmarkRow {
   readonly language: "en" | "ru";
-  readonly dictionarySize: 1000 | 3000;
+  readonly dictionarySize: DictionarySize;
   readonly dictionaryVersion: string;
   readonly part: "melody" | "bass";
   readonly discardedNotes: number;
@@ -61,7 +62,11 @@ function parseArguments(args: readonly string[]): Arguments {
   return { input, beamWidth, output };
 }
 
-function validateDictionary(value: unknown, language: "en" | "ru"): DictionaryResource {
+function validateDictionary(
+  value: unknown,
+  language: "en" | "ru",
+  size: DictionarySize
+): DictionaryResource {
   if (
     typeof value !== "object" ||
     value === null ||
@@ -75,7 +80,7 @@ function validateDictionary(value: unknown, language: "en" | "ru"): DictionaryRe
     typeof value.source !== "string" ||
     !("entries" in value) ||
     !Array.isArray(value.entries) ||
-    value.entries.length < 3000
+    value.entries.length < size
   ) {
     throw new Error(
       `Неверный ресурс ${language}; сначала запустите src/wordTypingTools/prepare.ts`
@@ -233,14 +238,19 @@ async function main(): Promise<void> {
     }
     if (song.notes.length === 0) throw new Error("В музыкальном файле не найдено нот");
     const rows: BenchmarkRow[] = [];
+    const files = (await server.ssrLoadModule(
+      "/src/wordTyping/dictionary.ts"
+    )) as typeof DictionaryModule;
     for (const language of ["en", "ru"] as const) {
-      const dictionary = validateDictionary(
-        JSON.parse(
-          await readFile(resolve(projectRoot, `public/word-typing/${language}.json`), "utf8")
-        ) as unknown,
-        language
-      );
-      for (const dictionarySize of [1000, 3000] as const) {
+      for (const dictionarySize of [1000, 3000, 10000] as const) {
+        const file = files.dictionaryFile(language, dictionarySize);
+        const dictionary = validateDictionary(
+          JSON.parse(
+            await readFile(resolve(projectRoot, `public/word-typing/${file}`), "utf8")
+          ) as unknown,
+          language,
+          dictionarySize
+        );
         for (const part of ["melody", "bass"] as const) {
           const line = extraction.extractLine(song, part);
           const started = performance.now();

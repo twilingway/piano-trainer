@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Song, SongNote } from "../song/song";
-import { buildTrie, normalizeWords } from "./dictionary";
+import { buildTrie, dictionaryFile, normalizeWords } from "./dictionary";
 import { extractLine, withAccompaniment } from "./extractLine";
 import { inputTokenId, languageTokens, tokenPool } from "./inputTokens";
 import { generateWordTyping } from "./optimizer";
@@ -261,5 +261,13 @@ describe("scoring and quality", () => {
     expect(words.metrics.averageWordRank).toBe(1);
     expect(words.metrics.totalScore).toBeGreaterThanOrEqual(0);
     expect(words.metrics.totalScore).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("dictionary resources", () => {
+  it("loads 1K and 3K from the small file and 10K from its own", () => {
+    expect(dictionaryFile("ru", 1000)).toBe("ru.json");
+    expect(dictionaryFile("en", 3000)).toBe("en.json");
+    expect(dictionaryFile("ru", 10000)).toBe("ru-10k.json");
   });
 });

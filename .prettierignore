@@ -15,3 +15,6 @@ public/generated/
 .claude/worktrees/
 .worktrees/
 .pnpm-store/
+
+# Generated word-typing dictionaries: kept without indentation for the browser.
+public/word-typing/*.json
