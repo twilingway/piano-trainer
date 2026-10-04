@@ -21,7 +21,7 @@ function overridesKey(song: Song): string {
   return `fingering:${song.title}:${String(song.notes.length)}`;
 }
 
-function loadOverrides(song: Song): Map<string, Finger> {
+export function loadOverrides(song: Song): Map<string, Finger> {
   try {
     const raw = localStorage.getItem(overridesKey(song));
     return new Map(raw ? (JSON.parse(raw) as [string, Finger][]) : []);
