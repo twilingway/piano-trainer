@@ -22,6 +22,8 @@ interface Props {
   readonly wordSettings: ReactNode;
   readonly midi: ComponentProps<typeof MidiSettings>;
   readonly synchronization: ReactNode;
+  /** Puts the dragged parts of the current mode's screen back. */
+  readonly onResetLayout: () => void;
 }
 
 /** Compose existing controls without taking ownership of their preferences. */
@@ -66,6 +68,16 @@ export function PlayerSettings(props: Props) {
                 ) : (
                   <KeyboardSettings {...props.keyboard} />
                 )}
+              </section>
+              <section className="settings-group">
+                <h3 className="settings-group__title">Расположение</h3>
+                <p className="setting-hint">
+                  Край стана, линии над и под клавиатурой и бегущую строку можно тянуть мышью.
+                  {props.wordTyping ? " Для режима печати" : " Для пианино"} расположение своё.
+                </p>
+                <button type="button" className="game-button" onClick={props.onResetLayout}>
+                  Сбросить расположение
+                </button>
               </section>
             </>
           )

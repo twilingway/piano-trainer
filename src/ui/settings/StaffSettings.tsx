@@ -1,7 +1,7 @@
 import type { StaffPrefs } from "../../app/useStaffPrefs";
 
-const ZOOM_MIN = 0.5;
-const ZOOM_MAX = 2;
+export const ZOOM_MIN = 0.5;
+export const ZOOM_MAX = 2;
 const ZOOM_STEP = 0.1;
 
 interface Props {

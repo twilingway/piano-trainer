@@ -52,6 +52,8 @@ export function WordTicker(props: Props) {
     center();
     const observer = new ResizeObserver(center);
     observer.observe(line);
+    // A larger or smaller text moves the current character: centre it again.
+    observer.observe(track);
     return () => {
       observer.disconnect();
     };

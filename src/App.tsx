@@ -15,6 +15,7 @@ import { useShortcuts } from "./app/useShortcuts";
 import { useSong } from "./app/useSong";
 import { useSongProgress } from "./app/useSongProgress";
 import { useSound } from "./app/useSound";
+import { useScreenLayout } from "./app/useScreenLayout";
 import { useStaffPrefs } from "./app/useStaffPrefs";
 import { useStaffScore } from "./app/useStaffScore";
 import { useTakeReview } from "./app/useTakeReview";
@@ -50,6 +51,7 @@ export function App() {
   const word = useWordTyping(song, songKey, libraryOpen || settingsOpen);
   const game = useGameOptions(word.practiceKey, word.practiceSong.duration, word.enabled);
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
+  const screen = useScreenLayout(word.enabled ? "typing" : "piano");
   const displayPrefs = game.performance
     ? {
         ...staffPrefs,
@@ -118,7 +120,13 @@ export function App() {
     fallingNames: score.nameStyle,
     comparing: takes.comparing,
     lastTake: takes.lastTake,
-    computerKeys: word.keyboard
+    computerKeys: word.keyboard,
+    placement: {
+      lift: screen.layout.keysLift,
+      scale: screen.layout.keysScale,
+      x: screen.layout.keysX,
+      y: screen.layout.keysY
+    }
   });
   const library = usePlayerLibrary({
     showSong: current.showSong,
@@ -317,6 +325,13 @@ export function App() {
         }
         staffXml={score.staffXml}
         prefs={displayPrefs}
+        layout={screen.layout}
+        onLayout={screen.updateLayout}
+        onResetLayout={screen.resetLayout}
+        layoutMoved={screen.moved}
+        onZoom={(zoom) => {
+          updateStaffPrefs({ zoom });
+        }}
         fixedLines={score.fixedLines}
         beat={snapshot?.beat ?? 0}
         liveBeat={trainer.liveBeat}
@@ -445,6 +460,7 @@ export function App() {
           locked: game.ranked && playing
         }}
         synchronization={timing.settings}
+        onResetLayout={screen.resetLayout}
       />
 
       <ResultDialog

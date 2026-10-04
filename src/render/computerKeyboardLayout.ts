@@ -1,6 +1,7 @@
 import { KEYBOARD_ROWS, keyColumn } from "../wordTyping/keyboardRows";
 import type { KeyRect } from "./keyboardLayout";
-import type { Geometry, ViewParts } from "./viewGeometry";
+import { MIN_NOTES_SHARE, USUAL_PLACEMENT } from "./viewGeometry";
+import type { Geometry, KeysPlacement, ViewParts } from "./viewGeometry";
 
 /** A key on screen: a typing key has its column's stand-in pitch, a service key its caption. */
 export interface KeyFace {
@@ -62,13 +63,18 @@ const MAX_KEYBOARD_SHARE = 0.4;
 const FELT_PER_UNIT = 0.06;
 const MARGIN_PER_UNIT = 0.15;
 
-/** The keyboard's width in a view `width` wide: as wide as a real one at most, centred. */
-export function computerWidth(width: number): number {
-  return Math.min(width, UNITS * MAX_UNIT_PX);
+/** The keyboard's width in a view `width` wide: as wide as a real one at most (times `scale`). */
+export function computerWidth(width: number, scale = 1): number {
+  return Math.min(width, UNITS * MAX_UNIT_PX * scale);
 }
 
 /** Where the keys, the felt and the hit line go for a computer keyboard `total` pixels wide. */
-export function computerGeometry(height: number, total: number, parts: ViewParts): Geometry {
+export function computerGeometry(
+  height: number,
+  total: number,
+  parts: ViewParts,
+  placement: KeysPlacement = USUAL_PLACEMENT
+): Geometry {
   const unit = total / UNITS;
   if (!parts.keys) {
     return {
@@ -81,10 +87,13 @@ export function computerGeometry(height: number, total: number, parts: ViewParts
     };
   }
   const feltHeight = Math.max(3, unit * FELT_PER_UNIT);
-  const margin = unit * MARGIN_PER_UNIT;
-  const room = parts.notes ? height * MAX_KEYBOARD_SHARE : height - margin - feltHeight;
+  // The player's lift leaves an empty floor under the keys.
+  const below = unit * MARGIN_PER_UNIT + height * placement.lift;
+  const room = parts.notes
+    ? Math.min(height * MAX_KEYBOARD_SHARE, height * (1 - MIN_NOTES_SHARE) - below - feltHeight)
+    : height - below - feltHeight;
   const keyboardHeight = Math.max(0, Math.min(unit * ROW_PER_UNIT * LAYOUT.length, room));
-  const keyboardTop = height - margin - keyboardHeight;
+  const keyboardTop = height - below - keyboardHeight;
   return {
     keyboardTop,
     keyboardHeight,

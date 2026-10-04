@@ -34,6 +34,19 @@ export interface Geometry {
   readonly feltHeight: number;
 }
 
+/** The player's placement of the keys: a lift off the bottom and a size against the usual. */
+export interface KeysPlacement {
+  /** As a share of the view's height. */
+  readonly lift: number;
+  readonly scale: number;
+  /** The keys moved off the hit line, in pixels: the notes still end on the line. */
+  readonly x: number;
+  readonly y: number;
+}
+export const USUAL_PLACEMENT: KeysPlacement = { lift: 0, scale: 1, x: 0, y: 0 };
+/** However the keys are placed, the falling notes keep at least this share of the view. */
+export const MIN_NOTES_SHARE = 0.25;
+
 /** Which parts are on screen: the falling notes, the keyboard, the hands over it. */
 export interface ViewParts {
   readonly notes: boolean;
@@ -47,7 +60,8 @@ export function viewGeometry(
   whiteWidth: number,
   parts: ViewParts,
   stickers: boolean,
-  fitsViewport = false
+  fitsViewport = false,
+  placement: KeysPlacement = USUAL_PLACEMENT
 ): Geometry {
   if (!parts.keys) {
     const none = { keyboardHeight: 0, blackHeight: 0, feltHeight: 0 };
@@ -61,11 +75,17 @@ export function viewGeometry(
   const strip = parts.hands
     ? Math.max(margin, Math.min(whiteWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE))
     : margin;
-  const wanted = Math.max(KEYBOARD_MIN_PX, whiteWidth * (fitsViewport ? 3 : KEY_LENGTH_PER_WIDTH));
+  const wanted =
+    Math.max(KEYBOARD_MIN_PX, whiteWidth * (fitsViewport ? 3 : KEY_LENGTH_PER_WIDTH)) *
+    placement.scale;
+  // The player's lift leaves an empty floor under the keys and the hands' strip.
+  const below = strip + height * placement.lift;
   // Only the keys: they keep their length, not stretched over the view, and may use all of it.
-  const room = parts.notes ? height * MAX_KEYBOARD_SHARE : height - strip - feltHeight;
+  const room = parts.notes
+    ? Math.min(height * MAX_KEYBOARD_SHARE, height * (1 - MIN_NOTES_SHARE) - below - feltHeight)
+    : height - below - feltHeight;
   const keyboardHeight = Math.max(0, Math.min(wanted, room));
-  const keyboardTop = height - strip - keyboardHeight;
+  const keyboardTop = height - below - keyboardHeight;
   return {
     keyboardTop,
     keyboardHeight,

@@ -8,6 +8,7 @@ import { FallingNotesView } from "../render/FallingNotesView";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
+import type { KeysPlacement } from "../render/viewGeometry";
 import type { StaffPrefs } from "./useStaffPrefs";
 
 export type KeyRange = "song" | "88" | "61" | "49" | "25" | "3oct" | "4oct";
@@ -59,6 +60,8 @@ interface Options {
   readonly lastTake: { readonly take: Take; readonly review: TakeReview } | null;
   /** The word mode's inputs: the computer keys stand in for the piano's while they are set. */
   readonly computerKeys?: ComputerKeyboard | undefined;
+  /** Where the player dragged the keys. */
+  readonly placement: KeysPlacement;
 }
 
 /**
@@ -78,7 +81,8 @@ export function useFallingView({
   fallingNames,
   comparing,
   lastTake,
-  computerKeys
+  computerKeys,
+  placement
 }: Options) {
   // Kept with the other view settings, so a reload brings them back.
   const { labels: showLabels, keyRange } = staffPrefs;
@@ -154,6 +158,11 @@ export function useFallingView({
   useEffect(() => {
     viewRef.current?.setComputerKeys(computerKeys);
   }, [viewRef, trainerReady, computerKeys]);
+
+  const { lift, scale, x, y } = placement;
+  useEffect(() => {
+    viewRef.current?.setKeysPlacement({ lift, scale, x, y });
+  }, [viewRef, trainerReady, lift, scale, x, y]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {

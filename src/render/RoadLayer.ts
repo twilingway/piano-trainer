@@ -8,7 +8,7 @@ import {
   Sprite,
   Texture
 } from "pixi.js";
-import type { Renderer } from "pixi.js";
+import type { PointData, Renderer } from "pixi.js";
 import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
@@ -376,7 +376,15 @@ export class RoadLayer {
   }
 
   /** The point of the flat keyboard under a point of the laid keys on screen; undefined off them. */
+  /** The keys moved off the hit line by the player; the road and its notes stay. */
+  setKeysOffset(offset: PointData): void {
+    this.keys.container.position.copyFrom(offset);
+    this.legacyKeys.position.copyFrom(offset);
+  }
+
   keysPointAt(x: number, y: number): { x: number; y: number } | undefined {
+    x -= this.keys.container.x;
+    y -= this.keys.container.y;
     if (this.perspective) return this.keys.container.visible ? this.keys.pointAt(x, y) : undefined;
     return this.legacyKeys.visible
       ? legacyKeyboardPoint(x, y, this.pan, this.hitY, this.size.height)
