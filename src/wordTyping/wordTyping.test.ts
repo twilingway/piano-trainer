@@ -4,7 +4,7 @@ import { buildTrie, dictionaryFile, normalizeWords } from "./dictionary";
 import { extractLine, withAccompaniment } from "./extractLine";
 import { inputTokenId, languageTokens, tokenPool } from "./inputTokens";
 import { generateWordTyping } from "./optimizer";
-import { DEFAULT_CONFIG, inputPenalty, wordScore } from "./scoring";
+import { DEFAULT_CONFIG, comfortBonus, inputPenalty, wordScore } from "./scoring";
 import type { Language } from "./types";
 
 function line(pitches: readonly number[]): SongNote[] {
@@ -269,5 +269,16 @@ describe("dictionary resources", () => {
     expect(dictionaryFile("ru", 1000)).toBe("ru.json");
     expect(dictionaryFile("en", 3000)).toBe("en.json");
     expect(dictionaryFile("ru", 10000)).toBe("ru-10k.json");
+  });
+});
+
+describe("comfort of the letter keys", () => {
+  it("makes ё on the digit row cost at every use, the home row a little bonus", () => {
+    const key = (physicalKey: string) => ({ physicalKey, modifier: "none" as const, display: "x" });
+    expect(comfortBonus(key("Backquote"), DEFAULT_CONFIG)).toBe(
+      -DEFAULT_CONFIG.digitRowLetterPenalty
+    );
+    expect(comfortBonus(key("KeyF"), DEFAULT_CONFIG)).toBe(DEFAULT_CONFIG.homeRowBonus);
+    expect(comfortBonus(key("KeyQ"), DEFAULT_CONFIG)).toBe(0);
   });
 });

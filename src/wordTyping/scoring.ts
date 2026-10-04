@@ -13,7 +13,9 @@ export const DEFAULT_CONFIG: OptimizerConfig = {
   shiftPenalty: 30,
   altPenalty: 50,
   homeRowBonus: 0.3,
-  phraseBoundaryBonus: 3
+  digitRowLetterPenalty: 25,
+  phraseBoundaryBonus: 3,
+  bigramWeight: 40
 };
 
 const HOME_ROW = new Set([
@@ -56,7 +58,9 @@ export function inputPenalty(
 }
 
 export function comfortBonus(token: InputToken, config: OptimizerConfig): number {
-  return token.modifier === "none" && HOME_ROW.has(token.physicalKey) ? config.homeRowBonus : 0;
+  if (token.modifier !== "none") return 0;
+  if (token.physicalKey === "Backquote") return -config.digitRowLetterPenalty;
+  return HOME_ROW.has(token.physicalKey) ? config.homeRowBonus : 0;
 }
 
 export function resolveConfig(overrides: Partial<OptimizerConfig> = {}): OptimizerConfig {

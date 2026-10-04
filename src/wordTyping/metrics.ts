@@ -6,7 +6,9 @@ const clamp = (value: number) => Math.max(0, Math.min(100, value));
 export function qualityMetrics(
   tokens: readonly GeneratedToken[],
   words: readonly DictionaryEntry[],
-  language: Language
+  language: Language,
+  /** Neighbouring word pairs, and how many of them real sentences join. */
+  pairs = { total: 0, linked: 0 }
 ): QualityMetrics {
   const totalNotes = tokens.length;
   const letters = new Set(languageTokens(language).map((token) => token.physicalKey));
@@ -52,6 +54,7 @@ export function qualityMetrics(
     averageWordLength,
     longestWordLength,
     averageWordRank,
+    linkedPairsPercent: pairs.total ? (100 * pairs.linked) / pairs.total : 0,
     readabilityScore,
     typingComfortScore,
     totalScore,
