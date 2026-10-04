@@ -438,6 +438,7 @@ export function App() {
               error={word.error}
               discardedNotes={word.line.discardedNotes}
               runtimeMs={word.runtimeMs}
+              liveTime={trainer.liveTime}
               onPress={wordPointer.press}
               onRelease={wordPointer.release}
             />

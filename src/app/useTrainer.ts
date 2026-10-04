@@ -200,6 +200,8 @@ export function useTrainer({
 
   // Read by the staff every frame; stable, so the staff never re-subscribes.
   const liveBeat = useCallback(() => trainerRef.current?.quarters() ?? 0, []);
+  // Read by the word-typing lane every frame.
+  const liveTime = useCallback(() => trainerRef.current?.visualTime() ?? 0, []);
 
   /** A click on the staff: play from the first note at or after that beat. */
   const seekToBeat = (beat: number) => {
@@ -251,6 +253,7 @@ export function useTrainer({
     metronome,
     setMetronome,
     liveBeat,
+    liveTime,
     seekToBeat,
     togglePlay,
     toggleListening,

@@ -4,6 +4,8 @@ import type { NoteStatus } from "../practice/session";
 import type { GeneratedToken, InputToken, WordTypingResult } from "../wordTyping/types";
 import { inputTokenId } from "../wordTyping/inputTokens";
 import { textProgress } from "../wordTyping/progress";
+import { typingFinger } from "../wordTyping/touchTyping";
+import { WordTypingLane } from "./WordTypingLane";
 
 const ROWS = [
   [
@@ -49,12 +51,15 @@ interface Props {
   readonly error: string | undefined;
   readonly discardedNotes: number;
   readonly runtimeMs: number | undefined;
+  /** Song seconds the view shows now, for the falling notes. */
+  readonly liveTime: () => number;
   readonly onPress: (token: InputToken) => void;
   readonly onRelease: (token: InputToken) => void;
 }
 
 export function WordTypingBoard(props: Props) {
   const activeRef = useRef<HTMLSpanElement>(null);
+  const keyboardRef = useRef<HTMLDivElement>(null);
   const { result, statuses } = props;
   const progress = textProgress(result?.tokens ?? [], statuses, props.time, props.listening);
   const { index, holding, holdProgress } = progress;
@@ -142,17 +147,30 @@ export function WordTypingBoard(props: Props) {
             </span>
             <progress aria-label="Удержание текущей ноты" max={1} value={holdProgress} />
           </div>
-          <div className="word-keyboard" aria-label="Автоматическая клавиатура мелодии">
+          {result && (
+            <WordTypingLane
+              tokens={result.tokens}
+              liveTime={props.liveTime}
+              keyboardRef={keyboardRef}
+            />
+          )}
+          <div
+            className="word-keyboard"
+            ref={keyboardRef}
+            aria-label="Автоматическая клавиатура мелодии"
+          >
             {ROWS.map((row, rowIndex) => (
               <div className="word-keyboard__row" key={rowIndex}>
                 {row.map((code) => {
                   const assigned = [...inputs.values()].filter(
                     (input) => input.physicalKey === code
                   );
+                  const finger = typingFinger(code)?.finger;
                   return (
                     <div
-                      className={`word-keyboard__key${assigned.length === 0 ? " word-keyboard__key--empty" : ""}`}
+                      className={`word-keyboard__key${assigned.length === 0 ? " word-keyboard__key--empty" : finger ? ` word-finger-${String(finger)}` : ""}`}
                       key={code}
+                      data-code={code}
                     >
                       {assigned.length === 0 ? (
                         <span aria-hidden="true">·</span>

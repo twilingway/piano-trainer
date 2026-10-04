@@ -330,6 +330,13 @@ export class Trainer {
       : 0;
   }
 
+  /** Song seconds the view shows now: session time with the same visual offset as quarters(). */
+  visualTime(): number {
+    return this.session
+      ? this.session.time - (this.timing.visualOffsetMs / 1000) * this.session.options.speed
+      : 0;
+  }
+
   /** Only the text mode needs note statuses in the throttled React snapshot. */
   observeTextNotes(noteIds: readonly string[]): void {
     this.textNoteIds = noteIds;
