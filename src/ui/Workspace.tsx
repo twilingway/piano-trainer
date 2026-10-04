@@ -142,7 +142,11 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
               </button>
             )}
             {laneMode === "full" && props.wordTicker && (
-              <TickerSlot gap={props.layout.tickerGap} onLayout={props.onLayout}>
+              <TickerSlot
+                gap={props.layout.tickerGap}
+                x={props.layout.tickerX}
+                onLayout={props.onLayout}
+              >
                 {props.wordTicker}
               </TickerSlot>
             )}

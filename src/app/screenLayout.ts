@@ -12,8 +12,10 @@ export interface ScreenLayout {
   /** The keys moved off the hit line, in pixels; 0, 0 keeps them on it. */
   readonly keysX: number;
   readonly keysY: number;
-  /** The running line's gap over the hit line, in pixels. */
+  /** The running line's gap over the hit line, in pixels; below 0 it hangs under the line. */
   readonly tickerGap: number;
+  /** The running line moved sideways from the middle, in pixels. */
+  readonly tickerX: number;
   /** Without the staff, the lane's top lowered by this share of the screen's height. */
   readonly laneTop: number;
 }
@@ -29,6 +31,7 @@ export const DEFAULT_SCREEN_LAYOUT: ScreenLayout = {
   keysX: 0,
   keysY: 0,
   tickerGap: 12,
+  tickerX: 0,
   laneTop: 0
 };
 export const LAYOUT_LIMITS = {
@@ -37,7 +40,8 @@ export const LAYOUT_LIMITS = {
   keysScale: [0.6, 1.8],
   keysX: [-2000, 2000],
   keysY: [-2000, 2000],
-  tickerGap: [0, 400],
+  tickerGap: [-1000, 2000],
+  tickerX: [-2000, 2000],
   laneTop: [0, 0.5]
 } as const;
 
@@ -67,6 +71,7 @@ export function normalizeLayout(value: unknown): ScreenLayout {
     keysX: number("keysX", 0),
     keysY: number("keysY", 0),
     tickerGap: number("tickerGap", DEFAULT_SCREEN_LAYOUT.tickerGap),
+    tickerX: number("tickerX", 0),
     laneTop: number("laneTop", DEFAULT_SCREEN_LAYOUT.laneTop)
   };
 }

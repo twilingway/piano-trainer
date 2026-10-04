@@ -99,18 +99,31 @@ export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayo
   );
 }
 
-/** The word mode's running line, dragged up off the hit line. */
-export function TickerSlot(props: { gap: number; onLayout: OnLayout; children: ReactNode }) {
+/** The word mode's running line: dragged anywhere, it keeps its place against the hit line. */
+export function TickerSlot(props: {
+  gap: number;
+  x: number;
+  onLayout: OnLayout;
+  children: ReactNode;
+}) {
   const drag = useVerticalDrag({
-    start: () => props.gap,
-    move: (dy, from) => {
-      props.onLayout({ tickerGap: clampLayout("tickerGap", from - dy) });
+    start: () => ({ gap: props.gap, x: props.x }),
+    move: (dy, from, _element, dx) => {
+      props.onLayout({
+        tickerGap: clampLayout("tickerGap", from.gap - dy),
+        tickerX: clampLayout("tickerX", from.x + dx)
+      });
     }
   });
   return (
     <div
       className="word-ticker-slot"
-      style={{ "--ticker-gap": `${String(props.gap)}px` } as CSSProperties}
+      style={
+        {
+          "--ticker-gap": `${String(props.gap)}px`,
+          "--ticker-x": `${String(props.x)}px`
+        } as CSSProperties
+      }
       title="Тяните, чтобы поднять или опустить строку"
       {...drag}
     >

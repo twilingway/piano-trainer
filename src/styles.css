@@ -152,9 +152,13 @@
   bottom: calc(100% - var(--hit-line, 100%) + var(--ticker-gap, 12px));
   left: 50%;
   width: min(900px, calc(100% - 32px));
-  transform: translateX(-50%);
-  cursor: ns-resize;
+  transform: translateX(calc(-50% + var(--ticker-x, 0px)));
+  cursor: move;
   touch-action: none;
+}
+/* The line may be dragged out of the lane, over the staff. */
+.lane:has(> .word-ticker-slot) {
+  overflow: visible;
 }
 .word-ticker-slot > .word-ticker {
   width: 100%;
@@ -1137,7 +1141,8 @@ select:disabled {
 .waiting-pill {
   position: absolute;
   z-index: 2;
-  bottom: 38%;
+  /* Over the hit line, wherever the keys were moved: above the word mode's running line. */
+  bottom: calc(100% - var(--hit-line, 62%) + 70px);
   left: 50%;
   padding: 4px 14px;
   transform: translateX(-50%);
