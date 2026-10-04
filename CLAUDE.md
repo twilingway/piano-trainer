@@ -73,6 +73,10 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 - `.codex/agents/` — Codex's read-only `reviewer` and `spec_architect`.
 - `.opencode/agents/` and `opencode.json` — opencode's agents and the Qwen providers (LM Studio on
   `192.168.1.227:1234`, and the remote endpoint).
+- `.claude/hooks/context-budget.py`, registered in `.claude/settings.json` on `UserPromptSubmit` —
+  once the last request ran with more than 250k tokens of context, it warns the user and asks Claude
+  to checkpoint the subtask and propose a fresh session. It never blocks. The same script is
+  installed globally (`~/.claude/hooks/`) and steps aside when the project has its own copy.
 
 ### How the global rules apply
 
