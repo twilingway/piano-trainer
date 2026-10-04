@@ -432,12 +432,10 @@ export function App() {
               result={word.result}
               statuses={snapshot?.noteStatuses}
               time={snapshot?.time ?? -2}
-              playing={playing}
               listening={listening}
               pending={word.pending}
               error={word.error}
-              discardedNotes={word.line.discardedNotes}
-              runtimeMs={word.runtimeMs}
+              song={word.line.song}
               liveTime={trainer.liveTime}
               onPress={wordPointer.press}
               onRelease={wordPointer.release}

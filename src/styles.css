@@ -69,11 +69,14 @@
 }
 .word-board {
   box-sizing: border-box;
-  flex: 0 0 auto;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 10px;
   min-width: 0;
   width: min(1120px, 100%);
-  margin: auto;
-  padding: clamp(14px, 3vw, 38px);
+  margin: 0 auto;
+  padding: clamp(10px, 2vw, 20px);
 }
 
 .app--word .shell-top {
@@ -91,50 +94,19 @@
   grid-template-columns: none;
   width: auto;
 }
-.word-board__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.word-eyebrow {
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-}
-.word-board h1 {
-  font-size: clamp(22px, 3vw, 36px);
-  margin: 8px 0;
-}
-.word-quality {
-  color: var(--finger-2);
-  white-space: nowrap;
-  font-size: 23px;
-}
-.word-quality small {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-}
-.word-board__help,
-.word-board__foot {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
 .word-text {
   display: flex;
   flex-wrap: wrap;
   align-content: start;
-  gap: 12px 20px;
-  min-height: 100px;
-  max-height: 220px;
+  gap: 6px 14px;
+  flex: 0 0 auto;
+  max-height: 96px;
   overflow: auto;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px;
-  font: 600 clamp(22px, 3vw, 34px)/1.55 var(--font-digits);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: 600 clamp(15px, 1.6vw, 19px)/1.5 var(--font-digits);
 }
 .word-text__word {
   white-space: nowrap;
@@ -160,23 +132,6 @@
 }
 .word-character--fallback {
   font-size: 0.7em;
-}
-.word-next {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-.word-next strong {
-  color: var(--text);
-  font: 600 18px var(--font-digits);
-}
-.word-next progress {
-  width: 100px;
-  accent-color: var(--accent);
 }
 .word-keyboard {
   display: flex;
@@ -264,43 +219,33 @@
   color: var(--bg);
 }
 .word-lane {
-  position: relative;
-  height: 220px;
-  margin-bottom: 8px;
+  flex: 1 1 auto;
+  min-height: 180px;
   overflow: hidden;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--panel) 60%, transparent);
 }
-/* The hit line: a block touches it when its note starts. */
-.word-lane::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: 2px;
-  background: var(--accent);
-  box-shadow: 0 0 12px var(--accent);
+.word-lane canvas {
+  display: block;
 }
-.word-lane__track {
-  position: absolute;
-  inset: auto 0 0;
-  height: 0;
-  will-change: transform;
-}
-.word-lane__note {
-  position: absolute;
-  box-sizing: border-box;
+.word-legend {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  overflow: hidden;
-  padding-bottom: 2px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--typing-finger, var(--accent)) 70%, white);
-  background: color-mix(in srgb, var(--typing-finger, var(--accent)) 80%, transparent);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--typing-finger, var(--accent)) 60%, transparent);
-  color: var(--bg);
-  font: 700 12px/1 var(--font-digits);
-  white-space: nowrap;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+.word-legend li[class*="word-finger-"]::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 3px;
+  background: var(--typing-finger);
+  box-shadow: 0 0 8px var(--typing-finger);
 }
 @media (width <= 640px) {
   .game-mode-strip .game-select {
@@ -323,22 +268,10 @@
     font-size: 11px;
     padding: 5px;
   }
-  .word-board__heading {
-    align-items: start;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .word-quality {
-    font-size: 16px;
-  }
-  .word-quality small {
-    display: inline;
-    margin-left: 8px;
-  }
   .word-text {
-    padding: 12px;
-    gap: 6px 12px;
-    max-height: 160px;
+    padding: 8px 10px;
+    gap: 4px 10px;
+    max-height: 72px;
   }
   .word-keyboard__row {
     gap: 3px;
@@ -355,10 +288,7 @@
     font-size: 7px;
   }
   .word-lane {
-    height: 150px;
-  }
-  .word-lane__note {
-    font-size: 9px;
+    min-height: 140px;
   }
 }
 

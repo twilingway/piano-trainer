@@ -1,12 +1,21 @@
 import { useEffect, useRef } from "react";
+import type { Finger } from "../fingering/fingering";
 import { pitchLabel } from "../input/keyboardLayouts";
 import type { NoteStatus } from "../practice/session";
+import type { Song } from "../song/song";
 import type { GeneratedToken, InputToken, WordTypingResult } from "../wordTyping/types";
 import { inputTokenId } from "../wordTyping/inputTokens";
 import { textProgress } from "../wordTyping/progress";
 import { typingFinger } from "../wordTyping/touchTyping";
 import { WordTypingLane } from "./WordTypingLane";
 
+/** The legend: one colour a finger, the same on both hands. */
+const FINGERS: readonly (readonly [Finger, string])[] = [
+  [5, "мизинец"],
+  [4, "безымянный"],
+  [3, "средний"],
+  [2, "указательный"]
+];
 const ROWS = [
   [
     "Backquote",
@@ -45,12 +54,11 @@ interface Props {
   readonly result: WordTypingResult | undefined;
   readonly statuses: Readonly<Record<string, NoteStatus | undefined>> | undefined;
   readonly time: number;
-  readonly playing: boolean;
   readonly listening: boolean;
   readonly pending: boolean;
   readonly error: string | undefined;
-  readonly discardedNotes: number;
-  readonly runtimeMs: number | undefined;
+  /** The line being typed, for the falling notes. */
+  readonly song: Song;
   /** Song seconds the view shows now, for the falling notes. */
   readonly liveTime: () => number;
   readonly onPress: (token: InputToken) => void;
@@ -62,7 +70,7 @@ export function WordTypingBoard(props: Props) {
   const keyboardRef = useRef<HTMLDivElement>(null);
   const { result, statuses } = props;
   const progress = textProgress(result?.tokens ?? [], statuses, props.time, props.listening);
-  const { index, holding, holdProgress } = progress;
+  const { index } = progress;
   const current = result?.tokens[index];
   const groups = new Map<number, GeneratedToken[]>();
   const inputs = new Map<string, InputToken>();
@@ -75,26 +83,8 @@ export function WordTypingBoard(props: Props) {
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [index, result]);
-  const metrics = result?.metrics;
   return (
     <section className="word-board" aria-label="Печатать мелодию">
-      <div className="word-board__heading">
-        <div>
-          <span className="word-eyebrow">ПЕЧАТАТЬ МЕЛОДИЮ · ПРОТОТИП</span>
-          <h1>Слова становятся музыкой</h1>
-        </div>
-        {metrics && (
-          <div className="word-quality" title="Качество генерации текста, а не оценка исполнения">
-            {"★".repeat(metrics.stars)}
-            {"☆".repeat(5 - metrics.stars)}
-            <small>{Math.round(metrics.dictionaryCoveragePercent)}% нот в словах</small>
-          </div>
-        )}
-      </div>
-      <p className="word-board__help">
-        Печатайте выделенную букву и удерживайте клавишу указанное время. Пробелы нажимать не нужно.
-        Раскладка автоматически построена для всей партии.
-      </p>
       {props.pending ? (
         <p role="status">Подбираю слова и клавиши для мелодии…</p>
       ) : props.error ? (
@@ -125,31 +115,11 @@ export function WordTypingBoard(props: Props) {
               </span>
             ))}
           </div>
-          <div className="word-next" aria-live="polite">
-            <strong>
-              {current
-                ? `${current.input.display.toUpperCase()} → ${pitchLabel(current.pitch)}`
-                : result
-                  ? "Партия завершена"
-                  : ""}
-            </strong>
-            <span>
-              {holding
-                ? `Удерживайте ${holding.input.display.toUpperCase()} · ${holding.duration.toFixed(2)} с в песне`
-                : current
-                  ? `Удержание ${current.duration.toFixed(2)} с в песне`
-                  : ""}
-            </span>
-            <span>
-              {result?.tokens.length
-                ? `${String(index < 0 ? result.tokens.length : index)} / ${String(result.tokens.length)} нот`
-                : ""}
-            </span>
-            <progress aria-label="Удержание текущей ноты" max={1} value={holdProgress} />
-          </div>
           {result && (
             <WordTypingLane
+              song={props.song}
               tokens={result.tokens}
+              statuses={statuses}
               liveTime={props.liveTime}
               keyboardRef={keyboardRef}
             />
@@ -214,16 +184,14 @@ export function WordTypingBoard(props: Props) {
               </div>
             ))}
           </div>
-          <p className="word-board__foot">
-            {props.discardedNotes > 0
-              ? `Из одновременных нот выбрана одна линия; исключено атак: ${String(props.discardedNotes)}. `
-              : ""}
-            Настройки обычной клавиатуры здесь не применяются.{" "}
-            {props.runtimeMs !== undefined
-              ? `Подбор: ${(props.runtimeMs / 1000).toFixed(2)} с.`
-              : ""}{" "}
-            {props.playing ? "Ctrl+Пробел — пауза." : "Нажмите «Играть», чтобы начать."}
-          </p>
+          <ul className="word-legend" aria-label="Цвета пальцев">
+            {FINGERS.map(([finger, name]) => (
+              <li key={finger} className={`word-finger-${String(finger)}`}>
+                {name}
+              </li>
+            ))}
+            <li className="word-legend__note">левая и правая рука — одинаково</li>
+          </ul>
         </>
       )}
     </section>

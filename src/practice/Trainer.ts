@@ -40,7 +40,7 @@ export interface InputDiagnostic {
 const NOTHING: ReadonlySet<number> = new Set();
 
 /** Two seconds fill the lane: at 114 BPM a quarter spans about 79 px of a 300 px lane. */
-const LOOK_AHEAD_S = 2;
+export const LOOK_AHEAD_S = 2;
 const SNAPSHOT_INTERVAL_MS = 150;
 
 /** Beat of the latest note that has started by `time`; notes are sorted by start. */
