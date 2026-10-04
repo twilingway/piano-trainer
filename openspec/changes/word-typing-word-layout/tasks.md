@@ -11,10 +11,10 @@
 
 ## 2. Ввод
 
-- [ ] 2.1 `wordKeyPitch`: текущее слово, фальшивая нота, переход к следующему слову, после
-      последней ноты; `pnpm exec vitest run src/wordTyping/wordInput.test.ts`
-- [ ] 2.2 `wordPitch` в опциях клавиатуры, `Trainer.nextDueNoteId()`, подключение в
-      `useWordTyping`; `pnpm typecheck`, тесты клавиатуры
+- [ ] 2.1 `wordKeyPitch`: текущее слово, фальшивая нота, переход к следующему слову, после последней
+      ноты; `pnpm exec vitest run src/wordTyping/wordInput.test.ts`
+- [ ] 2.2 `wordPitch` в опциях клавиатуры, `Trainer.nextDueNoteId()`, подключение в `useWordTyping`;
+      `pnpm typecheck`, тесты клавиатуры
 
 ## 3. Настройки и UI
 
