@@ -525,6 +525,7 @@ body {
 .layout-handle::after {
   content: "";
   position: absolute;
+  z-index: 0;
   top: 50%;
   left: 0;
   width: 100%;
@@ -573,6 +574,15 @@ body {
 }
 .layout-grip__label {
   color: var(--text);
+}
+/* The line lights under its sign, not across it. */
+.layout-handle > .layout-grip {
+  z-index: 1;
+}
+/* The staff's sign sits over its edge: under it the game's panels begin. */
+.layout-handle--staff > .layout-grip {
+  right: 28px;
+  transform: translateY(calc(-100% - 2px));
 }
 :is(.layout-handle, .layout-move, .word-ticker-slot):is(:hover, [data-dragging]) .layout-grip {
   opacity: 1;
