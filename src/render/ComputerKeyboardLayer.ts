@@ -33,11 +33,14 @@ const FELT = 0x003b62;
 const FELT_EDGE = 0x00e5ff;
 /** The glass and the halo of a typing key: at rest, next in line, owed or held. */
 const LOOK = {
-  idle: { glass: 0.82, halo: 0.5 },
-  next: { glass: 0.95, halo: 0.85 },
-  due: { glass: 1, halo: 1 },
-  pressed: { glass: 1, halo: 1 }
+  idle: { glass: 0.5, halo: 0.12, label: 0.62 },
+  next: { glass: 0.85, halo: 0.6, label: 0.85 },
+  due: { glass: 1, halo: 1, label: 1 },
+  pressed: { glass: 1, halo: 1, label: 1 }
 } as const;
+/** The owed key breathes: its halo swells this much, this many times a second. */
+const PULSE = 0.35;
+const PULSE_HZ = 1.6;
 /** A held key sinks this share of its height. */
 const SINK_SHARE = 0.06;
 /** The digits' shifted signs, printed over them as on a real keyboard. */
@@ -89,6 +92,11 @@ export class ComputerKeyboardLayer implements KeysLayer {
   /** Note names under the letters, like the piano keys' stickers. */
   private names = false;
   private mouseKey: number | undefined;
+  /** Fairy dust round the owed key, seen from above: sparks drift out to every side and fade. */
+  private readonly dust = new Container();
+  private readonly sparks: Spark[] = [];
+  private readonly sparkTexture = bakeSpark();
+  private lastDraw = performance.now();
 
   constructor(
     private readonly renderer: Renderer,
@@ -98,7 +106,16 @@ export class ComputerKeyboardLayer implements KeysLayer {
     this.casing = slice(this.material.base, 0);
     this.casing.tint = CASE;
     this.casing.eventMode = "none";
-    this.container.addChild(this.felt, this.casing, this.keysLayer);
+    this.container.addChild(this.felt, this.casing, this.keysLayer, this.dust);
+    this.dust.eventMode = "none";
+    for (let index = 0; index < SPARKS; index++) {
+      const sprite = new Sprite(this.sparkTexture);
+      sprite.anchor.set(0.5);
+      sprite.blendMode = "add";
+      this.dust.addChild(sprite);
+      // Spread round the key and through their lives, so they never start in step.
+      this.sparks.push({ sprite, angle: (index / SPARKS) * Math.PI * 2, life: index / SPARKS });
+    }
     window.addEventListener("keydown", this.onKeyDown, true);
     window.addEventListener("keyup", this.onKeyUp, true);
     window.addEventListener("blur", this.onLeave);
@@ -187,6 +204,11 @@ export class ComputerKeyboardLayer implements KeysLayer {
   draw(frame: KeysFrame): void {
     const hints = frame.hints !== false;
     const next = hints ? this.computer?.next()?.pitch : undefined;
+    const now = performance.now();
+    const seconds = Math.min(0.1, (now - this.lastDraw) / 1000);
+    this.lastDraw = now;
+    const breath = 1 + PULSE * Math.sin((now / 1000) * Math.PI * 2 * PULSE_HZ);
+    let owed: KeySprites | undefined;
     for (const key of this.keys) {
       const { face, halo, base, glass, edge, label } = key;
       const pitch = face.pitch;
@@ -205,7 +227,15 @@ export class ComputerKeyboardLayer implements KeysLayer {
       for (const sprite of [base, glass, edge]) {
         place(sprite, face.x, face.y + sink, face.width, face.height, scale);
       }
-      place(halo, face.x, face.y + sink, face.width, face.height, scale, HALO);
+      place(
+        halo,
+        face.x,
+        face.y + sink,
+        face.width,
+        face.height,
+        scale,
+        HALO * (state === "due" ? breath : 1)
+      );
       label.position.set(face.x + face.width / 2, face.y + face.height / 2 + sink);
       base.tint = DARK;
       if (!key.assigned) {
@@ -220,6 +250,7 @@ export class ComputerKeyboardLayer implements KeysLayer {
         continue;
       }
       const lit = state === "due" || state === "pressed";
+      if (state === "due") owed ??= key;
       glass.tint = key.color;
       glass.alpha = LOOK[state].glass;
       edge.tint = lit ? towardWhite(key.color, 0.6) : key.color;
@@ -228,6 +259,34 @@ export class ComputerKeyboardLayer implements KeysLayer {
       halo.alpha = LOOK[state].halo;
       // The letters burn bright, white on the lit key, near white in the finger's colour else.
       label.tint = lit ? 0xffffff : towardWhite(key.color, 0.85);
+      label.alpha = LOOK[state].label;
+    }
+    this.drawDust(owed, seconds);
+  }
+
+  /** A few sparks leave the owed key's edge to every side, swirl a little and fade. */
+  private drawDust(owed: KeySprites | undefined, seconds: number): void {
+    this.dust.visible = owed !== undefined;
+    if (!owed) return;
+    const { face, color } = owed;
+    const centreX = face.x + face.width / 2;
+    const centreY = face.y + face.height / 2;
+    for (const [index, spark] of this.sparks.entries()) {
+      spark.life += seconds / SPARK_LIFE_S;
+      if (spark.life >= 1) {
+        spark.life -= 1;
+        spark.angle = Math.random() * Math.PI * 2;
+      }
+      const t = spark.life;
+      const angle = spark.angle + t * SPARK_SWIRL;
+      const reach = 0.5 + t * SPARK_REACH;
+      spark.sprite.position.set(
+        centreX + Math.cos(angle) * face.width * reach,
+        centreY + Math.sin(angle) * face.height * reach
+      );
+      spark.sprite.alpha = Math.sin(Math.PI * t) * 0.85;
+      spark.sprite.scale.set(((0.5 + 0.5 * (1 - t)) * face.height) / (SPARK_PX * 3));
+      spark.sprite.tint = index % 2 === 0 ? towardWhite(color, 0.6) : color;
     }
   }
 
@@ -285,6 +344,7 @@ export class ComputerKeyboardLayer implements KeysLayer {
     window.removeEventListener("keyup", this.onKeyUp, true);
     window.removeEventListener("blur", this.onLeave);
     for (const texture of [
+      this.sparkTexture,
       ...Object.values(this.material),
       ...this.labelTextures,
       ...this.letters.values()
@@ -388,6 +448,38 @@ export class ComputerKeyboardLayer implements KeysLayer {
     edge.height = 1;
     this.felt.addChild(felt, edge);
   }
+}
+
+interface Spark {
+  readonly sprite: Sprite;
+  angle: number;
+  /** From 0, leaving the key's edge, to 1, gone. */
+  life: number;
+}
+
+/** The fairy dust: few sparks, each a second long, reaching this far out in key sizes. */
+const SPARKS = 9;
+const SPARK_LIFE_S = 1.1;
+const SPARK_REACH = 0.55;
+const SPARK_SWIRL = 0.7;
+const SPARK_PX = 16;
+
+/** A soft round spark, white for a tint to colour it. */
+function bakeSpark(): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = SPARK_PX;
+  canvas.height = SPARK_PX;
+  const context = canvas.getContext("2d");
+  if (context) {
+    const half = SPARK_PX / 2;
+    const glow = context.createRadialGradient(half, half, 0, half, half, half);
+    glow.addColorStop(0, "rgba(255,255,255,1)");
+    glow.addColorStop(0.35, "rgba(255,255,255,0.6)");
+    glow.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = glow;
+    context.fillRect(0, 0, SPARK_PX, SPARK_PX);
+  }
+  return Texture.from(canvas);
 }
 
 /** A nine-slice sprite of the key material whose corners stay round at every size. */
