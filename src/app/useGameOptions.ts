@@ -30,8 +30,9 @@ function load(): Preferences {
     return DEFAULTS;
   }
 }
-export function useGameOptions(songKey: string, duration: number) {
+export function useGameOptions(songKey: string, duration: number, practiceOnly = false) {
   const [preferences, setPreferences] = useState(load);
+  const ranked = preferences.ranked && !practiceOnly;
   const [storedRange, setRange] = useState({ songKey, from: 0, to: duration, loop: false });
   const range =
     storedRange.songKey === songKey ? storedRange : { songKey, from: 0, to: duration, loop: false };
@@ -54,10 +55,10 @@ export function useGameOptions(songKey: string, duration: number) {
   const options = useMemo(
     () => ({
       difficulty: preferences.difficulty,
-      from: preferences.ranked ? 0 : range.from,
-      to: preferences.ranked ? duration : range.to
+      from: ranked ? 0 : range.from,
+      to: ranked ? duration : range.to
     }),
-    [preferences.difficulty, preferences.ranked, range.from, range.to, duration]
+    [preferences.difficulty, ranked, range.from, range.to, duration]
   );
-  return { ...preferences, range, options, update, updateRange };
+  return { ...preferences, ranked, range, options, update, updateRange };
 }

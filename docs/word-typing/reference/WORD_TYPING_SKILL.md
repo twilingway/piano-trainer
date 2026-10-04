@@ -1,0 +1,1069 @@
+# Word Typing Piano --- Skill / Technical Specification
+
+## 1. Цель
+
+Реализовать режим игры на компьютерной клавиатуре, в котором пользователь исполняет
+MIDI/MusicXML-партию так, будто печатает текст вслепую.
+
+Вместо показа нот:
+
+```text
+C4 D4 E4 ...
+```
+
+игроку показывается читаемый текст:
+
+```text
+beautiful music is playing
+```
+
+Каждый отображаемый символ соответствует физической клавише клавиатуры, а физическая клавиша
+соответствует определённой высоте звука (pitch).
+
+Главная цель генератора:
+
+> Превратить последовательность note-on событий в максимально читаемую последовательность настоящих
+> английских или русских слов, сохраняя корректное соответствие клавиш музыкальным высотам.
+
+Аккорды/одновременные нажатия на первом этапе не рассматриваются. Мелодия и одиночный бас
+обрабатываются как отдельные монофонические линии.
+
+---
+
+# 2. Существующие Piano Presets
+
+Проект также имеет обычные музыкальные пресеты.
+
+## Extended Range
+
+ID:
+
+```text
+extended_range
+```
+
+30 клавиш --- последовательные белые ноты:
+
+```text
+Q W E R T | Y U I O P
+B4 C5 D5 E5 F5 | G5 A5 B5 C6 D6
+
+A S D F G | H J K L ;
+F3 G3 A3 B3 C4 | D4 E4 F4 G4 A4
+
+Z X C V B | N M , . /
+C2 D2 E2 F2 G2 | A2 B2 C3 D3 E3
+```
+
+Диапазон C2--D6.
+
+## Octave Layout
+
+ID:
+
+```text
+octave_layout
+```
+
+```text
+Q W E R T | Y U I O P
+C5 D5 E5 F5 G5 | A5 B5 C6 D6 E6
+
+A S D F G | H J K L ;
+C4 D4 E4 F4 G4 | A4 B4 C5 D5 E5
+
+Z X C V B | N M , . /
+C3 D3 E3 F3 G3 | A3 B3 C4 D4 E4
+```
+
+Одинаковая геометрия нот между октавами.
+
+## Bass + Chords
+
+ID:
+
+```text
+bass_chords
+```
+
+```text
+LEFT              | RIGHT
+
+Q W E R T          | Y U I O P
+C3 D3 E3 F3 G3     | C5 D5 E5 F5 G5
+
+A S D F G          | H J K L ;
+F2 G2 A2 B2 C3     | F4 G4 A4 B4 C5
+
+Z X C V B          | N M , . /
+C2 D2 E2 F2 G2     | C4 D4 E4 F4 G4
+```
+
+Левая половина --- бас, правая --- аккорды/мелодия.
+
+## Модификаторы обычных Piano Presets
+
+```text
+Normal key = natural
+Shift      = sharp (+1 semitone)
+Alt/Option = flat  (-1 semitone)
+```
+
+Энгармоника должна работать корректно:
+
+```text
+C# = Db
+D# = Eb
+F# = Gb
+G# = Ab
+A# = Bb
+
+E# = F
+Fb = E
+B# = C следующей октавы
+Cb = B предыдущей октавы
+```
+
+Важно: эти правила относятся к обычным Piano Presets. В Word Typing Mode Shift/Alt имеют другое
+назначение --- расширение пространства доступных физических вводов.
+
+---
+
+# 3. Word Typing Mode
+
+Рекомендуемый ID:
+
+```text
+word_typing
+```
+
+Подрежимы:
+
+```text
+word_typing_en
+word_typing_ru
+```
+
+Word Typing --- отдельная механика. Не следует смешивать её mapping с обычными piano presets.
+
+---
+
+# 4. Основная модель
+
+Изначальная модель:
+
+```text
+Pitch ↔ Letter
+```
+
+слишком ограничивает генерацию языка.
+
+Использовать модель:
+
+```text
+Pitch → Set<InputToken>
+```
+
+То есть одна музыкальная высота может иметь несколько допустимых клавиш/символов.
+
+При этом один InputToken в рамках текущей сгенерированной раскладки должен соответствовать только
+одной высоте.
+
+Пример:
+
+```text
+C4 → A / N / R
+D4 → S / O
+E4 → D / E / I
+```
+
+Если тренажёр выбрал слово `RAIN`, каждая буква вызывает соответствующий pitch.
+
+---
+
+# 5. Physical Key, Character и InputToken
+
+Нельзя полагаться на Unicode-символ, который ОС создаёт из клавиатурной комбинации.
+
+Использовать физические коды клавиатуры:
+
+```text
+KeyA
+KeyB
+...
+Digit1
+Digit2
+...
+Backquote
+Minus
+Equal
+```
+
+InputToken:
+
+```ts
+type InputToken = {
+  physicalKey: string;
+  modifier: "none" | "shift" | "alt";
+  display: string;
+};
+```
+
+Например:
+
+```json
+{
+  "physicalKey": "Digit1",
+  "modifier": "shift",
+  "display": "Shift+1"
+}
+```
+
+Музыкальный mapping должен использовать `physicalKey + modifier`, а не символ, который вернула ОС.
+
+---
+
+# 6. Доступные символы и приоритеты
+
+Генератор обязан использовать ресурсы каскадно.
+
+## Tier 1 --- обычные буквы
+
+English:
+
+```text
+A-Z
+```
+
+26 букв.
+
+Russian:
+
+```text
+Й Ц У К Е Н Г Ш Щ З Х Ъ
+Ф Ы В А П Р О Л Д Ж Э
+Я Ч С М И Т Ь Б Ю
+```
+
+Использовать физические клавиши соответствующей стандартной русской раскладки.
+
+`Ё` можно добавить через Backquote либо сделать отдельной настройкой.
+
+## Tier 2 --- верхний ряд
+
+```text
+` 1 2 3 4 5 6 7 8 9 0 - =
+```
+
+Использовать только когда буквенного набора недостаточно для хорошего покрытия.
+
+## Tier 3 --- Shift
+
+```text
+Shift + physical key
+```
+
+Использовать только если Tier 1 + Tier 2 недостаточно.
+
+## Tier 4 --- Alt / Option
+
+```text
+Alt/Option + physical key
+```
+
+Последний fallback.
+
+Приоритет:
+
+```text
+letters
+  >>
+top row
+  >>
+Shift
+  >>
+Alt
+```
+
+Shift/Alt в Word Typing Mode НЕ означают sharp/flat.
+
+---
+
+# 7. Главное правило читаемости
+
+Нельзя оптимизировать только процент технически воспроизводимых нот.
+
+Приоритет:
+
+```text
+1. Настоящие слова
+2. Частые слова
+3. Длинные слова
+4. Хорошее покрытие всей композиции
+5. Минимум специальных клавиш
+6. Удобство слепой печати
+```
+
+Плохой результат:
+
+```text
+BEAU7IFUL MUS1C
+```
+
+Лучше:
+
+```text
+BEAUTIFUL MUSIC [7] [1]
+```
+
+Спецклавиши желательно размещать между словами или в местах, где невозможно продолжить настоящее
+слово.
+
+---
+
+# 8. Словари
+
+Алгоритм универсальный. Словарь --- сменный ресурс.
+
+Нужно поддержать:
+
+```text
+EN 1K
+EN 3K
+EN 10K+
+RU 1K
+RU 3K
+RU 10K+
+```
+
+Для тестов 1K и 3K должны означать первые N слов одного и того же частотного списка.
+
+Словарь должен быть упорядочен по частотности либо содержать frequency/rank.
+
+Предпочитать общеупотребительную лексику.
+
+Редкие, устаревшие, оскорбительные, мусорные и технические токены желательно фильтровать.
+
+Формат внутренней записи:
+
+```ts
+type DictionaryEntry = {
+  word: string;
+  rank: number;
+  frequency?: number;
+};
+```
+
+---
+
+# 9. Нормализация словаря
+
+English:
+
+```text
+lowercase
+letters a-z
+```
+
+Russian:
+
+```text
+lowercase
+а-я + ё
+```
+
+Удалять/фильтровать:
+
+```text
+URLs
+числа
+пунктуацию внутри слов
+служебный мусор
+аномально длинные записи
+```
+
+Можно иметь минимальную длину слова, например 2.
+
+Однобуквенные слова допускаются только из whitelist:
+
+English:
+
+```text
+a
+i
+```
+
+Russian --- по выбранной политике словаря.
+
+---
+
+# 10. Музыкальный вход
+
+Поддержать как минимум:
+
+```text
+MusicXML
+MIDI
+```
+
+Внутреннее событие:
+
+```ts
+type NoteEvent = {
+  pitch: number; // MIDI pitch
+  start: number;
+  duration: number;
+  measure?: number;
+  voice?: string;
+  staff?: string;
+};
+```
+
+Для Word Typing используется последовательность NOTE-ON.
+
+Одна атака:
+
+```text
+1 note-on = 1 игровой символ
+```
+
+Длительность НЕ создаёт дополнительные буквы.
+
+Пример:
+
+```text
+C4 quarter
+D4 eighth
+E4 half
+```
+
+= три символа, а не повторение последнего символа.
+
+Duration используется UI для показа времени удержания клавиши.
+
+---
+
+# 11. Такты и слова
+
+Граница такта НЕ является границей слова.
+
+Разрешено:
+
+```text
+BAR 1          | BAR 2
+BEAUTI         | FUL
+```
+
+То есть `BEAUTIFUL` может пересекать тактовую черту.
+
+Текстовая сегментация и музыкальная сегментация независимы:
+
+```text
+MUSIC:
+| bar 1 | bar 2 | bar 3 |
+
+TEXT:
+   | beautiful | music |
+```
+
+---
+
+# 12. Паузы
+
+Паузы должны использоваться как мягкие подсказки для сегментации.
+
+Небольшая пауза:
+
+```text
+bonus(word boundary)
+```
+
+Большая пауза:
+
+```text
+larger bonus(sentence/phrase boundary)
+```
+
+Но пауза не должна жёстко запрещать слову пересекать её, если это значительно улучшает читаемость.
+
+---
+
+# 13. Аккорды
+
+Первая версия:
+
+```text
+monophonic melody
+single-note bass
+```
+
+Одновременные ноты/аккорды пока не оптимизировать как слова.
+
+Нужно архитектурно оставить возможность расширения в будущем.
+
+Если вход содержит polyphony, система должна уметь:
+
+- выбрать voice/staff;
+- извлечь верхнюю мелодическую линию;
+- извлечь басовую линию;
+- либо сообщить, что выбранная линия полифоническая.
+
+---
+
+# 14. Pattern Constraint
+
+Если одна буква уже закреплена за pitch, это соответствие нельзя нарушать внутри области действия
+mapping.
+
+Например:
+
+```text
+A → C4
+```
+
+значит каждое `A` в данном mapping играет C4.
+
+Но:
+
+```text
+C4 → A / N / R
+```
+
+разрешено.
+
+Это many-to-one mapping:
+
+```text
+InputToken → exactly one Pitch
+Pitch → many InputTokens
+```
+
+---
+
+# 15. Scope Mapping
+
+Поддержать минимум режим:
+
+```text
+STRICT
+```
+
+Один mapping на всю песню.
+
+В будущем:
+
+```text
+PHRASE
+```
+
+Mapping разрешено менять только на крупных музыкальных границах/длинных паузах.
+
+И:
+
+```text
+FREE
+```
+
+Максимум читаемости, mapping может меняться чаще.
+
+По умолчанию использовать STRICT, потому что он лучше соответствует обучению слепой игре.
+
+---
+
+# 16. Алгоритм поиска
+
+Не использовать простой greedy longest-word.
+
+Рекомендуемый прототип:
+
+```text
+Beam Search + Dictionary Trie
+```
+
+или:
+
+```text
+Dynamic Programming + bounded beam
+```
+
+State должен содержать минимум:
+
+```ts
+type SearchState = {
+  noteIndex: number;
+  tokenToPitch: Map<InputToken, Pitch>;
+  pitchToTokens: Map<Pitch, Set<InputToken>>;
+  words: string[];
+  currentWord?: string;
+  score: number;
+  fallbackCount: number;
+  shiftCount: number;
+  altCount: number;
+};
+```
+
+Beam width сделать настраиваемым:
+
+```text
+100
+500
+1000
+...
+```
+
+Не хранить полный mapping копированием на каждом шаге, если это становится bottleneck. Использовать
+persistent/copy-on-write representation или компактные integer arrays.
+
+---
+
+# 17. Индексация словаря
+
+Желательно использовать Trie.
+
+Для каждого prefix быстро получать:
+
+```text
+possible next characters
+isCompleteWord
+wordRank
+```
+
+Дополнительно можно индексировать слова по pattern signature.
+
+Пример:
+
+```text
+HELLO → 0 1 2 2 3
+LEVEL → 0 1 2 1 0
+RADAR → 0 1 2 1 0
+BANANA → 0 1 2 1 2 1
+```
+
+Pattern index полезен для быстрого pruning.
+
+---
+
+# 18. Scoring
+
+Нужна не бинарная проверка, а составная оценка.
+
+Пример концепции:
+
+```text
+score =
+  + wordCoverage
+  + commonWordBonus
+  + longWordBonus
+  + phraseBoundaryBonus
+  + typingComfortBonus
+
+  - topRowPenalty
+  - shiftPenalty
+  - altPenalty
+  - garbagePenalty
+  - excessiveShortWordPenalty
+```
+
+Приоритет штрафов:
+
+```text
+normal letter = 0
+top row       = small penalty
+Shift         = large penalty
+Alt           = very large penalty
+```
+
+Стартовые относительные значения, которые можно тюнить:
+
+```text
+normal letter: 0
+top row:      -10
+Shift:        -30
+Alt:          -50
+```
+
+Это НЕ финальные магические числа. Вынести в конфигурацию.
+
+---
+
+# 19. Long Word Bonus
+
+Алгоритм не должен выигрывать только за счёт:
+
+```text
+of in is to be an ...
+```
+
+Нужно награждать более длинные общеупотребительные слова.
+
+Например:
+
+```text
+beautiful
+```
+
+должно иметь преимущество перед несколькими короткими словами, если покрытие и частотность
+приемлемы.
+
+Возможная функция:
+
+```text
+wordLengthBonus = length^1.5
+```
+
+или логарифмически/кусочно.
+
+Не допускать, чтобы очень редкое длинное слово автоматически побеждало частую понятную фразу.
+
+---
+
+# 20. Frequency Score
+
+Если словарь имеет rank:
+
+```text
+rank 1 = очень частое
+rank 3000 = менее частое
+```
+
+Можно использовать:
+
+```text
+frequencyBonus = log(dictionarySize / rank + 1)
+```
+
+или другую нормализованную функцию.
+
+Все коэффициенты должны быть конфигурируемыми.
+
+---
+
+# 21. Typing Comfort
+
+Вторичный критерий после читаемости.
+
+Можно учитывать:
+
+- home row bonus;
+- hand alternation;
+- одинаковый палец подряд --- penalty;
+- большие прыжки пальца --- penalty;
+- баланс левой/правой руки.
+
+Но typing comfort НЕ должен превращать нормальные слова в абракадабру.
+
+---
+
+# 22. Fallback
+
+Если участок нельзя покрыть настоящими словами:
+
+1.  закончить последнее валидное слово;
+2.  использовать минимальное число fallback InputToken;
+3.  как можно быстрее вернуться к настоящему слову.
+
+Отображение:
+
+```text
+BEAUTIFUL MUSIC [7] [3] AGAIN
+```
+
+лучше, чем:
+
+```text
+BEAU7IFUL MUS3C AGAIN
+```
+
+Fallback должен быть визуально отличим.
+
+---
+
+# 23. Quality Score
+
+После генерации вернуть подробные метрики.
+
+```ts
+type QualityMetrics = {
+  totalNotes: number;
+  uniquePitches: number;
+
+  dictionaryCoveredNotes: number;
+  dictionaryCoveragePercent: number;
+
+  normalLetterCount: number;
+  topRowCount: number;
+  shiftCount: number;
+  altCount: number;
+
+  averageWordLength: number;
+  longestWordLength: number;
+  wordCount: number;
+
+  averageWordRank?: number;
+
+  readabilityScore: number;
+  typingComfortScore: number;
+  totalScore: number;
+};
+```
+
+UI может показывать:
+
+```text
+WORD TYPING COMPATIBILITY
+
+Overall:       94 / 100
+Words:         96.9%
+Letters:       95.9%
+Top row:        4.1%
+Shift:          0.0%
+Alt:            0.0%
+
+Average word:   5.4
+Longest word:  11
+```
+
+---
+
+# 24. Quality Grade
+
+Пример:
+
+```text
+95–100  ★★★★★
+85–94   ★★★★☆
+70–84   ★★★☆☆
+50–69   ★★☆☆☆
+<50     ★☆☆☆☆
+```
+
+Финальные thresholds можно откалибровать на корпусе мелодий.
+
+---
+
+# 25. Генерация результата
+
+Результат:
+
+```ts
+type WordTypingResult = {
+  language: "en" | "ru";
+  mode: "strict" | "phrase" | "free";
+
+  text: string;
+
+  tokens: GeneratedToken[];
+
+  tokenToPitch: Record<string, number>;
+  pitchToTokens: Record<number, string[]>;
+
+  metrics: QualityMetrics;
+};
+```
+
+GeneratedToken:
+
+```ts
+type GeneratedToken = {
+  noteIndex: number;
+  pitch: number;
+  input: InputToken;
+  word?: string;
+  isFallback: boolean;
+  duration: number;
+  measure?: number;
+};
+```
+
+---
+
+# 26. Кэширование
+
+Генерация может быть дорогой, поэтому результат нужно кешировать.
+
+Cache key должен учитывать:
+
+```text
+hash musical line
+language
+dictionary version
+dictionary size
+algorithm version
+scoring config
+mapping scope
+```
+
+Не пересчитывать раскладку при каждом запуске песни.
+
+---
+
+# 27. Скачивание словарей
+
+Приложение/инструмент подготовки должен уметь:
+
+1.  скачать частотный словарь;
+2.  сохранить локальный cache;
+3.  проверить encoding;
+4.  нормализовать;
+5.  получить top N;
+6.  не скачивать повторно без необходимости.
+
+Размеры для benchmark:
+
+```text
+1000
+3000
+10000
+```
+
+Нельзя молча подменять словарь встроенным маленьким списком и выдавать результат как полноценный
+benchmark.
+
+Если download недоступен, явно сообщить об этом.
+
+---
+
+# 28. Benchmark
+
+Нужен CLI/тестовый runner:
+
+```text
+word-typing benchmark song.musicxml
+```
+
+который прогоняет:
+
+```text
+EN-1000
+EN-3000
+RU-1000
+RU-3000
+```
+
+для:
+
+```text
+melody
+bass
+```
+
+и печатает сравнительную таблицу:
+
+```text
+Language
+Dictionary size
+Part
+Notes
+Unique pitches
+Dictionary coverage %
+Normal letters %
+Top row %
+Shift %
+Alt %
+Average word length
+Longest word
+Overall quality
+Runtime
+```
+
+Также сохранять полный получившийся текст и mapping.
+
+---
+
+# 29. Первый benchmark-файл
+
+Первый тестовый материал проекта:
+
+```text
+Гимн России · Лёгкий — бас одной нотой.musicxml
+```
+
+На предыдущем экспериментальном прототипе было выделено примерно:
+
+```text
+melody: 98 note-on events, 11 pitches
+bass:   36 note-on events, 5 pitches
+```
+
+Эти числа следует перепроверить настоящим parser'ом и не хардкодить.
+
+Аккорды пока игнорировать.
+
+---
+
+# 30. Критерий успеха прототипа
+
+Для каждой партии получить:
+
+1.  читаемый EN текст;
+2.  читаемый RU текст;
+3.  mapping;
+4.  метрики;
+5.  сравнение 1K vs 3K;
+6.  количество fallback;
+7.  runtime.
+
+Особенно проверить гипотезу:
+
+> увеличение словаря с 1000 до 3000 слов должно уменьшать fallback и/или увеличивать среднюю
+> длину/частотность читаемых слов.
+
+Если coverage растёт, но читаемость падает из-за редкой лексики, scoring нужно корректировать.
+
+---
+
+# 31. Архитектурный принцип
+
+Не связывать:
+
+```text
+MusicXML parsing
+Dictionary
+Optimizer
+Keyboard input
+UI
+```
+
+в один класс.
+
+Предпочтительные модули:
+
+```text
+music/
+  parseMusicXml
+  parseMidi
+  extractMonophonicLine
+
+dictionary/
+  download
+  normalize
+  trie
+
+wordTyping/
+  inputTokens
+  optimizer
+  scoring
+  metrics
+  cache
+
+ui/
+  typingRenderer
+  qualityReport
+```
+
+Названия адаптировать к существующему проекту.
+
+---
+
+# 32. Главный продуктовый принцип
+
+Пользователь должен ощущать:
+
+> «Я печатаю нормальный текст вслепую, но из клавиатуры получается настоящая музыкальная партия».
+
+Не:
+
+> «Я нажимаю случайный код, замаскированный под буквы».
+
+Поэтому читаемость текста является основной метрикой, а музыкальная корректность --- обязательным
+инвариантом.

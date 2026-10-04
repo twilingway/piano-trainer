@@ -36,6 +36,11 @@ import { StaffSettings } from "./ui/settings/StaffSettings";
 import { SongProgress } from "./ui/SongProgress";
 import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
+import { useWordTyping } from "./app/useWordTyping";
+import { useWordTypingPointer } from "./app/useWordTypingPointer";
+import { WordTypingBoard } from "./ui/WordTypingBoard";
+import { WordTypingSettings } from "./ui/WordTypingSettings";
+import { GameModeSwitch } from "./ui/GameModeSwitch";
 
 /** Hands a lesson level to the browser as a file to save. */
 function downloadLesson(exerciseId: string, levelId: string, format: LessonExportFormat): void {
@@ -53,6 +58,9 @@ function downloadLesson(exerciseId: string, levelId: string, format: LessonExpor
 
 export function App() {
   const fullscreen = useFullscreen();
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [resultClosed, setResultClosed] = useState(false);
   /**
    * Song time practice starts from after a click on the staff; null = the beginning.
    * Kept across reloads (listen, speed, hand, mode), cleared by "Сначала" and a new song.
@@ -61,7 +69,8 @@ export function App() {
   const { sound, ensureSound } = useSound();
   const current = useSong(startFromRef);
   const { song, songKey } = current;
-  const game = useGameOptions(songKey, song.duration);
+  const word = useWordTyping(song, songKey, libraryOpen || settingsOpen);
+  const game = useGameOptions(word.practiceKey, word.practiceSong.duration, word.enabled);
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const displayPrefs = game.performance
     ? {
@@ -74,15 +83,16 @@ export function App() {
       }
     : staffPrefs;
   const score = useStaffScore(song, current.baseSong, displayPrefs);
-  const takes = useTakeReview(song, songKey, ensureSound, {
+  const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
     withNames: score.withNames,
     fixedLines: score.fixedLines,
     measuresPerLine: staffPrefs.measuresPerLine,
     autoReview: staffPrefs.autoReview
   });
   const trainer = useTrainer({
-    song,
-    songKey,
+    song: word.practiceSong,
+    songKey: word.practiceKey,
+    wordTyping: word.enabled,
     startFromRef,
     ensureSound,
     onNoteClick: current.cycleFinger,
@@ -96,7 +106,16 @@ export function App() {
     ranked: game.ranked
   });
   const computerKeyboard = useComputerKeyboard();
-  const input = useKeyInput(trainer.trainerRef, computerKeyboard.options);
+  const input = useKeyInput(
+    trainer.trainerRef,
+    word.enabled ? word.keyboardOptions : computerKeyboard.options
+  );
+  const wordPointer = useWordTypingPointer(
+    trainer.trainerRef,
+    word.result,
+    word.enabled,
+    libraryOpen || settingsOpen || word.pending || Boolean(word.error)
+  );
   const timing = useTimingControls({
     trainerRef: trainer.trainerRef,
     ensureSound,
@@ -111,6 +130,7 @@ export function App() {
     stopOnError: game.stopOnError,
     rankedReady: timing.rankedReady,
     performance: game.performance,
+    canStart: !word.enabled || (!word.pending && !word.error),
     deviceId: timing.profile?.deviceId ?? ""
   });
   const view = useFallingView({
@@ -119,8 +139,8 @@ export function App() {
     viewRef: trainer.viewRef,
     trainerRef: trainer.trainerRef,
     trainerReady: trainer.trainerReady,
-    song,
-    baseSong: current.baseSong,
+    song: word.practiceSong,
+    baseSong: word.enabled ? word.practiceSong : current.baseSong,
     staffPrefs: displayPrefs,
     updateStaffPrefs,
     fallingNames: score.nameStyle,
@@ -138,12 +158,9 @@ export function App() {
   const stats = snapshot?.stats;
 
   // The shell: one bar, the song's progress, windows for the library and the settings.
-  const [libraryOpen, setLibraryOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [resultClosed, setResultClosed] = useState(false);
   const playing = snapshot?.playing ?? false;
   const { board, totalQuarters, progress, ticks } = useSongProgress(
-    song,
+    word.practiceSong,
     snapshot?.time ?? 0,
     trainer.speed
   );
@@ -158,7 +175,9 @@ export function App() {
   };
   useShortcuts({
     play,
-    blocked: computerKeyboard.editing
+    blocked: word.enabled
+      ? libraryOpen || settingsOpen || word.pending || Boolean(word.error)
+      : computerKeyboard.editing
   });
 
   const toggles = (
@@ -169,12 +188,32 @@ export function App() {
     />
   );
 
+  const wordSettings = (
+    <WordTypingSettings
+      language={word.language}
+      part={word.part}
+      dictionarySize={word.dictionarySize}
+      locked={playing}
+      onLanguage={(language) => {
+        word.update({ language });
+      }}
+      onPart={(part) => {
+        startFromRef.current = null;
+        word.choosePart(part);
+      }}
+      onSize={(dictionarySize) => {
+        word.update({ dictionarySize });
+      }}
+    />
+  );
+
   const settingsTabs = [
     {
       id: "rules",
       title: "Правила",
       content: (
         <GameSettings
+          practiceOnly={word.enabled}
           difficulty={game.difficulty}
           ranked={game.ranked}
           rankedReady={timing.rankedReady}
@@ -183,7 +222,7 @@ export function App() {
           locked={playing}
           from={game.range.from}
           to={game.range.to}
-          duration={song.duration}
+          duration={word.practiceSong.duration}
           loop={game.range.loop}
           onChange={game.update}
           onRange={game.updateRange}
@@ -209,6 +248,7 @@ export function App() {
       title: "Игра",
       content: (
         <PlaySettings
+          wordTyping={word.enabled}
           metronome={trainer.metronome}
           onMetronome={trainer.setMetronome}
           listening={listening}
@@ -242,7 +282,12 @@ export function App() {
     {
       id: "keys",
       title: "Клавиатура",
-      content: (
+      content: word.enabled ? (
+        <p className="setting-hint">
+          В режиме «Печатать мелодию» клавиатура автоматически подстраивается под выбранную партию.
+          Её диапазон и отображение задаёт режим.
+        </p>
+      ) : (
         <KeyboardSettings
           keyRange={view.keyRange}
           onKeyRange={view.setKeyRange}
@@ -274,7 +319,17 @@ export function App() {
     {
       id: "computer",
       title: "Ввод с ПК",
-      content: <ComputerKeyboardSettings controls={computerKeyboard} />
+      content: word.enabled ? (
+        <div>
+          {wordSettings}
+          <p className="setting-hint">
+            Назначения строятся для всей песни. Shift и Alt — дополнительные клавиши; настройки
+            обычных раскладок здесь не применяются.
+          </p>
+        </div>
+      ) : (
+        <ComputerKeyboardSettings controls={computerKeyboard} />
+      )
     },
     {
       id: "midi",
@@ -292,12 +347,17 @@ export function App() {
   ];
 
   return (
-    <div className="app" onClickCapture={fullscreen.onClickCapture}>
+    <div
+      className={`app${word.enabled ? " app--word" : ""}`}
+      onClickCapture={fullscreen.onClickCapture}
+    >
       <div className="shell-top">
         <PlayerTopBar
           title={song.title}
           playing={playing}
-          soundLoading={sound === "loading"}
+          soundLoading={
+            sound === "loading" || (word.enabled && (word.pending || Boolean(word.error)))
+          }
           mode={trainer.mode}
           hands={trainer.handChoice}
           speed={trainer.speed}
@@ -327,7 +387,24 @@ export function App() {
             trainer.seekToBeat(share * totalQuarters);
           }}
         />
+        <GameModeSwitch
+          wordTyping={word.enabled}
+          locked={playing}
+          onChange={(enabled) => {
+            computerKeyboard.endEditing();
+            startFromRef.current = null;
+            word.update({ enabled });
+          }}
+        >
+          {word.enabled && wordSettings}
+        </GameModeSwitch>
       </div>
+
+      {word.storageError && (
+        <div className="toast toast--error" role="status">
+          {word.storageError}
+        </div>
+      )}
 
       {library.loadError && <div className="toast toast--error">{library.loadError}</div>}
       {game.ranked && !timing.rankedReady && (
@@ -364,6 +441,23 @@ export function App() {
       )}
 
       <Workspace
+        wordBoard={
+          word.enabled && !comparing ? (
+            <WordTypingBoard
+              result={word.result}
+              statuses={snapshot?.noteStatuses}
+              time={snapshot?.time ?? -2}
+              playing={playing}
+              listening={listening}
+              pending={word.pending}
+              error={word.error}
+              discardedNotes={word.line.discardedNotes}
+              runtimeMs={word.runtimeMs}
+              onPress={wordPointer.press}
+              onRelease={wordPointer.release}
+            />
+          ) : undefined
+        }
         gameBoard={
           <GameBoard
             game={snapshot?.stats.game}

@@ -26,6 +26,7 @@ interface Props {
   /** Where the original mounts while a take is compared with it. */
   readonly mirrorHostRef: RefObject<HTMLDivElement | null>;
   readonly gameBoard?: ReactNode;
+  readonly wordBoard?: ReactNode;
 }
 
 /** The game: the staff (and the take's own) over the falling notes (and the original's). */
@@ -38,8 +39,11 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const overlay = prefs.keyStyle === "perspective" && prefs.road && prefs.lane && !props.comparing;
   return (
     <div className="workspace">
-      <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
-        {props.staffXml && prefs.visible && (
+      <div
+        className={`workspace-main${props.wordBoard ? " workspace-main--word" : overlay ? " workspace-main--overlay" : ""}`}
+      >
+        {props.wordBoard}
+        {!props.wordBoard && props.staffXml && prefs.visible && (
           <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
             <div className="staff-slot">
               {transcription && <span className="staff-label">Оригинал</span>}
@@ -84,10 +88,14 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           </div>
         )}
 
-        {!props.comparing && <div className="game-score-dock">{props.gameBoard}</div>}
+        {!props.comparing && !props.wordBoard && (
+          <div className="game-score-dock">{props.gameBoard}</div>
+        )}
 
         {/* Hidden, not removed: the view under it keeps the keys, the sound and the take going. */}
-        <div className={`lanes lanes--${props.splitDirection} lanes--${laneMode}`}>
+        <div
+          className={`lanes lanes--${props.splitDirection} lanes--${props.wordBoard ? "full" : laneMode}`}
+        >
           <div className="lane" ref={hostRef}>
             {props.comparing && <span className="lane-label">Твой дубль</span>}
             {props.waiting && <span className="waiting-pill">Жду ноту</span>}
