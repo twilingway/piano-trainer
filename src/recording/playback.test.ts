@@ -65,4 +65,10 @@ describe("takeToMidi", () => {
     const pedal = track?.controlChanges[64] ?? [];
     expect(pedal.map((item) => item.value)).toEqual([1, 0]);
   });
+
+  it("keeps a Cyrillic title readable as UTF-8", () => {
+    const midi = new Midi(takeToMidi(TAKE, "Гимн России"));
+    const bytes = Uint8Array.from(midi.header.name, (char) => char.charCodeAt(0));
+    expect(new TextDecoder().decode(bytes)).toBe("Гимн России");
+  });
 });

@@ -59,7 +59,8 @@ export function takeAsSong(take: Take, original: Song, review: TakeReview): Song
 /** The take as a MIDI file, in real time as it was played, with velocities and the pedal. */
 export function takeToMidi(take: Take, title: string): Uint8Array {
   const midi = new Midi();
-  midi.header.name = title;
+  // The writer keeps one byte per character: hand it the title's UTF-8 bytes.
+  midi.header.name = String.fromCharCode(...new TextEncoder().encode(title));
   const track = midi.addTrack();
   track.name = "Piano";
   for (const played of take.notes) {
