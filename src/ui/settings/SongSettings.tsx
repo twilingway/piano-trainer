@@ -1,16 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { keyName } from "../../song/harmony";
-import type { Key } from "../../song/harmony";
-
-/**
- * The shift that takes `from` to `to`, -4..+7 semitones: up a fifth rather than
- * down a fourth, as C major to G major is usually written out.
- */
-function shiftBetween(from: number, to: number): number {
-  const up = (((to - from) % 12) + 12) % 12;
-  return up > 7 ? up - 12 : up;
-}
+import { keyName, shiftBetween, transposeKey } from "../../song/keySignature";
+import type { Key } from "../../song/keySignature";
 
 interface Props {
   /** The key the song is written in, if it reads as one. */
@@ -50,12 +41,16 @@ export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers
               }}
             >
               {Array.from({ length: 12 }, (_, tonic) => {
-                const moved: Key = { tonic, mode: sourceKey.mode };
                 const shift = shiftBetween(sourceKey.tonic, tonic);
+                const moved = transposeKey(sourceKey, shift);
                 return (
                   <option key={tonic} value={tonic}>
                     {keyName(moved)}
-                    {shift === 0 ? " (как в нотах)" : ""}
+                    {shift === 0
+                      ? sourceKey.fifths === undefined
+                        ? " (исходная)"
+                        : " (как в нотах)"
+                      : ""}
                   </option>
                 );
               })}

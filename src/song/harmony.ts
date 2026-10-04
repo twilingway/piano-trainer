@@ -1,5 +1,10 @@
 import { quartersAt } from "./song";
 import type { Song } from "./song";
+import { keyFromFifths } from "./keySignature";
+import type { Key } from "./keySignature";
+
+export { keyName } from "./keySignature";
+export type { Key } from "./keySignature";
 
 /*
  * Chords and key, read off the notes. A chord is the triad or seventh whose
@@ -105,11 +110,6 @@ export function detectChords(song: Song): Chord[] {
 const MAJOR_PROFILE = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
 const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
 
-export interface Key {
-  readonly tonic: number;
-  readonly mode: "major" | "minor";
-}
-
 function correlation(a: readonly number[], b: readonly number[]): number {
   const mean = (values: readonly number[]) => values.reduce((sum, v) => sum + v, 0) / values.length;
   const ma = mean(a);
@@ -126,46 +126,52 @@ function correlation(a: readonly number[], b: readonly number[]): number {
   return da === 0 || db === 0 ? 0 : top / Math.sqrt(da * db);
 }
 
-/** The key whose profile best matches how long each pitch class sounds in the song. */
+function profileScore(weights: readonly number[], key: Key): number {
+  const profile = key.mode === "major" ? MAJOR_PROFILE : MINOR_PROFILE;
+  const rotated = profile.map((_, index) => profile[(index - key.tonic + 12) % 12] ?? 0);
+  return correlation(weights, rotated);
+}
+
+/** Read traditional authored keys before using the notes to infer their mode. */
+function scoreKey(song: Song, weights: readonly number[]): Key | null | undefined {
+  if (song.source !== "musicxml" || !song.musicXml) return undefined;
+  const document = new DOMParser().parseFromString(song.musicXml, "application/xml");
+  if (document.querySelector("parsererror")) return undefined;
+  for (const element of Array.from(
+    document.querySelectorAll("part > measure > attributes > key")
+  )) {
+    if (element.querySelector("key-step, key-alter")) continue;
+    const written = element.querySelector(":scope > fifths")?.textContent.trim();
+    if (!written || !/^[+-]?\d+$/.test(written)) continue;
+    const fifths = Number(written);
+    if (!Number.isInteger(fifths) || fifths < -7 || fifths > 7) continue;
+    const mode = element.querySelector(":scope > mode")?.textContent.trim();
+    if (mode === "major" || mode === "minor") return keyFromFifths(fifths, mode);
+    if (mode !== undefined && mode !== "") return null;
+    const major = keyFromFifths(fifths, "major");
+    const minor = keyFromFifths(fifths, "minor");
+    return profileScore(weights, minor) > profileScore(weights, major) ? minor : major;
+  }
+  return undefined;
+}
+
+/** The score's key, or the best duration-weighted profile when none is authored. */
 export function detectKey(song: Song): Key | undefined {
   const weights = new Array<number>(12).fill(0);
   for (const note of song.notes)
     weights[note.pitch % 12] = (weights[note.pitch % 12] ?? 0) + note.duration;
+  const authored = scoreKey(song, weights);
+  if (authored === null) return undefined;
+  if (authored) return authored;
   if (weights.every((value) => value === 0)) return undefined;
   let best: (Key & { score: number }) | undefined;
   for (let tonic = 0; tonic < 12; tonic++) {
-    for (const [mode, profile] of [
-      ["major", MAJOR_PROFILE],
-      ["minor", MINOR_PROFILE]
-    ] as const) {
-      const rotated = profile.map((_, index) => profile[(index - tonic + 12) % 12] ?? 0);
-      const score = correlation(weights, rotated);
+    for (const mode of ["major", "minor"] as const) {
+      const score = profileScore(weights, { tonic, mode });
       if (!best || score > best.score) best = { tonic, mode, score };
     }
   }
   return best ? { tonic: best.tonic, mode: best.mode } : undefined;
-}
-
-const TONIC_NAMES = [
-  "до",
-  "до-диез",
-  "ре",
-  "ми-бемоль",
-  "ми",
-  "фа",
-  "фа-диез",
-  "соль",
-  "ля-бемоль",
-  "ля",
-  "си-бемоль",
-  "си"
-];
-
-/** "До мажор", "ля минор". */
-export function keyName(key: Key): string {
-  const tonic = TONIC_NAMES[key.tonic] ?? "";
-  const name = `${tonic} ${key.mode === "major" ? "мажор" : "минор"}`;
-  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 /** Root spellings as chord symbols usually have them: flats for Eb, Ab, Bb, sharps for C#, F#. */

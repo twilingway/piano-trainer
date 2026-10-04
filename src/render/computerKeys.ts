@@ -14,7 +14,10 @@ import type { NoteLook } from "./noteLook";
 export interface ComputerKeyboard {
   readonly tokens: readonly GeneratedToken[];
   readonly language: Language;
+  /** The per-word layout only: what a token ("modifier:code") plays while a note is owed. */
+  readonly wordPitch?: WordPitch | undefined;
 }
+export type WordPitch = (tokenId: string, owedNoteId: string | undefined) => number | undefined;
 
 const BOTH_HANDS: ReadonlySet<Hand> = new Set(["left", "right"]);
 const NOTHING: ReadonlySet<number> = new Set();
@@ -43,6 +46,10 @@ export class ComputerKeys {
   private mouseColumn: number | undefined;
   /** Keys held down now, by column, the latest last: they light, and strikes land on them. */
   private held: number[] = [];
+  /** The per-word layout: the pitch each held key played, its letter's in the owed word or a stray. */
+  private heldPitch = new Map<number, number>();
+  /** The note a key answered in the last frame told. */
+  private owedId: string | undefined;
 
   /**
    * `language` says what the keys without an input type, for their captions; `letter` draws the
@@ -51,7 +58,8 @@ export class ComputerKeys {
   constructor(
     tokens: readonly GeneratedToken[],
     readonly language: Language,
-    private readonly letter?: (text: string) => Texture
+    private readonly letter?: (text: string) => Texture,
+    private readonly wordPitch?: WordPitch
   ) {
     this.byNote = new Map(tokens.map((token) => [token.noteId, token]));
     const byColumn = new Map<number, GeneratedToken[]>();
@@ -101,8 +109,11 @@ export class ComputerKeys {
   frame(frame: FrameState): FrameState {
     const due = this.inLane(frame.due);
     this.due = due;
+    this.owedId = frame.owedNoteId;
     // The keys held light themselves; a pitch no held key plays (a MIDI piano) lights a guess.
-    const pressed = new Set<number>(this.held.filter((column) => this.byColumn.has(column)));
+    const pressed = new Set<number>(
+      this.held.filter((column) => this.byColumn.has(column) || this.heldPitch.has(column))
+    );
     for (const pitch of frame.pressed) {
       if (this.heldColumn(pitch) !== undefined) continue;
       const column = this.columnOf(pitch, frame.time, due);
@@ -148,31 +159,51 @@ export class ComputerKeys {
     return index < 0 ? undefined : this.order[index + 1];
   }
 
-  /** A computer key down or up, as the keyboard says: shown only, the input plays it. */
-  hold(code: string, down: boolean): void {
+  /**
+   * A computer key down or up, as the keyboard says: shown only, the input plays it. `tokenId`
+   * ("modifier:code") tells the per-word layout which pitch the key played.
+   */
+  hold(code: string, down: boolean, tokenId?: string): void {
     const column = keyColumn(code);
     if (column === undefined) return;
     this.held = this.held.filter((item) => item !== column);
-    if (down) this.held.push(column);
+    this.heldPitch.delete(column);
+    if (!down) return;
+    this.held.push(column);
+    const pitch = tokenId === undefined ? undefined : this.wordPitch?.(tokenId, this.owedId);
+    if (pitch !== undefined) this.heldPitch.set(column, pitch);
   }
 
   /** Every key up: the window lost the keyboard. */
   releaseAll(): void {
     this.held = [];
+    this.heldPitch.clear();
   }
 
-  /** The real pitch a mouse press on a key plays: the owed input if it is on that key. */
+  /**
+   * The real pitch a mouse press on a key plays: the owed input if it is on that key, else the
+   * key's plain input (in the per-word layout, the owed word's).
+   */
   press(column: number): number | undefined {
-    const tokens = this.byColumn.get(column);
-    const owed = this.due[0] && this.byNote.get(this.due[0].id);
-    const token =
-      owed && owed.input.physicalKey === columnKey(column)
-        ? owed
-        : (tokens?.find((item) => item.input.modifier === "none") ?? tokens?.[0]);
-    this.pressed = token?.pitch;
+    const code = columnKey(column);
+    if (this.wordPitch) {
+      const owed = this.owedId === undefined ? undefined : this.byNote.get(this.owedId);
+      const tokenId =
+        owed && owed.input.physicalKey === code ? inputTokenId(owed.input) : `none:${code ?? ""}`;
+      this.pressed = code === undefined ? undefined : this.wordPitch(tokenId, this.owedId);
+    } else {
+      const tokens = this.byColumn.get(column);
+      const owed = this.due[0] && this.byNote.get(this.due[0].id);
+      const token =
+        owed && owed.input.physicalKey === code
+          ? owed
+          : (tokens?.find((item) => item.input.modifier === "none") ?? tokens?.[0]);
+      this.pressed = token?.pitch;
+    }
     if (this.pressed !== undefined) {
       this.mouseColumn = column;
       this.held = [...this.held.filter((item) => item !== column), column];
+      if (this.wordPitch) this.heldPitch.set(column, this.pressed);
     }
     return this.pressed;
   }
@@ -182,6 +213,7 @@ export class ComputerKeys {
     const pitch = this.pressed;
     this.pressed = undefined;
     this.held = this.held.filter((item) => item !== this.mouseColumn);
+    if (this.mouseColumn !== undefined) this.heldPitch.delete(this.mouseColumn);
     this.mouseColumn = undefined;
     return pitch;
   }
@@ -190,11 +222,14 @@ export class ComputerKeys {
     return notes.flatMap((note) => this.laneById.get(note.id) ?? []);
   }
 
-  /** The latest held key that plays a real pitch. */
+  /** The latest held key that plays a real pitch: by what it played in the per-word layout. */
   private heldColumn(real: number): number | undefined {
     for (let index = this.held.length - 1; index >= 0; index--) {
       const column = this.held[index] ?? -1;
-      if (this.byColumn.get(column)?.some((token) => token.pitch === real)) return column;
+      const plays = this.wordPitch
+        ? this.heldPitch.get(column) === real
+        : this.byColumn.get(column)?.some((token) => token.pitch === real);
+      if (plays) return column;
     }
     return undefined;
   }

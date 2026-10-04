@@ -85,6 +85,24 @@ describe("tempo mode", () => {
   });
 });
 
+describe("the owed note", () => {
+  const close: Song = { ...SONG, notes: [note("a", 60, 0), note("b", 62, 0.2)] };
+
+  it("is the pending note nearest the song time in tempo mode, not one still in its late window", () => {
+    const run = new PracticeSession(close, { mode: "tempo", hands: new Set(["right"]), speed: 1 });
+    run.advance(LEAD_IN_S + 0.15);
+    expect(run.statusOf("a")).toBe("pending");
+    expect(run.nextDue()[0]?.id).toBe("a");
+    expect(run.owedNote()?.id).toBe("b");
+  });
+
+  it("is the first owed note in wait mode", () => {
+    const run = new PracticeSession(close, { mode: "wait", hands: new Set(["right"]), speed: 1 });
+    run.advance(LEAD_IN_S + 0.15);
+    expect(run.owedNote()?.id).toBe("a");
+  });
+});
+
 describe("the other hand", () => {
   it("is played by the program and stopped when its note ends", () => {
     const run = session("tempo");
