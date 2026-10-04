@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/context-budget.py\""
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/context-budget.py\" 2>/dev/null || python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/context-budget.py\""
           }
         ]
       }
