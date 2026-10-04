@@ -9,6 +9,10 @@ COPY src ./src
 COPY public ./public
 ARG GIT_SHA
 RUN test -n "$GIT_SHA" && pnpm build && printf '%s\n' "$GIT_SHA" > dist/version.txt
+# Precompressed copies for nginx gzip_static.
+RUN find dist -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' -o -name '*.json' \
+      -o -name '*.svg' -o -name '*.txt' -o -name '*.xml' -o -name '*.webmanifest' \) \
+      -size +1k -exec gzip -9 -k {} +
 
 FROM nginx:stable-alpine
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
