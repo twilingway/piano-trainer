@@ -145,6 +145,11 @@ export class Trainer {
     this.publish();
   }
 
+  /** The first note the player owes now, if any. */
+  nextDueNoteId(): string | undefined {
+    return this.session?.nextDue()[0]?.id;
+  }
+
   /** Restarts the run from song time `from`, keeping play or pause as it was. */
   seek(from: number): void {
     if (!this.session) return;

@@ -167,7 +167,13 @@ export function App() {
       part={word.part}
       accompaniment={word.accompaniment}
       onAccompaniment={word.setAccompaniment}
+      layout={word.layout}
+      onLayout={(layout) => {
+        word.update({ layout });
+      }}
+      onRegenerate={word.regenerate}
       locked={playing}
+      pending={word.pending}
       onLanguage={(language) => {
         word.update({ language });
       }}
@@ -283,6 +289,7 @@ export function App() {
               listening={listening}
               pending={word.pending}
               error={word.error}
+              notice={word.notice}
             />
           ) : undefined
         }

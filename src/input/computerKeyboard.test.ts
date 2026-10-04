@@ -34,7 +34,8 @@ function send(
 
 describe("browser computer keyboard input", () => {
   it("uses word tokens instead of custom bindings, sustain and semitone modifiers", () => {
-    const events = start({ wordMapping: { "none:KeyA": 72, "shift:KeyA": 55, "alt:KeyB": 90 } });
+    const mapping: Record<string, number> = { "none:KeyA": 72, "shift:KeyA": 55, "alt:KeyB": 90 };
+    const events = start({ wordPitch: (id) => mapping[id] });
     send("keydown", "KeyA", { key: "ф", shiftKey: true });
     send("keyup", "KeyA");
     send("keydown", "KeyA");
@@ -55,8 +56,29 @@ describe("browser computer keyboard input", () => {
       ["up", 90]
     ]);
   });
+  it("asks the word pitch at the moment of the press and releases what was played", () => {
+    let owed = "n0";
+    const pitches: Record<string, number> = { n0: 60, n1: 64 };
+    const events = start({
+      wordPitch: (id, owedNoteId) =>
+        id === "none:KeyA" && owedNoteId ? pitches[owedNoteId] : undefined,
+      owedNoteId: () => owed
+    });
+    send("keydown", "KeyA");
+    owed = "n1";
+    send("keyup", "KeyA");
+    send("keydown", "KeyA");
+    expect(
+      events.map((event) => (event.type === "pedal" ? event : [event.type, event.pitch]))
+    ).toEqual([
+      ["down", 60],
+      ["up", 60],
+      ["down", 64]
+    ]);
+  });
   it("keeps alias attacks and releases word notes when the mapping changes", () => {
-    const events = start({ wordMapping: { "none:KeyA": 60, "none:KeyB": 60 } });
+    const mapping: Record<string, number> = { "none:KeyA": 60, "none:KeyB": 60 };
+    const events = start({ wordPitch: (id) => mapping[id] });
     send("keydown", "KeyA");
     send("keydown", "KeyB");
     send("keyup", "KeyA");

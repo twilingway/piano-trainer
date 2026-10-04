@@ -69,23 +69,29 @@ export function useKeyInput(
   useEffect(() => {
     let sustain = false;
     const deferred = new Set<number>();
-    return listenToComputerKeyboard((event) => {
-      if (event.type === "pedal") {
-        sustain = event.down;
-        trainerRef.current?.pedal(event.down, event.timestamp, "keyboard");
-        if (!sustain) {
-          for (const pitch of deferred) soundNoteOff(pitch);
-          deferred.clear();
+    return listenToComputerKeyboard(
+      (event) => {
+        if (event.type === "pedal") {
+          sustain = event.down;
+          trainerRef.current?.pedal(event.down, event.timestamp, "keyboard");
+          if (!sustain) {
+            for (const pitch of deferred) soundNoteOff(pitch);
+            deferred.clear();
+          }
+          return;
         }
-        return;
+        if (event.type === "down") {
+          deferred.delete(event.pitch);
+          soundNoteOn(event.pitch);
+        } else if (sustain) deferred.add(event.pitch);
+        else soundNoteOff(event.pitch);
+        if (!interceptRef.current?.(event)) trainerRef.current?.key(event);
+      },
+      {
+        ...keyboardOptions,
+        owedNoteId: () => trainerRef.current?.nextDueNoteId()
       }
-      if (event.type === "down") {
-        deferred.delete(event.pitch);
-        soundNoteOn(event.pitch);
-      } else if (sustain) deferred.add(event.pitch);
-      else soundNoteOff(event.pitch);
-      if (!interceptRef.current?.(event)) trainerRef.current?.key(event);
-    }, keyboardOptions);
+    );
   }, [trainerRef, keyboardOptions]);
 
   useEffect(() => {

@@ -19,6 +19,8 @@ interface Props {
   readonly listening: boolean;
   readonly pending: boolean;
   readonly error: string | undefined;
+  /** A note about the text, such as a variant that came out the same. */
+  readonly notice?: string | undefined;
 }
 
 export function WordTypingBoard(props: Props) {
@@ -76,6 +78,7 @@ export function WordTypingBoard(props: Props) {
                 </li>
               ))}
             </ul>
+            {props.notice && <small role="status">{props.notice}</small>}
             {metrics && (
               <span
                 className="word-quality"
