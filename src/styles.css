@@ -52,6 +52,36 @@
   font-size: 12px;
   color: var(--muted);
 }
+
+.practice-timing-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.practice-timing-status[data-policy="learning"] {
+  border-color: var(--good);
+  color: var(--good);
+  background: rgb(0 255 123 / 8%);
+}
+
+.practice-timing-status__light {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
 .app--word .compact-hands,
 .app--word .compact-practice__hands,
 .app--word .topbar > select[aria-label="Руки"] {
@@ -1056,10 +1086,130 @@ select:disabled {
 .game-dialog.settings {
   position: fixed;
   inset: 60px 12px auto auto;
-  width: min(520px, calc(100vw - 24px));
+  width: min(760px, calc(100vw - 24px));
+  height: min(760px, calc(100dvh - 72px));
   margin: 0;
   max-height: calc(100dvh - 72px);
   z-index: 10;
+}
+
+.game-dialog.settings .game-dialog__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 174px minmax(0, 1fr);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.settings-navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 10px;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.settings-navigation .tab {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.settings-navigation .tab[aria-selected="true"] {
+  border-color: var(--border);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-navigation-mobile {
+  display: none;
+}
+
+.settings-content {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px 24px;
+  overscroll-behavior: contain;
+}
+
+.settings-group + .settings-group {
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.settings-content h3.settings-group__title {
+  margin-top: 0;
+  color: var(--accent);
+}
+
+.settings-content :is(input, select, fieldset) {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.settings-content .settings-section :is(input, select) {
+  min-height: 40px;
+  border-color: var(--border);
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+.settings-content .settings-section button {
+  border-color: var(--border);
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+@media (width <= 720px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .settings-navigation {
+    display: none;
+  }
+
+  .settings-navigation-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .settings-navigation-mobile select {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .settings-content {
+    padding: 14px;
+  }
+
+  .settings-content .setting {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 
 .library-actions {
@@ -1355,7 +1505,8 @@ button.song-card.song-card__open {
 
   .game-dialog.settings {
     inset: max(8px, env(safe-area-inset-top)) 8px auto auto;
-    width: min(520px, calc(100vw - 16px));
+    width: min(760px, calc(100vw - 16px));
+    height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
 

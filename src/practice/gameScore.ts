@@ -11,6 +11,7 @@ import type { GameRank, TimingStatistics } from "./gameResults";
 
 export interface GameScoreOptions {
   readonly difficulty?: Difficulty;
+  readonly learningWindow?: boolean;
   readonly targetScore?: number;
   readonly energyPerHit?: number;
 }
@@ -44,6 +45,7 @@ export interface GameScoreSnapshot {
 /** Pure scorer. The session owns matching, chord finalization and hold lifetimes. */
 export class GameScore {
   private readonly difficulty: Difficulty;
+  private readonly learningWindow: boolean;
   private readonly targetScore: number;
   private readonly energyPerHit: number;
   private score = 0;
@@ -79,6 +81,7 @@ export class GameScore {
       throw new RangeError("Expected note count must be a nonnegative integer");
     }
     this.difficulty = options.difficulty ?? "normal";
+    this.learningWindow = options.learningWindow === true;
     this.targetScore = options.targetScore ?? 0;
     this.energyPerHit = options.energyPerHit ?? 2;
   }
@@ -86,7 +89,7 @@ export class GameScore {
   hit(noteId: string, offsetMs: number, atSeconds: number): Judgement {
     const previous = this.judged.get(noteId);
     if (previous) return previous;
-    const grade = judgeOffset(offsetMs, this.difficulty);
+    const grade = judgeOffset(offsetMs, this.difficulty, this.learningWindow);
     if (grade === "MISS") {
       this.miss(noteId);
       return grade;

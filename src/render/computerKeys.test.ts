@@ -63,6 +63,27 @@ describe("ComputerKeys", () => {
   );
   const lane = keys.mapSong(song);
 
+  it("maps progressive pending cues to their physical keys and preserves the unshifted clock", () => {
+    const state = keys.frame(
+      frame({
+        time: 0.3,
+        hintTime: 0.8,
+        hintSpeed: 0.5,
+        hintNotes: notes,
+        graded: [{ grade: "ok", pitch: 67, offsetMs: 200, assisted: true }]
+      })
+    );
+    expect(state.hintNotes?.map((note) => [note.id, note.pitch])).toEqual([
+      ["a", L],
+      ["b", M],
+      ["c", F]
+    ]);
+    expect(state.hintTime).toBe(0.8);
+    expect(state.hintSpeed).toBe(0.5);
+    expect(state.due).toEqual([]);
+    expect(state.graded).toEqual([{ grade: "ok", pitch: L, offsetMs: 200, assisted: true }]);
+  });
+
   it("draws the line one column a key and leaves the accompaniment out", () => {
     expect(lane.notes.map((note) => [note.id, note.pitch])).toEqual([
       ["a", L],

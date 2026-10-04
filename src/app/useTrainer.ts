@@ -21,7 +21,7 @@ const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
 
 interface Options {
   readonly wordTyping?: boolean;
-  readonly gameOptions?: Pick<PracticeOptions, "difficulty" | "from" | "to">;
+  readonly gameOptions?: Pick<PracticeOptions, "difficulty" | "learningWindow" | "from" | "to">;
   readonly ranked?: boolean;
   readonly song: Song;
   /** The song's key for the trainer's per-song state. */

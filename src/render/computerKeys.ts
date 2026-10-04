@@ -124,6 +124,7 @@ export class ComputerKeys {
     return {
       ...frame,
       due,
+      ...(frame.hintNotes ? { hintNotes: this.inLane(frame.hintNotes) } : {}),
       pressed,
       // Practising, the accompaniment sounds off the lane: no key of it lights.
       sounding: listening ? sounding : NOTHING,

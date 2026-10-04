@@ -2,7 +2,7 @@
 import type { Song, SongBeat, SongNote } from "../song/song";
 import type { GameScore } from "./gameScore";
 import { SessionScoring } from "./sessionScoring";
-import { difficultyWindows, judgeOffset } from "./gameRules";
+import { difficultyWindows, judgeOffset, LEARNING_LATE_WINDOW_MS } from "./gameRules";
 import type { Difficulty, Judgement } from "./gameRules";
 import { SongTimeline } from "./timing";
 import { SessionHolds } from "./sessionHolds";
@@ -17,6 +17,7 @@ export interface PracticeOptions {
   /** 1 = written tempo. */
   readonly speed: number;
   readonly difficulty?: Difficulty;
+  readonly learningWindow?: boolean;
   readonly from?: number;
   readonly to?: number;
   readonly missGraceMs?: number;
@@ -33,6 +34,7 @@ export type PracticeEvent =
       readonly noteId: string;
       readonly offset: number;
       readonly judgement?: Judgement;
+      readonly assisted?: boolean;
     }
   | { readonly type: "miss"; readonly noteId: string }
   | { readonly type: "wrong"; readonly pitch: number }
@@ -75,6 +77,7 @@ export class PracticeSession {
   private readonly leadIn: number;
 
   private readonly playerNotes: SongNote[];
+  private readonly hintNotes: SongNote[] = [];
   private readonly autoNotes: SongNote[];
   private readonly status = new Map<string, NoteStatus>();
   private offsets: number[] = [];
@@ -106,7 +109,8 @@ export class PracticeSession {
     this.autoNotes = song.notes.filter((note) => !options.hands.has(note.hand) && inRange(note));
     this.game = new SessionScoring(
       this.scoringNotes(this.playerNotes),
-      options.difficulty ?? "normal"
+      options.difficulty ?? "normal",
+      options.mode === "tempo" && options.learningWindow === true
     );
     for (const note of this.playerNotes) this.status.set(note.id, "pending");
     this.beats = [...countIn(song.beats), ...song.beats];
@@ -140,7 +144,8 @@ export class PracticeSession {
     const expected = this.playerNotes.filter((note) => note.start >= edge);
     this.game = new SessionScoring(
       this.scoringNotes(expected),
-      this.options.difficulty ?? "normal"
+      this.options.difficulty ?? "normal",
+      this.options.mode === "tempo" && this.options.learningWindow === true
     );
     this.soundingAuto.length = 0;
     this.finished = false;
@@ -260,6 +265,16 @@ export class PracticeSession {
     );
   }
 
+  /** All pending key cues, so a late attack cannot hide the following preparation. */
+  keyHints(): SongNote[] {
+    this.hintNotes.length = 0;
+    for (const note of this.playerNotes) {
+      if (note.start > this.time + 0.3 * this.options.speed) break;
+      if (this.status.get(note.id) === "pending") this.hintNotes.push(note);
+    }
+    return this.hintNotes;
+  }
+
   /** True while the wait mode holds the song for the player. */
   get waiting(): boolean {
     if (this.options.mode !== "wait") return false;
@@ -277,13 +292,13 @@ export class PracticeSession {
       if (due && target > due.start) target = due.start;
     } else {
       const grace = timestampClock ? this.inputGraceMs / 1000 : 0;
-      const window = (this.matchWindow + grace) * this.options.speed;
+      const window = (this.lateWindow + grace) * this.options.speed;
       for (const note of this.playerNotes) {
         if (note.start >= target - window) break;
         if (this.status.get(note.id) !== "pending") continue;
         this.status.set(note.id, "missed");
         this.missedPitches.push(note.pitch);
-        this.game.miss(note.id, note.start / this.options.speed + this.matchWindow);
+        this.game.miss(note.id, note.start / this.options.speed + this.lateWindow);
         events.push({ type: "miss", noteId: note.id });
       }
     }
@@ -335,19 +350,25 @@ export class PracticeSession {
       return [{ type: "wrong", pitch }];
     }
 
-    const window = this.matchWindow * this.options.speed;
+    const early = this.matchWindow * this.options.speed;
+    const late = this.lateWindow * this.options.speed;
     let best: SongNote | undefined;
     for (const note of this.playerNotes) {
-      if (note.start > eventSongTime + window) break;
+      if (note.start > eventSongTime + early + 1e-9) break;
       if (note.pitch !== pitch || this.status.get(note.id) !== "pending") continue;
-      if (Math.abs(note.start - eventSongTime) > window + 1e-9) continue;
-      if (!best || Math.abs(note.start - eventSongTime) < Math.abs(best.start - eventSongTime))
+      if (eventSongTime - note.start > late + 1e-9) continue;
+      if (
+        !best ||
+        Math.abs(note.start - eventSongTime) < Math.abs(best.start - eventSongTime) - 1e-9
+      )
         best = note;
     }
     if (!best) {
       if (
         this.clockStarted &&
-        !this.playerNotes.some((note) => Math.abs(note.start - eventSongTime) <= window)
+        !this.playerNotes.some(
+          (note) => eventSongTime >= note.start - early && eventSongTime <= note.start + late
+        )
       )
         return [];
       this.wrongPitches.push(pitch);
@@ -368,12 +389,14 @@ export class PracticeSession {
         type: "hit",
         noteId: best.id,
         offset,
-        ...(this.clockStarted
+        ...(this.clockStarted || this.options.learningWindow
           ? {
               judgement: judgeOffset(
                 Math.round(offset * 1e9) / 1e6,
-                this.options.difficulty ?? "normal"
-              )
+                this.options.difficulty ?? "normal",
+                this.options.learningWindow
+              ),
+              assisted: this.options.learningWindow === true && offset > this.matchWindow
             }
           : {})
       }
@@ -424,9 +447,15 @@ export class PracticeSession {
   }
 
   private get matchWindow(): number {
-    return this.clockStarted || this.options.difficulty !== undefined
+    return this.clockStarted || this.options.difficulty !== undefined || this.options.learningWindow
       ? difficultyWindows(this.options.difficulty ?? "normal").ok / 1000
       : HIT_WINDOW_S;
+  }
+
+  private get lateWindow(): number {
+    return this.options.mode === "tempo" && this.options.learningWindow
+      ? LEARNING_LATE_WINDOW_MS / 1000
+      : this.matchWindow;
   }
 
   private scoringNotes(notes: readonly SongNote[]): SongNote[] {
@@ -479,7 +508,7 @@ export class PracticeSession {
           ? Math.max(
               ...chord.map((note) => this.hitTimes.get(note.id) ?? note.start / this.options.speed)
             )
-          : Math.max(...chord.map((note) => note.start)) / this.options.speed + this.matchWindow
+          : Math.max(...chord.map((note) => note.start)) / this.options.speed + this.lateWindow
       );
       this.finalizedChords.add(first.id);
     }

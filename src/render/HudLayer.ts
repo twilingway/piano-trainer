@@ -158,7 +158,7 @@ export class HudLayer {
     this.drawBoard(board);
     for (const strike of graded) {
       const x = keyX(strike.pitch);
-      if (x !== undefined) this.pop(strike.grade, x, hitY);
+      if (x !== undefined) this.pop(strike, x, hitY);
     }
     for (let index = this.active.length - 1; index >= 0; index--) {
       const pop = this.active[index];
@@ -207,8 +207,13 @@ export class HudLayer {
     }
   }
 
-  private pop(grade: StrikeGrade, x: number, hitY: number): void {
+  private pop(strike: GradedStrike, x: number, hitY: number): void {
+    const { grade } = strike;
     const text = this.spare.get(grade)?.pop() ?? this.make(grade);
+    text.text =
+      strike.assisted && strike.offsetMs !== undefined
+        ? `Поздно +${String(Math.round(strike.offsetMs))} мс`
+        : GRADES[grade].label;
     text.position.set(x, hitY - 8);
     text.alpha = 1;
     text.visible = true;

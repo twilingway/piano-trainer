@@ -47,13 +47,20 @@ export function difficultyWindows(difficulty: Difficulty = "normal"): TimingWind
   return DIFFICULTY_WINDOWS[difficulty];
 }
 
-export function judgeOffset(offsetMs: number, difficulty: Difficulty = "normal"): Judgement {
+export const LEARNING_LATE_WINDOW_MS = 300;
+
+export function judgeOffset(
+  offsetMs: number,
+  difficulty: Difficulty = "normal",
+  learningWindow = false
+): Judgement {
   const error = Math.abs(offsetMs);
   const windows = difficultyWindows(difficulty);
   if (error <= windows.perfect) return "PERFECT";
   if (error <= windows.great) return "GREAT";
   if (error <= windows.good) return "GOOD";
   if (error <= windows.ok) return "OK";
+  if (learningWindow && offsetMs > 0 && offsetMs <= LEARNING_LATE_WINDOW_MS) return "OK";
   return "MISS";
 }
 

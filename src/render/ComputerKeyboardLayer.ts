@@ -9,6 +9,7 @@ import type { ComputerKeys } from "./computerKeys";
 import { layoutComputerKeys } from "./computerKeyboardLayout";
 import type { KeyFace } from "./computerKeyboardLayout";
 import { TYPING_FINGER_COLOR, towardWhite } from "./fingerColors";
+import { keyHintStrength, strongestKeyHint } from "./keyFeedback";
 import type { KeyboardLayer, KeysFrame } from "./KeyboardLayer";
 import type { Geometry } from "./viewGeometry";
 
@@ -31,13 +32,8 @@ const DARK = 0x04101c;
 /** The felt over the keys and its neon edge, as over the piano's. */
 const FELT = 0x003b62;
 const FELT_EDGE = 0x00e5ff;
-/** The glass and the halo of a typing key: at rest, next in line, owed or held. */
-const LOOK = {
-  idle: { glass: 0.5, halo: 0.12, label: 0.62 },
-  next: { glass: 0.85, halo: 0.6, label: 0.85 },
-  due: { glass: 1, halo: 1, label: 1 },
-  pressed: { glass: 1, halo: 1, label: 1 }
-} as const;
+/** The glass and the halo of a typing key: at rest, owed or held. */
+const IDLE_LOOK = { glass: 0.5, halo: 0.12, label: 0.62 } as const;
 /** The owed key breathes: its halo swells this much, this many times a second. */
 const PULSE = 0.35;
 const PULSE_HZ = 1.6;
@@ -59,7 +55,7 @@ const SHIFTED_COMMON: Readonly<Record<string, string>> = {
 };
 const SHIFTED_RU: Readonly<Record<string, string>> = { Digit6: ":", Digit7: "?" };
 
-type KeyState = keyof typeof LOOK;
+type KeyState = "idle" | "due" | "pressed";
 
 interface KeySprites {
   readonly face: KeyFace;
@@ -200,10 +196,10 @@ export class ComputerKeyboardLayer implements KeysLayer {
     this.relabel();
   }
 
-  /** Lights the keys for this frame: the owed key, the next one, the held and sounding ones. */
+  /** Lights pending keys in their final approach, as well as the held and sounding ones. */
   draw(frame: KeysFrame): void {
-    const hints = frame.hints !== false;
-    const next = hints ? this.computer?.next()?.pitch : undefined;
+    const pending = frame.hintNotes ?? frame.due;
+    const { hintTime = 0, hintSpeed = 1, hints = true, waiting } = frame;
     const now = performance.now();
     const seconds = Math.min(0.1, (now - this.lastDraw) / 1000);
     this.lastDraw = now;
@@ -212,16 +208,19 @@ export class ComputerKeyboardLayer implements KeysLayer {
     for (const key of this.keys) {
       const { face, halo, base, glass, edge, label } = key;
       const pitch = face.pitch;
+      const note = strongestKeyHint(pending, pitch, hintTime, hintSpeed, hints, waiting);
+      const hintStrength = keyHintStrength(note, hintTime, hintSpeed, hints, waiting);
       const state: KeyState =
         pitch === undefined
           ? "idle"
           : frame.pressed.has(pitch) || frame.sounding.has(pitch)
             ? "pressed"
-            : hints && frame.due.some((note) => note.pitch === pitch)
+            : hintStrength > 0
               ? "due"
-              : pitch === next
-                ? "next"
-                : "idle";
+              : "idle";
+      const overdue = note !== undefined && hintTime >= note.start;
+      const brightness = state === "pressed" ? 1 : Math.min(1, hintStrength / 0.75);
+      const flash = state === "due" ? Math.max(0, hintStrength - 0.75) * 4 : 0;
       const sink = state === "pressed" ? face.height * SINK_SHARE : 0;
       const scale = face.height / REF;
       for (const sprite of [base, glass, edge]) {
@@ -234,7 +233,7 @@ export class ComputerKeyboardLayer implements KeysLayer {
         face.width,
         face.height,
         scale,
-        HALO * (state === "due" ? breath : 1)
+        HALO * (state === "due" && overdue ? breath + flash * 0.35 : 1)
       );
       label.position.set(face.x + face.width / 2, face.y + face.height / 2 + sink);
       base.tint = DARK;
@@ -249,17 +248,16 @@ export class ComputerKeyboardLayer implements KeysLayer {
         label.tint = IDLE_CAPTION;
         continue;
       }
-      const lit = state === "due" || state === "pressed";
-      if (state === "due") owed ??= key;
-      glass.tint = key.color;
-      glass.alpha = LOOK[state].glass;
-      edge.tint = lit ? towardWhite(key.color, 0.6) : key.color;
+      if (state === "due" && overdue) owed ??= key;
+      glass.tint = towardWhite(key.color, flash * 0.5);
+      glass.alpha = IDLE_LOOK.glass + (1 - IDLE_LOOK.glass) * brightness;
+      edge.tint = towardWhite(key.color, 0.6 * brightness + 0.3 * flash);
       edge.alpha = 1;
-      halo.tint = key.color;
-      halo.alpha = LOOK[state].halo;
+      halo.tint = towardWhite(key.color, flash * 0.6);
+      halo.alpha = IDLE_LOOK.halo + (1 - IDLE_LOOK.halo) * brightness;
       // The letters burn bright, white on the lit key, near white in the finger's colour else.
-      label.tint = lit ? 0xffffff : towardWhite(key.color, 0.85);
-      label.alpha = LOOK[state].label;
+      label.tint = towardWhite(key.color, 0.85 + 0.15 * brightness);
+      label.alpha = IDLE_LOOK.label + (1 - IDLE_LOOK.label) * brightness;
     }
     this.drawDust(owed, seconds);
   }

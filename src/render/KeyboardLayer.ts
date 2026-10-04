@@ -5,8 +5,8 @@ import { isBlackKey } from "../fingering/fingering";
 import type { Finger, Hand } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
 import type { SongNote } from "../song/song";
-import { FINGER_COLOR } from "./fingerColors";
-import { keyHintNote } from "./keyFeedback";
+import { FINGER_COLOR, towardWhite } from "./fingerColors";
+import { keyHintNote, keyHintStrength, strongestKeyHint } from "./keyFeedback";
 import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
 import { KEY_LIGHT_PAD, bakeKeyLight, keyShape, shapeId } from "./keyLightShapes";
 import type { KeyRect } from "./keyboardLayout";
@@ -114,6 +114,10 @@ export interface KeysFrame {
   readonly pressed: ReadonlySet<number>;
   readonly sounding: ReadonlySet<number>;
   readonly due: readonly SongNote[];
+  readonly hintNotes?: readonly SongNote[];
+  readonly hintTime?: number;
+  readonly hintSpeed?: number;
+  readonly waiting?: boolean;
   /** Notes crossing the hit line right now, by pitch. */
   readonly playing: ReadonlyMap<number, SongNote>;
   readonly hints?: boolean;
@@ -145,7 +149,6 @@ export class KeyboardLayer {
   private railTexture: Texture | undefined;
   private readonly rail = new Sprite();
   /** The owed chord by pitch, refilled every frame rather than made anew. */
-  private readonly dueByPitch = new Map<number, SongNote>();
   /** Each key's light, baked for its shape at the last layout; keys of one shape share one. */
   private readonly lightOf = new Map<number, Texture>();
   private lightTextures = new Map<string, Texture>();
@@ -333,14 +336,29 @@ export class KeyboardLayer {
     stickers: boolean
   ): void {
     const { keyboardTop, keyboardHeight, blackHeight } = geometry;
-    const dueByPitch = this.dueByPitch;
-    dueByPitch.clear();
-    for (const note of frame.due) dueByPitch.set(note.pitch, note);
     for (const [pitch, sprite] of this.keySprites) {
-      const due = dueByPitch.get(pitch);
+      const due = strongestKeyHint(
+        frame.hintNotes ?? frame.due,
+        pitch,
+        frame.hintTime ?? 0,
+        frame.hintSpeed ?? 1,
+        frame.hints !== false,
+        frame.waiting
+      );
+      const hintStrength = keyHintStrength(
+        due,
+        frame.hintTime ?? 0,
+        frame.hintSpeed ?? 1,
+        frame.hints !== false,
+        frame.waiting
+      );
       const pressed = frame.pressed.has(pitch);
       const sounding = pressed || frame.sounding.has(pitch);
-      const shown = keyHintNote(due, frame.playing.get(pitch), sounding);
+      const shown = keyHintNote(
+        hintStrength > 0 ? due : undefined,
+        frame.playing.get(pitch),
+        sounding
+      );
       // A key with a fingered note is its finger's colour whoever plays it; the press and
       // the program's own colours are for keys without one.
       const color =
@@ -365,16 +383,18 @@ export class KeyboardLayer {
         light.visible = key !== undefined && color !== undefined;
         if (light.visible && key && color !== undefined) {
           const strength = sounding ? LIGHT_SOUNDING : LIGHT_WAITING;
-          light.tint = color;
+          light.tint = sounding ? color : towardWhite(color, Math.max(0, hintStrength - 0.75) * 2);
           light.texture = this.lightOf.get(pitch) ?? Texture.EMPTY;
           light.blendMode = key.black ? "add" : "normal";
-          light.alpha = key.black ? strength.black : strength.white;
+          light.alpha =
+            (key.black ? strength.black : strength.white) * (sounding ? 1 : hintStrength);
           light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
         }
       }
       const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
       hint.visible = key !== undefined && shown?.finger !== undefined && frame.hints !== false;
+      hint.alpha = sounding ? 1 : hintStrength;
       if (!key || shown?.finger === undefined) continue;
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
       hint.x = key.x + key.width / 2;

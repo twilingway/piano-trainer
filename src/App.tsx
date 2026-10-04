@@ -2,7 +2,6 @@
 import { useGameRuntime } from "./app/useGameRuntime";
 import { useGameOptions } from "./app/useGameOptions";
 import { useTimingControls } from "./app/useTimingControls";
-import { GameSettings } from "./ui/GameSettings";
 import { GameBoard } from "./ui/GameBoard";
 
 import { downloadLesson } from "./app/lessonExport";
@@ -11,7 +10,6 @@ import { useFallingView } from "./app/useFallingView";
 import { useFullscreen } from "./app/useFullscreen";
 import { useKeyInput } from "./app/useKeyInput";
 import { useComputerKeyboard } from "./app/useComputerKeyboard";
-import { ComputerKeyboardSettings } from "./ui/settings/ComputerKeyboardSettings";
 import { usePlayerLibrary } from "./app/usePlayerLibrary";
 import { useShortcuts } from "./app/useShortcuts";
 import { useSong } from "./app/useSong";
@@ -26,12 +24,6 @@ import { LibraryDialog } from "./ui/LibraryDialog";
 import { PlayerTopBar } from "./ui/PlayerTopBar";
 import { ResultDialog } from "./ui/ResultDialog";
 import { ReviewBar } from "./ui/ReviewBar";
-import { SettingsPanel } from "./ui/SettingsPanel";
-import { KeyboardSettings } from "./ui/settings/KeyboardSettings";
-import { MidiSettings } from "./ui/settings/MidiSettings";
-import { PlaySettings } from "./ui/settings/PlaySettings";
-import { SongSettings } from "./ui/settings/SongSettings";
-import { StaffSettings } from "./ui/settings/StaffSettings";
 import { SongProgress } from "./ui/SongProgress";
 import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
@@ -39,6 +31,8 @@ import { useWordTyping } from "./app/useWordTyping";
 import { WordTypingBoard } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
 import { GameModeSwitch } from "./ui/GameModeSwitch";
+import { PracticeTimingStatus } from "./ui/PracticeTimingStatus";
+import { PlayerSettings } from "./ui/settings/PlayerSettings";
 
 export function App() {
   const fullscreen = useFullscreen();
@@ -184,145 +178,6 @@ export function App() {
     />
   );
 
-  const settingsTabs = [
-    {
-      id: "rules",
-      title: "Правила",
-      content: (
-        <GameSettings
-          practiceOnly={word.enabled}
-          difficulty={game.difficulty}
-          ranked={game.ranked}
-          rankedReady={timing.rankedReady}
-          performance={game.performance}
-          stopOnError={game.stopOnError}
-          locked={playing}
-          from={game.range.from}
-          to={game.range.to}
-          duration={word.practiceSong.duration}
-          loop={game.range.loop}
-          onChange={game.update}
-          onRange={game.updateRange}
-        />
-      )
-    },
-    { id: "timing", title: "Точность", content: timing.settings },
-    {
-      id: "song",
-      title: "Песня",
-      content: (
-        <SongSettings
-          sourceKey={current.sourceKey}
-          transpose={current.transpose}
-          onTranspose={current.setTranspose}
-          fingersChanged={current.overrides.size > 0}
-          onResetFingers={current.resetFingers}
-        />
-      )
-    },
-    {
-      id: "play",
-      title: "Игра",
-      content: (
-        <PlaySettings
-          wordTyping={word.enabled}
-          metronome={trainer.metronome}
-          onMetronome={trainer.setMetronome}
-          listening={listening}
-          soundLoading={sound === "loading"}
-          onListen={() => void trainer.toggleListening()}
-          stats={stats}
-          mode={trainer.mode}
-          onMode={trainer.setMode}
-          hands={trainer.handChoice}
-          onHands={trainer.setHandChoice}
-          speed={trainer.speed}
-          onSpeed={trainer.setSpeed}
-          autoReview={staffPrefs.autoReview}
-          onAutoReview={(autoReview) => {
-            updateStaffPrefs({ autoReview });
-          }}
-        />
-      )
-    },
-    {
-      id: "staff",
-      title: "Вид нот",
-      content: (
-        <StaffSettings
-          prefs={staffPrefs}
-          hasScore={Boolean(score.staffXml)}
-          onChange={updateStaffPrefs}
-        />
-      )
-    },
-    {
-      id: "keys",
-      title: "Клавиатура",
-      content: word.enabled ? (
-        <p className="setting-hint">
-          В режиме «Печатать мелодию» клавиатура автоматически подстраивается под выбранную партию.
-          Её диапазон и отображение задаёт режим.
-        </p>
-      ) : (
-        <KeyboardSettings
-          keyRange={view.keyRange}
-          onKeyRange={view.setKeyRange}
-          showLabels={view.showLabels}
-          onShowLabels={view.setShowLabels}
-          fps={staffPrefs.fps}
-          onFps={(fps) => {
-            updateStaffPrefs({ fps });
-          }}
-          keyStyle={staffPrefs.keyStyle}
-          onKeyStyle={(keyStyle) => {
-            updateStaffPrefs({ keyStyle, ...(keyStyle === "perspective" ? { road: true } : {}) });
-          }}
-          road={{ far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon }}
-          onRoad={(road) => {
-            updateStaffPrefs({
-              ...(road.far === undefined ? {} : { roadFar: road.far }),
-              ...(road.horizon === undefined ? {} : { roadHorizon: road.horizon })
-            });
-          }}
-          camera={staffPrefs.camera}
-          onCamera={(camera) => {
-            updateStaffPrefs({ camera });
-          }}
-          toggles={toggles}
-        />
-      )
-    },
-    {
-      id: "computer",
-      title: "Ввод с ПК",
-      content: word.enabled ? (
-        <div>
-          {wordSettings}
-          <p className="setting-hint">
-            Назначения строятся для всей песни. Shift и Alt — дополнительные клавиши; настройки
-            обычных раскладок здесь не применяются.
-          </p>
-        </div>
-      ) : (
-        <ComputerKeyboardSettings controls={computerKeyboard} />
-      )
-    },
-    {
-      id: "midi",
-      title: "Звук и MIDI",
-      content: (
-        <MidiSettings
-          devices={input.devices}
-          deviceId={input.midiDeviceId}
-          onDevice={input.setMidiDeviceId}
-          midiError={input.midiError}
-          locked={game.ranked && playing}
-        />
-      )
-    }
-  ];
-
   return (
     <div
       className={`app${word.enabled ? " app--word" : ""}`}
@@ -374,6 +229,7 @@ export function App() {
           }}
         >
           {word.enabled && wordSettings}
+          <PracticeTimingStatus policy={snapshot?.timingPolicy} ranked={game.ranked} />
         </GameModeSwitch>
       </div>
 
@@ -387,7 +243,7 @@ export function App() {
       {game.ranked && !timing.rankedReady && (
         <div className="toast">
           Рейтинг недоступен: выберите устройство и выполните актуальную калибровку в настройках
-          точности.
+          синхронизации.
         </div>
       )}
 
@@ -480,13 +336,96 @@ export function App() {
         onOpenFile={(event) => void library.openFile(event)}
       />
 
-      <SettingsPanel
+      <PlayerSettings
         open={settingsOpen}
         onClose={() => {
           computerKeyboard.endEditing();
           setSettingsOpen(false);
         }}
-        tabs={settingsTabs}
+        wordTyping={word.enabled}
+        play={{
+          wordTyping: word.enabled,
+          metronome: trainer.metronome,
+          onMetronome: trainer.setMetronome,
+          listening,
+          soundLoading: sound === "loading",
+          onListen: () => void trainer.toggleListening(),
+          stats,
+          mode: trainer.mode,
+          onMode: trainer.setMode,
+          hands: trainer.handChoice,
+          onHands: trainer.setHandChoice,
+          speed: trainer.speed,
+          onSpeed: trainer.setSpeed,
+          autoReview: staffPrefs.autoReview,
+          onAutoReview: (autoReview) => {
+            updateStaffPrefs({ autoReview });
+          }
+        }}
+        rules={{
+          practiceOnly: word.enabled,
+          difficulty: game.difficulty,
+          ranked: game.ranked,
+          rankedReady: timing.rankedReady,
+          performance: game.performance,
+          learningWindow: game.learningWindow,
+          stopOnError: game.stopOnError,
+          locked: playing,
+          from: game.range.from,
+          to: game.range.to,
+          duration: word.practiceSong.duration,
+          loop: game.range.loop,
+          onChange: game.update,
+          onRange: game.updateRange
+        }}
+        song={{
+          sourceKey: current.sourceKey,
+          transpose: current.transpose,
+          onTranspose: current.setTranspose,
+          fingersChanged: current.overrides.size > 0,
+          onResetFingers: current.resetFingers
+        }}
+        staff={{
+          prefs: staffPrefs,
+          hasScore: Boolean(score.staffXml),
+          onChange: updateStaffPrefs
+        }}
+        keyboard={{
+          keyRange: view.keyRange,
+          onKeyRange: view.setKeyRange,
+          showLabels: view.showLabels,
+          onShowLabels: view.setShowLabels,
+          fps: staffPrefs.fps,
+          onFps: (fps) => {
+            updateStaffPrefs({ fps });
+          },
+          keyStyle: staffPrefs.keyStyle,
+          onKeyStyle: (keyStyle) => {
+            updateStaffPrefs({ keyStyle, ...(keyStyle === "perspective" ? { road: true } : {}) });
+          },
+          road: { far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon },
+          onRoad: (road) => {
+            updateStaffPrefs({
+              ...(road.far === undefined ? {} : { roadFar: road.far }),
+              ...(road.horizon === undefined ? {} : { roadHorizon: road.horizon })
+            });
+          },
+          camera: staffPrefs.camera,
+          onCamera: (camera) => {
+            updateStaffPrefs({ camera });
+          },
+          toggles
+        }}
+        computerKeyboard={computerKeyboard}
+        wordSettings={wordSettings}
+        midi={{
+          devices: input.devices,
+          deviceId: input.midiDeviceId,
+          onDevice: input.setMidiDeviceId,
+          midiError: input.midiError,
+          locked: game.ranked && playing
+        }}
+        synchronization={timing.settings}
       />
 
       <ResultDialog

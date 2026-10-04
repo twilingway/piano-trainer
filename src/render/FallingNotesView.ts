@@ -1,10 +1,8 @@
 import { Application, Container, Texture } from "pixi.js";
 import type { FederatedPointerEvent } from "pixi.js";
 
-import type { Finger, Hand } from "../fingering/fingering";
+import type { Finger } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
-import type { ComboBoard, GradedStrike } from "../practice/combo";
-import type { NoteStatus } from "../practice/session";
 import type { Song, SongNote } from "../song/song";
 import { bakeDigits, bakeNames } from "./bakeLabels";
 import { bindKeyboardPointer } from "./bindKeyboardPointer";
@@ -18,6 +16,7 @@ import { HandsLayer } from "./HandsLayer";
 import { FxLayer } from "./FxLayer";
 import type { FxKey } from "./FxLayer";
 import { FpsMeter } from "./FpsMeter";
+import type { FrameState } from "./frameState";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
 import type { KeyStyle } from "./KeyboardLayer";
@@ -34,30 +33,7 @@ import { fitRange, viewGeometry } from "./viewGeometry";
 import type { Geometry, ViewParts } from "./viewGeometry";
 
 export type { FallingNoteNames } from "./bakeLabels";
-
-export interface FrameState {
-  /** Song seconds at the hit line. */
-  readonly time: number;
-  /** Song seconds between the top of the lane and the hit line. */
-  readonly lookAhead: number;
-  readonly statusOf: (noteId: string) => NoteStatus | undefined;
-  /** Keys the player holds down right now. */
-  readonly pressed: ReadonlySet<number>;
-  /** Keys the program is sounding for the other hand. */
-  readonly sounding: ReadonlySet<number>;
-  /** The chord the player owes next, shown on the keyboard with its fingers. */
-  readonly due: readonly SongNote[];
-  /** Pending notes that currently freeze the session in wait mode. */
-  readonly waitingFor?: readonly SongNote[];
-  readonly hands: ReadonlySet<Hand>;
-  readonly hints?: boolean;
-  /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
-  readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
-  /** The combo and accuracy board; none on a view that only mirrors another. */
-  readonly board?: ComboBoard;
-  /** Strikes graded since the last frame, shown over their keys at the hit line. */
-  readonly graded?: readonly GradedStrike[];
-}
+export type { FrameState } from "./frameState";
 
 /** Seconds the scroll takes to go most of the way to where it is headed. */
 const PAN_SMOOTHING_S = 0.35;
@@ -419,6 +395,10 @@ export class FallingNotesView {
         // Only the key-colour layer hides accompaniment; fire follows every sounding note.
         sounding: state.hands.size === 0 ? state.sounding : NO_SOUNDING_KEYS,
         due: state.due,
+        hintTime: state.hintTime ?? state.time,
+        hintSpeed: state.hintSpeed ?? 1,
+        waiting: (state.waitingFor?.length ?? 0) > 0,
+        ...(state.hintNotes ? { hintNotes: state.hintNotes } : {}),
         playing,
         ...(state.hints === undefined ? {} : { hints: state.hints })
       },

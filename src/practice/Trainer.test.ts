@@ -38,7 +38,7 @@ function harness(song = SONG) {
       ticker = callback;
     },
     setSong: vi.fn(),
-    draw: vi.fn()
+    draw: vi.fn<FallingNotesView["draw"]>()
   };
   const trainer = new Trainer(view as unknown as FallingNotesView);
   const snapshots: TrainerSnapshot[] = [];
@@ -66,6 +66,62 @@ function down(trainer: Trainer, timestamp: number, pitch = 60, deviceId = "piano
   trainer.key({ type: "down", pitch, velocity: 90, timestamp, source: "midi", deviceId });
 }
 describe("Trainer input timestamps", () => {
+  it("publishes the applied policy rather than a stored learning preference", () => {
+    const run = harness();
+    expect(run.latest()?.timingPolicy).toBe("strict");
+    run.trainer.load(
+      SONG,
+      { mode: "tempo", hands: new Set(["right"]), speed: 1, learningWindow: true },
+      "fixture"
+    );
+    expect(run.latest()?.timingPolicy).toBe("learning");
+    run.trainer.load(
+      SONG,
+      { mode: "wait", hands: new Set(["right"]), speed: 1, learningWindow: true },
+      "fixture"
+    );
+    expect(run.latest()?.timingPolicy).toBe("waiting");
+    run.trainer.load(
+      SONG,
+      { mode: "tempo", hands: new Set(), speed: 1, learningWindow: true },
+      "fixture"
+    );
+    expect(run.latest()?.timingPolicy).toBe("listening");
+  });
+  it("keeps hint time independent of visual offset and records educational late hits", () => {
+    const run = harness();
+    run.trainer.configureTiming({
+      inputOffsets: {},
+      manualInputOffsetMs: 0,
+      audioOffsetMs: 0,
+      visualOffsetMs: 500
+    });
+    run.trainer.load(
+      SONG,
+      { mode: "tempo", hands: new Set(["right"]), speed: 1, learningWindow: true },
+      "fixture"
+    );
+    run.trainer.setPlaying(true);
+    run.frame(2850);
+    expect(run.view.draw.mock.lastCall?.[0]).toMatchObject({
+      hintSpeed: 1,
+      hintNotes: [SONG.notes[0]]
+    });
+    expect(run.view.draw.mock.lastCall?.[0].time).toBeCloseTo(-0.65);
+    expect(run.view.draw.mock.lastCall?.[0].hintTime).toBeCloseTo(-0.15);
+    now = 3200;
+    down(run.trainer, 3200);
+    run.frame(3200);
+    expect(run.view.draw.mock.lastCall?.[0].graded?.[0]).toMatchObject({
+      grade: "ok",
+      assisted: true
+    });
+    expect(run.view.draw.mock.lastCall?.[0].graded?.[0]?.offsetMs).toBeCloseTo(200);
+    expect(run.latest()?.stats.game?.score).toBe(25);
+    run.trainer.seek(0);
+    expect(run.takes[0]?.timing).toMatchObject({ rulesVersion: 2, learningWindow: true });
+    expect(run.takes[0]?.notes[0]?.start).toBeCloseTo(0.2);
+  });
   it("pins hand hints to unplayed wait-mode notes despite a visual offset", () => {
     const run = harness();
     run.trainer.configureTiming({
