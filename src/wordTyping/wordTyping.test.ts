@@ -253,6 +253,18 @@ describe("per-word layout and variants", () => {
     expect(song.metrics.dictionaryCoveredNotes).toBe(4);
   });
 
+  it("types every fallback on the left index finger's home key", () => {
+    const notes = line([60, 62, 64]);
+    for (const language of ["en", "ru"] as const) {
+      const result = generateWordTyping(notes, [], language, {}, undefined, { layout: "word" });
+      expect(result.tokens.map((token) => [token.input.physicalKey, token.pitch])).toEqual([
+        ["KeyF", 60],
+        ["KeyF", 62],
+        ["KeyF", 64]
+      ]);
+    }
+  });
+
   it("prefers a word the text has not used yet", () => {
     const notes = line([60, 62, 64, 65, 60, 62, 64, 65]);
     const dictionary = normalizeWords(["rain", "cold"], "en");
@@ -269,10 +281,13 @@ describe("per-word layout and variants", () => {
       generateWordTyping(notes, dictionary, "en", {}, undefined, { layout: "word" })
     );
     expect(generate(0).text).toBe("rain");
-    expect(generate(3)).toEqual(generate(3));
-    const texts = new Set(Array.from({ length: 8 }, (_, index) => generate(index + 1).text));
-    expect(texts.size).toBeGreaterThan(1);
+    // The same text for a variant whatever was generated before it: no hidden state, no randomness.
+    const forward = Array.from({ length: 8 }, (_, index) => generate(index + 1).text);
+    const backward = Array.from({ length: 8 }, (_, index) => generate(8 - index).text).reverse();
+    expect(backward).toEqual(forward);
+    expect(new Set(forward).size).toBeGreaterThan(1);
     expect(() => generate(-1)).toThrow("варианта");
+    expect(() => generate(2 ** 32)).toThrow("варианта");
   });
 });
 

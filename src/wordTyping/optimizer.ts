@@ -18,8 +18,8 @@ import type {
 
 export { DEFAULT_CONFIG } from "./scoring";
 export const ALGORITHM_VERSION = "word-typing-v4";
-/** How many of the latest words a repeated word is looked for among. */
-const RECENT_WORDS = 16;
+/** How many of the latest blocks (words and fallbacks) a repeated word is looked for among. */
+const RECENT_BLOCKS = 16;
 
 export interface GenerationOptions {
   readonly layout?: Layout;
@@ -41,7 +41,7 @@ interface State {
 }
 
 interface Candidate {
-  readonly mapping: number[];
+  readonly mapping: readonly number[];
   readonly entry: DictionaryEntry;
   readonly indexes: readonly number[];
   readonly score: number;
@@ -58,9 +58,13 @@ function prune(states: readonly State[], width: number, layout: Layout): State[]
   const seen = new Set<string>();
   const result: State[] = [];
   for (const state of ordered) {
-    // Every word starts from an empty mapping, so only the word before tells states apart.
+    // Every word starts from an empty mapping: only the words before (for the pair bonus and the
+    // repeat penalty) tell states apart. The last two blocks keep apart states the last one alone
+    // would merge, such as every state ending in a fallback.
     const key =
-      layout === "word" ? String(state.segment?.entry?.rank ?? -1) : state.mapping.join(",");
+      layout === "word"
+        ? `${String(state.segment?.entry?.rank ?? -1)}:${String(state.previous?.segment?.entry?.rank ?? -1)}`
+        : state.mapping.join(",");
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(state);
@@ -79,13 +83,11 @@ function variantShare(variant: number, rank: number): number {
 
 function recentWords(state: State): Set<number> {
   const ranks = new Set<number>();
-  for (
-    let item: State | undefined = state;
-    item && ranks.size < RECENT_WORDS;
-    item = item.previous
-  ) {
-    const rank = item.segment?.entry?.rank;
+  let blocks = 0;
+  for (let item: State | undefined = state; item?.segment && blocks < RECENT_BLOCKS; blocks++) {
+    const rank = item.segment.entry?.rank;
     if (rank !== undefined) ranks.add(rank);
+    item = item.previous;
   }
   return ranks;
 }
@@ -106,11 +108,15 @@ function fittingWords(
   const mapping = [...start];
   const indexes: number[] = [];
   const candidates: Candidate[] = [];
+  // No pitch to keep room for: the per-word layout, whose words leave no mapping behind.
+  const perWord = totalPitches === 0;
   function visit(node: TrieNode, offset: number): void {
     if (node.entry && offset > 0) {
       // Aliases must leave enough unassigned inputs for every pitch still to come.
-      const assigned = mapping.filter((pitch) => pitch !== -1);
-      if (mapping.length - assigned.length + new Set(assigned).size < totalPitches) return;
+      if (!perWord) {
+        const assigned = mapping.filter((pitch) => pitch !== -1);
+        if (mapping.length - assigned.length + new Set(assigned).size < totalPitches) return;
+      }
       const last = notes[position + offset - 1];
       const next = notes[position + offset];
       const boundary =
@@ -125,7 +131,7 @@ function fittingWords(
         ? config.variantNoise * node.entry.word.length * variantShare(variant, node.entry.rank)
         : 0;
       candidates.push({
-        mapping: [...mapping],
+        mapping: perWord ? start : [...mapping],
         entry: node.entry,
         indexes: [...indexes],
         score: wordScore(node.entry, dictionarySize, config) + boundary + comfort + noise
@@ -187,9 +193,10 @@ function fallbackState(
   note: SongNote,
   pool: readonly InputToken[],
   letterCount: number,
-  config: OptimizerConfig
+  config: OptimizerConfig,
+  fixedIndex?: number
 ): State {
-  let index = state.mapping.findIndex((pitch) => pitch === note.pitch);
+  let index = fixedIndex ?? state.mapping.findIndex((pitch) => pitch === note.pitch);
   if (index < 0) index = state.mapping.findIndex((pitch) => pitch === -1);
   const input = pool[index];
   if (!input) throw new Error("Недостаточно клавиш для всех высот мелодии");
@@ -278,7 +285,8 @@ export function generateWordTyping(
   { layout = "song", variant = 0 }: GenerationOptions = {}
 ): WordTypingResult {
   const config = resolveConfig(overrides);
-  if (!Number.isSafeInteger(variant) || variant < 0)
+  // The variant noise hashes 32 bits: a larger number would repeat a smaller one's text.
+  if (!Number.isInteger(variant) || variant < 0 || variant >= 2 ** 32)
     throw new Error("Неверный номер варианта текста");
   if (!notes.length) throw new Error("Выбранная партия не содержит нот");
   for (const note of notes) {
@@ -313,6 +321,12 @@ export function generateWordTyping(
       Array.from(entry.word).every((letter) => letterIndexes.has(letter) && !farLetters.has(letter))
   );
   const trie = buildTrie(validEntries);
+  // The per-word layout keeps no mapping, so every fallback can take the same key: the left
+  // index finger's home key rather than the cascade's first, a pinky on the top row.
+  const fallbackIndex =
+    layout === "word"
+      ? pool.findIndex((token) => token.physicalKey === "KeyF" && token.modifier === "none")
+      : undefined;
   const beams: State[][] = Array.from({ length: notes.length + 1 }, () => []);
   requiredAt(beams, 0).push({ mapping: empty, score: 0 });
   for (let position = 0; position < notes.length; position++) {
@@ -332,8 +346,10 @@ export function generateWordTyping(
         config,
         variant
       );
-    // A word's own mapping starts empty, so the words that fit are the same after every state; a
-    // pair or a repeat moves a word by less than the margin kept here.
+    // A word's own mapping starts empty, so the words that fit are the same after every state and
+    // are found once. The cut is a trade: a pair bonus can lift a word from below it, so some
+    // linked pairs are lost for a much faster search; cuts of 16 and 32 times gained nothing on
+    // the anthem and took up to 1.7 times as long.
     const shared =
       layout === "word"
         ? fitting(empty, 0)
@@ -358,7 +374,15 @@ export function generateWordTyping(
         if (bucket.length > config.beamWidth * 8)
           beams[target] = prune(bucket, config.beamWidth * 2, layout);
       }
-      const fallback = fallbackState(state, position, note, pool, letters.length, config);
+      const fallback = fallbackState(
+        state,
+        position,
+        note,
+        pool,
+        letters.length,
+        config,
+        fallbackIndex
+      );
       requiredAt(beams, position + 1).push(
         layout === "word" ? { ...fallback, mapping: empty } : fallback
       );
