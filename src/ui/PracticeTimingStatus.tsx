@@ -6,29 +6,33 @@ interface Props {
 }
 
 const STATUS: Readonly<
-  Record<Exclude<TimingPolicy, "listening">, { label: string; hint: string }>
+  Record<Exclude<TimingPolicy, "listening">, { label: string; short: string; hint: string }>
 > = {
   learning: {
     label: "Учебный режим · +300 мс",
+    short: "+300 мс",
     hint: "Можно опоздать до 300 мс: поздняя нота даёт OK и 25 базовых очков. Изменить: Настройки → Игра."
   },
   strict: {
     label: "Строгий тайминг",
+    short: "Строгий",
     hint: "Окна попадания зависят от сложности. Учебный допуск выключен. Изменить: Настройки → Игра."
   },
   waiting: {
-    label: "Ожидание ноты",
-    hint: "Песня ждёт нужную клавишу. Время реакции не оценивается."
+    label: "Ожидание ноты · без рейтинга",
+    short: "Ожидание",
+    hint: "Песня ждёт нужную клавишу. Время реакции не оценивается, рейтинга нет."
   }
 };
 
-/** Always visible by the game selector, even when the score or notes are hidden. */
+/** Always visible in the bar or by the game selector, even when the score or notes are hidden. */
 export function PracticeTimingStatus({ policy, ranked }: Props) {
   if (!policy || policy === "listening") return null;
   const rating = ranked && policy !== "waiting";
   const status = rating
     ? {
         label: "Рейтинг · строгий тайминг",
+        short: "Рейтинг",
         hint: "Рейтинг использует строгие окна без учебного допуска."
       }
     : STATUS[policy];
@@ -37,10 +41,14 @@ export function PracticeTimingStatus({ policy, ranked }: Props) {
       className="practice-timing-status"
       data-policy={rating ? "ranked" : policy}
       role="status"
-      title={status.hint}
+      title={`${status.label}. ${status.hint}`}
     >
       <span className="practice-timing-status__light" aria-hidden="true" />
-      {status.label}
+      <span className="practice-timing-status__label">{status.label}</span>
+      {/* A narrow bar shows this one; the tooltip keeps the whole label. */}
+      <span className="practice-timing-status__short" aria-hidden="true">
+        {status.short}
+      </span>
     </span>
   );
 }

@@ -21,7 +21,8 @@ const scoreFormat = new Intl.NumberFormat("ru-RU");
 export function GameBoard({ game, mode, playing, onOverdrive }: Props) {
   if (mode === "wait") {
     return (
-      <aside className="game-score-board game-score-board--message">
+      // A computer's bar says this in its timing chip; the plaque stays for the compact bar.
+      <aside className="game-score-board game-score-board--message game-score-board--practice">
         Тренировка · без рейтинга времени
       </aside>
     );

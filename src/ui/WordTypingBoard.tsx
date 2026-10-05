@@ -60,30 +60,34 @@ export function WordTicker(props: Props) {
   }, [anchor, result, props.pending, props.error]);
   if (props.pending || props.error || !result) return null;
   return (
-    <div className="word-ticker" ref={lineRef} aria-label="Текст мелодии">
-      <div className="word-ticker__track" ref={trackRef}>
-        {[...groups].map(([groupIndex, word]) => (
-          <span className="word-text__word" key={groupIndex}>
-            {word.map((token) => {
-              const active = token.noteIndex === index;
-              const status = progress.statuses[token.noteIndex] ?? "pending";
-              return (
-                <span
-                  key={token.noteId}
-                  ref={token.noteIndex === anchor ? anchorRef : undefined}
-                  className={`word-character word-character--${status}${active ? " word-character--current" : ""}${token.isFallback ? " word-character--fallback" : ""}`}
-                  aria-current={active ? "step" : undefined}
-                >
-                  {token.isFallback
-                    ? `[${token.input.display}]`
-                    : token.input.display.toLowerCase()}
-                </span>
-              );
-            })}
-          </span>
-        ))}
+    <>
+      <div className="word-ticker" ref={lineRef} aria-label="Текст мелодии">
+        <div className="word-ticker__track" ref={trackRef}>
+          {[...groups].map(([groupIndex, word]) => (
+            <span className="word-text__word" key={groupIndex}>
+              {word.map((token) => {
+                const active = token.noteIndex === index;
+                const status = progress.statuses[token.noteIndex] ?? "pending";
+                return (
+                  <span
+                    key={token.noteId}
+                    ref={token.noteIndex === anchor ? anchorRef : undefined}
+                    className={`word-character word-character--${status}${active ? " word-character--current" : ""}${token.isFallback ? " word-character--fallback" : ""}`}
+                    aria-current={active ? "step" : undefined}
+                  >
+                    {token.isFallback
+                      ? `[${token.input.display}]`
+                      : token.input.display.toLowerCase()}
+                  </span>
+                );
+              })}
+            </span>
+          ))}
+        </div>
       </div>
-    </div>
+      {/* A computer keeps the legend under the line, over the keys it colours. */}
+      <FingerLegend className="word-legend--ticker" />
+    </>
   );
 }
 
@@ -99,7 +103,24 @@ export function WordQuality({ metrics }: { metrics: WordTypingResult["metrics"] 
   );
 }
 
-/** The legend and the text's quality; the text itself is the ticker's. */
+/** Which finger a key's colour means; a computer shows it under the running line. */
+export function FingerLegend({ className }: { readonly className?: string }) {
+  return (
+    <ul className={`word-legend${className ? ` ${className}` : ""}`} aria-label="Цвета пальцев">
+      {FINGERS.map(([hand, finger, name, short]) => (
+        <li key={name} className={`word-finger-${hand}-${String(finger)}`} title={name}>
+          <span className="word-legend__full">{name}</span>
+          {/* A phone's legend fits one line with these. */}
+          <span className="word-legend__short" aria-hidden="true">
+            {short}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The legend and the text's quality on a phone, the words' progress and errors everywhere. */
 export function WordTypingBoard(props: Props) {
   return (
     <section className="word-board" aria-label="Печатать мелодию">
@@ -112,17 +133,7 @@ export function WordTypingBoard(props: Props) {
       ) : (
         <>
           <div className="word-board__info">
-            <ul className="word-legend" aria-label="Цвета пальцев">
-              {FINGERS.map(([hand, finger, name, short]) => (
-                <li key={name} className={`word-finger-${hand}-${String(finger)}`} title={name}>
-                  <span className="word-legend__full">{name}</span>
-                  {/* A phone's legend fits one line with these. */}
-                  <span className="word-legend__short" aria-hidden="true">
-                    {short}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <FingerLegend />
             {props.notice && <small role="status">{props.notice}</small>}
             <WordQuality metrics={props.result?.metrics} />
           </div>

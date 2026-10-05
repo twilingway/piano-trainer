@@ -1155,11 +1155,6 @@ select:disabled {
   box-shadow: 0 0 8px #00ed9e;
 }
 
-.topbar-toggles {
-  display: flex;
-  gap: 4px;
-}
-
 .song-progress {
   position: relative;
   height: 6px;
@@ -1677,10 +1672,6 @@ button.song-card.song-card__open {
 
 /* A tablet wraps the controls; phones keep the main actions and use the play settings. */
 @media (width <= 900px) {
-  .topbar-toggles {
-    display: none;
-  }
-
   .topbar-library {
     flex: 1 1 180px;
     max-width: none;
@@ -1952,7 +1943,6 @@ button.song-card.song-card__open {
   .topbar > .segmented,
   .topbar-speed,
   .scoreboard,
-  .topbar-toggles,
   .topbar-title,
   .topbar-restart__label,
   .play-button__label {
@@ -2372,11 +2362,6 @@ button.song-card.song-card__open {
     padding-inline: 8px;
   }
 }
-@media (900px < width <= 1500px) {
-  .topbar-toggles {
-    display: none;
-  }
-}
 .game-overdrive {
   pointer-events: auto;
   justify-content: center;
@@ -2575,19 +2560,19 @@ button.song-card.song-card__open {
   gap: 10px;
 }
 
-/* A compact left rail leaves the top of the mobile screen to the score. */
+/* A column of buttons at the right edge, under the right thumb; the left rail keeps the score. */
 @media (height <= 500px), (width <= 640px) {
   .shell-top {
     position: fixed;
     top: max(8px, env(safe-area-inset-top));
-    right: auto;
-    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
     margin: 0;
   }
 
   .topbar {
     display: grid;
-    grid-template-columns: repeat(2, 34px);
+    grid-template-columns: 34px;
     gap: 3px;
     align-items: center;
     padding: 3px;
@@ -2630,6 +2615,11 @@ button.song-card.song-card__open {
     height: 28px;
   }
 
+  /* The hand's letter stays inside the column's button. */
+  .topbar .hands-picture small {
+    right: -5px;
+  }
+
   .topbar svg {
     width: 17px;
     height: 17px;
@@ -2638,9 +2628,9 @@ button.song-card.song-card__open {
   .compact-controls__menu {
     position: fixed;
     top: max(8px, env(safe-area-inset-top));
-    right: max(8px, env(safe-area-inset-right));
+    right: calc(56px + env(safe-area-inset-right));
     left: auto;
-    width: min(320px, calc(100vw - 104px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    width: min(320px, calc(100vw - 72px - env(safe-area-inset-left) - env(safe-area-inset-right)));
     max-height: calc(100dvh - 64px - env(safe-area-inset-top));
   }
 
@@ -2661,6 +2651,7 @@ button.song-card.song-card__open {
   .workspace-main {
     --mobile-score-top: max(4px, env(safe-area-inset-top));
     --mobile-rail-width: calc(128px + env(safe-area-inset-left));
+    --mobile-bar-width: calc(52px + env(safe-area-inset-right));
   }
 
   .workspace-main:has(> .staves)::before {
@@ -2676,7 +2667,7 @@ button.song-card.song-card__open {
   .workspace-main:has(> .lanes:not(.lanes--hidden)) > .staves {
     position: absolute;
     z-index: 2;
-    inset: var(--mobile-score-top) 0 auto var(--mobile-rail-width);
+    inset: var(--mobile-score-top) var(--mobile-bar-width) auto var(--mobile-rail-width);
     max-height: min(34cqh, 150px);
     padding: 0;
     border-bottom: 1px solid var(--border);
@@ -2697,6 +2688,7 @@ button.song-card.song-card__open {
 
   .workspace-main:has(> .lanes--hidden) > .staves {
     margin-top: var(--mobile-score-top);
+    margin-right: var(--mobile-bar-width);
     margin-left: var(--mobile-rail-width);
     max-height: calc(100cqh - var(--mobile-score-top));
   }
@@ -2716,7 +2708,7 @@ button.song-card.song-card__open {
   .game-score-dock {
     position: fixed;
     z-index: 4;
-    top: calc(128px + env(safe-area-inset-top));
+    top: var(--mobile-score-top);
     left: max(8px, env(safe-area-inset-left));
     width: 112px;
     padding: 0;
@@ -2815,6 +2807,7 @@ button.song-card.song-card__open {
   .game-score-dock .game-score-board--message {
     font-size: 10px;
     padding: 4px;
+    white-space: nowrap;
   }
 }
 
@@ -2898,9 +2891,14 @@ button.song-card.song-card__open {
     transform: none;
   }
 
-  /* The board's line starts right of the fixed bar. */
+  /* The board's line ends left of the fixed bar. */
   .app--word .word-board {
-    padding-left: 96px;
+    padding-right: var(--mobile-bar-width);
+  }
+
+  /* The score sits under the board's line, not over it. */
+  .app--word .game-score-dock {
+    top: calc(36px + var(--mobile-score-top));
   }
 
   /* «Тренировка» hangs from a dock of no height into the lane's corner under it. */
@@ -2916,10 +2914,198 @@ button.song-card.song-card__open {
 
   .app--word .game-score-dock > .game-score-board--message {
     position: absolute;
-    inset: 6px 8px auto auto;
+    inset: 6px auto auto 8px;
     width: auto;
     padding: 3px 8px;
     font-size: 11px;
     white-space: nowrap;
+  }
+}
+
+/* The wide bar's own pieces: the game, the text, the view and the timing chip. */
+.topbar > .game-mode-segment,
+.topbar > .bar-popover,
+.topbar > .practice-timing-status,
+.word-legend--ticker {
+  display: none;
+}
+.bar-popover {
+  position: relative;
+}
+.bar-popover > summary {
+  gap: 6px;
+  padding: 0 10px;
+  list-style: none;
+  white-space: nowrap;
+}
+.bar-popover > summary::-webkit-details-marker {
+  display: none;
+}
+.bar-popover[open] > summary {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.bar-popover > summary small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.bar-popover__panel {
+  position: absolute;
+  z-index: 9;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 16px));
+  max-height: calc(100dvh - 72px);
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+}
+.word-text-popover > .bar-popover__panel {
+  right: auto;
+  left: 0;
+  min-width: 260px;
+}
+.word-text-popover .word-options {
+  flex-direction: column;
+  align-items: stretch;
+}
+.word-text-popover .word-options > label:has(> select) {
+  justify-content: space-between;
+}
+.word-text-popover .word-options .game-select {
+  width: 140px;
+}
+.word-text-popover__quality {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid rgb(8 123 161 / 50%);
+  color: var(--muted);
+  font-size: 12px;
+}
+.topbar-view .setting-control--views {
+  width: 340px;
+  gap: 6px;
+}
+.topbar-view .compact-controls__view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 13px;
+}
+.game-mode-segment button {
+  display: grid;
+  place-items: center;
+  padding: 0 8px;
+}
+.game-mode-segment svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+}
+.game-mode-segment svg .filled {
+  fill: currentcolor;
+  stroke: none;
+}
+.practice-timing-status__short {
+  display: none;
+}
+/* Under the running line, over the keys it colours; it lets touches through like the line. */
+.word-legend--ticker {
+  justify-content: center;
+  gap: 4px 14px;
+  margin-top: 2px;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+@media (width > 900px) and (height > 500px) {
+  .topbar,
+  .app--word .topbar {
+    flex-wrap: nowrap;
+    min-height: 48px;
+    padding-block: 4px;
+  }
+  .topbar > .game-mode-segment,
+  .topbar > .practice-timing-status {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+  .topbar > .bar-popover {
+    display: block;
+    flex: 0 0 auto;
+  }
+  .topbar > .practice-timing-status {
+    padding-block: 4px;
+    white-space: nowrap;
+  }
+  /* No strip under the bar, no plaque on the lane, no legend row: the bar carries them. */
+  .shell-top > .game-mode-strip,
+  .game-score-dock:has(> .game-score-board--practice),
+  .word-board:not(:has(> p)) {
+    display: none;
+  }
+  .word-legend--ticker {
+    display: flex;
+  }
+}
+/* A laptop's bar gives up the song's name first, then the tempo and the small print. */
+@media (900px < width <= 1280px) and (height > 500px) {
+  .topbar {
+    gap: 6px;
+  }
+  .topbar-title {
+    flex: 1 1 0;
+  }
+  .scoreboard > span:has(> b):not(:first-child),
+  .word-text-popover__language {
+    display: none;
+  }
+  .topbar > .segmented:not(.game-mode-segment) button {
+    padding-inline: 7px;
+  }
+  .topbar-library,
+  .topbar-restart {
+    padding-inline: 8px;
+  }
+}
+@media (900px < width <= 1100px) and (height > 500px) {
+  .topbar {
+    gap: 4px;
+  }
+  .topbar-title {
+    display: none;
+  }
+  .topbar > .segmented,
+  .topbar > .game-select {
+    font-size: 13px;
+  }
+  .topbar > .game-select {
+    padding-inline: 6px;
+  }
+  .topbar-speed input {
+    width: 44px;
+  }
+}
+@media (900px < width <= 1500px) and (height > 500px) {
+  .topbar > .practice-timing-status .practice-timing-status__label {
+    display: none;
+  }
+  .topbar > .practice-timing-status .practice-timing-status__short {
+    display: inline;
   }
 }
