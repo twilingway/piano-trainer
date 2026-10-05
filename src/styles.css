@@ -1629,6 +1629,18 @@ button.song-card.song-card__open {
   display: none;
 }
 
+.result-stars {
+  margin: 8px 0;
+  color: var(--accent);
+  font-size: 44px;
+  line-height: 1.2;
+  letter-spacing: 4px;
+}
+
+.result-stars-empty {
+  color: var(--muted);
+}
+
 @media (max-width: 640px), (pointer: coarse) and (max-height: 640px) {
   .result-details,
   .result-review-action {
@@ -1639,17 +1651,6 @@ button.song-card.song-card__open {
     display: block;
     text-align: center;
     padding: 12px 0;
-  }
-
-  .result-stars {
-    margin: 0 0 8px;
-    color: var(--accent);
-    font-size: 36px;
-    letter-spacing: 4px;
-  }
-
-  .result-stars span {
-    color: var(--muted);
   }
 
   .result-points {
