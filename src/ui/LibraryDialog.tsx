@@ -1,4 +1,7 @@
+import { useI18n } from "../app/useI18n";
 import type { ChangeEvent } from "react";
+
+import { EXERCISES } from "../song/exercises";
 
 import { GameDialog } from "./GameDialog";
 
@@ -43,16 +46,24 @@ interface Props {
 
 /** Every song to play, as cards: lessons with their levels, the player's own songs, the folder. */
 export function LibraryDialog(props: Props) {
+  const { t } = useI18n();
   if (!props.open) return null;
+  const bundledTitle = (lesson: Lesson, title: string) =>
+    EXERCISES.some((exercise) => exercise.id === lesson.id) ? t(title) : title;
   const choose = (action: () => void) => () => {
     action();
     props.onClose();
   };
   return (
-    <GameDialog open={props.open} title="Библиотека" className="library" onClose={props.onClose}>
+    <GameDialog
+      open={props.open}
+      title={t("Библиотека")}
+      className="library"
+      onClose={props.onClose}
+    >
       <div className="library-actions">
         <label className="game-button">
-          Открыть файл
+          {t("Открыть файл")}
           <input
             type="file"
             accept=".mid,.midi,.musicxml,.xml,.mxl"
@@ -65,12 +76,12 @@ export function LibraryDialog(props: Props) {
         </label>
         {props.foldersSupported && !props.folder && (
           <button type="button" className="game-button" onClick={props.onChooseFolder}>
-            Выбрать папку
+            {t("Выбрать папку")}
           </button>
         )}
       </div>
 
-      <h3>Уроки</h3>
+      <h3>{t("Уроки")}</h3>
       <div className="song-grid">
         {props.lessons.map((lesson) => (
           <div
@@ -78,7 +89,7 @@ export function LibraryDialog(props: Props) {
             className="song-card"
             data-current={props.current?.exerciseId === lesson.id}
           >
-            <strong>{lesson.title}</strong>
+            <strong>{bundledTitle(lesson, lesson.title)}</strong>
             <div className="song-card__levels">
               {lesson.levels.map((level) => (
                 <div key={level.id} className="level-row">
@@ -92,13 +103,16 @@ export function LibraryDialog(props: Props) {
                       props.onLesson(lesson.id, level.id);
                     })}
                   >
-                    {level.title}
+                    {bundledTitle(lesson, level.title)}
                   </button>
                   <button
                     type="button"
                     className="level-chip level-export"
-                    aria-label={`Скачать «${lesson.title} · ${level.title}» как MusicXML`}
-                    title="Скачать MusicXML"
+                    aria-label={t("Скачать «{lesson} · {level}» как MusicXML", {
+                      lesson: bundledTitle(lesson, lesson.title),
+                      level: bundledTitle(lesson, level.title)
+                    })}
+                    title={t("Скачать MusicXML")}
                     onClick={() => {
                       props.onExportLesson(lesson.id, level.id, "musicxml");
                     }}
@@ -108,8 +122,11 @@ export function LibraryDialog(props: Props) {
                   <button
                     type="button"
                     className="level-chip level-export"
-                    aria-label={`Скачать «${lesson.title} · ${level.title}» как MIDI`}
-                    title="Скачать MIDI"
+                    aria-label={t("Скачать «{lesson} · {level}» как MIDI", {
+                      lesson: bundledTitle(lesson, lesson.title),
+                      level: bundledTitle(lesson, level.title)
+                    })}
+                    title={t("Скачать MIDI")}
                     onClick={() => {
                       props.onExportLesson(lesson.id, level.id, "midi");
                     }}
@@ -125,7 +142,7 @@ export function LibraryDialog(props: Props) {
 
       {props.mySongs.length > 0 && (
         <>
-          <h3>Мои песни</h3>
+          <h3>{t("Мои песни")}</h3>
           <div className="song-grid">
             {props.mySongs.map((song) => (
               <div
@@ -145,8 +162,8 @@ export function LibraryDialog(props: Props) {
                 <button
                   type="button"
                   className="song-card__remove"
-                  aria-label={`Удалить «${song.title}» из моих песен`}
-                  title="Удалить из моих"
+                  aria-label={t("Удалить «{title}» из моих песен", { title: song.title })}
+                  title={t("Удалить из моих")}
                   onClick={() => {
                     props.onDeleteMySong(song.id);
                   }}
@@ -162,14 +179,14 @@ export function LibraryDialog(props: Props) {
       {props.folder && (
         <>
           <h3>
-            Папка «{props.folder.name}»
+            {t("Папка «{name}»", { name: props.folder.name })}
             <button type="button" className="text-button" onClick={props.onForgetFolder}>
-              Отключить
+              {t("Отключить")}
             </button>
           </h3>
           {props.folder.needsAccess ? (
             <button type="button" className="game-button" onClick={props.onGrantFolder}>
-              Дать доступ к папке
+              {t("Дать доступ к папке")}
             </button>
           ) : (
             <div className="song-grid">

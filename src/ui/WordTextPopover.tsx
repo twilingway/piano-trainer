@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import type { ReactNode } from "react";
 import type { Language, WordTypingResult } from "../wordTyping/types";
 import { BarPopover } from "./BarPopover";
@@ -14,13 +15,14 @@ interface Props {
 
 /** The word mode's settings and the text's quality behind one button of the bar. */
 export function WordTextPopover(props: Props) {
+  const { t } = useI18n();
   return (
     <BarPopover
       className="word-text-popover"
-      label="Текст: язык, партия, раскладка и качество"
+      label={t("Текст: язык, партия, раскладка и качество")}
       summary={
         <>
-          Текст{" "}
+          {t("Текст")}{" "}
           <small className="word-text-popover__language">{props.language.toUpperCase()}</small>
           <span aria-hidden="true">▾</span>
         </>
@@ -29,11 +31,11 @@ export function WordTextPopover(props: Props) {
       {props.settings}
       {props.metrics && (
         <p className="word-text-popover__quality">
-          <span>Качество текста</span>
+          <span>{t("Качество текста")}</span>
           <WordQuality metrics={props.metrics} />
         </p>
       )}
-      {props.notice && <small role="status">{props.notice}</small>}
+      {props.notice && <small role="status">{t(props.notice)}</small>}
     </BarPopover>
   );
 }

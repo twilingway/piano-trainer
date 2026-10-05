@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import { HandIcon, ListenIcon } from "./icons";
 import type { HandsChoice, PracticeModeChoice } from "./PlayerTopBar";
 
@@ -15,11 +16,14 @@ export const HAND_CHOICES = [
 
 /** The same hand silhouette identifies the selected party and its menu choice. */
 export function HandsPicture({ hands }: { readonly hands: HandsChoice }) {
+  const { t } = useI18n();
   return (
     <span className="hands-picture" data-hands={hands} aria-hidden="true">
       {hands === "listen" ? <ListenIcon /> : <HandIcon />}
       {hands === "both" && <HandIcon />}
-      {(hands === "left" || hands === "right") && <small>{hands === "left" ? "Л" : "П"}</small>}
+      {(hands === "left" || hands === "right") && (
+        <small>{hands === "left" ? t("Л") : t("П")}</small>
+      )}
     </span>
   );
 }
@@ -33,16 +37,17 @@ interface Props {
 
 /** The practice choices stay visible in the compact menu, with captions for touch. */
 export function CompactPracticeChoices({ hands, mode, onHands, onMode }: Props) {
+  const { t } = useI18n();
   return (
     <div className="compact-practice">
       <span className="compact-practice__heading">
-        {hands === "listen" ? "Режим: прослушивание" : "Режим"}
+        {hands === "listen" ? t("Режим: прослушивание") : t("Режим")}
       </span>
-      <div className="segmented" role="radiogroup" aria-label="Режим игры">
+      <div className="segmented" role="radiogroup" aria-label={t("Режим игры")}>
         {(
           [
-            ["wait", "Ждать ноту", "Игра ждёт правильную клавишу."],
-            ["tempo", "В темпе", "Игра идёт без остановок в выбранном темпе."]
+            ["wait", t("Ждать ноту"), t("Игра ждёт правильную клавишу.")],
+            ["tempo", t("В темпе"), t("Игра идёт без остановок в выбранном темпе.")]
           ] as const
         ).map(([value, label, hint]) => (
           <button
@@ -60,8 +65,8 @@ export function CompactPracticeChoices({ hands, mode, onHands, onMode }: Props) 
           </button>
         ))}
       </div>
-      <span className="compact-practice__heading">Как играть</span>
-      <div className="compact-practice__hands" role="radiogroup" aria-label="Что играть">
+      <span className="compact-practice__heading">{t("Как играть")}</span>
+      <div className="compact-practice__hands" role="radiogroup" aria-label={t("Что играть")}>
         {HAND_CHOICES.map(({ value, label, title, hint }) => (
           <button
             key={value}
@@ -69,19 +74,19 @@ export function CompactPracticeChoices({ hands, mode, onHands, onMode }: Props) 
             className="view-toggle compact-practice__choice"
             role="radio"
             aria-checked={hands === value}
-            aria-label={title}
-            title={`${title}. ${hint}`}
+            aria-label={t(title)}
+            title={`${t(title)}. ${t(hint)}`}
             onClick={() => {
               onHands(value);
             }}
           >
             <HandsPicture hands={value} />
-            <span>{label}</span>
+            <span>{t(label)}</span>
           </button>
         ))}
       </div>
       <p className="compact-practice__hint">
-        {HAND_CHOICES.find((choice) => choice.value === hands)?.hint}
+        {t(HAND_CHOICES.find((choice) => choice.value === hands)?.hint ?? "")}
       </p>
     </div>
   );

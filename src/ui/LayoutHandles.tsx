@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import type { CSSProperties, ReactNode } from "react";
 
 import { clampLayout } from "../app/screenLayout";
@@ -29,6 +30,7 @@ const SNAP_PX = 16;
  * sizes it; a grip moves the keys alone, off the line and back.
  */
 export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayout: OnLayout }) {
+  const { t } = useI18n();
   const move = useVerticalDrag({
     start: () => ({ x: layout.keysX, y: layout.keysY }),
     move: (dy, from, _element, dx) => {
@@ -72,27 +74,27 @@ export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayo
     <>
       <div
         className="layout-handle layout-handle--keys-top"
-        title="Тяните, чтобы поднять или опустить клавиатуру"
+        title={t("Тяните, чтобы поднять или опустить клавиатуру")}
         {...lift}
       >
-        <Grip label="Поднять клавиатуру" />
+        <Grip label={t("Поднять клавиатуру")} />
       </div>
       <div
         className="layout-handle layout-handle--keys-bottom"
-        title="Тяните, чтобы изменить высоту клавиатуры"
+        title={t("Тяните, чтобы изменить высоту клавиатуры")}
         style={offset}
         {...size}
       >
-        <Grip label="Высота клавиатуры" />
+        <Grip label={t("Высота клавиатуры")} />
       </div>
       <div
         className="layout-move"
-        title="Тяните, чтобы сдвинуть клавиатуру с линии нот; у линии она прилипнет обратно"
+        title={t("Тяните, чтобы сдвинуть клавиатуру с линии нот; у линии она прилипнет обратно")}
         style={offset}
         {...move}
       >
         <span className="layout-grip">
-          ✥<span className="layout-grip__label">Двигать клавиатуру</span>
+          ✥<span className="layout-grip__label">{t("Двигать клавиатуру")}</span>
         </span>
       </div>
     </>
@@ -111,6 +113,7 @@ export function TickerSlot(props: {
   onLayout: OnLayout;
   children: ReactNode;
 }) {
+  const { t } = useI18n();
   const drag = useVerticalDrag({
     start: () => ({ gap: props.gap, x: props.x }),
     move: (dy, from, _element, dx) => {
@@ -130,25 +133,25 @@ export function TickerSlot(props: {
           "--ticker-scale": String(props.scale)
         } as CSSProperties
       }
-      {...(props.editing ? { ...drag, title: "Тяните, чтобы поднять или опустить строку" } : {})}
+      {...(props.editing ? { ...drag, title: t("Тяните, чтобы поднять или опустить строку") } : {})}
       data-editing={props.editing || undefined}
     >
       {props.children}
       {props.editing && (
         <div className="ticker-tools">
-          <Grip label="Строка" />
+          <Grip label={t("Строка")} />
           {(
             [
-              ["A−", -0.1, "Уменьшить текст"],
-              ["A+", 0.1, "Увеличить текст"]
+              ["A−", -0.1, t("Уменьшить текст")],
+              ["A+", 0.1, t("Увеличить текст")]
             ] as const
           ).map(([text, step, label]) => (
             <button
               key={text}
               type="button"
               className="ticker-zoom"
-              aria-label={label}
-              title={label}
+              aria-label={t(label)}
+              title={t(label)}
               // The buttons size the text; only the line itself drags.
               onPointerDown={(event) => {
                 event.stopPropagation();
@@ -181,6 +184,7 @@ interface StaffHandleProps {
  * staff is laid out once on release: a wrapped one takes the lines that fit, one line its zoom.
  */
 export function StaffHandle(props: StaffHandleProps) {
+  const { t } = useI18n();
   const drag = useVerticalDrag({
     start: (element) => element.parentElement?.getBoundingClientRect().height ?? 0,
     move: (dy, _from, element) => {
@@ -203,16 +207,17 @@ export function StaffHandle(props: StaffHandleProps) {
   return (
     <div
       className="layout-handle layout-handle--staff"
-      title="Тяните, чтобы изменить высоту нотного стана"
+      title={t("Тяните, чтобы изменить высоту нотного стана")}
       {...drag}
     >
-      <Grip label="Высота стана" />
+      <Grip label={t("Высота стана")} />
     </div>
   );
 }
 
 /** Without the staff, the lane's top edge: dragged down, the falling notes start lower. */
 export function LaneTopHandle({ top, onLayout }: { top: number; onLayout: OnLayout }) {
+  const { t } = useI18n();
   const drag = useVerticalDrag({
     start: (element) => ({
       top,
@@ -225,10 +230,10 @@ export function LaneTopHandle({ top, onLayout }: { top: number; onLayout: OnLayo
   return (
     <div
       className="layout-handle layout-handle--lane-top"
-      title="Тяните, чтобы опустить или поднять верх падающих нот"
+      title={t("Тяните, чтобы опустить или поднять верх падающих нот")}
       {...drag}
     >
-      <Grip label="Верх дорожки" />
+      <Grip label={t("Верх дорожки")} />
     </div>
   );
 }

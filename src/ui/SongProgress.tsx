@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 interface Props {
   /** How far the song has got, 0 to 1. */
   readonly progress: number;
@@ -9,11 +10,12 @@ interface Props {
 
 /** A thin strip under the bar: how far the song has got, measure ticks, and a click to go there. */
 export function SongProgress({ progress, ticks, onSeek }: Props) {
+  const { t } = useI18n();
   return (
     <div
       className="song-progress"
       role="slider"
-      aria-label="Ход песни"
+      aria-label={t("Ход песни")}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(progress * 100)}

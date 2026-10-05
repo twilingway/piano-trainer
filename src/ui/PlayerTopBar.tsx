@@ -1,4 +1,5 @@
-﻿import { useRef, type ReactNode } from "react";
+import { useI18n } from "../app/useI18n";
+import { useRef, type ReactNode } from "react";
 
 import type { Scoreboard } from "../practice/scoreboard";
 import { CompactPracticeChoices, HAND_CHOICES, HandsPicture } from "./CompactPracticeChoices";
@@ -52,13 +53,14 @@ interface Props {
  * in the library and the settings panel.
  */
 export function PlayerTopBar(props: Props) {
+  const { t, formatNumber } = useI18n();
   const board = props.board ?? { clock: "0:00" };
   const controls = useRef<HTMLDetailsElement>(null);
-  const handTitle = HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки";
+  const handTitle = t(HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки");
   return (
     <header className="topbar">
       <details className="compact-controls" ref={controls}>
-        <summary className="icon-button" aria-label="Управление" title="Управление">
+        <summary className="icon-button" aria-label={t("Управление")} title={t("Управление")}>
           <GearIcon />
         </summary>
         <div
@@ -78,7 +80,7 @@ export function PlayerTopBar(props: Props) {
             <br />
             {props.compactPosition ?? <CompactSongPosition board={board} speed={props.speed} />}
             <br />
-            {props.midi ? `MIDI: ${props.midi}` : "MIDI не подключено"}
+            {props.midi ? `MIDI: ${props.midi}` : t("MIDI не подключено")}
           </p>
           <CompactPracticeChoices
             hands={props.hands}
@@ -88,7 +90,7 @@ export function PlayerTopBar(props: Props) {
           />
           {props.menuExtra}
           <div className="compact-controls__view-head">
-            <span>Вид</span>
+            <span>{t("Вид")}</span>
             <ViewHelp />
           </div>
           <div className="setting-control setting-control--views compact-controls__views">
@@ -100,10 +102,10 @@ export function PlayerTopBar(props: Props) {
             aria-pressed={props.editing}
             onClick={props.onToggleEditing}
           >
-            ✎ Редактировать интерфейс
+            {t("✎ Редактировать интерфейс")}
           </button>
           <button type="button" className="game-button" onClick={props.onLibrary}>
-            <LibraryIcon /> Библиотека
+            <LibraryIcon /> {t("Библиотека")}
           </button>
           <button
             type="button"
@@ -111,15 +113,15 @@ export function PlayerTopBar(props: Props) {
             onClick={props.onSettings}
             aria-pressed={props.settingsOpen}
           >
-            <GearIcon /> Настройки
+            <GearIcon /> {t("Настройки")}
           </button>
         </div>
       </details>
       <button
         type="button"
         className="icon-button compact-hands"
-        aria-label={`Выбор рук: ${handTitle}`}
-        title={`${handTitle} — выбрать руки`}
+        aria-label={t("Выбор рук: {hands}", { hands: handTitle })}
+        title={t("{hands} — выбрать руки", { hands: handTitle })}
         onClick={() => {
           const menu = controls.current;
           if (!menu) return;
@@ -136,12 +138,12 @@ export function PlayerTopBar(props: Props) {
       <button
         type="button"
         className="game-button topbar-library"
-        aria-label={`Библиотека: ${props.title}`}
-        title="Библиотека"
+        aria-label={t("Библиотека: {title}", { title: props.title })}
+        title={t("Библиотека")}
         onClick={props.onLibrary}
       >
         <LibraryIcon />
-        <span className="topbar-library__label">Библиотека</span>
+        <span className="topbar-library__label">{t("Библиотека")}</span>
       </button>
       <span className="topbar-title" title={props.title}>
         {props.title}
@@ -150,32 +152,32 @@ export function PlayerTopBar(props: Props) {
       <button
         type="button"
         className="game-button topbar-restart"
-        aria-label="Сначала"
-        title="Сначала"
+        aria-label={t("Сначала")}
+        title={t("Сначала")}
         onClick={props.onRestart}
       >
         <RestartIcon />
-        <span className="topbar-restart__label">Сначала</span>
+        <span className="topbar-restart__label">{t("Сначала")}</span>
       </button>
       <button
         type="button"
         className="play-button"
         data-playing={props.playing}
-        aria-label={props.soundLoading ? "Звук…" : props.playing ? "Пауза" : "Играть"}
-        title={props.playing ? "Пауза" : "Играть"}
+        aria-label={props.soundLoading ? t("Звук…") : props.playing ? t("Пауза") : t("Играть")}
+        title={props.playing ? t("Пауза") : t("Играть")}
         disabled={props.soundLoading}
         onClick={props.onTogglePlay}
       >
         <span className="play-button__ring">{props.playing ? <PauseIcon /> : <PlayIcon />}</span>
         <span className="play-button__label">
-          {props.soundLoading ? "Звук…" : props.playing ? "Пауза" : "Играть"}
+          {props.soundLoading ? t("Звук…") : props.playing ? t("Пауза") : t("Играть")}
         </span>
       </button>
-      <div className="segmented" role="radiogroup" aria-label="Режим">
+      <div className="segmented" role="radiogroup" aria-label={t("Режим")}>
         {(
           [
-            ["wait", "Ждать ноту"],
-            ["tempo", "В темпе"]
+            ["wait", t("Ждать ноту")],
+            ["tempo", t("В темпе")]
           ] as const
         ).map(([value, label]) => (
           <button
@@ -193,23 +195,23 @@ export function PlayerTopBar(props: Props) {
       </div>
       <select
         className="game-select"
-        aria-label="Руки"
+        aria-label={t("Руки")}
         value={props.hands}
         onChange={(event) => {
           props.onHands(event.target.value as HandsChoice);
         }}
       >
-        <option value="right">Правая рука</option>
-        <option value="left">Левая рука</option>
-        <option value="both">Обе руки</option>
-        <option value="listen">Только слушать</option>
+        <option value="right">{t("Правая рука")}</option>
+        <option value="left">{t("Левая рука")}</option>
+        <option value="both">{t("Обе руки")}</option>
+        <option value="listen">{t("Только слушать")}</option>
       </select>
       {props.practice}
-      <label className="topbar-speed" title="Скорость">
-        <span className="digits">{Math.round(props.speed * 100)}%</span>
+      <label className="topbar-speed" title={t("Скорость")}>
+        <span className="digits">{formatNumber(Math.round(props.speed * 100))}%</span>
         <input
           type="range"
-          aria-label="Скорость"
+          aria-label={t("Скорость")}
           min={0.01}
           max={1}
           step={0.01}
@@ -223,15 +225,15 @@ export function PlayerTopBar(props: Props) {
       {props.scoreboard ?? <SongScoreboard board={board} midi={props.midi} />}
       <BarPopover
         className="topbar-view"
-        label="Вид"
+        label={t("Вид")}
         summary={
           <>
-            Вид <span aria-hidden="true">▾</span>
+            {t("Вид")} <span aria-hidden="true">▾</span>
           </>
         }
       >
         <div className="compact-controls__view-head">
-          <span>Что показывать</span>
+          <span>{t("Что показывать")}</span>
           <ViewHelp />
         </div>
         <div className="setting-control setting-control--views">{props.toggles}</div>
@@ -241,15 +243,15 @@ export function PlayerTopBar(props: Props) {
           aria-pressed={props.editing}
           onClick={props.onToggleEditing}
         >
-          ✎ Редактировать интерфейс
+          {t("✎ Редактировать интерфейс")}
         </button>
       </BarPopover>
       <button
         type="button"
         className="icon-button topbar-fullscreen"
         data-fullscreen-toggle
-        aria-label={props.fullscreen ? "Свернуть" : "На весь экран"}
-        title={props.fullscreen ? "Свернуть" : "На весь экран"}
+        aria-label={props.fullscreen ? t("Свернуть") : t("На весь экран")}
+        title={props.fullscreen ? t("Свернуть") : t("На весь экран")}
         aria-pressed={props.fullscreen}
         onClick={props.onFullscreen}
       >
@@ -258,8 +260,8 @@ export function PlayerTopBar(props: Props) {
       <button
         type="button"
         className="icon-button topbar-settings"
-        aria-label="Настройки"
-        title="Настройки"
+        aria-label={t("Настройки")}
+        title={t("Настройки")}
         aria-pressed={props.settingsOpen}
         onClick={props.onSettings}
       >
@@ -276,12 +278,17 @@ export function CompactSongPosition({
   readonly board: Scoreboard;
   readonly speed: number;
 }) {
+  const { t, formatNumber } = useI18n();
   return (
     <>
       {board.measure
-        ? `такт ${String(board.measure.current)}/${String(board.measure.total)}`
+        ? t("такт {current}/{total}", {
+            current: formatNumber(board.measure.current),
+            total: formatNumber(board.measure.total)
+          })
         : board.clock}
-      {board.bpm === undefined ? "" : ` · ♩ ${String(board.bpm)}`} · {Math.round(speed * 100)}%
+      {board.bpm === undefined ? "" : ` · ♩ ${formatNumber(board.bpm)}`} ·{" "}
+      {formatNumber(Math.round(speed * 100))}%
     </>
   );
 }
@@ -293,25 +300,26 @@ export function SongScoreboard({
   readonly board: Scoreboard;
   readonly midi: string | undefined;
 }) {
+  const { t, formatNumber } = useI18n();
   return (
     <div className="scoreboard" aria-live="off">
       {board.measure ? (
         <span>
-          такт <b className="digits">{board.measure.current}</b>
-          <span className="digits">/{board.measure.total}</span>
+          {t("такт")} <b className="digits">{formatNumber(board.measure.current)}</b>
+          <span className="digits">/{formatNumber(board.measure.total)}</span>
         </span>
       ) : (
         <span className="digits">{board.clock}</span>
       )}
       {board.bpm !== undefined && (
         <span>
-          ♩ <b className="digits">{board.bpm}</b>
+          ♩ <b className="digits">{formatNumber(board.bpm)}</b>
         </span>
       )}
       <span
         className="midi-dot"
         data-on={midi !== undefined}
-        title={midi ? `Пианино: ${midi}` : "Пианино не подключено"}
+        title={midi ? t("Пианино: {piano}", { piano: midi }) : t("Пианино не подключено")}
       >
         MIDI
       </span>

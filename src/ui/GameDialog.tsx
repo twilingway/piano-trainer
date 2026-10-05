@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
@@ -18,6 +19,7 @@ interface Props {
  * closes it on Escape; this only mirrors `open` onto it.
  */
 export function GameDialog({ open, title, className, modal = true, onClose, children }: Props) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
@@ -41,7 +43,7 @@ export function GameDialog({ open, title, className, modal = true, onClose, chil
     >
       <header className="game-dialog__head">
         <h2>{title}</h2>
-        <button type="button" className="icon-button" aria-label="Закрыть" onClick={onClose}>
+        <button type="button" className="icon-button" aria-label={t("Закрыть")} onClick={onClose}>
           <CloseIcon />
         </button>
       </header>

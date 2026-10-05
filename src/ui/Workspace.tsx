@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import type { ReactNode, RefObject } from "react";
 
 import type { StaffPrefs } from "../app/useStaffPrefs";
@@ -47,6 +48,7 @@ interface Props {
 
 /** The game: the staff (and the take's own) over the falling notes (and the original's). */
 export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
+  const { t } = useI18n();
   const { prefs, transcription, takeStaff } = props;
   // The lane shows notes and keys, only the keys (a strip), or nothing at all.
   const laneMode = prefs.lane ? "full" : prefs.keys ? "keys" : "hidden";
@@ -71,7 +73,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
         {staffShown && props.staffXml && (
           <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
             <div className="staff-slot">
-              {transcription && <span className="staff-label">Оригинал</span>}
+              {transcription && <span className="staff-label">{t("Оригинал")}</span>}
               <Staff
                 musicXml={props.staffXml}
                 beat={props.beat}
@@ -91,7 +93,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             </div>
             {transcription && (
               <div className="staff-slot">
-                <span className="staff-label">Твой дубль</span>
+                <span className="staff-label">{t("Твой дубль")}</span>
                 <Staff
                   musicXml={transcription.musicXml}
                   beat={props.beat}
@@ -146,15 +148,15 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             <LaneTopHandle top={props.layout.laneTop} onLayout={props.onLayout} />
           )}
           <div className="lane" ref={hostRef}>
-            {props.comparing && <span className="lane-label">Твой дубль</span>}
-            {props.waiting && <span className="waiting-pill">Жду ноту</span>}
+            {props.comparing && <span className="lane-label">{t("Твой дубль")}</span>}
+            {props.waiting && <span className="waiting-pill">{t("Жду ноту")}</span>}
             {!props.comparing && laneMode === "full" && props.gameBoard}
             {prefs.keys && laneMode !== "hidden" && handles && (
               <KeysHandles layout={props.layout} onLayout={props.onLayout} />
             )}
             {props.layoutMoved && handles && (
               <button type="button" className="layout-reset" onClick={props.onResetLayout}>
-                ↺ Сбросить расположение
+                {t("↺ Сбросить расположение")}
               </button>
             )}
             {laneMode === "full" && props.wordTicker && (
@@ -171,7 +173,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           </div>
           {props.comparing && (
             <div className="lane" ref={mirrorHostRef}>
-              <span className="lane-label">Оригинал</span>
+              <span className="lane-label">{t("Оригинал")}</span>
             </div>
           )}
         </div>
