@@ -27,6 +27,8 @@ export interface GameScoreSnapshot {
   readonly flow: boolean;
   readonly overdriveActive: boolean;
   readonly overdriveUntil: number;
+  /** Seconds of Overdrive left on the same clock as `overdriveUntil`; 0 when it is off. */
+  readonly overdriveLeft: number;
   readonly grades: Readonly<Record<Judgement, number>>;
   readonly wrong: number;
   readonly chords: number;
@@ -176,6 +178,7 @@ export class GameScore {
       flow: this.flowStreak >= GAME_RULES.flowStreak,
       overdriveActive,
       overdriveUntil: Number.isFinite(this.overdriveUntil) ? this.overdriveUntil : 0,
+      overdriveLeft: this.overdriveLeftAt(atSeconds),
       grades: { ...this.grades },
       wrong: this.wrongCount,
       chords: this.chordCount,
@@ -203,6 +206,13 @@ export class GameScore {
     this.score += regular + bonus;
     this.overdriveScore += bonus;
     return regular + bonus;
+  }
+
+  private overdriveLeftAt(atSeconds: number): number {
+    const active = this.overdriveIntervals.find(
+      ({ start, end }) => atSeconds >= start && atSeconds < end
+    );
+    return active ? active.end - atSeconds : 0;
   }
 
   private isOverdriveActive(atSeconds: number): boolean {

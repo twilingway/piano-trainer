@@ -129,7 +129,14 @@ describe("Flow and Overdrive", () => {
     expect(score.activateOverdrive(3)).toBe(true);
     expect(score.snapshot(2.999).overdriveActive).toBe(false);
     expect(score.activateOverdrive(4)).toBe(false);
-    expect(score.snapshot(3)).toMatchObject({ energy: 0, multiplier: 6, overdriveUntil: 13 });
+    expect(score.snapshot(3)).toMatchObject({
+      energy: 0,
+      multiplier: 6,
+      overdriveUntil: 13,
+      overdriveLeft: 10
+    });
+    expect(score.snapshot(2.999).overdriveLeft).toBe(0);
+    expect(score.snapshot(6).overdriveLeft).toBe(7);
     score.hit("25", 0, 3);
     score.hold("25", 1, 3.1);
     score.hit("26", 0, 12.999);
@@ -138,6 +145,7 @@ describe("Flow and Overdrive", () => {
     expect(score.snapshot(13)).toMatchObject({
       multiplier: 3,
       overdriveActive: false,
+      overdriveLeft: 0,
       overdriveScore: 630,
       accuracy: 100
     });

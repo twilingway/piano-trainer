@@ -60,7 +60,8 @@ describe("game score presentation", () => {
     expect(board()).not.toContain('disabled=""');
     score.activateOverdrive(3);
     expect(board()).toContain('disabled=""');
-    expect(board()).toContain("Overdrive активен");
+    expect(board()).toContain("Overdrive · 10 с");
+    expect(board()).toContain('data-overdrive="true"');
   });
 
   it("renders weighted results and shows no rating for an empty assessed part", () => {
@@ -86,7 +87,7 @@ describe("game score presentation", () => {
     expect(empty).not.toContain("Ранг");
   });
 
-  it("shows the scorer's combo, accuracy, grade counts and uncapped energy", () => {
+  it("shows the scorer's combo, accuracy and uncapped energy, without grade counts", () => {
     const score = new GameScore(62);
     for (let index = 0; index < 60; index++) score.hit(String(index), 0, index * 0.1);
     score.hit("good", 90, 6);
@@ -97,9 +98,10 @@ describe("game score presentation", () => {
     );
     expect(markup).toContain('class="game-combo__value">0</strong>');
     expect(markup).toContain(`${(game.accuracy ?? 0).toFixed(1)}%`);
-    expect(markup).toContain('data-grade="PERFECT"');
-    expect(markup).toContain("<dd>60</dd>");
-    expect(markup).toContain("<strong>122</strong>");
+    expect(markup).not.toContain("data-grade");
+    expect(markup).toContain('data-broken="true"');
+    expect(markup).toContain('data-ready="true"');
+    expect(markup).toContain(">122 / 50</strong>");
     expect(markup).toContain('aria-valuenow="122"');
     expect(markup).toContain('style="width:100%"');
     expect(markup).not.toContain('disabled=""');
@@ -125,8 +127,12 @@ describe("game score presentation", () => {
     expect(markup).toContain('style="width:100%"');
   });
 
-  it.each([true, false])("keeps the score and Overdrive outside the lane (visible: %s)", (lane) => {
-    const prefs = prefsWith(lane);
+  it.each([
+    ["full", true, false],
+    ["keys", false, true],
+    ["hidden", false, false]
+  ] as const)("puts the score over a %s lane only when it shows its notes", (mode, lane, keys) => {
+    const prefs = { ...prefsWith(lane), keys };
     const markup = renderToStaticMarkup(
       <Workspace
         prefs={prefs}
@@ -161,9 +167,12 @@ describe("game score presentation", () => {
     );
     const window = new Window();
     window.document.body.innerHTML = markup;
-    expect(window.document.querySelector(".lanes .game-score-board")).toBeNull();
     expect(window.document.querySelectorAll(".game-score-board")).toHaveLength(1);
-    expect(window.document.querySelector(".game-score-dock .game-overdrive")).not.toBeNull();
+    const inLane = window.document.querySelector(".lane > .game-score-board .game-overdrive");
+    const inDock = window.document.querySelector(".game-score-dock .game-overdrive");
+    expect([Boolean(inLane), Boolean(inDock)]).toEqual(
+      mode === "full" ? [true, false] : [false, true]
+    );
     window.close();
   });
 });
