@@ -1,17 +1,33 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_SCREEN_LAYOUT,
   DEFAULT_SCREEN_LAYOUTS,
   loadScreenLayouts,
   normalizeLayout,
-  saveScreenLayouts
+  saveScreenLayouts,
+  startEditing
 } from "./screenLayout";
 
 describe("screen layout", () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
     localStorage.clear();
+  });
+
+  it("opens for editing on the first start only", () => {
+    expect(startEditing()).toBe(true);
+    expect(startEditing()).toBe(false);
+  });
+
+  it("stays clean when the storage throws", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("blocked");
+      }
+    });
+    expect(startEditing()).toBe(false);
   });
 
   it("falls back on a broken save", () => {

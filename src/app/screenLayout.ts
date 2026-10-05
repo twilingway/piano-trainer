@@ -120,3 +120,19 @@ export function saveScreenLayouts(layouts: ScreenLayouts): void {
     // Private mode: the layout just starts at the defaults next time.
   }
 }
+
+const SEEN_KEY = "layout-editing-seen";
+
+/**
+ * Whether the layout opens for editing: only on the app's very first start, so the player can
+ * arrange the screen; every later start is clean. Without storage it never opens.
+ */
+export function startEditing(): boolean {
+  try {
+    if (localStorage.getItem(SEEN_KEY) !== null) return false;
+    localStorage.setItem(SEEN_KEY, "1");
+    return true;
+  } catch {
+    return false;
+  }
+}

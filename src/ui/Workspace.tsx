@@ -35,6 +35,8 @@ interface Props {
   /** Where the player dragged the staff's edge, the keys and the running line. */
   readonly layout: ScreenLayout;
   readonly onLayout: (change: Partial<ScreenLayout>) => void;
+  /** The edit mode: only in it the handles, the text size and the reset show and drag. */
+  readonly editing: boolean;
   /** A one-line staff's edge changes its zoom. */
   readonly onZoom: (zoom: number) => void;
   /** Something is off its reset place: the lane offers the reset. */
@@ -59,6 +61,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const staffShown = Boolean(props.staffXml) && prefs.visible;
   // Without the staff the lane's own top edge drags, leaving room over it.
   const laneTop = !staffShown && laneMode !== "hidden" && !props.comparing;
+  const handles = props.editing && !props.comparing;
   return (
     <div className="workspace">
       <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
@@ -107,13 +110,15 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                 />
               </div>
             )}
-            <StaffHandle
-              singleLine={prefs.singleLine}
-              zoom={prefs.zoom}
-              room={staffRoom}
-              onLayout={props.onLayout}
-              onZoom={props.onZoom}
-            />
+            {props.editing && (
+              <StaffHandle
+                singleLine={prefs.singleLine}
+                zoom={prefs.zoom}
+                room={staffRoom}
+                onLayout={props.onLayout}
+                onZoom={props.onZoom}
+              />
+            )}
           </div>
         )}
 
@@ -127,21 +132,30 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
         )}
 
         {/* Hidden, not removed: the view under it keeps the keys, the sound and the take going. */}
-        <div className={`lanes lanes--${props.splitDirection} lanes--${laneMode}`}>
-          {laneTop && <LaneTopHandle top={props.layout.laneTop} onLayout={props.onLayout} />}
+        <div
+          className={`lanes lanes--${props.splitDirection} lanes--${laneMode}`}
+          // A held key is a played note, not a picture to save or copy.
+          onContextMenu={(event) => {
+            event.preventDefault();
+          }}
+        >
+          {laneTop && props.editing && (
+            <LaneTopHandle top={props.layout.laneTop} onLayout={props.onLayout} />
+          )}
           <div className="lane" ref={hostRef}>
             {props.comparing && <span className="lane-label">Твой дубль</span>}
             {props.waiting && <span className="waiting-pill">Жду ноту</span>}
-            {prefs.keys && laneMode !== "hidden" && !props.comparing && (
+            {prefs.keys && laneMode !== "hidden" && handles && (
               <KeysHandles layout={props.layout} onLayout={props.onLayout} />
             )}
-            {props.layoutMoved && !props.comparing && (
+            {props.layoutMoved && handles && (
               <button type="button" className="layout-reset" onClick={props.onResetLayout}>
                 ↺ Сбросить расположение
               </button>
             )}
             {laneMode === "full" && props.wordTicker && (
               <TickerSlot
+                editing={props.editing}
                 gap={props.layout.tickerGap}
                 x={props.layout.tickerX}
                 scale={props.layout.tickerScale}

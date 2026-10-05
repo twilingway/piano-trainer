@@ -22,6 +22,7 @@ export function useVerticalDrag<T>(drag: Drag<T>) {
     const current = active.current;
     if (current?.pointer !== event.pointerId) return;
     active.current = null;
+    delete event.currentTarget.dataset.dragging;
     drag.end?.(current.dy, current.from, event.currentTarget);
   };
   return {
@@ -30,6 +31,8 @@ export function useVerticalDrag<T>(drag: Drag<T>) {
       event.preventDefault();
       event.stopPropagation();
       event.currentTarget.setPointerCapture(event.pointerId);
+      // Lights the line and, on a phone, names it while it is held.
+      event.currentTarget.dataset.dragging = "";
       active.current = {
         pointer: event.pointerId,
         x: event.clientX,

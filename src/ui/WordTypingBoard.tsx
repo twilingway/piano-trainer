@@ -5,12 +5,12 @@ import type { GeneratedToken, WordTypingResult } from "../wordTyping/types";
 import { textProgress } from "../wordTyping/progress";
 
 /** The legend: the index fingers differ by hand, the others share a colour. */
-const FINGERS: readonly (readonly [Hand, Finger, string])[] = [
-  ["left", 5, "мизинцы"],
-  ["left", 4, "безымянные"],
-  ["left", 3, "средние"],
-  ["left", 2, "левый указательный"],
-  ["right", 2, "правый указательный"]
+const FINGERS: readonly (readonly [Hand, Finger, string, string])[] = [
+  ["left", 5, "мизинцы", "миз"],
+  ["left", 4, "безымянные", "без"],
+  ["left", 3, "средние", "ср"],
+  ["left", 2, "левый указательный", "Л"],
+  ["right", 2, "правый указательный", "П"]
 ];
 interface Props {
   readonly result: WordTypingResult | undefined;
@@ -87,9 +87,20 @@ export function WordTicker(props: Props) {
   );
 }
 
+/** How good the generated text is: not a mark for the playing. */
+export function WordQuality({ metrics }: { metrics: WordTypingResult["metrics"] | undefined }) {
+  if (!metrics) return null;
+  return (
+    <span className="word-quality" title="Качество генерации текста, а не оценка исполнения">
+      {"★".repeat(metrics.stars)}
+      {"☆".repeat(5 - metrics.stars)}{" "}
+      <small>{Math.round(metrics.dictionaryCoveragePercent)}% нот в словах</small>
+    </span>
+  );
+}
+
 /** The legend and the text's quality; the text itself is the ticker's. */
 export function WordTypingBoard(props: Props) {
-  const metrics = props.result?.metrics;
   return (
     <section className="word-board" aria-label="Печатать мелодию">
       {props.pending ? (
@@ -102,23 +113,18 @@ export function WordTypingBoard(props: Props) {
         <>
           <div className="word-board__info">
             <ul className="word-legend" aria-label="Цвета пальцев">
-              {FINGERS.map(([hand, finger, name]) => (
-                <li key={name} className={`word-finger-${hand}-${String(finger)}`}>
-                  {name}
+              {FINGERS.map(([hand, finger, name, short]) => (
+                <li key={name} className={`word-finger-${hand}-${String(finger)}`} title={name}>
+                  <span className="word-legend__full">{name}</span>
+                  {/* A phone's legend fits one line with these. */}
+                  <span className="word-legend__short" aria-hidden="true">
+                    {short}
+                  </span>
                 </li>
               ))}
             </ul>
             {props.notice && <small role="status">{props.notice}</small>}
-            {metrics && (
-              <span
-                className="word-quality"
-                title="Качество генерации текста, а не оценка исполнения"
-              >
-                {"★".repeat(metrics.stars)}
-                {"☆".repeat(5 - metrics.stars)}{" "}
-                <small>{Math.round(metrics.dictionaryCoveragePercent)}% нот в словах</small>
-              </span>
-            )}
+            <WordQuality metrics={props.result?.metrics} />
           </div>
         </>
       )}

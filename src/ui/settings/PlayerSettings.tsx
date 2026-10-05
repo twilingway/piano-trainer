@@ -24,6 +24,9 @@ interface Props {
   readonly synchronization: ReactNode;
   /** Puts the dragged parts of the current mode's screen back. */
   readonly onResetLayout: () => void;
+  /** The edit mode, in which the screen's parts show their handles and drag. */
+  readonly editing: boolean;
+  readonly onToggleEditing: () => void;
 }
 
 /** Compose existing controls without taking ownership of their preferences. */
@@ -72,12 +75,23 @@ export function PlayerSettings(props: Props) {
               <section className="settings-group">
                 <h3 className="settings-group__title">Расположение</h3>
                 <p className="setting-hint">
-                  Край стана, линии над и под клавиатурой и бегущую строку можно тянуть мышью.
+                  В режиме редактирования край стана, линии над и под клавиатурой и бегущую строку
+                  можно тянуть мышью.
                   {props.wordTyping ? " Для режима печати" : " Для пианино"} расположение своё.
                 </p>
-                <button type="button" className="game-button" onClick={props.onResetLayout}>
-                  Сбросить расположение
-                </button>
+                <div className="setting-control">
+                  <button
+                    type="button"
+                    className="game-button"
+                    aria-pressed={props.editing}
+                    onClick={props.onToggleEditing}
+                  >
+                    ✎ Редактировать интерфейс
+                  </button>
+                  <button type="button" className="game-button" onClick={props.onResetLayout}>
+                    Сбросить расположение
+                  </button>
+                </div>
               </section>
             </>
           )

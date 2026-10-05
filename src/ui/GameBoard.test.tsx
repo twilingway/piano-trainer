@@ -12,6 +12,34 @@ import { Workspace } from "./Workspace";
 
 vi.mock("../staff/Staff", () => ({ Staff: () => null }));
 
+const prefsWith = (lane: boolean): StaffPrefs => ({
+  zoom: 1,
+  noteColor: "#00d4ff",
+  scoreColor: "#ffffff",
+  singleLine: true,
+  follow: true,
+  measuresPerLine: 4,
+  noteNames: "off",
+  chords: false,
+  fingers: true,
+  fingerColors: "mono",
+  visible: true,
+  lane,
+  keys: false,
+  hands: false,
+  road: true,
+  noteCards: false,
+  noteCardsConfigured: false,
+  labels: true,
+  fps: false,
+  keyRange: "song",
+  keyStyle: "arcade",
+  autoReview: false,
+  roadFar: 0.5,
+  camera: DEFAULT_CAMERA,
+  roadHorizon: 0.2
+});
+
 describe("game score presentation", () => {
   it("does not offer ranked score or Overdrive in wait mode", () => {
     const markup = renderToStaticMarkup(
@@ -98,33 +126,7 @@ describe("game score presentation", () => {
   });
 
   it.each([true, false])("keeps the score and Overdrive outside the lane (visible: %s)", (lane) => {
-    const prefs: StaffPrefs = {
-      zoom: 1,
-      noteColor: "#00d4ff",
-      scoreColor: "#ffffff",
-      singleLine: true,
-      follow: true,
-      measuresPerLine: 4,
-      noteNames: "off",
-      chords: false,
-      fingers: true,
-      fingerColors: "mono",
-      visible: true,
-      lane,
-      keys: false,
-      hands: false,
-      road: true,
-      noteCards: false,
-      noteCardsConfigured: false,
-      labels: true,
-      fps: false,
-      keyRange: "song",
-      keyStyle: "arcade",
-      autoReview: false,
-      roadFar: 0.5,
-      camera: DEFAULT_CAMERA,
-      roadHorizon: 0.2
-    };
+    const prefs = prefsWith(lane);
     const markup = renderToStaticMarkup(
       <Workspace
         prefs={prefs}
@@ -146,6 +148,7 @@ describe("game score presentation", () => {
         onZoom={vi.fn()}
         onResetLayout={vi.fn()}
         layoutMoved={false}
+        editing={false}
         gameBoard={
           <GameBoard
             mode="tempo"
@@ -161,6 +164,47 @@ describe("game score presentation", () => {
     expect(window.document.querySelector(".lanes .game-score-board")).toBeNull();
     expect(window.document.querySelectorAll(".game-score-board")).toHaveLength(1);
     expect(window.document.querySelector(".game-score-dock .game-overdrive")).not.toBeNull();
+    window.close();
+  });
+});
+
+describe("layout edit mode", () => {
+  it.each([true, false])("shows the handles only while editing (editing: %s)", (editing) => {
+    const markup = renderToStaticMarkup(
+      <Workspace
+        prefs={{ ...prefsWith(true), keys: true }}
+        staffXml="<score-partwise/>"
+        fixedLines={false}
+        beat={0}
+        liveBeat={() => 0}
+        onSeek={vi.fn()}
+        reviewMarks={undefined}
+        transcription={undefined}
+        takeStaff="row"
+        splitDirection="row"
+        comparing={false}
+        waiting={false}
+        hostRef={{ current: null }}
+        mirrorHostRef={{ current: null }}
+        layout={DEFAULT_SCREEN_LAYOUT}
+        onLayout={vi.fn()}
+        onZoom={vi.fn()}
+        onResetLayout={vi.fn()}
+        layoutMoved
+        editing={editing}
+        wordTicker={<span>text</span>}
+      />
+    );
+    const window = new Window();
+    window.document.body.innerHTML = markup;
+    const count = (selector: string) => window.document.querySelectorAll(selector).length;
+    // The staff's edge, the keys' two lines and their move grip.
+    expect(count(".layout-handle")).toBe(editing ? 3 : 0);
+    expect(count(".layout-move")).toBe(editing ? 1 : 0);
+    expect(count(".layout-reset")).toBe(editing ? 1 : 0);
+    expect(count(".ticker-zoom")).toBe(editing ? 2 : 0);
+    // The running line keeps its place either way.
+    expect(count(".word-ticker-slot")).toBe(1);
     window.close();
   });
 });

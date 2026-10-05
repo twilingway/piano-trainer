@@ -63,3 +63,47 @@ describe("computer keyboard layout", () => {
     expect(computerGeometry(300, total, { ...ALL, keys: false }).hitY).toBe(300);
   });
 });
+
+describe("narrow computer keyboard", () => {
+  const total = 390;
+  const narrow = layoutComputerKeys(total, computerGeometry(800, total, ALL));
+  const face = (code: string) => narrow.faces.find((item) => item.code === code);
+
+  it("keeps every typing key and drops the service keys", () => {
+    for (const code of KEYBOARD_ROWS.flat()) expect(face(code)?.pitch).toBe(keyColumn(code));
+    expect(narrow.faces).toHaveLength(KEYBOARD_ROWS.flat().length);
+    expect(narrow.keys.size).toBe(KEYBOARD_ROWS.flat().length);
+    for (const item of narrow.faces) expect(item.x + item.width).toBeLessThanOrEqual(total);
+    expect(face("KeyQ")?.x ?? 0).toBeGreaterThan(face("Backquote")?.x ?? 0);
+    expect(face("KeyZ")?.y ?? 0).toBeGreaterThan(face("KeyA")?.y ?? 0);
+  });
+
+  it("has wider and taller keys than a full keyboard as wide", () => {
+    // What a full keyboard 390 px wide would give a key: a fifteenth of the width, 0.8 of it tall.
+    const fullUnit = total / 15;
+    const key = face("KeyL");
+    expect(key?.width ?? 0).toBeGreaterThan(fullUnit * 0.95);
+    expect(key?.height ?? 0).toBeGreaterThan(fullUnit * 0.8);
+    expect(face("Equal")?.pitch).toBe(keyColumn("Equal"));
+  });
+
+  it("stays full above the threshold", () => {
+    const wide = layoutComputerKeys(641, computerGeometry(800, 641, ALL));
+    expect(wide.faces.some((item) => item.code === "Space")).toBe(true);
+  });
+});
+
+describe("short computer keyboard", () => {
+  it("keeps the keys' shape in a low view: narrower and in the middle", () => {
+    const total = 840;
+    const geometry = computerGeometry(300, total, ALL);
+    const { faces, inset } = layoutComputerKeys(total, geometry);
+    const key = faces.find((item) => item.code === "KeyL");
+    expect(inset).toBeGreaterThan(0);
+    // A key as tall as on a roomy view, against its width.
+    expect((key?.height ?? 0) / (key?.width ?? 1)).toBeGreaterThan(0.6);
+    const left = Math.min(...faces.map((item) => item.x));
+    const right = Math.max(...faces.map((item) => item.x + item.width));
+    expect(left + right).toBeCloseTo(total);
+  });
+});

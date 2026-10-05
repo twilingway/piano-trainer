@@ -99,8 +99,12 @@ export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayo
   );
 }
 
-/** The word mode's running line: dragged anywhere, it keeps its place against the hit line. */
+/**
+ * The word mode's running line: dragged anywhere, it keeps its place against the hit line. Off
+ * the edit mode it stays where it is, with no drag and no tools.
+ */
 export function TickerSlot(props: {
+  editing: boolean;
   gap: number;
   x: number;
   scale: number;
@@ -126,37 +130,39 @@ export function TickerSlot(props: {
           "--ticker-scale": String(props.scale)
         } as CSSProperties
       }
-      title="Тяните, чтобы поднять или опустить строку"
-      {...drag}
+      {...(props.editing ? { ...drag, title: "Тяните, чтобы поднять или опустить строку" } : {})}
+      data-editing={props.editing || undefined}
     >
       {props.children}
-      <div className="ticker-tools">
-        <Grip label="Строка" />
-        {(
-          [
-            ["A−", -0.1, "Уменьшить текст"],
-            ["A+", 0.1, "Увеличить текст"]
-          ] as const
-        ).map(([text, step, label]) => (
-          <button
-            key={text}
-            type="button"
-            className="ticker-zoom"
-            aria-label={label}
-            title={label}
-            // The buttons size the text; only the line itself drags.
-            onPointerDown={(event) => {
-              event.stopPropagation();
-            }}
-            onClick={() => {
-              const scale = Math.round((props.scale + step) * 10) / 10;
-              props.onLayout({ tickerScale: clampLayout("tickerScale", scale) });
-            }}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
+      {props.editing && (
+        <div className="ticker-tools">
+          <Grip label="Строка" />
+          {(
+            [
+              ["A−", -0.1, "Уменьшить текст"],
+              ["A+", 0.1, "Увеличить текст"]
+            ] as const
+          ).map(([text, step, label]) => (
+            <button
+              key={text}
+              type="button"
+              className="ticker-zoom"
+              aria-label={label}
+              title={label}
+              // The buttons size the text; only the line itself drags.
+              onPointerDown={(event) => {
+                event.stopPropagation();
+              }}
+              onClick={() => {
+                const scale = Math.round((props.scale + step) * 10) / 10;
+                props.onLayout({ tickerScale: clampLayout("tickerScale", scale) });
+              }}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -176,15 +182,11 @@ interface StaffHandleProps {
  */
 export function StaffHandle(props: StaffHandleProps) {
   const drag = useVerticalDrag({
-    start: (element) => {
-      element.dataset.dragging = "";
-      return element.parentElement?.getBoundingClientRect().height ?? 0;
-    },
+    start: (element) => element.parentElement?.getBoundingClientRect().height ?? 0,
     move: (dy, _from, element) => {
       element.style.transform = `translateY(${String(dy)}px)`;
     },
     end: (dy, from, element) => {
-      delete element.dataset.dragging;
       element.style.transform = "";
       if (Math.abs(dy) < 3 || from <= 0) return;
       const wanted = Math.max(24, from + dy);
