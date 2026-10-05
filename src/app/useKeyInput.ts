@@ -7,10 +7,11 @@ import { listenToComputerKeyboard } from "../input/computerKeyboard";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import type { KeyEvent, MidiDevice, MidiEvent } from "../input/midiInput";
 import type { Trainer } from "../practice/Trainer";
+import { useMidiOutput } from "./useMidiOutput";
 
 /**
  * Keys into the trainer: the MIDI piano (keys and the sustain pedal) and the
- * computer keyboard, which also sounds the notes it plays.
+ * computer keyboard, which also sounds the notes it plays; and the MIDI output.
  */
 export function useKeyInput(
   trainerRef: RefObject<Trainer | null>,
@@ -33,6 +34,7 @@ export function useKeyInput(
   /** Which MIDI input plays; "all" listens to every one. */
   const [midiDeviceId, setMidiDeviceId] = useState("all");
   const midiDeviceRef = useRef("all");
+  const output = useMidiOutput();
 
   useEffect(() => {
     const onKey = (event: KeyEvent) => {
@@ -108,5 +110,13 @@ export function useKeyInput(
 
   const midiName = devices.length > 0 ? (devices[0]?.name ?? "MIDI") : undefined;
 
-  return { devices, midiError, midiDeviceId, setMidiDeviceId, midiName };
+  /** The MIDI settings' own props: which input plays, why there is none, and the output. */
+  const settings = {
+    devices,
+    deviceId: midiDeviceId,
+    onDevice: setMidiDeviceId,
+    midiError,
+    output
+  };
+  return { devices, midiError, midiDeviceId, setMidiDeviceId, midiName, settings };
 }

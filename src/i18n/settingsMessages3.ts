@@ -313,5 +313,17 @@ export const settingsMessages3 = {
   },
   "Октав вверх: {count}": {
     en: "Octaves up: {count}"
+  },
+  "Выход MIDI": {
+    en: "MIDI output"
+  },
+  "{name} — нет связи": {
+    en: "{name} — not connected"
+  },
+  "Зажигает C4 на секунду.": {
+    en: "Lights C4 for a second."
+  },
+  Проверить: {
+    en: "Test"
   }
 } satisfies Messages;
