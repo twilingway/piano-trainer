@@ -77,8 +77,10 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
         onKeyRange: noop,
         showLabels: false,
         onShowLabels: noop,
-        fps: false,
-        onFps: noop,
+        fps: staffPrefs.fps,
+        onFps: (fps) => {
+          updateStaffPrefs({ fps });
+        },
         keyStyle: "classic",
         onKeyStyle: noop,
         road: { far: 0.3, horizon: 0.3 },
@@ -230,6 +232,18 @@ describe("player settings organization", () => {
     await section("Вид");
     expect(host.textContent).toContain("клавиатура автоматически подстраивается");
     expect(host.querySelector("select[aria-label='Клавиши']")).toBeNull();
+    const fpsControls = Array.from(host.querySelectorAll("label")).filter((label) =>
+      label.textContent.includes("Показывать FPS")
+    );
+    expect(fpsControls).toHaveLength(1);
+    const fps = fpsControls[0]?.querySelector<HTMLInputElement>("input");
+    expect(fps?.checked).toBe(false);
+    await act(async () => {
+      await Promise.resolve();
+      fps?.click();
+    });
+    expect(fps?.checked).toBe(true);
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({ fps: true });
     await section("Песня");
     expect(select("Тональность")).toBeDefined();
     await section("Пианино");
@@ -237,6 +251,12 @@ describe("player settings organization", () => {
     await section("Синхронизация");
     expect(host.querySelector("[role=tabpanel]")?.textContent).toContain("Калибровка задержки");
     await render(false);
+    await section("Вид");
+    const pianoFps = Array.from(host.querySelectorAll("label")).filter((label) =>
+      label.textContent.includes("Показывать FPS")
+    );
+    expect(pianoFps).toHaveLength(1);
+    expect(pianoFps[0]?.querySelector<HTMLInputElement>("input")?.checked).toBe(true);
     await section("Ввод с ПК");
     expect(host.textContent).toContain("По октавам");
   });

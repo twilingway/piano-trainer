@@ -17,7 +17,10 @@ interface Props {
   readonly rules: ComponentProps<typeof GameSettings>;
   readonly song: ComponentProps<typeof SongSettings>;
   readonly staff: ComponentProps<typeof StaffSettings>;
-  readonly keyboard: ComponentProps<typeof KeyboardSettings>;
+  readonly keyboard: ComponentProps<typeof KeyboardSettings> & {
+    readonly fps: boolean;
+    readonly onFps: (show: boolean) => void;
+  };
   readonly computerKeyboard: ComponentProps<typeof ComputerKeyboardSettings>["controls"];
   readonly wordSettings: ReactNode;
   readonly midi: ComponentProps<typeof MidiSettings>;
@@ -63,6 +66,18 @@ export function PlayerSettings(props: Props) {
               </section>
               <section className="settings-group">
                 <h3 className="settings-group__title">Клавиатура и отображение</h3>
+                <div className="settings-list">
+                  <label className="setting">
+                    <span>Показывать FPS</span>
+                    <input
+                      type="checkbox"
+                      checked={props.keyboard.fps}
+                      onChange={(event) => {
+                        props.keyboard.onFps(event.target.checked);
+                      }}
+                    />
+                  </label>
+                </div>
                 {props.wordTyping ? (
                   <p className="setting-hint">
                     В режиме «Печатать мелодию» клавиатура автоматически подстраивается под
