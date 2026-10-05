@@ -105,6 +105,8 @@ branch_sha="$(git -C "$REPO_DIR" rev-parse "origin/$DEPLOY_BRANCH")"
 [[ "$($REPO_DIR/scripts/check-ci.sh "$target_sha")" == green ]] || fail "CI gate is not green for $target_sha."
 
 short_sha="${target_sha:0:12}"
+# GitHub names a PR merge "Merge pull request #N from …"; a direct commit has no number.
+target_pr="$(git -C "$REPO_DIR" log -1 --format=%s "$target_sha" | sed -nE 's/^Merge pull request #([0-9]+) .*//p' || true)"
 previous_tag="$(cat "$STATE_DIR/deployed-tag" 2>/dev/null || true)"
 if ((local_only)) && [[ -n "$previous_tag" ]]; then
   fail "--local-only is allowed only before the first recorded release."
@@ -112,7 +114,7 @@ fi
 git -C "$REPO_DIR" checkout --quiet --detach "$target_sha" || fail "Could not check out $target_sha."
 
 log "Building $short_sha."
-IMAGE_TAG="$short_sha" GIT_SHA="$target_sha" compose build piano-web || fail "Image build failed; current release is untouched."
+IMAGE_TAG="$short_sha" GIT_SHA="$target_sha" GIT_PR="$target_pr" compose build piano-web || fail "Image build failed; current release is untouched."
 log "Switching to $short_sha."
 if ! IMAGE_TAG="$short_sha" compose up -d --no-build piano-web; then
   rollback "$previous_tag"
