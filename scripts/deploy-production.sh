@@ -72,7 +72,7 @@ wait_for_local() {
 }
 
 wait_for_public() {
-  local expected="$1" deadline=$((SECONDS + 120)) served page assets asset
+  local expected="$1" deadline=$((SECONDS + 120)) served page assets asset loaded
   while ((SECONDS < deadline)); do
     served="$(curl -fsS --max-time 10 -H 'Cache-Control: no-cache' "$PUBLIC_URL/version.txt" 2>/dev/null || true)"
     if [[ "$served" == "$expected" ]]; then
@@ -80,10 +80,13 @@ wait_for_public() {
       if [[ "$page" == *"<html"* ]]; then
         assets="$(printf '%s' "$page" | grep -oE '/assets/[^" ]+' | sort -u || true)"
         if [[ -n "$assets" ]]; then
+          # One slow request through the proxy must not roll the release back:
+          # retry the whole round until the deadline.
+          loaded=1
           while IFS= read -r asset; do
-            curl -fsS --max-time 10 -o /dev/null "$PUBLIC_URL$asset" || return 1
+            curl -fsS --max-time 10 -o /dev/null "$PUBLIC_URL$asset" || { loaded=0; break; }
           done <<< "$assets"
-          return 0
+          if ((loaded)); then return 0; fi
         fi
       fi
     fi
