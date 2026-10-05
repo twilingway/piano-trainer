@@ -2097,134 +2097,123 @@ button.song-card.song-card__open {
   }
 }
 
+/* One game HUD, centred at the top of the lane over notes still far from the line. */
 .game-score-board {
   pointer-events: none;
   position: absolute;
   z-index: 3;
-  inset: 14px 16px auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  color: var(--text);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-.game-score-panel {
+  top: 10px;
+  left: 50%;
   box-sizing: border-box;
   display: grid;
-  gap: 10px;
-  width: clamp(128px, 12vw, 200px);
-  padding: 12px;
-  border: 1px solid rgb(0 212 255 / 16%);
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgb(2 13 22 / 92%), rgb(2 13 22 / 65%));
+  grid-template-columns: auto auto minmax(200px, 1fr);
+  align-items: center;
+  width: min(760px, calc(100% - 24px));
+  padding: 6px 4px;
+  border: 1px solid rgb(0 229 255 / 32%);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgb(4 27 44 / 90%), rgb(2 13 22 / 74%));
+  box-shadow:
+    0 0 22px rgb(0 229 255 / 16%),
+    inset 0 0 18px rgb(0 229 255 / 7%);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+}
+.game-score-board > section {
+  display: grid;
+  align-items: baseline;
+  column-gap: 10px;
+  min-width: 0;
+  padding: 0 16px;
+}
+.game-score-board > section + section {
+  border-left: 1px solid rgb(0 229 255 / 18%);
 }
 .game-score-label {
-  display: block;
+  grid-column: 1 / -1;
   color: #a3e6ff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.game-hud__combo {
+  grid-template-columns: auto auto auto;
+}
+.game-combo__value {
+  min-width: 2ch;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-style: italic;
+  line-height: 1;
+  text-shadow: 0 0 16px rgb(0 229 255 / 70%);
+}
+.game-multiplier {
+  padding: 1px 8px;
+  border: 1px solid rgb(255 238 0 / 55%);
+  border-radius: 999px;
+  color: #ffee00;
+  font-size: 22px;
+  line-height: 1.1;
+  text-shadow: 0 0 10px rgb(255 238 0 / 55%);
+  animation: hud-pulse 200ms ease-out;
+}
+/* Its place is kept, so the HUD does not shift when Flow comes and goes. */
+.game-flow {
+  visibility: hidden;
+  color: #00ff7b;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgb(0 255 123 / 70%);
 }
-.game-combo__value {
-  display: block;
-  color: var(--accent);
-  font-family: var(--font-display);
-  font-size: clamp(38px, 4.6vw, 72px);
-  font-style: italic;
-  line-height: 1.05;
-  text-shadow: 0 0 18px rgb(0 212 255 / 65%);
+.game-score-board[data-flow="true"] .game-flow {
+  visibility: visible;
 }
-.game-accuracy strong {
-  color: var(--accent);
-  font-size: clamp(22px, 2.2vw, 34px);
+.game-score-board[data-broken="true"] .game-combo__value {
+  animation: hud-break 240ms ease-out;
 }
-.game-grades {
-  display: grid;
-  gap: 7px;
-  margin: 0;
-  padding-top: 10px;
-  border-top: 1px solid rgb(0 212 255 / 14%);
+.game-hud__points {
+  grid-template-columns: auto auto;
 }
-.game-grades > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  color: var(--grade-color);
+.game-points {
+  font-size: 24px;
+  line-height: 1.1;
 }
-.game-grades dt {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-weight: 700;
-}
-.game-grades dd {
-  margin: 0;
-  color: var(--text);
-}
-.game-grades [data-grade="PERFECT"] {
-  --grade-color: #00e5ff;
-}
-.game-grades [data-grade="GREAT"] {
-  --grade-color: #00ff7b;
-}
-.game-grades [data-grade="GOOD"] {
-  --grade-color: #ffee00;
-}
-.game-grades [data-grade="OK"] {
-  --grade-color: #ff9d00;
-}
-.game-grades [data-grade="MISS"] {
-  --grade-color: #ff2454;
-}
-.game-grade-light {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  background: var(--grade-color);
-  box-shadow: 0 0 7px var(--grade-color);
-}
-.game-score-panel--points {
-  text-align: right;
-}
-.game-points strong {
-  display: block;
-  font-size: clamp(20px, 2.4vw, 36px);
-  overflow-wrap: anywhere;
-}
-.game-multiplier {
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-}
-.game-multiplier strong {
-  display: grid;
-  place-items: center;
-  width: 74px;
-  height: 74px;
-  border: 5px solid #08759a;
-  border-right-color: var(--accent);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  color: #ffee00;
-  font-size: 36px;
-  box-shadow: 0 0 12px rgb(0 212 255 / 24%);
-}
-.game-multiplier span {
+.game-accuracy {
   color: #a3e6ff;
+  font-size: 15px;
 }
-.game-energy > div:first-child {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
+.game-hud__energy {
+  grid-template-columns: minmax(96px, 1fr) auto;
+  grid-template-areas:
+    "energy button"
+    "energy hint";
+  align-items: center;
+  row-gap: 2px;
+}
+.game-energy {
+  display: grid;
+  grid-area: energy;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  row-gap: 4px;
+}
+.game-energy .game-score-label {
+  grid-column: auto;
+}
+.game-energy__value {
+  font-size: 13px;
 }
 .game-energy__track {
-  height: 12px;
+  grid-column: 1 / -1;
+  height: 10px;
   overflow: hidden;
   border: 1px solid #20465d;
-  border-radius: 4px;
+  border-radius: 5px;
   background: #071824;
 }
 .game-energy__track span {
@@ -2233,93 +2222,108 @@ button.song-card.song-card__open {
   border-radius: inherit;
   background: var(--accent);
   box-shadow: 0 0 12px var(--accent);
+  transition: width 0.2s linear;
 }
-.game-flow {
-  color: #00ff7b;
+.game-overdrive {
+  pointer-events: auto;
+  grid-area: button;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-color: #078fb4;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 700;
-  text-shadow: 0 0 10px rgb(0 238 147 / 70%);
 }
-.game-score-board[data-overdrive="true"] .game-multiplier strong {
+.game-overdrive:disabled {
+  opacity: 0.7;
+}
+.game-overdrive__hint {
+  grid-area: hint;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+.game-score-board[data-ready="true"] .game-energy__track span,
+.game-score-board[data-overdrive="true"] .game-energy__track span {
+  background: #ffee00;
+  box-shadow: 0 0 12px #ffee00;
+}
+.game-score-board[data-ready="true"] .game-overdrive {
   border-color: #ffee00;
-  box-shadow: 0 0 18px rgb(255 209 92 / 50%);
+  background: #ffee00;
+  color: #101722;
+  box-shadow: 0 0 18px rgb(255 238 0 / 55%);
+  animation: hud-pulse 240ms ease-out;
+}
+.game-score-board[data-ready="true"] .game-overdrive__hint {
+  color: #ffee00;
+}
+.game-score-board[data-overdrive="true"] {
+  border-color: rgb(255 238 0 / 55%);
+  box-shadow: 0 0 26px rgb(255 238 0 / 22%);
+}
+.game-score-board[data-overdrive="true"] .game-overdrive:disabled {
+  opacity: 1;
+  border-color: #ffee00;
+  color: #ffee00;
+}
+@keyframes hud-pulse {
+  from {
+    transform: scale(1.22);
+  }
+}
+@keyframes hud-break {
+  from {
+    color: #ff2454;
+    text-shadow: 0 0 16px #ff2454;
+    transform: scale(1.18);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-multiplier,
+  .game-score-board[data-ready="true"] .game-overdrive {
+    animation: none;
+  }
+  .game-energy__track span {
+    transition: none;
+  }
+  /* The red flash stays, without the jump. */
+  .game-score-board[data-broken="true"] .game-combo__value {
+    animation-name: hud-break-still;
+  }
+  @keyframes hud-break-still {
+    from {
+      color: #ff2454;
+    }
+  }
 }
 .game-score-board--message {
-  inset: 8px 12px auto auto;
+  display: block;
+  inset: 8px auto auto 12px;
+  width: auto;
   padding: 6px 10px;
-  border: 1px solid rgb(0 212 255 / 25%);
+  border-color: rgb(0 212 255 / 25%);
   border-radius: 8px;
   background: rgb(2 13 22 / 80%);
+  box-shadow: none;
   color: #a3e6ff;
+  font-size: 12px;
+  transform: none;
 }
-.workspace-main--overlay .game-score-board,
-.lanes--keys .game-score-board {
-  top: auto;
-  bottom: 8px;
-}
-:is(.workspace-main--overlay, .lanes--keys, .game-score-dock) .game-score-panel {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: auto;
-  max-width: 48%;
-  padding: 5px 8px;
-}
-:is(.workspace-main--overlay, .lanes--keys, .game-score-dock) .game-grades,
-:is(.workspace-main--overlay, .lanes--keys, .game-score-dock) .game-multiplier span {
-  display: none;
-}
-:is(.workspace-main--overlay, .lanes--keys, .game-score-dock) .game-combo__value,
-:is(.workspace-main--overlay, .lanes--keys, .game-score-dock) .game-accuracy strong,
-:is(.workspace-main--overlay, .lanes--keys, .game-score-dock) .game-points strong {
-  font-size: 20px;
-}
-:is(.workspace-main--overlay, .lanes--keys, .game-score-dock) .game-multiplier strong {
-  width: 28px;
-  height: 28px;
-  border-width: 2px;
-  font-size: 16px;
-}
-.lanes--keys .game-score-board {
-  top: 6px;
-  bottom: auto;
-}
+/* Over keys alone, or with no lane, the HUD takes a row of its own above them. */
 .game-score-dock {
   flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
   min-width: 0;
   padding: 4px 8px;
   background: var(--bg);
 }
 .game-score-dock .game-score-board {
   position: static;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.game-score-dock .game-score-panel {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  gap: 6px 12px;
-}
-.game-score-dock .game-score-panel--points {
-  margin-left: auto;
-  justify-content: flex-end;
-}
-.game-score-dock .game-energy {
-  flex: 0 1 120px;
-  width: 120px;
-  min-width: 72px;
-  max-width: 120px;
-}
-.game-score-dock .game-energy__track {
-  height: 6px;
-}
-.game-score-dock .game-score-label {
-  font-size: 10px;
-}
-.game-score-dock .game-overdrive {
-  flex: 0 0 auto;
-  min-height: 36px;
+  transform: none;
 }
 .workspace-main--overlay .game-score-dock {
   order: 1;
@@ -2335,7 +2339,6 @@ button.song-card.song-card__open {
 }
 .game-score-dock .game-score-board--message {
   position: absolute;
-  inset: 8px auto auto 12px;
 }
 
 /* Keep desktop window controls readable without spending a second row on labels. */
@@ -2361,16 +2364,6 @@ button.song-card.song-card__open {
   .topbar > .segmented button {
     padding-inline: 8px;
   }
-}
-.game-overdrive {
-  pointer-events: auto;
-  justify-content: center;
-  min-height: 32px;
-  padding: 4px 8px;
-  border-color: #078fb4;
-  border-radius: 6px;
-  box-shadow: inset 0 0 10px rgb(0 212 255 / 12%);
-  font-size: 12px;
 }
 .practice-range {
   display: flex;
@@ -2439,63 +2432,24 @@ button.song-card.song-card__open {
   overflow-y: auto;
 }
 @media (max-width: 900px), (max-height: 680px) {
-  .game-score-board {
-    inset: 6px 8px auto;
-    gap: 6px;
-    font-size: 11px;
+  .game-score-board > section {
+    padding: 0 10px;
   }
-  .game-score-panel {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: auto;
-    max-width: 52%;
-    padding: 5px 8px;
+  .game-combo__value {
+    font-size: 28px;
   }
-  .game-score-label {
-    font-size: 9px;
+  .game-multiplier {
+    font-size: 17px;
   }
-  .game-combo__value,
-  .game-accuracy strong,
-  .game-points strong {
-    font-size: 20px;
-  }
-  .game-grades {
-    display: none;
-  }
-  .game-multiplier strong {
-    width: 28px;
-    height: 28px;
-    border-width: 2px;
-    font-size: 16px;
-  }
-  .game-multiplier span {
-    display: none;
-  }
-  .game-energy {
-    min-width: 48px;
-  }
-  .game-energy__track {
-    height: 5px;
+  .game-points {
+    font-size: 18px;
   }
   .game-overdrive {
-    min-height: 28px;
-    font-size: 10px;
+    min-height: 36px;
+    font-size: 13px;
   }
 }
 @media (max-width: 600px), (max-height: 500px) {
-  .game-score-board {
-    gap: 5px;
-  }
-  .game-score-panel {
-    gap: 5px;
-    padding: 4px 6px;
-  }
-  .game-overdrive {
-    min-height: 28px;
-    font-size: 10px;
-  }
   .game-result-stats {
     grid-template-columns: 1fr;
   }
@@ -2650,7 +2604,7 @@ button.song-card.song-card__open {
 
   .workspace-main {
     --mobile-score-top: max(4px, env(safe-area-inset-top));
-    --mobile-rail-width: calc(128px + env(safe-area-inset-left));
+    --mobile-rail-width: max(8px, env(safe-area-inset-left));
     --mobile-bar-width: calc(52px + env(safe-area-inset-right));
   }
 
@@ -2705,103 +2659,75 @@ button.song-card.song-card__open {
     margin-top: auto;
   }
 
-  .game-score-dock {
+  /* One row at the top, between the edge and the bar's column; the staff goes under it. */
+  .game-score-board:not(.game-score-board--message) {
     position: fixed;
     z-index: 4;
-    top: var(--mobile-score-top);
+    top: max(4px, env(safe-area-inset-top));
     left: max(8px, env(safe-area-inset-left));
-    width: 112px;
-    padding: 0;
-    background: transparent;
-    pointer-events: none;
+    grid-template-columns: auto auto auto;
+    width: max-content;
+    max-width: calc(100% - var(--mobile-bar-width) - 16px);
+    height: 44px;
+    padding: 0 2px;
+    border-radius: 10px;
+    background: #031725;
+    transform: none;
   }
 
-  .game-score-dock .game-score-board {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    width: 100%;
+  .workspace-main:has(.game-score-board:not(.game-score-board--message)) {
+    --mobile-score-top: calc(max(4px, env(safe-area-inset-top)) + 48px);
   }
 
-  .game-score-dock .game-score-panel {
-    justify-content: flex-start;
-    gap: 3px 8px;
-    max-width: 100%;
-    width: 100%;
-    padding: 2px 4px;
-    border: 0;
-    border-radius: 4px;
-    background: rgb(2 13 22 / 75%);
-    text-align: left;
+  .game-score-board > section {
+    align-items: center;
+    column-gap: 6px;
+    padding: 0 8px;
   }
 
-  .game-score-dock .game-score-panel--points {
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
-    margin-left: 0;
+  .game-score-board :is(.game-score-label, .game-accuracy, .game-flow, .game-overdrive__hint) {
+    display: none;
   }
 
-  .game-score-dock .game-score-panel--combo {
-    flex-direction: column;
-    align-items: flex-start;
+  .game-combo__value {
+    font-size: 22px;
   }
 
-  .game-score-dock :is(.game-points, .game-overdrive) {
-    grid-column: 1 / -1;
+  .game-score-board[data-flow="true"] .game-combo__value {
+    color: #00ff7b;
   }
 
-  .game-score-dock :is(.game-combo, .game-accuracy, .game-points) {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .game-score-dock .game-score-label {
-    font-size: 9px;
-  }
-
-  .game-score-dock :is(.game-combo__value, .game-accuracy strong, .game-points strong) {
-    font-size: 14px;
-    line-height: 1.2;
-  }
-
-  .game-score-dock .game-accuracy strong {
+  .game-multiplier {
+    padding: 0 5px;
     font-size: 13px;
   }
 
-  .game-score-dock .game-multiplier strong {
-    width: 20px;
-    height: 20px;
-    font-size: 11px;
+  .game-points {
+    font-size: 15px;
   }
 
-  .game-score-dock .game-energy {
-    flex: 0 1 52px;
-    width: 52px;
-    min-width: 40px;
+  .game-hud__energy {
+    grid-template-columns: 72px auto;
+    grid-template-areas: "energy button";
+    column-gap: 8px;
   }
 
-  .game-score-dock .game-energy > div:first-child {
-    margin-bottom: 2px;
+  .game-energy {
+    row-gap: 2px;
   }
 
-  .game-score-dock .game-energy__track {
-    height: 3px;
+  .game-energy__value {
+    font-size: 10px;
   }
 
-  .game-score-dock .game-overdrive {
-    display: block;
-    flex: 0 0 80px;
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 32px;
-    overflow: hidden;
-    padding: 0 5px;
-    font-size: 9px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+  .game-energy__track {
+    height: 8px;
+  }
+
+  .game-overdrive {
+    min-height: 38px;
+    padding: 0 8px;
+    font-size: 12px;
   }
 
   .game-score-dock .game-score-board--message {
@@ -2897,8 +2823,8 @@ button.song-card.song-card__open {
   }
 
   /* The score sits under the board's line, not over it. */
-  .app--word .game-score-dock {
-    top: calc(36px + var(--mobile-score-top));
+  .app--word .game-score-board:not(.game-score-board--message) {
+    top: calc(36px + max(4px, env(safe-area-inset-top)));
   }
 
   /* «Тренировка» hangs from a dock of no height into the lane's corner under it. */
@@ -2919,6 +2845,31 @@ button.song-card.song-card__open {
     padding: 3px 8px;
     font-size: 11px;
     white-space: nowrap;
+  }
+}
+
+/* A landscape phone has no height to spare: the HUD takes no row, it hangs by the bar. */
+@media (height <= 500px) {
+  /* Over the staff's left, where the notes already played are; with no staff, right of the legend. */
+  .game-score-board:not(.game-score-board--message),
+  .app--word .game-score-board:not(.game-score-board--message) {
+    top: max(4px, env(safe-area-inset-top));
+    height: 36px;
+  }
+
+  .app--word
+    .workspace-main:not(:has(> .staves))
+    .game-score-board:not(.game-score-board--message) {
+    right: calc(var(--mobile-bar-width) + 4px);
+    left: auto;
+  }
+
+  .workspace-main:has(.game-score-board:not(.game-score-board--message)) {
+    --mobile-score-top: max(4px, env(safe-area-inset-top));
+  }
+
+  .game-overdrive {
+    min-height: 30px;
   }
 }
 
@@ -3064,6 +3015,7 @@ button.song-card.song-card__open {
   /* No strip under the bar, no plaque on the lane, no legend row: the bar carries them. */
   .shell-top > .game-mode-strip,
   .game-score-dock:has(> .game-score-board--practice),
+  .game-score-board--practice,
   .word-board:not(:has(> p)) {
     display: none;
   }

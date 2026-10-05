@@ -122,7 +122,10 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           </div>
         )}
 
-        {!props.comparing && <div className="game-score-dock">{props.gameBoard}</div>}
+        {/* Over a full lane the score hangs at its top; over keys alone it takes a row. */}
+        {!props.comparing && laneMode !== "full" && (
+          <div className="game-score-dock">{props.gameBoard}</div>
+        )}
 
         {laneTop && (
           <div
@@ -145,6 +148,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           <div className="lane" ref={hostRef}>
             {props.comparing && <span className="lane-label">Твой дубль</span>}
             {props.waiting && <span className="waiting-pill">Жду ноту</span>}
+            {!props.comparing && laneMode === "full" && props.gameBoard}
             {prefs.keys && laneMode !== "hidden" && handles && (
               <KeysHandles layout={props.layout} onLayout={props.onLayout} />
             )}
