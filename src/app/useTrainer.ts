@@ -5,12 +5,12 @@ import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
 import type { Hand } from "../fingering/fingering";
 import type { PracticeMode, PracticeOptions } from "../practice/session";
 import { Trainer } from "../practice/Trainer";
-import type { TrainerSnapshot } from "../practice/Trainer";
 import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
 import type { Song } from "../song/song";
 import { loadPlayerPrefs, savePlayerPrefs } from "./playerPrefs";
 import type { HandChoice } from "./playerPrefs";
+import { createTrainerSnapshotSource } from "./trainerSnapshots";
 
 const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
   right: ["right"],
@@ -71,7 +71,7 @@ export function useTrainer({
   const noteClickRef = useRef<(noteId: string) => void>(() => undefined);
   const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
   const [trainerReady, setTrainerReady] = useState(false);
-  const [snapshot, setSnapshot] = useState<TrainerSnapshot | null>(null);
+  const [snapshotSource] = useState(createTrainerSnapshotSource);
   // How the player last played, brought back from the previous visit.
   const [storedMode, setMode] = useState<PracticeMode>(() => loadPlayerPrefs().mode);
   const mode = ranked ? "tempo" : storedMode;
@@ -80,7 +80,7 @@ export function useTrainer({
   );
   const handChoice = ranked && storedHandChoice === "listen" ? "both" : storedHandChoice;
   const setHandChoice = (choice: HandChoice) => {
-    if (!ranked || !snapshot?.playing) updateHandChoice(choice);
+    if (!ranked || !snapshotSource.getSnapshot()?.playing) updateHandChoice(choice);
   };
   const [storedSpeed, updateSpeed] = useState(() =>
     Math.max(0.01, Math.min(1, loadPlayerPrefs().speed))
@@ -122,7 +122,7 @@ export function useTrainer({
         takeHandlerRef.current(take);
       };
       trainer.onSnapshot = (next) => {
-        setSnapshot(next);
+        snapshotSource.publish(next);
         // A listen-through ends by handing the song back for practice.
         if (next.finished) setListening(false);
       };
@@ -133,12 +133,14 @@ export function useTrainer({
       disposed = true;
       trainerRef.current?.destroy();
       trainerRef.current = null;
+      viewRef.current = null;
+      snapshotSource.publish(null);
       setTrainerReady(false);
       void mounted.then(() => {
         view.destroy();
       });
     };
-  }, []);
+  }, [snapshotSource]);
 
   useEffect(() => {
     // The view and the trainer outlive renders; they always call the latest handlers.
@@ -214,9 +216,9 @@ export function useTrainer({
   };
 
   const togglePlay = async () => {
-    if (snapshot?.finished) restart();
     await ensureSound();
-    trainerRef.current?.setPlaying(!(snapshot?.playing ?? false));
+    if (snapshotSource.getSnapshot()?.finished) restart();
+    trainerRef.current?.setPlaying(!(snapshotSource.getSnapshot()?.playing ?? false));
   };
 
   const toggleListening = async () => {
@@ -240,7 +242,7 @@ export function useTrainer({
     trainerRef,
     viewRef,
     trainerReady,
-    snapshot,
+    snapshotSource,
     mode,
     setMode,
     handChoice,
