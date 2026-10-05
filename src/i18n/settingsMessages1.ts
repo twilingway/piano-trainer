@@ -4,9 +4,6 @@ export const settingsMessages1 = {
   "локальная сборка": {
     en: "local build"
   },
-  "Пианино-тренажёр": {
-    en: "Piano Trainer"
-  },
   "Тренажёр, чтобы самостоятельно разучивать пьесы на фортепиано. Ноты падают на клавиши с подсказкой пальцев, сверху движется нотный стан, а каждый дубль записывается и сравнивается с нотами — видно, где ошибся.":
     {
       en: "A trainer for learning piano pieces on your own. Notes fall onto the keys with fingering hints, the score scrolls above, and every take is recorded and compared with the score so you can see your mistakes."

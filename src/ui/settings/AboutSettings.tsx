@@ -56,7 +56,7 @@ export function AboutSettings({ build }: { readonly build: BuildInfo }) {
         </label>
       </section>
       <section className="settings-group">
-        <h3 className="settings-group__title">{t("Пианино-тренажёр")}</h3>
+        <h3 className="settings-group__title">{t("Нотопад")}</h3>
         <p>
           {t(
             "Тренажёр, чтобы самостоятельно разучивать пьесы на фортепиано. Ноты падают на клавиши с подсказкой пальцев, сверху движется нотный стан, а каждый дубль записывается и сравнивается с нотами — видно, где ошибся."

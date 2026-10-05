@@ -36,10 +36,11 @@ describe("interface language preference", () => {
     expect(loadInterfaceLanguage(localStorage)).toBe("en");
     expect(localStorage.getItem("staff-prefs")).toBe("kept");
     expect(document.documentElement.lang).toBe("en");
-    expect(document.title).toBe("Piano Trainer");
+    expect(document.title).toBe("Twiling Keys");
     expect(listener).toHaveBeenCalledOnce();
     stop();
     setInterfaceLanguage("ru");
+    expect(document.title).toBe("Нотопад");
     expect(listener).toHaveBeenCalledOnce();
   });
 

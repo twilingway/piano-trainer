@@ -1,7 +1,7 @@
 import type { Messages } from "./locales";
 
 export const appMessages = {
-  "Пианино-тренажёр": { en: "Piano Trainer" },
+  Нотопад: { en: "Twiling Keys" },
   "Рейтинг недоступен: выберите устройство и выполните актуальную калибровку в настройках синхронизации.":
     {
       en: "Ranking is unavailable: select a device and complete a current calibration in synchronization settings."

@@ -53,5 +53,5 @@ export function setInterfaceLanguage(next: Locale): void {
 
 export function updateDocumentLanguage(): void {
   document.documentElement.lang = locale;
-  document.title = translate(locale, appMessages, "Пианино-тренажёр");
+  document.title = translate(locale, appMessages, "Нотопад");
 }
