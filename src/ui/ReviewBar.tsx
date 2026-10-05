@@ -1,14 +1,7 @@
+import { useI18n } from "../app/useI18n";
 import type { SplitDirection, TakeStaff } from "../app/useTakeReview";
 import type { TakeReview } from "../recording/compare";
 import type { Take } from "../recording/take";
-
-function takeLabel(take: Take): string {
-  const when = new Date(take.createdAt);
-  const time = when.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  const date = when.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
-  const mode = take.mode === "tempo" ? "в темпе" : "с ожиданием";
-  return `${date} ${time} · ${mode} · ${String(Math.round(take.speed * 100))}%`;
-}
 
 interface Props {
   readonly review: TakeReview;
@@ -30,19 +23,43 @@ interface Props {
 
 /** The review of a take: its counts, the other takes, the comparison and the take's own notes. */
 export function ReviewBar(props: Props) {
+  const { t, formatNumber, formatDate } = useI18n();
+  const takeLabel = (item: Take) => {
+    const when = new Date(item.createdAt);
+    const time = formatDate(when, { hour: "2-digit", minute: "2-digit" });
+    const date = formatDate(when, { day: "2-digit", month: "2-digit" });
+    const mode = t(item.mode === "tempo" ? "в темпе" : "с ожиданием");
+    return `${date} ${time} · ${mode} · ${formatNumber(Math.round(item.speed * 100))}%`;
+  };
   const { review, take } = props;
   return (
     <div className="review-bar">
-      <strong>Разбор дубля</strong>
-      <span className="good">чисто {review.summary.good}</span>
-      <span className="inaccurate">неточно {review.summary.inaccurate}</span>
-      <span className="missed">пропущено {review.summary.missed}</span>
-      <span>лишние нажатия {review.summary.extras}</span>
-      {take.mode === "tempo" && <span>ритм ±{Math.round(review.summary.meanAbsOffsetMs)} мс</span>}
-      <span>ровность удара ±{Math.round(review.summary.velocitySpread)}</span>
+      <strong>{t("Разбор дубля")}</strong>
+      <span className="good">
+        {t("чисто")} {formatNumber(review.summary.good)}
+      </span>
+      <span className="inaccurate">
+        {t("неточно")} {formatNumber(review.summary.inaccurate)}
+      </span>
+      <span className="missed">
+        {t("пропущено")} {formatNumber(review.summary.missed)}
+      </span>
+      <span>
+        {t("лишние нажатия")} {formatNumber(review.summary.extras)}
+      </span>
+      {take.mode === "tempo" && (
+        <span>
+          {t("ритм ±")}
+          {formatNumber(Math.round(review.summary.meanAbsOffsetMs))} {t("мс")}
+        </span>
+      )}
+      <span>
+        {t("ровность удара ±")}
+        {formatNumber(Math.round(review.summary.velocitySpread))}
+      </span>
       {props.takes.length > 1 && (
         <select
-          aria-label="Дубль"
+          aria-label={t("Дубль")}
           value={take.id}
           onChange={(event) => {
             props.onSelectTake(event.target.value);
@@ -64,7 +81,7 @@ export function ReviewBar(props: Props) {
               props.onSplit("row");
             }}
           >
-            Рядом
+            {t("Рядом")}
           </button>
           <button
             type="button"
@@ -73,33 +90,33 @@ export function ReviewBar(props: Props) {
               props.onSplit("column");
             }}
           >
-            Друг под другом
+            {t("Друг под другом")}
           </button>
           <button type="button" onClick={props.onStopComparing}>
-            Закрыть сравнение
+            {t("Закрыть сравнение")}
           </button>
         </>
       ) : (
         <button type="button" onClick={props.onCompare}>
-          Сравнить с оригиналом
+          {t("Сравнить с оригиналом")}
         </button>
       )}
       <select
-        aria-label="Ноты дубля"
+        aria-label={t("Ноты дубля")}
         value={props.takeStaff}
         onChange={(event) => {
           props.onTakeStaff(event.target.value as TakeStaff);
         }}
       >
-        <option value="off">Ноты дубля: скрыть</option>
-        <option value="column">Ноты дубля: под оригиналом</option>
-        <option value="row">Ноты дубля: рядом</option>
+        <option value="off">{t("Ноты дубля: скрыть")}</option>
+        <option value="column">{t("Ноты дубля: под оригиналом")}</option>
+        <option value="row">{t("Ноты дубля: рядом")}</option>
       </select>
       <button type="button" onClick={props.onDownload}>
-        Скачать .mid
+        {t("Скачать .mid")}
       </button>
       <button type="button" onClick={props.onHide}>
-        Скрыть
+        {t("Скрыть")}
       </button>
     </div>
   );

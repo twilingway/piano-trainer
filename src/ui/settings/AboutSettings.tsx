@@ -1,3 +1,6 @@
+import { setInterfaceLanguage } from "../../app/interfaceLanguage";
+import { LOCALES, type Locale } from "../../i18n/locales";
+import { useI18n } from "../../app/useI18n";
 import { REPOSITORY_URL } from "../../app/buildInfo";
 import type { BuildInfo } from "../../app/buildInfo";
 
@@ -8,10 +11,9 @@ const AUTHOR_LINKS = [
   ["VK", "https://vk.ru/twilinggame"]
 ] as const;
 
-const BUILT_AT = new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" });
-
 function Version({ build }: { readonly build: BuildInfo }) {
-  if (!build.sha) return <>локальная сборка</>;
+  const { t } = useI18n();
+  if (!build.sha) return <>{t("локальная сборка")}</>;
   return (
     <>
       {build.pr !== null && (
@@ -31,36 +33,58 @@ function Version({ build }: { readonly build: BuildInfo }) {
 
 /** What the program is for, which build is open, and where the author publishes. */
 export function AboutSettings({ build }: { readonly build: BuildInfo }) {
+  const { t, locale, formatDate } = useI18n();
   return (
     <div className="about">
       <section className="settings-group">
-        <h3 className="settings-group__title">Пианино-тренажёр</h3>
+        <label className="setting">
+          <span>{t("Язык интерфейса")}</span>
+          <select
+            className="game-select"
+            aria-label={t("Язык интерфейса")}
+            value={locale}
+            onChange={(event) => {
+              setInterfaceLanguage(event.target.value as Locale);
+            }}
+          >
+            {Object.entries(LOCALES).map(([id, language]) => (
+              <option key={id} value={id}>
+                {language.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+      <section className="settings-group">
+        <h3 className="settings-group__title">{t("Нотопад")}</h3>
         <p>
-          Тренажёр, чтобы самостоятельно разучивать пьесы на фортепиано. Ноты падают на клавиши с
-          подсказкой пальцев, сверху движется нотный стан, а каждый дубль записывается и
-          сравнивается с нотами — видно, где ошибся.
+          {t(
+            "Тренажёр, чтобы самостоятельно разучивать пьесы на фортепиано. Ноты падают на клавиши с подсказкой пальцев, сверху движется нотный стан, а каждый дубль записывается и сравнивается с нотами — видно, где ошибся."
+          )}
         </p>
         <p>
-          Играть можно на цифровом пианино через USB MIDI или на клавиатуре компьютера. Трудное
-          место удобно учить по частям: игра ждёт нужную ноту, темп замедляется, а свои песни
-          загружаются из MusicXML и MIDI.
+          {t(
+            "Играть можно на цифровом пианино через USB MIDI или на клавиатуре компьютера. Трудное место удобно учить по частям: игра ждёт нужную ноту, темп замедляется, а свои песни загружаются из MusicXML и MIDI."
+          )}
         </p>
       </section>
       <section className="settings-group">
-        <h3 className="settings-group__title">Сборка</h3>
+        <h3 className="settings-group__title">{t("Сборка")}</h3>
         <dl className="about-build">
-          <dt>Версия</dt>
+          <dt>{t("Версия")}</dt>
           <dd>
             <Version build={build} />
           </dd>
-          <dt>Собрано</dt>
+          <dt>{t("Собрано")}</dt>
           <dd>
-            <time dateTime={build.builtAt}>{BUILT_AT.format(new Date(build.builtAt))}</time>
+            <time dateTime={build.builtAt}>
+              {formatDate(new Date(build.builtAt), { dateStyle: "short", timeStyle: "short" })}
+            </time>
           </dd>
         </dl>
       </section>
       <section className="settings-group">
-        <h3 className="settings-group__title">Автор</h3>
+        <h3 className="settings-group__title">{t("Автор")}</h3>
         <ul className="about-links">
           {AUTHOR_LINKS.map(([name, url]) => (
             <li key={name}>

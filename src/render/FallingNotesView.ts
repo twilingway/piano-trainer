@@ -2,6 +2,7 @@ import { Application, Container, Texture } from "pixi.js";
 import type { FederatedPointerEvent } from "pixi.js";
 
 import type { Finger } from "../fingering/fingering";
+import type { Locale } from "../i18n/locales";
 import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
 import { publishOverlayLayout } from "./viewOverlayLayout";
@@ -17,6 +18,7 @@ import { HandsLayer } from "./HandsLayer";
 import { FxLayer } from "./FxLayer";
 import type { FxKey } from "./FxLayer";
 import { FpsMeter } from "./FpsMeter";
+import { loadViewAssets, loadViewFonts } from "./viewAssets";
 import type { FrameState } from "./frameState";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
@@ -113,6 +115,7 @@ export class FallingNotesView {
   private resizeObserver: ResizeObserver | undefined;
   private fpsMeter: FpsMeter | undefined;
   private fpsVisible = false;
+  private locale: Locale = "ru";
   private unbindKeyboardPointer: (() => void) | undefined;
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
@@ -130,8 +133,7 @@ export class FallingNotesView {
       autoDensity: true
     });
     host.appendChild(this.app.canvas);
-    this.fpsMeter = new FpsMeter(host, this.app.ticker);
-    this.fpsMeter.setVisible(this.fpsVisible);
+    this.fpsMeter = new FpsMeter(host, this.app.ticker, this.locale, this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
     this.resizeObserver = new ResizeObserver(() => {
       this.app.queueResize();
@@ -172,10 +174,7 @@ export class FallingNotesView {
     this.syncKeyboards();
     // Pixi draws a Text the first time it is shown: wait for the web fonts, or the board is set
     // in a fallback face. Offline they never come, and the fallback is fine.
-    await Promise.all([
-      document.fonts.load("34px 'Russo One'"),
-      document.fonts.load("700 20px Manrope")
-    ]).catch(() => undefined);
+    await loadViewFonts();
     this.app.stage.addChild(
       this.road.container,
       notes.root,
@@ -186,12 +185,7 @@ export class FallingNotesView {
       this.fx.container,
       this.hud.container
     );
-    await Promise.all([
-      this.fx.load(),
-      notes.loadNeon(),
-      this.road.loadArrivalEffects(),
-      this.hands.load()
-    ]);
+    await loadViewAssets(this.fx, notes, this.road, this.hands);
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -247,6 +241,12 @@ export class FallingNotesView {
   setFpsVisible(visible: boolean): void {
     this.fpsVisible = visible;
     this.fpsMeter?.setVisible(visible);
+  }
+
+  setLocale(locale: Locale): void {
+    this.locale = locale;
+    this.hud.setLocale(locale);
+    this.fpsMeter?.setLocale(locale);
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */

@@ -1,3 +1,4 @@
+import { useI18n } from "../../app/useI18n";
 import type { ComponentProps, ReactNode } from "react";
 
 import { BUILD_INFO } from "../../app/buildInfo";
@@ -38,6 +39,7 @@ interface Props {
 
 /** Compose existing controls without taking ownership of their preferences. */
 export function PlayerSettings(props: Props) {
+  const { t } = useI18n();
   return (
     <SettingsPanel
       open={props.open}
@@ -45,11 +47,11 @@ export function PlayerSettings(props: Props) {
       tabs={[
         {
           id: "play",
-          title: "Игра",
+          title: t("Игра"),
           render: () => (
             <>
               <section className="settings-group">
-                <h3 className="settings-group__title">Режим и темп</h3>
+                <h3 className="settings-group__title">{t("Режим и темп")}</h3>
                 {props.playContent ?? <PlaySettings {...props.play} />}
               </section>
               <div className="settings-group">
@@ -58,21 +60,21 @@ export function PlayerSettings(props: Props) {
             </>
           )
         },
-        { id: "song", title: "Песня", render: () => <SongSettings {...props.song} /> },
+        { id: "song", title: t("Песня"), render: () => <SongSettings {...props.song} /> },
         {
           id: "view",
-          title: "Вид",
+          title: t("Вид"),
           render: () => (
             <>
               <section className="settings-group">
-                <h3 className="settings-group__title">Нотная запись</h3>
+                <h3 className="settings-group__title">{t("Нотная запись")}</h3>
                 <StaffSettings {...props.staff} />
               </section>
               <section className="settings-group">
-                <h3 className="settings-group__title">Клавиатура и отображение</h3>
+                <h3 className="settings-group__title">{t("Клавиатура и отображение")}</h3>
                 <div className="settings-list">
                   <label className="setting">
-                    <span>Показывать FPS</span>
+                    <span>{t("Показывать FPS")}</span>
                     <input
                       type="checkbox"
                       checked={props.keyboard.fps}
@@ -84,19 +86,23 @@ export function PlayerSettings(props: Props) {
                 </div>
                 {props.wordTyping ? (
                   <p className="setting-hint">
-                    В режиме «Печатать мелодию» клавиатура автоматически подстраивается под
-                    выбранную партию. Её диапазон и отображение задаёт режим.
+                    {t(
+                      "В режиме «Печатать мелодию» клавиатура автоматически подстраивается под выбранную партию. Её диапазон и отображение задаёт режим."
+                    )}
                   </p>
                 ) : (
                   <KeyboardSettings {...props.keyboard} />
                 )}
               </section>
               <section className="settings-group">
-                <h3 className="settings-group__title">Расположение</h3>
+                <h3 className="settings-group__title">{t("Расположение")}</h3>
                 <p className="setting-hint">
-                  В режиме редактирования край стана, линии над и под клавиатурой и бегущую строку
-                  можно тянуть мышью.
-                  {props.wordTyping ? " Для режима печати" : " Для пианино"} расположение своё.
+                  {t(
+                    "В режиме редактирования край стана, линии над и под клавиатурой и бегущую строку можно тянуть мышью."
+                  )}{" "}
+                  {props.wordTyping
+                    ? t("Для режима печати расположение своё.")
+                    : t("Для пианино расположение своё.")}
                 </p>
                 <div className="setting-control">
                   <button
@@ -105,10 +111,10 @@ export function PlayerSettings(props: Props) {
                     aria-pressed={props.editing}
                     onClick={props.onToggleEditing}
                   >
-                    ✎ Редактировать интерфейс
+                    {t("✎ Редактировать интерфейс")}
                   </button>
                   <button type="button" className="game-button" onClick={props.onResetLayout}>
-                    Сбросить расположение
+                    {t("Сбросить расположение")}
                   </button>
                 </div>
               </section>
@@ -117,23 +123,24 @@ export function PlayerSettings(props: Props) {
         },
         {
           id: "computer",
-          title: props.wordTyping ? "Печатать мелодию" : "Ввод с ПК",
+          title: props.wordTyping ? t("Печатать мелодию") : t("Ввод с ПК"),
           render: () =>
             props.wordTyping ? (
               <>
                 {props.wordSettings}
                 <p className="setting-hint">
-                  Назначения строятся для всей песни. Shift и Alt — дополнительные клавиши;
-                  настройки обычных раскладок здесь не применяются.
+                  {t(
+                    "Назначения строятся для всей песни. Shift и Alt — дополнительные клавиши; настройки обычных раскладок здесь не применяются."
+                  )}
                 </p>
               </>
             ) : (
               <ComputerKeyboardSettings controls={props.computerKeyboard} />
             )
         },
-        { id: "midi", title: "Пианино", render: () => <MidiSettings {...props.midi} /> },
-        { id: "timing", title: "Синхронизация", render: () => props.synchronization },
-        { id: "about", title: "О программе", render: () => <AboutSettings build={BUILD_INFO} /> }
+        { id: "midi", title: t("Пианино"), render: () => <MidiSettings {...props.midi} /> },
+        { id: "timing", title: t("Синхронизация"), render: () => props.synchronization },
+        { id: "about", title: t("О программе"), render: () => <AboutSettings build={BUILD_INFO} /> }
       ]}
     />
   );

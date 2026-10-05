@@ -1,3 +1,4 @@
+import { useI18n } from "../../app/useI18n";
 import type { StaffPrefs } from "../../app/useStaffPrefs";
 
 export const ZOOM_MIN = 0.5;
@@ -13,18 +14,21 @@ interface Props {
 
 /** The staff tab: zoom, lines, following the play, names, fingers and chords. */
 export function StaffSettings({ prefs, hasScore, onChange }: Props) {
+  const { t } = useI18n();
   if (!hasScore) {
-    return <p className="setting-hint">У этой песни нет нотной записи: она открыта из MIDI.</p>;
+    return (
+      <p className="setting-hint">{t("У этой песни нет нотной записи: она открыта из MIDI.")}</p>
+    );
   }
   return (
     <div className="settings-list">
       <div className="setting">
-        <span>Масштаб</span>
+        <span>{t("Масштаб")}</span>
         <span className="setting-control">
           <button
             type="button"
             className="game-button"
-            aria-label="Мельче"
+            aria-label={t("Мельче")}
             disabled={prefs.zoom <= ZOOM_MIN + 1e-9}
             onClick={() => {
               onChange({
@@ -38,7 +42,7 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
           <button
             type="button"
             className="game-button"
-            aria-label="Крупнее"
+            aria-label={t("Крупнее")}
             disabled={prefs.zoom >= ZOOM_MAX - 1e-9}
             onClick={() => {
               onChange({
@@ -51,7 +55,7 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
         </span>
       </div>
       <label className="setting">
-        <span>По строкам</span>
+        <span>{t("По строкам")}</span>
         <input
           type="checkbox"
           checked={!prefs.singleLine}
@@ -61,10 +65,10 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
         />
       </label>
       <label className="setting">
-        <span>Цвет нот</span>
+        <span>{t("Цвет нот")}</span>
         <input
           type="color"
-          aria-label="Цвет нот"
+          aria-label={t("Цвет нот")}
           value={prefs.noteColor}
           onChange={(event) => {
             onChange({ noteColor: event.target.value });
@@ -72,10 +76,10 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
         />
       </label>
       <label className="setting">
-        <span>Цвет партитуры</span>
+        <span>{t("Цвет партитуры")}</span>
         <input
           type="color"
-          aria-label="Цвет партитуры"
+          aria-label={t("Цвет партитуры")}
           value={prefs.scoreColor}
           onChange={(event) => {
             onChange({ scoreColor: event.target.value });
@@ -83,7 +87,7 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
         />
       </label>
       <label className="setting">
-        <span>Следовать за игрой</span>
+        <span>{t("Следовать за игрой")}</span>
         <input
           type="checkbox"
           checked={prefs.follow}
@@ -94,7 +98,7 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
       </label>
       {!prefs.singleLine && (
         <label className="setting">
-          <span>Тактов в строке</span>
+          <span>{t("Тактов в строке")}</span>
           <select
             className="game-select"
             value={prefs.measuresPerLine}
@@ -104,15 +108,15 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
               });
             }}
           >
-            <option value={0}>Авто</option>
-            <option value={2}>По 2 такта</option>
-            <option value={4}>По 4 такта</option>
-            <option value={8}>По 8 тактов</option>
+            <option value={0}>{t("Авто")}</option>
+            <option value={2}>{t("По 2 такта")}</option>
+            <option value={4}>{t("По 4 такта")}</option>
+            <option value={8}>{t("По 8 тактов")}</option>
           </select>
         </label>
       )}
       <label className="setting">
-        <span>Названия на нотах</span>
+        <span>{t("Названия на нотах")}</span>
         <select
           className="game-select"
           value={prefs.noteNames}
@@ -120,13 +124,13 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
             onChange({ noteNames: event.target.value as StaffPrefs["noteNames"] });
           }}
         >
-          <option value="off">Нет</option>
+          <option value="off">{t("Нет")}</option>
           <option value="ru">до ре ми</option>
           <option value="en">C D E</option>
         </select>
       </label>
       <label className="setting">
-        <span>Номера пальцев</span>
+        <span>{t("Номера пальцев")}</span>
         <input
           type="checkbox"
           checked={prefs.fingers}
@@ -136,7 +140,7 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
         />
       </label>
       <label className="setting">
-        <span>Аккорды</span>
+        <span>{t("Аккорды")}</span>
         <input
           type="checkbox"
           checked={prefs.chords}
@@ -146,18 +150,18 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
         />
       </label>
       <label className="setting">
-        <span>Цвет номеров пальцев</span>
+        <span>{t("Цвет номеров пальцев")}</span>
         <select
           className="game-select"
           value={prefs.fingerColors}
-          aria-label="Цвет номеров пальцев"
+          aria-label={t("Цвет номеров пальцев")}
           disabled={!prefs.fingers}
           onChange={(event) => {
             onChange({ fingerColors: event.target.value as StaffPrefs["fingerColors"] });
           }}
         >
-          <option value="mono">Одноцветные</option>
-          <option value="fingers">По цветам пальцев</option>
+          <option value="mono">{t("Одноцветные")}</option>
+          <option value="fingers">{t("По цветам пальцев")}</option>
         </select>
       </label>
     </div>

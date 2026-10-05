@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useComputerKeyboard } from "../../app/useComputerKeyboard";
 import { useStaffPrefs } from "../../app/useStaffPrefs";
+import { LANGUAGE_STORAGE_KEY, setInterfaceLanguage } from "../../app/interfaceLanguage";
 import { DEFAULT_CAMERA } from "../../render/worldCamera";
 import { PlayerSettings } from "./PlayerSettings";
 
@@ -129,6 +130,7 @@ function select(label: string) {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   localStorage.clear();
+  setInterfaceLanguage("ru");
   vi.clearAllMocks();
   host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);
@@ -143,6 +145,48 @@ afterEach(async () => {
 });
 
 describe("player settings organization", () => {
+  it("switches the open interface to English while preserving tab and preferences", async () => {
+    await render();
+    await section("Вид");
+    const fps = Array.from(host.querySelectorAll("label"))
+      .find((label) => label.textContent.includes("Показывать FPS"))
+      ?.querySelector<HTMLInputElement>("input");
+    await act(async () => {
+      await Promise.resolve();
+      fps?.click();
+    });
+    const staffBefore = localStorage.getItem("staff-prefs");
+    await section("О программе");
+    await act(async () => {
+      await Promise.resolve();
+      const language = select("Язык интерфейса");
+      language.value = "en";
+      language.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(host.querySelector("[role=tab][aria-selected=true]")?.textContent).toBe("About");
+    expect(select("Interface language").value).toBe("en");
+    expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("en");
+    expect(localStorage.getItem("staff-prefs")).toBe(staffBefore);
+    expect(host.querySelector("[role=tabpanel]")?.textContent.replace("Русский", "")).not.toMatch(
+      /[А-Яа-яЁё]/
+    );
+    expect(document.documentElement.lang).toBe("en");
+    await section("Song");
+    expect(select("Key signature").options[0]?.textContent).toContain("C major");
+    await section("View");
+    expect(host.textContent).toContain("Show FPS");
+    expect(
+      Array.from(host.querySelectorAll("label"))
+        .find((label) => label.textContent.includes("Show FPS"))
+        ?.querySelector<HTMLInputElement>("input")?.checked
+    ).toBe(true);
+    await section("Computer input");
+    expect(select("Computer keyboard layout").value).toBe("octave_layout");
+    expect(host.textContent).toContain("By octave");
+    expect(onRules).not.toHaveBeenCalled();
+    expect(onTranspose).not.toHaveBeenCalled();
+  });
+
   it("orders the seven sections and groups game and visual controls", async () => {
     await render();
     expect(Array.from(host.querySelectorAll("[role=tab]"), (tab) => tab.textContent)).toEqual([

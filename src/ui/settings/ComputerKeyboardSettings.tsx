@@ -1,3 +1,4 @@
+import { useI18n } from "../../app/useI18n";
 import { useEffect, useState } from "react";
 import type { ComputerKeyboardControls } from "../../app/useComputerKeyboard";
 import {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function ComputerKeyboardSettings({ controls }: Props) {
+  const { t } = useI18n();
   const { endEditing } = controls;
   useEffect(() => endEditing, [endEditing]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export function ComputerKeyboardSettings({ controls }: Props) {
       type="button"
       className={`computer-key ${code === "Space" ? "computer-key--space" : ""}`}
       disabled={!isAssignableCode(code)}
-      aria-label={`${keyLabel(code)}: ${bindingLabel(controls.bindings[code])}`}
+      aria-label={`${t(keyLabel(code))}: ${t(bindingLabel(controls.bindings[code]))}`}
       onClick={() => {
         open(code);
       }}
@@ -45,23 +47,23 @@ export function ComputerKeyboardSettings({ controls }: Props) {
         open(code);
       }}
     >
-      <span>{keyLabel(code)}</span>
+      <span>{t(keyLabel(code))}</span>
       <small>
         {code.startsWith("Shift")
           ? "♯"
           : code.startsWith("Alt")
             ? "♭"
-            : bindingLabel(controls.bindings[code])}
+            : t(bindingLabel(controls.bindings[code]))}
       </small>
     </button>
   );
   return (
-    <section className="computer-keyboard-settings" aria-label="Компьютерная клавиатура">
+    <section className="computer-keyboard-settings" aria-label={t("Компьютерная клавиатура")}>
       <label className="setting">
-        <span>Раскладка компьютера</span>
+        <span>{t("Раскладка компьютера")}</span>
         <select
           className="game-select"
-          aria-label="Раскладка компьютера"
+          aria-label={t("Раскладка компьютера")}
           value={controls.prefs.preset}
           onChange={(event) => {
             controls.choosePreset(event.target.value as KeyboardPreset);
@@ -69,16 +71,16 @@ export function ComputerKeyboardSettings({ controls }: Props) {
         >
           {PRESET_IDS.map((id) => (
             <option key={id} value={id}>
-              {PRESET_TITLES[id]}
+              {t(PRESET_TITLES[id])}
             </option>
           ))}
         </select>
       </label>
       <p className="computer-keyboard-help">
-        Shift — ♯, Alt — ♭, Shift + Alt — натуральная нота. Ctrl + Пробел — пауза.
+        {t("Shift — ♯, Alt — ♭, Shift + Alt — натуральная нота. Ctrl + Пробел — пауза.")}
       </p>
       <p className="computer-keyboard-help">
-        Правая кнопка мыши или нажатие на клавишу макета — назначить ноту или действие.
+        {t("Правая кнопка мыши или нажатие на клавишу макета — назначить ноту или действие.")}
       </p>
       <div className="computer-keyboard-scroll">
         <div className="computer-keyboard-map">
@@ -93,13 +95,14 @@ export function ComputerKeyboardSettings({ controls }: Props) {
         </div>
       </div>
       <button type="button" className="game-button" onClick={controls.reset}>
-        Сбросить эту раскладку
+        {t("Сбросить эту раскладку")}
       </button>
       <p className="computer-keyboard-help">
-        Назначения сохраняются для каждой раскладки. Системные сочетания и некоторые клавиши
-        браузера могут быть недоступны.
+        {t(
+          "Назначения сохраняются для каждой раскладки. Системные сочетания и некоторые клавиши браузера могут быть недоступны."
+        )}
       </p>
-      {controls.error && <p role="alert">{controls.error}</p>}
+      {controls.error && <p role="alert">{t(controls.error)}</p>}
       {selected !== null && controls.editing && (
         <BindingEditor
           key={`${selected}:${controls.capturedCode ?? ""}`}
@@ -117,50 +120,55 @@ interface EditorProps extends Props {
   readonly onClose: () => void;
 }
 function BindingEditor({ initialCode, controls, onClose }: EditorProps) {
+  const { t } = useI18n();
   const original = controls.bindings[controls.capturedCode ?? initialCode];
   const [kind, setKind] = useState<KeyBinding["type"]>(original?.type ?? "note");
   const [pitch, setPitch] = useState(original?.type === "note" ? original.pitch : 60);
   const code = controls.capturedCode ?? initialCode;
   const binding: KeyBinding = kind === "note" ? { type: "note", pitch } : { type: kind };
   return (
-    <GameDialog open title={`Назначение клавиши ${keyLabel(code)}`} onClose={onClose}>
+    <GameDialog
+      open
+      title={t("Назначение клавиши {key}", { key: t(keyLabel(code)) })}
+      onClose={onClose}
+    >
       <div className="settings-list" data-keyboard-editor>
         <p>
-          Физическая клавиша: <strong>{keyLabel(code)}</strong>. Сейчас:{" "}
-          {bindingLabel(controls.bindings[code])}.
+          {t("Физическая клавиша:")} <strong>{t(keyLabel(code))}</strong>
+          {t(". Сейчас:")} {t(bindingLabel(controls.bindings[code]))}.
         </p>
         <button type="button" className="game-button" onClick={controls.beginCapture}>
-          Перехватить клавишу
+          {t("Перехватить клавишу")}
         </button>
         {controls.capturing && (
           <div role="status">
-            <p>Нажмите нужную клавишу. Escape — отмена захвата.</p>
+            <p>{t("Нажмите нужную клавишу. Escape — отмена захвата.")}</p>
             <button type="button" onClick={controls.cancelCapture}>
-              Отменить захват
+              {t("Отменить захват")}
             </button>
           </div>
         )}
         <label className="setting">
-          <span>Назначение</span>
+          <span>{t("Назначение")}</span>
           <select
-            aria-label="Назначение"
+            aria-label={t("Назначение")}
             value={kind}
             onChange={(event) => {
               setKind(event.target.value as KeyBinding["type"]);
             }}
           >
-            <option value="note">Нота</option>
-            <option value="sustain">Sustain (педаль)</option>
-            <option value="octaveDown">Октава ниже</option>
-            <option value="octaveUp">Октава выше</option>
-            <option value="disabled">Отключить</option>
+            <option value="note">{t("Нота")}</option>
+            <option value="sustain">{t("Sustain (педаль)")}</option>
+            <option value="octaveDown">{t("Октава ниже")}</option>
+            <option value="octaveUp">{t("Октава выше")}</option>
+            <option value="disabled">{t("Отключить")}</option>
           </select>
         </label>
         {kind === "note" && (
           <label className="setting">
-            <span>Нота и октава</span>
+            <span>{t("Нота и октава")}</span>
             <select
-              aria-label="Нота и октава"
+              aria-label={t("Нота и октава")}
               value={pitch}
               onChange={(event) => {
                 setPitch(Number(event.target.value));
@@ -176,8 +184,10 @@ function BindingEditor({ initialCode, controls, onClose }: EditorProps) {
         )}
         {code !== initialCode && (
           <p>
-            Будет изменено назначение {keyLabel(code)}. Клавиша {keyLabel(initialCode)} останется
-            прежней.
+            {t("Будет изменено назначение {key}. Клавиша {original} останется прежней.", {
+              key: t(keyLabel(code)),
+              original: t(keyLabel(initialCode))
+            })}
           </p>
         )}
         <div className="computer-keyboard-actions">
@@ -190,10 +200,10 @@ function BindingEditor({ initialCode, controls, onClose }: EditorProps) {
               onClose();
             }}
           >
-            Сохранить
+            {t("Сохранить")}
           </button>
           <button type="button" className="game-button" onClick={onClose}>
-            Отмена
+            {t("Отмена")}
           </button>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { useI18n } from "../../app/useI18n";
 import { CameraSettings } from "./CameraSettings";
 import type { CameraPrefs } from "../../render/worldCamera";
 import type { ReactNode } from "react";
@@ -34,40 +35,41 @@ export function KeyboardSettings({
   onRoad,
   toggles
 }: Props) {
+  const { t } = useI18n();
   return (
     <div className="settings-list">
       <label className="setting">
-        <span>Клавиши</span>
+        <span>{t("Клавиши")}</span>
         <select
           className="game-select"
-          aria-label="Клавиши"
+          aria-label={t("Клавиши")}
           value={keyRange}
           onChange={(event) => {
             onKeyRange(event.target.value as KeyRange);
           }}
         >
-          <option value="song">По песне</option>
-          <option value="3oct">3 октавы</option>
-          <option value="4oct">4 октавы</option>
-          <option value="88">88 клавиш</option>
-          <option value="61">61 клавиша</option>
-          <option value="49">49 клавиш</option>
-          <option value="25">25 клавиш</option>
+          <option value="song">{t("По песне")}</option>
+          <option value="3oct">{t("3 октавы")}</option>
+          <option value="4oct">{t("4 октавы")}</option>
+          <option value="88">{t("88 клавиш")}</option>
+          <option value="61">{t("61 клавиша")}</option>
+          <option value="49">{t("49 клавиш")}</option>
+          <option value="25">{t("25 клавиш")}</option>
         </select>
       </label>
       <label className="setting">
-        <span>Вид клавиш</span>
+        <span>{t("Вид клавиш")}</span>
         <select
           className="game-select"
           value={keyStyle}
-          aria-label="Вид клавиш"
+          aria-label={t("Вид клавиш")}
           onChange={(event) => {
             onKeyStyle(event.target.value as KeyStyle);
           }}
         >
-          <option value="classic">Классика</option>
-          <option value="arcade">Аркада</option>
-          <option value="perspective">Перспектива (с дорогой)</option>
+          <option value="classic">{t("Классика")}</option>
+          <option value="arcade">{t("Аркада")}</option>
+          <option value="perspective">{t("Перспектива (с дорогой)")}</option>
         </select>
       </label>
       {keyStyle === "perspective" ? (
@@ -75,7 +77,7 @@ export function KeyboardSettings({
       ) : (
         <>
           <label className="setting">
-            <span>Дорога: горизонт</span>
+            <span>{t("Дорога: горизонт")}</span>
             <span className="setting-control">
               <input
                 type="range"
@@ -91,7 +93,7 @@ export function KeyboardSettings({
             </span>
           </label>
           <label className="setting">
-            <span>Дорога: ширина у горизонта</span>
+            <span>{t("Дорога: ширина у горизонта")}</span>
             <span className="setting-control">
               <input
                 type="range"
@@ -109,7 +111,7 @@ export function KeyboardSettings({
         </>
       )}
       <label className="setting">
-        <span>Наклейки с названиями на клавишах</span>
+        <span>{t("Наклейки с названиями на клавишах")}</span>
         <input
           type="checkbox"
           checked={showLabels}
@@ -119,7 +121,7 @@ export function KeyboardSettings({
         />
       </label>
       <div className="setting setting--views">
-        <span>Что показывать</span>
+        <span>{t("Что показывать")}</span>
         <span className="setting-control setting-control--views">{toggles}</span>
       </div>
     </div>

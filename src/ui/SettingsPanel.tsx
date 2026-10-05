@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import { useId, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 
@@ -19,6 +20,7 @@ interface Props {
 
 /** Keep section selection while the panel is closed, with keyboard-accessible navigation. */
 export function SettingsPanel({ open, onClose, tabs }: Props) {
+  const { t } = useI18n();
   const id = useId();
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const [active, setActive] = useState(tabs[0]?.id ?? "");
@@ -50,13 +52,19 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
     buttons.current.get(target.id)?.focus();
   };
   return (
-    <GameDialog open={open} title="Настройки" className="settings" modal={false} onClose={onClose}>
+    <GameDialog
+      open={open}
+      title={t("Настройки")}
+      className="settings"
+      modal={false}
+      onClose={onClose}
+    >
       {open ? (
         <div className="settings-layout">
           <div
             className="settings-navigation"
             role="tablist"
-            aria-label="Разделы настроек"
+            aria-label={t("Разделы настроек")}
             aria-orientation="vertical"
           >
             {tabs.map((tab, index) => (
@@ -85,10 +93,10 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
             ))}
           </div>
           <label className="settings-navigation-mobile">
-            <span>Раздел настроек</span>
+            <span>{t("Раздел настроек")}</span>
             <select
               className="game-select"
-              aria-label="Раздел настроек"
+              aria-label={t("Раздел настроек")}
               value={shown?.id ?? ""}
               onChange={(event) => {
                 setActive(event.target.value);

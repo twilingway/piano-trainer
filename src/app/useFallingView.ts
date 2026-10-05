@@ -10,6 +10,7 @@ import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
 import type { StaffPrefs } from "./useStaffPrefs";
+import { useI18n } from "./useI18n";
 
 export type KeyRange = "song" | "88" | "61" | "49" | "25" | "3oct" | "4oct";
 
@@ -84,6 +85,14 @@ export function useFallingView({
   computerKeys,
   placement
 }: Options) {
+  const { locale } = useI18n();
+  const localeRef = useRef(locale);
+  const comparisonRef = useRef<FallingNotesView | null>(null);
+  useEffect(() => {
+    localeRef.current = locale;
+    viewRef.current?.setLocale(locale);
+    comparisonRef.current?.setLocale(locale);
+  }, [viewRef, trainerReady, locale]);
   // Kept with the other view settings, so a reload brings them back.
   const { labels: showLabels, keyRange } = staffPrefs;
   const setShowLabels = (labels: boolean) => {
@@ -187,9 +196,11 @@ export function useFallingView({
       playedTint.set(`take${String(index)}`, owed ? GRADE_TINTS[owed.grade] : EXTRA_TINT);
     });
     const mirror = new FallingNotesView();
+    comparisonRef.current = mirror;
     let disposed = false;
     const mounted = mirror.mount(host).then(() => {
       if (disposed) return;
+      mirror.setLocale(localeRef.current);
       mirror.setSong(song);
       mirror.setShowLabels(showLabels);
       mirror.setFpsVisible(staffPrefs.fps);
@@ -204,6 +215,7 @@ export function useFallingView({
     });
     return () => {
       disposed = true;
+      if (comparisonRef.current === mirror) comparisonRef.current = null;
       trainer.setComparison(undefined);
       void mounted.then(() => {
         mirror.destroy();

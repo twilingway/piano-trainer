@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import type { TimingPolicy } from "../practice/timingPolicy";
 
 interface Props {
@@ -27,13 +28,14 @@ const STATUS: Readonly<
 
 /** Always visible in the bar or by the game selector, even when the score or notes are hidden. */
 export function PracticeTimingStatus({ policy, ranked }: Props) {
+  const { t } = useI18n();
   if (!policy || policy === "listening") return null;
   const rating = ranked && policy !== "waiting";
   const status = rating
     ? {
-        label: "Рейтинг · строгий тайминг",
-        short: "Рейтинг",
-        hint: "Рейтинг использует строгие окна без учебного допуска."
+        label: t("Рейтинг · строгий тайминг"),
+        short: t("Рейтинг"),
+        hint: t("Рейтинг использует строгие окна без учебного допуска.")
       }
     : STATUS[policy];
   return (
@@ -41,13 +43,13 @@ export function PracticeTimingStatus({ policy, ranked }: Props) {
       className="practice-timing-status"
       data-policy={rating ? "ranked" : policy}
       role="status"
-      title={`${status.label}. ${status.hint}`}
+      title={`${t(status.label)}. ${t(status.hint)}`}
     >
       <span className="practice-timing-status__light" aria-hidden="true" />
-      <span className="practice-timing-status__label">{status.label}</span>
+      <span className="practice-timing-status__label">{t(status.label)}</span>
       {/* A narrow bar shows this one; the tooltip keeps the whole label. */}
       <span className="practice-timing-status__short" aria-hidden="true">
-        {status.short}
+        {t(status.short)}
       </span>
     </span>
   );

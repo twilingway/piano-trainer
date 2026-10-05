@@ -79,7 +79,7 @@ describe("game score presentation", () => {
           onReview={vi.fn()}
         />
       );
-    expect(render(score.snapshot(1))).toContain("75.0%");
+    expect(render(score.snapshot(1))).toContain("75,0%");
     expect(render(score.snapshot(1))).toContain("идеальная игра без Overdrive");
     expect(render(score.snapshot(1))).toContain("Распределение ошибки времени");
     const empty = render(new GameScore(0).snapshot(0));
@@ -97,7 +97,9 @@ describe("game score presentation", () => {
       <GameBoard mode="tempo" playing onOverdrive={vi.fn()} game={game} />
     );
     expect(markup).toContain('class="game-combo__value">0</strong>');
-    expect(markup).toContain(`${(game.accuracy ?? 0).toFixed(1)}%`);
+    expect(markup).toContain(
+      `${new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(game.accuracy ?? 0)}%`
+    );
     expect(markup).not.toContain("data-grade");
     expect(markup).toContain('data-broken="true"');
     expect(markup).toContain('data-ready="true"');

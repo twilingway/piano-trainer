@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import type { Finger, Hand } from "../fingering/fingering";
 import type { NoteStatus } from "../practice/session";
@@ -39,6 +40,7 @@ function groupTokens(
 
 /** The typed text as a running line: the current character stays in the middle, as on the staff. */
 export function WordTicker(props: Props) {
+  const { t } = useI18n();
   const lineRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -70,7 +72,7 @@ export function WordTicker(props: Props) {
   if (props.pending || props.error || !result) return null;
   return (
     <>
-      <div className="word-ticker" ref={lineRef} aria-label="Текст мелодии">
+      <div className="word-ticker" ref={lineRef} aria-label={t("Текст мелодии")}>
         <div className="word-ticker__track" ref={trackRef}>
           {[...groups].map(([groupIndex, word]) => (
             <span className="word-text__word" key={groupIndex}>
@@ -102,26 +104,34 @@ export function WordTicker(props: Props) {
 
 /** How good the generated text is: not a mark for the playing. */
 export function WordQuality({ metrics }: { metrics: WordTypingResult["metrics"] | undefined }) {
+  const { t, formatNumber } = useI18n();
   if (!metrics) return null;
   return (
-    <span className="word-quality" title="Качество генерации текста, а не оценка исполнения">
+    <span className="word-quality" title={t("Качество генерации текста, а не оценка исполнения")}>
       {"★".repeat(metrics.stars)}
       {"☆".repeat(5 - metrics.stars)}{" "}
-      <small>{Math.round(metrics.dictionaryCoveragePercent)}% нот в словах</small>
+      <small>
+        {formatNumber(Math.round(metrics.dictionaryCoveragePercent))}
+        {t("% нот в словах")}
+      </small>
     </span>
   );
 }
 
 /** Which finger a key's colour means; a computer shows it under the running line. */
 export function FingerLegend({ className }: { readonly className?: string }) {
+  const { t } = useI18n();
   return (
-    <ul className={`word-legend${className ? ` ${className}` : ""}`} aria-label="Цвета пальцев">
+    <ul
+      className={`word-legend${className ? ` ${className}` : ""}`}
+      aria-label={t("Цвета пальцев")}
+    >
       {FINGERS.map(([hand, finger, name, short]) => (
-        <li key={name} className={`word-finger-${hand}-${String(finger)}`} title={name}>
-          <span className="word-legend__full">{name}</span>
+        <li key={name} className={`word-finger-${hand}-${String(finger)}`} title={t(name)}>
+          <span className="word-legend__full">{t(name)}</span>
           {/* A phone's legend fits one line with these. */}
           <span className="word-legend__short" aria-hidden="true">
-            {short}
+            {t(short)}
           </span>
         </li>
       ))}
@@ -131,19 +141,20 @@ export function FingerLegend({ className }: { readonly className?: string }) {
 
 /** The legend and the text's quality on a phone, the words' progress and errors everywhere. */
 export function WordTypingBoard(props: Props) {
+  const { t } = useI18n();
   return (
-    <section className="word-board" aria-label="Печатать мелодию">
+    <section className="word-board" aria-label={t("Печатать мелодию")}>
       {props.pending ? (
-        <p role="status">Подбираю слова и клавиши для мелодии…</p>
+        <p role="status">{t("Подбираю слова и клавиши для мелодии…")}</p>
       ) : props.error ? (
         <p className="toast--error" role="alert">
-          {props.error}
+          {t(props.error)}
         </p>
       ) : (
         <>
           <div className="word-board__info">
             <FingerLegend />
-            {props.notice && <small role="status">{props.notice}</small>}
+            {props.notice && <small role="status">{t(props.notice)}</small>}
             <WordQuality metrics={props.result?.metrics} />
           </div>
         </>
