@@ -22,6 +22,7 @@ interface Props {
   /** A note about the text, such as a variant that came out the same. */
   readonly notice?: string | undefined;
 }
+const EMPTY_TOKENS: readonly GeneratedToken[] = [];
 
 /** Grouping depends only on the generated text, independent of playback progress. */
 function groupTokens(
@@ -42,7 +43,7 @@ export function WordTicker(props: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLSpanElement>(null);
   const { result, statuses } = props;
-  const tokens = result?.tokens ?? [];
+  const tokens = result?.tokens ?? EMPTY_TOKENS;
   const progress = textProgress(tokens, statuses, props.time, props.listening);
   const { index } = progress;
   // Past the end, the line stays on the last character.

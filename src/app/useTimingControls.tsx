@@ -38,7 +38,7 @@ export function useTimingControls({
     devices.find((device) => device.id === deviceId) ??
     (deviceId === "all" && devices.length === 1 ? devices[0] : undefined);
   const local = devices.length === 0;
-  const chosenId = local ? "keyboard" : (selected?.id ?? "");
+  const chosenId = local ? "keyboard" : String(selected?.id ?? "");
   const chosenName = local
     ? "Компьютерная клавиатура / экран"
     : (selected?.name ?? "Выберите одно MIDI-устройство");
