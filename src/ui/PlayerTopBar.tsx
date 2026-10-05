@@ -16,7 +16,9 @@ interface Props {
   readonly mode: PracticeModeChoice;
   readonly hands: HandsChoice;
   readonly speed: number;
-  readonly board: Scoreboard;
+  readonly board?: Scoreboard;
+  readonly scoreboard?: ReactNode;
+  readonly compactPosition?: ReactNode;
   /** The piano's name when one is connected. */
   readonly midi: string | undefined;
   readonly settingsOpen: boolean;
@@ -50,7 +52,7 @@ interface Props {
  * in the library and the settings panel.
  */
 export function PlayerTopBar(props: Props) {
-  const { board } = props;
+  const board = props.board ?? { clock: "0:00" };
   const controls = useRef<HTMLDetailsElement>(null);
   const handTitle = HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки";
   return (
@@ -74,11 +76,7 @@ export function PlayerTopBar(props: Props) {
           <p className="compact-controls__stats">
             {props.title}
             <br />
-            {board.measure
-              ? `такт ${String(board.measure.current)}/${String(board.measure.total)}`
-              : board.clock}
-            {board.bpm === undefined ? "" : ` · ♩ ${String(board.bpm)}`} ·{" "}
-            {Math.round(props.speed * 100)}%
+            {props.compactPosition ?? <CompactSongPosition board={board} speed={props.speed} />}
             <br />
             {props.midi ? `MIDI: ${props.midi}` : "MIDI не подключено"}
           </p>
@@ -222,28 +220,7 @@ export function PlayerTopBar(props: Props) {
         />
       </label>
       {props.timing}
-      <div className="scoreboard" aria-live="off">
-        {board.measure ? (
-          <span>
-            такт <b className="digits">{board.measure.current}</b>
-            <span className="digits">/{board.measure.total}</span>
-          </span>
-        ) : (
-          <span className="digits">{board.clock}</span>
-        )}
-        {board.bpm !== undefined && (
-          <span>
-            ♩ <b className="digits">{board.bpm}</b>
-          </span>
-        )}
-        <span
-          className="midi-dot"
-          data-on={props.midi !== undefined}
-          title={props.midi ? `Пианино: ${props.midi}` : "Пианино не подключено"}
-        >
-          MIDI
-        </span>
-      </div>
+      {props.scoreboard ?? <SongScoreboard board={board} midi={props.midi} />}
       <BarPopover
         className="topbar-view"
         label="Вид"
@@ -289,5 +266,55 @@ export function PlayerTopBar(props: Props) {
         <GearIcon />
       </button>
     </header>
+  );
+}
+
+export function CompactSongPosition({
+  board,
+  speed
+}: {
+  readonly board: Scoreboard;
+  readonly speed: number;
+}) {
+  return (
+    <>
+      {board.measure
+        ? `такт ${String(board.measure.current)}/${String(board.measure.total)}`
+        : board.clock}
+      {board.bpm === undefined ? "" : ` · ♩ ${String(board.bpm)}`} · {Math.round(speed * 100)}%
+    </>
+  );
+}
+
+export function SongScoreboard({
+  board,
+  midi
+}: {
+  readonly board: Scoreboard;
+  readonly midi: string | undefined;
+}) {
+  return (
+    <div className="scoreboard" aria-live="off">
+      {board.measure ? (
+        <span>
+          такт <b className="digits">{board.measure.current}</b>
+          <span className="digits">/{board.measure.total}</span>
+        </span>
+      ) : (
+        <span className="digits">{board.clock}</span>
+      )}
+      {board.bpm !== undefined && (
+        <span>
+          ♩ <b className="digits">{board.bpm}</b>
+        </span>
+      )}
+      <span
+        className="midi-dot"
+        data-on={midi !== undefined}
+        title={midi ? `Пианино: ${midi}` : "Пианино не подключено"}
+      >
+        MIDI
+      </span>
+    </div>
   );
 }
