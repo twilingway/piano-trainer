@@ -99,6 +99,9 @@ export class FallingNotesView {
   private hudTop = 0;
   /** Where the player dragged the keys: lifted off the bottom, larger or smaller. */
   private placement: KeysPlacement = USUAL_PLACEMENT;
+  /** The keys' offset as drawn: moved down no further than the view's bottom. */
+  private offset = { x: 0, y: 0 };
+  private keysFloor = Number.POSITIVE_INFINITY;
   /** The next scroll lands on its target at once: a new song starts where its keys are. */
   private panSnap = true;
   /** The whole keyboard's width: wider than the view when it scrolls. */
@@ -325,7 +328,7 @@ export class FallingNotesView {
     if (event.target !== this.app.stage || !this.parts.keys) return;
     const point = this.roadMode
       ? this.road?.keysPointAt(event.global.x, event.global.y)
-      : { x: event.global.x + this.pan - this.placement.x, y: event.global.y - this.placement.y };
+      : { x: event.global.x + this.pan - this.offset.x, y: event.global.y - this.offset.y };
     const pitch = point && this.keysLayer?.pitchAt(point.x, point.y);
     if (pitch !== undefined) this.keysLayer?.pressWithMouse(pitch);
   }
@@ -532,9 +535,10 @@ export class FallingNotesView {
       this.notesLayer.cards.x = flat;
     }
     // The keys may be moved off the hit line, the hands with them; the notes stay on it.
-    this.keysRoot.position.set(flat + this.placement.x, this.placement.y);
-    this.hands.container.position.copyFrom(this.placement);
-    this.road?.setKeysOffset(this.placement);
+    this.offset = { x: this.placement.x, y: Math.min(this.placement.y, this.keysFloor) };
+    this.keysRoot.position.set(flat + this.offset.x, this.offset.y);
+    this.hands.container.position.copyFrom(this.offset);
+    this.road?.setKeysOffset(this.offset);
     if (this.roadMode) this.road?.setPan(pan);
   }
 
@@ -552,12 +556,8 @@ export class FallingNotesView {
     this.computerKeyboard?.destroy();
     this.hands.destroy();
     this.notesLayer?.destroy();
-    const baked = [
-      ...this.digitTextures.values(),
-      ...this.badgeTextures.values(),
-      ...this.nameTextures.values()
-    ];
-    for (const texture of baked) texture.destroy(true);
+    for (const baked of [this.digitTextures, this.badgeTextures, this.nameTextures])
+      for (const texture of baked.values()) texture.destroy(true);
     this.app.destroy({ removeView: true }, { children: true });
   }
 
@@ -584,6 +584,7 @@ export class FallingNotesView {
     // Lifted keys leave the floor under them empty: the road and its keys end above it.
     const floor = this.parts.keys ? height * this.placement.lift : 0;
     const keysBottom = geometry.keyboardTop + geometry.keyboardHeight;
+    this.keysFloor = height - keysBottom;
     if (this.road) {
       const handRoom = this.parts.hands ? height - floor - keysBottom : 0;
       this.road.layout(total, geometry.hitY, height - floor, width, handRoom);

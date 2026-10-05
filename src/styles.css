@@ -564,8 +564,9 @@ body {
 .layout-handle--keys-top {
   top: calc(var(--hit-line, -100px) - 6px);
 }
+/* The view moves the keys down no further than the lane's bottom (100%); so do their handles. */
 .layout-handle--keys-bottom {
-  top: calc(var(--keys-bottom, -100px) + var(--keys-y, 0px) - 6px);
+  top: calc(min(var(--keys-bottom, -100px) + var(--keys-y, 0px), 100%) - 6px);
 }
 /* The sign on a draggable line: an arrow and what the line moves, at the right edge. */
 .layout-grip {
@@ -606,7 +607,9 @@ body {
 .layout-move {
   position: absolute;
   z-index: 4;
-  top: calc(var(--hit-line, -100px) + var(--keys-y, 0px) + 18px);
+  top: calc(
+    var(--hit-line, -100px) + min(var(--keys-y, 0px), 100% - var(--keys-bottom, 0px)) + 18px
+  );
   left: 12px;
   height: 0;
   cursor: move;
@@ -2828,9 +2831,23 @@ button.song-card.song-card__open {
     display: none;
   }
 
-  .compact-controls__menu .game-mode-strip {
-    padding: 0 0 6px;
+  /* In the menu the strip stacks, its selects back from the bar's hiding. */
+  .compact-controls__menu :is(.game-mode-strip, .word-options) {
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
+    padding: 0 0 6px;
+    border: 0;
+  }
+
+  .compact-controls__menu :is(.game-mode-strip, .word-options) > label:has(> select) {
+    justify-content: space-between;
+  }
+
+  .topbar .compact-controls__menu .game-select {
+    display: block;
+    min-width: 0;
+    max-width: 62%;
   }
 
   .word-legend {
@@ -2876,10 +2893,17 @@ button.song-card.song-card__open {
     transform: none;
   }
 
+  /* The board's line starts right of the fixed bar. */
+  .app--word .word-board {
+    padding-left: 96px;
+  }
+
   /* «Тренировка» hangs from a dock of no height into the lane's corner under it. */
   .app--word .game-score-dock:has(> .game-score-board--message) {
     position: relative;
+    inset: auto;
     z-index: 5;
+    width: auto;
     height: 0;
     padding: 0;
     overflow: visible;
@@ -2887,9 +2911,10 @@ button.song-card.song-card__open {
 
   .app--word .game-score-dock > .game-score-board--message {
     position: absolute;
-    top: 6px;
-    right: 8px;
+    inset: 6px 8px auto auto;
+    width: auto;
     padding: 3px 8px;
     font-size: 11px;
+    white-space: nowrap;
   }
 }
