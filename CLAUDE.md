@@ -64,6 +64,10 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 
 ## Agent tooling
 
+- Жизненный цикл серверов определяется разделом `Local preview` в `AGENTS.md`: не запускать
+  отделённые фоновые серверы; перед итоговым отчётом завершать все серверы, запущенные агентом, и их
+  процессы запуска, затем проверять освобождение портов. Это относится и к 5190; сохранить свой
+  сервер можно только по явной просьбе пользователя. Пользовательский dev-стенд не трогать.
 - `.claude/skills/react-frontend` — React 19 + Vite conventions here, and the vendored Vercel rule
   sets in `.agents/skills/` (`react-best-practices`, `composition-patterns`,
   `web-interface-guidelines`).
