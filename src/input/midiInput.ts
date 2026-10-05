@@ -8,6 +8,8 @@ export interface KeyEvent extends InputMetadata {
   readonly type: "down" | "up";
   readonly pitch: number;
   readonly velocity: number;
+  /** The MIDI channel, 1–16; only MIDI keys have one. */
+  readonly channel?: number;
 }
 
 /** The sustain pedal pressed or released. */
@@ -36,10 +38,13 @@ export function parseMidiMessage(data: Uint8Array): MidiEvent | undefined {
   if (data.length < 3 || (data[1] ?? 128) > 127 || (data[2] ?? 128) > 127) return undefined;
   const [status = 0, first = 0, second = 0] = data;
   const command = status & 0xf0;
+  const channel = (status & 0x0f) + 1;
   // Many keyboards send "note on, velocity 0" instead of a note off.
-  if (command === NOTE_ON && second > 0) return { type: "down", pitch: first, velocity: second };
+  if (command === NOTE_ON && second > 0) {
+    return { type: "down", pitch: first, velocity: second, channel };
+  }
   if (command === NOTE_OFF || command === NOTE_ON) {
-    return { type: "up", pitch: first, velocity: second };
+    return { type: "up", pitch: first, velocity: second, channel };
   }
   if (command === CONTROL_CHANGE && first === SUSTAIN_PEDAL) {
     return { type: "pedal", down: second >= PEDAL_DOWN_FROM };

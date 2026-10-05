@@ -11,12 +11,14 @@ import { useMidiOutput } from "./useMidiOutput";
 
 /**
  * Keys into the trainer: the MIDI piano (keys and the sustain pedal) and the
- * computer keyboard, which also sounds the notes it plays; and the MIDI output.
+ * computer keyboard, which also sounds the notes it plays; and the MIDI output
+ * with its key lights, whose echo never reaches the trainer.
  */
 export function useKeyInput(
   trainerRef: RefObject<Trainer | null>,
   keyboardOptions: KeyboardInputOptions,
-  intercept?: (event: KeyEvent) => boolean
+  intercept?: (event: KeyEvent) => boolean,
+  trainerReady = false
 ) {
   const interceptRef = useRef(intercept);
   useEffect(() => {
@@ -34,7 +36,7 @@ export function useKeyInput(
   /** Which MIDI input plays; "all" listens to every one. */
   const [midiDeviceId, setMidiDeviceId] = useState("all");
   const midiDeviceRef = useRef("all");
-  const output = useMidiOutput();
+  const { controls: output, isEcho } = useMidiOutput(trainerRef, trainerReady);
 
   useEffect(() => {
     const onKey = (event: KeyEvent) => {
@@ -49,6 +51,8 @@ export function useKeyInput(
       const onMidiKey = (event: MidiEvent, deviceId: string) => {
         const chosen = midiDeviceRef.current;
         if (chosen !== "all" && chosen !== deviceId) return;
+        // Our own key lights coming back through MIDI Thru are not the player's keys.
+        if (event.type !== "pedal" && isEcho(event)) return;
         if (event.type === "pedal") {
           if (event.down && !pedalDown.get(deviceId)) trainerRef.current?.activateOverdrive();
           pedalDown.set(deviceId, event.down);
@@ -70,7 +74,7 @@ export function useKeyInput(
       stopWarmUp();
       stopMidi?.();
     };
-  }, [trainerRef]);
+  }, [trainerRef, isEcho]);
 
   useEffect(() => {
     let sustain = false;

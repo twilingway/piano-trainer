@@ -150,7 +150,20 @@ describe("openMidiOutput", () => {
     fakeAccess(piano);
     const output = await openMidiOutput(null, vi.fn());
     output.test();
+    output.send([0x92, 60, 64]);
     output.dispose();
+    expect(piano.send).not.toHaveBeenCalled();
+  });
+
+  it("sends a message to the current output, and nothing once disposed", async () => {
+    const piano = fakeOutput("a");
+    fakeAccess(piano);
+    const output = await openMidiOutput({ id: "a", name: "a" }, vi.fn());
+    output.send([0x92, 60, 64]);
+    expect(piano.send.mock.calls).toEqual([[[0x92, 60, 64], undefined]]);
+    output.dispose();
+    piano.send.mockClear();
+    output.send([0x82, 60, 0]);
     expect(piano.send).not.toHaveBeenCalled();
   });
 });

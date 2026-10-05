@@ -291,3 +291,53 @@ describe("Trainer run boundaries and source gating", () => {
     expect(run.takes[1]?.notes[0]?.start).toBeCloseTo(0);
   });
 });
+describe("Trainer key lights", () => {
+  function lit() {
+    const run = harness();
+    const lights: (readonly number[])[] = [];
+    run.trainer.onLights = (pitches) => {
+      lights.push(pitches);
+    };
+    return { ...run, lights, last: () => lights.at(-1) };
+  }
+  it("lights the cued keys while playing and drops a hit one", () => {
+    const run = lit();
+    run.frame(1000);
+    expect(run.last()).toEqual([]);
+    run.trainer.setPlaying(true);
+    run.frame(2800);
+    expect(run.last()).toEqual([60]);
+    down(run.trainer, 2950);
+    run.frame(3000);
+    expect(run.last()).toEqual([]);
+  });
+  it("turns every key off on pause, seek and the end of the song", () => {
+    const run = lit();
+    run.trainer.setPlaying(true);
+    run.frame(2800);
+    run.trainer.setPlaying(false);
+    expect(run.last()).toEqual([]);
+    run.frame(2900);
+    expect(run.last()).toEqual([]);
+    run.trainer.setPlaying(true);
+    run.frame(2900);
+    expect(run.last()).toEqual([60]);
+    run.trainer.seek(0);
+    expect(run.last()).toEqual([]);
+    run.frame(9000, 6000);
+    expect(run.latest()?.finished).toBe(true);
+    expect(run.last()).toEqual([]);
+  });
+  it("lights nothing in the performance mode", () => {
+    const run = lit();
+    run.trainer.configureControls({
+      loop: false,
+      stopOnError: false,
+      canStart: true,
+      performance: true
+    });
+    run.trainer.setPlaying(true);
+    run.frame(2800);
+    expect(run.last()).toEqual([]);
+  });
+});

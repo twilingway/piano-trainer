@@ -7,6 +7,7 @@ import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import { presetBindings } from "../input/keyboardLayouts";
 import { listenToMidi, midiSupported, type MidiEvent } from "../input/midiInput";
 import type { Trainer } from "../practice/Trainer";
+import { saveKeyLights } from "./keyLightPreferences";
 import { useKeyInput } from "./useKeyInput";
 
 vi.mock("../audio/pianoSound", () => ({
@@ -167,5 +168,30 @@ describe("Overdrive from the keys", () => {
     pedal(true, "other");
     expect(trainer.activateOverdrive).toHaveBeenCalledTimes(3);
     expect(trainer.pedal).toHaveBeenCalledTimes(6);
+  });
+
+  it("keeps the key lights' echo on their channel from the trainer", async () => {
+    let onMidi: ((event: MidiEvent, deviceId: string) => void) | undefined;
+    vi.mocked(midiSupported).mockReturnValue(true);
+    vi.mocked(listenToMidi).mockImplementation((listener) => {
+      onMidi = listener;
+      return Promise.resolve(() => undefined);
+    });
+    saveKeyLights({ enabled: true, channel: 3, velocity: 64 });
+    try {
+      await mount();
+      const press = (channel: number) => {
+        onMidi?.(
+          { type: "down", pitch: 60, velocity: 64, channel, source: "midi", deviceId: "piano" },
+          "piano"
+        );
+      };
+      press(3);
+      expect(trainer.key).not.toHaveBeenCalled();
+      press(1);
+      expect(trainer.key).toHaveBeenCalledOnce();
+    } finally {
+      localStorage.clear();
+    }
   });
 });

@@ -8,6 +8,7 @@ import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
 import { ComboCounter } from "./combo";
 import type { ComboBoard, GradedStrike } from "./combo";
+import { keyLightPitches } from "./keyLights";
 import { PracticeSession } from "./session";
 import type { NoteStatus, PracticeEvent, PracticeOptions, PracticeStats } from "./session";
 import type { TimingConfig } from "./timingConfig";
@@ -73,6 +74,8 @@ export class Trainer {
   onSnapshot: ((snapshot: TrainerSnapshot) => void) | undefined;
   /** A take has ended: the song finished, or the run was restarted, moved or reloaded. */
   onTake: ((take: Take) => void) | undefined;
+  /** The keys to light on the player's instrument, every frame; none once the run stops. */
+  onLights: ((pitches: readonly number[]) => void) | undefined;
   metronome = false;
   loop = false;
   stopOnError = false;
@@ -383,6 +386,7 @@ export class Trainer {
       const now = performance.now();
       this.apply(session.tick(now));
     }
+    this.onLights?.(keyLightPitches(session, this.playing && !this.performanceMode));
     this.view.draw({
       time: session.time - (this.timing.visualOffsetMs / 1000) * session.options.speed,
       hintTime: session.time,
@@ -467,6 +471,7 @@ export class Trainer {
   private silence(): void {
     if (this.session) this.apply(this.session.stopAuto());
     this.sounding.clear();
+    this.onLights?.([]);
     this.audio.reset(performance.now());
     soundAllOff();
   }

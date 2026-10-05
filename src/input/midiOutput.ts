@@ -18,6 +18,8 @@ export interface MidiOutputControl {
   select(choice: OutputChoice | null): void;
   /** Lights C4 on the current output for a second. */
   test(): void;
+  /** Sends one message to the current output; without one it goes nowhere. */
+  send(message: number[]): void;
   /** Stops listening and sends a panic to the current output. */
   dispose(): void;
 }
@@ -68,6 +70,7 @@ function panic(output: MIDIOutput | undefined) {
 const CLOSED: MidiOutputControl = {
   select: () => undefined,
   test: () => undefined,
+  send: () => undefined,
   dispose: () => undefined
 };
 
@@ -116,6 +119,9 @@ export async function openMidiOutput(
       sendSafely(port, [NOTE_ON, TEST_PITCH, TEST_VELOCITY]);
       // The browser holds the release until then: no timer to clear.
       sendSafely(port, [NOTE_OFF, TEST_PITCH, 0], performance.now() + TEST_MS);
+    },
+    send(message) {
+      if (!disposed && port) sendSafely(port, message);
     },
     dispose() {
       if (disposed) return;

@@ -105,7 +105,8 @@ export function App() {
   const input = useKeyInput(
     trainer.trainerRef,
     word.enabled ? word.keyboardOptions : computerKeyboard.options,
-    device.intercept
+    device.intercept,
+    trainer.trainerReady
   );
   const fit = useRangeFit(song.notes, trainer.playerHands, playable, current, !word.enabled);
   const timing = useTimingControls({

@@ -95,6 +95,7 @@ describe("MIDI input metadata", () => {
         type: "down",
         pitch: 60,
         velocity: 100,
+        channel: 1,
         timestamp: 1234.56,
         source: "midi",
         deviceId: "usb-input"
@@ -103,6 +104,7 @@ describe("MIDI input metadata", () => {
         type: "up",
         pitch: 60,
         velocity: 0,
+        channel: 1,
         timestamp: 1300,
         source: "midi",
         deviceId: "usb-input"

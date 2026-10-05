@@ -37,9 +37,14 @@ describe("parseMidiMessage", () => {
     expect(parseMidiMessage(new Uint8Array([0x90, 60, 100]))).toEqual({
       type: "down",
       pitch: 60,
-      velocity: 100
+      velocity: 100,
+      channel: 1
     });
-    expect(parseMidiMessage(new Uint8Array([0x91, 60, 0]))?.type).toBe("up");
+    expect(parseMidiMessage(new Uint8Array([0x91, 60, 0]))).toMatchObject({
+      type: "up",
+      channel: 2
+    });
+    expect(parseMidiMessage(new Uint8Array([0x9f, 60, 1]))).toMatchObject({ channel: 16 });
     expect(parseMidiMessage(new Uint8Array([0x80, 60, 40]))?.type).toBe("up");
     expect(parseMidiMessage(new Uint8Array([0xe0, 0, 64]))).toBeUndefined();
   });
