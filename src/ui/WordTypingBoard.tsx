@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import type { Finger, Hand } from "../fingering/fingering";
 import type { NoteStatus } from "../practice/session";
 import type { GeneratedToken, WordTypingResult } from "../wordTyping/types";
@@ -23,7 +23,7 @@ interface Props {
   readonly notice?: string | undefined;
 }
 
-/** Grouping depends only on the generated text, so the compiler can reuse it across snapshots. */
+/** Grouping depends only on the generated text, independent of playback progress. */
 function groupTokens(
   tokens: readonly GeneratedToken[]
 ): ReadonlyMap<number, readonly GeneratedToken[]> {
@@ -47,7 +47,7 @@ export function WordTicker(props: Props) {
   const { index } = progress;
   // Past the end, the line stays on the last character.
   const anchor = index >= 0 ? index : (tokens.at(-1)?.noteIndex ?? -1);
-  const groups = groupTokens(tokens);
+  const groups = useMemo(() => groupTokens(tokens), [tokens]);
   useLayoutEffect(() => {
     const line = lineRef.current;
     const track = trackRef.current;
