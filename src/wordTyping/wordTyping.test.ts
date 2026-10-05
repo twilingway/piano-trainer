@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Song, SongNote } from "../song/song";
 import { buildTrie, normalizeWords } from "./dictionary";
 import { extractLine, withAccompaniment } from "./extractLine";
-import { inputTokenId, languageTokens, tokenPool } from "./inputTokens";
+import { OVERDRIVE_KEY, inputTokenId, languageTokens, tokenPool } from "./inputTokens";
 import { generateWordTyping } from "./optimizer";
 import { DEFAULT_CONFIG, inputPenalty, wordScore } from "./scoring";
 import type { Language } from "./types";
@@ -60,6 +60,7 @@ describe("word typing dictionaries and physical tokens", () => {
     );
     expect(pool.slice(firstAlt).every((token) => token.modifier === "alt")).toBe(true);
     expect(pool.length).toBeGreaterThanOrEqual(128);
+    expect(pool.filter((token) => token.physicalKey === OVERDRIVE_KEY)).toEqual([]);
   });
 
   it("uses physical codes for Cyrillic letters including Russian punctuation positions", () => {
@@ -180,8 +181,9 @@ describe("bounded generator", () => {
       const firstShift = mods.indexOf("shift");
       const firstAlt = mods.indexOf("alt");
       expect(firstShift).toBe(tokenPool(language).findIndex((token) => token.modifier === "shift"));
-      expect(firstAlt - firstShift).toBe(47);
-      expect(result.metrics.shiftCount).toBe(47);
+      // Every printable key but 0, which is Overdrive's.
+      expect(firstAlt - firstShift).toBe(46);
+      expect(result.metrics.shiftCount).toBe(46);
       for (const token of result.tokens)
         expect(result.tokenToPitch[inputTokenId(token.input)]).toBe(token.pitch);
     }

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import { presetBindings } from "../input/keyboardLayouts";
+import { listenToMidi, midiSupported, type MidiEvent } from "../input/midiInput";
 import type { Trainer } from "../practice/Trainer";
 import { useKeyInput } from "./useKeyInput";
 
@@ -14,11 +15,11 @@ vi.mock("../audio/pianoSound", () => ({
   startSoundOnFirstGesture: () => vi.fn()
 }));
 vi.mock("../input/midiInput", () => ({
-  midiSupported: () => false,
+  midiSupported: vi.fn(() => false),
   listenToMidi: vi.fn()
 }));
 
-const trainer = { key: vi.fn(), pedal: vi.fn() };
+const trainer = { key: vi.fn(), pedal: vi.fn(), activateOverdrive: vi.fn() };
 const trainerRef = { current: trainer as unknown as Trainer };
 const bindings = presetBindings("extended_range");
 let root: Root;
@@ -34,9 +35,11 @@ async function mount(options: KeyboardInputOptions = { bindings }) {
     await Promise.resolve();
   });
 }
-async function key(code: string, type = "keydown") {
+async function key(code: string, type = "keydown", init: KeyboardEventInit = {}) {
   await act(async () => {
-    window.dispatchEvent(new KeyboardEvent(type, { code, bubbles: true, cancelable: true }));
+    window.dispatchEvent(
+      new KeyboardEvent(type, { code, bubbles: true, cancelable: true, ...init })
+    );
     await Promise.resolve();
   });
 }
@@ -44,6 +47,7 @@ async function key(code: string, type = "keydown") {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.clearAllMocks();
+  vi.mocked(midiSupported).mockReturnValue(false);
   host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);
 });
@@ -112,4 +116,56 @@ describe("computer keyboard sound and trainer sustain", () => {
       );
     }
   );
+});
+
+describe("Overdrive from the keys", () => {
+  it("switches Overdrive on with 0 in both games, without a note or a repeat", async () => {
+    for (const options of [{ bindings }, { bindings, wordPitch: () => 60 }]) {
+      vi.clearAllMocks();
+      await mount(options);
+      await key("Digit0");
+      await key("Digit0", "keydown", { repeat: true });
+      await key("Digit0", "keyup");
+      expect(trainer.activateOverdrive).toHaveBeenCalledOnce();
+      expect(trainer.key).not.toHaveBeenCalled();
+    }
+  });
+
+  it("lets a piano note the player put on 0 win", async () => {
+    await mount({ bindings: { ...bindings, Digit0: { type: "note", pitch: 61 } } });
+    await key("Digit0");
+    expect(trainer.activateOverdrive).not.toHaveBeenCalled();
+    expect(soundNoteOn).toHaveBeenCalledExactlyOnceWith(61);
+  });
+
+  it("switches Overdrive on when the keyboard pedal goes down, and the pedal still sustains", async () => {
+    await mount();
+    await key("Space");
+    await key("Space", "keyup");
+    await key("Space");
+    expect(trainer.activateOverdrive).toHaveBeenCalledTimes(2);
+    expect(trainer.pedal).toHaveBeenLastCalledWith(true, expect.any(Number), "keyboard");
+  });
+
+  it("switches Overdrive on once a MIDI pedal press, however many times it reports down", async () => {
+    let onMidi: ((event: MidiEvent, deviceId: string) => void) | undefined;
+    vi.mocked(midiSupported).mockReturnValue(true);
+    vi.mocked(listenToMidi).mockImplementation((listener) => {
+      onMidi = listener;
+      return Promise.resolve(() => undefined);
+    });
+    await mount();
+    const pedal = (down: boolean, deviceId = "piano") => {
+      onMidi?.({ type: "pedal", down, timestamp: 0, source: "midi", deviceId }, deviceId);
+    };
+    pedal(true);
+    pedal(true);
+    pedal(true);
+    expect(trainer.activateOverdrive).toHaveBeenCalledOnce();
+    pedal(false);
+    pedal(true);
+    pedal(true, "other");
+    expect(trainer.activateOverdrive).toHaveBeenCalledTimes(3);
+    expect(trainer.pedal).toHaveBeenCalledTimes(6);
+  });
 });
