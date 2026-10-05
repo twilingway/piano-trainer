@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { Song } from "../song/song";
@@ -6,10 +6,15 @@ import { extractLine, withAccompaniment } from "../wordTyping/extractLine";
 import { inputTokenId, tokenPool } from "../wordTyping/inputTokens";
 import { ALGORITHM_VERSION } from "../wordTyping/optimizer";
 import { DEFAULT_CONFIG } from "../wordTyping/scoring";
-import type { GeneratedToken, Part, WordTypingResult } from "../wordTyping/types";
+import type { GeneratedToken, Language, Part, WordTypingResult } from "../wordTyping/types";
 import { wordKeyPitch } from "../wordTyping/wordInput";
-import { loadWordTypingPrefs, saveWordTypingPrefs } from "./wordTypingPreferences";
+import {
+  loadWordTypingPrefs,
+  saveWordTypingPrefs,
+  updateWordTypingPrefs
+} from "./wordTypingPreferences";
 import type { WordTypingPrefs } from "./wordTypingPreferences";
+import { useI18n } from "./useI18n";
 
 /** The pairs' resource, from Tatoeba's export of that day (src/wordTypingTools/prepare.ts). */
 const BIGRAM_VERSION = "Tatoeba-2026-10-03-pairs-v1";
@@ -133,8 +138,15 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
         : undefined,
     [prefs.enabled, prefs.language, tokens, mode, wordKeys]
   );
-  const update = (change: Partial<WordTypingPrefs>) => {
-    const next = { ...prefs, ...change };
+  const followInterfaceLanguage = useCallback((language: Language) => {
+    setPrefs((current) =>
+      current.languageManuallyChosen || current.language === language
+        ? current
+        : { ...current, language }
+    );
+  }, []);
+  const update = (change: Partial<Omit<WordTypingPrefs, "languageManuallyChosen">>) => {
+    const next = updateWordTypingPrefs(prefs, change);
     setPrefs(next);
     setStorageError(saveWordTypingPrefs(next) ? null : "Не удалось сохранить настройки режима.");
   };
@@ -152,6 +164,7 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     storageError,
     keyboardOptions,
     update,
+    followInterfaceLanguage,
     choosePart: (next: Part) => {
       setSelection({ songKey, part: next });
     },
@@ -169,3 +182,15 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
   };
 }
 export type WordTypingControls = ReturnType<typeof useWordTyping>;
+
+/** Apply automatic text changes only when the current take is paused or stopped. */
+export function useWordTypingInterfaceLanguage(
+  word: Pick<WordTypingControls, "followInterfaceLanguage">,
+  playing: boolean
+): void {
+  const { locale } = useI18n();
+  const { followInterfaceLanguage } = word;
+  useEffect(() => {
+    if (!playing) followInterfaceLanguage(locale);
+  }, [locale, playing, followInterfaceLanguage]);
+}

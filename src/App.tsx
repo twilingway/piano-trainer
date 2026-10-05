@@ -24,7 +24,7 @@ import { foldersSupported } from "./library/folder";
 import { LibraryDialog } from "./ui/LibraryDialog";
 import { ReviewBar } from "./ui/ReviewBar";
 import { ViewToggles } from "./ui/ViewToggles";
-import { useWordTyping } from "./app/useWordTyping";
+import { useWordTyping, useWordTypingInterfaceLanguage } from "./app/useWordTyping";
 import { WordQuality } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
 import { GameModeSegment, GameModeSwitch } from "./ui/GameModeSwitch";
@@ -101,6 +101,7 @@ export function App() {
     selectTrainerStatus,
     sameTrainerStatus
   );
+  useWordTypingInterfaceLanguage(word, snapshot.playing);
   const computerKeyboard = useComputerKeyboard();
   const input = useKeyInput(
     trainer.trainerRef,
