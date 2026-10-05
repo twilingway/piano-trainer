@@ -9,13 +9,6 @@ import { LANGUAGE_STORAGE_KEY, setInterfaceLanguage } from "../../app/interfaceL
 import { DEFAULT_CAMERA } from "../../render/worldCamera";
 import { PlayerSettings } from "./PlayerSettings";
 
-vi.mock("../../i18n/messages", async () => {
-  const { settingsMessages1 } = await import("../../i18n/settingsMessages1");
-  const { settingsMessages2 } = await import("../../i18n/settingsMessages2");
-  const { settingsMessages3 } = await import("../../i18n/settingsMessages3");
-  return { messages: { ...settingsMessages1, ...settingsMessages2, ...settingsMessages3 } };
-});
-
 vi.mock("../GameDialog", () => ({
   GameDialog: ({ children }: { children: ReactNode }) => <section>{children}</section>
 }));
