@@ -1,8 +1,9 @@
 ## 1. Что горит
 
 - [x] 1.1 `src/practice/keyLights.ts`: `keyLightPitches(session, active)`; тесты: режим ожидания
-      (аккорд, нажатая нота гаснет), режим темпа (окно 300 мс, промах гаснет), повтор высоты, чужая
-      рука, `active = false`. Проверка: `pnpm exec vitest run src/practice/keyLights.test.ts`
+      (окно 300 мс, нота горит, пока песня ждёт, нажатая гаснет, далёкая не горит), режим темпа
+      (окно 300 мс, промах гаснет), повтор высоты, чужая рука, `active = false`. Проверка:
+      `pnpm exec vitest run src/practice/keyLights.test.ts`
 - [x] 1.2 `Trainer.onLights`: вызов в кадре и пустой набор в `silence()`; учёт Performance. Тесты:
       пауза, перемотка и конец песни шлют пустой набор. Проверка:
       `pnpm exec vitest run src/practice/Trainer.test.ts`
