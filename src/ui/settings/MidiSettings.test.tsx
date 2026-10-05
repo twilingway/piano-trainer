@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MidiSettings } from "./MidiSettings";
+import type { MidiOutputControls } from "./MidiSettings";
 
 let host: HTMLDivElement;
 let root: Root;
@@ -12,7 +13,7 @@ const onCapture = vi.fn();
 const onCancelCapture = vi.fn();
 type Keyboard = ComponentProps<typeof MidiSettings>["keyboard"];
 
-async function render(keyboard: Partial<Keyboard> = {}) {
+async function render(keyboard: Partial<Keyboard> = {}, output?: MidiOutputControls) {
   await act(async () => {
     await Promise.resolve();
     root.render(
@@ -29,6 +30,7 @@ async function render(keyboard: Partial<Keyboard> = {}) {
           onCancelCapture,
           ...keyboard
         }}
+        output={output}
       />
     );
   });
@@ -98,5 +100,60 @@ describe("MidiSettings keyboard range", () => {
     expect(host.textContent).toContain("Теперь нажмите самую верхнюю клавишу");
     button("Отмена").click();
     expect(onCancelCapture).toHaveBeenCalled();
+  });
+});
+
+describe("MidiSettings output", () => {
+  const onSelect = vi.fn();
+  const onTest = vi.fn();
+  const piano = { id: "a", name: "Digital Piano" };
+  const output = (rest: Partial<MidiOutputControls>): MidiOutputControls => ({
+    devices: [],
+    choice: null,
+    connected: false,
+    selectedId: "",
+    onSelect,
+    onTest,
+    ...rest
+  });
+  function outputSelect() {
+    const element = host.querySelector<HTMLSelectElement>("select[aria-label='Выход MIDI']");
+    if (!element) throw new Error("Missing output selector");
+    return element;
+  }
+
+  it("is hidden without Web MIDI", async () => {
+    await render();
+    expect(host.querySelector("select[aria-label='Выход MIDI']")).toBeNull();
+  });
+
+  it("offers none and the connected outputs, and tests the chosen one", async () => {
+    await render({}, output({ devices: [piano], choice: piano, connected: true, selectedId: "a" }));
+    const select = outputSelect();
+    expect([...select.options].map((option) => option.textContent)).toEqual([
+      "Нет",
+      "Digital Piano"
+    ]);
+    expect(select.value).toBe("a");
+    button("Проверить").click();
+    expect(onTest).toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
+      select.value = "";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onSelect).toHaveBeenCalledWith("");
+  });
+
+  it("keeps a disconnected choice and disables the test", async () => {
+    await render({}, output({ choice: piano, selectedId: "a" }));
+    expect(outputSelect().selectedOptions[0]?.textContent).toBe("Digital Piano — нет связи");
+    expect(button("Проверить").disabled).toBe(true);
+  });
+
+  it("has nothing to test without outputs", async () => {
+    await render({}, output({}));
+    expect([...outputSelect().options].map((option) => option.textContent)).toEqual(["Нет"]);
+    expect(button("Проверить").disabled).toBe(true);
   });
 });

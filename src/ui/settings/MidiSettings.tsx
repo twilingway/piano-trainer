@@ -5,6 +5,7 @@ import { DEVICE_PRESETS, deviceKeys } from "../../input/deviceRange";
 import type { DeviceRange, DevicePreset, RangeCapture } from "../../input/deviceRange";
 import { pitchLabel } from "../../input/keyboardLayouts";
 import type { MidiDevice } from "../../input/midiInput";
+import type { OutputChoice } from "../../input/midiOutput";
 
 /** The player's keyboard and capturing it from their lowest and highest keys. */
 export interface DeviceRangeControls {
@@ -16,6 +17,18 @@ export interface DeviceRangeControls {
   readonly onCancelCapture: () => void;
 }
 
+/** Where the trainer sends MIDI, and the test note that checks the link. */
+export interface MidiOutputControls {
+  readonly devices: readonly MidiDevice[];
+  readonly choice: OutputChoice | null;
+  /** The chosen output is connected. */
+  readonly connected: boolean;
+  /** The option to show: the port in use, the disconnected choice, or "" for none. */
+  readonly selectedId: string;
+  readonly onSelect: (id: string) => void;
+  readonly onTest: () => void;
+}
+
 interface Props {
   readonly devices: readonly MidiDevice[];
   /** The MIDI input that plays; "all" listens to every one. */
@@ -24,6 +37,8 @@ interface Props {
   readonly midiError: string | null;
   readonly locked?: boolean;
   readonly keyboard: DeviceRangeControls;
+  /** Absent without Web MIDI. */
+  readonly output?: MidiOutputControls | undefined;
 }
 
 /** The sound and MIDI tab: which piano plays, or why there is none. */
@@ -33,7 +48,8 @@ export function MidiSettings({
   onDevice,
   midiError,
   locked = false,
-  keyboard
+  keyboard,
+  output
 }: Props) {
   const { t } = useI18n();
   const titles: Readonly<Record<DevicePreset, string>> = {
@@ -134,6 +150,44 @@ export function MidiSettings({
           </button>
         )}
       </div>
+      {output && (
+        <>
+          <label className="setting">
+            <span>{t("Выход MIDI")}</span>
+            <select
+              className="game-select"
+              aria-label={t("Выход MIDI")}
+              value={output.selectedId}
+              onChange={(event) => {
+                output.onSelect(event.target.value);
+              }}
+            >
+              <option value="">{t("Нет")}</option>
+              {output.devices.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.name}
+                </option>
+              ))}
+              {output.choice && !output.connected && (
+                <option value={output.choice.id}>
+                  {t("{name} — нет связи", { name: output.choice.name })}
+                </option>
+              )}
+            </select>
+          </label>
+          <div className="setting">
+            <span className="setting-hint">{t("Зажигает C4 на секунду.")}</span>
+            <button
+              type="button"
+              className="game-button"
+              disabled={!output.connected}
+              onClick={output.onTest}
+            >
+              {t("Проверить")}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

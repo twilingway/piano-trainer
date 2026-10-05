@@ -493,10 +493,7 @@ export function App() {
         computerKeyboard={computerKeyboard}
         wordSettings={wordSettings}
         midi={{
-          devices: input.devices,
-          deviceId: input.midiDeviceId,
-          onDevice: input.setMidiDeviceId,
-          midiError: input.midiError,
+          ...input.settings,
           locked: game.ranked && playing,
           keyboard: device.controls
         }}
