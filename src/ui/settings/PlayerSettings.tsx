@@ -14,6 +14,8 @@ interface Props {
   readonly onClose: () => void;
   readonly wordTyping: boolean;
   readonly play: ComponentProps<typeof PlaySettings>;
+  /** A connected view can subscribe to live statistics only while this section is mounted. */
+  readonly playContent?: ReactNode;
   readonly rules: ComponentProps<typeof GameSettings>;
   readonly song: ComponentProps<typeof SongSettings>;
   readonly staff: ComponentProps<typeof StaffSettings>;
@@ -46,7 +48,7 @@ export function PlayerSettings(props: Props) {
             <>
               <section className="settings-group">
                 <h3 className="settings-group__title">Режим и темп</h3>
-                <PlaySettings {...props.play} />
+                {props.playContent ?? <PlaySettings {...props.play} />}
               </section>
               <div className="settings-group">
                 <GameSettings {...props.rules} />
