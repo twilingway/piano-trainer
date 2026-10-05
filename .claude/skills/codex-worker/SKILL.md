@@ -21,14 +21,14 @@ the checks.
 Ranking from one task, one or two runs per executor — re-check it on the next few real tasks and
 keep the table in `token-economy.md` current.
 
-| Executor                               | Use for                                                                                                                            |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Claude                                 | Specs, splitting work, the pure-core contracts (song model, session clock, MusicXML passes), ambiguous changes, acceptance, review |
-| Codex `gpt-6-sol` high, CLI            | Default implementer: bounded task, written spec, scripted checks                                                                   |
-| Codex `gpt-6-luna`                     | Mechanical work where a green script is the whole acceptance                                                                       |
-| Codex CLI, `gpt-6-sol` or `gpt-6-luna` | Raster images — the image model is the same, only orchestration cost differs                                                       |
-| Qwen 3.8 27B, opencode, local          | Fallback when the ChatGPT window is spent; free background work with step-by-step prompts                                          |
-| Fresh `code-reviewer` subagent         | Every delegated diff, same model as the lead                                                                                       |
+| Executor                                 | Use for                                                                                                                            |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Claude                                   | Specs, splitting work, the pure-core contracts (song model, session clock, MusicXML passes), ambiguous changes, acceptance, review |
+| Codex `gpt-6.1-sol` high, CLI            | Default implementer: bounded task, written spec, scripted checks                                                                   |
+| Codex `gpt-6-luna`                       | Mechanical work where a green script is the whole acceptance                                                                       |
+| Codex CLI, `gpt-6.1-sol` or `gpt-6-luna` | Raster images — the image model is the same, only orchestration cost differs                                                       |
+| Qwen 3.8 27B, opencode, local            | Fallback when the ChatGPT window is spent; free background work with step-by-step prompts                                          |
+| Fresh `code-reviewer` subagent           | Every delegated diff, same model as the lead                                                                                       |
 
 Not used: `gpt-5.6-sol` (4-8× the tokens, no gain), `gpt-5.6-terra` (below the reference),
 `gpt-6-astra` (user's call), Codex `--oss` with Qwen (cannot drive the patch tool), `/codex:rescue`
@@ -58,19 +58,22 @@ in auto mode without an allow rule.
   `vitest.config.mjs` with a thread pool — reject any config file that only exists to work around
   the sandbox.
 - **Smoke test first**, once per session, in the target directory:
-  `codex exec -C <dir> --sandbox workspace-write -m gpt-6-sol -c 'model_reasoning_effort="low"' 'Run node --version and write it to ./v.txt'`,
+  `codex exec -C <dir> --sandbox workspace-write -m gpt-6.1-sol -c 'model_reasoning_effort="low"' 'Run node --version and write it to ./v.txt'`,
   then check `v.txt` exists and delete it. No file → fix the sandbox before delegating anything.
 
 ## Model and effort
 
-- Default `gpt-6-sol` at `high`: one of its two runs tied with Claude for the best solution at
-  ~$0.55 and ~1.35M input tokens; `gpt-5.6-sol` spent 4-8× the tokens for a comparable or bouncier
-  result. Needs CLI ≥ 0.155 — 0.154 rejects it as "not supported".
+- Default `gpt-6.1-sol` at `high` (since 2026-10-05; also the default in `~/.codex/config.toml`).
+  Needs CLI ≥ 0.160 — 0.157 rejects it as "not supported"; update with
+  `npm i -g @openai/codex@latest`. Not yet measured on a delegated task: the numbers below are its
+  predecessor's. When it reports "at capacity", fall back to `gpt-6-sol`.
+- `gpt-6-sol` at `high`: one of its two runs tied with Claude for the best solution at ~$0.55 and
+  ~1.35M input tokens; `gpt-5.6-sol` spent 4-8× the tokens for a comparable or bouncier result.
 - `gpt-6-luna` is ~20× cheaper and passed every check, yet the review found the task unsolved (the
   ship still pins to the rim at base stats). Use it only where a green script is the whole
   acceptance — mechanical edits, test scaffolding — never for tuning or design.
 - `gpt-5.6-terra` came out below the merged reference and added unrequested config fields; no reason
-  to pick it over `gpt-6-sol`.
+  to pick it over `gpt-6.1-sol`.
 - Green checks are not acceptance. Every delegated diff gets a review against the spec scenarios.
 - `gpt-6-astra` is off-limits: the user's call (too expensive).
 - `high` spawns sub-sessions; their tokens are in their own rollout files.
@@ -81,7 +84,7 @@ in auto mode without an allow rule.
 - **CLI — default for implementation.** Full control, usage in the output:
 
   ```bash
-  codex exec -C <worktree> --sandbox workspace-write -m gpt-6-sol -c 'model_reasoning_effort="high"' --json -o <scratchpad>/codex-<task>.md - < <scratchpad>/codex-<task>-prompt.md > <scratchpad>/codex-<task>.jsonl
+  codex exec -C <worktree> --sandbox workspace-write -m gpt-6.1-sol -c 'model_reasoning_effort="high"' --json -o <scratchpad>/codex-<task>.md - < <scratchpad>/codex-<task>-prompt.md > <scratchpad>/codex-<task>.jsonl
   ```
 
   Run it in the background; `turn.completed.usage` in the JSONL has the tokens.
@@ -90,7 +93,7 @@ in auto mode without an allow rule.
   Its `/codex:rescue` goes through a Sonnet forwarder subagent (~80k tokens on top) that the auto
   mode classifier blocks unless the user adds an allow rule. When the plugin must implement, call
   the companion from the main session with an explicit target:
-  `node <plugin-root>/scripts/codex-companion.mjs task --write --cwd <worktree> --model gpt-6-sol --effort high "<prompt>"`.
+  `node <plugin-root>/scripts/codex-companion.mjs task --write --cwd <worktree> --model gpt-6.1-sol --effort high "<prompt>"`.
   Without `--cwd` it writes into the current directory — the main tree.
 
 ## Local Qwen through opencode
