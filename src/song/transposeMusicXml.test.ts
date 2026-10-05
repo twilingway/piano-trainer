@@ -221,6 +221,14 @@ describe("score transposition", () => {
     }
   );
 
+  it.each([12, -12, 24, -24])("moves whole octaves by %i without touching the key", (shift) => {
+    const original = score(note("F", 1) + note("B", -1, 3), 2);
+    const moved = transposeMusicXml(original, shift);
+    expect(moved).toContain("<fifths>2</fifths>");
+    expect(pitches(moved)).toEqual(pitches(original));
+    expectInterval(original, moved, shift);
+  });
+
   it("preserves a raised seventh as E sharp in F sharp harmonic minor", () => {
     const original = score(note("A") + note("G", 1, 5), 0, "minor");
     const moved = transposeMusicXml(original, -3);

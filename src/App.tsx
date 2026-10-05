@@ -40,6 +40,7 @@ import {
   ConnectedWordTicker
 } from "./app/ConnectedPlayback";
 import { ConnectedPlayerSettings, ConnectedResultDialog } from "./app/ConnectedSettings";
+import { useDeviceRange, useRangeFit } from "./app/useDeviceRange";
 import { selectTrainerStatus, sameTrainerStatus, useTrainerSelector } from "./app/trainerSnapshots";
 
 export function App() {
@@ -57,7 +58,9 @@ export function App() {
   const current = useSong(startFromRef);
   const { song, songKey } = current;
   const word = useWordTyping(song, songKey, libraryOpen || settingsOpen);
-  const game = useGameOptions(word.practiceKey, word.practiceSong.duration, word.enabled);
+  const device = useDeviceRange();
+  const { playable } = device;
+  const game = useGameOptions(word.practiceKey, word.practiceSong.duration, word.enabled, playable);
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const screen = useScreenLayout(word.enabled ? "typing" : "piano");
   const displayPrefs = game.performance
@@ -101,8 +104,10 @@ export function App() {
   const computerKeyboard = useComputerKeyboard();
   const input = useKeyInput(
     trainer.trainerRef,
-    word.enabled ? word.keyboardOptions : computerKeyboard.options
+    word.enabled ? word.keyboardOptions : computerKeyboard.options,
+    device.intercept
   );
+  const fit = useRangeFit(song.notes, trainer.playerHands, playable, current, !word.enabled);
   const timing = useTimingControls({
     trainerRef: trainer.trainerRef,
     ensureSound,
@@ -443,12 +448,14 @@ export function App() {
           duration: word.practiceSong.duration,
           loop: game.range.loop,
           onChange: game.update,
-          onRange: game.updateRange
+          onRange: game.updateRange,
+          outsideKeyboard: fit.outside
         }}
         song={{
           sourceKey: current.sourceKey,
           transpose: current.transpose,
           onTranspose: current.setTranspose,
+          ...fit,
           fingersChanged: current.overrides.size > 0,
           onResetFingers: current.resetFingers
         }}
@@ -490,7 +497,8 @@ export function App() {
           deviceId: input.midiDeviceId,
           onDevice: input.setMidiDeviceId,
           midiError: input.midiError,
-          locked: game.ranked && playing
+          locked: game.ranked && playing,
+          keyboard: device.controls
         }}
         synchronization={timing.settings}
         onResetLayout={screen.resetLayout}

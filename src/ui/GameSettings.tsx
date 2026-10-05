@@ -24,6 +24,8 @@ interface Props {
     }>
   ) => void;
   readonly onRange: (change: Partial<{ from: number; to: number; loop: boolean }>) => void;
+  /** Notes of the player's hands off their keyboard: Ranked asks for them all the same. */
+  readonly outsideKeyboard?: number;
 }
 export function GameSettings(props: Props) {
   const { t } = useI18n();
@@ -62,6 +64,13 @@ export function GameSettings(props: Props) {
       {props.practiceOnly && (
         <p className="setting-hint">
           {t("Печатать мелодию — учебный прототип без рейтингового исполнения.")}
+        </p>
+      )}
+      {!props.practiceOnly && (props.outsideKeyboard ?? 0) > 0 && (
+        <p className="setting-hint">
+          {t("В Ranked ноты вне вашей клавиатуры ({count}) засчитываются промахами.", {
+            count: props.outsideKeyboard ?? 0
+          })}
         </p>
       )}
       {!props.practiceOnly && !props.rankedReady && (

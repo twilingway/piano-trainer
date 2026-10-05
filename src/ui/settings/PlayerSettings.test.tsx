@@ -69,6 +69,10 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
         sourceKey: { tonic: 0, mode: "major" },
         transpose: 0,
         onTranspose,
+        octave: 0,
+        onOctave: noop,
+        outside: 0,
+        bestOctave: 0,
         fingersChanged: false,
         onResetFingers: noop
       }}
@@ -96,7 +100,14 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
         devices: [{ id: "piano", name: "USB Piano" }],
         deviceId: "all",
         onDevice,
-        midiError: null
+        midiError: null,
+        keyboard: {
+          range: { preset: "88" },
+          onRange: noop,
+          capture: null,
+          onCapture: noop,
+          onCancelCapture: noop
+        }
       }}
       synchronization={<p>Калибровка задержки</p>}
       onResetLayout={onResetLayout}
