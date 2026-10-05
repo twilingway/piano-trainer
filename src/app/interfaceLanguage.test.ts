@@ -9,7 +9,9 @@ import {
   subscribeInterfaceLanguage
 } from "./interfaceLanguage";
 
-afterEach(() => setInterfaceLanguage("ru"));
+afterEach(() => {
+  setInterfaceLanguage("ru");
+});
 
 describe("interface language preference", () => {
   it("restores a supported preference and safely rejects malformed or inaccessible data", () => {

@@ -4,7 +4,7 @@ import type { TextStyleOptions } from "pixi.js";
 import type { ComboBoard, GradedStrike, StrikeGrade } from "../practice/combo";
 import type { Locale } from "../i18n/locales";
 import { appMessages } from "../i18n/appMessages";
-import { translate } from "../i18n/translate";
+import { formatNumber, translate } from "../i18n/translate";
 
 /** What each grade says over its key, and in what colour. */
 const GRADES: Readonly<Record<StrikeGrade, { readonly label: string; readonly color: number }>> = {
@@ -192,6 +192,7 @@ export class HudLayer {
     if (locale === this.locale) return;
     this.locale = locale;
     this.comboTitle.text = translate(locale, appMessages, "КОМБО");
+    if (this.shown.combo >= 0) this.comboValue.text = formatNumber(locale, this.shown.combo);
     this.accuracyLabel.text = translate(locale, appMessages, "точность");
     this.accuracy.x = this.accuracyLabel.x + this.accuracyLabel.width + 8;
     for (const pop of this.active) pop.text.text = this.strikeLabel(pop.strike);
@@ -219,7 +220,7 @@ export class HudLayer {
     if (!board) return;
     // Text re-renders its texture on every change: only when the numbers move.
     if (board.combo !== this.shown.combo) {
-      this.comboValue.text = String(board.combo);
+      this.comboValue.text = formatNumber(this.locale, board.combo);
       this.shown.combo = board.combo;
     }
     const percent = Math.round(board.accuracy * 100);

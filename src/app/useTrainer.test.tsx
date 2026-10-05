@@ -5,6 +5,8 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import type { TrainerSnapshot } from "../practice/Trainer";
 import type { Song } from "../song/song";
 import { useTrainer } from "./useTrainer";
+import { useI18n } from "./useI18n";
+import { setInterfaceLanguage } from "./interfaceLanguage";
 
 const mocks = vi.hoisted(() => ({
   trainers: [] as {
@@ -80,6 +82,7 @@ function Harness({
   selectedSong?: Song;
 }) {
   renders++;
+  const { locale } = useI18n();
   const trainer = useTrainer({
     song: selectedSong,
     songKey: selectedSong.title,
@@ -96,7 +99,7 @@ function Harness({
     value = trainer;
   });
   // eslint-disable-next-line react-hooks/refs -- Pass the host ref to React without reading current.
-  return <div ref={trainer.hostRef} />;
+  return <div ref={trainer.hostRef} data-locale={locale} />;
 }
 const active = () => {
   const trainer = mocks.trainers.findLast((entry) => !entry.destroyed);
@@ -117,6 +120,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => {
     root.unmount();
+    setInterfaceLanguage("ru");
     await Promise.resolve();
   });
   host.remove();
@@ -134,6 +138,22 @@ async function mount(ranked = false, selectedSong = song) {
 }
 
 describe("trainer runtime isolation", () => {
+  it("keeps the same song, clock and playing trainer when the interface language changes", async () => {
+    await mount();
+    const trainer = active();
+    const loads = trainer.load.mock.calls.length;
+    await act(async () => {
+      await Promise.resolve();
+      trainer.onSnapshot?.(snapshot({ time: 12, beat: 24, playing: true }));
+      setInterfaceLanguage("en");
+    });
+    expect(active()).toBe(trainer);
+    expect(host.querySelector("[data-locale]")?.getAttribute("data-locale")).toBe("en");
+    expect(trainer.load).toHaveBeenCalledTimes(loads);
+    expect(value.snapshotSource.getSnapshot()).toMatchObject({ time: 12, beat: 24, playing: true });
+    expect(mocks.views.filter((view) => !view.destroyed)).toHaveLength(1);
+  });
+
   it("publishes time without rendering its owner and preserves one live trainer/view in StrictMode", async () => {
     await mount();
     const count = renders;
