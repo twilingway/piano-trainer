@@ -2,7 +2,6 @@
 import { useGameRuntime } from "./app/useGameRuntime";
 import { useGameOptions } from "./app/useGameOptions";
 import { useTimingControls } from "./app/useTimingControls";
-import { GameBoard } from "./ui/GameBoard";
 
 import { downloadLesson } from "./app/lessonExport";
 import { LESSONS } from "./app/lessons";
@@ -13,7 +12,6 @@ import { useComputerKeyboard } from "./app/useComputerKeyboard";
 import { usePlayerLibrary } from "./app/usePlayerLibrary";
 import { useShortcuts } from "./app/useShortcuts";
 import { useSong } from "./app/useSong";
-import { useSongProgress } from "./app/useSongProgress";
 import { useSound } from "./app/useSound";
 import { useScreenLayout } from "./app/useScreenLayout";
 import { useStaffPrefs } from "./app/useStaffPrefs";
@@ -22,19 +20,25 @@ import { useTakeReview } from "./app/useTakeReview";
 import { useTrainer } from "./app/useTrainer";
 import { foldersSupported } from "./library/folder";
 import { LibraryDialog } from "./ui/LibraryDialog";
-import { PlayerTopBar } from "./ui/PlayerTopBar";
-import { ResultDialog } from "./ui/ResultDialog";
 import { ReviewBar } from "./ui/ReviewBar";
-import { SongProgress } from "./ui/SongProgress";
 import { ViewToggles } from "./ui/ViewToggles";
-import { Workspace } from "./ui/Workspace";
 import { useWordTyping } from "./app/useWordTyping";
-import { WordQuality, WordTicker, WordTypingBoard } from "./ui/WordTypingBoard";
+import { WordQuality } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
 import { GameModeSegment, GameModeSwitch } from "./ui/GameModeSwitch";
 import { WordTextPopover } from "./ui/WordTextPopover";
 import { PracticeTimingStatus } from "./ui/PracticeTimingStatus";
-import { PlayerSettings } from "./ui/settings/PlayerSettings";
+
+import {
+  ConnectedGameBoard,
+  ConnectedPlayerTopBar,
+  ConnectedSongProgress,
+  ConnectedWorkspace,
+  ConnectedWordBoard,
+  ConnectedWordTicker
+} from "./app/ConnectedPlayback";
+import { ConnectedPlayerSettings, ConnectedResultDialog } from "./app/ConnectedSettings";
+import { selectTrainerStatus, sameTrainerStatus, useTrainerSelector } from "./app/trainerSnapshots";
 
 export function App() {
   const fullscreen = useFullscreen();
@@ -86,6 +90,11 @@ export function App() {
     gameOptions: game.options,
     ranked: game.ranked
   });
+  const snapshot = useTrainerSelector(
+    trainer.snapshotSource,
+    selectTrainerStatus,
+    sameTrainerStatus
+  );
   const computerKeyboard = useComputerKeyboard();
   const input = useKeyInput(
     trainer.trainerRef,
@@ -96,8 +105,9 @@ export function App() {
     ensureSound,
     devices: input.devices,
     deviceId: input.midiDeviceId,
-    snapshot: trainer.snapshot,
-    locked: game.ranked && (trainer.snapshot?.playing ?? false)
+    trainerReady: trainer.trainerReady,
+    snapshotSource: trainer.snapshotSource,
+    locked: game.ranked && snapshot.playing
   });
   useGameRuntime(trainer.trainerRef, trainer.trainerReady, {
     loop: game.range.loop,
@@ -135,17 +145,11 @@ export function App() {
     openLesson: current.openLesson
   });
 
-  const { snapshot, listening } = trainer;
+  const { listening } = trainer;
   const { review, lastTake, comparing } = takes;
-  const stats = snapshot?.stats;
 
   // The shell: one bar, the song's progress, windows for the library and the settings.
-  const playing = snapshot?.playing ?? false;
-  const { board, totalQuarters, progress, ticks } = useSongProgress(
-    word.practiceSong,
-    snapshot?.time ?? 0,
-    trainer.speed
-  );
+  const playing = snapshot.playing;
 
   const play = () => {
     setResultClosed(false);
@@ -198,9 +202,7 @@ export function App() {
     startFromRef.current = null;
     word.update({ enabled });
   };
-  const timingStatus = (
-    <PracticeTimingStatus policy={snapshot?.timingPolicy} ranked={game.ranked} />
-  );
+  const timingStatus = <PracticeTimingStatus policy={snapshot.timingPolicy} ranked={game.ranked} />;
   const modeSwitch = (
     <GameModeSwitch wordTyping={word.enabled} locked={playing} onChange={chooseGame}>
       {word.enabled && wordSettings}
@@ -214,7 +216,9 @@ export function App() {
       onClickCapture={fullscreen.onClickCapture}
     >
       <div className="shell-top">
-        <PlayerTopBar
+        <ConnectedPlayerTopBar
+          source={trainer.snapshotSource}
+          song={word.practiceSong}
           title={song.title}
           playing={playing}
           soundLoading={
@@ -223,7 +227,6 @@ export function App() {
           mode={trainer.mode}
           hands={trainer.handChoice}
           speed={trainer.speed}
-          board={board}
           midi={input.midiName}
           settingsOpen={settingsOpen}
           fullscreen={fullscreen.active}
@@ -265,12 +268,11 @@ export function App() {
             setSettingsOpen((open) => !open);
           }}
         />
-        <SongProgress
-          progress={progress}
-          ticks={ticks}
-          onSeek={(share) => {
-            trainer.seekToBeat(share * totalQuarters);
-          }}
+        <ConnectedSongProgress
+          source={trainer.snapshotSource}
+          song={word.practiceSong}
+          speed={trainer.speed}
+          onSeek={trainer.seekToBeat}
         />
         {modeSwitch}
       </div>
@@ -315,13 +317,13 @@ export function App() {
         />
       )}
 
-      <Workspace
+      <ConnectedWorkspace
+        source={trainer.snapshotSource}
         wordBoard={
           word.enabled && !comparing ? (
-            <WordTypingBoard
+            <ConnectedWordBoard
+              source={trainer.snapshotSource}
               result={word.result}
-              statuses={snapshot?.noteStatuses}
-              time={snapshot?.time ?? -2}
               listening={listening}
               pending={word.pending}
               error={word.error}
@@ -331,10 +333,9 @@ export function App() {
         }
         wordTicker={
           word.enabled && !comparing ? (
-            <WordTicker
+            <ConnectedWordTicker
+              source={trainer.snapshotSource}
               result={word.result}
-              statuses={snapshot?.noteStatuses}
-              time={snapshot?.time ?? -2}
               listening={listening}
               pending={word.pending}
               error={word.error}
@@ -342,8 +343,8 @@ export function App() {
           ) : undefined
         }
         gameBoard={
-          <GameBoard
-            game={snapshot?.stats.game}
+          <ConnectedGameBoard
+            source={trainer.snapshotSource}
             mode={trainer.mode}
             playing={playing}
             onOverdrive={() => {
@@ -362,7 +363,6 @@ export function App() {
           updateStaffPrefs({ zoom });
         }}
         fixedLines={score.fixedLines}
-        beat={snapshot?.beat ?? 0}
         liveBeat={trainer.liveBeat}
         onSeek={trainer.seekToBeat}
         reviewMarks={takes.reviewMarks}
@@ -370,7 +370,7 @@ export function App() {
         takeStaff={takes.takeStaff}
         splitDirection={takes.splitDirection}
         comparing={comparing}
-        waiting={snapshot?.waiting ?? false}
+        waiting={snapshot.waiting}
         hostRef={trainer.hostRef}
         mirrorHostRef={view.mirrorHostRef}
       />
@@ -399,7 +399,8 @@ export function App() {
         onOpenFile={(event) => void library.openFile(event)}
       />
 
-      <PlayerSettings
+      <ConnectedPlayerSettings
+        source={trainer.snapshotSource}
         open={settingsOpen}
         onClose={() => {
           computerKeyboard.endEditing();
@@ -413,7 +414,6 @@ export function App() {
           listening,
           soundLoading: sound === "loading",
           onListen: () => void trainer.toggleListening(),
-          stats,
           mode: trainer.mode,
           onMode: trainer.setMode,
           hands: trainer.handChoice,
@@ -494,9 +494,9 @@ export function App() {
         onToggleEditing={screen.toggleEditing}
       />
 
-      <ResultDialog
-        open={Boolean(snapshot?.finished && !listening && !comparing && stats && !resultClosed)}
-        stats={stats}
+      <ConnectedResultDialog
+        source={trainer.snapshotSource}
+        open={snapshot.finished && !listening && !comparing && !resultClosed}
         canReview={takes.canReview}
         onClose={() => {
           setResultClosed(true);
