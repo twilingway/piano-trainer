@@ -15,13 +15,17 @@ export class FpsMeter {
 
   constructor(
     host: HTMLElement,
-    private readonly ticker: Ticker
+    private readonly ticker: Ticker,
+    locale: Locale = "ru",
+    visible = false
   ) {
     this.element.className = "lane-fps";
     this.element.title = "Частота отрисовки игры";
     this.element.textContent = "FPS —";
     this.element.hidden = true;
     host.appendChild(this.element);
+    this.setLocale(locale);
+    this.setVisible(visible);
   }
 
   setVisible(visible: boolean): void {

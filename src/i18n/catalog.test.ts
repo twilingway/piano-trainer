@@ -7,7 +7,7 @@ import type { Locale } from "./locales";
 import { messages } from "./messages";
 
 function params(message: string): string[] {
-  return [...new Set([...message.matchAll(/\{(\w+)\}/g)].map((match) => match[1]))].sort();
+  return [...new Set([...message.matchAll(/\{(\w+)\}/g)].map((match) => match[1] ?? ""))].sort();
 }
 
 describe("translation coverage", () => {

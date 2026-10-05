@@ -22,6 +22,7 @@ import {
   type TimingPreferences
 } from "./timingPreferences";
 import { useCalibration } from "./useCalibration";
+import { useI18n } from "./useI18n";
 
 interface Options {
   trainerRef: RefObject<Trainer | null>;
@@ -41,6 +42,7 @@ export function useTimingControls({
   snapshotSource,
   locked = false
 }: Options) {
+  const { t } = useI18n();
   const [preferences, setPreferences] = useState(loadTimingPreferences);
   const selected =
     devices.find((device) => device.id === deviceId) ??
@@ -182,7 +184,7 @@ export function useTimingControls({
       source={snapshotSource}
       preferences={preferences}
       deviceId={chosenId}
-      deviceName={chosenName}
+      deviceName={local || !selected ? t(chosenName) : chosenName}
       transport={transport}
       {...(profile ? { profile } : {})}
       progress={progress}

@@ -7,8 +7,8 @@ export function lessonDisplayTitle(
   lesson: LessonChoice | null,
   t: (message: string) => string
 ): string {
-  const exercise = lesson && EXERCISES.find((item) => item.id === lesson.exerciseId);
-  const level = exercise && exercise.levels.find((item) => item.id === lesson?.levelId);
+  const exercise = EXERCISES.find((item) => item.id === lesson?.exerciseId);
+  const level = exercise?.levels.find((item) => item.id === lesson?.levelId);
   if (!exercise || !level) return title;
   const original = `${exercise.title} · ${level.title}`;
   if (!title.startsWith(original)) return title;
