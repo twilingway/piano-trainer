@@ -2,7 +2,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { EXERCISES } from "../song/exercises";
@@ -23,6 +23,10 @@ vi.mock("./GameDialog", () => ({
     <section aria-label={title}>{children}</section>
   )
 }));
+
+beforeEach(() => {
+  setInterfaceLanguage("ru");
+});
 
 afterEach(() => {
   setInterfaceLanguage("ru");
