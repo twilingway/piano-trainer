@@ -46,6 +46,10 @@ If Codex is unavailable, continue alone and tell the user that the extra check d
 - **Running a call.** Calls take minutes: run them in the background, save the answer with
   `-o <scratchpad>/codex-<topic>.md`, summarise it for the user with the token count from the end of
   the log.
+- **Model.** `gpt-6.1-sol`, the `~/.codex/config.toml` default (CLI ≥ 0.160). Not `gpt-6-luna`: on
+  the same prompt and screenshots (2026-10-05) it read the images alone, took a design choice for a
+  defect and a generation-quality badge for a play score; Sol read the code it was pointed at and
+  got both right, for ~2× the tokens (34k against 19k).
 - **Cost.** Consultations and audits pass `-c 'model_reasoning_effort="medium"'`; `high` only for
   the final audit of a finished UI task. Images scaled down to at most 1024 px on the long side,
   files named in a list, one topic per call.
