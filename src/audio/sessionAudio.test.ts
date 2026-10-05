@@ -107,6 +107,29 @@ describe("session audio scheduling", () => {
     expect(sound.noteOff).toHaveBeenCalledWith(48, 13, "inside");
   });
 
+  it("plays the player's note that lies outside their keyboard", () => {
+    const song: Song = {
+      title: "test",
+      source: "midi",
+      notes: [note("high", 0.9, "right")],
+      beats: [],
+      measures: [],
+      duration: 2
+    };
+    const run = new PracticeSession(song, {
+      mode: "tempo",
+      hands: new Set(["right"]),
+      speed: 1,
+      playable: { low: 72, high: 84 }
+    });
+    run.startClock(1000);
+    const audio = new SessionAudio();
+    audio.reset(1000);
+    audio.schedule(run, 3800, 0, false);
+    flushQueued();
+    expect(sound.noteOn).toHaveBeenCalledWith(60, 90, 12.9, "high");
+  });
+
   it("schedules a count-in click before its expected heard time by audio offset", () => {
     const run = session([note("player", 0, "right")]);
     const audio = new SessionAudio();

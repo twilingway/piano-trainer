@@ -49,6 +49,7 @@ function frame(change: Partial<FrameState>): FrameState {
     sounding: new Set([40]),
     due: [],
     hands: new Set(["right"]),
+    owns: (note) => note.hand === "right",
     ...change
   };
 }

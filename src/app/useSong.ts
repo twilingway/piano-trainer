@@ -77,10 +77,12 @@ export function useSong(startFromRef: RefObject<number | null>) {
   /** The song as loaded; `baseSong` is it in the chosen key. */
   const [sourceSong, setSourceSong] = useState<Song>(() => lessonSong(startingLesson()));
   const [transpose, setTranspose] = useState(0);
+  /** Whole octaves on top of the key, to fit the player's keyboard; the key list keeps its name. */
+  const [octave, setOctave] = useState(0);
   const sourceKey = useMemo(() => detectKey(sourceSong), [sourceSong]);
   const baseSong = useMemo(
-    () => transposeSong(sourceSong, transpose, sourceKey),
-    [sourceSong, transpose, sourceKey]
+    () => transposeSong(sourceSong, transpose + octave * 12, sourceKey),
+    [sourceSong, transpose, octave, sourceKey]
   );
   const [overrides, setOverrides] = useState<Map<string, Finger>>(() => loadOverrides(baseSong));
   // Corrections belong to a song in a key: another key starts from its own.
@@ -118,6 +120,7 @@ export function useSong(startFromRef: RefObject<number | null>) {
     startFromRef.current = null;
     setSourceSong(loaded);
     setTranspose(0);
+    setOctave(0);
   };
 
   const openLesson = (choice: LessonChoice) => {
@@ -127,6 +130,7 @@ export function useSong(startFromRef: RefObject<number | null>) {
     startFromRef.current = null;
     setSourceSong(loaded);
     setTranspose(0);
+    setOctave(0);
     setOverrides(loadOverrides(loaded));
   };
 
@@ -137,6 +141,8 @@ export function useSong(startFromRef: RefObject<number | null>) {
     sourceKey,
     transpose,
     setTranspose,
+    octave,
+    setOctave,
     baseSong,
     song,
     songKey,

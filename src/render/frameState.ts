@@ -25,6 +25,8 @@ export interface FrameState {
   /** Pending notes that currently freeze the session in wait mode. */
   readonly waitingFor?: readonly SongNote[];
   readonly hands: ReadonlySet<Hand>;
+  /** Whether the player plays a note: in their hands and on their keyboard. */
+  readonly owns: (note: SongNote) => boolean;
   readonly hints?: boolean;
   /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;

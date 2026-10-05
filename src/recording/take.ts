@@ -1,4 +1,5 @@
 import type { Hand } from "../fingering/fingering";
+import type { PlayableRange } from "../practice/playableRange";
 import type { PracticeMode } from "../practice/session";
 import type { TimingConfig } from "../practice/timingConfig";
 import type { Difficulty } from "../practice/gameRules";
@@ -47,6 +48,8 @@ export interface Take {
   readonly mode: PracticeMode;
   readonly speed: number;
   readonly hands: readonly Hand[];
+  /** The player's keyboard: notes of their hands outside it were the program's. None = all. */
+  readonly playable?: PlayableRange;
   /** Song seconds the run started from: notes before it were not asked for. */
   readonly from: number;
   readonly notes: readonly PlayedNote[];
@@ -59,6 +62,7 @@ export interface TakeSettings {
   readonly mode: PracticeMode;
   readonly speed: number;
   readonly hands: readonly Hand[];
+  readonly playable?: PlayableRange;
   readonly from: number;
 }
 
