@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { KEYBOARD_ROWS, columnKey, keyColumn } from "./keyboardRows";
-import { tokenPool } from "./inputTokens";
+import { OVERDRIVE_KEY, tokenPool } from "./inputTokens";
 
 describe("keyboard columns", () => {
   it("gives every key the generator can assign a distinct column that maps back", () => {
@@ -13,7 +13,8 @@ describe("keyboard columns", () => {
         columns.add(column);
       }
     }
-    expect(columns.size).toBe(KEYBOARD_ROWS.flat().length);
+    expect(columns.size).toBe(KEYBOARD_ROWS.flat().length - 1);
+    expect(columns.has(keyColumn(OVERDRIVE_KEY) ?? -1)).toBe(false);
   });
 
   it("knows nothing of keys outside the rows", () => {

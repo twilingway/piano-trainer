@@ -4,6 +4,7 @@ import { DEFAULT_KEYBOARD_PREFS, isAssignableCode, presetBindings } from "./keyb
 import type { KeyboardBindings } from "./keyboardLayouts";
 import type { MidiEvent } from "./midiInput";
 import { WordKeyboardState } from "./wordKeyboardState";
+import { OVERDRIVE_KEY } from "../wordTyping/inputTokens";
 
 export interface KeyboardInputOptions {
   readonly bindings: KeyboardBindings;
@@ -17,6 +18,8 @@ export interface KeyboardInputOptions {
   readonly wordPitch?: (tokenId: string, owedNoteId: string | undefined) => number | undefined;
   /** The note the player owes now, for a per-word layout. */
   readonly owedNoteId?: () => string | undefined;
+  /** The Overdrive key was pressed: in both games, unless the player gave it a piano note. */
+  readonly onOverdrive?: () => void;
 }
 /** A key event as a word-mode token ("modifier:code"); Shift with Alt types nothing. */
 export function wordTokenId(event: KeyboardEvent): string | undefined {
@@ -65,6 +68,16 @@ export function listenToComputerKeyboard(
       event.preventDefault();
       return;
     }
+    const binding = options.bindings[event.code];
+    if (
+      event.code === OVERDRIVE_KEY &&
+      (options.wordPitch || !binding || binding.type === "disabled")
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) options.onOverdrive?.();
+      return;
+    }
     if (options.wordPitch) {
       const tokenId = wordTokenId(event);
       if (tokenId === undefined) return;
@@ -75,7 +88,6 @@ export function listenToComputerKeyboard(
       if (!event.repeat) emit(wordState.press(event.code, pitch), event.timeStamp);
       return;
     }
-    const binding = options.bindings[event.code];
     if (!binding || binding.type === "disabled") return;
     event.preventDefault();
     event.stopImmediatePropagation();

@@ -30,6 +30,9 @@ const PUNCTUATION = [
   ["Slash", "/"]
 ] as const;
 
+/** The key that switches Overdrive on: no note is ever given to it, with a modifier or without. */
+export const OVERDRIVE_KEY = "Digit0";
+
 export function inputTokenId(token: Pick<InputToken, "physicalKey" | "modifier">): string {
   return `${token.modifier}:${token.physicalKey}`;
 }
@@ -65,7 +68,7 @@ export function keyDisplay(physicalKey: string, language: Language): string {
 /** Cheap unused assignments are exhausted before any modified token is allocated. */
 export function tokenPool(language: Language): InputToken[] {
   const letters = languageTokens(language);
-  const used = new Set(letters.map((token) => token.physicalKey));
+  const used = new Set([...letters.map((token) => token.physicalKey), OVERDRIVE_KEY]);
   const top = TOP_ROW.filter(([physicalKey]) => !used.has(physicalKey)).map(
     ([physicalKey, display]) => ({
       physicalKey,
@@ -78,7 +81,9 @@ export function tokenPool(language: Language): InputToken[] {
     ...TOP_ROW.map(([physicalKey, display]) => ({ physicalKey, display })),
     ...PUNCTUATION.map(([physicalKey, display]) => ({ physicalKey, display }))
   ];
-  const unique = [...new Map(printable.map((token) => [token.physicalKey, token])).values()];
+  const unique = [...new Map(printable.map((token) => [token.physicalKey, token])).values()].filter(
+    (token) => token.physicalKey !== OVERDRIVE_KEY
+  );
   const modified = (["shift", "alt"] as const).flatMap((modifier) =>
     unique.map((token) => ({
       physicalKey: token.physicalKey,

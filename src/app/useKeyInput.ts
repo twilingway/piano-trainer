@@ -42,12 +42,16 @@ export function useKeyInput(
     let stopMidi: (() => void) | undefined;
     let disposed = false;
     if (midiSupported()) {
+      // A pedal sends "down" over and over while it moves: only the press itself is Overdrive.
+      const pedalDown = new Map<string, boolean>();
       const onMidiKey = (event: MidiEvent, deviceId: string) => {
         const chosen = midiDeviceRef.current;
         if (chosen !== "all" && chosen !== deviceId) return;
-        if (event.type === "pedal")
+        if (event.type === "pedal") {
+          if (event.down && !pedalDown.get(deviceId)) trainerRef.current?.activateOverdrive();
+          pedalDown.set(deviceId, event.down);
           trainerRef.current?.pedal(event.down, event.timestamp, event.deviceId);
-        else onKey(event);
+        } else onKey(event);
       };
       listenToMidi(onMidiKey, setDevices).then(
         (stop) => {
@@ -72,6 +76,7 @@ export function useKeyInput(
     return listenToComputerKeyboard(
       (event) => {
         if (event.type === "pedal") {
+          if (event.down && !sustain) trainerRef.current?.activateOverdrive();
           sustain = event.down;
           trainerRef.current?.pedal(event.down, event.timestamp, "keyboard");
           if (!sustain) {
@@ -89,7 +94,10 @@ export function useKeyInput(
       },
       {
         ...keyboardOptions,
-        owedNoteId: () => trainerRef.current?.nextDueNoteId()
+        owedNoteId: () => trainerRef.current?.nextDueNoteId(),
+        onOverdrive: () => {
+          trainerRef.current?.activateOverdrive();
+        }
       }
     );
   }, [trainerRef, keyboardOptions]);
