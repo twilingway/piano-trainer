@@ -3,6 +3,7 @@
 import type { Scoreboard } from "../practice/scoreboard";
 import { CompactPracticeChoices, HAND_CHOICES, HandsPicture } from "./CompactPracticeChoices";
 import { FullscreenIcon, GearIcon, LibraryIcon, PauseIcon, PlayIcon, RestartIcon } from "./icons";
+import { BarPopover } from "./BarPopover";
 import { ViewHelp } from "./ViewHelp";
 
 export type PracticeModeChoice = "wait" | "tempo";
@@ -21,8 +22,14 @@ interface Props {
   readonly settingsOpen: boolean;
   readonly fullscreen: boolean;
   readonly onFullscreen: () => void;
-  /** The view toggles, drawn on the bar's right. */
+  /** The view toggles: the phone's menu and the bar's «Вид ▾» hold them. */
   readonly toggles: ReactNode;
+  /** The wide bar's choice of game. */
+  readonly game?: ReactNode;
+  /** The mode's own settings by the hands, such as the word mode's «Текст ▾». */
+  readonly practice?: ReactNode;
+  /** The applied timing, a chip by the scoreboard. */
+  readonly timing?: ReactNode;
   /** The mode's own controls, which the phone's menu holds instead of a strip of their own. */
   readonly menuExtra?: ReactNode;
   /** The screen's parts show their handles and drag. */
@@ -38,9 +45,9 @@ interface Props {
 }
 
 /**
- * The one bar over the game: the song, play, how to practise, the
- * scoreboard, what to show and the settings. Everything else lives in the
- * library and the settings panel.
+ * The one bar over the game: the song, the game, play, how to practise, the
+ * timing, the scoreboard, what to show and the settings. Everything else lives
+ * in the library and the settings panel.
  */
 export function PlayerTopBar(props: Props) {
   const { board } = props;
@@ -141,6 +148,7 @@ export function PlayerTopBar(props: Props) {
       <span className="topbar-title" title={props.title}>
         {props.title}
       </span>
+      {props.game}
       <button
         type="button"
         className="game-button topbar-restart"
@@ -198,6 +206,7 @@ export function PlayerTopBar(props: Props) {
         <option value="both">Обе руки</option>
         <option value="listen">Только слушать</option>
       </select>
+      {props.practice}
       <label className="topbar-speed" title="Скорость">
         <span className="digits">{Math.round(props.speed * 100)}%</span>
         <input
@@ -212,6 +221,7 @@ export function PlayerTopBar(props: Props) {
           }}
         />
       </label>
+      {props.timing}
       <div className="scoreboard" aria-live="off">
         {board.measure ? (
           <span>
@@ -234,7 +244,29 @@ export function PlayerTopBar(props: Props) {
           MIDI
         </span>
       </div>
-      <div className="topbar-toggles">{props.toggles}</div>
+      <BarPopover
+        className="topbar-view"
+        label="Вид"
+        summary={
+          <>
+            Вид <span aria-hidden="true">▾</span>
+          </>
+        }
+      >
+        <div className="compact-controls__view-head">
+          <span>Что показывать</span>
+          <ViewHelp />
+        </div>
+        <div className="setting-control setting-control--views">{props.toggles}</div>
+        <button
+          type="button"
+          className="game-button"
+          aria-pressed={props.editing}
+          onClick={props.onToggleEditing}
+        >
+          ✎ Редактировать интерфейс
+        </button>
+      </BarPopover>
       <button
         type="button"
         className="icon-button topbar-fullscreen"

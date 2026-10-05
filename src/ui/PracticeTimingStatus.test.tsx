@@ -23,6 +23,12 @@ describe("visible applied timing status", () => {
       "Рейтинг · строгий тайминг"
     );
   });
+  it("says waiting has no rating, with a short label for a narrow bar", () => {
+    const markup = renderToStaticMarkup(<PracticeTimingStatus policy="waiting" ranked={false} />);
+    expect(markup).toContain("Ожидание ноты · без рейтинга");
+    expect(markup).toMatch(/practice-timing-status__short[^>]*>Ожидание</);
+    expect(markup).toContain('title="Ожидание ноты · без рейтинга. Песня ждёт');
+  });
   it("does not label listening, replay or a missing snapshot as educational", () => {
     expect(renderToStaticMarkup(<PracticeTimingStatus policy="listening" ranked={false} />)).toBe(
       ""

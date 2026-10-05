@@ -31,7 +31,8 @@ import { Workspace } from "./ui/Workspace";
 import { useWordTyping } from "./app/useWordTyping";
 import { WordQuality, WordTicker, WordTypingBoard } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
-import { GameModeSwitch } from "./ui/GameModeSwitch";
+import { GameModeSegment, GameModeSwitch } from "./ui/GameModeSwitch";
+import { WordTextPopover } from "./ui/WordTextPopover";
 import { PracticeTimingStatus } from "./ui/PracticeTimingStatus";
 import { PlayerSettings } from "./ui/settings/PlayerSettings";
 
@@ -192,18 +193,18 @@ export function App() {
     />
   );
 
+  const chooseGame = (enabled: boolean) => {
+    computerKeyboard.endEditing();
+    startFromRef.current = null;
+    word.update({ enabled });
+  };
+  const timingStatus = (
+    <PracticeTimingStatus policy={snapshot?.timingPolicy} ranked={game.ranked} />
+  );
   const modeSwitch = (
-    <GameModeSwitch
-      wordTyping={word.enabled}
-      locked={playing}
-      onChange={(enabled) => {
-        computerKeyboard.endEditing();
-        startFromRef.current = null;
-        word.update({ enabled });
-      }}
-    >
+    <GameModeSwitch wordTyping={word.enabled} locked={playing} onChange={chooseGame}>
       {word.enabled && wordSettings}
-      <PracticeTimingStatus policy={snapshot?.timingPolicy} ranked={game.ranked} />
+      {timingStatus}
     </GameModeSwitch>
   );
 
@@ -228,6 +229,20 @@ export function App() {
           fullscreen={fullscreen.active}
           onFullscreen={() => void fullscreen.toggle()}
           toggles={toggles}
+          game={
+            <GameModeSegment wordTyping={word.enabled} locked={playing} onChange={chooseGame} />
+          }
+          practice={
+            word.enabled && (
+              <WordTextPopover
+                settings={wordSettings}
+                language={word.language}
+                metrics={word.result?.metrics}
+                notice={word.notice}
+              />
+            )
+          }
+          timing={timingStatus}
           // A phone holds the game's strip in the menu.
           menuExtra={
             <>

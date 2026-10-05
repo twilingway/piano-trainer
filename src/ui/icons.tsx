@@ -37,6 +37,19 @@ export function KeyboardIcon() {
   );
 }
 
+/** A computer keyboard: the word mode's keys. */
+export function TypingIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      {[6, 9.5, 13, 16.5].map((x) => (
+        <rect key={x} x={x - 1} y="9" width="2" height="2" className="filled" />
+      ))}
+      <line x1="7" x2="17" y1="15" y2="15" />
+    </svg>
+  );
+}
+
 export function NoteCardIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
