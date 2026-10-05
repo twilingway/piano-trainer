@@ -34,4 +34,19 @@ describe("the word mode's text window", () => {
     expect(markup).toContain("Тот же текст");
     expect(markup).not.toContain("Качество текста");
   });
+
+  it.each(["ru", "en"] as const)(
+    "keeps English interface labels when the selected word language is %s",
+    (language) => {
+      setInterfaceLanguage("en");
+      const markup = renderToStaticMarkup(
+        <WordTextPopover settings={null} language={language} metrics={metrics} notice={undefined} />
+      );
+      expect(markup).toContain('aria-label="Text: language, part, layout and quality"');
+      expect(markup).toContain("Text quality");
+      expect(markup).toContain("100% of notes in words");
+      expect(markup).toContain(`>${language.toUpperCase()}<`);
+      expect(markup).not.toMatch(/[А-Яа-яЁё]/);
+    }
+  );
 });
