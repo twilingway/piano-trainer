@@ -150,7 +150,7 @@ export class ComputerKeyboardLayer implements KeysLayer {
 
   /** Lays every key in its row `total` pixels wide where `geometry` puts the keyboard. */
   layout(_keys: unknown, geometry: Geometry, total: number): void {
-    const { faces } = layoutComputerKeys(total, geometry);
+    const { faces, inset } = layoutComputerKeys(total, geometry);
     for (const key of this.keys) {
       for (const sprite of [key.halo, key.base, key.glass, key.edge, key.label]) sprite.destroy();
     }
@@ -158,9 +158,9 @@ export class ComputerKeyboardLayer implements KeysLayer {
     const pad = (faces[0]?.height ?? 0) * 0.18;
     place(
       this.casing,
-      -pad,
+      inset - pad,
       geometry.keyboardTop - pad,
-      total + pad * 2,
+      total - inset * 2 + pad * 2,
       geometry.keyboardHeight + pad * 2,
       0
     );

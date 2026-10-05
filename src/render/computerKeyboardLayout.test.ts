@@ -92,3 +92,18 @@ describe("narrow computer keyboard", () => {
     expect(wide.faces.some((item) => item.code === "Space")).toBe(true);
   });
 });
+
+describe("short computer keyboard", () => {
+  it("keeps the keys' shape in a low view: narrower and in the middle", () => {
+    const total = 840;
+    const geometry = computerGeometry(300, total, ALL);
+    const { faces, inset } = layoutComputerKeys(total, geometry);
+    const key = faces.find((item) => item.code === "KeyL");
+    expect(inset).toBeGreaterThan(0);
+    // A key as tall as on a roomy view, against its width.
+    expect((key?.height ?? 0) / (key?.width ?? 1)).toBeGreaterThan(0.6);
+    const left = Math.min(...faces.map((item) => item.x));
+    const right = Math.max(...faces.map((item) => item.x + item.width));
+    expect(left + right).toBeCloseTo(total);
+  });
+});

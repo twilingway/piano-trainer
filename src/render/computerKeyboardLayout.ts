@@ -130,9 +130,18 @@ export function computerGeometry(
 export function layoutComputerKeys(
   total: number,
   geometry: Geometry
-): { readonly faces: readonly KeyFace[]; readonly keys: Map<number, KeyRect> } {
+): {
+  readonly faces: readonly KeyFace[];
+  readonly keys: Map<number, KeyRect>;
+  /** The empty room on each side when the view's height made the keys narrower. */
+  readonly inset: number;
+} {
   const board = boardFor(total);
-  const unit = total / board.units;
+  // Cut short by the view's height, the keys keep their shape: narrower, in the middle.
+  const tall = board.rowPerUnit * board.rows.length;
+  const fit = geometry.keyboardHeight > 0 ? geometry.keyboardHeight / tall : Infinity;
+  const unit = Math.min(total / board.units, fit);
+  const inset = (total - unit * board.units) / 2;
   const rowHeight = geometry.keyboardHeight / board.rows.length;
   const gap = unit * GAP_SHARE;
   // A short keyboard keeps its rows apart without crushing them.
@@ -142,7 +151,7 @@ export function layoutComputerKeys(
   board.rows.forEach(({ indent, slots }, line) => {
     let left = indent;
     for (const slot of slots) {
-      const x = left * unit + gap / 2;
+      const x = inset + left * unit + gap / 2;
       const width = slot.width * unit - gap;
       const pitch = slot.caption === undefined ? keyColumn(slot.code) : undefined;
       faces.push({
@@ -158,5 +167,5 @@ export function layoutComputerKeys(
       left += slot.width;
     }
   });
-  return { faces, keys };
+  return { faces, keys, inset };
 }
