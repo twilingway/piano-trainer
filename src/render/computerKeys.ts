@@ -20,6 +20,7 @@ export interface ComputerKeyboard {
 export type WordPitch = (tokenId: string, owedNoteId: string | undefined) => number | undefined;
 
 const BOTH_HANDS: ReadonlySet<Hand> = new Set(["left", "right"]);
+const EVERY_NOTE = () => true;
 const NOTHING: ReadonlySet<number> = new Set();
 const MODIFIER_ORDER: Readonly<Record<Modifier, number>> = { none: 0, shift: 1, alt: 2 };
 
@@ -141,6 +142,7 @@ export class ComputerKeys {
       sounding: listening ? sounding : NOTHING,
       // Every note of the lane is the player's, whichever hand types it.
       hands: listening ? frame.hands : BOTH_HANDS,
+      owns: listening ? frame.owns : EVERY_NOTE,
       ...(frame.waitingFor ? { waitingFor: this.inLane(frame.waitingFor) } : {}),
       ...(graded ? { graded } : {})
     };

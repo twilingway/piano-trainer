@@ -198,6 +198,7 @@ export class Trainer {
           mode: session.options.mode,
           speed: session.options.speed,
           hands: [...session.options.hands],
+          ...(session.options.playable ? { playable: session.options.playable } : {}),
           from: session.startedFrom,
           timing: {
             rulesVersion: 2,
@@ -395,6 +396,7 @@ export class Trainer {
       owedNoteId: session.owedNote()?.id,
       waitingFor: session.waiting ? session.nextDue() : [],
       hands: session.options.hands,
+      owns: session.owns,
       hints: !this.performanceMode,
       colorOf: this.comparison?.colorOf,
       board: this.board ?? this.combo.board(),
@@ -414,6 +416,7 @@ export class Trainer {
       sounding: NOTHING,
       due: [],
       hands: session.options.hands,
+      owns: session.owns,
       colorOf: mirror.colorOf
     });
     this.sinceSnapshot += deltaMs;

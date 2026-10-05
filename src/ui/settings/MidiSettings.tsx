@@ -1,5 +1,20 @@
+import { useEffect } from "react";
+
 import { useI18n } from "../../app/useI18n";
+import { DEVICE_PRESETS, deviceKeys } from "../../input/deviceRange";
+import type { DeviceRange, DevicePreset, RangeCapture } from "../../input/deviceRange";
+import { pitchLabel } from "../../input/keyboardLayouts";
 import type { MidiDevice } from "../../input/midiInput";
+
+/** The player's keyboard and capturing it from their lowest and highest keys. */
+export interface DeviceRangeControls {
+  readonly range: DeviceRange;
+  readonly onRange: (range: DeviceRange) => void;
+  /** A capture in progress, or null. */
+  readonly capture: RangeCapture | null;
+  readonly onCapture: () => void;
+  readonly onCancelCapture: () => void;
+}
 
 interface Props {
   readonly devices: readonly MidiDevice[];
@@ -8,11 +23,35 @@ interface Props {
   readonly onDevice: (id: string) => void;
   readonly midiError: string | null;
   readonly locked?: boolean;
+  readonly keyboard: DeviceRangeControls;
 }
 
 /** The sound and MIDI tab: which piano plays, or why there is none. */
-export function MidiSettings({ devices, deviceId, onDevice, midiError, locked = false }: Props) {
+export function MidiSettings({
+  devices,
+  deviceId,
+  onDevice,
+  midiError,
+  locked = false,
+  keyboard
+}: Props) {
   const { t } = useI18n();
+  const titles: Readonly<Record<DevicePreset, string>> = {
+    "88": t("88 клавиш"),
+    "76": t("76 клавиш"),
+    "61": t("61 клавиша"),
+    "49": t("49 клавиш"),
+    "37": t("37 клавиш"),
+    "25": t("25 клавиш")
+  };
+  const span = (range: DeviceRange) => {
+    const { low, high } = deviceKeys(range);
+    return `${pitchLabel(low)}–${pitchLabel(high)}`;
+  };
+  const { range, capture, onCancelCapture } = keyboard;
+  // A capture lasts while its prompt is on screen: closing the settings or the tab ends it.
+  useEffect(() => onCancelCapture, [onCancelCapture]);
+  const own = deviceKeys(range);
   return (
     <div className="settings-list">
       {devices.length > 0 ? (
@@ -45,6 +84,56 @@ export function MidiSettings({ devices, deviceId, onDevice, midiError, locked = 
                 )}
         </p>
       )}
+      <label className="setting">
+        <span>{t("Моя клавиатура")}</span>
+        <select
+          className="game-select"
+          aria-label={t("Моя клавиатура")}
+          value={range.preset}
+          disabled={locked || capture !== null}
+          onChange={(event) => {
+            const preset = event.target.value;
+            if (preset !== "custom") keyboard.onRange({ preset: preset as DevicePreset });
+          }}
+        >
+          {DEVICE_PRESETS.map((preset) => (
+            <option key={preset} value={preset}>
+              {titles[preset]} ({span({ preset })})
+            </option>
+          ))}
+          {range.preset === "custom" && (
+            <option value="custom">
+              {t("Свой диапазон: {keys}, клавиш: {count}", {
+                keys: span(range),
+                count: own.high - own.low + 1
+              })}
+            </option>
+          )}
+        </select>
+      </label>
+      <div className="setting">
+        <span className="setting-hint">
+          {capture === null
+            ? t("Ноты вне клавиатуры играет программа, в счёт они не идут.")
+            : capture.step === "first"
+              ? t("Нажмите самую нижнюю клавишу своей клавиатуры")
+              : t("Теперь нажмите самую верхнюю клавишу")}
+        </span>
+        {capture === null ? (
+          <button
+            type="button"
+            className="game-button"
+            disabled={locked}
+            onClick={keyboard.onCapture}
+          >
+            {t("Определить нажатием")}
+          </button>
+        ) : (
+          <button type="button" className="game-button" onClick={keyboard.onCancelCapture}>
+            {t("Отмена")}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

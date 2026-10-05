@@ -6,6 +6,8 @@ import { difficultyWindows, judgeOffset, LEARNING_LATE_WINDOW_MS } from "./gameR
 import type { Difficulty, Judgement } from "./gameRules";
 import { SongTimeline } from "./timing";
 import { SessionHolds } from "./sessionHolds";
+import { ownsNote } from "./playableRange";
+import type { PlayableRange } from "./playableRange";
 import type { HoldStatistics } from "./sessionHolds";
 
 export type PracticeMode = "wait" | "tempo";
@@ -21,6 +23,8 @@ export interface PracticeOptions {
   readonly from?: number;
   readonly to?: number;
   readonly missGraceMs?: number;
+  /** The keys the player's instrument has; their hands' notes outside it go to the program. */
+  readonly playable?: PlayableRange | undefined;
 }
 
 /** "skipped": before the point the run was started from; it never counts. */
@@ -105,8 +109,8 @@ export class PracticeSession {
     this.inputGraceMs = options.missGraceMs ?? 250;
     const inRange = (note: SongNote) =>
       note.start >= (options.from ?? 0) && note.start < (options.to ?? Infinity);
-    this.playerNotes = song.notes.filter((note) => options.hands.has(note.hand) && inRange(note));
-    this.autoNotes = song.notes.filter((note) => !options.hands.has(note.hand) && inRange(note));
+    this.playerNotes = song.notes.filter((note) => this.owns(note) && inRange(note));
+    this.autoNotes = song.notes.filter((note) => !this.owns(note) && inRange(note));
     this.game = new SessionScoring(
       this.scoringNotes(this.playerNotes),
       options.difficulty ?? "normal",
@@ -242,6 +246,10 @@ export class PracticeSession {
       (this.timeline.at(performanceMs) ?? this.time) / this.options.speed
     );
   }
+
+  /** Whether the player plays this note; the program plays the rest. Bound: pass it around. */
+  readonly owns = (note: SongNote): boolean =>
+    ownsNote(note, this.options.hands, this.options.playable);
 
   /** Song seconds this run started from: 0, or the point of the last seek. */
   get startedFrom(): number {

@@ -82,7 +82,7 @@ export interface NotesFrame {
   readonly time: number;
   readonly lookAhead: number;
   readonly statusOf: (noteId: string) => NoteStatus | undefined;
-  readonly hands: ReadonlySet<Hand>;
+  readonly owns: (note: SongNote) => boolean;
   readonly hints?: boolean;
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
 }
@@ -291,7 +291,7 @@ export class NotesLayer {
       if (note.start <= state.time && state.time < note.start + note.duration) {
         const previous = this.playing.get(note.pitch);
         // At a shared pitch the player's fingering takes priority over accompaniment.
-        if (!previous || state.hands.has(note.hand) || !state.hands.has(previous.hand)) {
+        if (!previous || state.owns(note) || !state.owns(previous)) {
           this.playing.set(note.pitch, note);
         }
       }
@@ -323,8 +323,7 @@ export class NotesLayer {
       body.visible = onScreen && visibleHeight > 0;
       // A note taken bursts on its key and its card is gone; the key's own light carries on.
       const struck =
-        state.statusOf(note.id) === "hit" ||
-        (!state.hands.has(note.hand) && note.start <= state.time);
+        state.statusOf(note.id) === "hit" || (!state.owns(note) && note.start <= state.time);
       frame.visible = onScreen && cards && !struck;
       face.visible = frame.visible;
       glow.visible = frame.visible;
@@ -338,7 +337,7 @@ export class NotesLayer {
       name.visible = false;
       if (!onScreen) continue;
 
-      const playerNote = state.hands.has(note.hand);
+      const playerNote = state.owns(note);
       const status = state.statusOf(note.id);
       const barWidth = trail
         ? key.width * TRAIL_SHARE

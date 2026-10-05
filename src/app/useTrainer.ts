@@ -21,7 +21,10 @@ const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
 
 interface Options {
   readonly wordTyping?: boolean;
-  readonly gameOptions?: Pick<PracticeOptions, "difficulty" | "learningWindow" | "from" | "to">;
+  readonly gameOptions?: Pick<
+    PracticeOptions,
+    "difficulty" | "learningWindow" | "from" | "to" | "playable"
+  >;
   readonly ranked?: boolean;
   readonly song: Song;
   /** The song's key for the trainer's per-song state. */
@@ -247,6 +250,8 @@ export function useTrainer({
     setMode,
     handChoice,
     setHandChoice,
+    /** The hands the player plays in the run: none while listening. */
+    playerHands: practiceOptions.hands,
     speed,
     setSpeed,
     listening,

@@ -10,14 +10,30 @@ interface Props {
   /** Semitones the song is moved by. */
   readonly transpose: number;
   readonly onTranspose: Dispatch<SetStateAction<number>>;
+  /** Whole octaves the song is moved by on top of the key, −2…+2. */
+  readonly octave: number;
+  readonly onOctave: (octave: number) => void;
+  /** Notes of the player's hands off their keyboard, and the octave that fits them best. */
+  readonly outside: number;
+  readonly bestOctave: number;
   /** The player corrected some fingers. */
   readonly fingersChanged: boolean;
   readonly onResetFingers: () => void;
 }
 
-/** The song tab: its key and the finger corrections. */
-export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers }: Props) {
+/** The song tab: its key, its octave and the finger corrections. */
+export function SongSettings({
+  sourceKey,
+  transpose,
+  onTranspose,
+  octave,
+  onOctave,
+  outside,
+  bestOctave,
+  onResetFingers
+}: Props) {
   const { t } = useI18n();
+  const move = bestOctave - octave;
   return (
     <div className="settings-list">
       {sourceKey && (
@@ -69,6 +85,58 @@ export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers
             </button>
           </span>
         </label>
+      )}
+      <div className="setting">
+        <span>{t("Октава")}</span>
+        <span className="setting-control">
+          <button
+            type="button"
+            className="game-button"
+            aria-label={t("Октавой ниже")}
+            disabled={octave <= -2}
+            onClick={() => {
+              onOctave(octave - 1);
+            }}
+          >
+            −
+          </button>
+          <span className="digits">{octave > 0 ? `+${String(octave)}` : String(octave)}</span>
+          <button
+            type="button"
+            className="game-button"
+            aria-label={t("Октавой выше")}
+            disabled={octave >= 2}
+            onClick={() => {
+              onOctave(octave + 1);
+            }}
+          >
+            +
+          </button>
+        </span>
+      </div>
+      {outside > 0 && (
+        <div className="setting">
+          <span className="setting-hint">
+            {t("Нот вне вашей клавиатуры: {count}.", { count: outside })}
+          </span>
+          {move !== 0 && (
+            <button
+              type="button"
+              className="game-button"
+              onClick={() => {
+                onOctave(bestOctave);
+              }}
+            >
+              {move === -1
+                ? t("Октава вниз")
+                : move === 1
+                  ? t("Октава вверх")
+                  : move < 0
+                    ? t("Октав вниз: {count}", { count: -move })
+                    : t("Октав вверх: {count}", { count: move })}
+            </button>
+          )}
+        </div>
       )}
       <div className="setting">
         <span>{t("Пальцы, исправленные кликом по ноте")}</span>

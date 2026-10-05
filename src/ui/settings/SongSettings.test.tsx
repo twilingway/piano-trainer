@@ -40,10 +40,15 @@ let host: HTMLDivElement;
 let root: Root;
 const onTranspose = vi.fn<(value: SetStateAction<number>) => void>();
 const onResetFingers = vi.fn();
+const onOctave = vi.fn<(octave: number) => void>();
 const defaults: ComponentProps<typeof SongSettings> = {
   sourceKey: { tonic: 0, mode: "major", fifths: 0 },
   transpose: 0,
   onTranspose,
+  octave: 0,
+  onOctave,
+  outside: 0,
+  bestOctave: 0,
   fingersChanged: false,
   onResetFingers
 };
@@ -179,12 +184,35 @@ describe("song key settings", () => {
     await render({ sourceKey: undefined, fingersChanged: true });
     expect(host.querySelector("select")).toBeNull();
     expect(host.querySelector("[aria-label='На полтона выше']")).toBeNull();
-    const reset = host.querySelector<HTMLButtonElement>("button");
+    const reset = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+      (button) => button.textContent === "Сбросить пальцы"
+    );
     expect(reset?.textContent).toBe("Сбросить пальцы");
     expect(reset?.disabled).toBe(true);
     expect(host.textContent).toContain("Изменение пальцев временно отключено");
     reset?.click();
     expect(onResetFingers).not.toHaveBeenCalled();
+  });
+
+  it("offers the octave that fits the player's keyboard", async () => {
+    await render({ outside: 7, bestOctave: -1 });
+    expect(host.textContent).toContain("Нот вне вашей клавиатуры: 7.");
+    const down = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+      (button) => button.textContent === "Октава вниз"
+    );
+    if (!down) throw new Error("Missing octave button");
+    await act(async () => {
+      await Promise.resolve();
+      down.click();
+    });
+    expect(onOctave).toHaveBeenCalledWith(-1);
+  });
+
+  it("only counts the notes when no octave helps", async () => {
+    await render({ outside: 3, bestOctave: 0 });
+    expect(host.textContent).toContain("Нот вне вашей клавиатуры: 3.");
+    expect(host.textContent).not.toContain("Октава вниз");
+    expect(host.textContent).not.toContain("Октава вверх");
   });
 
   it("labels an inferred source key without claiming it came from the score", async () => {

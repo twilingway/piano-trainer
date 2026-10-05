@@ -262,5 +262,56 @@ export const settingsMessages3 = {
   },
   "Си-бемоль минор": {
     en: "B♭ minor"
+  },
+  "В Ranked ноты вне вашей клавиатуры ({count}) засчитываются промахами.": {
+    en: "In Ranked, the notes outside your keyboard ({count}) count as misses."
+  },
+  "76 клавиш": {
+    en: "76 keys"
+  },
+  "37 клавиш": {
+    en: "37 keys"
+  },
+  "Моя клавиатура": {
+    en: "My keyboard"
+  },
+  "Свой диапазон: {keys}, клавиш: {count}": {
+    en: "Custom range: {keys}, {count} keys"
+  },
+  "Ноты вне клавиатуры играет программа, в счёт они не идут.": {
+    en: "The program plays the notes outside the keyboard; they are not scored."
+  },
+  "Нажмите самую нижнюю клавишу своей клавиатуры": {
+    en: "Press the lowest key of your keyboard"
+  },
+  "Теперь нажмите самую верхнюю клавишу": {
+    en: "Now press the highest key"
+  },
+  "Определить нажатием": {
+    en: "Detect by pressing"
+  },
+  Октава: {
+    en: "Octave"
+  },
+  "Октавой ниже": {
+    en: "An octave lower"
+  },
+  "Октавой выше": {
+    en: "An octave higher"
+  },
+  "Нот вне вашей клавиатуры: {count}.": {
+    en: "Notes outside your keyboard: {count}."
+  },
+  "Октава вниз": {
+    en: "Octave down"
+  },
+  "Октава вверх": {
+    en: "Octave up"
+  },
+  "Октав вниз: {count}": {
+    en: "Octaves down: {count}"
+  },
+  "Октав вверх: {count}": {
+    en: "Octaves up: {count}"
   }
 } satisfies Messages;

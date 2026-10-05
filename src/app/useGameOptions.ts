@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Difficulty } from "../practice/gameRules";
+import type { PlayableRange } from "../practice/playableRange";
 
 interface Preferences {
   difficulty: Difficulty;
@@ -33,7 +34,13 @@ function load(): Preferences {
     return DEFAULTS;
   }
 }
-export function useGameOptions(songKey: string, duration: number, practiceOnly = false) {
+/** `playable` is the player's keyboard; Ranked and the practice-only word mode ask for every note. */
+export function useGameOptions(
+  songKey: string,
+  duration: number,
+  practiceOnly = false,
+  playable?: PlayableRange
+) {
   const [preferences, setPreferences] = useState(load);
   const ranked = preferences.ranked && !practiceOnly;
   const [storedRange, setRange] = useState({ songKey, from: 0, to: duration, loop: false });
@@ -60,9 +67,19 @@ export function useGameOptions(songKey: string, duration: number, practiceOnly =
       difficulty: preferences.difficulty,
       learningWindow: preferences.learningWindow && !ranked,
       from: ranked ? 0 : range.from,
-      to: ranked ? duration : range.to
+      to: ranked ? duration : range.to,
+      ...(playable && !ranked && !practiceOnly ? { playable } : {})
     }),
-    [preferences.difficulty, preferences.learningWindow, ranked, range.from, range.to, duration]
+    [
+      preferences.difficulty,
+      preferences.learningWindow,
+      ranked,
+      range.from,
+      range.to,
+      duration,
+      playable,
+      practiceOnly
+    ]
   );
   return { ...preferences, ranked, range, options, update, updateRange };
 }

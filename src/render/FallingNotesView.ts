@@ -439,7 +439,7 @@ export class FallingNotesView {
       for (const [pitch, note] of playing) {
         const key = this.keys.get(pitch);
         // The player's own notes while held, and the program's while it sounds them.
-        const own = state.hands.has(note.hand) && state.pressed.has(pitch);
+        const own = state.owns(note) && state.pressed.has(pitch);
         if (!key || !(own || state.sounding.has(pitch))) continue;
         strikes.push({ pitch, x: key.x + key.width / 2, color: noteColor(note, this.computer) });
       }
@@ -481,7 +481,7 @@ export class FallingNotesView {
     // A note burns away on its key while it sounds: the player's held notes and the program's.
     const sounding: FxKey[] = [];
     for (const [pitch, note] of playing) {
-      const own = state.hands.has(note.hand) && state.pressed.has(pitch);
+      const own = state.owns(note) && state.pressed.has(pitch);
       const key = own || state.sounding.has(pitch) ? fxKey(pitch) : undefined;
       if (key) sounding.push(key);
     }
@@ -515,7 +515,7 @@ export class FallingNotesView {
       for (const note of this.songNotes) {
         if (note.start >= until) break;
         if (note.start + note.duration <= state.time) continue;
-        if (state.hands.size > 0 && !state.hands.has(note.hand)) continue;
+        if (state.hands.size > 0 && !state.owns(note)) continue;
         const key = this.keys.get(note.pitch);
         if (key) spans.push({ left: key.x, right: key.x + key.width });
         if (spans.length >= PAN_NOTES) break;

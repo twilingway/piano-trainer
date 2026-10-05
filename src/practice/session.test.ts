@@ -316,3 +316,64 @@ describe("timestamp clock", () => {
     expect(run.stats().game?.partialChords).toBe(1);
   });
 });
+
+describe("the player's keyboard range", () => {
+  // Right hand: E4 with C6 at 0, G2 at 1. Left hand: C3 at 0.
+  const WIDE: Song = {
+    ...SONG,
+    notes: [note("c3", 48, 0, "left"), note("e4", 64, 0), note("c6", 84, 0), note("g2", 43, 1)],
+    duration: 1.5
+  };
+  const narrow = (mode: PracticeMode) =>
+    new PracticeSession(WIDE, {
+      mode,
+      hands: new Set<Hand>(["right"]),
+      speed: 1,
+      playable: { low: 48, high: 72 }
+    });
+
+  it("waits only for the keys the keyboard has and plays the rest", () => {
+    const run = narrow("wait");
+    expect(run.nextDue().map((owed) => owed.id)).toEqual(["e4"]);
+    const events = run.advance(LEAD_IN_S);
+    expect(events).toContainEqual({ type: "autoNoteOn", pitch: 84 });
+    expect(run.waiting).toBe(true);
+    run.pressKey(64);
+    expect(run.waiting).toBe(false);
+    run.advance(1);
+    expect(run.time).toBe(1);
+    expect(run.waiting).toBe(false);
+  });
+
+  it("neither misses nor counts a note outside the keyboard in tempo", () => {
+    const run = narrow("tempo");
+    run.advance(LEAD_IN_S);
+    run.pressKey(64);
+    const events = run.advance(2);
+    expect(events).toContainEqual({ type: "autoNoteOn", pitch: 43 });
+    expect(events.some((event) => event.type === "miss")).toBe(false);
+    expect(run.stats()).toMatchObject({ hits: 1, misses: 0 });
+    expect(run.statusOf("g2")).toBeUndefined();
+  });
+
+  it("plays the whole part and finishes when none of it fits", () => {
+    const run = new PracticeSession(WIDE, {
+      mode: "wait",
+      hands: new Set<Hand>(["right"]),
+      speed: 1,
+      playable: { low: 96, high: 108 }
+    });
+    run.advance(LEAD_IN_S + 5);
+    expect(run.advance(0.1)).toContainEqual({ type: "finished" });
+    expect(run.stats()).toMatchObject({ hits: 0, misses: 0 });
+  });
+
+  it("asks for every note of the hands without a range", () => {
+    const run = new PracticeSession(WIDE, {
+      mode: "wait",
+      hands: new Set<Hand>(["right"]),
+      speed: 1
+    });
+    expect(run.nextDue().map((owed) => owed.id)).toEqual(["e4", "c6"]);
+  });
+});

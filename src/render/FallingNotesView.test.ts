@@ -122,7 +122,8 @@ describe("accompaniment fire independent of key colours", () => {
       pressed: new Set(),
       sounding: new Set(),
       due: [],
-      hands: new Set(["right"])
+      hands: new Set(["right"]),
+      owns: (note) => note.hand === "right"
     };
     view.draw(frame);
     const before = flatDraw.mock.lastCall?.[5];
@@ -154,7 +155,8 @@ describe("accompaniment fire independent of key colours", () => {
       pressed: new Set(),
       sounding: new Set(),
       due: [],
-      hands: new Set(["right"])
+      hands: new Set(["right"]),
+      owns: (note) => note.hand === "right"
     };
     view.draw({ ...frame, time: 3 });
     expect(sprites[0]?.body.visible).toBe(false);
@@ -194,7 +196,8 @@ describe("accompaniment fire independent of key colours", () => {
       pressed: new Set(),
       sounding: new Set(),
       due: [],
-      hands: new Set(["right"])
+      hands: new Set(["right"]),
+      owns: (note) => note.hand === "right"
     });
     expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(roadMode ? 8 : 2);
     expect(notesDraw.mock.calls[0]?.[0].time).toBe(0.1);
@@ -209,7 +212,8 @@ describe("accompaniment fire independent of key colours", () => {
         pressed: new Set(),
         sounding: new Set(),
         due: [],
-        hands: new Set(["right"])
+        hands: new Set(["right"]),
+        owns: (note) => note.hand === "right"
       });
       return sprites.map(({ body, digit, name }) => {
         expect(digit.visible).toBe(true);
@@ -242,7 +246,8 @@ describe("accompaniment fire independent of key colours", () => {
       pressed: new Set([60]),
       sounding: new Set([60]),
       due: [],
-      hands: new Set(["right"])
+      hands: new Set(["right"]),
+      owns: (note) => note.hand === "right"
     };
     view.draw(frame);
     expect(keyboardDraw.mock.calls[0]?.[0].playing.get(60)?.finger).toBe(1);
@@ -269,6 +274,7 @@ describe("accompaniment fire independent of key colours", () => {
       sounding: new Set([accompaniment.pitch]),
       due: [],
       hands: new Set([hand]),
+      owns: (note) => note.hand === hand,
       graded: [{ pitch: own.pitch, grade: "perfect" }]
     };
     view.draw(frame);

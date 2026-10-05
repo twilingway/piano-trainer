@@ -101,3 +101,18 @@ describe("compareTake", () => {
     expect(review.summary).toMatchObject({ owed: 2, good: 2, missed: 0 });
   });
 });
+
+describe("compareTake on a narrower keyboard", () => {
+  const playedAll = [played(60, 0, 0.95), played(62, 1, 1.9), played(64, 2, 2.9)];
+
+  it("does not ask for the notes the program played", () => {
+    const review = compareTake(SONG, { ...take(playedAll), playable: { low: 48, high: 64 } });
+    expect(review.notes.map((item) => item.note.id)).toEqual(["c", "d", "e"]);
+    expect(review.summary).toMatchObject({ owed: 3, missed: 0 });
+  });
+
+  it("asks for every note of an older take without a range", () => {
+    const review = compareTake(SONG, take(playedAll));
+    expect(review.summary).toMatchObject({ owed: 4, missed: 1 });
+  });
+});
