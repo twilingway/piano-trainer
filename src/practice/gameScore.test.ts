@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { comboMultiplier, difficultyWindows, holdTicks, judgeOffset } from "./gameRules";
-import { idealScore, rankForAccuracy, starsForScore, timingStatistics } from "./gameResults";
+import { idealScore, rankForAccuracy, starsForAccuracy, timingStatistics } from "./gameResults";
 import { GameScore } from "./gameScore";
 
 describe("timing grades", () => {
@@ -45,7 +45,7 @@ describe("score and accuracy", () => {
     score.hold("a", 5, 0.5);
     score.hit("b", 90, 1);
     score.wrong();
-    expect(score.snapshot(1)).toMatchObject({ accuracy: 75, rank: "C", holdScore: 50 });
+    expect(score.snapshot(1)).toMatchObject({ accuracy: 75, stars: 2, rank: "C", holdScore: 50 });
     expect(score.snapshot(1).timing).toMatchObject({ meanMs: 32.5, medianMs: 32.5 });
   });
 
@@ -180,9 +180,12 @@ describe("result statistics and target", () => {
       "D",
       "F"
     ]);
-    expect([0, 299, 300, 500, 700, 850, 1500].map((value) => starsForScore(value, 1000))).toEqual([
-      1, 1, 2, 3, 4, 5, 5
+    expect([0, 25, 25.001, 50, 50.001, 74.5918, 75, 75.001, 100].map(starsForAccuracy)).toEqual([
+      0, 0, 1, 1, 2, 2, 2, 3, 3
     ]);
+    expect(starsForAccuracy(null)).toBeNull();
+    expect(starsForAccuracy(NaN)).toBeNull();
+    expect(starsForAccuracy(Infinity)).toBeNull();
   });
 
   it("uses perfect chronological attacks and long holds without Overdrive as target", () => {
@@ -197,6 +200,6 @@ describe("result statistics and target", () => {
       for (let tick = 1; tick <= 5; tick++)
         score.hold(String(index), tick, note.start + tick * 0.1);
     }
-    expect(score.snapshot(10)).toMatchObject({ score: 1650, targetScore: 1650, stars: 5 });
+    expect(score.snapshot(10)).toMatchObject({ score: 1650, targetScore: 1650, stars: 3 });
   });
 });
