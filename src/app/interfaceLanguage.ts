@@ -1,16 +1,28 @@
-import { DEFAULT_LOCALE, resolveLocale } from "../i18n/locales";
+import { resolveLocale } from "../i18n/locales";
 import type { Locale } from "../i18n/locales";
+import { DEFAULT_INTERFACE_LOCALE, selectInterfaceLocale } from "../i18n/interfaceLocale";
 
 export const LANGUAGE_STORAGE_KEY = "interface-language-v1";
 
 import { appMessages } from "../i18n/appMessages";
 import { translate } from "../i18n/translate";
 
-export function loadInterfaceLanguage(storage: Pick<Storage, "getItem">): Locale {
+export function readBrowserLanguage(): string | undefined {
   try {
-    return resolveLocale(storage.getItem(LANGUAGE_STORAGE_KEY));
+    return navigator.language || navigator.languages[0];
   } catch {
-    return DEFAULT_LOCALE;
+    return undefined;
+  }
+}
+
+export function loadInterfaceLanguage(
+  storage: Pick<Storage, "getItem">,
+  browserLanguage: unknown = readBrowserLanguage()
+): Locale {
+  try {
+    return selectInterfaceLocale(storage.getItem(LANGUAGE_STORAGE_KEY), browserLanguage);
+  } catch {
+    return selectInterfaceLocale(null, browserLanguage);
   }
 }
 
@@ -23,11 +35,12 @@ export function saveInterfaceLanguage(storage: Pick<Storage, "setItem">, locale:
   }
 }
 
-let locale: Locale = DEFAULT_LOCALE;
+let locale: Locale = DEFAULT_INTERFACE_LOCALE;
 try {
   locale = loadInterfaceLanguage(localStorage);
 } catch {
   // Some browsers deny even accessing localStorage.
+  locale = selectInterfaceLocale(null, readBrowserLanguage());
 }
 const listeners = new Set<() => void>();
 

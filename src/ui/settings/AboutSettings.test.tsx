@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { setInterfaceLanguage } from "../../app/interfaceLanguage";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +12,7 @@ const sha = "bf6b780978702193f91bb9e7c0689a5652c209bf";
 const builtAt = "2026-10-05T13:04:11.000Z";
 
 beforeEach(() => {
+  setInterfaceLanguage("ru");
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   host = document.createElement("div");
   document.body.append(host);

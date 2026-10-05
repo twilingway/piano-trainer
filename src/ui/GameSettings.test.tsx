@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,6 +34,7 @@ async function render(outsideKeyboard: number, practiceOnly = false) {
 }
 
 beforeEach(() => {
+  setInterfaceLanguage("ru");
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   host = document.createElement("div");
   root = createRoot(host);

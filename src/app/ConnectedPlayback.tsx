@@ -8,6 +8,7 @@ import { WordTicker, WordTypingBoard } from "../ui/WordTypingBoard";
 import { useSongProgress } from "./useSongProgress";
 import { useTrainerSelector, type TrainerSnapshotSource } from "./trainerSnapshots";
 import type { TrainerSnapshot } from "../practice/Trainer";
+import { ConnectedLanguageBadge } from "./ConnectedLanguageBadge";
 
 interface SourceProps {
   readonly source: TrainerSnapshotSource;
@@ -30,6 +31,7 @@ export function ConnectedPlayerTopBar({
   return (
     <PlayerTopBar
       {...props}
+      language={<ConnectedLanguageBadge />}
       scoreboard={
         <ConnectedSongPosition source={source} song={song} speed={props.speed} midi={props.midi} />
       }
