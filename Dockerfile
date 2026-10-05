@@ -8,7 +8,8 @@ COPY index.html vite.config.ts tsconfig.json ./
 COPY src ./src
 COPY public ./public
 ARG GIT_SHA
-RUN test -n "$GIT_SHA" && pnpm build && printf '%s\n' "$GIT_SHA" > dist/version.txt
+ARG GIT_PR
+RUN test -n "$GIT_SHA" && VITE_GIT_SHA="$GIT_SHA" VITE_GIT_PR="$GIT_PR" pnpm build && printf '%s\n' "$GIT_SHA" > dist/version.txt
 # Precompressed copies for nginx gzip_static.
 RUN find dist -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' -o -name '*.json' \
       -o -name '*.svg' -o -name '*.txt' -o -name '*.xml' -o -name '*.webmanifest' \) \

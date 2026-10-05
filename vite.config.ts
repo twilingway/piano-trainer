@@ -37,6 +37,8 @@ export default defineConfig(({ mode }) => ({
       }
     }
   ],
+  // The build moment for the settings' "About" section; the commit comes from VITE_GIT_SHA.
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
   // `host: true` listens on every interface, so the page opens by LAN address too.
   server: { port: 5190, host: true },
   // Test only product source, not copies cached by pnpm or agents' worktrees.

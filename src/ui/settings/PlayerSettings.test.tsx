@@ -143,7 +143,7 @@ afterEach(async () => {
 });
 
 describe("player settings organization", () => {
-  it("orders the six sections and groups game and visual controls", async () => {
+  it("orders the seven sections and groups game and visual controls", async () => {
     await render();
     expect(Array.from(host.querySelectorAll("[role=tab]"), (tab) => tab.textContent)).toEqual([
       "Игра",
@@ -151,7 +151,8 @@ describe("player settings organization", () => {
       "Вид",
       "Ввод с ПК",
       "Пианино",
-      "Синхронизация"
+      "Синхронизация",
+      "О программе"
     ]);
     expect(host.textContent).toContain("Режим и темп");
     expect(host.textContent).toContain("Правила и очки");

@@ -1608,6 +1608,50 @@ button.song-card.song-card__open {
   overflow-wrap: anywhere;
 }
 
+.about p {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.about a {
+  color: var(--accent);
+}
+
+.about a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.about-build {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.about-build dt {
+  color: var(--muted);
+}
+
+.about-build dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-links a {
+  display: inline-block;
+  padding: 10px 0;
+}
+
 .game-dialog.result {
   width: min(420px, calc(100vw - 32px));
   text-align: center;

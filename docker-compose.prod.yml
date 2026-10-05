@@ -5,6 +5,7 @@ services:
       context: .
       args:
         GIT_SHA: ${GIT_SHA:-local}
+        GIT_PR: ${GIT_PR:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
