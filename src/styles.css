@@ -315,6 +315,11 @@ input:focus-visible {
   user-select: none;
 }
 
+/* iOS shows its own save-image sheet on a held canvas. */
+.lanes canvas {
+  -webkit-touch-callout: none;
+}
+
 body {
   margin: 0;
 }

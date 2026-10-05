@@ -132,7 +132,13 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
         )}
 
         {/* Hidden, not removed: the view under it keeps the keys, the sound and the take going. */}
-        <div className={`lanes lanes--${props.splitDirection} lanes--${laneMode}`}>
+        <div
+          className={`lanes lanes--${props.splitDirection} lanes--${laneMode}`}
+          // A held key is a played note, not a picture to save or copy.
+          onContextMenu={(event) => {
+            event.preventDefault();
+          }}
+        >
           {laneTop && props.editing && (
             <LaneTopHandle top={props.layout.laneTop} onLayout={props.onLayout} />
           )}
