@@ -1,9 +1,12 @@
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vitest/config";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
+    // Keep render-isolation tests independent of compiler memoization.
+    mode !== "test" && babel({ presets: [reactCompilerPreset()] }),
     {
       name: "yandex-metrika",
       apply: "build",
@@ -41,4 +44,4 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     exclude: [...configDefaults.exclude, "**/.claude/**", "**/.worktrees/**", "tools/**"]
   }
-});
+}));
