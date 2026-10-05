@@ -33,6 +33,7 @@ interface Props {
   readonly practice?: ReactNode;
   /** The applied timing, a chip by the scoreboard. */
   readonly timing?: ReactNode;
+  readonly language?: ReactNode;
   /** The mode's own controls, which the phone's menu holds instead of a strip of their own. */
   readonly menuExtra?: ReactNode;
   /** The screen's parts show their handles and drag. */
@@ -194,7 +195,7 @@ export function PlayerTopBar(props: Props) {
         ))}
       </div>
       <select
-        className="game-select"
+        className="game-select topbar-hands"
         aria-label={t("Руки")}
         value={props.hands}
         onChange={(event) => {
@@ -257,6 +258,7 @@ export function PlayerTopBar(props: Props) {
       >
         <FullscreenIcon active={props.fullscreen} />
       </button>
+      {props.language}
       <button
         type="button"
         className="icon-button topbar-settings"

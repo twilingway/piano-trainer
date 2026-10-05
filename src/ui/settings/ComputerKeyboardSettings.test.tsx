@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { setInterfaceLanguage } from "../../app/interfaceLanguage";
 import { act, useEffect, useLayoutEffect } from "react";
 import type { ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -92,6 +93,7 @@ async function editNote(keyName: string, pitch: number) {
 }
 
 beforeEach(() => {
+  setInterfaceLanguage("ru");
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   localStorage.clear();
   events = [];

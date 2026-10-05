@@ -4,6 +4,7 @@ import {
   getInterfaceLanguage,
   LANGUAGE_STORAGE_KEY,
   loadInterfaceLanguage,
+  readBrowserLanguage,
   saveInterfaceLanguage,
   setInterfaceLanguage,
   subscribeInterfaceLanguage
@@ -15,16 +16,57 @@ afterEach(() => {
 
 describe("interface language preference", () => {
   it("restores a supported preference and safely rejects malformed or inaccessible data", () => {
-    expect(loadInterfaceLanguage({ getItem: () => "en" })).toBe("en");
-    expect(loadInterfaceLanguage({ getItem: () => '"en"' })).toBe("ru");
-    expect(loadInterfaceLanguage({ getItem: () => "de" })).toBe("ru");
+    expect(loadInterfaceLanguage({ getItem: () => "en" }, "ru-RU")).toBe("en");
+    expect(loadInterfaceLanguage({ getItem: () => '"en"' }, "ru-RU")).toBe("ru");
+    expect(loadInterfaceLanguage({ getItem: () => "de" }, "en-US")).toBe("en");
     expect(
-      loadInterfaceLanguage({
-        getItem: () => {
-          throw new Error("denied");
-        }
-      })
+      loadInterfaceLanguage(
+        {
+          getItem: () => {
+            throw new Error("denied");
+          }
+        },
+        "ru-RU"
+      )
     ).toBe("ru");
+  });
+
+  it("uses only the primary browser language, falling back to the first entry when absent", () => {
+    try {
+      vi.stubGlobal("navigator", { language: "en-US", languages: ["en-US", "ru-RU"] });
+      expect(loadInterfaceLanguage({ getItem: () => null })).toBe("en");
+      vi.stubGlobal("navigator", { language: "", languages: ["ru-RU", "en-US"] });
+      expect(loadInterfaceLanguage({ getItem: () => null })).toBe("ru");
+      vi.stubGlobal("navigator", undefined);
+      expect(readBrowserLanguage()).toBeUndefined();
+      expect(loadInterfaceLanguage({ getItem: () => null })).toBe("en");
+      expect(
+        loadInterfaceLanguage({
+          getItem: () => {
+            throw new Error("denied");
+          }
+        })
+      ).toBe("en");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("initializes before rendering without saving the automatic choice", async () => {
+    localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+    vi.stubGlobal("navigator", { language: "ru-RU" });
+    try {
+      vi.resetModules();
+      const fresh = await import("./interfaceLanguage");
+      expect(fresh.getInterfaceLanguage()).toBe("ru");
+      expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBeNull();
+      fresh.setInterfaceLanguage("en");
+      vi.resetModules();
+      const reloaded = await import("./interfaceLanguage");
+      expect(reloaded.getInterfaceLanguage()).toBe("en");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("persists just the language, updates the document and notifies subscribers", () => {

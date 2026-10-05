@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { act } from "react";
 import type { ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -56,6 +57,7 @@ function expectSelected(index: number) {
 }
 
 beforeEach(() => {
+  setInterfaceLanguage("ru");
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   onClose.mockClear();
   host = document.body.appendChild(document.createElement("div"));

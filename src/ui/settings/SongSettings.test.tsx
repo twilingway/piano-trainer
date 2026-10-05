@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { setInterfaceLanguage } from "../../app/interfaceLanguage";
 import { act, useState } from "react";
 import type { ComponentProps, SetStateAction } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -96,6 +97,7 @@ function Harness({ sourceKey }: { sourceKey: Key }) {
 }
 
 beforeEach(() => {
+  setInterfaceLanguage("ru");
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.clearAllMocks();
   host = document.body.appendChild(document.createElement("div"));
