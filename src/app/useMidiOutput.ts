@@ -18,17 +18,23 @@ export function useMidiOutput(): MidiOutputControls | undefined {
 
   useEffect(() => {
     if (!midiSupported()) return;
-    let disposed = false;
-    openMidiOutput(choiceRef.current, setState).then(
+    // StrictMode unmounts the first mount before access arrives: that one stays silent.
+    const abort = new AbortController();
+    openMidiOutput(choiceRef.current, setState, abort.signal).then(
       (control) => {
-        if (disposed) control.dispose();
-        else controlRef.current = control;
+        if (abort.signal.aborted) {
+          control.dispose();
+          return;
+        }
+        controlRef.current = control;
+        // The player may have chosen while the browser asked for MIDI access.
+        control.select(choiceRef.current);
       },
       // The input reports why MIDI is unavailable; the output just stays empty.
       () => undefined
     );
     return () => {
-      disposed = true;
+      abort.abort();
       controlRef.current?.dispose();
       controlRef.current = null;
     };

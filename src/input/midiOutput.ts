@@ -65,16 +65,25 @@ function panic(output: MIDIOutput | undefined) {
   for (const message of panicMessages()) sendSafely(output, message);
 }
 
+const CLOSED: MidiOutputControl = {
+  select: () => undefined,
+  test: () => undefined,
+  dispose: () => undefined
+};
+
 /**
  * Opens the MIDI outputs and keeps the chosen one connected as ports come and
  * go; `onState` hears the connected outputs and which of them is in use.
  * Listens with `addEventListener`, since the input owns `onstatechange`.
+ * Aborted before access arrives, it opens nothing and sends nothing.
  */
 export async function openMidiOutput(
   choice: OutputChoice | null,
-  onState: (state: OutputState) => void
+  onState: (state: OutputState) => void,
+  signal?: AbortSignal
 ): Promise<MidiOutputControl> {
   const access = await navigator.requestMIDIAccess();
+  if (signal?.aborted) return CLOSED;
   let chosen = choice;
   let port: MIDIOutput | undefined;
   let disposed = false;
