@@ -29,7 +29,7 @@ import { SongProgress } from "./ui/SongProgress";
 import { ViewToggles } from "./ui/ViewToggles";
 import { Workspace } from "./ui/Workspace";
 import { useWordTyping } from "./app/useWordTyping";
-import { WordTicker, WordTypingBoard } from "./ui/WordTypingBoard";
+import { WordQuality, WordTicker, WordTypingBoard } from "./ui/WordTypingBoard";
 import { WordTypingSettings } from "./ui/WordTypingSettings";
 import { GameModeSwitch } from "./ui/GameModeSwitch";
 import { PracticeTimingStatus } from "./ui/PracticeTimingStatus";
@@ -192,6 +192,21 @@ export function App() {
     />
   );
 
+  const modeSwitch = (
+    <GameModeSwitch
+      wordTyping={word.enabled}
+      locked={playing}
+      onChange={(enabled) => {
+        computerKeyboard.endEditing();
+        startFromRef.current = null;
+        word.update({ enabled });
+      }}
+    >
+      {word.enabled && wordSettings}
+      <PracticeTimingStatus policy={snapshot?.timingPolicy} ranked={game.ranked} />
+    </GameModeSwitch>
+  );
+
   return (
     <div
       className={`app${word.enabled ? " app--word" : ""}`}
@@ -213,6 +228,15 @@ export function App() {
           fullscreen={fullscreen.active}
           onFullscreen={() => void fullscreen.toggle()}
           toggles={toggles}
+          // A phone holds the word mode's strip in the menu.
+          menuExtra={
+            word.enabled && (
+              <>
+                {modeSwitch}
+                <WordQuality metrics={word.result?.metrics} />
+              </>
+            )
+          }
           editing={screen.editing}
           onToggleEditing={screen.toggleEditing}
           onLibrary={() => {
@@ -235,18 +259,7 @@ export function App() {
             trainer.seekToBeat(share * totalQuarters);
           }}
         />
-        <GameModeSwitch
-          wordTyping={word.enabled}
-          locked={playing}
-          onChange={(enabled) => {
-            computerKeyboard.endEditing();
-            startFromRef.current = null;
-            word.update({ enabled });
-          }}
-        >
-          {word.enabled && wordSettings}
-          <PracticeTimingStatus policy={snapshot?.timingPolicy} ranked={game.ranked} />
-        </GameModeSwitch>
+        {modeSwitch}
       </div>
 
       {word.storageError && (

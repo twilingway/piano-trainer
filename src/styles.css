@@ -116,20 +116,23 @@
   font-size: 11px;
 }
 
-.app--word .shell-top {
-  position: relative;
-  inset: auto;
-  align-self: stretch;
-  width: auto;
-  margin: 0;
-  display: grid;
-  grid-template-rows: auto auto auto;
-}
-.app--word .topbar {
-  display: flex;
-  flex-wrap: wrap;
-  grid-template-columns: none;
-  width: auto;
+/* On a wide screen the word mode's bar runs across; a phone keeps the piano's compact one. */
+@media (width > 640px) and (height > 500px) {
+  .app--word .shell-top {
+    position: relative;
+    inset: auto;
+    align-self: stretch;
+    width: auto;
+    margin: 0;
+    display: grid;
+    grid-template-rows: auto auto auto;
+  }
+  .app--word .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    grid-template-columns: none;
+    width: auto;
+  }
 }
 /* The text as a running line just over the keys; without the lane, under the board. */
 .word-ticker {
@@ -231,6 +234,9 @@
   list-style: none;
   color: var(--muted);
   font-size: 12px;
+}
+.word-legend__short {
+  display: none;
 }
 .word-legend li[class*="word-finger-"]::before {
   content: "";
@@ -2812,5 +2818,78 @@ button.song-card.song-card__open {
 
   .workspace-main:has(> .lanes:not(.lanes--hidden)) .staves--column .staff {
     max-height: min(15cqh, 100px);
+  }
+}
+
+/* The word mode on a phone: the strip lives in the menu, the legend fits a line, the signs shrink. */
+@media (height <= 500px), (width <= 640px) {
+  .app--word .shell-top > .game-mode-strip,
+  .word-board .word-quality {
+    display: none;
+  }
+
+  .compact-controls__menu .game-mode-strip {
+    padding: 0 0 6px;
+    gap: 8px;
+  }
+
+  .word-legend {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  .word-legend__full {
+    display: none;
+  }
+
+  .word-legend__short {
+    display: inline;
+  }
+
+  /* Only the arrow, and the name while the part is held. */
+  .layout-grip__label {
+    display: none;
+  }
+
+  [data-dragging] .layout-grip__label {
+    display: inline;
+  }
+
+  .word-ticker-slot {
+    width: 100%;
+  }
+
+  .word-ticker {
+    width: calc(100% - 16px);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    font-size: calc(clamp(14px, 4vw, 18px) * var(--ticker-scale, 1));
+  }
+
+  .word-ticker-slot > .word-ticker {
+    width: 100%;
+  }
+
+  .ticker-tools {
+    top: calc(100% + 4px);
+    right: 8px;
+    left: auto;
+    transform: none;
+  }
+
+  /* «Тренировка» hangs from a dock of no height into the lane's corner under it. */
+  .app--word .game-score-dock:has(> .game-score-board--message) {
+    position: relative;
+    z-index: 5;
+    height: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .app--word .game-score-dock > .game-score-board--message {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    padding: 3px 8px;
+    font-size: 11px;
   }
 }
