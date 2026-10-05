@@ -43,6 +43,7 @@ interface Props {
 
 /** Every song to play, as cards: lessons with their levels, the player's own songs, the folder. */
 export function LibraryDialog(props: Props) {
+  if (!props.open) return null;
   const choose = (action: () => void) => () => {
     action();
     props.onClose();
