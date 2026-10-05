@@ -1629,6 +1629,18 @@ button.song-card.song-card__open {
   display: none;
 }
 
+.result-stars {
+  margin: 8px 0;
+  color: var(--accent);
+  font-size: 44px;
+  line-height: 1.2;
+  letter-spacing: 4px;
+}
+
+.result-stars-empty {
+  color: var(--muted);
+}
+
 @media (max-width: 640px), (pointer: coarse) and (max-height: 640px) {
   .result-details,
   .result-review-action {
@@ -1639,17 +1651,6 @@ button.song-card.song-card__open {
     display: block;
     text-align: center;
     padding: 12px 0;
-  }
-
-  .result-stars {
-    margin: 0 0 8px;
-    color: var(--accent);
-    font-size: 36px;
-    letter-spacing: 4px;
-  }
-
-  .result-stars span {
-    color: var(--muted);
   }
 
   .result-points {
@@ -2339,6 +2340,105 @@ button.song-card.song-card__open {
 }
 .game-score-dock .game-score-board--message {
   position: absolute;
+}
+
+/* A desktop lane keeps its centre clear: stack the HUD by the right edge, above the keys. */
+@media (width > 640px) and (height > 500px) {
+  .lane > .game-score-board:not(.game-score-board--message) {
+    top: calc((var(--hit-line, 100%) + var(--game-hud-top, 0px)) / 2);
+    right: 16px;
+    left: auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    width: 208px;
+    padding: 12px;
+    transform: translateY(-50%);
+  }
+
+  .lane > .game-score-board:not(.game-score-board--message) > section {
+    padding: 0;
+  }
+
+  .lane > .game-score-board:not(.game-score-board--message) > section + section {
+    padding-top: 10px;
+    border-top: 1px solid rgb(0 229 255 / 18%);
+    border-left: 0;
+  }
+
+  .lane > .game-score-board .game-hud__combo {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .lane > .game-score-board .game-hud__combo .game-score-label {
+    grid-column: 1;
+  }
+
+  .lane > .game-score-board .game-flow {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .lane > .game-score-board .game-combo__value {
+    font-size: 32px;
+  }
+
+  .lane > .game-score-board .game-hud__energy {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "energy"
+      "button"
+      "hint";
+    row-gap: 6px;
+  }
+
+  .lane > .game-score-board .game-overdrive {
+    min-height: 36px;
+    padding-inline: 8px;
+  }
+
+  /* A short falling area fits a small row at the same right-hand anchor. */
+  .lane[data-game-hud-layout="compact"] > .game-score-board:not(.game-score-board--message) {
+    grid-template-columns: auto auto auto;
+    gap: 0;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    height: 44px;
+    padding: 0 2px;
+  }
+
+  .lane[data-game-hud-layout="compact"] > .game-score-board > section {
+    align-items: center;
+    padding: 0 8px;
+  }
+
+  .lane[data-game-hud-layout="compact"] > .game-score-board > section + section {
+    padding-top: 0;
+    border-top: 0;
+    border-left: 1px solid rgb(0 229 255 / 18%);
+  }
+
+  .lane[data-game-hud-layout="compact"] .game-hud__energy {
+    grid-template-columns: 72px auto;
+    grid-template-areas: "energy button";
+  }
+
+  .lane[data-game-hud-layout="compact"]
+    :is(.game-score-label, .game-flow, .game-accuracy, .game-overdrive__hint) {
+    display: none;
+  }
+
+  .lane[data-game-hud-layout="compact"] .game-combo__value {
+    font-size: 22px;
+  }
+
+  .lane[data-game-hud-layout="compact"] .game-points {
+    font-size: 18px;
+  }
+
+  .lane[data-game-hud-layout="compact"] .game-overdrive {
+    font-size: 12px;
+  }
 }
 
 /* Keep desktop window controls readable without spending a second row on labels. */

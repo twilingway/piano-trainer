@@ -10,6 +10,7 @@ export default tseslint.config(
       "node_modules/**",
       "eslint.config.js",
       ".agents/**",
+      ".browser-artifacts/**",
       "tools/arcadia-effects/**",
       "public/generated/**",
       ".claude/**",

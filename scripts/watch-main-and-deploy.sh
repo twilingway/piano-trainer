@@ -30,7 +30,7 @@ fi
 printf '%s\n' "$$" > "$LOCK_DIR/pid"
 trap 'rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
 
-remote_sha="$(git -C "$REPO_DIR" ls-remote origin "refs/heads/${DEPLOY_BRANCH}" 2>/dev/null | cut -f1)"
+remote_sha="$(git -C "$REPO_DIR" ls-remote origin "refs/heads/${DEPLOY_BRANCH}" 2>/dev/null | cut -f1 || true)"
 [[ "$remote_sha" =~ ^[0-9a-f]{40}$ ]] || { log "Cannot read remote branch."; exit 0; }
 [[ "$remote_sha" != "$(cat "$STATE_DIR/deployed-sha" 2>/dev/null || true)" ]] || exit 0
 
