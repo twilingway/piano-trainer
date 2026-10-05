@@ -1,7 +1,9 @@
 import type { ComponentProps, ReactNode } from "react";
 
+import { BUILD_INFO } from "../../app/buildInfo";
 import { GameSettings } from "../GameSettings";
 import { SettingsPanel } from "../SettingsPanel";
+import { AboutSettings } from "./AboutSettings";
 import { ComputerKeyboardSettings } from "./ComputerKeyboardSettings";
 import { KeyboardSettings } from "./KeyboardSettings";
 import { MidiSettings } from "./MidiSettings";
@@ -127,7 +129,8 @@ export function PlayerSettings(props: Props) {
           )
         },
         { id: "midi", title: "Пианино", content: <MidiSettings {...props.midi} /> },
-        { id: "timing", title: "Синхронизация", content: props.synchronization }
+        { id: "timing", title: "Синхронизация", content: props.synchronization },
+        { id: "about", title: "О программе", content: <AboutSettings build={BUILD_INFO} /> }
       ]}
     />
   );
