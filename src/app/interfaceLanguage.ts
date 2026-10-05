@@ -3,6 +3,9 @@ import type { Locale } from "../i18n/locales";
 
 export const LANGUAGE_STORAGE_KEY = "interface-language-v1";
 
+import { appMessages } from "../i18n/appMessages";
+import { translate } from "../i18n/translate";
+
 export function loadInterfaceLanguage(storage: Pick<Storage, "getItem">): Locale {
   try {
     return resolveLocale(storage.getItem(LANGUAGE_STORAGE_KEY));
@@ -50,5 +53,5 @@ export function setInterfaceLanguage(next: Locale): void {
 
 export function updateDocumentLanguage(): void {
   document.documentElement.lang = locale;
-  document.title = "Piano Trainer";
+  document.title = translate(locale, appMessages, "Пианино-тренажёр");
 }

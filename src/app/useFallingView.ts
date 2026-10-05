@@ -10,6 +10,7 @@ import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
 import type { StaffPrefs } from "./useStaffPrefs";
+import { useI18n } from "./useI18n";
 
 export type KeyRange = "song" | "88" | "61" | "49" | "25" | "3oct" | "4oct";
 
@@ -84,6 +85,10 @@ export function useFallingView({
   computerKeys,
   placement
 }: Options) {
+  const { locale } = useI18n();
+  useEffect(() => {
+    viewRef.current?.setLocale(locale);
+  }, [viewRef, trainerReady, locale]);
   // Kept with the other view settings, so a reload brings them back.
   const { labels: showLabels, keyRange } = staffPrefs;
   const setShowLabels = (labels: boolean) => {

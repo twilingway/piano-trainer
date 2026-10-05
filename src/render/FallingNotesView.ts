@@ -2,6 +2,7 @@ import { Application, Container, Texture } from "pixi.js";
 import type { FederatedPointerEvent } from "pixi.js";
 
 import type { Finger } from "../fingering/fingering";
+import type { Locale } from "../i18n/locales";
 import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
 import { publishOverlayLayout } from "./viewOverlayLayout";
@@ -113,6 +114,7 @@ export class FallingNotesView {
   private resizeObserver: ResizeObserver | undefined;
   private fpsMeter: FpsMeter | undefined;
   private fpsVisible = false;
+  private locale: Locale = "ru";
   private unbindKeyboardPointer: (() => void) | undefined;
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
@@ -131,6 +133,7 @@ export class FallingNotesView {
     });
     host.appendChild(this.app.canvas);
     this.fpsMeter = new FpsMeter(host, this.app.ticker);
+    this.fpsMeter.setLocale(this.locale);
     this.fpsMeter.setVisible(this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
     this.resizeObserver = new ResizeObserver(() => {
@@ -247,6 +250,12 @@ export class FallingNotesView {
   setFpsVisible(visible: boolean): void {
     this.fpsVisible = visible;
     this.fpsMeter?.setVisible(visible);
+  }
+
+  setLocale(locale: Locale): void {
+    this.locale = locale;
+    this.hud.setLocale(locale);
+    this.fpsMeter?.setLocale(locale);
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */

@@ -4,7 +4,7 @@ export const LOCALES = {
 } as const;
 
 export type Locale = keyof typeof LOCALES;
-export const DEFAULT_LOCALE: Locale = "ru";
+export const DEFAULT_LOCALE = "ru" as const;
 export type Messages = Readonly<Record<string, Readonly<Record<Exclude<Locale, "ru">, string>>>>;
 export type MessageParams = Readonly<Record<string, string | number>>;
 

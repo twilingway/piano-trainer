@@ -2,6 +2,9 @@ import { Container, FillGradient, Sprite, Text, Texture } from "pixi.js";
 import type { TextStyleOptions } from "pixi.js";
 
 import type { ComboBoard, GradedStrike, StrikeGrade } from "../practice/combo";
+import type { Locale } from "../i18n/locales";
+import { appMessages } from "../i18n/appMessages";
+import { translate } from "../i18n/translate";
 
 /** What each grade says over its key, and in what colour. */
 const GRADES: Readonly<Record<StrikeGrade, { readonly label: string; readonly color: number }>> = {
@@ -87,6 +90,7 @@ const ACCURACY_VALUE_STYLE: TextStyleOptions = {
 
 interface Pop {
   readonly text: Text;
+  readonly strike: GradedStrike;
   age: number;
   baseY: number;
 }
@@ -98,6 +102,7 @@ interface Pop {
  * new texture.
  */
 export class HudLayer {
+  private locale: Locale = "ru";
   readonly container = new Container();
   private readonly board = new Container();
   private readonly comboTitle = new Text({ text: "КОМБО", style: TITLE_STYLE });
@@ -182,6 +187,24 @@ export class HudLayer {
     for (let index = this.active.length - 1; index >= 0; index--) this.retire(index);
   }
 
+  /** Relabel existing textures only when the preference changes. */
+  setLocale(locale: Locale): void {
+    if (locale === this.locale) return;
+    this.locale = locale;
+    this.comboTitle.text = translate(locale, appMessages, "КОМБО");
+    this.accuracyLabel.text = translate(locale, appMessages, "точность");
+    this.accuracy.x = this.accuracyLabel.x + this.accuracyLabel.width + 8;
+    for (const pop of this.active) pop.text.text = this.strikeLabel(pop.strike);
+  }
+
+  private strikeLabel(strike: GradedStrike): string {
+    return strike.assisted && strike.offsetMs !== undefined
+      ? translate(this.locale, appMessages, "Поздно +{offset} мс", {
+          offset: Math.round(strike.offsetMs)
+        })
+      : translate(this.locale, appMessages, GRADES[strike.grade].label);
+  }
+
   /** Keep the board inside the note lane, away from the keys on small screens. */
   layout(width: number, noteHeight: number, top = 0): void {
     const widthScale = Math.max(MIN_BOARD_SCALE, width / FULL_BOARD_WIDTH_PX);
@@ -210,14 +233,11 @@ export class HudLayer {
   private pop(strike: GradedStrike, x: number, hitY: number): void {
     const { grade } = strike;
     const text = this.spare.get(grade)?.pop() ?? this.make(grade);
-    text.text =
-      strike.assisted && strike.offsetMs !== undefined
-        ? `Поздно +${String(Math.round(strike.offsetMs))} мс`
-        : GRADES[grade].label;
+    text.text = this.strikeLabel(strike);
     text.position.set(x, hitY - 8);
     text.alpha = 1;
     text.visible = true;
-    this.active.push({ text, age: 0, baseY: hitY - 8 });
+    this.active.push({ text, strike, age: 0, baseY: hitY - 8 });
   }
 
   private make(grade: StrikeGrade): Text {

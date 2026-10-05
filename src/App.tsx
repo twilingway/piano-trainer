@@ -1,5 +1,7 @@
 ﻿import { useRef, useState } from "react";
 import { useGameRuntime } from "./app/useGameRuntime";
+import { useI18n } from "./app/useI18n";
+import { lessonDisplayTitle } from "./app/lessonDisplayTitle";
 import { useGameOptions } from "./app/useGameOptions";
 import { useTimingControls } from "./app/useTimingControls";
 
@@ -41,6 +43,7 @@ import { ConnectedPlayerSettings, ConnectedResultDialog } from "./app/ConnectedS
 import { selectTrainerStatus, sameTrainerStatus, useTrainerSelector } from "./app/trainerSnapshots";
 
 export function App() {
+  const { t } = useI18n();
   const fullscreen = useFullscreen();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -219,7 +222,7 @@ export function App() {
         <ConnectedPlayerTopBar
           source={trainer.snapshotSource}
           song={word.practiceSong}
-          title={song.title}
+          title={lessonDisplayTitle(song.title, current.lesson, t)}
           playing={playing}
           soundLoading={
             sound === "loading" || (word.enabled && (word.pending || Boolean(word.error)))
@@ -279,21 +282,22 @@ export function App() {
 
       {word.storageError && (
         <div className="toast toast--error" role="status">
-          {word.storageError}
+          {t(word.storageError)}
         </div>
       )}
 
-      {library.loadError && <div className="toast toast--error">{library.loadError}</div>}
+      {library.loadError && <div className="toast toast--error">{t(library.loadError)}</div>}
       {game.ranked && !timing.rankedReady && (
         <div className="toast">
-          Рейтинг недоступен: выберите устройство и выполните актуальную калибровку в настройках
-          синхронизации.
+          {t(
+            "Рейтинг недоступен: выберите устройство и выполните актуальную калибровку в настройках синхронизации."
+          )}
         </div>
       )}
 
       {fullscreen.error && (
         <div className="toast toast--error" role="status">
-          {fullscreen.error}
+          {t(fullscreen.error)}
         </div>
       )}
 

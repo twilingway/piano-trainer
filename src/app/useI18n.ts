@@ -7,7 +7,11 @@ import { getInterfaceLanguage, subscribeInterfaceLanguage } from "./interfaceLan
 
 /** Subscribe only to the interface preference, independently of the practice clock. */
 export function useI18n() {
-  const locale = useSyncExternalStore(subscribeInterfaceLanguage, getInterfaceLanguage);
+  const locale = useSyncExternalStore(
+    subscribeInterfaceLanguage,
+    getInterfaceLanguage,
+    getInterfaceLanguage
+  );
   return {
     locale,
     t: (message: string, params?: MessageParams) => translate(locale, messages, message, params),

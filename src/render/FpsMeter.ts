@@ -2,6 +2,10 @@ import type { Ticker } from "pixi.js";
 
 const SAMPLE_MS = 1000;
 
+import type { Locale } from "../i18n/locales";
+import { appMessages } from "../i18n/appMessages";
+import { translate } from "../i18n/translate";
+
 /** A low-cost display of the actual Pixi frame cadence, independent of song time. */
 export class FpsMeter {
   private readonly element = document.createElement("output");
@@ -34,6 +38,10 @@ export class FpsMeter {
   destroy(): void {
     this.ticker.remove(this.onFrame);
     this.element.remove();
+  }
+
+  setLocale(locale: Locale): void {
+    this.element.title = translate(locale, appMessages, "Частота отрисовки игры");
   }
 
   private readonly onFrame = (): void => {
