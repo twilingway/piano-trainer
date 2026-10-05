@@ -1,13 +1,14 @@
 # Развёртывание Piano Trainer
 
-Публичный адрес: `https://piano.twiling.ru/`. Сайт — статическая сборка Vite в контейнере
-`piano-web`. Nginx Proxy Manager (NPM) и контейнер находятся в общей Docker-сети `public_net`;
-контейнер не публикует порт Mac наружу.
+Публичный адрес: `https://keys.twiling.ru/`. Прежний `https://piano.twiling.ru/` отдаёт тот же релиз
+без редиректа: данные игроков в `localStorage` привязаны к его origin. Сайт — статическая сборка
+Vite в контейнере `piano-web`. Nginx Proxy Manager (NPM) и контейнер находятся в общей Docker-сети
+`public_net`; контейнер не публикует порт Mac наружу.
 
 ## Один раз на Mac mini
 
-DNS-запись `piano.twiling.ru` типа A должна указывать на тот же публичный адрес, что и
-`space.twiling.ru`. На роутере к NPM направлены только 80/443; SSH остаётся в локальной сети.
+DNS-записи `keys.twiling.ru` и `piano.twiling.ru` типа A должны указывать на тот же публичный адрес,
+что и `space.twiling.ru`. На роутере к NPM направлены только 80/443; SSH остаётся в локальной сети.
 
 ```bash
 mkdir -p ~/piano-prod/state
@@ -32,9 +33,10 @@ docker-compose --project-name piano --env-file ~/piano-prod/.env.production \
 ```
 
 Локальный старт не записывает релиз в историю. В NPM по адресу `http://192.168.1.163:81/` создайте
-Proxy Host: домен `piano.twiling.ru`, схема `http`, Forward Hostname `piano-web`, порт `80`.
-Включите Let's Encrypt и Force SSL. WebSockets Support не требуется. Убедитесь, что контейнер NPM
-подключён к `public_net`; существующие хосты Towerdefander менять не надо.
+Proxy Host: домены `keys.twiling.ru` и `piano.twiling.ru`, схема `http`, Forward Hostname
+`piano-web`, порт `80`. Включите Let's Encrypt и Force SSL. WebSockets Support не требуется.
+Убедитесь, что контейнер NPM подключён к `public_net`; существующие хосты Towerdefander менять не
+надо.
 
 После выпуска сертификата завершите релиз и включите агент:
 
@@ -54,8 +56,9 @@ launchctl print gui/$(id -u)/com.twiling.piano-deploy
 ## Проверка
 
 ```bash
-curl -I http://piano.twiling.ru/
-curl -I https://piano.twiling.ru/
+curl -I http://keys.twiling.ru/
+curl -I https://keys.twiling.ru/
+curl -fsS https://keys.twiling.ru/version.txt
 curl -fsS https://piano.twiling.ru/version.txt
 cat ~/piano-prod/state/deployed-sha
 tail -n 50 ~/piano-prod/state/deploy.log

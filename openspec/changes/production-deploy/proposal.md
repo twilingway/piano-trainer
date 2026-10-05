@@ -3,13 +3,14 @@
 ## Why
 
 Сейчас Piano Trainer запускается локально и не имеет повторяемого выпуска на Mac mini M4. Нужен
-публичный HTTPS-адрес `piano.twiling.ru` и автоматический выпуск проверенного `main` по уже
-работающей схеме Towerdefander.
+публичный HTTPS-адрес и автоматический выпуск проверенного `main` по уже работающей схеме
+Towerdefander. Основной адрес — `keys.twiling.ru` под имя Twiling Keys; первый адрес
+`piano.twiling.ru` остаётся рабочим, потому что данные игроков привязаны к его origin.
 
 ## What Changes
 
-- Публиковать собранный Vite-сайт на `piano.twiling.ru` через существующий Nginx Proxy Manager с
-  TLS.
+- Публиковать собранный Vite-сайт на `keys.twiling.ru` и `piano.twiling.ru` через существующий Nginx
+  Proxy Manager с TLS.
 - Проверять pull request и `main` в GitHub Actions; Mac mini выпускает только коммит `main` с
   успешным CI.
 - При неудачном выпуске сохранять работающую версию либо возвращаться к предыдущей.
