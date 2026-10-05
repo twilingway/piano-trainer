@@ -71,6 +71,38 @@ afterEach(async () => {
 });
 
 describe("settings section navigation", () => {
+  it("builds only the visible section and remembers selection while content is absent", async () => {
+    const game = vi.fn(() => <p>Игра: содержимое</p>);
+    const timing = vi.fn(() => <p>Синхронизация: содержимое</p>);
+    const sections: readonly SettingsTab[] = [
+      { id: "game", title: "Игра", render: game },
+      { id: "timing", title: "Синхронизация", render: timing }
+    ];
+    await render(sections, false);
+    expect(game).not.toHaveBeenCalled();
+    expect(timing).not.toHaveBeenCalled();
+    expect(host.querySelector("[role=tabpanel]")).toBeNull();
+    await render(sections);
+    expect(game).toHaveBeenCalledOnce();
+    expect(timing).not.toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
+      tab(1).click();
+    });
+    expect(timing).toHaveBeenCalledOnce();
+    game.mockClear();
+    timing.mockClear();
+    await render(sections, false);
+    await render(sections, false);
+    expect(game).not.toHaveBeenCalled();
+    expect(timing).not.toHaveBeenCalled();
+    await render(sections);
+    expect(game).not.toHaveBeenCalled();
+    expect(timing).toHaveBeenCalledOnce();
+    expect(tab(1).getAttribute("aria-selected")).toBe("true");
+    expect(host.querySelector("[role=tabpanel]")?.textContent).toBe("Синхронизация: содержимое");
+  });
+
   it("associates the selected tab with its panel and keeps one tab in the tab order", async () => {
     await render();
     expectSelected(0);

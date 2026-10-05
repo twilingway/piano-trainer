@@ -32,6 +32,7 @@ interface Props {
 
 /** The end of a run: the accuracy, the notes that went wrong most, and what next. */
 export function ResultDialog({ open, stats, canReview, onClose, onAgain, onReview }: Props) {
+  if (!open) return null;
   const played = stats ? stats.hits + stats.misses : 0;
   const game = stats?.game;
   const accuracy = game ? game.accuracy : stats && played > 0 ? (stats.hits / played) * 100 : null;

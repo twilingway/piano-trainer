@@ -42,7 +42,7 @@ export function PlayerSettings(props: Props) {
         {
           id: "play",
           title: "Игра",
-          content: (
+          render: () => (
             <>
               <section className="settings-group">
                 <h3 className="settings-group__title">Режим и темп</h3>
@@ -54,11 +54,11 @@ export function PlayerSettings(props: Props) {
             </>
           )
         },
-        { id: "song", title: "Песня", content: <SongSettings {...props.song} /> },
+        { id: "song", title: "Песня", render: () => <SongSettings {...props.song} /> },
         {
           id: "view",
           title: "Вид",
-          content: (
+          render: () => (
             <>
               <section className="settings-group">
                 <h3 className="settings-group__title">Нотная запись</h3>
@@ -114,20 +114,21 @@ export function PlayerSettings(props: Props) {
         {
           id: "computer",
           title: props.wordTyping ? "Печатать мелодию" : "Ввод с ПК",
-          content: props.wordTyping ? (
-            <>
-              {props.wordSettings}
-              <p className="setting-hint">
-                Назначения строятся для всей песни. Shift и Alt — дополнительные клавиши; настройки
-                обычных раскладок здесь не применяются.
-              </p>
-            </>
-          ) : (
-            <ComputerKeyboardSettings controls={props.computerKeyboard} />
-          )
+          render: () =>
+            props.wordTyping ? (
+              <>
+                {props.wordSettings}
+                <p className="setting-hint">
+                  Назначения строятся для всей песни. Shift и Alt — дополнительные клавиши;
+                  настройки обычных раскладок здесь не применяются.
+                </p>
+              </>
+            ) : (
+              <ComputerKeyboardSettings controls={props.computerKeyboard} />
+            )
         },
-        { id: "midi", title: "Пианино", content: <MidiSettings {...props.midi} /> },
-        { id: "timing", title: "Синхронизация", content: props.synchronization }
+        { id: "midi", title: "Пианино", render: () => <MidiSettings {...props.midi} /> },
+        { id: "timing", title: "Синхронизация", render: () => props.synchronization }
       ]}
     />
   );

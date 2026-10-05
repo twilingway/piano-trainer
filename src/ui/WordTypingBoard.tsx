@@ -23,6 +23,19 @@ interface Props {
   readonly notice?: string | undefined;
 }
 
+/** Grouping depends only on the generated text, so the compiler can reuse it across snapshots. */
+function groupTokens(
+  tokens: readonly GeneratedToken[]
+): ReadonlyMap<number, readonly GeneratedToken[]> {
+  const groups = new Map<number, GeneratedToken[]>();
+  for (const token of tokens) {
+    const group = groups.get(token.wordIndex) ?? [];
+    group.push(token);
+    groups.set(token.wordIndex, group);
+  }
+  return groups;
+}
+
 /** The typed text as a running line: the current character stays in the middle, as on the staff. */
 export function WordTicker(props: Props) {
   const lineRef = useRef<HTMLDivElement>(null);
@@ -34,12 +47,7 @@ export function WordTicker(props: Props) {
   const { index } = progress;
   // Past the end, the line stays on the last character.
   const anchor = index >= 0 ? index : (tokens.at(-1)?.noteIndex ?? -1);
-  const groups = new Map<number, GeneratedToken[]>();
-  for (const token of tokens) {
-    const group = groups.get(token.wordIndex) ?? [];
-    group.push(token);
-    groups.set(token.wordIndex, group);
-  }
+  const groups = groupTokens(tokens);
   useLayoutEffect(() => {
     const line = lineRef.current;
     const track = trackRef.current;

@@ -3,11 +3,13 @@ import type { KeyboardEvent, ReactNode } from "react";
 
 import { GameDialog } from "./GameDialog";
 
-export interface SettingsTab {
+export type SettingsTab = {
   readonly id: string;
   readonly title: string;
-  readonly content: ReactNode;
-}
+} & (
+  | { readonly content: ReactNode; readonly render?: never }
+  | { readonly content?: never; readonly render: () => ReactNode }
+);
 
 interface Props {
   readonly open: boolean;
@@ -49,65 +51,67 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
   };
   return (
     <GameDialog open={open} title="Настройки" className="settings" modal={false} onClose={onClose}>
-      <div className="settings-layout">
-        <div
-          className="settings-navigation"
-          role="tablist"
-          aria-label="Разделы настроек"
-          aria-orientation="vertical"
-        >
-          {tabs.map((tab, index) => (
-            <button
-              key={tab.id}
-              ref={(button) => {
-                if (button) buttons.current.set(tab.id, button);
-                else buttons.current.delete(tab.id);
-              }}
-              id={`${id}-tab-${tab.id}`}
-              type="button"
-              role="tab"
-              className="tab"
-              aria-selected={tab.id === shown?.id}
-              aria-controls={`${id}-panel`}
-              tabIndex={tab.id === shown?.id ? 0 : -1}
-              onKeyDown={(event) => {
-                handleKey(event, index);
-              }}
-              onClick={() => {
-                setActive(tab.id);
+      {open ? (
+        <div className="settings-layout">
+          <div
+            className="settings-navigation"
+            role="tablist"
+            aria-label="Разделы настроек"
+            aria-orientation="vertical"
+          >
+            {tabs.map((tab, index) => (
+              <button
+                key={tab.id}
+                ref={(button) => {
+                  if (button) buttons.current.set(tab.id, button);
+                  else buttons.current.delete(tab.id);
+                }}
+                id={`${id}-tab-${tab.id}`}
+                type="button"
+                role="tab"
+                className="tab"
+                aria-selected={tab.id === shown?.id}
+                aria-controls={`${id}-panel`}
+                tabIndex={tab.id === shown?.id ? 0 : -1}
+                onKeyDown={(event) => {
+                  handleKey(event, index);
+                }}
+                onClick={() => {
+                  setActive(tab.id);
+                }}
+              >
+                {tab.title}
+              </button>
+            ))}
+          </div>
+          <label className="settings-navigation-mobile">
+            <span>Раздел настроек</span>
+            <select
+              className="game-select"
+              aria-label="Раздел настроек"
+              value={shown?.id ?? ""}
+              onChange={(event) => {
+                setActive(event.target.value);
               }}
             >
-              {tab.title}
-            </button>
-          ))}
-        </div>
-        <label className="settings-navigation-mobile">
-          <span>Раздел настроек</span>
-          <select
-            className="game-select"
-            aria-label="Раздел настроек"
-            value={shown?.id ?? ""}
-            onChange={(event) => {
-              setActive(event.target.value);
-            }}
+              {tabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div
+            id={`${id}-panel`}
+            className="settings-content tab-panel"
+            role="tabpanel"
+            aria-labelledby={shown ? `${id}-tab-${shown.id}` : undefined}
+            tabIndex={0}
           >
-            {tabs.map((tab) => (
-              <option key={tab.id} value={tab.id}>
-                {tab.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div
-          id={`${id}-panel`}
-          className="settings-content tab-panel"
-          role="tabpanel"
-          aria-labelledby={shown ? `${id}-tab-${shown.id}` : undefined}
-          tabIndex={0}
-        >
-          {shown?.content}
+            {shown?.render ? shown.render() : shown?.content}
+          </div>
         </div>
-      </div>
+      ) : null}
     </GameDialog>
   );
 }
