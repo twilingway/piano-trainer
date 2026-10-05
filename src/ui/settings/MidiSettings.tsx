@@ -5,6 +5,7 @@ import { DEVICE_PRESETS, deviceKeys } from "../../input/deviceRange";
 import type { DeviceRange, DevicePreset, RangeCapture } from "../../input/deviceRange";
 import { pitchLabel } from "../../input/keyboardLayouts";
 import type { MidiDevice } from "../../input/midiInput";
+import type { KeyLightSettings } from "../../input/keyLights";
 import type { OutputChoice } from "../../input/midiOutput";
 
 /** The player's keyboard and capturing it from their lowest and highest keys. */
@@ -17,7 +18,7 @@ export interface DeviceRangeControls {
   readonly onCancelCapture: () => void;
 }
 
-/** Where the trainer sends MIDI, and the test note that checks the link. */
+/** Where the trainer sends MIDI, the test note that checks the link, and the key lights. */
 export interface MidiOutputControls {
   readonly devices: readonly MidiDevice[];
   readonly choice: OutputChoice | null;
@@ -27,7 +28,11 @@ export interface MidiOutputControls {
   readonly selectedId: string;
   readonly onSelect: (id: string) => void;
   readonly onTest: () => void;
+  readonly lights: KeyLightSettings;
+  readonly onLights: (settings: KeyLightSettings) => void;
 }
+
+const LIGHT_CHANNELS = Array.from({ length: 16 }, (_, index) => index + 1);
 
 interface Props {
   readonly devices: readonly MidiDevice[];
@@ -186,6 +191,58 @@ export function MidiSettings({
               {t("Проверить")}
             </button>
           </div>
+          <label className="setting">
+            <span>{t("Подсветка клавиш")}</span>
+            <input
+              type="checkbox"
+              checked={output.lights.enabled}
+              onChange={(event) => {
+                output.onLights({ ...output.lights, enabled: event.target.checked });
+              }}
+            />
+          </label>
+          {output.lights.enabled && (
+            <>
+              <label className="setting">
+                <span>{t("Канал подсветки")}</span>
+                <select
+                  className="game-select"
+                  aria-label={t("Канал подсветки")}
+                  value={output.lights.channel}
+                  onChange={(event) => {
+                    output.onLights({ ...output.lights, channel: Number(event.target.value) });
+                  }}
+                >
+                  {LIGHT_CHANNELS.map((channel) => (
+                    <option key={channel} value={channel}>
+                      {channel}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {output.lights.channel === 1 && (
+                <p className="setting-hint">
+                  {t("На канале 1 обычно играет само пианино: такие нажатия не засчитаются.")}
+                </p>
+              )}
+              <label className="setting">
+                <span>{t("Громкость подсветки")}</span>
+                <input
+                  type="number"
+                  aria-label={t("Громкость подсветки")}
+                  min={1}
+                  max={127}
+                  step={1}
+                  value={output.lights.velocity}
+                  onChange={(event) => {
+                    const velocity = event.target.valueAsNumber;
+                    if (Number.isInteger(velocity) && velocity >= 1 && velocity <= 127)
+                      output.onLights({ ...output.lights, velocity });
+                  }}
+                />
+              </label>
+            </>
+          )}
         </>
       )}
     </div>

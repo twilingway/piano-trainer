@@ -325,5 +325,17 @@ export const settingsMessages3 = {
   },
   Проверить: {
     en: "Test"
+  },
+  "Подсветка клавиш": {
+    en: "Key lights"
+  },
+  "Канал подсветки": {
+    en: "Light channel"
+  },
+  "Громкость подсветки": {
+    en: "Light velocity"
+  },
+  "На канале 1 обычно играет само пианино: такие нажатия не засчитаются.": {
+    en: "Most pianos play on channel 1 themselves: presses there will not count."
   }
 } satisfies Messages;
