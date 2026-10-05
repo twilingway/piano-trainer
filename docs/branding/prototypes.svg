@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <g font-family="Arial, sans-serif">
+    <rect width="1440" height="900" fill="#020c18" />
+    <text x="64" y="78" fill="#f2f5ff" font-size="46" font-weight="800">
+      Нотопад · варианты логотипа
+    </text>
+    <text x="64" y="119" fill="#b4deff" font-size="22">
+      Три направления в цветах игры. Ниже — проверка в размере favicon.
+    </text>
+    <rect x="64" y="161" width="408" height="668" rx="26" fill="#041b2c" stroke="#0c3b51" />
+    <text x="92" y="209" fill="#00e5ff" font-size="17" font-weight="700">ВАРИАНТ 01</text>
+    <svg x="154" y="244" width="228" height="228" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <rect x="14" y="10" width="9" height="18" rx="3" fill="#c528f5" />
+      <rect x="27" y="6" width="9" height="25" rx="3" fill="#00e5ff" />
+      <rect x="40" y="18" width="9" height="13" rx="3" fill="#00df50" />
+      <rect x="9" y="35" width="46" height="22" rx="3" fill="#f2f5ff" />
+      <path d="M24 49v8m16-8v8" stroke="#020c18" stroke-width="1.5" />
+      <path
+        d="M20 35h8v13a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V35Zm16 0h8v13a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V35Z"
+        fill="#020c18"
+      />
+      <path d="M22 37h4m12 0h4" stroke="#446175" stroke-width="1.5" stroke-linecap="round" />
+    </svg>
+    <text x="268" y="528" fill="#f2f5ff" font-size="38" text-anchor="middle" font-weight="800">
+      НОТОПАД
+    </text>
+    <text x="92" y="588" fill="#f2f5ff" font-size="26" font-weight="700">Падающие ноты</text>
+    <text x="92" y="629" fill="#b4deff" font-size="19">Цветные ноты летят к клавишам.</text>
+    <text x="92" y="656" fill="#b4deff" font-size="19">Сразу объясняет суть игры.</text>
+    <line x1="92" y1="689" x2="444" y2="689" stroke="#0c3b51" />
+    <text x="92" y="720" fill="#b4deff" font-size="16">Во вкладке браузера</text>
+    <rect x="92" y="739" width="169" height="54" rx="12" fill="#020c18" />
+    <svg x="103" y="750" width="32" height="32" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <rect x="14" y="10" width="9" height="18" rx="3" fill="#c528f5" />
+      <rect x="27" y="6" width="9" height="25" rx="3" fill="#00e5ff" />
+      <rect x="40" y="18" width="9" height="13" rx="3" fill="#00df50" />
+      <rect x="9" y="35" width="46" height="22" rx="3" fill="#f2f5ff" />
+      <path d="M24 49v8m16-8v8" stroke="#020c18" stroke-width="1.5" />
+      <path
+        d="M20 35h8v13a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V35Zm16 0h8v13a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V35Z"
+        fill="#020c18"
+      />
+      <path d="M22 37h4m12 0h4" stroke="#446175" stroke-width="1.5" stroke-linecap="round" />
+    </svg>
+    <text x="148" y="772" fill="#f2f5ff" font-size="18">Нотопад</text>
+    <rect x="275" y="739" width="169" height="54" rx="12" fill="#edf3f7" />
+    <svg x="288" y="758" width="16" height="16" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <rect x="14" y="10" width="9" height="18" rx="3" fill="#c528f5" />
+      <rect x="27" y="6" width="9" height="25" rx="3" fill="#00e5ff" />
+      <rect x="40" y="18" width="9" height="13" rx="3" fill="#00df50" />
+      <rect x="9" y="35" width="46" height="22" rx="3" fill="#f2f5ff" />
+      <path d="M24 49v8m16-8v8" stroke="#020c18" stroke-width="1.5" />
+      <path
+        d="M20 35h8v13a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V35Zm16 0h8v13a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V35Z"
+        fill="#020c18"
+      />
+      <path d="M22 37h4m12 0h4" stroke="#446175" stroke-width="1.5" stroke-linecap="round" />
+    </svg>
+    <text x="314" y="772" fill="#020c18" font-size="18">Нотопад</text>
+    <rect x="516" y="161" width="408" height="668" rx="26" fill="#041b2c" stroke="#0c3b51" />
+    <text x="544" y="209" fill="#00e5ff" font-size="17" font-weight="700">ВАРИАНТ 02</text>
+    <svg x="606" y="244" width="228" height="228" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <rect x="13" y="12" width="13" height="40" rx="3" fill="#f2f5ff" />
+      <rect x="38" y="12" width="13" height="40" rx="3" fill="#00e5ff" />
+      <rect x="24" y="27" width="16" height="10" rx="2" fill="#c528f5" />
+      <rect x="18" y="12" width="6" height="14" rx="1" fill="#020c18" />
+      <rect x="40" y="12" width="6" height="14" rx="1" fill="#020c18" />
+    </svg>
+    <text x="720" y="528" fill="#f2f5ff" font-size="38" text-anchor="middle" font-weight="800">
+      НОТОПАД
+    </text>
+    <text x="544" y="588" fill="#f2f5ff" font-size="26" font-weight="700">Клавиши «Н»</text>
+    <text x="544" y="629" fill="#b4deff" font-size="19">Первая буква названия</text>
+    <text x="544" y="656" fill="#b4deff" font-size="19">собрана из клавиш пианино.</text>
+    <line x1="544" y1="689" x2="896" y2="689" stroke="#0c3b51" />
+    <text x="544" y="720" fill="#b4deff" font-size="16">Во вкладке браузера</text>
+    <rect x="544" y="739" width="169" height="54" rx="12" fill="#020c18" />
+    <svg x="555" y="750" width="32" height="32" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <rect x="13" y="12" width="13" height="40" rx="3" fill="#f2f5ff" />
+      <rect x="38" y="12" width="13" height="40" rx="3" fill="#00e5ff" />
+      <rect x="24" y="27" width="16" height="10" rx="2" fill="#c528f5" />
+      <rect x="18" y="12" width="6" height="14" rx="1" fill="#020c18" />
+      <rect x="40" y="12" width="6" height="14" rx="1" fill="#020c18" />
+    </svg>
+    <text x="600" y="772" fill="#f2f5ff" font-size="18">Нотопад</text>
+    <rect x="727" y="739" width="169" height="54" rx="12" fill="#edf3f7" />
+    <svg x="740" y="758" width="16" height="16" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <rect x="13" y="12" width="13" height="40" rx="3" fill="#f2f5ff" />
+      <rect x="38" y="12" width="13" height="40" rx="3" fill="#00e5ff" />
+      <rect x="24" y="27" width="16" height="10" rx="2" fill="#c528f5" />
+      <rect x="18" y="12" width="6" height="14" rx="1" fill="#020c18" />
+      <rect x="40" y="12" width="6" height="14" rx="1" fill="#020c18" />
+    </svg>
+    <text x="766" y="772" fill="#020c18" font-size="18">Нотопад</text>
+    <rect x="968" y="161" width="408" height="668" rx="26" fill="#041b2c" stroke="#0c3b51" />
+    <text x="996" y="209" fill="#00e5ff" font-size="17" font-weight="700">ВАРИАНТ 03</text>
+    <svg x="1058" y="244" width="228" height="228" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <path
+        d="M34 12h8v29c0 7-7 12-14 12-6 0-10-3-10-8s5-10 12-10c1 0 3 0 4 1V12Z"
+        fill="#00e5ff"
+      />
+      <path d="M39 12v19c13-2 16-11 0-19Z" fill="#c528f5" />
+      <path d="m25 40 8 5-8 5Z" fill="#020c18" />
+    </svg>
+    <text x="1172" y="528" fill="#f2f5ff" font-size="38" text-anchor="middle" font-weight="800">
+      НОТОПАД
+    </text>
+    <text x="996" y="588" fill="#f2f5ff" font-size="26" font-weight="700">Нота / Play</text>
+    <text x="996" y="629" fill="#b4deff" font-size="19">Музыкальная нота и запуск.</text>
+    <text x="996" y="656" fill="#b4deff" font-size="19">Лаконичный игровой знак.</text>
+    <line x1="996" y1="689" x2="1348" y2="689" stroke="#0c3b51" />
+    <text x="996" y="720" fill="#b4deff" font-size="16">Во вкладке браузера</text>
+    <rect x="996" y="739" width="169" height="54" rx="12" fill="#020c18" />
+    <svg x="1007" y="750" width="32" height="32" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <path
+        d="M34 12h8v29c0 7-7 12-14 12-6 0-10-3-10-8s5-10 12-10c1 0 3 0 4 1V12Z"
+        fill="#00e5ff"
+      />
+      <path d="M39 12v19c13-2 16-11 0-19Z" fill="#c528f5" />
+      <path d="m25 40 8 5-8 5Z" fill="#020c18" />
+    </svg>
+    <text x="1052" y="772" fill="#f2f5ff" font-size="18">Нотопад</text>
+    <rect x="1179" y="739" width="169" height="54" rx="12" fill="#edf3f7" />
+    <svg x="1192" y="758" width="16" height="16" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <path
+        d="M34 12h8v29c0 7-7 12-14 12-6 0-10-3-10-8s5-10 12-10c1 0 3 0 4 1V12Z"
+        fill="#00e5ff"
+      />
+      <path d="M39 12v19c13-2 16-11 0-19Z" fill="#c528f5" />
+      <path d="m25 40 8 5-8 5Z" fill="#020c18" />
+    </svg>
+    <text x="1218" y="772" fill="#020c18" font-size="18">Нотопад</text>
+    <text x="64" y="870" fill="#b4deff" font-size="18">
+      SVG · масштабируется без потери качества · 32 px / 16 px
+    </text>
+  </g>
+</svg>
