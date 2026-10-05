@@ -59,7 +59,7 @@
       height="320"
       clip-path="url(#screen)"
     />
-    <text x="624" y="532" fill="#b4deff" font-size="19">Падающие ноты · подсказки пальцев</text>
+    <text x="624" y="532" fill="#b4deff" font-size="19">Обе руки · сгорающие ноты</text>
     <text x="64" y="574" fill="#b4deff" font-size="23">keys.twiling.ru</text>
     <rect x="1006" y="70" width="20" height="44" rx="6" fill="#c528f5" />
     <rect x="1040" y="45" width="20" height="69" rx="6" fill="#00e5ff" />
