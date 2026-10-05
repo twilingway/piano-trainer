@@ -15,7 +15,7 @@ const DEFAULTS: WordTypingPrefs = {
   enabled: false,
   language: "ru",
   languageManuallyChosen: false,
-  accompaniment: false,
+  accompaniment: true,
   layout: "word"
 };
 
@@ -35,7 +35,8 @@ export function normalizeWordTypingPrefs(
     enabled: value.enabled === true,
     language: languageManuallyChosen ? (value.language as Language) : interfaceLanguage,
     languageManuallyChosen,
-    accompaniment: value.accompaniment === true,
+    accompaniment:
+      typeof value.accompaniment === "boolean" ? value.accompaniment : DEFAULTS.accompaniment,
     layout: value.layout === "song" ? "song" : "word"
   };
 }

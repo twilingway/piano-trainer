@@ -49,7 +49,7 @@ describe("separate word typing preferences", () => {
       enabled: false,
       language: "en",
       languageManuallyChosen: false,
-      accompaniment: false,
+      accompaniment: true,
       layout: "word"
     });
     const save = vi.spyOn(localStorage, "setItem").mockImplementation(() => {
@@ -73,6 +73,17 @@ describe("separate word typing preferences", () => {
       expect(
         normalizeWordTypingPrefs({ language: "ru", languageManuallyChosen: false }, locale).language
       ).toBe(locale);
+    }
+  });
+
+  it("enables accompaniment by default and preserves either saved boolean choice", () => {
+    expect(normalizeWordTypingPrefs(null, "en").accompaniment).toBe(true);
+    expect(normalizeWordTypingPrefs({}, "ru").accompaniment).toBe(true);
+    for (const accompaniment of [false, true]) {
+      const prefs = normalizeWordTypingPrefs({ accompaniment }, "en");
+      expect(prefs.accompaniment).toBe(accompaniment);
+      expect(saveWordTypingPrefs(prefs)).toBe(true);
+      expect(loadWordTypingPrefs().accompaniment).toBe(accompaniment);
     }
   });
 
