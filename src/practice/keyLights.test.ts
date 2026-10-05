@@ -40,12 +40,18 @@ describe("keyLightPitches", () => {
     expect(keyLightPitches(session("wait"), false)).toEqual([]);
   });
 
-  it("lights the owed chord in the wait mode, and drops a pressed key", () => {
+  it("lights the wait mode's chord 300 ms ahead, as the screen does, and drops a pressed key", () => {
     const run = session("wait");
-    // The next chord lights long before the song reaches it.
+    expect(keyLightPitches(run, true)).toEqual([]);
+    run.advance(LEAD_IN_S - 0.25);
     expect(keyLightPitches(run, true)).toEqual([60]);
-    run.advance(LEAD_IN_S);
+    // Held at C4 for as long as it takes.
+    run.advance(5);
+    expect(keyLightPitches(run, true)).toEqual([60]);
     run.pressKey(60);
+    // The chord at 1 is a whole second away: nothing lit yet.
+    expect(keyLightPitches(run, true)).toEqual([]);
+    run.advance(0.75);
     expect(keyLightPitches(run, true)).toEqual([64, 67]);
     run.advance(1);
     run.pressKey(64);
@@ -59,6 +65,7 @@ describe("keyLightPitches", () => {
     run.advance(1);
     run.pressKey(64);
     run.pressKey(67);
+    run.advance(1);
     expect(keyLightPitches(run, true)).toEqual([60]);
   });
 
