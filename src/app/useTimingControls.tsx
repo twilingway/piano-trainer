@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject
+} from "react";
 import { audioTime, cancelScheduledSound, scheduleSound, soundClick } from "../audio/pianoSound";
 import type { KeyEvent, MidiDevice } from "../input/midiInput";
 import type { ConnectionType } from "../practice/calibration";
@@ -38,7 +46,7 @@ export function useTimingControls({
     devices.find((device) => device.id === deviceId) ??
     (deviceId === "all" && devices.length === 1 ? devices[0] : undefined);
   const local = devices.length === 0;
-  const chosenId = local ? "keyboard" : String(selected?.id ?? "");
+  const chosenId = useMemo(() => (local ? "keyboard" : (selected?.id ?? "")), [local, selected]);
   const chosenName = local
     ? "Компьютерная клавиатура / экран"
     : (selected?.name ?? "Выберите одно MIDI-устройство");
