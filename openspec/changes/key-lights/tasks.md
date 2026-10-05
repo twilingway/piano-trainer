@@ -1,0 +1,33 @@
+## 1. Что горит
+
+- [ ] 1.1 `src/practice/keyLights.ts`: `keyLightPitches(session, active)`; тесты: режим ожидания
+      (аккорд, нажатая нота гаснет), режим темпа (окно 300 мс, промах гаснет), повтор высоты, чужая
+      рука, `active = false`. Проверка: `pnpm exec vitest run src/practice/keyLights.test.ts`
+- [ ] 1.2 `Trainer.onLights`: вызов в кадре и пустой набор в `silence()`; учёт Performance. Тесты:
+      пауза, перемотка и конец песни шлют пустой набор. Проверка:
+      `pnpm exec vitest run src/practice/Trainer.test.ts`
+
+## 2. Отправка и эхо
+
+- [ ] 2.1 `parseMidiMessage` даёт `channel` 1–16. Проверка:
+      `pnpm exec vitest run src/input/midiInput.test.ts`
+- [ ] 2.2 `MidiOutputControl.send`. Проверка: `pnpm exec vitest run src/input/midiOutput.test.ts`
+- [ ] 2.3 `src/input/keyLights.ts`: разница наборов, `configure` гасит на прежнем канале, `forget`,
+      `isEcho` по каналу и по совпадению в 50 мс, выключенная подсветка молчит и не фильтрует.
+      Проверка: `pnpm exec vitest run src/input/keyLights.test.ts`
+
+## 3. Настройки и связка
+
+- [ ] 3.1 `src/app/keyLightPreferences.ts` (`key-lights-v1`, откат по полям). Проверка: тест на
+      повреждённое и выходящее за пределы значение
+- [ ] 3.2 `useMidiOutput(trainerRef, trainerReady)`: `KeyLights`, `onLights`, `forget` при смене
+      порта; `useKeyInput` отбрасывает эхо; `App.tsx` передаёт `trainerReady`. Проверка: тест хука
+      на подставном `MIDIAccess` — подсветка доходит до порта, эхо не доходит до тренажёра
+- [ ] 3.3 `MidiSettings`: флажок, канал, громкость, предупреждение при канале 1, переводы. Проверка:
+      тест `MidiSettings`
+
+## 4. Завершение
+
+- [ ] 4.1 `pnpm check` и `pnpm spec:validate` зелёные
+- [ ] 4.2 Ручной прогон loopMIDI + MIDI-OX: подсветка в обоих режимах, гашение при паузе и
+      перемотке, эхо через петлю loopMIDI не засчитывается
