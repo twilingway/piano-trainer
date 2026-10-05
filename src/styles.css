@@ -2824,9 +2824,9 @@ button.song-card.song-card__open {
   }
 }
 
-/* The word mode on a phone: the strip lives in the menu, the legend fits a line, the signs shrink. */
+/* On a phone the game's strip lives in the menu; the word mode's legend fits a line, signs shrink. */
 @media (height <= 500px), (width <= 640px) {
-  .app--word .shell-top > .game-mode-strip,
+  .shell-top > .game-mode-strip,
   .word-board .word-quality {
     display: none;
   }

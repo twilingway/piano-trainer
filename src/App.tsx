@@ -228,14 +228,12 @@ export function App() {
           fullscreen={fullscreen.active}
           onFullscreen={() => void fullscreen.toggle()}
           toggles={toggles}
-          // A phone holds the word mode's strip in the menu.
+          // A phone holds the game's strip in the menu.
           menuExtra={
-            word.enabled && (
-              <>
-                {modeSwitch}
-                <WordQuality metrics={word.result?.metrics} />
-              </>
-            )
+            <>
+              {modeSwitch}
+              {word.enabled && <WordQuality metrics={word.result?.metrics} />}
+            </>
           }
           editing={screen.editing}
           onToggleEditing={screen.toggleEditing}
