@@ -6,7 +6,7 @@ import {
   STREAK_BONUSES
 } from "./gameRules";
 import type { Difficulty, Judgement } from "./gameRules";
-import { rankForAccuracy, starsForScore, timingStatistics } from "./gameResults";
+import { rankForAccuracy, starsForAccuracy, timingStatistics } from "./gameResults";
 import type { GameRank, TimingStatistics } from "./gameResults";
 
 export interface GameScoreOptions {
@@ -190,7 +190,7 @@ export class GameScore {
       fullCombo,
       perfectFullCombo: fullCombo && this.grades.PERFECT === this.expectedNotes,
       targetScore: this.targetScore,
-      stars: this.expectedNotes ? starsForScore(this.score, this.targetScore) : null,
+      stars: starsForAccuracy(accuracy),
       timing: timingStatistics(this.offsetsMs)
     };
   }

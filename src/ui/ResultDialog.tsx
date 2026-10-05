@@ -38,15 +38,22 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain, onRevie
   const accuracy = game ? game.accuracy : stats && played > 0 ? (stats.hits / played) * 100 : null;
   return (
     <GameDialog open={open} title="Готово" className="result" onClose={onClose}>
+      {game && game.stars !== null ? (
+        <p
+          className="result-stars"
+          role="img"
+          aria-label={`Звёзды: ${String(game.stars)} из 3`}
+          title="1 звезда: точность выше 25%; 2: выше 50%; 3: выше 75%"
+        >
+          <span aria-hidden="true">{"★".repeat(game.stars)}</span>
+          <span className="result-stars-empty" aria-hidden="true">
+            {"☆".repeat(3 - game.stars)}
+          </span>
+        </p>
+      ) : null}
       <div className="result-summary">
         {game && game.expectedNotes > 0 ? (
-          <>
-            <p className="result-stars" aria-label={`Звёзды: ${String(game.stars ?? 0)} из 5`}>
-              {"★".repeat(game.stars ?? 0)}
-              <span>{"☆".repeat(5 - (game.stars ?? 0))}</span>
-            </p>
-            <p className="result-points digits">Очки {game.score}</p>
-          </>
+          <p className="result-points digits">Очки {game.score}</p>
         ) : (
           <p>{game ? "Нет нот для оценки" : "Тренировка · без рейтинга"}</p>
         )}
@@ -63,10 +70,7 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain, onRevie
             <p>
               Очки <strong>{game.score}</strong> · Ранг <strong>{game.rank}</strong>
             </p>
-            <p>
-              {game.stars === null ? "" : "★".repeat(game.stars)} · Эталон: {game.targetScore} очков
-              (идеальная игра без Overdrive)
-            </p>
+            <p>Эталон: {game.targetScore} очков (идеальная игра без Overdrive)</p>
             <p>
               Максимальная серия: {game.maxCombo} · Нот: {game.expectedNotes}
               {game.perfectFullCombo

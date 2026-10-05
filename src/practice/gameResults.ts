@@ -13,14 +13,12 @@ export function rankForAccuracy(accuracy: number): GameRank {
   return "F";
 }
 
-export function starsForScore(score: number, targetScore: number): number | null {
-  if (targetScore <= 0) return null;
-  const fraction = score / targetScore;
-  if (fraction >= 0.85) return 5;
-  if (fraction >= 0.7) return 4;
-  if (fraction >= 0.5) return 3;
-  if (fraction >= 0.3) return 2;
-  return 1;
+export function starsForAccuracy(accuracy: number | null): number | null {
+  if (accuracy === null || !Number.isFinite(accuracy)) return null;
+  if (accuracy > 75) return 3;
+  if (accuracy > 50) return 2;
+  if (accuracy > 25) return 1;
+  return 0;
 }
 
 export interface TimingStatistics {
