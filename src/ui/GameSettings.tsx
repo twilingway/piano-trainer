@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import type { Difficulty } from "../practice/gameRules";
 
 interface Props {
@@ -25,11 +26,12 @@ interface Props {
   readonly onRange: (change: Partial<{ from: number; to: number; loop: boolean }>) => void;
 }
 export function GameSettings(props: Props) {
+  const { t } = useI18n();
   return (
     <section className="settings-list">
-      <h3 className="settings-group__title">Правила и очки</h3>
+      <h3 className="settings-group__title">{t("Правила и очки")}</h3>
       <label className="setting">
-        Сложность
+        {t("Сложность")}{" "}
         <select
           className="game-select"
           value={props.difficulty}
@@ -38,15 +40,15 @@ export function GameSettings(props: Props) {
             props.onChange({ difficulty: event.target.value as Difficulty });
           }}
         >
-          <option value="easy">Легко</option>
-          <option value="normal">Обычно</option>
-          <option value="hard">Сложно</option>
-          <option value="expert">Эксперт</option>
+          <option value="easy">{t("Легко")}</option>
+          <option value="normal">{t("Обычно")}</option>
+          <option value="hard">{t("Сложно")}</option>
+          <option value="expert">{t("Эксперт")}</option>
         </select>
       </label>
       {!props.practiceOnly && (
         <label className="setting">
-          Рейтинговое исполнение
+          {t("Рейтинговое исполнение")}{" "}
           <input
             type="checkbox"
             checked={props.ranked}
@@ -59,17 +61,18 @@ export function GameSettings(props: Props) {
       )}
       {props.practiceOnly && (
         <p className="setting-hint">
-          Печатать мелодию — учебный прототип без рейтингового исполнения.
+          {t("Печатать мелодию — учебный прототип без рейтингового исполнения.")}
         </p>
       )}
       {!props.practiceOnly && !props.rankedReady && (
         <p className="setting-hint">
-          Для рейтинга выберите одно устройство и выполните калибровку в разделе «Синхронизация».
-          Рейтинг играет в темпе на скорости 100 %, без Loop.
+          {t(
+            "Для рейтинга выберите одно устройство и выполните калибровку в разделе «Синхронизация». Рейтинг играет в темпе на скорости 100 %, без Loop."
+          )}
         </p>
       )}
       <label className="setting">
-        Учебное окно +300 мс
+        {t("Учебное окно +300 мс")}{" "}
         <input
           type="checkbox"
           checked={props.learningWindow && !props.ranked}
@@ -80,11 +83,12 @@ export function GameSettings(props: Props) {
         />
       </label>
       <p className="setting-hint">
-        Позднее нажатие до +300 мс даёт OK: 25 базовых очков. Точное попадание ценнее. Клавиша
-        постепенно подсвечивается за 300 мс до ноты. В рейтинге окно остаётся строгим.
+        {t(
+          "Позднее нажатие до +300 мс даёт OK: 25 базовых очков. Точное попадание ценнее. Клавиша постепенно подсвечивается за 300 мс до ноты. В рейтинге окно остаётся строгим."
+        )}
       </p>
       <label className="setting">
-        Performance: скрыть подсказки
+        {t("Performance: скрыть подсказки")}{" "}
         <input
           type="checkbox"
           checked={props.performance}
@@ -94,7 +98,7 @@ export function GameSettings(props: Props) {
         />
       </label>
       <label className="setting">
-        Остановиться после ошибки
+        {t("Остановиться после ошибки")}{" "}
         <input
           type="checkbox"
           checked={props.stopOnError}
@@ -106,13 +110,13 @@ export function GameSettings(props: Props) {
       </label>
       <p className="setting-hint">
         {props.stopOnError && !props.ranked
-          ? "После промаха или лишней ноты игра встаёт на паузу."
-          : "No-Fail: песня продолжается после ошибок."}
+          ? t("После промаха или лишней ноты игра встаёт на паузу.")
+          : t("No-Fail: песня продолжается после ошибок.")}
       </p>
       <fieldset disabled={props.ranked || props.locked} className="practice-range">
-        <legend>Участок, секунды</legend>
+        <legend>{t("Участок, секунды")}</legend>
         <label>
-          От
+          {t("От")}{" "}
           <input
             type="number"
             min={0}
@@ -126,7 +130,7 @@ export function GameSettings(props: Props) {
           />
         </label>
         <label>
-          До
+          {t("До")}{" "}
           <input
             type="number"
             min={props.from}
@@ -140,7 +144,7 @@ export function GameSettings(props: Props) {
           />
         </label>
         <label>
-          Повторять участок
+          {t("Повторять участок")}{" "}
           <input
             type="checkbox"
             checked={props.loop}
@@ -151,21 +155,21 @@ export function GameSettings(props: Props) {
         </label>
       </fieldset>
       <details>
-        <summary>Как считаются очки</summary>
+        <summary>{t("Как считаются очки")}</summary>
         <p>
-          PERFECT / GREAT / GOOD / OK: 100 / 80 / 50 / 25 базовых очков. Комбо повышает множитель до
-          ×5. Ошибки сбрасывают комбо; в тишине штрафов нет.
+          {t(
+            "PERFECT / GREAT / GOOD / OK: 100 / 80 / 50 / 25 базовых очков. Комбо повышает множитель до ×5. Ошибки сбрасывают комбо; в тишине штрафов нет."
+          )}
         </p>
         <p>
-          20 PERFECT/GREAT включают Flow. Каждая засчитанная нота, включая GOOD и OK, даёт энергию.
-          Прибавка рассчитана отдельно по длине и числу нот выбранной партии: два заряда для
-          композиции короче 30 секунд, три — от 30 секунд. Пропуски и паузы не дают энергию.
-          Overdrive стоит 50 энергии и удваивает множитель на 10 секунд; в очень коротком упражнении
-          число включений ограничено длительностью эффекта. Удержание длинных нот даёт бонус очков.
+          {t(
+            "20 PERFECT/GREAT включают Flow. Каждая засчитанная нота, включая GOOD и OK, даёт энергию. Прибавка рассчитана отдельно по длине и числу нот выбранной партии: два заряда для композиции короче 30 секунд, три — от 30 секунд. Пропуски и паузы не дают энергию. Overdrive стоит 50 энергии и удваивает множитель на 10 секунд; в очень коротком упражнении число включений ограничено длительностью эффекта. Удержание длинных нот даёт бонус очков."
+          )}
         </p>
         <p>
-          Точность зависит только от оценок атак. Звёзды сравнивают очки с идеальным исполнением без
-          Overdrive. «Ждать ноту» — обучение без рейтинга.
+          {t(
+            "Точность зависит только от оценок атак. Звёзды сравнивают очки с идеальным исполнением без Overdrive. «Ждать ноту» — обучение без рейтинга."
+          )}
         </p>
       </details>
     </section>

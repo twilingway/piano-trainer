@@ -1,4 +1,5 @@
-﻿import { DEFAULT_CAMERA } from "../../render/worldCamera";
+import { useI18n } from "../../app/useI18n";
+import { DEFAULT_CAMERA } from "../../render/worldCamera";
 import type { CameraPrefs } from "../../render/worldCamera";
 
 interface Props {
@@ -31,14 +32,15 @@ const CONTROLS: readonly {
 
 /** Camera controls stay in the scrollable settings rather than covering the piano. */
 export function CameraSettings({ camera, onChange }: Props) {
+  const { t } = useI18n();
   return (
     <>
       {CONTROLS.map(({ key, label, min, max, step, suffix }) => (
         <label className="setting" key={key}>
-          <span>{label}</span>
+          <span>{t(label)}</span>
           <span className="setting-control">
             <input
-              aria-label={label}
+              aria-label={t(label)}
               type="range"
               min={min}
               max={max}
@@ -62,7 +64,7 @@ export function CameraSettings({ camera, onChange }: Props) {
           onChange(DEFAULT_CAMERA);
         }}
       >
-        Сбросить камеру
+        {t("Сбросить камеру")}
       </button>
     </>
   );

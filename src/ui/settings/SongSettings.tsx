@@ -1,3 +1,4 @@
+import { useI18n } from "../../app/useI18n";
 import type { Dispatch, SetStateAction } from "react";
 
 import { keyName, shiftBetween, transposeKey } from "../../song/keySignature";
@@ -16,16 +17,17 @@ interface Props {
 
 /** The song tab: its key and the finger corrections. */
 export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers }: Props) {
+  const { t } = useI18n();
   return (
     <div className="settings-list">
       {sourceKey && (
         <label className="setting">
-          <span>Тональность</span>
+          <span>{t("Тональность")}</span>
           <span className="setting-control">
             <button
               type="button"
               className="game-button"
-              aria-label="На полтона ниже"
+              aria-label={t("На полтона ниже")}
               onClick={() => {
                 onTranspose((value) => Math.max(-11, value - 1));
               }}
@@ -34,7 +36,7 @@ export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers
             </button>
             <select
               className="game-select"
-              aria-label="Тональность"
+              aria-label={t("Тональность")}
               value={(sourceKey.tonic + transpose + 12) % 12}
               onChange={(event) => {
                 onTranspose(shiftBetween(sourceKey.tonic, Number(event.target.value)));
@@ -45,11 +47,11 @@ export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers
                 const moved = transposeKey(sourceKey, shift);
                 return (
                   <option key={tonic} value={tonic}>
-                    {keyName(moved)}
+                    {t(keyName(moved))}
                     {shift === 0
                       ? sourceKey.fifths === undefined
-                        ? " (исходная)"
-                        : " (как в нотах)"
+                        ? t(" (исходная)")
+                        : t(" (как в нотах)")
                       : ""}
                   </option>
                 );
@@ -58,7 +60,7 @@ export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers
             <button
               type="button"
               className="game-button"
-              aria-label="На полтона выше"
+              aria-label={t("На полтона выше")}
               onClick={() => {
                 onTranspose((value) => Math.min(11, value + 1));
               }}
@@ -69,19 +71,19 @@ export function SongSettings({ sourceKey, transpose, onTranspose, onResetFingers
         </label>
       )}
       <div className="setting">
-        <span>Пальцы, исправленные кликом по ноте</span>
+        <span>{t("Пальцы, исправленные кликом по ноте")}</span>
         <button
           type="button"
           className="game-button"
           onClick={onResetFingers}
           disabled
-          title="Изменение пальцев временно отключено"
+          title={t("Изменение пальцев временно отключено")}
         >
-          Сбросить пальцы
+          {t("Сбросить пальцы")}
         </button>
       </div>
       <p className="setting-hint">
-        Изменение пальцев временно отключено. Клик по нотам на стане — играть с этого места.
+        {t("Изменение пальцев временно отключено. Клик по нотам на стане — играть с этого места.")}
       </p>
     </div>
   );

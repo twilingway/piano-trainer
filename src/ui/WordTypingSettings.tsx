@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import type { Language, Layout, Part } from "../wordTyping/types";
 
 interface Props {
@@ -16,51 +17,54 @@ interface Props {
 }
 
 export function WordTypingSettings(props: Props) {
+  const { t } = useI18n();
   return (
     <div className="word-options">
       <label>
-        Язык текста
+        {t("Язык текста")}{" "}
         <select
           className="game-select"
-          aria-label="Язык текста"
+          aria-label={t("Язык текста")}
           value={props.language}
           disabled={props.locked}
           onChange={(event) => {
             props.onLanguage(event.target.value as Language);
           }}
         >
-          <option value="ru">Русский</option>
+          <option value="ru">{t("Русский")}</option>
           <option value="en">English</option>
         </select>
       </label>
       <label>
-        Партия
+        {t("Партия")}{" "}
         <select
           className="game-select"
-          aria-label="Партия для печати"
+          aria-label={t("Партия для печати")}
           value={props.part}
           disabled={props.locked}
           onChange={(event) => {
             props.onPart(event.target.value as Part);
           }}
         >
-          <option value="melody">Мелодия</option>
-          <option value="bass">Бас</option>
+          <option value="melody">{t("Мелодия")}</option>
+          <option value="bass">{t("Бас")}</option>
         </select>
       </label>
-      <label title="На слово: буква играет одну ноту только внутри своего слова, слова длиннее">
-        Раскладка
+      <label
+        title={t("На слово: буква играет одну ноту только внутри своего слова, слова длиннее")}
+      >
+        {t("Раскладка")}{" "}
         <select
           className="game-select"
-          aria-label="Раскладка букв"
+          aria-label={t("Раскладка букв")}
           value={props.layout}
           disabled={props.locked}
           onChange={(event) => {
             props.onLayout(event.target.value as Layout);
           }}
         >
-          <option value="word">На слово</option>
-          <option value="song">На песню</option>
+          <option value="word">{t("На слово")}</option>
+          <option value="song">{t("На песню")}</option>
         </select>
       </label>
       <button
@@ -69,9 +73,9 @@ export function WordTypingSettings(props: Props) {
         disabled={props.locked || props.pending}
         onClick={props.onRegenerate}
       >
-        Другие слова
+        {t("Другие слова")}
       </button>
-      <label title="Вторая рука песни играет сама под печатаемую партию">
+      <label title={t("Вторая рука песни играет сама под печатаемую партию")}>
         <input
           type="checkbox"
           checked={props.accompaniment}
@@ -80,7 +84,7 @@ export function WordTypingSettings(props: Props) {
             props.onAccompaniment(event.target.checked);
           }}
         />
-        Аккомпанемент второй руки
+        {t("Аккомпанемент второй руки")}
       </label>
     </div>
   );

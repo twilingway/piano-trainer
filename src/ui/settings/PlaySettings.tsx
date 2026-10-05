@@ -1,4 +1,5 @@
-﻿import type { PracticeMode, PracticeStats } from "../../practice/session";
+import { useI18n } from "../../app/useI18n";
+import type { PracticeMode, PracticeStats } from "../../practice/session";
 import type { HandsChoice } from "../PlayerTopBar";
 
 interface Props {
@@ -37,46 +38,47 @@ export function PlaySettings({
   onAutoReview,
   wordTyping = false
 }: Props) {
+  const { t, formatNumber } = useI18n();
   return (
     <div className="settings-list">
       <label className="setting">
-        <span>Режим</span>
+        <span>{t("Режим")}</span>
         <select
           className="game-select"
-          aria-label="Режим"
+          aria-label={t("Режим")}
           value={mode}
           onChange={(event) => {
             onMode(event.target.value as PracticeMode);
           }}
         >
-          <option value="wait">Ждать ноту</option>
-          <option value="tempo">В темпе</option>
+          <option value="wait">{t("Ждать ноту")}</option>
+          <option value="tempo">{t("В темпе")}</option>
         </select>
       </label>
       {!wordTyping && (
         <label className="setting">
-          <span>Руки</span>
+          <span>{t("Руки")}</span>
           <select
             className="game-select"
-            aria-label="Руки"
+            aria-label={t("Руки")}
             value={hands}
             onChange={(event) => {
               onHands(event.target.value as HandsChoice);
             }}
           >
-            <option value="right">Правая рука</option>
-            <option value="left">Левая рука</option>
-            <option value="both">Обе руки</option>
-            <option value="listen">Только слушать</option>
+            <option value="right">{t("Правая рука")}</option>
+            <option value="left">{t("Левая рука")}</option>
+            <option value="both">{t("Обе руки")}</option>
+            <option value="listen">{t("Только слушать")}</option>
           </select>
         </label>
       )}
       <label className="setting">
-        <span>Скорость</span>
+        <span>{t("Скорость")}</span>
         <span className="setting-control">
           <input
             type="range"
-            aria-label="Скорость"
+            aria-label={t("Скорость")}
             min={0.01}
             max={1}
             step={0.01}
@@ -89,7 +91,7 @@ export function PlaySettings({
         </span>
       </label>
       <label className="setting">
-        <span>Метроном</span>
+        <span>{t("Метроном")}</span>
         <input
           type="checkbox"
           checked={metronome}
@@ -99,7 +101,7 @@ export function PlaySettings({
         />
       </label>
       <label className="setting">
-        <span>Открывать разбор после игры</span>
+        <span>{t("Открывать разбор после игры")}</span>
         <input
           type="checkbox"
           checked={autoReview}
@@ -109,20 +111,26 @@ export function PlaySettings({
         />
       </label>
       <div className="setting">
-        <span>Послушать, как звучит песня</span>
+        <span>{t("Послушать, как звучит песня")}</span>
         <button type="button" className="game-button" onClick={onListen} disabled={soundLoading}>
-          {listening ? "Стоп" : "Прослушать"}
+          {listening ? t("Стоп") : t("Прослушать")}
         </button>
       </div>
       {stats && (
         <p className="setting-hint">
-          Попадания {stats.hits} · Промахи {stats.misses} · Лишние {stats.wrong}
+          {t("Попадания {hits} · Промахи {misses} · Лишние {wrong}", {
+            hits: formatNumber(stats.hits),
+            misses: formatNumber(stats.misses),
+            wrong: formatNumber(stats.wrong)
+          })}
           {mode === "tempo" && stats.hits > 0
-            ? ` · Смещение ${String(Math.round(stats.meanOffset * 1000))} мс`
+            ? t(" · Смещение {offset} мс", {
+                offset: formatNumber(Math.round(stats.meanOffset * 1000))
+              })
             : ""}
         </p>
       )}
-      <p className="setting-hint">Ctrl+Пробел — играть и пауза.</p>
+      <p className="setting-hint">{t("Ctrl+Пробел — играть и пауза.")}</p>
     </div>
   );
 }

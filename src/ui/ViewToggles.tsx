@@ -1,3 +1,4 @@
+import { useI18n } from "../app/useI18n";
 import type { StaffPrefs } from "../app/useStaffPrefs";
 import {
   FallingNotesIcon,
@@ -17,89 +18,90 @@ interface Props {
 
 /** What the game shows: the staff, the falling notes, the keys, the hands and their looks. */
 export function ViewToggles({ prefs, hasScore, onChange }: Props) {
+  const { t } = useI18n();
   return (
     <>
       <button
         type="button"
         className="view-toggle"
-        aria-label="Нотный стан"
+        aria-label={t("Нотный стан")}
         aria-pressed={prefs.visible}
-        title={prefs.visible ? "Скрыть нотный стан" : "Показать нотный стан"}
+        title={prefs.visible ? t("Скрыть нотный стан") : t("Показать нотный стан")}
         disabled={!hasScore}
         onClick={() => {
           onChange({ visible: !prefs.visible });
         }}
       >
         <StaffIcon />
-        <span className="view-toggle__label">Нотный стан</span>
+        <span className="view-toggle__label">{t("Нотный стан")}</span>
       </button>
       <button
         type="button"
         className="view-toggle"
-        aria-label="Падающие ноты"
+        aria-label={t("Падающие ноты")}
         aria-pressed={prefs.lane}
-        title={prefs.lane ? "Скрыть падающие ноты" : "Показать падающие ноты"}
+        title={prefs.lane ? t("Скрыть падающие ноты") : t("Показать падающие ноты")}
         onClick={() => {
           onChange({ lane: !prefs.lane });
         }}
       >
         <FallingNotesIcon />
-        <span className="view-toggle__label">Падающие ноты</span>
+        <span className="view-toggle__label">{t("Падающие ноты")}</span>
       </button>
       <button
         type="button"
         className="view-toggle"
-        aria-label="Клавиатура"
+        aria-label={t("Клавиатура")}
         aria-pressed={prefs.keys}
-        title={prefs.keys ? "Скрыть клавиатуру" : "Показать клавиатуру"}
+        title={prefs.keys ? t("Скрыть клавиатуру") : t("Показать клавиатуру")}
         onClick={() => {
           onChange({ keys: !prefs.keys });
         }}
       >
         <KeyboardIcon />
-        <span className="view-toggle__label">Клавиатура</span>
+        <span className="view-toggle__label">{t("Клавиатура")}</span>
       </button>
       <button
         type="button"
         className="view-toggle"
-        aria-label="Руки"
+        aria-label={t("Руки")}
         aria-pressed={prefs.hands}
         disabled={!prefs.keys}
-        title={prefs.hands ? "Скрыть руки" : "Показать руки"}
+        title={prefs.hands ? t("Скрыть руки") : t("Показать руки")}
         onClick={() => {
           onChange({ hands: !prefs.hands });
         }}
       >
         <HandIcon />
-        <span className="view-toggle__label">Руки</span>
+        <span className="view-toggle__label">{t("Руки")}</span>
       </button>
       <button
         type="button"
         className="view-toggle"
-        aria-label="Дорога"
+        aria-label={t("Дорога")}
         aria-pressed={prefs.road}
         disabled={!prefs.lane}
-        title={prefs.road ? "Обычный вид нот" : "Дорога: ноты в перспективе"}
+        title={prefs.road ? t("Обычный вид нот") : t("Дорога: ноты в перспективе")}
         onClick={() => {
           onChange({ road: !prefs.road });
         }}
       >
         <RoadIcon />
-        <span className="view-toggle__label">Дорога</span>
+        <span className="view-toggle__label">{t("Дорога")}</span>
       </button>
       <button
         type="button"
         className="view-toggle"
-        aria-label="Ноты на стане"
+        aria-label={t("Ноты на стане")}
         aria-pressed={prefs.noteCards}
         disabled={!prefs.lane}
-        title={prefs.noteCards ? "Падающие ноты полосками" : "Падающие ноты нотами на стане"}
+        title={prefs.noteCards ? t("Падающие ноты полосками") : t("Падающие ноты нотами на стане")}
         onClick={() => {
           onChange({ noteCards: !prefs.noteCards });
         }}
       >
         <NoteCardIcon />
-        <span className="view-toggle__label">Ноты на стане</span>
+        <span className="view-toggle__label">{t("Ноты на стане")}</span>
       </button>
     </>
   );
