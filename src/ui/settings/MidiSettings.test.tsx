@@ -106,6 +106,7 @@ describe("MidiSettings keyboard range", () => {
 describe("MidiSettings output", () => {
   const onSelect = vi.fn();
   const onTest = vi.fn();
+  const onLights = vi.fn();
   const piano = { id: "a", name: "Digital Piano" };
   const output = (rest: Partial<MidiOutputControls>): MidiOutputControls => ({
     devices: [],
@@ -114,6 +115,8 @@ describe("MidiSettings output", () => {
     selectedId: "",
     onSelect,
     onTest,
+    lights: { enabled: false, channel: 3, velocity: 64 },
+    onLights,
     ...rest
   });
   function outputSelect() {
@@ -155,5 +158,58 @@ describe("MidiSettings output", () => {
     await render({}, output({}));
     expect([...outputSelect().options].map((option) => option.textContent)).toEqual(["Нет"]);
     expect(button("Проверить").disabled).toBe(true);
+  });
+
+  it("turns the key lights on, with their channel and velocity hidden while off", async () => {
+    await render({}, output({}));
+    expect(host.querySelector("select[aria-label='Канал подсветки']")).toBeNull();
+    const toggle = [...host.querySelectorAll<HTMLLabelElement>("label")]
+      .find((label) => label.textContent === "Подсветка клавиш")
+      ?.querySelector("input");
+    expect(toggle?.checked).toBe(false);
+    toggle?.click();
+    expect(onLights).toHaveBeenCalledWith({ enabled: true, channel: 3, velocity: 64 });
+  });
+
+  it("sets the light channel and velocity, and warns on channel 1", async () => {
+    const lights = { enabled: true, channel: 3, velocity: 64 };
+    await render({}, output({ lights }));
+    const channel = host.querySelector<HTMLSelectElement>("select[aria-label='Канал подсветки']");
+    const velocity = host.querySelector<HTMLInputElement>(
+      "input[aria-label='Громкость подсветки']"
+    );
+    // React sees a typed value only through the native setter.
+    const typeVelocity = (value: string) => {
+      const inputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+      if (!inputValue?.set || !velocity) throw new Error("Missing velocity input");
+      inputValue.set.call(velocity, value);
+    };
+    expect(channel?.options).toHaveLength(16);
+    expect(channel?.value).toBe("3");
+    expect(velocity?.value).toBe("64");
+    expect(host.textContent).not.toContain("На канале 1");
+    await act(async () => {
+      await Promise.resolve();
+      if (channel) channel.value = "1";
+      channel?.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onLights).toHaveBeenLastCalledWith({ ...lights, channel: 1 });
+    onLights.mockClear();
+    await act(async () => {
+      await Promise.resolve();
+      typeVelocity("200");
+      velocity?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(onLights).not.toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
+      typeVelocity("20");
+      velocity?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(onLights).toHaveBeenLastCalledWith({ ...lights, velocity: 20 });
+    await render({}, output({ lights: { ...lights, channel: 1 } }));
+    expect(host.textContent).toContain(
+      "На канале 1 обычно играет само пианино: такие нажатия не засчитаются."
+    );
   });
 });
