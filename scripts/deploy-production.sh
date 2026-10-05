@@ -30,7 +30,7 @@ set -a
 . "$ENV_FILE"
 set +a
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
-PUBLIC_URL="${PUBLIC_URL:-https://piano.twiling.ru}"
+PUBLIC_URL="${PUBLIC_URL:-https://keys.twiling.ru}"
 PROXY_NETWORK="${PROXY_NETWORK:-public_net}"
 PUBLIC_URL="${PUBLIC_URL%/}"
 

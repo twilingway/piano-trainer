@@ -18,9 +18,11 @@ Proxy Manager для Towerdefander; прокси использует внешн
 ## Decisions
 
 1. Многоэтапный Dockerfile собирает сайт на Node 22 и раздаёт `dist` через Nginx. Compose подключает
-   единственный контейнер `piano-web` к `public_net` без публикации порта хоста. NPM направляет
-   `piano.twiling.ru` на `piano-web:80`, включает Let's Encrypt и Force SSL. Отдельный Node-сервер
-   или `vite preview` не нужны.
+   единственный контейнер `piano-web` к `public_net` без публикации порта хоста. Один Proxy Host NPM
+   направляет `keys.twiling.ru` и `piano.twiling.ru` на `piano-web:80`, включает Let's Encrypt и
+   Force SSL. Редиректа между доменами нет: `localStorage` привязан к origin, и перенаправление
+   отрезало бы игроков `piano.` от их песен и дублей. Отдельный Node-сервер или `vite preview` не
+   нужны.
 2. GitHub Actions выполняет `pnpm check` и `pnpm spec:validate` для PR и `main`. Пользовательский
    launchd-агент на Mac опрашивает `main` и статус конкретной проверки, затем локально собирает
    образ по SHA. По аналогии с Towerdefander на Mac нет self-hosted runner: workflow из публичного
