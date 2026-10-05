@@ -1,6 +1,12 @@
+// @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { PracticeTimingStatus } from "./PracticeTimingStatus";
+
+beforeEach(() => {
+  setInterfaceLanguage("ru");
+});
 
 describe("visible applied timing status", () => {
   it("explains the active educational window outside settings", () => {
