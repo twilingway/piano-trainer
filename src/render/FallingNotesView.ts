@@ -4,6 +4,7 @@ import type { FederatedPointerEvent } from "pixi.js";
 import type { Finger } from "../fingering/fingering";
 import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
+import { publishOverlayLayout } from "./viewOverlayLayout";
 import { bakeDigits, bakeNames } from "./bakeLabels";
 import { bindKeyboardPointer } from "./bindKeyboardPointer";
 import { ComputerKeyboardLayer } from "./ComputerKeyboardLayer";
@@ -602,8 +603,7 @@ export class FallingNotesView {
     const hitLineY = this.roadMode && this.road ? this.road.hitLineY : geometry.hitY;
     this.hud.layout(width, hitLineY, this.hudTop);
     // Where the notes meet the keys, for the page's overlays: the word mode's text sits over it.
-    this.app.canvas.parentElement?.style.setProperty("--hit-line", `${String(hitLineY)}px`);
-    this.app.canvas.parentElement?.style.setProperty("--keys-bottom", `${String(keysBottom)}px`);
+    publishOverlayLayout(this.app.canvas.parentElement, hitLineY, keysBottom, this.hudTop);
   }
 
   /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */
