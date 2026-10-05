@@ -3,7 +3,7 @@ import type { BuildInfo } from "../../app/buildInfo";
 
 const AUTHOR_LINKS = [
   ["Telegram", "https://t.me/twilingkeys"],
-  ["YouTube", "https://www.youtube.com/@twilinggame5959"],
+  ["YouTube", "https://www.youtube.com/@twilinggame"],
   ["Rutube", "https://rutube.ru/channel/43554984/"],
   ["VK", "https://vk.ru/twilinggame"]
 ] as const;
