@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import type { Finger, Hand } from "../fingering/fingering";
 import type { NoteStatus } from "../practice/session";
 import type { GeneratedToken, WordTypingResult } from "../wordTyping/types";
@@ -22,6 +22,20 @@ interface Props {
   /** A note about the text, such as a variant that came out the same. */
   readonly notice?: string | undefined;
 }
+const EMPTY_TOKENS: readonly GeneratedToken[] = [];
+
+/** Grouping depends only on the generated text, independent of playback progress. */
+function groupTokens(
+  tokens: readonly GeneratedToken[]
+): ReadonlyMap<number, readonly GeneratedToken[]> {
+  const groups = new Map<number, GeneratedToken[]>();
+  for (const token of tokens) {
+    const group = groups.get(token.wordIndex) ?? [];
+    group.push(token);
+    groups.set(token.wordIndex, group);
+  }
+  return groups;
+}
 
 /** The typed text as a running line: the current character stays in the middle, as on the staff. */
 export function WordTicker(props: Props) {
@@ -29,17 +43,12 @@ export function WordTicker(props: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLSpanElement>(null);
   const { result, statuses } = props;
-  const tokens = result?.tokens ?? [];
+  const tokens = result?.tokens ?? EMPTY_TOKENS;
   const progress = textProgress(tokens, statuses, props.time, props.listening);
   const { index } = progress;
   // Past the end, the line stays on the last character.
   const anchor = index >= 0 ? index : (tokens.at(-1)?.noteIndex ?? -1);
-  const groups = new Map<number, GeneratedToken[]>();
-  for (const token of tokens) {
-    const group = groups.get(token.wordIndex) ?? [];
-    group.push(token);
-    groups.set(token.wordIndex, group);
-  }
+  const groups = useMemo(() => groupTokens(tokens), [tokens]);
   useLayoutEffect(() => {
     const line = lineRef.current;
     const track = trackRef.current;

@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject
+} from "react";
 import { audioTime, cancelScheduledSound, scheduleSound, soundClick } from "../audio/pianoSound";
 import type { KeyEvent, MidiDevice } from "../input/midiInput";
 import type { ConnectionType } from "../practice/calibration";
-import type { Trainer, TrainerSnapshot } from "../practice/Trainer";
-import { TimingSettings } from "../ui/TimingSettings";
+import type { Trainer } from "../practice/Trainer";
+import { ConnectedTimingSettings } from "./ConnectedSettings";
+import type { TrainerSnapshotSource } from "./trainerSnapshots";
 import {
   calibrationIsCurrent,
   getTimingProfile,
@@ -19,7 +28,8 @@ interface Options {
   ensureSound: () => Promise<void>;
   devices: readonly MidiDevice[];
   deviceId: string;
-  snapshot?: TrainerSnapshot | null;
+  trainerReady: boolean;
+  snapshotSource: TrainerSnapshotSource;
   locked?: boolean;
 }
 export function useTimingControls({
@@ -27,7 +37,8 @@ export function useTimingControls({
   ensureSound,
   devices,
   deviceId,
-  snapshot,
+  trainerReady,
+  snapshotSource,
   locked = false
 }: Options) {
   const [preferences, setPreferences] = useState(loadTimingPreferences);
@@ -35,7 +46,7 @@ export function useTimingControls({
     devices.find((device) => device.id === deviceId) ??
     (deviceId === "all" && devices.length === 1 ? devices[0] : undefined);
   const local = devices.length === 0;
-  const chosenId = local ? "keyboard" : (selected?.id ?? "");
+  const chosenId = useMemo(() => (local ? "keyboard" : (selected?.id ?? "")), [local, selected]);
   const chosenName = local
     ? "Компьютерная клавиатура / экран"
     : (selected?.name ?? "Выберите одно MIDI-устройство");
@@ -110,15 +121,18 @@ export function useTimingControls({
     await ensureSound();
     if (request.current === token) startCalibration();
   };
-  const intercept = (event: KeyEvent): boolean => {
-    if (!running) return false;
-    const matches = local
-      ? event.source !== "midi"
-      : event.source === "midi" && event.deviceId === chosenId;
-    if (matches && event.type === "down")
-      capture(event.pitch, event.timestamp ?? performance.now());
-    return true;
-  };
+  const intercept = useCallback(
+    (event: KeyEvent): boolean => {
+      if (!running) return false;
+      const matches = local
+        ? event.source !== "midi"
+        : event.source === "midi" && event.deviceId === chosenId;
+      if (matches && event.type === "down")
+        capture(event.pitch, event.timestamp ?? performance.now());
+      return true;
+    },
+    [running, local, chosenId, capture]
+  );
   useLayoutEffect(() => {
     const trainer = trainerRef.current;
     if (!trainer) return;
@@ -137,11 +151,15 @@ export function useTimingControls({
       audioOffsetMs: preferences.audioOffsetMs,
       visualOffsetMs: preferences.visualOffsetMs
     });
+  }, [trainerRef, trainerReady, devices, preferences]);
+  useLayoutEffect(() => {
+    const trainer = trainerRef.current;
+    if (!trainer) return;
     trainer.onInput = intercept;
     return () => {
       if (trainer.onInput === intercept) trainer.onInput = undefined;
     };
-  });
+  }, [trainerRef, trainerReady, intercept]);
   const onTransport = (value: ConnectionType) => {
     if (locked || running || !chosenId) return;
     setPreferences((current) => ({
@@ -160,7 +178,8 @@ export function useTimingControls({
     if (!locked && !running) setPreferences((current) => ({ ...current, ...values }));
   };
   const settings = (
-    <TimingSettings
+    <ConnectedTimingSettings
+      source={snapshotSource}
       preferences={preferences}
       deviceId={chosenId}
       deviceName={chosenName}
@@ -170,7 +189,6 @@ export function useTimingControls({
       running={running}
       locked={locked}
       canCalibrate={!!chosenId}
-      {...(snapshot?.diagnostic ? { diagnostic: snapshot.diagnostic } : {})}
       onTransport={onTransport}
       onOffsets={onOffsets}
       onStart={() => {
