@@ -1,6 +1,12 @@
+// @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { GameModeSegment } from "./GameModeSwitch";
+
+beforeEach(() => {
+  setInterfaceLanguage("ru");
+});
 
 describe("the bar's choice of game", () => {
   it("names both games for a screen reader and marks the chosen one", () => {

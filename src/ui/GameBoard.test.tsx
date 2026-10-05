@@ -1,8 +1,10 @@
+// @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
 import { Window } from "happy-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GameScore } from "../practice/gameScore";
+import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { DEFAULT_SCREEN_LAYOUT } from "../app/screenLayout";
 import type { StaffPrefs } from "../app/useStaffPrefs";
 import { DEFAULT_CAMERA } from "../render/worldCamera";
@@ -11,6 +13,10 @@ import { ResultDialog } from "./ResultDialog";
 import { Workspace } from "./Workspace";
 
 vi.mock("../staff/Staff", () => ({ Staff: () => null }));
+
+beforeEach(() => {
+  setInterfaceLanguage("ru");
+});
 
 const prefsWith = (lane: boolean): StaffPrefs => ({
   zoom: 1,

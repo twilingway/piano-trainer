@@ -1,9 +1,15 @@
+// @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import type { WordTypingResult } from "../wordTyping/types";
 import { WordTextPopover } from "./WordTextPopover";
 
 const metrics = { stars: 4, dictionaryCoveragePercent: 100 } as WordTypingResult["metrics"];
+
+beforeEach(() => {
+  setInterfaceLanguage("ru");
+});
 
 describe("the word mode's text window", () => {
   it("holds the settings and the text's quality, labelled as such", () => {
