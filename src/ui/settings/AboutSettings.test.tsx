@@ -10,6 +10,7 @@ let host: HTMLDivElement;
 let root: Root;
 const sha = "bf6b780978702193f91bb9e7c0689a5652c209bf";
 const builtAt = "2026-10-05T13:04:11.000Z";
+const version = "0.0.67";
 
 beforeEach(() => {
   setInterfaceLanguage("ru");
@@ -40,22 +41,22 @@ function link(text: string) {
 
 describe("about settings", () => {
   it("links the merged pull request and the commit", () => {
-    expect(render({ sha, pr: 67, builtAt })).toBe("#67 · bf6b780");
+    expect(render({ version, sha, pr: 67, builtAt })).toBe("0.0.67 · #67 · bf6b780");
     expect(link("#67")?.href).toBe("https://github.com/twilingway/piano-trainer/pull/67");
     expect(link("bf6b780")?.href).toBe(`https://github.com/twilingway/piano-trainer/commit/${sha}`);
     expect(host.querySelector("time")?.getAttribute("datetime")).toBe(builtAt);
   });
 
   it("shows only the commit without a pull request", () => {
-    expect(render({ sha, pr: null, builtAt })).toBe("bf6b780");
+    expect(render({ version, sha, pr: null, builtAt })).toBe("0.0.67 · bf6b780");
   });
 
   it("marks a local build", () => {
-    expect(render({ sha: null, pr: null, builtAt })).toBe("локальная сборка");
+    expect(render({ version, sha: null, pr: null, builtAt })).toBe("0.0.67 · локальная сборка");
   });
 
   it("opens the author's channels in a new tab", () => {
-    render({ sha, pr: 67, builtAt });
+    render({ version, sha, pr: 67, builtAt });
     for (const name of ["Telegram", "YouTube", "Rutube", "VK"]) {
       const anchor = link(name);
       expect(anchor?.target).toBe("_blank");

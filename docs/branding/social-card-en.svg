@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#020c18" />
+      <stop offset="1" stop-color="#07334b" />
+    </linearGradient>
+    <clipPath id="screen"><rect x="624" y="172" width="512" height="320" rx="16" /></clipPath>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)" />
+  <path d="M0 598H1200" stroke="#00e5ff" stroke-opacity=".4" />
+  <g font-family="Arial, sans-serif">
+    <svg x="64" y="54" width="72" height="72" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="15" fill="#020c18" />
+      <rect
+        x="1"
+        y="1"
+        width="62"
+        height="62"
+        rx="14"
+        fill="none"
+        stroke="#087ba1"
+        stroke-width="1.5"
+      />
+      <rect x="14" y="10" width="9" height="18" rx="3" fill="#c528f5" />
+      <rect x="27" y="6" width="9" height="25" rx="3" fill="#00e5ff" />
+      <rect x="40" y="18" width="9" height="13" rx="3" fill="#00df50" />
+      <rect x="9" y="35" width="46" height="22" rx="3" fill="#f2f5ff" />
+      <path d="M24 49v8m16-8v8" stroke="#020c18" stroke-width="1.5" />
+      <path
+        d="M20 35h8v13a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V35Zm16 0h8v13a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V35Z"
+        fill="#020c18"
+      />
+      <path d="M22 37h4m12 0h4" stroke="#446175" stroke-width="1.5" stroke-linecap="round" />
+    </svg>
+    <text x="156" y="108" fill="#f2f5ff" font-size="59" font-weight="800">TWILING KEYS</text>
+    <text x="64" y="233" fill="#f2f5ff" font-size="49" font-weight="800">Hit the notes.</text>
+    <text x="64" y="294" fill="#00e5ff" font-size="49" font-weight="800">Learn to play.</text>
+    <text x="64" y="350" fill="#b4deff" font-size="25">A piano game and trainer</text>
+    <text x="64" y="386" fill="#b4deff" font-size="25">right in your browser.</text>
+    <rect x="64" y="440" width="135" height="42" rx="21" fill="#07334b" stroke="#087ba1" />
+    <text x="131" y="468" fill="#00e5ff" font-size="19" text-anchor="middle">USB MIDI</text>
+    <rect x="211" y="440" width="230" height="42" rx="21" fill="#07334b" stroke="#087ba1" />
+    <text x="326" y="468" fill="#f2f5ff" font-size="19" text-anchor="middle">Computer keyboard</text>
+    <rect
+      x="617"
+      y="165"
+      width="526"
+      height="334"
+      rx="22"
+      fill="#020c18"
+      stroke="#087ba1"
+      stroke-width="2"
+    />
+    <image
+      href="app-preview.webp"
+      x="624"
+      y="172"
+      width="512"
+      height="320"
+      clip-path="url(#screen)"
+    />
+    <text x="624" y="532" fill="#b4deff" font-size="19">Both hands · glowing notes</text>
+    <text x="64" y="574" fill="#b4deff" font-size="23">keys.twiling.ru</text>
+    <rect x="1006" y="70" width="20" height="44" rx="6" fill="#c528f5" />
+    <rect x="1040" y="45" width="20" height="69" rx="6" fill="#00e5ff" />
+    <rect x="1074" y="84" width="20" height="30" rx="6" fill="#00df50" />
+  </g>
+</svg>
