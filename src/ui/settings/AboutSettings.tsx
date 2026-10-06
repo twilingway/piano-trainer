@@ -11,6 +11,9 @@ const AUTHOR_LINKS = [
   ["VK", "https://vk.ru/twilinggame"]
 ] as const;
 
+const PIANO_SAMPLES_URL = "https://github.com/sfzinstruments/SalamanderGrandPiano";
+const PIANO_SAMPLES_LICENSE_URL = "https://creativecommons.org/licenses/by/3.0/";
+
 function Version({ build }: { readonly build: BuildInfo }) {
   const { t } = useI18n();
   if (!build.sha)
@@ -101,6 +104,18 @@ export function AboutSettings({ build }: { readonly build: BuildInfo }) {
             </li>
           ))}
         </ul>
+      </section>
+      <section className="settings-group">
+        <h3 className="settings-group__title">{t("Звук фортепиано")}</h3>
+        <p>
+          <a href={PIANO_SAMPLES_URL} target="_blank" rel="noreferrer">
+            Salamander Grand Piano
+          </a>
+          {" · Alexander Holm · "}
+          <a href={PIANO_SAMPLES_LICENSE_URL} target="_blank" rel="noreferrer">
+            CC-BY 3.0
+          </a>
+        </p>
       </section>
     </div>
   );

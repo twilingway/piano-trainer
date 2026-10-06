@@ -1,20 +1,9 @@
 ﻿import * as Tone from "tone";
-let buffers: Tone.ToneAudioBuffers | undefined;
-let pitches: number[] = [];
+import { pianoLayer } from "./pianoLayers";
+import { loadedPianoLayers, nearestSamplePitch, pianoSample } from "./pianoSamples";
 const voices = new Map<string, Set<Tone.ToneBufferSource>>();
 const clicks = new Set<Tone.Synth>();
 const cleanup = new Set<number>();
-export function loadScheduledSamples(urls: Record<string, string>): void {
-  if (buffers) return;
-  const byPitch: Record<string, string> = {};
-  for (const [note, url] of Object.entries(urls))
-    byPitch[String(Tone.Frequency(note).toMidi())] = url;
-  pitches = Object.keys(byPitch).map(Number);
-  buffers = new Tone.ToneAudioBuffers({
-    urls: byPitch,
-    baseUrl: "https://tonejs.github.io/audio/salamander/"
-  });
-}
 export function scheduledNoteOn(
   pitch: number,
   velocity: number | undefined,
@@ -22,13 +11,12 @@ export function scheduledNoteOn(
   id = String(pitch),
   elapsedSeconds = 0
 ): void {
-  if (!buffers?.loaded) return;
-  const nearest = pitches.reduce(
-    (best, sample) => (Math.abs(sample - pitch) < Math.abs(best - pitch) ? sample : best),
-    pitches[0] ?? pitch
-  );
+  const pick = pianoLayer(velocity ?? 100, loadedPianoLayers());
+  const nearest = nearestSamplePitch(pitch);
+  const sample = pick && pianoSample(pick.layer, nearest);
+  if (!pick || !sample) return;
   const source = new Tone.ToneBufferSource({
-    url: buffers.get(String(nearest)),
+    url: sample,
     playbackRate: 2 ** ((pitch - nearest) / 12),
     fadeOut: 0.08
   }).toDestination();
@@ -39,12 +27,7 @@ export function scheduledNoteOn(
     active.delete(source);
     source.dispose();
   };
-  source.start(
-    at,
-    elapsedSeconds * 2 ** ((pitch - nearest) / 12),
-    undefined,
-    (velocity ?? 100) / 127
-  );
+  source.start(at, elapsedSeconds * 2 ** ((pitch - nearest) / 12), undefined, pick.gain);
 }
 export function scheduledNoteOff(pitch: number, at: number, id = String(pitch)): void {
   for (const source of voices.get(id) ?? []) source.stop(at);

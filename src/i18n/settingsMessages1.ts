@@ -24,6 +24,9 @@ export const settingsMessages1 = {
   Автор: {
     en: "Author"
   },
+  "Звук фортепиано": {
+    en: "Piano sound"
+  },
   "Сбросить камеру": {
     en: "Reset camera"
   },
