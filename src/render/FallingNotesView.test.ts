@@ -5,6 +5,7 @@ import { Container, Sprite, Texture, TextureSource, TilingSprite } from "pixi.js
 import type { Hand } from "../fingering/fingering";
 import type { SongNote } from "../song/song";
 import { FallingNotesView } from "./FallingNotesView";
+import { HandsLayer } from "./HandsLayer";
 import type { FrameState } from "./FallingNotesView";
 import { NotesLayer } from "./NotesLayer";
 import { PIANO_LOOK } from "./noteLook";
@@ -313,10 +314,23 @@ describe("listening", () => {
   });
 
   it("shows both hands", () => {
-    const { view } = viewHarness(false);
-    const handsDraw = vi.fn();
-    Object.assign(view, { hands: { container: { visible: true }, draw: handsDraw } });
-    view.draw(listening);
-    expect([...(handsDraw.mock.calls[0]?.[2] as ReadonlySet<Hand>)]).toEqual(["left", "right"]);
+    const visual = () => ({ pictures: [], markers: new Map(), front: 0, blend: 1 });
+    const poses = new Map<Hand, unknown>();
+    const layer = Object.assign(Object.create(HandsLayer.prototype) as object, {
+      visuals: new Map([
+        ["left", visual()],
+        ["right", visual()]
+      ]),
+      available: [],
+      poses,
+      notes: {
+        left: notes.filter((note) => note.hand === "left"),
+        right: notes.filter((note) => note.hand === "right")
+      }
+    }) as unknown as HandsLayer;
+    const keys = new Map(notes.map((note, index) => [note.pitch, { x: index * 80, width: 40 }]));
+    const geometry = { keyboardTop: 400, keyboardHeight: 100, blackHeight: 60, whiteWidth: 40 };
+    layer.draw(0, 0.016, new Set(), keys as never, geometry, (x, y) => ({ x, y }));
+    expect([...poses.keys()]).toEqual(["left", "right"]);
   });
 });
