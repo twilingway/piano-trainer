@@ -39,10 +39,10 @@ export interface TimingSettingsProps {
   onCancel: () => void;
 }
 const QUALITY = {
-  excellent: "Отличный замер",
-  good: "Хороший замер",
-  acceptable: "Приемлемый замер",
-  unstable: "Нестабильный замер"
+  excellent: "отличная",
+  good: "хорошая",
+  acceptable: "средняя",
+  unstable: "низкая"
 };
 export function TimingSettings(props: TimingSettingsProps) {
   const { t, formatNumber } = useI18n();
@@ -123,18 +123,21 @@ export function TimingSettings(props: TimingSettingsProps) {
       </p>
       {profile ? (
         <p>
-          {t("Поправка: {offset} мс · Разброс: {jitter} мс · {quality} · Образцы: {samples}/24", {
-            offset: formatNumber(profile.inputOffsetMs, {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1
-            }),
-            jitter: formatNumber(profile.jitterMs, {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1
-            }),
-            quality: t(QUALITY[profile.quality]),
-            samples: formatNumber(profile.calibrationSamples.length)
-          })}
+          {t(
+            "Поправка: {offset} мс · Разброс: {jitter} мс · Стабильность: {quality} · Образцы: {samples}/24",
+            {
+              offset: formatNumber(profile.inputOffsetMs, {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1
+              }),
+              jitter: formatNumber(profile.jitterMs, {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1
+              }),
+              quality: t(QUALITY[profile.quality]),
+              samples: formatNumber(profile.calibrationSamples.length)
+            }
+          )}
         </p>
       ) : (
         <p>{t("Это подключение ещё не калибровали, поправка ввода — 0 мс.")}</p>
