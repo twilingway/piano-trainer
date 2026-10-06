@@ -81,8 +81,8 @@ export function useSong(startFromRef: RefObject<number | null>) {
   const [transpose, setTranspose] = useState(0);
   /** Whole octaves on top of the key, to fit the player's keyboard; the key list keeps its name. */
   const [octave, setOctave] = useState(0);
-  /** A MIDI song's simpler version instead of the file as it is; it belongs to the song. */
-  const [simplified, setSimplified] = useState(false);
+  /** A MIDI song's simpler version, the default; the full one is the song's own choice. */
+  const [simplified, setSimplified] = useState(true);
   const arranged = useMemo(
     () => (simplified ? simplifiedSong(sourceSong) : sourceSong),
     [simplified, sourceSong]
@@ -135,7 +135,7 @@ export function useSong(startFromRef: RefObject<number | null>) {
     setSourceSong(loaded);
     setTranspose(0);
     setOctave(0);
-    setSimplified(false);
+    setSimplified(true);
   };
 
   const openLesson = (choice: LessonChoice) => {
@@ -146,7 +146,7 @@ export function useSong(startFromRef: RefObject<number | null>) {
     setSourceSong(loaded);
     setTranspose(0);
     setOctave(0);
-    setSimplified(false);
+    setSimplified(true);
     setOverrides(loadOverrides(loaded));
   };
 
