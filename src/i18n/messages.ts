@@ -5,6 +5,7 @@ import { settingsMessages2 } from "./settingsMessages2";
 import { settingsMessages3 } from "./settingsMessages3";
 import { uiMessages } from "./uiMessages";
 import { uiMessagesExtra } from "./uiMessagesExtra";
+import { handStudyMessages } from "./handStudyMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
@@ -13,5 +14,6 @@ export const messages: Messages = {
   ...settingsMessages2,
   ...settingsMessages3,
   ...uiMessages,
-  ...uiMessagesExtra
+  ...uiMessagesExtra,
+  ...handStudyMessages
 };
