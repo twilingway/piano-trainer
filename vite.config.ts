@@ -1,9 +1,41 @@
 import babel from "@rolldown/plugin-babel";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vitest/config";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import type { IndexHtmlTransformContext, Plugin, ResolvedConfig } from "vite";
+import { renderSiteMetadataHtml } from "./src/i18n/siteMetadataHtml.ts";
+import { siteLocaleFromPath } from "./src/i18n/siteMetadata.ts";
+
+function localizedSiteMetadata(): Plugin {
+  let outputDirectory: string | undefined;
+  return {
+    name: "localized-site-metadata",
+    configResolved(config: ResolvedConfig) {
+      if (config.command === "build") outputDirectory = resolve(config.root, config.build.outDir);
+    },
+    transformIndexHtml(html: string, context: IndexHtmlTransformContext) {
+      const pathname = context.originalUrl ?? context.path;
+      return renderSiteMetadataHtml(html, siteLocaleFromPath(pathname) ?? "en", pathname);
+    },
+    closeBundle() {
+      if (!outputDirectory) return;
+      const html = readFileSync(resolve(outputDirectory, "index.html"), "utf8");
+      for (const locale of ["ru", "en"] as const) {
+        const directory = resolve(outputDirectory, locale);
+        mkdirSync(directory, { recursive: true });
+        writeFileSync(
+          resolve(directory, "index.html"),
+          renderSiteMetadataHtml(html, locale, `/${locale}/`)
+        );
+      }
+    }
+  };
+}
 
 export default defineConfig(({ mode }) => ({
   plugins: [
+    localizedSiteMetadata(),
     react(),
     // Keep render-isolation tests independent of compiler memoization.
     mode !== "test" && babel({ presets: [reactCompilerPreset()] }),

@@ -23,7 +23,9 @@ it("toggles from the badge, persists the choice and stays synchronized with sett
       root.render(
         <>
           <ConnectedLanguageBadge />
-          <AboutSettings build={{ sha: "", pr: null, builtAt: "2026-10-05T12:00:00Z" }} />
+          <AboutSettings
+            build={{ version: "0.0.67", sha: "", pr: null, builtAt: "2026-10-05T12:00:00Z" }}
+          />
         </>
       );
     });
