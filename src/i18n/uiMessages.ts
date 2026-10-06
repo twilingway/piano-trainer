@@ -231,7 +231,7 @@ export const uiMessages = {
     en: "Restart"
   },
   "Звук…": {
-    en: "Sound…"
+    en: "Loading sound…"
   },
   Пауза: {
     en: "Pause"
