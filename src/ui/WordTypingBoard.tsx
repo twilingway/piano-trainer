@@ -107,7 +107,10 @@ export function WordQuality({ metrics }: { metrics: WordTypingResult["metrics"] 
   const { t, formatNumber } = useI18n();
   if (!metrics) return null;
   return (
-    <span className="word-quality" title={t("Качество генерации текста, а не оценка исполнения")}>
+    <span
+      className="word-quality"
+      title={t("Насколько удачно подобран текст — это не оценка игры")}
+    >
       {"★".repeat(metrics.stars)}
       {"☆".repeat(5 - metrics.stars)}{" "}
       <small>

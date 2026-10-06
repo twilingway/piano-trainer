@@ -2,17 +2,16 @@ import type { Messages } from "./locales";
 
 export const appMessages = {
   Нотопад: { en: "Twiling Keys" },
-  "Рейтинг недоступен: выберите устройство и выполните актуальную калибровку в настройках синхронизации.":
-    {
-      en: "Ranking is unavailable: select a device and complete a current calibration in synchronization settings."
-    },
+  "Рейтинг недоступен: выберите одно устройство и откалибруйте его в разделе «Синхронизация».": {
+    en: "Ranked play is unavailable: pick one device and calibrate it under “Synchronization”."
+  },
   "Компьютерная клавиатура / экран": { en: "Computer keyboard / on-screen keys" },
   "Выберите одно MIDI-устройство": { en: "Select one MIDI device" },
-  "Не удалось сохранить раскладку. Настройки действуют до перезагрузки страницы.": {
-    en: "Could not save the layout. These settings apply until the page is reloaded."
+  "Не удалось сохранить раскладку: после перезагрузки страницы она сбросится.": {
+    en: "Couldn't save the layout: it will reset when the page reloads."
   },
-  "MIDI доступен только по https или на localhost — откройте http://localhost:5190": {
-    en: "MIDI requires HTTPS or localhost — open http://localhost:5190"
+  "MIDI работает только по HTTPS или на localhost — откройте http://localhost:5190": {
+    en: "MIDI only works over HTTPS or on localhost — open http://localhost:5190"
   },
   "Этот браузер не поддерживает Web MIDI — откройте тренажёр в Chrome или Edge": {
     en: "This browser does not support Web MIDI — open the trainer in Chrome or Edge"
@@ -20,46 +19,46 @@ export const appMessages = {
   "В файле нет нот": { en: "The file contains no notes" },
   "Песни больше нет в библиотеке": { en: "The song is no longer in the library" },
   "Песни больше нет в папке": { en: "The song is no longer in the folder" },
-  "Этот браузер не поддерживает полный экран для игры.": {
-    en: "This browser does not support fullscreen for the game."
+  "Браузер не поддерживает полноэкранный режим.": {
+    en: "This browser doesn't support fullscreen."
   },
   "Браузер не разрешил открыть игру на весь экран.": {
-    en: "The browser did not allow the game to enter fullscreen."
+    en: "The browser didn't allow fullscreen."
   },
-  "Браузер не разрешил свернуть полный экран.": {
-    en: "The browser did not allow fullscreen to close."
+  "Браузер не разрешил выйти из полноэкранного режима.": {
+    en: "The browser didn't allow leaving fullscreen."
   },
-  "Не удалось загрузить словарь. Подготовьте ресурсы режима.": {
-    en: "Could not load the dictionary. Prepare the mode's resources."
+  "Не удалось загрузить словарь для этого режима.": {
+    en: "Couldn't load the dictionary for this mode."
   },
   "В выбранной партии нет нот. Выберите другую партию или песню.": {
-    en: "The selected part contains no notes. Choose another part or song."
+    en: "The selected part has no notes. Pick another part or song."
   },
-  "Ошибка генерации текста. Переключите режим и повторите.": {
-    en: "Text generation failed. Switch modes and try again."
+  "Не получилось подобрать текст. Переключите режим и попробуйте ещё раз.": {
+    en: "Couldn't build the text. Switch modes and try again."
   },
-  "Другой текст для этой партии подобрать не удалось.": {
-    en: "Could not find different text for this part."
+  "Других слов для этой партии не нашлось.": {
+    en: "No other words fit this part."
   },
-  "Не удалось сохранить настройки режима.": { en: "Could not save the mode settings." },
+  "Не удалось сохранить настройки режима.": { en: "Couldn't save the mode settings." },
   "Нужен файл .mid, .musicxml, .xml или .mxl": {
     en: "Choose a .mid, .musicxml, .xml or .mxl file"
   },
-  "В архиве .mxl не найдена партитура": { en: "No score was found in the .mxl archive" },
-  "Файл не похож на MusicXML": { en: "The file does not appear to be MusicXML" },
+  "В архиве .mxl нет партитуры": { en: "The .mxl archive has no score" },
+  "Файл не похож на MusicXML": { en: "This file doesn't look like MusicXML" },
   "Поддерживается только MusicXML в виде score-partwise": {
     en: "Only score-partwise MusicXML is supported"
   },
-  "Ошибка построения словесной раскладки": { en: "Could not build the word keyboard layout" },
-  "Недостаточно клавиш для всех высот мелодии": {
-    en: "There are not enough keys for all pitches in the melody"
+  "Не удалось разложить мелодию по буквам": { en: "Couldn't map the melody to letters" },
+  "Не хватает клавиш на все ноты мелодии": {
+    en: "Not enough keys for every pitch in the melody"
   },
   "Неверный номер варианта текста": { en: "Invalid text variant number" },
-  "Выбранная партия не содержит нот": { en: "The selected part contains no notes" },
-  "В партии обнаружена некорректная нота": { en: "The part contains an invalid note" },
-  "Не удалось построить текст для партии": { en: "Could not generate text for the part" },
+  "В выбранной партии нет нот": { en: "The selected part has no notes" },
+  "В партии есть некорректная нота": { en: "The part has an invalid note" },
+  "Не удалось подобрать текст для партии": { en: "Couldn't build text for this part" },
   "Неверная настройка генератора: {key}": { en: "Invalid generator setting: {key}" },
-  "Частота отрисовки игры": { en: "Game frame rate" },
+  "Кадров в секунду": { en: "Frames per second" },
   "Идеально!": { en: "Perfect!" },
   Отлично: { en: "Great" },
   Хорошо: { en: "Good" },

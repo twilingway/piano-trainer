@@ -21,7 +21,7 @@ export function useComputerKeyboard() {
     setError(
       saveKeyboardPrefs(next)
         ? null
-        : "Не удалось сохранить раскладку. Настройки действуют до перезагрузки страницы."
+        : "Не удалось сохранить раскладку: после перезагрузки страницы она сбросится."
     );
   };
   const options: KeyboardInputOptions = useMemo(

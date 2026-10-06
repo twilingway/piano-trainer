@@ -16,7 +16,7 @@ export function GameModeSwitch(props: Props) {
         {t("Игра")}
         <select
           className="game-select"
-          aria-label={t("Механика игры")}
+          aria-label={t("Выбор игры")}
           value={props.wordTyping ? "word_typing" : "piano"}
           disabled={props.locked}
           onChange={(event) => {

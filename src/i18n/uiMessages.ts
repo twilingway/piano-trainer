@@ -25,8 +25,8 @@ export const uiMessages = {
   "Обе руки": {
     en: "Both hands"
   },
-  "Играйте обе партии самостоятельно.": {
-    en: "Play both parts yourself."
+  "Обе руки играете вы.": {
+    en: "You play both hands."
   },
   Слушать: {
     en: "Listen"
@@ -35,7 +35,7 @@ export const uiMessages = {
     en: "Listen only"
   },
   "Нажмите ▶ — программа сыграет всю мелодию.": {
-    en: "Press ▶ to hear the entire melody."
+    en: "Press ▶ and the app plays the whole piece."
   },
   Л: {
     en: "L"
@@ -55,14 +55,14 @@ export const uiMessages = {
   "Ждать ноту": {
     en: "Wait for note"
   },
-  "Игра ждёт правильную клавишу.": {
-    en: "The song waits for the correct key."
+  "Ноты ждут, пока вы нажмёте нужную клавишу.": {
+    en: "The notes wait until you press the right key."
   },
   "В темпе": {
     en: "In tempo"
   },
-  "Игра идёт без остановок в выбранном темпе.": {
-    en: "The song plays continuously at the selected tempo."
+  "Песня идёт без остановок в выбранном темпе.": {
+    en: "The song keeps going at the chosen tempo."
   },
   "Как играть": {
     en: "How to play"
@@ -71,7 +71,7 @@ export const uiMessages = {
     en: "What to play"
   },
   "Тренировка · без рейтинга времени": {
-    en: "Practice · timing is not ranked"
+    en: "Practice · timing not scored"
   },
   "Нет нот для оценки": {
     en: "No notes to assess"
@@ -88,8 +88,8 @@ export const uiMessages = {
   "Множитель серии": {
     en: "Combo multiplier"
   },
-  "20 идеальных или отличных попаданий подряд": {
-    en: "20 perfect or great hits in a row"
+  "20 нот подряд на «Идеально» или «Отлично»": {
+    en: "20 Perfect or Great hits in a row"
   },
   Поток: {
     en: "Flow"
@@ -103,9 +103,9 @@ export const uiMessages = {
   "Энергия и Overdrive": {
     en: "Energy and Overdrive"
   },
-  "Энергия за каждую засчитанную ноту: два заряда в короткой композиции, три в обычной; прибавка рассчитана по выбранной партии":
+  "Энергия копится с каждой засчитанной нотой: в короткой пьесе её хватит на два Overdrive, в обычной — на три":
     {
-      en: "Energy for each successful note: two charges in a short piece, three in a regular piece; the gain is calculated for the selected part"
+      en: "Energy builds with every scored note: enough for two Overdrives in a short piece, three in a longer one"
     },
   Энергия: {
     en: "Energy"
@@ -113,8 +113,8 @@ export const uiMessages = {
   "Запас энергии": {
     en: "Energy reserve"
   },
-  "Удвоить множитель на 10 секунд за 50 энергии: кнопка, клавиша 0 или педаль": {
-    en: "Double the multiplier for 10 seconds for 50 energy: use the button, the 0 key or the pedal"
+  "Overdrive за 50 энергии удваивает множитель на 10 секунд: кнопка, клавиша 0 или педаль": {
+    en: "Overdrive costs 50 energy and doubles the multiplier for 10 seconds: button, 0 key or pedal"
   },
   "0 · педаль": {
     en: "0 · pedal"
@@ -125,14 +125,14 @@ export const uiMessages = {
   Игра: {
     en: "Game"
   },
-  "Механика игры": {
-    en: "Game mode"
+  "Выбор игры": {
+    en: "Choose game"
   },
   Пианино: {
     en: "Piano"
   },
   "Печатать мелодию": {
-    en: "Type the melody"
+    en: "Type the Melody"
   },
   "Тяните, чтобы поднять или опустить клавиатуру": {
     en: "Drag to raise or lower the keyboard"
@@ -146,8 +146,8 @@ export const uiMessages = {
   "Высота клавиатуры": {
     en: "Keyboard height"
   },
-  "Тяните, чтобы сдвинуть клавиатуру с линии нот; у линии она прилипнет обратно": {
-    en: "Drag to move the keyboard away from the note line; it snaps back near the line"
+  "Тяните, чтобы отодвинуть клавиатуру от линии нот; рядом с линией она примагнитится обратно": {
+    en: "Drag to move the keyboard off the note line; near the line it snaps back"
   },
   "Двигать клавиатуру": {
     en: "Move keyboard"
@@ -263,9 +263,9 @@ export const uiMessages = {
   "+300 мс": {
     en: "+300 ms"
   },
-  "Можно опоздать до 300 мс: поздняя нота даёт OK и 25 базовых очков. Изменить: Настройки → Игра.":
+  "Можно опоздать до 300 мс: поздняя нота засчитывается и даёт 25 очков. Выключается в «Настройки → Игра».":
     {
-      en: "You can be up to 300 ms late: a late note earns OK and 25 base points. Change this in Settings → Game."
+      en: "You can be up to 300 ms late: a late note still counts as OK for 25 points. Turn it off in Settings → Game."
     },
   "Строгий тайминг": {
     en: "Strict timing"
@@ -273,9 +273,10 @@ export const uiMessages = {
   Строгий: {
     en: "Strict"
   },
-  "Окна попадания зависят от сложности. Учебный допуск выключен. Изменить: Настройки → Игра.": {
-    en: "Hit windows depend on difficulty. Learning tolerance is off. Change this in Settings → Game."
-  },
+  "Учебный допуск выключен, окна попадания зависят от сложности. Включается в «Настройки → Игра».":
+    {
+      en: "Learning tolerance is off; hit windows depend on difficulty. Turn it on in Settings → Game."
+    },
   "Ожидание ноты · без рейтинга": {
     en: "Waiting for note · unranked"
   },
@@ -283,7 +284,7 @@ export const uiMessages = {
     en: "Waiting"
   },
   "Песня ждёт нужную клавишу. Время реакции не оценивается, рейтинга нет.": {
-    en: "The song waits for the correct key. Reaction time is not assessed and there is no ranking."
+    en: "The song waits for the right key. Reaction time isn't scored and there's no ranking."
   },
   "Рейтинг · строгий тайминг": {
     en: "Ranked · strict timing"
@@ -291,8 +292,8 @@ export const uiMessages = {
   Рейтинг: {
     en: "Ranked"
   },
-  "Рейтинг использует строгие окна без учебного допуска.": {
-    en: "Ranked play uses strict timing windows without learning tolerance."
+  "В рейтинге окна попадания строгие, без учебного допуска.": {
+    en: "Ranked play uses strict hit windows with no learning tolerance."
   },
   Готово: {
     en: "Done"

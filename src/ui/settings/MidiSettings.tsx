@@ -181,7 +181,7 @@ export function MidiSettings({
             </select>
           </label>
           <div className="setting">
-            <span className="setting-hint">{t("Зажигает C4 на секунду.")}</span>
+            <span className="setting-hint">{t("Подсветит C4 на секунду.")}</span>
             <button
               type="button"
               className="game-button"

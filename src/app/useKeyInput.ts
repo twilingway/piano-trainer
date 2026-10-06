@@ -30,7 +30,7 @@ export function useKeyInput(
       ? null
       : // Chrome hides Web MIDI on plain http unless the host is localhost.
         !window.isSecureContext
-        ? "MIDI доступен только по https или на localhost — откройте http://localhost:5190"
+        ? "MIDI работает только по HTTPS или на localhost — откройте http://localhost:5190"
         : "Этот браузер не поддерживает Web MIDI — откройте тренажёр в Chrome или Edge"
   );
   /** Which MIDI input plays; "all" listens to every one. */

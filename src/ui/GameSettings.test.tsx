@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 describe("GameSettings and the player's keyboard", () => {
-  const warning = "В Ranked ноты вне вашей клавиатуры (4) засчитываются промахами.";
+  const warning = "В рейтинге ноты вне вашей клавиатуры (4) считаются промахами.";
 
   it("warns that Ranked asks for the notes off the keyboard", async () => {
     await render(4);

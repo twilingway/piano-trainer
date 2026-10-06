@@ -49,7 +49,7 @@ interface Candidate {
 
 function requiredAt<T>(values: readonly T[], index: number): T {
   const value = values[index];
-  if (value === undefined) throw new Error("Ошибка построения словесной раскладки");
+  if (value === undefined) throw new Error("Не удалось разложить мелодию по буквам");
   return value;
 }
 
@@ -199,7 +199,7 @@ function fallbackState(
   let index = fixedIndex ?? state.mapping.findIndex((pitch) => pitch === note.pitch);
   if (index < 0) index = state.mapping.findIndex((pitch) => pitch === -1);
   const input = pool[index];
-  if (!input) throw new Error("Недостаточно клавиш для всех высот мелодии");
+  if (!input) throw new Error("Не хватает клавиш на все ноты мелодии");
   const mapping = [...state.mapping];
   mapping[index] = note.pitch;
   return {
@@ -288,7 +288,7 @@ export function generateWordTyping(
   // The variant noise hashes 32 bits: a larger number would repeat a smaller one's text.
   if (!Number.isInteger(variant) || variant < 0 || variant >= 2 ** 32)
     throw new Error("Неверный номер варианта текста");
-  if (!notes.length) throw new Error("Выбранная партия не содержит нот");
+  if (!notes.length) throw new Error("В выбранной партии нет нот");
   for (const note of notes) {
     if (
       !Number.isInteger(note.pitch) ||
@@ -299,12 +299,12 @@ export function generateWordTyping(
       !Number.isFinite(note.duration) ||
       note.duration < 0
     ) {
-      throw new Error("В партии обнаружена некорректная нота");
+      throw new Error("В партии есть некорректная нота");
     }
   }
   const pool = tokenPool(language);
   const totalPitches = new Set(notes.map((note) => note.pitch)).size;
-  if (totalPitches > pool.length) throw new Error("Недостаточно клавиш для всех высот мелодии");
+  if (totalPitches > pool.length) throw new Error("Не хватает клавиш на все ноты мелодии");
   const empty = pool.map(() => -1);
   const letters = languageTokens(language);
   const letterIndexes = new Map(letters.map((token, index) => [token.display, index]));
@@ -389,6 +389,6 @@ export function generateWordTyping(
     }
   }
   const final = prune(beams[notes.length] ?? [], 1, layout)[0];
-  if (!final) throw new Error("Не удалось построить текст для партии");
+  if (!final) throw new Error("Не удалось подобрать текст для партии");
   return renderResult(final, notes, pool, language, bigrams, layout);
 }

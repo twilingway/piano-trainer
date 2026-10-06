@@ -51,7 +51,9 @@ export function WordTypingSettings(props: Props) {
         </select>
       </label>
       <label
-        title={t("На слово: буква играет одну ноту только внутри своего слова, слова длиннее")}
+        title={t(
+          "На слово: буква привязана к ноте только внутри слова, поэтому слова получаются длиннее"
+        )}
       >
         {t("Раскладка")}{" "}
         <select
@@ -75,7 +77,7 @@ export function WordTypingSettings(props: Props) {
       >
         {t("Другие слова")}
       </button>
-      <label title={t("Вторая рука песни играет сама под печатаемую партию")}>
+      <label title={t("Вторую руку играет программа, пока вы печатаете свою партию")}>
         <input
           type="checkbox"
           checked={props.accompaniment}

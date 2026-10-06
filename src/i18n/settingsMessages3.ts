@@ -1,9 +1,10 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
-  "Поправка: {offset} мс · Разброс: {jitter} мс · {quality} · Образцы: {samples}/24": {
-    en: "Offset: {offset} ms · Jitter: {jitter} ms · {quality} · Samples: {samples}/24"
-  },
+  "Поправка: {offset} мс · Разброс: {jitter} мс · Стабильность: {quality} · Образцы: {samples}/24":
+    {
+      en: "Offset: {offset} ms · Jitter: {jitter} ms · Stability: {quality} · Samples: {samples}/24"
+    },
   "Разминка {warmup}/4 · Измерения {measured}/24": {
     en: "Warm-up {warmup}/4 · Measurements {measured}/24"
   },
@@ -15,9 +16,6 @@ export const settingsMessages3 = {
   },
   "Подсказки к виду": {
     en: "View help"
-  },
-  Закрыть: {
-    en: "Close"
   },
   "— партитура над игрой.": {
     en: "— the score above the game."
@@ -37,9 +35,9 @@ export const settingsMessages3 = {
   "— карточки вместо полосок.": {
     en: "— cards instead of bars."
   },
-  "Нажатая кнопка подсвечена. Руки доступны с клавиатурой, дорога и карточки — с падающими нотами.":
+  "Включённые кнопки подсвечены. Руки видны только вместе с клавиатурой, дорога и карточки — только с падающими нотами.":
     {
-      en: "Active buttons are highlighted. Hands require the keyboard; the road and cards require falling notes."
+      en: "Enabled buttons are highlighted. Hands need the keyboard; the road and cards need falling notes."
     },
   "Язык интерфейса": {
     en: "Interface language"
@@ -125,17 +123,17 @@ export const settingsMessages3 = {
   "Положительное значение задерживает изображение; оценка не меняется.": {
     en: "A positive value delays the display; scoring stays unchanged."
   },
-  Отлично: {
-    en: "Excellent"
+  отличная: {
+    en: "excellent"
   },
-  Хорошо: {
-    en: "Good"
+  хорошая: {
+    en: "good"
   },
-  Приемлемо: {
-    en: "Acceptable"
+  средняя: {
+    en: "fair"
   },
-  Нестабильно: {
-    en: "Unstable"
+  низкая: {
+    en: "low"
   },
   "До мажор": {
     en: "C major"
@@ -263,8 +261,8 @@ export const settingsMessages3 = {
   "Си-бемоль минор": {
     en: "B♭ minor"
   },
-  "В Ranked ноты вне вашей клавиатуры ({count}) засчитываются промахами.": {
-    en: "In Ranked, the notes outside your keyboard ({count}) count as misses."
+  "В рейтинге ноты вне вашей клавиатуры ({count}) считаются промахами.": {
+    en: "In ranked play, notes outside your keyboard ({count}) count as misses."
   },
   "76 клавиш": {
     en: "76 keys"
@@ -279,7 +277,7 @@ export const settingsMessages3 = {
     en: "Custom range: {keys}, {count} keys"
   },
   "Ноты вне клавиатуры играет программа, в счёт они не идут.": {
-    en: "The program plays the notes outside the keyboard; they are not scored."
+    en: "The app plays notes outside your keyboard; they aren't scored."
   },
   "Нажмите самую нижнюю клавишу своей клавиатуры": {
     en: "Press the lowest key of your keyboard"
@@ -320,8 +318,8 @@ export const settingsMessages3 = {
   "{name} — нет связи": {
     en: "{name} — not connected"
   },
-  "Зажигает C4 на секунду.": {
-    en: "Lights C4 for a second."
+  "Подсветит C4 на секунду.": {
+    en: "Lights up C4 for a second."
   },
   Проверить: {
     en: "Test"

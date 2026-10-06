@@ -82,7 +82,7 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain, onRevie
               <strong>{game.rank}</strong>
             </p>
             <p>
-              {t("Эталон:")} {formatNumber(game.targetScore)}{" "}
+              {t("Максимум:")} {formatNumber(game.targetScore)}{" "}
               {t("очков (идеальная игра без Overdrive)")}
             </p>
             <p>
@@ -112,7 +112,7 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain, onRevie
               <dd>
                 {milliseconds(game.timing.meanMs)} / {milliseconds(game.timing.medianMs)}
               </dd>
-              <dt>{t("Рано / Поздно / Точно в момент")}</dt>
+              <dt>{t("Рано / Поздно / Вовремя")}</dt>
               <dd>
                 {formatNumber(game.timing.early)} / {formatNumber(game.timing.late)} /{" "}
                 {formatNumber(game.timing.exact)}

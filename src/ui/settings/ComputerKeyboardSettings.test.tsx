@@ -140,7 +140,7 @@ describe("computer keyboard assignment interactions", () => {
     await mount();
     await click("G: G3");
     await select("Нота и октава", "65");
-    await click("Перехватить клавишу");
+    await click("Выбрать нажатием");
     expect(button("Сохранить").disabled).toBe(true);
     const captured = await key("KeyP");
     expect(captured.defaultPrevented).toBe(true);
@@ -162,7 +162,7 @@ describe("computer keyboard assignment interactions", () => {
   it("cancels capture with Escape while leaving the editor draft intact", async () => {
     await mount();
     await click("G: G3");
-    await click("Перехватить клавишу");
+    await click("Выбрать нажатием");
     await key("Escape");
     expect(controls.capturing).toBe(false);
     expect(host.querySelector("[role='dialog']")).not.toBeNull();
@@ -174,7 +174,7 @@ describe("computer keyboard assignment interactions", () => {
   it("releases editing when settings unmount without disabling subsequent piano input", async () => {
     await mount();
     await click("G: G3");
-    await click("Перехватить клавишу");
+    await click("Выбрать нажатием");
     expect(controls.options.blocked).toBe(true);
     await mount(false);
     expect(controls.options.blocked).toBe(false);
@@ -226,7 +226,7 @@ describe("computer keyboard assignment interactions", () => {
   it("initializes a captured Space editor with its sustain assignment", async () => {
     await mount();
     await click("G: G3");
-    await click("Перехватить клавишу");
+    await click("Выбрать нажатием");
     await key("Space");
     expect(host.querySelector<HTMLSelectElement>("select[aria-label='Назначение']")?.value).toBe(
       "sustain"

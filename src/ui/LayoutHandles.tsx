@@ -89,7 +89,9 @@ export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayo
       </div>
       <div
         className="layout-move"
-        title={t("Тяните, чтобы сдвинуть клавиатуру с линии нот; у линии она прилипнет обратно")}
+        title={t(
+          "Тяните, чтобы отодвинуть клавиатуру от линии нот; рядом с линией она примагнитится обратно"
+        )}
         style={offset}
         {...move}
       >

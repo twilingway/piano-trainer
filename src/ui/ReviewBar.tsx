@@ -54,7 +54,7 @@ export function ReviewBar(props: Props) {
         </span>
       )}
       <span>
-        {t("ровность удара ±")}
+        {t("разброс силы удара ±")}
         {formatNumber(Math.round(review.summary.velocitySpread))}
       </span>
       {props.takes.length > 1 && (

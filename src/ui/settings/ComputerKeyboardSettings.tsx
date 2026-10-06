@@ -80,7 +80,9 @@ export function ComputerKeyboardSettings({ controls }: Props) {
         {t("Shift — ♯, Alt — ♭, Shift + Alt — натуральная нота. Ctrl + Пробел — пауза.")}
       </p>
       <p className="computer-keyboard-help">
-        {t("Правая кнопка мыши или нажатие на клавишу макета — назначить ноту или действие.")}
+        {t(
+          "Чтобы назначить ноту или действие, нажмите на клавишу схемы или кликните по ней правой кнопкой."
+        )}
       </p>
       <div className="computer-keyboard-scroll">
         <div className="computer-keyboard-map">
@@ -99,7 +101,7 @@ export function ComputerKeyboardSettings({ controls }: Props) {
       </button>
       <p className="computer-keyboard-help">
         {t(
-          "Назначения сохраняются для каждой раскладки. Системные сочетания и некоторые клавиши браузера могут быть недоступны."
+          "Назначения запоминаются отдельно для каждой раскладки. Системные сочетания и часть клавиш браузер может перехватить."
         )}
       </p>
       {controls.error && <p role="alert">{t(controls.error)}</p>}
@@ -138,13 +140,13 @@ function BindingEditor({ initialCode, controls, onClose }: EditorProps) {
           {t(". Сейчас:")} {t(bindingLabel(controls.bindings[code]))}.
         </p>
         <button type="button" className="game-button" onClick={controls.beginCapture}>
-          {t("Перехватить клавишу")}
+          {t("Выбрать нажатием")}
         </button>
         {controls.capturing && (
           <div role="status">
-            <p>{t("Нажмите нужную клавишу. Escape — отмена захвата.")}</p>
+            <p>{t("Нажмите клавишу, которую хотите настроить. Esc — отмена.")}</p>
             <button type="button" onClick={controls.cancelCapture}>
-              {t("Отменить захват")}
+              {t("Отмена")}
             </button>
           </div>
         )}
@@ -161,7 +163,7 @@ function BindingEditor({ initialCode, controls, onClose }: EditorProps) {
             <option value="sustain">{t("Sustain (педаль)")}</option>
             <option value="octaveDown">{t("Октава ниже")}</option>
             <option value="octaveUp">{t("Октава выше")}</option>
-            <option value="disabled">{t("Отключить")}</option>
+            <option value="disabled">{t("Без назначения")}</option>
           </select>
         </label>
         {kind === "note" && (
