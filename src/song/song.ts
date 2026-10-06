@@ -56,6 +56,8 @@ export interface Song {
   readonly musicXml?: string;
   /** A MIDI arrangement's parts, one per melodic track; absent with a single track or a score. */
   readonly parts?: readonly SongPart[];
+  /** The simpler version of a MIDI arrangement rather than the file as it is. */
+  readonly simplified?: boolean;
 }
 
 /** Middle C and above go to the right hand when nothing better tells the hands apart. */

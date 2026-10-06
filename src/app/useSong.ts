@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
 
 import type { Finger } from "../fingering/fingering";
+import { simplifiedSong } from "../song/arrangement";
 import { detectKey } from "../song/harmony";
 import { fifthsForKey } from "../song/keySignature";
 import type { Key } from "../song/keySignature";
@@ -20,7 +21,8 @@ function startingLesson(): LessonChoice {
 }
 
 function overridesKey(song: Song): string {
-  return `fingering:${song.title}:${String(song.notes.length)}`;
+  const version = song.simplified ? ":simplified" : "";
+  return `fingering:${song.title}${version}:${String(song.notes.length)}`;
 }
 
 export function loadOverrides(song: Song): Map<string, Finger> {
@@ -78,10 +80,16 @@ export function useSong(startFromRef: RefObject<number | null>) {
   const [transpose, setTranspose] = useState(0);
   /** Whole octaves on top of the key, to fit the player's keyboard; the key list keeps its name. */
   const [octave, setOctave] = useState(0);
+  /** A MIDI song's simpler version instead of the file as it is; it belongs to the song. */
+  const [simplified, setSimplified] = useState(false);
+  const arranged = useMemo(
+    () => (simplified ? simplifiedSong(sourceSong) : sourceSong),
+    [simplified, sourceSong]
+  );
   const sourceKey = useMemo(() => detectKey(sourceSong), [sourceSong]);
   const baseSong = useMemo(
-    () => transposeSong(sourceSong, transpose + octave * 12, sourceKey),
-    [sourceSong, transpose, octave, sourceKey]
+    () => transposeSong(arranged, transpose + octave * 12, sourceKey),
+    [arranged, transpose, octave, sourceKey]
   );
   const [overrides, setOverrides] = useState<Map<string, Finger>>(() => loadOverrides(baseSong));
   // Corrections belong to a song in a key: another key starts from its own.
@@ -120,6 +128,7 @@ export function useSong(startFromRef: RefObject<number | null>) {
     setSourceSong(loaded);
     setTranspose(0);
     setOctave(0);
+    setSimplified(false);
   };
 
   const openLesson = (choice: LessonChoice) => {
@@ -130,6 +139,7 @@ export function useSong(startFromRef: RefObject<number | null>) {
     setSourceSong(loaded);
     setTranspose(0);
     setOctave(0);
+    setSimplified(false);
     setOverrides(loadOverrides(loaded));
   };
 
@@ -142,6 +152,9 @@ export function useSong(startFromRef: RefObject<number | null>) {
     setTranspose,
     octave,
     setOctave,
+    /** The version choice of a MIDI song; none for a score. */
+    arrangement:
+      sourceSong.source === "midi" ? { simplified, onSimplified: setSimplified } : undefined,
     baseSong,
     song,
     songKey,

@@ -19,6 +19,9 @@ interface Props {
   /** The player corrected some fingers. */
   readonly fingersChanged: boolean;
   readonly onResetFingers: () => void;
+  /** A MIDI song plays as the file is or in a simpler version; none for a score. */
+  readonly arrangement?:
+    { readonly simplified: boolean; readonly onSimplified: (on: boolean) => void } | undefined;
 }
 
 /** The song tab: its key, its octave and the finger corrections. */
@@ -30,12 +33,31 @@ export function SongSettings({
   onOctave,
   outside,
   bestOctave,
-  onResetFingers
+  onResetFingers,
+  arrangement
 }: Props) {
   const { t } = useI18n();
   const move = bestOctave - octave;
   return (
     <div className="settings-list">
+      {arrangement && (
+        <label className="setting">
+          <span title={t("Упрощённая: мелодия справа, бас и до двух нот аккорда слева.")}>
+            {t("Аранжировка")}
+          </span>
+          <select
+            className="game-select"
+            aria-label={t("Аранжировка")}
+            value={arrangement.simplified ? "simplified" : "original"}
+            onChange={(event) => {
+              arrangement.onSimplified(event.target.value === "simplified");
+            }}
+          >
+            <option value="original">{t("Как в файле")}</option>
+            <option value="simplified">{t("Упрощённая")}</option>
+          </select>
+        </label>
+      )}
       {sourceKey && (
         <label className="setting">
           <span>{t("Тональность")}</span>

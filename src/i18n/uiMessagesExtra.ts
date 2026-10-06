@@ -267,5 +267,17 @@ export const uiMessagesExtra = {
   },
   "Остальные партии играет программа.": {
     en: "The app plays the other parts."
+  },
+  Аранжировка: {
+    en: "Arrangement"
+  },
+  "Как в файле": {
+    en: "As in the file"
+  },
+  Упрощённая: {
+    en: "Simplified"
+  },
+  "Упрощённая: мелодия справа, бас и до двух нот аккорда слева.": {
+    en: "Simplified: the melody in the right hand, the bass and up to two chord notes in the left."
   }
 } satisfies Messages;
