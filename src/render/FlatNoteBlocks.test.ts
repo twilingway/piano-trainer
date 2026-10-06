@@ -45,12 +45,9 @@ describe("flat neon blocks", () => {
     blocks.begin();
     blocks.draw(100, 0, 20, 4, 0xffffff, 1);
     blocks.end();
-    expect(blocks.container.children).toHaveLength(8);
+    expect(blocks.container.children).toHaveLength(10);
     expect(blocks.container.children[0]).toBe(first);
-    expect(blocks.container.children[4]?.visible).toBe(false);
-    expect(blocks.container.children[5]?.visible).toBe(false);
-    expect(blocks.container.children[6]?.visible).toBe(false);
-    expect(blocks.container.children[7]?.visible).toBe(false);
+    for (const child of blocks.container.children.slice(5)) expect(child.visible).toBe(false);
   });
 
   it("keeps a short note's bloom radius and draws every halo below the faces", () => {
@@ -71,5 +68,26 @@ describe("flat neon blocks", () => {
     const layers = blocks.container.children.map((child) => child.zIndex);
     expect(layers.lastIndexOf(0)).toBeLessThan(layers.indexOf(1));
     expect(layers.lastIndexOf(1)).toBeLessThan(layers.indexOf(2));
+  });
+
+  it("raises a black key's note above its white neighbour on an opaque plate", () => {
+    vi.spyOn(Texture, "from").mockReturnValue(Texture.WHITE);
+    const blocks = new FlatNoteBlocks();
+    blocks.begin();
+    blocks.draw(120, 30, 22, 80, 0x00ccff, 1, true);
+    blocks.draw(138, 30, 36, 80, 0xffe040, 1);
+    blocks.end();
+    const [black, white] = [0, 5].map((first) =>
+      blocks.container.children.slice(first, first + 5)
+    ) as [NineSliceSprite[], NineSliceSprite[]];
+    const plate = black[4];
+    const flatFaces = white.filter((child) => child.visible).map((child) => child.zIndex);
+    const plateAndGlass = black.filter((child) => child.zIndex !== 0).map((child) => child.zIndex);
+    expect(Math.min(...plateAndGlass)).toBeGreaterThan(Math.max(...flatFaces));
+    expect(plate?.visible).toBe(true);
+    expect(plate?.blendMode).toBe("normal");
+    expect(plate?.alpha).toBe(1);
+    expect((plate?.width ?? 0) * (plate?.scale.x ?? 0)).toBeGreaterThan(22);
+    expect(white[4]?.visible).toBe(false);
   });
 });

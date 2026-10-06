@@ -1,14 +1,31 @@
 ﻿import { Container, NineSliceSprite, Texture } from "pixi.js";
-import { bakeNoteMaterial, NOTE_BLOOM_MARGIN } from "./bakeNoteMaterial";
+import {
+  bakeNoteMaterial,
+  NOTE_BLOOM_MARGIN,
+  NOTE_FACE_HEIGHT,
+  NOTE_FACE_WIDTH
+} from "./bakeNoteMaterial";
+
+/** The lane's backdrop: a raised note's plate cuts it out of the notes below. */
+const PLATE_COLOR = 0x020c18;
+/** Layers of a raised (black-key) note sit above every layer of a flat one. */
+const RAISED_Z = 4;
+/** The dark gap a raised note's plate leaves around its glass, in pixels. */
+const PLATE_RIM_PX = 2;
 
 interface NoteBlock {
   fill: NineSliceSprite;
   emission: NineSliceSprite;
   bloom: NineSliceSprite;
   bevel: NineSliceSprite;
+  plate: NineSliceSprite;
 }
 
-/** Glass colour, luminous core and bloom are independent baked layers. */
+/**
+ * Glass colour, luminous core and bloom are independent baked layers. A black
+ * key's note overhangs its white neighbours, so it is raised above them on an
+ * opaque plate instead of mixing its translucent glass with theirs.
+ */
 export class FlatNoteBlocks {
   readonly container = new Container({ sortableChildren: true });
   private readonly textures: Record<keyof NoteBlock, Texture>;
@@ -26,7 +43,8 @@ export class FlatNoteBlocks {
       fill: Texture.from(material.face),
       emission: Texture.from(material.emission),
       bloom: Texture.from(material.bloom),
-      bevel: Texture.from(material.bevel)
+      bevel: Texture.from(material.bevel),
+      plate: Texture.from(bakePlate())
     };
     this.container.eventMode = "none";
   }
@@ -35,7 +53,15 @@ export class FlatNoteBlocks {
     this.used = 0;
   }
 
-  draw(x: number, top: number, width: number, height: number, tint: number, alpha: number): void {
+  draw(
+    x: number,
+    top: number,
+    width: number,
+    height: number,
+    tint: number,
+    alpha: number,
+    raised = false
+  ): void {
     if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height)) return;
     let item = this.pool[this.used++];
     if (!item) {
@@ -55,17 +81,38 @@ export class FlatNoteBlocks {
         fill: layer(this.textures.fill, 1),
         emission: layer(this.textures.emission, 2),
         bloom: layer(this.textures.bloom, 0, NOTE_BLOOM_MARGIN),
-        bevel: layer(this.textures.bevel, 3)
+        bevel: layer(this.textures.bevel, 3),
+        plate: layer(this.textures.plate, 0)
       };
+      item.plate.blendMode = "normal";
       this.pool.push(item);
       // Every halo stays below every face, including neighbouring and repeated notes.
-      this.container.addChild(item.fill, item.emission, item.bloom, item.bevel);
+      this.container.addChild(item.fill, item.emission, item.bloom, item.bevel, item.plate);
     }
+    const lift = raised ? RAISED_Z : 0;
+    item.fill.zIndex = 1 + lift;
+    item.emission.zIndex = 2 + lift;
+    item.bevel.zIndex = 3 + lift;
+    item.plate.zIndex = lift;
+    item.plate.visible = raised;
     const scale = Math.min(1, width / 64, height / 24);
     // Reuse each layer without allocations in the animation loop.
     this.placeFace(item.fill, x, top, width, height, scale, tint, alpha);
     this.placeFace(item.emission, x, top, width, height, scale, tint, alpha);
     this.placeFace(item.bevel, x, top, width, height, scale, 0xffffff, alpha);
+    if (raised) {
+      const rim = PLATE_RIM_PX * 2;
+      this.placeFace(
+        item.plate,
+        x,
+        top - PLATE_RIM_PX,
+        width + rim,
+        height + rim,
+        scale,
+        PLATE_COLOR,
+        1
+      );
+    }
     // A short note still emits a halo of the same radius as its key's other notes.
     const bloomScale = Math.min(1, width / 64);
     const margin = NOTE_BLOOM_MARGIN * bloomScale;
@@ -84,7 +131,12 @@ export class FlatNoteBlocks {
     for (let index = this.used; index < this.pool.length; index++) {
       const item = this.pool[index];
       if (item)
-        item.fill.visible = item.emission.visible = item.bloom.visible = item.bevel.visible = false;
+        item.fill.visible =
+          item.emission.visible =
+          item.bloom.visible =
+          item.bevel.visible =
+          item.plate.visible =
+            false;
     }
   }
 
@@ -110,4 +162,18 @@ export class FlatNoteBlocks {
     this.container.destroy({ children: true });
     for (const texture of Object.values(this.textures)) texture.destroy(true);
   }
+}
+
+function bakePlate(): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = NOTE_FACE_WIDTH;
+  canvas.height = NOTE_FACE_HEIGHT;
+  const context = canvas.getContext("2d");
+  if (context) {
+    context.fillStyle = "#fff";
+    context.beginPath();
+    context.roundRect(0, 0, NOTE_FACE_WIDTH, NOTE_FACE_HEIGHT, 10);
+    context.fill();
+  }
+  return canvas;
 }
