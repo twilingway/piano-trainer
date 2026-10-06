@@ -1,8 +1,11 @@
 import { Midi } from "@tonejs/midi";
 import type { Track } from "@tonejs/midi";
 
+import { detectKey } from "./harmony";
+import { fifthsForKey } from "./keySignature";
 import { songParts, trackRoles } from "./midiParts";
 import type { TrackStats } from "./midiParts";
+import { signatureFifths, withWrittenScore } from "./midiScore";
 import { handByPitch, sortNotes } from "./song";
 import type { Song, SongBeat, SongMeasure, SongNote } from "./song";
 
@@ -25,11 +28,14 @@ export function songFromMidi(data: ArrayBuffer, title: string): Song {
   const partOf = new Map(parts?.map((part) => [part.id, part]));
 
   const notes: SongNote[] = [];
+  const endBeats = new Map<string, number>();
   tracks.forEach((track, trackIndex) => {
     const part = partOf.get(`p${String(trackIndex)}`);
     track.notes.forEach((note, noteIndex) => {
+      const id = `t${String(trackIndex)}n${String(noteIndex)}`;
+      endBeats.set(id, (note.ticks + note.durationTicks) / midi.header.ppq);
       notes.push({
-        id: `t${String(trackIndex)}n${String(noteIndex)}`,
+        id,
         pitch: note.midi,
         start: note.time,
         duration: note.duration,
@@ -42,7 +48,7 @@ export function songFromMidi(data: ArrayBuffer, title: string): Song {
 
   sortNotes(notes);
   const duration = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
-  return {
+  const song: Song = {
     title,
     source: "midi",
     notes,
@@ -51,6 +57,11 @@ export function songFromMidi(data: ArrayBuffer, title: string): Song {
     duration,
     ...(parts ? { parts } : {})
   };
+  // The file's own key signature, else the key its notes sound in.
+  const signature = midi.header.keySignatures[0];
+  const written = signature ? signatureFifths(signature.key) : undefined;
+  const key = written === undefined ? detectKey(song) : undefined;
+  return withWrittenScore(song, endBeats, written ?? (key ? fifthsForKey(key) : 0));
 }
 
 function trackStats(track: Track): TrackStats {

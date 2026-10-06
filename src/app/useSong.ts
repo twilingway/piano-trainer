@@ -42,23 +42,22 @@ function saveOverrides(song: Song, overrides: ReadonlyMap<string, Finger>): void
 
 /**
  * The song moved by `semitones`. A score is respelled and re-read, so its
- * staff, fingering and names all follow; a MIDI song just shifts its keys.
+ * staff, fingering and names all follow; a MIDI song shifts its keys, and
+ * the score written for it is respelled alongside.
  */
 function transposeSong(song: Song, semitones: number, sourceKey: Key | undefined): Song {
   if (semitones === 0) return song;
   const sign = semitones > 0 ? "+" : "−";
   const title = `${song.title} (${sign}${String(Math.abs(semitones))})`;
-  if (song.musicXml) {
-    const xml = transposeMusicXml(
-      song.musicXml,
-      semitones,
-      sourceKey ? fifthsForKey(sourceKey) : 0
-    );
-    return { ...songFromMusicXml(xml, title), title };
-  }
+  const xml =
+    song.musicXml &&
+    transposeMusicXml(song.musicXml, semitones, sourceKey ? fifthsForKey(sourceKey) : 0);
+  if (xml && song.source === "musicxml") return { ...songFromMusicXml(xml, title), title };
+  // A MIDI song keeps its own notes; its written score moves with them, note for note.
   return {
     ...song,
     title,
+    ...(xml ? { musicXml: xml } : {}),
     notes: song.notes.map((note) => {
       const { finger, transition, scoreFinger, ...rest } = note;
       return { ...rest, pitch: note.pitch + semitones };
