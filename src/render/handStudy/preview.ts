@@ -98,7 +98,7 @@ function mount(): void {
     <button id="language" class="language">${locale === "ru" ? "EN" : "RU"}</button></header>
     <section class="controls">
       <label>${t("Поза кисти")}<select id="pose">${STUDY_POSES.map((pose) => `<option value="${pose.id}" ${selected?.id === pose.id ? "selected" : ""}>${label(pose)}</option>`).join("")}</select></label>
-      <label>${t("Показать руки")}<select id="hands">
+      <label>${t("Какие кисти показывать")}<select id="hands">
         ${(["both", "right", "left"] as const).map((value, i) => `<option value="${value}" ${options.hands === value ? "selected" : ""}>${t(["Обе кисти", "Только правую кисть", "Только левую кисть"][i] ?? "")}</option>`).join("")}
       </select></label>
       <label class="opacity">${t("Прозрачность кистей")} <span id="opacity-value"></span>

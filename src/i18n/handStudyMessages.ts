@@ -7,7 +7,7 @@ export const handStudyMessages = {
     en: "Pick a pose and compare three vector treatments."
   },
   "Поза кисти": { en: "Hand pose" },
-  "Показать руки": { en: "Show hands" },
+  "Какие кисти показывать": { en: "Hands to display" },
   "Обе кисти": { en: "Both hands" },
   "Только правую кисть": { en: "Right hand only" },
   "Только левую кисть": { en: "Left hand only" },

@@ -300,7 +300,7 @@
               en: `Pick a pose and compare three vector treatments.`
             },
             "Поза кисти": { en: `Hand pose` },
-            "Показать руки": { en: `Show hands` },
+            "Какие кисти показывать": { en: `Hands to display` },
             "Обе кисти": { en: `Both hands` },
             "Только правую кисть": { en: `Right hand only` },
             "Только левую кисть": { en: `Left hand only` },
@@ -630,7 +630,7 @@
     <button id="language" class="language">${S === `ru` ? `EN` : `RU`}</button></header>
     <section class="controls">
       <label>${D(`Поза кисти`)}<select id="pose">${x.map((e) => `<option value="${e.id}" ${C?.id === e.id ? `selected` : ``}>${O(e)}</option>`).join(``)}</select></label>
-      <label>${D(`Показать руки`)}<select id="hands">
+      <label>${D(`Какие кисти показывать`)}<select id="hands">
         ${[`both`, `right`, `left`].map((e, t) => `<option value="${e}" ${w.hands === e ? `selected` : ``}>${D([`Обе кисти`, `Только правую кисть`, `Только левую кисть`][t] ?? ``)}</option>`).join(``)}
       </select></label>
       <label class="opacity">${D(`Прозрачность кистей`)} <span id="opacity-value"></span>
