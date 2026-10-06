@@ -1,9 +1,10 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
-  "Поправка: {offset} мс · Разброс: {jitter} мс · {quality} · Образцы: {samples}/24": {
-    en: "Offset: {offset} ms · Jitter: {jitter} ms · {quality} · Samples: {samples}/24"
-  },
+  "Поправка: {offset} мс · Разброс: {jitter} мс · Стабильность: {quality} · Образцы: {samples}/24":
+    {
+      en: "Offset: {offset} ms · Jitter: {jitter} ms · Stability: {quality} · Samples: {samples}/24"
+    },
   "Разминка {warmup}/4 · Измерения {measured}/24": {
     en: "Warm-up {warmup}/4 · Measurements {measured}/24"
   },
@@ -122,17 +123,17 @@ export const settingsMessages3 = {
   "Положительное значение задерживает изображение; оценка не меняется.": {
     en: "A positive value delays the display; scoring stays unchanged."
   },
-  "Отличный замер": {
-    en: "Excellent"
+  отличная: {
+    en: "excellent"
   },
-  "Хороший замер": {
-    en: "Good"
+  хорошая: {
+    en: "good"
   },
-  "Приемлемый замер": {
-    en: "Fair"
+  средняя: {
+    en: "fair"
   },
-  "Нестабильный замер": {
-    en: "Unstable"
+  низкая: {
+    en: "low"
   },
   "До мажор": {
     en: "C major"
