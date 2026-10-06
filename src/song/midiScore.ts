@@ -1,12 +1,15 @@
 import { DIVISIONS, headKey, measuresUntil, writeScore } from "./scoreWriter";
 import type { WrittenNote } from "./scoreWriter";
-import type { Song } from "./song";
+import { ROLE_ORDER } from "./midiParts";
+import { quartersAt, secondsAt, sortNotes } from "./song";
+import type { Song, SongNote } from "./song";
 
 /*
  * A MIDI file has no score: one is written from its notes. Starts and ends are
  * rounded to sixteenths, a short gap before the next start is closed, each hand
  * is one voice on its staff. The song's notes keep their MIDI timing; the score
- * only shows them, and each note points at its written head.
+ * only shows them, and each note points at its written head. `writtenNotes`
+ * puts the notes themselves where the score has them, when the player asks.
  */
 
 /** A gap up to a third of the note before it is a release played early, not a rest. */
@@ -49,17 +52,7 @@ export function withWrittenScore(
   endBeats: ReadonlyMap<string, number>,
   fifths: number
 ): Song {
-  const written = song.notes.map((note): WrittenNote => {
-    const start = Math.round(note.startBeat * DIVISIONS);
-    const endBeat = endBeats.get(note.id) ?? note.startBeat;
-    return {
-      pitch: note.pitch,
-      start,
-      end: Math.max(start + 1, Math.round(endBeat * DIVISIONS)),
-      staff: note.hand === "right" ? 1 : 2
-    };
-  });
-  const closed = closeGaps(written);
+  const closed = placeNotes(song, endBeats);
   const lastEnd = closed.reduce((end, note) => Math.max(end, note.end), 0);
   const { musicXml, heads } = writeScore(closed, {
     title: song.title,
@@ -72,6 +65,81 @@ export function withWrittenScore(
     return sourceIndex === undefined ? note : { ...note, sourceIndex };
   });
   return { ...song, notes, musicXml };
+}
+
+/**
+ * The song's notes as its score writes them: on the grid of sixteenths, one
+ * note of a pitch at each start of a hand, a chord lasting as its longest note
+ * but not past the hand's next start. Of doubled notes the one of the higher
+ * part role stays. Seconds follow the song's beats; the score is not rewritten.
+ */
+export function writtenNotes(song: Song): Song {
+  if (song.source !== "midi") return song;
+  const endBeats = new Map(
+    song.notes.map((note) => [note.id, quartersAt(song, note.start + note.duration)])
+  );
+  const places = placeNotes(song, endBeats);
+  const roleRank = new Map(
+    (song.parts ?? []).map((part) => [part.id, ROLE_ORDER.indexOf(part.role)])
+  );
+  const rank = (note: SongNote) =>
+    (note.part === undefined ? undefined : roleRank.get(note.part)) ?? ROLE_ORDER.length;
+
+  const chords = new Map<string, number[]>();
+  places.forEach((place, index) => {
+    const key = `${String(place.staff)}:${String(place.start)}`;
+    const chord = chords.get(key);
+    if (chord) chord.push(index);
+    else chords.set(key, [index]);
+  });
+  const onsets = new Map<1 | 2, number[]>();
+  for (const staff of [1, 2] as const) {
+    onsets.set(
+      staff,
+      [
+        ...new Set(places.filter((place) => place.staff === staff).map((place) => place.start))
+      ].sort((a, b) => a - b)
+    );
+  }
+
+  const notes: SongNote[] = [];
+  for (const indices of chords.values()) {
+    const first = places[indices[0] ?? 0];
+    if (!first) continue;
+    const next = onsets.get(first.staff)?.find((start) => start > first.start) ?? Infinity;
+    const end = Math.min(Math.max(...indices.map((index) => places[index]?.end ?? 0)), next);
+    const byPitch = new Map<number, SongNote>();
+    for (const index of indices) {
+      const note = song.notes[index];
+      if (!note) continue;
+      const kept = byPitch.get(note.pitch);
+      if (!kept || rank(note) < rank(kept)) byPitch.set(note.pitch, note);
+    }
+    const start = secondsAt(song, first.start / DIVISIONS);
+    const duration = secondsAt(song, end / DIVISIONS) - start;
+    for (const note of byPitch.values()) {
+      notes.push({ ...note, start, duration, startBeat: first.start / DIVISIONS });
+    }
+  }
+
+  sortNotes(notes);
+  const duration = notes.reduce((last, note) => Math.max(last, note.start + note.duration), 0);
+  return { ...song, notes, duration, asWritten: true };
+}
+
+/** Each note's place on the grid of sixteenths, by index, as the score writes it. */
+function placeNotes(song: Song, endBeats: ReadonlyMap<string, number>): WrittenNote[] {
+  const written = song.notes.map((note): WrittenNote => {
+    const start = Math.round(note.startBeat * DIVISIONS);
+    const endBeat = endBeats.get(note.id) ?? note.startBeat;
+    return {
+      pitch: note.pitch,
+      start,
+      end: Math.max(start + 1, Math.round(endBeat * DIVISIONS)),
+      staff: note.hand === "right" ? 1 : 2
+    };
+  });
+  return closeGaps(written);
 }
 
 /** Lets a note run on to the next start of its staff when the gap is a hurried release. */

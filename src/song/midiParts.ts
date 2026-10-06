@@ -35,7 +35,7 @@ const SINGLE_VOICE_SHARE = 0.15;
 /** A second voice sits no further than this below the melody, on average. */
 const SECOND_BELOW_SEMITONES = 5;
 
-const ROLE_ORDER: readonly PartRole[] = ["melody", "second", "accompaniment", "bass"];
+export const ROLE_ORDER: readonly PartRole[] = ["melody", "second", "accompaniment", "bass"];
 
 export const ROLE_TITLE: Readonly<Record<PartRole, string>> = {
   melody: "Мелодия",

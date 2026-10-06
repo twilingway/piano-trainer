@@ -12,6 +12,8 @@ export interface PlayerPrefs {
   readonly metronome: boolean;
   /** The program plays what the player does not; off, only the player's notes sound. */
   readonly accompaniment: boolean;
+  /** A MIDI song's notes as its staff writes them rather than as the file plays them. */
+  readonly notesAsWritten: boolean;
   /** The last lesson and level opened; what comes up when a library song cannot. */
   readonly lesson: LessonChoice | null;
   /** The library song on screen, `my:<id>` or `dir:<path>`; null for a lesson. */
@@ -26,6 +28,7 @@ export const DEFAULT_PLAYER_PREFS: PlayerPrefs = {
   speed: 0.75,
   metronome: true,
   accompaniment: true,
+  notesAsWritten: true,
   lesson: null,
   librarySource: null
 };

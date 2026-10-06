@@ -3,7 +3,7 @@ import { Midi } from "@tonejs/midi";
 import { describe, expect, it } from "vitest";
 
 import { songFromMidi } from "./midi";
-import { signatureFifths, withWrittenScore } from "./midiScore";
+import { signatureFifths, withWrittenScore, writtenNotes } from "./midiScore";
 import { musicXmlWithFingering } from "./musicxml";
 import type { Song, SongNote } from "./song";
 
@@ -141,5 +141,102 @@ describe("songFromMidi", () => {
 
   it("writes it in the key the notes sound in when the file names none", () => {
     expect(songFromMidi(file(), "D major").musicXml).toContain("<fifths>2</fifths>");
+  });
+});
+
+describe("writtenNotes", () => {
+  // At 60 per minute a quarter is a second, so seconds and quarters read alike.
+  const timed = (
+    id: string,
+    pitch: number,
+    start: number,
+    duration: number,
+    hand: "left" | "right",
+    part?: string
+  ): SongNote => ({
+    id,
+    pitch,
+    start,
+    duration,
+    startBeat: start,
+    hand,
+    ...(part ? { part } : {})
+  });
+  const slow = (notes: SongNote[]): Song => ({
+    ...SONG,
+    notes,
+    beats: Array.from({ length: 9 }, (_, index) => ({
+      time: index,
+      position: index,
+      downbeat: index % 4 === 0
+    })),
+    measures: [
+      { start: 0, length: 4, beats: 4, beatType: 4 },
+      { start: 4, length: 4, beats: 4, beatType: 4 }
+    ],
+    duration: 8,
+    parts: [
+      { id: "p0", role: "melody", title: "Мелодия", hand: "right" },
+      { id: "p1", role: "accompaniment", title: "Аккомпанемент", hand: "right" }
+    ]
+  });
+  const spans = (song: Song) =>
+    song.notes.map((item) => [item.id, item.pitch, item.start, item.duration]);
+
+  it("merges a doubled key into the note of the higher part", () => {
+    const song = writtenNotes(
+      slow([timed("acc", 72, 0, 0.5, "right", "p1"), timed("mel", 72, 0, 2, "right", "p0")])
+    );
+    expect(spans(song)).toEqual([["mel", 72, 0, 2]]);
+    expect(song.asWritten).toBe(true);
+  });
+
+  it("cuts a held note at the hand's next start", () => {
+    const song = writtenNotes(
+      slow([
+        timed("bass", 36, 0, 4, "left"),
+        timed("e", 52, 2, 2, "left"),
+        timed("g", 55, 2, 2, "left"),
+        timed("top", 72, 0, 4, "right")
+      ])
+    );
+    expect(spans(song)).toEqual([
+      ["bass", 36, 0, 2],
+      ["top", 72, 0, 4],
+      ["e", 52, 2, 2],
+      ["g", 55, 2, 2]
+    ]);
+  });
+
+  it("puts starts on the grid and lets a chord last as its longest note", () => {
+    const song = writtenNotes(
+      slow([timed("c", 60, 1.02, 0.98, "right"), timed("e", 64, 1, 1.9, "right")])
+    );
+    expect(spans(song)).toEqual([
+      ["c", 60, 1, 2],
+      ["e", 64, 1, 2]
+    ]);
+    expect(song.notes.map((item) => item.startBeat)).toEqual([1, 1]);
+  });
+
+  it("keeps each note pointing at its written head", () => {
+    const loaded = withWrittenScore(
+      slow([timed("acc", 72, 0, 0.5, "right", "p1"), timed("mel", 72, 0, 2, "right", "p0")]),
+      new Map([
+        ["acc", 0.5],
+        ["mel", 2]
+      ]),
+      0
+    );
+    const song = writtenNotes(loaded);
+    expect(song.musicXml).toBe(loaded.musicXml);
+    expect(song.notes[0]?.sourceIndex).toBe(
+      loaded.notes.find((item) => item.id === "mel")?.sourceIndex
+    );
+  });
+
+  it("leaves a score's notes as they are", () => {
+    const score: Song = { ...SONG, source: "musicxml" };
+    expect(writtenNotes(score)).toBe(score);
   });
 });

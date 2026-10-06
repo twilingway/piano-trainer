@@ -31,7 +31,9 @@ plays in tempo, plays the other hand, records every take and compares it with th
   every staff feature (fingers, names, chords, line breaks, transposition, a take written out) is a
   pure `string -> string` pass over the XML before OSMD renders it. A MIDI file's notes, timing and
   parts come from the MIDI itself; its staff is a score written from those notes (sixteenths, one
-  voice per hand) and only shows them — never re-read the song from that score.
+  voice per hand) and only shows them — never re-read the song from that score. With «Ноты как на
+  стане» the pure core puts the song's own notes on that same grid; it still does not read them back
+  from the XML.
 - **Fixed-shape art is baked.** In Pixi, anything that does not change per frame (finger digits, key
   stickers, note names) is drawn once into a texture and shown as a sprite; `Graphics` is only for
   baking.

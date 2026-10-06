@@ -58,6 +58,8 @@ export interface Song {
   readonly parts?: readonly SongPart[];
   /** The simpler version of a MIDI arrangement rather than the file as it is. */
   readonly simplified?: boolean;
+  /** A MIDI song's notes as its written score has them rather than as the file plays them. */
+  readonly asWritten?: boolean;
 }
 
 /** Middle C and above go to the right hand when nothing better tells the hands apart. */
@@ -120,4 +122,28 @@ export function quartersAt(song: Song, time: number): number {
   const last = beats.at(-1) ?? second;
   const beforeLast = beats.at(-2) ?? first;
   return last.position + (time - last.time) * rate(beforeLast, last);
+}
+
+/** Song time at a number of quarter notes: the inverse of `quartersAt`. */
+export function secondsAt(song: Song, quarters: number): number {
+  const beats = song.beats;
+  const first = beats[0];
+  const second = beats[1];
+  if (!first || !second) return quarters / DEFAULT_QUARTERS_PER_SECOND;
+  const rate = (a: typeof first, b: typeof first) =>
+    b.position > a.position
+      ? (b.time - a.time) / (b.position - a.position)
+      : 1 / DEFAULT_QUARTERS_PER_SECOND;
+  if (quarters <= first.position)
+    return first.time + (quarters - first.position) * rate(first, second);
+  for (let index = 1; index < beats.length; index++) {
+    const after = beats[index];
+    const before = beats[index - 1];
+    if (!after || !before) break;
+    if (quarters <= after.position)
+      return before.time + (quarters - before.position) * rate(before, after);
+  }
+  const last = beats.at(-1) ?? second;
+  const beforeLast = beats.at(-2) ?? first;
+  return last.time + (quarters - last.position) * rate(beforeLast, last);
 }
