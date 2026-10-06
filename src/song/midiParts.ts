@@ -89,12 +89,14 @@ export function trackRoles(tracks: readonly TrackStats[]): PartRole[] {
 }
 
 /**
- * The roles a player can pick to play alone, in part order: only when there
- * are more than two, since two roles are just the two hands.
+ * The roles a player can pick to play alone, in part order: those that share
+ * their hand with another role, since a role alone in its hand is that hand.
  */
 export function choosableRoles(parts: readonly SongPart[] | undefined): PartRole[] {
   const roles = ROLE_ORDER.filter((role) => parts?.some((part) => part.role === role));
-  return roles.length > 2 ? roles : [];
+  return roles.filter((role) =>
+    roles.some((other) => other !== role && ROLE_HAND[other] === ROLE_HAND[role])
+  );
 }
 
 /**

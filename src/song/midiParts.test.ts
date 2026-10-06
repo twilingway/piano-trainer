@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { songParts, trackRoles } from "./midiParts";
-import type { TrackStats } from "./midiParts";
+import { choosableRoles, ROLE_HAND, ROLE_TITLE, songParts, trackRoles } from "./midiParts";
+import type { PartRole, SongPart, TrackStats } from "./midiParts";
 
 const track = (onsets: number, chordOnsets: number, meanPitch: number): TrackStats => ({
   onsets,
@@ -49,5 +49,32 @@ describe("songParts", () => {
       { id: "p0", role: "accompaniment", title: "Аккомпанемент 2", hand: "left" },
       { id: "p2", role: "bass", title: "Бас", hand: "left" }
     ]);
+  });
+});
+
+describe("choosableRoles", () => {
+  const part = (role: PartRole, index: number): SongPart => ({
+    id: `p${String(index)}`,
+    role,
+    title: ROLE_TITLE[role],
+    hand: ROLE_HAND[role]
+  });
+  const roles = (...list: PartRole[]) => choosableRoles(list.map(part));
+
+  it("offers only roles that share their hand with another role", () => {
+    expect(roles("melody", "accompaniment", "bass")).toEqual(["accompaniment", "bass"]);
+    expect(roles("melody", "second", "bass")).toEqual(["melody", "second"]);
+    expect(roles("melody", "second", "accompaniment", "bass")).toEqual([
+      "melody",
+      "second",
+      "accompaniment",
+      "bass"
+    ]);
+  });
+
+  it("offers none when each hand holds one role", () => {
+    expect(roles("melody", "bass")).toEqual([]);
+    expect(roles("melody", "accompaniment", "accompaniment")).toEqual([]);
+    expect(choosableRoles(undefined)).toEqual([]);
   });
 });

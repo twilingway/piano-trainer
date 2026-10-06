@@ -50,36 +50,42 @@ export function SongSettings({
   return (
     <div className="settings-list">
       {arrangement && (
-        <label className="setting">
-          <span title={t("Упрощённая: мелодия справа, бас и до двух нот аккорда слева.")}>
-            {t("Аранжировка")}
-          </span>
-          <select
-            className="game-select"
-            aria-label={t("Аранжировка")}
-            value={arrangement.simplified ? "simplified" : "original"}
-            onChange={(event) => {
-              arrangement.onSimplified(event.target.value === "simplified");
-            }}
-          >
-            <option value="original">{t("Как в файле")}</option>
-            <option value="simplified">{t("Упрощённая")}</option>
-          </select>
-        </label>
-      )}
-      {arrangement && (
-        <label className="setting">
-          <span title={t("Падающие ноты — как на стане: без дублей, ровно по долям.")}>
-            {t("Ноты как на стане")}
-          </span>
-          <input
-            type="checkbox"
-            checked={arrangement.asWritten}
-            onChange={(event) => {
-              arrangement.onAsWritten(event.target.checked);
-            }}
-          />
-        </label>
+        <>
+          <label className="setting">
+            <span>{t("Сложность")}</span>
+            <select
+              className="game-select"
+              aria-label={t("Сложность")}
+              value={arrangement.simplified ? "simplified" : "full"}
+              onChange={(event) => {
+                arrangement.onSimplified(event.target.value === "simplified");
+              }}
+            >
+              <option value="full">{t("Полная")}</option>
+              <option value="simplified">{t("Упрощённая")}</option>
+            </select>
+          </label>
+          <p className="setting-hint">
+            {arrangement.simplified
+              ? t("Мелодия в правой руке, слева бас и до двух нот аккорда.")
+              : t("Все ноты песни.")}
+          </p>
+          <label className="setting">
+            <span>{t("Живое исполнение из MIDI")}</span>
+            <input
+              type="checkbox"
+              checked={!arrangement.asWritten}
+              onChange={(event) => {
+                arrangement.onAsWritten(!event.target.checked);
+              }}
+            />
+          </label>
+          <p className="setting-hint">
+            {arrangement.asWritten
+              ? t("Ноты падают как на стане: ровно по долям, без дублей.")
+              : t("Время и дубли как в файле: падающие ноты могут расходиться со станом.")}
+          </p>
+        </>
       )}
       {sourceKey && (
         <label className="setting">

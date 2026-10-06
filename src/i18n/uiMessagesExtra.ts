@@ -268,22 +268,34 @@ export const uiMessagesExtra = {
   "Остальные партии играет программа.": {
     en: "The app plays the other parts."
   },
-  Аранжировка: {
-    en: "Arrangement"
-  },
-  "Как в файле": {
-    en: "As in the file"
+  Полная: {
+    en: "Full"
   },
   Упрощённая: {
     en: "Simplified"
   },
-  "Упрощённая: мелодия справа, бас и до двух нот аккорда слева.": {
-    en: "Simplified: the melody in the right hand, the bass and up to two chord notes in the left."
+  "Мелодия в правой руке, слева бас и до двух нот аккорда.": {
+    en: "The melody in the right hand; the bass and up to two chord notes in the left."
   },
-  "Ноты как на стане": {
-    en: "Notes as on the staff"
+  "Все ноты песни.": {
+    en: "Every note of the song."
   },
-  "Падающие ноты — как на стане: без дублей, ровно по долям.": {
-    en: "Falling notes match the staff: no doubled keys, right on the beat."
+  "Живое исполнение из MIDI": {
+    en: "Live MIDI performance"
+  },
+  "Ноты падают как на стане: ровно по долям, без дублей.": {
+    en: "Notes fall as on the staff: right on the beat, no doubled keys."
+  },
+  "Время и дубли как в файле: падающие ноты могут расходиться со станом.": {
+    en: "Timing and doubled keys as in the file: falling notes may differ from the staff."
+  },
+  "Только одну партию": {
+    en: "One part only"
+  },
+  "{part} (левая)": {
+    en: "{part} (left)"
+  },
+  "{part} (правая)": {
+    en: "{part} (right)"
   }
 } satisfies Messages;
