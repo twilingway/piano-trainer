@@ -84,7 +84,8 @@
 }
 .app--word .compact-hands,
 .app--word .compact-practice__hands,
-.app--word .topbar > .topbar-hands {
+.app--word .topbar > .topbar-hands,
+.app--word .topbar > .topbar-difficulty {
   display: none;
 }
 /* The typed text over the usual staff and lane: the keys are the view's own. */
