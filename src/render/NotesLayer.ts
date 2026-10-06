@@ -390,7 +390,8 @@ export class NotesLayer {
           key.width * 0.84,
           visibleHeight,
           body.tint,
-          body.alpha
+          body.alpha,
+          key.black
         );
         body.visible = false;
       }

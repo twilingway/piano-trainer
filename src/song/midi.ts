@@ -8,8 +8,11 @@ import type { Song, SongBeat, SongMeasure, SongNote } from "./song";
  * A MIDI file carries no hands, so they are guessed: with two or more melodic
  * tracks the higher one is the right hand and the next the left (the usual
  * layout of a piano MIDI); a single track is split at middle C.
+ *
+ * The title is the file's: the name a MIDI carries is its first track's
+ * ("Piano", "Track 1"), often in an encoding the file does not declare.
  */
-export function songFromMidi(data: ArrayBuffer, fallbackTitle: string): Song {
+export function songFromMidi(data: ArrayBuffer, title: string): Song {
   const midi = new Midi(data);
   const tracks = midi.tracks.filter(
     (track) => !track.instrument.percussion && track.notes.length > 0
@@ -46,7 +49,7 @@ export function songFromMidi(data: ArrayBuffer, fallbackTitle: string): Song {
   sortNotes(notes);
   const duration = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
   return {
-    title: midi.name || fallbackTitle,
+    title,
     source: "midi",
     notes,
     beats: midiBeats(midi, duration),
