@@ -71,8 +71,27 @@ describe("PlayerTopBar difficulty", () => {
     expect(onSimplified).toHaveBeenCalledWith(true);
   });
 
+  it("explains the version in a tooltip and on the phone's menu", () => {
+    const onSimplified = vi.fn();
+    render({ difficulty: { simplified: true, onSimplified } });
+    expect(difficultySelect()?.title).toBe(
+      "Сложность: Мелодия в правой руке, слева бас и до двух нот аккорда."
+    );
+    const phone = host.querySelector(
+      ".compact-controls [role='radiogroup'][aria-label='Сложность']"
+    );
+    expect(phone?.querySelector("[aria-checked='true']")?.textContent).toBe("Упрощённая");
+    expect(phone?.parentElement?.textContent).toContain("Мелодия в правой руке");
+    const full = phone?.querySelector<HTMLButtonElement>("[aria-checked='false']");
+    act(() => {
+      full?.click();
+    });
+    expect(onSimplified).toHaveBeenCalledWith(false);
+  });
+
   it("has no version choice for a score", () => {
     render();
     expect(difficultySelect()).toBeNull();
+    expect(host.querySelector("[role='radiogroup'][aria-label='Сложность']")).toBeNull();
   });
 });
