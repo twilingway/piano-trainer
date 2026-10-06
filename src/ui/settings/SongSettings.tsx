@@ -19,9 +19,18 @@ interface Props {
   /** The player corrected some fingers. */
   readonly fingersChanged: boolean;
   readonly onResetFingers: () => void;
-  /** A MIDI song plays as the file is or in a simpler version; none for a score. */
+  /**
+   * A MIDI song plays as the file is or in a simpler version, its notes as the
+   * file has them or as its staff writes them; none for a score.
+   */
   readonly arrangement?:
-    { readonly simplified: boolean; readonly onSimplified: (on: boolean) => void } | undefined;
+    | {
+        readonly simplified: boolean;
+        readonly onSimplified: (on: boolean) => void;
+        readonly asWritten: boolean;
+        readonly onAsWritten: (on: boolean) => void;
+      }
+    | undefined;
 }
 
 /** The song tab: its key, its octave and the finger corrections. */
@@ -56,6 +65,20 @@ export function SongSettings({
             <option value="original">{t("Как в файле")}</option>
             <option value="simplified">{t("Упрощённая")}</option>
           </select>
+        </label>
+      )}
+      {arrangement && (
+        <label className="setting">
+          <span title={t("Падающие ноты — как на стане: без дублей, ровно по долям.")}>
+            {t("Ноты как на стане")}
+          </span>
+          <input
+            type="checkbox"
+            checked={arrangement.asWritten}
+            onChange={(event) => {
+              arrangement.onAsWritten(event.target.checked);
+            }}
+          />
         </label>
       )}
       {sourceKey && (

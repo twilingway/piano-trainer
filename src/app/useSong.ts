@@ -6,6 +6,7 @@ import { simplifiedSong } from "../song/arrangement";
 import { detectKey } from "../song/harmony";
 import { fifthsForKey } from "../song/keySignature";
 import type { Key } from "../song/keySignature";
+import { writtenNotes } from "../song/midiScore";
 import { songFromMusicXml, transposeMusicXml } from "../song/musicxml";
 import { withFingering } from "../song/song";
 import type { Song } from "../song/song";
@@ -21,7 +22,7 @@ function startingLesson(): LessonChoice {
 }
 
 function overridesKey(song: Song): string {
-  const version = song.simplified ? ":simplified" : "";
+  const version = (song.simplified ? ":simplified" : "") + (song.asWritten ? ":written" : "");
   return `fingering:${song.title}${version}:${String(song.notes.length)}`;
 }
 
@@ -86,10 +87,16 @@ export function useSong(startFromRef: RefObject<number | null>) {
     () => (simplified ? simplifiedSong(sourceSong) : sourceSong),
     [simplified, sourceSong]
   );
+  /** A MIDI song's notes as its staff has them; a preference, not the song's. */
+  const [asWritten, setAsWritten] = useState(() => loadPlayerPrefs().notesAsWritten);
+  const written = useMemo(
+    () => (asWritten ? writtenNotes(arranged) : arranged),
+    [asWritten, arranged]
+  );
   const sourceKey = useMemo(() => detectKey(sourceSong), [sourceSong]);
   const baseSong = useMemo(
-    () => transposeSong(arranged, transpose + octave * 12, sourceKey),
-    [arranged, transpose, octave, sourceKey]
+    () => transposeSong(written, transpose + octave * 12, sourceKey),
+    [written, transpose, octave, sourceKey]
   );
   const [overrides, setOverrides] = useState<Map<string, Finger>>(() => loadOverrides(baseSong));
   // Corrections belong to a song in a key: another key starts from its own.
@@ -152,9 +159,19 @@ export function useSong(startFromRef: RefObject<number | null>) {
     setTranspose,
     octave,
     setOctave,
-    /** The version choice of a MIDI song; none for a score. */
+    /** The version choice of a MIDI song and whether its notes follow the staff; none for a score. */
     arrangement:
-      sourceSong.source === "midi" ? { simplified, onSimplified: setSimplified } : undefined,
+      sourceSong.source === "midi"
+        ? {
+            simplified,
+            onSimplified: setSimplified,
+            asWritten,
+            onAsWritten: (on: boolean) => {
+              setAsWritten(on);
+              savePlayerPrefs({ notesAsWritten: on });
+            }
+          }
+        : undefined,
     baseSong,
     song,
     songKey,
