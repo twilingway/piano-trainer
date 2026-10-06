@@ -78,6 +78,32 @@ describe("simplifiedSong", () => {
     expect(song.parts).toBe(parts);
   });
 
+  it("keeps an octave doubling when the chord has room", () => {
+    const song = simplifiedSong(
+      midiSong([
+        note(29, 0, "left"),
+        note(41, 0, "left"),
+        note(71, 0, "right"),
+        note(83, 0, "right")
+      ])
+    );
+    // F1 with F2 in the bass, B4 with B5 in the melody: both octaves stay.
+    expect(pitchesAt(song, 0, "left")).toEqual([29, 41]);
+    expect(pitchesAt(song, 0, "right")).toEqual([71, 83]);
+  });
+
+  it("leaves a melody that shares the left hand's register but not its time", () => {
+    // The melody opens on C4 and G3 alone; later the left hand plays F3 A3 C4 under E5.
+    const opening = [60, 55, 60, 55].map((pitch, beat) => note(pitch, beat, "right"));
+    const later = [4, 5, 6, 7].flatMap((beat) => [
+      note(76, beat, "right"),
+      ...[53, 57, 60].map((pitch) => note(pitch, beat, "left"))
+    ]);
+    const song = simplifiedSong(midiSong([...opening, ...later]));
+    expect(pitchesAt(song, 1, "right")).toEqual([55]);
+    expect(pitchesAt(song, 4, "right")).toEqual([76]);
+  });
+
   it("writes its own score, in the original's key, and marks itself simplified", () => {
     const song = simplifiedSong(
       midiSong([note(60, 0, "right"), note(64, 0, "right"), note(48, 0, "left")])
