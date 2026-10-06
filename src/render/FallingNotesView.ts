@@ -1,7 +1,7 @@
 import { Application, Container, Texture } from "pixi.js";
 import type { FederatedPointerEvent } from "pixi.js";
 
-import type { Finger } from "../fingering/fingering";
+import type { Finger, Hand } from "../fingering/fingering";
 import type { Locale } from "../i18n/locales";
 import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
@@ -47,6 +47,7 @@ const PAN_NOTES = 24;
 /** The road needs a longer approach so distant notes are readable before reaching the keys. */
 const ROAD_LOOK_AHEAD_FACTOR = 4;
 const NO_SOUNDING_KEYS: ReadonlySet<number> = new Set();
+const BOTH_HANDS: ReadonlySet<Hand> = new Set(["left", "right"]);
 
 /**
  * The Synthesia-style picture: notes fall onto a keyboard, each carrying the
@@ -426,7 +427,8 @@ export class FallingNotesView {
       this.hands.draw(
         state.time,
         this.app.ticker.deltaMS / 1000,
-        state.hands,
+        // Listening, both hands show how the program plays.
+        state.hands.size === 0 ? BOTH_HANDS : state.hands,
         this.keys,
         geometry,
         (x, y, reach) => (road ? road.handPlace(x, y, geometry, reach) : { x: x - this.pan, y }),

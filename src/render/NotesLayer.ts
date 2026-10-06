@@ -82,6 +82,8 @@ export interface NotesFrame {
   readonly time: number;
   readonly lookAhead: number;
   readonly statusOf: (noteId: string) => NoteStatus | undefined;
+  /** No hand when listening: the program plays every note. */
+  readonly hands: ReadonlySet<Hand>;
   readonly owns: (note: SongNote) => boolean;
   readonly hints?: boolean;
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
@@ -337,7 +339,8 @@ export class NotesLayer {
       name.visible = false;
       if (!onScreen) continue;
 
-      const playerNote = state.owns(note);
+      // Listening, every note is shown as bright as the player's own.
+      const playerNote = state.hands.size === 0 || state.owns(note);
       const status = state.statusOf(note.id);
       const barWidth = trail
         ? key.width * TRAIL_SHARE
