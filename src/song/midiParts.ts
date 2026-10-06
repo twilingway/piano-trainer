@@ -37,7 +37,7 @@ const SECOND_BELOW_SEMITONES = 5;
 
 const ROLE_ORDER: readonly PartRole[] = ["melody", "second", "accompaniment", "bass"];
 
-const ROLE_TITLE: Readonly<Record<PartRole, string>> = {
+export const ROLE_TITLE: Readonly<Record<PartRole, string>> = {
   melody: "Мелодия",
   second: "Второй голос",
   accompaniment: "Аккомпанемент",
@@ -86,6 +86,15 @@ export function trackRoles(tracks: readonly TrackStats[]): PartRole[] {
     roles[track.index] = single && near ? "second" : "accompaniment";
   }
   return roles;
+}
+
+/**
+ * The roles a player can pick to play alone, in part order: only when there
+ * are more than two, since two roles are just the two hands.
+ */
+export function choosableRoles(parts: readonly SongPart[] | undefined): PartRole[] {
+  const roles = ROLE_ORDER.filter((role) => parts?.some((part) => part.role === role));
+  return roles.length > 2 ? roles : [];
 }
 
 /**

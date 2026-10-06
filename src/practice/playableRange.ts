@@ -7,14 +7,19 @@ export interface PlayableRange {
   readonly high: number;
 }
 
-/** Whether the player plays a note: it is in their hands and on their keyboard. */
+/**
+ * Whether the player plays a note: it is in their hands, on their keyboard and,
+ * when they chose parts of the song, in one of those parts.
+ */
 export function ownsNote(
   note: SongNote,
   hands: ReadonlySet<Hand>,
-  playable?: PlayableRange
+  playable?: PlayableRange,
+  parts?: ReadonlySet<string>
 ): boolean {
   return (
     hands.has(note.hand) &&
-    (playable === undefined || (note.pitch >= playable.low && note.pitch <= playable.high))
+    (playable === undefined || (note.pitch >= playable.low && note.pitch <= playable.high)) &&
+    (parts === undefined || (note.part !== undefined && parts.has(note.part)))
   );
 }

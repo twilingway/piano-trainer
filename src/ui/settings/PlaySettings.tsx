@@ -1,5 +1,7 @@
 import { useI18n } from "../../app/useI18n";
 import type { PracticeMode, PracticeStats } from "../../practice/session";
+import { choiceValue, chooseValue, PartOptions } from "../CompactPracticeChoices";
+import type { PartsChoice } from "../CompactPracticeChoices";
 import type { HandsChoice } from "../PlayerTopBar";
 
 interface Props {
@@ -14,6 +16,7 @@ interface Props {
   readonly onMode: (mode: PracticeMode) => void;
   readonly hands: HandsChoice;
   readonly onHands: (hands: HandsChoice) => void;
+  readonly parts?: PartsChoice | undefined;
   readonly speed: number;
   readonly onSpeed: (speed: number) => void;
   readonly autoReview: boolean;
@@ -32,6 +35,7 @@ export function PlaySettings({
   onMode,
   hands,
   onHands,
+  parts,
   speed,
   onSpeed,
   autoReview,
@@ -61,16 +65,29 @@ export function PlaySettings({
           <select
             className="game-select"
             aria-label={t("Руки")}
-            value={hands}
+            value={choiceValue(hands, parts)}
             onChange={(event) => {
-              onHands(event.target.value as HandsChoice);
+              chooseValue(event.target.value, onHands, parts);
             }}
           >
             <option value="right">{t("Правая рука")}</option>
             <option value="left">{t("Левая рука")}</option>
             <option value="both">{t("Обе руки")}</option>
             <option value="listen">{t("Только слушать")}</option>
+            <PartOptions parts={parts} />
           </select>
+        </label>
+      )}
+      {!wordTyping && parts && hands !== "listen" && (
+        <label className="setting">
+          <span title={t("Остальные партии играет программа.")}>{t("Автоаккомпанемент")}</span>
+          <input
+            type="checkbox"
+            checked={parts.accompaniment}
+            onChange={(event) => {
+              parts.onAccompaniment(event.target.checked);
+            }}
+          />
         </label>
       )}
       <label className="setting">

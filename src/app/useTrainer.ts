@@ -7,6 +7,8 @@ import type { PracticeMode, PracticeOptions } from "../practice/session";
 import { Trainer } from "../practice/Trainer";
 import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
+import { choosableRoles, ROLE_HAND } from "../song/midiParts";
+import type { PartRole, SongPart } from "../song/midiParts";
 import type { Song } from "../song/song";
 import { loadPlayerPrefs, savePlayerPrefs } from "./playerPrefs";
 import type { HandChoice } from "./playerPrefs";
@@ -82,8 +84,23 @@ export function useTrainer({
     () => loadPlayerPrefs().handChoice
   );
   const handChoice = ranked && storedHandChoice === "listen" ? "both" : storedHandChoice;
+  /** A part picked by role; it belongs to the song (a new file drops it, a new key keeps it). */
+  const [partChoice, setPartChoice] = useState<{
+    readonly parts: readonly SongPart[] | undefined;
+    readonly role: PartRole;
+  } | null>(null);
+  const partRoles = ranked || wordTyping ? [] : choosableRoles(song.parts);
+  const partRole =
+    partChoice !== null && partChoice.parts === song.parts && partRoles.includes(partChoice.role)
+      ? partChoice.role
+      : null;
   const setHandChoice = (choice: HandChoice) => {
-    if (!ranked || !snapshotSource.getSnapshot()?.playing) updateHandChoice(choice);
+    if (ranked && snapshotSource.getSnapshot()?.playing) return;
+    setPartChoice(null);
+    updateHandChoice(choice);
+  };
+  const choosePart = (role: PartRole) => {
+    setPartChoice({ parts: song.parts, role });
   };
   const [storedSpeed, updateSpeed] = useState(() =>
     Math.max(0.01, Math.min(1, loadPlayerPrefs().speed))
@@ -94,9 +111,18 @@ export function useTrainer({
   const speed = ranked ? 1 : storedSpeed;
   const [listening, setListening] = useState(false);
   const [metronome, setMetronome] = useState(() => loadPlayerPrefs().metronome);
+  const [storedAccompaniment, setAccompaniment] = useState(() => loadPlayerPrefs().accompaniment);
+  // Ranked and the word mode keep their own fixed rules: the program always accompanies.
+  const accompaniment = ranked || wordTyping || storedAccompaniment;
   useEffect(() => {
-    savePlayerPrefs({ mode, handChoice, speed, metronome });
-  }, [mode, handChoice, speed, metronome]);
+    savePlayerPrefs({
+      mode,
+      handChoice,
+      speed,
+      metronome,
+      accompaniment: storedAccompaniment
+    });
+  }, [mode, handChoice, speed, metronome, storedAccompaniment]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -151,13 +177,32 @@ export function useTrainer({
     takeHandlerRef.current = onTake;
   });
 
-  const practiceOptions = useMemo<PracticeOptions>(
-    () =>
-      listening
-        ? { mode: "tempo", hands: new Set<Hand>(), speed }
-        : { mode, hands: new Set(HANDS[wordTyping ? "right" : handChoice]), speed, ...gameOptions },
-    [listening, mode, handChoice, speed, gameOptions, wordTyping]
-  );
+  const practiceOptions = useMemo<PracticeOptions>(() => {
+    if (listening) return { mode: "tempo", hands: new Set<Hand>(), speed };
+    if (partRole) {
+      const parts = (song.parts ?? []).filter((part) => part.role === partRole);
+      return {
+        mode,
+        hands: new Set([ROLE_HAND[partRole]]),
+        parts: new Set(parts.map((part) => part.id)),
+        speed,
+        accompaniment,
+        ...gameOptions
+      };
+    }
+    const hands = new Set(HANDS[wordTyping ? "right" : handChoice]);
+    return { mode, hands, speed, accompaniment, ...gameOptions };
+  }, [
+    listening,
+    mode,
+    handChoice,
+    partRole,
+    song.parts,
+    speed,
+    accompaniment,
+    gameOptions,
+    wordTyping
+  ]);
 
   // The take to play back while comparing. Outside comparing it stays undefined, so a take
   // just finished does not reload the song: the run ends where it ended, with its results.
@@ -250,6 +295,23 @@ export function useTrainer({
     setMode,
     handChoice,
     setHandChoice,
+    /** Who plays, for the hand selects: the hand, or a part of the song, and the accompaniment. */
+    playChoice: {
+      // A part is played by its hand, even when the hand choice was «listen».
+      hands: partRole ? ROLE_HAND[partRole] : handChoice,
+      onHands: setHandChoice,
+      // Ranked and the word mode keep their own rules: no parts, no accompaniment switch.
+      parts:
+        ranked || wordTyping
+          ? undefined
+          : {
+              roles: partRoles,
+              role: partRole,
+              onRole: choosePart,
+              accompaniment,
+              onAccompaniment: setAccompaniment
+            }
+    },
     /** The hands the player plays in the run: none while listening. */
     playerHands: practiceOptions.hands,
     speed,

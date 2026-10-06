@@ -58,8 +58,9 @@ export interface TakeReview {
  */
 export function compareTake(song: Song, take: Take): TakeReview {
   const hands = new Set(take.hands);
+  const parts = take.parts && new Set(take.parts);
   const owed = song.notes
-    .filter((note) => ownsNote(note, hands, take.playable) && note.start >= take.from - 1e-6)
+    .filter((note) => ownsNote(note, hands, take.playable, parts) && note.start >= take.from - 1e-6)
     .sort((a, b) => a.start - b.start || a.pitch - b.pitch);
   const window = MATCH_WINDOW_S * take.speed;
   const claimed = new Set<PlayedNote>();

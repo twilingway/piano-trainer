@@ -249,5 +249,23 @@ export const uiMessagesExtra = {
   },
   "Звёзды: {stars} из 3": {
     en: "Stars: {stars} out of 3"
+  },
+  Партии: {
+    en: "Parts"
+  },
+  "Второй голос": {
+    en: "Second voice"
+  },
+  Аккомпанемент: {
+    en: "Accompaniment"
+  },
+  "Остальное играет программа.": {
+    en: "The app plays the rest."
+  },
+  Автоаккомпанемент: {
+    en: "Auto accompaniment"
+  },
+  "Остальные партии играет программа.": {
+    en: "The app plays the other parts."
   }
 } satisfies Messages;
