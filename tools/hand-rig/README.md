@@ -15,7 +15,8 @@ solved poses (`poses/<id>.json`) are kept as keyframe data for a later playing a
 ## Steps
 
 1. `studio_rig.py` builds collection `studio`: `HandMesh` (Multires baked, automatic weights)
-   parented to `HandRig` (21 bones, MPFB names). `studio_geo.py` measures the finger sections it uses.
+   parented to `HandRig` (21 bones, MPFB names). `studio_geo.py` measures the finger sections it
+   uses.
 2. `studio_study.py` solves and renders every study pose with `studio_pose.py` into the git-ignored
    `blender/renders/study/` (`<id>.png`, `poses/<id>.json`, `report.json`). A pose takes about a
    minute; pass `{"ASYNC": True}` so the call returns at once and watch `progress.log` for `DONE`.
@@ -26,10 +27,10 @@ solved poses (`poses/<id>.json`) are kept as keyframe data for a later playing a
 ## The solver, in short
 
 The hand is a rigid body whose fingers wrap an "apple" under the palm. Nelder-Mead fits the wrist
-position and the hand's yaw, pitch, roll and spread so the pressed fingertips land on their keys; the
-forearm follows part of the yaw and carries the pronation. Pressed fingers then adjust curl and
-knuckle flex/yaw within their abduction; the thumb is solved by IK and may bend its tip joint into an
-"L". Free fingers rest nearly straight, lift until their skin clears the keys and fan after their
+position and the hand's yaw, pitch, roll and spread so the pressed fingertips land on their keys;
+the forearm follows part of the yaw and carries the pronation. Pressed fingers then adjust curl and
+knuckle flex/yaw within their abduction; the thumb is solved by IK and may bend its tip joint into
+an "L". Free fingers rest nearly straight, lift until their skin clears the keys and fan after their
 pressed neighbours. Phalanx capsules keep skin out of the keys and out of each other; the pads are
 finally calibrated against the subdivided mesh as rendered. A stretch (spread past 1) lowers the
 knuckles, turns the hand counter-clockwise and brings the outer fingers to the keys' front edge.
