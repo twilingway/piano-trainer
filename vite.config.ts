@@ -3,17 +3,18 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vitest/config";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { IndexHtmlTransformContext, Plugin, ResolvedConfig } from "vite";
 import { renderSiteMetadataHtml } from "./src/i18n/siteMetadataHtml.ts";
 import { siteLocaleFromPath } from "./src/i18n/siteMetadata.ts";
 
-function localizedSiteMetadata() {
+function localizedSiteMetadata(): Plugin {
   let outputDirectory: string | undefined;
   return {
     name: "localized-site-metadata",
-    configResolved(config: import("vite").ResolvedConfig) {
+    configResolved(config: ResolvedConfig) {
       if (config.command === "build") outputDirectory = resolve(config.root, config.build.outDir);
     },
-    transformIndexHtml(html: string, context: import("vite").IndexHtmlTransformContext) {
+    transformIndexHtml(html: string, context: IndexHtmlTransformContext) {
       const pathname = context.originalUrl ?? context.path;
       return renderSiteMetadataHtml(html, siteLocaleFromPath(pathname) ?? "en", pathname);
     },
