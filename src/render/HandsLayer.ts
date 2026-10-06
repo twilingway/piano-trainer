@@ -6,8 +6,9 @@ import { FINGER_COLOR } from "./fingerColors";
 import { HAND_SPRITES } from "./handSpriteCatalog";
 import type { HandSpriteDefinition } from "./handSpriteCatalog";
 import { fitPose } from "./handSprites";
-import { easePose, handPose, handHintChord } from "./handPose";
+import { blendPose, chordGlide, easePose, handPose, handHintChord } from "./handPose";
 import type { HandPose, Tip } from "./handPose";
+import { APPROACH_MS } from "./keyFeedback";
 import type { KeyRect } from "./keyboardLayout";
 
 export interface HandsGeometry {
@@ -20,7 +21,8 @@ export type HandProject = (x: number, y: number, reach?: number) => { x: number;
 
 const HANDS: readonly Hand[] = ["left", "right"];
 const HAND_ALPHA = 0.58;
-const MOVE_SMOOTHING_S = 0.12;
+// Eases only what the glide between chords leaves: a seek, a mode change.
+const MOVE_SMOOTHING_S = 0.05;
 const CHANGE_S = 0.18;
 const PULSE_HZ = 2.5;
 const TIP_RADIUS = 0.22;
@@ -119,25 +121,36 @@ export class HandsLayer {
     keys: ReadonlyMap<number, KeyRect>,
     geometry: HandsGeometry,
     project: HandProject,
-    waitingFor: readonly SongNote[] = []
+    waitingFor: readonly SongNote[] = [],
+    speed = 1
   ): void {
     const available = this.available;
+    // The hand sets off as the next key starts to light, in song seconds.
+    const lead = (APPROACH_MS / 1000) * speed;
     for (const hand of HANDS) {
       const visual = this.visuals.get(hand);
       if (!visual) continue;
-      if (!hands.has(hand)) {
+      // Listening, no hand is the player's: both show how the program plays.
+      if (hands.size > 0 && !hands.has(hand)) {
         this.poses.delete(hand);
         for (const picture of visual.pictures) picture.mesh.visible = false;
         for (const marker of visual.markers.values()) marker.visible = false;
         continue;
       }
       const pending = waitingFor.filter((note) => note.hand === hand);
-      const chord = handHintChord(this.notes[hand], time, pending, waitingFor.length > 0);
-      const target = handPose(hand, chord?.notes ?? [], keys, this.poses.get(hand));
+      const waiting = waitingFor.length > 0;
+      // Playing on, the hand glides to the next chord while its keys light up.
+      const glide = waiting ? undefined : chordGlide(this.notes[hand], time, lead);
+      const chord = glide ? glide.to : handHintChord(this.notes[hand], time, pending, waiting);
+      const previous = this.poses.get(hand);
+      const target = handPose(hand, chord?.notes ?? [], keys, previous);
       if (!target) continue;
-      const pose = easePose(this.poses.get(hand), target, deltaSeconds, MOVE_SMOOTHING_S);
+      const origin =
+        glide && glide.progress < 1 ? handPose(hand, glide.from.notes, keys, previous) : undefined;
+      const aim = origin && glide ? blendPose(origin, target, glide.progress) : target;
+      const pose = easePose(previous, aim, deltaSeconds, MOVE_SMOOTHING_S);
       this.poses.set(hand, pose);
-      const targets = new Map([...target.down].map((finger) => [finger, target.tips[finger].x]));
+      const targets = new Map([...aim.down].map((finger) => [finger, aim.tips[finger].x]));
       const fit = fitPose(available, hand, targets, geometry.whiteWidth, 1);
       const chosen = fit && available.find((definition) => definition.id === fit.pose.id);
       if (
@@ -152,7 +165,7 @@ export class HandsLayer {
         picture.definition = chosen;
         picture.mesh.texture = this.textures.get(fit.pose.id) ?? Texture.WHITE;
         picture.x = fit.x;
-        picture.y = fitY(picture.definition, target, geometry, fit.scaleY);
+        picture.y = fitY(picture.definition, aim, geometry, fit.scaleY);
         visual.blend = hadPicture ? 0 : 1;
       }
       visual.blend = Math.min(1, visual.blend + deltaSeconds / CHANGE_S);
@@ -168,7 +181,7 @@ export class HandsLayer {
         if (placed) {
           const share = 1 - Math.exp(-deltaSeconds / MOVE_SMOOTHING_S);
           picture.x += (placed.x - picture.x) * share;
-          picture.y += (fitY(picture.definition, target, geometry, scale) - picture.y) * share;
+          picture.y += (fitY(picture.definition, aim, geometry, scale) - picture.y) * share;
         }
         const w = picture.mesh.texture.width * scale * (hand === "right" ? 1 : -1);
         const h = picture.mesh.texture.height * scale;
@@ -178,7 +191,11 @@ export class HandsLayer {
         const d = project(picture.x, picture.y + h);
         picture.mesh.setCorners(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
       }
-      const pressing = chord !== undefined && chord.start <= time;
+      // A released chord the hand still rests on is not pressed any more.
+      const pressing =
+        chord !== undefined &&
+        chord.start <= time &&
+        (waiting || chord.notes.some((note) => time < note.start + note.duration));
       const pulse = 0.65 + 0.35 * Math.sin(time * Math.PI * 2 * PULSE_HZ);
       for (const [finger, marker] of visual.markers) {
         marker.visible =
