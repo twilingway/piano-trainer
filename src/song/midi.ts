@@ -1,13 +1,15 @@
 import { Midi } from "@tonejs/midi";
+import type { Track } from "@tonejs/midi";
 
-import type { Hand } from "../fingering/fingering";
+import { songParts, trackRoles } from "./midiParts";
+import type { TrackStats } from "./midiParts";
 import { handByPitch, sortNotes } from "./song";
 import type { Song, SongBeat, SongMeasure, SongNote } from "./song";
 
 /**
- * A MIDI file carries no hands, so they are guessed: with two or more melodic
- * tracks the higher one is the right hand and the next the left (the usual
- * layout of a piano MIDI); a single track is split at middle C.
+ * A MIDI file carries no hands. With two or more melodic tracks each track is
+ * a part whose role (melody, second voice, accompaniment, bass) gives its hand;
+ * a single track is split at middle C.
  *
  * The title is the file's: the name a MIDI carries is its first track's
  * ("Piano", "Track 1"), often in an encoding the file does not declare.
@@ -18,22 +20,13 @@ export function songFromMidi(data: ArrayBuffer, title: string): Song {
     (track) => !track.instrument.percussion && track.notes.length > 0
   );
 
-  const averagePitch = (index: number): number => {
-    const notes = tracks[index]?.notes ?? [];
-    return notes.reduce((sum, note) => sum + note.midi, 0) / Math.max(notes.length, 1);
-  };
-  const byHeight = tracks
-    .map((_, index) => index)
-    .sort((a, b) => averagePitch(b) - averagePitch(a));
-  const trackHand = new Map<number, Hand>();
-  if (tracks.length >= 2) {
-    const [right, left] = byHeight;
-    if (right !== undefined) trackHand.set(right, "right");
-    if (left !== undefined) trackHand.set(left, "left");
-  }
+  const stats = tracks.map(trackStats);
+  const parts = tracks.length >= 2 ? songParts(stats, trackRoles(stats)) : undefined;
+  const partOf = new Map(parts?.map((part) => [part.id, part]));
 
   const notes: SongNote[] = [];
   tracks.forEach((track, trackIndex) => {
+    const part = partOf.get(`p${String(trackIndex)}`);
     track.notes.forEach((note, noteIndex) => {
       notes.push({
         id: `t${String(trackIndex)}n${String(noteIndex)}`,
@@ -41,7 +34,8 @@ export function songFromMidi(data: ArrayBuffer, title: string): Song {
         start: note.time,
         duration: note.duration,
         startBeat: note.ticks / midi.header.ppq,
-        hand: trackHand.get(trackIndex) ?? handByPitch(note.midi)
+        hand: part?.hand ?? handByPitch(note.midi),
+        ...(part ? { part: part.id } : {})
       });
     });
   });
@@ -54,7 +48,19 @@ export function songFromMidi(data: ArrayBuffer, title: string): Song {
     notes,
     beats: midiBeats(midi, duration),
     measures: midiMeasures(midi, duration),
-    duration
+    duration,
+    ...(parts ? { parts } : {})
+  };
+}
+
+function trackStats(track: Track): TrackStats {
+  const starts = new Map<number, number>();
+  for (const note of track.notes) starts.set(note.ticks, (starts.get(note.ticks) ?? 0) + 1);
+  const pitches = track.notes.reduce((sum, note) => sum + note.midi, 0);
+  return {
+    onsets: starts.size,
+    chordOnsets: [...starts.values()].filter((count) => count > 1).length,
+    meanPitch: pitches / Math.max(track.notes.length, 1)
   };
 }
 

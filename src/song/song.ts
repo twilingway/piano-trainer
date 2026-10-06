@@ -1,5 +1,6 @@
 import { assignFingering } from "../fingering/fingering";
 import type { Finger, Hand, TransitionKind } from "../fingering/fingering";
+import type { SongPart } from "./midiParts";
 
 export interface SongNote {
   readonly id: string;
@@ -11,6 +12,8 @@ export interface SongNote {
   /** Quarter notes from the start; what the staff cursor is synchronised by. */
   readonly startBeat: number;
   readonly hand: Hand;
+  /** The id of the song's part the note belongs to, when the song has parts. */
+  readonly part?: string;
   /** Position of the note's <note> element among all of them, for MusicXML sources. */
   readonly sourceIndex?: number;
   /** A finger written in the score; it pins the solver. */
@@ -51,6 +54,8 @@ export interface Song {
   readonly duration: number;
   /** The original MusicXML text, for the staff renderer; absent for MIDI. */
   readonly musicXml?: string;
+  /** A MIDI arrangement's parts, one per melodic track; absent with a single track or a score. */
+  readonly parts?: readonly SongPart[];
 }
 
 /** Middle C and above go to the right hand when nothing better tells the hands apart. */
