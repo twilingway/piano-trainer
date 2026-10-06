@@ -237,6 +237,7 @@ export function App() {
           mode={trainer.mode}
           {...trainer.playChoice}
           speed={trainer.speed}
+          difficulty={current.arrangement}
           midi={input.midiName}
           settingsOpen={settingsOpen}
           fullscreen={fullscreen.active}

@@ -289,6 +289,12 @@ export const uiMessagesExtra = {
   "Время и дубли как в файле: падающие ноты могут расходиться со станом.": {
     en: "Timing and doubled keys as in the file: falling notes may differ from the staff."
   },
+  "Полная версия": {
+    en: "Full version"
+  },
+  "Упрощённая версия": {
+    en: "Simplified version"
+  },
   "Только одну партию": {
     en: "One part only"
   },

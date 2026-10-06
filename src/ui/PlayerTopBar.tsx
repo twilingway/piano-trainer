@@ -55,6 +55,9 @@ interface Props {
   readonly onHands: (hands: HandsChoice) => void;
   /** The song's parts to play alone and the accompaniment switch. */
   readonly parts?: PartsChoice | undefined;
+  /** A MIDI song's full or simplified version, by the hands; none for a score. */
+  readonly difficulty?:
+    { readonly simplified: boolean; readonly onSimplified: (on: boolean) => void } | undefined;
   readonly onSpeed: (speed: number) => void;
   readonly onSettings: () => void;
 }
@@ -224,6 +227,20 @@ export function PlayerTopBar(props: Props) {
         <option value="listen">{t("Только слушать")}</option>
         <PartOptions parts={props.parts} />
       </select>
+      {props.difficulty && (
+        <select
+          className="game-select topbar-difficulty"
+          aria-label={t("Сложность")}
+          title={t("Сложность")}
+          value={props.difficulty.simplified ? "simplified" : "full"}
+          onChange={(event) => {
+            props.difficulty?.onSimplified(event.target.value === "simplified");
+          }}
+        >
+          <option value="full">{t("Полная версия")}</option>
+          <option value="simplified">{t("Упрощённая версия")}</option>
+        </select>
+      )}
       {props.practice}
       <label className="topbar-speed" title={t("Скорость")}>
         <span className="digits">{formatNumber(Math.round(props.speed * 100))}%</span>
