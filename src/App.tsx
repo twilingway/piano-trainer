@@ -455,6 +455,7 @@ export function App() {
           sourceKey: current.sourceKey,
           transpose: current.transpose,
           onTranspose: current.setTranspose,
+          arrangement: current.arrangement,
           ...fit,
           fingersChanged: current.overrides.size > 0,
           onResetFingers: current.resetFingers
