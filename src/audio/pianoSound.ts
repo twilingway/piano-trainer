@@ -1,37 +1,43 @@
 import * as Tone from "tone";
-import { cancelScheduledVoices, loadScheduledSamples } from "./scheduledVoices";
+import { type PianoLayer, pianoLayer } from "./pianoLayers";
+import {
+  loadPianoSamples,
+  loadedPianoLayers,
+  onPianoLayerLoaded,
+  pianoSample,
+  SAMPLE_PITCHES
+} from "./pianoSamples";
+import { cancelScheduledVoices } from "./scheduledVoices";
 
 /*
- * The hand the program plays, voiced by the Salamander grand samples Tone.js
- * hosts. The player's own hand sounds from the piano itself.
+ * The hand the program plays, voiced by the Salamander grand samples, one
+ * sampler a velocity layer. The player's own hand sounds from the piano itself.
  */
-const SAMPLE_NOTES = ["A", "C", "D#", "F#"] as const;
 
-function sampleUrls(): Record<string, string> {
-  const urls: Record<string, string> = { A0: "A0.mp3", C8: "C8.mp3" };
-  for (let octave = 1; octave <= 7; octave++) {
-    for (const name of SAMPLE_NOTES) {
-      urls[`${name}${String(octave)}`] = `${name.replace("#", "s")}${String(octave)}.mp3`;
-    }
+/** Samples arrive over the network; a note struck before that is skipped, not an error. */
+const samplers = new Map<PianoLayer, Tone.Sampler>();
+
+function addSampler(layer: PianoLayer): void {
+  if (samplers.has(layer)) return;
+  const urls: Record<number, Tone.ToneAudioBuffer> = {};
+  for (const pitch of SAMPLE_PITCHES) {
+    const sample = pianoSample(layer, pitch);
+    if (sample) urls[pitch] = sample;
   }
-  return urls;
+  samplers.set(layer, new Tone.Sampler({ urls, release: 1 }).toDestination());
 }
 
-let sampler: Tone.Sampler | undefined;
-/** Samples arrive over the network; a note struck before that is skipped, not an error. */
-let samplesReady = false;
+let started = false;
 
 /** Must run from a user gesture: browsers keep audio suspended until then. */
 export async function startPianoSound(): Promise<void> {
   await Tone.start();
-  loadScheduledSamples(sampleUrls());
-  sampler ??= new Tone.Sampler({
-    urls: sampleUrls(),
-    release: 1,
-    baseUrl: "https://tonejs.github.io/audio/salamander/"
-  }).toDestination();
-  await Tone.loaded();
-  samplesReady = true;
+  if (!started) {
+    started = true;
+    onPianoLayerLoaded(addSampler);
+    for (const layer of loadedPianoLayers()) addSampler(layer);
+  }
+  await loadPianoSamples();
 }
 
 /**
@@ -58,17 +64,17 @@ function noteName(pitch: number): string {
 
 /** `velocity` is MIDI 1-127; without one the note sounds at full strength. */
 export function soundNoteOn(pitch: number, velocity?: number, at?: number): void {
-  if (!samplesReady) return;
-  sampler?.triggerAttack(noteName(pitch), at, velocity === undefined ? 1 : velocity / 127);
+  const pick = pianoLayer(velocity ?? 127, new Set(samplers.keys()));
+  if (pick) samplers.get(pick.layer)?.triggerAttack(noteName(pitch), at, pick.gain);
 }
 
 export function soundNoteOff(pitch: number, at?: number): void {
-  if (samplesReady) sampler?.triggerRelease(noteName(pitch), at);
+  for (const sampler of samplers.values()) sampler.triggerRelease(noteName(pitch), at);
 }
 
 export function soundAllOff(): void {
   cancelScheduledVoices();
-  sampler?.releaseAll();
+  for (const sampler of samplers.values()) sampler.releaseAll();
   click?.dispose();
   click = undefined;
 }

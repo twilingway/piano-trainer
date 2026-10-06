@@ -1,3 +1,4 @@
+import type * as PianoSamples from "./pianoSamples";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const tone = vi.hoisted(() => ({
@@ -15,14 +16,17 @@ const tone = vi.hoisted(() => ({
   cleanup: new Map<number, () => void>(),
   next: 0,
   clearTimeout: vi.fn(),
-  configurations: [] as { playbackRate: number; fadeOut: number; url: string }[]
+  configurations: [] as { playbackRate: number; fadeOut: number; url: string }[],
+  loaded: new Set<PianoLayer>()
+}));
+
+vi.mock("./pianoSamples", async (importOriginal) => ({
+  ...(await importOriginal<typeof PianoSamples>()),
+  loadedPianoLayers: () => tone.loaded,
+  pianoSample: (layer: number, pitch: number) => `buffer:${String(layer)}:${String(pitch)}`
 }));
 
 vi.mock("tone", () => ({
-  Frequency: (name: string) => ({ toMidi: () => (name === "C4" ? 60 : 72) }),
-  ToneAudioBuffers: vi.fn(function () {
-    return { loaded: true, get: (pitch: string) => `buffer:${pitch}` };
-  }),
   ToneBufferSource: vi.fn(function (options: {
     playbackRate: number;
     fadeOut: number;
@@ -67,9 +71,9 @@ vi.mock("tone", () => ({
   })
 }));
 
+import { type PianoLayer, pianoLayer } from "./pianoLayers";
 import {
   cancelScheduledVoices,
-  loadScheduledSamples,
   scheduledClick,
   scheduledNoteOff,
   scheduledNoteOn
@@ -82,7 +86,7 @@ beforeEach(() => {
   tone.synths.length = 0;
   tone.configurations.length = 0;
   tone.cleanup.clear();
-  loadScheduledSamples({ C4: "C4.mp3", C5: "C5.mp3" });
+  tone.loaded = new Set<PianoLayer>([1, 5, 10, 15]);
 });
 
 describe("owned scheduled voices", () => {
@@ -96,13 +100,31 @@ describe("owned scheduled voices", () => {
   it("bakes sample transposition and schedules velocity and release at exact audio time", () => {
     scheduledNoteOn(62, 64, 15);
     expect(tone.configurations[0]).toEqual({
-      url: "buffer:60",
-      playbackRate: 2 ** (2 / 12),
+      url: "buffer:10:63",
+      playbackRate: 2 ** (-1 / 12),
       fadeOut: 0.08
     });
-    expect(tone.sources[0]?.start).toHaveBeenCalledWith(15, 0, undefined, 64 / 127);
+    expect(tone.sources[0]?.start).toHaveBeenCalledWith(
+      15,
+      0,
+      undefined,
+      pianoLayer(64, tone.loaded)?.gain
+    );
     scheduledNoteOff(62, 15.5);
     expect(tone.sources[0]?.stop).toHaveBeenCalledWith(15.5);
+  });
+
+  it("strikes a loud note from the loud layer, and from the middle one until it loads", () => {
+    scheduledNoteOn(60, 120, 15);
+    tone.loaded = new Set<PianoLayer>([10]);
+    scheduledNoteOn(60, 120, 16);
+    expect(tone.configurations.map(({ url }) => url)).toEqual(["buffer:15:60", "buffer:10:60"]);
+  });
+
+  it("stays silent before any layer has loaded", () => {
+    tone.loaded = new Set<PianoLayer>();
+    scheduledNoteOn(60, 90, 15);
+    expect(tone.sources).toHaveLength(0);
   });
 
   it("disposes already created future notes and clicks, and cancels their cleanup jobs", () => {

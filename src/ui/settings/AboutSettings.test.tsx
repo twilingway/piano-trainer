@@ -64,4 +64,12 @@ describe("about settings", () => {
     }
     expect(link("Telegram")?.href).toBe("https://t.me/twilingkeys");
   });
+
+  it("credits the piano samples and their licence", () => {
+    render({ version, sha, pr: 67, builtAt });
+    expect(host.textContent).toContain("Salamander Grand Piano · Alexander Holm · CC-BY 3.0");
+    for (const name of ["Salamander Grand Piano", "CC-BY 3.0"])
+      expect(link(name)?.target).toBe("_blank");
+    expect(link("CC-BY 3.0")?.href).toBe("https://creativecommons.org/licenses/by/3.0/");
+  });
 });
