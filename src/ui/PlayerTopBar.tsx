@@ -239,10 +239,10 @@ export function PlayerTopBar(props: Props) {
           }}
         >
           <option value="full" title={difficultyHint(false, t)}>
-            {t("Полная версия")}
+            {t("Полная")}
           </option>
           <option value="simplified" title={difficultyHint(true, t)}>
-            {t("Упрощённая версия")}
+            {t("Упрощённая")}
           </option>
         </select>
       )}
