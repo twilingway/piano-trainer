@@ -23,8 +23,9 @@ describe("songFromFileData", () => {
     expect(song.notes.map((note) => note.pitch)).toEqual([60, 64]);
   });
 
-  it("reads MIDI bytes", () => {
+  it("reads MIDI bytes, titled after the file whatever its track is named", () => {
     const midi = new Midi();
+    midi.name = "Track 1";
     const track = midi.addTrack();
     track.addNote({ midi: 67, time: 0, duration: 0.5 });
     const data = midi.toArray();
@@ -32,6 +33,7 @@ describe("songFromFileData", () => {
       "Соль.mid",
       data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
     );
+    expect(song.title).toBe("Соль");
     expect(song.notes.map((note) => note.pitch)).toEqual([67]);
   });
 
