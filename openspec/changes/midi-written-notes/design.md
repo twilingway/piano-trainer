@@ -39,7 +39,8 @@
 сохраняет при смене и не сбрасывает в `showSong`/`openLesson`.
 `written = asWritten ? writtenNotes(arranged) : arranged` идёт в `transposeSong`. `arrangement`,
 который `useSong` отдаёт только для MIDI, получает `asWritten` и `onAsWritten`; вкладка «Песня»
-показывает чекбокс под «Аранжировкой». `App.tsx` не меняется.
+показывает под «Сложностью» чекбокс «Живое исполнение из MIDI» — обратный `asWritten`. `App.tsx` не
+меняется.
 
 ### D4. `AGENTS.md`
 

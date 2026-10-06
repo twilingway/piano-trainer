@@ -45,10 +45,12 @@ export function PartOptions({ parts }: { readonly parts: PartsChoice | undefined
   const { t } = useI18n();
   if (!parts || parts.roles.length === 0) return null;
   return (
-    <optgroup label={t("Партии")}>
+    <optgroup label={t("Только одну партию")}>
       {parts.roles.map((role) => (
         <option key={role} value={`part:${role}`}>
-          {t(ROLE_TITLE[role])}
+          {ROLE_HAND[role] === "left"
+            ? t("{part} (левая)", { part: t(ROLE_TITLE[role]) })
+            : t("{part} (правая)", { part: t(ROLE_TITLE[role]) })}
         </option>
       ))}
     </optgroup>

@@ -73,7 +73,8 @@ describe("PlaySettings parts", () => {
     const select = handsSelect();
     expect(
       Array.from(select?.querySelectorAll("optgroup option") ?? []).map((item) => item.textContent)
-    ).toEqual(["Мелодия", "Аккомпанемент", "Бас"]);
+    ).toEqual(["Мелодия (правая)", "Аккомпанемент (левая)", "Бас (левая)"]);
+    expect(select?.querySelector("optgroup")?.label).toBe("Только одну партию");
     act(() => {
       if (!select) return;
       select.value = "part:bass";
