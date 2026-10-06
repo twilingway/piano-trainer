@@ -184,26 +184,37 @@ describe("chordGlide", () => {
   const note = (id: string, start: number, duration = 0.1) => ({ id, start, duration });
   const ids = (chord: { notes: readonly { id: string }[] }) => chord.notes.map((n) => n.id);
 
-  it("rests on a released chord until the next one's lead begins", () => {
+  it("rests on a chord while it is held", () => {
     const melody = [note("a", 0), note("b", 1)];
-    const glide = chordGlide(melody, 0.5, 0.3);
+    const glide = chordGlide(melody, 0.05, 0.3);
     expect(glide && ids(glide.to)).toEqual(["a"]);
     expect(glide?.progress).toBe(1);
   });
 
-  it("glides to the next chord over the lead, easing in and out", () => {
+  it("glides over the whole pause once the chord is released, easing in and out", () => {
     const melody = [note("a", 0), note("b", 1)];
-    const start = chordGlide(melody, 0.71, 0.3);
-    const middle = chordGlide(melody, 0.85, 0.3);
+    const early = chordGlide(melody, 0.12, 0.3);
+    const middle = chordGlide(melody, 0.55, 0.3);
     const end = chordGlide(melody, 0.99, 0.3);
     expect(middle && [ids(middle.from), ids(middle.to)]).toEqual([["a"], ["b"]]);
-    expect(start?.progress).toBeLessThan(0.05);
+    expect(early?.progress).toBeLessThan(0.01);
     expect(middle?.progress).toBeCloseTo(0.5);
     expect(end?.progress).toBeGreaterThan(0.99);
   });
 
+  it("leaves right after the strike when the chord is held into the next", () => {
+    const legato = [note("a", 0, 1), note("b", 1)];
+    expect(chordGlide(legato, 0.5, 0.3)?.progress).toBeCloseTo(0.5);
+  });
+
+  it("leaves at least the lead after a late release", () => {
+    const late = [note("a", 0, 0.95), note("b", 1)];
+    expect(chordGlide(late, 0.65, 0.3)?.progress).toBe(1);
+    expect(chordGlide(late, 0.85, 0.3)?.progress).toBeCloseTo(0.5);
+  });
+
   it("starts a glide no earlier than the chord it leaves", () => {
-    const fast = [note("a", 0), note("b", 0.15), note("c", 0.3)];
+    const fast = [note("a", 0, 0.15), note("b", 0.15, 0.15), note("c", 0.3)];
     expect(chordGlide(fast, 0.001, 0.3)?.progress).toBeLessThan(0.01);
     expect(chordGlide(fast, 0.075, 0.3)?.progress).toBeCloseTo(0.5);
     const landed = chordGlide(fast, 0.15, 0.3);
@@ -224,11 +235,6 @@ describe("chordGlide", () => {
     const after = chordGlide(melody, 5, 0.3);
     expect(after && ids(after.to)).toEqual(["b"]);
     expect(chordGlide([], 0, 0.3)).toBeUndefined();
-  });
-
-  it("moves at once without a lead", () => {
-    const melody = [note("a", 0), note("b", 1)];
-    expect(chordGlide(melody, 0.99, 0)?.progress).toBe(1);
   });
 });
 
