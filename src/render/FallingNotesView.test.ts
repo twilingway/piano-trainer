@@ -293,3 +293,30 @@ describe("accompaniment fire independent of key colours", () => {
     expect(frame.sounding.has(accompaniment.pitch)).toBe(true);
   });
 });
+
+describe("listening", () => {
+  const listening: FrameState = {
+    time: -0.5,
+    lookAhead: 2,
+    statusOf: () => undefined,
+    pressed: new Set(),
+    sounding: new Set(),
+    due: [],
+    hands: new Set(),
+    owns: () => false
+  };
+
+  it("draws every note as bright as the player's own", () => {
+    const { view, flatDraw } = viewHarness(false);
+    view.draw(listening);
+    expect(flatDraw.mock.calls.map((call) => call[5])).toEqual([1, 1]);
+  });
+
+  it("shows both hands", () => {
+    const { view } = viewHarness(false);
+    const handsDraw = vi.fn();
+    Object.assign(view, { hands: { container: { visible: true }, draw: handsDraw } });
+    view.draw(listening);
+    expect([...(handsDraw.mock.calls[0]?.[2] as ReadonlySet<Hand>)]).toEqual(["left", "right"]);
+  });
+});
