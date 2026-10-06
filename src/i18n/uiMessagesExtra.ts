@@ -279,5 +279,11 @@ export const uiMessagesExtra = {
   },
   "Упрощённая: мелодия справа, бас и до двух нот аккорда слева.": {
     en: "Simplified: the melody in the right hand, the bass and up to two chord notes in the left."
+  },
+  "Ноты как на стане": {
+    en: "Notes as on the staff"
+  },
+  "Падающие ноты — как на стане: без дублей, ровно по долям.": {
+    en: "Falling notes match the staff: no doubled keys, right on the beat."
   }
 } satisfies Messages;
