@@ -125,7 +125,7 @@ export class HandsLayer {
     speed = 1
   ): void {
     const available = this.available;
-    // The hand sets off as the next key starts to light, in song seconds.
+    // The hand sets off at the latest as the next key starts to light, in song seconds.
     const lead = (APPROACH_MS / 1000) * speed;
     for (const hand of HANDS) {
       const visual = this.visuals.get(hand);
@@ -139,7 +139,7 @@ export class HandsLayer {
       }
       const pending = waitingFor.filter((note) => note.hand === hand);
       const waiting = waitingFor.length > 0;
-      // Playing on, the hand glides to the next chord while its keys light up.
+      // Playing on, the hand glides to the next chord once it is free.
       const glide = waiting ? undefined : chordGlide(this.notes[hand], time, lead);
       const chord = glide ? glide.to : handHintChord(this.notes[hand], time, pending, waiting);
       const previous = this.poses.get(hand);

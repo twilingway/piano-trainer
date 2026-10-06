@@ -122,13 +122,14 @@ export interface Chord<T> {
 }
 
 /**
- * The hand's way between chords at `time`: it stays on the chord struck last,
- * released or not, and in the last `lead` seconds before the next chord glides
- * there, `progress` easing in and out from 0 to 1. A glide never starts before
- * the chord it leaves. Before the first chord the hand waits on it; undefined
- * with no notes.
+ * The hand's way between chords at `time`, as a pianist moves: it leaves the
+ * chord struck last once that chord is released, or right after striking it
+ * when it is held into the next one, and glides to the next chord, `progress`
+ * easing in and out from 0 to 1. A late release still leaves `lead` seconds at
+ * least; a glide never starts before the chord it leaves. Before the first
+ * chord the hand waits on it; undefined with no notes.
  */
-export function chordGlide<T extends { readonly start: number }>(
+export function chordGlide<T extends { readonly start: number; readonly duration: number }>(
   notes: readonly T[],
   time: number,
   lead: number
@@ -154,11 +155,12 @@ export function chordGlide<T extends { readonly start: number }>(
     return { from: to, to, progress: 1 };
   }
   const from = chordAt(first);
-  const window = Math.min(lead, next - first);
-  if (next === Infinity || window <= 0 || next - time >= window) {
-    return { from, to: from, progress: 1 };
-  }
-  const linear = 1 - (next - time) / window;
+  if (next === Infinity) return { from, to: from, progress: 1 };
+  const release = Math.max(...from.notes.map((note) => note.start + note.duration));
+  const free = release < next ? release : first;
+  const departure = Math.max(first, Math.min(free, next - lead));
+  if (time <= departure) return { from, to: from, progress: 1 };
+  const linear = (time - departure) / (next - departure);
   return { from, to: chordAt(next), progress: linear * linear * (3 - 2 * linear) };
 }
 
