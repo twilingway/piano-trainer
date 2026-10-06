@@ -78,11 +78,11 @@ describe("interface language preference", () => {
     expect(loadInterfaceLanguage(localStorage)).toBe("en");
     expect(localStorage.getItem("staff-prefs")).toBe("kept");
     expect(document.documentElement.lang).toBe("en");
-    expect(document.title).toBe("Twiling Keys");
+    expect(document.title).toBe("Twiling Keys — piano game and trainer");
     expect(listener).toHaveBeenCalledOnce();
     stop();
     setInterfaceLanguage("ru");
-    expect(document.title).toBe("Нотопад");
+    expect(document.title).toBe("Нотопад — игра и тренажёр фортепиано");
     expect(listener).toHaveBeenCalledOnce();
   });
 
@@ -100,5 +100,21 @@ describe("interface language preference", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("uses a localized link after manual preference, before the browser, without saving it", () => {
+    const getItem = vi.fn(() => null);
+    expect(loadInterfaceLanguage({ getItem }, "en-US", "/ru/")).toBe("ru");
+    expect(loadInterfaceLanguage({ getItem }, "ru-RU", "/en/")).toBe("en");
+    expect(loadInterfaceLanguage({ getItem: () => "en" }, "ru-RU", "/ru/")).toBe("en");
+    expect(loadInterfaceLanguage({ getItem: () => "broken" }, "en-US", "/ru")).toBe("ru");
+    expect(loadInterfaceLanguage({ getItem }, "ru-RU", "/de/")).toBe("ru");
+    expect(loadInterfaceLanguage({ getItem }, undefined, "/")).toBe("en");
+    const denied = {
+      getItem: () => {
+        throw new Error("denied");
+      }
+    };
+    expect(loadInterfaceLanguage(denied, "en-US", "/ru/index.html")).toBe("ru");
   });
 });

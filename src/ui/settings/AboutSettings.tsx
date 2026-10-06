@@ -13,9 +13,16 @@ const AUTHOR_LINKS = [
 
 function Version({ build }: { readonly build: BuildInfo }) {
   const { t } = useI18n();
-  if (!build.sha) return <>{t("локальная сборка")}</>;
+  if (!build.sha)
+    return (
+      <>
+        {build.version} · {t("локальная сборка")}
+      </>
+    );
   return (
     <>
+      {build.version}
+      {" · "}
       {build.pr !== null && (
         <>
           <a href={`${REPOSITORY_URL}/pull/${String(build.pr)}`} target="_blank" rel="noreferrer">

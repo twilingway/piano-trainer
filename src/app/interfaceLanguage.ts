@@ -1,11 +1,18 @@
 import { resolveLocale } from "../i18n/locales";
 import type { Locale } from "../i18n/locales";
 import { DEFAULT_INTERFACE_LOCALE, selectInterfaceLocale } from "../i18n/interfaceLocale";
+import { siteLocaleFromPath } from "../i18n/siteMetadata";
+import { updateSiteMetadata } from "./siteMetadata";
 
 export const LANGUAGE_STORAGE_KEY = "interface-language-v1";
 
-import { appMessages } from "../i18n/appMessages";
-import { translate } from "../i18n/translate";
+function readPagePath(): string {
+  try {
+    return window.location.pathname;
+  } catch {
+    return "/";
+  }
+}
 
 export function readBrowserLanguage(): string | undefined {
   try {
@@ -17,12 +24,14 @@ export function readBrowserLanguage(): string | undefined {
 
 export function loadInterfaceLanguage(
   storage: Pick<Storage, "getItem">,
-  browserLanguage: unknown = readBrowserLanguage()
+  browserLanguage: unknown = readBrowserLanguage(),
+  pathname: string = readPagePath()
 ): Locale {
+  const automaticLanguage = siteLocaleFromPath(pathname) ?? browserLanguage;
   try {
-    return selectInterfaceLocale(storage.getItem(LANGUAGE_STORAGE_KEY), browserLanguage);
+    return selectInterfaceLocale(storage.getItem(LANGUAGE_STORAGE_KEY), automaticLanguage);
   } catch {
-    return selectInterfaceLocale(null, browserLanguage);
+    return selectInterfaceLocale(null, automaticLanguage);
   }
 }
 
@@ -40,7 +49,7 @@ try {
   locale = loadInterfaceLanguage(localStorage);
 } catch {
   // Some browsers deny even accessing localStorage.
-  locale = selectInterfaceLocale(null, readBrowserLanguage());
+  locale = selectInterfaceLocale(null, siteLocaleFromPath(readPagePath()) ?? readBrowserLanguage());
 }
 const listeners = new Set<() => void>();
 
@@ -65,6 +74,5 @@ export function setInterfaceLanguage(next: Locale): void {
 }
 
 export function updateDocumentLanguage(): void {
-  document.documentElement.lang = locale;
-  document.title = translate(locale, appMessages, "Нотопад");
+  updateSiteMetadata(document, locale, readPagePath());
 }
