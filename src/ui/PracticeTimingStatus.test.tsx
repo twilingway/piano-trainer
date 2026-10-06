@@ -12,7 +12,7 @@ describe("visible applied timing status", () => {
   it("explains the active educational window outside settings", () => {
     const markup = renderToStaticMarkup(<PracticeTimingStatus policy="learning" ranked={false} />);
     expect(markup).toContain("Учебный режим · +300 мс");
-    expect(markup).toContain("25 базовых очков");
+    expect(markup).toContain("25 очков");
     expect(markup).toContain('role="status"');
   });
   it("distinguishes waiting, strict and ranked runs", () => {

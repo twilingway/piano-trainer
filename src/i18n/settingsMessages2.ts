@@ -58,8 +58,8 @@ export const settingsMessages2 = {
   "Точность и калибровка": {
     en: "Accuracy and calibration"
   },
-  "Поправки применяются к новому исполнению. После изменения нажмите «Сначала».": {
-    en: "Offsets apply to a new take. After changing them, press “Restart”."
+  "Поправки действуют со следующего исполнения — нажмите «Сначала».": {
+    en: "Offsets take effect on the next take — press “Restart”."
   },
   "Устройство:": {
     en: "Device:"
@@ -70,38 +70,23 @@ export const settingsMessages2 = {
   "Клавиатура / экран": {
     en: "Keyboard / screen"
   },
-  ", мс": {
-    en: ", ms"
-  },
   "Название аудиовыхода": {
     en: "Audio output name"
   },
-  "Укажите выход, которым пользуетесь, например «наушники» или «Bluetooth-колонка». Это метка профиля, она не переключает устройство браузера.":
+  "Например, «наушники» или «Bluetooth-колонка». Это только подпись профиля: звук в браузере она не переключает.":
     {
-      en: "Enter the output you use, such as “headphones” or “Bluetooth speaker”. This labels the profile; it does not switch the browser's audio device."
+      en: "For example, “headphones” or “Bluetooth speaker”. It only labels the profile and doesn't switch the browser's audio output."
     },
-  "Поправка:": {
-    en: "Offset:"
+  "Это подключение ещё не калибровали, поправка ввода — 0 мс.": {
+    en: "This connection isn't calibrated yet; input offset is 0 ms."
   },
-  "мс · Разброс:": {
-    en: "ms · Jitter:"
-  },
-  мс: {
-    en: "ms"
-  },
-  "· Образцы:": {
-    en: "· Samples:"
-  },
-  "Калибровки этого подключения пока нет. Поправка ввода — 0 мс.": {
-    en: "This connection has not been calibrated yet. Input offset is 0 ms."
-  },
-  "Нужна повторная калибровка: измерение неполное, нестабильное или изменён аудиовыход / задержка звука.":
+  "Откалибруйте заново: замер неполный или нестабильный, либо сменился аудиовыход или задержка звука.":
     {
-      en: "Recalibration needed: the measurement is incomplete or unstable, or the audio output / audio delay has changed."
+      en: "Calibrate again: the reading is incomplete or unstable, or the audio output or delay has changed."
     },
-  "Нажимайте до первой октавы (C4) под метроном: 4 разминочных удара и 24 измерения. Измерение включает вашу реакцию и задержку звука, а не только MIDI-устройство.":
+  "Нажимайте до первой октавы (C4) в такт метроному: 4 удара на разминку, затем 24 замера. В замер входят ваша реакция и задержка звука, а не только MIDI-устройство.":
     {
-      en: "Press middle C (C4) to the metronome: 4 warm-up beats and 24 measurements. The measurement includes your reaction and audio delay as well as the MIDI device."
+      en: "Press middle C (C4) in time with the metronome: 4 warm-up beats, then 24 measurements. The result includes your reaction and audio delay, not just the MIDI device."
     },
   "Отменить калибровку": {
     en: "Cancel calibration"
@@ -109,24 +94,18 @@ export const settingsMessages2 = {
   "Калибровать C4": {
     en: "Calibrate C4"
   },
-  Разминка: {
-    en: "Warm-up"
-  },
-  "/4 · Измерения": {
-    en: "/4 · Measurements"
-  },
   " · Готово": {
     en: " · Done"
   },
   " · Не завершено — повторите": {
     en: " · Incomplete — try again"
   },
-  "Настройки зафиксированы на время рейтингового исполнения.": {
-    en: "Settings are locked during a ranked take."
+  "Во время рейтинговой игры настройки заблокированы.": {
+    en: "Settings are locked during ranked play."
   },
-  "Выберите одно MIDI-устройство в настройках ввода, чтобы калибровать его и открыть рейтинговый режим.":
+  "Выберите одно MIDI-устройство в разделе «Пианино» — тогда его можно откалибровать и играть на рейтинг.":
     {
-      en: "Select one MIDI device in input settings to calibrate it and unlock ranked mode."
+      en: "Pick one MIDI device under “Piano” to calibrate it and unlock ranked play."
     },
   "Диагностика ввода": {
     en: "Input diagnostics"
@@ -158,34 +137,34 @@ export const settingsMessages2 = {
   Эксперт: {
     en: "Expert"
   },
-  "Рейтинговое исполнение": {
-    en: "Ranked take"
+  "Рейтинговая игра": {
+    en: "Ranked play"
   },
-  "Печатать мелодию — учебный прототип без рейтингового исполнения.": {
-    en: "Type the Melody is a learning prototype without ranked takes."
+  "В «Печатать мелодию» рейтинга нет: это учебный режим.": {
+    en: "Type the Melody is a practice mode with no ranking."
   },
-  "Для рейтинга выберите одно устройство и выполните калибровку в разделе «Синхронизация». Рейтинг играет в темпе на скорости 100 %, без Loop.":
+  "Для рейтинга выберите одно устройство и откалибруйте его в разделе «Синхронизация». Рейтинговая игра идёт в темпе, на скорости 100 % и без повтора участка.":
     {
-      en: "For ranking, select one device and calibrate it under “Synchronization”. Ranked play runs in tempo at 100% speed, without looping."
+      en: "To play ranked, pick one device and calibrate it under “Synchronization”. Ranked play runs in tempo at 100% speed, with no section looping."
     },
   "Учебное окно +300 мс": {
     en: "Learning window +300 ms"
   },
-  "Позднее нажатие до +300 мс даёт OK: 25 базовых очков. Точное попадание ценнее. Клавиша постепенно подсвечивается за 300 мс до ноты. В рейтинге окно остаётся строгим.":
+  "Нажатие с опозданием до 300 мс засчитывается и даёт 25 очков, точное попадание стоит больше. Клавиша начинает подсвечиваться за 300 мс до ноты. В рейтинге окно всегда строгое.":
     {
-      en: "A late press up to +300 ms earns OK: 25 base points. Accurate hits are worth more. The key gradually lights up 300 ms before the note. Ranked timing remains strict."
+      en: "A press up to 300 ms late counts as OK for 25 points; an accurate hit is worth more. The key starts lighting up 300 ms before the note. Ranked play always uses the strict window."
     },
-  "Performance: скрыть подсказки": {
-    en: "Performance: hide hints"
+  "Без подсказок": {
+    en: "Hide hints"
   },
   "Остановиться после ошибки": {
-    en: "Stop after an error"
+    en: "Stop on a mistake"
   },
   "После промаха или лишней ноты игра встаёт на паузу.": {
     en: "The game pauses after a miss or an extra note."
   },
-  "No-Fail: песня продолжается после ошибок.": {
-    en: "No-Fail: the song continues after errors."
+  "Песня не останавливается на ошибках.": {
+    en: "The song keeps going through mistakes."
   },
   "Участок, секунды": {
     en: "Section, seconds"
@@ -202,17 +181,17 @@ export const settingsMessages2 = {
   "Как считаются очки": {
     en: "How scoring works"
   },
-  "PERFECT / GREAT / GOOD / OK: 100 / 80 / 50 / 25 базовых очков. Комбо повышает множитель до ×5. Ошибки сбрасывают комбо; в тишине штрафов нет.":
+  "«Идеально» / «Отлично» / «Хорошо» / «Зачтено»: 100 / 80 / 50 / 25 очков. Комбо поднимает множитель до ×5, ошибка сбрасывает комбо. Лишняя клавиша между нотами не штрафуется.":
     {
-      en: "PERFECT / GREAT / GOOD / OK: 100 / 80 / 50 / 25 base points. A combo raises the multiplier up to ×5. Errors reset the combo; silence carries no penalties."
+      en: "Perfect / Great / Good / OK: 100 / 80 / 50 / 25 base points. A combo raises the multiplier up to ×5; a mistake resets it. A stray key between notes isn't penalized."
     },
-  "20 PERFECT/GREAT включают Flow. Каждая засчитанная нота, включая GOOD и OK, даёт энергию. Прибавка рассчитана отдельно по длине и числу нот выбранной партии: два заряда для композиции короче 30 секунд, три — от 30 секунд. Пропуски и паузы не дают энергию. Overdrive стоит 50 энергии и удваивает множитель на 10 секунд; в очень коротком упражнении число включений ограничено длительностью эффекта. Удержание длинных нот даёт бонус очков.":
+  "20 нот подряд на «Идеально» или «Отлично» включают Поток. Каждая засчитанная нота, даже «Хорошо» и «Зачтено», добавляет энергию. Её запас зависит от длины выбранной партии: в пьесе короче 30 секунд хватит на два Overdrive, в более длинной — на три. Промахи и паузы энергию не дают. Overdrive стоит 50 энергии и удваивает множитель на 10 секунд, поэтому в совсем коротком упражнении включений может быть меньше. За удержание длинных нот начисляются бонусные очки.":
     {
-      en: "20 PERFECT/GREAT hits activate Flow. Every scored note, including GOOD and OK, grants energy. The amount depends on the length and note count of the selected part: two charges for pieces shorter than 30 seconds, three for longer ones. Misses and rests grant no energy. Overdrive costs 50 energy and doubles the multiplier for 10 seconds; in very short exercises, activations are limited by the effect duration. Holding long notes earns bonus points."
+      en: "20 Perfect or Great hits in a row start Flow. Every scored note, even Good and OK, adds energy. The total depends on the length of the selected part: enough for two Overdrives in a piece under 30 seconds, three in a longer one. Misses and rests add no energy. Overdrive costs 50 energy and doubles the multiplier for 10 seconds, so a very short exercise may allow fewer activations. Holding long notes earns bonus points."
     },
-  "Точность зависит только от оценок атак. Звёзды сравнивают очки с идеальным исполнением без Overdrive. «Ждать ноту» — обучение без рейтинга.":
+  "Точность считается только по моменту нажатия. Звёзды сравнивают ваши очки с идеальной игрой без Overdrive. В режиме «Ждать ноту» рейтинга нет.":
     {
-      en: "Accuracy depends only on attack judgments. Stars compare your score with a perfect take without Overdrive. “Wait for note” is learning without ranking."
+      en: "Accuracy only looks at when you press the keys. Stars compare your score with a perfect run without Overdrive. “Wait for note” has no ranking."
     },
   "Язык текста": {
     en: "Text language"
@@ -232,8 +211,8 @@ export const settingsMessages2 = {
   Бас: {
     en: "Bass"
   },
-  "На слово: буква играет одну ноту только внутри своего слова, слова длиннее": {
-    en: "Per word: a letter plays one note only within its own word, allowing longer words"
+  "На слово: буква привязана к ноте только внутри слова, поэтому слова получаются длиннее": {
+    en: "Per word: a letter maps to a note only within its word, so the words come out longer"
   },
   Раскладка: {
     en: "Layout"
@@ -250,14 +229,11 @@ export const settingsMessages2 = {
   "Другие слова": {
     en: "Other words"
   },
-  "Вторая рука песни играет сама под печатаемую партию": {
-    en: "The song's other hand plays automatically alongside the typed part"
+  "Вторую руку играет программа, пока вы печатаете свою партию": {
+    en: "The app plays the other hand while you type your part"
   },
   "Аккомпанемент второй руки": {
     en: "Other-hand accompaniment"
-  },
-  Настройки: {
-    en: "Settings"
   },
   "Разделы настроек": {
     en: "Settings sections"
@@ -266,13 +242,13 @@ export const settingsMessages2 = {
     en: "Settings section"
   },
   "Нотный стан": {
-    en: "Score staff"
+    en: "Staff"
   },
   "Скрыть нотный стан": {
-    en: "Hide score staff"
+    en: "Hide staff"
   },
   "Показать нотный стан": {
-    en: "Show score staff"
+    en: "Show staff"
   },
   "Падающие ноты": {
     en: "Falling notes"
@@ -308,6 +284,6 @@ export const settingsMessages2 = {
     en: "Road: notes in perspective"
   },
   "Ноты на стане": {
-    en: "Staff note cards"
+    en: "Note cards"
   }
 } satisfies Messages;

@@ -12,6 +12,13 @@ plays in tempo, plays the other hand, records every take and compares it with th
 
 - Strict TypeScript everywhere. Identifiers and code comments in English; player-facing UI strings,
   product docs and OpenSpec artifacts in Russian.
+- **Every player-facing string is localized when it is written.** Any text a change adds to the
+  interface (labels, hints, tooltips, `aria-label`, errors shown to the player) goes through `t()`
+  with the Russian source text as the key, and the same change adds the entry with its English
+  translation to a catalog in `src/i18n/` (`*Messages*.ts`). No hard-coded UI text, no "translate
+  later". Keys are flat and a later catalog silently overrides an earlier one, so a Russian key must
+  be unique across catalogs: if the same word means different things in two places, reword one.
+  Write both languages the way a person would say it — short, plain, no bureaucratic phrasing.
 - pnpm, never npm. Linter and formatter are ESLint + Prettier, not Biome.
 - **Pure core, thin shell.** `src/fingering`, `src/song`, `src/practice/session.ts` and
   `src/recording` (except `history.ts`, which touches `localStorage`) are pure TypeScript: no React,

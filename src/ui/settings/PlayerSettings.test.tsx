@@ -286,7 +286,7 @@ describe("player settings organization", () => {
     expect(host.textContent).toContain("Язык и партия для печати");
     expect(host.textContent).not.toContain("Настроить раскладку");
     await section("Вид");
-    expect(host.textContent).toContain("клавиатура автоматически подстраивается");
+    expect(host.textContent).toContain("клавиатура сама подстраивается");
     expect(host.querySelector("select[aria-label='Клавиши']")).toBeNull();
     const fpsControls = Array.from(host.querySelectorAll("label")).filter((label) =>
       label.textContent.includes("Показывать FPS")

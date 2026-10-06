@@ -111,7 +111,7 @@ export function KeyboardSettings({
         </>
       )}
       <label className="setting">
-        <span>{t("Наклейки с названиями на клавишах")}</span>
+        <span>{t("Названия нот на клавишах")}</span>
         <input
           type="checkbox"
           checked={showLabels}

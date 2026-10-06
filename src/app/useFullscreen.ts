@@ -42,7 +42,7 @@ export function useFullscreen() {
   const enter = async (explicit: boolean) => {
     if (pending.current || document.fullscreenElement) return;
     if (!document.fullscreenEnabled) {
-      if (explicit) setError("Этот браузер не поддерживает полный экран для игры.");
+      if (explicit) setError("Браузер не поддерживает полноэкранный режим.");
       return;
     }
     preferred.current = true;
@@ -69,7 +69,7 @@ export function useFullscreen() {
     try {
       await document.exitFullscreen();
     } catch {
-      setError("Браузер не разрешил свернуть полный экран.");
+      setError("Браузер не разрешил выйти из полноэкранного режима.");
     }
   };
 

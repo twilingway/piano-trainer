@@ -115,9 +115,9 @@ describe("translated player interface", () => {
     expect(hud).not.toMatch(/[А-Яа-яЁё]/);
     const timing = renderToStaticMarkup(<PracticeTimingStatus policy="learning" ranked={false} />);
     expect(timing).toContain("Learning mode · +300 ms");
-    expect(timing).toContain("25 base points");
+    expect(timing).toContain("OK for 25 points");
     const mode = renderToStaticMarkup(<GameModeSegment wordTyping locked onChange={vi.fn()} />);
-    expect(mode).toContain("Type the melody — pause to change the game");
+    expect(mode).toContain("Type the Melody — pause to change the game");
     const results = renderToStaticMarkup(
       <ResultDialog
         open

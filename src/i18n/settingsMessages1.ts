@@ -4,13 +4,13 @@ export const settingsMessages1 = {
   "локальная сборка": {
     en: "local build"
   },
-  "Тренажёр, чтобы самостоятельно разучивать пьесы на фортепиано. Ноты падают на клавиши с подсказкой пальцев, сверху движется нотный стан, а каждый дубль записывается и сравнивается с нотами — видно, где ошибся.":
+  "Тренажёр для самостоятельного разучивания пьес на фортепиано. Ноты падают на клавиши с подсказкой пальцев, сверху идёт нотный стан, а каждый дубль записывается и сравнивается с нотами — сразу видно, где ошибка.":
     {
-      en: "A trainer for learning piano pieces on your own. Notes fall onto the keys with fingering hints, the score scrolls above, and every take is recorded and compared with the score so you can see your mistakes."
+      en: "A trainer for learning piano pieces on your own. Notes fall onto the keys with fingering hints, the score scrolls above, and every take is recorded and checked against the score, so you can see exactly where you slipped."
     },
-  "Играть можно на цифровом пианино через USB MIDI или на клавиатуре компьютера. Трудное место удобно учить по частям: игра ждёт нужную ноту, темп замедляется, а свои песни загружаются из MusicXML и MIDI.":
+  "Играть можно на цифровом пианино через USB MIDI или на клавиатуре компьютера. Трудное место удобно учить по частям: ноты ждут нужную клавишу, темп можно замедлить. Свои песни загружаются из MusicXML и MIDI.":
     {
-      en: "Play on a digital piano over USB MIDI or on your computer keyboard. Practise difficult passages in sections: wait for the right note, slow down the tempo, and import your own songs from MusicXML and MIDI."
+      en: "Play a digital piano over USB MIDI or use the computer keyboard. Work through hard passages bit by bit: the notes wait for the right key and the tempo slows down. Load your own songs from MusicXML or MIDI."
     },
   Сборка: {
     en: "Build"
@@ -36,15 +36,16 @@ export const settingsMessages1 = {
   "Shift — ♯, Alt — ♭, Shift + Alt — натуральная нота. Ctrl + Пробел — пауза.": {
     en: "Shift — ♯, Alt — ♭, Shift + Alt — natural note. Ctrl + Space — pause."
   },
-  "Правая кнопка мыши или нажатие на клавишу макета — назначить ноту или действие.": {
-    en: "Right-click or click a key in the layout to assign a note or action."
-  },
+  "Чтобы назначить ноту или действие, нажмите на клавишу схемы или кликните по ней правой кнопкой.":
+    {
+      en: "To assign a note or action, click a key on the diagram or right-click it."
+    },
   "Сбросить эту раскладку": {
     en: "Reset this layout"
   },
-  "Назначения сохраняются для каждой раскладки. Системные сочетания и некоторые клавиши браузера могут быть недоступны.":
+  "Назначения запоминаются отдельно для каждой раскладки. Системные сочетания и часть клавиш браузер может перехватить.":
     {
-      en: "Assignments are saved for each layout. System shortcuts and some browser keys may be unavailable."
+      en: "Assignments are saved per layout. The browser may keep system shortcuts and some keys for itself."
     },
   "Физическая клавиша:": {
     en: "Physical key:"
@@ -52,14 +53,11 @@ export const settingsMessages1 = {
   ". Сейчас:": {
     en: ". Current assignment:"
   },
-  "Перехватить клавишу": {
-    en: "Capture key"
+  "Выбрать нажатием": {
+    en: "Pick by pressing"
   },
-  "Нажмите нужную клавишу. Escape — отмена захвата.": {
-    en: "Press the key you want. Escape cancels capture."
-  },
-  "Отменить захват": {
-    en: "Cancel capture"
+  "Нажмите клавишу, которую хотите настроить. Esc — отмена.": {
+    en: "Press the key you want to set up. Esc cancels."
   },
   Назначение: {
     en: "Assignment"
@@ -76,20 +74,11 @@ export const settingsMessages1 = {
   "Октава выше": {
     en: "Octave up"
   },
-  Отключить: {
-    en: "Disable"
+  "Без назначения": {
+    en: "Unassigned"
   },
   "Нота и октава": {
     en: "Note and octave"
-  },
-  "Будет изменено назначение": {
-    en: "The assignment will change for"
-  },
-  ". Клавиша": {
-    en: ". Key"
-  },
-  "останется прежней.": {
-    en: "will stay unchanged."
   },
   Сохранить: {
     en: "Save"
@@ -139,14 +128,8 @@ export const settingsMessages1 = {
   "Дорога: ширина у горизонта": {
     en: "Road: width at horizon"
   },
-  "Наклейки с названиями на клавишах": {
-    en: "Note-name stickers on keys"
-  },
-  "Что показывать": {
-    en: "What to show"
-  },
-  Пианино: {
-    en: "Piano"
+  "Названия нот на клавишах": {
+    en: "Note names on keys"
   },
   "Все устройства": {
     en: "All devices"
@@ -155,17 +138,11 @@ export const settingsMessages1 = {
     {
       en: "No piano found — connect a USB cable or use the keyboard: Z…/ and Q…P for white keys, S D G H J and 2 3 5 6 7 9 0 for black keys"
     },
-  Игра: {
-    en: "Play"
-  },
   "Режим и темп": {
     en: "Mode and tempo"
   },
   Песня: {
     en: "Song"
-  },
-  Вид: {
-    en: "View"
   },
   "Нотная запись": {
     en: "Score"
@@ -176,74 +153,32 @@ export const settingsMessages1 = {
   "Показывать FPS": {
     en: "Show FPS"
   },
-  "В режиме «Печатать мелодию» клавиатура автоматически подстраивается под выбранную партию. Её диапазон и отображение задаёт режим.":
+  "В режиме «Печатать мелодию» клавиатура сама подстраивается под выбранную партию, поэтому здесь её не настроить.":
     {
-      en: "In Type the Melody mode, the keyboard automatically fits the selected part. The mode controls its range and display."
+      en: "In Type the Melody mode the keyboard fits the selected part on its own, so it can't be set up here."
     },
   Расположение: {
     en: "Layout"
   },
-  "В режиме редактирования край стана, линии над и под клавиатурой и бегущую строку можно тянуть мышью.":
+  "В режиме редактирования мышью двигаются край стана, линии над и под клавиатурой и бегущая строка.":
     {
-      en: "In edit mode, drag the score edge, the lines above and below the keyboard, and the scrolling text with the mouse."
+      en: "In edit mode, drag the staff edge, the lines above and below the keyboard and the text line with the mouse."
     },
-  " Для режима печати": {
-    en: " For typing mode"
-  },
-  " Для пианино": {
-    en: " For piano"
-  },
-  "расположение своё.": {
-    en: "the layout is separate."
-  },
-  "✎ Редактировать интерфейс": {
-    en: "✎ Edit interface"
-  },
   "Сбросить расположение": {
     en: "Reset layout"
-  },
-  "Печатать мелодию": {
-    en: "Type the Melody"
   },
   "Ввод с ПК": {
     en: "Computer input"
   },
-  "Назначения строятся для всей песни. Shift и Alt — дополнительные клавиши; настройки обычных раскладок здесь не применяются.":
+  "Клавиши назначаются под всю песню, Shift и Alt дают дополнительные ноты. Обычные раскладки здесь не действуют.":
     {
-      en: "Assignments are built for the whole song. Shift and Alt are additional keys; regular keyboard layout settings do not apply here."
+      en: "Keys are assigned for the whole song; Shift and Alt add extra notes. Regular keyboard layouts don't apply here."
     },
   Синхронизация: {
     en: "Synchronization"
   },
   "О программе": {
     en: "About"
-  },
-  Режим: {
-    en: "Mode"
-  },
-  "Ждать ноту": {
-    en: "Wait for note"
-  },
-  "В темпе": {
-    en: "In tempo"
-  },
-  Руки: {
-    en: "Hands"
-  },
-  "Правая рука": {
-    en: "Right hand"
-  },
-  "Левая рука": {
-    en: "Left hand"
-  },
-  "Обе руки": {
-    en: "Both hands"
-  },
-  "Только слушать": {
-    en: "Listen only"
-  },
-  Скорость: {
-    en: "Speed"
   },
   Метроном: {
     en: "Metronome"
@@ -259,15 +194,6 @@ export const settingsMessages1 = {
   },
   Прослушать: {
     en: "Listen"
-  },
-  Попадания: {
-    en: "Hits"
-  },
-  "· Промахи": {
-    en: "· Misses"
-  },
-  "· Лишние": {
-    en: "· Extra notes"
   },
   "Ctrl+Пробел — играть и пауза.": {
     en: "Ctrl+Space — play and pause."
@@ -290,14 +216,14 @@ export const settingsMessages1 = {
   "Пальцы, исправленные кликом по ноте": {
     en: "Fingering corrected by clicking a note"
   },
-  "Изменение пальцев временно отключено": {
-    en: "Fingering editing is temporarily disabled"
+  "Пальцы пока нельзя менять": {
+    en: "Fingering can't be edited for now"
   },
   "Сбросить пальцы": {
     en: "Reset fingering"
   },
-  "Изменение пальцев временно отключено. Клик по нотам на стане — играть с этого места.": {
-    en: "Fingering editing is temporarily disabled. Click a note on the score to play from there."
+  "Пальцы пока нельзя менять. Клик по ноте на стане — играть с этого места.": {
+    en: "Fingering can't be edited for now. Click a note on the staff to play from there."
   },
   "У этой песни нет нотной записи: она открыта из MIDI.": {
     en: "This song has no score: it was opened from MIDI."

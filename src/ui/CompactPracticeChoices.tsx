@@ -5,7 +5,7 @@ import type { HandsChoice, PracticeModeChoice } from "./PlayerTopBar";
 export const HAND_CHOICES = [
   { value: "left", label: "Левая", title: "Левая рука", hint: "Правую руку играет программа." },
   { value: "right", label: "Правая", title: "Правая рука", hint: "Левую руку играет программа." },
-  { value: "both", label: "Обе", title: "Обе руки", hint: "Играйте обе партии самостоятельно." },
+  { value: "both", label: "Обе", title: "Обе руки", hint: "Обе руки играете вы." },
   {
     value: "listen",
     label: "Слушать",
@@ -46,8 +46,8 @@ export function CompactPracticeChoices({ hands, mode, onHands, onMode }: Props) 
       <div className="segmented" role="radiogroup" aria-label={t("Режим игры")}>
         {(
           [
-            ["wait", t("Ждать ноту"), t("Игра ждёт правильную клавишу.")],
-            ["tempo", t("В темпе"), t("Игра идёт без остановок в выбранном темпе.")]
+            ["wait", t("Ждать ноту"), t("Ноты ждут, пока вы нажмёте нужную клавишу.")],
+            ["tempo", t("В темпе"), t("Песня идёт без остановок в выбранном темпе.")]
           ] as const
         ).map(([value, label, hint]) => (
           <button

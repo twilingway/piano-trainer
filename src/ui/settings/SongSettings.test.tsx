@@ -191,7 +191,7 @@ describe("song key settings", () => {
     );
     expect(reset?.textContent).toBe("Сбросить пальцы");
     expect(reset?.disabled).toBe(true);
-    expect(host.textContent).toContain("Изменение пальцев временно отключено");
+    expect(host.textContent).toContain("Пальцы пока нельзя менять");
     reset?.click();
     expect(onResetFingers).not.toHaveBeenCalled();
   });

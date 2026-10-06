@@ -19,7 +19,7 @@ self.onmessage = async (event: MessageEvent<Request>) => {
       fetch(`${base}-bigrams.json`)
     ]);
     if (!response.ok || !pairsResponse.ok) {
-      throw new Error("Не удалось загрузить словарь. Подготовьте ресурсы режима.");
+      throw new Error("Не удалось загрузить словарь для этого режима.");
     }
     const dictionary = (await response.json()) as {
       version: string;

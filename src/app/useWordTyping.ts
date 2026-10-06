@@ -91,7 +91,10 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
       setGeneration(next);
     };
     worker.onerror = () => {
-      setGeneration({ key, error: "Ошибка генерации текста. Переключите режим и повторите." });
+      setGeneration({
+        key,
+        error: "Не получилось подобрать текст. Переключите режим и попробуйте ещё раз."
+      });
     };
     worker.postMessage({
       notes: line.notes,
@@ -123,7 +126,7 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
   const text = current?.result?.text;
   const notice =
     variant > 0 && text !== undefined && text === chosen.previousText
-      ? "Другой текст для этой партии подобрать не удалось."
+      ? "Других слов для этой партии не нашлось."
       : undefined;
   const mode = current?.result?.mode;
   const keyboard = useMemo<ComputerKeyboard | undefined>(

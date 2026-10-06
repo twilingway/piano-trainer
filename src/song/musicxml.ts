@@ -26,7 +26,7 @@ export function musicXmlFromMxl(data: ArrayBuffer): string {
         (path) => !path.startsWith("META-INF/") && /\.(xml|musicxml)$/.test(path)
       );
   const root = rootPath ? files[rootPath] : undefined;
-  if (!root) throw new Error("В архиве .mxl не найдена партитура");
+  if (!root) throw new Error("В архиве .mxl нет партитуры");
   return strFromU8(root);
 }
 
