@@ -235,7 +235,7 @@ export function App() {
             sound === "loading" || (word.enabled && (word.pending || Boolean(word.error)))
           }
           mode={trainer.mode}
-          hands={trainer.handChoice}
+          {...trainer.playChoice}
           speed={trainer.speed}
           midi={input.midiName}
           settingsOpen={settingsOpen}
@@ -271,7 +271,6 @@ export function App() {
           onRestart={startOver}
           onTogglePlay={play}
           onMode={trainer.setMode}
-          onHands={trainer.setHandChoice}
           onSpeed={trainer.setSpeed}
           onSettings={() => {
             computerKeyboard.endEditing();
@@ -427,8 +426,7 @@ export function App() {
           onListen: () => void trainer.toggleListening(),
           mode: trainer.mode,
           onMode: trainer.setMode,
-          hands: trainer.handChoice,
-          onHands: trainer.setHandChoice,
+          ...trainer.playChoice,
           speed: trainer.speed,
           onSpeed: trainer.setSpeed,
           autoReview: staffPrefs.autoReview,

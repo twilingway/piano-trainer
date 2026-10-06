@@ -116,3 +116,19 @@ describe("compareTake on a narrower keyboard", () => {
     expect(review.summary).toMatchObject({ owed: 4, missed: 1 });
   });
 });
+
+describe("compareTake of one part", () => {
+  const parted: Song = {
+    ...SONG,
+    notes: SONG.notes.map((item, index) => ({ ...item, part: index % 2 === 0 ? "p0" : "p1" }))
+  };
+
+  it("asks only for the notes of the part the player played", () => {
+    const review = compareTake(parted, {
+      ...take([played(60, 0, 0.95), played(64, 2, 2.9)]),
+      parts: ["p0"]
+    });
+    expect(review.notes.map((item) => item.note.id)).toEqual(["c", "e"]);
+    expect(review.summary).toMatchObject({ owed: 2, missed: 0, extras: 0 });
+  });
+});

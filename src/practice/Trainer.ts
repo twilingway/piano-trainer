@@ -202,6 +202,7 @@ export class Trainer {
           speed: session.options.speed,
           hands: [...session.options.hands],
           ...(session.options.playable ? { playable: session.options.playable } : {}),
+          ...(session.options.parts ? { parts: [...session.options.parts] } : {}),
           from: session.startedFrom,
           timing: {
             rulesVersion: 2,
