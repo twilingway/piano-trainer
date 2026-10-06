@@ -7,11 +7,11 @@ export const uiMessagesExtra = {
   "· Ранг": {
     en: "· Rank"
   },
-  "Эталон:": {
-    en: "Target:"
+  "Максимум:": {
+    en: "Maximum:"
   },
   "очков (идеальная игра без Overdrive)": {
-    en: "points (perfect play without Overdrive)"
+    en: "points (perfect run without Overdrive)"
   },
   "Максимальная серия:": {
     en: "Best combo:"
@@ -34,7 +34,7 @@ export const uiMessagesExtra = {
   "Средняя / медианная ошибка": {
     en: "Mean / median offset"
   },
-  "Рано / Поздно / Точно в момент": {
+  "Рано / Поздно / Вовремя": {
     en: "Early / Late / On time"
   },
   "Очки удержания / бонус Overdrive": {
@@ -91,7 +91,7 @@ export const uiMessagesExtra = {
   мс: {
     en: "ms"
   },
-  "ровность удара ±": {
+  "разброс силы удара ±": {
     en: "velocity spread ±"
   },
   Дубль: {
@@ -166,14 +166,14 @@ export const uiMessagesExtra = {
   "Текст мелодии": {
     en: "Melody text"
   },
-  "Качество генерации текста, а не оценка исполнения": {
-    en: "Generated text quality, rather than a performance score"
+  "Насколько удачно подобран текст — это не оценка игры": {
+    en: "How well the text fits — not a performance score"
   },
   "% нот в словах": {
     en: "% of notes in words"
   },
   "Цвета пальцев": {
-    en: "Finger colours"
+    en: "Finger colors"
   },
   "Подбираю слова и клавиши для мелодии…": {
     en: "Finding words and keys for the melody…"
@@ -181,7 +181,7 @@ export const uiMessagesExtra = {
   Оригинал: {
     en: "Original"
   },
-  "Твой дубль": {
+  "Ваш дубль": {
     en: "Your take"
   },
   "Жду ноту": {

@@ -50,7 +50,7 @@ export function GameBoard({ game, mode, playing, onOverdrive }: Props) {
         <strong key={game.multiplier} className="game-multiplier" title={t("Множитель серии")}>
           ×{game.multiplier}
         </strong>
-        <span className="game-flow" title={t("20 идеальных или отличных попаданий подряд")}>
+        <span className="game-flow" title={t("20 нот подряд на «Идеально» или «Отлично»")}>
           {t("Поток")}
         </span>
       </section>
@@ -69,7 +69,7 @@ export function GameBoard({ game, mode, playing, onOverdrive }: Props) {
         <div
           className="game-energy"
           title={t(
-            "Энергия за каждую засчитанную ноту: два заряда в короткой композиции, три в обычной; прибавка рассчитана по выбранной партии"
+            "Энергия копится с каждой засчитанной нотой: в короткой пьесе её хватит на два Overdrive, в обычной — на три"
           )}
         >
           <span className="game-score-label">{t("Энергия")}</span>
@@ -90,7 +90,9 @@ export function GameBoard({ game, mode, playing, onOverdrive }: Props) {
         <button
           type="button"
           className="game-button game-overdrive"
-          title={t("Удвоить множитель на 10 секунд за 50 энергии: кнопка, клавиша 0 или педаль")}
+          title={t(
+            "Overdrive за 50 энергии удваивает множитель на 10 секунд: кнопка, клавиша 0 или педаль"
+          )}
           disabled={!playing || !ready}
           onClick={onOverdrive}
         >

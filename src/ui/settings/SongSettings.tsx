@@ -145,13 +145,13 @@ export function SongSettings({
           className="game-button"
           onClick={onResetFingers}
           disabled
-          title={t("Изменение пальцев временно отключено")}
+          title={t("Пальцы пока нельзя менять")}
         >
           {t("Сбросить пальцы")}
         </button>
       </div>
       <p className="setting-hint">
-        {t("Изменение пальцев временно отключено. Клик по нотам на стане — играть с этого места.")}
+        {t("Пальцы пока нельзя менять. Клик по ноте на стане — играть с этого места.")}
       </p>
     </div>
   );

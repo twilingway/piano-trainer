@@ -93,7 +93,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             </div>
             {transcription && (
               <div className="staff-slot">
-                <span className="staff-label">{t("Твой дубль")}</span>
+                <span className="staff-label">{t("Ваш дубль")}</span>
                 <Staff
                   musicXml={transcription.musicXml}
                   beat={props.beat}
@@ -148,7 +148,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             <LaneTopHandle top={props.layout.laneTop} onLayout={props.onLayout} />
           )}
           <div className="lane" ref={hostRef}>
-            {props.comparing && <span className="lane-label">{t("Твой дубль")}</span>}
+            {props.comparing && <span className="lane-label">{t("Ваш дубль")}</span>}
             {props.waiting && <span className="waiting-pill">{t("Жду ноту")}</span>}
             {!props.comparing && laneMode === "full" && props.gameBoard}
             {prefs.keys && laneMode !== "hidden" && handles && (

@@ -20,7 +20,7 @@ export class FpsMeter {
     visible = false
   ) {
     this.element.className = "lane-fps";
-    this.element.title = "Частота отрисовки игры";
+    this.element.title = "Кадров в секунду";
     this.element.textContent = "FPS —";
     this.element.hidden = true;
     host.appendChild(this.element);
@@ -45,7 +45,7 @@ export class FpsMeter {
   }
 
   setLocale(locale: Locale): void {
-    this.element.title = translate(locale, appMessages, "Частота отрисовки игры");
+    this.element.title = translate(locale, appMessages, "Кадров в секунду");
   }
 
   private readonly onFrame = (): void => {

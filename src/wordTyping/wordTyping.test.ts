@@ -223,7 +223,7 @@ describe("bounded generator", () => {
   });
 
   it("rejects empty/invalid musical lines and invalid search configuration", () => {
-    expect(() => generateWordTyping([], [], "en")).toThrow("не содержит нот");
+    expect(() => generateWordTyping([], [], "en")).toThrow("нет нот");
     expect(() => generateWordTyping(line([128]), [], "en")).toThrow("некорректная нота");
     expect(() => generateWordTyping(line([1.5]), [], "en")).toThrow("некорректная нота");
     expect(() => generateWordTyping(line([60]), [], "en", { beamWidth: 0 })).toThrow(
