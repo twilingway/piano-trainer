@@ -62,7 +62,7 @@ describe("PlayerTopBar difficulty", () => {
     const onSimplified = vi.fn();
     render({ difficulty: { simplified: false, onSimplified } });
     const select = difficultySelect();
-    expect(select?.selectedOptions[0]?.textContent).toBe("Полная версия");
+    expect(select?.selectedOptions[0]?.textContent).toBe("Полная");
     act(() => {
       if (!select) return;
       select.value = "simplified";
