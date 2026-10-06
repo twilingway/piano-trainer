@@ -6,10 +6,10 @@ import type { Song, SongNote } from "./song";
 /*
  * A simpler version of a MIDI arrangement for two hands. The right hand keeps
  * the melody on top with at most two notes under it; the left keeps the bass
- * with at most two chord notes folded into the octave above it. A single line
- * is left as it is. Each hand is one voice: a note held into the hand's next
- * start ends there. When the melody lies in the left hand's register it moves
- * up by octaves.
+ * with at most two chord notes folded into the octave above it; an octave
+ * doubling stays when the chord has room. A single line is left as it is. Each
+ * hand is one voice: a note held into the hand's next start ends there. When
+ * the melody keeps sounding under the left hand it moves up by octaves.
  */
 
 /** Notes of a chord, the top or the bass included. */
@@ -20,8 +20,10 @@ const SAME_START = 1 / 8;
 const LEFT_PREFERENCE = [3, 4, 7, 10, 11, 8, 9, 2, 1, 5, 6];
 /** The melody moves up at most this many octaves to clear the left hand. */
 const MAX_LIFT = 2;
-/** The hands may share this many semitones of their busy registers before the melody moves. */
-const SHARED_SEMITONES = 4;
+/** The melody moves up while more than this share of its notes start under the left hand's top key. */
+const CROSSING_SHARE = 0.1;
+/** Seconds a start may sit off another note's start or end and still count as at it. */
+const SAME_TIME = 1e-3;
 /** A grand piano's keys, A0 to C8: a note beyond them moves in by octaves. */
 const LOWEST_KEY = 21;
 const HIGHEST_KEY = 108;
@@ -42,7 +44,10 @@ function chords(notes: readonly SongNote[]): SongNote[][] {
 
 const pitchClass = (pitch: number) => ((pitch % 12) + 12) % 12;
 
-/** The right hand's chord: its top melody note and at most two others close under it. */
+/**
+ * The right hand's chord: its top melody note and at most two others close
+ * under it; the octave under the top when there is room left.
+ */
 function rightChord(group: readonly SongNote[], melodic: (note: SongNote) => boolean): SongNote[] {
   const melody = group.filter(melodic);
   const top = (melody.length > 0 ? melody : group).reduce((a, b) => (b.pitch > a.pitch ? b : a));
@@ -55,10 +60,15 @@ function rightChord(group: readonly SongNote[], melodic: (note: SongNote) => boo
     if (kept.some((other) => pitchClass(other.pitch) === pitchClass(note.pitch))) continue;
     kept.push(note);
   }
+  const octave = group.find((note) => note.pitch === top.pitch - 12);
+  if (octave && kept.length < MAX_CHORD) kept.push(octave);
   return kept;
 }
 
-/** The left hand's chord: the bass and at most two chord notes folded into the octave above it. */
+/**
+ * The left hand's chord: the bass and at most two chord notes folded into the
+ * octave above it; the bass's own octave when there is room left.
+ */
 function leftChord(group: readonly SongNote[]): SongNote[] {
   const bass = group.reduce((a, b) => (b.pitch < a.pitch ? b : a));
   const byInterval = new Map<number, SongNote>();
@@ -72,6 +82,8 @@ function leftChord(group: readonly SongNote[]): SongNote[] {
     if (!note || kept.length >= MAX_CHORD) continue;
     kept.push({ ...note, pitch: bass.pitch + interval });
   }
+  const octave = group.find((note) => note.pitch === bass.pitch + 12);
+  if (octave && kept.length < MAX_CHORD) kept.push(octave);
   return kept;
 }
 
@@ -103,9 +115,18 @@ function onKeyboard(note: SongNote): SongNote {
   return pitch === note.pitch ? note : { ...note, pitch };
 }
 
-function percentile(pitches: readonly number[], share: number): number {
-  const sorted = [...pitches].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * share))] ?? 0;
+/** The highest left-hand key held when each right-hand note starts, or −∞ when none is. */
+function leftAbove(right: readonly SongNote[], left: readonly SongNote[]): number[] {
+  return right.map((note) =>
+    left.reduce(
+      (high, other) =>
+        other.start <= note.start + SAME_TIME &&
+        other.start + other.duration > note.start + SAME_TIME
+          ? Math.max(high, other.pitch)
+          : high,
+      -Infinity
+    )
+  );
 }
 
 /**
@@ -130,20 +151,12 @@ export function simplifiedSong(song: Song): Song {
   );
 
   if (right.length > 0 && left.length > 0) {
-    const leftHigh =
-      percentile(
-        left.map((note) => note.pitch),
-        0.9
-      ) - SHARED_SEMITONES;
+    const under = leftAbove(right, left);
+    const crossing = (lift: number) =>
+      right.filter((note, index) => note.pitch + lift * 12 < (under[index] ?? -Infinity)).length /
+      right.length;
     let lift = 0;
-    while (
-      lift < MAX_LIFT &&
-      percentile(
-        right.map((note) => note.pitch + lift * 12),
-        0.1
-      ) < leftHigh
-    )
-      lift++;
+    while (lift < MAX_LIFT && crossing(lift) > CROSSING_SHARE) lift++;
     if (lift > 0) right = right.map((note) => ({ ...note, pitch: note.pitch + lift * 12 }));
   }
 

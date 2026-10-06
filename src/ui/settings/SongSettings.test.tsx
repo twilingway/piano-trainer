@@ -226,11 +226,11 @@ describe("song key settings", () => {
 
 describe("arrangement", () => {
   const arrangementSelect = () =>
-    host.querySelector<HTMLSelectElement>("select[aria-label='Аранжировка']");
+    host.querySelector<HTMLSelectElement>("select[aria-label='Сложность']");
 
   const asWrittenBox = () =>
     Array.from(host.querySelectorAll("label"))
-      .find((label) => label.textContent.includes("Ноты как на стане"))
+      .find((label) => label.textContent.includes("Живое исполнение из MIDI"))
       ?.querySelector("input");
 
   it("lets a MIDI song switch to its simplified version", async () => {
@@ -239,7 +239,8 @@ describe("arrangement", () => {
       arrangement: { simplified: false, onSimplified, asWritten: true, onAsWritten: vi.fn() }
     });
     const element = arrangementSelect();
-    expect(element?.value).toBe("original");
+    expect(element?.value).toBe("full");
+    expect(host.textContent).toContain("Все ноты песни.");
     await act(async () => {
       await Promise.resolve();
       if (!element) return;
@@ -249,13 +250,14 @@ describe("arrangement", () => {
     expect(onSimplified).toHaveBeenCalledWith(true);
   });
 
-  it("lets a MIDI song's notes leave the staff", async () => {
+  it("lets a MIDI song's notes leave the staff for the live performance", async () => {
     const onAsWritten = vi.fn();
     await render({
       arrangement: { simplified: false, onSimplified: vi.fn(), asWritten: true, onAsWritten }
     });
     const box = asWrittenBox();
-    expect(box?.checked).toBe(true);
+    expect(box?.checked).toBe(false);
+    expect(host.textContent).toContain("Ноты падают как на стане");
     await act(async () => {
       await Promise.resolve();
       box?.click();

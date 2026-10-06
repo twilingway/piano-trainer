@@ -55,6 +55,9 @@ interface Props {
   readonly onHands: (hands: HandsChoice) => void;
   /** The song's parts to play alone and the accompaniment switch. */
   readonly parts?: PartsChoice | undefined;
+  /** A MIDI song's full or simplified version, by the hands; none for a score. */
+  readonly difficulty?:
+    { readonly simplified: boolean; readonly onSimplified: (on: boolean) => void } | undefined;
   readonly onSpeed: (speed: number) => void;
   readonly onSettings: () => void;
 }
@@ -105,6 +108,7 @@ export function PlayerTopBar(props: Props) {
             onMode={props.onMode}
             parts={props.parts}
           />
+          {props.difficulty && <CompactDifficulty {...props.difficulty} />}
           {props.menuExtra}
           <div className="compact-controls__view-head">
             <span>{t("Вид")}</span>
@@ -224,6 +228,24 @@ export function PlayerTopBar(props: Props) {
         <option value="listen">{t("Только слушать")}</option>
         <PartOptions parts={props.parts} />
       </select>
+      {props.difficulty && (
+        <select
+          className="game-select topbar-difficulty"
+          aria-label={t("Сложность")}
+          title={`${t("Сложность")}: ${difficultyHint(props.difficulty.simplified, t)}`}
+          value={props.difficulty.simplified ? "simplified" : "full"}
+          onChange={(event) => {
+            props.difficulty?.onSimplified(event.target.value === "simplified");
+          }}
+        >
+          <option value="full" title={difficultyHint(false, t)}>
+            {t("Полная")}
+          </option>
+          <option value="simplified" title={difficultyHint(true, t)}>
+            {t("Упрощённая")}
+          </option>
+        </select>
+      )}
       {props.practice}
       <label className="topbar-speed" title={t("Скорость")}>
         <span className="digits">{formatNumber(Math.round(props.speed * 100))}%</span>
@@ -287,6 +309,50 @@ export function PlayerTopBar(props: Props) {
         <GearIcon />
       </button>
     </header>
+  );
+}
+
+/** What a difficulty plays, for its tooltip and the phone's caption. */
+function difficultyHint(simplified: boolean, t: (message: string) => string): string {
+  return simplified
+    ? t("Мелодия в правой руке, слева бас и до двух нот аккорда.")
+    : t("Все ноты песни.");
+}
+
+/** The phone's menu: no tooltips on touch, so the difficulty carries a caption. */
+function CompactDifficulty({
+  simplified,
+  onSimplified
+}: {
+  readonly simplified: boolean;
+  readonly onSimplified: (on: boolean) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="compact-practice">
+      <span className="compact-practice__heading">{t("Сложность")}</span>
+      <div className="segmented" role="radiogroup" aria-label={t("Сложность")}>
+        {(
+          [
+            [false, t("Полная")],
+            [true, t("Упрощённая")]
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={String(value)}
+            type="button"
+            role="radio"
+            aria-checked={simplified === value}
+            onClick={() => {
+              onSimplified(value);
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="compact-practice__hint">{difficultyHint(simplified, t)}</p>
+    </div>
   );
 }
 
