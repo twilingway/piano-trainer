@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { easePose, handPose, handHintChord, upcomingChord } from "./handPose";
+import {
+  blendPose,
+  chordGlide,
+  easePose,
+  handPose,
+  handHintChord,
+  upcomingChord
+} from "./handPose";
 import { layoutKeyboard } from "./keyboardLayout";
 
 // C4 to C6: fifteen white keys of 20 px.
@@ -170,5 +177,74 @@ describe("easePose", () => {
     // Onto a black key the tip slides in with the hand rather than jumping.
     expect(once.tips[1].reach).toBeGreaterThan(0);
     expect(once.tips[1].reach).toBeLessThan(1);
+  });
+});
+
+describe("chordGlide", () => {
+  const note = (id: string, start: number, duration = 0.1) => ({ id, start, duration });
+  const ids = (chord: { notes: readonly { id: string }[] }) => chord.notes.map((n) => n.id);
+
+  it("rests on a chord while it is held", () => {
+    const melody = [note("a", 0), note("b", 1)];
+    const glide = chordGlide(melody, 0.05, 0.3);
+    expect(glide && ids(glide.to)).toEqual(["a"]);
+    expect(glide?.progress).toBe(1);
+  });
+
+  it("glides over the whole pause once the chord is released, easing in and out", () => {
+    const melody = [note("a", 0), note("b", 1)];
+    const early = chordGlide(melody, 0.12, 0.3);
+    const middle = chordGlide(melody, 0.55, 0.3);
+    const end = chordGlide(melody, 0.99, 0.3);
+    expect(middle && [ids(middle.from), ids(middle.to)]).toEqual([["a"], ["b"]]);
+    expect(early?.progress).toBeLessThan(0.01);
+    expect(middle?.progress).toBeCloseTo(0.5);
+    expect(end?.progress).toBeGreaterThan(0.99);
+  });
+
+  it("leaves right after the strike when the chord is held into the next", () => {
+    const legato = [note("a", 0, 1), note("b", 1)];
+    expect(chordGlide(legato, 0.5, 0.3)?.progress).toBeCloseTo(0.5);
+  });
+
+  it("leaves at least the lead after a late release", () => {
+    const late = [note("a", 0, 0.95), note("b", 1)];
+    expect(chordGlide(late, 0.65, 0.3)?.progress).toBe(1);
+    expect(chordGlide(late, 0.85, 0.3)?.progress).toBeCloseTo(0.5);
+  });
+
+  it("starts a glide no earlier than the chord it leaves", () => {
+    const fast = [note("a", 0, 0.15), note("b", 0.15, 0.15), note("c", 0.3)];
+    expect(chordGlide(fast, 0.001, 0.3)?.progress).toBeLessThan(0.01);
+    expect(chordGlide(fast, 0.075, 0.3)?.progress).toBeCloseTo(0.5);
+    const landed = chordGlide(fast, 0.15, 0.3);
+    expect(landed && ids(landed.from)).toEqual(["b"]);
+    expect(landed && ids(landed.to)).toEqual(["b"]);
+  });
+
+  it("keeps an unevenly struck chord whole", () => {
+    const chord = [note("a", 0), note("b", 0.02), note("c", 1)];
+    const glide = chordGlide(chord, 0.01, 0.3);
+    expect(glide && ids(glide.to)).toEqual(["a", "b"]);
+  });
+
+  it("waits on the first chord and stays on the last", () => {
+    const melody = [note("a", 1), note("b", 2)];
+    const before = chordGlide(melody, 0, 0.3);
+    expect(before && ids(before.to)).toEqual(["a"]);
+    const after = chordGlide(melody, 5, 0.3);
+    expect(after && ids(after.to)).toEqual(["b"]);
+    expect(chordGlide([], 0, 0.3)).toBeUndefined();
+  });
+});
+
+describe("blendPose", () => {
+  it("puts every tip part of the way and takes the target's fingers down", () => {
+    const from = handPose("right", [{ pitch: 60, finger: 1 }], keys);
+    const to = handPose("right", [{ pitch: 64, finger: 3 }], keys);
+    if (!from || !to) throw new Error("no pose");
+    const half = blendPose(from, to, 0.5);
+    expect(half.tips[1].x).toBeCloseTo((from.tips[1].x + to.tips[1].x) / 2);
+    expect([...half.down]).toEqual([3]);
   });
 });

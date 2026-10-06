@@ -115,6 +115,66 @@ export function upcomingChord<T extends { readonly start: number; readonly durat
   return { start: first, notes: chord };
 }
 
+/** A chord the hand moves between: when it is struck, and its notes. */
+export interface Chord<T> {
+  readonly start: number;
+  readonly notes: readonly T[];
+}
+
+/**
+ * The hand's way between chords at `time`, as a pianist moves: it leaves the
+ * chord struck last once that chord is released, or right after striking it
+ * when it is held into the next one, and glides to the next chord, `progress`
+ * easing in and out from 0 to 1. A late release still leaves `lead` seconds at
+ * least; a glide never starts before the chord it leaves. Before the first
+ * chord the hand waits on it; undefined with no notes.
+ */
+export function chordGlide<T extends { readonly start: number; readonly duration: number }>(
+  notes: readonly T[],
+  time: number,
+  lead: number
+): { readonly from: Chord<T>; readonly to: Chord<T>; readonly progress: number } | undefined {
+  let last = -Infinity;
+  for (const note of notes) if (note.start <= time) last = Math.max(last, note.start);
+  // A chord struck a little unevenly starts with its earliest note.
+  let first = last;
+  for (const note of notes) {
+    if (note.start < first && last - note.start <= CHORD_WINDOW_S) first = note.start;
+  }
+  let next = Infinity;
+  for (const note of notes) {
+    if (note.start > time && note.start - first > CHORD_WINDOW_S) next = Math.min(next, note.start);
+  }
+  const chordAt = (start: number): Chord<T> => ({
+    start,
+    notes: notes.filter((note) => note.start >= start && note.start - start <= CHORD_WINDOW_S)
+  });
+  if (first === -Infinity) {
+    if (next === Infinity) return undefined;
+    const to = chordAt(next);
+    return { from: to, to, progress: 1 };
+  }
+  const from = chordAt(first);
+  if (next === Infinity) return { from, to: from, progress: 1 };
+  const release = Math.max(...from.notes.map((note) => note.start + note.duration));
+  const free = release < next ? release : first;
+  const departure = Math.max(first, Math.min(free, next - lead));
+  if (time <= departure) return { from, to: from, progress: 1 };
+  const linear = (time - departure) / (next - departure);
+  return { from, to: chordAt(next), progress: linear * linear * (3 - 2 * linear) };
+}
+
+/** A pose part of the way from one to another; the fingers down are the target's. */
+export function blendPose(from: HandPose, to: HandPose, share: number): HandPose {
+  const tips = {} as Record<Finger, Tip>;
+  for (const finger of FINGERS) {
+    const a = from.tips[finger];
+    const b = to.tips[finger];
+    tips[finger] = { x: a.x + (b.x - a.x) * share, reach: a.reach + (b.reach - a.reach) * share };
+  }
+  return { hand: to.hand, tips, down: to.down };
+}
+
 /** Waiting for input overrides the visual clock, including calibration offsets and note ends. */
 export function handHintChord<T extends { readonly start: number; readonly duration: number }>(
   notes: readonly T[],

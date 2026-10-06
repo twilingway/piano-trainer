@@ -1,6 +1,7 @@
 import type { SongNote } from "../song/song";
 
-const APPROACH_MS = 300;
+/** How long before its note a key starts to light, in real time. */
+export const APPROACH_MS = 300;
 const FLASH_MS = 80;
 const PENDING_STRENGTH = 0.75;
 
