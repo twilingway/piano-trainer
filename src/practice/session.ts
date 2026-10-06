@@ -25,6 +25,10 @@ export interface PracticeOptions {
   readonly missGraceMs?: number;
   /** The keys the player's instrument has; their hands' notes outside it go to the program. */
   readonly playable?: PlayableRange | undefined;
+  /** The song's parts the player plays, within `hands`; none = every part of those hands. */
+  readonly parts?: ReadonlySet<string> | undefined;
+  /** false: while the player plays, the program plays nothing. Listening always sounds. */
+  readonly accompaniment?: boolean;
 }
 
 /** "skipped": before the point the run was started from; it never counts. */
@@ -110,7 +114,7 @@ export class PracticeSession {
     const inRange = (note: SongNote) =>
       note.start >= (options.from ?? 0) && note.start < (options.to ?? Infinity);
     this.playerNotes = song.notes.filter((note) => this.owns(note) && inRange(note));
-    this.autoNotes = song.notes.filter((note) => !this.owns(note) && inRange(note));
+    this.autoNotes = song.notes.filter((note) => this.accompanies(note) && inRange(note));
     this.game = new SessionScoring(
       this.scoringNotes(this.playerNotes),
       options.difficulty ?? "normal",
@@ -249,7 +253,11 @@ export class PracticeSession {
 
   /** Whether the player plays this note; the program plays the rest. Bound: pass it around. */
   readonly owns = (note: SongNote): boolean =>
-    ownsNote(note, this.options.hands, this.options.playable);
+    ownsNote(note, this.options.hands, this.options.playable, this.options.parts);
+
+  /** Whether the program sounds this note: not the player's, and accompaniment is on. */
+  readonly accompanies = (note: SongNote): boolean =>
+    !this.owns(note) && (this.options.hands.size === 0 || this.options.accompaniment !== false);
 
   /** Song seconds this run started from: 0, or the point of the last seek. */
   get startedFrom(): number {

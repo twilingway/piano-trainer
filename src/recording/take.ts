@@ -50,6 +50,8 @@ export interface Take {
   readonly hands: readonly Hand[];
   /** The player's keyboard: notes of their hands outside it were the program's. None = all. */
   readonly playable?: PlayableRange;
+  /** The song's parts the player played, within `hands`. None = every part. */
+  readonly parts?: readonly string[];
   /** Song seconds the run started from: notes before it were not asked for. */
   readonly from: number;
   readonly notes: readonly PlayedNote[];
@@ -63,6 +65,7 @@ export interface TakeSettings {
   readonly speed: number;
   readonly hands: readonly Hand[];
   readonly playable?: PlayableRange;
+  readonly parts?: readonly string[];
   readonly from: number;
 }
 

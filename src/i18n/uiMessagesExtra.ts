@@ -249,5 +249,35 @@ export const uiMessagesExtra = {
   },
   "Звёзды: {stars} из 3": {
     en: "Stars: {stars} out of 3"
+  },
+  Партии: {
+    en: "Parts"
+  },
+  "Второй голос": {
+    en: "Second voice"
+  },
+  Аккомпанемент: {
+    en: "Accompaniment"
+  },
+  "Остальное играет программа.": {
+    en: "The app plays the rest."
+  },
+  Автоаккомпанемент: {
+    en: "Auto accompaniment"
+  },
+  "Остальные партии играет программа.": {
+    en: "The app plays the other parts."
+  },
+  Аранжировка: {
+    en: "Arrangement"
+  },
+  "Как в файле": {
+    en: "As in the file"
+  },
+  Упрощённая: {
+    en: "Simplified"
+  },
+  "Упрощённая: мелодия справа, бас и до двух нот аккорда слева.": {
+    en: "Simplified: the melody in the right hand, the bass and up to two chord notes in the left."
   }
 } satisfies Messages;

@@ -223,3 +223,27 @@ describe("song key settings", () => {
     expect(host.textContent).not.toContain("как в нотах");
   });
 });
+
+describe("arrangement", () => {
+  const arrangementSelect = () =>
+    host.querySelector<HTMLSelectElement>("select[aria-label='Аранжировка']");
+
+  it("lets a MIDI song switch to its simplified version", async () => {
+    const onSimplified = vi.fn();
+    await render({ arrangement: { simplified: false, onSimplified } });
+    const element = arrangementSelect();
+    expect(element?.value).toBe("original");
+    await act(async () => {
+      await Promise.resolve();
+      if (!element) return;
+      element.value = "simplified";
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onSimplified).toHaveBeenCalledWith(true);
+  });
+
+  it("is not offered for a score", async () => {
+    await render();
+    expect(arrangementSelect()).toBeNull();
+  });
+});

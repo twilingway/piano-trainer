@@ -29,8 +29,9 @@ plays in tempo, plays the other hand, records every take and compares it with th
   metronome and a take's song-time stamps all read it. Nothing else advances the song.
 - **A score is the source.** MusicXML carries hands (staves), measures, beats and written fingering;
   every staff feature (fingers, names, chords, line breaks, transposition, a take written out) is a
-  pure `string -> string` pass over the XML before OSMD renders it. MIDI files get falling notes and
-  a guessed hand split; do not pretend a MIDI file has a score.
+  pure `string -> string` pass over the XML before OSMD renders it. A MIDI file's notes, timing and
+  parts come from the MIDI itself; its staff is a score written from those notes (sixteenths, one
+  voice per hand) and only shows them — never re-read the song from that score.
 - **Fixed-shape art is baked.** In Pixi, anything that does not change per frame (finger digits, key
   stickers, note names) is drawn once into a texture and shown as a sprite; `Graphics` is only for
   baking.

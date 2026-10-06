@@ -53,7 +53,7 @@ export class SessionAudio {
     };
     for (const note of session.song.notes) {
       if (
-        session.owns(note) ||
+        !session.accompanies(note) ||
         note.start < session.startedFrom ||
         note.start >= (session.options.to ?? Infinity)
       )

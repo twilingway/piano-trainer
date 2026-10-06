@@ -2,7 +2,16 @@ import { useI18n } from "../app/useI18n";
 import { useRef, type ReactNode } from "react";
 
 import type { Scoreboard } from "../practice/scoreboard";
-import { CompactPracticeChoices, HAND_CHOICES, HandsPicture } from "./CompactPracticeChoices";
+import { ROLE_TITLE } from "../song/midiParts";
+import {
+  choiceValue,
+  chooseValue,
+  CompactPracticeChoices,
+  HAND_CHOICES,
+  HandsPicture,
+  PartOptions
+} from "./CompactPracticeChoices";
+import type { PartsChoice } from "./CompactPracticeChoices";
 import { FullscreenIcon, GearIcon, LibraryIcon, PauseIcon, PlayIcon, RestartIcon } from "./icons";
 import { BarPopover } from "./BarPopover";
 import { ViewHelp } from "./ViewHelp";
@@ -44,6 +53,8 @@ interface Props {
   readonly onTogglePlay: () => void;
   readonly onMode: (mode: PracticeModeChoice) => void;
   readonly onHands: (hands: HandsChoice) => void;
+  /** The song's parts to play alone and the accompaniment switch. */
+  readonly parts?: PartsChoice | undefined;
   readonly onSpeed: (speed: number) => void;
   readonly onSettings: () => void;
 }
@@ -57,7 +68,11 @@ export function PlayerTopBar(props: Props) {
   const { t, formatNumber } = useI18n();
   const board = props.board ?? { clock: "0:00" };
   const controls = useRef<HTMLDetailsElement>(null);
-  const handTitle = t(HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки");
+  const handTitle = t(
+    props.parts?.role
+      ? ROLE_TITLE[props.parts.role]
+      : (HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки")
+  );
   return (
     <header className="topbar">
       <details className="compact-controls" ref={controls}>
@@ -88,6 +103,7 @@ export function PlayerTopBar(props: Props) {
             mode={props.mode}
             onHands={props.onHands}
             onMode={props.onMode}
+            parts={props.parts}
           />
           {props.menuExtra}
           <div className="compact-controls__view-head">
@@ -197,15 +213,16 @@ export function PlayerTopBar(props: Props) {
       <select
         className="game-select topbar-hands"
         aria-label={t("Руки")}
-        value={props.hands}
+        value={choiceValue(props.hands, props.parts)}
         onChange={(event) => {
-          props.onHands(event.target.value as HandsChoice);
+          chooseValue(event.target.value, props.onHands, props.parts);
         }}
       >
         <option value="right">{t("Правая рука")}</option>
         <option value="left">{t("Левая рука")}</option>
         <option value="both">{t("Обе руки")}</option>
         <option value="listen">{t("Только слушать")}</option>
+        <PartOptions parts={props.parts} />
       </select>
       {props.practice}
       <label className="topbar-speed" title={t("Скорость")}>

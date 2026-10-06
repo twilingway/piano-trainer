@@ -11,8 +11,8 @@ context: |
   TypeScript, independent of React, Pixi, OSMD, timers, and audio. The practice
   session owns song time; every view reads it.
   Scores: MusicXML is the source for staves, measures, and written fingering;
-  staff features are string-to-string passes over the XML. MIDI files have no
-  score.
+  staff features are string-to-string passes over the XML. A MIDI file's staff
+  is a score written from its notes; the notes themselves stay the MIDI's.
   Language: specifications and product docs may be Russian; code identifiers
   are English.
   Локальный dev-стенд: http://localhost:5190/, основная рабочая папка на ветке dev.
