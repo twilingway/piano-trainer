@@ -228,9 +228,16 @@ describe("arrangement", () => {
   const arrangementSelect = () =>
     host.querySelector<HTMLSelectElement>("select[aria-label='Аранжировка']");
 
+  const asWrittenBox = () =>
+    Array.from(host.querySelectorAll("label"))
+      .find((label) => label.textContent.includes("Ноты как на стане"))
+      ?.querySelector("input");
+
   it("lets a MIDI song switch to its simplified version", async () => {
     const onSimplified = vi.fn();
-    await render({ arrangement: { simplified: false, onSimplified } });
+    await render({
+      arrangement: { simplified: false, onSimplified, asWritten: true, onAsWritten: vi.fn() }
+    });
     const element = arrangementSelect();
     expect(element?.value).toBe("original");
     await act(async () => {
@@ -242,8 +249,23 @@ describe("arrangement", () => {
     expect(onSimplified).toHaveBeenCalledWith(true);
   });
 
+  it("lets a MIDI song's notes leave the staff", async () => {
+    const onAsWritten = vi.fn();
+    await render({
+      arrangement: { simplified: false, onSimplified: vi.fn(), asWritten: true, onAsWritten }
+    });
+    const box = asWrittenBox();
+    expect(box?.checked).toBe(true);
+    await act(async () => {
+      await Promise.resolve();
+      box?.click();
+    });
+    expect(onAsWritten).toHaveBeenCalledWith(false);
+  });
+
   it("is not offered for a score", async () => {
     await render();
     expect(arrangementSelect()).toBeNull();
+    expect(asWrittenBox()).toBeUndefined();
   });
 });
