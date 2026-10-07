@@ -3,6 +3,9 @@ import { act, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createAppStore, type AppStore } from "./store";
+import { withTestStore } from "./storeTestSupport";
+let store: AppStore | undefined;
 import { useGameOptions } from "./useGameOptions";
 
 let host: HTMLDivElement;
@@ -25,8 +28,10 @@ function Harness({
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   localStorage.clear();
+  store = undefined;
   host = document.createElement("div");
   root = createRoot(host);
+  store = undefined;
 });
 afterEach(async () => {
   await act(async () => {
@@ -39,7 +44,7 @@ describe("educational timing preference", () => {
   it("enables training by default and migrates older settings", async () => {
     localStorage.setItem("game-options-v1", JSON.stringify({ difficulty: "hard" }));
     await act(async () => {
-      root.render(<Harness />);
+      root.render(withTestStore(<Harness />, (store ??= createAppStore())));
       await Promise.resolve();
     });
     expect(state.learningWindow).toBe(true);
@@ -55,15 +60,16 @@ describe("educational timing preference", () => {
       await Promise.resolve();
     });
     root = createRoot(host);
+    store = undefined;
     await act(async () => {
-      root.render(<Harness />);
+      root.render(withTestStore(<Harness />, (store ??= createAppStore())));
       await Promise.resolve();
     });
     expect(state.options.learningWindow).toBe(false);
   });
   it("forces strict ranked windows without changing saved learning preference", async () => {
     await act(async () => {
-      root.render(<Harness />);
+      root.render(withTestStore(<Harness />, (store ??= createAppStore())));
       await Promise.resolve();
     });
     await act(async () => {
@@ -73,7 +79,7 @@ describe("educational timing preference", () => {
     expect(state.learningWindow).toBe(true);
     expect(state.options.learningWindow).toBe(false);
     await act(async () => {
-      root.render(<Harness practiceOnly />);
+      root.render(withTestStore(<Harness practiceOnly />, (store ??= createAppStore())));
       await Promise.resolve();
     });
     expect(state.ranked).toBe(false);
@@ -84,12 +90,14 @@ describe("educational timing preference", () => {
 describe("the player's keyboard", () => {
   it("limits a practice run, but neither Ranked nor the word mode", async () => {
     await act(async () => {
-      root.render(<Harness playable={KEYS} />);
+      root.render(withTestStore(<Harness playable={KEYS} />, (store ??= createAppStore())));
       await Promise.resolve();
     });
     expect(state.options.playable).toBe(KEYS);
     await act(async () => {
-      root.render(<Harness playable={KEYS} practiceOnly />);
+      root.render(
+        withTestStore(<Harness playable={KEYS} practiceOnly />, (store ??= createAppStore()))
+      );
       await Promise.resolve();
     });
     expect(state.options.playable).toBeUndefined();
@@ -99,8 +107,9 @@ describe("the player's keyboard", () => {
       await Promise.resolve();
     });
     root = createRoot(host);
+    store = undefined;
     await act(async () => {
-      root.render(<Harness playable={KEYS} />);
+      root.render(withTestStore(<Harness playable={KEYS} />, (store ??= createAppStore())));
       await Promise.resolve();
     });
     expect(state.ranked).toBe(true);

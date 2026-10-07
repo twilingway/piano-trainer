@@ -1,28 +1,16 @@
 import { useState } from "react";
 
-import {
-  DEFAULT_SCREEN_LAYOUTS,
-  loadScreenLayouts,
-  normalizeLayout,
-  saveScreenLayouts,
-  startEditing
-} from "./screenLayout";
+import { DEFAULT_SCREEN_LAYOUTS, startEditing } from "./screenLayout";
 import type { LayoutMode, ScreenLayout } from "./screenLayout";
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, useAppSelector } from "./storeHooks";
 
 /** The current mode's layout, kept across reloads apart from the other mode's. */
 export function useScreenLayout(mode: LayoutMode) {
-  const [layouts, setLayouts] = useState(loadScreenLayouts);
+  const layout = useAppSelector((state) => state.preferences.layouts[mode]);
+  const dispatch = useAppDispatch();
   // Off the edit mode the layout stays, but nothing on the screen drags or shows its handle.
   const [editing, setEditing] = useState(startEditing);
-  // A drag sends changes faster than renders: each builds on the stored layout, not a stale one.
-  const store = (layout: (previous: ScreenLayout) => ScreenLayout) => {
-    setLayouts((previous) => {
-      const next = { ...previous, [mode]: layout(previous[mode]) };
-      saveScreenLayouts(next);
-      return next;
-    });
-  };
-  const layout = layouts[mode];
   const defaults = DEFAULT_SCREEN_LAYOUTS[mode];
   return {
     layout,
@@ -35,10 +23,10 @@ export function useScreenLayout(mode: LayoutMode) {
       (key) => layout[key] !== defaults[key]
     ),
     updateLayout: (change: Partial<ScreenLayout>) => {
-      store((previous) => normalizeLayout({ ...previous, ...change }, defaults));
+      dispatch(preferencesActions.layoutChanged({ mode, change }));
     },
     resetLayout: () => {
-      store(() => defaults);
+      dispatch(preferencesActions.layoutReset(mode));
     }
   };
 }

@@ -1,39 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Difficulty } from "../practice/gameRules";
+import { useMemo, useState } from "react";
 import type { PlayableRange } from "../practice/playableRange";
 
-interface Preferences {
-  difficulty: Difficulty;
-  performance: boolean;
-  stopOnError: boolean;
-  ranked: boolean;
-  learningWindow: boolean;
-}
-const DEFAULTS: Preferences = {
-  difficulty: "normal",
-  performance: false,
-  stopOnError: false,
-  ranked: false,
-  learningWindow: true
-};
-function load(): Preferences {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem("game-options-v1") ?? "null");
-    if (!value || typeof value !== "object") return DEFAULTS;
-    const raw = value as Record<string, unknown>;
-    return {
-      difficulty: ["easy", "normal", "hard", "expert"].includes(String(raw.difficulty))
-        ? (raw.difficulty as Difficulty)
-        : "normal",
-      performance: raw.performance === true,
-      stopOnError: raw.stopOnError === true,
-      ranked: raw.ranked === true,
-      learningWindow: typeof raw.learningWindow === "boolean" ? raw.learningWindow : true
-    };
-  } catch {
-    return DEFAULTS;
-  }
-}
+import type { GamePreferences } from "./gamePreferences";
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, useAppSelector } from "./storeHooks";
 /** `playable` is the player's keyboard; Ranked and the practice-only word mode ask for every note. */
 export function useGameOptions(
   songKey: string,
@@ -41,20 +11,14 @@ export function useGameOptions(
   practiceOnly = false,
   playable?: PlayableRange
 ) {
-  const [preferences, setPreferences] = useState(load);
+  const preferences = useAppSelector((state) => state.preferences.game);
+  const dispatch = useAppDispatch();
   const ranked = preferences.ranked && !practiceOnly;
   const [storedRange, setRange] = useState({ songKey, from: 0, to: duration, loop: false });
   const range =
     storedRange.songKey === songKey ? storedRange : { songKey, from: 0, to: duration, loop: false };
-  useEffect(() => {
-    try {
-      localStorage.setItem("game-options-v1", JSON.stringify(preferences));
-    } catch {
-      /* Storage is optional. */
-    }
-  }, [preferences]);
-  const update = (change: Partial<Preferences>) => {
-    setPreferences((current) => ({ ...current, ...change }));
+  const update = (change: Partial<GamePreferences>) => {
+    dispatch(preferencesActions.gameChanged(change));
   };
   const updateRange = (change: Partial<typeof range>) => {
     const next = { ...range, ...change };

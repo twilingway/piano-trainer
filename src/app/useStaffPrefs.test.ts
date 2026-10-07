@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { withTestStore } from "./storeTestSupport";
 import { act, createElement, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
@@ -20,7 +21,7 @@ function Harness() {
 
 async function mount() {
   await act(async () => {
-    root.render(createElement(Harness));
+    root.render(withTestStore(createElement(Harness)));
     await Promise.resolve();
   });
 }

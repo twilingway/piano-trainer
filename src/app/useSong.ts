@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, usePreferenceState } from "./storeHooks";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import type { Finger } from "../fingering/fingering";
@@ -12,7 +14,7 @@ import { withFingering } from "../song/song";
 import type { Song } from "../song/song";
 import { FIRST_LESSON, LESSONS, lessonSong } from "./lessons";
 import type { LessonChoice } from "./lessons";
-import { loadPlayerPrefs, savePlayerPrefs } from "./playerPrefs";
+import { loadPlayerPrefs } from "./playerPrefs";
 
 /** The lesson opened last, if it is still there; otherwise the first one. */
 function startingLesson(): LessonChoice {
@@ -88,7 +90,10 @@ export function useSong(startFromRef: RefObject<number | null>) {
     [simplified, sourceSong]
   );
   /** A MIDI song's notes as its staff has them; a preference, not the song's. */
-  const [asWritten, setAsWritten] = useState(() => loadPlayerPrefs().notesAsWritten);
+  const [asWritten, setAsWritten] = usePreferenceState(
+    (state) => state.preferences.player.notesAsWritten,
+    (notesAsWritten: boolean) => preferencesActions.playerChanged({ notesAsWritten })
+  );
   const written = useMemo(
     () => (asWritten ? writtenNotes(arranged) : arranged),
     [asWritten, arranged]
@@ -107,9 +112,19 @@ export function useSong(startFromRef: RefObject<number | null>) {
   }
   const song = useMemo(() => withFingering(baseSong, overrides), [baseSong, overrides]);
   // What is on screen comes back next time: a lesson by its level, a library song by its source.
+  const dispatch = useAppDispatch();
+  const previousSelection = useRef({ lesson, librarySource });
   useEffect(() => {
-    savePlayerPrefs(lesson ? { lesson, librarySource: null } : { librarySource });
-  }, [lesson, librarySource]);
+    if (
+      previousSelection.current.lesson === lesson &&
+      previousSelection.current.librarySource === librarySource
+    )
+      return;
+    previousSelection.current = { lesson, librarySource };
+    dispatch(
+      preferencesActions.playerChanged(lesson ? { lesson, librarySource: null } : { librarySource })
+    );
+  }, [dispatch, lesson, librarySource]);
   // Each song and level keeps its own takes and trainer state under this key.
   const songKey = overridesKey(baseSong);
 
@@ -168,7 +183,6 @@ export function useSong(startFromRef: RefObject<number | null>) {
             asWritten,
             onAsWritten: (on: boolean) => {
               setAsWritten(on);
-              savePlayerPrefs({ notesAsWritten: on });
             }
           }
         : undefined,

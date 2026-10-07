@@ -1,3 +1,13 @@
+import { Provider } from "react-redux";
+import { createAppStore, type AppStore } from "../../app/store";
+import { PlaySettings } from "./PlaySettings";
+import { GameSettings } from "../GameSettings";
+import { SongSettings } from "./SongSettings";
+import { StaffSettings } from "./StaffSettings";
+import { KeyboardSettings } from "./KeyboardSettings";
+import { SettingsView } from "./SettingsView";
+import { MidiSettings } from "./MidiSettings";
+import { ComputerKeyboardSettings } from "./ComputerKeyboardSettings";
 // @vitest-environment happy-dom
 import { act } from "react";
 import type { ReactNode } from "react";
@@ -15,6 +25,7 @@ vi.mock("../GameDialog", () => ({
 
 let host: HTMLDivElement;
 let root: Root;
+let store: AppStore;
 const onMode = vi.fn();
 const onRules = vi.fn();
 const onRange = vi.fn();
@@ -32,100 +43,140 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
       open
       onClose={noop}
       wordTyping={wordTyping}
-      play={{
-        wordTyping,
-        metronome: false,
-        onMetronome: noop,
-        listening: false,
-        soundLoading: false,
-        onListen: noop,
-        stats: undefined,
-        mode: "tempo",
-        onMode,
-        hands: "both",
-        onHands: noop,
-        speed: 1,
-        onSpeed: noop,
-        autoReview: false,
-        onAutoReview: noop
-      }}
-      rules={{
-        practiceOnly: wordTyping,
-        difficulty: "normal",
-        ranked: false,
-        rankedReady: true,
-        performance: false,
-        learningWindow: true,
-        stopOnError: false,
-        locked: false,
-        from: 0,
-        to: 10,
-        duration: 10,
-        loop: false,
-        onChange: onRules,
-        onRange
-      }}
-      song={{
-        sourceKey: { tonic: 0, mode: "major" },
-        transpose: 0,
-        onTranspose,
-        octave: 0,
-        onOctave: noop,
-        outside: 0,
-        bestOctave: 0,
-        fingersChanged: false,
-        onResetFingers: noop
-      }}
-      staff={{ prefs: staffPrefs, hasScore: true, onChange: updateStaffPrefs }}
-      keyboard={{
-        keyRange: "song",
-        onKeyRange: noop,
-        showLabels: false,
-        onShowLabels: noop,
-        fps: staffPrefs.fps,
-        onFps: (fps) => {
-          updateStaffPrefs({ fps });
-        },
-        keyStyle: staffPrefs.keyStyle,
-        onKeyStyle: (keyStyle) => {
-          updateStaffPrefs({ keyStyle });
-        },
-        handStyle: staffPrefs.handStyle,
-        onHandStyle: (handStyle) => {
-          updateStaffPrefs({ handStyle });
-        },
-        road: { far: 0.3, horizon: 0.3 },
-        onRoad: noop,
-        camera: DEFAULT_CAMERA,
-        onCamera: noop,
-        toggles: <span>Переключатели вида</span>
-      }}
-      computerKeyboard={computerKeyboard}
-      wordSettings={<p>Язык и партия для печати</p>}
-      midi={{
-        devices: [{ id: "piano", name: "USB Piano" }],
-        deviceId: "all",
-        onDevice,
-        midiError: null,
-        keyboard: {
-          range: { preset: "88" },
-          onRange: noop,
-          capture: null,
-          onCapture: noop,
-          onCancelCapture: noop
-        }
-      }}
+      play={
+        <PlaySettings
+          {...{
+            wordTyping,
+            metronome: false,
+            onMetronome: noop,
+            listening: false,
+            soundLoading: false,
+            onListen: noop,
+            stats: undefined,
+            mode: "tempo",
+            onMode,
+            hands: "both",
+            onHands: noop,
+            speed: 1,
+            onSpeed: noop,
+            autoReview: false,
+            onAutoReview: noop
+          }}
+        />
+      }
+      rules={
+        <GameSettings
+          {...{
+            practiceOnly: wordTyping,
+            difficulty: "normal",
+            ranked: false,
+            rankedReady: true,
+            performance: false,
+            learningWindow: true,
+            stopOnError: false,
+            locked: false,
+            from: 0,
+            to: 10,
+            duration: 10,
+            loop: false,
+            onChange: onRules,
+            onRange
+          }}
+        />
+      }
+      song={
+        <SongSettings
+          {...{
+            sourceKey: { tonic: 0, mode: "major" },
+            transpose: 0,
+            onTranspose,
+            octave: 0,
+            onOctave: noop,
+            outside: 0,
+            bestOctave: 0,
+            fingersChanged: false,
+            onResetFingers: noop
+          }}
+        />
+      }
+      view={
+        <SettingsView
+          wordTyping={wordTyping}
+          staff={
+            <StaffSettings {...{ prefs: staffPrefs, hasScore: true, onChange: updateStaffPrefs }} />
+          }
+          keyboard={
+            <KeyboardSettings
+              {...{
+                keyRange: "song",
+                onKeyRange: noop,
+                showLabels: false,
+                onShowLabels: noop,
+                fps: staffPrefs.fps,
+                onFps: (fps: boolean) => {
+                  updateStaffPrefs({ fps });
+                },
+                keyStyle: staffPrefs.keyStyle,
+                onKeyStyle: (keyStyle) => {
+                  updateStaffPrefs({ keyStyle });
+                },
+                handStyle: staffPrefs.handStyle,
+                onHandStyle: (handStyle) => {
+                  updateStaffPrefs({ handStyle });
+                },
+                road: { far: 0.3, horizon: 0.3 },
+                onRoad: noop,
+                camera: DEFAULT_CAMERA,
+                onCamera: noop,
+                toggles: <span>Переключатели вида</span>
+              }}
+            />
+          }
+          fps={staffPrefs.fps}
+          onFps={(fps) => {
+            updateStaffPrefs({ fps });
+          }}
+          editing={false}
+          onToggleEditing={onToggleEditing}
+          onResetLayout={onResetLayout}
+        />
+      }
+      computer={
+        wordTyping ? (
+          <p>Язык и партия для печати</p>
+        ) : (
+          <ComputerKeyboardSettings controls={computerKeyboard} />
+        )
+      }
+      midi={
+        <MidiSettings
+          {...{
+            devices: [{ id: "piano", name: "USB Piano" }],
+            deviceId: "all",
+            onDevice,
+            midiError: null,
+            keyboard: {
+              range: { preset: "88" },
+              onRange: noop,
+              capture: null,
+              onCapture: noop,
+              onCancelCapture: noop
+            }
+          }}
+        />
+      }
       synchronization={<p>Калибровка задержки</p>}
-      onResetLayout={onResetLayout}
-      editing={false}
-      onToggleEditing={onToggleEditing}
     />
   );
 }
 async function render(wordTyping = false) {
   await act(async () => {
     await Promise.resolve();
-    root.render(<Harness wordTyping={wordTyping} />);
+    root.render(
+      <Provider store={store}>
+        <Harness wordTyping={wordTyping} />
+      </Provider>
+    );
   });
 }
 async function section(title: string) {
@@ -151,6 +202,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);
+  store = createAppStore();
 });
 afterEach(async () => {
   await act(async () => {
