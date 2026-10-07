@@ -42,7 +42,7 @@ export function whitePart(blackBelow: boolean, blackAbove: boolean): KitPart {
 }
 
 /**
- * Orders the triangles so those facing up come first, as group 0, and the rest as group 1; with
+ * Orders the triangles so those facing up, the rounded edges too, come first, as group 0, and the rest as group 1; with
  * `dropUp` the upward ones are left out.
  */
 export function splitUp(geometry: BufferGeometry, dropUp = false): BufferGeometry {
@@ -55,7 +55,7 @@ export function splitUp(geometry: BufferGeometry, dropUp = false): BufferGeometr
   for (let i = 0; i < count; i += 3) {
     const tri = [at(i), at(i + 1), at(i + 2)];
     const y = tri.reduce((sum, v) => sum + normal.getY(v), 0) / 3;
-    (y > 0.7 ? up : rest).push(...tri);
+    (y > 0.25 ? up : rest).push(...tri);
   }
   const kept = dropUp ? rest : [...up, ...rest];
   geometry.setIndex(new Uint32BufferAttribute(kept, 1));
