@@ -6,9 +6,9 @@
 
 ## 2. Camera
 
-- [ ] 2.1 Expose the projection parameters from `worldCamera` and verify the existing camera tests
+- [x] 2.1 Expose the projection parameters from `worldCamera` and verify the existing camera tests
       still pass
-- [ ] 2.2 Build three's view and projection matrices in `src/render/three/threeCamera.ts` and verify
+- [x] 2.2 Build three's view and projection matrices in `src/render/three/threeCamera.ts` and verify
       `threeCamera.test.ts`: projected points match `worldCamera.project` within 0.5 px over
       pitches, fovs, scales, vertical shifts and key offsets
 
