@@ -64,6 +64,7 @@ interface Aim {
 const HOME: Aim = { offset: 0, depth: 0 };
 
 interface PlannedNote {
+  readonly pitch: number;
   readonly start: number;
   /** When the finger starts lifting: the note's end, or sooner to strike the next note again. */
   readonly release: number;
@@ -134,6 +135,7 @@ export function planHand(notes: readonly FingeredNote[], hand: Hand): HandPlan |
     for (const note of chord.notes) {
       const slot = anchor + direction * (note.finger - 1);
       fingers[note.finger].push({
+        pitch: note.pitch,
         start: note.start,
         release: note.start + note.duration,
         lift: LIFT_S,

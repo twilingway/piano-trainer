@@ -66,4 +66,30 @@ describe("LiveRig", () => {
       expect(value).toBeCloseTo(expected[axis] ?? 0, 3);
     });
   });
+
+  it("lets a repeated note's key come up between the strikes", () => {
+    const rig = new LiveRig(skeleton(), "right");
+    const note = { duration: 0.5, pitch: 60, finger: 1 as const };
+    const source = (time: number) => ({
+      time,
+      notes: {
+        left: [],
+        right: [
+          { ...note, start: 0 },
+          { ...note, start: 0.5 }
+        ]
+      }
+    });
+    const dips: [number, number][] = [];
+    for (let time = -0.3; time <= 0.8; time += 1 / 120) {
+      const keys = new Map<number, number>();
+      rig.update(source(time), 1 / 120);
+      rig.press(time, keys);
+      dips.push([time, keys.get(60) ?? 0]);
+    }
+    const between = dips.filter(([time]) => time > 0.3 && time < 0.5).map(([, dip]) => dip);
+    const held = dips.filter(([time]) => time > 0.1 && time < 0.3).map(([, dip]) => dip);
+    expect(Math.max(...held)).toBeGreaterThan(0.9);
+    expect(Math.min(...between)).toBeLessThan(0.3);
+  });
 });

@@ -14,7 +14,7 @@ import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 import type { Finger, Hand } from "../../fingering/fingering";
 import { HandSprings, knuckleSide, liveTarget } from "./handMotion";
 import type { LiveHand } from "./handMotion";
-import { planHand, whitePosition } from "./handPlacement";
+import { STRIKE_S, planHand, whitePosition } from "./handPlacement";
 import type { FingeredNote, HandPlan } from "./handPlacement";
 import { ARM_SCALE, BASE, LIFTED, RIG } from "./handPoses";
 
@@ -49,6 +49,8 @@ const SIDE_RADIUS: Readonly<Record<Finger, number>> = {
 const BLACK_REACH = (15 * Math.PI) / 180;
 const ONE = new Vector3(1, 1, 1);
 const X_AXIS = new Vector3(1, 0, 0);
+/** A finger touches its key only near the end of its way down; the key travels the rest. */
+const TOUCH = 0.6;
 const Y_AXIS = new Vector3(0, 1, 0);
 const Z_AXIS = new Vector3(0, 0, 1);
 /** Blender (Z up, keys towards +Y) to glTF (Y up): (x, y, z) → (x, z, -y). */
@@ -105,6 +107,7 @@ export class LiveRig {
   private readonly springs = new HandSprings();
   private plan: HandPlan | undefined;
   private notes: readonly FingeredNote[] | undefined;
+  private live: LiveHand | undefined;
 
   constructor(
     model: Object3D,
@@ -158,6 +161,19 @@ export class LiveRig {
     this.space.position.set(c4 - mirror * C4_X * k, 22 - KEY_TOP * k, KEY_FRONT * k);
   }
 
+  /** How far each key under a finger is down, 0..1, into `keys`: it goes with the finger. */
+  press(time: number, keys: Map<number, number>): void {
+    const hand = this.live;
+    if (!this.plan || !hand) return;
+    for (const finger of [1, 2, 3, 4, 5] as const) {
+      const dip = Math.min(1, Math.max(0, (hand.fingers[finger].bend[0] - TOUCH) / (1 - TOUCH)));
+      for (const note of this.plan.fingers[finger]) {
+        if (time < note.start - STRIKE_S || time > note.release + note.lift) continue;
+        keys.set(note.pitch, Math.max(keys.get(note.pitch) ?? 0, dip));
+      }
+    }
+  }
+
   update(source: HandsSource, deltaSeconds: number): void {
     const notes = source.notes[this.hand];
     if (notes !== this.notes) {
@@ -167,6 +183,7 @@ export class LiveRig {
     this.space.visible = this.plan !== undefined;
     if (!this.plan) return;
     const hand = this.springs.step(liveTarget(this.plan, source.time), deltaSeconds);
+    this.live = hand;
     this.pose(hand);
     this.place(hand);
   }
@@ -239,8 +256,16 @@ export class LiveHands {
     for (const rig of this.rigs) rig.layout(c4, white.width);
   }
 
+  /** How far each key the hands play is down now, 0..1. */
+  readonly keys = new Map<number, number>();
+
   update(source: HandsSource | undefined, deltaSeconds: number): void {
     this.group.visible = source !== undefined;
-    if (source) for (const rig of this.rigs) rig.update(source, deltaSeconds);
+    this.keys.clear();
+    if (!source) return;
+    for (const rig of this.rigs) {
+      rig.update(source, deltaSeconds);
+      rig.press(source.time, this.keys);
+    }
   }
 }

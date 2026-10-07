@@ -118,15 +118,19 @@ export class ThreeKeysHost {
     renderer.render({ container: this.road });
     const picture = gl.texture.getGlSource(scene.texture.source).texture;
     const frame = this.keyboard.frame;
+    const hands = this.hands?.container.visible
+      ? { time: this.hands.time, notes: this.hands.songNotes }
+      : undefined;
+    // Live hands press the keys they play themselves: a repeated note's key comes up between.
+    const played = hands !== undefined && this.stage.hands !== undefined;
     this.stage.draw(
       scene,
       picture,
-      (pitch) => frame !== undefined && (frame.pressed.has(pitch) || frame.sounding.has(pitch)),
+      (pitch) =>
+        frame !== undefined && (frame.pressed.has(pitch) || (!played && frame.sounding.has(pitch))),
       this.app.screen,
       this.app.ticker.deltaMS / 1000,
-      this.hands?.container.visible
-        ? { time: this.hands.time, notes: this.hands.songNotes }
-        : undefined
+      hands
     );
     renderer.resetState();
     renderer.render({ container: stage, clear: false });

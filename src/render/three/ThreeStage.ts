@@ -102,11 +102,11 @@ export class ThreeStage {
     this.keys.scale.setScalar(scale);
     this.keys.position.x = (-keys.pan / 2) * scale;
     const step = Math.min(1, deltaSeconds * DIP_RATE);
+    this.hands?.update(hands, deltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
-      const target = down(pitch) ? DIP : 0;
+      const target = Math.max(down(pitch) ? 1 : 0, this.hands?.keys.get(pitch) ?? 0) * DIP;
       hinge.rotation.x += (target - hinge.rotation.x) * step;
     }
-    this.hands?.update(hands, deltaSeconds);
     this.camera.matrix.copy(viewMatrix(params)).invert();
     this.camera.matrixWorldNeedsUpdate = true;
     this.camera.projectionMatrix.copy(
