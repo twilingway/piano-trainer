@@ -3,6 +3,8 @@ import { Assets, Container, PerspectiveMesh, Sprite, Texture } from "pixi.js";
 import type { Finger, Hand } from "../fingering/fingering";
 import type { Song, SongNote } from "../song/song";
 import { FINGER_COLOR } from "./fingerColors";
+import { HAND_RENDERS, handPoseSet } from "./handRenderCatalog";
+import type { HandStyle } from "./handRenderCatalog";
 import { HAND_SPRITES } from "./handSpriteCatalog";
 import type { HandSpriteDefinition } from "./handSpriteCatalog";
 import { fitPose } from "./handSprites";
@@ -45,8 +47,12 @@ interface Visual {
 export class HandsLayer {
   readonly container = new Container({ eventMode: "none" });
   private readonly visuals = new Map<Hand, Visual>();
-  private readonly textures = new Map<string, Texture>();
+  private readonly textures = new Map<HandSpriteDefinition, Texture>();
   private readonly available: HandSpriteDefinition[] = [];
+  /** The 3D renders loaded so far; fetched only once the 3D style is chosen. */
+  private readonly renders: HandSpriteDefinition[] = [];
+  private rendersRequested = false;
+  private style: HandStyle = "drawn";
   private readonly markerTexture = bakeMarker();
   private readonly poses = new Map<Hand, HandPose>();
   private notes: Record<Hand, SongNote[]> = { left: [], right: [] };
@@ -83,7 +89,7 @@ export class HandsLayer {
         try {
           const original = await Assets.load<Texture>(definition.url);
           if (!this.disposed) {
-            this.textures.set(definition.id, fadeWrist(original));
+            this.textures.set(definition, fadeWrist(original));
           }
         } catch (error) {
           console.warn(`Hand pose ${definition.id} did not load; using remaining poses`, error);
@@ -91,7 +97,35 @@ export class HandsLayer {
       })
     );
     if (!this.disposed)
-      this.available.push(...HAND_SPRITES.filter((pose) => this.textures.has(pose.id)));
+      this.available.push(...HAND_SPRITES.filter((pose) => this.textures.has(pose)));
+  }
+
+  /** Switches the look of the hands; the 3D renders start loading the first time they are asked for. */
+  setStyle(style: HandStyle): void {
+    if (style === this.style) return;
+    this.style = style;
+    // The two sets differ in scale: no cross-fade from one into the other.
+    this.reset();
+    if (style === "rendered" && !this.rendersRequested) {
+      this.rendersRequested = true;
+      void this.loadRenders();
+    }
+  }
+
+  private async loadRenders(): Promise<void> {
+    await Promise.all(
+      HAND_RENDERS.map(async (definition) => {
+        try {
+          // The wrist fade is baked into the renders.
+          const texture = await Assets.load<Texture>(definition.url);
+          if (this.disposed) return;
+          this.textures.set(definition, texture);
+          this.renders.push(definition);
+        } catch (error) {
+          console.warn(`Hand render ${definition.id} did not load; using remaining poses`, error);
+        }
+      })
+    );
   }
 
   setSong(song: Song): void {
@@ -124,7 +158,11 @@ export class HandsLayer {
     waitingFor: readonly SongNote[] = [],
     speed = 1
   ): void {
-    const available = this.available;
+    const { poses: available, exactPressed } = handPoseSet(
+      this.style,
+      this.available,
+      this.renders
+    );
     // The hand sets off at the latest as the next key starts to light, in song seconds.
     const lead = (APPROACH_MS / 1000) * speed;
     for (const hand of HANDS) {
@@ -151,19 +189,19 @@ export class HandsLayer {
       const pose = easePose(previous, aim, deltaSeconds, MOVE_SMOOTHING_S);
       this.poses.set(hand, pose);
       const targets = new Map([...aim.down].map((finger) => [finger, aim.tips[finger].x]));
-      const fit = fitPose(available, hand, targets, geometry.whiteWidth, 1);
-      const chosen = fit && available.find((definition) => definition.id === fit.pose.id);
+      const fit = fitPose(available, hand, targets, geometry.whiteWidth, 1, exactPressed);
+      const chosen = fit && available.find((definition) => definition === fit.pose);
       if (
         fit &&
         chosen &&
         visual.blend >= 1 &&
-        visual.pictures[visual.front].definition?.id !== fit.pose.id
+        visual.pictures[visual.front].definition !== chosen
       ) {
         const hadPicture = visual.pictures[visual.front].definition !== undefined;
         visual.front = visual.front === 0 ? 1 : 0;
         const picture = visual.pictures[visual.front];
         picture.definition = chosen;
-        picture.mesh.texture = this.textures.get(fit.pose.id) ?? Texture.WHITE;
+        picture.mesh.texture = this.textures.get(chosen) ?? Texture.WHITE;
         picture.x = fit.x;
         picture.y = fitY(picture.definition, aim, geometry, fit.scaleY);
         visual.blend = hadPicture ? 0 : 1;
@@ -219,7 +257,11 @@ export class HandsLayer {
 
   destroy(): void {
     this.disposed = true;
-    for (const texture of this.textures.values()) texture.destroy(true);
+    // The baked drawn poses are this layer's own; the renders belong to the Assets cache.
+    for (const [definition, texture] of this.textures) {
+      if (!this.renders.includes(definition)) texture.destroy(true);
+    }
+    if (this.renders.length > 0) void Assets.unload(this.renders.map((pose) => pose.url));
     this.textures.clear();
     this.markerTexture.destroy(true);
   }

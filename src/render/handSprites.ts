@@ -29,14 +29,17 @@ const UNPRESSED_PENALTY = 0.5;
  * The pose whose fingertips land nearest the keys the hand plays, and where to
  * put it. Each pose uses its measured pixels per white key, falling back to
  * `pixelsPerKey` for older pictures. The picture only slides along the keyboard;
- * its proportions are never stretched to fit the targets.
+ * its proportions are never stretched to fit the targets. With `exactPressed`, a finger the
+ * picture shows pressing that has no target costs the same, so a pose with extra pressed fingers
+ * loses to the one pressing exactly the played fingers.
  */
 export function fitPose(
   poses: readonly PoseSprite[],
   hand: Hand,
   targets: ReadonlyMap<Finger, number>,
   whiteWidth: number,
-  pixelsPerKey: number
+  pixelsPerKey: number,
+  exactPressed = false
 ): PoseFit | undefined {
   // Also refuses NaN: a pose measured wrong must not place a hand nowhere.
   if (targets.size === 0 || !Number.isFinite(whiteWidth) || !(whiteWidth > 0)) return undefined;
@@ -57,6 +60,10 @@ export function fitPose(
     for (const [finger, x] of targets) {
       miss += Math.abs(pose.tips[finger].x * scaleX + shift - x);
       if (!pose.pressed.has(finger)) miss += whiteWidth * UNPRESSED_PENALTY;
+    }
+    if (exactPressed) {
+      for (const finger of pose.pressed)
+        if (!targets.has(finger)) miss += whiteWidth * UNPRESSED_PENALTY;
     }
     if (Number.isFinite(shift) && Number.isFinite(miss) && (!best || miss < best.miss))
       best = { pose, scaleX, scaleY: scale, x: shift, miss };

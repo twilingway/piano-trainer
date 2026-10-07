@@ -33,6 +33,7 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   lane,
   keys: false,
   hands: false,
+  handStyle: "drawn",
   road: true,
   noteCards: false,
   noteCardsConfigured: false,

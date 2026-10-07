@@ -3,30 +3,15 @@ import type { Messages } from "./locales";
 export const handStudyMessages = {
   "Эскизы кистей": { en: "Hand studies" },
   "Кисти на нашей клавиатуре": { en: "Hands on our keyboard" },
-  "Выберите позу и сравните три векторных оформления.": {
-    en: "Pick a pose and compare three vector treatments."
+  "Нажатые клавиши задаёт поза, свободные пальцы принимают естественное положение.": {
+    en: "The pose sets the pressed keys; free fingers settle naturally."
   },
   "Поза кисти": { en: "Hand pose" },
-  "Какие кисти показывать": { en: "Hands to display" },
-  "Обе кисти": { en: "Both hands" },
-  "Только правую кисть": { en: "Right hand only" },
-  "Только левую кисть": { en: "Left hand only" },
-  "Прозрачность кистей": { en: "Hand opacity" },
-  "Метки пальцев": { en: "Finger markers" },
-  "Существующий спрайт": { en: "Existing sprite" },
-  "Холодное стекло": { en: "Frosted glass" },
-  "Тонкий контур": { en: "Fine outline" },
-  "Тёплый объём": { en: "Warm shading" },
-  "Контур и мягкие блики, близкие к текущим кистям.": {
-    en: "Outline and soft highlights, close to the existing hands."
-  },
-  "Лёгкая заливка оставляет клавиши открытыми.": { en: "A light fill keeps the keys visible." },
-  "Мягкие тени и ногти придают кисти объём.": { en: "Soft shadows and nails give the hand depth." },
-  "Каталог поз кисти": { en: "Hand pose catalog" },
-  "Сочетания пальцев и варианты раскрытия": { en: "Finger combinations and reach variations" },
-  "Нажмите на эскиз, чтобы рассмотреть позу крупнее.": {
-    en: "Click a study to inspect the pose at full size."
-  },
+  "Предыдущая поза": { en: "Previous pose" },
+  "Следующая поза": { en: "Next pose" },
+  "Стрелки ← → на клавиатуре листают позы.": { en: "The ← → arrow keys flip through the poses." },
+  "Рендеры 3D-модели": { en: "3D model renders" },
+  "Позы, решённые на модели кисти": { en: "Poses solved on the hand model" },
   "Спокойная кисть": { en: "Relaxed hand" },
   "Одна нота · палец {fingers}": { en: "Single note · finger {fingers}" },
   "Две ноты · пальцы {fingers}": { en: "Two notes · fingers {fingers}" },
@@ -43,12 +28,8 @@ export const handStudyMessages = {
   "Септаккорд · 1–2–3–5": { en: "Seventh chord · 1–2–3–5" },
   "Аккорд с чёрной клавишей": { en: "Chord with a black key" },
   "Подложенный большой палец": { en: "Thumb tucked under" },
-  "Для сравнения: исходное изображение кисти, без подгонки отдельных пальцев.": {
-    en: "Reference: the original hand image, without individual finger fitting."
-  },
-  "Векторные эскизы для выбора внешнего вида. Аппликатура и анатомия требуют отдельной проверки перед внедрением.":
+  "3D-модель, вид сверху, правая кисть. Аппликатура и анатомия требуют отдельной проверки перед внедрением.":
     {
-      en: "Vector studies for choosing the visual treatment. Fingering and anatomy need a separate review before integration."
-    },
-  "Пример на нашей клавиатуре": { en: "Preview on our keyboard" }
+      en: "3D model, top view, right hand. Fingering and anatomy need a separate review before integration."
+    }
 } satisfies Messages;
