@@ -51,6 +51,8 @@ const ONE = new Vector3(1, 1, 1);
 const X_AXIS = new Vector3(1, 0, 0);
 /** How much longer than the base pose the forearm is drawn. */
 const FOREARM = 5;
+/** The player's right elbow in the solver's scene, glTF axes: beside middle C, before the keys. */
+const ELBOW = new Vector3(C4_X + 0.2, KEY_TOP - 0.02, -(KEY_FRONT - 0.3));
 /** A finger touches its key only near the end of its way down; the key travels the rest. */
 const TOUCH = 0.6;
 const Y_AXIS = new Vector3(0, 1, 0);
@@ -247,6 +249,21 @@ export class LiveRig {
       .multiply(new Matrix4().makeTranslation(-p.x, -p.y, -p.z))
       .multiply(this.rest);
     this.rig.matrixWorldNeedsUpdate = true;
+    this.aimForearm();
+  }
+
+  /**
+   * Turns the forearm about the wrist towards an elbow under the player's shoulder: a player sits
+   * at middle C, so the forearms come in from the sides, not straight at the camera.
+   */
+  private aimForearm(): void {
+    const elbow = ELBOW.clone().applyMatrix4(this.rig.matrix.clone().invert());
+    const along = this.wrist.position.clone().sub(elbow).normalize();
+    const axis = new Vector3(0, 1, 0).applyQuaternion(this.arm.quaternion);
+    this.arm.quaternion.premultiply(new Quaternion().setFromUnitVectors(axis, along));
+    const length =
+      this.arm.scale.y * (this.joints.find((joint) => joint.bone === this.wrist)?.position.y ?? 0);
+    this.arm.position.copy(this.wrist.position).addScaledVector(along, -length);
   }
 }
 
