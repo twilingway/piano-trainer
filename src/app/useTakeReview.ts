@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { compareTake } from "../recording/compare";
-import type { Grade, TakeReview } from "../recording/compare";
-import { loadTakes, saveTake } from "../recording/history";
+import type { Grade } from "../recording/compare";
 import { takeAsSong, takeToMidi } from "../recording/playback";
 import type { Take } from "../recording/take";
 import { transcribeTake } from "../recording/transcribe";
@@ -11,9 +10,10 @@ import { musicXmlWithLineBreaks } from "../song/musicxml";
 import type { Song } from "../song/song";
 import { markKey } from "../staff/Staff";
 
-export type SplitDirection = "row" | "column";
-/** The take's own staff: hidden, beside the original, or under it. */
-export type TakeStaff = "off" | SplitDirection;
+import { reviewActions, type SplitDirection, type TakeStaff } from "./reviewSlice";
+import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
+export type { SplitDirection, TakeStaff } from "./reviewSlice";
+const EMPTY_TAKES: readonly Take[] = [];
 
 /** Staff colours of a written-out take: the review's, and red for a key that matched no note. */
 const TRANSCRIBED_COLORS: Readonly<Record<TranscribedGrade, string>> = {
@@ -58,62 +58,66 @@ export function useTakeReview(
   ensureSound: () => Promise<void>,
   { withNames, fixedLines, measuresPerLine, autoReview }: StaffLayout
 ) {
-  /** The last take and how it compares with the score. */
-  const [lastTake, setLastTake] = useState<{ take: Take; review: TakeReview } | null>(null);
-  const [takes, setTakes] = useState<Take[]>([]);
-  /** The take playing on one screen against the original on the other. */
-  const [comparing, setComparing] = useState(false);
-  const [splitDirection, setSplitDirection] = useState<SplitDirection>("row");
-  /** Bumped to play the comparison again from its start. */
-  const [replayCount, setReplayCount] = useState(0);
-  const [takeStaff, setTakeStaff] = useState<TakeStaff>("off");
-  /** The review of the last take is on screen: the bar and the marks on the staff. */
-  const [reviewShown, setReviewShown] = useState(false);
-
-  // Each song and level keeps its own takes.
-  const [takesOf, setTakesOf] = useState<string | null>(null);
-  if (takesOf !== songKey) {
-    // Another song or level: its own history, and nothing of the last one on screen.
-    setTakesOf(songKey);
-    setTakes(loadTakes(songKey));
-    setLastTake(null);
-    setComparing(false);
-    setReviewShown(false);
-  }
-
-  /** A finished take is compared with the song on screen now. */
-  const recordTake = (take: Take) => {
-    setTakes(saveTake(take));
-    setLastTake({ take, review: compareTake(song, take) });
-    setReviewShown(autoReview);
-  };
-
-  const showReview = () => {
-    setReviewShown(true);
-  };
-
-  const selectTake = (id: string) => {
-    const take = takes.find((item) => item.id === id);
-    if (take) setLastTake({ take, review: compareTake(song, take) });
-  };
-
-  const startComparing = async () => {
+  const dispatch = useAppDispatch(),
+    store = useAppStore();
+  const takes = useAppSelector((state) => state.review.historyBySong[songKey] ?? EMPTY_TAKES);
+  const context = useAppSelector((state) => state.review.songKey);
+  const selectedId = useAppSelector((state) => state.review.selectedId);
+  const storedComparing = useAppSelector((state) => state.review.comparing);
+  const splitDirection = useAppSelector((state) => state.review.splitDirection);
+  const replayCount = useAppSelector((state) => state.review.replayCount);
+  const takeStaff = useAppSelector((state) => state.review.takeStaff);
+  const storedShown = useAppSelector((state) => state.review.reviewShown);
+  const comparing = context === songKey && storedComparing;
+  const reviewShown = context === songKey && storedShown;
+  const selected = context === songKey ? takes.find((take) => take.id === selectedId) : undefined;
+  const lastTake = useMemo(
+    () => (selected ? { take: selected, review: compareTake(song, selected) } : null),
+    [selected, song]
+  );
+  useEffect(() => {
+    dispatch(reviewActions.contextChanged(songKey));
+  }, [dispatch, songKey]);
+  const recordTake = useCallback(
+    (take: Take) => {
+      dispatch(reviewActions.takeCompleted({ take, autoReview }));
+    },
+    [dispatch, autoReview]
+  );
+  const showReview = useCallback(() => {
+    dispatch(reviewActions.reviewShownChanged(true));
+  }, [dispatch]);
+  const selectTake = useCallback(
+    (id: string) => {
+      dispatch(reviewActions.takeSelected(id));
+    },
+    [dispatch]
+  );
+  const startComparing = useCallback(async () => {
+    const before = store.getState().review;
+    const id = before.selectedId;
     await ensureSound();
-    setComparing(true);
-  };
-
-  const replay = () => {
-    setReplayCount((count) => count + 1);
-  };
-
-  const hideReview = () => {
-    setComparing(false);
-    setLastTake(null);
-    setReviewShown(false);
-  };
-
+    const current = store.getState().review;
+    if (current.songKey === songKey && current.selectedId === id && id !== null)
+      dispatch(reviewActions.comparingChanged(true));
+  }, [store, ensureSound, songKey, dispatch]);
+  const replay = useCallback(() => {
+    dispatch(reviewActions.replayRequested());
+  }, [dispatch]);
+  const hideReview = useCallback(() => {
+    dispatch(reviewActions.reviewHidden());
+  }, [dispatch]);
   const downloadLastTake = () => {
     if (lastTake) downloadTake(lastTake.take, song.title);
+  };
+  const setComparing = (value: boolean) => {
+    dispatch(reviewActions.comparingChanged(value));
+  };
+  const setSplitDirection = (value: SplitDirection) => {
+    dispatch(reviewActions.splitDirectionChanged(value));
+  };
+  const setTakeStaff = (value: TakeStaff) => {
+    dispatch(reviewActions.takeStaffChanged(value));
   };
 
   // The take as a song, sounding with its own velocities, while comparing.

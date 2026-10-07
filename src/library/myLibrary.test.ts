@@ -1,11 +1,33 @@
 import "fake-indexeddb/auto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { listMySongs, loadMySong, removeMySong, saveMySong } from "./myLibrary";
 
 const data = (...values: number[]) => new Uint8Array(values).buffer;
 
 describe("my library", () => {
+  it("rejects a successful put when its transaction is then aborted", async () => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoke the native method with its receiver via call below.
+    const original = IDBObjectStore.prototype.put;
+    const put = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      value: unknown,
+      key?: IDBValidKey
+    ) {
+      const result =
+        key === undefined ? original.call(this, value) : original.call(this, value, key);
+      result.addEventListener("success", () => {
+        this.transaction.abort();
+      });
+      return result;
+    });
+    try {
+      await expect(saveMySong("abort.mid", "abort", data(4))).rejects.toThrow();
+    } finally {
+      put.mockRestore();
+    }
+    expect((await listMySongs()).some((song) => song.fileName === "abort.mid")).toBe(false);
+  });
   it("keeps a song's file and lists it without the bytes", async () => {
     const saved = await saveMySong("Вальс.mid", "Вальс", data(1, 2, 3));
     const listed = await listMySongs();

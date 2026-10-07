@@ -6,7 +6,9 @@ export function PersistenceNotice() {
   const { t } = useI18n();
   return Object.keys(errors).length > 0 ? (
     <div className="toast toast--error" role="status">
-      {t("Не удалось сохранить данные. Изменения доступны до закрытия страницы.")}
+      {t(
+        "Не удалось прочитать или сохранить часть данных. Изменения доступны до закрытия страницы."
+      )}
     </div>
   ) : null;
 }

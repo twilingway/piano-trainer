@@ -59,6 +59,30 @@ async function store(name: string, mode: IDBTransactionMode): Promise<IDBObjectS
   return (await database()).transaction(name, mode).objectStore(name);
 }
 
+/** Request success can still be rolled back; wait for the complete transaction. */
+async function write<T>(
+  name: string,
+  operation: (store: IDBObjectStore) => IDBRequest<T>
+): Promise<T> {
+  const transaction = (await database()).transaction(name, "readwrite");
+  const committed = new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => {
+      resolve();
+    };
+    transaction.onabort = () => {
+      reject(transaction.error ?? new Error("IndexedDB transaction aborted"));
+    };
+    transaction.onerror = () => {
+      reject(transaction.error ?? new Error("IndexedDB transaction failed"));
+    };
+  });
+  const [result] = await Promise.all([
+    request(operation(transaction.objectStore(name))),
+    committed
+  ]);
+  return result;
+}
+
 /** The songs, newest first, without their bytes. */
 export async function listMySongs(): Promise<MySong[]> {
   const all = await request((await store(SONGS, "readonly")).getAll() as IDBRequest<StoredSong[]>);
@@ -88,7 +112,7 @@ export async function saveMySong(
     addedAt: same?.addedAt ?? new Date().toISOString(),
     data
   };
-  await request((await store(SONGS, "readwrite")).put(song));
+  await write(SONGS, (songs) => songs.put(song));
   const { data: _data, ...meta } = song;
   return meta;
 }
@@ -103,7 +127,7 @@ export async function loadMySong(
 }
 
 export async function removeMySong(id: string): Promise<void> {
-  await request((await store(SONGS, "readwrite")).delete(id));
+  await write(SONGS, (songs) => songs.delete(id));
 }
 
 /** The folder the player chose, as the browser granted it; undefined if none. */
@@ -119,7 +143,6 @@ export async function loadFolderHandle(): Promise<FileSystemDirectoryHandle | un
 export async function saveFolderHandle(
   handle: FileSystemDirectoryHandle | undefined
 ): Promise<void> {
-  const settings = await store(SETTINGS, "readwrite");
-  if (handle) await request(settings.put(handle, FOLDER_KEY));
-  else await request(settings.delete(FOLDER_KEY));
+  if (handle) await write(SETTINGS, (settings) => settings.put(handle, FOLDER_KEY));
+  else await write(SETTINGS, (settings) => settings.delete(FOLDER_KEY));
 }
