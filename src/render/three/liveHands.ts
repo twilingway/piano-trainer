@@ -49,6 +49,8 @@ const SIDE_RADIUS: Readonly<Record<Finger, number>> = {
 const BLACK_REACH = (15 * Math.PI) / 180;
 const ONE = new Vector3(1, 1, 1);
 const X_AXIS = new Vector3(1, 0, 0);
+/** How much longer than the base pose the forearm is drawn. */
+const FOREARM = 5;
 /** A finger touches its key only near the end of its way down; the key travels the rest. */
 const TOUCH = 0.6;
 const Y_AXIS = new Vector3(0, 1, 0);
@@ -218,6 +220,14 @@ export class LiveRig {
       ONE
     );
     arm.multiply(wrist).decompose(this.wrist.position, this.wrist.quaternion, this.wrist.scale);
+    // A longer forearm, stretched about the wrist: its cut end leaves the frame, the hand stays.
+    const length = this.wrist.position.clone().sub(this.arm.position).length();
+    this.arm.position.add(
+      new Vector3(0, -1, 0)
+        .applyQuaternion(this.arm.quaternion)
+        .multiplyScalar(length * (FOREARM - 1))
+    );
+    this.arm.scale.y *= FOREARM;
   }
 
   /** Slides the rig by the position and the wrist and turns it about the wrist. */
