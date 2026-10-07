@@ -24,6 +24,7 @@ import { handSurface } from "./handProjection";
 import type { HandsGeometry } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
 import { ThreeKeysHost } from "./three/ThreeKeysHost";
+import type { HandsLayer } from "./HandsLayer";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
 export interface Strike {
@@ -131,7 +132,8 @@ export class RoadLayer {
   constructor(
     private readonly renderer: Renderer,
     app?: Application,
-    keyboard?: KeyboardLayer
+    keyboard?: KeyboardLayer,
+    hands?: HandsLayer
   ) {
     // One blur for every strip's glow; its last pass blends as the filter does: add, for a glow.
     this.staff = new StaffRoadLayer();
@@ -165,7 +167,8 @@ export class RoadLayer {
     this.effects.addChild(this.hitLine);
     this.effects.eventMode = "none";
     this.sparkTexture = bakeSpark(renderer);
-    this.three = app && keyboard && new ThreeKeysHost(app, this.container, this.keys, keyboard);
+    this.three =
+      app && keyboard && new ThreeKeysHost(app, this.container, this.keys, keyboard, hands);
   }
 
   beginNotes(): void {

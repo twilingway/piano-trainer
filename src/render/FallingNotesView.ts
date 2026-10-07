@@ -167,7 +167,7 @@ export class FallingNotesView {
     computerKeyboard.setKeys(this.computer);
     computerKeyboard.showStickers(this.labels);
     this.computerKeyboard = computerKeyboard;
-    this.road = new RoadLayer(renderer, this.app, keyboard);
+    this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
     this.road.setCamera(this.cameraPrefs);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
     void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
@@ -589,7 +589,8 @@ export class FallingNotesView {
     const keysBottom = geometry.keyboardTop + geometry.keyboardHeight;
     this.keysFloor = height - keysBottom;
     if (this.road) {
-      const handRoom = this.parts.hands ? height - floor - keysBottom : 0;
+      // The live 3D hands lie on the keys: no room under them for the sprite hands.
+      const handRoom = this.parts.hands && !this.hands.live ? height - floor - keysBottom : 0;
       this.road.layout(total, geometry.hitY, height - floor, width, handRoom);
       // On the road the computer keyboard is one slab, its picture its face.
       this.road.setKeyboard(

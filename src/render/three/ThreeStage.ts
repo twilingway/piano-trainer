@@ -14,11 +14,14 @@ import {
   Scene
 } from "three";
 import { WebGLRenderer } from "three";
+import type { Object3D } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import { keyBoxes } from "./keyBoxes";
 import type { KeyBox } from "./keyBoxes";
 import { KIT_DEPTH, KIT_TOP, KIT_WHITE, splitUp, whitePart } from "./pianoKit";
 import type { KitPart, PianoKit } from "./pianoKit";
+import { LiveHands } from "./liveHands";
+import type { HandsSource } from "./liveHands";
 import { projectionMatrix, viewMatrix } from "./threeCamera";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
@@ -48,18 +51,21 @@ export class ThreeStage {
   private readonly black = new MeshStandardMaterial({ color: 0x1d2028, roughness: 0.4 });
   private readonly case = new MeshStandardMaterial({ color: 0x1c1d24, roughness: 0.3 });
   private readonly felt = new MeshStandardMaterial({ color: 0x951f2c, roughness: 0.95 });
-  private readonly table = new MeshStandardMaterial({ color: 0x343033, roughness: 0.45 });
-  /** The case around the keys: rails, cheeks, the back panel and the table. */
+  /** The case around the keys: rails, cheeks and the back panel. */
   private readonly body = new Group();
   private readonly board: BufferGeometry;
+  /** The live hands, once their model has loaded; without it the sprite hands stay. */
+  readonly hands: LiveHands | undefined;
   private hinged: Hinged[] = [];
   private version = -1;
 
   constructor(
     canvas: HTMLCanvasElement,
     private readonly context: WebGL2RenderingContext,
-    private readonly kit: PianoKit
+    private readonly kit: PianoKit,
+    hand: Object3D | undefined
   ) {
+    this.hands = hand && new LiveHands(hand);
     // The board's top is left out: the road runs there, drawn before the keys.
     this.board = splitUp(this.part("board").clone(), true);
     this.renderer = new WebGLRenderer({ canvas, context });
@@ -71,6 +77,7 @@ export class ThreeStage {
     sun.position.set(-150, 900, 900);
     this.scene.add(new HemisphereLight(0xffffff, 0x9a9fac, 1.8), sun, this.keys);
     this.keys.add(this.body);
+    if (this.hands) this.keys.add(this.hands.group);
   }
 
   /** Draws the keys over whatever is in the frame now, keeping it: the road under them. */
@@ -79,7 +86,8 @@ export class ThreeStage {
     picture: WebGLTexture,
     down: (pitch: number) => boolean,
     screen: { readonly width: number; readonly height: number },
-    deltaSeconds: number
+    deltaSeconds: number,
+    hands: HandsSource | undefined
   ): void {
     if (keys.version !== this.version) this.build(keys);
     this.picture.sourceTexture = picture;
@@ -92,6 +100,7 @@ export class ThreeStage {
       const target = down(pitch) ? DIP : 0;
       hinge.rotation.x += (target - hinge.rotation.x) * step;
     }
+    this.hands?.update(hands, deltaSeconds);
     this.camera.matrix.copy(viewMatrix(params)).invert();
     this.camera.matrixWorldNeedsUpdate = true;
     this.camera.projectionMatrix.copy(
@@ -114,7 +123,7 @@ export class ThreeStage {
   dispose(): void {
     this.clear();
     this.board.dispose();
-    for (const material of [this.top, this.white, this.black, this.case, this.felt, this.table])
+    for (const material of [this.top, this.white, this.black, this.case, this.felt])
       material.dispose();
     this.renderer.dispose();
   }
@@ -143,7 +152,7 @@ export class ThreeStage {
     this.buildBody(boxes);
   }
 
-  /** Rails, back panel and table across the range, a cheek at each end. */
+  /** Rails and back panel across the range, a cheek at each end. */
   private buildBody(boxes: readonly KeyBox[]): void {
     const whites = boxes.filter((box) => !box.black);
     if (whites.length === 0) return;
@@ -151,6 +160,7 @@ export class ThreeStage {
     const right = Math.max(...whites.map((box) => box.x + box.width / 2));
     const across = (whites[0]?.width ?? 0) / KIT_WHITE;
     const cheek = 0.034 * across;
+    if (whites[0]) this.hands?.layout(whites[0]);
     const add = (
       geometry: BufferGeometry,
       material: MeshStandardMaterial,
@@ -167,7 +177,6 @@ export class ThreeStage {
     add(this.board, this.case, centre, width);
     add(this.part("felt"), this.felt, centre, right - left);
     add(this.part("slip"), this.case, centre, width);
-    add(this.part("table"), this.table, centre, width + 4 * cheek);
     add(this.part("cheek"), this.case, left - cheek / 2, across);
     add(this.part("cheek"), this.case, right + cheek / 2, across);
   }

@@ -1,5 +1,6 @@
 import { Container, UPDATE_PRIORITY } from "pixi.js";
 import type { Application, WebGLRenderer } from "pixi.js";
+import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
 import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
 import type { ThreeStage } from "./ThreeStage";
@@ -26,7 +27,8 @@ export class ThreeKeysHost {
     /** The road's container: drawn first, on its own. */
     private readonly road: Container,
     private readonly keys: PerspectiveKeyboardLayer,
-    private readonly keyboard: KeyboardLayer
+    private readonly keyboard: KeyboardLayer,
+    private readonly hands: HandsLayer | undefined
   ) {}
 
   /** Settles once the keys are drawn by three, or once it is clear that they cannot be. */
@@ -60,11 +62,19 @@ export class ThreeKeysHost {
     if (typeof WebGL2RenderingContext === "undefined" || !(gl instanceof WebGL2RenderingContext))
       return;
     try {
-      const [{ ThreeStage }, { loadPianoKit }] = await Promise.all([
+      const [{ ThreeStage }, { loadPianoKit }, { loadHand }] = await Promise.all([
         import("./ThreeStage"),
-        import("./pianoKit")
+        import("./pianoKit"),
+        import("./liveHands")
       ]);
-      this.stage = new ThreeStage(this.app.canvas, gl, await loadPianoKit());
+      const [kit, hand] = await Promise.all([
+        loadPianoKit(),
+        loadHand().catch((error: unknown) => {
+          console.warn("3D hands unavailable, keeping the sprite hands", error);
+          return undefined;
+        })
+      ]);
+      this.stage = new ThreeStage(this.app.canvas, gl, kit, hand);
     } catch (error) {
       console.warn("3D keys unavailable, keeping the perspective keys", error);
     } finally {
@@ -77,6 +87,7 @@ export class ThreeKeysHost {
     const on = this.wanted && this.stage !== undefined;
     if (on === this.active) return;
     this.active = on;
+    if (this.hands) this.hands.live = on && this.stage?.hands !== undefined;
     const { ticker } = this.app;
     // The ticker calls the app's render with the app as `this`, as Pixi itself added it.
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -112,7 +123,10 @@ export class ThreeKeysHost {
       picture,
       (pitch) => frame !== undefined && (frame.pressed.has(pitch) || frame.sounding.has(pitch)),
       this.app.screen,
-      this.app.ticker.deltaMS / 1000
+      this.app.ticker.deltaMS / 1000,
+      this.hands?.container.visible
+        ? { time: this.hands.time, notes: this.hands.songNotes }
+        : undefined
     );
     renderer.resetState();
     renderer.render({ container: stage, clear: false });
