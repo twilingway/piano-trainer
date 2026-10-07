@@ -1,29 +1,29 @@
 import { useCallback, useMemo, useState } from "react";
 import { effectiveBindings } from "../input/keyboardLayouts";
-import type { KeyBinding, KeyboardPreset, KeyboardPrefs } from "../input/keyboardLayouts";
+import type { KeyBinding, KeyboardPreset } from "../input/keyboardLayouts";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
-import { loadKeyboardPrefs, saveKeyboardPrefs } from "./keyboardPreferences";
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, useAppSelector } from "./storeHooks";
+import { persistenceKey } from "./preferencePersistence";
 
 export function useComputerKeyboard() {
-  const [prefs, setPrefs] = useState(loadKeyboardPrefs);
+  const prefs = useAppSelector((state) => state.preferences.keyboard);
+  const dispatch = useAppDispatch();
+  const saveError = useAppSelector(
+    (state) => state.persistence.errors[persistenceKey("computer-keyboard-v1", "write")]
+  );
+  const error = saveError
+    ? "Не удалось сохранить раскладку: после перезагрузки страницы она сбросится."
+    : null;
   const [editing, setEditing] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [capturedCode, setCapturedCode] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const endEditing = useCallback(() => {
     setEditing(false);
     setCapturing(false);
     setCapturedCode(null);
   }, []);
   const bindings = useMemo(() => effectiveBindings(prefs), [prefs]);
-  const update = (next: KeyboardPrefs) => {
-    setPrefs(next);
-    setError(
-      saveKeyboardPrefs(next)
-        ? null
-        : "Не удалось сохранить раскладку: после перезагрузки страницы она сбросится."
-    );
-  };
   const options: KeyboardInputOptions = useMemo(
     () => ({
       bindings,
@@ -51,20 +51,13 @@ export function useComputerKeyboard() {
     capturing,
     editing,
     choosePreset: (preset: KeyboardPreset) => {
-      update({ ...prefs, preset });
+      dispatch(preferencesActions.keyboardPresetChosen(preset));
     },
     assign: (code: string, binding: KeyBinding) => {
-      update({
-        ...prefs,
-        overrides: {
-          ...prefs.overrides,
-          [prefs.preset]: { ...prefs.overrides[prefs.preset], [code]: binding }
-        }
-      });
+      dispatch(preferencesActions.keyboardBindingAssigned({ code, binding }));
     },
     reset: () => {
-      const { [prefs.preset]: removed, ...overrides } = prefs.overrides;
-      update({ ...prefs, overrides });
+      dispatch(preferencesActions.keyboardReset());
     },
     beginEditing: () => {
       setEditing(true);

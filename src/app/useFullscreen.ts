@@ -1,43 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 
-const PREF_KEY = "fullscreen-preferred";
-
-function loadPreference(): boolean {
-  try {
-    return localStorage.getItem(PREF_KEY) !== "false";
-  } catch {
-    return true;
-  }
-}
-
-function savePreference(enabled: boolean): void {
-  try {
-    localStorage.setItem(PREF_KEY, String(enabled));
-  } catch {
-    // The current session still works when browser storage is unavailable.
-  }
-}
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, useAppStore } from "./storeHooks";
 
 /** Fullscreen requires a user gesture; a saved preference waits for the next mobile button click. */
 export function useFullscreen() {
   const [active, setActive] = useState(Boolean(document.fullscreenElement));
   const [error, setError] = useState<string | null>(null);
-  const preferred = useRef(loadPreference());
+  const store = useAppStore();
+  const dispatch = useAppDispatch();
   const pending = useRef(false);
 
   useEffect(() => {
     const onChange = () => {
       const enabled = Boolean(document.fullscreenElement);
       setActive(enabled);
-      preferred.current = enabled;
-      savePreference(enabled);
+      dispatch(preferencesActions.fullscreenChanged(enabled));
     };
     document.addEventListener("fullscreenchange", onChange);
     return () => {
       document.removeEventListener("fullscreenchange", onChange);
     };
-  }, []);
+  }, [dispatch]);
 
   const enter = async (explicit: boolean) => {
     if (pending.current || document.fullscreenElement) return;
@@ -45,8 +30,7 @@ export function useFullscreen() {
       if (explicit) setError("Браузер не поддерживает полноэкранный режим.");
       return;
     }
-    preferred.current = true;
-    savePreference(true);
+    dispatch(preferencesActions.fullscreenChanged(true));
     pending.current = true;
     setError(null);
     try {
@@ -63,8 +47,7 @@ export function useFullscreen() {
       await enter(true);
       return;
     }
-    preferred.current = false;
-    savePreference(false);
+    dispatch(preferencesActions.fullscreenChanged(false));
     setError(null);
     try {
       await document.exitFullscreen();
@@ -74,7 +57,10 @@ export function useFullscreen() {
   };
 
   const onClickCapture = (event: MouseEvent<HTMLElement>) => {
-    if (!preferred.current || !window.matchMedia("(pointer: coarse), (max-width: 640px)").matches)
+    if (
+      !store.getState().preferences.fullscreen ||
+      !window.matchMedia("(pointer: coarse), (max-width: 640px)").matches
+    )
       return;
     const target = event.target;
     if (!(target instanceof Element) || target.closest("[data-fullscreen-toggle]")) return;

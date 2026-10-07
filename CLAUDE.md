@@ -74,6 +74,11 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 - `.claude/skills/codex-worker` — which agent gets which task (Codex CLI, the Codex plugin, local
   Qwen through opencode), how a delegated diff is isolated in a worktree, measured and accepted.
 - `.claude/skills/codex-visual` — Codex as an independent UI/UX consultant and image generator.
+- `.claude/skills/ref2game` (Codex: `.agents/skills/ref2game`) — vendored upstream skill: a
+  reference image becomes a playable 2D slice on its own WebGL2 engine, not inside this app. Game
+  projects go to the git-ignored `games/<name>`; only accepted assets move into `src`. Not for 3D.
+  Its scripts call `python3`, which on this machine is the Microsoft Store stub until the alias is
+  turned off.
 - `.codex/agents/` — Codex's read-only `reviewer` and `spec_architect`.
 - `.opencode/agents/` and `opencode.json` — opencode's agents and the Qwen providers (LM Studio on
   `192.168.1.227:1234`, and the remote endpoint).
@@ -86,13 +91,16 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 
 `~/.claude/CLAUDE.md` carries the personal working rules. Where this project differs:
 
-- **A task branches off `main` without asking, unlike the global default.** The user's standing
-  instruction (2026-09-30): every task starts on a fresh branch off an up-to-date `main` (`feat/…`,
-  `fix/…`, `chore/…`), a feature goes through an OpenSpec change on that branch, and the branch
-  lands through a pull request once `pnpm check` and `pnpm spec:validate` pass. The standing
-  permission covers exactly that: branching for the task at hand and pushing it. Merging into
-  `main`, pushing to `main` directly, and switching onto someone else's branch still need the user's
-  words. A delegated task runs in its own worktree on its own branch (the codex-worker procedure).
+- **A task branches off `dev` without asking, unlike the global default.** The user's standing
+  instruction (2026-10-07, replacing the `main`-based flow of 2026-09-30): every task starts on a
+  fresh branch off an up-to-date `dev` (`feat/…`, `fix/…`, `chore/…`), a feature goes through an
+  OpenSpec change on that branch, and the branch lands in `dev` through a pull request once
+  `pnpm check` and `pnpm spec:validate` pass. After the user has checked `dev`, a pull request from
+  `dev` into `main` releases it; `main` takes pull requests from `dev` only. The standing permission
+  covers exactly that: branching for the task at hand, pushing it with its own upstream
+  (`git push -u origin <branch>`) and opening its PR into `dev`. Merging any PR, pushing to `dev` or
+  `main` directly, and switching onto someone else's branch still need the user's words. A delegated
+  task runs in its own worktree on its own branch (the codex-worker procedure).
 - **Browser checks are allowed but costly.** The built-in browser asks the user to approve every
   JavaScript call on this site; prefer tests and screenshots, and say when a behaviour could not be
   seen (a hidden pane pauses the animation frame).

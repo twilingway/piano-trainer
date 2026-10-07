@@ -5,6 +5,10 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import type { TrainerSnapshot } from "../practice/Trainer";
 import type { Song } from "../song/song";
 import { useTrainer } from "./useTrainer";
+import { createAppStore, type AppStore } from "./store";
+import { withTestStore } from "./storeTestSupport";
+import { preferencesActions } from "./preferencesSlice";
+let store: AppStore;
 import { useI18n } from "./useI18n";
 import { setInterfaceLanguage } from "./interfaceLanguage";
 
@@ -109,6 +113,7 @@ const active = () => {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   localStorage.clear();
+  store = createAppStore();
   mocks.trainers.length = 0;
   mocks.views.length = 0;
   renders = 0;
@@ -129,15 +134,49 @@ afterEach(async () => {
 async function mount(ranked = false, selectedSong = song) {
   await act(async () => {
     root.render(
-      <StrictMode>
-        <Harness ranked={ranked} selectedSong={selectedSong} />
-      </StrictMode>
+      withTestStore(
+        <StrictMode>
+          <Harness ranked={ranked} selectedSong={selectedSong} />
+        </StrictMode>,
+        store
+      )
     );
     await Promise.resolve();
   });
 }
 
 describe("trainer runtime isolation", () => {
+  it("applies Ranked rules without overwriting saved raw player preferences", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "wait",
+        handChoice: "listen",
+        speed: 0.25,
+        accompaniment: false
+      })
+    );
+    await mount(true);
+    expect(value.mode).toBe("tempo");
+    expect(value.handChoice).toBe("both");
+    expect(value.speed).toBe(1);
+    expect(store.getState().preferences.player).toMatchObject({
+      mode: "wait",
+      handChoice: "listen",
+      speed: 0.25,
+      accompaniment: false
+    });
+    expect(JSON.parse(localStorage.getItem("player-prefs") ?? "null")).toMatchObject({
+      mode: "wait",
+      handChoice: "listen",
+      speed: 0.25,
+      accompaniment: false
+    });
+    await mount(false);
+    expect(value.mode).toBe("wait");
+    expect(value.handChoice).toBe("listen");
+    expect(value.speed).toBe(0.25);
+  });
+
   it("keeps the same song, clock and playing trainer when the interface language changes", async () => {
     await mount();
     const trainer = active();

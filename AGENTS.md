@@ -57,13 +57,17 @@ existing one.
 ## Branches
 
 - Имя пакета — `twiling-keys`, название продукта — Twiling Keys для EN и Нотопад для RU. При
-  оформлении PR обновлять `package.json` до версии `0.0.<номер PR>` по фактическому номеру PR; эта
-  версия отображается в информации о сборке. Получить номер можно созданием draft PR.
+  оформлении PR из `dev` в `main` обновлять `package.json` до версии `0.0.<номер PR>` по
+  фактическому номеру этого PR; эта версия отображается в информации о сборке. Получить номер можно
+  созданием draft PR. PR задач в `dev` версию не меняют.
 
 - Рабочая ветка пользователя — `dev`. Основная рабочая папка должна оставаться на `dev` после
   завершения задачи, чтобы пользователь запускал dev-сервер и проверял готовый результат.
-- Every task starts a branch off an up-to-date `main` and lands through a pull request after
-  `pnpm check` and `pnpm spec:validate` pass. `main` only receives reviewed merges.
+- Every task starts a branch off an up-to-date `dev` and lands in `dev` through a pull request after
+  `pnpm check` and `pnpm spec:validate` pass. The user checks `dev`; then a pull request from `dev`
+  into `main` releases it. `main` takes pull requests from `dev` only (CI job `main-from-dev`), and
+  neither `main` nor `dev` takes direct pushes. A task branch tracks its own remote branch, never
+  `main` or `dev`.
 - A feature's OpenSpec change is written and validated on its branch before the code.
 
 ## Local preview
@@ -89,17 +93,18 @@ existing one.
   настройки не управляют отделёнными процессами агентов и не заменяют их явное завершение.
 - Единый адрес просмотра для пользователя: `http://localhost:5190/`. Сервер должен обслуживать
   основную рабочую папку `E:\MySource\ReactJS\piano-trainer`.
-- После завершения задачи в отдельной ветке или worktree влить все её готовые изменения в `dev` с
-  сохранением чужой работы, переключить основную рабочую папку на `dev` и проверить результат на
-  этом сервере до отчёта пользователю. Не оставлять готовые правки только в рабочей ветке или
-  worktree и не подменять просмотр другим портом.
+- После завершения задачи в отдельной ветке или worktree открыть PR этой ветки в `dev`. После того
+  как пользователь его вольёт, подтянуть `dev` в основную рабочую папку (`git pull --ff-only`) и
+  проверить результат на этом сервере. Не вливать ветки в `dev` локально и не пушить `dev`; не
+  подменять просмотр другим портом.
 - Пользователь запускает `pnpm dev` из основной рабочей папки на ветке `dev` и смотрит результат по
   адресу `http://localhost:5190/`.
 - Перед отчётом проверить, что сервер отдаёт актуальные файлы. Если горячее обновление сохраняет
   старое состояние урока, явно сообщить о необходимости перезагрузки страницы.
-- PR используется для ревью и внесения изменений в `main`; ожидание PR не должно задерживать
-  доступность готовых локальных правок. Интеграция должна сохранять чужие изменения; если она
-  заблокирована, сообщить конкретную причину, не утверждая, что правки уже видны.
+- PR в `dev` — путь задачи к просмотру, PR из `dev` в `main` — к релизу; пока PR задачи не влит,
+  показывать результат можно только из её ветки, предупредив пользователя. Интеграция должна
+  сохранять чужие изменения; если она заблокирована, сообщить конкретную причину, не утверждая, что
+  правки уже видны.
 
 ## Delegation
 
@@ -110,6 +115,9 @@ existing one.
 - Avoid having multiple write-capable agents edit the same files concurrently.
 - Codex and the local Qwen implement bounded tasks in their own worktrees; Claude keeps specs,
   review and acceptance. The procedure is `.claude/skills/codex-worker/SKILL.md`.
+- `ref2game` (`.agents/skills/ref2game`, vendored, unchanged) turns a reference image into a
+  playable 2D slice on its own WebGL2 engine. Game projects go to the git-ignored `games/<name>`;
+  only accepted assets move into `src`.
 
 ## Verification
 

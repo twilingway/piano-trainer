@@ -16,6 +16,17 @@ interface Face {
   topCorners?: readonly [Projected, Projected, Projected, Projected];
   readonly source: { readonly y: number; readonly height: number };
 }
+/** What the 3D keys copy from this layer: the same keys, texture rects, camera and scroll. */
+export interface KeysScene {
+  readonly faces: readonly { readonly key: KeyRect; readonly source: Face["source"] }[];
+  readonly texture: Texture;
+  readonly camera: WorldCamera;
+  readonly pan: number;
+  /** The keys dragged off the hit line, on screen. */
+  readonly offset: { readonly x: number; readonly y: number };
+  /** Grows with every layout, so a copy knows when to rebuild. */
+  readonly version: number;
+}
 /** Physical piano faces, with the existing baked colours, digits and stickers as their material. */
 export class PerspectiveKeyboardLayer {
   readonly container = new Container({ eventMode: "none" });
@@ -23,9 +34,13 @@ export class PerspectiveKeyboardLayer {
   private texture: Texture | undefined;
   private geometry: Geometry | undefined;
   private readonly frontTexture = bakeFront();
+  private camera: WorldCamera | undefined;
+  private pan = 0;
+  private version = 0;
 
   layout(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, texture: Texture): void {
     this.destroyFaces();
+    this.version++;
     this.texture = texture;
     this.geometry = geometry;
     for (const black of [false, true]) {
@@ -62,6 +77,9 @@ export class PerspectiveKeyboardLayer {
 
   draw(camera: WorldCamera, pan: number): void {
     if (!this.texture) return;
+    if (camera !== this.camera) this.version++;
+    this.camera = camera;
+    this.pan = pan;
     for (const face of this.faces) {
       const key = face.key;
       const centre = camera.sourceX(key.x + key.width / 2 - pan);
@@ -72,6 +90,13 @@ export class PerspectiveKeyboardLayer {
       face.polygon = surface.outline;
       face.topCorners = surface.top;
     }
+  }
+
+  get scene(): KeysScene | undefined {
+    const { texture, camera } = this;
+    if (!texture || !camera) return undefined;
+    const { faces, pan, version } = this;
+    return { faces, texture, camera, pan, offset: this.container.position, version };
   }
 
   pointAt(x: number, y: number): { x: number; y: number } | undefined {

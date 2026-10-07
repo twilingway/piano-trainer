@@ -7,6 +7,9 @@ import type { MidiDevice } from "../input/midiInput";
 import type { TimingSettings } from "../ui/TimingSettings";
 import { createTrainerSnapshotSource } from "./trainerSnapshots";
 import { useTimingControls } from "./useTimingControls";
+import { createAppStore, type AppStore } from "./store";
+import { withTestStore } from "./storeTestSupport";
+let store: AppStore;
 
 const ui = vi.hoisted(() => ({ props: null as ComponentProps<typeof TimingSettings> | null }));
 vi.mock("../ui/TimingSettings", () => ({
@@ -54,6 +57,7 @@ function Harness({
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   localStorage.clear();
+  store = createAppStore();
   ui.props = null;
   source = createTrainerSnapshotSource();
   ref = { current: null };
@@ -73,9 +77,12 @@ async function mount(ready: boolean, show = false, connected = devices) {
   await act(async () => {
     await Promise.resolve();
     root.render(
-      <StrictMode>
-        <Harness ready={ready} show={show} connected={connected} />
-      </StrictMode>
+      withTestStore(
+        <StrictMode>
+          <Harness ready={ready} show={show} connected={connected} />
+        </StrictMode>,
+        store
+      )
     );
   });
 }

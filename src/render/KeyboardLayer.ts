@@ -40,7 +40,8 @@ const FELT_EDGE = 0x00e5ff;
  * Two styles: "classic" (src/render/keys) and "arcade" (src/render/keys-arcade),
  * thicker pseudo-3D keys over a lacquered rail.
  */
-export type KeyStyle = "classic" | "arcade" | "perspective";
+/** "perspective" and "3d" lay the keys under the road; "3d" draws them with three.js. */
+export type KeyStyle = "classic" | "arcade" | "perspective" | "3d";
 
 type FaceName =
   | "white"
@@ -67,7 +68,7 @@ interface StyleSet {
   readonly rail?: string;
 }
 
-const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "perspective">, StyleSet>> = {
+const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "perspective" | "3d">, StyleSet>> = {
   classic: {
     faces: {
       white: new URL("./keys/white.webp", import.meta.url).href,
@@ -144,7 +145,7 @@ export class KeyboardLayer {
   /** The painted key faces once loaded; kept for good, never re-baked. */
   private painted: PaintedFaces | undefined;
   /** The style the painted faces are of. */
-  private style: Exclude<KeyStyle, "perspective"> = "classic";
+  private style: Exclude<KeyStyle, "perspective" | "3d"> = "classic";
   /** The rail under the keys, for a style that has one. */
   private railTexture: Texture | undefined;
   private readonly rail = new Sprite();
@@ -221,7 +222,7 @@ export class KeyboardLayer {
    * were. The faces take effect on the next layout. Assets caches every load.
    */
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
-    const paintedStyle = style === "perspective" ? "classic" : style;
+    const paintedStyle = style === "perspective" || style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
       const names = Object.keys(set.faces) as FaceName[];
@@ -328,6 +329,9 @@ export class KeyboardLayer {
     this.felt.addChild(felt, feltEdge, feltShade);
   }
 
+  /** The last frame drawn: the 3D keys dip the keys it holds down. */
+  frame: KeysFrame | undefined;
+
   /** Lights the keys for this frame: the owed chord, the notes sounding, the keys held. */
   draw(
     frame: KeysFrame,
@@ -335,6 +339,7 @@ export class KeyboardLayer {
     geometry: Geometry,
     stickers: boolean
   ): void {
+    this.frame = frame;
     const { keyboardTop, keyboardHeight, blackHeight } = geometry;
     for (const [pitch, sprite] of this.keySprites) {
       const due = strongestKeyHint(
