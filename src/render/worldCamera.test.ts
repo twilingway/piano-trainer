@@ -4,6 +4,7 @@ import {
   insidePolygon,
   keySurface,
   normalizeCamera,
+  PANEL_EDGE,
   worldCamera
 } from "./worldCamera";
 
@@ -93,6 +94,16 @@ describe("shared world camera", () => {
     ];
     expect(insidePolygon(15, 10, quad)).toBe(true);
     expect(insidePolygon(1, 1, quad)).toBe(false);
+  });
+
+  it("starts the 3D style's road on the back panel's front top edge", () => {
+    const camera = worldCamera(1000, 500, DEFAULT_CAMERA, PANEL_EDGE);
+    const hit = camera.road.at(300, 1);
+    const edge = camera.project(camera.sourceX(300), 50, 143.42);
+    expect(hit.x).toBeCloseTo(edge.x, 1);
+    expect(hit.y).toBeCloseTo(edge.y, 1);
+    // Above and behind the keys' own road start.
+    expect(hit.y).toBeLessThan(worldCamera(1000, 500).road.at(300, 1).y);
   });
 });
 

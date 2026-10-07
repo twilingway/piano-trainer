@@ -12,7 +12,7 @@ import type { ThreeStage } from "./ThreeStage";
  */
 export class ThreeKeysHost {
   private stage: ThreeStage | undefined;
-  private loading = false;
+  private loading: Promise<void> | undefined;
   private wanted = false;
   private active = false;
   /**
@@ -29,25 +29,36 @@ export class ThreeKeysHost {
     private readonly keyboard: KeyboardLayer
   ) {}
 
-  setEnabled(on: boolean): void {
+  /** Settles once the keys are drawn by three, or once it is clear that they cannot be. */
+  setEnabled(on: boolean): Promise<void> {
     this.wanted = on;
-    if (on) void this.load();
+    const loaded = on ? this.load() : Promise.resolve();
     this.sync();
+    return loaded;
+  }
+
+  /** Whether three draws the keys now, rather than the perspective layer. */
+  get on(): boolean {
+    return this.active;
   }
 
   destroy(): void {
-    this.setEnabled(false);
+    void this.setEnabled(false);
     this.stage?.dispose();
     this.stage = undefined;
   }
 
-  private async load(): Promise<void> {
-    if (this.stage || this.loading) return;
+  private load(): Promise<void> {
+    if (this.stage) return Promise.resolve();
+    this.loading ??= this.create();
+    return this.loading;
+  }
+
+  private async create(): Promise<void> {
     const gl = (this.app.renderer as Partial<WebGLRenderer>).gl;
     // three needs WebGL 2; anything else keeps the perspective keys.
     if (typeof WebGL2RenderingContext === "undefined" || !(gl instanceof WebGL2RenderingContext))
       return;
-    this.loading = true;
     try {
       const [{ ThreeStage }, { loadPianoKit }] = await Promise.all([
         import("./ThreeStage"),
@@ -57,7 +68,7 @@ export class ThreeKeysHost {
     } catch (error) {
       console.warn("3D keys unavailable, keeping the perspective keys", error);
     } finally {
-      this.loading = false;
+      this.loading = undefined;
       this.sync();
     }
   }

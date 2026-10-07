@@ -100,6 +100,7 @@ export class FallingNotesView {
   private rangeFitsSong = false;
   private rangeFitsViewport = false;
   private laidOutFor = { width: 0, height: 0 };
+  private readonly relayout = () => (this.laidOutFor = { width: 0, height: 0 });
   private hudTop = 0;
   /** Where the player dragged the keys: lifted off the bottom, larger or smaller. */
   private placement: KeysPlacement = USUAL_PLACEMENT;
@@ -168,7 +169,8 @@ export class FallingNotesView {
     this.computerKeyboard = computerKeyboard;
     this.road = new RoadLayer(renderer, this.app, keyboard);
     this.road.setCamera(this.cameraPrefs);
-    this.road.setKeyStyle(this.keyStyle);
+    // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
+    void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
     this.road.container.visible = false;
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, computerKeyboard.container);
@@ -215,13 +217,11 @@ export class FallingNotesView {
   setKeyStyle(style: KeyStyle): void {
     if (style === this.keyStyle) return;
     this.keyStyle = style;
-    this.road?.setKeyStyle(style);
+    const loaded = this.road?.setKeyStyle(style);
     this.laidOutFor = { width: 0, height: 0 };
     const keyboard = this.keyboard;
     if (!keyboard) return;
-    void keyboard.loadPaintedFaces(style).then(() => {
-      this.laidOutFor = { width: 0, height: 0 };
-    });
+    void Promise.all([keyboard.loadPaintedFaces(style), loaded]).then(this.relayout);
   }
 
   /** Each falling note carries a card with the note written on a staff; off, plain bars. */

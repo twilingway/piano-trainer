@@ -14,7 +14,7 @@ import { RoadGlassLayer } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
-import { DEFAULT_CAMERA, normalizeCamera, worldCamera } from "./worldCamera";
+import { DEFAULT_CAMERA, normalizeCamera, worldCamera, KEYS_BACK, PANEL_EDGE } from "./worldCamera";
 import type { CameraPrefs, WorldCamera } from "./worldCamera";
 import { PerspectiveKeyboardLayer } from "./PerspectiveKeyboardLayer";
 import type { Geometry } from "./viewGeometry";
@@ -203,12 +203,14 @@ export class RoadLayer {
       return { ...spot, y: spot.y - lift * spot.scale };
     }
     const progress = Math.max(0, Math.min(1, y / this.size.height));
-    const keyHeight = this.keyHeights.get(keyX) ?? 22;
+    const { near } = this.camera;
+    // On the 3D keys every note ends on the back panel's edge, whatever its key.
+    const keyHeight = this.three?.on ? near.y : (this.keyHeights.get(keyX) ?? 22);
     // On the floor's own depth, as the arcade road does: the notes ride the road, not over it.
     return this.camera.project(
       this.camera.sourceX(keyX - this.pan + offset),
       keyHeight + lift / 2,
-      142 + (1 - progress) * (this.camera.roadFarZ - 142)
+      near.z + (1 - progress) * (this.camera.roadFarZ - near.z)
     );
   }
 
@@ -283,8 +285,9 @@ export class RoadLayer {
       Math.max(1, keysHeight),
       this.perspective ? resolution : this.renderer.resolution
     );
+    const near = this.three?.on ? PANEL_EDGE : KEYS_BACK;
     this.camera = this.perspective
-      ? worldCamera(viewWidth, Math.max(1, bottom - handRoom), this.cameraPrefs)
+      ? worldCamera(viewWidth, Math.max(1, bottom - handRoom), this.cameraPrefs, near)
       : undefined;
     const legacy = legacyRoadProjection(viewWidth, height, bottom, this.shape);
     this.projection = this.camera?.road ?? legacy.projection;
@@ -298,21 +301,27 @@ export class RoadLayer {
     this.road.texture = this.texture;
     this.glow.texture = this.texture;
     this.hit = { y: this.hitY, left: 0, right: viewWidth };
+    this.placeHitLine();
     this.staff.draw(this.projection, this.pan);
     this.setPan(this.pan, true);
   }
 
   /** The keys under the road: in perspective for "perspective", by three.js for "3d". */
-  setKeyStyle(style: KeyStyle): void {
-    this.three?.setEnabled(style === "3d");
-    const on = style === "perspective" || style === "3d";
-    if (on === this.perspective) return;
-    this.perspective = on;
-    if (on) {
-      this.container.addChildAt(this.hitLine, this.container.getChildIndex(this.keys.container));
-    } else {
-      this.effects.addChildAt(this.hitLine, 0);
-    }
+  setKeyStyle(style: KeyStyle): Promise<void> {
+    const loaded = this.three?.setEnabled(style === "3d") ?? Promise.resolve();
+    this.perspective = style === "perspective" || style === "3d";
+    this.placeHitLine();
+    return loaded;
+  }
+
+  /** Behind the perspective keys a glow; over flat keys and the 3D panel's edge a bright wire. */
+  private get wire(): boolean {
+    return !this.perspective || this.three?.on === true;
+  }
+
+  private placeHitLine(): void {
+    if (this.wire) this.effects.addChildAt(this.hitLine, 0);
+    else this.container.addChildAt(this.hitLine, this.container.getChildIndex(this.keys.container));
   }
 
   setShape(shape: RoadShape): void {
@@ -481,7 +490,7 @@ export class RoadLayer {
     const { y: height, left, right } = this.hit;
     const line = this.hitLine;
     line.clear();
-    if (this.perspective && this.projection) {
+    if (!this.wire && this.projection) {
       const keyboardLeft = Math.max(left, this.projection.at(-this.pan, 1).x);
       const keyboardRight = Math.min(right, this.projection.at(this.size.width - this.pan, 1).x);
       if (keyboardRight <= keyboardLeft) return;
