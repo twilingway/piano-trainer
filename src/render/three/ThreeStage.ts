@@ -18,6 +18,7 @@ import type { Object3D } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import { keyBoxes } from "./keyBoxes";
 import type { KeyBox } from "./keyBoxes";
+import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
 import { KIT_DEPTH, KIT_TOP, KIT_WHITE, splitUp, whitePart } from "./pianoKit";
 import type { KitPart, PianoKit } from "./pianoKit";
 import { LiveHands } from "./liveHands";
@@ -46,9 +47,14 @@ export class ThreeStage {
   private readonly keys = new Group();
   /** Pixi's picture of the flat keys: colours, lights and stickers for the top faces. */
   private readonly picture = new ExternalTexture();
-  private readonly top = new MeshStandardMaterial({ map: this.picture, roughness: 0.55 });
-  private readonly white = new MeshStandardMaterial({ color: 0xe4e1d8, roughness: 0.6 });
-  private readonly black = new MeshStandardMaterial({ color: 0x1d2028, roughness: 0.4 });
+  /** The painted keys tinted ivory, as the kit is: their colours and stickers stay readable. */
+  private readonly top = new MeshStandardMaterial({
+    map: this.picture,
+    color: IVORY,
+    roughness: 0.4
+  });
+  private readonly white = ivoryMaterial();
+  private readonly black = velvetMaterial();
   private readonly case = new MeshStandardMaterial({ color: 0x1c1d24, roughness: 0.3 });
   private readonly felt = new MeshStandardMaterial({ color: 0x951f2c, roughness: 0.95 });
   /** The case around the keys: rails, cheeks and the back panel. */
@@ -123,6 +129,8 @@ export class ThreeStage {
   dispose(): void {
     this.clear();
     this.board.dispose();
+    this.white.map?.dispose();
+    this.black.bumpMap?.dispose();
     for (const material of [this.top, this.white, this.black, this.case, this.felt])
       material.dispose();
     this.renderer.dispose();
