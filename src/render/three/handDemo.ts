@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import type { Finger } from "../../fingering/fingering";
-import { LIFT_S, STRIKE_S, placeHand, planHand } from "./handPlacement.ts";
+import { HandSprings, knuckleSide, liveTarget } from "./handMotion.ts";
+import { LIFT_S, STRIKE_S, planHand } from "./handPlacement.ts";
 import type { FingeredNote } from "./handPlacement.ts";
 
 // The live hand on one phrase, frame by frame, for Blender (tools/hand-rig/live_demo.py) to key.
@@ -30,28 +31,40 @@ const phrase: (readonly [beat: number, beats: number, pitch: number, finger: Fin
   [19, 2, C4 + 12, 5],
   [22, 2, C4, 1]
 ];
-const notes: FingeredNote[] = phrase.map(([beat, beats, pitch, finger]) => ({
+const notes: FingeredNote[] = phrase.map(([beat, beats, pitch, finger], index) => ({
   start: beat * BEAT,
   duration: beats * BEAT * 0.95,
   pitch,
-  finger
+  finger,
+  // A player's uneven touch: velocities 70..109.
+  velocity: 70 + ((index * 37) % 40)
 }));
 
 const plan = planHand(notes, "right");
 if (!plan) throw new Error("The phrase has no fingered note");
 const end = Math.max(...notes.map((note) => note.start + note.duration)) + 0.5;
+/** The finger touches its key only near the end of its way down; the key travels the rest. */
+const TOUCH = 0.6;
+const springs = new HandSprings();
 const frames = [];
 for (let frame = 0; frame <= Math.ceil(end * FPS); frame++) {
   const time = frame / FPS - 0.3;
-  const placement = placeHand(plan, time);
-  // A key goes down with the finger on it, from the strike until the finger has lifted.
+  const hand = springs.step(liveTarget(plan, time), 1 / FPS);
+  // A key goes down under the finger on it, from the strike until the finger has lifted.
   const keys: Record<number, number> = {};
   for (const note of notes) {
     if (note.finger === undefined) continue;
     if (time < note.start - STRIKE_S || time > note.start + note.duration + LIFT_S) continue;
-    keys[note.pitch] = Math.max(keys[note.pitch] ?? 0, placement.fingers[note.finger].press);
+    const dip = (hand.fingers[note.finger].bend[0] - TOUCH) / (1 - TOUCH);
+    keys[note.pitch] = Math.max(keys[note.pitch] ?? 0, Math.min(1, Math.max(0, dip)));
   }
-  frames.push({ ...placement, keys });
+  const fingers = Object.fromEntries(
+    ([1, 2, 3, 4, 5] as const).map((finger) => [
+      finger,
+      { ...hand.fingers[finger], side: knuckleSide(hand, finger) }
+    ])
+  );
+  frames.push({ anchor: hand.anchor, wrist: hand.wrist, fingers, keys });
 }
 const out = new URL("../../../blender/exports/", import.meta.url);
 await mkdir(out, { recursive: true });

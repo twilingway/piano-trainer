@@ -1,15 +1,17 @@
-"""Key the live hand on the piano kit: the phrase planned by src/render/three/handPlacement.ts.
+"""Key the live hand on the piano kit: the phrase from src/render/three/handDemo.ts (handPlacement's
+plan, handMotion's living wrist and springs).
 
 First: node --experimental-strip-types src/render/three/handDemo.ts (writes blender/exports/hand-demo.json).
 Then inside Blender, after piano_kit.py: exec(open(".../live_demo.py").read(), {}).
 
 The pose is the position's base (fingers-31: forearm, wrist, palm, all five fingers down on C..G)
-with every finger blended on its own between lifted (relaxed's finger bones) and pressed
-(fingers-31's), by the plan's press. A finger reaches sideways by turning at its knuckle and towards
-the black keys by straightening there; the hand moves by sliding the rig along the keys.
+with every joint blended on its own between lifted (relaxed's bones) and pressed (fingers-31's) by
+its bend. The whole rig slides by the position and the wrist's offset and turns about the wrist
+(yaw, roll); a finger adds the rest sideways at its knuckle (`side`) and straightens there towards
+the black keys.
 """
 import bpy, json, math, os
-from mathutils import Quaternion, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 ROOT = globals().get("ROOT", r"E:/MySource/ReactJS/piano-trainer")
 POSES = os.path.join(ROOT, "tools/hand-rig/poses")
@@ -24,6 +26,7 @@ PIVOT_Y = KEY_FRONT + WHITE_L + 0.10
 # the thumb about X) and, about -X, 11 mm in and 10 mm up. These are the radians per metre.
 SIDE_AXIS = {1: "X", 2: "Z", 3: "Z", 4: "Z", 5: "Z"}
 SIDE_RADIUS = {1: 0.100, 2: 0.075, 3: 0.073, 4: 0.075, 5: 0.086}
+JOINT = {"-1.R": 0, "-2.R": 1, "-3.R": 2}
 BLACK_REACH = math.radians(15)          # straightening that brings a tip onto a black key
 
 rig = bpy.data.objects["HandRig"]
@@ -36,6 +39,8 @@ def load(pid):
 
 
 base, lifted = load("fingers-31"), load("relaxed")
+with open(os.path.join(POSES, "fingers-31.json"), encoding="utf-8") as fh:
+    rest_matrix = Matrix(json.load(fh)["rig_matrix_world"])
 with open(DEMO, encoding="utf-8") as fh:
     demo = json.load(fh)
 
@@ -55,9 +60,10 @@ def pose(frame):
         q = Quaternion(b["rotation_quaternion"])
         if f is not None:
             state = frame["fingers"][str(f)]
-            q = Quaternion(lifted[pb.name]["rotation_quaternion"]).slerp(q, state["press"])
+            bend = state["bend"][JOINT[pb.name[-4:]]]
+            q = Quaternion(lifted[pb.name]["rotation_quaternion"]).slerp(q, bend)
             if pb.name.endswith("-1.R"):
-                side = state["offset"] * WHITE_W / SIDE_RADIUS[f]
+                side = state["side"] / 1000 / SIDE_RADIUS[f]
                 q = q @ Quaternion(axis(SIDE_AXIS[f]), side)
                 if f != 1:
                     q = q @ Quaternion(Vector((1, 0, 0)), -BLACK_REACH * state["depth"])
@@ -88,15 +94,28 @@ def press_keys(frame):
         o.keyframe_insert("rotation_euler")
 
 
+def place_rig(frame, pivot):
+    """Slides the rig by the position and the wrist, and turns it about the wrist."""
+    w = frame["wrist"]
+    turn = (Matrix.Translation(pivot) @ Matrix.Rotation(-w["yaw"], 4, "Z")
+            @ Matrix.Rotation(w["roll"], 4, "Y") @ Matrix.Translation(-pivot))
+    shift = Vector((frame["anchor"] * WHITE_W + w["x"] / 1000, w["z"] / 1000, w["y"] / 1000))
+    rig.matrix_world = Matrix.Translation(shift) @ turn @ rest_matrix
+    rig.keyframe_insert("location")
+    rig.keyframe_insert("rotation_quaternion")
+
+
 rig.animation_data_clear()
 for o in keys.values():
     o.animation_data_clear()
-x0 = rig.get("live_x0", rig.location.x)
-rig["live_x0"] = x0
+rig.rotation_mode = "QUATERNION"
+rig.matrix_world = rest_matrix
+pose(demo["frames"][0])
+bpy.context.view_layer.update()
+pivot = rig.matrix_world @ rig.pose.bones["wrist.R"].head
 for index, frame in enumerate(demo["frames"]):
     scene.frame_set(index + 1)
-    rig.location.x = x0 + frame["anchor"] * WHITE_W
-    rig.keyframe_insert("location", index=0)
+    place_rig(frame, pivot)
     pose(frame)
     press_keys(frame)
 scene.render.fps = demo["fps"]
