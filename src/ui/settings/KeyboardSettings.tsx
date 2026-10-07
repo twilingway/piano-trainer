@@ -75,6 +75,7 @@ export function KeyboardSettings({
           <option value="classic">{t("Классика")}</option>
           <option value="arcade">{t("Аркада")}</option>
           <option value="perspective">{t("Перспектива (с дорогой)")}</option>
+          <option value="3d">{t("3D (с дорогой)")}</option>
         </select>
       </label>
       <label className="setting">
@@ -91,7 +92,7 @@ export function KeyboardSettings({
           <option value="rendered">{t("3D")}</option>
         </select>
       </label>
-      {keyStyle === "perspective" ? (
+      {keyStyle === "perspective" || keyStyle === "3d" ? (
         <CameraSettings camera={camera} onChange={onCamera} />
       ) : (
         <>

@@ -154,4 +154,19 @@ describe("falling note defaults", () => {
     await mount();
     expect(prefs.staffPrefs).toMatchObject({ lane: false, road: true, noteCards: true });
   });
+
+  it("keeps the 3D key style across a reload", async () => {
+    await mount();
+    await act(async () => {
+      prefs.updateStaffPrefs({ keyStyle: "3d", road: true });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({ keyStyle: "3d", road: true });
+  });
 });

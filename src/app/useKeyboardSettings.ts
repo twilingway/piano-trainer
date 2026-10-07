@@ -24,7 +24,10 @@ export function useKeyboardSettings(
     },
     keyStyle: staffPrefs.keyStyle,
     onKeyStyle: (keyStyle) => {
-      updateStaffPrefs({ keyStyle, ...(keyStyle === "perspective" ? { road: true } : {}) });
+      updateStaffPrefs({
+        keyStyle,
+        ...(keyStyle === "perspective" || keyStyle === "3d" ? { road: true } : {})
+      });
     },
     handStyle: staffPrefs.handStyle,
     onHandStyle: (handStyle) => {

@@ -86,8 +86,10 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
         onFps: (fps) => {
           updateStaffPrefs({ fps });
         },
-        keyStyle: "classic",
-        onKeyStyle: noop,
+        keyStyle: staffPrefs.keyStyle,
+        onKeyStyle: (keyStyle) => {
+          updateStaffPrefs({ keyStyle });
+        },
         handStyle: staffPrefs.handStyle,
         onHandStyle: (handStyle) => {
           updateStaffPrefs({ handStyle });
@@ -335,5 +337,20 @@ describe("player settings organization", () => {
     expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
       handStyle: "drawn"
     });
+  });
+
+  it("offers the 3D key style with the camera settings", async () => {
+    await render(false);
+    await section("Вид");
+    const keys = select("Вид клавиш");
+    expect(Array.from(keys.options, (option) => option.value)).toContain("3d");
+    expect(host.querySelector("input[aria-label='Угол обзора']")).toBeNull();
+    await act(async () => {
+      await Promise.resolve();
+      keys.value = "3d";
+      keys.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(select("Вид клавиш").value).toBe("3d");
+    expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
   });
 });
