@@ -45,8 +45,8 @@ in auto mode without an allow rule.
 ## Where it runs
 
 - **Never in the main working tree.** One git worktree per task under
-  `E:\MySource\ReactJS\pt-agents\<task>`, on a fresh branch off `main` — creating it needs the
-  user's yes, like any branch (the global branching rule). E: holds the pnpm store, so an install is
+  `E:\MySource\ReactJS\pt-agents\<task>`, on a fresh branch off `dev` — creating it needs the user's
+  yes, like any branch (the global branching rule). E: holds the pnpm store, so an install is
   seconds: `pnpm install --frozen-lockfile`. `local-lessons/` is git-ignored and does not come with
   the worktree; copy it in only if the task needs a real score.
 - **Windows sandbox.** `~/.codex/config.toml` has `[windows] sandbox = "unelevated"` since
@@ -157,7 +157,7 @@ Final message: changed files, one paragraph on the approach, and the result line
 2. Larger diffs get a fresh `code-reviewer` subagent, never a cheaper model.
 3. Claude reports to the user: result, tokens (input / cached / output), wall time, what was taken
    and what was rejected.
-4. Integration — commit on the task branch, merge into `main` after `pnpm check` — is Claude's.
+4. Integration — commit on the task branch, open its PR into `dev` after `pnpm check` — is Claude's.
 
 ## Cleanup
 
