@@ -43,7 +43,19 @@ export function normalizeCamera(value: unknown): CameraPrefs {
     scale: number("scale")
   };
 }
+/** The numbers `project` is built from, for a renderer that has to see the same scene. */
+export interface CameraParams {
+  readonly width: number;
+  /** Pixels per world unit at depth 1. */
+  readonly focal: number;
+  /** The screen row the camera's axis passes through, before `prefs.targetY`. */
+  readonly originY: number;
+  /** How much the default distance and height grow with the view's height. */
+  readonly fit: number;
+  readonly prefs: CameraPrefs;
+}
 export interface WorldCamera {
+  readonly params: CameraParams;
   readonly project: (x: number, y: number, z: number) => Projected;
   readonly road: RoadProjection;
   readonly sourceX: (x: number) => number;
@@ -115,7 +127,8 @@ export function worldCamera(
     progressAt: (depth) => depth,
     depthAt: (progress) => progress
   };
-  return { project, projectAtProgress, sourceX, roadFarZ, road };
+  const params = { width, focal, originY, fit, prefs };
+  return { params, project, projectAtProgress, sourceX, roadFarZ, road };
 }
 export function insidePolygon(x: number, y: number, points: readonly Projected[]): boolean {
   let inside = false;

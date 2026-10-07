@@ -125,6 +125,9 @@ export const settingsMessages1 = {
   "Перспектива (с дорогой)": {
     en: "Perspective (with road)"
   },
+  "3D (с дорогой)": {
+    en: "3D (with road)"
+  },
   "Вид рук": {
     en: "Hands"
   },
