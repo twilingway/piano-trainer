@@ -10,6 +10,7 @@ import { LESSONS } from "./app/lessons";
 import { useFallingView } from "./app/useFallingView";
 import { useFullscreen } from "./app/useFullscreen";
 import { useKeyInput } from "./app/useKeyInput";
+import { useKeyboardSettings } from "./app/useKeyboardSettings";
 import { useComputerKeyboard } from "./app/useComputerKeyboard";
 import { usePlayerLibrary } from "./app/usePlayerLibrary";
 import { useShortcuts } from "./app/useShortcuts";
@@ -183,6 +184,7 @@ export function App() {
       onChange={updateStaffPrefs}
     />
   );
+  const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs, toggles);
 
   const wordSettings = (
     <WordTypingSettings
@@ -466,32 +468,7 @@ export function App() {
           hasScore: Boolean(score.staffXml),
           onChange: updateStaffPrefs
         }}
-        keyboard={{
-          keyRange: view.keyRange,
-          onKeyRange: view.setKeyRange,
-          showLabels: view.showLabels,
-          onShowLabels: view.setShowLabels,
-          fps: staffPrefs.fps,
-          onFps: (fps) => {
-            updateStaffPrefs({ fps });
-          },
-          keyStyle: staffPrefs.keyStyle,
-          onKeyStyle: (keyStyle) => {
-            updateStaffPrefs({ keyStyle, ...(keyStyle === "perspective" ? { road: true } : {}) });
-          },
-          road: { far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon },
-          onRoad: (road) => {
-            updateStaffPrefs({
-              ...(road.far === undefined ? {} : { roadFar: road.far }),
-              ...(road.horizon === undefined ? {} : { roadHorizon: road.horizon })
-            });
-          },
-          camera: staffPrefs.camera,
-          onCamera: (camera) => {
-            updateStaffPrefs({ camera });
-          },
-          toggles
-        }}
+        keyboard={keyboardSettings}
         computerKeyboard={computerKeyboard}
         wordSettings={wordSettings}
         midi={{
