@@ -111,19 +111,19 @@ describe("FPS preference", () => {
 
 describe("hand style preference", () => {
   it.each([undefined, "photo", 3])(
-    "reads a missing or unknown saved style %s as drawn",
+    "reads a missing or unknown saved style %s as 3D",
     async (handStyle) => {
       localStorage.setItem("staff-prefs", JSON.stringify({ handStyle, labels: true }));
       await mount();
-      expect(prefs.staffPrefs.handStyle).toBe("drawn");
+      expect(prefs.staffPrefs.handStyle).toBe("rendered");
       expect(prefs.staffPrefs.labels).toBe(true);
     }
   );
 
-  it("keeps the 3D style across a reload", async () => {
-    localStorage.setItem("staff-prefs", JSON.stringify({ handStyle: "rendered" }));
+  it("keeps the drawn style across a reload", async () => {
+    localStorage.setItem("staff-prefs", JSON.stringify({ handStyle: "drawn" }));
     await mount();
-    expect(prefs.staffPrefs.handStyle).toBe("rendered");
+    expect(prefs.staffPrefs.handStyle).toBe("drawn");
   });
 });
 
