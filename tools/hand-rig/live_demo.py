@@ -79,7 +79,9 @@ def is_black(midi):
 
 
 keys = {int(o.name[4:]): o for o in bpy.data.collections["piano"].objects if o.name.startswith("key-")}
-rest = {midi: o.location.copy() for midi, o in keys.items()}
+# At rest every key's origin sits on the front top edge (piano_kit.py); a key's current location may
+# still be pressed by the animation of an earlier run.
+rest = {midi: Vector((o.location.x, KEY_FRONT, KEY_TOP)) for midi, o in keys.items()}
 
 
 def press_keys(frame):
