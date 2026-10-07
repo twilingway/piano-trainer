@@ -19,12 +19,21 @@ export const DEFAULT_CAMERA: CameraPrefs = {
 };
 export const CAMERA_LIMITS = {
   fov: [25, 85],
-  height: [25, 420],
+  height: [25, 1000],
   distance: [120, 1200],
-  pitch: [-5, 60],
+  pitch: [-5, 85],
   targetY: [-250, 250],
   scale: [0.55, 1.6]
 } as const;
+/**
+ * Ready views of the keys; a preset keeps the keyboard's own scale. Each keeps the default's angle
+ * between the view's axis and the keys, so the keys stay low in the frame.
+ */
+export const CAMERA_PRESETS = {
+  player: DEFAULT_CAMERA,
+  top: { ...DEFAULT_CAMERA, height: 803, distance: 400, pitch: 72 },
+  hands: { ...DEFAULT_CAMERA, height: 212, distance: 300, pitch: 42 }
+} as const satisfies Record<string, CameraPrefs>;
 export function normalizeCamera(value: unknown): CameraPrefs {
   const input = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const number = (key: keyof CameraPrefs): number => {
@@ -54,12 +63,23 @@ export interface CameraParams {
   readonly fit: number;
   readonly prefs: CameraPrefs;
 }
+export interface RoadNear {
+  readonly y: number;
+  readonly z: number;
+}
+/** The road starts behind the keys, on the white keys' top. */
+export const KEYS_BACK: RoadNear = { y: 22, z: 142 };
+/** The road of the "3d" style starts on the back panel's front top edge, 28 mm over the keys. */
+export const PANEL_EDGE: RoadNear = { y: 50, z: (151.5 * 142) / 150 };
+
 export interface WorldCamera {
   readonly params: CameraParams;
   readonly project: (x: number, y: number, z: number) => Projected;
   readonly road: RoadProjection;
   readonly sourceX: (x: number) => number;
   readonly roadFarZ: number;
+  /** Where the road starts: the hit line's height and depth. */
+  readonly near: RoadNear;
   readonly projectAtProgress: (
     x: number,
     y: number,
@@ -73,7 +93,8 @@ const rad = (angle: number) => (angle * Math.PI) / 180;
 export function worldCamera(
   width: number,
   height: number,
-  prefs: CameraPrefs = DEFAULT_CAMERA
+  prefs: CameraPrefs = DEFAULT_CAMERA,
+  near: RoadNear = KEYS_BACK
 ): WorldCamera {
   const fit = Math.max(1, height / 375);
   const defaultAngle = rad(DEFAULT_CAMERA.pitch);
@@ -121,14 +142,14 @@ export function worldCamera(
     const depth = depthAtScreenProgress(progress, nearDepth, farDepth);
     return project(x, y, farZ + (nearZ - farZ) * depth);
   };
-  const roadFarZ = 142 + 1500 * fit;
+  const roadFarZ = near.z + 1500 * fit;
   const road: RoadProjection = {
-    at: (x, t) => project(sourceX(x), 22, 142 + (1 - t) * (roadFarZ - 142)),
+    at: (x, t) => project(sourceX(x), near.y, near.z + (1 - t) * (roadFarZ - near.z)),
     progressAt: (depth) => depth,
     depthAt: (progress) => progress
   };
   const params = { width, focal, originY, fit, prefs };
-  return { params, project, projectAtProgress, sourceX, roadFarZ, road };
+  return { params, project, projectAtProgress, sourceX, roadFarZ, road, near };
 }
 export function insidePolygon(x: number, y: number, points: readonly Projected[]): boolean {
   let inside = false;

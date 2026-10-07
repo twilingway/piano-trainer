@@ -128,6 +128,25 @@ export class HandsLayer {
     );
   }
 
+  /** The song time of the last frame drawn, for the 3D view's live hands. */
+  time = 0;
+
+  /** The 3D view's live hands play the song in the sprites' place: they stay hidden. */
+  get live(): boolean {
+    return this.liveOn;
+  }
+
+  set live(on: boolean) {
+    this.liveOn = on;
+    this.container.renderable = !on;
+  }
+
+  private liveOn = false;
+
+  get songNotes(): Readonly<Record<Hand, readonly SongNote[]>> {
+    return this.notes;
+  }
+
   setSong(song: Song): void {
     this.notes = {
       left: song.notes.filter((note) => note.hand === "left"),
@@ -158,6 +177,8 @@ export class HandsLayer {
     waitingFor: readonly SongNote[] = [],
     speed = 1
   ): void {
+    this.time = time;
+    if (this.live) return;
     const { poses: available, exactPressed } = handPoseSet(
       this.style,
       this.available,
