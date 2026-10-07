@@ -6,6 +6,8 @@ export interface FingeredNote {
   readonly duration: number;
   readonly pitch: number;
   readonly finger?: Finger | undefined;
+  /** MIDI velocity, 1..127; a missing one counts as 80. */
+  readonly velocity?: number | undefined;
 }
 
 /** One finger at a moment: how far it presses (0 lifted, 1 down) and where it reaches. */
@@ -69,7 +71,7 @@ interface PlannedNote {
   readonly aim: Aim;
 }
 
-interface Move {
+export interface Move {
   readonly from: number;
   readonly to: number;
   readonly depart: number;
@@ -78,7 +80,10 @@ interface Move {
 
 /** A hand's whole way through a song, worked out once; `placeHand` samples it. */
 export interface HandPlan {
+  readonly hand: Hand;
   readonly first: number;
+  /** When each chord is struck, and how loud: 1 at velocity 80. */
+  readonly strikes: readonly { readonly time: number; readonly loudness: number }[];
   readonly moves: readonly Move[];
   readonly fingers: Readonly<Record<Finger, readonly PlannedNote[]>>;
 }
@@ -137,7 +142,11 @@ export function planHand(notes: readonly FingeredNote[], hand: Hand): HandPlan |
     }
   });
   for (const finger of FINGERS) fingers[finger] = restrike(fingers[finger]);
-  return { first: anchors[0] ?? 0, moves, fingers };
+  const strikes = chords.map((chord) => ({
+    time: chord.start,
+    loudness: Math.max(...chord.notes.map((note) => note.velocity ?? 80)) / 80
+  }));
+  return { hand, first: anchors[0] ?? 0, strikes, moves, fingers };
 }
 
 /**
@@ -180,7 +189,7 @@ function restrike(notes: readonly PlannedNote[]): PlannedNote[] {
 }
 
 /** Smooth 0..1 between `from` and `to`, flat at both ends. */
-function ease(time: number, from: number, to: number): number {
+export function ease(time: number, from: number, to: number): number {
   if (time <= from) return 0;
   if (time >= to) return 1;
   const linear = (time - from) / (to - from);
