@@ -31,7 +31,7 @@ export const CAMERA_LIMITS = {
  */
 export const CAMERA_PRESETS = {
   player: DEFAULT_CAMERA,
-  top: { ...DEFAULT_CAMERA, height: 510, distance: 250, pitch: 72 },
+  top: { ...DEFAULT_CAMERA, height: 803, distance: 400, pitch: 72 },
   hands: { ...DEFAULT_CAMERA, height: 212, distance: 300, pitch: 42 }
 } as const satisfies Record<string, CameraPrefs>;
 export function normalizeCamera(value: unknown): CameraPrefs {
