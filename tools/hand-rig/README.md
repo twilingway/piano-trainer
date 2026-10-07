@@ -29,6 +29,23 @@ solved poses (`poses/<id>.json`) are kept as keyframe data for a later playing a
    out) and `catalog.json` (pads in those pixels, pressed fingers, pixels per white key).
 5. `node --experimental-strip-types src/render/handStudy/build.ts` rebuilds the page.
 
+## Piano kit and the live hand
+
+- `piano_kit.py` builds collection `piano_kit` (every key shape, cheek, rails, table; origins on the
+  white keys' front top edge) and lays out collection `piano` from MIDI `LOW` to `HIGH` (C2..C6) in
+  the solver's coordinates; `{"EXPORT": True}` writes the kit to `blender/exports/piano-kit.glb` for
+  three.js. Ivory grain and the velvet bump are procedural: Blender only, not in the glTF.
+- `node --experimental-strip-types src/render/three/handDemo.ts` plans a phrase with
+  `handPlacement.ts` and writes `blender/exports/hand-demo.json`; `live_demo.py` then keys the rig
+  (fingers-31 base, each finger between relaxed and pressed, knuckle turns for reach) and the keys.
+  Run `piano_kit.py` first: it rebuilds the keys and drops their keys.
+- `hand_skin.py`, after `studio_rig.py`, makes the hand a person's: object `HandNails` (a plate per
+  finger on the distal phalanx, skinned to it alone, lunula and free edge in a colour attribute) and
+  the skin maps in the hand's UVs, computed per texel from its rest position against the bones —
+  colour, roughness, and a height map of knuckle wrinkles, palmar creases, nail folds, veins, pores
+  and fine hair that Cycles bakes into a tangent-space normal map. The maps (1024²,
+  `blender/exports/hand-skin/`) are what three.js uses too. About 25 s.
+
 ## The solver, in short
 
 The hand is a rigid body whose fingers wrap an "apple" under the palm. Nelder-Mead fits the wrist
