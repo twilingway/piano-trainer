@@ -15,11 +15,11 @@
 
 ## 3. Библиотека и записи
 
-- [ ] 3.1 Library/revision/transaction complete; тесты abort, reload, late restore/import.
-- [ ] 3.2 Take history/выбор, derived review; тесты прежнего формата и storage failure.
+- [x] 3.1 Library/revision/transaction complete; тесты abort, reload, late restore/import.
+- [x] 3.2 Take history/выбор, derived review; тесты прежнего формата и storage failure.
 - [ ] 3.3 pnpm check, pnpm spec:validate и PR третьего этапа.
 
 ## 4. Интеграция
 
-- [ ] 4.1 Read-only review, исправление замечаний и повтор затронутых проверок.
+- [x] 4.1 Read-only review, исправление замечаний и повтор затронутых проверок.
 - [ ] 4.2 Интеграция в dev и проверка существующего стенда 5190 либо отчёт о его недоступности.

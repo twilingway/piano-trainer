@@ -69,7 +69,8 @@ export const appMessages = {
   КОМБО: { en: "COMBO" },
   точность: { en: "accuracy" },
   "Поздно +{offset} мс": { en: "Late +{offset} ms" },
-  "Не удалось сохранить данные. Изменения доступны до закрытия страницы.": {
-    en: "Could not save data. Changes remain available until you close this page."
-  }
+  "Не удалось прочитать или сохранить часть данных. Изменения доступны до закрытия страницы.": {
+    en: "Some data could not be read or saved. Changes remain available until you close this page."
+  },
+  "Не удалось загрузить библиотеку.": { en: "Could not load the library." }
 } satisfies Messages;
