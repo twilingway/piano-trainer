@@ -5,7 +5,7 @@ import { createLibraryController, browserLibraryRepository } from "./libraryCont
 import { libraryReducer } from "./librarySlice";
 import { persistenceReducer } from "./persistenceSlice";
 import { songActions, songReducer } from "./songSlice";
-import { FIRST_LESSON } from "./lessons";
+import { FIRST_LESSON, LESSONS } from "./lessons";
 
 const song: Song = {
   title: "test",
@@ -43,11 +43,11 @@ function harness(repository: Partial<typeof browserLibraryRepository> = {}) {
       setLibrarySource: (source) => {
         store.dispatch(songActions.librarySourceChanged(source));
       },
-      openLesson: () => {
+      openLesson: (choice) => {
         store.dispatch(
           songActions.songOpened({
             song: { ...song, title: "lesson" },
-            lesson: FIRST_LESSON,
+            lesson: choice,
             librarySource: null
           })
         );
@@ -73,6 +73,15 @@ function harness(repository: Partial<typeof browserLibraryRepository> = {}) {
   return { store, controller, chooseB };
 }
 describe("library asynchronous ownership", () => {
+  it("keeps the first catalog lesson as the existing deletion fallback", async () => {
+    const { store, controller } = harness({ removeMySong: () => Promise.resolve() });
+    await controller.deleteMySong("removed");
+    const first = LESSONS[0];
+    expect(store.getState().song.lesson).toEqual({
+      exerciseId: first?.id,
+      levelId: first?.levels[0]?.id ?? "easy"
+    });
+  });
   it("does not overwrite an imported catalog with an older startup list", async () => {
     const oldList = deferred<Awaited<ReturnType<typeof browserLibraryRepository.listMySongs>>>();
     const old = { id: "old", fileName: "old.mid", title: "Old", addedAt: "2026-10-07" };

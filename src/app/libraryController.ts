@@ -12,7 +12,7 @@ import { songFromFileData } from "../library/songFile";
 import type { Song } from "../song/song";
 import { libraryActions, type LibraryState } from "./librarySlice";
 import { persistenceErrorChanged } from "./persistenceSlice";
-import { FIRST_LESSON, type LessonChoice } from "./lessons";
+import { LESSONS, type LessonChoice } from "./lessons";
 
 /** Files/handles and asynchronous work stay outside the serializable store. */
 export interface LibraryPort {
@@ -201,7 +201,9 @@ export function createLibraryController(port: LibraryPort, repository = browserL
       try {
         await repository.removeMySong(id);
         await refreshCatalog();
-        if (valid(revision)) port.openLesson(FIRST_LESSON);
+        const first = LESSONS[0];
+        if (valid(revision) && first)
+          port.openLesson({ exerciseId: first.id, levelId: first.levels[0]?.id ?? "easy" });
         saved("deleteSong", false);
       } catch (problem) {
         saved("deleteSong", true);
