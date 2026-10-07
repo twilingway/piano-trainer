@@ -67,9 +67,9 @@ export class ThreeStage {
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
     this.camera.matrixAutoUpdate = false;
     const sun = new DirectionalLight(0xffffff, 2.4);
-    // Above, in front of the keys and a little to the left: front faces lit, sides shaded.
-    sun.position.set(-300, 900, 700);
-    this.scene.add(new HemisphereLight(0xffffff, 0x3a3f4c, 1.8), sun, this.keys);
+    // Above and in front of the keys, a little to the left: the rounded edges read on both sides.
+    sun.position.set(-150, 900, 900);
+    this.scene.add(new HemisphereLight(0xffffff, 0x9a9fac, 1.8), sun, this.keys);
     this.keys.add(this.body);
   }
 
