@@ -1,4 +1,13 @@
-import { Bone, Group, LinearSRGBColorSpace, Matrix4, Mesh, Quaternion, Vector3 } from "three";
+import {
+  Bone,
+  Group,
+  LinearSRGBColorSpace,
+  Matrix4,
+  Mesh,
+  PropertyBinding,
+  Quaternion,
+  Vector3
+} from "three";
 import type { MeshStandardMaterial, Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -76,6 +85,13 @@ interface Joint {
   readonly joint: number;
 }
 
+/** A bone's name as GLTFLoader leaves it: without the dots. */
+const nodeName = (name: string) => PropertyBinding.sanitizeNodeName(name);
+const BASE_BY_NODE = new Map(Object.entries(BASE).map(([name, pose]) => [nodeName(name), pose]));
+const LIFTED_BY_NODE = new Map(
+  Object.entries(LIFTED).map(([name, pose]) => [nodeName(name), pose])
+);
+
 /** One hand of the studio rig, posed every frame by the live hand of `handMotion`. */
 export class LiveRig {
   /** Places the solver's world on the keys; mirrored for the left hand. */
@@ -104,10 +120,10 @@ export class LiveRig {
       .multiply(TO_GLTF.clone().invert());
     scene.traverse((node) => {
       if (!(node instanceof Bone)) return;
-      const base = BASE[node.name];
+      const base = BASE_BY_NODE.get(node.name);
       if (!base) return;
       const finger = /^finger(\d)-/.exec(node.name)?.[1];
-      const lifted = LIFTED[node.name];
+      const lifted = LIFTED_BY_NODE.get(node.name);
       this.joints.push({
         bone: node as Bone,
         rest: node.quaternion.clone(),
@@ -116,11 +132,11 @@ export class LiveRig {
         location: new Vector3(...(base.location as [number, number, number])),
         lifted: lifted && new Quaternion(...(lifted as [number, number, number, number])),
         finger: finger === undefined ? undefined : (Number(finger) as Finger),
-        joint: Number(/-(\d)\.R$/.exec(node.name)?.[1] ?? 1) - 1
+        joint: Number(/-(\d)R$/.exec(node.name)?.[1] ?? 1) - 1
       });
     });
-    const arm = scene.getObjectByName("lowerarm02.R");
-    const wrist = scene.getObjectByName("wrist.R");
+    const arm = scene.getObjectByName(nodeName("lowerarm02.R"));
+    const wrist = scene.getObjectByName(nodeName("wrist.R"));
     if (!(arm instanceof Bone) || !(wrist instanceof Bone)) throw new Error("hand.glb has no arm");
     this.arm = arm as Bone;
     this.wrist = wrist as Bone;
@@ -130,7 +146,7 @@ export class LiveRig {
     this.rig.matrix.copy(this.rest);
     this.pose(undefined);
     scene.updateMatrixWorld(true);
-    scene.getObjectByName("wrist.R")?.getWorldPosition(this.pivot);
+    wrist.getWorldPosition(this.pivot);
     this.space.add(scene);
   }
 

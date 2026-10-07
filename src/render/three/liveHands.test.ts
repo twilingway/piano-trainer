@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { Bone, Object3D, Vector3 } from "three";
+import { Bone, Object3D, PropertyBinding, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { LiveRig } from "./liveHands";
 
@@ -23,7 +23,8 @@ function skeleton(): Object3D {
   };
   const objects = json.nodes.map((node) => {
     const object = node.name.endsWith(".R") ? new Bone() : new Object3D();
-    object.name = node.name;
+    // As GLTFLoader names them.
+    object.name = PropertyBinding.sanitizeNodeName(node.name);
     if (node.translation) object.position.set(...node.translation);
     if (node.rotation) object.quaternion.set(...node.rotation);
     return object;
@@ -40,7 +41,9 @@ function skeleton(): Object3D {
 function head(rig: LiveRig, name: string): number[] {
   const scene = must(rig.space.children[0]);
   scene.updateMatrixWorld(true);
-  const at = must(scene.getObjectByName(name)).getWorldPosition(new Vector3());
+  const at = must(scene.getObjectByName(PropertyBinding.sanitizeNodeName(name))).getWorldPosition(
+    new Vector3()
+  );
   return [at.x, -at.z, at.y];
 }
 
