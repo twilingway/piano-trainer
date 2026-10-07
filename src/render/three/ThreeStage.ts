@@ -1,5 +1,7 @@
+import type { BufferGeometry } from "three";
 import {
-  BoxGeometry,
+  Box3,
+  BufferAttribute,
   Camera,
   ColorManagement,
   DirectionalLight,
@@ -15,6 +17,8 @@ import { WebGLRenderer } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import { keyBoxes } from "./keyBoxes";
 import type { KeyBox } from "./keyBoxes";
+import { KIT_DEPTH, KIT_TOP, KIT_WHITE, splitUp, whitePart } from "./pianoKit";
+import type { KitPart, PianoKit } from "./pianoKit";
 import { projectionMatrix, viewMatrix } from "./threeCamera";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
@@ -42,13 +46,22 @@ export class ThreeStage {
   private readonly top = new MeshStandardMaterial({ map: this.picture, roughness: 0.55 });
   private readonly white = new MeshStandardMaterial({ color: 0xe4e1d8, roughness: 0.6 });
   private readonly black = new MeshStandardMaterial({ color: 0x1d2028, roughness: 0.4 });
+  private readonly case = new MeshStandardMaterial({ color: 0x1c1d24, roughness: 0.3 });
+  private readonly felt = new MeshStandardMaterial({ color: 0x951f2c, roughness: 0.95 });
+  private readonly table = new MeshStandardMaterial({ color: 0x343033, roughness: 0.45 });
+  /** The case around the keys: rails, cheeks, the back panel and the table. */
+  private readonly body = new Group();
+  private readonly board: BufferGeometry;
   private hinged: Hinged[] = [];
   private version = -1;
 
   constructor(
     canvas: HTMLCanvasElement,
-    private readonly context: WebGL2RenderingContext
+    private readonly context: WebGL2RenderingContext,
+    private readonly kit: PianoKit
   ) {
+    // The board's top is left out: the road runs there, drawn before the keys.
+    this.board = splitUp(this.part("board").clone(), true);
     this.renderer = new WebGLRenderer({ canvas, context });
     this.renderer.autoClear = false;
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
@@ -57,6 +70,7 @@ export class ThreeStage {
     // Above, in front of the keys and a little to the left: front faces lit, sides shaded.
     sun.position.set(-300, 900, 700);
     this.scene.add(new HemisphereLight(0xffffff, 0x3a3f4c, 1.8), sun, this.keys);
+    this.keys.add(this.body);
   }
 
   /** Draws the keys over whatever is in the frame now, keeping it: the road under them. */
@@ -99,23 +113,69 @@ export class ThreeStage {
 
   dispose(): void {
     this.clear();
-    for (const material of [this.top, this.white, this.black]) material.dispose();
+    this.board.dispose();
+    for (const material of [this.top, this.white, this.black, this.case, this.felt, this.table])
+      material.dispose();
     this.renderer.dispose();
   }
 
   private build(keys: KeysScene): void {
     this.clear();
     this.version = keys.version;
-    for (const box of keyBoxes(keys)) {
-      const mesh = new Mesh(boxGeometry(box), [this.top, box.black ? this.black : this.white]);
-      // The hinge sits on the key's back bottom edge; the box hangs forward from it.
-      mesh.position.set(0, (box.top - box.bottom) / 2, (box.back - box.front) / 2);
+    const boxes = keyBoxes(keys);
+    const black = new Set(boxes.filter((box) => box.black).map((box) => box.pitch));
+    for (const box of boxes) {
+      const part = box.black
+        ? "black"
+        : whitePart(black.has(box.pitch - 1), black.has(box.pitch + 1));
+      const geometry = keyGeometry(this.part(part), box);
+      geometry.computeBoundingBox();
+      const bottom = geometry.boundingBox?.min.y ?? 0;
+      const mesh = new Mesh(geometry, [this.top, box.black ? this.black : this.white]);
+      // The hinge sits on the key's back bottom edge; the key hangs forward from it.
+      mesh.position.set(0, -bottom, box.back);
       const hinge = new Group();
-      hinge.position.set(box.x, box.bottom, -box.back);
+      hinge.position.set(box.x, bottom, -box.back);
       hinge.add(mesh);
       this.keys.add(hinge);
       this.hinged.push({ pitch: box.pitch, hinge, mesh });
     }
+    this.buildBody(boxes);
+  }
+
+  /** Rails, back panel and table across the range, a cheek at each end. */
+  private buildBody(boxes: readonly KeyBox[]): void {
+    const whites = boxes.filter((box) => !box.black);
+    if (whites.length === 0) return;
+    const left = Math.min(...whites.map((box) => box.x - box.width / 2));
+    const right = Math.max(...whites.map((box) => box.x + box.width / 2));
+    const across = (whites[0]?.width ?? 0) / KIT_WHITE;
+    const cheek = 0.034 * across;
+    const add = (
+      geometry: BufferGeometry,
+      material: MeshStandardMaterial,
+      x: number,
+      sx: number
+    ) => {
+      const mesh = new Mesh(geometry, material);
+      mesh.position.set(x, KIT_TOP, 0);
+      mesh.scale.set(sx, 1000, KIT_DEPTH);
+      this.body.add(mesh);
+    };
+    const width = right - left + 2 * cheek;
+    const centre = (left + right) / 2;
+    add(this.board, this.case, centre, width);
+    add(this.part("felt"), this.felt, centre, right - left);
+    add(this.part("slip"), this.case, centre, width);
+    add(this.part("table"), this.table, centre, width + 4 * cheek);
+    add(this.part("cheek"), this.case, left - cheek / 2, across);
+    add(this.part("cheek"), this.case, right + cheek / 2, across);
+  }
+
+  private part(name: KitPart): BufferGeometry {
+    const geometry = this.kit.get(name);
+    if (!geometry) throw new Error(`piano kit has no part "${name}"`);
+    return geometry;
   }
 
   private clear(): void {
@@ -124,23 +184,33 @@ export class ThreeStage {
       this.keys.remove(hinge);
     }
     this.hinged = [];
+    // The case shares the kit's geometry: nothing of its own to free.
+    this.body.clear();
   }
 }
 
-/** A box whose top face shows the key's rect of the picture; every other face is plain. */
-function boxGeometry(box: KeyBox): BoxGeometry {
-  const length = box.back - box.front;
-  const geometry = new BoxGeometry(box.width, box.top - box.bottom, length);
-  // Faces in order +x, -x, +y, -y, +z, -z: the top is the third, four vertices from 8.
-  for (const group of geometry.groups) group.materialIndex = group.start === 12 ? 0 : 1;
+/**
+ * The kit's key sized to the app's key: its width to the slot, millimetres up, 150 mm along to
+ * 142; the top faces, group 0, show the key's rect of the picture.
+ */
+function keyGeometry(part: BufferGeometry, box: KeyBox): BufferGeometry {
+  const geometry = part.clone();
+  const { min, max } = new Box3().setFromBufferAttribute(
+    geometry.getAttribute("position") as BufferAttribute
+  );
+  const across = box.black ? box.width / (max.x - min.x) : box.width / KIT_WHITE;
   const position = geometry.getAttribute("position");
-  const uv = geometry.getAttribute("uv");
+  const uv = new Float32Array(position.count * 2);
   const { u0, u1, v0, v1 } = box.uv;
-  for (let vertex = 8; vertex < 12; vertex++) {
-    // Across the key left to right; along it from the back (-z) to the front (+z).
-    const u = position.getX(vertex) / box.width + 0.5;
-    const v = position.getZ(vertex) / length + 0.5;
-    uv.setXY(vertex, u0 + u * (u1 - u0), v0 + v * (v1 - v0));
+  for (let vertex = 0; vertex < position.count; vertex++) {
+    // Across the key left to right; along it from the back (-z) to the front.
+    const u = (position.getX(vertex) - min.x) / (max.x - min.x);
+    const v = (position.getZ(vertex) - min.z) / (max.z - min.z);
+    uv[vertex * 2] = u0 + u * (u1 - u0);
+    uv[vertex * 2 + 1] = v0 + v * (v1 - v0);
   }
-  return geometry;
+  geometry.setAttribute("uv", new BufferAttribute(uv, 2));
+  geometry.scale(across, 1000, KIT_DEPTH);
+  geometry.translate(0, KIT_TOP, 0);
+  return splitUp(geometry);
 }

@@ -49,8 +49,11 @@ export class ThreeKeysHost {
       return;
     this.loading = true;
     try {
-      const { ThreeStage } = await import("./ThreeStage");
-      this.stage = new ThreeStage(this.app.canvas, gl);
+      const [{ ThreeStage }, { loadPianoKit }] = await Promise.all([
+        import("./ThreeStage"),
+        import("./pianoKit")
+      ]);
+      this.stage = new ThreeStage(this.app.canvas, gl, await loadPianoKit());
     } catch (error) {
       console.warn("3D keys unavailable, keeping the perspective keys", error);
     } finally {
