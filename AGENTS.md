@@ -69,6 +69,10 @@ existing one.
   neither `main` nor `dev` takes direct pushes. A task branch tracks its own remote branch, never
   `main` or `dev`.
 - A feature's OpenSpec change is written and validated on its branch before the code.
+- После слияния PR удалять его рабочую ветку на GitHub. В настройках репозитория держать включённым
+  `Automatically delete head branches`. Ветки `main` и `dev` сохранять; ветки без влитого PR и с
+  неопубликованной работой не удалять. При локальной очистке сохранять файлы worktree и удалять
+  только проверенные устаревшие ветки.
 
 ## Local preview
 
