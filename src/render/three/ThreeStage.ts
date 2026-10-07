@@ -201,7 +201,12 @@ function keyGeometry(part: BufferGeometry, box: KeyBox): BufferGeometry {
   const across = box.black ? box.width / (max.x - min.x) : box.width / KIT_WHITE;
   const position = geometry.getAttribute("position");
   const uv = new Float32Array(position.count * 2);
-  const { u0, u1, v0, v1 } = box.uv;
+  const { v0, v1 } = box.uv;
+  // The picture is a painted key with its rounded sides drawn in: the model has its own, so the
+  // top takes only the flat middle.
+  const rim = (box.uv.u1 - box.uv.u0) * (box.black ? 0.08 : 0.07);
+  const u0 = box.uv.u0 + rim;
+  const u1 = box.uv.u1 - rim;
   for (let vertex = 0; vertex < position.count; vertex++) {
     // Across the key left to right; along it from the back (-z) to the front.
     const u = (position.getX(vertex) - min.x) / (max.x - min.x);
