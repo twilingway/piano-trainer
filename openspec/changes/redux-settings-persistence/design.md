@@ -40,5 +40,6 @@
 ## Migration Plan
 
 Три PR: settings/persistence; song/runtime/composition; library/review. Каждый проходит pnpm check и
-pnpm spec:validate. Готовые изменения интегрируются в dev с сохранением чужой работы; сервер
+pnpm spec:validate. Второй и третий этапы продолжаются от актуальной dev с сохранением изменений
+CI/CD и отдельными PR в dev. Версия пакета меняется только в релизном PR dev → main. Сервер
 автоматически не запускается. Остальные багфиксы вне scope.

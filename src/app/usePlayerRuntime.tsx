@@ -1,4 +1,4 @@
-﻿import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useGameRuntime } from "./useGameRuntime";
 import { useI18n } from "./useI18n";
 import { useGameOptions } from "./useGameOptions";
@@ -23,6 +23,7 @@ import { useWordTyping, useWordTypingInterfaceLanguage } from "./useWordTyping";
 import { WordTypingSettings } from "../ui/WordTypingSettings";
 import { GameModeSwitch } from "../ui/GameModeSwitch";
 import { PracticeTimingStatus } from "../ui/PracticeTimingStatus";
+import type { Part } from "../wordTyping/types";
 
 import { useDeviceRange, useRangeFit } from "./useDeviceRange";
 import { selectTrainerStatus, sameTrainerStatus, useTrainerSelector } from "./trainerSnapshots";
@@ -47,16 +48,20 @@ export function usePlayerRuntime() {
   const game = useGameOptions(word.practiceKey, word.practiceSong.duration, word.enabled, playable);
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const screen = useScreenLayout(word.enabled ? "typing" : "piano");
-  const displayPrefs = game.performance
-    ? {
-        ...staffPrefs,
-        fingers: false,
-        hands: false,
-        labels: false,
-        noteNames: "off" as const,
-        chords: false
-      }
-    : staffPrefs;
+  const displayPrefs = useMemo(
+    () =>
+      game.performance
+        ? {
+            ...staffPrefs,
+            fingers: false,
+            hands: false,
+            labels: false,
+            noteNames: "off" as const,
+            chords: false
+          }
+        : staffPrefs,
+    [game.performance, staffPrefs]
+  );
   const score = useStaffScore(song, current.baseSong, displayPrefs);
   const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
     withNames: score.withNames,
@@ -169,6 +174,10 @@ export function usePlayerRuntime() {
   );
   const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs, toggles);
 
+  const chooseWordPart = (part: Part) => {
+    startFromRef.current = null;
+    word.choosePart(part);
+  };
   const wordSettings = (
     <WordTypingSettings
       language={word.language}
@@ -185,10 +194,7 @@ export function usePlayerRuntime() {
       onLanguage={(language) => {
         word.update({ language });
       }}
-      onPart={(part) => {
-        startFromRef.current = null;
-        word.choosePart(part);
-      }}
+      onPart={chooseWordPart}
     />
   );
 
@@ -244,6 +250,7 @@ export function usePlayerRuntime() {
     toggles,
     keyboardSettings,
     wordSettings,
+    chooseWordPart,
     chooseGame,
     timingStatus,
     modeSwitch

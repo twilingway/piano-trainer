@@ -173,28 +173,28 @@ export function useTimingControls({
   ) => {
     if (!locked && !running) setPreferences((current) => ({ ...current, ...values }));
   };
-  const settings = (
-    <ConnectedTimingSettings
-      source={snapshotSource}
-      preferences={preferences}
-      deviceId={chosenId}
-      deviceName={local || !selected ? t(chosenName) : chosenName}
-      transport={transport}
-      {...(profile ? { profile } : {})}
-      progress={progress}
-      running={running}
-      locked={locked}
-      canCalibrate={!!chosenId}
-      onTransport={onTransport}
-      onOffsets={onOffsets}
-      onStart={() => {
-        void start();
-      }}
-      onCancel={cancel}
-    />
-  );
+  const settingsProps = {
+    preferences,
+    deviceId: chosenId,
+    deviceName: local || !selected ? t(chosenName) : chosenName,
+    transport,
+    ...(profile ? { profile } : {}),
+    progress,
+    running,
+    locked,
+    canCalibrate: !!chosenId,
+    onTransport,
+    onOffsets,
+    onStart: () => {
+      void start();
+    },
+    onCancel: cancel
+  };
+  const settings = <ConnectedTimingSettings source={snapshotSource} {...settingsProps} />;
   return {
     settings,
+    settingsProps,
+    snapshotSource,
     intercept,
     preferences,
     profile,
