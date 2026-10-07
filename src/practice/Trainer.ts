@@ -92,6 +92,8 @@ export class Trainer {
   private board: ComboBoard | undefined;
   private allowedDeviceId: string | undefined;
   private performanceMode = false;
+  private resumeWhenReady = false;
+  private resumePending = false;
   private textNoteIds: readonly string[] = [];
   private readonly audio = new SessionAudio();
 
@@ -131,21 +133,35 @@ export class Trainer {
   }
 
   /** `songKey` names the song for its takes: the same key its finger corrections use. */
-  load(song: Song, options: PracticeOptions, songKey: string): void {
+  load(
+    song: Song,
+    options: PracticeOptions,
+    songKey: string,
+    { preservePosition = false }: { preservePosition?: boolean } = {}
+  ): void {
+    const now = performance.now();
+    const previous = preservePosition ? this.session : undefined;
+    const resume = previous !== undefined && this.playing;
+    this.resumePending = previous !== undefined && this.resumePending;
+    // Resolve between-frame progress with the old clock and speed before replacing either.
+    previous?.pauseClock(now);
+    const position = previous?.time;
     this.finishTake();
     this.silence();
     this.songKey = songKey;
     this.session = new PracticeSession(song, options);
+    if (position !== undefined) this.session.seek(position, now, { leadIn: false });
     this.timing = this.nextTiming;
-    this.session.startClock(performance.now());
-    this.session.pauseClock(performance.now());
+    this.session.startClock(now);
+    this.session.pauseClock(now);
     this.pitchOf = new Map(song.notes.map((note) => [note.id, note.pitch]));
     this.combo.reset();
     this.graded = [];
     this.playing = false;
     this.view.setSong(song);
     this.lastBeat = -1;
-    this.publish();
+    if (resume) this.setPlaying(true);
+    else this.publish();
   }
 
   /** The note a key answers now, if any (PracticeSession.owedNote). */
@@ -155,6 +171,7 @@ export class Trainer {
 
   /** Restarts the run from song time `from`, keeping play or pause as it was. */
   seek(from: number): void {
+    this.resumePending = false;
     if (!this.session) return;
     const resume = this.playing;
     this.finishTake();
@@ -170,6 +187,7 @@ export class Trainer {
   }
 
   setPlaying(playing: boolean): void {
+    this.resumePending = false;
     const session = this.session;
     const wasPlaying = this.playing;
     this.playing = playing && this.canStart && session?.finished !== true;
@@ -301,18 +319,25 @@ export class Trainer {
     canStart: boolean;
     allowedDeviceId?: string;
     performance?: boolean;
+    resumeWhenReady?: boolean;
   }): void {
-    if (
-      this.playing &&
-      this.allowedDeviceId &&
-      (!controls.canStart || controls.allowedDeviceId !== this.allowedDeviceId)
-    )
-      this.setPlaying(false);
+    const canResume =
+      controls.resumeWhenReady === true && !this.allowedDeviceId && !controls.allowedDeviceId;
+    const blocked = this.playing && !controls.canStart;
+    const deviceChanged =
+      this.playing && this.allowedDeviceId && controls.allowedDeviceId !== this.allowedDeviceId;
     this.loop = controls.loop;
     this.stopOnError = controls.stopOnError;
     this.canStart = controls.canStart;
     this.allowedDeviceId = controls.allowedDeviceId;
     this.performanceMode = controls.performance === true;
+    this.resumeWhenReady = controls.resumeWhenReady === true;
+    if (blocked || deviceChanged) {
+      this.setPlaying(false);
+      this.resumePending = blocked && canResume;
+    }
+    if (!canResume) this.resumePending = false;
+    if (this.canStart && this.resumePending && this.resumeWhenReady) this.setPlaying(true);
   }
   activateOverdrive(): void {
     if (this.playing) this.session?.activateOverdrive(performance.now());
@@ -444,7 +469,7 @@ export class Trainer {
           this.finishTake();
           this.playing = false;
           this.silence();
-          if (this.loop && this.session) {
+          if (this.loop && this.canStart && this.session) {
             this.seek(this.session.options.from ?? 0);
             this.setPlaying(true);
           }
