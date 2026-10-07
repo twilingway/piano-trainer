@@ -110,6 +110,9 @@ existing one.
 - Avoid having multiple write-capable agents edit the same files concurrently.
 - Codex and the local Qwen implement bounded tasks in their own worktrees; Claude keeps specs,
   review and acceptance. The procedure is `.claude/skills/codex-worker/SKILL.md`.
+- `ref2game` (`.agents/skills/ref2game`, vendored, unchanged) turns a reference image into a
+  playable 2D slice on its own WebGL2 engine. Game projects go to the git-ignored `games/<name>`;
+  only accepted assets move into `src`.
 
 ## Verification
 
