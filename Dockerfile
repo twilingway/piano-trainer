@@ -1,4 +1,7 @@
 FROM node:22-alpine AS build
+# The classic builder leaves a failed step's container and layers behind;
+# the deploy script prunes them by this label.
+LABEL com.twiling.app=piano-trainer
 
 WORKDIR /app
 RUN corepack enable
