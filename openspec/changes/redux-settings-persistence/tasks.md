@@ -11,7 +11,7 @@
 
 - [x] 2.1 Song/параметры/правки, selectors; тесты сохранения и смены песни.
 - [x] 2.2 Runtime/composition и connected regions; тесты команд и snapshot isolation.
-- [ ] 2.3 pnpm check, pnpm spec:validate и PR второго этапа.
+- [x] 2.3 pnpm check, pnpm spec:validate и PR второго этапа.
 
 ## 3. Библиотека и записи
 
