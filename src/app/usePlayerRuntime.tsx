@@ -71,6 +71,7 @@ export function usePlayerRuntime() {
   });
   const trainer = useTrainer({
     song: word.practiceSong,
+    sourceSong: current.sourceSong,
     songKey: word.practiceKey,
     wordTyping: word.enabled,
     startFromRef,
@@ -115,6 +116,7 @@ export function usePlayerRuntime() {
     rankedReady: timing.rankedReady,
     performance: game.performance,
     canStart: !word.enabled || (!word.pending && !word.error),
+    resumeWhenReady: word.enabled,
     deviceId: timing.profile?.deviceId ?? ""
   });
   const view = useFallingView({

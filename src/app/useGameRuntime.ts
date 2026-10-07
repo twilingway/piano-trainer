@@ -10,6 +10,7 @@ interface Controls {
   deviceId: string;
   performance: boolean;
   canStart?: boolean;
+  resumeWhenReady?: boolean;
 }
 export function useGameRuntime(
   trainerRef: RefObject<Trainer | null>,
@@ -23,15 +24,28 @@ export function useGameRuntime(
     rankedReady,
     deviceId,
     performance,
-    canStart = true
+    canStart = true,
+    resumeWhenReady = false
   } = controls;
   useEffect(() => {
     trainerRef.current?.configureControls({
       loop: loop && !ranked,
       stopOnError: stopOnError && !ranked,
       canStart: canStart && (!ranked || rankedReady),
+      resumeWhenReady: resumeWhenReady && !ranked,
       performance,
       ...(ranked ? { allowedDeviceId: deviceId } : {})
     });
-  }, [trainerRef, ready, loop, ranked, stopOnError, rankedReady, deviceId, performance, canStart]);
+  }, [
+    trainerRef,
+    ready,
+    loop,
+    ranked,
+    stopOnError,
+    rankedReady,
+    deviceId,
+    performance,
+    canStart,
+    resumeWhenReady
+  ]);
 }

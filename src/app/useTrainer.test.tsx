@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import type { TrainerSnapshot } from "../practice/Trainer";
 import type { Song } from "../song/song";
+import type { Take } from "../recording/take";
 import { useTrainer } from "./useTrainer";
 import { createAppStore, type AppStore } from "./store";
 import { withTestStore } from "./storeTestSupport";
@@ -78,26 +79,36 @@ let renders: number;
 const startFromRef = { current: null as number | null };
 const handlers = { onNoteClick: vi.fn(), onTake: vi.fn(), onReplay: vi.fn() };
 let ensureSound: () => Promise<void>;
+interface Replay {
+  song: Song;
+  take: Take;
+  count: number;
+}
 function Harness({
   ranked = false,
-  selectedSong = song
+  selectedSong = song,
+  sourceSong = selectedSong,
+  replay
 }: {
   ranked?: boolean;
   selectedSong?: Song;
+  sourceSong?: Song;
+  replay?: Replay | undefined;
 }) {
   renders++;
   const { locale } = useI18n();
   const trainer = useTrainer({
     song: selectedSong,
+    sourceSong,
     songKey: selectedSong.title,
     ranked,
     startFromRef,
     ensureSound,
     ...handlers,
-    comparing: false,
-    compareSong: undefined,
-    lastTake: null,
-    replayCount: 0
+    comparing: !!replay,
+    compareSong: replay?.song,
+    lastTake: replay ?? null,
+    replayCount: replay?.count ?? 0
   });
   useEffect(() => {
     value = trainer;
@@ -131,12 +142,22 @@ afterEach(async () => {
   host.remove();
   vi.unstubAllGlobals();
 });
-async function mount(ranked = false, selectedSong = song) {
+async function mount(
+  ranked = false,
+  selectedSong = song,
+  sourceSong = selectedSong,
+  replay?: Replay
+) {
   await act(async () => {
     root.render(
       withTestStore(
         <StrictMode>
-          <Harness ranked={ranked} selectedSong={selectedSong} />
+          <Harness
+            ranked={ranked}
+            selectedSong={selectedSong}
+            sourceSong={sourceSong}
+            replay={replay}
+          />
         </StrictMode>,
         store
       )
@@ -146,6 +167,136 @@ async function mount(ranked = false, selectedSong = song) {
 }
 
 describe("trainer runtime isolation", () => {
+  it("keeps a paused listen-through paused when its speed changes", async () => {
+    await mount();
+    await act(async () => {
+      await value.toggleListening();
+    });
+    const trainer = active();
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      value.setSpeed(0.5);
+      await Promise.resolve();
+    });
+    expect(trainer.load).toHaveBeenLastCalledWith(song, expect.anything(), song.title, {
+      preservePosition: true
+    });
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+  });
+
+  it("preserves a paused comparison on settings changes but resets an explicit replay", async () => {
+    const replay: Replay = {
+      song,
+      count: 0,
+      take: {
+        id: "take",
+        songKey: song.title,
+        createdAt: "2026-10-07",
+        mode: "tempo",
+        speed: 1,
+        hands: ["right"],
+        from: 2,
+        notes: [],
+        pedal: []
+      }
+    };
+    await mount(false, song, song, replay);
+    const trainer = active();
+    trainer.seek.mockClear();
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      value.setSpeed(0.5);
+      await Promise.resolve();
+    });
+    expect(trainer.load).toHaveBeenLastCalledWith(song, expect.anything(), `${song.title}:replay`, {
+      preservePosition: true
+    });
+    expect(trainer.seek).not.toHaveBeenCalled();
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    const variant = { ...song };
+    await mount(false, song, song, { ...replay, song: variant });
+    expect(trainer.load).toHaveBeenLastCalledWith(
+      variant,
+      expect.anything(),
+      `${song.title}:replay`,
+      { preservePosition: true }
+    );
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    await mount(false, song, song, { ...replay, count: 1 });
+    expect(trainer.load).toHaveBeenLastCalledWith(song, expect.anything(), `${song.title}:replay`, {
+      preservePosition: false
+    });
+    expect(trainer.seek).toHaveBeenLastCalledWith(2);
+    expect(trainer.setPlaying).toHaveBeenLastCalledWith(true);
+  });
+
+  it("hands a completed listen-through back to practice from the beginning", async () => {
+    await mount();
+    await act(async () => {
+      await value.toggleListening();
+    });
+    expect(value.listening).toBe(true);
+    await act(async () => {
+      active().onSnapshot?.(snapshot({ finished: true, time: song.duration }));
+      await Promise.resolve();
+    });
+    expect(value.listening).toBe(false);
+    expect(active().load).toHaveBeenLastCalledWith(song, expect.anything(), song.title, {
+      preservePosition: false
+    });
+  });
+
+  it("keeps position for mode, hand and speed changes without seeking back to a staff click", async () => {
+    await mount();
+    const trainer = active();
+    startFromRef.current = 2;
+    for (const change of [
+      { mode: "tempo" as const },
+      { handChoice: "left" as const },
+      { speed: 0.5 }
+    ]) {
+      await act(async () => {
+        store.dispatch(preferencesActions.playerChanged(change));
+        await Promise.resolve();
+      });
+      expect(trainer.load).toHaveBeenLastCalledWith(song, expect.anything(), song.title, {
+        preservePosition: true
+      });
+    }
+    expect(trainer.seek).not.toHaveBeenCalled();
+  });
+
+  it("preserves transformed variants but resets a new source with the same title", async () => {
+    await mount();
+    const variant = { ...song, notes: song.notes.map((note) => ({ ...note, pitch: 62 })) };
+    await mount(false, variant, song);
+    expect(active().load).toHaveBeenLastCalledWith(variant, expect.anything(), song.title, {
+      preservePosition: true
+    });
+    await mount(false, { ...song });
+    expect(active().load).toHaveBeenLastCalledWith(song, expect.anything(), song.title, {
+      preservePosition: false
+    });
+  });
+
+  it("keeps explicit restart as a reset and preserves subsequent preference changes", async () => {
+    await mount();
+    startFromRef.current = 2;
+    await act(async () => {
+      value.restart();
+      await Promise.resolve();
+    });
+    expect(startFromRef.current).toBeNull();
+    expect(active().load).toHaveBeenLastCalledWith(song, expect.anything(), song.title);
+    await act(async () => {
+      value.setSpeed(0.5);
+      await Promise.resolve();
+    });
+    expect(active().load).toHaveBeenLastCalledWith(song, expect.anything(), song.title, {
+      preservePosition: true
+    });
+  });
+
   it("applies Ranked rules without overwriting saved raw player preferences", async () => {
     store.dispatch(
       preferencesActions.playerChanged({
@@ -209,7 +360,8 @@ describe("trainer runtime isolation", () => {
     expect(active().load).toHaveBeenLastCalledWith(
       expect.objectContaining({ title: "other" }),
       expect.anything(),
-      "other"
+      "other",
+      { preservePosition: false }
     );
     await act(async () => {
       root.unmount();

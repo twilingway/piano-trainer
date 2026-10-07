@@ -173,6 +173,44 @@ describe("seek", () => {
   });
 });
 
+describe("exact seek without a new lead-in", () => {
+  it("anchors the new speed at the exact positive position", () => {
+    const run = session("tempo", ["right"], 0.5);
+    run.seek(0.375, 1000, { leadIn: false });
+    expect(run.time).toBe(0.375);
+    expect(run.startedFrom).toBe(0.375);
+    expect(run.statusOf("c4")).toBe("skipped");
+    run.startClock(1000);
+    run.tick(1200);
+    expect(run.time).toBeCloseTo(0.475);
+  });
+
+  it("keeps an exact waiting chord until all of its keys are played", () => {
+    const run = session("wait");
+    run.seek(1, 1000, { leadIn: false });
+    run.startClock(1000);
+    run.tick(2000);
+    expect(run.time).toBe(1);
+    expect(run.waiting).toBe(true);
+    expect(run.nextDue().map((note) => note.id)).toEqual(["e4", "g4"]);
+    run.pressKeyAt(64, 2000, 2000);
+    run.pressKeyAt(67, 2000, 2000);
+    run.tick(2100);
+    expect(run.time).toBeCloseTo(1.1);
+  });
+
+  it("keeps negative count-in time while the recorded segment starts at zero", () => {
+    const run = session("tempo", ["right"], 0.5);
+    run.seek(-0.75, 1000, { leadIn: false });
+    expect(run.time).toBe(-0.75);
+    expect(run.startedFrom).toBe(0);
+    expect(run.statusOf("c4")).toBe("pending");
+    run.startClock(1000);
+    run.tick(1500);
+    expect(run.time).toBeCloseTo(-0.5);
+  });
+});
+
 describe("listening", () => {
   it("starts on the first note with no run-up and no burst of count-in clicks", () => {
     const run = session("tempo", []);

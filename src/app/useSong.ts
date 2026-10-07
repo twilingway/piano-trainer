@@ -24,6 +24,7 @@ export function useSong(startFromRef: RefObject<number | null>) {
   const transpose = useAppSelector((state) => state.song.transpose);
   const octave = useAppSelector((state) => state.song.octave);
   const simplified = useAppSelector((state) => state.song.simplified);
+  const sourceSong = useAppSelector((state) => state.song.sourceSong);
   const source = useAppSelector((state) => state.song.sourceSong.source);
   const asWritten = useAppSelector((state) => state.preferences.player.notesAsWritten);
   const sourceKey = useAppSelector(selectSourceKey),
@@ -101,6 +102,7 @@ export function useSong(startFromRef: RefObject<number | null>) {
           }
         : undefined,
     baseSong,
+    sourceSong,
     song,
     songKey,
     overrides,
