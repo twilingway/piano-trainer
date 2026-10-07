@@ -78,6 +78,17 @@ tail -n 100 ~/piano-prod/state/agent.log
 tail -n 100 ~/piano-prod/state/deploy.log
 ```
 
+Скрипт выпуска после каждой сборки удаляет её промежуточные контейнеры и слои (метка
+`com.twiling.app=piano-trainer`), а после релиза запускает `fstrim` в VM Colima: диск VM растёт на
+хосте и отдаёт освобождённое место только после trim. Если сайт отдаёт 500 на любые файлы при живом
+`/health`, сначала проверьте место:
+
+```bash
+df -h /System/Volumes/Data
+du -sh ~/.colima/_lima/_disks/colima
+docker system df
+```
+
 Для ручного отката возьмите предыдущий тег из `tag-history` и запустите сохранённый образ:
 
 ```bash

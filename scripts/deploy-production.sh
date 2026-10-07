@@ -58,6 +58,19 @@ rollback() {
   IMAGE_TAG="$previous" compose up -d --no-build piano-web || log "Rollback failed."
 }
 
+# Without BuildKit a failed build keeps its step container and layers; the
+# build stage's label marks them.
+prune_build_leftovers() {
+  docker container prune -f --filter label=com.twiling.app=piano-trainer >/dev/null 2>&1 || true
+  docker image prune -f --filter label=com.twiling.app=piano-trainer >/dev/null 2>&1 || true
+}
+
+# Colima's VM disk grows on the host and gives freed blocks back only on trim.
+trim_vm_disk() {
+  command -v colima >/dev/null 2>&1 || return 0
+  colima ssh -- sudo fstrim -a >/dev/null 2>&1 || log "WARN: fstrim in the Colima VM failed."
+}
+
 wait_for_local() {
   local deadline=$((SECONDS + 90)) container status
   while ((SECONDS < deadline)); do
@@ -114,7 +127,10 @@ fi
 git -C "$REPO_DIR" checkout --quiet --detach "$target_sha" || fail "Could not check out $target_sha."
 
 log "Building $short_sha."
-IMAGE_TAG="$short_sha" GIT_SHA="$target_sha" GIT_PR="$target_pr" compose build piano-web || fail "Image build failed; current release is untouched."
+build_ok=1
+IMAGE_TAG="$short_sha" GIT_SHA="$target_sha" GIT_PR="$target_pr" compose build piano-web || build_ok=0
+prune_build_leftovers
+((build_ok)) || fail "Image build failed; current release is untouched."
 log "Switching to $short_sha."
 if ! IMAGE_TAG="$short_sha" compose up -d --no-build piano-web; then
   rollback "$previous_tag"
@@ -152,4 +168,5 @@ if ((tag_count > 3)); then
   head -n 3 "$STATE_DIR/tag-history" > "$STATE_DIR/tag-history.next"
   mv "$STATE_DIR/tag-history.next" "$STATE_DIR/tag-history"
 fi
+trim_vm_disk
 log "Release $short_sha is live."
