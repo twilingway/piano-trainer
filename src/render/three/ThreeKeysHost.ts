@@ -1,5 +1,6 @@
 import { Container, UPDATE_PRIORITY } from "pixi.js";
 import type { Application, WebGLRenderer } from "pixi.js";
+import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
 import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
 import type { ThreeStage } from "./ThreeStage";
@@ -12,7 +13,7 @@ import type { ThreeStage } from "./ThreeStage";
  */
 export class ThreeKeysHost {
   private stage: ThreeStage | undefined;
-  private loading = false;
+  private loading: Promise<void> | undefined;
   private wanted = false;
   private active = false;
   /**
@@ -26,35 +27,58 @@ export class ThreeKeysHost {
     /** The road's container: drawn first, on its own. */
     private readonly road: Container,
     private readonly keys: PerspectiveKeyboardLayer,
-    private readonly keyboard: KeyboardLayer
+    private readonly keyboard: KeyboardLayer,
+    private readonly hands: HandsLayer | undefined
   ) {}
 
-  setEnabled(on: boolean): void {
+  /** Settles once the keys are drawn by three, or once it is clear that they cannot be. */
+  setEnabled(on: boolean): Promise<void> {
     this.wanted = on;
-    if (on) void this.load();
+    const loaded = on ? this.load() : Promise.resolve();
     this.sync();
+    return loaded;
+  }
+
+  /** Whether three draws the keys now, rather than the perspective layer. */
+  get on(): boolean {
+    return this.active;
   }
 
   destroy(): void {
-    this.setEnabled(false);
+    void this.setEnabled(false);
     this.stage?.dispose();
     this.stage = undefined;
   }
 
-  private async load(): Promise<void> {
-    if (this.stage || this.loading) return;
+  private load(): Promise<void> {
+    if (this.stage) return Promise.resolve();
+    this.loading ??= this.create();
+    return this.loading;
+  }
+
+  private async create(): Promise<void> {
     const gl = (this.app.renderer as Partial<WebGLRenderer>).gl;
     // three needs WebGL 2; anything else keeps the perspective keys.
     if (typeof WebGL2RenderingContext === "undefined" || !(gl instanceof WebGL2RenderingContext))
       return;
-    this.loading = true;
     try {
-      const { ThreeStage } = await import("./ThreeStage");
-      this.stage = new ThreeStage(this.app.canvas, gl);
+      const [{ ThreeStage }, { loadPianoKit }, { loadHand }] = await Promise.all([
+        import("./ThreeStage"),
+        import("./pianoKit"),
+        import("./liveHands")
+      ]);
+      const [kit, hand] = await Promise.all([
+        loadPianoKit(),
+        loadHand().catch((error: unknown) => {
+          console.warn("3D hands unavailable, keeping the sprite hands", error);
+          return undefined;
+        })
+      ]);
+      this.stage = new ThreeStage(this.app.canvas, gl, kit, hand);
     } catch (error) {
       console.warn("3D keys unavailable, keeping the perspective keys", error);
     } finally {
-      this.loading = false;
+      this.loading = undefined;
       this.sync();
     }
   }
@@ -63,6 +87,7 @@ export class ThreeKeysHost {
     const on = this.wanted && this.stage !== undefined;
     if (on === this.active) return;
     this.active = on;
+    if (this.hands) this.hands.live = on && this.stage?.hands !== undefined;
     const { ticker } = this.app;
     // The ticker calls the app's render with the app as `this`, as Pixi itself added it.
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -93,12 +118,19 @@ export class ThreeKeysHost {
     renderer.render({ container: this.road });
     const picture = gl.texture.getGlSource(scene.texture.source).texture;
     const frame = this.keyboard.frame;
+    const hands = this.hands?.container.visible
+      ? { time: this.hands.time, notes: this.hands.songNotes }
+      : undefined;
+    // Live hands press the keys they play themselves: a repeated note's key comes up between.
+    const played = hands !== undefined && this.stage.hands !== undefined;
     this.stage.draw(
       scene,
       picture,
-      (pitch) => frame !== undefined && (frame.pressed.has(pitch) || frame.sounding.has(pitch)),
+      (pitch) =>
+        frame !== undefined && (frame.pressed.has(pitch) || (!played && frame.sounding.has(pitch))),
       this.app.screen,
-      this.app.ticker.deltaMS / 1000
+      this.app.ticker.deltaMS / 1000,
+      hands
     );
     renderer.resetState();
     renderer.render({ container: stage, clear: false });

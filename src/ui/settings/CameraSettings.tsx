@@ -1,11 +1,17 @@
 import { useI18n } from "../../app/useI18n";
-import { DEFAULT_CAMERA } from "../../render/worldCamera";
+import { CAMERA_PRESETS, DEFAULT_CAMERA } from "../../render/worldCamera";
 import type { CameraPrefs } from "../../render/worldCamera";
 
 interface Props {
   readonly camera: CameraPrefs;
   readonly onChange: (camera: CameraPrefs) => void;
 }
+
+const PRESETS: readonly { key: keyof typeof CAMERA_PRESETS; label: string }[] = [
+  { key: "player", label: "Игрок" },
+  { key: "top", label: "Сверху" },
+  { key: "hands", label: "Руки крупно" }
+];
 
 const CONTROLS: readonly {
   key: keyof CameraPrefs;
@@ -16,9 +22,9 @@ const CONTROLS: readonly {
   suffix: string;
 }[] = [
   { key: "fov", label: "Угол обзора", min: 25, max: 85, step: 1, suffix: "°" },
-  { key: "height", label: "Высота камеры", min: 25, max: 420, step: 5, suffix: "" },
+  { key: "height", label: "Высота камеры", min: 25, max: 1000, step: 5, suffix: "" },
   { key: "distance", label: "Дистанция камеры", min: 120, max: 1200, step: 10, suffix: "" },
-  { key: "pitch", label: "Наклон камеры", min: -5, max: 60, step: 1, suffix: "°" },
+  { key: "pitch", label: "Наклон камеры", min: -5, max: 85, step: 1, suffix: "°" },
   {
     key: "targetY",
     label: "Камера: сдвиг по вертикали",
@@ -35,6 +41,23 @@ export function CameraSettings({ camera, onChange }: Props) {
   const { t } = useI18n();
   return (
     <>
+      <div className="setting" role="group" aria-label={t("Ракурс")}>
+        <span>{t("Ракурс")}</span>
+        <span className="setting-control">
+          {PRESETS.map(({ key, label }) => (
+            <button
+              className="game-button"
+              type="button"
+              key={key}
+              onClick={() => {
+                onChange({ ...CAMERA_PRESETS[key], scale: camera.scale });
+              }}
+            >
+              {t(label)}
+            </button>
+          ))}
+        </span>
+      </div>
       {CONTROLS.map(({ key, label, min, max, step, suffix }) => (
         <label className="setting" key={key}>
           <span>{t(label)}</span>

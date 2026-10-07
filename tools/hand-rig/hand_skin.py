@@ -175,11 +175,26 @@ def smooth(e0, e1, x):
 
 # --- nails: one plate per finger on the distal phalanx
 NAIL_W = 0.70           # nail half-width over the half-width of the phalanx section
-NAIL_LEN = 0.5          # nail length over the distal bone's head-to-tip distance
+# Nail length over the distal bone's head-to-tip distance; the thumb's would start in the dip
+# behind its nail fold.
+NAIL_LEN = {1: 0.42, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5}
 FREE = 0.4              # the free edge reaches this far past the tip along the bone
 THICK = 0.5
 RISE = 0.45             # the plate's top above the skin in the middle
-SINK = 0.15             # how deep the base and the sides sink into the folds
+SINK = 0.25             # how deep the base and the sides sink into the folds
+BASE_ROUND = 2.0        # mm the base's corners curve back: a quarter ellipse into the sides
+END_ROUND = 2.6         # the same for the free edge's corners
+BULGE = 0.45            # the rim's half-round reaches this far past the outline, over THICK
+HULL_STEP = 0.25        # mm between the skin samples of a nail column's profile
+HULL_SMOOTH = 0.5       # mm, the gaussian that rounds the hull's corners
+REACH = 12              # mm under the nail's frame a skin ray may hit
+LEAVE = 2.5             # mm before its free edge the plate leaves the skin, which curls down to the tip
+TIP_GAP = 1.2           # mm the free edge stops short of the skin's end as seen from the back
+
+
+def corner(u):
+    """0 in the middle, 1 at the sides: a quarter ellipse, so the outline meets the sides tangentially."""
+    return 1 - np.sqrt(np.clip(1 - np.square(u), 0, 1))
 
 
 def nail_frame(bvh, B, f):
@@ -207,45 +222,80 @@ def nail_frame(bvh, B, f):
     d = x * minor[0] + dorsal * minor[1]
     side = x * minor[1] - dorsal * minor[0]
     H = H + x * centre[0] + dorsal * centre[1]
-    return dict(H=H, x=side, y=y, d=d, tip=tip, half=float(np.sqrt(w[1]) * 1.41))
+    return dict(f=f, H=H, x=side, y=y, d=d, tip=tip, half=float(np.sqrt(w[1]) * 1.41))
 
 
-def nail_shape(fr):
+def skin_height(bvh, fr, s, l):
+    """The skin's height over the nail's frame at `s` along and `l` to the side, or nan: rays reach
+    REACH below the frame's centre, not on to another finger."""
+    hit = bvh.ray_cast(Vector(fr["H"] + fr["y"] * s + fr["x"] * l + fr["d"] * 25), Vector(-fr["d"]), 25 + REACH)
+    return 25 - hit[3] if hit[0] else np.nan
+
+
+def skin_end(bvh, fr, l):
+    """How far along the skin goes, seen from the back, `l` to the side of the nail's middle. The
+    bone's own tip lies further out than the skin under an offset plate."""
+    s = np.arange(0.5 * fr["tip"], fr["tip"] + 6, HULL_STEP)
+    on = [t for t in s if not np.isnan(skin_height(bvh, fr, t, l))]
+    return on[-1] if on else fr["tip"]
+
+
+def nail_shape(bvh, fr):
     tip = fr["tip"]
-    s1 = tip + FREE
-    s0 = tip - NAIL_LEN * tip
-    drop = tip - 3.5                     # past this the skin curves down to the tip
+    s0 = tip - NAIL_LEN[fr["f"]] * tip
+    end = skin_end(bvh, fr, 0)
+    s1 = end + FREE
+    drop = end - 3.5                     # past this the skin curves down to the tip
     w = NAIL_W * fr["half"]
     return dict(s0=s0, s1=s1, drop=drop, w=w,
-                base=lambda u: s0 + 1.6 * u * u,         # the base curves back at the corners
-                end=lambda u: s1 - 2.2 * u * u,          # the free edge is round
+                base=lambda u: s0 + BASE_ROUND * corner(u),
+                end=lambda u: s1 - END_ROUND * corner(u),
                 width=lambda v: w * (0.88 + 0.12 * np.sqrt(np.clip(v, 0, 1))))
 
 
-def nail_mesh(bvh, fr, sh, nu=15, bed=14, free=4):
+def stiff_profile(bvh, fr, sh, u, s_a, s_b):
+    """The skin's height along one column of the nail, as a stiff plate lying on it would follow
+    it: the upper hull of the profile, bridging the sculpt's dips, then smoothed; LEAVE before its
+    free edge it goes on straight off the curling fingertip. Copying the skin bent the plate into a
+    spoon, kinked it at the tip and let the skin through its free edge."""
+    s = np.arange(s_a - 1.0, s_b + 1.0, HULL_STEP)
+    skin = np.array([skin_height(bvh, fr, t, u * sh["width"]((t - sh["s0"]) / (sh["s1"] - sh["s0"])))
+                     for t in s])
+    known = ~np.isnan(skin) & (s <= s_b - LEAVE)
+    hull = []
+    for p in zip(s[known], skin[known]):
+        while len(hull) > 1 and (hull[-1][0] - hull[-2][0]) * (p[1] - hull[-2][1]) \
+                - (hull[-1][1] - hull[-2][1]) * (p[0] - hull[-2][0]) >= 0:
+            hull.pop()
+        hull.append(p)
+    hs, hh = np.array(hull).T
+    # Past the skin, the free edge goes on along the hull's last slope.
+    slope = max(-0.4, (hh[-1] - hh[-2]) / (hs[-1] - hs[-2])) if len(hs) > 1 else 0.0
+    h = np.where(s <= hs[-1], np.interp(s, hs, hh), hh[-1] + slope * (s - hs[-1]))
+    k = np.exp(-0.5 * (np.arange(-4, 5) * HULL_STEP / HULL_SMOOTH) ** 2)
+    h = np.convolve(np.pad(h, 4, mode="edge"), k / k.sum(), mode="valid")
+    return s, h
+
+
+def nail_mesh(bvh, fr, sh, nu=19, bed=14, free=4):
     """Top and bottom surface grids (nu across, rows along) and the colour of each top vertex. Two
-    rows 0.08 mm apart run along the smile line, so the white free edge starts on a clean curve."""
+    rows 0.08 mm apart run along the smile line, so the white free edge starts on a clean curve.
+    Columns crowd towards the sides, where the rounded corners turn."""
     H, x, y, d = fr["H"], fr["x"], fr["y"], fr["d"]
     top, bottom, colour = [], [], []
     nv = bed + 1 + free
-    for i in range(nu):
-        u = -1 + 2 * i / (nu - 1)
-        s_a, s_b = sh["base"](u), sh["end"](u)
-        smile = sh["drop"] - 0.6 + 1.4 * u * u
+    us = -np.cos(np.pi * np.arange(nu) / (nu - 1))
+    # Each column ends just past the skin under it, the fingertip being round from above; one
+    # parabola across the columns, as single rays made the free edge ragged.
+    ends = np.polyval(np.polyfit(us, [skin_end(bvh, fr, u * sh["w"]) for u in us], 2), us) - TIP_GAP
+    for u, end in zip(us, ends):
+        s_a = sh["base"](u)
+        s_b = min(sh["end"](u), end)
+        smile = min(sh["drop"] - 0.6 + 1.4 * u * u, s_b - 0.3)
         ss = np.concatenate([np.linspace(s_a, smile, bed), np.linspace(smile + 0.08, s_b, free + 1)])
-        height = []
-        for s in ss:
-            l = u * sh["width"]((s - sh["s0"]) / (sh["s1"] - sh["s0"]))
-            o = H + y * s + x * l + d * 25
-            hit = bvh.ray_cast(Vector(o), Vector(-d), 40) if s <= sh["drop"] else (None,)
-            height.append(25 - hit[3] if hit[0] else None)
-        # Past the drop the plate keeps the line of the last skin it lay on, curving down a little.
-        known = [(s, h) for s, h in zip(ss, height) if h is not None]
-        (sa, ha), (sb, hb) = known[max(0, len(known) - 4)], known[-1]
-        slope = (hb - ha) / (sb - sa) if sb > sa else 0
-        for j, s in enumerate(ss):
-            h = height[j] if height[j] is not None else hb + slope * (s - sb) - 0.06 * (s - sb) ** 2
-            edge = min(1.0, (1 - abs(u)) * 6, (s - s_a) / 1.2)   # 0 at the folds, 1 inside
+        heights = np.interp(ss, *stiff_profile(bvh, fr, sh, u, s_a, s_b))
+        for j, (s, h) in enumerate(zip(ss, heights)):
+            edge = min(1.0, (1 - abs(u)) * 3, (s - s_a) / 1.2)   # 0 at the folds, 1 inside
             lift = -SINK + (RISE + SINK) * edge * (1 - 0.35 * u * u)
             l = u * sh["width"]((s - sh["s0"]) / (sh["s1"] - sh["s0"]))
             p = H + y * s + x * l + d * (h + lift)
@@ -263,35 +313,46 @@ def build_nails(m, B):
     old = bpy.data.objects.get("HandNails")
     if old:
         bpy.data.objects.remove(old)
-    verts, faces, colours, groups, flat, info = [], [], [], [], [], {}
+    verts, faces, colours, groups, info = [], [], [], [], {}
     for f in range(1, 6):
         fr = nail_frame(bvh, B, f)
-        sh = nail_shape(fr)
+        sh = nail_shape(bvh, fr)
         info[f] = (fr, sh)
         top, bottom, colour, nu, nv = nail_mesh(bvh, fr, sh)
         o = len(verts)
         n = nu * nv
         verts += [tuple(p / 1000) for p in top] + [tuple(p / 1000) for p in bottom]
-        colours += list(colour) + [NAIL_FREE * 0.97] * n
-        groups += [f] * (2 * n)
         at = lambda i, j: i * nv + j
         for i in range(nu - 1):
             for j in range(nv - 1):
                 q = (at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1))
                 faces.append(tuple(o + k for k in q))
                 faces.append(tuple(o + n + k for k in reversed(q)))
-                flat += [False, False]
-        # The rim: base, sides and free edge joined top to bottom, shaded flat.
+        # The rim: base, sides and free edge joined top to bottom over a half-round, no sharp edge.
         ring = [at(i, 0) for i in range(nu)] + [at(nu - 1, j) for j in range(1, nv)] \
             + [at(i, nv - 1) for i in range(nu - 2, -1, -1)] + [at(0, j) for j in range(nv - 2, 0, -1)]
-        for a, b in zip(ring, ring[1:] + ring[:1]):
-            faces.append((o + b, o + a, o + n + a, o + n + b))
-            flat.append(True)
+        centre = top.mean(0)
+        mid = []
+        for k, a in enumerate(ring):
+            tangent = top[ring[(k + 1) % len(ring)]] - top[ring[k - 1]]
+            out = np.cross(tangent, fr["d"])
+            out /= max(np.linalg.norm(out), 1e-9)
+            if out @ (top[a] - centre) < 0:
+                out = -out
+            mid.append((top[a] + bottom[a]) / 2 + out * BULGE * THICK)
+        verts += [tuple(p / 1000) for p in mid]
+        colours += list(colour) + [NAIL_FREE * 0.97] * n + [colour[a] for a in ring]
+        groups += [f] * (2 * n + len(ring))
+        m0 = o + 2 * n
+        for k, (a, b) in enumerate(zip(ring, ring[1:] + ring[:1])):
+            ma, mb = m0 + k, m0 + (k + 1) % len(ring)
+            faces.append((o + b, o + a, ma, mb))
+            faces.append((mb, ma, o + n + a, o + n + b))
     me = bpy.data.meshes.new("HandNails")
     me.from_pydata(verts, [], faces)
     me.validate()
-    for p, fl in zip(me.polygons, flat):
-        p.use_smooth = not fl
+    for p in me.polygons:
+        p.use_smooth = True
     attr = me.color_attributes.new("nail", "FLOAT_COLOR", "POINT")
     attr.data.foreach_set("color", np.concatenate([np.c_[np.array(colours), np.ones(len(colours))]]).ravel())
     me.color_attributes.active_color = attr
@@ -443,7 +504,7 @@ def skin_fields(P, N, B, nails):
         s = (P - fr["H"]) @ fr["y"]
         l = (P - fr["H"]) @ fr["x"]
         u = l / sh["w"]
-        base = sh["s0"] + 1.6 * np.clip(u, -1, 1) ** 2
+        base = sh["s0"] + BASE_ROUND * corner(u)
         inside = smooth(1.25, 1.0, np.abs(u)) * back * sel
         groove = np.exp(-((s - base + 0.2) / 0.38) ** 2) * inside
         side = np.exp(-((np.abs(u) - 1.04) / 0.07) ** 2) * (s > base) * (s < sh["drop"]) * back * sel
@@ -464,11 +525,10 @@ def skin_fields(P, N, B, nails):
     paths = []
     for a, b2 in ((1, 2), (2, 3), (3, 4)):
         end = (heads[a] + heads[b2]) / 2
-        start = np.array([end[0] * 0.55, 18.0])
+        start = np.array([end[0] * 0.55, 30.0])
         paths.append([start, start + (end - start) * 0.5 + np.array([1.5, 0]), end - np.array([0, 6])])
-    arch = [np.array([heads[1][0] * 0.65, 26.0]), np.array([0.0, 22.0]), np.array([heads[4][0] * 0.6, 28.0])]
+    arch = [np.array([heads[1][0] * 0.65, 36.0]), np.array([0.0, 32.0]), np.array([heads[4][0] * 0.6, 38.0])]
     paths.append(arch)
-    paths.append([np.array([heads[4][0] * 0.6, 28.0]), np.array([heads[4][0] * 0.9, 12.0])])
     vein = np.zeros(M, np.float32)
     # Veins meander: the texel is pushed sideways by slow noise before measuring the distance.
     q = q + np.stack([vnoise(P / 9.0, SEED + 3) - 0.5, vnoise(P / 9.0, SEED + 13) - 0.5], 1) * 7.0
@@ -480,9 +540,10 @@ def skin_fields(P, N, B, nails):
             dist = np.linalg.norm(q - (a + t[:, None] * ab), axis=1) + wob
             # A soft, wide bulge: a rounded profile with a hard edge read as a scar.
             vein = np.maximum(vein, np.exp(-(np.maximum(dist, 0) / 1.5) ** 2))
-    # Fading out towards the knuckles and the wrist, and here and there along the way.
+    # Fading out towards the knuckles and, well before it, the wrist: veins that stop at the wrist
+    # read as a cut. Here and there along the way, too.
     knuckles = float(np.mean([h[1] for h in heads.values()]))
-    vein *= back * smooth(knuckles - 2, knuckles - 16, q[:, 1]) * smooth(4, 16, q[:, 1])
+    vein *= back * smooth(knuckles - 2, knuckles - 16, q[:, 1]) * smooth(24, 36, q[:, 1])
     vein *= 0.45 + 0.55 * vnoise(P / 12.0, SEED + 4)
     height += 0.22 * vein
     colour += (VEIN - colour) * (0.12 * vein)[:, None]
@@ -515,7 +576,9 @@ def hair_alpha(P, N, B, bid, names, back, on):
     length = np.zeros(M, np.float32)
     fore = B["lowerarm02.R"]
     sel = on("lowerarm02.R")
-    density[sel] = 0.10 * back[sel]
+    # From the hand's own density at the wrist, not a step at the bones' border.
+    up = (P[sel] - B["wrist.R"]["head"]) @ -fore["y"]
+    density[sel] = back[sel] * (0.03 + 0.07 * smooth(10, 45, up))
     direction[sel] = fore["y"] + fore["x"] * 0.3            # the bone runs elbow to wrist
     length[sel] = 7
     sel = on("wrist.R", "metacarpal1.R", "metacarpal2.R", "metacarpal3.R", "metacarpal4.R")

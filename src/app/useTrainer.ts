@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { practiceActions } from "./practiceSlice";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
@@ -8,7 +9,7 @@ import { Trainer } from "../practice/Trainer";
 import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
 import { choosableRoles, ROLE_HAND } from "../song/midiParts";
-import type { PartRole, SongPart } from "../song/midiParts";
+import type { PartRole } from "../song/midiParts";
 import type { Song } from "../song/song";
 import { preferencesActions } from "./preferencesSlice";
 import { useAppDispatch, useAppSelector } from "./storeHooks";
@@ -30,6 +31,8 @@ interface Options {
   >;
   readonly ranked?: boolean;
   readonly song: Song;
+  /** Raw selection identity, shared by its transposed and arranged variants. */
+  readonly sourceSong?: Song;
   /** The song's key for the trainer's per-song state. */
   readonly songKey: string;
   /**
@@ -57,6 +60,7 @@ interface Options {
  */
 export function useTrainer({
   song,
+  sourceSong = song,
   songKey,
   startFromRef,
   ensureSound,
@@ -73,6 +77,13 @@ export function useTrainer({
 }: Options) {
   const hostRef = useRef<HTMLDivElement>(null);
   const trainerRef = useRef<Trainer | null>(null);
+  const loadedRef = useRef<{
+    trainer: Trainer;
+    sourceSong: Song;
+    replaying?: { song: Song; speed: number; from: number; takeId: string };
+    replayCount: number;
+    listening?: boolean;
+  } | null>(null);
   const viewRef = useRef<FallingNotesView | null>(null);
   const noteClickRef = useRef<(noteId: string) => void>(() => undefined);
   const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
@@ -91,22 +102,19 @@ export function useTrainer({
   };
   const handChoice = ranked && storedHandChoice === "listen" ? "both" : storedHandChoice;
   /** A part picked by role; it belongs to the song (a new file drops it, a new key keeps it). */
-  const [partChoice, setPartChoice] = useState<{
-    readonly parts: readonly SongPart[] | undefined;
-    readonly role: PartRole;
-  } | null>(null);
-  const partRoles = ranked || wordTyping ? [] : choosableRoles(song.parts);
-  const partRole =
-    partChoice !== null && partChoice.parts === song.parts && partRoles.includes(partChoice.role)
-      ? partChoice.role
-      : null;
+  const chosenRole = useAppSelector((state) => state.practice.partRole);
+  const partRoles = useMemo(
+    () => (ranked || wordTyping ? [] : choosableRoles(song.parts)),
+    [ranked, wordTyping, song.parts]
+  );
+  const partRole = chosenRole !== null && partRoles.includes(chosenRole) ? chosenRole : null;
   const setHandChoice = (choice: HandChoice) => {
     if (ranked && snapshotSource.getSnapshot()?.playing) return;
-    setPartChoice(null);
+    dispatch(practiceActions.partRoleChosen(null));
     updateHandChoice(choice);
   };
   const choosePart = (role: PartRole) => {
-    setPartChoice({ parts: song.parts, role });
+    dispatch(practiceActions.partRoleChosen(role));
   };
   const storedSpeed = useAppSelector((state) => state.preferences.player.speed);
   const updateSpeed = (speed: number) => {
@@ -156,7 +164,10 @@ export function useTrainer({
       trainer.onSnapshot = (next) => {
         snapshotSource.publish(next);
         // A listen-through ends by handing the song back for practice.
-        if (next.finished) setListening(false);
+        if (next.finished) {
+          if (loadedRef.current?.listening) loadedRef.current = null;
+          setListening(false);
+        }
       };
       trainerRef.current = trainer;
       setTrainerReady(true);
@@ -212,7 +223,12 @@ export function useTrainer({
   const replaying = useMemo(
     () =>
       compareSong && lastTake
-        ? { song: compareSong, speed: lastTake.take.speed, from: lastTake.take.from }
+        ? {
+            song: compareSong,
+            speed: lastTake.take.speed,
+            from: lastTake.take.from,
+            takeId: lastTake.take.id
+          }
         : undefined,
     [compareSong, lastTake]
   );
@@ -221,23 +237,39 @@ export function useTrainer({
     const trainer = trainerRef.current;
     if (!trainer) return;
     trainer.observeTextNotes(wordTyping ? song.notes.map((note) => note.id) : []);
+    const previous = loadedRef.current;
     if (replaying) {
+      const preservePosition =
+        previous?.trainer === trainer &&
+        previous.sourceSong === sourceSong &&
+        previous.replaying?.takeId === replaying.takeId &&
+        previous.replaying.from === replaying.from &&
+        previous.replaying.speed === replaying.speed &&
+        previous.replayCount === replayCount;
+      loadedRef.current = { trainer, sourceSong, replaying, replayCount };
       trainer.load(
         replaying.song,
         { mode: "tempo", hands: new Set<Hand>(), speed: replaying.speed },
-        `${songKey}:replay`
+        `${songKey}:replay`,
+        { preservePosition }
       );
-      if (replaying.from > 0) trainer.seek(replaying.from);
-      trainer.setPlaying(true);
+      if (!preservePosition) {
+        if (replaying.from > 0) trainer.seek(replaying.from);
+        trainer.setPlaying(true);
+      }
       return;
     }
-    trainer.load(song, practiceOptions, songKey);
-    if (startFromRef.current !== null) trainer.seek(startFromRef.current);
-    if (listening) trainer.setPlaying(true);
+    const preservePosition =
+      previous?.trainer === trainer && previous.sourceSong === sourceSong && !previous.replaying;
+    loadedRef.current = { trainer, sourceSong, replayCount, listening };
+    trainer.load(song, practiceOptions, songKey, { preservePosition });
+    if (!preservePosition && startFromRef.current !== null) trainer.seek(startFromRef.current);
+    if (listening && (!preservePosition || !previous.listening)) trainer.setPlaying(true);
     // replayCount is here only to play the comparison again.
   }, [
     trainerReady,
     song,
+    sourceSong,
     practiceOptions,
     listening,
     songKey,
@@ -285,7 +317,11 @@ export function useTrainer({
     }
     setListening(false);
     startFromRef.current = null;
-    trainerRef.current?.load(song, practiceOptions, songKey);
+    const trainer = trainerRef.current;
+    if (trainer) {
+      loadedRef.current = listening ? null : { trainer, sourceSong, replayCount };
+      trainer.load(song, practiceOptions, songKey);
+    }
   };
 
   return {

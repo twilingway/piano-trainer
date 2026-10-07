@@ -1,3 +1,4 @@
+import { practiceActions } from "./practiceSlice";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import type { ComputerKeyboard } from "../render/computerKeys";
@@ -34,10 +35,7 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     (state) => state.persistence.errors[persistenceKey("word-typing-prefs-v1", "write")]
   );
   const storageError = saveError ? "Не удалось сохранить настройки режима." : null;
-  const [selection, setSelection] = useState<{ songKey: string; part: Part }>({
-    songKey,
-    part: "melody"
-  });
+  const selection = useAppSelector((state) => state.practice.wordSelection);
   const part = selection.songKey === songKey ? selection.part : "melody";
   const line = useMemo(() => extractLine(song, part), [song, part]);
   const practice = useMemo(
@@ -168,7 +166,7 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     update,
     followInterfaceLanguage,
     choosePart: (next: Part) => {
-      setSelection({ songKey, part: next });
+      dispatch(practiceActions.wordPartChosen({ songKey, part: next }));
     },
     setAccompaniment: (accompaniment: boolean) => {
       update({ accompaniment });

@@ -135,10 +135,11 @@ export class PracticeSession {
    * Starts the run over from song time `from`: earlier notes are skipped and
    * never counted, the score is cleared, and the song resumes a lead-in
    * before `from` so the metronome counts the player in; a listen-through
-   * resumes on `from` itself. Call `stopAuto` first if the program may be
-   * holding notes.
+   * resumes on `from` itself. With `leadIn: false`, keep the exact time, including
+   * a negative count-in, while the recorded segment starts no earlier than zero.
+   * Call `stopAuto` first if the program may be holding notes.
    */
-  seek(from: number, performanceMs?: number): void {
+  seek(from: number, performanceMs?: number, { leadIn = true }: { leadIn?: boolean } = {}): void {
     const edge = from - 1e-6;
     for (const note of this.playerNotes) {
       this.status.set(note.id, note.start < edge ? "skipped" : "pending");
@@ -157,8 +158,8 @@ export class PracticeSession {
     );
     this.soundingAuto.length = 0;
     this.finished = false;
-    this.from = from;
-    this.time = from - this.leadIn;
+    this.from = leadIn ? from : Math.max(0, from);
+    this.time = from - (leadIn ? this.leadIn : 0);
     // The other hand resumes at `from` too; what it played before stays silent.
     const autoIndex = this.autoNotes.findIndex((note) => note.start >= edge);
     this.autoStartIndex = autoIndex === -1 ? this.autoNotes.length : autoIndex;

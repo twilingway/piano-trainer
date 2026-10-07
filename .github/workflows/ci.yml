@@ -3,13 +3,27 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # main takes pull requests from dev only; every other branch lands in dev first.
+  main-from-dev:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Source branch is dev
+        run: |
+          if [ "$HEAD_REF" != "dev" ]; then
+            echo "::error::Pull requests into main come from dev only, not from $HEAD_REF."
+            exit 1
+          fi
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 30

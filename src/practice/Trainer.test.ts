@@ -291,6 +291,220 @@ describe("Trainer run boundaries and source gating", () => {
     expect(run.takes[1]?.notes[0]?.start).toBeCloseTo(0);
   });
 });
+describe("Trainer option changes", () => {
+  const options = { mode: "tempo" as const, hands: new Set(["right"] as const), speed: 0.5 };
+
+  it("preserves the exact between-frame position before applying the new speed and key", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(3250, 150);
+    expect(run.latest()?.time).toBeCloseTo(0.25);
+    const count = run.snapshots.length;
+    now = 3375;
+    run.trainer.load(SONG, options, "another-variant", { preservePosition: true });
+    expect(run.snapshots.slice(count)).toHaveLength(1);
+    expect(run.latest()?.playing).toBe(true);
+    expect(run.latest()?.time).toBeCloseTo(0.375);
+    run.frame(3575, 200);
+    expect(run.latest()?.time).toBeCloseTo(0.475);
+  });
+
+  it("keeps a paused run paused at its exact position", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(3250);
+    run.trainer.setPlaying(false);
+    now = 4000;
+    run.trainer.load(SONG, options, "fixture", { preservePosition: true });
+    expect(run.latest()?.playing).toBe(false);
+    expect(run.latest()?.time).toBeCloseTo(0.25);
+    run.frame(6000, 2000);
+    expect(run.view.draw.mock.lastCall?.[0].time).toBeCloseTo(0.25);
+    run.trainer.setPlaying(true);
+    run.frame(6200, 200);
+    expect(run.latest()?.time).toBeCloseTo(0.35);
+  });
+
+  it("continues at the owed wait-mode note when switching to tempo", () => {
+    const run = harness();
+    run.trainer.load(SONG, { ...options, mode: "wait", speed: 1 }, "fixture");
+    run.trainer.setPlaying(true);
+    run.frame(4000, 150);
+    expect(run.latest()).toMatchObject({ time: 0, waiting: true });
+    run.trainer.load(SONG, { ...options, speed: 1 }, "fixture", { preservePosition: true });
+    expect(run.latest()).toMatchObject({ time: 0, playing: true, waiting: false });
+    run.frame(4100, 150);
+    expect(run.latest()?.time).toBeCloseTo(0.1);
+  });
+
+  it("preserves position when changing hands to listening and back", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(3250);
+    run.trainer.load(SONG, { ...options, hands: new Set(), speed: 1 }, "fixture", {
+      preservePosition: true
+    });
+    expect(run.latest()).toMatchObject({ playing: true, timingPolicy: "listening" });
+    expect(run.latest()?.time).toBeCloseTo(0.25);
+    run.frame(3450, 200);
+    run.trainer.load(SONG, options, "fixture", { preservePosition: true });
+    expect(run.latest()?.playing).toBe(true);
+    expect(run.latest()?.time).toBeCloseTo(0.45);
+  });
+
+  it("preserves negative count-in time without adding another lead-in", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(1500);
+    now = 1625;
+    run.trainer.load(SONG, options, "fixture", { preservePosition: true });
+    expect(run.latest()?.time).toBeCloseTo(-1.375);
+    run.frame(4375, 2750);
+    down(run.trainer, 4375);
+    run.trainer.seek(0);
+    expect(run.takes).toHaveLength(1);
+    expect(run.takes[0]?.from).toBe(0);
+  });
+
+  it("keeps old take metadata and starts the next take from the exact positive position", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    now = 3000;
+    down(run.trainer, 3000);
+    now = 3375;
+    run.trainer.load(SONG, { ...options, difficulty: "hard" }, "another-variant", {
+      preservePosition: true
+    });
+    expect(run.takes[0]).toMatchObject({ songKey: "fixture", speed: 1, from: 0 });
+    expect(run.takes[0]?.notes[0]?.end).toBeCloseTo(0.375);
+    now = 4625;
+    down(run.trainer, 4625, 62);
+    run.trainer.seek(0);
+    expect(run.takes).toHaveLength(2);
+    expect(run.takes[1]).toMatchObject({ songKey: "another-variant", speed: 0.5, from: 0.375 });
+    expect(run.takes[1]?.notes[0]?.start).toBeCloseTo(1);
+  });
+
+  it("resets to a paused count-in unless preservation is requested", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(3250);
+    run.trainer.load(SONG, options, "fixture");
+    expect(run.latest()).toMatchObject({ playing: false, time: -2 });
+  });
+
+  it("does not resume after the preserved position finishes the new session", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(4900);
+    now = 5200;
+    run.trainer.load(SONG, options, "fixture", { preservePosition: true });
+    expect(run.latest()).toMatchObject({ playing: false, finished: true });
+    expect(run.latest()?.time).toBeCloseTo(2.2);
+  });
+});
+
+describe("Trainer temporary readiness", () => {
+  const ready = { loop: false, stopOnError: false, canStart: true, resumeWhenReady: true };
+  const options = { mode: "tempo" as const, hands: new Set(["right"] as const), speed: 0.5 };
+
+  it("pauses a blocked non-ranked run exactly between frames and resumes when ready", () => {
+    const run = harness();
+    run.trainer.configureControls(ready);
+    run.trainer.setPlaying(true);
+    run.frame(3250);
+    now = 3375;
+    run.trainer.configureControls({ ...ready, canStart: false });
+    expect(run.latest()?.playing).toBe(false);
+    expect(run.latest()?.time).toBeCloseTo(0.375);
+    run.frame(5000, 1750);
+    expect(run.view.draw.mock.lastCall?.[0].time).toBeCloseTo(0.375);
+    run.trainer.configureControls(ready);
+    expect(run.latest()?.playing).toBe(true);
+    run.frame(5100, 150);
+    expect(run.latest()?.time).toBeCloseTo(0.475);
+  });
+
+  it("does not enable an already paused run when readiness changes", () => {
+    const run = harness();
+    run.trainer.configureControls({ ...ready, canStart: false });
+    run.trainer.configureControls(ready);
+    expect(run.latest()?.playing).toBe(false);
+  });
+
+  it("does not restart a loop when the blocking pause reaches the song end", () => {
+    const run = harness();
+    run.trainer.configureControls({ ...ready, loop: true });
+    run.trainer.setPlaying(true);
+    run.frame(4900);
+    now = 5300;
+    const count = run.snapshots.length;
+    run.trainer.configureControls({ ...ready, loop: true, canStart: false });
+    expect(run.snapshots.slice(count).every((snapshot) => !snapshot.playing)).toBe(true);
+    expect(run.latest()).toMatchObject({ playing: false, finished: true });
+    expect(run.latest()?.time).toBeCloseTo(2.3);
+    run.frame(6200, 1000);
+    expect(run.view.draw.mock.lastCall?.[0].time).toBeCloseTo(2.3);
+  });
+
+  it.each(["pause", "seek", "load", "destroy"] as const)(
+    "cancels pending automatic resume on explicit %s",
+    (command) => {
+      const run = harness();
+      run.trainer.configureControls(ready);
+      run.trainer.setPlaying(true);
+      run.trainer.configureControls({ ...ready, canStart: false });
+      if (command === "pause") run.trainer.setPlaying(false);
+      if (command === "seek") run.trainer.seek(0);
+      if (command === "load") run.trainer.load(SONG, options, "new-song");
+      if (command === "destroy") run.trainer.destroy();
+      run.trainer.configureControls(ready);
+      run.frame(5000, 4000);
+      expect(run.view.draw.mock.lastCall?.[0].pressed).toEqual(new Set());
+      expect(run.latest()?.playing).toBe(false);
+    }
+  );
+
+  it("retains the blocked resume intent and exact time through a preserving reload", () => {
+    const run = harness();
+    run.trainer.configureControls(ready);
+    run.trainer.setPlaying(true);
+    now = 3375;
+    run.trainer.configureControls({ ...ready, canStart: false });
+    now = 4000;
+    run.trainer.load(SONG, options, "another-variant", { preservePosition: true });
+    expect(run.latest()?.playing).toBe(false);
+    expect(run.latest()?.time).toBeCloseTo(0.375);
+    now = 5000;
+    run.trainer.configureControls(ready);
+    expect(run.latest()?.playing).toBe(true);
+    run.frame(5200, 200);
+    expect(run.latest()?.time).toBeCloseTo(0.475);
+  });
+
+  it("pauses without automatic resume when the readiness flag is absent", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.trainer.configureControls({ loop: false, stopOnError: false, canStart: false });
+    expect(run.latest()?.playing).toBe(false);
+    run.trainer.configureControls({ loop: false, stopOnError: false, canStart: true });
+    expect(run.latest()?.playing).toBe(false);
+  });
+
+  it("keeps ranked device changes paused even with automatic readiness enabled", () => {
+    const run = harness();
+    run.trainer.configureControls({ ...ready, allowedDeviceId: "piano" });
+    run.trainer.setPlaying(true);
+    now = 3375;
+    run.trainer.configureControls({ ...ready, allowedDeviceId: "piano", canStart: false });
+    run.trainer.configureControls({ ...ready, allowedDeviceId: "piano" });
+    expect(run.latest()?.playing).toBe(false);
+    run.trainer.setPlaying(true);
+    run.trainer.configureControls({ ...ready, allowedDeviceId: "other" });
+    expect(run.latest()?.playing).toBe(false);
+  });
+});
+
 describe("Trainer key lights", () => {
   function lit() {
     const run = harness();
