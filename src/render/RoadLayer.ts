@@ -20,7 +20,6 @@ import { PerspectiveKeyboardLayer } from "./PerspectiveKeyboardLayer";
 import type { Geometry } from "./viewGeometry";
 import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeometry";
 import type { Projected, RoadProjection } from "./perspective";
-import { depthAtScreenProgress } from "./perspective";
 import { handSurface } from "./handProjection";
 import type { HandsGeometry } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
@@ -205,12 +204,11 @@ export class RoadLayer {
     }
     const progress = Math.max(0, Math.min(1, y / this.size.height));
     const keyHeight = this.keyHeights.get(keyX) ?? 22;
-    return this.camera.projectAtProgress(
+    // On the floor's own depth, as the arcade road does: the notes ride the road, not over it.
+    return this.camera.project(
       this.camera.sourceX(keyX - this.pan + offset),
       keyHeight + lift / 2,
-      142,
-      this.camera.roadFarZ,
-      progress
+      142 + (1 - progress) * (this.camera.roadFarZ - 142)
     );
   }
 
@@ -218,14 +216,9 @@ export class RoadLayer {
     return this.pan;
   }
 
-  /** Prewarp texture-space measure lines to follow the notes' screen-time progress. */
+  /** The measure lines lie on the floor with the notes, where the lane texture puts them. */
   beatY(y: number): number {
-    if (!this.camera || !this.projection || this.size.height <= 0) return y;
-    const near = this.projection.at(0, 1);
-    const far = this.projection.at(0, 0);
-    return (
-      this.size.height * depthAtScreenProgress(y / this.size.height, 1 / near.scale, 1 / far.scale)
-    );
+    return y;
   }
 
   get isPerspective(): boolean {

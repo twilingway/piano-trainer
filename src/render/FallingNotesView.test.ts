@@ -188,6 +188,22 @@ describe("accompaniment fire independent of key colours", () => {
       expect(line.y).toBeCloseTo(note?.y ?? NaN);
     }
   });
+  it("lays a note on the road's own row of the lane, as the arcade road does", () => {
+    const camera = worldCamera(800, 600);
+    const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+      camera,
+      projection: camera.road,
+      size: { width: 800, height: 400 },
+      bottom: 600,
+      pan: 0,
+      keyHeights: new Map()
+    }) as unknown as RoadLayer;
+    // A note slides with the floor under it: same row, same place, whatever its progress.
+    for (const progress of [0.1, 0.25, 0.5, 0.75]) {
+      const floor = camera.road.at(400, progress);
+      expect(road.notePlace(400, progress * 400)?.y).toBeCloseTo(floor.y);
+    }
+  });
   it.each([false, true])("extends only the visual preview with road=%s", (roadMode) => {
     const { view, notesDraw } = viewHarness(roadMode);
     view.draw({
