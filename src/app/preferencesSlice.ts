@@ -91,6 +91,9 @@ const preferencesSlice = createSlice({
     ) {
       state.word = updateWordTypingPrefs(state.word, action.payload);
     },
+    wordLanguageFollowed(state, action: PayloadAction<WordTypingPrefs["language"]>) {
+      if (!state.word.languageManuallyChosen) state.word.language = action.payload;
+    },
     gameChanged(state, action: PayloadAction<Partial<GamePreferences>>) {
       state.game = { ...state.game, ...action.payload };
     },

@@ -1,5 +1,6 @@
+import { useSong } from "./useSong";
 // @vitest-environment happy-dom
-import { act, type SetStateAction } from "react";
+import { act, useRef, type SetStateAction } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAppStore } from "./store";
@@ -185,6 +186,33 @@ describe("application preferences", () => {
     await act(async () => {
       await Promise.resolve();
       root.unmount();
+    });
+  });
+  it("rejects arrays masquerading as preference enums", () => {
+    localStorage.setItem("player-prefs", JSON.stringify({ handChoice: ["both"] }));
+    localStorage.setItem("game-options-v1", JSON.stringify({ difficulty: ["hard"] }));
+    const state = createAppStore().getState();
+    expect(state.preferences.player.handChoice).toBe("right");
+    expect(state.preferences.game.difficulty).toBe("normal");
+  });
+  it("does not overwrite the saved library choice when the song owner mounts", async () => {
+    localStorage.setItem("player-prefs", JSON.stringify({ librarySource: "my:kept", speed: 0.4 }));
+    const store = createAppStore();
+    const write = vi.spyOn(localStorage, "setItem");
+    const root = createRoot(document.createElement("div"));
+    function Harness() {
+      useSong(useRef<number | null>(null));
+      return null;
+    }
+    await act(async () => {
+      root.render(withTestStore(<Harness />, store));
+      await Promise.resolve();
+    });
+    expect(write).not.toHaveBeenCalled();
+    expect(store.getState().preferences.player.librarySource).toBe("my:kept");
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
     });
   });
 });

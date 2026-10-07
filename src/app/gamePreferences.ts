@@ -17,9 +17,11 @@ export const DEFAULT_GAME_PREFERENCES: GamePreferences = {
 export function normalizeGamePreferences(value: unknown): GamePreferences {
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   return {
-    difficulty: ["easy", "normal", "hard", "expert"].includes(String(raw.difficulty))
-      ? (raw.difficulty as Difficulty)
-      : "normal",
+    difficulty:
+      typeof raw.difficulty === "string" &&
+      ["easy", "normal", "hard", "expert"].includes(raw.difficulty)
+        ? (raw.difficulty as Difficulty)
+        : "normal",
     performance: raw.performance === true,
     stopOnError: raw.stopOnError === true,
     ranked: raw.ranked === true,

@@ -41,9 +41,11 @@ export function normalizePlayerPrefs(value: unknown): PlayerPrefs {
     raw.lesson && typeof raw.lesson === "object" ? (raw.lesson as Record<string, unknown>) : {};
   return {
     mode: raw.mode === "tempo" ? "tempo" : "wait",
-    handChoice: ["right", "left", "both", "listen"].includes(String(raw.handChoice))
-      ? (raw.handChoice as HandChoice)
-      : "right",
+    handChoice:
+      typeof raw.handChoice === "string" &&
+      ["right", "left", "both", "listen"].includes(raw.handChoice)
+        ? (raw.handChoice as HandChoice)
+        : "right",
     speed:
       typeof raw.speed === "number" && Number.isFinite(raw.speed)
         ? Math.max(0.01, Math.min(1, raw.speed))
