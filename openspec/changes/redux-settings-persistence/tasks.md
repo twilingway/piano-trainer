@@ -17,7 +17,7 @@
 
 - [x] 3.1 Library/revision/transaction complete; тесты abort, reload, late restore/import.
 - [x] 3.2 Take history/выбор, derived review; тесты прежнего формата и storage failure.
-- [ ] 3.3 pnpm check, pnpm spec:validate и PR третьего этапа.
+- [x] 3.3 pnpm check, pnpm spec:validate и PR третьего этапа.
 
 ## 4. Интеграция
 
