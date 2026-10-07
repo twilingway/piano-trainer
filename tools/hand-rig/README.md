@@ -20,9 +20,14 @@ solved poses (`poses/<id>.json`) are kept as keyframe data for a later playing a
 2. `studio_study.py` solves and renders every study pose with `studio_pose.py` into the git-ignored
    `blender/renders/study/` (`<id>.png`, `poses/<id>.json`, `report.json`). A pose takes about a
    minute; pass `{"ASYNC": True}` so the call returns at once and watch `progress.log` for `DONE`.
-3. `python tools/hand-rig/export.py` (Pillow) crops every render by one shared box into
-   `public/hand-study/<id>.webp` and copies the poses and the report into `poses/`.
-4. `node --experimental-strip-types src/render/handStudy/build.ts` rebuilds the page.
+3. `game_tips.py`, inside Blender, puts every solved pose back on the rig and writes the fingertip
+   pads in the top render's pixels to `poses/tips.json`; it reports how far each pressed pad lies
+   from its key's centre.
+4. `python tools/hand-rig/export.py` (Pillow) crops every render by one shared box into
+   `public/hand-study/<id>.webp`, copies the poses and the report into `poses/`, and writes the
+   game's set: `src/render/hands/rendered/<id>.webp` (the same crop at `GAME_SCALE`, wrist faded
+   out) and `catalog.json` (pads in those pixels, pressed fingers, pixels per white key).
+5. `node --experimental-strip-types src/render/handStudy/build.ts` rebuilds the page.
 
 ## The solver, in short
 
