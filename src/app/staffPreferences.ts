@@ -122,7 +122,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     labels: boolean("labels"),
     fps: boolean("fps"),
     keyRange: choice("keyRange", ["song", "3oct", "4oct", "88", "61", "49", "25"]),
-    keyStyle: choice("keyStyle", ["classic", "arcade", "perspective"]),
+    keyStyle: choice("keyStyle", ["classic", "arcade", "perspective", "3d"]),
     autoReview: boolean("autoReview"),
     camera: normalizeCamera(raw.camera),
     roadFar: number("roadFar", 0.1, 0.9),

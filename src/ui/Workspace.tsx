@@ -54,7 +54,11 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const laneMode = prefs.lane ? "full" : prefs.keys ? "keys" : "hidden";
   // With the lane hidden or cut to its keys, the staff may take more of the screen.
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
-  const overlay = prefs.keyStyle === "perspective" && prefs.road && prefs.lane && !props.comparing;
+  const overlay =
+    (prefs.keyStyle === "perspective" || prefs.keyStyle === "3d") &&
+    prefs.road &&
+    prefs.lane &&
+    !props.comparing;
   const share = props.layout.staffShare ?? DEFAULT_STAFF_SHARE;
   // Two staves in a column share what one would take.
   const staffShare =
