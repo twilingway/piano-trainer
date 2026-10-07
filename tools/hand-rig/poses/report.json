@@ -1,0 +1,6173 @@
+{
+ "relaxed": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   14
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "relaxed",
+  "fit_residual_mm": 7.0,
+  "yaw_pitch_roll_deg": [
+   8,
+   -3,
+   2
+  ],
+  "spread": 0.0,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 63,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {},
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.0,
+   "4": 6.9,
+   "5": 10.1
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "hover_yaw": -0.1,
+    "fan_deg": [
+     0.0,
+     -0.0
+    ]
+   },
+   "3": {
+    "hover_yaw": -1.5
+   },
+   "4": {
+    "hover_yaw": -0.9,
+    "fan_deg": [
+     0.0,
+     0.0
+    ]
+   },
+   "5": {
+    "hover_yaw": -1.3,
+    "fan_deg": [
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  "apple_r_mm": 99,
+  "apple_bottom_above_keys_mm": -144,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {},
+  "pad_gap_mm": {},
+  "pad_fix_mm": {},
+  "hover_x_mm": {
+   "3": 0.0
+  },
+  "hover_above_keys_mm": {
+   "1": 12,
+   "2": 12,
+   "3": 12,
+   "4": 12,
+   "5": 12
+  }
+ },
+ "fingers-1": {
+  "forearm_twist_deg": -22,
+  "wrist_xyz_deg": [
+   3,
+   -1,
+   21
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-1",
+  "fit_residual_mm": 5.8,
+  "yaw_pitch_roll_deg": [
+   -2,
+   3,
+   -13
+  ],
+  "spread": 0.57,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 71,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 14.1
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "2": {
+    "hover_yaw": -0.1,
+    "fan_deg": [
+     0.0,
+     -0.0
+    ]
+   },
+   "3": {
+    "hover_yaw": -2.8,
+    "fan_deg": [
+     0.0,
+     3.0
+    ]
+   },
+   "4": {
+    "hover_yaw": 0.4,
+    "fan_deg": [
+     0.0,
+     -0.4
+    ]
+   },
+   "5": {
+    "hover_yaw": 0.0,
+    "fan_deg": [
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -123,
+  "thumb_home_miss_mm": 12.3,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 2.1
+  },
+  "pad_gap_mm": {
+   "1": -0.8
+  },
+  "pad_fix_mm": {
+   "1": -0.7
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 19,
+   "3": 26,
+   "4": 24,
+   "5": 29
+  }
+ },
+ "fingers-16": {
+  "forearm_twist_deg": 1,
+  "wrist_xyz_deg": [
+   1,
+   0,
+   16
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-16",
+  "fit_residual_mm": 0.9,
+  "yaw_pitch_roll_deg": [
+   3,
+   1,
+   10
+  ],
+  "spread": 0.31,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 70,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "5": 5.6
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.8
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "5": {
+    "scale": 1.07,
+    "flex": 5.8,
+    "yaw": 1.6
+   },
+   "2": {
+    "hover_yaw": 0.2,
+    "fan_deg": [
+     -0.3,
+     -0.3
+    ]
+   },
+   "3": {
+    "hover_yaw": 0.4,
+    "fan_deg": [
+     -0.4,
+     -0.4
+    ]
+   },
+   "4": {
+    "hover_yaw": 0.0,
+    "fan_deg": [
+     -0.7,
+     -0.7
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -125,
+  "thumb_home_miss_mm": 11.2,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "5": -0.7
+  },
+  "pad_fix_mm": {
+   "5": 0.0
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 26,
+   "2": 22,
+   "3": 21,
+   "4": 20
+  }
+ },
+ "fingers-2": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   16
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-2",
+  "fit_residual_mm": 0.6,
+  "yaw_pitch_roll_deg": [
+   3,
+   -3,
+   2
+  ],
+  "spread": 0.56,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 64,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "2": 5.2
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "scale": 1.07,
+    "flex": 2.9,
+    "yaw": -0.9
+   },
+   "3": {
+    "hover_yaw": -1.1,
+    "fan_deg": [
+     1.1,
+     1.1
+    ]
+   },
+   "4": {
+    "hover_yaw": -1.6,
+    "fan_deg": [
+     0.7,
+     0.7
+    ]
+   },
+   "5": {
+    "hover_yaw": -0.9,
+    "fan_deg": [
+     0.4,
+     0.4
+    ]
+   }
+  },
+  "apple_r_mm": 98,
+  "apple_bottom_above_keys_mm": -140,
+  "thumb_home_miss_mm": 12.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "2": 0.0
+  },
+  "pad_gap_mm": {
+   "2": -1.0
+  },
+  "pad_fix_mm": {
+   "2": 0.9
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 12,
+   "3": 12,
+   "4": 21,
+   "5": 12
+  }
+ },
+ "fingers-4": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   16
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-4",
+  "fit_residual_mm": 1.8,
+  "yaw_pitch_roll_deg": [
+   3,
+   -3,
+   2
+  ],
+  "spread": 0.05,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 68,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "3": 9.0
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.0,
+   "4": 6.9,
+   "5": 10.1
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "3": {
+    "scale": 1.13,
+    "flex": 3.0,
+    "yaw": -0.1
+   },
+   "2": {
+    "hover_yaw": -0.5,
+    "fan_deg": [
+     0.4,
+     0.4
+    ]
+   },
+   "4": {
+    "hover_yaw": -0.8,
+    "fan_deg": [
+     0.4,
+     0.4
+    ]
+   },
+   "5": {
+    "hover_yaw": -0.8,
+    "fan_deg": [
+     0.2,
+     0.2
+    ]
+   }
+  },
+  "apple_r_mm": 55,
+  "apple_bottom_above_keys_mm": -50,
+  "thumb_home_miss_mm": 11.2,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "3": 0.0
+  },
+  "pad_gap_mm": {
+   "3": -1.1
+  },
+  "pad_fix_mm": {
+   "3": 1.3
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 14,
+   "2": 20,
+   "4": 12,
+   "5": 12
+  }
+ },
+ "fingers-8": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   16
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {
+   "3-4": 0.1
+  },
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-8",
+  "fit_residual_mm": 1.7,
+  "yaw_pitch_roll_deg": [
+   3,
+   -3,
+   1
+  ],
+  "spread": 0.0,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 69,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "4": 8.8
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.0,
+   "4": 6.9,
+   "5": 10.1
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "4": {
+    "scale": 1.06,
+    "flex": 7.1,
+    "yaw": 0.3
+   },
+   "2": {
+    "hover_yaw": -0.6,
+    "fan_deg": [
+     0.5,
+     0.5
+    ]
+   },
+   "3": {
+    "hover_yaw": -1.1,
+    "fan_deg": [
+     0.8,
+     1.1
+    ]
+   },
+   "5": {
+    "hover_yaw": 0.3,
+    "fan_deg": [
+     0.8,
+     -0.8
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -128,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "4": 0.5
+  },
+  "pad_gap_mm": {
+   "4": -1.3
+  },
+  "pad_fix_mm": {
+   "4": 0.7
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 15,
+   "2": 20,
+   "3": 14,
+   "5": 12
+  }
+ },
+ "fingers-10": {
+  "forearm_twist_deg": -7,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   16
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-10",
+  "fit_residual_mm": 2.1,
+  "yaw_pitch_roll_deg": [
+   3,
+   -3,
+   1
+  ],
+  "spread": 0.38,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 69,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "2": 8.9,
+   "4": 10.2
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "scale": 1.11,
+    "flex": 7.0,
+    "yaw": -0.5
+   },
+   "4": {
+    "scale": 1.12,
+    "flex": 6.5,
+    "yaw": 0.4
+   },
+   "3": {
+    "hover_yaw": -1.0,
+    "fan_deg": [
+     1.1,
+     1.1
+    ]
+   },
+   "5": {
+    "hover_yaw": -0.3,
+    "fan_deg": [
+     0.1,
+     0.1
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -127,
+  "thumb_home_miss_mm": 11.4,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "2": 0.0,
+   "4": 0.0
+  },
+  "pad_gap_mm": {
+   "2": -0.7,
+   "4": -1.0
+  },
+  "pad_fix_mm": {
+   "2": 1.4,
+   "4": 0.8
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 15,
+   "3": 14,
+   "5": 12
+  }
+ },
+ "fingers-12": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   16
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-12",
+  "fit_residual_mm": 1.9,
+  "yaw_pitch_roll_deg": [
+   4,
+   -3,
+   2
+  ],
+  "spread": 0.45,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 68,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "3": 6.8,
+   "4": 6.9
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "3": {
+    "scale": 1.14,
+    "flex": 3.2,
+    "yaw": -1.8
+   },
+   "4": {
+    "scale": 1.05,
+    "flex": 5.4,
+    "yaw": 1.4
+   },
+   "2": {
+    "hover_yaw": -1.6,
+    "fan_deg": [
+     1.5,
+     1.5
+    ]
+   },
+   "5": {
+    "hover_yaw": 0.3,
+    "fan_deg": [
+     -0.7,
+     -0.7
+    ]
+   }
+  },
+  "apple_r_mm": 54,
+  "apple_bottom_above_keys_mm": -49,
+  "thumb_home_miss_mm": 11.7,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "3": 0.0,
+   "4": 0.0
+  },
+  "pad_gap_mm": {
+   "3": -1.1,
+   "4": -0.8
+  },
+  "pad_fix_mm": {
+   "3": 1.3,
+   "4": 0.8
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 15,
+   "2": 19,
+   "5": 12
+  }
+ },
+ "fingers-17": {
+  "forearm_twist_deg": -8,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   17
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-17",
+  "fit_residual_mm": 3.5,
+  "yaw_pitch_roll_deg": [
+   2,
+   -3,
+   -1
+  ],
+  "spread": 0.52,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 64,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 20.1,
+   "5": 6.2
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.2
+   },
+   "5": {
+    "scale": 1.09,
+    "flex": 3.3,
+    "yaw": -0.8
+   },
+   "2": {
+    "hover_yaw": -0.8,
+    "fan_deg": [
+     0.3,
+     0.3
+    ]
+   },
+   "3": {
+    "hover_yaw": -0.5,
+    "fan_deg": [
+     0.5,
+     0.4
+    ]
+   },
+   "4": {
+    "hover_yaw": -1.6,
+    "fan_deg": [
+     0.8,
+     0.8
+    ]
+   }
+  },
+  "apple_r_mm": 98,
+  "apple_bottom_above_keys_mm": -141,
+  "thumb_home_miss_mm": 12.1,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 4.6,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "5": -1.1
+  },
+  "pad_fix_mm": {
+   "1": -0.7,
+   "5": 0.6
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "3": 12,
+   "4": 20
+  }
+ },
+ "fingers-18": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   14
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-18",
+  "fit_residual_mm": 2.8,
+  "yaw_pitch_roll_deg": [
+   9,
+   -3,
+   2
+  ],
+  "spread": 0.34,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 67,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "2": 9.4,
+   "5": 7.9
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.8
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "scale": 1.17,
+    "flex": 4.4,
+    "yaw": -1.5
+   },
+   "5": {
+    "scale": 1.06,
+    "flex": 5.0,
+    "yaw": 0.2
+   },
+   "3": {
+    "hover_yaw": -2.3,
+    "fan_deg": [
+     2.3,
+     2.3
+    ]
+   },
+   "4": {
+    "hover_yaw": -2.2,
+    "fan_deg": [
+     1.4,
+     1.4
+    ]
+   }
+  },
+  "apple_r_mm": 100,
+  "apple_bottom_above_keys_mm": -142,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "2": 0.0,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "2": -1.2,
+   "5": -0.7
+  },
+  "pad_fix_mm": {
+   "2": 1.5,
+   "5": 0.4
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 14,
+   "3": 17,
+   "4": 19
+  }
+ },
+ "fingers-20": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   13
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-20",
+  "fit_residual_mm": 4.9,
+  "yaw_pitch_roll_deg": [
+   11,
+   -3,
+   2
+  ],
+  "spread": 0.33,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 68,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "3": 9.1,
+   "5": 8.3
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.8
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "3": {
+    "scale": 1.25,
+    "flex": 1.6,
+    "yaw": -2.1
+   },
+   "5": {
+    "scale": 1.07,
+    "flex": 6.5,
+    "yaw": 0.1
+   },
+   "2": {
+    "hover_yaw": -2.1,
+    "fan_deg": [
+     2.0,
+     2.0
+    ]
+   },
+   "4": {
+    "hover_yaw": -2.2,
+    "fan_deg": [
+     2.1,
+     2.1
+    ]
+   }
+  },
+  "apple_r_mm": 50,
+  "apple_bottom_above_keys_mm": -40,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "3": 0.1,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "3": -1.6,
+   "5": -0.6
+  },
+  "pad_fix_mm": {
+   "3": 1.0,
+   "5": 0.5
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 15,
+   "2": 20,
+   "4": 12
+  }
+ },
+ "fingers-24": {
+  "forearm_twist_deg": 6,
+  "wrist_xyz_deg": [
+   2,
+   0,
+   14
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {
+   "3-4": 0.1
+  },
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-24",
+  "fit_residual_mm": 4.5,
+  "yaw_pitch_roll_deg": [
+   8,
+   -1,
+   14
+  ],
+  "spread": 0.32,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 69,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "4": 5.5,
+   "5": 1.6
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.8
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "4": {
+    "scale": 1.08,
+    "flex": 5.9,
+    "yaw": 1.3
+   },
+   "5": {
+    "scale": 1.03,
+    "flex": 2.2,
+    "yaw": 0.5
+   },
+   "2": {
+    "hover_yaw": 0.3,
+    "fan_deg": [
+     -0.4,
+     -0.4
+    ]
+   },
+   "3": {
+    "hover_yaw": -0.2,
+    "fan_deg": [
+     -0.6,
+     0.2
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -125,
+  "thumb_home_miss_mm": 11.2,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "4": 0.2,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "4": -1.2,
+   "5": -0.9
+  },
+  "pad_fix_mm": {
+   "4": 0.0,
+   "5": -0.3
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 29,
+   "2": 21,
+   "3": 18
+  }
+ },
+ "fingers-3": {
+  "forearm_twist_deg": -22,
+  "wrist_xyz_deg": [
+   4,
+   -1,
+   19
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-3",
+  "fit_residual_mm": 6.7,
+  "yaw_pitch_roll_deg": [
+   1,
+   1,
+   -13
+  ],
+  "spread": 0.44,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 66,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 10.9,
+   "2": 2.9
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "2": {
+    "scale": 1.32,
+    "flex": -0.8,
+    "yaw": -0.8
+   },
+   "3": {
+    "hover_yaw": -3.1,
+    "fan_deg": [
+     1.2,
+     3.4
+    ]
+   },
+   "4": {
+    "hover_yaw": 0.2,
+    "fan_deg": [
+     0.7,
+     -0.2
+    ]
+   },
+   "5": {
+    "hover_yaw": -0.4,
+    "fan_deg": [
+     0.4,
+     0.4
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -128,
+  "thumb_home_miss_mm": 11.6,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 2.3,
+   "2": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "2": -2.1
+  },
+  "pad_fix_mm": {
+   "1": -0.8,
+   "2": 0.3
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "3": 18,
+   "4": 17,
+   "5": 22
+  }
+ },
+ "fingers-5": {
+  "forearm_twist_deg": -7,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   19
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {
+   "3": 0.8
+  },
+  "skin_finger_mm": {},
+  "pose": "fingers-5",
+  "fit_residual_mm": 7.2,
+  "yaw_pitch_roll_deg": [
+   -5,
+   -3,
+   2
+  ],
+  "spread": 0.43,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 63,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 20.9,
+   "3": 8.5
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.1
+   },
+   "3": {
+    "scale": 1.58,
+    "flex": -8.3,
+    "yaw": 0.1
+   },
+   "2": {
+    "hover_yaw": -1.2,
+    "fan_deg": [
+     0.8,
+     0.8
+    ]
+   },
+   "4": {
+    "hover_yaw": -1.8,
+    "fan_deg": [
+     0.8,
+     0.8
+    ]
+   },
+   "5": {
+    "hover_yaw": -1.1,
+    "fan_deg": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "apple_r_mm": 40,
+  "apple_bottom_above_keys_mm": -24,
+  "thumb_home_miss_mm": 11.6,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 3.9,
+   "3": 1.0
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "3": -2.7
+  },
+  "pad_fix_mm": {
+   "1": -0.4,
+   "3": 0.7
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 19,
+   "4": 20,
+   "5": 12
+  }
+ },
+ "fingers-6": {
+  "forearm_twist_deg": -18,
+  "wrist_xyz_deg": [
+   8,
+   -1,
+   17
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-6",
+  "fit_residual_mm": 2.0,
+  "yaw_pitch_roll_deg": [
+   0,
+   -4,
+   -11
+  ],
+  "spread": 0.25,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 68,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "2": 1.7,
+   "3": 5.3
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.0,
+   "4": 6.9,
+   "5": 9.8
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "scale": 1.03,
+    "flex": 2.1,
+    "yaw": -0.1
+   },
+   "3": {
+    "scale": 1.07,
+    "flex": 4.4,
+    "yaw": -0.9
+   },
+   "4": {
+    "hover_yaw": -0.9,
+    "fan_deg": [
+     0.9,
+     0.9
+    ]
+   },
+   "5": {
+    "hover_yaw": -0.5,
+    "fan_deg": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "apple_r_mm": 57,
+  "apple_bottom_above_keys_mm": -54,
+  "thumb_home_miss_mm": 11.1,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "2": 0.0,
+   "3": 0.0
+  },
+  "pad_gap_mm": {
+   "2": -0.9,
+   "3": -0.8
+  },
+  "pad_fix_mm": {
+   "2": 0.0,
+   "3": 0.7
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 12,
+   "4": 12,
+   "5": 17
+  }
+ },
+ "fingers-9": {
+  "forearm_twist_deg": -9,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   21
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {
+   "3-4": 0.3
+  },
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-9",
+  "fit_residual_mm": 5.3,
+  "yaw_pitch_roll_deg": [
+   -8,
+   -3,
+   0
+  ],
+  "spread": 0.57,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 66,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 22.5,
+   "4": 8.7
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "4": {
+    "scale": 1.22,
+    "flex": 5.3,
+    "yaw": -1.5
+   },
+   "2": {
+    "hover_yaw": -1.0,
+    "fan_deg": [
+     0.5,
+     0.5
+    ]
+   },
+   "3": {
+    "hover_yaw": -1.4,
+    "fan_deg": [
+     0.9,
+     1.5
+    ]
+   },
+   "5": {
+    "hover_yaw": -1.0,
+    "fan_deg": [
+     0.9,
+     0.9
+    ]
+   }
+  },
+  "apple_r_mm": 95,
+  "apple_bottom_above_keys_mm": -131,
+  "thumb_home_miss_mm": 12.3,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 5.1,
+   "4": 1.9
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "4": -2.9
+  },
+  "pad_fix_mm": {
+   "1": -0.2,
+   "4": 1.1
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "3": 12,
+   "5": 12
+  }
+ },
+ "fingers-11": {
+  "forearm_twist_deg": -15,
+  "wrist_xyz_deg": [
+   0,
+   0,
+   21
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-11",
+  "fit_residual_mm": 6.9,
+  "yaw_pitch_roll_deg": [
+   -5,
+   5,
+   -6
+  ],
+  "spread": 0.35,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 63,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 14.1,
+   "2": 5.8,
+   "4": 10.6
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "2": {
+    "scale": 1.2,
+    "flex": 2.8,
+    "yaw": -0.4
+   },
+   "4": {
+    "scale": 1.1,
+    "flex": 9.7,
+    "yaw": 1.4
+   },
+   "3": {
+    "hover_yaw": -0.5,
+    "fan_deg": [
+     0.5,
+     0.5
+    ]
+   },
+   "5": {
+    "hover_yaw": 0.3,
+    "fan_deg": [
+     -0.3,
+     -0.3
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -133,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 4.4,
+   "2": 0.1,
+   "4": 0.0
+  },
+  "pad_gap_mm": {
+   "1": -0.9,
+   "2": -1.3,
+   "4": -0.7
+  },
+  "pad_fix_mm": {
+   "1": -0.8,
+   "2": 0.4,
+   "4": 1.0
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "3": 19,
+   "5": 15
+  }
+ },
+ "fingers-13": {
+  "forearm_twist_deg": -7,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   23
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-13",
+  "fit_residual_mm": 7.3,
+  "yaw_pitch_roll_deg": [
+   -14,
+   -3,
+   1
+  ],
+  "spread": 0.17,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 64,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 19.7,
+   "3": 7.6,
+   "4": 5.1
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.0,
+   "4": 6.9,
+   "5": 9.9
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "3": {
+    "scale": 1.26,
+    "flex": -2.5,
+    "yaw": -1.5
+   },
+   "4": {
+    "scale": 1.07,
+    "flex": 1.7,
+    "yaw": 3.5
+   },
+   "2": {
+    "hover_yaw": -1.6,
+    "fan_deg": [
+     1.3,
+     1.3
+    ]
+   },
+   "5": {
+    "hover_yaw": 1.4,
+    "fan_deg": [
+     -2.5,
+     -2.5
+    ]
+   }
+  },
+  "apple_r_mm": 49,
+  "apple_bottom_above_keys_mm": -43,
+  "thumb_home_miss_mm": 11.0,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 6.8,
+   "3": 0.2,
+   "4": 0.0
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "3": -1.9,
+   "4": -1.1
+  },
+  "pad_fix_mm": {
+   "1": -0.0,
+   "3": 1.3,
+   "4": 0.7
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 21,
+   "5": 12
+  }
+ },
+ "fingers-14": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   17
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-14",
+  "fit_residual_mm": 1.9,
+  "yaw_pitch_roll_deg": [
+   2,
+   -3,
+   2
+  ],
+  "spread": 0.34,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 65,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "2": 1.4,
+   "3": 3.0,
+   "4": 4.9
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.8
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "scale": 1.04,
+    "flex": 3.4,
+    "yaw": -0.1
+   },
+   "3": {
+    "scale": 1.12,
+    "flex": 0.3,
+    "yaw": -2.1
+   },
+   "4": {
+    "scale": 1.03,
+    "flex": 2.2,
+    "yaw": 1.3
+   },
+   "5": {
+    "hover_yaw": 0.1,
+    "fan_deg": [
+     -0.9,
+     -0.8
+    ]
+   }
+  },
+  "apple_r_mm": 55,
+  "apple_bottom_above_keys_mm": -53,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0
+  },
+  "pad_gap_mm": {
+   "2": -0.9,
+   "3": -1.3,
+   "4": -1.0
+  },
+  "pad_fix_mm": {
+   "2": 0.8,
+   "3": 1.2,
+   "4": 0.6
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 12,
+   "5": 12
+  }
+ },
+ "fingers-19": {
+  "forearm_twist_deg": -12,
+  "wrist_xyz_deg": [
+   -4,
+   1,
+   19
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-19",
+  "fit_residual_mm": 6.4,
+  "yaw_pitch_roll_deg": [
+   1,
+   7,
+   -2
+  ],
+  "spread": 0.43,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 60,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 13.8,
+   "2": 7.1,
+   "5": 7.4
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 3.6
+   },
+   "2": {
+    "scale": 1.27,
+    "flex": 3.0,
+    "yaw": 0.2
+   },
+   "5": {
+    "scale": 1.09,
+    "flex": 6.8,
+    "yaw": 0.9
+   },
+   "3": {
+    "hover_yaw": -0.5,
+    "fan_deg": [
+     0.5,
+     0.5
+    ]
+   },
+   "4": {
+    "hover_yaw": -0.3,
+    "fan_deg": [
+     -0.0,
+     -0.0
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -137,
+  "thumb_home_miss_mm": 11.6,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 2.1,
+   "2": 0.0,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "1": -0.8,
+   "2": -1.5,
+   "5": -0.7
+  },
+  "pad_fix_mm": {
+   "1": -1.4,
+   "2": 0.7,
+   "5": 0.2
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "3": 20,
+   "4": 19
+  }
+ },
+ "fingers-21": {
+  "forearm_twist_deg": -8,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   17
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.4,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-21",
+  "fit_residual_mm": 9.9,
+  "yaw_pitch_roll_deg": [
+   0,
+   -3,
+   0
+  ],
+  "spread": 0.51,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 64,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 21.9,
+   "3": 8.7,
+   "5": 7.1
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.2
+   },
+   "3": {
+    "scale": 1.47,
+    "flex": -6.9,
+    "yaw": 2.8
+   },
+   "5": {
+    "scale": 1.03,
+    "flex": 3.4,
+    "yaw": 2.3
+   },
+   "2": {
+    "hover_yaw": 0.5,
+    "fan_deg": [
+     -1.2,
+     -1.2
+    ]
+   },
+   "4": {
+    "hover_yaw": 1.4,
+    "fan_deg": [
+     -2.4,
+     -2.5
+    ]
+   }
+  },
+  "apple_r_mm": 42,
+  "apple_bottom_above_keys_mm": -29,
+  "thumb_home_miss_mm": 12.0,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 2.9,
+   "3": 3.4,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "3": -2.2,
+   "5": -0.8
+  },
+  "pad_fix_mm": {
+   "1": -0.6,
+   "3": 0.9,
+   "5": 0.5
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "4": 18
+  }
+ },
+ "fingers-22": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   13
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-22",
+  "fit_residual_mm": 5.2,
+  "yaw_pitch_roll_deg": [
+   12,
+   -3,
+   1
+  ],
+  "spread": 0.34,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 67,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "2": 4.4,
+   "3": 6.7,
+   "5": 10.4
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.8
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "scale": 1.07,
+    "flex": 5.2,
+    "yaw": -1.7
+   },
+   "3": {
+    "scale": 1.22,
+    "flex": 0.6,
+    "yaw": -2.5
+   },
+   "5": {
+    "scale": 1.06,
+    "flex": 5.5,
+    "yaw": -0.9
+   },
+   "4": {
+    "hover_yaw": -3.2,
+    "fan_deg": [
+     2.9,
+     2.9
+    ]
+   }
+  },
+  "apple_r_mm": 51,
+  "apple_bottom_above_keys_mm": -43,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "2": 0.1,
+   "3": 0.1,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "2": -0.8,
+   "3": -1.6,
+   "5": -0.7
+  },
+  "pad_fix_mm": {
+   "2": 1.1,
+   "3": 1.2,
+   "5": 0.4
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 13,
+   "4": 15
+  }
+ },
+ "fingers-25": {
+  "forearm_twist_deg": -7,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   18
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {
+   "3-4": 0.1
+  },
+  "skin_key_mm": {
+   "4": 0.2
+  },
+  "skin_finger_mm": {},
+  "pose": "fingers-25",
+  "fit_residual_mm": 6.2,
+  "yaw_pitch_roll_deg": [
+   -2,
+   -3,
+   1
+  ],
+  "spread": 0.49,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 64,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 22.9,
+   "4": 6.1,
+   "5": 1.4
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.1
+   },
+   "4": {
+    "scale": 1.35,
+    "flex": -0.4,
+    "yaw": 2.3
+   },
+   "5": {
+    "scale": 1.03,
+    "flex": 3.0,
+    "yaw": 2.8
+   },
+   "2": {
+    "hover_yaw": 0.2,
+    "fan_deg": [
+     -0.8,
+     -0.8
+    ]
+   },
+   "3": {
+    "hover_yaw": -0.0,
+    "fan_deg": [
+     -1.3,
+     -0.1
+    ]
+   }
+  },
+  "apple_r_mm": 98,
+  "apple_bottom_above_keys_mm": -142,
+  "thumb_home_miss_mm": 11.9,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 4.5,
+   "4": 0.4,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "1": 1.3,
+   "4": -2.5,
+   "5": -0.8
+  },
+  "pad_fix_mm": {
+   "1": 1.6,
+   "4": 1.0,
+   "5": 0.4
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "3": 12
+  }
+ },
+ "fingers-26": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   -1,
+   14
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-26",
+  "fit_residual_mm": 4.6,
+  "yaw_pitch_roll_deg": [
+   8,
+   -3,
+   2
+  ],
+  "spread": 0.36,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 68,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "2": 11.1,
+   "4": 7.4,
+   "5": 5.0
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "scale": 1.12,
+    "flex": 5.5,
+    "yaw": -0.6
+   },
+   "4": {
+    "scale": 1.2,
+    "flex": 3.7,
+    "yaw": 1.1
+   },
+   "5": {
+    "scale": 1.07,
+    "flex": 5.7,
+    "yaw": 0.6
+   },
+   "3": {
+    "hover_yaw": -0.8,
+    "fan_deg": [
+     0.8,
+     0.7
+    ]
+   }
+  },
+  "apple_r_mm": 100,
+  "apple_bottom_above_keys_mm": -140,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "2": 0.0,
+   "4": 0.1,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "2": -0.9,
+   "4": -1.4,
+   "5": -0.7
+  },
+  "pad_fix_mm": {
+   "2": 1.4,
+   "4": 0.8,
+   "5": 0.5
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 15,
+   "3": 17
+  }
+ },
+ "fingers-28": {
+  "forearm_twist_deg": 2,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   12
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-28",
+  "fit_residual_mm": 5.3,
+  "yaw_pitch_roll_deg": [
+   13,
+   -5,
+   9
+  ],
+  "spread": 0.38,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 68,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "3": 4.2,
+   "4": 2.6,
+   "5": 0.8
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "3": {
+    "scale": 1.08,
+    "flex": 3.6,
+    "yaw": -1.4
+   },
+   "4": {
+    "scale": 1.06,
+    "flex": 1.5,
+    "yaw": 1.6
+   },
+   "5": {
+    "scale": 1.01,
+    "flex": 1.0,
+    "yaw": -0.6
+   },
+   "2": {
+    "hover_yaw": -1.0,
+    "fan_deg": [
+     1.1,
+     1.1
+    ]
+   }
+  },
+  "apple_r_mm": 57,
+  "apple_bottom_above_keys_mm": -53,
+  "thumb_home_miss_mm": 11.4,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "3": 0.1,
+   "4": 0.1,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "3": -0.9,
+   "4": -1.1,
+   "5": -0.9
+  },
+  "pad_fix_mm": {
+   "3": 0.7,
+   "4": 0.2,
+   "5": -0.1
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 24,
+   "2": 14
+  }
+ },
+ "fingers-7": {
+  "forearm_twist_deg": -20,
+  "wrist_xyz_deg": [
+   2,
+   0,
+   21
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-7",
+  "fit_residual_mm": 8.4,
+  "yaw_pitch_roll_deg": [
+   -2,
+   4,
+   -11
+  ],
+  "spread": 0.17,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 60,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 6.2,
+   "2": 1.6,
+   "3": 5.7
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.0,
+   "4": 6.9,
+   "5": 9.9
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.1
+   },
+   "2": {
+    "scale": 1.2,
+    "flex": -1.0,
+    "yaw": -0.4
+   },
+   "3": {
+    "scale": 1.32,
+    "flex": 0.2,
+    "yaw": 0.4
+   },
+   "4": {
+    "hover_yaw": -0.3,
+    "fan_deg": [
+     0.3,
+     0.3
+    ]
+   },
+   "5": {
+    "hover_yaw": -0.2,
+    "fan_deg": [
+     0.2,
+     0.2
+    ]
+   }
+  },
+  "apple_r_mm": 47,
+  "apple_bottom_above_keys_mm": -42,
+  "thumb_home_miss_mm": 11.0,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 3.4,
+   "2": 0.1,
+   "3": 0.2
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "2": -1.6,
+   "3": -1.8
+  },
+  "pad_fix_mm": {
+   "1": -0.9,
+   "2": -0.1,
+   "3": 0.7
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "4": 12,
+   "5": 15
+  }
+ },
+ "fingers-15": {
+  "forearm_twist_deg": -10,
+  "wrist_xyz_deg": [
+   2,
+   0,
+   22
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-15",
+  "fit_residual_mm": 8.4,
+  "yaw_pitch_roll_deg": [
+   -10,
+   2,
+   -1
+  ],
+  "spread": 0.24,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 59,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 14.6,
+   "2": 2.0,
+   "3": 3.7,
+   "4": 4.5
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.0,
+   "4": 6.9,
+   "5": 9.9
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.1
+   },
+   "2": {
+    "scale": 1.17,
+    "flex": -0.3,
+    "yaw": -0.2
+   },
+   "3": {
+    "scale": 1.23,
+    "flex": -1.7,
+    "yaw": -1.0
+   },
+   "4": {
+    "scale": 1.05,
+    "flex": 2.5,
+    "yaw": 3.5
+   },
+   "5": {
+    "hover_yaw": 1.6,
+    "fan_deg": [
+     -2.5,
+     -2.5
+    ]
+   }
+  },
+  "apple_r_mm": 50,
+  "apple_bottom_above_keys_mm": -50,
+  "thumb_home_miss_mm": 11.1,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 4.1,
+   "2": 0.1,
+   "3": 0.1,
+   "4": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -0.4,
+   "2": -1.5,
+   "3": -1.6,
+   "4": -1.0
+  },
+  "pad_fix_mm": {
+   "1": -0.7,
+   "2": 0.4,
+   "3": 1.2,
+   "4": 0.5
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "5": 12
+  }
+ },
+ "fingers-23": {
+  "forearm_twist_deg": -12,
+  "wrist_xyz_deg": [
+   7,
+   -1,
+   17
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.2,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {
+   "4": 0.1
+  },
+  "skin_finger_mm": {},
+  "pose": "fingers-23",
+  "fit_residual_mm": 11.7,
+  "yaw_pitch_roll_deg": [
+   0,
+   -3,
+   -4
+  ],
+  "spread": 0.38,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 60,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 9.8,
+   "2": 2.0,
+   "3": 6.5,
+   "5": 10.5
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "2": {
+    "scale": 1.46,
+    "flex": -9.0,
+    "yaw": 4.2
+   },
+   "3": {
+    "scale": 1.15,
+    "flex": -8.5,
+    "yaw": 4.5
+   },
+   "5": {
+    "scale": 1.02,
+    "flex": 3.3,
+    "yaw": 6.4
+   },
+   "4": {
+    "hover_yaw": 2.0,
+    "fan_deg": [
+     -6.3,
+     -3.0
+    ]
+   }
+  },
+  "apple_r_mm": 53,
+  "apple_bottom_above_keys_mm": -55,
+  "thumb_home_miss_mm": 11.4,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 2.6,
+   "2": 0.1,
+   "3": 4.6,
+   "5": 0.2
+  },
+  "pad_gap_mm": {
+   "1": -0.9,
+   "2": -2.8,
+   "3": 2.7,
+   "5": -0.8
+  },
+  "pad_fix_mm": {
+   "1": -0.6,
+   "2": 0.9,
+   "3": 0.7,
+   "5": 0.6
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "4": 12
+  }
+ },
+ "fingers-27": {
+  "forearm_twist_deg": -9,
+  "wrist_xyz_deg": [
+   -5,
+   1,
+   20
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {
+   "3-4": 0.1
+  },
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-27",
+  "fit_residual_mm": 8.2,
+  "yaw_pitch_roll_deg": [
+   -2,
+   8,
+   0
+  ],
+  "spread": 0.42,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 59,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 16.1,
+   "2": 8.0,
+   "4": 7.8,
+   "5": 5.3
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.3
+   },
+   "2": {
+    "scale": 1.24,
+    "flex": 4.1,
+    "yaw": 0.5
+   },
+   "4": {
+    "scale": 1.19,
+    "flex": 6.0,
+    "yaw": 0.9
+   },
+   "5": {
+    "scale": 1.06,
+    "flex": 4.7,
+    "yaw": 2.1
+   },
+   "3": {
+    "hover_yaw": -0.2,
+    "fan_deg": [
+     0.2,
+     0.2
+    ]
+   }
+  },
+  "apple_r_mm": 94,
+  "apple_bottom_above_keys_mm": -138,
+  "thumb_home_miss_mm": 11.6,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 0.4,
+   "2": 0.0,
+   "4": 0.4,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -0.7,
+   "2": -1.3,
+   "4": -1.5,
+   "5": -0.8
+  },
+  "pad_fix_mm": {
+   "1": -1.2,
+   "2": 0.7,
+   "4": 0.6,
+   "5": -0.0
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "3": 20
+  }
+ },
+ "fingers-29": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   21
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {
+   "3": 0.9
+  },
+  "skin_finger_mm": {},
+  "pose": "fingers-29",
+  "fit_residual_mm": 9.0,
+  "yaw_pitch_roll_deg": [
+   -8,
+   -3,
+   3
+  ],
+  "spread": 0.56,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 64,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 29.4,
+   "3": 6.0,
+   "4": 2.9,
+   "5": 2.2
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "3": {
+    "scale": 1.37,
+    "flex": -4.2,
+    "yaw": -0.2
+   },
+   "4": {
+    "scale": 1.18,
+    "flex": 0.2,
+    "yaw": 1.6
+   },
+   "5": {
+    "scale": 1.01,
+    "flex": 2.5,
+    "yaw": 4.2
+   },
+   "2": {
+    "hover_yaw": -1.1,
+    "fan_deg": [
+     0.6,
+     0.6
+    ]
+   }
+  },
+  "apple_r_mm": 46,
+  "apple_bottom_above_keys_mm": -36,
+  "thumb_home_miss_mm": 12.3,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 5.4,
+   "3": 1.1,
+   "4": 0.0,
+   "5": 0.2
+  },
+  "pad_gap_mm": {
+   "1": -0.9,
+   "3": -2.4,
+   "4": -1.6,
+   "5": -0.8
+  },
+  "pad_fix_mm": {
+   "1": -0.1,
+   "3": 1.0,
+   "4": 0.8,
+   "5": 0.4
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20
+  }
+ },
+ "fingers-30": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   3,
+   0,
+   13
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fingers-30",
+  "fit_residual_mm": 5.5,
+  "yaw_pitch_roll_deg": [
+   11,
+   -1,
+   2
+  ],
+  "spread": 0.35,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 63,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "2": 3.5,
+   "3": 2.3,
+   "4": 2.6,
+   "5": 1.8
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "2": {
+    "scale": 1.04,
+    "flex": 3.7,
+    "yaw": -0.7
+   },
+   "3": {
+    "scale": 1.1,
+    "flex": 0.6,
+    "yaw": -1.6
+   },
+   "4": {
+    "scale": 1.06,
+    "flex": 1.6,
+    "yaw": 1.4
+   },
+   "5": {
+    "scale": 1.03,
+    "flex": 2.4,
+    "yaw": -0.2
+   }
+  },
+  "apple_r_mm": 56,
+  "apple_bottom_above_keys_mm": -57,
+  "thumb_home_miss_mm": 11.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.1,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "2": -0.8,
+   "3": -1.2,
+   "4": -1.1,
+   "5": -0.9
+  },
+  "pad_fix_mm": {
+   "2": 0.7,
+   "3": 1.0,
+   "4": 0.5,
+   "5": 0.2
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "1": 12
+  }
+ },
+ "fingers-31": {
+  "forearm_twist_deg": -9,
+  "wrist_xyz_deg": [
+   1,
+   0,
+   20
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {
+   "3": 0.1
+  },
+  "skin_finger_mm": {},
+  "pose": "fingers-31",
+  "fit_residual_mm": 10.6,
+  "yaw_pitch_roll_deg": [
+   -4,
+   3,
+   -1
+  ],
+  "spread": 0.39,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 59,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 15.3,
+   "2": 1.4,
+   "3": 4.9,
+   "4": 2.0,
+   "5": 4.2
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "2": {
+    "scale": 1.23,
+    "flex": -1.2,
+    "yaw": 0.6
+   },
+   "3": {
+    "scale": 1.39,
+    "flex": -4.0,
+    "yaw": -2.2
+   },
+   "4": {
+    "scale": 1.17,
+    "flex": 1.2,
+    "yaw": 1.1
+   },
+   "5": {
+    "scale": 1.02,
+    "flex": 2.4,
+    "yaw": 3.7
+   }
+  },
+  "apple_r_mm": 45,
+  "apple_bottom_above_keys_mm": -39,
+  "thumb_home_miss_mm": 11.4,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 3.4,
+   "2": 0.0,
+   "3": 0.1,
+   "4": 0.0,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "2": -1.7,
+   "3": -2.6,
+   "4": -1.4,
+   "5": -0.9
+  },
+  "pad_fix_mm": {
+   "1": -0.9,
+   "2": 0.7,
+   "3": 1.3,
+   "4": 0.6,
+   "5": 0.1
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {}
+ },
+ "third": {
+  "forearm_twist_deg": -7,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   19
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.1,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {
+   "3": 0.8
+  },
+  "skin_finger_mm": {},
+  "pose": "third",
+  "fit_residual_mm": 7.4,
+  "yaw_pitch_roll_deg": [
+   -4,
+   -3,
+   1
+  ],
+  "spread": 0.43,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 63,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 19.5,
+   "3": 8.6
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "3": {
+    "scale": 1.6,
+    "flex": -9.8,
+    "yaw": -0.4
+   },
+   "2": {
+    "hover_yaw": -1.2,
+    "fan_deg": [
+     0.6,
+     0.6
+    ]
+   },
+   "4": {
+    "hover_yaw": -1.7,
+    "fan_deg": [
+     0.6,
+     0.6
+    ]
+   },
+   "5": {
+    "hover_yaw": -1.0,
+    "fan_deg": [
+     0.4,
+     0.4
+    ]
+   }
+  },
+  "apple_r_mm": 39,
+  "apple_bottom_above_keys_mm": -24,
+  "thumb_home_miss_mm": 11.6,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 3.9,
+   "3": 1.6
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "3": -2.1
+  },
+  "pad_fix_mm": {
+   "1": -0.4,
+   "3": 0.7
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "4": 20,
+   "5": 12
+  }
+ },
+ "fifth": {
+  "forearm_twist_deg": -8,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   17
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "fifth",
+  "fit_residual_mm": 3.4,
+  "yaw_pitch_roll_deg": [
+   2,
+   -3,
+   -1
+  ],
+  "spread": 0.52,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 64,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 20.1,
+   "5": 6.2
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.5
+   },
+   "5": {
+    "scale": 1.09,
+    "flex": 3.2,
+    "yaw": -0.8
+   },
+   "2": {
+    "hover_yaw": -0.8,
+    "fan_deg": [
+     0.3,
+     0.3
+    ]
+   },
+   "3": {
+    "hover_yaw": -0.5,
+    "fan_deg": [
+     0.4,
+     0.4
+    ]
+   },
+   "4": {
+    "hover_yaw": -1.6,
+    "fan_deg": [
+     0.7,
+     0.8
+    ]
+   }
+  },
+  "apple_r_mm": 98,
+  "apple_bottom_above_keys_mm": -141,
+  "thumb_home_miss_mm": 12.1,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 4.7,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "5": -1.1
+  },
+  "pad_fix_mm": {
+   "1": -0.7,
+   "5": 0.6
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "3": 12,
+   "4": 20
+  }
+ },
+ "sixth": {
+  "forearm_twist_deg": -9,
+  "wrist_xyz_deg": [
+   7,
+   -1,
+   19
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "sixth",
+  "fit_residual_mm": 4.2,
+  "yaw_pitch_roll_deg": [
+   -4,
+   -4,
+   -1
+  ],
+  "spread": 0.51,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 63,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 19.1,
+   "5": 6.7
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 47.6
+   },
+   "5": {
+    "scale": 1.06,
+    "flex": 2.9,
+    "yaw": 3.9
+   },
+   "2": {
+    "hover_yaw": 0.4,
+    "fan_deg": [
+     -1.1,
+     -1.1
+    ]
+   },
+   "3": {
+    "hover_yaw": 1.5,
+    "fan_deg": [
+     -1.8,
+     -1.8
+    ]
+   },
+   "4": {
+    "hover_yaw": 1.9,
+    "fan_deg": [
+     -3.0,
+     -3.0
+    ]
+   }
+  },
+  "apple_r_mm": 111,
+  "apple_bottom_above_keys_mm": -168,
+  "thumb_home_miss_mm": 12.0,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 17.3,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -0.9,
+   "5": -1.0
+  },
+  "pad_fix_mm": {
+   "1": -0.3,
+   "5": 0.6
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "3": 20,
+   "4": 19
+  }
+ },
+ "seventh": {
+  "forearm_twist_deg": -10,
+  "wrist_xyz_deg": [
+   7,
+   -1,
+   17
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "seventh",
+  "fit_residual_mm": 3.6,
+  "yaw_pitch_roll_deg": [
+   1,
+   -3,
+   -2
+  ],
+  "spread": 0.64,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 61,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 17.7,
+   "5": 21.4
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.2,
+   "4": 6.7,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 9.8
+   },
+   "5": {
+    "scale": 0.99,
+    "flex": 4.9,
+    "yaw": 18.7
+   },
+   "2": {
+    "hover_yaw": 4.3,
+    "fan_deg": [
+     -5.4,
+     -5.4
+    ]
+   },
+   "3": {
+    "hover_yaw": 8.3,
+    "fan_deg": [
+     -9.0,
+     -9.0
+    ]
+   },
+   "4": {
+    "hover_yaw": 13.1,
+    "fan_deg": [
+     -15.0,
+     -15.0
+    ]
+   }
+  },
+  "apple_r_mm": 113,
+  "apple_bottom_above_keys_mm": -174,
+  "thumb_home_miss_mm": 12.9,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 11.9,
+   "5": 0.7
+  },
+  "pad_gap_mm": {
+   "1": -0.2,
+   "5": -0.7
+  },
+  "pad_fix_mm": {
+   "1": -0.9,
+   "5": 0.6
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 21,
+   "3": 22,
+   "4": 21
+  }
+ },
+ "octave": {
+  "forearm_twist_deg": -10,
+  "wrist_xyz_deg": [
+   7,
+   -1,
+   20
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {
+   "1": 1.6
+  },
+  "skin_finger_mm": {},
+  "pose": "octave",
+  "fit_residual_mm": 7.1,
+  "yaw_pitch_roll_deg": [
+   -6,
+   -3,
+   -2
+  ],
+  "spread": 1.35,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 53,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 10.0,
+   "5": 8.9
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.5,
+   "4": 6.7,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "5": {
+    "scale": 0.92,
+    "flex": -2.5,
+    "yaw": 6.1
+   },
+   "2": {
+    "hover_yaw": -0.1,
+    "fan_deg": [
+     -1.4,
+     -1.4
+    ]
+   },
+   "3": {
+    "hover_yaw": 2.0,
+    "fan_deg": [
+     -2.4,
+     -2.4
+    ]
+   },
+   "4": {
+    "hover_yaw": 3.5,
+    "fan_deg": [
+     -4.0,
+     -4.0
+    ]
+   }
+  },
+  "apple_r_mm": 127,
+  "apple_bottom_above_keys_mm": -209,
+  "thumb_home_miss_mm": 22.3,
+  "pole_angle": {
+   "1": -90
+  },
+  "miss_mm": {
+   "1": 0.7,
+   "5": 0.2
+  },
+  "pad_gap_mm": {
+   "1": 0.3,
+   "5": -1.1
+  },
+  "pad_fix_mm": {
+   "1": -4.3,
+   "5": 0.1
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 12,
+   "3": 22,
+   "4": 21
+  }
+ },
+ "triad": {
+  "forearm_twist_deg": -8,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   19
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.3,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "triad",
+  "fit_residual_mm": 10.0,
+  "yaw_pitch_roll_deg": [
+   -3,
+   -3,
+   1
+  ],
+  "spread": 0.5,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 64,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 21.7,
+   "3": 8.7,
+   "5": 6.4
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.4
+   },
+   "3": {
+    "scale": 1.4,
+    "flex": -5.6,
+    "yaw": 1.7
+   },
+   "5": {
+    "scale": 1.03,
+    "flex": 3.5,
+    "yaw": 3.0
+   },
+   "2": {
+    "hover_yaw": 0.0,
+    "fan_deg": [
+     -0.6,
+     -0.6
+    ]
+   },
+   "4": {
+    "hover_yaw": 1.3,
+    "fan_deg": [
+     -2.5,
+     -2.5
+    ]
+   }
+  },
+  "apple_r_mm": 44,
+  "apple_bottom_above_keys_mm": -33,
+  "thumb_home_miss_mm": 12.0,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 4.1,
+   "3": 3.5,
+   "5": 0.1
+  },
+  "pad_gap_mm": {
+   "1": -1.0,
+   "3": -2.2,
+   "5": -0.8
+  },
+  "pad_fix_mm": {
+   "1": -0.4,
+   "3": 1.0,
+   "5": 0.5
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "4": 20
+  }
+ },
+ "inversion": {
+  "forearm_twist_deg": -14,
+  "wrist_xyz_deg": [
+   6,
+   -1,
+   18
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.1,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "inversion",
+  "fit_residual_mm": 5.4,
+  "yaw_pitch_roll_deg": [
+   -1,
+   -2,
+   -6
+  ],
+  "spread": 0.54,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 61,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 14.8,
+   "2": 6.6,
+   "5": 8.9
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.6
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 6.9
+   },
+   "2": {
+    "scale": 2.32,
+    "flex": -15.0,
+    "yaw": 2.3
+   },
+   "5": {
+    "scale": 1.08,
+    "flex": 6.7,
+    "yaw": -0.8
+   },
+   "3": {
+    "hover_yaw": -2.6,
+    "fan_deg": [
+     -0.0,
+     2.4
+    ]
+   },
+   "4": {
+    "hover_yaw": 0.1,
+    "fan_deg": [
+     0.5,
+     -0.8
+    ]
+   }
+  },
+  "apple_r_mm": 109,
+  "apple_bottom_above_keys_mm": -165,
+  "thumb_home_miss_mm": 12.2,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 8.3,
+   "2": 0.1,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "1": -0.9,
+   "2": -1.7,
+   "5": -0.6
+  },
+  "pad_fix_mm": {
+   "1": -0.9,
+   "2": -0.4,
+   "5": 0.8
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "3": 20,
+   "4": 15
+  }
+ },
+ "chord7": {
+  "forearm_twist_deg": -15,
+  "wrist_xyz_deg": [
+   0,
+   0,
+   23
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "chord7",
+  "fit_residual_mm": 13.1,
+  "yaw_pitch_roll_deg": [
+   -9,
+   5,
+   -6
+  ],
+  "spread": 1.12,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 60,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 9.4,
+   "2": 2.3,
+   "3": 6.3,
+   "5": 10.3
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.4,
+   "4": 6.7,
+   "5": 9.5
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 0.0
+   },
+   "2": {
+    "scale": 1.42,
+    "flex": -3.2,
+    "yaw": -1.2
+   },
+   "3": {
+    "scale": 1.29,
+    "flex": 1.0,
+    "yaw": 3.7
+   },
+   "5": {
+    "scale": 0.95,
+    "flex": 12.3,
+    "yaw": 2.4
+   },
+   "4": {
+    "hover_yaw": 4.5,
+    "fan_deg": [
+     -5.4,
+     -5.4
+    ]
+   }
+  },
+  "apple_r_mm": 48,
+  "apple_bottom_above_keys_mm": -45,
+  "thumb_home_miss_mm": 18.4,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 3.5,
+   "2": 0.4,
+   "3": 0.3,
+   "5": 1.1
+  },
+  "pad_gap_mm": {
+   "1": -0.5,
+   "2": -2.8,
+   "3": -1.7,
+   "5": 0.8
+  },
+  "pad_fix_mm": {
+   "1": -1.5,
+   "2": 0.4,
+   "3": 1.1,
+   "5": 0.4
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "4": 20
+  }
+ },
+ "black": {
+  "forearm_twist_deg": -10,
+  "wrist_xyz_deg": [
+   3,
+   0,
+   14
+  ],
+  "capsule_key_mm": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "black",
+  "fit_residual_mm": 6.0,
+  "yaw_pitch_roll_deg": [
+   9,
+   -1,
+   -2
+  ],
+  "spread": 0.39,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 65,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 16.5,
+   "3": 9.3,
+   "5": 6.9
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.1,
+   "4": 6.8,
+   "5": 9.7
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 3.5
+   },
+   "3": {
+    "scale": 0.92,
+    "flex": -3.5,
+    "yaw": -8.6
+   },
+   "5": {
+    "scale": 1.2,
+    "flex": 5.2,
+    "yaw": -0.4
+   },
+   "2": {
+    "hover_yaw": -4.6,
+    "fan_deg": [
+     4.6,
+     4.5
+    ]
+   },
+   "4": {
+    "hover_yaw": -4.7,
+    "fan_deg": [
+     4.7,
+     4.7
+    ]
+   }
+  },
+  "apple_r_mm": 66,
+  "apple_bottom_above_keys_mm": -75,
+  "thumb_home_miss_mm": 11.4,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 8.0,
+   "3": 0.2,
+   "5": 0.0
+  },
+  "pad_gap_mm": {
+   "1": -0.5,
+   "3": -1.1,
+   "5": -1.4
+  },
+  "pad_fix_mm": {
+   "1": -0.5,
+   "3": 0.2,
+   "5": 0.7
+  },
+  "hover_x_mm": {},
+  "hover_above_keys_mm": {
+   "2": 20,
+   "4": 16
+  }
+ },
+ "tucked": {
+  "forearm_twist_deg": -6,
+  "wrist_xyz_deg": [
+   5,
+   0,
+   8
+  ],
+  "capsule_key_mm": {
+   "1": 0.1,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.0,
+   "5": 0.0
+  },
+  "capsule_finger_mm": {},
+  "skin_key_mm": {},
+  "skin_finger_mm": {},
+  "pose": "tucked",
+  "fit_residual_mm": 15.1,
+  "yaw_pitch_roll_deg": [
+   24,
+   -3,
+   1
+  ],
+  "spread": 0.07,
+  "curl_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "knuckle3_above_keys_mm": 60,
+  "neutral_deg": {
+   "1": 0,
+   "3": 0,
+   "2": 11,
+   "4": -8,
+   "5": -23
+  },
+  "rigid_miss_mm": {
+   "1": 38.1
+  },
+  "curl_scale": {
+   "2": 1.0,
+   "3": 1.0,
+   "4": 1.0,
+   "5": 1.0
+  },
+  "palm_arch_deg": {
+   "2": 2.0,
+   "4": 6.9,
+   "5": 10.1
+  },
+  "apple_bends_deg": {
+   "2": [
+    9,
+    21,
+    22
+   ],
+   "3": [
+    13,
+    20,
+    23
+   ],
+   "4": [
+    3,
+    18,
+    20
+   ],
+   "5": [
+    7,
+    20,
+    15
+   ]
+  },
+  "press_adjust": {
+   "1": {
+    "tip_bend": 26.7
+   },
+   "2": {
+    "hover_yaw": -0.4,
+    "fan_deg": [
+     0.0,
+     0.0
+    ]
+   },
+   "3": {
+    "hover_yaw": -2.0
+   },
+   "4": {
+    "hover_yaw": -1.6,
+    "fan_deg": [
+     0.0,
+     -0.0
+    ]
+   },
+   "5": {
+    "hover_yaw": -2.5,
+    "fan_deg": [
+     0.0,
+     0.0
+    ]
+   }
+  },
+  "apple_r_mm": 106,
+  "apple_bottom_above_keys_mm": -162,
+  "thumb_home_miss_mm": 11.1,
+  "pole_angle": {
+   "1": 180
+  },
+  "miss_mm": {
+   "1": 4.4
+  },
+  "pad_gap_mm": {
+   "1": -0.6
+  },
+  "pad_fix_mm": {
+   "1": 1.7
+  },
+  "hover_x_mm": {
+   "3": -0.0
+  },
+  "hover_above_keys_mm": {
+   "2": 21,
+   "3": 14,
+   "4": 19,
+   "5": 21
+  }
+ }
+}

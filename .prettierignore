@@ -18,3 +18,8 @@ public/generated/
 
 # Generated word-typing dictionaries: kept without indentation for the browser.
 public/word-typing/*.json
+
+# The local Blender workspace and the hand-rig output, written by tools/hand-rig/export.py.
+blender/
+tools/hand-rig/poses/
+src/render/handStudy/renderPoses.json
