@@ -44,8 +44,7 @@ solved poses (`poses/<id>.json`) are kept as keyframe data for a later playing a
   attribute) and the skin maps in the hand's UVs, computed per texel from its rest position
   against the bones — colour, roughness, and a height map of knuckle wrinkles, palmar creases, nail
   folds, veins, pores and fine hair that Cycles bakes into a tangent-space normal map. The maps
-  (1024², `blender/exports/hand-skin/`) are what three.js uses too. The concept's coloured rim
-  lights are kept off the hand by light linking. About 25 s.
+  (1024², `blender/exports/hand-skin/`) are what three.js uses too. About 25 s.
 
 ## The solver, in short
 

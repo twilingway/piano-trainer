@@ -751,24 +751,4 @@ rough_img = image("skin-rough", np.repeat(down(full(rough), SS), 3, -1), SIZE, o
 height_img = image("skin-height", np.repeat(full(height), 3, -1), R, colour=False, float_buffer=True)
 normal_img = bake_normal(height_img, R, SIZE)
 skin_material(colour_img, rough_img, normal_img)
-
-
-def rims_off_hand():
-    """The concept's coloured rim lights (piano_kit.py) light the piano, not the skin: on the hand
-    they turned it cyan, a mannequin's colour. Light linking leaves the hand out of them."""
-    rims = [bpy.data.objects.get(n) for n in ("pv-rim-l", "pv-rim-r")]
-    if not all(rims):
-        return
-    coll = bpy.data.collections.get("rim-skip") or bpy.data.collections.new("rim-skip")
-    for name in ("HandMesh", "HandNails"):
-        o = bpy.data.objects[name]
-        if o.name not in coll.objects:
-            coll.objects.link(o)
-    for light in rims:
-        light.light_linking.receiver_collection = coll
-    for item in coll.collection_objects:
-        item.light_linking.link_state = "EXCLUDE"
-
-
-rims_off_hand()
 print("done", round(time.time() - started, 1), "s; height mm", round(float(height.min()), 2), round(float(height.max()), 2))

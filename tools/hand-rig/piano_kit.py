@@ -300,7 +300,8 @@ def export(parts, path):
 
 def view():
     """The concept's frame: low and close over the keys, the keyboard running off both edges, the
-    keys along the bottom; a warm key light and two dim coloured rims on a night-blue world."""
+    keys along the bottom; a warm key light and two dim neutral rims on a dark world. The concept's
+    rims were violet and blue: they turned the skin and the ivory cyan."""
     scene = bpy.context.scene
     c = collection("piano_view")
     cam = bpy.data.objects.new("concept-cam", bpy.data.cameras.get("concept-cam") or bpy.data.cameras.new("concept-cam"))
@@ -314,8 +315,8 @@ def view():
     scene.camera = cam
     scene.render.resolution_x, scene.render.resolution_y = 1920, 812
     for name, loc, energy, color, size in (("pv-key", (0.2, -0.3, 1.6), 14, (1, 0.92, 0.80), 0.8),
-                                           ("pv-rim-l", (-0.3, 0.7, 1.0), 6, (0.55, 0.35, 1.0), 0.4),
-                                           ("pv-rim-r", (1.05, 0.7, 1.0), 6, (0.2, 0.6, 1.0), 0.4)):
+                                           ("pv-rim-l", (-0.3, 0.7, 1.0), 6, (1, 0.97, 0.94), 0.4),
+                                           ("pv-rim-r", (1.05, 0.7, 1.0), 6, (1, 0.97, 0.94), 0.4)):
         light = bpy.data.lights.get(name) or bpy.data.lights.new(name, "AREA")
         light.energy, light.color, light.size = energy, color, size
         o = bpy.data.objects.new(name, light)
@@ -325,7 +326,7 @@ def view():
     world = scene.world
     world.use_nodes = True
     background = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
-    background.inputs[0].default_value = (0.008, 0.01, 0.03, 1)
+    background.inputs[0].default_value = (0.01, 0.01, 0.01, 1)
 
 
 parts = build_kit()
