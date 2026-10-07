@@ -13,23 +13,27 @@ import type { KeyEvent } from "../input/midiInput";
 import type { PlayableRange } from "../practice/playableRange";
 import type { SongNote } from "../song/song";
 import type { DeviceRangeControls } from "../ui/settings/MidiSettings";
-import { loadDeviceRange, saveDeviceRange } from "./deviceRangePreferences";
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, useAppSelector } from "./storeHooks";
 
 /**
  * The player's keyboard: the stored range, what it limits a run to, and capturing it from two
  * key presses. While capturing, `intercept` keeps the keys away from the trainer.
  */
 export function useDeviceRange() {
-  const [range, setStoredRange] = useState(loadDeviceRange);
+  const range = useAppSelector((state) => state.preferences.deviceRange);
+  const dispatch = useAppDispatch();
   const [capture, setCapture] = useState<RangeCapture | null>(null);
   const captureRef = useRef<RangeCapture | null>(null);
   /** Keys pressed during a capture: their releases are the capture's too. */
   const capturedKeys = useRef(new Set<number>());
 
-  const setRange = useCallback((next: DeviceRange) => {
-    setStoredRange(next);
-    saveDeviceRange(next);
-  }, []);
+  const setRange = useCallback(
+    (next: DeviceRange) => {
+      dispatch(preferencesActions.deviceRangeChanged(next));
+    },
+    [dispatch]
+  );
   const startCapture = useCallback(() => {
     captureRef.current = { step: "first" };
     setCapture(captureRef.current);

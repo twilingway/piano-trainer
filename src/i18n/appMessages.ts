@@ -68,5 +68,8 @@ export const appMessages = {
   Мимо: { en: "Miss" },
   КОМБО: { en: "COMBO" },
   точность: { en: "accuracy" },
-  "Поздно +{offset} мс": { en: "Late +{offset} ms" }
+  "Поздно +{offset} мс": { en: "Late +{offset} ms" },
+  "Не удалось сохранить данные. Изменения доступны до закрытия страницы.": {
+    en: "Could not save data. Changes remain available until you close this page."
+  }
 } satisfies Messages;

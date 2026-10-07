@@ -9,8 +9,8 @@ import { createKeyLights } from "../input/keyLights";
 import type { KeyLights, KeyLightSettings } from "../input/keyLights";
 import type { Trainer } from "../practice/Trainer";
 import type { MidiOutputControls } from "../ui/settings/MidiSettings";
-import { loadKeyLights, saveKeyLights } from "./keyLightPreferences";
-import { loadMidiOutput, saveMidiOutput } from "./midiOutputPreferences";
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, useAppSelector } from "./storeHooks";
 
 /**
  * The MIDI output: the stored choice, the connected outputs, the test note and
@@ -21,9 +21,10 @@ export function useMidiOutput(
   trainerRef: RefObject<Trainer | null>,
   trainerReady: boolean
 ): { controls: MidiOutputControls | undefined; isEcho: (event: KeyEvent) => boolean } {
-  const [choice, setChoice] = useState(loadMidiOutput);
+  const choice = useAppSelector((state) => state.preferences.midiOutput);
+  const dispatch = useAppDispatch();
   const [state, setState] = useState<OutputState>({ devices: [] });
-  const [lightSettings, setLightSettings] = useState(loadKeyLights);
+  const lightSettings = useAppSelector((state) => state.preferences.keyLights);
   const choiceRef = useRef(choice);
   const controlRef = useRef<MidiOutputControl | null>(null);
   const lightsRef = useRef<KeyLights | null>(null);
@@ -67,6 +68,11 @@ export function useMidiOutput(
   }, []);
 
   useEffect(() => {
+    choiceRef.current = choice;
+    controlRef.current?.select(choice);
+  }, [choice]);
+
+  useEffect(() => {
     lightsRef.current?.configure(lightSettings);
   }, [lightSettings]);
 
@@ -99,8 +105,7 @@ export function useMidiOutput(
         if (id !== "" && !device) return;
         const next = device ? { id: device.id, name: device.name } : null;
         choiceRef.current = next;
-        setChoice(next);
-        saveMidiOutput(next);
+        dispatch(preferencesActions.midiOutputChanged(next));
         controlRef.current?.select(next);
       },
       onTest: () => {
@@ -108,8 +113,7 @@ export function useMidiOutput(
       },
       lights: lightSettings,
       onLights: (next: KeyLightSettings) => {
-        setLightSettings(next);
-        saveKeyLights(next);
+        dispatch(preferencesActions.keyLightsChanged(next));
       }
     }
   };

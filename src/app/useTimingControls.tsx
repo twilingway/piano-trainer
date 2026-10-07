@@ -1,12 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { audioTime, cancelScheduledSound, scheduleSound, soundClick } from "../audio/pianoSound";
 import type { KeyEvent, MidiDevice } from "../input/midiInput";
 import type { ConnectionType } from "../practice/calibration";
@@ -16,13 +8,15 @@ import type { TrainerSnapshotSource } from "./trainerSnapshots";
 import {
   calibrationIsCurrent,
   getTimingProfile,
-  loadTimingPreferences,
-  saveTimingPreferences,
   updateTimingProfile,
   type TimingPreferences
 } from "./timingPreferences";
 import { useCalibration } from "./useCalibration";
 import { useI18n } from "./useI18n";
+import { preferencesActions } from "./preferencesSlice";
+import { usePreferenceState } from "./storeHooks";
+import type { RootState } from "./store";
+const selectTiming = (state: RootState) => state.preferences.timing;
 
 interface Options {
   trainerRef: RefObject<Trainer | null>;
@@ -43,7 +37,10 @@ export function useTimingControls({
   locked = false
 }: Options) {
   const { t } = useI18n();
-  const [preferences, setPreferences] = useState(loadTimingPreferences);
+  const [preferences, setPreferences] = usePreferenceState(
+    selectTiming,
+    preferencesActions.timingChanged
+  );
   const selected =
     devices.find((device) => device.id === deviceId) ??
     (deviceId === "all" && devices.length === 1 ? devices[0] : undefined);
@@ -99,9 +96,6 @@ export function useTimingControls({
     cancelCalibration();
     clearAudio();
   }, [cancelCalibration, clearAudio]);
-  useEffect(() => {
-    saveTimingPreferences(preferences);
-  }, [preferences]);
   useEffect(
     () => () => {
       request.current++;

@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 
-import type { PlayerSettings } from "../ui/settings/PlayerSettings";
+import type { KeyboardSettings } from "../ui/settings/KeyboardSettings";
 import type { useFallingView } from "./useFallingView";
 import type { StaffPrefs } from "./useStaffPrefs";
 
@@ -12,7 +12,7 @@ export function useKeyboardSettings(
   staffPrefs: StaffPrefs,
   updateStaffPrefs: (change: Partial<StaffPrefs>) => void,
   toggles: ReactNode
-): ComponentProps<typeof PlayerSettings>["keyboard"] {
+): ComponentProps<typeof KeyboardSettings> & { fps: boolean; onFps: (show: boolean) => void } {
   return {
     keyRange: view.keyRange,
     onKeyRange: view.setKeyRange,

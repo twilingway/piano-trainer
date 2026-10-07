@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { withTestStore } from "./storeTestSupport";
 import { StrictMode, act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -69,7 +70,7 @@ afterEach(() => {
 describe("useMidiOutput", () => {
   it("keeps a choice made while the browser asks for access", async () => {
     await act(async () => {
-      root.render(<Harness />);
+      root.render(withTestStore(<Harness />));
       await Promise.resolve();
     });
     expect(latest?.selectedId).toBe("a");
@@ -89,9 +90,11 @@ describe("useMidiOutput", () => {
   it("stays silent on the StrictMode remount and panics once on unmount", async () => {
     await act(async () => {
       root.render(
-        <StrictMode>
-          <Harness />
-        </StrictMode>
+        withTestStore(
+          <StrictMode>
+            <Harness />
+          </StrictMode>
+        )
       );
       await Promise.resolve();
     });
@@ -109,7 +112,7 @@ describe("useMidiOutput", () => {
   it("lights the trainer's keys on the output and knows their echo", async () => {
     saveKeyLights({ enabled: true, channel: 3, velocity: 64 });
     await act(async () => {
-      root.render(<Harness />);
+      root.render(withTestStore(<Harness />));
       await Promise.resolve();
     });
     grant();
@@ -128,7 +131,7 @@ describe("useMidiOutput", () => {
 
   it("does not ask the trainer for keys while the lights are off", async () => {
     await act(async () => {
-      root.render(<Harness />);
+      root.render(withTestStore(<Harness />));
       await Promise.resolve();
     });
     expect(trainer.onLights).toBeUndefined();

@@ -1,3 +1,5 @@
+import { Provider } from "react-redux";
+import { createAppStore, type AppStore } from "./store";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -24,6 +26,7 @@ const trainer = { key: vi.fn(), pedal: vi.fn(), activateOverdrive: vi.fn() };
 const trainerRef = { current: trainer as unknown as Trainer };
 const bindings = presetBindings("extended_range");
 let root: Root;
+let store: AppStore | undefined;
 let host: HTMLDivElement;
 
 function Harness({ options }: { options: KeyboardInputOptions }) {
@@ -32,7 +35,12 @@ function Harness({ options }: { options: KeyboardInputOptions }) {
 }
 async function mount(options: KeyboardInputOptions = { bindings }) {
   await act(async () => {
-    root.render(<Harness options={options} />);
+    store ??= createAppStore();
+    root.render(
+      <Provider store={store}>
+        <Harness options={options} />
+      </Provider>
+    );
     await Promise.resolve();
   });
 }
@@ -51,6 +59,7 @@ beforeEach(() => {
   vi.mocked(midiSupported).mockReturnValue(false);
   host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);
+  store = undefined;
 });
 afterEach(async () => {
   await act(async () => {

@@ -1,3 +1,5 @@
+import { Provider } from "react-redux";
+import { createAppStore, type AppStore } from "../../app/store";
 // @vitest-environment happy-dom
 import { setInterfaceLanguage } from "../../app/interfaceLanguage";
 import { act, useEffect, useLayoutEffect } from "react";
@@ -31,6 +33,7 @@ vi.mock("../GameDialog", () => ({
 }));
 
 let root: Root;
+let store: AppStore | undefined;
 let host: HTMLDivElement;
 let controls: ComputerKeyboardControls;
 let events: MidiEvent[];
@@ -51,7 +54,12 @@ function Harness({ visible = true }: { visible?: boolean }) {
 
 async function mount(visible = true) {
   await act(async () => {
-    root.render(<Harness visible={visible} />);
+    store ??= createAppStore();
+    root.render(
+      <Provider store={store}>
+        <Harness visible={visible} />
+      </Provider>
+    );
     await Promise.resolve();
   });
 }
@@ -100,6 +108,7 @@ beforeEach(() => {
   play.mockClear();
   host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);
+  store = undefined;
 });
 afterEach(async () => {
   await act(async () => {
@@ -198,6 +207,7 @@ describe("computer keyboard assignment interactions", () => {
       await Promise.resolve();
     });
     root = createRoot(host);
+    store = undefined;
     await mount();
     expect(controls.prefs.preset).toBe("octave_layout");
     expect(button("G: F4")).toBeDefined();
