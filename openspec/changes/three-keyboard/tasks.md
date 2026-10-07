@@ -25,7 +25,7 @@
 - [x] 4.2 Draw the frame in three passes in one WebGL context (`ThreeStage`), lazy-loaded and
       falling back to the Pixi perspective; verify `pnpm build` puts three in its own chunk and the
       3D keys show on the dev server
-- [ ] 4.3 Materials, light, the top faces from `keysTexture` and pressed keys dipping; verify on the
+- [x] 4.3 Materials, light, the top faces from `keysTexture` and pressed keys dipping; verify on the
       dev server: colours, stickers, presses by mouse and MIDI, pan, key offset, camera sliders,
       switching styles mid-song, 360×640
 
