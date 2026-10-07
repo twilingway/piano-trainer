@@ -16,12 +16,12 @@
 
 - [x] 3.1 Add the `3d` key style, the «3D (с дорогой)» option and its English text; choosing it
       turns the road on and shows the camera settings; verify with settings tests that it survives a
-      reload and that an unknown value still falls back
+      reload and that the option opens the camera settings
 
 ## 4. Rendering
 
-- [ ] 4.1 Lay the keys out as boxes in `src/render/three/ThreeKeyboard.ts` and verify with a test
-      that every top face's corners match `keySurface(...).top` through the three camera
+- [x] 4.1 Lay the keys out as boxes in `src/render/three/keyBoxes.ts` and verify with a test that
+      every top face's corners match `keySurface(...).top` through the three camera
 - [ ] 4.2 Draw the frame in three passes in one WebGL context (`ThreeStage`), lazy-loaded and
       falling back to the Pixi perspective; verify `pnpm build` puts three in its own chunk and the
       3D keys show on the dev server

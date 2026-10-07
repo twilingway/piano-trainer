@@ -329,6 +329,9 @@ export class KeyboardLayer {
     this.felt.addChild(felt, feltEdge, feltShade);
   }
 
+  /** The last frame drawn: the 3D keys dip the keys it holds down. */
+  frame: KeysFrame | undefined;
+
   /** Lights the keys for this frame: the owed chord, the notes sounding, the keys held. */
   draw(
     frame: KeysFrame,
@@ -336,6 +339,7 @@ export class KeyboardLayer {
     geometry: Geometry,
     stickers: boolean
   ): void {
+    this.frame = frame;
     const { keyboardTop, keyboardHeight, blackHeight } = geometry;
     for (const [pitch, sprite] of this.keySprites) {
       const due = strongestKeyHint(

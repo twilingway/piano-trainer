@@ -8,7 +8,7 @@ import {
   Sprite,
   Texture
 } from "pixi.js";
-import type { PointData, Renderer } from "pixi.js";
+import type { Application, PointData, Renderer } from "pixi.js";
 import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
@@ -23,6 +23,8 @@ import type { Projected, RoadProjection } from "./perspective";
 import { depthAtScreenProgress } from "./perspective";
 import { handSurface } from "./handProjection";
 import type { HandsGeometry } from "./HandsLayer";
+import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
+import { ThreeKeysHost } from "./three/ThreeKeysHost";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
 export interface Strike {
@@ -124,7 +126,14 @@ export class RoadLayer {
   /** Sparks owed to each held key: the fraction of a spark carried to the next frame. */
   private held = new Map<number, number>();
 
-  constructor(private readonly renderer: Renderer) {
+  /** The "3d" style's keys, drawn by three.js; without an app there are none. */
+  private readonly three: ThreeKeysHost | undefined;
+
+  constructor(
+    private readonly renderer: Renderer,
+    app?: Application,
+    keyboard?: KeyboardLayer
+  ) {
     // One blur for every strip's glow; its last pass blends as the filter does: add, for a glow.
     this.staff = new StaffRoadLayer();
     this.glows.filters = [
@@ -157,6 +166,7 @@ export class RoadLayer {
     this.effects.addChild(this.hitLine);
     this.effects.eventMode = "none";
     this.sparkTexture = bakeSpark(renderer);
+    this.three = app && keyboard && new ThreeKeysHost(app, this.container, this.keys, keyboard);
   }
 
   beginNotes(): void {
@@ -299,7 +309,10 @@ export class RoadLayer {
     this.setPan(this.pan, true);
   }
 
-  setPerspective(on: boolean): void {
+  /** The keys under the road: in perspective for "perspective", by three.js for "3d". */
+  setKeyStyle(style: KeyStyle): void {
+    this.three?.setEnabled(style === "3d");
+    const on = style === "perspective" || style === "3d";
     if (on === this.perspective) return;
     this.perspective = on;
     if (on) {
@@ -440,6 +453,7 @@ export class RoadLayer {
   }
 
   destroy(): void {
+    this.three?.destroy();
     this.arrivals.destroy();
     this.glass.destroy();
     for (const filter of this.glows.filters) filter.destroy();
