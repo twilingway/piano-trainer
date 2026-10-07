@@ -1,14 +1,4 @@
-import {
-  Bone,
-  BufferAttribute,
-  Group,
-  LinearSRGBColorSpace,
-  Matrix4,
-  Mesh,
-  Quaternion,
-  SkinnedMesh,
-  Vector3
-} from "three";
+import { Bone, Group, LinearSRGBColorSpace, Matrix4, Mesh, Quaternion, Vector3 } from "three";
 import type { MeshStandardMaterial, Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -17,7 +7,7 @@ import { HandSprings, knuckleSide, liveTarget } from "./handMotion";
 import type { LiveHand } from "./handMotion";
 import { planHand, whitePosition } from "./handPlacement";
 import type { FingeredNote, HandPlan } from "./handPlacement";
-import { BASE, LIFTED, RIG } from "./handPoses";
+import { ARM_SCALE, BASE, LIFTED, RIG } from "./handPoses";
 
 /** What the hands play: the song's notes of each hand and the song time now. */
 export interface HandsSource {
@@ -48,6 +38,7 @@ const SIDE_RADIUS: Readonly<Record<Finger, number>> = {
 };
 /** The straightening at the knuckle that brings a tip onto a black key. */
 const BLACK_REACH = (15 * Math.PI) / 180;
+const ONE = new Vector3(1, 1, 1);
 const X_AXIS = new Vector3(1, 0, 0);
 const Y_AXIS = new Vector3(0, 1, 0);
 const Z_AXIS = new Vector3(0, 0, 1);
@@ -69,37 +60,8 @@ export async function loadHand(): Promise<Object3D> {
     // Like the keys, the skin's colours are display values here.
     const material = node.material as MeshStandardMaterial;
     if (material.map) material.map.colorSpace = LinearSRGBColorSpace;
-    if (node instanceof SkinnedMesh && material.map) fadeForearm(node as SkinnedMesh, material);
   });
   return gltf.scene;
-}
-
-/**
- * The hand is cut off the body a little behind the wrist: the forearm fades out towards the cut,
- * so no stump shows. Distances run along the forearm in the bind pose, the wrist at 0.
- */
-function fadeForearm(mesh: SkinnedMesh, material: MeshStandardMaterial): void {
-  const [arm, wrist] = mesh.skeleton.boneInverses.map((inverse) =>
-    new Vector3().setFromMatrixPosition(inverse.clone().invert())
-  );
-  if (!arm || !wrist) return;
-  const along = wrist.clone().sub(arm).normalize();
-  const position = mesh.geometry.getAttribute("position");
-  const point = new Vector3();
-  const distance: number[] = [];
-  for (let vertex = 0; vertex < position.count; vertex++) {
-    point.fromBufferAttribute(position, vertex).applyMatrix4(mesh.bindMatrix);
-    distance.push(point.sub(wrist).dot(along));
-  }
-  const cut = Math.min(0, ...distance);
-  const colour = new Float32Array(position.count * 4).fill(1);
-  distance.forEach((d, vertex) => {
-    const t = Math.min(1, Math.max(0, (d - cut) / (0.85 * -cut || 1)));
-    colour[vertex * 4 + 3] = t * t * (3 - 2 * t);
-  });
-  mesh.geometry.setAttribute("color", new BufferAttribute(colour, 4));
-  material.vertexColors = true;
-  material.transparent = true;
 }
 
 interface Joint {
@@ -115,13 +77,15 @@ interface Joint {
 }
 
 /** One hand of the studio rig, posed every frame by the live hand of `handMotion`. */
-class LiveRig {
+export class LiveRig {
   /** Places the solver's world on the keys; mirrored for the left hand. */
   readonly space = new Group();
   private readonly rig: Object3D;
   private readonly joints: Joint[] = [];
   private readonly rest: Matrix4;
   private readonly pivot = new Vector3();
+  private readonly arm: Bone;
+  private readonly wrist: Bone;
   private readonly springs = new HandSprings();
   private plan: HandPlan | undefined;
   private notes: readonly FingeredNote[] | undefined;
@@ -155,6 +119,13 @@ class LiveRig {
         joint: Number(/-(\d)\.R$/.exec(node.name)?.[1] ?? 1) - 1
       });
     });
+    const arm = scene.getObjectByName("lowerarm02.R");
+    const wrist = scene.getObjectByName("wrist.R");
+    if (!(arm instanceof Bone) || !(wrist instanceof Bone)) throw new Error("hand.glb has no arm");
+    this.arm = arm as Bone;
+    this.wrist = wrist as Bone;
+    // The wrist keeps its own scale while the forearm stretches: three would pass it on.
+    rig.add(wrist);
     // The rig turns about its wrist, as it sits in the base pose.
     this.rig.matrix.copy(this.rest);
     this.pose(undefined);
@@ -205,6 +176,15 @@ class LiveRig {
       joint.bone.quaternion.copy(joint.rest).multiply(q);
       joint.bone.position.copy(joint.location).applyQuaternion(joint.rest).add(joint.position);
     }
+    // The wrist in the rig: at the stretched forearm's end, turned with it but not stretched.
+    this.arm.scale.set(...(ARM_SCALE as [number, number, number]));
+    const arm = new Matrix4().compose(this.arm.position, this.arm.quaternion, ONE);
+    const wrist = new Matrix4().compose(
+      this.wrist.position.clone().multiply(this.arm.scale),
+      this.wrist.quaternion,
+      ONE
+    );
+    arm.multiply(wrist).decompose(this.wrist.position, this.wrist.quaternion, this.wrist.scale);
   }
 
   /** Slides the rig by the position and the wrist and turns it about the wrist. */

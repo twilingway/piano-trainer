@@ -53,3 +53,6 @@ export const LIFTED: Readonly<Record<string, readonly number[]>> = {
   "finger1-2.R": [0.138791, 0.003443, -0.00588, 0.990298],
   "finger1-3.R": [0.087522, 0.000703, -0.013943, 0.996065]
 };
+
+/** fingers-31 stretches the forearm along its bone; the wrist does not inherit it (inherit_scale NONE). */
+export const ARM_SCALE: readonly number[] = [1.000023, 3.000047, 1.000039];
