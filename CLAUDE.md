@@ -74,6 +74,11 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 - `.claude/skills/codex-worker` — which agent gets which task (Codex CLI, the Codex plugin, local
   Qwen through opencode), how a delegated diff is isolated in a worktree, measured and accepted.
 - `.claude/skills/codex-visual` — Codex as an independent UI/UX consultant and image generator.
+- `.claude/skills/ref2game` (Codex: `.agents/skills/ref2game`) — vendored upstream skill: a
+  reference image becomes a playable 2D slice on its own WebGL2 engine, not inside this app. Game
+  projects go to the git-ignored `games/<name>`; only accepted assets move into `src`. Not for 3D.
+  Its scripts call `python3`, which on this machine is the Microsoft Store stub until the alias is
+  turned off.
 - `.codex/agents/` — Codex's read-only `reviewer` and `spec_architect`.
 - `.opencode/agents/` and `opencode.json` — opencode's agents and the Qwen providers (LM Studio on
   `192.168.1.227:1234`, and the remote endpoint).

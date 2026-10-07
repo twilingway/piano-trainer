@@ -24,3 +24,7 @@ blender/
 tools/hand-rig/poses/
 src/render/handStudy/renderPoses.json
 src/render/hands/rendered/catalog.json
+
+# The vendored ref2game skill, kept as upstream wrote it, and its local game projects.
+.claude/skills/ref2game/
+games/
