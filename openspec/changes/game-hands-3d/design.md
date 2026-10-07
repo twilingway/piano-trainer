@@ -40,10 +40,10 @@ Goals: второй каталог тех же типов, без новой л�
    `fadeWrist`); подбор идёт по загруженным 3D-позам, пока их нет — по рисованным. Смена вида
    сбрасывает картинки рук (как `reset`), чтобы не смешивать масштабы при затухании. Чистая функция
    `handPoseSet(style, drawn, rendered)` решает, из какого набора выбирать, и покрывается тестом.
-5. **Настройка.** `StaffPrefs.handStyle: "drawn" | "rendered"`, по умолчанию `"drawn"`, неизвестное
-   значение при чтении — `"drawn"`; передаётся в вид, как `keyStyle`. Select «Вид рук» — в
-   `KeyboardSettings` после «Вид клавиш». `App.tsx` и `FallingNotesView.ts` стояли на лимите
-   `max-lines` 500, поэтому (решение пользователя) пропсы раздела клавиатуры вынесены в
+5. **Настройка.** `StaffPrefs.handStyle: "drawn" | "rendered"`, по умолчанию `"rendered"`,
+   неизвестное значение при чтении — `"rendered"`; передаётся в вид, как `keyStyle`. Select «Вид
+   рук» — в `KeyboardSettings` после «Вид клавиш». `App.tsx` и `FallingNotesView.ts` стояли на
+   лимите `max-lines` 500, поэтому (решение пользователя) пропсы раздела клавиатуры вынесены в
    `src/app/useKeyboardSettings.ts`, а поле `hands` вида стало публичным: `useFallingView` зовёт
    `view.hands.setStyle(...)` без нового метода вида.
 

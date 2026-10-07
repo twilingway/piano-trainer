@@ -321,19 +321,19 @@ describe("player settings organization", () => {
     expect(host.textContent).toContain("По октавам");
   });
 
-  it("offers the hand look next to the key look, drawn by default", async () => {
+  it("offers the hand look next to the key look, 3D by default", async () => {
     await render(false);
     await section("Вид");
     const hands = select("Вид рук");
-    expect(hands.value).toBe("drawn");
+    expect(hands.value).toBe("rendered");
     await act(async () => {
       await Promise.resolve();
-      hands.value = "rendered";
+      hands.value = "drawn";
       hands.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    expect(select("Вид рук").value).toBe("rendered");
+    expect(select("Вид рук").value).toBe("drawn");
     expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
-      handStyle: "rendered"
+      handStyle: "drawn"
     });
   });
 });
