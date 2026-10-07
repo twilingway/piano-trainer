@@ -39,12 +39,12 @@ solved poses (`poses/<id>.json`) are kept as keyframe data for a later playing a
   `handPlacement.ts` and writes `blender/exports/hand-demo.json`; `live_demo.py` then keys the rig
   (fingers-31 base, each finger between relaxed and pressed, knuckle turns for reach) and the keys.
   Run `piano_kit.py` first: it rebuilds the keys and drops their keys.
-- `hand_skin.py`, after `studio_rig.py`, makes the hand a person's: object `HandNails` (a plate
-  per finger on the distal phalanx, skinned to it alone, lunula and free edge in a colour
-  attribute) and the skin maps in the hand's UVs, computed per texel from its rest position
-  against the bones — colour, roughness, and a height map of knuckle wrinkles, palmar creases, nail
-  folds, veins, pores and fine hair that Cycles bakes into a tangent-space normal map. The maps
-  (1024², `blender/exports/hand-skin/`) are what three.js uses too. About 25 s.
+- `hand_skin.py`, after `studio_rig.py`, makes the hand a person's: object `HandNails` (a plate per
+  finger on the distal phalanx, skinned to it alone, lunula and free edge in a colour attribute) and
+  the skin maps in the hand's UVs, computed per texel from its rest position against the bones —
+  colour, roughness, and a height map of knuckle wrinkles, palmar creases, nail folds, veins, pores
+  and fine hair that Cycles bakes into a tangent-space normal map. The maps (1024²,
+  `blender/exports/hand-skin/`) are what three.js uses too. About 25 s.
 
 ## The solver, in short
 
