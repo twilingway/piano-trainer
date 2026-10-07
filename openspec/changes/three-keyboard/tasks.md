@@ -14,7 +14,7 @@
 
 ## 3. Setting
 
-- [ ] 3.1 Add the `3d` key style, the «3D (с дорогой)» option and its English text; choosing it
+- [x] 3.1 Add the `3d` key style, the «3D (с дорогой)» option and its English text; choosing it
       turns the road on and shows the camera settings; verify with settings tests that it survives a
       reload and that an unknown value still falls back
 

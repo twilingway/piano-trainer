@@ -168,7 +168,7 @@ export class FallingNotesView {
     this.computerKeyboard = computerKeyboard;
     this.road = new RoadLayer(renderer);
     this.road.setCamera(this.cameraPrefs);
-    this.road.setPerspective(this.keyStyle === "perspective");
+    this.road.setPerspective(this.keyStyle === "perspective" || this.keyStyle === "3d");
     this.road.container.visible = false;
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, computerKeyboard.container);
@@ -215,7 +215,7 @@ export class FallingNotesView {
   setKeyStyle(style: KeyStyle): void {
     if (style === this.keyStyle) return;
     this.keyStyle = style;
-    this.road?.setPerspective(style === "perspective");
+    this.road?.setPerspective(style === "perspective" || style === "3d");
     this.laidOutFor = { width: 0, height: 0 };
     const keyboard = this.keyboard;
     if (!keyboard) return;
