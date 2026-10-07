@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { practiceActions } from "./practiceSlice";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
@@ -8,7 +9,7 @@ import { Trainer } from "../practice/Trainer";
 import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
 import { choosableRoles, ROLE_HAND } from "../song/midiParts";
-import type { PartRole, SongPart } from "../song/midiParts";
+import type { PartRole } from "../song/midiParts";
 import type { Song } from "../song/song";
 import { preferencesActions } from "./preferencesSlice";
 import { useAppDispatch, useAppSelector } from "./storeHooks";
@@ -91,22 +92,19 @@ export function useTrainer({
   };
   const handChoice = ranked && storedHandChoice === "listen" ? "both" : storedHandChoice;
   /** A part picked by role; it belongs to the song (a new file drops it, a new key keeps it). */
-  const [partChoice, setPartChoice] = useState<{
-    readonly parts: readonly SongPart[] | undefined;
-    readonly role: PartRole;
-  } | null>(null);
-  const partRoles = ranked || wordTyping ? [] : choosableRoles(song.parts);
-  const partRole =
-    partChoice !== null && partChoice.parts === song.parts && partRoles.includes(partChoice.role)
-      ? partChoice.role
-      : null;
+  const chosenRole = useAppSelector((state) => state.practice.partRole);
+  const partRoles = useMemo(
+    () => (ranked || wordTyping ? [] : choosableRoles(song.parts)),
+    [ranked, wordTyping, song.parts]
+  );
+  const partRole = chosenRole !== null && partRoles.includes(chosenRole) ? chosenRole : null;
   const setHandChoice = (choice: HandChoice) => {
     if (ranked && snapshotSource.getSnapshot()?.playing) return;
-    setPartChoice(null);
+    dispatch(practiceActions.partRoleChosen(null));
     updateHandChoice(choice);
   };
   const choosePart = (role: PartRole) => {
-    setPartChoice({ parts: song.parts, role });
+    dispatch(practiceActions.partRoleChosen(role));
   };
   const storedSpeed = useAppSelector((state) => state.preferences.player.speed);
   const updateSpeed = (speed: number) => {

@@ -9,7 +9,7 @@ import {
 } from "react";
 import { usePlayerRuntime } from "./usePlayerRuntime";
 
-type PlayerRuntime = ReturnType<typeof usePlayerRuntime>;
+export type PlayerRuntime = ReturnType<typeof usePlayerRuntime>;
 
 /** Delivery of runtime view models, not another owner of product state or song time. */
 export function createRuntimeSource(initial: PlayerRuntime) {
@@ -46,13 +46,18 @@ export function useRuntimeSelector<T>(
   select: (runtime: PlayerRuntime) => T,
   equal: (left: T, right: T) => boolean = Object.is
 ): T {
-  const source = useContext(RuntimeContext);
-  if (!source) throw new Error("PlayerRuntimeProvider is missing");
+  const source = useRuntimeSource();
   const getSelection = useMemo(
     () => createRuntimeSelector(source, select, equal),
     [source, select, equal]
   );
   return useSyncExternalStore(source.subscribe, getSelection, getSelection);
+}
+
+export function useRuntimeSource() {
+  const source = useContext(RuntimeContext);
+  if (!source) throw new Error("PlayerRuntimeProvider is missing");
+  return source;
 }
 
 export function createRuntimeSelector<T>(
