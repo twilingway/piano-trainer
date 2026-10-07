@@ -88,6 +88,8 @@ export class ThreeKeysHost {
       return;
     }
     const gl = renderer as WebGLRenderer;
+    // three left its own state (clear colour, blending) behind last frame.
+    renderer.resetState();
     renderer.render({ container: this.road });
     const picture = gl.texture.getGlSource(scene.texture.source).texture;
     const frame = this.keyboard.frame;

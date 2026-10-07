@@ -22,7 +22,7 @@
 
 - [x] 4.1 Lay the keys out as boxes in `src/render/three/keyBoxes.ts` and verify with a test that
       every top face's corners match `keySurface(...).top` through the three camera
-- [ ] 4.2 Draw the frame in three passes in one WebGL context (`ThreeStage`), lazy-loaded and
+- [x] 4.2 Draw the frame in three passes in one WebGL context (`ThreeStage`), lazy-loaded and
       falling back to the Pixi perspective; verify `pnpm build` puts three in its own chunk and the
       3D keys show on the dev server
 - [ ] 4.3 Materials, light, the top faces from `keysTexture` and pressed keys dipping; verify on the
@@ -31,4 +31,4 @@
 
 ## 5. Integration
 
-- [ ] 5.1 `pnpm check` and `pnpm spec:validate` pass
+- [x] 5.1 `pnpm check` and `pnpm spec:validate` pass

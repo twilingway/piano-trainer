@@ -53,10 +53,10 @@ export class ThreeStage {
     this.renderer.autoClear = false;
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
     this.camera.matrixAutoUpdate = false;
-    const sun = new DirectionalLight(0xffffff, 1.6);
+    const sun = new DirectionalLight(0xffffff, 2.4);
     // Above, in front of the keys and a little to the left: front faces lit, sides shaded.
     sun.position.set(-300, 900, 700);
-    this.scene.add(new HemisphereLight(0xffffff, 0x3a3f4c, 1.3), sun, this.keys);
+    this.scene.add(new HemisphereLight(0xffffff, 0x3a3f4c, 1.8), sun, this.keys);
   }
 
   /** Draws the keys over whatever is in the frame now, keeping it: the road under them. */
@@ -93,6 +93,8 @@ export class ThreeStage {
     );
     this.renderer.clearDepth();
     this.renderer.render(this.scene, this.camera);
+    // Hand the context back as WebGL defaults: Pixi's own reset leaves depth testing on.
+    this.renderer.resetState();
   }
 
   dispose(): void {
