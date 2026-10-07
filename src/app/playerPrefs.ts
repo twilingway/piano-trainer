@@ -33,12 +33,38 @@ export const DEFAULT_PLAYER_PREFS: PlayerPrefs = {
   librarySource: null
 };
 
+export function normalizePlayerPrefs(value: unknown): PlayerPrefs {
+  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const bool = (key: "metronome" | "accompaniment" | "notesAsWritten") =>
+    typeof raw[key] === "boolean" ? raw[key] : DEFAULT_PLAYER_PREFS[key];
+  const lesson =
+    raw.lesson && typeof raw.lesson === "object" ? (raw.lesson as Record<string, unknown>) : {};
+  return {
+    mode: raw.mode === "tempo" ? "tempo" : "wait",
+    handChoice:
+      typeof raw.handChoice === "string" &&
+      ["right", "left", "both", "listen"].includes(raw.handChoice)
+        ? (raw.handChoice as HandChoice)
+        : "right",
+    speed:
+      typeof raw.speed === "number" && Number.isFinite(raw.speed)
+        ? Math.max(0.01, Math.min(1, raw.speed))
+        : DEFAULT_PLAYER_PREFS.speed,
+    metronome: bool("metronome"),
+    accompaniment: bool("accompaniment"),
+    notesAsWritten: bool("notesAsWritten"),
+    lesson:
+      typeof lesson.exerciseId === "string" && typeof lesson.levelId === "string"
+        ? { exerciseId: lesson.exerciseId, levelId: lesson.levelId }
+        : null,
+    librarySource: typeof raw.librarySource === "string" ? raw.librarySource : null
+  };
+}
+
 export function loadPlayerPrefs(): PlayerPrefs {
   try {
     const raw = localStorage.getItem(PLAYER_PREFS_KEY);
-    return raw
-      ? { ...DEFAULT_PLAYER_PREFS, ...(JSON.parse(raw) as Partial<PlayerPrefs>) }
-      : DEFAULT_PLAYER_PREFS;
+    return raw ? normalizePlayerPrefs(JSON.parse(raw)) : DEFAULT_PLAYER_PREFS;
   } catch {
     return DEFAULT_PLAYER_PREFS;
   }

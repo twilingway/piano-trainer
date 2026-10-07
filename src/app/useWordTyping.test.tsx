@@ -5,6 +5,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { Song } from "../song/song";
 import { generateWordTyping } from "../wordTyping/optimizer";
 import type { Language, WordTypingResult } from "../wordTyping/types";
+import { createAppStore } from "./store";
+import { withTestStore } from "./storeTestSupport";
 import { setInterfaceLanguage } from "./interfaceLanguage";
 import {
   useWordTyping,
@@ -62,10 +64,11 @@ it("freezes automatic worker language during play, applies it on pause and keeps
   setInterfaceLanguage("en");
   const host = document.body.appendChild(document.createElement("div"));
   const root = createRoot(host);
+  const store = createAppStore();
   try {
     await act(async () => {
       await Promise.resolve();
-      root.render(<Harness playing={false} />);
+      root.render(withTestStore(<Harness playing={false} />, store));
     });
     expect(controls.language).toBe("en");
     expect(controls.pending).toBe(false);
@@ -73,7 +76,7 @@ it("freezes automatic worker language during play, applies it on pause and keeps
     expect(requests.map((r) => r.language)).toEqual(["en"]);
     await act(async () => {
       await Promise.resolve();
-      root.render(<Harness playing />);
+      root.render(withTestStore(<Harness playing />, store));
     });
     const before = controls.keyboard;
     const beforeResult = controls.result;
@@ -91,7 +94,7 @@ it("freezes automatic worker language during play, applies it on pause and keeps
     expect(requests.map((r) => r.language)).toEqual(["en"]);
     await act(async () => {
       await Promise.resolve();
-      root.render(<Harness playing={false} />);
+      root.render(withTestStore(<Harness playing={false} />, store));
     });
     expect(controls.language).toBe("ru");
     expect(controls.result?.language).toBe("ru");

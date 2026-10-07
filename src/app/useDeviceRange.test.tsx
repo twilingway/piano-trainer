@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { withTestStore } from "./storeTestSupport";
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -32,7 +33,7 @@ beforeEach(async () => {
   host = document.createElement("div");
   root = createRoot(host);
   await run(() => {
-    root.render(<Harness />);
+    root.render(withTestStore(<Harness />));
   });
 });
 afterEach(() => {

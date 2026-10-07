@@ -1,43 +1,21 @@
 import { useI18n } from "../../app/useI18n";
-import type { ComponentProps, ReactNode } from "react";
-
+import type { ReactNode } from "react";
 import { BUILD_INFO } from "../../app/buildInfo";
-import { GameSettings } from "../GameSettings";
 import { SettingsPanel } from "../SettingsPanel";
 import { AboutSettings } from "./AboutSettings";
-import { ComputerKeyboardSettings } from "./ComputerKeyboardSettings";
-import { KeyboardSettings } from "./KeyboardSettings";
-import { MidiSettings } from "./MidiSettings";
-import { PlaySettings } from "./PlaySettings";
-import { SongSettings } from "./SongSettings";
-import { StaffSettings } from "./StaffSettings";
-
 interface Props {
   readonly open: boolean;
   readonly onClose: () => void;
   readonly wordTyping: boolean;
-  readonly play: ComponentProps<typeof PlaySettings>;
-  /** A connected view can subscribe to live statistics only while this section is mounted. */
-  readonly playContent?: ReactNode;
-  readonly rules: ComponentProps<typeof GameSettings>;
-  readonly song: ComponentProps<typeof SongSettings>;
-  readonly staff: ComponentProps<typeof StaffSettings>;
-  readonly keyboard: ComponentProps<typeof KeyboardSettings> & {
-    readonly fps: boolean;
-    readonly onFps: (show: boolean) => void;
-  };
-  readonly computerKeyboard: ComponentProps<typeof ComputerKeyboardSettings>["controls"];
-  readonly wordSettings: ReactNode;
-  readonly midi: ComponentProps<typeof MidiSettings>;
+  readonly play: ReactNode;
+  readonly rules: ReactNode;
+  readonly song: ReactNode;
+  readonly view: ReactNode;
+  readonly computer: ReactNode;
+  readonly midi: ReactNode;
   readonly synchronization: ReactNode;
-  /** Puts the dragged parts of the current mode's screen back. */
-  readonly onResetLayout: () => void;
-  /** The edit mode, in which the screen's parts show their handles and drag. */
-  readonly editing: boolean;
-  readonly onToggleEditing: () => void;
 }
-
-/** Compose existing controls without taking ownership of their preferences. */
+/** Slots are mounted only for the active tab; the shell owns navigation alone. */
 export function PlayerSettings(props: Props) {
   const { t } = useI18n();
   return (
@@ -52,93 +30,20 @@ export function PlayerSettings(props: Props) {
             <>
               <section className="settings-group">
                 <h3 className="settings-group__title">{t("Режим и темп")}</h3>
-                {props.playContent ?? <PlaySettings {...props.play} />}
+                {props.play}
               </section>
-              <div className="settings-group">
-                <GameSettings {...props.rules} />
-              </div>
+              <div className="settings-group">{props.rules}</div>
             </>
           )
         },
-        { id: "song", title: t("Песня"), render: () => <SongSettings {...props.song} /> },
-        {
-          id: "view",
-          title: t("Вид"),
-          render: () => (
-            <>
-              <section className="settings-group">
-                <h3 className="settings-group__title">{t("Нотная запись")}</h3>
-                <StaffSettings {...props.staff} />
-              </section>
-              <section className="settings-group">
-                <h3 className="settings-group__title">{t("Клавиатура и отображение")}</h3>
-                <div className="settings-list">
-                  <label className="setting">
-                    <span>{t("Показывать FPS")}</span>
-                    <input
-                      type="checkbox"
-                      checked={props.keyboard.fps}
-                      onChange={(event) => {
-                        props.keyboard.onFps(event.target.checked);
-                      }}
-                    />
-                  </label>
-                </div>
-                {props.wordTyping ? (
-                  <p className="setting-hint">
-                    {t(
-                      "В режиме «Печатать мелодию» клавиатура сама подстраивается под выбранную партию, поэтому здесь её не настроить."
-                    )}
-                  </p>
-                ) : (
-                  <KeyboardSettings {...props.keyboard} />
-                )}
-              </section>
-              <section className="settings-group">
-                <h3 className="settings-group__title">{t("Расположение")}</h3>
-                <p className="setting-hint">
-                  {t(
-                    "В режиме редактирования мышью двигаются край стана, линии над и под клавиатурой и бегущая строка."
-                  )}{" "}
-                  {props.wordTyping
-                    ? t("Для режима печати расположение своё.")
-                    : t("Для пианино расположение своё.")}
-                </p>
-                <div className="setting-control">
-                  <button
-                    type="button"
-                    className="game-button"
-                    aria-pressed={props.editing}
-                    onClick={props.onToggleEditing}
-                  >
-                    {t("✎ Редактировать интерфейс")}
-                  </button>
-                  <button type="button" className="game-button" onClick={props.onResetLayout}>
-                    {t("Сбросить расположение")}
-                  </button>
-                </div>
-              </section>
-            </>
-          )
-        },
+        { id: "song", title: t("Песня"), render: () => props.song },
+        { id: "view", title: t("Вид"), render: () => props.view },
         {
           id: "computer",
           title: props.wordTyping ? t("Печатать мелодию") : t("Ввод с ПК"),
-          render: () =>
-            props.wordTyping ? (
-              <>
-                {props.wordSettings}
-                <p className="setting-hint">
-                  {t(
-                    "Клавиши назначаются под всю песню, Shift и Alt дают дополнительные ноты. Обычные раскладки здесь не действуют."
-                  )}
-                </p>
-              </>
-            ) : (
-              <ComputerKeyboardSettings controls={props.computerKeyboard} />
-            )
+          render: () => props.computer
         },
-        { id: "midi", title: t("Пианино"), render: () => <MidiSettings {...props.midi} /> },
+        { id: "midi", title: t("Пианино"), render: () => props.midi },
         { id: "timing", title: t("Синхронизация"), render: () => props.synchronization },
         { id: "about", title: t("О программе"), render: () => <AboutSettings build={BUILD_INFO} /> }
       ]}

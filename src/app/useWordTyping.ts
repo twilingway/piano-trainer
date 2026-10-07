@@ -8,11 +8,9 @@ import { ALGORITHM_VERSION } from "../wordTyping/optimizer";
 import { DEFAULT_CONFIG } from "../wordTyping/scoring";
 import type { GeneratedToken, Language, Part, WordTypingResult } from "../wordTyping/types";
 import { wordKeyPitch } from "../wordTyping/wordInput";
-import {
-  loadWordTypingPrefs,
-  saveWordTypingPrefs,
-  updateWordTypingPrefs
-} from "./wordTypingPreferences";
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, useAppSelector } from "./storeHooks";
+import { persistenceKey } from "./preferencePersistence";
 import type { WordTypingPrefs } from "./wordTypingPreferences";
 import { useI18n } from "./useI18n";
 
@@ -30,7 +28,12 @@ const cache = new Map<string, Generation>();
 const NO_TOKENS: readonly GeneratedToken[] = [];
 
 export function useWordTyping(song: Song, songKey: string, blocked = false) {
-  const [prefs, setPrefs] = useState(loadWordTypingPrefs);
+  const prefs = useAppSelector((state) => state.preferences.word);
+  const dispatch = useAppDispatch();
+  const saveError = useAppSelector(
+    (state) => state.persistence.errors[persistenceKey("word-typing-prefs-v1", "write")]
+  );
+  const storageError = saveError ? "Не удалось сохранить настройки режима." : null;
   const [selection, setSelection] = useState<{ songKey: string; part: Part }>({
     songKey,
     part: "melody"
@@ -69,7 +72,6 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
     [base, variant]
   );
   const [generation, setGeneration] = useState<Generation | null>(null);
-  const [storageError, setStorageError] = useState<string | null>(null);
   const current = generation?.key === key ? generation : cache.get(key);
   const empty = line.notes.length === 0;
   const error = empty
@@ -141,17 +143,14 @@ export function useWordTyping(song: Song, songKey: string, blocked = false) {
         : undefined,
     [prefs.enabled, prefs.language, tokens, mode, wordKeys]
   );
-  const followInterfaceLanguage = useCallback((language: Language) => {
-    setPrefs((current) =>
-      current.languageManuallyChosen || current.language === language
-        ? current
-        : { ...current, language }
-    );
-  }, []);
+  const followInterfaceLanguage = useCallback(
+    (language: Language) => {
+      dispatch(preferencesActions.wordLanguageFollowed(language));
+    },
+    [dispatch]
+  );
   const update = (change: Partial<Omit<WordTypingPrefs, "languageManuallyChosen">>) => {
-    const next = updateWordTypingPrefs(prefs, change);
-    setPrefs(next);
-    setStorageError(saveWordTypingPrefs(next) ? null : "Не удалось сохранить настройки режима.");
+    dispatch(preferencesActions.wordChanged(change));
   };
   return {
     ...prefs,

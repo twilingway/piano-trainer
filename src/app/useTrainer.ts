@@ -10,7 +10,8 @@ import { FallingNotesView } from "../render/FallingNotesView";
 import { choosableRoles, ROLE_HAND } from "../song/midiParts";
 import type { PartRole, SongPart } from "../song/midiParts";
 import type { Song } from "../song/song";
-import { loadPlayerPrefs, savePlayerPrefs } from "./playerPrefs";
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch, useAppSelector } from "./storeHooks";
 import type { HandChoice } from "./playerPrefs";
 import { createTrainerSnapshotSource } from "./trainerSnapshots";
 
@@ -78,11 +79,16 @@ export function useTrainer({
   const [trainerReady, setTrainerReady] = useState(false);
   const [snapshotSource] = useState(createTrainerSnapshotSource);
   // How the player last played, brought back from the previous visit.
-  const [storedMode, setMode] = useState<PracticeMode>(() => loadPlayerPrefs().mode);
+  const dispatch = useAppDispatch();
+  const storedMode = useAppSelector((state) => state.preferences.player.mode);
+  const setMode = (mode: PracticeMode) => {
+    dispatch(preferencesActions.playerChanged({ mode }));
+  };
   const mode = ranked ? "tempo" : storedMode;
-  const [storedHandChoice, updateHandChoice] = useState<HandChoice>(
-    () => loadPlayerPrefs().handChoice
-  );
+  const storedHandChoice = useAppSelector((state) => state.preferences.player.handChoice);
+  const updateHandChoice = (handChoice: HandChoice) => {
+    dispatch(preferencesActions.playerChanged({ handChoice }));
+  };
   const handChoice = ranked && storedHandChoice === "listen" ? "both" : storedHandChoice;
   /** A part picked by role; it belongs to the song (a new file drops it, a new key keeps it). */
   const [partChoice, setPartChoice] = useState<{
@@ -102,28 +108,25 @@ export function useTrainer({
   const choosePart = (role: PartRole) => {
     setPartChoice({ parts: song.parts, role });
   };
-  const [storedSpeed, updateSpeed] = useState(() =>
-    Math.max(0.01, Math.min(1, loadPlayerPrefs().speed))
-  );
+  const storedSpeed = useAppSelector((state) => state.preferences.player.speed);
+  const updateSpeed = (speed: number) => {
+    dispatch(preferencesActions.playerChanged({ speed }));
+  };
   const setSpeed = (next: number) => {
     updateSpeed(Math.max(0.01, Math.min(1, next)));
   };
   const speed = ranked ? 1 : storedSpeed;
   const [listening, setListening] = useState(false);
-  const [metronome, setMetronome] = useState(() => loadPlayerPrefs().metronome);
-  const [storedAccompaniment, setAccompaniment] = useState(() => loadPlayerPrefs().accompaniment);
+  const metronome = useAppSelector((state) => state.preferences.player.metronome);
+  const setMetronome = (metronome: boolean) => {
+    dispatch(preferencesActions.playerChanged({ metronome }));
+  };
+  const storedAccompaniment = useAppSelector((state) => state.preferences.player.accompaniment);
+  const setAccompaniment = (accompaniment: boolean) => {
+    dispatch(preferencesActions.playerChanged({ accompaniment }));
+  };
   // Ranked and the word mode keep their own fixed rules: the program always accompanies.
   const accompaniment = ranked || wordTyping || storedAccompaniment;
-  useEffect(() => {
-    savePlayerPrefs({
-      mode,
-      handChoice,
-      speed,
-      metronome,
-      accompaniment: storedAccompaniment
-    });
-  }, [mode, handChoice, speed, metronome, storedAccompaniment]);
-
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;

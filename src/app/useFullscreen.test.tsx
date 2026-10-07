@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { withTestStore } from "./storeTestSupport";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
@@ -28,7 +29,7 @@ function Harness() {
 
 async function mount() {
   await act(async () => {
-    root.render(<Harness />);
+    root.render(withTestStore(<Harness />));
     await Promise.resolve();
   });
 }
@@ -94,7 +95,8 @@ describe("mobile fullscreen preference", () => {
     await click();
     expect(request).toHaveBeenCalledWith({ navigationUI: "hide" });
     expect(active()).toBe(true);
-    expect(localStorage.getItem("fullscreen-preferred")).toBe("true");
+    // True is already the default: an unchanged preference does not write storage.
+    expect(localStorage.getItem("fullscreen-preferred")).toBeNull();
   });
 
   it("does not automatically enter on desktop", async () => {
