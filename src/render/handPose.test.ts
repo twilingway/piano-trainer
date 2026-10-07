@@ -202,9 +202,17 @@ describe("chordGlide", () => {
     expect(end?.progress).toBeGreaterThan(0.99);
   });
 
-  it("leaves right after the strike when the chord is held into the next", () => {
-    const legato = [note("a", 0, 1), note("b", 1)];
-    expect(chordGlide(legato, 0.5, 0.3)?.progress).toBeCloseTo(0.5);
+  it("leaves right after the strike when the chord is held over the next", () => {
+    const heldBass = [note("a", 0, 2), note("b", 1)];
+    expect(chordGlide(heldBass, 0.5, 0.3)?.progress).toBeCloseTo(0.5);
+  });
+
+  it("leaves only the lead before the next chord when held into it", () => {
+    const legato = [note("a", 0, 1), note("b", 1, 1)];
+    expect(chordGlide(legato, 0.5, 0.3)?.progress).toBe(1);
+    expect(chordGlide(legato, 0.85, 0.3)?.progress).toBeCloseTo(0.5);
+    const overlapping = [note("a", 0, 1.05), note("b", 1, 1)];
+    expect(chordGlide(overlapping, 0.5, 0.3)?.progress).toBe(1);
   });
 
   it("leaves at least the lead after a late release", () => {
