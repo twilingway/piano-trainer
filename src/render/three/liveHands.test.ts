@@ -67,6 +67,18 @@ describe("LiveRig", () => {
     });
   });
 
+  it("lays the forearm behind the wrist, towards the player", () => {
+    const rig = new LiveRig(skeleton(), "right");
+    const note = { duration: 0.5, pitch: 67, finger: 3 as const, start: 0 };
+    rig.update({ time: 0, notes: { left: [], right: [note] } }, 1 / 60);
+    const [wx = 0, wy = 0, wz = 0] = head(rig, "wrist.R");
+    const [ex = 0, ey = 0, ez = 0] = head(rig, "lowerarm02.R");
+    // Blender's world: the player sits towards -Y; the forearm leaves at most 20° off straight.
+    expect(wy - ey).toBeGreaterThan(0.06);
+    expect(Math.abs(wx - ex)).toBeLessThan((wy - ey) * Math.tan(Math.PI / 9));
+    expect(wz).toBeGreaterThan(ez);
+  });
+
   it("lets a repeated note's key come up between the strikes", () => {
     const rig = new LiveRig(skeleton(), "right");
     const note = { duration: 0.5, pitch: 60, finger: 1 as const };

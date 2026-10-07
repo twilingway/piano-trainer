@@ -8,7 +8,7 @@ import {
   Quaternion,
   Vector3
 } from "three";
-import type { MeshStandardMaterial, Object3D } from "three";
+import type { BufferGeometry, MeshStandardMaterial, Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 import type { Finger, Hand } from "../../fingering/fingering";
@@ -49,8 +49,12 @@ const SIDE_RADIUS: Readonly<Record<Finger, number>> = {
 const BLACK_REACH = (15 * Math.PI) / 180;
 const ONE = new Vector3(1, 1, 1);
 const X_AXIS = new Vector3(1, 0, 0);
-/** The player's right elbow in the solver's scene, glTF axes: beside middle C, before the keys. */
-const ELBOW = new Vector3(C4_X + 0.2, KEY_TOP - 0.02, -(KEY_FRONT - 0.3));
+/** Into the keys, glTF axes: the player sits towards +Z. */
+const INTO_KEYS = new Vector3(0, 0, -1);
+/** How far the forearm keeps to the hand's line across the keys; the rest runs straight from the player. */
+const FOREARM_WITH_HAND = 0.5;
+/** The forearm rises this much a metre from the elbow to the wrist. */
+const FOREARM_RISE = 0.1;
 /** A finger touches its key only near the end of its way down; the key travels the rest. */
 const TOUCH = 0.6;
 const Y_AXIS = new Vector3(0, 1, 0);
@@ -73,9 +77,17 @@ export async function loadHand(): Promise<Object3D> {
     // Like the keys, the skin's colours are display values here.
     const material = node.material as MeshStandardMaterial;
     if (material.map) material.map.colorSpace = LinearSRGBColorSpace;
+    // The nails' vertex colours come linear: as display values they would turn dark red.
+    const geometry = node.geometry as BufferGeometry;
+    if (!geometry.hasAttribute("color")) return;
+    const colour = geometry.getAttribute("color");
+    for (let i = 0; i < colour.count; i++)
+      colour.setXYZ(i, toSrgb(colour.getX(i)), toSrgb(colour.getY(i)), toSrgb(colour.getZ(i)));
   });
   return gltf.scene;
 }
+
+const toSrgb = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
 
 interface Joint {
   readonly bone: Bone;
@@ -106,6 +118,9 @@ export class LiveRig {
   private readonly pivot = new Vector3();
   private readonly arm: Bone;
   private readonly wrist: Bone;
+  /** The wrist on the forearm at rest: its turn and how far from the forearm's head. */
+  private readonly wristRest: Quaternion;
+  private readonly wristOnArm: number;
   private readonly springs = new HandSprings();
   private plan: HandPlan | undefined;
   private notes: readonly FingeredNote[] | undefined;
@@ -145,7 +160,9 @@ export class LiveRig {
     if (!(arm instanceof Bone) || !(wrist instanceof Bone)) throw new Error("hand.glb has no arm");
     this.arm = arm as Bone;
     this.wrist = wrist as Bone;
-    // The wrist keeps its own scale while the forearm stretches: three would pass it on.
+    this.wristRest = wrist.quaternion.clone();
+    this.wristOnArm = wrist.position.length();
+    // The pose's wrist hangs off a stretched forearm stub; placed in the rig, it takes no stretch.
     rig.add(wrist);
     // The rig turns about its wrist, as it sits in the base pose.
     this.rig.matrix.copy(this.rest);
@@ -211,11 +228,11 @@ export class LiveRig {
       joint.bone.quaternion.copy(joint.rest).multiply(q);
       joint.bone.position.copy(joint.location).applyQuaternion(joint.rest).add(joint.position);
     }
-    // The wrist in the rig: at the stretched forearm's end, turned with it but not stretched.
-    this.arm.scale.set(...(ARM_SCALE as [number, number, number]));
+    // The wrist in the rig: at the end of the pose's stretched forearm, turned with it. The mesh's
+    // forearm runs to the elbow itself, so the bone takes no stretch.
     const arm = new Matrix4().compose(this.arm.position, this.arm.quaternion, ONE);
     const wrist = new Matrix4().compose(
-      this.wrist.position.clone().multiply(this.arm.scale),
+      this.wrist.position.clone().multiply(new Vector3(...(ARM_SCALE as [number, number, number]))),
       this.wrist.quaternion,
       ONE
     );
@@ -243,17 +260,27 @@ export class LiveRig {
   }
 
   /**
-   * Turns the forearm about the wrist towards an elbow under the player's shoulder: a player sits
-   * at middle C, so the forearms come in from the sides, not straight at the camera.
+   * Lays the forearm behind the wrist, nearly straight from the player: half along the hand's own
+   * line across the keys, rising a little to the wrist. It moves with the hand and carries the
+   * hand's twist, so the skin at the wrist neither folds nor wrings.
    */
   private aimForearm(): void {
-    const elbow = ELBOW.clone().applyMatrix4(this.rig.matrix.clone().invert());
-    const along = this.wrist.position.clone().sub(elbow).normalize();
-    const axis = new Vector3(0, 1, 0).applyQuaternion(this.arm.quaternion);
-    this.arm.quaternion.premultiply(new Quaternion().setFromUnitVectors(axis, along));
-    const length =
-      this.arm.scale.y * (this.joints.find((joint) => joint.bone === this.wrist)?.position.y ?? 0);
-    this.arm.position.copy(this.wrist.position).addScaledVector(along, -length);
+    const turn = new Quaternion();
+    this.rig.matrix.decompose(new Vector3(), turn, new Vector3());
+    const hand = Y_AXIS.clone().applyQuaternion(this.wrist.quaternion).applyQuaternion(turn);
+    hand.y = 0;
+    const along = hand
+      .normalize()
+      .lerp(INTO_KEYS, 1 - FOREARM_WITH_HAND)
+      .normalize()
+      .setY(FOREARM_RISE)
+      .normalize()
+      .applyQuaternion(turn.invert());
+    // The forearm as the wrist sits on it at rest, then swung the shortest way onto `along`.
+    const rest = this.wrist.quaternion.clone().multiply(this.wristRest.clone().invert());
+    const axis = Y_AXIS.clone().applyQuaternion(rest);
+    this.arm.quaternion.copy(rest).premultiply(new Quaternion().setFromUnitVectors(axis, along));
+    this.arm.position.copy(this.wrist.position).addScaledVector(along, -this.wristOnArm);
   }
 }
 
