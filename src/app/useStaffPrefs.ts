@@ -71,7 +71,7 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   lane: true,
   keys: true,
   hands: false,
-  handStyle: "drawn",
+  handStyle: "rendered",
   road: false,
   noteCards: false,
   noteCardsConfigured: true,
@@ -113,7 +113,7 @@ function loadStaffPrefs(): StaffPrefs {
           ? saved.noteCardsConfigured
           : defaults.noteCardsConfigured,
       fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono",
-      handStyle: saved.handStyle === "rendered" ? "rendered" : "drawn"
+      handStyle: saved.handStyle === "drawn" ? "drawn" : "rendered"
     };
   } catch {
     return defaults;
