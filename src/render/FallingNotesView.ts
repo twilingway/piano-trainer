@@ -72,7 +72,8 @@ export class FallingNotesView {
   private computer: ComputerKeys | undefined;
   private road: RoadLayer | undefined;
   private roadMode = false;
-  private readonly hands = new HandsLayer();
+  /** Whole hands over the keys; the app sets their look directly. */
+  readonly hands = new HandsLayer();
   /** The combo board and the strikes' grades, over everything. */
   private readonly hud = new HudLayer();
   /** Bursts, light and glitter on the keys at the hit line. */

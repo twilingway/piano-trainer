@@ -109,6 +109,24 @@ describe("FPS preference", () => {
   });
 });
 
+describe("hand style preference", () => {
+  it.each([undefined, "photo", 3])(
+    "reads a missing or unknown saved style %s as drawn",
+    async (handStyle) => {
+      localStorage.setItem("staff-prefs", JSON.stringify({ handStyle, labels: true }));
+      await mount();
+      expect(prefs.staffPrefs.handStyle).toBe("drawn");
+      expect(prefs.staffPrefs.labels).toBe(true);
+    }
+  );
+
+  it("keeps the 3D style across a reload", async () => {
+    localStorage.setItem("staff-prefs", JSON.stringify({ handStyle: "rendered" }));
+    await mount();
+    expect(prefs.staffPrefs.handStyle).toBe("rendered");
+  });
+});
+
 describe("falling note defaults", () => {
   it.each([null, { road: false }])(
     "starts with plain falling notes for saved prefs %j",

@@ -23,3 +23,4 @@ public/word-typing/*.json
 blender/
 tools/hand-rig/poses/
 src/render/handStudy/renderPoses.json
+src/render/hands/rendered/catalog.json

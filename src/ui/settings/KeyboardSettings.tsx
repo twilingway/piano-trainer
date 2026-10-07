@@ -4,6 +4,7 @@ import type { CameraPrefs } from "../../render/worldCamera";
 import type { ReactNode } from "react";
 
 import type { KeyRange } from "../../app/useFallingView";
+import type { HandStyle } from "../../render/handRenderCatalog";
 import type { KeyStyle } from "../../render/KeyboardLayer";
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
   readonly onShowLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
+  readonly handStyle: HandStyle;
+  readonly onHandStyle: (style: HandStyle) => void;
   readonly road: { readonly far: number; readonly horizon: number };
   readonly onRoad: (road: { far?: number; horizon?: number }) => void;
   readonly camera: CameraPrefs;
@@ -29,6 +32,8 @@ export function KeyboardSettings({
   onShowLabels,
   keyStyle,
   onKeyStyle,
+  handStyle,
+  onHandStyle,
   camera,
   onCamera,
   road,
@@ -70,6 +75,20 @@ export function KeyboardSettings({
           <option value="classic">{t("Классика")}</option>
           <option value="arcade">{t("Аркада")}</option>
           <option value="perspective">{t("Перспектива (с дорогой)")}</option>
+        </select>
+      </label>
+      <label className="setting">
+        <span>{t("Вид рук")}</span>
+        <select
+          className="game-select"
+          value={handStyle}
+          aria-label={t("Вид рук")}
+          onChange={(event) => {
+            onHandStyle(event.target.value as HandStyle);
+          }}
+        >
+          <option value="drawn">{t("Рисованные")}</option>
+          <option value="rendered">{t("3D")}</option>
         </select>
       </label>
       {keyStyle === "perspective" ? (

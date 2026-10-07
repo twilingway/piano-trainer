@@ -88,6 +88,10 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
         },
         keyStyle: "classic",
         onKeyStyle: noop,
+        handStyle: staffPrefs.handStyle,
+        onHandStyle: (handStyle) => {
+          updateStaffPrefs({ handStyle });
+        },
         road: { far: 0.3, horizon: 0.3 },
         onRoad: noop,
         camera: DEFAULT_CAMERA,
@@ -315,5 +319,21 @@ describe("player settings organization", () => {
     expect(pianoFps[0]?.querySelector<HTMLInputElement>("input")?.checked).toBe(true);
     await section("Ввод с ПК");
     expect(host.textContent).toContain("По октавам");
+  });
+
+  it("offers the hand look next to the key look, drawn by default", async () => {
+    await render(false);
+    await section("Вид");
+    const hands = select("Вид рук");
+    expect(hands.value).toBe("drawn");
+    await act(async () => {
+      await Promise.resolve();
+      hands.value = "rendered";
+      hands.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(select("Вид рук").value).toBe("rendered");
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      handStyle: "rendered"
+    });
   });
 });

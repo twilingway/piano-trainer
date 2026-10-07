@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import type { HandStyle } from "../render/handRenderCatalog";
 import type { KeyStyle } from "../render/KeyboardLayer";
 import { DEFAULT_CAMERA, normalizeCamera } from "../render/worldCamera";
 import type { CameraPrefs } from "../render/worldCamera";
@@ -30,6 +31,8 @@ export interface StaffPrefs {
   readonly keys: boolean;
   /** Schematic hands over the keyboard. */
   readonly hands: boolean;
+  /** The look of the hands: drawn poses or 3D renders. */
+  readonly handStyle: HandStyle;
   /** The trial road view: notes in perspective, glowing, with sparks. */
   readonly road: boolean;
   /** Falling notes carry the note written on a small staff. */
@@ -68,6 +71,7 @@ const DEFAULT_STAFF_PREFS: StaffPrefs = {
   lane: true,
   keys: true,
   hands: false,
+  handStyle: "drawn",
   road: false,
   noteCards: false,
   noteCardsConfigured: true,
@@ -108,7 +112,8 @@ function loadStaffPrefs(): StaffPrefs {
         typeof saved.noteCardsConfigured === "boolean"
           ? saved.noteCardsConfigured
           : defaults.noteCardsConfigured,
-      fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono"
+      fingerColors: saved.fingerColors === "fingers" ? "fingers" : "mono",
+      handStyle: saved.handStyle === "rendered" ? "rendered" : "drawn"
     };
   } catch {
     return defaults;
