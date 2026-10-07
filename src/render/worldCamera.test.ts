@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CAMERA_PRESETS,
   DEFAULT_CAMERA,
   insidePolygon,
   keySurface,
@@ -70,12 +71,12 @@ describe("shared world camera", () => {
         distance: 300,
         targetY: "bad"
       })
-    ).toEqual({ ...DEFAULT_CAMERA, height: 25, pitch: 60, distance: 300 });
+    ).toEqual({ ...DEFAULT_CAMERA, height: 25, pitch: 85, distance: 300 });
     expect(normalizeCamera(null)).toEqual(DEFAULT_CAMERA);
   });
   it("keeps all bounded cameras finite", () => {
-    for (const pitch of [-5, 60])
-      for (const height of [25, 420]) {
+    for (const pitch of [-5, 85])
+      for (const height of [25, 1000]) {
         const point = worldCamera(390, 844, {
           ...DEFAULT_CAMERA,
           pitch,
@@ -95,6 +96,23 @@ describe("shared world camera", () => {
     expect(insidePolygon(15, 10, quad)).toBe(true);
     expect(insidePolygon(1, 1, quad)).toBe(false);
   });
+
+  it.each(Object.entries(CAMERA_PRESETS))(
+    "keeps the keys and the hit line on screen in the %s preset",
+    (_, prefs) => {
+      for (const [width, height] of [
+        [1280, 600],
+        [390, 500]
+      ] as const) {
+        const camera = worldCamera(width, height, prefs, PANEL_EDGE);
+        const front = camera.project(0, 22, 0);
+        const hit = camera.road.at(width / 2, 1);
+        expect(front.y).toBeGreaterThan(hit.y);
+        expect(front.y).toBeLessThanOrEqual(height);
+        expect(hit.y).toBeGreaterThan(0);
+      }
+    }
+  );
 
   it("starts the 3D style's road on the back panel's front top edge", () => {
     const camera = worldCamera(1000, 500, DEFAULT_CAMERA, PANEL_EDGE);

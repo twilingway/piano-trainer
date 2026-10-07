@@ -19,12 +19,21 @@ export const DEFAULT_CAMERA: CameraPrefs = {
 };
 export const CAMERA_LIMITS = {
   fov: [25, 85],
-  height: [25, 420],
+  height: [25, 1000],
   distance: [120, 1200],
-  pitch: [-5, 60],
+  pitch: [-5, 85],
   targetY: [-250, 250],
   scale: [0.55, 1.6]
 } as const;
+/**
+ * Ready views of the keys; a preset keeps the keyboard's own scale. Each keeps the default's angle
+ * between the view's axis and the keys, so the keys stay low in the frame.
+ */
+export const CAMERA_PRESETS = {
+  player: DEFAULT_CAMERA,
+  top: { ...DEFAULT_CAMERA, height: 510, distance: 250, pitch: 72 },
+  hands: { ...DEFAULT_CAMERA, height: 212, distance: 300, pitch: 42 }
+} as const satisfies Record<string, CameraPrefs>;
 export function normalizeCamera(value: unknown): CameraPrefs {
   const input = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const number = (key: keyof CameraPrefs): number => {

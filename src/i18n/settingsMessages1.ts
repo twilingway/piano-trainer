@@ -30,6 +30,18 @@ export const settingsMessages1 = {
   "Сбросить камеру": {
     en: "Reset camera"
   },
+  Ракурс: {
+    en: "View"
+  },
+  Игрок: {
+    en: "Player"
+  },
+  Сверху: {
+    en: "From above"
+  },
+  "Руки крупно": {
+    en: "Hands close-up"
+  },
   "Компьютерная клавиатура": {
     en: "Computer keyboard"
   },
