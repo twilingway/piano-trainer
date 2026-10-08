@@ -21,6 +21,79 @@ afterEach(() => {
 });
 
 describe("application preferences", () => {
+  it("does not let a stale tab's speed or song choice overwrite a saved metronome choice", () => {
+    const first = createAppStore(),
+      stale = createAppStore();
+    first.dispatch(preferencesActions.playerChanged({ metronome: false }));
+    stale.dispatch(preferencesActions.playerChanged({ speed: 0.5 }));
+    stale.dispatch(preferencesActions.playerChanged({ librarySource: "my:other" }));
+    expect(createAppStore().getState().preferences.player).toMatchObject({
+      metronome: false,
+      speed: 0.5,
+      librarySource: "my:other"
+    });
+    first.dispatch(preferencesActions.playerChanged({ accompaniment: false }));
+    expect(createAppStore().getState().preferences.player).toMatchObject({
+      metronome: false,
+      speed: 0.5,
+      librarySource: "my:other",
+      accompaniment: false
+    });
+    first.dispatch(preferencesActions.playerChanged({ metronome: true }));
+    expect(createAppStore().getState().preferences.player.metronome).toBe(true);
+  });
+
+  it("retains unsaved player changes until a later successful write", () => {
+    localStorage.setItem("player-prefs", JSON.stringify({ metronome: true, speed: 0.75 }));
+    let fail = true;
+    const storage: PreferenceStorage = {
+      getItem: (key) => localStorage.getItem(key),
+      setItem: (key, value) => {
+        if (key === "player-prefs" && fail) throw new Error("Quota exceeded");
+        localStorage.setItem(key, value);
+      }
+    };
+    const store = createAppStore({ storage });
+    store.dispatch(preferencesActions.playerChanged({ metronome: false }));
+    expect(store.getState().preferences.player.metronome).toBe(false);
+    expect(store.getState().persistence.errors[persistenceKey("player-prefs", "write")]).toBe(
+      "unavailable"
+    );
+    fail = false;
+    store.dispatch(preferencesActions.playerChanged({ speed: 0.5 }));
+    expect(createAppStore().getState().preferences.player).toMatchObject({
+      metronome: false,
+      speed: 0.5
+    });
+    expect(
+      store.getState().persistence.errors[persistenceKey("player-prefs", "write")]
+    ).toBeUndefined();
+  });
+
+  it("keeps player edits when a later storage read fails or is malformed", () => {
+    let unreadable = false;
+    const storage: PreferenceStorage = {
+      getItem: (key) => {
+        if (unreadable && key === "player-prefs") throw new Error("Read denied");
+        return localStorage.getItem(key);
+      },
+      setItem: (key, value) => {
+        localStorage.setItem(key, value);
+      }
+    };
+    const store = createAppStore({ storage });
+    unreadable = true;
+    store.dispatch(preferencesActions.playerChanged({ metronome: false }));
+    expect(createAppStore().getState().preferences.player.metronome).toBe(false);
+    unreadable = false;
+    localStorage.setItem("player-prefs", "broken json");
+    store.dispatch(preferencesActions.playerChanged({ speed: 0.5 }));
+    expect(createAppStore().getState().preferences.player).toMatchObject({
+      metronome: false,
+      speed: 0.5
+    });
+  });
+
   it("hydrates legacy keys without any startup writes", () => {
     localStorage.setItem(
       "player-prefs",
