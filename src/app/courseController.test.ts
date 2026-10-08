@@ -25,7 +25,7 @@ const lesson: CourseLesson = {
 };
 const firstPhrase = lesson.phrases[0];
 if (!firstPhrase) throw new Error("Missing fixture phrase");
-function harness() {
+function harness(courseLesson = lesson) {
   const values = new Map<string, string>();
   const storage = {
     getItem: (key: string) => values.get(key) ?? null,
@@ -33,14 +33,14 @@ function harness() {
       values.set(key, value);
     })
   };
-  const store = createAppStore({ storage, courseLessons: [lesson] });
-  const controller = createCourseController(store, [lesson], (song, librarySource) =>
+  const store = createAppStore({ storage, courseLessons: [courseLesson] });
+  const controller = createCourseController(store, [courseLesson], (song, librarySource) =>
     store.dispatch(songActions.songOpened({ song, lesson: null, librarySource }))
   );
-  const selection = { lessonId: lesson.id, stage: "right" as const, phraseId: "a" };
+  const selection = { lessonId: courseLesson.id, stage: "right" as const, phraseId: "a" };
   const result = (): CourseRunResult => ({
     songKey: selectSongKey(store.getState()),
-    context: runContext(lesson, selection) ?? "",
+    context: runContext(courseLesson, selection) ?? "",
     mode: "wait",
     from: 0,
     to: 4,
@@ -53,6 +53,120 @@ function harness() {
 }
 
 describe("course integration commands", () => {
+  const mixed: CourseLesson = {
+    ...lesson,
+    phrases: [{ id: "coord", version: "1", musicXml: XML }, ...lesson.phrases],
+    tasks: [
+      { phraseId: "coord", stage: "both" },
+      { phraseId: "a", stage: "right" },
+      { phraseId: "b", stage: "right" },
+      { phraseId: "a", stage: "left" },
+      { phraseId: "b", stage: "left" },
+      { phraseId: "a", stage: "both" },
+      { phraseId: "b", stage: "both" }
+    ]
+  };
+
+  it("keeps the current melody phrase when switching hands instead of opening coordination", () => {
+    const { store, controller } = harness(mixed);
+    controller.open({ lessonId: mixed.id, phraseId: "b", stage: "right" });
+    store.dispatch(courseActions.listenOnlyChanged(true));
+    store.dispatch(preferencesActions.playerChanged({ handChoice: "left", accompaniment: true }));
+    const saved = store.getState();
+    for (const stage of ["left", "both", "right"] as const) {
+      controller.chooseStage(mixed.id, stage);
+      expect(activeCourse(store.getState(), [mixed])?.selection).toEqual({
+        lessonId: mixed.id,
+        phraseId: "b",
+        stage
+      });
+    }
+    expect(store.getState().course.progress).toEqual(saved.course.progress);
+    expect(store.getState().course.listenOnly).toBe(true);
+    expect(store.getState().preferences).toEqual(saved.preferences);
+  });
+
+  it("keeps an already completed current phrase when selecting another stage", () => {
+    const { store, controller } = harness(mixed);
+    controller.open({ lessonId: mixed.id, phraseId: "b", stage: "right" });
+    const phrase = mixed.phrases.find((candidate) => candidate.id === "b");
+    if (!phrase) throw new Error("Missing fixture phrase");
+    store.dispatch(courseActions.phraseCredited(progressKey(mixed, "both", phrase)));
+    controller.chooseStage(mixed.id, "both");
+    expect(store.getState().course.selection).toEqual({
+      lessonId: mixed.id,
+      phraseId: "b",
+      stage: "both"
+    });
+  });
+
+  it("does not reopen or reset the selected phrase when its stage is selected again", () => {
+    const { store, controller } = harness(mixed);
+    controller.open({ lessonId: mixed.id, phraseId: "b", stage: "right" });
+    const saved = store.getState();
+    controller.chooseStage(mixed.id, "right");
+    expect(store.getState()).toBe(saved);
+  });
+
+  it.each([false, true])(
+    "uses an assigned fallback when the current phrase has no requested stage (all complete: %s)",
+    (allComplete) => {
+      const { store, controller } = harness(mixed);
+      controller.open({ lessonId: mixed.id, phraseId: "coord", stage: "both" });
+      store.dispatch(courseActions.phraseCredited(progressKey(mixed, "right", firstPhrase)));
+      if (allComplete) {
+        const phrase = mixed.phrases.find((candidate) => candidate.id === "b");
+        if (!phrase) throw new Error("Missing fixture phrase");
+        store.dispatch(courseActions.phraseCredited(progressKey(mixed, "right", phrase)));
+      }
+      controller.chooseStage(mixed.id, "right");
+      expect(store.getState().course.selection).toEqual({
+        lessonId: mixed.id,
+        phraseId: allComplete ? "a" : "b",
+        stage: "right"
+      });
+    }
+  );
+
+  it("still continues from the first incomplete task in lesson order", () => {
+    const { store, controller } = harness(mixed);
+    controller.open({ lessonId: mixed.id, phraseId: "b", stage: "right" });
+    controller.chooseStage(mixed.id, "both");
+    controller.continueLesson(mixed.id);
+    expect(store.getState().course.selection).toEqual({
+      lessonId: mixed.id,
+      phraseId: "coord",
+      stage: "both"
+    });
+  });
+
+  it("does not reuse a saved course phrase while an ordinary song is active", () => {
+    const { store, controller } = harness(mixed);
+    controller.open({ lessonId: mixed.id, phraseId: "b", stage: "right" });
+    store.dispatch(songActions.librarySourceChanged(null));
+    expect(activeCourse(store.getState(), [mixed])).toBeNull();
+    controller.chooseStage(mixed.id, "both");
+    expect(store.getState().course.selection).toEqual({
+      lessonId: mixed.id,
+      phraseId: "coord",
+      stage: "both"
+    });
+  });
+
+  it("uses the requested lesson's fallback while a different lesson is active", () => {
+    const other = { ...mixed, id: "other", number: 2 };
+    const { store } = harness(mixed);
+    const controller = createCourseController(store, [mixed, other], (song, librarySource) =>
+      store.dispatch(songActions.songOpened({ song, lesson: null, librarySource }))
+    );
+    controller.open({ lessonId: other.id, phraseId: "b", stage: "right" });
+    controller.chooseStage(mixed.id, "both");
+    expect(store.getState().course.selection).toEqual({
+      lessonId: mixed.id,
+      phraseId: "coord",
+      stage: "both"
+    });
+  });
   it("starts a mixed lesson with both hands and switches only to assigned stage phrases", () => {
     const mixed: CourseLesson = {
       ...lesson,

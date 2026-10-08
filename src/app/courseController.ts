@@ -52,10 +52,15 @@ export function createCourseController(
     chooseStage: (lessonId: string, stage: CourseStage) => {
       const lesson = lessons.find((candidate) => candidate.id === lessonId);
       if (!lesson?.stages.includes(stage)) return;
-      const progress = store.getState().course.progress;
+      const state = store.getState();
+      const current = activeCourse(state, [lesson]);
+      if (current?.selection.stage === stage) return;
       const phrases = stagePhrases(lesson, stage);
       const phrase =
-        phrases.find((candidate) => !phraseCompleted(lesson, stage, candidate, progress)) ??
+        (current && phrases.find((candidate) => candidate.id === current.phrase.id)) ??
+        phrases.find(
+          (candidate) => !phraseCompleted(lesson, stage, candidate, state.course.progress)
+        ) ??
         phrases[0];
       if (phrase) open({ lessonId, stage, phraseId: phrase.id });
     },

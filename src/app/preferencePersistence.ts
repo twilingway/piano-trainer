@@ -4,7 +4,7 @@ import { DEFAULT_KEY_LIGHTS } from "../input/keyLights";
 import { parseKeyboardPrefs } from "../input/keyboardLayouts";
 import { normalizeGamePreferences } from "./gamePreferences";
 import { getInterfaceLanguage } from "./interfaceLanguage";
-import { normalizePlayerPrefs } from "./playerPrefs";
+import { normalizePlayerPrefs, type PlayerPrefs } from "./playerPrefs";
 import type { PreferencesState } from "./preferencesSlice";
 import { persistenceErrorChanged, type PersistenceState } from "./persistenceSlice";
 import { DEFAULT_SCREEN_LAYOUTS, normalizeLayout } from "./screenLayout";
@@ -108,10 +108,22 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
 export function createPersistenceListener<State extends PreferenceRoot = PreferenceRoot>() {
   return createListenerMiddleware<State>();
 }
+
+function latestPlayerPrefs(storage: PreferenceStorage, fallback: PlayerPrefs): PlayerPrefs {
+  try {
+    const raw = storage.getItem(PREFERENCE_KEYS.player);
+    return raw === null ? fallback : normalizePlayerPrefs(JSON.parse(raw) as unknown);
+  } catch {
+    // Retain in-memory preferences when the saved record cannot be read.
+    return fallback;
+  }
+}
+
 export function registerPreferencePersistence<State extends PreferenceRoot>(
   listener: ListenerMiddlewareInstance<State>,
   storage: PreferenceStorage = browserPreferenceStorage()
 ) {
+  let pendingPlayerChanges: Partial<PlayerPrefs> = {};
   return listener.startListening({
     predicate: (_action, current, previous) => current.preferences !== previous.preferences,
     effect: (_action, api) => {
@@ -124,8 +136,28 @@ export function registerPreferencePersistence<State extends PreferenceRoot>(
           field === "fullscreen" ? String(previous[field]) : JSON.stringify(previous[field]);
         if (value === old) continue;
         const key = PREFERENCE_KEYS[field];
+        if (field === "player") {
+          const changes = Object.fromEntries(
+            (Object.keys(current.player) as (keyof PlayerPrefs)[])
+              .filter(
+                (key) =>
+                  JSON.stringify(current.player[key]) !== JSON.stringify(previous.player[key])
+              )
+              .map((key) => [key, current.player[key]])
+          ) as Partial<PlayerPrefs>;
+          pendingPlayerChanges = { ...pendingPlayerChanges, ...changes };
+        }
         try {
-          storage.setItem(key, value);
+          storage.setItem(
+            key,
+            field === "player"
+              ? JSON.stringify({
+                  ...latestPlayerPrefs(storage, current.player),
+                  ...pendingPlayerChanges
+                })
+              : value
+          );
+          if (field === "player") pendingPlayerChanges = {};
           api.dispatch(persistenceErrorChanged({ key: persistenceKey(key, "write"), error: null }));
         } catch {
           api.dispatch(
