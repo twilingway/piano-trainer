@@ -40,8 +40,11 @@ plays in tempo, plays the other hand, records every take and compares it with th
 - `local-lessons/` is git-ignored on purpose: scores there may not be published (the repository is
   public). Never add its files to a commit, and never copy their music into `src/`.
 - Local video lesson analysis for Codex, Claude Code and Qwen follows
-  [docs/VIDEO_LESSON_PIPELINE.md](docs/VIDEO_LESSON_PIPELINE.md). Analysis stays in
-  `local-lessons/.analysis/`; reviewed course scores go only in `local-lessons/.course/`.
+  [video-lesson-analysis](.agents/skills/video-lesson-analysis/SKILL.md) and
+  [docs/VIDEO_LESSON_PIPELINE.md](docs/VIDEO_LESSON_PIPELINE.md). Preserve source folders and name
+  lessons after their directories. Record teacher finger observations separately from written and
+  computed fingering. Analysis stays in `local-lessons/.analysis/`; reviewed course scores go only
+  in `local-lessons/.course/`.
 
 ## Code layout
 

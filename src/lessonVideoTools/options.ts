@@ -1,4 +1,4 @@
-import { isAbsolute, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 export type VideoCommand = "setup" | "prepare" | "frames";
 export interface VideoOptions {
@@ -6,6 +6,7 @@ export interface VideoOptions {
   help: boolean;
   id: string;
   video: string;
+  courseRoot: string | null;
   python: string;
   model: "turbo" | "large-v3";
   start: number;
@@ -29,10 +30,45 @@ export function seconds(value: string): number {
   return result;
 }
 
-export function analysisDirectory(root: string, id: string): string {
+export interface CourseLayout {
+  readonly courseRoot: string;
+  readonly courseTitle: string;
+  readonly lessonTitle: string;
+  readonly relativeVideo: string;
+}
+
+/** Inputs are canonical paths validated by the filesystem shell. */
+export function courseLayout(courseRoot: string, video: string): CourseLayout {
+  if (!isAbsolute(courseRoot) || !isAbsolute(video) || !withinDirectory(courseRoot, video))
+    throw new Error("--video должен находиться внутри --course-root.");
+  const relativeVideo = relative(courseRoot, video);
+  const courseTitle = basename(courseRoot);
+  if (!courseTitle || !relativeVideo)
+    throw new Error("--course-root должен быть именованной папкой курса, а --video — её файлом.");
+  return {
+    courseRoot,
+    courseTitle,
+    lessonTitle: basename(dirname(video)),
+    relativeVideo: relativeVideo.split(sep).join("/")
+  };
+}
+
+export function analysisDirectory(root: string, id: string, layout?: CourseLayout): string {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/.test(id))
     throw new Error("--id: 1–80 латинских букв, цифр, дефисов или подчёркиваний; без путей.");
-  return resolve(root, "local-lessons/.analysis", id);
+  const directory = resolve(root, "local-lessons/.analysis");
+  if (!layout) return resolve(directory, id);
+  const expected = courseLayout(
+    layout.courseRoot,
+    resolve(layout.courseRoot, layout.relativeVideo)
+  );
+  if (
+    expected.courseTitle !== layout.courseTitle ||
+    expected.lessonTitle !== layout.lessonTitle ||
+    expected.relativeVideo !== layout.relativeVideo
+  )
+    throw new Error("Структура анализа не соответствует исходному видео.");
+  return resolve(directory, layout.courseTitle, layout.relativeVideo, "runs", id);
 }
 
 export function withinDirectory(root: string, target: string): boolean {
@@ -48,8 +84,8 @@ export function parseOptions(args: readonly string[]): VideoOptions {
   const booleans = new Set(["help", "no-download"]);
   const permitted = {
     setup: ["help", "python", "model", "no-download"],
-    prepare: ["help", "id", "video", "start", "end", "model"],
-    frames: ["help", "id", "video", "start", "end", "at", "every", "max-frames"]
+    prepare: ["help", "id", "video", "course-root", "start", "end", "model"],
+    frames: ["help", "id", "video", "course-root", "start", "end", "at", "every", "max-frames"]
   }[command];
   for (let index = 1; index < args.length; index++) {
     const argument = args[index] ?? "";
@@ -86,6 +122,7 @@ export function parseOptions(args: readonly string[]): VideoOptions {
     help,
     id,
     video,
+    courseRoot: flags.get("course-root") ?? null,
     model,
     start,
     end,
@@ -102,8 +139,9 @@ export interface VideoSource {
   readonly size: number;
   readonly mtimeMs: number;
 }
+export type AnalysisSource = VideoSource & Partial<CourseLayout>;
 export interface AudioMetadata {
-  readonly source: VideoSource;
+  readonly source: AnalysisSource;
   readonly start: number;
   readonly end: number;
   readonly videoDuration: number;
@@ -116,6 +154,16 @@ export function sameSource(value: unknown, expected: VideoSource): boolean {
     source.path === expected.path &&
     source.size === expected.size &&
     source.mtimeMs === expected.mtimeMs
+  );
+}
+export function sameAnalysisSource(value: unknown, expected: AnalysisSource): boolean {
+  if (!sameSource(value, expected)) return false;
+  const source = value as Partial<AnalysisSource>;
+  return (
+    source.courseRoot === expected.courseRoot &&
+    source.courseTitle === expected.courseTitle &&
+    source.lessonTitle === expected.lessonTitle &&
+    source.relativeVideo === expected.relativeVideo
   );
 }
 export function reusableAudio(value: unknown, expected: AudioMetadata): boolean {

@@ -74,6 +74,10 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 - `.claude/skills/codex-worker` — which agent gets which task (Codex CLI, the Codex plugin, local
   Qwen through opencode), how a delegated diff is isolated in a worktree, measured and accepted.
 - `.claude/skills/codex-visual` — Codex as an independent UI/UX consultant and image generator.
+- [`.claude/skills/video-lesson-analysis`](.claude/skills/video-lesson-analysis/SKILL.md) — единый
+  разбор локальных видеоуроков, приложенных документов, фраз и аппликатуры. Использует канонический
+  skill в `.agents/skills/` и [pipeline](docs/VIDEO_LESSON_PIPELINE.md); результаты остаются
+  локальными.
 - `.claude/skills/ref2game` (Codex: `.agents/skills/ref2game`) — vendored upstream skill: a
   reference image becomes a playable 2D slice on its own WebGL2 engine, not inside this app. Game
   projects go to the git-ignored `games/<name>`; only accepted assets move into `src`. Not for 3D.

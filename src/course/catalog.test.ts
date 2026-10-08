@@ -40,6 +40,33 @@ describe("reviewed local course catalog", () => {
       phrases: []
     });
   });
+  it("uses source lesson titles for coming-soon cards without enabling tasks", () => {
+    const result = buildCourseCatalog(
+      JSON.stringify({ lessonTitles: { "1": "  Урок 1. Вводный  " } }),
+      files,
+      { 1: "Legacy song" }
+    );
+    expect(result[0]).toMatchObject({
+      id: "course-lesson-01",
+      number: 1,
+      title: "Урок 1. Вводный",
+      stages: ["right", "left", "both"],
+      phrases: []
+    });
+  });
+  it("ignores invalid pending titles and prefers a reviewed lesson title", () => {
+    const raw = JSON.stringify({
+      lessonTitles: { "1": "Pending", "2": "", "3": 12, "4": null, "11": "Extra" },
+      lessons: [lesson]
+    });
+    const result = buildCourseCatalog(raw, files, { 2: "Legacy two", 3: "Legacy three" });
+    expect(result).toHaveLength(10);
+    expect(result[0]?.title).toBe("Synthetic");
+    expect(result[1]?.title).toBe("Legacy two");
+    expect(result[2]?.title).toBe("Legacy three");
+    expect(result[3]?.title).toBe("Урок {number}");
+    expect(buildCourseCatalog('{"lessonTitles":[]}', files)[0]?.title).toBe("Урок {number}");
+  });
   it.each([
     "../phrase.musicxml",
     "/.course/prepared/phrase.musicxml",
