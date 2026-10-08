@@ -17,6 +17,78 @@ const catalog = (entry: unknown = lesson, source = files) =>
   buildCourseCatalog(JSON.stringify({ lessons: [entry] }), source);
 
 describe("reviewed local course catalog", () => {
+  it("accepts task-specific score hands, preserves order and optional phrase titles", () => {
+    const entry = {
+      ...lesson,
+      phrases: [
+        { ...lesson.phrases[0], title: "Warmup" },
+        { id: "right-only", version: "1", musicXml: ".course/prepared/right.musicxml" }
+      ],
+      tasks: [
+        { stage: "both", phraseId: "phrase-a" },
+        { stage: "right", phraseId: "right-only" }
+      ]
+    };
+    const source = {
+      ...files,
+      "/local-lessons/.course/prepared/right.musicxml": XML.replace(
+        "<staff>2</staff>",
+        "<staff>1</staff>"
+      )
+    };
+    expect(catalog(entry, source)[0]).toMatchObject({
+      tasks: entry.tasks,
+      phrases: [{ id: "phrase-a", title: "Warmup" }, { id: "right-only" }]
+    });
+    expect(
+      catalog(
+        {
+          ...entry,
+          tasks: [
+            { stage: "right", phraseId: "phrase-a" },
+            { stage: "both", phraseId: "right-only" }
+          ]
+        },
+        source
+      )[0]?.phrases
+    ).toEqual([]);
+    expect(catalog({ ...entry, tasks: undefined }, source)[0]?.phrases).toEqual([]);
+  });
+  it.each([
+    null,
+    {},
+    [],
+    [null],
+    [{ stage: "right", phraseId: "missing" }],
+    [{ stage: "left", phraseId: "phrase-a" }],
+    [{ stage: "right", phraseId: "phrase-a" }],
+    [{ stage: "both", phraseId: "phrase-a" }],
+    [
+      { stage: "right", phraseId: "phrase-a" },
+      { stage: "right", phraseId: "phrase-a" },
+      { stage: "both", phraseId: "phrase-a" }
+    ]
+  ])("rejects malformed, duplicate, dangling or stage-incomplete task lists: %j", (tasks) => {
+    expect(catalog({ ...lesson, tasks })[0]?.phrases).toEqual([]);
+  });
+  it("rejects an unused phrase and malformed optional titles", () => {
+    const tasks = [
+      { stage: "right", phraseId: "phrase-a" },
+      { stage: "both", phraseId: "phrase-a" }
+    ];
+    expect(
+      catalog({
+        ...lesson,
+        tasks,
+        phrases: [...lesson.phrases, { ...lesson.phrases[0], id: "unused" }]
+      })[0]?.phrases
+    ).toEqual([]);
+    for (const title of [null, "", 1]) {
+      expect(
+        catalog({ ...lesson, phrases: [{ ...lesson.phrases[0], title }] })[0]?.phrases
+      ).toEqual([]);
+    }
+  });
   it("keeps ten coming-soon cards when there is no manifest or invalid JSON", () => {
     for (const raw of [null, "{", "[]"]) {
       const lessons = buildCourseCatalog(raw, files);
