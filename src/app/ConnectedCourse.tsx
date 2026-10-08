@@ -1,5 +1,5 @@
 import { shallowEqual } from "react-redux";
-import { phraseCompleted, stageCompleted, nextSelection } from "../course/model";
+import { phraseCompleted, stageCompleted, nextSelection, stagePhrases } from "../course/model";
 import { CourseCards } from "../ui/CourseCards";
 import { CourseLessonBar } from "../ui/CourseLessonBar";
 import { PianoTabs } from "../ui/PianoTabs";
@@ -24,7 +24,7 @@ export function ConnectedCourseCards({ onChoose }: { onChoose: () => void }) {
     ready: lesson.phrases.length > 0,
     current: current === lesson.id,
     started: lesson.stages.some((stage) =>
-      lesson.phrases.some((phrase) => phraseCompleted(lesson, stage, phrase, progress))
+      stagePhrases(lesson, stage).some((phrase) => phraseCompleted(lesson, stage, phrase, progress))
     ),
     stages: lesson.stages.map((id) => ({ id, completed: stageCompleted(lesson, id, progress) }))
   }));
@@ -65,8 +65,9 @@ export function ConnectedCourseLessonBar() {
       title={lesson.title}
       stages={lesson.stages.map((id) => ({ id, completed: stageCompleted(lesson, id, progress) }))}
       currentStage={selection.stage}
-      phrases={lesson.phrases.map((item) => ({
+      phrases={stagePhrases(lesson, selection.stage).map((item) => ({
         id: item.id,
+        ...(item.title ? { title: item.title } : {}),
         completed: phraseCompleted(lesson, selection.stage, item, progress)
       }))}
       phraseId={phrase.id}

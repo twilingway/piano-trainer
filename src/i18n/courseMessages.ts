@@ -1,6 +1,15 @@
 import type { Messages } from "./locales";
 
 export const courseMessages: Messages = {
+  Координация: { en: "Coordination" },
+  "Мелодия — фраза 1": { en: "Melody — phrase 1" },
+  "Мелодия — фраза 2": { en: "Melody — phrase 2" },
+  "Мелодия — фраза 3": { en: "Melody — phrase 3" },
+  "Мелодия — фраза 4": { en: "Melody — phrase 4" },
+  "Мелодия целиком": { en: "Full melody" },
+  "Ориентироваться на клавиатуре, освоить координацию и разучить четыре фразы Hallelujah": {
+    en: "Find your way around the keyboard, practise coordination and learn four phrases of Hallelujah"
+  },
   "Первые 10 уроков": { en: "First 10 lessons" },
   "Пройдено уроков: {done} из {total}": { en: "Lessons completed: {done} of {total}" },
   "Урок {number}": { en: "Lesson {number}" },

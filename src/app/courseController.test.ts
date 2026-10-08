@@ -23,6 +23,8 @@ const lesson: CourseLesson = {
     { id: "b", version: "1", musicXml: XML }
   ]
 };
+const firstPhrase = lesson.phrases[0];
+if (!firstPhrase) throw new Error("Missing fixture phrase");
 function harness() {
   const values = new Map<string, string>();
   const storage = {
@@ -51,6 +53,64 @@ function harness() {
 }
 
 describe("course integration commands", () => {
+  it("starts a mixed lesson with both hands and switches only to assigned stage phrases", () => {
+    const mixed: CourseLesson = {
+      ...lesson,
+      stages: ["right", "both"],
+      tasks: [
+        { phraseId: "a", stage: "both" },
+        { phraseId: "b", stage: "right" }
+      ]
+    };
+    const { store } = harness();
+    const controller = createCourseController(store, [mixed], (song, librarySource) =>
+      store.dispatch(songActions.songOpened({ song, lesson: null, librarySource }))
+    );
+    controller.continueLesson(mixed.id);
+    expect(store.getState().course.selection).toEqual({
+      lessonId: mixed.id,
+      phraseId: "a",
+      stage: "both"
+    });
+    controller.chooseStage(mixed.id, "right");
+    expect(store.getState().course.selection).toEqual({
+      lessonId: mixed.id,
+      phraseId: "b",
+      stage: "right"
+    });
+    const current = store.getState();
+    controller.open({ lessonId: mixed.id, phraseId: "a", stage: "right" });
+    expect(store.getState()).toBe(current);
+    controller.chooseStage(mixed.id, "both");
+    store.dispatch(courseActions.phraseCredited(progressKey(mixed, "both", firstPhrase)));
+    controller.continueLesson(mixed.id);
+    expect(store.getState().course.selection).toEqual({
+      lessonId: mixed.id,
+      phraseId: "b",
+      stage: "right"
+    });
+  });
+
+  it("does not restore a saved pair removed from the task list while keeping unrelated credit", () => {
+    const { controller, selection, result, storage } = harness();
+    controller.open(selection);
+    controller.finish(result());
+    const mixed: CourseLesson = {
+      ...lesson,
+      tasks: [
+        { phraseId: "a", stage: "both" },
+        { phraseId: "b", stage: "right" },
+        { phraseId: "b", stage: "left" }
+      ]
+    };
+    const restored = createAppStore({ storage, courseLessons: [mixed] });
+    expect(restored.getState().course.selection).toBeNull();
+    expect(restored.getState().song.librarySource).toBeNull();
+    expect(activeCourse(restored.getState(), [mixed])).toBeNull();
+    expect(restored.getState().course.progress).toEqual({
+      [progressKey(lesson, "right", firstPhrase)]: true
+    });
+  });
   it("allows any prepared task, preserves ordinary hand/accompaniment choices and starts with tabs", () => {
     const { store, controller } = harness();
     store.dispatch(preferencesActions.playerChanged({ handChoice: "left", accompaniment: true }));

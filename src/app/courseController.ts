@@ -5,7 +5,8 @@ import {
   phraseCompleted,
   progressKey,
   resolveSelection,
-  runContext
+  runContext,
+  stagePhrases
 } from "../course/model";
 import type { Song } from "../song/song";
 import type { AppStore } from "./store";
@@ -52,9 +53,10 @@ export function createCourseController(
       const lesson = lessons.find((candidate) => candidate.id === lessonId);
       if (!lesson?.stages.includes(stage)) return;
       const progress = store.getState().course.progress;
+      const phrases = stagePhrases(lesson, stage);
       const phrase =
-        lesson.phrases.find((candidate) => !phraseCompleted(lesson, stage, candidate, progress)) ??
-        lesson.phrases[0];
+        phrases.find((candidate) => !phraseCompleted(lesson, stage, candidate, progress)) ??
+        phrases[0];
       if (phrase) open({ lessonId, stage, phraseId: phrase.id });
     },
     finish: (result: CourseRunResult) => {

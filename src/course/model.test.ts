@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canCreditCourseRun,
+  courseSelections,
   firstIncompleteSelection,
   lessonCompleted,
   nextSelection,
@@ -10,6 +11,7 @@ import {
   resolveSelection,
   runContext,
   stageCompleted,
+  stagePhrases,
   type CourseLesson,
   type CourseProgress,
   type CourseRunResult,
@@ -41,6 +43,88 @@ const result = (changes: Partial<CourseRunResult> = {}): CourseRunResult => ({
 });
 
 describe("course progression", () => {
+  it("follows fourteen explicit tasks and counts only each stage's assigned phrases", () => {
+    const warmup = { ...first, id: "warmup", title: "Warmup" };
+    const whole = { ...second, id: "whole", title: "Whole" };
+    const melody = Array.from({ length: 4 }, (_, index) => ({
+      ...first,
+      id: `melody-${String(index)}`
+    }));
+    const ordered: CourseLesson = {
+      ...lesson,
+      phrases: [warmup, ...melody, whole],
+      tasks: [
+        { phraseId: warmup.id, stage: "both" },
+        ...lesson.stages.flatMap((stage) =>
+          melody.map((phrase) => ({ phraseId: phrase.id, stage }))
+        ),
+        { phraseId: whole.id, stage: "both" }
+      ]
+    };
+    const tasks = courseSelections(ordered);
+    expect(tasks).toHaveLength(14);
+    expect(stagePhrases(ordered, "right")).toEqual(melody);
+    expect(stagePhrases(ordered, "left")).toEqual(melody);
+    expect(stagePhrases(ordered, "both")).toEqual([warmup, ...melody, whole]);
+    const progress: CourseProgress = {};
+    for (const [index, task] of tasks.entries()) {
+      expect(firstIncompleteSelection(ordered, progress)).toEqual(task);
+      expect(nextSelection(ordered, task)).toEqual(tasks[index + 1] ?? null);
+      const phrase = resolveSelection([ordered], task)?.phrase;
+      expect(phrase).toBeDefined();
+      if (!phrase) throw new Error("Missing assigned phrase");
+      progress[progressKey(ordered, task.stage, phrase)] = true;
+      if (index === 4) {
+        expect(stageCompleted(ordered, "right", progress)).toBe(true);
+        expect(stageCompleted(ordered, "left", progress)).toBe(false);
+        expect(stageCompleted(ordered, "both", progress)).toBe(false);
+      }
+      if (index === 8) expect(stageCompleted(ordered, "left", progress)).toBe(true);
+      expect(lessonCompleted(ordered, progress)).toBe(index === 13);
+    }
+    expect(firstIncompleteSelection(ordered, progress)).toEqual(tasks[0]);
+    expect(
+      phraseCompleted(ordered, "right", warmup, {
+        [progressKey(ordered, "right", warmup)]: true
+      })
+    ).toBe(false);
+    const forbidden = { lessonId: ordered.id, phraseId: warmup.id, stage: "right" as const };
+    expect(resolveSelection([ordered], forbidden)).toBeNull();
+    expect(nextSelection(ordered, forbidden)).toBeNull();
+    expect(runContext(ordered, forbidden)).toBeNull();
+    expect(
+      canCreditCourseRun(
+        ordered,
+        forbidden,
+        result({
+          context: progressKey(ordered, "right", warmup)
+        }),
+        "course-song"
+      )
+    ).toBe(false);
+  });
+
+  it("uses task-relative phrase order independently of score list order and keeps valid credit", () => {
+    const ordered: CourseLesson = {
+      ...lesson,
+      stages: ["right"],
+      tasks: [
+        { stage: "right", phraseId: second.id },
+        { stage: "right", phraseId: first.id }
+      ]
+    };
+    expect(stagePhrases(ordered, "right")).toEqual([second, first]);
+    expect(stagePhrases(ordered, "left")).toEqual([]);
+    const progress: CourseProgress = { [progressKey(lesson, "right", first)]: true };
+    expect(phraseCompleted(ordered, "right", { ...first, title: "Renamed phrase" }, progress)).toBe(
+      true
+    );
+    expect(firstIncompleteSelection(ordered, progress)).toEqual({
+      ...selection,
+      phraseId: second.id
+    });
+  });
+
   it("orders every phrase before advancing a hand stage without locking later stages", () => {
     const progress: CourseProgress = {};
     expect(firstIncompleteSelection(lesson, progress)).toEqual(selection);

@@ -3,8 +3,13 @@ import type { Hand } from "../fingering/fingering";
 export type CourseStage = "right" | "left" | "both";
 export interface CoursePhrase {
   readonly id: string;
+  readonly title?: string;
   readonly version: string;
   readonly musicXml: string;
+}
+export interface CourseTask {
+  readonly stage: CourseStage;
+  readonly phraseId: string;
 }
 export interface CourseLesson {
   readonly id: string;
@@ -13,11 +18,10 @@ export interface CourseLesson {
   readonly goal: string;
   readonly stages: readonly CourseStage[];
   readonly phrases: readonly CoursePhrase[];
+  readonly tasks?: readonly CourseTask[];
 }
-export interface CourseSelection {
+export interface CourseSelection extends CourseTask {
   readonly lessonId: string;
-  readonly stage: CourseStage;
-  readonly phraseId: string;
 }
 export type CourseProgress = Record<string, true>;
 
@@ -45,7 +49,10 @@ export function phraseCompleted(
   phrase: CoursePhrase,
   progress: CourseProgress
 ): boolean {
-  return progress[progressKey(lesson, stage, phrase)] === true;
+  return (
+    stagePhrases(lesson, stage).some((candidate) => candidate.id === phrase.id) &&
+    progress[progressKey(lesson, stage, phrase)] === true
+  );
 }
 
 export function stageCompleted(
@@ -53,10 +60,10 @@ export function stageCompleted(
   stage: CourseStage,
   progress: CourseProgress
 ): boolean {
+  const phrases = stagePhrases(lesson, stage);
   return (
-    lesson.stages.includes(stage) &&
-    lesson.phrases.length > 0 &&
-    lesson.phrases.every((phrase) => phraseCompleted(lesson, stage, phrase, progress))
+    phrases.length > 0 &&
+    phrases.every((phrase) => phraseCompleted(lesson, stage, phrase, progress))
   );
 }
 
@@ -67,10 +74,21 @@ export function lessonCompleted(lesson: CourseLesson, progress: CourseProgress):
   );
 }
 
-function selections(lesson: CourseLesson): CourseSelection[] {
+export function courseSelections(lesson: CourseLesson): CourseSelection[] {
+  if (lesson.tasks) return lesson.tasks.map((task) => ({ lessonId: lesson.id, ...task }));
   return lesson.stages.flatMap((stage) =>
     lesson.phrases.map((phrase) => ({ lessonId: lesson.id, stage, phraseId: phrase.id }))
   );
+}
+
+export function stagePhrases(lesson: CourseLesson, stage: CourseStage): readonly CoursePhrase[] {
+  if (!lesson.stages.includes(stage)) return [];
+  if (!lesson.tasks) return lesson.phrases;
+  return lesson.tasks.flatMap((task) => {
+    if (task.stage !== stage) return [];
+    const phrase = lesson.phrases.find((candidate) => candidate.id === task.phraseId);
+    return phrase ? [phrase] : [];
+  });
 }
 
 export function resolveSelection(
@@ -80,7 +98,9 @@ export function resolveSelection(
   if (!selection) return null;
   const lesson = lessons.find((candidate) => candidate.id === selection.lessonId);
   if (!lesson?.stages.includes(selection.stage)) return null;
-  const phrase = lesson.phrases.find((candidate) => candidate.id === selection.phraseId);
+  const phrase = stagePhrases(lesson, selection.stage).find(
+    (candidate) => candidate.id === selection.phraseId
+  );
   return phrase ? { lesson, phrase, selection } : null;
 }
 
@@ -88,7 +108,7 @@ export function firstIncompleteSelection(
   lesson: CourseLesson,
   progress: CourseProgress
 ): CourseSelection | null {
-  const ordered = selections(lesson);
+  const ordered = courseSelections(lesson);
   return (
     ordered.find((selection) => {
       const resolved = resolveSelection([lesson], selection);
@@ -105,7 +125,7 @@ export function nextSelection(
   lesson: CourseLesson,
   selection: CourseSelection
 ): CourseSelection | null {
-  const ordered = selections(lesson);
+  const ordered = courseSelections(lesson);
   const index = ordered.findIndex(
     (candidate) =>
       candidate.lessonId === selection.lessonId &&

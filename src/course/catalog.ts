@@ -1,5 +1,5 @@
 import { songFromMusicXml } from "../song/musicxml";
-import type { CourseLesson, CoursePhrase, CourseStage } from "./model";
+import type { CourseLesson, CoursePhrase, CourseStage, CourseTask } from "./model";
 
 const STAGES: readonly CourseStage[] = ["right", "left", "both"];
 const object = (value: unknown): Record<string, unknown> | null =>
@@ -14,6 +14,34 @@ function localScore(path: unknown, files: Readonly<Record<string, string>>): str
   if (path.split("/").some((part) => part === ".." || part === "." || part === "")) return null;
   if (!/\.(musicxml|xml)$/i.test(path)) return null;
   return files[`/local-lessons/${path}`] ?? null;
+}
+
+function parseTasks(
+  value: unknown,
+  stages: readonly CourseStage[],
+  phraseIds: readonly string[]
+): readonly CourseTask[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const tasks: CourseTask[] = [];
+  const pairs = new Set<string>();
+  for (const item of value) {
+    const task = object(item);
+    if (
+      !task ||
+      !text(task.phraseId) ||
+      !phraseIds.includes(task.phraseId) ||
+      !stages.includes(task.stage as CourseStage)
+    )
+      return null;
+    const pair = JSON.stringify([task.stage, task.phraseId]);
+    if (pairs.has(pair)) return null;
+    pairs.add(pair);
+    tasks.push({ phraseId: task.phraseId, stage: task.stage as CourseStage });
+  }
+  return stages.every((stage) => tasks.some((task) => task.stage === stage)) &&
+    phraseIds.every((phraseId) => tasks.some((task) => task.phraseId === phraseId))
+    ? tasks
+    : null;
 }
 
 function parseLesson(value: unknown, files: Readonly<Record<string, string>>): CourseLesson | null {
@@ -44,10 +72,20 @@ function parseLesson(value: unknown, files: Readonly<Record<string, string>>): C
     )
   )
     return null;
+  const phraseIds = row.phrases.map((item) => object(item)?.id);
+  if (!phraseIds.every(text) || new Set(phraseIds).size !== phraseIds.length) return null;
+  const tasks = Object.hasOwn(row, "tasks") ? parseTasks(row.tasks, stages, phraseIds) : undefined;
+  if (tasks === null) return null;
   const phrases: CoursePhrase[] = [];
   for (const item of row.phrases) {
     const phrase = object(item);
-    if (!phrase || !text(phrase.id) || !text(phrase.version)) return null;
+    if (
+      !phrase ||
+      !text(phrase.id) ||
+      !text(phrase.version) ||
+      (Object.hasOwn(phrase, "title") && !text(phrase.title))
+    )
+      return null;
     const musicXml = localScore(phrase.musicXml, files);
     if (!musicXml) return null;
     try {
@@ -67,7 +105,10 @@ function parseLesson(value: unknown, files: Readonly<Record<string, string>>): C
       )
         return null;
       if (
-        stages.some((stage) =>
+        (tasks
+          ? tasks.filter((task) => task.phraseId === phrase.id).map((task) => task.stage)
+          : stages
+        ).some((stage) =>
           stage === "both"
             ? !["right", "left"].every((hand) => song.notes.some((note) => note.hand === hand))
             : !song.notes.some((note) => note.hand === stage)
@@ -77,10 +118,23 @@ function parseLesson(value: unknown, files: Readonly<Record<string, string>>): C
     } catch {
       return null;
     }
-    phrases.push({ id: phrase.id, version: phrase.version, musicXml });
+    phrases.push({
+      id: phrase.id,
+      version: phrase.version,
+      musicXml,
+      ...(text(phrase.title) ? { title: phrase.title } : {})
+    });
   }
   if (new Set(phrases.map((phrase) => phrase.id)).size !== phrases.length) return null;
-  return { id: row.id, number: row.number, title: row.title, goal: row.goal, stages, phrases };
+  return {
+    id: row.id,
+    number: row.number,
+    title: row.title,
+    goal: row.goal,
+    stages,
+    phrases,
+    ...(tasks ? { tasks } : {})
+  };
 }
 
 /** Bad or absent content never makes an unreviewed course playable. */
