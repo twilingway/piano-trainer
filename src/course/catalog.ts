@@ -89,21 +89,24 @@ export function buildCourseCatalog(
   files: Readonly<Record<string, string>>,
   legacyTitles: Readonly<Record<number, string>> = {}
 ): readonly CourseLesson[] {
+  let root: Record<string, unknown> | null;
+  try {
+    root = object(manifest === null ? null : JSON.parse(manifest));
+  } catch {
+    root = null;
+  }
+  const titles = object(root?.lessonTitles);
   const placeholders: CourseLesson[] = Array.from({ length: 10 }, (_, index) => ({
     id: `course-lesson-${String(index + 1).padStart(2, "0")}`,
     number: index + 1,
-    title: legacyTitles[index + 1] ?? "Урок {number}",
+    title: text(titles?.[String(index + 1)])
+      ? String(titles[String(index + 1)]).trim()
+      : (legacyTitles[index + 1] ?? "Урок {number}"),
     goal: "Разучите фразы по одной руке, затем соедините их.",
     stages: STAGES,
     phrases: []
   }));
-  let rows: unknown[];
-  try {
-    const root = object(manifest === null ? null : JSON.parse(manifest));
-    rows = root && Array.isArray(root.lessons) ? root.lessons : [];
-  } catch {
-    rows = [];
-  }
+  const rows: unknown[] = Array.isArray(root?.lessons) ? root.lessons : [];
   const lessons = rows
     .map((row) => parseLesson(row, files))
     .filter((lesson): lesson is CourseLesson => lesson !== null);
