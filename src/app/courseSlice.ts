@@ -6,6 +6,7 @@ export interface CourseState {
   selection: CourseSelection | null;
   view: "tabs" | "staff";
   accompaniment: boolean;
+  listenOnly: boolean;
 }
 export interface CourseRoot {
   course: CourseState;
@@ -14,7 +15,8 @@ export const initialCourseState: CourseState = {
   progress: {},
   selection: null,
   view: "tabs",
-  accompaniment: false
+  accompaniment: false,
+  listenOnly: false
 };
 const slice = createSlice({
   name: "course",
@@ -32,6 +34,9 @@ const slice = createSlice({
     },
     accompanimentChanged(state, action: PayloadAction<boolean>) {
       state.accompaniment = action.payload;
+    },
+    listenOnlyChanged(state, action: PayloadAction<boolean>) {
+      state.listenOnly = action.payload;
     }
   }
 });

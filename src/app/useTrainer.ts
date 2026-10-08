@@ -16,6 +16,7 @@ import { preferencesActions } from "./preferencesSlice";
 import { useAppDispatch, useAppSelector } from "./storeHooks";
 import type { HandChoice } from "./playerPrefs";
 import { createTrainerSnapshotSource } from "./trainerSnapshots";
+import { courseActions } from "./courseSlice";
 
 const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
   right: ["right"],
@@ -96,17 +97,33 @@ export function useTrainer({
     replaying?: { song: Song; speed: number; from: number; takeId: string };
     replayCount: number;
     listening?: boolean;
+    listenOnly?: boolean;
+    courseContext?: string | undefined;
   } | null>(null);
   const viewRef = useRef<FallingNotesView | null>(null);
   const noteClickRef = useRef<(noteId: string) => void>(() => undefined);
   const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
   const finishHandlerRef = useRef<((result: RunCompletion) => void) | undefined>(undefined);
   const courseContext = course?.context;
-  const [listeningSource, setListeningSource] = useState<Song | null>(null);
-  const listening = listeningSource === sourceSong;
+  const assignmentRef = useRef({ sourceSong, courseContext, generation: 0 });
+  const [listeningSource, setListeningSource] = useState<{
+    song: Song;
+    courseContext: string | undefined;
+  } | null>(null);
+  const storedListenOnly = useAppSelector((state) => state.course.listenOnly);
+  const listenOnly = !!course && storedListenOnly;
+  const temporaryListening =
+    listeningSource?.song === sourceSong && listeningSource.courseContext === courseContext;
+  const listening = listenOnly || temporaryListening;
   const setListening = (next: boolean | ((current: boolean) => boolean)) => {
     setListeningSource((previous) =>
-      (typeof next === "function" ? next(previous === sourceSong) : next) ? sourceSong : null
+      (
+        typeof next === "function"
+          ? next(previous?.song === sourceSong && previous.courseContext === courseContext)
+          : next
+      )
+        ? { song: sourceSong, courseContext }
+        : null
     );
   };
   const [trainerReady, setTrainerReady] = useState(false);
@@ -121,11 +138,9 @@ export function useTrainer({
   const storedHandChoice = useAppSelector((state) => state.preferences.player.handChoice);
   const updateHandChoice = (handChoice: HandChoice) => {
     if (course) {
-      if (handChoice === "listen") setListening(true);
-      else {
-        setListening(false);
-        course.onStage(handChoice);
-      }
+      dispatch(courseActions.listenOnlyChanged(handChoice === "listen"));
+      setListening(false);
+      if (handChoice !== "listen") course.onStage(handChoice);
       return;
     }
     dispatch(preferencesActions.playerChanged({ handChoice }));
@@ -205,8 +220,8 @@ export function useTrainer({
       };
       trainer.onSnapshot = (next) => {
         snapshotSource.publish(next);
-        // A listen-through ends by handing the song back for practice.
-        if (next.finished) {
+        // A temporary listen-through hands the song back for practice.
+        if (next.finished && !loadedRef.current?.listenOnly) {
           if (loadedRef.current?.listening) loadedRef.current = null;
           setListeningSource(null);
         }
@@ -216,6 +231,7 @@ export function useTrainer({
     });
     return () => {
       disposed = true;
+      assignmentRef.current.generation++;
       trainerRef.current?.destroy();
       trainerRef.current = null;
       viewRef.current = null;
@@ -281,6 +297,17 @@ export function useTrainer({
     if (!trainer) return;
     trainer.observeTextNotes(wordTyping ? song.notes.map((note) => note.id) : []);
     const previous = loadedRef.current;
+    if (
+      assignmentRef.current.sourceSong !== sourceSong ||
+      assignmentRef.current.courseContext !== courseContext
+    ) {
+      assignmentRef.current = {
+        sourceSong,
+        courseContext,
+        generation: assignmentRef.current.generation + 1
+      };
+      setListeningSource(null);
+    }
     if (replaying) {
       const preservePosition =
         previous?.trainer === trainer &&
@@ -303,14 +330,23 @@ export function useTrainer({
       return;
     }
     const preservePosition =
-      previous?.trainer === trainer && previous.sourceSong === sourceSong && !previous.replaying;
-    loadedRef.current = { trainer, sourceSong, replayCount, listening };
+      previous?.trainer === trainer &&
+      previous.sourceSong === sourceSong &&
+      !previous.replaying &&
+      (courseContext === undefined || previous.courseContext === courseContext);
+    loadedRef.current = { trainer, sourceSong, replayCount, listening, listenOnly, courseContext };
     trainer.load(song, practiceOptions, songKey, {
       preservePosition,
       ...(courseContext === undefined ? {} : { runContext: courseContext })
     });
     if (!preservePosition && startFromRef.current !== null) trainer.seek(startFromRef.current);
-    if (listening && (!preservePosition || !previous.listening)) trainer.setPlaying(true);
+    if (
+      listening &&
+      (listenOnly
+        ? preservePosition && !previous.listening
+        : !preservePosition || !previous.listening)
+    )
+      trainer.setPlaying(true);
     // replayCount is here only to play the comparison again.
   }, [
     trainerReady,
@@ -318,6 +354,7 @@ export function useTrainer({
     sourceSong,
     practiceOptions,
     listening,
+    listenOnly,
     songKey,
     startFromRef,
     replaying,
@@ -353,7 +390,19 @@ export function useTrainer({
 
   const toggleListening = async () => {
     if (ranked) return;
+    if (listenOnly) {
+      trainerRef.current?.setPlaying(false);
+      return;
+    }
+    const generation = assignmentRef.current.generation;
     await ensureSound();
+    const current = loadedRef.current;
+    if (
+      generation !== assignmentRef.current.generation ||
+      current?.sourceSong !== sourceSong ||
+      current.courseContext !== courseContext
+    )
+      return;
     setListening((current) => !current);
   };
 
@@ -366,7 +415,10 @@ export function useTrainer({
     startFromRef.current = null;
     const trainer = trainerRef.current;
     if (trainer) {
-      loadedRef.current = listening ? null : { trainer, sourceSong, replayCount };
+      loadedRef.current =
+        listening && !listenOnly
+          ? null
+          : { trainer, sourceSong, replayCount, listening: listenOnly, listenOnly, courseContext };
       if (courseContext === undefined) trainer.load(song, practiceOptions, songKey);
       else trainer.load(song, practiceOptions, songKey, { runContext: courseContext });
     }

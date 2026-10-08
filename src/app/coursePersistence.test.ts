@@ -60,6 +60,7 @@ describe("course persistence", () => {
     store.dispatch({ type: "unrelated/action" });
     store.dispatch(courseActions.viewChanged("tabs"));
     store.dispatch(courseActions.accompanimentChanged(false));
+    store.dispatch(courseActions.listenOnlyChanged(false));
     expect(storage.setItem).not.toHaveBeenCalled();
     store.dispatch(courseActions.phraseCredited(key));
     store.dispatch(courseActions.phraseCredited(key));
@@ -73,16 +74,46 @@ describe("course persistence", () => {
     store.dispatch(courseActions.phraseCredited(key));
     store.dispatch(courseActions.viewChanged("staff"));
     store.dispatch(courseActions.accompanimentChanged(true));
+    store.dispatch(courseActions.listenOnlyChanged(true));
     const expected: CourseState = {
       progress: { [key]: true },
       selection,
       view: "staff",
-      accompaniment: true
+      accompaniment: true,
+      listenOnly: true
     };
     expect(loadCourseState(storage, [lesson]).course).toEqual(expected);
     store.dispatch({ type: "song/otherSongChosen" });
     expect(store.getState().course.selection).toEqual(selection);
-    expect(storage.setItem).toHaveBeenCalledTimes(4);
+    expect(storage.setItem).toHaveBeenCalledTimes(5);
+  });
+
+  it("loads legacy settings with listening disabled without dropping progress", () => {
+    const storage = storageFixture(
+      JSON.stringify({ progress: { [key]: true }, selection, view: "staff", accompaniment: true })
+    );
+    expect(loadCourseState(storage, [lesson])).toEqual({
+      course: {
+        progress: { [key]: true },
+        selection,
+        view: "staff",
+        accompaniment: true,
+        listenOnly: false
+      },
+      errors: {}
+    });
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("retains explicit listening while changing the selected task", () => {
+    const storage = storageFixture(),
+      store = fixtureStore(storage);
+    store.dispatch(courseActions.listenOnlyChanged(true));
+    store.dispatch(courseActions.selectionChosen({ ...selection, stage: "both" }));
+    expect(loadCourseState(storage, [lesson]).course).toMatchObject({
+      listenOnly: true,
+      selection: { ...selection, stage: "both" }
+    });
   });
 
   it("retains unavailable lessons' credits but only restores an available phrase selection", () => {
@@ -100,6 +131,8 @@ describe("course persistence", () => {
     "not json",
     "null",
     "[]",
+    JSON.stringify({ ...initialCourseState, listenOnly: "true" }),
+    JSON.stringify({ ...initialCourseState, listenOnly: null }),
     JSON.stringify({ ...initialCourseState, progress: { bogus: true } }),
     JSON.stringify({
       ...initialCourseState,
@@ -142,5 +175,21 @@ describe("course persistence", () => {
     store.dispatch(courseActions.accompanimentChanged(true));
     expect(store.getState().persistence.errors).toEqual({ other: "aborted" });
     expect(loadCourseState(storage, [lesson]).course.progress[key]).toBe(true);
+  });
+
+  it("keeps explicit listening in memory after a write error and saves it on recovery", () => {
+    const storage = storageFixture(),
+      store = fixtureStore(storage);
+    storage.setItem.mockImplementationOnce(() => {
+      throw new Error("Quota exceeded");
+    });
+    store.dispatch(courseActions.listenOnlyChanged(true));
+    expect(store.getState().course.listenOnly).toBe(true);
+    expect(store.getState().persistence.errors[persistenceKey(COURSE_STORAGE_KEY, "write")]).toBe(
+      "unavailable"
+    );
+    store.dispatch(courseActions.viewChanged("staff"));
+    expect(loadCourseState(storage, [lesson]).course.listenOnly).toBe(true);
+    expect(store.getState().persistence.errors).toEqual({});
   });
 });

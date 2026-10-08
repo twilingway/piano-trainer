@@ -58,8 +58,7 @@ export function CourseLessonBar(props: Props) {
         >
           {props.phrases.map((phrase, index) => (
             <option key={phrase.id} value={phrase.id}>
-              {t("Фраза {number}", { number: index + 1 })}
-              {phrase.title ? ` · ${t(phrase.title)}` : ""}
+              {phrase.title ? t(phrase.title) : t("Фраза {number}", { number: index + 1 })}
               {phrase.completed ? " ✓" : ""}
             </option>
           ))}
