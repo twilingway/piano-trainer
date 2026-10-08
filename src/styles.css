@@ -2949,6 +2949,52 @@ button.song-card.song-card__open {
     --mobile-bar-width: calc(52px + env(safe-area-inset-right));
   }
 
+  /* Course controls and tabs share the staff's free space beside the fixed toolbar. */
+  .course-lesson-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    flex: 0 0 auto;
+    gap: 6px;
+    min-width: 0;
+    max-height: 40dvh;
+    margin-right: calc(52px + env(safe-area-inset-right));
+    padding: 8px;
+    box-sizing: border-box;
+    overflow: auto;
+  }
+
+  .course-lesson-bar > strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .course-lesson-bar > :is(.course-stages, .course-phrase-choice, .course-completed, .game-button) {
+    grid-column: 1 / -1;
+  }
+
+  .course-lesson-bar .course-view-choice {
+    grid-area: 1 / 2;
+    flex-wrap: nowrap;
+  }
+
+  .course-lesson-bar .course-phrase-choice {
+    flex-wrap: nowrap;
+  }
+
+  .course-lesson-bar .course-phrase-choice select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .course-score-slot {
+    margin-right: var(--mobile-bar-width);
+  }
+
+  .workspace-main--overlay > .course-score-slot {
+    right: var(--mobile-bar-width);
+    margin-right: 0;
+  }
+
   .workspace-main:has(> .staves)::before {
     position: absolute;
     z-index: 2;
@@ -3191,6 +3237,10 @@ button.song-card.song-card__open {
 
 /* A landscape phone has no height to spare: the HUD takes no row, it hangs by the bar. */
 @media (height <= 500px) {
+  .piano-tabs__grid {
+    grid-template-rows: repeat(2, minmax(56px, 1fr));
+  }
+
   /* Over the staff's left, where the notes already played are; with no staff, right of the legend. */
   .game-score-board:not(.game-score-board--message),
   .app--word .game-score-board:not(.game-score-board--message) {
@@ -3211,6 +3261,21 @@ button.song-card.song-card__open {
 
   .game-overdrive {
     min-height: 30px;
+  }
+}
+
+@media (width > 640px) and (height <= 500px) {
+  .course-lesson-bar {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .course-lesson-bar .course-stages {
+    grid-area: 1 / 2;
+    flex-wrap: nowrap;
+  }
+
+  .course-lesson-bar .course-view-choice {
+    grid-area: 1 / 3;
   }
 }
 
