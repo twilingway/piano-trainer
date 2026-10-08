@@ -1,13 +1,16 @@
-import { stat, writeFile } from "node:fs/promises";
+import { realpath, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   analysisDirectory,
+  courseLayout,
   frameTimes,
   reusableAudio,
   sameSource,
+  sameAnalysisSource,
+  type AnalysisSource,
   type AudioMetadata,
-  type VideoOptions,
-  type VideoSource
+  type CourseLayout,
+  type VideoOptions
 } from "./options.ts";
 import { pythonSource } from "./pythonSource.ts";
 import { buildTimeline } from "./timeline.ts";
@@ -93,13 +96,25 @@ export async function setup(root: string, options: VideoOptions): Promise<void> 
   console.log(`Среда готова: ${paths.directory}`);
 }
 
-async function bindSource(root: string, directory: string, source: VideoSource): Promise<void> {
+async function sourceLayout(
+  options: VideoOptions
+): Promise<{ source: AnalysisSource; layout: CourseLayout | null }> {
+  const source = await videoSource(options.video);
+  if (options.courseRoot === null) return { source, layout: null };
+  const courseRoot = await realpath(resolve(options.courseRoot));
+  if (!(await stat(courseRoot)).isDirectory())
+    throw new Error("--course-root должен указывать на существующую папку курса.");
+  const layout = courseLayout(courseRoot, source.path);
+  return { source: { ...source, ...layout }, layout };
+}
+
+async function bindSource(root: string, directory: string, source: AnalysisSource): Promise<void> {
   await safeDirectory(root, directory);
   const path = resolve(directory, "source.json");
   if (await exists(path)) {
-    if (!sameSource(await readJson(path), source))
+    if (!sameAnalysisSource(await readJson(path), source))
       throw new Error(
-        "Этот --id относится к другому или изменённому видео. Используйте новый --id."
+        "Этот --id относится к другому или изменённому видео либо структуре курса. Используйте новый --id."
       );
   } else await writeJson(path, source);
 }
@@ -188,7 +203,7 @@ async function prepareAudio(directory: string, metadata: AudioMetadata): Promise
 }
 
 export async function prepare(root: string, options: VideoOptions): Promise<void> {
-  const source = await videoSource(options.video);
+  const { source, layout } = await sourceLayout(options);
   const total = await duration(source.path),
     end = options.end ?? total;
   if (options.start >= total || end > total)
@@ -196,7 +211,7 @@ export async function prepare(root: string, options: VideoOptions): Promise<void
   const paths = runtimePaths(root);
   await assertLocalRuntime(root, paths.directory, paths.python);
   if (!(await exists(paths.python))) throw new Error("Сначала выполните pnpm lesson-video:setup.");
-  const directory = analysisDirectory(root, options.id);
+  const directory = analysisDirectory(root, options.id, layout ?? undefined);
   await bindSource(root, directory, source);
   const metadata: AudioMetadata = {
     source,
@@ -255,16 +270,16 @@ export async function prepare(root: string, options: VideoOptions): Promise<void
 }
 
 export async function frames(root: string, options: VideoOptions): Promise<void> {
-  const source = await videoSource(options.video);
+  const { source, layout } = await sourceLayout(options);
   const times = frameTimes(options, await duration(source.path));
-  const directory = analysisDirectory(root, options.id);
+  const directory = analysisDirectory(root, options.id, layout ?? undefined);
   await bindSource(root, directory, source);
   const frameDirectory = resolve(directory, "frames");
   await safeDirectory(root, frameDirectory);
   const indexPath = resolve(directory, "frames.json");
   const previous = (await exists(indexPath)) ? object(await readJson(indexPath)) : {};
   const index = object(previous.frames);
-  if (previous.source !== undefined && !sameSource(previous.source, source))
+  if (previous.source !== undefined && !sameAnalysisSource(previous.source, source))
     throw new Error("Каталог кадров относится к другому видео. Используйте новый --id.");
   for (const at of times) {
     const filename = `frame-${at.toFixed(3).replace(".", "-")}.jpg`;
