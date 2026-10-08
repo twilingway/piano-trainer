@@ -1,5 +1,5 @@
 import { useI18n } from "../app/useI18n";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 
 import { EXERCISES } from "../song/exercises";
 
@@ -15,6 +15,8 @@ interface Props {
   readonly open: boolean;
   readonly onClose: () => void;
   readonly lessons: readonly Lesson[];
+  readonly previousLessons?: readonly Lesson[];
+  readonly course?: ReactNode;
   /** The lesson and level on screen, if a lesson is. */
   readonly current: { readonly exerciseId: string; readonly levelId: string } | null;
   /** The library song on screen: `my:<id>` or `dir:<path>`. */
@@ -54,6 +56,65 @@ export function LibraryDialog(props: Props) {
     action();
     props.onClose();
   };
+  const lessonGrid = (lessons: readonly Lesson[]) => (
+    <div className="song-grid">
+      {lessons.map((lesson) => (
+        <div
+          key={lesson.id}
+          className="song-card"
+          data-current={props.current?.exerciseId === lesson.id}
+        >
+          <strong>{bundledTitle(lesson, lesson.title)}</strong>
+          <div className="song-card__levels">
+            {lesson.levels.map((level) => (
+              <div key={level.id} className="level-row">
+                <button
+                  type="button"
+                  className="level-chip"
+                  aria-pressed={
+                    props.current?.exerciseId === lesson.id && props.current.levelId === level.id
+                  }
+                  onClick={choose(() => {
+                    props.onLesson(lesson.id, level.id);
+                  })}
+                >
+                  {bundledTitle(lesson, level.title)}
+                </button>
+                <button
+                  type="button"
+                  className="level-chip level-export"
+                  aria-label={t("Скачать «{lesson} · {level}» как MusicXML", {
+                    lesson: bundledTitle(lesson, lesson.title),
+                    level: bundledTitle(lesson, level.title)
+                  })}
+                  title={t("Скачать MusicXML")}
+                  onClick={() => {
+                    props.onExportLesson(lesson.id, level.id, "musicxml");
+                  }}
+                >
+                  MusicXML
+                </button>
+                <button
+                  type="button"
+                  className="level-chip level-export"
+                  aria-label={t("Скачать «{lesson} · {level}» как MIDI", {
+                    lesson: bundledTitle(lesson, lesson.title),
+                    level: bundledTitle(lesson, level.title)
+                  })}
+                  title={t("Скачать MIDI")}
+                  onClick={() => {
+                    props.onExportLesson(lesson.id, level.id, "midi");
+                  }}
+                >
+                  MIDI
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
   return (
     <GameDialog
       open={props.open}
@@ -81,64 +142,15 @@ export function LibraryDialog(props: Props) {
         )}
       </div>
 
+      {props.course}
       <h3>{t("Уроки")}</h3>
-      <div className="song-grid">
-        {props.lessons.map((lesson) => (
-          <div
-            key={lesson.id}
-            className="song-card"
-            data-current={props.current?.exerciseId === lesson.id}
-          >
-            <strong>{bundledTitle(lesson, lesson.title)}</strong>
-            <div className="song-card__levels">
-              {lesson.levels.map((level) => (
-                <div key={level.id} className="level-row">
-                  <button
-                    type="button"
-                    className="level-chip"
-                    aria-pressed={
-                      props.current?.exerciseId === lesson.id && props.current.levelId === level.id
-                    }
-                    onClick={choose(() => {
-                      props.onLesson(lesson.id, level.id);
-                    })}
-                  >
-                    {bundledTitle(lesson, level.title)}
-                  </button>
-                  <button
-                    type="button"
-                    className="level-chip level-export"
-                    aria-label={t("Скачать «{lesson} · {level}» как MusicXML", {
-                      lesson: bundledTitle(lesson, lesson.title),
-                      level: bundledTitle(lesson, level.title)
-                    })}
-                    title={t("Скачать MusicXML")}
-                    onClick={() => {
-                      props.onExportLesson(lesson.id, level.id, "musicxml");
-                    }}
-                  >
-                    MusicXML
-                  </button>
-                  <button
-                    type="button"
-                    className="level-chip level-export"
-                    aria-label={t("Скачать «{lesson} · {level}» как MIDI", {
-                      lesson: bundledTitle(lesson, lesson.title),
-                      level: bundledTitle(lesson, level.title)
-                    })}
-                    title={t("Скачать MIDI")}
-                    onClick={() => {
-                      props.onExportLesson(lesson.id, level.id, "midi");
-                    }}
-                  >
-                    MIDI
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      {lessonGrid(props.lessons)}
+      {props.previousLessons && props.previousLessons.length > 0 && (
+        <>
+          <h3>{t("Предыдущие версии")}</h3>
+          {lessonGrid(props.previousLessons)}
+        </>
+      )}
 
       {props.mySongs.length > 0 && (
         <>
