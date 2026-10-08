@@ -12,6 +12,7 @@ import { useComputerKeyboard } from "./useComputerKeyboard";
 import { usePlayerLibrary } from "./usePlayerLibrary";
 import { useShortcuts } from "./useShortcuts";
 import { useSong } from "./useSong";
+import { useCourse } from "./useCourse";
 import { useSound } from "./useSound";
 import { useScreenLayout } from "./useScreenLayout";
 import { useStaffPrefs } from "./useStaffPrefs";
@@ -41,11 +42,18 @@ export function usePlayerRuntime() {
   const startFromRef = useRef<number | null>(null);
   const { sound, ensureSound } = useSound();
   const current = useSong(startFromRef);
+  const course = useCourse(current.showSong);
   const { song, songKey } = current;
   const word = useWordTyping(song, songKey, libraryOpen || settingsOpen);
   const device = useDeviceRange();
   const { playable } = device;
-  const game = useGameOptions(word.practiceKey, word.practiceSong.duration, word.enabled, playable);
+  const game = useGameOptions(
+    word.practiceKey,
+    word.practiceSong.duration,
+    word.enabled,
+    playable,
+    course.active !== null
+  );
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const screen = useScreenLayout(word.enabled ? "typing" : "piano");
   const displayPrefs = useMemo(
@@ -53,14 +61,17 @@ export function usePlayerRuntime() {
       game.performance
         ? {
             ...staffPrefs,
+            visible: course.active ? true : staffPrefs.visible,
             fingers: false,
             hands: false,
             labels: false,
             noteNames: "off" as const,
             chords: false
           }
-        : staffPrefs,
-    [game.performance, staffPrefs]
+        : course.active
+          ? { ...staffPrefs, visible: true }
+          : staffPrefs,
+    [game.performance, staffPrefs, course.active]
   );
   const score = useStaffScore(song, current.baseSong, displayPrefs);
   const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
@@ -78,6 +89,8 @@ export function usePlayerRuntime() {
     ensureSound,
     onNoteClick: current.cycleFinger,
     onTake: takes.recordTake,
+    onRunFinished: course.controller.finish,
+    course: course.practice,
     compareSong: takes.compareSong,
     lastTake: takes.lastTake,
     replayCount: takes.replayCount,
@@ -225,6 +238,7 @@ export function usePlayerRuntime() {
     resultClosed,
     setResultClosed,
     current,
+    course,
     song,
     word,
     device,

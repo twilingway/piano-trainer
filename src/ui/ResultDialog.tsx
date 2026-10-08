@@ -29,10 +29,19 @@ interface Props {
   readonly onClose: () => void;
   readonly onAgain: () => void;
   readonly onReview: () => void;
+  readonly onNext?: () => void;
 }
 
 /** The end of a run: the accuracy, the notes that went wrong most, and what next. */
-export function ResultDialog({ open, stats, canReview, onClose, onAgain, onReview }: Props) {
+export function ResultDialog({
+  open,
+  stats,
+  canReview,
+  onClose,
+  onAgain,
+  onReview,
+  onNext
+}: Props) {
   const { t, formatNumber } = useI18n();
   const milliseconds = (value: number | null): string =>
     value === null
@@ -174,6 +183,11 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain, onRevie
         )}
       </div>
       <div className="result-actions">
+        {onNext && (
+          <button type="button" className="game-button game-button--play" onClick={onNext}>
+            {t("Следующее задание")}
+          </button>
+        )}
         <button type="button" className="game-button game-button--play" onClick={onAgain}>
           {t("Ещё раз")}
         </button>

@@ -6,6 +6,7 @@ import {
   ConnectedWorkspace
 } from "./ConnectedPlayback";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
+import { ConnectedCourseLessonBar, ConnectedPianoTabs } from "./ConnectedCourse";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPracticeWorkspace() {
@@ -33,7 +34,8 @@ export function ConnectedPracticeWorkspace() {
     trainerTrainerRef,
     trainerHostRef,
     snapshotWaiting,
-    viewMirrorHostRef
+    viewMirrorHostRef,
+    courseTabs
   } = useRuntimeSelector(
     (runtime) => ({
       displayPrefs: runtime.displayPrefs,
@@ -59,7 +61,9 @@ export function ConnectedPracticeWorkspace() {
       trainerTrainerRef: runtime.trainer.trainerRef,
       trainerHostRef: runtime.trainer.hostRef,
       snapshotWaiting: runtime.snapshot.waiting,
-      viewMirrorHostRef: runtime.view.mirrorHostRef
+      viewMirrorHostRef: runtime.view.mirrorHostRef,
+      courseTabs:
+        runtime.course.active !== null && runtime.course.saved.view === "tabs" && !runtime.comparing
     }),
     shallowEqual
   );
@@ -70,7 +74,9 @@ export function ConnectedPracticeWorkspace() {
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   return (
     <>
+      {!wordEnabled && !comparing && <ConnectedCourseLessonBar />}
       <ConnectedWorkspace
+        scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
         source={trainerSnapshotSource}
         wordBoard={
           wordEnabled && !comparing ? (

@@ -4,6 +4,9 @@ import { LibraryDialog } from "../ui/LibraryDialog";
 import { ConnectedPlayerSettings, ConnectedResultDialog } from "./ConnectedSettings";
 import { downloadLesson } from "./lessonExport";
 import { LESSONS } from "./lessons";
+import { PREVIOUS_COURSE_LESSONS } from "./courseCatalog";
+import { ConnectedCourseCards } from "./ConnectedCourse";
+import { phraseCompleted, nextSelection } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 
@@ -16,7 +19,9 @@ export function ConnectedPlayerWindows() {
     listening,
     comparing,
     source,
-    canReview
+    canReview,
+    courseActive,
+    courseProgress
   } = useRuntimeSelector(
     (runtime) => ({
       libraryOpen: runtime.libraryOpen,
@@ -26,7 +31,9 @@ export function ConnectedPlayerWindows() {
       listening: runtime.listening,
       comparing: runtime.comparing,
       source: runtime.trainer.snapshotSource,
-      canReview: runtime.takes.canReview
+      canReview: runtime.takes.canReview,
+      courseActive: runtime.course.active,
+      courseProgress: runtime.course.saved.progress
     }),
     shallowEqual
   );
@@ -36,6 +43,17 @@ export function ConnectedPlayerWindows() {
   const endEditing = useRuntimeCommand((runtime) => runtime.computerKeyboard.endEditing);
   const startOver = useRuntimeCommand((runtime) => runtime.startOver);
   const showReview = useRuntimeCommand((runtime) => runtime.takes.showReview);
+  const openCourse = useRuntimeCommand((runtime) => runtime.course.controller.open);
+  const nextCourse =
+    courseActive &&
+    phraseCompleted(
+      courseActive.lesson,
+      courseActive.selection.stage,
+      courseActive.phrase,
+      courseProgress
+    )
+      ? nextSelection(courseActive.lesson, courseActive.selection)
+      : null;
   return (
     <>
       {libraryOpen && (
@@ -60,6 +78,14 @@ export function ConnectedPlayerWindows() {
           setResultClosed(true);
         }}
         onAgain={startOver}
+        {...(nextCourse
+          ? {
+              onNext: () => {
+                setResultClosed(true);
+                openCourse(nextCourse);
+              }
+            }
+          : {})}
         onReview={() => {
           showReview();
           setResultClosed(true);
@@ -90,7 +116,9 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
     <LibraryDialog
       open
       onClose={onClose}
-      lessons={LESSONS}
+      lessons={LESSONS.filter((lesson) => !PREVIOUS_COURSE_LESSONS.includes(lesson))}
+      previousLessons={PREVIOUS_COURSE_LESSONS}
+      course={<ConnectedCourseCards onChoose={onClose} />}
       current={lesson}
       currentSource={source}
       onLesson={(exerciseId, levelId) => {

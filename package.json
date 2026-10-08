@@ -21,7 +21,10 @@
     "spec:status": "cross-env OPENSPEC_TELEMETRY=0 openspec status",
     "spec:validate": "cross-env OPENSPEC_TELEMETRY=0 openspec validate --all",
     "word-typing:prepare": "node --experimental-strip-types src/wordTypingTools/prepare.ts",
-    "word-typing:benchmark": "node --experimental-strip-types src/wordTypingTools/benchmark.ts"
+    "word-typing:benchmark": "node --experimental-strip-types src/wordTypingTools/benchmark.ts",
+    "lesson-video:setup": "node --experimental-strip-types src/lessonVideoTools/cli.ts setup",
+    "lesson-video:prepare": "node --experimental-strip-types src/lessonVideoTools/cli.ts prepare",
+    "lesson-video:frames": "node --experimental-strip-types src/lessonVideoTools/cli.ts frames"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.13.0",

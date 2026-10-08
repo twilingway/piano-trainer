@@ -30,6 +30,8 @@ interface Props {
   /** Where the original mounts while a take is compared with it. */
   readonly mirrorHostRef: RefObject<HTMLDivElement | null>;
   readonly gameBoard?: ReactNode;
+  /** Course tabs replace the score without remounting the falling-note view. */
+  readonly scoreBoard?: ReactNode;
   readonly wordBoard?: ReactNode;
   /** The word mode's running line: over the keys when the lane shows its notes. */
   readonly wordTicker?: ReactNode;
@@ -64,9 +66,9 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const staffShare =
     (transcription && takeStaff === "column" ? (share * 0.26) / DEFAULT_STAFF_SHARE : share) *
     staffRoom;
-  const staffShown = Boolean(props.staffXml) && prefs.visible;
+  const staffShown = Boolean(props.staffXml) && prefs.visible && !props.scoreBoard;
   // Without the staff the lane's own top edge drags, leaving room over it.
-  const laneTop = !staffShown && laneMode !== "hidden" && !props.comparing;
+  const laneTop = !staffShown && !props.scoreBoard && laneMode !== "hidden" && !props.comparing;
   const handles = props.editing && !props.comparing;
   return (
     <div className="workspace">
@@ -74,6 +76,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
         {/* The word mode's text over the usual staff and lane, whose keys turn computer keys. */}
         {props.wordBoard}
         {laneMode !== "full" && props.wordTicker}
+        {props.scoreBoard && <div className="course-score-slot">{props.scoreBoard}</div>}
         {staffShown && props.staffXml && (
           <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
             <div className="staff-slot">

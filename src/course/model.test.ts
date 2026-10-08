@@ -1,0 +1,148 @@
+import { describe, expect, it } from "vitest";
+import {
+  canCreditCourseRun,
+  firstIncompleteSelection,
+  lessonCompleted,
+  nextSelection,
+  phraseCompleted,
+  phraseVersion,
+  progressKey,
+  resolveSelection,
+  runContext,
+  stageCompleted,
+  type CourseLesson,
+  type CourseProgress,
+  type CourseRunResult,
+  type CourseSelection
+} from "./model";
+
+const first = { id: "first", version: "1", musicXml: "<score>first</score>" };
+const second = { id: "second", version: "1", musicXml: "<score>second</score>" };
+const lesson: CourseLesson = {
+  id: "lesson-01",
+  number: 1,
+  title: "Lesson",
+  goal: "Goal",
+  stages: ["right", "left", "both"],
+  phrases: [first, second]
+};
+const selection: CourseSelection = { lessonId: lesson.id, stage: "right", phraseId: "first" };
+const result = (changes: Partial<CourseRunResult> = {}): CourseRunResult => ({
+  context: runContext(lesson, selection) ?? "",
+  songKey: "course-song",
+  mode: "wait",
+  from: 0,
+  to: 10,
+  hands: ["right"],
+  hitCount: 1,
+  interrupted: false,
+  fullRange: true,
+  ...changes
+});
+
+describe("course progression", () => {
+  it("orders every phrase before advancing a hand stage without locking later stages", () => {
+    const progress: CourseProgress = {};
+    expect(firstIncompleteSelection(lesson, progress)).toEqual(selection);
+    progress[progressKey(lesson, "right", first)] = true;
+    expect(firstIncompleteSelection(lesson, progress)).toEqual({
+      ...selection,
+      phraseId: "second"
+    });
+    progress[progressKey(lesson, "right", second)] = true;
+    expect(stageCompleted(lesson, "right", progress)).toBe(true);
+    expect(lessonCompleted(lesson, progress)).toBe(false);
+    expect(firstIncompleteSelection(lesson, progress)).toEqual({ ...selection, stage: "left" });
+    expect(nextSelection(lesson, { ...selection, phraseId: "second" })).toEqual({
+      ...selection,
+      stage: "left"
+    });
+    expect(resolveSelection([lesson], { ...selection, stage: "both" })).not.toBeNull();
+    expect(nextSelection(lesson, { ...selection, stage: "both", phraseId: "second" })).toBeNull();
+  });
+
+  it("supports two-stage lessons and starts a completed lesson again for repetition", () => {
+    const twoStages: CourseLesson = { ...lesson, stages: ["right", "both"] };
+    const progress: CourseProgress = Object.fromEntries(
+      twoStages.stages.flatMap((stage) =>
+        twoStages.phrases.map((phrase) => [progressKey(twoStages, stage, phrase), true])
+      )
+    );
+    expect(lessonCompleted(twoStages, progress)).toBe(true);
+    expect(stageCompleted(twoStages, "left", progress)).toBe(false);
+    expect(firstIncompleteSelection(twoStages, progress)).toEqual(selection);
+    expect(nextSelection(twoStages, { ...selection, phraseId: "second" })).toEqual({
+      ...selection,
+      stage: "both"
+    });
+  });
+
+  it("leaves unprepared lessons incomplete and rejects missing selections", () => {
+    const soon: CourseLesson = { ...lesson, phrases: [] };
+    expect(firstIncompleteSelection(soon, {})).toBeNull();
+    expect(lessonCompleted(soon, {})).toBe(false);
+    expect(stageCompleted(soon, "right", {})).toBe(false);
+    expect(resolveSelection([soon], selection)).toBeNull();
+    expect(resolveSelection([lesson], { ...selection, lessonId: "missing" })).toBeNull();
+    expect(resolveSelection([lesson], { ...selection, phraseId: "missing" })).toBeNull();
+    expect(nextSelection(lesson, { ...selection, lessonId: "missing" })).toBeNull();
+  });
+
+  it("keeps credit through renamed titles but invalidates both XML and author version changes", () => {
+    const progress: CourseProgress = { [progressKey(lesson, "right", first)]: true };
+    expect(phraseCompleted({ ...lesson, title: "Renamed" }, "right", first, progress)).toBe(true);
+    const corrected = { ...first, musicXml: "<score>corrected</score>" };
+    expect(phraseVersion(corrected)).not.toBe(phraseVersion(first));
+    expect(phraseCompleted(lesson, "right", corrected, progress)).toBe(false);
+    expect(phraseCompleted(lesson, "right", { ...first, version: "2" }, progress)).toBe(false);
+    expect(phraseCompleted(lesson, "left", first, progress)).toBe(false);
+  });
+
+  it("uses unambiguous progress keys even when identifiers contain separators", () => {
+    const key = progressKey({ ...lesson, id: "a:b" }, "right", { ...first, id: "c:d" });
+    expect(JSON.parse(key)).toEqual(["a:b", "right", "c:d", phraseVersion(first)]);
+  });
+});
+
+describe("course run credit", () => {
+  it("credits natural complete human practice in either mode without an accuracy threshold", () => {
+    expect(canCreditCourseRun(lesson, selection, result(), "course-song")).toBe(true);
+    expect(canCreditCourseRun(lesson, selection, result({ mode: "tempo" }), "course-song")).toBe(
+      true
+    );
+    const both = { ...selection, stage: "both" as const };
+    expect(
+      canCreditCourseRun(
+        lesson,
+        both,
+        result({ context: runContext(lesson, both) ?? "", hands: ["right", "left"] }),
+        "course-song"
+      )
+    ).toBe(true);
+  });
+
+  it.each([
+    ["interrupted or sought", { interrupted: true }],
+    ["started midway", { from: 1 }],
+    ["partial range", { fullRange: false }],
+    ["no human hits", { hitCount: 0 }],
+    ["listening", { hands: [] }],
+    ["different hand", { hands: ["left"] }],
+    ["different song", { songKey: "other" }],
+    ["no immutable context", { context: undefined }],
+    ["different context", { context: "other" }],
+    ["invalid ending", { to: NaN }],
+    ["empty duration", { to: 0 }]
+  ] as const)("rejects %s", (_name, changes) => {
+    expect(canCreditCourseRun(lesson, selection, result(changes), "course-song")).toBe(false);
+  });
+
+  it("rejects stale results after the selected phrase's content or version changes", () => {
+    const corrected = { ...lesson, phrases: [{ ...first, musicXml: "corrected" }] };
+    expect(canCreditCourseRun(corrected, selection, result(), "course-song")).toBe(false);
+    expect(
+      canCreditCourseRun(lesson, { ...selection, phraseId: "second" }, result(), "course-song")
+    ).toBe(false);
+    expect(canCreditCourseRun(lesson, selection, result(), "")).toBe(false);
+  });
+});
