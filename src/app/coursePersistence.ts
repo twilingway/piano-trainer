@@ -68,7 +68,8 @@ export function loadCourseState(
     ) ||
     (value.selection !== null && !parseSelection(value.selection)) ||
     (value.view !== "tabs" && value.view !== "staff") ||
-    typeof value.accompaniment !== "boolean"
+    typeof value.accompaniment !== "boolean" ||
+    (value.listenOnly !== undefined && typeof value.listenOnly !== "boolean")
   ) {
     errors[persistenceKey(COURSE_STORAGE_KEY, "read")] = "invalid";
     return fallback();
@@ -79,7 +80,8 @@ export function loadCourseState(
       progress: Object.fromEntries(Object.keys(value.progress).map((key) => [key, true])),
       selection: resolveSelection(lessons, selection)?.selection ?? null,
       view: value.view,
-      accompaniment: value.accompaniment
+      accompaniment: value.accompaniment,
+      listenOnly: value.listenOnly === true
     },
     errors
   };

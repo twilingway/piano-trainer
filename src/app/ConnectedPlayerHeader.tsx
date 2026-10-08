@@ -7,6 +7,7 @@ import { WordQuality } from "../ui/WordTypingBoard";
 import { ConnectedPlayerTopBar, ConnectedSongProgress } from "./ConnectedPlayback";
 import { lessonDisplayTitle } from "./lessonDisplayTitle";
 import { COURSE_STAGE_LABELS } from "../ui/CourseCards";
+import { stagePhrases } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 
 import { shallowEqual } from "react-redux";
@@ -85,7 +86,7 @@ export function ConnectedPlayerHeader() {
           song={wordPracticeSong}
           title={
             courseActive
-              ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${t("Фраза {number}", { number: courseActive.lesson.phrases.findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
+              ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
               : lessonDisplayTitle(song.title, currentLesson, t)
           }
           playing={playing}
