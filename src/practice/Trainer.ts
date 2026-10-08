@@ -9,6 +9,8 @@ import type { Song, SongNote } from "../song/song";
 import { ComboCounter } from "./combo";
 import type { ComboBoard, GradedStrike } from "./combo";
 import { keyLightPitches } from "./keyLights";
+import { RunCompletionTracker } from "./runCompletion";
+import type { RunCompletion } from "./runCompletion";
 import { PracticeSession } from "./session";
 import type { NoteStatus, PracticeEvent, PracticeOptions, PracticeStats } from "./session";
 import type { TimingConfig } from "./timingConfig";
@@ -74,6 +76,8 @@ export class Trainer {
   onSnapshot: ((snapshot: TrainerSnapshot) => void) | undefined;
   /** A take has ended: the song finished, or the run was restarted, moved or reloaded. */
   onTake: ((take: Take) => void) | undefined;
+  /** Natural end only, emitted before a loop restarts or a take is delivered. */
+  onRunFinished: ((result: RunCompletion) => void) | undefined;
   /** The keys to light on the player's instrument, every frame; none once the run stops. */
   onLights: ((pitches: readonly number[]) => void) | undefined;
   metronome = false;
@@ -99,6 +103,7 @@ export class Trainer {
 
   private session: PracticeSession | undefined;
   private songKey = "";
+  private readonly run = new RunCompletionTracker();
   /** The run of good notes and the accuracy, started over with each run. */
   private readonly combo = new ComboCounter();
   /** Strikes graded since the last frame was drawn. */
@@ -137,7 +142,10 @@ export class Trainer {
     song: Song,
     options: PracticeOptions,
     songKey: string,
-    { preservePosition = false }: { preservePosition?: boolean } = {}
+    {
+      preservePosition = false,
+      runContext
+    }: { preservePosition?: boolean; runContext?: string } = {}
   ): void {
     const now = performance.now();
     const previous = preservePosition ? this.session : undefined;
@@ -146,6 +154,7 @@ export class Trainer {
     // Resolve between-frame progress with the old clock and speed before replacing either.
     previous?.pauseClock(now);
     const position = previous?.time;
+    this.run.load(song, options, songKey, runContext, previous !== undefined);
     this.finishTake();
     this.silence();
     this.songKey = songKey;
@@ -171,8 +180,19 @@ export class Trainer {
 
   /** Restarts the run from song time `from`, keeping play or pause as it was. */
   seek(from: number): void {
+    this.move(from, false);
+  }
+
+  /** Starts a fresh eligible run, unlike moving the playback position. */
+  restart(from = 0): void {
+    this.move(from, true);
+  }
+
+  private move(from: number, restart: boolean): void {
     this.resumePending = false;
     if (!this.session) return;
+    if (restart) this.run.restart();
+    else this.run.seek();
     const resume = this.playing;
     this.finishTake();
     this.silence();
@@ -205,6 +225,7 @@ export class Trainer {
     if (!this.playing) this.silence();
     const now = performance.now();
     if (session && this.playing && !wasPlaying) {
+      this.run.begin(session.startedFrom);
       session.resumeClock(now);
       this.audio.start(session, now, this.timing.audioOffsetMs, () => this.metronome);
     }
@@ -345,10 +366,12 @@ export class Trainer {
   }
 
   destroy(): void {
+    this.run.restart();
     this.setPlaying(false);
     this.finishTake();
     this.onSnapshot = undefined;
     this.onTake = undefined;
+    this.onRunFinished = undefined;
     this.onInput = undefined;
   }
 
@@ -408,10 +431,7 @@ export class Trainer {
   private frame(deltaMs: number): void {
     const session = this.session;
     if (!session) return;
-    if (this.playing) {
-      const now = performance.now();
-      this.apply(session.tick(now));
-    }
+    if (this.playing) this.apply(session.tick(performance.now()));
     this.onLights?.(keyLightPitches(session, this.playing && !this.performanceMode));
     this.view.draw({
       time: session.time - (this.timing.visualOffsetMs / 1000) * session.options.speed,
@@ -466,17 +486,22 @@ export class Trainer {
         case "beat":
           break;
         case "finished":
+          {
+            const result = this.run.finish();
+            if (result) this.onRunFinished?.(result);
+          }
           this.finishTake();
           this.playing = false;
           this.silence();
           if (this.loop && this.canStart && this.session) {
-            this.seek(this.session.options.from ?? 0);
+            this.restart(this.session.options.from ?? 0);
             this.setPlaying(true);
           }
           break;
         case "hit":
         case "miss":
         case "wrong": {
+          if (event.type === "hit") this.run.hit();
           const grade = this.combo.record(event);
           const pitch = event.type === "wrong" ? event.pitch : this.pitchOf.get(event.noteId);
           if (grade && pitch !== undefined)
