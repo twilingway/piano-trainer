@@ -77,9 +77,9 @@ export class RunCompletionTracker {
       }
     };
     if (!preserve) this.restart();
-    else if (this.prepared?.signature !== prepared.signature) {
+    else if (this.active && this.prepared?.signature !== prepared.signature) {
       this.interrupted = true;
-      if (this.active) this.active = { ...this.active, interrupted: true };
+      this.active = { ...this.active, interrupted: true };
     }
     this.prepared = prepared;
   }

@@ -10,11 +10,12 @@ export function useGameOptions(
   songKey: string,
   duration: number,
   practiceOnly = false,
-  playable?: PlayableRange
+  playable?: PlayableRange,
+  course = false
 ) {
   const preferences = useAppSelector((state) => state.preferences.game);
   const dispatch = useAppDispatch();
-  const ranked = preferences.ranked && !practiceOnly;
+  const ranked = preferences.ranked && !practiceOnly && !course;
   const storedRange = useAppSelector((state) => state.practice.range);
   const store = useAppStore();
   const range =

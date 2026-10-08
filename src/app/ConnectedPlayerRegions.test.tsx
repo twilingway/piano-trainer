@@ -8,6 +8,7 @@ import { ConnectedPlayerHeader } from "./ConnectedPlayerHeader";
 import { ConnectedPlayerWindows } from "./ConnectedPlayerWindows";
 import { ConnectedNotices } from "./ConnectedPlayerNotices";
 import { createAppStore } from "./store";
+import { progressKey, type CourseLesson } from "../course/model";
 const observed = vi.hoisted(() => ({
   header: vi.fn(),
   settings: vi.fn(),
@@ -39,6 +40,7 @@ const initial = (): PlayerRuntime =>
     snapshot: { finished: false },
     trainer: { snapshotSource: {}, mode: "wait", speed: 1, playChoice: { hands: "both" } },
     takes: { canReview: false },
+    course: { active: null, saved: { progress: {} }, controller: { open: vi.fn() } },
     fullscreen: { error: null, active: false },
     word: { storageError: null, enabled: false, pending: false, practiceSong: { title: "A" } },
     song: { title: "A" },
@@ -92,6 +94,37 @@ function mount(children: React.ReactNode) {
   return { container, render };
 }
 describe("connected regions without React Compiler", () => {
+  it("offers the credited course task in the result modal and waits for the next click", () => {
+    const lesson: CourseLesson = {
+      id: "synthetic",
+      number: 1,
+      title: "Synthetic",
+      goal: "Synthetic",
+      stages: ["right", "both"],
+      phrases: [{ id: "first", version: "1", musicXml: "synthetic" }]
+    };
+    const phrase = lesson.phrases[0];
+    if (!phrase) throw new Error("Missing fixture phrase");
+    const selection = { lessonId: lesson.id, stage: "right" as const, phraseId: phrase.id };
+    const open = vi.fn();
+    observed.runtime = initial();
+    observed.runtime.course = {
+      ...observed.runtime.course,
+      active: { lesson, phrase, selection },
+      saved: {
+        ...observed.runtime.course.saved,
+        progress: { [progressKey(lesson, "right", phrase)]: true }
+      },
+      controller: { ...observed.runtime.course.controller, open }
+    };
+    observed.runtime.snapshot = { ...observed.runtime.snapshot, finished: true };
+    mount(<ConnectedPlayerWindows />);
+    expect(open).not.toHaveBeenCalled();
+    const props = observed.result.mock.lastCall?.[0] as { onNext: () => void };
+    props.onNext();
+    expect(open).toHaveBeenCalledWith({ ...selection, stage: "both" });
+    expect(observed.runtime.setResultClosed).toHaveBeenCalledWith(true);
+  });
   it("does not render closed windows or subscribe to their catalog after unrelated owner updates", () => {
     observed.runtime = initial();
     const view = mount(<ConnectedPlayerWindows />);

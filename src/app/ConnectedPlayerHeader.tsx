@@ -6,6 +6,7 @@ import { WordTextPopover } from "../ui/WordTextPopover";
 import { WordQuality } from "../ui/WordTypingBoard";
 import { ConnectedPlayerTopBar, ConnectedSongProgress } from "./ConnectedPlayback";
 import { lessonDisplayTitle } from "./lessonDisplayTitle";
+import { COURSE_STAGE_LABELS } from "../ui/CourseCards";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 
 import { shallowEqual } from "react-redux";
@@ -30,7 +31,8 @@ export function ConnectedPlayerHeader() {
     trainerSnapshotSource,
     trainerMode,
     trainerSpeed,
-    inputMidiName
+    inputMidiName,
+    courseActive
   } = useRuntimeSelector(
     (runtime) => ({
       sound: runtime.sound,
@@ -52,7 +54,8 @@ export function ConnectedPlayerHeader() {
       trainerSnapshotSource: runtime.trainer.snapshotSource,
       trainerMode: runtime.trainer.mode,
       trainerSpeed: runtime.trainer.speed,
-      inputMidiName: runtime.input.midiName
+      inputMidiName: runtime.input.midiName,
+      courseActive: runtime.course.active
     }),
     shallowEqual
   );
@@ -80,7 +83,11 @@ export function ConnectedPlayerHeader() {
         <ConnectedPlayerTopBar
           source={trainerSnapshotSource}
           song={wordPracticeSong}
-          title={lessonDisplayTitle(song.title, currentLesson, t)}
+          title={
+            courseActive
+              ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${t("Фраза {number}", { number: courseActive.lesson.phrases.findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
+              : lessonDisplayTitle(song.title, currentLesson, t)
+          }
           playing={playing}
           soundLoading={sound === "loading" || (wordEnabled && (wordPending || Boolean(wordError)))}
           mode={trainerMode}

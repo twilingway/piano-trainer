@@ -24,6 +24,23 @@ function tracker(overrides: Partial<PracticeOptions> = {}) {
 }
 
 describe("run completion evidence", () => {
+  it("accepts options adjusted before the first play without erasing earlier seeks", () => {
+    const run = new RunCompletionTracker();
+    run.load(song, options, "song", "task");
+    run.load(song, { ...options, speed: 0.5, accompaniment: false }, "song", "task", true);
+    run.begin(0);
+    run.hit();
+    expect(run.finish()).toMatchObject({
+      from: 0,
+      hitCount: 1,
+      interrupted: false,
+      fullRange: true
+    });
+    run.seek();
+    run.load(song, { ...options, speed: 0.75 }, "song", "task", true);
+    run.begin(0);
+    expect(run.finish()?.interrupted).toBe(true);
+  });
   it("normalizes lead-in and returns immutable evidence once", () => {
     const run = tracker();
     run.hit();

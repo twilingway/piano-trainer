@@ -10,6 +10,7 @@ import type { CourseCardModel } from "./CourseCards";
 import { CourseLessonBar } from "./CourseLessonBar";
 import { LibraryDialog } from "./LibraryDialog";
 import { buildPianoTabs, PianoTabs } from "./PianoTabs";
+import { ResultDialog } from "./ResultDialog";
 
 vi.mock("./GameDialog", () => ({
   GameDialog: ({ children, title }: { children: ReactNode; title: string }) => (
@@ -64,6 +65,41 @@ afterEach(async () => {
 });
 
 describe("course cards and exercise controls", () => {
+  it("offers the next exercise without starting it automatically", async () => {
+    const onNext = vi.fn();
+    await render(
+      <ResultDialog
+        open
+        stats={undefined}
+        canReview={false}
+        onClose={noop}
+        onAgain={noop}
+        onReview={noop}
+        onNext={onNext}
+      />
+    );
+    expect(onNext).not.toHaveBeenCalled();
+    const next = Array.from(host.querySelectorAll("button")).find(
+      (button) => button.textContent === "Следующее задание"
+    );
+    expect(next).toBeDefined();
+    await act(async () => {
+      await Promise.resolve();
+      next?.click();
+    });
+    expect(onNext).toHaveBeenCalledOnce();
+    await render(
+      <ResultDialog
+        open
+        stats={undefined}
+        canReview={false}
+        onClose={noop}
+        onAgain={noop}
+        onReview={noop}
+      />
+    );
+    expect(host.textContent).not.toContain("Следующее задание");
+  });
   it("shows ten unavailable cards, progress and localized controls", async () => {
     const lessons: CourseCardModel[] = Array.from({ length: 10 }, (_, index) => ({
       id: `lesson-${String(index)}`,
