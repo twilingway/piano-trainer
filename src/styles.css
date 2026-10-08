@@ -190,7 +190,7 @@
 .piano-tabs [data-muted="true"] {
   opacity: 0.45;
 }
-@media (max-width: 600px) {
+@media (max-width: 720px) {
   .course-grid {
     grid-template-columns: minmax(0, 1fr);
   }
