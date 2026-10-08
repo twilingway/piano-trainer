@@ -16,6 +16,7 @@ export class ThreeKeysHost {
   private loading: Promise<void> | undefined;
   private wanted = false;
   private active = false;
+  private destroyed = false;
   /**
    * Holds the road's place on the stage while the road is drawn on its own: a container on the
    * stage cannot be drawn alone, its parent's visibility decides its children's.
@@ -29,10 +30,22 @@ export class ThreeKeysHost {
     private readonly keys: PerspectiveKeyboardLayer,
     private readonly keyboard: KeyboardLayer,
     private readonly hands: HandsLayer | undefined
-  ) {}
+  ) {
+    // Registered before Three's listener: restored contexts also inherit Pixi's upload state.
+    app.canvas.addEventListener("webglcontextrestored", this.contextRestored);
+  }
+
+  private readonly contextRestored = (): void => {
+    this.app.renderer.resetState();
+    // Three rebuilds its renderer later in this event; invalidate Pixi's caches afterwards.
+    queueMicrotask(() => {
+      if (!this.destroyed) this.app.renderer.resetState();
+    });
+  };
 
   /** Settles once the keys are drawn by three, or once it is clear that they cannot be. */
   setEnabled(on: boolean): Promise<void> {
+    if (this.destroyed) return Promise.resolve();
     this.wanted = on;
     const loaded = on ? this.load() : Promise.resolve();
     this.sync();
@@ -45,7 +58,10 @@ export class ThreeKeysHost {
   }
 
   destroy(): void {
+    if (this.destroyed) return;
     void this.setEnabled(false);
+    this.destroyed = true;
+    this.app.canvas.removeEventListener("webglcontextrestored", this.contextRestored);
     this.stage?.dispose();
     this.stage = undefined;
   }
@@ -57,7 +73,8 @@ export class ThreeKeysHost {
   }
 
   private async create(): Promise<void> {
-    const gl = (this.app.renderer as Partial<WebGLRenderer>).gl;
+    const renderer = this.app.renderer;
+    const gl = (renderer as Partial<WebGLRenderer>).gl;
     // three needs WebGL 2; anything else keeps the perspective keys.
     if (typeof WebGL2RenderingContext === "undefined" || !(gl instanceof WebGL2RenderingContext))
       return;
@@ -74,12 +91,20 @@ export class ThreeKeysHost {
           return undefined;
         })
       ]);
-      this.stage = new ThreeStage(this.app.canvas, gl, kit, hand);
+      if (this.destroyed) return;
+      // Three creates empty 3D textures in its constructor: Pixi's upload flags must be off.
+      renderer.resetState();
+      try {
+        this.stage = new ThreeStage(this.app.canvas, gl, kit, hand);
+      } finally {
+        // Construction also changes GL bindings, even if 3D was disabled while loading.
+        renderer.resetState();
+      }
     } catch (error) {
       console.warn("3D keys unavailable, keeping the perspective keys", error);
     } finally {
       this.loading = undefined;
-      this.sync();
+      if (!this.destroyed) this.sync();
     }
   }
 
@@ -116,22 +141,34 @@ export class ThreeKeysHost {
     // three left its own state (clear colour, blending) behind last frame.
     renderer.resetState();
     renderer.render({ container: this.road });
-    const picture = gl.texture.getGlSource(scene.texture.source).texture;
-    const frame = this.keyboard.frame;
-    const hands = this.hands?.container.visible
-      ? { time: this.hands.time, notes: this.hands.songNotes }
-      : undefined;
-    // Live hands press the keys they play themselves: a repeated note's key comes up between.
-    const played = hands !== undefined && this.stage.hands !== undefined;
-    this.stage.draw(
-      scene,
-      picture,
-      (pitch) =>
-        frame !== undefined && (frame.pressed.has(pitch) || (!played && frame.sounding.has(pitch))),
-      this.app.screen,
-      this.app.ticker.deltaMS / 1000,
-      hands
-    );
+    try {
+      const picture = gl.texture.getGlSource(scene.texture.source).texture;
+      const frame = this.keyboard.frame;
+      const hands = this.hands?.container.visible
+        ? { time: this.hands.time, notes: this.hands.songNotes }
+        : undefined;
+      // Live hands press the keys they play themselves: a repeated note's key comes up between.
+      const played = hands !== undefined && this.stage.hands !== undefined;
+      this.stage.draw(
+        scene,
+        picture,
+        (pitch) =>
+          frame !== undefined &&
+          (frame.pressed.has(pitch) || (!played && frame.sounding.has(pitch))),
+        this.app.screen,
+        this.app.ticker.deltaMS / 1000,
+        hands
+      );
+    } catch (error) {
+      console.warn("3D keys failed, keeping the perspective keys", error);
+      // Restore the road, keys, sprite hands and normal ticker before drawing this frame again.
+      void this.setEnabled(false);
+      this.stage.dispose();
+      this.stage = undefined;
+      renderer.resetState();
+      renderer.render({ container: stage });
+      return;
+    }
     renderer.resetState();
     renderer.render({ container: stage, clear: false });
   };
