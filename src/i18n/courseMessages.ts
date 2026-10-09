@@ -32,6 +32,13 @@ export const courseMessages: Messages = {
   "Следующее задание": { en: "Next exercise" },
   "Предыдущие версии": { en: "Previous versions" },
   "Пианинные табы": { en: "Piano tabs" },
+  "Скрыть табы": { en: "Hide tabs" },
+  "Показать табы": { en: "Show tabs" },
+  "{stage}: {done} из {total} фраз": { en: "{stage}: {done} of {total} phrases" },
+  "Пройдите финальную мелодию урока {number}": {
+    en: "Complete lesson {number}'s full melody"
+  },
+  "Урок закрыт": { en: "Lesson locked" },
   "Таб {note}, палец {finger}": { en: "Tab {note}, finger {finger}" },
   "Таб {note}": { en: "Tab {note}" },
   "Пока нет нот": { en: "No notes yet" },

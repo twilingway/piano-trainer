@@ -1,5 +1,10 @@
 import type { ListenerMiddlewareInstance } from "@reduxjs/toolkit";
-import { resolveSelection, type CourseLesson, type CourseSelection } from "../course/model";
+import {
+  lessonUnlocked,
+  resolveSelection,
+  type CourseLesson,
+  type CourseSelection
+} from "../course/model";
 import { initialCourseState, type CourseRoot, type CourseState } from "./courseSlice";
 import {
   browserPreferenceStorage,
@@ -67,7 +72,7 @@ export function loadCourseState(
       ([key, credit]) => credit === true && isProgressKey(key)
     ) ||
     (value.selection !== null && !parseSelection(value.selection)) ||
-    (value.view !== "tabs" && value.view !== "staff") ||
+    (value.view !== "tabs" && value.view !== "staff" && value.view !== "hidden") ||
     typeof value.accompaniment !== "boolean" ||
     (value.listenOnly !== undefined && typeof value.listenOnly !== "boolean")
   ) {
@@ -75,10 +80,15 @@ export function loadCourseState(
     return fallback();
   }
   const selection = parseSelection(value.selection);
+  const progress = Object.fromEntries(
+    Object.keys(value.progress).map((key) => [key, true as const])
+  );
+  const resolved = resolveSelection(lessons, selection);
   return {
     course: {
-      progress: Object.fromEntries(Object.keys(value.progress).map((key) => [key, true])),
-      selection: resolveSelection(lessons, selection)?.selection ?? null,
+      progress,
+      selection:
+        resolved && lessonUnlocked(resolved.lesson, lessons, progress) ? resolved.selection : null,
       view: value.view,
       accompaniment: value.accompaniment,
       listenOnly: value.listenOnly === true

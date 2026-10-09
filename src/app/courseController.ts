@@ -2,6 +2,7 @@ import type { CourseLesson, CourseSelection, CourseStage, CourseRunResult } from
 import {
   canCreditCourseRun,
   firstIncompleteSelection,
+  lessonUnlocked,
   phraseCompleted,
   progressKey,
   resolveSelection,
@@ -10,7 +11,7 @@ import {
 } from "../course/model";
 import type { Song } from "../song/song";
 import type { AppStore } from "./store";
-import { courseActions } from "./courseSlice";
+import { courseActions, type CourseState } from "./courseSlice";
 import { coursePhraseSong } from "./courseCatalog";
 import { selectSongKey } from "./songSelectors";
 
@@ -19,11 +20,13 @@ export function courseSource(lesson: CourseLesson, selection: CourseSelection): 
 }
 
 export function activeCourse(
-  state: ReturnType<AppStore["getState"]>,
+  state: { course: CourseState; song: { librarySource: string | null } },
   lessons: readonly CourseLesson[]
 ) {
   const resolved = resolveSelection(lessons, state.course.selection);
-  return resolved && state.song.librarySource === courseSource(resolved.lesson, resolved.selection)
+  return resolved &&
+    lessonUnlocked(resolved.lesson, lessons, state.course.progress) &&
+    state.song.librarySource === courseSource(resolved.lesson, resolved.selection)
     ? resolved
     : null;
 }
@@ -36,7 +39,8 @@ export function createCourseController(
 ) {
   const open = (selection: CourseSelection) => {
     const resolved = resolveSelection(lessons, selection);
-    if (!resolved) return;
+    if (!resolved || !lessonUnlocked(resolved.lesson, lessons, store.getState().course.progress))
+      return;
     const song = coursePhraseSong(resolved.lesson, resolved.phrase);
     store.dispatch(courseActions.selectionChosen(selection));
     showSong(song, courseSource(resolved.lesson, selection));
@@ -53,7 +57,9 @@ export function createCourseController(
       const lesson = lessons.find((candidate) => candidate.id === lessonId);
       if (!lesson?.stages.includes(stage)) return;
       const state = store.getState();
-      const current = activeCourse(state, [lesson]);
+      if (!lessonUnlocked(lesson, lessons, state.course.progress)) return;
+      const active = activeCourse(state, lessons);
+      const current = active?.lesson.id === lessonId ? active : null;
       if (current?.selection.stage === stage) return;
       const phrases = stagePhrases(lesson, stage);
       const phrase =

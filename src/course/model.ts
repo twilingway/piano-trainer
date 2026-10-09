@@ -19,6 +19,7 @@ export interface CourseLesson {
   readonly stages: readonly CourseStage[];
   readonly phrases: readonly CoursePhrase[];
   readonly tasks?: readonly CourseTask[];
+  readonly finalTask?: CourseTask;
 }
 export interface CourseSelection extends CourseTask {
   readonly lessonId: string;
@@ -64,6 +65,46 @@ export function stageCompleted(
   return (
     phrases.length > 0 &&
     phrases.every((phrase) => phraseCompleted(lesson, stage, phrase, progress))
+  );
+}
+
+export function stageProgress(
+  lesson: CourseLesson,
+  stage: CourseStage,
+  progress: CourseProgress
+): { done: number; total: number } {
+  const phrases = stagePhrases(lesson, stage);
+  return {
+    done: phrases.filter((phrase) => phraseCompleted(lesson, stage, phrase, progress)).length,
+    total: phrases.length
+  };
+}
+
+/** Missing lessons and missing final metadata fail closed, without deleting old credit. */
+export function blockingLessonNumber(
+  lesson: CourseLesson,
+  lessons: readonly CourseLesson[],
+  progress: CourseProgress
+): number | null {
+  for (let number = 1; number < lesson.number; number++) {
+    const predecessors = lessons.filter((candidate) => candidate.number === number);
+    const previous = predecessors.length === 1 ? predecessors[0] : undefined;
+    if (previous?.finalTask?.stage !== "both") return number;
+    const final = resolveSelection([previous], { lessonId: previous.id, ...previous.finalTask });
+    if (!final || !phraseCompleted(previous, "both", final.phrase, progress)) return number;
+  }
+  return null;
+}
+
+export function lessonUnlocked(
+  lesson: CourseLesson,
+  lessons: readonly CourseLesson[],
+  progress: CourseProgress
+): boolean {
+  return (
+    lesson.phrases.length > 0 &&
+    lesson.stages.length > 0 &&
+    blockingLessonNumber(lesson, lessons, progress) === null
   );
 }
 

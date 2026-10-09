@@ -5,6 +5,8 @@ export type CourseStageId = "right" | "left" | "both";
 export interface CourseStageModel {
   readonly id: CourseStageId;
   readonly completed: boolean;
+  readonly done: number;
+  readonly total: number;
 }
 
 export interface CourseCardModel {
@@ -13,6 +15,7 @@ export interface CourseCardModel {
   readonly title: string;
   readonly goal: string;
   readonly ready: boolean;
+  readonly lockedBy?: number | undefined;
   readonly current?: boolean;
   readonly started: boolean;
   readonly stages: readonly CourseStageModel[];
@@ -43,6 +46,7 @@ export function CourseCards({ lessons, onContinue, onStage }: Props) {
       </div>
       <div className="course-grid">
         {lessons.map((lesson) => {
+          const locked = lesson.lockedBy !== undefined;
           const done = lesson.stages.filter((stage) => stage.completed).length;
           const finished =
             lesson.ready && lesson.stages.length > 0 && done === lesson.stages.length;
@@ -52,6 +56,7 @@ export function CourseCards({ lessons, onContinue, onStage }: Props) {
               className="course-card"
               data-current={lesson.current}
               data-ready={lesson.ready}
+              data-locked={locked}
             >
               <div className="course-card__heading">
                 <span
@@ -70,37 +75,50 @@ export function CourseCards({ lessons, onContinue, onStage }: Props) {
                     type="button"
                     className="level-chip"
                     data-completed={stage.completed}
-                    disabled={!lesson.ready}
+                    disabled={!lesson.ready || locked}
                     onClick={() => {
                       onStage(lesson.id, stage.id);
                     }}
-                    aria-label={t("{stage}: {status}", {
+                    aria-label={t("{stage}: {done} из {total} фраз", {
                       stage: t(COURSE_STAGE_LABELS[stage.id]),
-                      status: stage.completed ? t("Этап пройден") : t("Этап не пройден")
+                      done: stage.done,
+                      total: stage.total
                     })}
                   >
-                    <span aria-hidden="true">{stage.completed ? "✓ " : "○ "}</span>
+                    {stage.completed && <span aria-hidden="true">✓ </span>}
                     {t(COURSE_STAGE_LABELS[stage.id])}
+                    {stage.total > 0 && (
+                      <span className="course-stage-progress">
+                        {stage.done}/{stage.total}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
+              {locked && (
+                <span className="course-locked">
+                  {t("Пройдите финальную мелодию урока {number}", { number: lesson.lockedBy })}
+                </span>
+              )}
               <div className="course-card__footer">
                 <span>{t("Этапы: {done} из {total}", { done, total: lesson.stages.length })}</span>
                 <button
                   type="button"
                   className="game-button"
-                  disabled={!lesson.ready}
+                  disabled={!lesson.ready || locked}
                   onClick={() => {
                     onContinue(lesson.id);
                   }}
                 >
                   {!lesson.ready
                     ? t("Скоро")
-                    : finished
-                      ? t("Повторить")
-                      : lesson.started
-                        ? t("Продолжить")
-                        : t("Начать")}
+                    : locked
+                      ? t("Урок закрыт")
+                      : finished
+                        ? t("Повторить")
+                        : lesson.started
+                          ? t("Продолжить")
+                          : t("Начать")}
                 </button>
               </div>
             </article>

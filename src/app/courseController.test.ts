@@ -8,8 +8,9 @@ import { createAppStore } from "./store";
 import { COURSE_STORAGE_KEY } from "./coursePersistence";
 import { PREFERENCE_KEYS } from "./preferencePersistence";
 import { courseActions } from "./courseSlice";
-import { activeCourse, createCourseController } from "./courseController";
+import { activeCourse, courseSource, createCourseController } from "./courseController";
 import { selectSongKey } from "./songSelectors";
+import type { Song } from "../song/song";
 
 const XML = `<score-partwise><part-list><score-part id="p"><part-name>Piano</part-name></score-part></part-list><part id="p"><measure number="1"><attributes><divisions>1</divisions><staves>2</staves><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><staff>1</staff></note><backup><duration>4</duration></backup><note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><staff>2</staff></note></measure></part></score-partwise>`;
 const lesson: CourseLesson = {
@@ -154,9 +155,11 @@ describe("course integration commands", () => {
   });
 
   it("uses the requested lesson's fallback while a different lesson is active", () => {
+    const predecessor: CourseLesson = { ...mixed, finalTask: { stage: "both", phraseId: "a" } };
     const other = { ...mixed, id: "other", number: 2 };
     const { store } = harness(mixed);
-    const controller = createCourseController(store, [mixed, other], (song, librarySource) =>
+    store.dispatch(courseActions.phraseCredited(progressKey(predecessor, "both", firstPhrase)));
+    const controller = createCourseController(store, [predecessor, other], (song, librarySource) =>
       store.dispatch(songActions.songOpened({ song, lesson: null, librarySource }))
     );
     controller.open({ lessonId: other.id, phraseId: "b", stage: "right" });
@@ -166,6 +169,75 @@ describe("course integration commands", () => {
       phraseId: "coord",
       stage: "both"
     });
+  });
+  it("guards open, continue, stage changes and an injected active selection until the final is credited", () => {
+    const predecessor: CourseLesson = { ...lesson, finalTask: { stage: "both", phraseId: "b" } };
+    const next = { ...lesson, id: "next", number: 2 };
+    const lessons = [predecessor, next];
+    const { store } = harness(predecessor);
+    const showSong = vi.fn((song: Song, librarySource: string | null) => {
+      store.dispatch(songActions.songOpened({ song, lesson: null, librarySource }));
+    });
+    const controller = createCourseController(store, lessons, showSong);
+    const nextTask = { lessonId: next.id, phraseId: "a", stage: "right" as const };
+    controller.open(nextTask);
+    controller.continueLesson(next.id);
+    controller.chooseStage(next.id, "both");
+    expect(showSong).not.toHaveBeenCalled();
+    store.dispatch(courseActions.selectionChosen(nextTask));
+    store.dispatch(songActions.librarySourceChanged(courseSource(next, nextTask)));
+    expect(activeCourse(store.getState(), lessons)).toBeNull();
+    controller.open({ lessonId: predecessor.id, phraseId: "b", stage: "both" });
+    const final = { lessonId: predecessor.id, phraseId: "b", stage: "both" as const };
+    const completion: CourseRunResult = {
+      songKey: selectSongKey(store.getState()),
+      context: runContext(predecessor, final) ?? "",
+      mode: "tempo",
+      from: 0,
+      to: 4,
+      hands: ["left", "right"],
+      hitCount: 1,
+      interrupted: false,
+      fullRange: true
+    };
+    for (const rejected of [
+      { ...completion, hands: [] },
+      { ...completion, hitCount: 0 },
+      { ...completion, interrupted: true },
+      { ...completion, fullRange: false }
+    ]) {
+      controller.finish(rejected);
+      controller.open(nextTask);
+      expect(activeCourse(store.getState(), lessons)?.lesson.id).toBe(predecessor.id);
+    }
+    controller.finish(completion);
+    controller.open(nextTask);
+    expect(activeCourse(store.getState(), lessons)?.selection).toEqual(nextTask);
+  });
+
+  it("does not reload a downstream saved lesson after the predecessor final is corrected", () => {
+    const predecessor: CourseLesson = { ...lesson, finalTask: { stage: "both", phraseId: "b" } };
+    const next = { ...lesson, id: "next", number: 2 };
+    const { store, storage } = harness(predecessor);
+    const finalPhrase = predecessor.phrases[1];
+    if (!finalPhrase) throw new Error("Missing final");
+    store.dispatch(courseActions.phraseCredited(progressKey(predecessor, "both", finalPhrase)));
+    const controller = createCourseController(store, [predecessor, next], (song, librarySource) =>
+      store.dispatch(songActions.songOpened({ song, lesson: null, librarySource }))
+    );
+    controller.open({ lessonId: next.id, phraseId: "a", stage: "right" });
+    const downstreamKey = progressKey(next, "right", firstPhrase);
+    store.dispatch(courseActions.phraseCredited(downstreamKey));
+    const expected = store.getState().course.progress;
+    const changed = { ...predecessor, phrases: [firstPhrase, { ...finalPhrase, version: "2" }] };
+    expect(activeCourse(store.getState(), [changed, next])).toBeNull();
+    storage.setItem.mockClear();
+    const restored = createAppStore({ storage, courseLessons: [changed, next] });
+    expect(restored.getState().course.selection).toBeNull();
+    expect(restored.getState().song.librarySource).toBeNull();
+    expect(restored.getState().course.progress).toEqual(expected);
+    expect(restored.getState().course.progress[downstreamKey]).toBe(true);
+    expect(storage.setItem).not.toHaveBeenCalled();
   });
   it("starts a mixed lesson with both hands and switches only to assigned stage phrases", () => {
     const mixed: CourseLesson = {

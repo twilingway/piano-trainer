@@ -17,6 +17,43 @@ const catalog = (entry: unknown = lesson, source = files) =>
   buildCourseCatalog(JSON.stringify({ lessons: [entry] }), source);
 
 describe("reviewed local course catalog", () => {
+  it("preserves an explicit final task and accepts old content without inferring one", () => {
+    const finalTask = { stage: "both", phraseId: "phrase-a" };
+    expect(catalog({ ...lesson, finalTask })[0]?.finalTask).toEqual(finalTask);
+    expect(catalog()[0]?.phrases).toHaveLength(1);
+    expect(catalog()[0]?.finalTask).toBeUndefined();
+  });
+  it.each([
+    null,
+    {},
+    [],
+    "whole",
+    { stage: "right", phraseId: "phrase-a" },
+    { stage: "both", phraseId: "missing" }
+  ])("keeps malformed explicit final metadata unavailable: %j", (finalTask) => {
+    expect(catalog({ ...lesson, finalTask })[0]?.phrases).toEqual([]);
+  });
+  it("rejects a final pair not assigned to both hands", () => {
+    const phrases = [...lesson.phrases, { ...lesson.phrases[0], id: "another" }];
+    expect(
+      catalog({
+        ...lesson,
+        phrases,
+        tasks: [
+          { stage: "right", phraseId: "phrase-a" },
+          { stage: "both", phraseId: "another" }
+        ],
+        finalTask: { stage: "both", phraseId: "phrase-a" }
+      })[0]?.phrases
+    ).toEqual([]);
+    expect(
+      catalog({
+        ...lesson,
+        stages: ["right"],
+        finalTask: { stage: "both", phraseId: "phrase-a" }
+      })[0]?.phrases
+    ).toEqual([]);
+  });
   it("accepts task-specific score hands, preserves order and optional phrase titles", () => {
     const entry = {
       ...lesson,

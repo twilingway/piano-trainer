@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   canCreditCourseRun,
+  blockingLessonNumber,
   courseSelections,
   firstIncompleteSelection,
   lessonCompleted,
+  lessonUnlocked,
   nextSelection,
   phraseCompleted,
   phraseVersion,
@@ -12,6 +14,7 @@ import {
   runContext,
   stageCompleted,
   stagePhrases,
+  stageProgress,
   type CourseLesson,
   type CourseProgress,
   type CourseRunResult,
@@ -43,6 +46,105 @@ const result = (changes: Partial<CourseRunResult> = {}): CourseRunResult => ({
 });
 
 describe("course progression", () => {
+  it("shows partial progress for only the phrases assigned to a hand", () => {
+    const assigned: CourseLesson = {
+      ...lesson,
+      tasks: [
+        { phraseId: first.id, stage: "right" },
+        { phraseId: second.id, stage: "left" },
+        { phraseId: first.id, stage: "both" },
+        { phraseId: second.id, stage: "both" }
+      ]
+    };
+    const progress: CourseProgress = {
+      [progressKey(assigned, "both", first)]: true,
+      [progressKey(assigned, "right", second)]: true
+    };
+    expect(stageProgress(assigned, "both", progress)).toEqual({ done: 1, total: 2 });
+    expect(stageProgress(assigned, "right", progress)).toEqual({ done: 0, total: 1 });
+    expect(stageProgress({ ...assigned, stages: ["both"] }, "left", progress)).toEqual({
+      done: 0,
+      total: 0
+    });
+  });
+
+  it("unlocks the next ready lesson with only its predecessor's explicit final credit", () => {
+    const firstLesson: CourseLesson = {
+      ...lesson,
+      finalTask: { stage: "both", phraseId: second.id }
+    };
+    const next = { ...lesson, id: "lesson-02", number: 2 };
+    const lessons = [firstLesson, next];
+    expect(lessonUnlocked(firstLesson, lessons, {})).toBe(true);
+    expect(blockingLessonNumber(next, lessons, {})).toBe(1);
+    const partial: CourseProgress = {
+      [progressKey(firstLesson, "right", second)]: true,
+      [progressKey(firstLesson, "both", first)]: true
+    };
+    expect(lessonUnlocked(next, lessons, partial)).toBe(false);
+    const progress: CourseProgress = {
+      ...partial,
+      [progressKey(firstLesson, "both", second)]: true
+    };
+    expect(lessonCompleted(firstLesson, progress)).toBe(false);
+    expect(lessonUnlocked(next, lessons, progress)).toBe(true);
+    expect(lessonUnlocked({ ...next, phrases: [] }, lessons, progress)).toBe(false);
+    expect(blockingLessonNumber(next, lessons, progress)).toBeNull();
+  });
+
+  it("checks the whole numeric chain without guessing absent final metadata or lessons", () => {
+    const firstLesson: CourseLesson = {
+      ...lesson,
+      finalTask: { stage: "both", phraseId: second.id }
+    };
+    const next: CourseLesson = { ...firstLesson, id: "lesson-02", number: 2 };
+    const third = { ...next, id: "lesson-03", number: 3 };
+    const progress: CourseProgress = { [progressKey(next, "both", second)]: true };
+    expect(blockingLessonNumber(third, [firstLesson, next, third], progress)).toBe(1);
+    progress[progressKey(firstLesson, "both", second)] = true;
+    expect(lessonUnlocked(third, [firstLesson, next, third], progress)).toBe(true);
+    expect(blockingLessonNumber(third, [firstLesson, third], progress)).toBe(2);
+    expect(blockingLessonNumber(next, [lesson, next], progress)).toBe(1);
+    expect(lessonUnlocked(lesson, [lesson, next], progress)).toBe(true);
+    expect(blockingLessonNumber(next, [firstLesson, firstLesson, next], progress)).toBe(1);
+    expect(
+      blockingLessonNumber(
+        next,
+        [{ ...firstLesson, finalTask: { stage: "right", phraseId: second.id } }, next],
+        progress
+      )
+    ).toBe(1);
+    expect(
+      blockingLessonNumber(
+        next,
+        [{ ...firstLesson, tasks: [{ stage: "right", phraseId: second.id }] }, next],
+        progress
+      )
+    ).toBe(1);
+  });
+
+  it("relocks after a revised final, but preserves access after a changed nonfinal phrase", () => {
+    const firstLesson: CourseLesson = {
+      ...lesson,
+      finalTask: { stage: "both", phraseId: second.id }
+    };
+    const next = { ...lesson, id: "lesson-02", number: 2 };
+    const progress: CourseProgress = {
+      [progressKey(firstLesson, "both", second)]: true,
+      [progressKey(next, "right", first)]: true
+    };
+    for (const revised of [
+      { ...second, version: "2" },
+      { ...second, musicXml: "corrected" }
+    ]) {
+      const changed = { ...firstLesson, phrases: [first, revised] };
+      expect(lessonUnlocked(next, [changed, next], progress)).toBe(false);
+    }
+    const changed = { ...firstLesson, phrases: [{ ...first, musicXml: "corrected" }, second] };
+    expect(lessonUnlocked(next, [changed, next], progress)).toBe(true);
+    expect(phraseCompleted(next, "right", first, progress)).toBe(true);
+  });
+
   it("follows fourteen explicit tasks and counts only each stage's assigned phrases", () => {
     const warmup = { ...first, id: "warmup", title: "Warmup" };
     const whole = { ...second, id: "whole", title: "Whole" };

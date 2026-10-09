@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import type { Song } from "../song/song";
-import { resolveSelection, runContext } from "../course/model";
+import { runContext } from "../course/model";
 import { COURSE_LESSONS } from "./courseCatalog";
 import { activeCourse, createCourseController } from "./courseController";
-import { courseActions } from "./courseSlice";
+import { courseActions, type CourseState } from "./courseSlice";
 import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
 
 export function useCourse(showSong: (song: Song, source: string | null) => void) {
@@ -16,16 +16,13 @@ export function useCourse(showSong: (song: Song, source: string | null) => void)
     () => createCourseController(store, COURSE_LESSONS, showSong),
     [store, showSong]
   );
-  const selected = useMemo(
-    () => resolveSelection(COURSE_LESSONS, saved.selection),
-    [saved.selection]
+  const active = useMemo(
+    () =>
+      word
+        ? null
+        : activeCourse({ course: saved, song: { librarySource: source } }, COURSE_LESSONS),
+    [saved, source, word]
   );
-  const active =
-    selected &&
-    source === `course:${runContext(selected.lesson, selected.selection) ?? ""}` &&
-    !word
-      ? selected
-      : null;
   const chooseStage = (stage: "right" | "left" | "both") => {
     const current = activeCourse(store.getState(), COURSE_LESSONS);
     if (current) controller.chooseStage(current.lesson.id, stage);
@@ -45,7 +42,7 @@ export function useCourse(showSong: (song: Song, source: string | null) => void)
           }
         }
       : undefined,
-    setView: (view: "tabs" | "staff") => {
+    setView: (view: CourseState["view"]) => {
       dispatch(courseActions.viewChanged(view));
     }
   };
