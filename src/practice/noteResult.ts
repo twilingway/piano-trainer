@@ -57,6 +57,7 @@ export class NoteResult {
   private readonly spans = new Map<string, PhysicalSpan[]>();
   private readonly events = new Map<string, PhysicalEvent[]>();
   private readonly accepted = new Map<number, SongNote[]>();
+  private readonly bindings = new Map<string, number>();
   private readonly byPitch = new Map<number, PhysicalSpan[]>();
   private readonly byId: Map<string, SongNote>;
   private lastPress?: PhysicalSpan;
@@ -78,13 +79,13 @@ export class NoteResult {
     this.byPitch.set(pitch, physical);
     this.input(pitch, source, { at, order: performanceMs ?? at * 1000, span });
     const notes = this.accepted.get(pitch) ?? [];
-    // A repress resumes only the most recent accepted note whose interval is still active.
+    // A repress resumes one bound note, never a later note without a new press.
     let low = 0;
     let high = notes.length;
     while (low < high) {
       const middle = (low + high) >>> 1;
       const candidate = notes[middle];
-      if (candidate && (this.hits.get(candidate.id) ?? Infinity) <= at) low = middle + 1;
+      if (candidate && (this.bindings.get(candidate.id) ?? Infinity) <= at) low = middle + 1;
       else high = middle;
     }
     const note = notes[low - 1];
@@ -95,17 +96,43 @@ export class NoteResult {
     const note = this.byId.get(noteId);
     if (!note) return;
     const fresh = !this.hits.has(noteId);
-    if (fresh) {
-      this.hits.set(noteId, at);
-      const notes = this.accepted.get(note.pitch) ?? [];
-      insertSorted(notes, note, (item) => this.hits.get(item.id) ?? Infinity);
-      this.accepted.set(note.pitch, notes);
-    }
+    if (fresh) this.hits.set(noteId, at);
+    this.bind(note, at);
     if (this.lastPress?.pitch === note.pitch && this.lastPress.start === at) {
       this.lastPress.primary = fresh;
       this.assign(this.lastPress, noteId);
     }
     if (fresh) this.reconcileRepeats(note);
+  }
+
+  /** Bind a correct active-note press without accepting or replacing its attack. */
+  recover(noteId: string, at: number): void {
+    const note = this.byId.get(noteId);
+    const span = this.lastPress;
+    if (!note || span?.pitch !== note.pitch || span.start !== at) return;
+    if (at < note.start || at >= note.start + note.duration) return;
+    this.bind(note, at);
+    span.primary = true;
+    this.assign(span, noteId);
+    this.reconcileRepeats(note);
+  }
+
+  recoverActive(pitch: number, at: number, enabled = true): boolean {
+    if (!enabled) return false;
+    let active: SongNote | undefined;
+    for (const note of this.notes) {
+      if (note.start > at) break;
+      if (note.pitch !== pitch || at >= note.start + note.duration) continue;
+      if (
+        !active ||
+        note.start > active.start ||
+        (note.start === active.start && note.id < active.id)
+      )
+        active = note;
+    }
+    if (!active) return false;
+    this.recover(active.id, at);
+    return true;
   }
 
   release(pitch: number, at: number, source: string, performanceMs?: number): void {
@@ -117,13 +144,14 @@ export class NoteResult {
     let holdUnits = 0;
     for (const note of this.notes) {
       const attack = this.hits.get(note.id);
-      if (attack === undefined) continue;
-      hitNotes++;
+      if (attack !== undefined) hitNotes++;
       if (note.duration <= 0) {
-        holdUnits++;
+        if (attack !== undefined) holdUnits++;
         continue;
       }
-      const start = Math.max(note.start, attack);
+      const binding = this.bindings.get(note.id);
+      if (binding === undefined) continue;
+      const start = Math.max(note.start, binding);
       const end = Math.min(note.start + note.duration, at);
       let held = 0;
       let until = start;
@@ -148,12 +176,22 @@ export class NoteResult {
     };
   }
 
+  private bind(note: SongNote, at: number): void {
+    const previous = this.bindings.get(note.id);
+    if (previous !== undefined && previous <= at) return;
+    const notes = this.accepted.get(note.pitch) ?? [];
+    if (previous !== undefined) notes.splice(notes.indexOf(note), 1);
+    this.bindings.set(note.id, at);
+    insertSorted(notes, note, (item) => this.bindings.get(item.id) ?? Infinity);
+    this.accepted.set(note.pitch, notes);
+  }
+
   private reconcileRepeats(note: SongNote): void {
     const accepted = this.accepted.get(note.pitch) ?? [];
     const index = accepted.indexOf(note);
-    const start = this.hits.get(note.id) ?? note.start;
+    const start = this.bindings.get(note.id) ?? note.start;
     const next = accepted[index + 1];
-    const end = next ? (this.hits.get(next.id) ?? Infinity) : Infinity;
+    const end = next ? (this.bindings.get(next.id) ?? Infinity) : Infinity;
     const physical = this.byPitch.get(note.pitch) ?? [];
     let low = 0;
     let high = physical.length;
@@ -217,7 +255,7 @@ export function passingNoteResult(result: NoteResultSnapshot | undefined, hits: 
     [result.hitPercent, result.holdPercent, result.percent].every(Number.isFinite) &&
     Math.abs(result.hitPercent - (30 * result.hitNotes) / result.expectedNotes) < 1e-9 &&
     result.holdPercent >= 0 &&
-    result.holdPercent <= (70 * result.hitNotes) / result.expectedNotes + 1e-9 &&
+    result.holdPercent <= 70 + 1e-9 &&
     Math.abs(result.percent - result.hitPercent - result.holdPercent) < 1e-9 &&
     result.percent >= COURSE_PASS_PERCENT &&
     result.percent <= 100

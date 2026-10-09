@@ -1926,7 +1926,9 @@ button.song-card.song-card__open {
 }
 
 .result-summary {
-  display: none;
+  display: block;
+  text-align: center;
+  padding: 12px 0;
 }
 
 .result-stars {
@@ -1948,9 +1950,7 @@ button.song-card.song-card__open {
   }
 
   .result-summary {
-    display: block;
-    text-align: center;
-    padding: 12px 0;
+    flex-shrink: 0;
   }
 
   .result-points {
@@ -1966,6 +1966,7 @@ button.song-card.song-card__open {
 
 .result-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
   margin-top: 16px;

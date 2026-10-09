@@ -189,9 +189,9 @@ export const settingsMessages2 = {
     {
       en: "20 Perfect or Great hits in a row start Flow. Every scored note, even Good and OK, adds energy. The total depends on the length of the selected part: enough for two Overdrives in a piece under 30 seconds, three in a longer one. Misses and rests add no energy. Overdrive costs 50 energy and doubles the multiplier for 10 seconds, so a very short exercise may allow fewer activations. Holding long notes earns bonus points."
     },
-  "Точность считается только по моменту нажатия. Звёзды сравнивают ваши очки с идеальной игрой без Overdrive. В режиме «Ждать ноту» рейтинга нет.":
+  "В пианино звёзды даются за общий результат: 30% за попадания и 70% за удержание. От 25% — одна звезда, от 50% — две, от 75% — три. Точность попадания и ранг времени считаются отдельно. В печати слов звёзды зависят от точности.":
     {
-      en: "Accuracy only looks at when you press the keys. Stars compare your score with a perfect run without Overdrive. “Wait for note” has no ranking."
+      en: "Piano stars use the overall result: 30% for hits and 70% for holding. At least 25% earns one star, 50% two, and 75% three. Hit timing accuracy and timing rank are separate. Word typing stars depend on accuracy."
     },
   "Язык текста": {
     en: "Text language"

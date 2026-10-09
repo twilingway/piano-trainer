@@ -357,6 +357,7 @@ export class PracticeSession {
         best = note;
     }
     if (!best) {
+      if (this.result.recoverActive(pitch, eventSongTime, this.options.noteResult)) return [];
       if (
         this.clockStarted &&
         !this.playerNotes.some(

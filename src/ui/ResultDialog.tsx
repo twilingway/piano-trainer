@@ -1,6 +1,7 @@
 import { useI18n } from "../app/useI18n";
 import type { PracticeStats } from "../practice/session";
 import { COURSE_PASS_PERCENT } from "../course/model";
+import { starsForNoteResult } from "../practice/gameResults";
 import { GameDialog } from "./GameDialog";
 
 const NOTE_NAMES = [
@@ -54,6 +55,7 @@ export function ResultDialog({
   const played = stats ? stats.hits + stats.misses : 0;
   const game = stats?.game;
   const result = stats?.noteResult;
+  const stars = result ? starsForNoteResult(result) : (game?.stars ?? null);
   const accuracy = result
     ? result.percent
     : game
@@ -63,21 +65,25 @@ export function ResultDialog({
         : null;
   return (
     <GameDialog open={open} title={t("Готово")} className="result" onClose={onClose}>
-      {game && game.stars !== null ? (
+      {stars !== null ? (
         <p
           className="result-stars"
           role="img"
-          aria-label={t("Звёзды: {stars} из 3", { stars: String(game.stars) })}
-          title={t("1 звезда: точность выше 25%; 2: выше 50%; 3: выше 75%")}
+          aria-label={t("Звёзды: {stars} из 3", { stars: String(stars) })}
+          title={
+            result
+              ? t("1 звезда: результат от 25%; 2: от 50%; 3: от 75%")
+              : t("1 звезда: точность выше 25%; 2: выше 50%; 3: выше 75%")
+          }
         >
-          <span aria-hidden="true">{"★".repeat(game.stars)}</span>
+          <span aria-hidden="true">{"★".repeat(stars)}</span>
           <span className="result-stars-empty" aria-hidden="true">
-            {"☆".repeat(3 - game.stars)}
+            {"☆".repeat(3 - stars)}
           </span>
         </p>
       ) : null}
-      {result && game?.stars != null && (
-        <p className="result-caption">{t("Звёзды за точность попадания")}</p>
+      {result && stars !== null && (
+        <p className="result-caption">{t("Звёзды за попадания и удержание")}</p>
       )}
       <div className="result-summary">
         {game && game.expectedNotes > 0 ? (

@@ -76,7 +76,7 @@ describe("game score presentation", () => {
     }
   });
 
-  it("reports the unrounded passing threshold and separates timing stars from holding", () => {
+  it("uses the unrounded shared result for stars and keeps timing accuracy separate", () => {
     const score = new GameScore(1);
     score.hit("a", 0, 0);
     const render = (percent: number) =>
@@ -110,7 +110,8 @@ describe("game score presentation", () => {
     expect(below).toContain("75,0%");
     expect(below).toContain("Для зачёта нужно не меньше 75%");
     expect(below).not.toContain("Порог 75% достигнут");
-    expect(below).toContain("Звёзды за точность попадания");
+    expect(below).toContain("Звёзды за попадания и удержание");
+    expect(below).toContain('aria-label="Звёзды: 2 из 3"');
     expect(below).toContain("Ранг по времени");
     expect(below).toContain("Точность попадания: 100%");
     const window = new Window();
@@ -121,13 +122,14 @@ describe("game score presentation", () => {
     expect(window.document.querySelector(".result-details .result-score")).toBeNull();
     window.close();
     expect(render(75)).toContain("Порог 75% достигнут");
+    expect(render(75)).toContain('aria-label="Звёзды: 3 из 3"');
     setInterfaceLanguage("en");
     expect(render(65)).toContain("Hits: 30% out of 30%");
     expect(render(65)).toContain("Holding: 35% out of 70%");
     expect(render(65)).toContain("You need at least 75% to pass");
     expect(render(65)).toContain("Hit timing accuracy: 100%");
   });
-  it("keeps waiting results free of timing stars and empty-note messages", () => {
+  it("awards holding result stars in wait mode without timing rank", () => {
     const markup = renderToStaticMarkup(
       <ResultDialog
         open
@@ -154,7 +156,47 @@ describe("game score presentation", () => {
     );
     expect(markup).toContain("65,0%");
     expect(markup).not.toContain("Звёзды за точность попадания");
+    expect(markup).toContain("Звёзды за попадания и удержание");
+    expect(markup).toContain('aria-label="Звёзды: 2 из 3"');
+    expect(markup).not.toContain("Ранг по времени");
     expect(markup).not.toContain("Нет нот для оценки");
+  });
+  it("awards three stars for 85.2 percent even when attack accuracy is 45 percent", () => {
+    const score = new GameScore(4);
+    score.hit("a", 40, 0);
+    score.hit("b", 70, 1);
+    score.hit("c", 150, 2);
+    score.hit("d", 150, 3);
+    const game = score.snapshot(4);
+    expect(game.accuracy).toBe(45);
+    const markup = renderToStaticMarkup(
+      <ResultDialog
+        open
+        stats={{
+          hits: 4,
+          misses: 0,
+          wrong: 0,
+          meanOffset: 0,
+          troubleSpots: [],
+          game,
+          noteResult: {
+            policy: NOTE_RESULT_POLICY,
+            expectedNotes: 4,
+            hitNotes: 4,
+            hitPercent: 30,
+            holdPercent: 55.2,
+            percent: 85.2
+          }
+        }}
+        canReview={false}
+        onClose={vi.fn()}
+        onAgain={vi.fn()}
+        onReview={vi.fn()}
+      />
+    );
+    expect(markup).toContain('aria-label="Звёзды: 3 из 3"');
+    expect(markup).toContain("85,2%");
+    expect(markup).toContain("Точность попадания: 45%");
   });
   it("does not offer ranked score or Overdrive in wait mode", () => {
     const markup = renderToStaticMarkup(

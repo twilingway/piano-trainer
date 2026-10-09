@@ -316,6 +316,28 @@ describe("course progression", () => {
 });
 
 describe("course run credit", () => {
+  it("credits sufficient holding recovered after missed attacks under the existing policy", () => {
+    expect(
+      canCreditCourseRun(
+        lesson,
+        selection,
+        result({
+          hitCount: 3,
+          noteResult: {
+            policy: NOTE_RESULT_POLICY,
+            expectedNotes: 4,
+            hitNotes: 3,
+            hitPercent: 22.5,
+            holdPercent: 60,
+            percent: 82.5
+          }
+        }),
+        "course-song"
+      )
+    ).toBe(true);
+    const saved: CourseProgress = { [progressKey(lesson, "right", first)]: true };
+    expect(phraseCompleted(lesson, "right", first, saved)).toBe(true);
+  });
   it("credits 75% exactly and refuses a rounded-up 74.999% result", () => {
     const evidence = result().noteResult;
     if (!evidence) throw new Error("Missing score evidence");
