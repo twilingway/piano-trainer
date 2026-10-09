@@ -18,6 +18,13 @@ export const courseMessages: Messages = {
     en: "Repeat earlier passes: you now need 75% for hits and holding."
   },
   Координация: { en: "Coordination" },
+  "Урок 1. Вводный": { en: "Lesson 1. Introduction" },
+  "Урок 2. Октавы": { en: "Lesson 2. Octaves" },
+  "Октавы — ровно": { en: "Octaves — evenly" },
+  "Октавы — в ритме": { en: "Octaves — in rhythm" },
+  "Освоить октавы левой рукой, вступление и четыре фразы припева Let It Be": {
+    en: "Learn left-hand octaves, the intro and four chorus phrases of Let It Be"
+  },
   "Мелодия — фраза 1": { en: "Melody — phrase 1" },
   "Мелодия — фраза 2": { en: "Melody — phrase 2" },
   "Мелодия — фраза 3": { en: "Melody — phrase 3" },
