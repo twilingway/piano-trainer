@@ -1,6 +1,19 @@
 import type { Messages } from "./locales";
 
 export const courseMessages: Messages = {
+  "Точность попадания: {percent}%": { en: "Hit timing accuracy: {percent}%" },
+  "Попадания — 30%, удержание — 70%": { en: "Hits — 30%, holding — 70%" },
+  "За попадания: {percent}% из 30%": { en: "Hits: {percent}% out of 30%" },
+  "За удержание: {percent}% из 70%": { en: "Holding: {percent}% out of 70%" },
+  "Порог 75% достигнут": { en: "75% target reached" },
+  "Для зачёта нужно не меньше 75%. Удерживайте клавиши до конца нот.": {
+    en: "You need at least 75% to pass. Hold the keys until the notes end."
+  },
+  "Звёзды за точность попадания": { en: "Stars for timing accuracy" },
+  "· Ранг по времени": { en: "· Timing rank" },
+  "Прежние зачёты нужно повторить: теперь требуется 75% за попадания и удержание.": {
+    en: "Repeat earlier passes: you now need 75% for hits and holding."
+  },
   Координация: { en: "Coordination" },
   "Мелодия — фраза 1": { en: "Melody — phrase 1" },
   "Мелодия — фраза 2": { en: "Melody — phrase 2" },

@@ -76,6 +76,7 @@ describe("Trainer natural exercise completion", () => {
       to: 1,
       fullRange: true,
       hitCount: 1,
+      noteResult: { expectedNotes: 1, hitNotes: 1, hitPercent: 30, holdPercent: 70, percent: 100 },
       interrupted: false
     });
   });
@@ -142,6 +143,23 @@ describe("Trainer natural exercise completion", () => {
     });
     run.frame(4300);
     expect(run.results[0]).toMatchObject({ hitCount: 1, interrupted: false, from: 0 });
+    expect(run.results[0]?.noteResult?.percent).toBe(100);
+  });
+
+  it("passes precise release evidence rather than hit-only accuracy to completion", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.hit();
+    now = 3500;
+    run.trainer.key({ type: "up", pitch: 60, velocity: 0, timestamp: now });
+    run.frame(4300);
+    expect(run.results[0]?.noteResult).toMatchObject({
+      expectedNotes: 1,
+      hitNotes: 1,
+      hitPercent: 30,
+      holdPercent: 35,
+      percent: 65
+    });
   });
 
   it("invalidates changed options despite position preservation", () => {
@@ -174,6 +192,7 @@ describe("Trainer natural exercise completion", () => {
       run.trainer.setPlaying(true);
       run.frame(4500);
       expect(run.results[0]?.hitCount).toBe(0);
+      expect(run.results[0]?.noteResult?.percent).toBe(hands.size === 0 ? null : 0);
     }
   );
 
@@ -188,5 +207,6 @@ describe("Trainer natural exercise completion", () => {
     expect(run.results).toHaveLength(2);
     expect(run.results.map((result) => result.runId)).toEqual(["1", "2"]);
     expect(run.results.every((result) => result.hitCount === 1 && !result.interrupted)).toBe(true);
+    expect(run.results.every((result) => result.noteResult?.percent === 100)).toBe(true);
   });
 });

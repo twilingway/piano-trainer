@@ -11,6 +11,7 @@ import { courseActions } from "./courseSlice";
 import { activeCourse, courseSource, createCourseController } from "./courseController";
 import { selectSongKey } from "./songSelectors";
 import type { Song } from "../song/song";
+import { NOTE_RESULT_POLICY } from "../practice/noteResult";
 
 const XML = `<score-partwise><part-list><score-part id="p"><part-name>Piano</part-name></score-part></part-list><part id="p"><measure number="1"><attributes><divisions>1</divisions><staves>2</staves><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><staff>1</staff></note><backup><duration>4</duration></backup><note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><staff>2</staff></note></measure></part></score-partwise>`;
 const lesson: CourseLesson = {
@@ -47,6 +48,14 @@ function harness(courseLesson = lesson) {
     to: 4,
     hands: ["right"],
     hitCount: 1,
+    noteResult: {
+      policy: NOTE_RESULT_POLICY,
+      expectedNotes: 1,
+      hitNotes: 1,
+      hitPercent: 30,
+      holdPercent: 70,
+      percent: 100
+    },
     interrupted: false,
     fullRange: true
   });
@@ -196,7 +205,15 @@ describe("course integration commands", () => {
       from: 0,
       to: 4,
       hands: ["left", "right"],
-      hitCount: 1,
+      hitCount: 2,
+      noteResult: {
+        policy: NOTE_RESULT_POLICY,
+        expectedNotes: 2,
+        hitNotes: 2,
+        hitPercent: 30,
+        holdPercent: 70,
+        percent: 100
+      },
       interrupted: false,
       fullRange: true
     };

@@ -35,7 +35,8 @@ export function ConnectedPracticeWorkspace() {
     trainerHostRef,
     snapshotWaiting,
     viewMirrorHostRef,
-    courseTabs
+    courseTabs,
+    courseTopView
   } = useRuntimeSelector(
     (runtime) => ({
       displayPrefs: runtime.displayPrefs,
@@ -63,7 +64,10 @@ export function ConnectedPracticeWorkspace() {
       snapshotWaiting: runtime.snapshot.waiting,
       viewMirrorHostRef: runtime.view.mirrorHostRef,
       courseTabs:
-        runtime.course.active !== null && runtime.course.saved.view === "tabs" && !runtime.comparing
+        runtime.course.active !== null &&
+        (runtime.course.saved.view === "tabs" || runtime.course.saved.view === "both") &&
+        !runtime.comparing,
+      courseTopView: runtime.course.saved.topView
     }),
     shallowEqual
   );
@@ -77,6 +81,7 @@ export function ConnectedPracticeWorkspace() {
       {!wordEnabled && !comparing && <ConnectedCourseLessonBar />}
       <ConnectedWorkspace
         scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
+        scoreFirst={courseTopView}
         source={trainerSnapshotSource}
         wordBoard={
           wordEnabled && !comparing ? (

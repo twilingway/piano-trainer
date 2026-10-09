@@ -54,6 +54,52 @@ function fixtureStore(storage: PreferenceStorage) {
 }
 
 describe("course persistence", () => {
+  it.each(["staff", "tabs"] as const)(
+    "keeps the first enabled %s reader on top after reload",
+    (first) => {
+      const storage = storageFixture(),
+        store = fixtureStore(storage);
+      store.dispatch(courseActions.viewChanged("hidden"));
+      store.dispatch(courseActions.viewChanged(first));
+      store.dispatch(courseActions.viewChanged("both"));
+      expect(store.getState().course).toMatchObject({ view: "both", topView: first });
+      const restored = fixtureStore(storage);
+      expect(restored.getState().course).toMatchObject({ view: "both", topView: first });
+      const remaining = first === "staff" ? "tabs" : "staff";
+      restored.dispatch(courseActions.viewChanged(remaining));
+      restored.dispatch(courseActions.viewChanged("both"));
+      expect(loadCourseState(storage, [lesson]).course).toMatchObject({
+        view: "both",
+        topView: remaining
+      });
+    }
+  );
+
+  it.each([
+    ["staff", "staff"],
+    ["tabs", "tabs"],
+    ["both", "tabs"],
+    ["hidden", "tabs"]
+  ] as const)("loads legacy %s views with a stable %s-first order", (view, topView) => {
+    const { topView: _topView, ...legacy } = initialCourseState;
+    const storage = storageFixture(JSON.stringify({ ...legacy, view }));
+    expect(loadCourseState(storage, [lesson]).course).toMatchObject({ view, topView });
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("restores both score readers without changing the assignment or progress", () => {
+    const storage = storageFixture(),
+      store = fixtureStore(storage);
+    store.dispatch(courseActions.selectionChosen(selection));
+    store.dispatch(courseActions.phraseCredited(key));
+    store.dispatch(courseActions.viewChanged("both"));
+    expect(loadCourseState(storage, [lesson]).course).toMatchObject({
+      view: "both",
+      selection,
+      progress: { [key]: true }
+    });
+  });
+
   it("round-trips a hidden course view without losing its selection or credits", () => {
     const storage = storageFixture(),
       store = fixtureStore(storage);
@@ -124,6 +170,7 @@ describe("course persistence", () => {
       progress: { [key]: true },
       selection,
       view: "staff",
+      topView: "staff",
       accompaniment: true,
       listenOnly: true
     };
@@ -142,6 +189,7 @@ describe("course persistence", () => {
         progress: { [key]: true },
         selection,
         view: "staff",
+        topView: "staff",
         accompaniment: true,
         listenOnly: false
       },

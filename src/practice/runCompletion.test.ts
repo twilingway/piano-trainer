@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Song } from "../song/song";
 import type { PracticeOptions } from "./session";
 import { RunCompletionTracker } from "./runCompletion";
+import { NOTE_RESULT_POLICY } from "./noteResult";
 
 const song: Song = {
   title: "synthetic exercise",
@@ -24,6 +25,22 @@ function tracker(overrides: Partial<PracticeOptions> = {}) {
 }
 
 describe("run completion evidence", () => {
+  it("freezes the session result into the one natural completion signal", () => {
+    const run = tracker();
+    run.hit();
+    const result = {
+      policy: NOTE_RESULT_POLICY,
+      expectedNotes: 1,
+      hitNotes: 1,
+      hitPercent: 30,
+      holdPercent: 45,
+      percent: 75
+    };
+    const completion = run.finish(result);
+    result.percent = 0;
+    expect(completion?.noteResult?.percent).toBe(75);
+    expect(run.finish(result)).toBeUndefined();
+  });
   it("accepts options adjusted before the first play without erasing earlier seeks", () => {
     const run = new RunCompletionTracker();
     run.load(song, options, "song", "task");
@@ -108,6 +125,7 @@ describe("run completion evidence", () => {
     { hands: new Set(["left"] as const) },
     { mode: "tempo" as const },
     { parts: new Set(["treble"]) },
+    { noteResult: false },
     { accompaniment: false }
   ])("invalidates an active run when options change %j", (change) => {
     const run = tracker();

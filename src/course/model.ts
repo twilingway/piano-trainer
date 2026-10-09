@@ -1,4 +1,7 @@
 import type { Hand } from "../fingering/fingering";
+import { NOTE_RESULT_POLICY, passingNoteResult } from "../practice/noteResult";
+import type { NoteResultSnapshot } from "../practice/noteResult";
+export { COURSE_PASS_PERCENT } from "../practice/noteResult";
 
 export type CourseStage = "right" | "left" | "both";
 export interface CoursePhrase {
@@ -41,7 +44,12 @@ export function progressKey(
   stage: CourseStage,
   phrase: CoursePhrase
 ): string {
-  return JSON.stringify([lesson.id, stage, phrase.id, phraseVersion(phrase)]);
+  return JSON.stringify([
+    lesson.id,
+    stage,
+    phrase.id,
+    `${phraseVersion(phrase)}:${NOTE_RESULT_POLICY}`
+  ]);
 }
 
 export function phraseCompleted(
@@ -184,6 +192,7 @@ export interface CourseRunResult {
   readonly to: number;
   readonly hands: readonly Hand[];
   readonly hitCount: number;
+  readonly noteResult?: NoteResultSnapshot | undefined;
   readonly interrupted: boolean;
   /** True only for a naturally finished run covering the whole playable score. */
   readonly fullRange: boolean;
@@ -215,6 +224,7 @@ export function canCreditCourseRun(
     !result.interrupted &&
     Number.isInteger(result.hitCount) &&
     result.hitCount > 0 &&
+    passingNoteResult(result.noteResult, result.hitCount) &&
     result.hands.length === hands.length &&
     hands.every((hand) => result.hands.includes(hand))
   );

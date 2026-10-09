@@ -24,13 +24,14 @@ export interface CourseCardModel {
 export const COURSE_STAGE_LABELS = { right: "Правая", left: "Левая", both: "Обе" } as const;
 
 interface Props {
+  readonly previousCredits?: boolean;
   readonly lessons: readonly CourseCardModel[];
   readonly onContinue: (lessonId: string) => void;
   readonly onStage: (lessonId: string, stage: CourseStageId) => void;
 }
 
 /** Course cards receive stable summaries, independently of the practice clock. */
-export function CourseCards({ lessons, onContinue, onStage }: Props) {
+export function CourseCards({ lessons, onContinue, onStage, previousCredits = false }: Props) {
   const { t } = useI18n();
   const completed = lessons.filter(
     (lesson) =>
@@ -44,6 +45,11 @@ export function CourseCards({ lessons, onContinue, onStage }: Props) {
           {t("Пройдено уроков: {done} из {total}", { done: completed, total: lessons.length })}
         </span>
       </div>
+      {previousCredits && (
+        <p className="course-locked">
+          {t("Прежние зачёты нужно повторить: теперь требуется 75% за попадания и удержание.")}
+        </p>
+      )}
       <div className="course-grid">
         {lessons.map((lesson) => {
           const locked = lesson.lockedBy !== undefined;

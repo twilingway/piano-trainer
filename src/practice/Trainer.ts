@@ -15,6 +15,8 @@ import { PracticeSession } from "./session";
 import type { NoteStatus, PracticeEvent, PracticeOptions, PracticeStats } from "./session";
 import type { TimingConfig } from "./timingConfig";
 import { SongTimeline } from "./timing";
+import { beatAt } from "./sessionBeats";
+export { beatAt } from "./sessionBeats";
 import { timingPolicy } from "./timingPolicy";
 import type { TimingPolicy } from "./timingPolicy";
 
@@ -48,25 +50,6 @@ const NOTHING: ReadonlySet<number> = new Set();
 /** Two seconds fill the lane: at 114 BPM a quarter spans about 79 px of a 300 px lane. */
 const LOOK_AHEAD_S = 2;
 const SNAPSHOT_INTERVAL_MS = 150;
-
-/** Beat of the latest note that has started by `time`; notes are sorted by start. */
-export function beatAt(song: Song, time: number): number {
-  let low = 0;
-  let high = song.notes.length - 1;
-  let found = 0;
-  while (low <= high) {
-    const middle = (low + high) >> 1;
-    const note = song.notes[middle];
-    if (!note) break;
-    if (note.start <= time) {
-      found = note.startBeat;
-      low = middle + 1;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return found;
-}
 
 /**
  * Glue between the pure session, the picture, the sound and the keys. Owns
@@ -160,6 +143,7 @@ export class Trainer {
     this.songKey = songKey;
     this.session = new PracticeSession(song, options);
     if (position !== undefined) this.session.seek(position, now, { leadIn: false });
+    if (previous) this.session.inheritNoteResult(previous);
     this.timing = this.nextTiming;
     this.session.startClock(now);
     this.session.pauseClock(now);
@@ -487,7 +471,7 @@ export class Trainer {
           break;
         case "finished":
           {
-            const result = this.run.finish();
+            const result = this.run.finish(this.session?.stats().noteResult);
             if (result) this.onRunFinished?.(result);
           }
           this.finishTake();

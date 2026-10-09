@@ -74,6 +74,7 @@ export function ConnectedPlayerWindows() {
         source={source}
         open={finished && !listening && !comparing && !resultClosed}
         canReview={canReview}
+        course={courseActive !== null}
         onClose={() => {
           setResultClosed(true);
         }}
