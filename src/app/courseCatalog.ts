@@ -1,8 +1,11 @@
 import { buildCourseCatalog } from "../course/catalog";
 import { songFromMusicXml } from "../song/musicxml";
-import type { CourseLesson, CoursePhrase } from "../course/model";
+import type { CourseAccessMode, CourseLesson, CoursePhrase } from "../course/model";
 import { phraseVersion } from "../course/model";
 import { LOCAL_LESSONS } from "../song/localLessons";
+
+/** Build-time policy: review access cannot be enabled by saved player preferences. */
+export const COURSE_ACCESS_MODE: CourseAccessMode = import.meta.env.DEV ? "review" : "progression";
 
 const FILES = import.meta.glob<string>("/local-lessons/.course/**/*.{musicxml,xml}", {
   query: "?raw",

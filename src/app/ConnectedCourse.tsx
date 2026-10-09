@@ -10,7 +10,7 @@ import {
 import { CourseCards } from "../ui/CourseCards";
 import { CourseLessonBar } from "../ui/CourseLessonBar";
 import { PianoTabs } from "../ui/PianoTabs";
-import { COURSE_LESSONS } from "./courseCatalog";
+import { COURSE_ACCESS_MODE, COURSE_LESSONS } from "./courseCatalog";
 import { useAppSelector } from "./storeHooks";
 import { useRuntimeCommand } from "./runtimeCommands";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
@@ -30,7 +30,8 @@ export function ConnectedCourseCards({ onChoose }: { onChoose: () => void }) {
     title: t(lesson.title, { number: lesson.number }),
     goal: t(lesson.goal),
     ready: lesson.phrases.length > 0,
-    lockedBy: blockingLessonNumber(lesson, COURSE_LESSONS, progress) ?? undefined,
+    lockedBy:
+      blockingLessonNumber(lesson, COURSE_LESSONS, progress, COURSE_ACCESS_MODE) ?? undefined,
     current: current === lesson.id,
     started: lesson.stages.some((stage) =>
       stagePhrases(lesson, stage).some((phrase) => phraseCompleted(lesson, stage, phrase, progress))

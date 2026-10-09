@@ -63,6 +63,72 @@ function harness(courseLesson = lesson) {
 }
 
 describe("course integration commands", () => {
+  it("opens and switches a downstream review lesson while requiring a qualified real run for credit", () => {
+    const next: CourseLesson = { ...lesson, id: "next", number: 2 };
+    const lessons = [lesson, next];
+    const { store, selection, result } = harness(next);
+    const showSong = (song: Song, librarySource: string | null) =>
+      store.dispatch(songActions.songOpened({ song, lesson: null, librarySource }));
+    const review = createCourseController(store, lessons, showSong, "review");
+    const production = createCourseController(store, lessons, showSong);
+    review.continueLesson(next.id);
+    expect(activeCourse(store.getState(), lessons, "review")?.selection).toEqual(selection);
+    expect(activeCourse(store.getState(), lessons)).toBeNull();
+    expect(store.getState().course.progress).toEqual({});
+    for (const stage of ["left", "both", "right"] as const) {
+      review.chooseStage(next.id, stage);
+      expect(activeCourse(store.getState(), lessons, "review")?.selection).toEqual({
+        ...selection,
+        stage
+      });
+    }
+    const saved = store.getState();
+    production.chooseStage(next.id, "left");
+    production.open({ ...selection, phraseId: "b" });
+    production.finish(result());
+    expect(store.getState()).toBe(saved);
+    const completion = result();
+    if (!completion.noteResult) throw new Error("Missing result fixture");
+    for (const rejected of [
+      { ...result(), hands: [] },
+      { ...result(), hitCount: 0 },
+      { ...result(), interrupted: true },
+      { ...result(), fullRange: false },
+      {
+        ...completion,
+        noteResult: { ...completion.noteResult, holdPercent: 44.99, percent: 74.99 }
+      }
+    ]) {
+      review.finish(rejected);
+      expect(store.getState().course.progress).toEqual({});
+    }
+    review.finish(result());
+    expect(store.getState().course.progress).toEqual({
+      [progressKey(next, "right", firstPhrase)]: true
+    });
+  });
+
+  it("rejects absent review phrases and unavailable lessons without changing selection", () => {
+    const next = { ...lesson, id: "next", number: 2 };
+    const unavailable: CourseLesson = { ...lesson, id: "unavailable", number: 3, phrases: [] };
+    const { store, selection } = harness(next);
+    const review = createCourseController(
+      store,
+      [lesson, next, unavailable],
+      (song, librarySource) =>
+        store.dispatch(songActions.songOpened({ song, lesson: null, librarySource })),
+      "review"
+    );
+    review.open(selection);
+    const saved = store.getState();
+    review.open({ ...selection, phraseId: "missing" });
+    review.open({ ...selection, lessonId: unavailable.id });
+    review.continueLesson(unavailable.id);
+    review.chooseStage(unavailable.id, "both");
+    expect(store.getState()).toBe(saved);
+    expect(store.getState().course.progress).toEqual({});
+  });
+
   const mixed: CourseLesson = {
     ...lesson,
     phrases: [{ id: "coord", version: "1", musicXml: XML }, ...lesson.phrases],
@@ -371,6 +437,56 @@ describe("course integration commands", () => {
     expect(storage.setItem).not.toHaveBeenCalled();
     expect(storage.getItem(COURSE_STORAGE_KEY)).not.toBeNull();
     expect(storage.getItem(PREFERENCE_KEYS.player)).not.toBeNull();
+  });
+  it("restores the actual downstream song only in review while preserving genuine marks and preferences", () => {
+    const predecessor: CourseLesson = {
+      ...lesson,
+      finalTask: { stage: "both", phraseId: "b" }
+    };
+    const next: CourseLesson = { ...lesson, id: "next", number: 2 };
+    const { store: original, controller, selection, result, storage } = harness(predecessor);
+    controller.open(selection);
+    controller.finish(result());
+    original.dispatch(preferencesActions.playerChanged({ metronome: false, accompaniment: true }));
+    const options = { storage, courseLessons: [predecessor, next] };
+    const store = createAppStore({ ...options, courseAccess: "review" });
+    const review = createCourseController(
+      store,
+      options.courseLessons,
+      (song, librarySource) =>
+        store.dispatch(songActions.songOpened({ song, lesson: null, librarySource })),
+      "review"
+    );
+    review.open({ lessonId: next.id, phraseId: "b", stage: "right" });
+    review.chooseStage(next.id, "left");
+    const saved = store.getState();
+    const nextSelection = { lessonId: next.id, phraseId: "b", stage: "left" as const };
+    expect(saved.course.selection).toEqual(nextSelection);
+    expect(saved.course.progress).toEqual({
+      [progressKey(predecessor, "right", firstPhrase)]: true
+    });
+    expect(saved.song.librarySource).toBe(courseSource(next, nextSelection));
+    expect(saved.song.sourceSong.title).toMatch(/^course:next:b:/);
+    storage.setItem.mockClear();
+    const restored = createAppStore({ ...options, courseAccess: "review" });
+    expect(activeCourse(restored.getState(), options.courseLessons, "review")?.selection).toEqual(
+      nextSelection
+    );
+    expect(restored.getState().song).toMatchObject({
+      librarySource: saved.song.librarySource,
+      sourceSong: saved.song.sourceSong,
+      lesson: null
+    });
+    expect(restored.getState().course.progress).toEqual(saved.course.progress);
+    expect(restored.getState().preferences).toEqual(saved.preferences);
+    const production = createAppStore(options);
+    expect(production.getState().course.selection).toBeNull();
+    expect(production.getState().song.librarySource).toBeNull();
+    expect(production.getState().song.sourceSong.title).not.toBe(saved.song.sourceSong.title);
+    expect(activeCourse(production.getState(), options.courseLessons)).toBeNull();
+    expect(production.getState().course.progress).toEqual(saved.course.progress);
+    expect(production.getState().preferences).toEqual(saved.preferences);
+    expect(storage.setItem).not.toHaveBeenCalled();
   });
   it("falls back safely when a locally saved course is unavailable", () => {
     const { controller, selection, storage } = harness();

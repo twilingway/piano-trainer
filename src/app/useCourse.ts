@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Song } from "../song/song";
 import { runContext } from "../course/model";
-import { COURSE_LESSONS } from "./courseCatalog";
+import { COURSE_ACCESS_MODE, COURSE_LESSONS } from "./courseCatalog";
 import { activeCourse, createCourseController } from "./courseController";
 import { courseActions, type CourseState } from "./courseSlice";
 import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
@@ -13,18 +13,22 @@ export function useCourse(showSong: (song: Song, source: string | null) => void)
   const source = useAppSelector((state) => state.song.librarySource);
   const word = useAppSelector((state) => state.preferences.word.enabled);
   const controller = useMemo(
-    () => createCourseController(store, COURSE_LESSONS, showSong),
+    () => createCourseController(store, COURSE_LESSONS, showSong, COURSE_ACCESS_MODE),
     [store, showSong]
   );
   const active = useMemo(
     () =>
       word
         ? null
-        : activeCourse({ course: saved, song: { librarySource: source } }, COURSE_LESSONS),
+        : activeCourse(
+            { course: saved, song: { librarySource: source } },
+            COURSE_LESSONS,
+            COURSE_ACCESS_MODE
+          ),
     [saved, source, word]
   );
   const chooseStage = (stage: "right" | "left" | "both") => {
-    const current = activeCourse(store.getState(), COURSE_LESSONS);
+    const current = activeCourse(store.getState(), COURSE_LESSONS, COURSE_ACCESS_MODE);
     if (current) controller.chooseStage(current.lesson.id, stage);
   };
   return {

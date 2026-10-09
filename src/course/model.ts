@@ -4,6 +4,7 @@ import type { NoteResultSnapshot } from "../practice/noteResult";
 export { COURSE_PASS_PERCENT } from "../practice/noteResult";
 
 export type CourseStage = "right" | "left" | "both";
+export type CourseAccessMode = "progression" | "review";
 export interface CoursePhrase {
   readonly id: string;
   readonly title?: string;
@@ -92,8 +93,10 @@ export function stageProgress(
 export function blockingLessonNumber(
   lesson: CourseLesson,
   lessons: readonly CourseLesson[],
-  progress: CourseProgress
+  progress: CourseProgress,
+  accessMode: CourseAccessMode = "progression"
 ): number | null {
+  if (accessMode === "review") return null;
   for (let number = 1; number < lesson.number; number++) {
     const predecessors = lessons.filter((candidate) => candidate.number === number);
     const previous = predecessors.length === 1 ? predecessors[0] : undefined;
@@ -107,12 +110,13 @@ export function blockingLessonNumber(
 export function lessonUnlocked(
   lesson: CourseLesson,
   lessons: readonly CourseLesson[],
-  progress: CourseProgress
+  progress: CourseProgress,
+  accessMode: CourseAccessMode = "progression"
 ): boolean {
   return (
     lesson.phrases.length > 0 &&
     lesson.stages.length > 0 &&
-    blockingLessonNumber(lesson, lessons, progress) === null
+    blockingLessonNumber(lesson, lessons, progress, accessMode) === null
   );
 }
 

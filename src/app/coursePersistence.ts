@@ -2,6 +2,7 @@ import type { ListenerMiddlewareInstance } from "@reduxjs/toolkit";
 import {
   lessonUnlocked,
   resolveSelection,
+  type CourseAccessMode,
   type CourseLesson,
   type CourseSelection
 } from "../course/model";
@@ -46,7 +47,8 @@ function parseSelection(value: unknown): CourseSelection | null {
 /** Loading never writes defaults or removes unavailable local lessons' saved credits. */
 export function loadCourseState(
   storage: PreferenceStorage = browserPreferenceStorage(),
-  lessons: readonly CourseLesson[] = []
+  lessons: readonly CourseLesson[] = [],
+  accessMode: CourseAccessMode = "progression"
 ): { course: CourseState; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
   const fallback = () => ({ course: { ...initialCourseState, progress: {} }, errors });
@@ -92,7 +94,9 @@ export function loadCourseState(
     course: {
       progress,
       selection:
-        resolved && lessonUnlocked(resolved.lesson, lessons, progress) ? resolved.selection : null,
+        resolved && lessonUnlocked(resolved.lesson, lessons, progress, accessMode)
+          ? resolved.selection
+          : null,
       view: value.view,
       topView: value.topView ?? (value.view === "staff" ? "staff" : "tabs"),
       accompaniment: value.accompaniment,
