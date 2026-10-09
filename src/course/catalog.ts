@@ -76,6 +76,16 @@ function parseLesson(value: unknown, files: Readonly<Record<string, string>>): C
   if (!phraseIds.every(text) || new Set(phraseIds).size !== phraseIds.length) return null;
   const tasks = Object.hasOwn(row, "tasks") ? parseTasks(row.tasks, stages, phraseIds) : undefined;
   if (tasks === null) return null;
+  const final = object(row.finalTask);
+  if (
+    Object.hasOwn(row, "finalTask") &&
+    (final?.stage !== "both" ||
+      !stages.includes("both") ||
+      !text(final.phraseId) ||
+      !phraseIds.includes(final.phraseId) ||
+      (tasks && !tasks.some((task) => task.stage === "both" && task.phraseId === final.phraseId)))
+  )
+    return null;
   const phrases: CoursePhrase[] = [];
   for (const item of row.phrases) {
     const phrase = object(item);
@@ -133,7 +143,8 @@ function parseLesson(value: unknown, files: Readonly<Record<string, string>>): C
     goal: row.goal,
     stages,
     phrases,
-    ...(tasks ? { tasks } : {})
+    ...(tasks ? { tasks } : {}),
+    ...(final ? { finalTask: { stage: "both" as const, phraseId: String(final.phraseId) } } : {})
   };
 }
 

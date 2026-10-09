@@ -1,5 +1,14 @@
 ﻿/** The player's icons: small line drawings in the current text colour. */
 
+export function PianoTabsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="2" y="3" width="20" height="18" rx="2" />
+      <path d="M5 7h4m-4 3h3m-3 3h4m5-6h4m-4 3h3m-3 3h4M5 17h14" />
+    </svg>
+  );
+}
+
 export function StaffIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">

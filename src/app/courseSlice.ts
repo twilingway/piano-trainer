@@ -4,7 +4,7 @@ import type { CourseProgress, CourseSelection } from "../course/model";
 export interface CourseState {
   progress: CourseProgress;
   selection: CourseSelection | null;
-  view: "tabs" | "staff";
+  view: "tabs" | "staff" | "hidden";
   accompaniment: boolean;
   listenOnly: boolean;
 }

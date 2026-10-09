@@ -1,5 +1,12 @@
 import { shallowEqual } from "react-redux";
-import { phraseCompleted, stageCompleted, nextSelection, stagePhrases } from "../course/model";
+import {
+  phraseCompleted,
+  stageCompleted,
+  stageProgress,
+  blockingLessonNumber,
+  nextSelection,
+  stagePhrases
+} from "../course/model";
 import { CourseCards } from "../ui/CourseCards";
 import { CourseLessonBar } from "../ui/CourseLessonBar";
 import { PianoTabs } from "../ui/PianoTabs";
@@ -22,11 +29,16 @@ export function ConnectedCourseCards({ onChoose }: { onChoose: () => void }) {
     title: t(lesson.title, { number: lesson.number }),
     goal: t(lesson.goal),
     ready: lesson.phrases.length > 0,
+    lockedBy: blockingLessonNumber(lesson, COURSE_LESSONS, progress) ?? undefined,
     current: current === lesson.id,
     started: lesson.stages.some((stage) =>
       stagePhrases(lesson, stage).some((phrase) => phraseCompleted(lesson, stage, phrase, progress))
     ),
-    stages: lesson.stages.map((id) => ({ id, completed: stageCompleted(lesson, id, progress) }))
+    stages: lesson.stages.map((id) => ({
+      id,
+      completed: stageCompleted(lesson, id, progress),
+      ...stageProgress(lesson, id, progress)
+    }))
   }));
   return (
     <CourseCards
@@ -44,17 +56,14 @@ export function ConnectedCourseCards({ onChoose }: { onChoose: () => void }) {
 }
 
 export function ConnectedCourseLessonBar() {
-  const { active, view, progress } = useRuntimeSelector(
+  const { active, progress } = useRuntimeSelector(
     (runtime) => ({
       active: runtime.course.active,
-      view: runtime.course.saved.view,
       progress: runtime.course.saved.progress
     }),
     shallowEqual
   );
   const open = useRuntimeCommand((runtime) => runtime.course.controller.open);
-  const chooseStage = useRuntimeCommand((runtime) => runtime.course.controller.chooseStage);
-  const setView = useRuntimeCommand((runtime) => runtime.course.setView);
   const setResultClosed = useRuntimeCommand((runtime) => runtime.setResultClosed);
   if (!active) return null;
   const { lesson, phrase, selection } = active;
@@ -63,23 +72,16 @@ export function ConnectedCourseLessonBar() {
   return (
     <CourseLessonBar
       title={lesson.title}
-      stages={lesson.stages.map((id) => ({ id, completed: stageCompleted(lesson, id, progress) }))}
-      currentStage={selection.stage}
       phrases={stagePhrases(lesson, selection.stage).map((item) => ({
         id: item.id,
         ...(item.title ? { title: item.title } : {}),
         completed: phraseCompleted(lesson, selection.stage, item, progress)
       }))}
       phraseId={phrase.id}
-      view={view}
       completed={completed}
-      onStage={(stage) => {
-        chooseStage(lesson.id, stage);
-      }}
       onPhrase={(phraseId) => {
         open({ ...selection, phraseId });
       }}
-      onView={setView}
       {...(next
         ? {
             onNext: () => {

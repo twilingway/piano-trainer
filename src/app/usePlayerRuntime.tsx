@@ -61,7 +61,7 @@ export function usePlayerRuntime() {
       game.performance
         ? {
             ...staffPrefs,
-            visible: course.active ? true : staffPrefs.visible,
+            visible: course.active ? course.saved.view !== "hidden" : staffPrefs.visible,
             fingers: false,
             hands: false,
             labels: false,
@@ -69,9 +69,9 @@ export function usePlayerRuntime() {
             chords: false
           }
         : course.active
-          ? { ...staffPrefs, visible: true }
+          ? { ...staffPrefs, visible: course.saved.view !== "hidden" }
           : staffPrefs,
-    [game.performance, staffPrefs, course.active]
+    [game.performance, staffPrefs, course.active, course.saved.view]
   );
   const score = useStaffScore(song, current.baseSong, displayPrefs);
   const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
@@ -99,6 +99,8 @@ export function usePlayerRuntime() {
     gameOptions: game.options,
     ranked: game.ranked
   });
+  const workspacePrefs =
+    course.active && takes.comparing ? { ...displayPrefs, visible: true } : displayPrefs;
   const snapshot = useTrainerSelector(
     trainer.snapshotSource,
     selectTrainerStatus,
@@ -140,7 +142,7 @@ export function usePlayerRuntime() {
     trainerReady: trainer.trainerReady,
     song: word.practiceSong,
     baseSong: word.enabled ? word.practiceSong : current.baseSong,
-    staffPrefs: displayPrefs,
+    staffPrefs: workspacePrefs,
     updateStaffPrefs,
     fallingNames: score.nameStyle,
     comparing: takes.comparing,
@@ -185,6 +187,11 @@ export function usePlayerRuntime() {
       prefs={staffPrefs}
       hasScore={Boolean(score.staffXml)}
       onChange={updateStaffPrefs}
+      courseScore={
+        course.active && !takes.comparing
+          ? { view: course.saved.view, onView: course.setView }
+          : undefined
+      }
     />
   );
   const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs, toggles);
@@ -227,7 +234,7 @@ export function usePlayerRuntime() {
   );
 
   return {
-    displayPrefs,
+    displayPrefs: workspacePrefs,
     sound,
     t,
     fullscreen,

@@ -6,7 +6,6 @@ import type { Language, Layout } from "../wordTyping/types";
 import { GameSettings } from "../ui/GameSettings";
 import { ResultDialog } from "../ui/ResultDialog";
 import { TimingSettings } from "../ui/TimingSettings";
-import { ViewToggles } from "../ui/ViewToggles";
 import { WordTypingSettings } from "../ui/WordTypingSettings";
 import { ComputerKeyboardSettings } from "../ui/settings/ComputerKeyboardSettings";
 import { KeyboardSettings } from "../ui/settings/KeyboardSettings";
@@ -179,10 +178,7 @@ function ConnectedStaffSettings() {
   return <StaffSettings prefs={prefs} hasScore={hasScore} onChange={onChange} />;
 }
 export function ConnectedSettingsToggles() {
-  const prefs = useAppSelector((state) => state.preferences.staff);
-  const hasScore = useRuntimeSelector((runtime) => Boolean(runtime.score.staffXml));
-  const onChange = useRuntimeCommand((runtime) => runtime.updateStaffPrefs);
-  return <ViewToggles prefs={prefs} hasScore={hasScore} onChange={onChange} />;
+  return useRuntimeSelector((runtime) => runtime.toggles);
 }
 function ConnectedKeyboardSettings() {
   const state = useAppSelector(

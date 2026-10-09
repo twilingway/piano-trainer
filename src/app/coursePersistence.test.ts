@@ -54,6 +54,51 @@ function fixtureStore(storage: PreferenceStorage) {
 }
 
 describe("course persistence", () => {
+  it("round-trips a hidden course view without losing its selection or credits", () => {
+    const storage = storageFixture(),
+      store = fixtureStore(storage);
+    store.dispatch(courseActions.selectionChosen(selection));
+    store.dispatch(courseActions.phraseCredited(key));
+    store.dispatch(courseActions.viewChanged("hidden"));
+    expect(loadCourseState(storage, [lesson]).course).toMatchObject({
+      view: "hidden",
+      selection,
+      progress: { [key]: true }
+    });
+  });
+
+  it("preserves blocked downstream credits while dropping the restored selection", () => {
+    const predecessor: CourseLesson = {
+      ...lesson,
+      finalTask: { stage: "both", phraseId: phrase.id }
+    };
+    const next = { ...lesson, id: "next", number: 2 };
+    const nextSelection = { ...selection, lessonId: next.id };
+    const downstreamKey = progressKey(next, "right", phrase);
+    const state = {
+      ...initialCourseState,
+      selection: nextSelection,
+      progress: { [downstreamKey]: true }
+    };
+    const storage = storageFixture(JSON.stringify(state));
+    expect(loadCourseState(storage, [predecessor, next]).course).toMatchObject({
+      selection: null,
+      progress: state.progress
+    });
+    const finalKey = progressKey(predecessor, "both", phrase);
+    const unlocked = storageFixture(
+      JSON.stringify({ ...state, progress: { ...state.progress, [finalKey]: true } })
+    );
+    expect(loadCourseState(unlocked, [predecessor, next]).course.selection).toEqual(nextSelection);
+    const revised = { ...predecessor, phrases: [{ ...phrase, version: "2" }] };
+    expect(loadCourseState(unlocked, [revised, next]).course.selection).toBeNull();
+    expect(loadCourseState(unlocked, [revised, next]).course.progress).toEqual({
+      ...state.progress,
+      [finalKey]: true
+    });
+    expect(storage.setItem).not.toHaveBeenCalled();
+    expect(unlocked.setItem).not.toHaveBeenCalled();
+  });
   it("does not write default state, unrelated actions, or repeated credits", () => {
     const storage = storageFixture(),
       store = fixtureStore(storage);

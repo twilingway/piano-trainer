@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, type ReactNode } from "react";
+import { act, useState, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,6 +11,8 @@ import { CourseLessonBar } from "./CourseLessonBar";
 import { LibraryDialog } from "./LibraryDialog";
 import { buildPianoTabs, PianoTabs } from "./PianoTabs";
 import { ResultDialog } from "./ResultDialog";
+import { ViewToggles } from "./ViewToggles";
+import { DEFAULT_STAFF_PREFS } from "../app/staffPreferences";
 
 vi.mock("./GameDialog", () => ({
   GameDialog: ({ children, title }: { children: ReactNode; title: string }) => (
@@ -110,7 +112,9 @@ describe("course cards and exercise controls", () => {
       started: false,
       stages: ["right", "left", "both"].map((id) => ({
         id: id as "right" | "left" | "both",
-        completed: false
+        completed: false,
+        done: 0,
+        total: 0
       }))
     }));
     const onContinue = vi.fn();
@@ -140,8 +144,8 @@ describe("course cards and exercise controls", () => {
       ready: true,
       started,
       stages: [
-        { id: "right", completed: index === 2 },
-        { id: "both", completed: index === 2 }
+        { id: "right", completed: index === 2, done: index === 2 ? 1 : 0, total: 1 },
+        { id: "both", completed: index === 2, done: index === 2 ? 1 : 0, total: 1 }
       ]
     }));
     await render(<CourseCards lessons={lessons} onContinue={onContinue} onStage={onStage} />);
@@ -158,35 +162,27 @@ describe("course cards and exercise controls", () => {
     expect(onContinue).toHaveBeenCalledWith("l1");
   });
 
-  it("offers next explicitly and emits view/phrase commands without advancing on completion", async () => {
+  it("offers next and phrase commands without duplicating hands or view controls", async () => {
     const onNext = vi.fn();
-    const onView = vi.fn();
     const onPhrase = vi.fn();
     await render(
       <CourseLessonBar
         title="Local"
-        stages={[
-          { id: "right", completed: true },
-          { id: "both", completed: false }
-        ]}
-        currentStage="right"
         phrases={[
           { id: "a", completed: true },
           { id: "b", completed: false }
         ]}
         phraseId="a"
-        view="tabs"
         completed
-        onStage={noop}
         onPhrase={onPhrase}
-        onView={onView}
         onNext={onNext}
       />
     );
     expect(host.textContent).toContain("Фраза 1 из 2");
     expect(onNext).not.toHaveBeenCalled();
-    await click(".course-view-choice button:last-child");
-    expect(onView).toHaveBeenCalledWith("staff");
+    expect(host.querySelectorAll("select")).toHaveLength(1);
+    expect(host.querySelector(".course-stages")).toBeNull();
+    expect(host.querySelector(".course-view-choice")).toBeNull();
     await act(async () => {
       await Promise.resolve();
       const select = host.querySelector<HTMLSelectElement>("select");
@@ -198,6 +194,42 @@ describe("course cards and exercise controls", () => {
     expect(onPhrase).toHaveBeenCalledWith("b");
     await click(".game-button");
     expect(onNext).toHaveBeenCalledOnce();
+  });
+
+  it("shows partial stage counts and disables every action for a locked ready lesson", async () => {
+    const onContinue = vi.fn(),
+      onStage = vi.fn();
+    const lesson: CourseCardModel = {
+      id: "locked",
+      number: 2,
+      title: "Local",
+      goal: "Goal",
+      ready: true,
+      lockedBy: 1,
+      started: true,
+      stages: [
+        { id: "right", completed: false, done: 1, total: 4 },
+        { id: "left", completed: false, done: 0, total: 4 },
+        { id: "both", completed: false, done: 1, total: 6 }
+      ]
+    };
+    await render(<CourseCards lessons={[lesson]} onContinue={onContinue} onStage={onStage} />);
+    expect(host.textContent).toContain("Правая1/4");
+    expect(host.textContent).toContain("Левая0/4");
+    expect(host.textContent).toContain("Обе1/6");
+    expect(host.textContent).toContain("Пройдите финальную мелодию урока 1");
+    expect(host.querySelectorAll("button:disabled")).toHaveLength(4);
+    await click(".game-button");
+    await click(".course-stages button");
+    expect(onContinue).not.toHaveBeenCalled();
+    expect(onStage).not.toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
+      setInterfaceLanguage("en");
+    });
+    expect(host.textContent).toContain("Right1/4");
+    expect(host.textContent).toContain("Lesson locked");
+    expect(host.textContent).toContain("Complete lesson 1's full melody");
   });
 
   it("keeps old versions separate and does not build course content in a closed library", async () => {
@@ -235,6 +267,67 @@ describe("course cards and exercise controls", () => {
       "Предыдущие версии"
     ]);
     expect(host.querySelectorAll(".song-grid")).toHaveLength(2);
+  });
+});
+
+describe("course views in the main view menu", () => {
+  it("switches and closes score representations without changing global staff preferences", async () => {
+    const onChange = vi.fn();
+    function Menu() {
+      const [view, onView] = useState<"tabs" | "staff" | "hidden">("tabs");
+      return (
+        <ViewToggles
+          prefs={DEFAULT_STAFF_PREFS}
+          hasScore
+          onChange={onChange}
+          courseScore={{ view, onView }}
+        />
+      );
+    }
+    await render(<Menu />);
+    const tabs = () => host.querySelector('[aria-label="Пианинные табы"]');
+    const staff = () => host.querySelector('[aria-label="Нотный стан"]');
+    expect(tabs()?.getAttribute("aria-pressed")).toBe("true");
+    expect(staff()?.getAttribute("aria-pressed")).toBe("false");
+    await click('[aria-label="Пианинные табы"]');
+    expect(tabs()?.getAttribute("aria-pressed")).toBe("false");
+    expect(staff()?.getAttribute("aria-pressed")).toBe("false");
+    await click('[aria-label="Нотный стан"]');
+    expect(staff()?.getAttribute("aria-pressed")).toBe("true");
+    await click('[aria-label="Нотный стан"]');
+    expect(staff()?.getAttribute("aria-pressed")).toBe("false");
+    await click('[aria-label="Пианинные табы"]');
+    await click('[aria-label="Нотный стан"]');
+    expect(tabs()?.getAttribute("aria-pressed")).toBe("false");
+    expect(staff()?.getAttribute("aria-pressed")).toBe("true");
+    expect(onChange).not.toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
+      setInterfaceLanguage("en");
+    });
+    expect(host.querySelector('[aria-label="Piano tabs"]')?.getAttribute("title")).toBe(
+      "Show tabs"
+    );
+  });
+
+  it("keeps the ordinary staff toggle and disables course score controls without a score", async () => {
+    const onChange = vi.fn(),
+      onView = vi.fn();
+    await render(<ViewToggles prefs={DEFAULT_STAFF_PREFS} hasScore onChange={onChange} />);
+    expect(host.querySelector('[aria-label="Пианинные табы"]')).toBeNull();
+    await click('[aria-label="Нотный стан"]');
+    expect(onChange).toHaveBeenCalledWith({ visible: false });
+    await render(
+      <ViewToggles
+        prefs={DEFAULT_STAFF_PREFS}
+        hasScore={false}
+        onChange={onChange}
+        courseScore={{ view: "hidden", onView }}
+      />
+    );
+    await click('[aria-label="Пианинные табы"]');
+    await click('[aria-label="Нотный стан"]');
+    expect(onView).not.toHaveBeenCalled();
   });
 });
 
