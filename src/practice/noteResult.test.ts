@@ -115,10 +115,83 @@ describe("equal per-note attack and physical hold result", () => {
     expect(zero.snapshot(0).percent).toBe(100);
     expect(new NoteResult([]).snapshot(10)).toMatchObject({ expectedNotes: 0, percent: null });
   });
-  it("never scores physical spans without an accepted attack", () => {
+  it("never scores physical spans without an explicit note binding", () => {
     const result = new NoteResult([note("a")]);
     result.press(60, 0, "usb");
     expect(result.snapshot(1).percent).toBe(0);
+  });
+  it("scores recovered holding independently from the missed attack", () => {
+    const result = new NoteResult([note("a")]);
+    result.press(60, 0.5, "usb");
+    result.recover("a", 0.5);
+    expect(result.snapshot(1)).toMatchObject({
+      hitNotes: 0,
+      hitPercent: 0,
+      holdPercent: 35,
+      percent: 35
+    });
+    expect(result.snapshot(10).percent).toBe(35);
+  });
+  it("recovered holding resumes after gaps and unions independent sources", () => {
+    const result = new NoteResult([note("a")]);
+    result.press(60, 0.2, "usb");
+    result.recover("a", 0.2);
+    result.release(60, 0.4, "usb");
+    result.press(60, 0.6, "usb");
+    result.recover("a", 0.6);
+    result.press(60, 0.7, "ble");
+    result.recover("a", 0.7);
+    result.release(60, 0.8, "usb");
+    expect(result.snapshot(1).percent).toBeCloseTo(42);
+    expect(result.snapshot(1).hitNotes).toBe(0);
+  });
+  it("retains recovered Note Off delivered before Note On", () => {
+    const result = new NoteResult([note("a")]);
+    result.release(60, 0.8, "usb", 800);
+    result.press(60, 0.5, "usb", 500);
+    result.recover("a", 0.5);
+    expect(result.snapshot(1).percent).toBeCloseTo(21);
+  });
+  it("handles an earlier recovery delivered after its repeat", () => {
+    const result = new NoteResult([note("a")]);
+    result.press(60, 0.6, "usb", 600);
+    result.recover("a", 0.6);
+    result.release(60, 0.8, "usb", 800);
+    result.press(60, 0.2, "usb", 200);
+    result.recover("a", 0.2);
+    result.release(60, 0.4, "usb", 400);
+    expect(result.snapshot(1).percent).toBeCloseTo(28);
+  });
+  it("never transfers a recovered physical span into the next repeated pitch", () => {
+    const result = new NoteResult([note("a"), note("b", 1)]);
+    result.press(60, 0.5, "usb");
+    result.recover("a", 0.5);
+    expect(result.snapshot(2).percent).toBe(17.5);
+    result.press(60, 1.5, "usb");
+    result.recover("b", 1.5);
+    expect(result.snapshot(2).percent).toBe(35);
+  });
+  it("keeps an explicit recovered repeated note after a delayed earlier hit", () => {
+    const result = new NoteResult([note("a", 0, 2), note("b", 1)]);
+    result.press(60, 1.5, "usb", 1500);
+    result.recover("b", 1.5);
+    result.press(60, 0, "usb", 0);
+    result.hit("a", 0);
+    result.release(60, 0.2, "usb", 200);
+    expect(result.snapshot(2).percent).toBeCloseTo(36);
+  });
+  it("rejects recovery before start, at end, of zero duration or for a different pitch", () => {
+    for (const [at, duration, pitch] of [
+      [-0.1, 1, 60],
+      [1, 1, 60],
+      [0, 0, 60],
+      [0.5, 1, 64]
+    ]) {
+      const result = new NoteResult([note("a", 0, duration)]);
+      result.press(pitch ?? 0, at ?? 0, "usb");
+      result.recover("a", at ?? 0);
+      expect(result.snapshot(2).percent).toBe(0);
+    }
   });
   it("adds real resumed intervals without recovering gaps or extra attacks", () => {
     const result = new NoteResult([note("a")]);
@@ -200,5 +273,17 @@ describe("course evidence validation", () => {
   it("requires a matching current policy and actual hits", () => {
     expect(passingNoteResult(evidence, 2)).toBe(false);
     expect(passingNoteResult({ ...evidence, policy: "old" }, 1)).toBe(false);
+  });
+  it("allows recovered holding to exceed the attack count's former hold cap", () => {
+    const recovered = {
+      ...evidence,
+      expectedNotes: 4,
+      hitNotes: 3,
+      hitPercent: 22.5,
+      holdPercent: 60,
+      percent: 82.5
+    };
+    expect(passingNoteResult(recovered, 3)).toBe(true);
+    expect(passingNoteResult({ ...recovered, holdPercent: 70.1, percent: 92.6 }, 3)).toBe(false);
   });
 });

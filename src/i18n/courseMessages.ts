@@ -9,7 +9,10 @@ export const courseMessages: Messages = {
   "Для зачёта нужно не меньше 75%. Удерживайте клавиши до конца нот.": {
     en: "You need at least 75% to pass. Hold the keys until the notes end."
   },
-  "Звёзды за точность попадания": { en: "Stars for timing accuracy" },
+  "Звёзды за попадания и удержание": { en: "Stars for hits and holding" },
+  "1 звезда: результат от 25%; 2: от 50%; 3: от 75%": {
+    en: "1 star: result of at least 25%; 2: at least 50%; 3: at least 75%"
+  },
   "· Ранг по времени": { en: "· Timing rank" },
   "Прежние зачёты нужно повторить: теперь требуется 75% за попадания и удержание.": {
     en: "Repeat earlier passes: you now need 75% for hits and holding."
