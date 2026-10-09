@@ -1,4 +1,10 @@
-import type { CourseLesson, CourseSelection, CourseStage, CourseRunResult } from "../course/model";
+import type {
+  CourseAccessMode,
+  CourseLesson,
+  CourseSelection,
+  CourseStage,
+  CourseRunResult
+} from "../course/model";
 import {
   canCreditCourseRun,
   firstIncompleteSelection,
@@ -21,11 +27,12 @@ export function courseSource(lesson: CourseLesson, selection: CourseSelection): 
 
 export function activeCourse(
   state: { course: CourseState; song: { librarySource: string | null } },
-  lessons: readonly CourseLesson[]
+  lessons: readonly CourseLesson[],
+  accessMode: CourseAccessMode = "progression"
 ) {
   const resolved = resolveSelection(lessons, state.course.selection);
   return resolved &&
-    lessonUnlocked(resolved.lesson, lessons, state.course.progress) &&
+    lessonUnlocked(resolved.lesson, lessons, state.course.progress, accessMode) &&
     state.song.librarySource === courseSource(resolved.lesson, resolved.selection)
     ? resolved
     : null;
@@ -35,11 +42,15 @@ export function activeCourse(
 export function createCourseController(
   store: AppStore,
   lessons: readonly CourseLesson[],
-  showSong: (song: Song, source: string | null) => void
+  showSong: (song: Song, source: string | null) => void,
+  accessMode: CourseAccessMode = "progression"
 ) {
   const open = (selection: CourseSelection) => {
     const resolved = resolveSelection(lessons, selection);
-    if (!resolved || !lessonUnlocked(resolved.lesson, lessons, store.getState().course.progress))
+    if (
+      !resolved ||
+      !lessonUnlocked(resolved.lesson, lessons, store.getState().course.progress, accessMode)
+    )
       return;
     const song = coursePhraseSong(resolved.lesson, resolved.phrase);
     store.dispatch(courseActions.selectionChosen(selection));
@@ -57,8 +68,8 @@ export function createCourseController(
       const lesson = lessons.find((candidate) => candidate.id === lessonId);
       if (!lesson?.stages.includes(stage)) return;
       const state = store.getState();
-      if (!lessonUnlocked(lesson, lessons, state.course.progress)) return;
-      const active = activeCourse(state, lessons);
+      if (!lessonUnlocked(lesson, lessons, state.course.progress, accessMode)) return;
+      const active = activeCourse(state, lessons, accessMode);
       const current = active?.lesson.id === lessonId ? active : null;
       if (current?.selection.stage === stage) return;
       const phrases = stagePhrases(lesson, stage);
@@ -72,7 +83,7 @@ export function createCourseController(
     },
     finish: (result: CourseRunResult) => {
       const state = store.getState();
-      const current = activeCourse(state, lessons);
+      const current = activeCourse(state, lessons, accessMode);
       if (!current || state.preferences.word.enabled) return;
       if (!canCreditCourseRun(current.lesson, current.selection, result, selectSongKey(state)))
         return;

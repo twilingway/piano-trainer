@@ -54,6 +54,53 @@ function fixtureStore(storage: PreferenceStorage) {
 }
 
 describe("course persistence", () => {
+  it("restores review selection without bypassing progression or changing real saved marks", () => {
+    const next: CourseLesson = { ...lesson, id: "next", number: 2 };
+    const nextSelection = { ...selection, lessonId: next.id };
+    const nextKey = progressKey(next, "right", phrase);
+    const state = {
+      ...initialCourseState,
+      selection: nextSelection,
+      progress: { [nextKey]: true },
+      accessMode: "review"
+    };
+    const raw = JSON.stringify(state);
+    const storage = storageFixture(raw);
+    const review = loadCourseState(storage, [lesson, next], "review");
+    expect(review.course).toMatchObject({ selection: nextSelection, progress: state.progress });
+    expect(review.course).not.toHaveProperty("accessMode");
+    expect(review.errors).toEqual({});
+    expect(loadCourseState(storage, [lesson, next]).course).toMatchObject({
+      selection: null,
+      progress: state.progress
+    });
+    expect(loadCourseState(storage, [lesson, next], "progression").course.selection).toBeNull();
+    expect(storage.getItem(COURSE_STORAGE_KEY)).toBe(raw);
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("does not restore an unprepared or removed assignment during review", () => {
+    const next: CourseLesson = { ...lesson, id: "next", number: 2 };
+    const storage = storageFixture(
+      JSON.stringify({
+        ...initialCourseState,
+        selection: { ...selection, lessonId: next.id },
+        progress: { [key]: true }
+      })
+    );
+    for (const unavailable of [
+      { ...next, phrases: [] },
+      { ...next, stages: [] },
+      { ...next, phrases: [{ ...phrase, id: "replaced" }] }
+    ]) {
+      expect(loadCourseState(storage, [lesson, unavailable], "review").course).toMatchObject({
+        selection: null,
+        progress: { [key]: true }
+      });
+    }
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
   it.each(["staff", "tabs"] as const)(
     "keeps the first enabled %s reader on top after reload",
     (first) => {

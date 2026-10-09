@@ -10,7 +10,7 @@ import { courseReducer, type CourseRoot } from "./courseSlice";
 import { loadCourseState, registerCoursePersistence } from "./coursePersistence";
 import { COURSE_LESSONS, coursePhraseSong } from "./courseCatalog";
 import { courseSource } from "./courseController";
-import { resolveSelection, type CourseLesson } from "../course/model";
+import { resolveSelection, type CourseAccessMode, type CourseLesson } from "../course/model";
 import { configureStore } from "@reduxjs/toolkit";
 import { preferencesReducer } from "./preferencesSlice";
 import { persistenceReducer } from "./persistenceSlice";
@@ -23,12 +23,16 @@ import {
 } from "./preferencePersistence";
 
 export function createAppStore(
-  options: { storage?: PreferenceStorage; courseLessons?: readonly CourseLesson[] } = {}
+  options: {
+    storage?: PreferenceStorage;
+    courseLessons?: readonly CourseLesson[];
+    courseAccess?: CourseAccessMode;
+  } = {}
 ) {
   const storage = options.storage ?? browserPreferenceStorage();
   const loaded = loadPreferences(storage);
   const courseLessons = options.courseLessons ?? COURSE_LESSONS;
-  const course = loadCourseState(storage, courseLessons);
+  const course = loadCourseState(storage, courseLessons, options.courseAccess);
   Object.assign(loaded.persistence.errors, course.errors);
   const initialSong = loadSongState(loaded.preferences.player);
   if (initialSong.librarySource?.startsWith("course:")) {

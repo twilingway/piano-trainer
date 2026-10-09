@@ -55,6 +55,30 @@ const result = (changes: Partial<CourseRunResult> = {}): CourseRunResult => ({
 });
 
 describe("course progression", () => {
+  it("allows review of prepared lessons without granting credit or changing progression defaults", () => {
+    const next: CourseLesson = { ...lesson, id: "lesson-02", number: 2 };
+    const lessons = [lesson, next];
+    const progress: CourseProgress = { [progressKey(next, "right", first)]: true };
+    const saved = { ...progress };
+    expect(blockingLessonNumber(next, lessons, progress)).toBe(1);
+    expect(lessonUnlocked(next, lessons, progress)).toBe(false);
+    expect(blockingLessonNumber(next, lessons, progress, "review")).toBeNull();
+    expect(lessonUnlocked(next, lessons, progress, "review")).toBe(true);
+    expect(lessonUnlocked(next, [next], {}, "review")).toBe(true);
+    expect(lessonCompleted(next, progress)).toBe(false);
+    expect(progress).toEqual(saved);
+    expect(lessonUnlocked(next, lessons, progress, "progression")).toBe(false);
+  });
+
+  it("keeps missing phrases and stages unavailable even during review", () => {
+    for (const unavailable of [
+      { ...lesson, id: "lesson-02", number: 2, phrases: [] },
+      { ...lesson, id: "lesson-02", number: 2, stages: [] }
+    ]) {
+      expect(lessonUnlocked(unavailable, [lesson, unavailable], {}, "review")).toBe(false);
+    }
+  });
+
   it("retains historical marks but requires a fresh policy credit and final pass", () => {
     const oldKey = JSON.stringify([lesson.id, "both", second.id, phraseVersion(second)]);
     const progress: CourseProgress = { [oldKey]: true };
