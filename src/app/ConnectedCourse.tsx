@@ -16,6 +16,7 @@ import { useRuntimeCommand } from "./runtimeCommands";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useTrainerSelector } from "./trainerSnapshots";
 import { useI18n } from "./useI18n";
+import { NOTE_RESULT_POLICY } from "../practice/noteResult";
 
 export function ConnectedCourseCards({ onChoose }: { onChoose: () => void }) {
   const { t } = useI18n();
@@ -43,6 +44,7 @@ export function ConnectedCourseCards({ onChoose }: { onChoose: () => void }) {
   return (
     <CourseCards
       lessons={lessons}
+      previousCredits={Object.keys(progress).some((key) => !key.includes(NOTE_RESULT_POLICY))}
       onContinue={(id) => {
         continueLesson(id);
         onChoose();

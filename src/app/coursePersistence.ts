@@ -72,7 +72,11 @@ export function loadCourseState(
       ([key, credit]) => credit === true && isProgressKey(key)
     ) ||
     (value.selection !== null && !parseSelection(value.selection)) ||
-    (value.view !== "tabs" && value.view !== "staff" && value.view !== "hidden") ||
+    (value.view !== "tabs" &&
+      value.view !== "staff" &&
+      value.view !== "both" &&
+      value.view !== "hidden") ||
+    (value.topView !== undefined && value.topView !== "tabs" && value.topView !== "staff") ||
     typeof value.accompaniment !== "boolean" ||
     (value.listenOnly !== undefined && typeof value.listenOnly !== "boolean")
   ) {
@@ -90,6 +94,7 @@ export function loadCourseState(
       selection:
         resolved && lessonUnlocked(resolved.lesson, lessons, progress) ? resolved.selection : null,
       view: value.view,
+      topView: value.topView ?? (value.view === "staff" ? "staff" : "tabs"),
       accompaniment: value.accompaniment,
       listenOnly: value.listenOnly === true
     },

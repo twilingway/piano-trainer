@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, useState, type ReactNode } from "react";
+import { act, useReducer, useState, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,6 +13,12 @@ import { buildPianoTabs, PianoTabs } from "./PianoTabs";
 import { ResultDialog } from "./ResultDialog";
 import { ViewToggles } from "./ViewToggles";
 import { DEFAULT_STAFF_PREFS } from "../app/staffPreferences";
+import {
+  courseActions,
+  courseReducer,
+  initialCourseState,
+  type CourseState
+} from "../app/courseSlice";
 
 vi.mock("./GameDialog", () => ({
   GameDialog: ({ children, title }: { children: ReactNode; title: string }) => (
@@ -232,6 +238,16 @@ describe("course cards and exercise controls", () => {
     expect(host.textContent).toContain("Complete lesson 1's full melody");
   });
 
+  it("explains repeat credit under the new holding policy in both languages", async () => {
+    await render(<CourseCards lessons={[]} previousCredits onContinue={noop} onStage={noop} />);
+    expect(host.textContent).toContain("Прежние зачёты нужно повторить: теперь требуется 75%");
+    await act(async () => {
+      await Promise.resolve();
+      setInterfaceLanguage("en");
+    });
+    expect(host.textContent).toContain("Repeat earlier passes: you now need 75%");
+  });
+
   it("keeps old versions separate and does not build course content in a closed library", async () => {
     const read = vi.fn();
     function Content() {
@@ -271,10 +287,49 @@ describe("course cards and exercise controls", () => {
 });
 
 describe("course views in the main view menu", () => {
-  it("switches and closes score representations without changing global staff preferences", async () => {
+  it.each([
+    ["Нотный стан", "Пианинные табы", "staff", "tabs"],
+    ["Пианинные табы", "Нотный стан", "tabs", "staff"]
+  ] as const)(
+    "puts the first enabled %s reader above %s",
+    async (first, second, top, remaining) => {
+      function Menu() {
+        const [state, dispatch] = useReducer(
+          (previous: CourseState, action: ReturnType<typeof courseActions.viewChanged>) =>
+            courseReducer(previous, action),
+          { ...initialCourseState, view: "hidden" }
+        );
+        return (
+          <div data-top-view={state.topView} data-view={state.view}>
+            <ViewToggles
+              prefs={DEFAULT_STAFF_PREFS}
+              hasScore
+              onChange={noop}
+              courseScore={{
+                view: state.view,
+                onView: (view) => {
+                  dispatch(courseActions.viewChanged(view));
+                }
+              }}
+            />
+          </div>
+        );
+      }
+      await render(<Menu />);
+      await click(`[aria-label="${first}"]`);
+      await click(`[aria-label="${second}"]`);
+      expect(host.querySelector("[data-top-view]")?.getAttribute("data-top-view")).toBe(top);
+      expect(host.querySelector("[data-view]")?.getAttribute("data-view")).toBe("both");
+      await click(`[aria-label="${first}"]`);
+      await click(`[aria-label="${first}"]`);
+      expect(host.querySelector("[data-top-view]")?.getAttribute("data-top-view")).toBe(remaining);
+    }
+  );
+
+  it("independently opens and closes score representations without changing global staff preferences", async () => {
     const onChange = vi.fn();
     function Menu() {
-      const [view, onView] = useState<"tabs" | "staff" | "hidden">("tabs");
+      const [view, onView] = useState<"tabs" | "staff" | "both" | "hidden">("tabs");
       return (
         <ViewToggles
           prefs={DEFAULT_STAFF_PREFS}
@@ -298,6 +353,13 @@ describe("course views in the main view menu", () => {
     expect(staff()?.getAttribute("aria-pressed")).toBe("false");
     await click('[aria-label="Пианинные табы"]');
     await click('[aria-label="Нотный стан"]');
+    expect(tabs()?.getAttribute("aria-pressed")).toBe("true");
+    expect(staff()?.getAttribute("aria-pressed")).toBe("true");
+    await click('[aria-label="Нотный стан"]');
+    expect(tabs()?.getAttribute("aria-pressed")).toBe("true");
+    expect(staff()?.getAttribute("aria-pressed")).toBe("false");
+    await click('[aria-label="Нотный стан"]');
+    await click('[aria-label="Пианинные табы"]');
     expect(tabs()?.getAttribute("aria-pressed")).toBe("false");
     expect(staff()?.getAttribute("aria-pressed")).toBe("true");
     expect(onChange).not.toHaveBeenCalled();

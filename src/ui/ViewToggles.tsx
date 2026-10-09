@@ -17,8 +17,8 @@ interface Props {
   readonly onChange: (change: Partial<StaffPrefs>) => void;
   readonly courseScore?:
     | {
-        readonly view: "tabs" | "staff" | "hidden";
-        readonly onView: (view: "tabs" | "staff" | "hidden") => void;
+        readonly view: "tabs" | "staff" | "both" | "hidden";
+        readonly onView: (view: "tabs" | "staff" | "both" | "hidden") => void;
       }
     | undefined;
 }
@@ -26,7 +26,10 @@ interface Props {
 /** What the game shows: the staff, the falling notes, the keys, the hands and their looks. */
 export function ViewToggles({ prefs, hasScore, onChange, courseScore }: Props) {
   const { t } = useI18n();
-  const staffVisible = courseScore ? courseScore.view === "staff" : prefs.visible;
+  const tabsVisible = courseScore?.view === "tabs" || courseScore?.view === "both";
+  const staffVisible = courseScore
+    ? courseScore.view === "staff" || courseScore.view === "both"
+    : prefs.visible;
   return (
     <>
       {courseScore && (
@@ -34,11 +37,13 @@ export function ViewToggles({ prefs, hasScore, onChange, courseScore }: Props) {
           type="button"
           className="view-toggle"
           aria-label={t("Пианинные табы")}
-          aria-pressed={courseScore.view === "tabs"}
-          title={courseScore.view === "tabs" ? t("Скрыть табы") : t("Показать табы")}
+          aria-pressed={tabsVisible}
+          title={tabsVisible ? t("Скрыть табы") : t("Показать табы")}
           disabled={!hasScore}
           onClick={() => {
-            courseScore.onView(courseScore.view === "tabs" ? "hidden" : "tabs");
+            courseScore.onView(
+              tabsVisible ? (staffVisible ? "staff" : "hidden") : staffVisible ? "both" : "tabs"
+            );
           }}
         >
           <PianoTabsIcon />
@@ -53,7 +58,10 @@ export function ViewToggles({ prefs, hasScore, onChange, courseScore }: Props) {
         title={staffVisible ? t("Скрыть нотный стан") : t("Показать нотный стан")}
         disabled={!hasScore}
         onClick={() => {
-          if (courseScore) courseScore.onView(staffVisible ? "hidden" : "staff");
+          if (courseScore)
+            courseScore.onView(
+              staffVisible ? (tabsVisible ? "tabs" : "hidden") : tabsVisible ? "both" : "staff"
+            );
           else onChange({ visible: !prefs.visible });
         }}
       >

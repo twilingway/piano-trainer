@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NOTE_RESULT_POLICY } from "../practice/noteResult";
 import {
   canCreditCourseRun,
   blockingLessonNumber,
@@ -40,12 +41,31 @@ const result = (changes: Partial<CourseRunResult> = {}): CourseRunResult => ({
   to: 10,
   hands: ["right"],
   hitCount: 1,
+  noteResult: {
+    policy: NOTE_RESULT_POLICY,
+    expectedNotes: 1,
+    hitNotes: 1,
+    hitPercent: 30,
+    holdPercent: 70,
+    percent: 100
+  },
   interrupted: false,
   fullRange: true,
   ...changes
 });
 
 describe("course progression", () => {
+  it("retains historical marks but requires a fresh policy credit and final pass", () => {
+    const oldKey = JSON.stringify([lesson.id, "both", second.id, phraseVersion(second)]);
+    const progress: CourseProgress = { [oldKey]: true };
+    const previous = { ...lesson, finalTask: { stage: "both" as const, phraseId: second.id } };
+    const next = { ...lesson, id: "lesson-02", number: 2 };
+    expect(phraseCompleted(previous, "both", second, progress)).toBe(false);
+    expect(blockingLessonNumber(next, [previous, next], progress)).toBe(1);
+    progress[progressKey(previous, "both", second)] = true;
+    expect(blockingLessonNumber(next, [previous, next], progress)).toBeNull();
+    expect(progress[oldKey]).toBe(true);
+  });
   it("shows partial progress for only the phrases assigned to a hand", () => {
     const assigned: CourseLesson = {
       ...lesson,
@@ -286,12 +306,45 @@ describe("course progression", () => {
 
   it("uses unambiguous progress keys even when identifiers contain separators", () => {
     const key = progressKey({ ...lesson, id: "a:b" }, "right", { ...first, id: "c:d" });
-    expect(JSON.parse(key)).toEqual(["a:b", "right", "c:d", phraseVersion(first)]);
+    expect(JSON.parse(key)).toEqual([
+      "a:b",
+      "right",
+      "c:d",
+      `${phraseVersion(first)}:${NOTE_RESULT_POLICY}`
+    ]);
   });
 });
 
 describe("course run credit", () => {
-  it("credits natural complete human practice in either mode without an accuracy threshold", () => {
+  it("credits 75% exactly and refuses a rounded-up 74.999% result", () => {
+    const evidence = result().noteResult;
+    if (!evidence) throw new Error("Missing score evidence");
+    expect(
+      canCreditCourseRun(
+        lesson,
+        selection,
+        result({ noteResult: { ...evidence, holdPercent: 45, percent: 75 } }),
+        "course-song"
+      )
+    ).toBe(true);
+    expect(
+      canCreditCourseRun(
+        lesson,
+        selection,
+        result({ noteResult: { ...evidence, holdPercent: 44.999, percent: 74.999 } }),
+        "course-song"
+      )
+    ).toBe(false);
+    expect(
+      canCreditCourseRun(
+        lesson,
+        selection,
+        result({ noteResult: { ...evidence, holdPercent: 0, percent: 30 } }),
+        "course-song"
+      )
+    ).toBe(false);
+  });
+  it("credits natural complete human practice in either mode with verified physical performance", () => {
     expect(canCreditCourseRun(lesson, selection, result(), "course-song")).toBe(true);
     expect(canCreditCourseRun(lesson, selection, result({ mode: "tempo" }), "course-song")).toBe(
       true
@@ -308,6 +361,7 @@ describe("course run credit", () => {
   });
 
   it.each([
+    ["missing physical result", { noteResult: undefined }],
     ["interrupted or sought", { interrupted: true }],
     ["started midway", { from: 1 }],
     ["partial range", { fullRange: false }],

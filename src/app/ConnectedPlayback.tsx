@@ -16,6 +16,7 @@ interface SourceProps {
 const selectTime = (snapshot: TrainerSnapshot | null) => snapshot?.time ?? 0;
 const selectBeat = (snapshot: TrainerSnapshot | null) => snapshot?.beat ?? 0;
 const selectGame = (snapshot: TrainerSnapshot | null) => snapshot?.stats.game;
+const selectNoteResult = (snapshot: TrainerSnapshot | null) => snapshot?.stats.noteResult;
 const selectWord = (snapshot: TrainerSnapshot | null) => ({
   time: snapshot?.time ?? -2,
   statuses: snapshot?.noteStatuses
@@ -102,9 +103,10 @@ export function ConnectedWorkspace({
 export function ConnectedGameBoard({
   source,
   ...props
-}: SourceProps & Omit<ComponentProps<typeof GameBoard>, "game">) {
+}: SourceProps & Omit<ComponentProps<typeof GameBoard>, "game" | "noteResult">) {
   const game = useTrainerSelector(source, selectGame);
-  return <GameBoard {...props} game={game} />;
+  const noteResult = useTrainerSelector(source, selectNoteResult);
+  return <GameBoard {...props} game={game} noteResult={noteResult} />;
 }
 
 export function ConnectedWordBoard({

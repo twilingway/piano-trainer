@@ -2,6 +2,7 @@ import type { Hand } from "../fingering/fingering";
 import type { Song } from "../song/song";
 import { ownsNote } from "./playableRange";
 import type { PracticeOptions } from "./session";
+import type { NoteResultSnapshot } from "./noteResult";
 
 /** Evidence from a naturally ended run; recording a take is a separate contract. */
 export interface RunCompletion {
@@ -15,6 +16,7 @@ export interface RunCompletion {
   readonly hitCount: number;
   readonly interrupted: boolean;
   readonly fullRange: boolean;
+  readonly noteResult?: NoteResultSnapshot;
 }
 
 interface PreparedRun {
@@ -57,7 +59,8 @@ export class RunCompletionTracker {
           missGraceMs: options.missGraceMs ?? 250,
           playable: options.playable ? [options.playable.low, options.playable.high] : undefined,
           parts: options.parts ? [...options.parts].sort() : undefined,
-          accompaniment: options.accompaniment !== false
+          accompaniment: options.accompaniment !== false,
+          noteResult: options.noteResult !== false
         }
       ]),
       evidence: {
@@ -116,9 +119,9 @@ export class RunCompletionTracker {
     this.emitted = false;
   }
 
-  finish(): RunCompletion | undefined {
+  finish(noteResult?: NoteResultSnapshot): RunCompletion | undefined {
     if (!this.active || this.emitted) return undefined;
     this.emitted = true;
-    return this.active;
+    return { ...this.active, ...(noteResult ? { noteResult: { ...noteResult } } : {}) };
   }
 }

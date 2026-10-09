@@ -264,7 +264,7 @@ export function useTrainer({
       };
     }
     const hands = new Set(HANDS[wordTyping ? "right" : handChoice]);
-    return { mode, hands, speed, accompaniment, ...gameOptions };
+    return { mode, hands, speed, accompaniment, ...gameOptions, noteResult: !wordTyping };
   }, [
     listening,
     mode,

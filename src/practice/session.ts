@@ -1,65 +1,19 @@
-﻿import type { Hand } from "../fingering/fingering";
-import type { Song, SongBeat, SongNote } from "../song/song";
-import type { GameScore } from "./gameScore";
+﻿import type { Song, SongBeat, SongNote } from "../song/song";
 import { SessionScoring } from "./sessionScoring";
 import { difficultyWindows, judgeOffset, LEARNING_LATE_WINDOW_MS } from "./gameRules";
-import type { Difficulty, Judgement } from "./gameRules";
 import { SongTimeline } from "./timing";
 import { SessionHolds } from "./sessionHolds";
 import { ownsNote } from "./playableRange";
-import type { PlayableRange } from "./playableRange";
-import type { HoldStatistics } from "./sessionHolds";
+import { NoteResult } from "./noteResult";
 
-export type PracticeMode = "wait" | "tempo";
-
-export interface PracticeOptions {
-  readonly mode: PracticeMode;
-  /** The hands the player plays; the program plays the rest. Empty = listen only. */
-  readonly hands: ReadonlySet<Hand>;
-  /** 1 = written tempo. */
-  readonly speed: number;
-  readonly difficulty?: Difficulty;
-  readonly learningWindow?: boolean;
-  readonly from?: number;
-  readonly to?: number;
-  readonly missGraceMs?: number;
-  /** The keys the player's instrument has; their hands' notes outside it go to the program. */
-  readonly playable?: PlayableRange | undefined;
-  /** The song's parts the player plays, within `hands`; none = every part of those hands. */
-  readonly parts?: ReadonlySet<string> | undefined;
-  /** false: while the player plays, the program plays nothing. Listening always sounds. */
-  readonly accompaniment?: boolean;
-}
-
-/** "skipped": before the point the run was started from; it never counts. */
-export type NoteStatus = "pending" | "hit" | "missed" | "skipped";
-
-export type PracticeEvent =
-  | { readonly type: "autoNoteOn"; readonly pitch: number; readonly velocity?: number }
-  | { readonly type: "autoNoteOff"; readonly pitch: number }
-  | {
-      readonly type: "hit";
-      readonly noteId: string;
-      readonly offset: number;
-      readonly judgement?: Judgement;
-      readonly assisted?: boolean;
-    }
-  | { readonly type: "miss"; readonly noteId: string }
-  | { readonly type: "wrong"; readonly pitch: number }
-  | { readonly type: "beat"; readonly downbeat: boolean }
-  | { readonly type: "finished" };
-
-export interface PracticeStats {
-  readonly hits: number;
-  readonly misses: number;
-  readonly wrong: number;
-  /** Mean signed timing error of hits in real seconds, tempo mode only; negative = early. */
-  readonly meanOffset: number;
-  /** Pitches with the most misses and wrong presses, worst first. */
-  readonly troubleSpots: readonly { readonly pitch: number; readonly errors: number }[];
-  readonly game?: ReturnType<GameScore["snapshot"]>;
-  readonly hold?: HoldStatistics;
-}
+export type {
+  PracticeMode,
+  PracticeOptions,
+  PracticeEvent,
+  PracticeStats,
+  NoteStatus
+} from "./practiceTypes";
+import type { PracticeOptions, PracticeEvent, PracticeStats, NoteStatus } from "./practiceTypes";
 
 /** Seconds of falling notes before the first one arrives. */
 export const LEAD_IN_S = 2;
@@ -104,6 +58,7 @@ export class PracticeSession {
   private inputGraceMs = 250;
   private game: SessionScoring;
   private holds!: SessionHolds;
+  private result!: NoteResult;
   private readonly finalizedChords = new Set<string>();
   private readonly hitTimes = new Map<string, number>();
 
@@ -128,6 +83,7 @@ export class PracticeSession {
     const firstBeat = this.beats.findIndex((beat) => beat.time >= this.time);
     this.beatIndex = firstBeat === -1 ? this.beats.length : firstBeat;
     this.holds = this.createHolds();
+    this.result = new NoteResult(this.resultNotes(this.playerNotes));
     if (options.from !== undefined) this.seek(options.from);
   }
 
@@ -151,6 +107,7 @@ export class PracticeSession {
     this.finalizedChords.clear();
     this.hitTimes.clear();
     const expected = this.playerNotes.filter((note) => note.start >= edge);
+    this.result = new NoteResult(this.resultNotes(expected));
     this.game = new SessionScoring(
       this.scoringNotes(expected),
       this.options.difficulty ?? "normal",
@@ -243,6 +200,7 @@ export class PracticeSession {
     if (eventTime === undefined) return [];
     this.updateHolds(eventTime);
     this.holds.release(pitch, eventTime / this.options.speed, source);
+    this.result.release(pitch, eventTime, source, performanceMs);
     return [];
   }
 
@@ -367,6 +325,7 @@ export class PracticeSession {
     performanceMs?: number
   ): PracticeEvent[] {
     if (this.finished) return [];
+    this.result.press(pitch, eventSongTime, source, performanceMs);
     if (this.options.mode === "wait") {
       // A key of the owed chord counts even a moment before the song reaches it.
       const due = this.nextDue();
@@ -376,6 +335,7 @@ export class PracticeSession {
         due[0].start - eventSongTime <= this.matchWindow * this.options.speed;
       if (match && reachable) {
         this.status.set(match.id, "hit");
+        if (!this.clockPaused) this.result.hit(match.id, eventSongTime);
         return [{ type: "hit", noteId: match.id, offset: 0 }];
       }
       if (this.clockStarted && !reachable) return [];
@@ -409,6 +369,7 @@ export class PracticeSession {
       return [{ type: "wrong", pitch }];
     }
     this.status.set(best.id, "hit");
+    if (!this.clockPaused) this.result.hit(best.id, eventSongTime);
     const offset = (eventSongTime - best.start) / this.options.speed;
     this.offsets.push(offset);
     this.game.hit(best.id, Math.round(offset * 1e9) / 1e6, eventSongTime / this.options.speed);
@@ -470,6 +431,7 @@ export class PracticeSession {
       wrong: this.wrongPitches.length,
       meanOffset,
       troubleSpots,
+      ...(this.options.noteResult !== false ? { noteResult: this.result.snapshot(this.time) } : {}),
       ...(this.options.mode === "tempo"
         ? {
             game: this.game.snapshot(this.time / this.options.speed),
@@ -477,6 +439,34 @@ export class PracticeSession {
           }
         : {})
     };
+  }
+
+  /** Preserve accepted notes and physical spans during an unchanged renderer reload. */
+  inheritNoteResult(previous: PracticeSession): void {
+    if (
+      JSON.stringify([
+        this.playerNotes,
+        this.options.mode,
+        this.options.speed,
+        this.options.to,
+        this.song.duration
+      ]) ===
+      JSON.stringify([
+        previous.playerNotes,
+        previous.options.mode,
+        previous.options.speed,
+        previous.options.to,
+        previous.song.duration
+      ])
+    )
+      this.result = previous.result;
+  }
+
+  private resultNotes(notes: readonly SongNote[]): SongNote[] {
+    return notes.map((note) => ({
+      ...note,
+      duration: Math.max(0, Math.min(note.duration, (this.options.to ?? Infinity) - note.start))
+    }));
   }
 
   private get matchWindow(): number {

@@ -61,7 +61,9 @@ export function usePlayerRuntime() {
       game.performance
         ? {
             ...staffPrefs,
-            visible: course.active ? course.saved.view !== "hidden" : staffPrefs.visible,
+            visible: course.active
+              ? course.saved.view === "staff" || course.saved.view === "both"
+              : staffPrefs.visible,
             fingers: false,
             hands: false,
             labels: false,
@@ -69,7 +71,10 @@ export function usePlayerRuntime() {
             chords: false
           }
         : course.active
-          ? { ...staffPrefs, visible: course.saved.view !== "hidden" }
+          ? {
+              ...staffPrefs,
+              visible: course.saved.view === "staff" || course.saved.view === "both"
+            }
           : staffPrefs,
     [game.performance, staffPrefs, course.active, course.saved.view]
   );

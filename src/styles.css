@@ -741,6 +741,42 @@ body {
   pointer-events: auto;
 }
 
+/* Both readers use their content height, capped at half the workspace above the lane. */
+.workspace-main:has(> .course-score-stack) {
+  container-type: size;
+}
+
+.course-score-stack {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  max-height: 50%;
+  overflow: hidden;
+}
+
+.course-score-stack > .course-score-slot,
+.course-score-stack > .staves {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.course-score-stack .staff-slot {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.course-score-stack .piano-tabs__grid {
+  grid-template-rows: repeat(2, minmax(40px, 1fr));
+}
+
+.course-score-stack .piano-tabs__note {
+  font-size: 22px;
+}
+
 /* Lines the player drags: the staff's lower edge, and the keys' upper and lower edges. */
 .layout-handle {
   position: absolute;
@@ -2692,6 +2728,11 @@ button.song-card.song-card__open {
     display: none;
   }
 
+  .lane[data-game-hud-layout="compact"] .game-score-board--note-result .game-accuracy {
+    display: inline;
+    font-size: 12px;
+  }
+
   .lane[data-game-hud-layout="compact"] .game-combo__value {
     font-size: 22px;
   }
@@ -3108,6 +3149,29 @@ button.song-card.song-card__open {
     display: none;
   }
 
+  .game-score-board--note-result > section {
+    column-gap: 4px;
+    padding-inline: 4px;
+  }
+
+  .game-score-board--note-result .game-points {
+    display: none;
+  }
+
+  .game-score-board--note-result .game-accuracy {
+    display: inline;
+    font-size: 12px;
+  }
+
+  .game-score-board--note-result .game-practice-label {
+    display: none;
+  }
+
+  .game-score-board--note-result .game-hud__energy {
+    grid-template-columns: 48px auto;
+    column-gap: 4px;
+  }
+
   .game-combo__value {
     font-size: 22px;
   }
@@ -3458,8 +3522,8 @@ button.song-card.song-card__open {
   }
   /* No strip under the bar, no plaque on the lane, no legend row: the bar carries them. */
   .shell-top > .game-mode-strip,
-  .game-score-dock:has(> .game-score-board--practice),
-  .game-score-board--practice,
+  .game-score-dock:has(> .game-score-board--practice:not(.game-score-board--note-result)),
+  .game-score-board--practice:not(.game-score-board--note-result),
   .word-board:not(:has(> p)) {
     display: none;
   }
@@ -3520,5 +3584,48 @@ button.song-card.song-card__open {
   }
   .topbar > .practice-timing-status .practice-timing-status__short {
     display: inline;
+  }
+}
+
+/* Nested dual readers stay in flow even where the single staff floats over the lane. */
+.workspace-main:has(> .course-score-stack) .course-score-stack .staff {
+  --staff-fit: 1;
+
+  min-height: 0;
+  max-height: calc(25cqh - 12px);
+  pointer-events: auto;
+}
+
+@media (max-width: 640px), (max-height: 500px) {
+  .course-score-stack {
+    margin-top: var(--mobile-score-top, 0px);
+    margin-right: var(--mobile-bar-width, 0px);
+    margin-left: var(--mobile-rail-width, 0px);
+  }
+
+  .course-score-stack > .course-score-slot {
+    margin-right: 0;
+  }
+}
+
+@media (max-height: 500px) {
+  .course-score-stack .piano-tabs {
+    padding-block: 4px;
+  }
+
+  .course-score-stack .piano-tabs__grid {
+    grid-template-rows: repeat(2, minmax(28px, 1fr));
+  }
+
+  .course-score-stack .piano-tabs__event {
+    padding-block: 0;
+  }
+
+  .course-score-stack .piano-tabs__note {
+    font-size: 16px;
+  }
+
+  .course-score-stack .piano-tabs__finger {
+    font-size: 10px;
   }
 }

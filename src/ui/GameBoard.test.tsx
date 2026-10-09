@@ -4,6 +4,7 @@ import { Window } from "happy-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GameScore } from "../practice/gameScore";
+import { NOTE_RESULT_POLICY, type NoteResultSnapshot } from "../practice/noteResult";
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { DEFAULT_SCREEN_LAYOUT } from "../app/screenLayout";
 import type { StaffPrefs } from "../app/useStaffPrefs";
@@ -48,6 +49,113 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
 });
 
 describe("game score presentation", () => {
+  it("shows the shared note result instead of attack accuracy, including waiting practice", () => {
+    const score = new GameScore(1);
+    score.hit("a", 0, 0);
+    const noteResult: NoteResultSnapshot = {
+      policy: NOTE_RESULT_POLICY,
+      expectedNotes: 1,
+      hitNotes: 1,
+      hitPercent: 30,
+      holdPercent: 0,
+      percent: 30
+    };
+    for (const mode of ["wait", "tempo"] as const) {
+      const markup = renderToStaticMarkup(
+        <GameBoard
+          mode={mode}
+          playing
+          game={score.snapshot(1)}
+          noteResult={noteResult}
+          onOverdrive={vi.fn()}
+        />
+      );
+      expect(markup).toContain("30,0%");
+      expect(markup).not.toContain("100,0%");
+      expect(markup).toContain("Попадания — 30%, удержание — 70%");
+    }
+  });
+
+  it("reports the unrounded passing threshold and separates timing stars from holding", () => {
+    const score = new GameScore(1);
+    score.hit("a", 0, 0);
+    const render = (percent: number) =>
+      renderToStaticMarkup(
+        <ResultDialog
+          open
+          course
+          stats={{
+            hits: 1,
+            misses: 0,
+            wrong: 0,
+            meanOffset: 0,
+            troubleSpots: [],
+            game: score.snapshot(1),
+            noteResult: {
+              policy: NOTE_RESULT_POLICY,
+              expectedNotes: 1,
+              hitNotes: 1,
+              hitPercent: 30,
+              holdPercent: percent - 30,
+              percent
+            }
+          }}
+          canReview={false}
+          onClose={vi.fn()}
+          onAgain={vi.fn()}
+          onReview={vi.fn()}
+        />
+      );
+    const below = render(74.999);
+    expect(below).toContain("75,0%");
+    expect(below).toContain("Для зачёта нужно не меньше 75%");
+    expect(below).not.toContain("Порог 75% достигнут");
+    expect(below).toContain("Звёзды за точность попадания");
+    expect(below).toContain("Ранг по времени");
+    expect(below).toContain("Точность попадания: 100%");
+    const window = new Window();
+    window.document.body.innerHTML = below;
+    const summary = window.document.querySelector(".result-summary");
+    expect(summary?.textContent).toContain("75,0%");
+    expect(summary?.textContent).toContain("Для зачёта нужно не меньше 75%");
+    expect(window.document.querySelector(".result-details .result-score")).toBeNull();
+    window.close();
+    expect(render(75)).toContain("Порог 75% достигнут");
+    setInterfaceLanguage("en");
+    expect(render(65)).toContain("Hits: 30% out of 30%");
+    expect(render(65)).toContain("Holding: 35% out of 70%");
+    expect(render(65)).toContain("You need at least 75% to pass");
+    expect(render(65)).toContain("Hit timing accuracy: 100%");
+  });
+  it("keeps waiting results free of timing stars and empty-note messages", () => {
+    const markup = renderToStaticMarkup(
+      <ResultDialog
+        open
+        stats={{
+          hits: 1,
+          misses: 0,
+          wrong: 0,
+          meanOffset: 0,
+          troubleSpots: [],
+          noteResult: {
+            policy: NOTE_RESULT_POLICY,
+            expectedNotes: 1,
+            hitNotes: 1,
+            hitPercent: 30,
+            holdPercent: 35,
+            percent: 65
+          }
+        }}
+        canReview={false}
+        onClose={vi.fn()}
+        onAgain={vi.fn()}
+        onReview={vi.fn()}
+      />
+    );
+    expect(markup).toContain("65,0%");
+    expect(markup).not.toContain("Звёзды за точность попадания");
+    expect(markup).not.toContain("Нет нот для оценки");
+  });
   it("does not offer ranked score or Overdrive in wait mode", () => {
     const markup = renderToStaticMarkup(
       <GameBoard mode="wait" playing onOverdrive={vi.fn()} game={new GameScore(1).snapshot(0)} />

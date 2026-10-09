@@ -4,7 +4,8 @@ import type { CourseProgress, CourseSelection } from "../course/model";
 export interface CourseState {
   progress: CourseProgress;
   selection: CourseSelection | null;
-  view: "tabs" | "staff" | "hidden";
+  view: "tabs" | "staff" | "both" | "hidden";
+  topView: "tabs" | "staff";
   accompaniment: boolean;
   listenOnly: boolean;
 }
@@ -15,6 +16,7 @@ export const initialCourseState: CourseState = {
   progress: {},
   selection: null,
   view: "tabs",
+  topView: "tabs",
   accompaniment: false,
   listenOnly: false
 };
@@ -30,6 +32,7 @@ const slice = createSlice({
       state.progress[action.payload] = true;
     },
     viewChanged(state, action: PayloadAction<CourseState["view"]>) {
+      if (action.payload === "tabs" || action.payload === "staff") state.topView = action.payload;
       state.view = action.payload;
     },
     accompanimentChanged(state, action: PayloadAction<boolean>) {

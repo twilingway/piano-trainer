@@ -1,5 +1,6 @@
 import { useI18n } from "../app/useI18n";
 import type { PracticeStats } from "../practice/session";
+import { COURSE_PASS_PERCENT } from "../course/model";
 import { GameDialog } from "./GameDialog";
 
 const NOTE_NAMES = [
@@ -30,6 +31,7 @@ interface Props {
   readonly onAgain: () => void;
   readonly onReview: () => void;
   readonly onNext?: () => void;
+  readonly course?: boolean;
 }
 
 /** The end of a run: the accuracy, the notes that went wrong most, and what next. */
@@ -40,7 +42,8 @@ export function ResultDialog({
   onClose,
   onAgain,
   onReview,
-  onNext
+  onNext,
+  course = false
 }: Props) {
   const { t, formatNumber } = useI18n();
   const milliseconds = (value: number | null): string =>
@@ -50,7 +53,14 @@ export function ResultDialog({
   if (!open) return null;
   const played = stats ? stats.hits + stats.misses : 0;
   const game = stats?.game;
-  const accuracy = game ? game.accuracy : stats && played > 0 ? (stats.hits / played) * 100 : null;
+  const result = stats?.noteResult;
+  const accuracy = result
+    ? result.percent
+    : game
+      ? game.accuracy
+      : stats && played > 0
+        ? (stats.hits / played) * 100
+        : null;
   return (
     <GameDialog open={open} title={t("Готово")} className="result" onClose={onClose}>
       {game && game.stars !== null ? (
@@ -66,29 +76,68 @@ export function ResultDialog({
           </span>
         </p>
       ) : null}
+      {result && game?.stars != null && (
+        <p className="result-caption">{t("Звёзды за точность попадания")}</p>
+      )}
       <div className="result-summary">
         {game && game.expectedNotes > 0 ? (
           <p className="result-points digits">
             {t("Очки")} {formatNumber(game.score)}
           </p>
         ) : (
-          <p>{game ? t("Нет нот для оценки") : t("Тренировка · без рейтинга")}</p>
+          <p>
+            {game && !result?.expectedNotes
+              ? t("Нет нот для оценки")
+              : t("Тренировка · без рейтинга")}
+          </p>
         )}
-      </div>
-      <div className="result-details">
         <p className="result-score digits">
           {accuracy === null
             ? t("Нет нот для оценки")
             : `${formatNumber(accuracy, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
         </p>
         <p className="result-caption">
-          {game ? t("взвешенная точность") : t("Тренировка · без рейтинга времени")}
+          {result
+            ? t("Попадания — 30%, удержание — 70%")
+            : game
+              ? t("взвешенная точность")
+              : t("Тренировка · без рейтинга времени")}
         </p>
+        {result?.percent != null && (
+          <>
+            <p>
+              {t("За попадания: {percent}% из 30%", {
+                percent: formatNumber(result.hitPercent, { maximumFractionDigits: 1 })
+              })}
+            </p>
+            <p>
+              {t("За удержание: {percent}% из 70%", {
+                percent: formatNumber(result.holdPercent, { maximumFractionDigits: 1 })
+              })}
+            </p>
+            {course && (
+              <p>
+                {result.percent >= COURSE_PASS_PERCENT
+                  ? t("Порог 75% достигнут")
+                  : t("Для зачёта нужно не меньше 75%. Удерживайте клавиши до конца нот.")}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+      <div className="result-details">
         {game && game.expectedNotes > 0 && (
           <div className="game-result-details">
+            {result && game.accuracy !== null && (
+              <p>
+                {t("Точность попадания: {percent}%", {
+                  percent: formatNumber(game.accuracy, { maximumFractionDigits: 1 })
+                })}
+              </p>
+            )}
             <p>
-              {t("Очки")} <strong>{formatNumber(game.score)}</strong> {t("· Ранг")}{" "}
-              <strong>{game.rank}</strong>
+              {t("Очки")} <strong>{formatNumber(game.score)}</strong>{" "}
+              {result ? t("· Ранг по времени") : t("· Ранг")} <strong>{game.rank}</strong>
             </p>
             <p>
               {t("Максимум:")} {formatNumber(game.targetScore)}{" "}

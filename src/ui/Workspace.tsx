@@ -30,8 +30,10 @@ interface Props {
   /** Where the original mounts while a take is compared with it. */
   readonly mirrorHostRef: RefObject<HTMLDivElement | null>;
   readonly gameBoard?: ReactNode;
-  /** Course tabs replace the score without remounting the falling-note view. */
+  /** Course tabs share the score area without remounting the falling-note view. */
   readonly scoreBoard?: ReactNode;
+  /** The first enabled reader stays above the second while both are shown. */
+  readonly scoreFirst?: "tabs" | "staff";
   readonly wordBoard?: ReactNode;
   /** The word mode's running line: over the keys when the lane shows its notes. */
   readonly wordTicker?: ReactNode;
@@ -56,7 +58,10 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const laneMode = prefs.lane ? "full" : prefs.keys ? "keys" : "hidden";
   // With the lane hidden or cut to its keys, the staff may take more of the screen.
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
+  const staffShown = Boolean(props.staffXml) && prefs.visible;
+  const dualScore = Boolean(props.scoreBoard) && staffShown;
   const overlay =
+    !dualScore &&
     (prefs.keyStyle === "perspective" || prefs.keyStyle === "3d") &&
     prefs.road &&
     prefs.lane &&
@@ -66,69 +71,82 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const staffShare =
     (transcription && takeStaff === "column" ? (share * 0.26) / DEFAULT_STAFF_SHARE : share) *
     staffRoom;
-  const staffShown = Boolean(props.staffXml) && prefs.visible && !props.scoreBoard;
   // Without the staff the lane's own top edge drags, leaving room over it.
   const laneTop = !staffShown && !props.scoreBoard && laneMode !== "hidden" && !props.comparing;
   const handles = props.editing && !props.comparing;
+  const staffBoard = staffShown && props.staffXml && (
+    <div key="staff" className={`staves staves--${transcription ? takeStaff : "single"}`}>
+      <div className="staff-slot">
+        {transcription && <span className="staff-label">{t("Оригинал")}</span>}
+        <Staff
+          musicXml={props.staffXml}
+          beat={props.beat}
+          zoom={prefs.zoom}
+          noteColor={prefs.noteColor}
+          scoreColor={prefs.scoreColor}
+          singleLine={prefs.singleLine}
+          follow={prefs.follow}
+          fingers={prefs.fingers}
+          fingerColors={prefs.fingerColors}
+          breaksFromScore={props.fixedLines}
+          onSeek={props.onSeek}
+          liveBeat={props.liveBeat}
+          marks={props.reviewMarks}
+          maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
+        />
+      </div>
+      {transcription && (
+        <div className="staff-slot">
+          <span className="staff-label">{t("Ваш дубль")}</span>
+          <Staff
+            musicXml={transcription.musicXml}
+            beat={props.beat}
+            zoom={prefs.zoom}
+            noteColor={prefs.noteColor}
+            scoreColor={prefs.scoreColor}
+            singleLine={prefs.singleLine}
+            follow={prefs.follow}
+            fingers={prefs.fingers}
+            fingerColors={prefs.fingerColors}
+            breaksFromScore={props.fixedLines}
+            onSeek={props.onSeek}
+            liveBeat={props.liveBeat}
+            marks={transcription.marks}
+            maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
+          />
+        </div>
+      )}
+      {props.editing && (
+        <StaffHandle
+          singleLine={prefs.singleLine}
+          zoom={prefs.zoom}
+          room={staffRoom}
+          onLayout={props.onLayout}
+          onZoom={props.onZoom}
+        />
+      )}
+    </div>
+  );
+  const tabsBoard = (
+    <div key="tabs" className="course-score-slot">
+      {props.scoreBoard}
+    </div>
+  );
   return (
     <div className="workspace">
       <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
         {/* The word mode's text over the usual staff and lane, whose keys turn computer keys. */}
         {props.wordBoard}
         {laneMode !== "full" && props.wordTicker}
-        {props.scoreBoard && <div className="course-score-slot">{props.scoreBoard}</div>}
-        {staffShown && props.staffXml && (
-          <div className={`staves staves--${transcription ? takeStaff : "single"}`}>
-            <div className="staff-slot">
-              {transcription && <span className="staff-label">{t("Оригинал")}</span>}
-              <Staff
-                musicXml={props.staffXml}
-                beat={props.beat}
-                zoom={prefs.zoom}
-                noteColor={prefs.noteColor}
-                scoreColor={prefs.scoreColor}
-                singleLine={prefs.singleLine}
-                follow={prefs.follow}
-                fingers={prefs.fingers}
-                fingerColors={prefs.fingerColors}
-                breaksFromScore={props.fixedLines}
-                onSeek={props.onSeek}
-                liveBeat={props.liveBeat}
-                marks={props.reviewMarks}
-                maxShare={staffShare}
-              />
-            </div>
-            {transcription && (
-              <div className="staff-slot">
-                <span className="staff-label">{t("Ваш дубль")}</span>
-                <Staff
-                  musicXml={transcription.musicXml}
-                  beat={props.beat}
-                  zoom={prefs.zoom}
-                  noteColor={prefs.noteColor}
-                  scoreColor={prefs.scoreColor}
-                  singleLine={prefs.singleLine}
-                  follow={prefs.follow}
-                  fingers={prefs.fingers}
-                  fingerColors={prefs.fingerColors}
-                  breaksFromScore={props.fixedLines}
-                  onSeek={props.onSeek}
-                  liveBeat={props.liveBeat}
-                  marks={transcription.marks}
-                  maxShare={staffShare}
-                />
-              </div>
-            )}
-            {props.editing && (
-              <StaffHandle
-                singleLine={prefs.singleLine}
-                zoom={prefs.zoom}
-                room={staffRoom}
-                onLayout={props.onLayout}
-                onZoom={props.onZoom}
-              />
-            )}
+        {props.scoreBoard && !dualScore && (
+          <div className="course-score-slot">{props.scoreBoard}</div>
+        )}
+        {dualScore ? (
+          <div className="course-score-stack">
+            {props.scoreFirst === "staff" ? [staffBoard, tabsBoard] : [tabsBoard, staffBoard]}
           </div>
+        ) : (
+          staffBoard
         )}
 
         {/* Over a full lane the score hangs at its top; over keys alone it takes a row. */}
