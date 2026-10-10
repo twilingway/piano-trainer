@@ -3653,10 +3653,29 @@ button.song-card.song-card__open {
 }
 
 .reading-course-card {
+  display: grid;
+  gap: 14px;
   padding: 16px;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  margin-bottom: 16px;
+  margin: 20px 0;
+  background: var(--panel-raised);
+}
+.reading-course-card > h3,
+.reading-course-card > p {
+  margin: 0;
+}
+.reading-course-card > .reading-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.reading-course-card .game-button {
+  min-width: 0;
+  min-height: 56px;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
 }
 .reading-actions {
   display: flex;
@@ -3675,6 +3694,17 @@ button.song-card.song-card__open {
 }
 .reading-muted {
   opacity: 0.7;
+}
+.reading-status {
+  display: grid;
+  align-items: center;
+  min-height: calc(1.7em + 16px);
+}
+.reading-status > p {
+  grid-area: 1 / 1;
+}
+.reading-status-hidden {
+  visibility: hidden;
 }
 .reading-hint {
   font-size: 1.2rem;
@@ -3714,6 +3744,9 @@ button.song-card.song-card__open {
   border-radius: 8px;
 }
 @media (max-width: 640px) {
+  .reading-course-card > .reading-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .reading-practice {
     padding: 8px;
     max-height: 34vh;
