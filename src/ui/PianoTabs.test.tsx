@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +9,7 @@ import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { DEFAULT_STAFF_PREFS, type StaffPrefs } from "../app/staffPreferences";
 import type { Song } from "../song/song";
 import { PianoTabs } from "./PianoTabs";
+const readerStyles = readFileSync(resolve("src/styles.css"), "utf8");
 
 let host: HTMLDivElement;
 let root: Root;
@@ -119,6 +122,7 @@ beforeEach(() => {
     const left = isGrid
       ? Number.parseFloat(content?.style.paddingInline ?? "0") +
         Number.parseFloat(system?.style.marginLeft ?? "0") +
+        Number.parseFloat(this.style.marginInline || "0") +
         Number.parseFloat(
           system?.querySelector<HTMLElement>(".piano-tabs__labels")?.style.width ?? "0"
         ) -
@@ -147,19 +151,177 @@ afterEach(async () => {
 });
 
 describe("piano tabs reader", () => {
-  it("keeps a short musical grid compact as the viewport grows and centers it with padding", async () => {
+  it.each(["en", "ru"] as const)(
+    "centres %s names on their musical attack and keeps edge glyphs outside the sticky label area",
+    async (noteNames) => {
+      const stylesheet = document.createElement("style");
+      stylesheet.textContent = /\.piano-tabs__note \{[^}]+\}/.exec(readerStyles)?.[0] ?? "";
+      document.head.append(stylesheet);
+      try {
+        let beat = 0;
+        const sharp = song([
+          { start: 0, duration: 1, pitch: 68 },
+          { start: 3, duration: 1, pitch: 68 }
+        ]);
+        await render(
+          <PianoTabs
+            song={sharp}
+            stage="both"
+            time={0}
+            liveBeat={() => beat}
+            prefs={preferences({ noteNames })}
+          />
+        );
+        const grid = host.querySelector<HTMLElement>(".piano-tabs__grid");
+        const cursor = host.querySelector<HTMLElement>(".piano-tabs__cursor");
+        const names = [...host.querySelectorAll<HTMLElement>(".piano-tabs__note")];
+        const gutter = Number.parseFloat(grid?.style.marginInline ?? "0");
+        for (const name of names) {
+          beat = Number(name.dataset.start);
+          draw(now + 16);
+          const event = name.closest<HTMLElement>(".piano-tabs__event");
+          const onset = Number.parseFloat(event?.style.left ?? "0");
+          const position = Number.parseFloat(
+            cursor?.style.transform.match(/\(([^p]+)/)?.[1] ?? "0"
+          );
+          // happy-dom does not lay out fonts: use a conservative monospace glyph box,
+          // but resolve the actual stylesheet's label transform, not a presumed alignment.
+          const width = (name.querySelector("strong")?.textContent.length ?? 0) * 26 * 0.6 + 4;
+          const percent = Number.parseFloat(
+            /\(([^%]+)/.exec(getComputedStyle(name).transform)?.[1] ?? "0"
+          );
+          const centre = onset + width / 2 + (width * percent) / 100;
+          expect(centre).toBeCloseTo(position);
+          expect(onset - width / 2).toBeGreaterThanOrEqual(-gutter);
+          expect(onset + width / 2).toBeLessThanOrEqual(
+            Number.parseFloat(grid?.style.width ?? "0") + gutter
+          );
+        }
+      } finally {
+        stylesheet.remove();
+      }
+    }
+  );
+
+  it("combines CSS presentation scale with the saved zoom across geometry, height and cursor", async () => {
+    let beat = 1.5;
+    await render(
+      <PianoTabs
+        song={short}
+        stage="both"
+        time={0}
+        liveBeat={() => beat}
+        prefs={preferences({ zoom: 1.5 })}
+      />
+    );
+    const scroll = scrollHost();
+    scroll.style.setProperty("--tabs-scale", "0.8");
+    await act(async () => {
+      resize();
+      await Promise.resolve();
+    });
+    const grid = host.querySelector<HTMLElement>(".piano-tabs__grid");
+    const section = host.querySelector<HTMLElement>(".piano-tabs");
+    const hold = host.querySelector<HTMLElement>(".piano-tabs__sustain");
+    expect(Number(section?.style.getPropertyValue("--tabs-zoom"))).toBeCloseTo(1.2);
+    expect(Number.parseFloat(grid?.style.width ?? "0")).toBeCloseTo(326.4);
+    expect(Number.parseFloat(grid?.style.height ?? "0")).toBeCloseTo(129.6);
+    expect(Number.parseFloat(hold?.style.left ?? "0")).toBeCloseTo(19.2);
+    draw(16);
+    const cursor = host.querySelector<HTMLElement>(".piano-tabs__cursor");
+    const center = () =>
+      (grid?.getBoundingClientRect().left ?? 0) +
+      Number.parseFloat(cursor?.style.transform.match(/\(([^p]+)/)?.[1] ?? "0");
+    expect(center()).toBeCloseTo(400);
+    // A media query can change the presentation scale without advancing song time.
+    scroll.style.setProperty("--tabs-scale", "0.65");
+    await act(async () => {
+      window.dispatchEvent(new Event("resize"));
+      await Promise.resolve();
+    });
+    expect(Number(section?.style.getPropertyValue("--tabs-zoom"))).toBeCloseTo(0.975);
+    expect(Number.parseFloat(grid?.style.width ?? "0")).toBeCloseTo(265.2);
+    expect(Number.parseFloat(grid?.style.height ?? "0")).toBeCloseTo(105.3);
+    beat = 2;
+    draw(32);
+    expect(center()).toBeCloseTo(400);
+  });
+
+  it("hides artificial edge-padding bars and shows thin bars only for musical overflow or wrapped rows", async () => {
     await render(<PianoTabs song={short} stage="both" time={0} />);
+    expect(scrollHost().dataset.musicalOverflow).toBe("false");
+    expect(scrollHost().dataset.scrollbars).toBe("hidden");
+    await render(<PianoTabs song={long} stage="both" time={0} />);
+    expect(scrollHost().dataset.musicalOverflow).toBe("true");
+    expect(scrollHost().dataset.scrollbars).toBe("hidden");
+    await render(
+      <PianoTabs song={long} stage="both" time={0} prefs={preferences({ follow: false })} />
+    );
+    expect(scrollHost().dataset.scrollbars).toBe("thin");
+    await render(
+      <PianoTabs song={short} stage="both" time={0} prefs={preferences({ follow: false })} />
+    );
+    expect(scrollHost().dataset.scrollbars).toBe("hidden");
+    await render(
+      <PianoTabs song={long} stage="both" time={0} prefs={preferences({ singleLine: false })} />
+    );
+    expect(scrollHost().dataset.scrollbars).toBe("thin");
+  });
+
+  it("centers a short line's cursor on a wide viewport at rest, during play, pause and seek", async () => {
+    viewport = 3440;
+    let beat = 0;
+    const resting = song([{ start: 3, duration: 1 }]);
+    await render(<PianoTabs song={resting} stage="both" time={0} liveBeat={() => beat} />);
+    const scroll = scrollHost();
+    const grid = host.querySelector<HTMLElement>(".piano-tabs__grid");
+    const cursor = host.querySelector<HTMLElement>(".piano-tabs__cursor");
+    const center = () =>
+      (grid?.getBoundingClientRect().left ?? 0) +
+      Number.parseFloat(cursor?.style.transform.match(/\(([^p]+)/)?.[1] ?? "0");
+    draw(0);
+    expect(center()).toBe(1720);
+    for (const position of [0.1, 1.5, 3, 3.1, 4, 0]) {
+      beat = position;
+      draw(now + 16);
+      expect(center()).toBeCloseTo(1720);
+      const pausedLeft = scroll.scrollLeft;
+      draw(now + 1000);
+      expect(scroll.scrollLeft).toBe(pausedLeft);
+      expect(center()).toBeCloseTo(1720);
+    }
+    expect(grid?.style.width).toBe("272px");
+    expect(host.querySelector<HTMLElement>(".piano-tabs__content")?.style.paddingInline).toBe(
+      "1720px"
+    );
+  });
+
+  it("centers when follow is enabled while paused without advancing the clock", async () => {
+    await render(
+      <PianoTabs song={short} stage="both" time={2} prefs={preferences({ follow: false })} />
+    );
+    draw(0);
+    expect(scrollHost().scrollLeft).toBe(0);
+    await render(<PianoTabs song={short} stage="both" time={2} />);
+    draw(16);
+    expect(scrollHost().scrollLeft).toBe(254);
+  });
+
+  it("keeps a short musical grid compact as the viewport grows and centers it with padding", async () => {
+    await render(
+      <PianoTabs song={short} stage="both" time={0} prefs={preferences({ follow: false })} />
+    );
     const grid = host.querySelector<HTMLElement>(".piano-tabs__grid");
     const content = host.querySelector<HTMLElement>(".piano-tabs__content");
     expect(grid?.style.width).toBe("272px");
-    expect(content?.style.paddingInline).toBe("214px");
+    expect(content?.style.paddingInline).toBe("196px");
     viewport = 3440;
     await act(async () => {
       resize();
       await Promise.resolve();
     });
     expect(grid?.style.width).toBe("272px");
-    expect(content?.style.paddingInline).toBe("1534px");
+    expect(content?.style.paddingInline).toBe("1516px");
     draw(100);
     expect(scrollHost().scrollLeft).toBe(0);
   });
@@ -312,10 +474,11 @@ describe("piano tabs reader", () => {
         Number.parseFloat(system.style.marginLeft) +
         (Number.parseFloat(grid?.style.width ?? "0") +
           Number.parseFloat(labels?.style.width ?? "0")) /
-          2
+          2 +
+        Number.parseFloat(grid?.style.marginInline ?? "0")
       );
     });
-    expect(centers).toEqual([322, 322, 322]);
+    expect(centers).toEqual([340, 340, 340]);
   });
 
   it("reads the live clock between static snapshots, freezes on pause and follows seeks and the end", async () => {
@@ -367,18 +530,17 @@ describe("piano tabs reader", () => {
   });
 
   it.each(["wheel", "pointerdown", "touchstart", "keydown"])(
-    "smoothly follows overflow and temporarily yields to a manual %s gesture",
+    "centers overflow exactly and temporarily yields to a manual %s gesture",
     async (gesture) => {
       viewport = 100;
       let beat = 0;
       await render(<PianoTabs song={long} stage="both" time={0} liveBeat={() => beat} />);
       const scroll = scrollHost();
       draw(0);
-      expect(scroll.scrollLeft).toBe(70);
+      expect(scroll.scrollLeft).toBe(88);
       beat = 0.25;
       draw(100);
-      expect(scroll.scrollLeft).toBeGreaterThan(70);
-      expect(scroll.scrollLeft).toBeLessThan(87);
+      expect(scroll.scrollLeft).toBe(105);
       scroll.dispatchEvent(new Event(gesture));
       if (gesture === "pointerdown") window.dispatchEvent(new Event("pointerup"));
       scroll.scrollLeft = 120;
@@ -390,8 +552,7 @@ describe("piano tabs reader", () => {
       expect(scroll.scrollLeft).toBe(120);
       beat = 1;
       draw(2700);
-      expect(scroll.scrollLeft).toBeGreaterThan(120);
-      expect(scroll.scrollLeft).toBeLessThan(138);
+      expect(scroll.scrollLeft).toBe(156);
     }
   );
 
@@ -417,8 +578,7 @@ describe("piano tabs reader", () => {
       expect(scroll.scrollLeft).toBe(120);
       beat = 1;
       draw(7516);
-      expect(scroll.scrollLeft).toBeGreaterThan(120);
-      expect(scroll.scrollLeft).toBeLessThan(138);
+      expect(scroll.scrollLeft).toBe(156);
     }
   );
 

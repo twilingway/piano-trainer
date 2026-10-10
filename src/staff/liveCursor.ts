@@ -6,6 +6,19 @@ export interface BeatSpot {
   readonly line: number;
 }
 
+/** The written entry at the live beat; fractional onsets and rests use the same clock. */
+export function entryBeatAt(spots: readonly BeatSpot[], beat: number): number | undefined {
+  if (spots.length === 0 || !Number.isFinite(beat)) return undefined;
+  let low = 0;
+  let high = spots.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if ((spots[middle]?.beat ?? Infinity) <= beat) low = middle + 1;
+    else high = middle;
+  }
+  return spots[Math.max(0, low - 1)]?.beat;
+}
+
 /**
  * Where the play cursor stands at `beat`: between the notes around it, so it
  * glides with the song's own time rather than jumping from note to note. A

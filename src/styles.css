@@ -143,10 +143,15 @@
   inset: 0 0 auto;
 }
 .piano-tabs {
+  --tabs-scale: 1;
+
   min-width: 0;
-  padding: 8px 12px;
+  padding: 3px 12px;
   border-bottom: 1px solid var(--border);
-  background: var(--glass);
+  background: transparent;
+}
+.course-score-stack .piano-tabs {
+  --tabs-scale: 0.8;
 }
 .piano-tabs__labels {
   position: sticky;
@@ -157,8 +162,8 @@
   align-items: center;
   padding-right: 10px;
   color: var(--tabs-score);
-  font-size: 12px;
-  background: var(--glass);
+  font-size: max(10px, calc(12px * var(--tabs-zoom)));
+  background: var(--bg);
 }
 .piano-tabs__scroll {
   position: relative;
@@ -166,6 +171,23 @@
   max-height: 36vh;
   overflow: auto;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.piano-tabs__scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.piano-tabs__scroll::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: var(--border);
+}
+.piano-tabs__scroll[data-scrollbars="hidden"] {
+  scrollbar-width: none;
+}
+.piano-tabs__scroll[data-scrollbars="hidden"]::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 .piano-tabs__content {
   box-sizing: border-box;
@@ -173,6 +195,9 @@
 .piano-tabs__system {
   display: flex;
   margin-bottom: 8px;
+}
+.piano-tabs__system:last-child {
+  margin-bottom: 0;
 }
 .piano-tabs__grid {
   position: relative;
@@ -197,7 +222,7 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  padding: 4px 0;
+  padding: calc(2px * var(--tabs-zoom)) 0;
 }
 .piano-tabs__chord {
   display: flex;
@@ -208,9 +233,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: max-content;
   padding: 0 2px;
   color: var(--tabs-notes);
   font: calc(26px * var(--tabs-zoom)) var(--font-digits);
+  transform: translateX(-50%);
 }
 .piano-tabs__tone {
   position: relative;
@@ -234,6 +261,7 @@
   inset: 0 auto 0 0;
   z-index: 3;
   width: 3px;
+  margin-left: -1.5px;
   background: var(--accent);
   box-shadow: 0 0 12px var(--accent);
   visibility: hidden;
@@ -260,7 +288,6 @@
   }
   .piano-tabs__labels {
     flex-basis: 70px;
-    font-size: 10px;
   }
   .course-lesson-bar {
     padding-inline: 8px;
@@ -3356,10 +3383,6 @@ button.song-card.song-card__open {
 
 /* A landscape phone has no height to spare: the HUD takes no row, it hangs by the bar. */
 @media (height <= 500px) {
-  .piano-tabs__grid {
-    grid-template-rows: repeat(2, minmax(56px, 1fr));
-  }
-
   /* Over the staff's left, where the notes already played are; with no staff, right of the legend. */
   .game-score-board:not(.game-score-board--message),
   .app--word .game-score-board:not(.game-score-board--message) {
@@ -3620,6 +3643,10 @@ button.song-card.song-card__open {
 }
 
 @media (max-width: 640px), (max-height: 500px) {
+  .course-score-stack .piano-tabs {
+    --tabs-scale: 0.65;
+  }
+
   .course-score-stack {
     margin-top: var(--mobile-score-top, 0px);
     margin-right: var(--mobile-bar-width, 0px);
@@ -3628,19 +3655,5 @@ button.song-card.song-card__open {
 
   .course-score-stack > .course-score-slot {
     margin-right: 0;
-  }
-}
-
-@media (max-height: 500px) {
-  .course-score-stack .piano-tabs {
-    padding-block: 4px;
-  }
-
-  .course-score-stack .piano-tabs__grid {
-    grid-template-rows: repeat(2, minmax(28px, 1fr));
-  }
-
-  .course-score-stack .piano-tabs__event {
-    padding-block: 0;
   }
 }

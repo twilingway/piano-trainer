@@ -1,17 +1,20 @@
-import { placeCursorLine, spotAt } from "./liveCursor";
+import { entryBeatAt, placeCursorLine } from "./liveCursor";
+import { centreLivePosition, createStaffFollow } from "./staffFollow";
+import { beatPositions, indexNotes, type NoteIndex } from "./staffNoteIndex";
 import { fitCompactStaff, staffZoom } from "./fitCompactStaff";
 import { setStaffTempoLayout } from "./staffTempoLayout";
 import {
   highlightUnderCursor,
-  noteheadShapes,
   paintMarks,
   paintStaffFingerings,
   paintStaffNotes,
   setStaffColors
 } from "./staffNoteColors";
 import type { BeatSpot } from "./liveCursor";
-import { OpenSheetMusicDisplay, VexFlowGraphicalNote, unitInPixels } from "opensheetmusicdisplay";
+import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useRef } from "react";
+
+export { markKey } from "./staffNoteIndex";
 
 interface StaffProps {
   readonly musicXml: string;
@@ -45,10 +48,6 @@ const BEAT_EPSILON = 1e-6;
 const GLIDE = 0.12;
 /** Share of the window the score may take; the lines that fit decide the exact height. */
 const DEFAULT_MAX_SHARE = 0.45;
-/** Time constant of the single line's easing, seconds: long enough to hide a note's jolt. */
-const LIVE_SMOOTHING_S = 0.35;
-/** How long the reader's scrolling keeps the line from following the song, ms. */
-const MANUAL_SCROLL_HOLD_MS = 2500;
 /** Movement that turns a press on the score from a click into a drag, px. */
 const DRAG_THRESHOLD_PX = 5;
 const MAX_LINES = 3;
@@ -70,11 +69,6 @@ function moveCursor(osmd: OpenSheetMusicDisplay, beat: number): void {
     if (peek.EndReached || peek.currentTimeStamp.RealValue * 4 > beat + BEAT_EPSILON) break;
     cursor.next();
   }
-}
-
-/** The key a mark is given under: the note's beat and MIDI pitch. */
-export function markKey(beat: number, pitch: number): string {
-  return `${String(Math.round(beat * 1000) / 1000)}:${String(pitch)}`;
 }
 
 interface ScrollTarget {
@@ -138,61 +132,6 @@ function scrollTarget(
   if (!singleLine) return { left: scroller.scrollLeft, top };
   const shift = mark.left + mark.width / 2 - (box.left + box.width / 2);
   return { left: clamp(scroller.scrollLeft + shift, maxLeft), top };
-}
-
-/** Every drawn note of the score with the beat it starts on, for clicks on the staff. */
-interface NoteIndex {
-  /** Each drawn note with its beat, for clicks. */
-  readonly beats: Map<SVGGElement, number>;
-  /** Noteheads by markKey, for the review colours. */
-  readonly heads: Map<string, SVGElement[]>;
-}
-
-function indexNotes(osmd: OpenSheetMusicDisplay): NoteIndex {
-  const beats = new Map<SVGGElement, number>();
-  const heads = new Map<string, SVGElement[]>();
-  for (const row of osmd.GraphicSheet.MeasureList) {
-    for (const measure of row) {
-      // OSMD's measure rows have holes for staves without a measure there.
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (!measure) continue;
-      for (const entry of measure.staffEntries) {
-        const beat = entry.getAbsoluteTimestamp().RealValue * 4;
-        for (const voice of entry.graphicalVoiceEntries) {
-          for (const note of voice.notes) {
-            if (!(note instanceof VexFlowGraphicalNote) || note.sourceNote.isRest()) continue;
-            beats.set(note.getSVGGElement(), beat);
-            // OSMD counts half tones from C0; MIDI from C-1.
-            const key = markKey(beat, note.sourceNote.halfTone + 12);
-            heads.set(key, [...(heads.get(key) ?? []), ...noteheadShapes(note)]);
-          }
-        }
-      }
-    }
-  }
-  return { beats, heads };
-}
-
-/** Every beat that has a note: that note's x centre from the SVG's left edge, and its line. */
-function beatPositions(
-  beats: ReadonlyMap<SVGGElement, number>,
-  host: HTMLElement,
-  lines: readonly LineBox[]
-): BeatSpot[] {
-  const svg = host.querySelector("svg");
-  if (!svg) return [];
-  const origin = svg.getBoundingClientRect();
-  const byBeat = new Map<number, BeatSpot>();
-  for (const [element, beat] of beats) {
-    const box = element.getBoundingClientRect();
-    if (box.width === 0) continue;
-    const x = box.left + box.width / 2 - origin.left;
-    const y = box.top + box.height / 2 - origin.top;
-    const line = (lines.filter((item) => item.top <= y).at(-1) ?? lines[0])?.top ?? 0;
-    const known = byBeat.get(beat);
-    if (!known || x < known.x) byBeat.set(beat, { beat, x, line });
-  }
-  return [...byBeat.values()].sort((a, b) => a.beat - b.beat);
 }
 
 /**
@@ -279,8 +218,12 @@ export function Staff({
   const latest = useRef({ beat, zoom, follow, singleLine, maxShare });
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
-  const noteIndexRef = useRef<NoteIndex>({ beats: new Map(), heads: new Map() });
-  /** Each beat that has a note, with that note's x from the SVG's left edge and its line. */
+  const noteIndexRef = useRef<NoteIndex>({
+    beats: new Map(),
+    heads: new Map(),
+    cursorBeats: new Map()
+  });
+  /** Musical entries, including rests, with their x from the SVG's left edge and their line. */
   const beatXRef = useRef<BeatSpot[]>([]);
   /** The play cursor: a thin glowing line gliding with the song, over OSMD's own. */
   const cursorLineRef = useRef<HTMLDivElement>(null);
@@ -292,10 +235,10 @@ export function Staff({
   });
 
   const showBeat = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
-    moveCursor(osmd, latest.current.beat);
+    moveCursor(osmd, liveBeatRef.current?.() ?? latest.current.beat);
     paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
     // A single line with a live position scrolls every frame on its own and needs no steering.
-    const live = latest.current.singleLine && liveBeatRef.current !== undefined;
+    const live = latest.current.singleLine;
     if (latest.current.follow) {
       const target = scrollTarget(
         host,
@@ -324,7 +267,7 @@ export function Staff({
     }
     linesRef.current = lineBoxes(osmd);
     noteIndexRef.current = indexNotes(osmd);
-    beatXRef.current = beatPositions(noteIndexRef.current.beats, host, linesRef.current);
+    beatXRef.current = beatPositions(noteIndexRef.current.cursorBeats, host, linesRef.current);
     paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
     // A new render draws new noteheads and puts the cursor back at the start.
@@ -338,8 +281,12 @@ export function Staff({
       linesRef.current,
       latest.current.singleLine
     );
-    host.scrollLeft = target.left;
-    host.scrollTop = target.top;
+    if (latest.current.follow) {
+      if (latest.current.singleLine) {
+        centreLivePosition(host, beatXRef.current, liveBeatRef.current?.() ?? latest.current.beat);
+      } else host.scrollLeft = target.left;
+      host.scrollTop = target.top;
+    }
     targetRef.current = null;
   });
 
@@ -431,53 +378,31 @@ export function Staff({
     paintMarks(noteIndexRef.current.heads, marks);
   }, [marks]);
 
-  // The view glides towards its target every frame instead of jumping on each note.
+  // Read the shared beat every frame; single-line cursors stay exactly at the viewport midpoint.
   useEffect(() => {
     let frame = 0;
-    let lastFrame = performance.now();
-    /** The line's scroll position as the loop keeps it: fractional, unlike scrollLeft. */
-    let smoothLeft: number | undefined;
-    let lastBeat: number | undefined;
-    /** Until when the reader's own scrolling holds the line still, ms. */
-    let manualUntil = 0;
-    const holdForReader = () => {
-      manualUntil = performance.now() + MANUAL_SCROLL_HOLD_MS;
-    };
+    let paintedBeat: number | undefined;
+    let paintedMap: readonly BeatSpot[] | undefined;
     const reader = hostRef.current;
-    for (const type of ["wheel", "pointerdown", "touchstart", "keydown"] as const) {
-      reader?.addEventListener(type, holdForReader, { passive: true });
-    }
+    const controller = reader ? createStaffFollow(reader) : undefined;
     const step = () => {
-      const now = performance.now();
-      const dt = Math.min(now - lastFrame, 100) / 1000;
-      lastFrame = now;
       const host = hostRef.current;
-      const live = liveBeatRef.current;
-      const beatNow = live?.();
-      // Following leaves the line to the reader while the song stands still or they scroll it.
-      const moving = beatNow !== undefined && beatNow !== lastBeat;
-      lastBeat = beatNow;
-      if (now < manualUntil || !moving) {
-        smoothLeft = undefined;
-      } else if (host && latest.current.singleLine && latest.current.follow) {
-        const x = spotAt(beatXRef.current, beatNow)?.x;
-        const svg = host.querySelector("svg");
-        if (x !== undefined && svg) {
-          const svgLeft =
-            svg.getBoundingClientRect().left - host.getBoundingClientRect().left + host.scrollLeft;
-          const wanted = svgLeft + x - host.clientWidth / 2;
-          // Notes sit unevenly on the page and the song can stop and start: the line eases
-          // towards where the song is rather than copying every change of pace.
-          const ease = 1 - Math.exp(-dt / LIVE_SMOOTHING_S);
-          // Coming back from the reader's scroll, the line eases from where they left it.
-          const from = smoothLeft ?? host.scrollLeft;
-          smoothLeft =
-            Math.abs(wanted - from) > host.clientWidth * 3 ? wanted : from + (wanted - from) * ease;
-          host.scrollLeft = smoothLeft;
-        }
-      } else {
-        smoothLeft = undefined;
+      const beatNow = liveBeatRef.current?.() ?? latest.current.beat;
+      const osmd = osmdRef.current;
+      const entryBeat = entryBeatAt(beatXRef.current, beatNow);
+      if (osmd && (entryBeat !== paintedBeat || paintedMap !== beatXRef.current)) {
+        moveCursor(osmd, beatNow);
+        paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
+        paintedBeat = entryBeat;
+        paintedMap = beatXRef.current;
       }
+      const following = controller?.frame(
+        beatNow,
+        latest.current.singleLine,
+        latest.current.follow,
+        beatXRef.current
+      );
+      if (!following) targetRef.current = null;
       const target = targetRef.current;
       if (host && target) {
         const dx = target.left - host.scrollLeft;
@@ -497,15 +422,13 @@ export function Staff({
         cursorLineRef.current,
         beatXRef.current,
         linesRef.current,
-        beatNow ?? latest.current.beat
+        beatNow
       );
       frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
     return () => {
-      for (const type of ["wheel", "pointerdown", "touchstart", "keydown"] as const) {
-        reader?.removeEventListener(type, holdForReader);
-      }
+      controller?.dispose();
       cancelAnimationFrame(frame);
     };
   }, []);
