@@ -14,16 +14,23 @@ interface Props {
   readonly onNext?: () => void;
 }
 
-/** Task navigation stays separate from the main hands and view controls. */
+/** Compact phrase navigation for the main toolbar and its mobile menu. */
 export function CourseLessonBar(props: Props) {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
   const phraseIndex = props.phrases.findIndex((phrase) => phrase.id === props.phraseId);
+  const position = t("Фраза {number} из {total}", {
+    number: phraseIndex + 1,
+    total: props.phrases.length
+  });
+  const nextLabel = props.nextLabel ? t(props.nextLabel) : t("Следующее задание");
   return (
-    <div className="course-lesson-bar">
-      <strong title={t(props.title)}>{t(props.title)}</strong>
+    <div className="course-lesson-bar" role="group" aria-label={t(props.title)}>
       <label className="course-phrase-choice">
-        <span>
-          {t("Фраза {number} из {total}", { number: phraseIndex + 1, total: props.phrases.length })}
+        <span className="course-phrase-position" title={position}>
+          <span className="course-phrase-position__full">{position}</span>
+          <span className="course-phrase-position__short" aria-hidden="true">
+            {formatNumber(phraseIndex + 1)}/{formatNumber(props.phrases.length)}
+          </span>
         </span>
         <select
           className="game-select"
@@ -42,13 +49,26 @@ export function CourseLessonBar(props: Props) {
         </select>
       </label>
       {props.completed && (
-        <span className="course-completed" role="status">
-          {t("Фраза пройдена")}
+        <span
+          className="course-completed"
+          role="status"
+          title={t("Фраза пройдена")}
+          aria-label={t("Фраза пройдена")}
+        >
+          <span className="course-completed__label">{t("Фраза пройдена")}</span>
+          <span aria-hidden="true">✓</span>
         </span>
       )}
       {props.completed && props.onNext && (
-        <button type="button" className="game-button" onClick={props.onNext}>
-          {props.nextLabel ? t(props.nextLabel) : t("Следующее задание")}
+        <button
+          type="button"
+          className="game-button course-next"
+          onClick={props.onNext}
+          aria-label={nextLabel}
+          title={nextLabel}
+        >
+          <span className="course-next__label">{nextLabel}</span>
+          <span aria-hidden="true">→</span>
         </button>
       )}
     </div>

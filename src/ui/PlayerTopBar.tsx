@@ -1,5 +1,5 @@
 import { useI18n } from "../app/useI18n";
-import { useRef, type ReactNode } from "react";
+import { useRef, useSyncExternalStore, type ReactNode } from "react";
 
 import type { Scoreboard } from "../practice/scoreboard";
 import { ROLE_TITLE } from "../song/midiParts";
@@ -40,6 +40,8 @@ interface Props {
   readonly game?: ReactNode;
   /** The mode's own settings by the hands, such as the word mode's «Текст ▾». */
   readonly practice?: ReactNode;
+  /** Course phrase navigation shares the bar and the compact menu, with one mounted instance. */
+  readonly course?: ReactNode;
   /** The applied timing, a chip by the scoreboard. */
   readonly timing?: ReactNode;
   readonly language?: ReactNode;
@@ -71,13 +73,14 @@ export function PlayerTopBar(props: Props) {
   const { t, formatNumber } = useI18n();
   const board = props.board ?? { clock: "0:00" };
   const controls = useRef<HTMLDetailsElement>(null);
+  const compact = useSyncExternalStore(subscribeCompact, compactSnapshot, () => false);
   const handTitle = t(
     props.parts?.role
       ? ROLE_TITLE[props.parts.role]
       : (HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки")
   );
   return (
-    <header className="topbar">
+    <header className={`topbar${props.course ? " topbar--course" : ""}`}>
       <details className="compact-controls" ref={controls}>
         <summary className="icon-button" aria-label={t("Управление")} title={t("Управление")}>
           <GearIcon />
@@ -101,6 +104,7 @@ export function PlayerTopBar(props: Props) {
             <br />
             {props.midi ? `MIDI: ${props.midi}` : t("MIDI не подключено")}
           </p>
+          {compact && props.course}
           <CompactPracticeChoices
             hands={props.hands}
             mode={props.mode}
@@ -228,6 +232,7 @@ export function PlayerTopBar(props: Props) {
         <option value="listen">{t("Только слушать")}</option>
         <PartOptions parts={props.parts} />
       </select>
+      {!compact && props.course}
       {props.difficulty && (
         <select
           className="game-select topbar-difficulty"
@@ -310,6 +315,18 @@ export function PlayerTopBar(props: Props) {
       </button>
     </header>
   );
+}
+
+const COMPACT_MEDIA = "(height <= 500px), (width <= 640px)";
+function compactSnapshot(): boolean {
+  return window.matchMedia(COMPACT_MEDIA).matches;
+}
+function subscribeCompact(notify: () => void): () => void {
+  const media = window.matchMedia(COMPACT_MEDIA);
+  media.addEventListener("change", notify);
+  return () => {
+    media.removeEventListener("change", notify);
+  };
 }
 
 /** What a difficulty plays, for its tooltip and the phone's caption. */

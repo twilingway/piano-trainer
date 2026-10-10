@@ -9,6 +9,7 @@ import { lessonDisplayTitle } from "./lessonDisplayTitle";
 import { COURSE_STAGE_LABELS } from "../ui/CourseCards";
 import { stagePhrases } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
+import { ConnectedCourseLessonBar } from "./ConnectedCourse";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPlayerHeader() {
@@ -33,7 +34,8 @@ export function ConnectedPlayerHeader() {
     trainerMode,
     trainerSpeed,
     inputMidiName,
-    courseActive
+    courseActive,
+    comparing
   } = useRuntimeSelector(
     (runtime) => ({
       sound: runtime.sound,
@@ -56,7 +58,8 @@ export function ConnectedPlayerHeader() {
       trainerMode: runtime.trainer.mode,
       trainerSpeed: runtime.trainer.speed,
       inputMidiName: runtime.input.midiName,
-      courseActive: runtime.course.active
+      courseActive: runtime.course.active,
+      comparing: runtime.comparing
     }),
     shallowEqual
   );
@@ -110,6 +113,9 @@ export function ConnectedPlayerHeader() {
                 notice={wordNotice}
               />
             )
+          }
+          course={
+            !wordEnabled && !comparing && courseActive ? <ConnectedCourseLessonBar /> : undefined
           }
           timing={<HeaderSlot name="timingStatus" />}
           // A phone holds the game's strip in the menu.
