@@ -134,26 +134,29 @@ export function ReadingPracticePanel(props: PracticeProps) {
           </button>
         )}
       </div>
-      {props.renderError ? (
-        <p role="alert">
-          {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
-          <button type="button" onClick={props.onRetry}>
-            {t("Повторить загрузку стана")}
-          </button>
+      <div className="reading-status">
+        <p
+          className={`reading-muted${props.ready || result || props.renderError ? " reading-status-hidden" : ""}`}
+        >
+          {t("Нажмите «Играть» и дождитесь появления текущей ноты.")}
         </p>
-      ) : (
-        !props.ready &&
-        !result && (
-          <p className="reading-muted">
-            {t("Нажмите «Играть» и дождитесь появления текущей ноты.")}
+        {props.renderError ? (
+          <p role="alert">
+            {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
+            <button type="button" onClick={props.onRetry}>
+              {t("Повторить загрузку стана")}
+            </button>
           </p>
-        )
-      )}
-      {props.hintLevel > 0 && props.hintPitch !== undefined && task !== "check" && (
-        <p className="reading-hint" aria-live="polite">
-          {t("Текущая нота: {note}", { note: readingNoteName(props.hintPitch, t) })}
-        </p>
-      )}
+        ) : (
+          props.hintLevel > 0 &&
+          props.hintPitch !== undefined &&
+          task !== "check" && (
+            <p className="reading-hint" aria-live="polite">
+              {t("Текущая нота: {note}", { note: readingNoteName(props.hintPitch, t) })}
+            </p>
+          )
+        )}
+      </div>
       {task !== "check" && (
         <details className="reading-hint-settings">
           <summary>{t("Настройки подсказок чтения")}</summary>
