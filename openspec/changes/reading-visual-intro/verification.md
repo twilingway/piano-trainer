@@ -1,5 +1,8 @@
 # Проверка визуального знакомства
 
+Ветка `feat/reading-visual-intro`, [PR #148](https://github.com/twilingway/piano-trainer/pull/148)
+в `dev`. Основная папка чистая, на `dev`.
+
 ## Автоматические проверки
 
 - `pnpm check`: форматирование, ESLint, TypeScript, 1624 теста и production-сборка прошли; один
