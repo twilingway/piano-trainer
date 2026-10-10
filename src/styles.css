@@ -143,51 +143,61 @@
   inset: 0 0 auto;
 }
 .piano-tabs {
-  display: flex;
   min-width: 0;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--glass);
 }
 .piano-tabs__labels {
+  position: sticky;
+  left: 0;
+  z-index: 4;
   display: grid;
-  flex: 0 0 100px;
-  grid-template-rows: 1fr 1fr;
+  flex-shrink: 0;
   align-items: center;
   padding-right: 10px;
-  color: var(--muted);
+  color: var(--tabs-score);
   font-size: 12px;
+  background: var(--glass);
 }
 .piano-tabs__scroll {
   position: relative;
-  flex: 1;
   min-width: 0;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
+  max-height: 36vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.piano-tabs__content {
+  box-sizing: border-box;
+}
+.piano-tabs__system {
+  display: flex;
+  margin-bottom: 8px;
 }
 .piano-tabs__grid {
   position: relative;
-  display: grid;
-  grid-template-rows: repeat(2, minmax(68px, 1fr));
-  border-inline: 2px solid var(--accent);
+  flex-shrink: 0;
+  border-inline: 1px solid var(--tabs-score);
 }
 .piano-tabs__column {
+  position: absolute;
+  bottom: 0;
   border-left: 1px solid rgb(180 222 255 / 10%);
   pointer-events: none;
 }
 .piano-tabs__column[data-measure="true"] {
-  border-left: 2px solid var(--border);
+  border-left: 1px solid var(--tabs-score);
 }
 .piano-tabs__column[data-current="true"] {
-  background: var(--accent-soft);
-  box-shadow: 2px 0 0 var(--accent) inset;
+  background: rgb(0 213 244 / 6%);
 }
 .piano-tabs__event {
+  position: absolute;
   z-index: 1;
   display: flex;
   align-items: center;
   min-width: 0;
-  padding: 4px 6px;
+  padding: 4px 0;
 }
 .piano-tabs__chord {
   display: flex;
@@ -199,21 +209,41 @@
   flex-direction: column;
   align-items: center;
   padding: 0 2px;
-  font: 26px var(--font-digits);
+  color: var(--tabs-notes);
+  font: calc(26px * var(--tabs-zoom)) var(--font-digits);
+}
+.piano-tabs__tone {
+  position: relative;
 }
 .piano-tabs__finger {
-  color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--tabs-zoom));
 }
 .piano-tabs__note[data-current="true"] {
-  color: var(--accent);
+  text-shadow: 0 0 8px currentColor;
 }
 .piano-tabs__sustain {
-  flex: 1;
-  min-width: 0;
+  position: absolute;
+  right: 0;
+  top: 65%;
   height: 2px;
-  margin-left: 6px;
-  background: var(--border);
+  background: var(--tabs-notes);
+  opacity: 0.5;
+}
+.piano-tabs__cursor {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 3;
+  width: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  visibility: hidden;
+  pointer-events: none;
+}
+.piano-tabs__harmony {
+  position: absolute;
+  top: 0;
+  color: var(--tabs-score);
+  font-size: calc(14px * var(--tabs-zoom));
 }
 .piano-tabs [data-muted="true"] {
   opacity: 0.45;
@@ -767,14 +797,6 @@ body {
 .course-score-stack .staff-slot {
   flex: 1 1 auto;
   min-height: 0;
-}
-
-.course-score-stack .piano-tabs__grid {
-  grid-template-rows: repeat(2, minmax(40px, 1fr));
-}
-
-.course-score-stack .piano-tabs__note {
-  font-size: 22px;
 }
 
 /* Lines the player drags: the staff's lower edge, and the keys' upper and lower edges. */
@@ -3620,13 +3642,5 @@ button.song-card.song-card__open {
 
   .course-score-stack .piano-tabs__event {
     padding-block: 0;
-  }
-
-  .course-score-stack .piano-tabs__note {
-    font-size: 16px;
-  }
-
-  .course-score-stack .piano-tabs__finger {
-    font-size: 10px;
   }
 }

@@ -425,17 +425,22 @@ describe("piano tabs from the same MusicXML", () => {
     ).toBe("1");
   });
 
-  it("scrolls a narrow viewport to keep the current column visible", async () => {
-    vi.spyOn(HTMLElement.prototype, "offsetLeft", "get").mockImplementation(function (
-      this: HTMLElement
-    ) {
-      return Number(this.getAttribute("data-beat") ?? 0) * 80;
+  it("moves a continuous cursor within a held note using supplied song time", async () => {
+    let frame: FrameRequestCallback | undefined;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      frame = callback;
+      return 1;
     });
-    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(80);
-    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(100);
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
     await render(<PianoTabs song={song} time={0} stage="both" />);
-    expect(host.querySelector(".piano-tabs__scroll")?.scrollLeft).toBe(0);
+    frame?.(0);
+    const cursor = host.querySelector<HTMLElement>(".piano-tabs__cursor");
+    expect(cursor?.style.transform).toBe("translateX(0px)");
     await render(<PianoTabs song={song} time={2.5} stage="both" />);
-    expect(host.querySelector(".piano-tabs__scroll")?.scrollLeft).toBe(125);
+    frame?.(16);
+    expect(cursor?.style.transform).toBe("translateX(170px)");
+    await render(<PianoTabs song={song} time={3} stage="both" />);
+    frame?.(32);
+    expect(cursor?.style.transform).toBe("translateX(204px)");
   });
 });
