@@ -5,7 +5,6 @@ import type {
   ReadingResult,
   ReadingTask
 } from "../reading/types";
-import { GameDialog } from "./GameDialog";
 
 export const READING_TASK_LABELS: Readonly<Record<ReadingTask, string>> = {
   notes: "Читаю отдельные ноты",
@@ -56,40 +55,6 @@ export function ReadingCourseCard({
       </div>
       <p className="reading-muted">{t("Завершено серий: {number}", { number: history.length })}</p>
     </section>
-  );
-}
-
-export function ReadingIntro({ onClose }: { onClose: () => void }) {
-  const { t } = useI18n();
-  return (
-    <GameDialog open title={t("Знакомство с пятью нотами")} onClose={onClose}>
-      <p>
-        {t(
-          "Найдите до первой октавы — C4. Положите правую руку на пять белых клавиш: до, ре, ми, фа, соль."
-        )}
-      </p>
-      <div className="reading-intro-keys">
-        {[60, 62, 64, 65, 67].map((pitch, index) => (
-          <div key={pitch}>
-            <strong>{readingNoteName(pitch, t)}</strong>
-            <span>{t("Палец правой руки: {number}", { number: index + 1 })}</span>
-          </div>
-        ))}
-      </div>
-      <p>
-        {t(
-          "Сначала смотрите на ноту на стане. Нажмите соответствующую клавишу. Ошибка не переводит к следующей ноте."
-        )}
-      </p>
-      <p>
-        {t("Можно играть на MIDI-пианино, компьютерной клавиатуре или нажимать клавиши мышью.")}
-      </p>
-      <p>
-        {t(
-          "Рекомендуемые пальцы помогают поставить руку. MIDI не определяет, каким пальцем вы играете."
-        )}
-      </p>
-    </GameDialog>
   );
 }
 

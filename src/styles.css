@@ -3731,17 +3731,271 @@ button.song-card.song-card__open {
   padding: 6px 10px;
   white-space: nowrap;
 }
-.reading-intro-keys {
+.reading-intro .game-dialog__body {
+  display: grid;
+  gap: 22px;
+  overflow-x: hidden;
+}
+.reading-intro-section {
+  min-width: 0;
+}
+.reading-intro-section h3 {
+  margin-top: 0;
+}
+.reading-intro-section p {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+.reading-intro-overview,
+.reading-intro-keyboard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  isolation: isolate;
+}
+.reading-intro-overview {
+  height: 92px;
+  margin-block: 14px;
+}
+.reading-intro-white-row {
   display: flex;
-  flex-wrap: wrap;
+  height: 100%;
+}
+.reading-intro-overview-key {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: center;
+  border-right: 1px solid #697078;
+  padding-bottom: 8px;
+  background: #f5f4ed;
+  color: #17242e;
+  font-size: 11px;
+}
+.reading-intro-overview-key:last-child,
+.reading-intro-piano-key:last-child {
+  border-right: 0;
+}
+.reading-intro-overview-key.is-selected,
+.reading-intro-piano-key.is-selected {
+  background: #8be7f6;
+  box-shadow: inset 0 0 0 2px #0088a2;
+}
+.reading-intro-black-key {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  width: calc(100% / 29 * 0.62);
+  height: 58%;
+  transform: translateX(-50%);
+  background: linear-gradient(#253340, #0a1016);
+  border-radius: 0 0 3px 3px;
+  box-shadow: 0 2px 2px rgb(0 0 0 / 30%);
+  pointer-events: none;
+}
+.reading-intro-explanation {
+  color: var(--muted);
+}
+.reading-intro-note-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
-.reading-intro-keys > div {
+.reading-intro-note-buttons .game-button {
   display: grid;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid var(--accent);
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 3px;
+  font-size: 14px;
+}
+.reading-intro-note-buttons .game-button > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.reading-intro-note-buttons [aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--panel-raised);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.reading-intro-staff {
+  position: relative;
+  height: 160px;
+  margin-block: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
   border-radius: 8px;
+}
+.reading-intro-staff .staff {
+  width: 100%;
+  height: 160px !important;
+  min-height: 0;
+  max-height: none;
+  resize: none;
+  scrollbar-gutter: auto;
+}
+.reading-intro-staff-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 12px;
+  text-align: center;
+  background: var(--panel);
+}
+.reading-intro-staff-error p {
+  margin: 0;
+}
+.reading-intro-staff-error .game-button {
+  white-space: normal;
+}
+.reading-intro-keyboard {
+  height: 164px;
+}
+.reading-intro-keyboard .reading-intro-black-key {
+  width: calc(100% / 7 * 0.62);
+  pointer-events: auto;
+}
+.reading-intro-piano-key {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  padding: 0 2px 12px;
+  border: 0;
+  border-right: 1px solid #697078;
+  border-radius: 0;
+  background: #f5f4ed;
+  color: #17242e;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.reading-intro-piano-key small {
+  font-size: 11px;
+}
+.reading-intro-piano-key--context {
+  color: #68747d;
+  cursor: default;
+}
+.reading-intro-piano-key:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid #0088a2;
+  outline-offset: -4px;
+}
+.reading-intro-detail {
+  display: grid;
+  grid-template-rows: 1.5em 3em 3em;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  line-height: 1.5;
+}
+.reading-intro-hand-section {
+  margin-top: 20px;
+}
+.reading-intro-hand-study {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+.reading-intro-hand {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  justify-self: center;
+}
+.reading-intro-hand-tip {
+  fill: var(--panel);
+  stroke: var(--muted);
+  stroke-width: 4px;
+}
+.reading-intro-hand-tip.is-selected {
+  fill: var(--accent);
+  stroke: #ffffff;
+  stroke-width: 8px;
+}
+.reading-intro-hand text {
+  fill: var(--text);
+  font: 700 42px var(--font-ui);
+  pointer-events: none;
+}
+.reading-intro-hand .is-selected + text {
+  fill: #041b2c;
+}
+.reading-intro-finger-buttons {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.reading-intro-finger-buttons .game-button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  text-align: left;
+  white-space: normal;
+}
+.reading-intro-finger-buttons [aria-pressed="true"] {
+  background: var(--panel-raised);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.reading-intro-finger-number {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+.reading-intro-finger-buttons small {
+  color: var(--muted);
+}
+@media (max-width: 520px) {
+  .reading-intro-hand-study {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .reading-intro-hand {
+    max-width: 210px;
+  }
+}
+.reading-intro-detail p {
+  margin: 0;
+}
+.reading-intro-start {
+  width: 100%;
+}
+@media (max-width: 380px) {
+  .reading-intro-note-buttons {
+    gap: 4px;
+  }
+  .reading-intro-detail {
+    grid-template-rows: 3em 4.5em 4.5em;
+    font-size: 13px;
+  }
+  .reading-intro-overview-key {
+    font-size: 9px;
+  }
+  .reading-intro-staff,
+  .reading-intro-staff .staff {
+    height: 150px !important;
+  }
 }
 @media (max-width: 640px) {
   .reading-course-card > .reading-actions {

@@ -1,4 +1,5 @@
-import { ReadingCourseCard, ReadingIntro, ReadingPracticePanel } from "../ui/ReadingCourse";
+import { ReadingCourseCard, ReadingPracticePanel } from "../ui/ReadingCourse";
+import { ReadingIntro } from "../ui/ReadingIntro";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 
 export function ConnectedReadingCard({ onChoose }: { onChoose: () => void }) {
@@ -23,6 +24,10 @@ export function ConnectedReadingPractice() {
     <>
       {reading.intro && (
         <ReadingIntro
+          onStart={() => {
+            reading.setIntro(false);
+            reading.start("notes");
+          }}
           onClose={() => {
             reading.setIntro(false);
           }}

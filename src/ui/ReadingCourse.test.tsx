@@ -10,13 +10,7 @@ import {
   type ReadingResult,
   type ReadingTask
 } from "../reading/types";
-import { ReadingCourseCard, ReadingIntro, ReadingPracticePanel } from "./ReadingCourse";
-
-vi.mock("./GameDialog", () => ({
-  GameDialog: ({ children, title }: { children: ReactNode; title: string }) => (
-    <section aria-label={title}>{children}</section>
-  )
-}));
+import { ReadingCourseCard, ReadingPracticePanel } from "./ReadingCourse";
 
 let host: HTMLDivElement;
 let root: Root;
@@ -145,22 +139,6 @@ describe("reading course UI", () => {
     await english();
     expect(host.textContent).toContain("Read five notes");
     expect(button("Check reading without hints").disabled).toBe(false);
-  });
-
-  it("explains the five-key right-hand position and alternative input in both languages", async () => {
-    await render(<ReadingIntro onClose={noop} />);
-    expect(
-      [...host.querySelectorAll(".reading-intro-keys strong")].map((key) => key.textContent)
-    ).toEqual(["до 4", "ре 4", "ми 4", "фа 4", "соль 4"]);
-    expect(host.textContent).toContain("Палец правой руки: 5");
-    expect(host.textContent).toContain("MIDI не определяет, каким пальцем вы играете.");
-    expect(host.textContent).toContain("нажимать клавиши мышью");
-    await english();
-    expect(
-      [...host.querySelectorAll(".reading-intro-keys strong")].map((key) => key.textContent)
-    ).toEqual(["C 4", "D 4", "E 4", "F 4", "G 4"]);
-    expect(host.textContent).toContain("Right-hand finger: 5");
-    expect(host.textContent).toContain("MIDI cannot tell which finger you use.");
   });
 
   it("gates the manual hint on presentation and reveals only the supplied current note", async () => {
