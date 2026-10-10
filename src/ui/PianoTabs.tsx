@@ -1,169 +1,274 @@
-import { useEffect, useMemo, useRef } from "react";
-
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useI18n } from "../app/useI18n";
-import { quartersAt } from "../song/song";
-import type { Song, SongNote } from "../song/song";
+import { DEFAULT_STAFF_PREFS, type StaffPrefs } from "../app/staffPreferences";
+import { FINGER_COLOR } from "../render/fingerColors";
+import { detectChords, type ChordKind } from "../song/harmony";
+import { quartersAt, type Song } from "../song/song";
 import type { CourseStageId } from "./CourseCards";
+import { buildPianoTabs, layoutPianoTabs, positionInTabs } from "./pianoTabsLayout";
+import { useTabsCursor } from "./useTabsCursor";
 
-interface TabEvent {
-  readonly id: string;
-  readonly hand: "left" | "right";
-  readonly start: number;
-  readonly end: number;
-  readonly firstColumn: number;
-  readonly lastColumn: number;
-  readonly notes: readonly SongNote[];
-}
+export { buildPianoTabs } from "./pianoTabsLayout";
 
-interface TabModel {
-  readonly boundaries: readonly number[];
-  readonly measures: ReadonlySet<number>;
-  readonly events: readonly TabEvent[];
-}
-
-/** Onsets, releases and measure edges share one grid for both hands. */
-export function buildPianoTabs(song: Song): TabModel {
-  const boundaries = new Set<number>([0]);
-  const measures = new Set(song.measures.map((measure) => measure.start));
-  const groups = new Map<string, SongNote[]>();
-  for (const note of song.notes) {
-    boundaries.add(note.startBeat);
-    boundaries.add(quartersAt(song, note.start + note.duration));
-    const key = `${note.hand}:${String(note.startBeat)}`;
-    const group = groups.get(key);
-    if (group) group.push(note);
-    else groups.set(key, [note]);
-  }
-  for (const measure of song.measures) {
-    boundaries.add(measure.start);
-    boundaries.add(measure.start + measure.length);
-  }
-  boundaries.add(quartersAt(song, song.duration));
-  const ordered = [...boundaries].sort((a, b) => a - b);
-  const indices = new Map(ordered.map((beat, index) => [beat, index + 1]));
-  const events: TabEvent[] = [];
-  for (const [id, notes] of groups) {
-    const first = notes[0];
-    if (!first) continue;
-    const end = Math.max(...notes.map((note) => note.start + note.duration));
-    events.push({
-      id,
-      hand: first.hand,
-      start: first.start,
-      end,
-      firstColumn: indices.get(first.startBeat) ?? 1,
-      lastColumn: indices.get(quartersAt(song, end)) ?? ordered.length,
-      notes: notes.sort((a, b) => b.pitch - a.pitch)
-    });
-  }
-  return { boundaries: ordered, measures, events };
-}
-
-const NOTE_LETTERS = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
+const LETTERS = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
+const RUSSIAN = ["до", "до♯", "ре", "ре♯", "ми", "фа", "фа♯", "соль", "соль♯", "ля", "ля♯", "си"];
+const CHORD_SUFFIX: Record<ChordKind, string> = {
+  major: "",
+  minor: "m",
+  diminished: "dim",
+  augmented: "+",
+  dominant: "7",
+  "minor-seventh": "m7",
+  "major-seventh": "maj7"
+};
 
 interface Props {
   readonly song: Song;
+  readonly baseSong?: Song;
   readonly time: number;
+  readonly liveBeat?: () => number;
   readonly stage: CourseStageId;
+  readonly prefs?: StaffPrefs;
 }
 
-/** Time is supplied by PracticeSession; this view never advances it. */
-export function PianoTabs({ song, time, stage }: Props) {
+/** This reader only displays the session clock and the song's own events. */
+export function PianoTabs({
+  song,
+  baseSong = song,
+  time,
+  liveBeat,
+  stage,
+  prefs = DEFAULT_STAFF_PREFS
+}: Props) {
   const { t } = useI18n();
-  // The clock changes every frame; music grouping only changes with the song.
   const model = useMemo(() => buildPianoTabs(song), [song]);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const markerRef = useRef<HTMLDivElement>(null);
-  const beat = quartersAt(song, Math.max(0, time));
-  const current = model.boundaries.findIndex((value, index) => {
-    const end = model.boundaries[index + 1];
-    return end !== undefined && value <= beat && beat < end;
-  });
-  useEffect(() => {
-    const container = scrollRef.current;
-    const marker = markerRef.current;
-    if (!container || !marker || current < 0) return;
-    const left = marker.offsetLeft;
-    const right = left + marker.offsetWidth;
-    if (left < container.scrollLeft || right > container.scrollLeft + container.clientWidth) {
-      container.scrollLeft = Math.max(0, left - container.clientWidth * 0.35);
-    }
-  }, [current, song]);
-  if (song.notes.length === 0) return <div className="piano-tabs">{t("Пока нет нот")}</div>;
-  const intervals = model.boundaries.slice(0, -1);
-  const widths = intervals.map((start, index) =>
-    Math.max(0.05, (model.boundaries[index + 1] ?? start) - start)
+  const chords = useMemo(
+    () => (prefs.chords ? detectChords(baseSong) : []),
+    [baseSong, prefs.chords]
   );
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(640);
+  useEffect(() => {
+    const host = scrollRef.current;
+    if (!host) return;
+    const measure = () => {
+      setViewportWidth(host.clientWidth || 640);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(host);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+  const labelWidth = viewportWidth < 720 ? 70 : 100;
+  const rows = useMemo(
+    () =>
+      layoutPianoTabs(model, {
+        zoom: prefs.zoom,
+        singleLine: prefs.singleLine,
+        measuresPerLine: prefs.measuresPerLine,
+        noteNames: prefs.noteNames,
+        viewportWidth: Math.max(36, viewportWidth - labelWidth)
+      }),
+    [
+      model,
+      prefs.zoom,
+      prefs.singleLine,
+      prefs.measuresPerLine,
+      prefs.noteNames,
+      viewportWidth,
+      labelWidth
+    ]
+  );
+  const naturalWidth = Math.max(0, ...rows.map((row) => row.width)) + labelWidth;
+  const padding = Math.max(0, (viewportWidth - naturalWidth) / 2);
+  const edgeSpace = naturalWidth > viewportWidth ? viewportWidth / 2 : padding;
+  const beat = quartersAt(song, time);
+  useTabsCursor(scrollRef, rows, beat, liveBeat, prefs.follow, naturalWidth > viewportWidth);
+  if (song.notes.length === 0) return <div className="piano-tabs">{t("Пока нет нот")}</div>;
+  const style = {
+    "--tabs-zoom": prefs.zoom,
+    "--tabs-notes": prefs.noteColor,
+    "--tabs-score": prefs.scoreColor
+  } as CSSProperties;
   return (
-    <section className="piano-tabs" aria-label={t("Пианинные табы")}>
-      <div className="piano-tabs__labels">
-        <span data-muted={stage === "left"}>{t("Правая рука")}</span>
-        <span data-muted={stage === "right"}>{t("Левая рука")}</span>
-      </div>
-      <div className="piano-tabs__scroll" ref={scrollRef}>
+    <section className="piano-tabs" style={style} aria-label={t("Пианинные табы")}>
+      <div
+        className="piano-tabs__scroll"
+        ref={scrollRef}
+        tabIndex={0}
+        onPointerDown={(event) => {
+          if (event.button !== 0 || event.pointerType === "touch") return;
+          dragRef.current = {
+            x: event.clientX,
+            y: event.clientY,
+            left: event.currentTarget.scrollLeft,
+            top: event.currentTarget.scrollTop
+          };
+        }}
+        onPointerMove={(event) => {
+          const drag = dragRef.current;
+          if (!drag || (event.buttons & 1) === 0) return;
+          event.currentTarget.scrollLeft = drag.left - (event.clientX - drag.x);
+          event.currentTarget.scrollTop = drag.top - (event.clientY - drag.y);
+        }}
+        onPointerUp={() => {
+          dragRef.current = null;
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+        }}
+      >
         <div
-          className="piano-tabs__grid"
-          style={{
-            gridTemplateColumns: widths
-              .map((width) => `minmax(36px, ${String(width)}fr)`)
-              .join(" "),
-            minWidth: `${String(
-              Math.max(
-                280,
-                widths.reduce((sum, width) => sum + Math.max(36, width * 68), 0)
-              )
-            )}px`
-          }}
+          className="piano-tabs__content"
+          style={{ width: naturalWidth + edgeSpace * 2, paddingInline: edgeSpace }}
         >
-          {intervals.map((start, index) => (
-            <div
-              key={start}
-              className="piano-tabs__column"
-              data-beat={start}
-              data-measure={model.measures.has(start)}
-              data-current={index === current}
-              ref={index === current ? markerRef : undefined}
-              style={{ gridColumn: index + 1, gridRow: "1 / 3" }}
-              aria-hidden="true"
-            />
-          ))}
-          {model.events.map((event) => (
-            <div
-              key={event.id}
-              className="piano-tabs__event"
-              data-hand={event.hand}
-              data-muted={stage !== "both" && stage !== event.hand}
-              style={{
-                gridColumn: `${String(event.firstColumn)} / ${String(event.lastColumn)}`,
-                gridRow: event.hand === "right" ? 1 : 2
-              }}
-            >
-              <div className="piano-tabs__chord">
-                {event.notes.map((note) => {
-                  const letter = NOTE_LETTERS[((note.pitch % 12) + 12) % 12] ?? "C";
-                  const finger = note.finger ?? note.scoreFinger;
-                  return (
-                    <span
-                      key={note.id}
-                      className="piano-tabs__note"
-                      data-current={note.start <= time && time < note.start + note.duration}
-                      aria-label={
-                        finger === undefined
-                          ? t("Таб {note}", { note: letter })
-                          : t("Таб {note}, палец {finger}", { note: letter, finger })
-                      }
-                    >
-                      <span className="piano-tabs__finger" aria-hidden="true">
-                        {finger ?? "\u00a0"}
+          {rows.map((row, rowIndex) => {
+            const rightCount = Math.max(
+              1,
+              ...row.events.filter((e) => e.event.hand === "right").map((e) => e.event.notes.length)
+            );
+            const leftCount = Math.max(
+              1,
+              ...row.events.filter((e) => e.event.hand === "left").map((e) => e.event.notes.length)
+            );
+            const toneHeight = (prefs.fingers ? 46 : 32) * prefs.zoom;
+            const chordHeight = prefs.chords ? 24 * prefs.zoom : 0;
+            const rightHeight = rightCount * toneHeight + 8;
+            const height = rightHeight + leftCount * toneHeight + 8;
+            const xAt = (value: number) => positionInTabs([row], value)?.x ?? 0;
+            return (
+              <div
+                className="piano-tabs__system"
+                data-tab-row={rowIndex}
+                key={row.startBeat}
+                style={{ marginLeft: Math.max(0, (naturalWidth - row.width - labelWidth) / 2) }}
+              >
+                <div
+                  className="piano-tabs__labels"
+                  style={{
+                    width: labelWidth,
+                    paddingTop: chordHeight,
+                    gridTemplateRows: `${String(rightHeight)}px ${String(height - rightHeight)}px`
+                  }}
+                >
+                  <span data-muted={stage === "left"}>{t("Правая рука")}</span>
+                  <span data-muted={stage === "right"}>{t("Левая рука")}</span>
+                </div>
+                <div
+                  className="piano-tabs__grid"
+                  style={{ width: row.width, height: height + chordHeight }}
+                >
+                  {row.boundaries.slice(0, -1).map((start, index) => (
+                    <div
+                      key={start}
+                      className="piano-tabs__column"
+                      data-beat={start}
+                      data-end={row.boundaries[index + 1]}
+                      data-measure={model.measures.has(start)}
+                      data-current={start <= beat && beat < (row.boundaries[index + 1] ?? start)}
+                      style={{
+                        left: row.offsets[index],
+                        width: (row.offsets[index + 1] ?? 0) - (row.offsets[index] ?? 0),
+                        top: chordHeight
+                      }}
+                      aria-hidden="true"
+                    />
+                  ))}
+                  {chords
+                    .filter((c) => c.beat >= row.startBeat && c.beat < row.endBeat)
+                    .map((c) => (
+                      <span
+                        className="piano-tabs__harmony"
+                        key={c.beat}
+                        style={{ left: xAt(c.beat) }}
+                      >
+                        {LETTERS[c.root]}
+                        {CHORD_SUFFIX[c.kind]}
                       </span>
-                      <strong aria-hidden="true">{letter}</strong>
-                    </span>
-                  );
-                })}
+                    ))}
+                  {row.events.map(({ event, left, attack }) => (
+                    <div
+                      key={event.id}
+                      className="piano-tabs__event"
+                      data-hand={event.hand}
+                      data-muted={stage !== "both" && stage !== event.hand}
+                      style={{
+                        left,
+                        top: chordHeight + (event.hand === "right" ? 0 : rightHeight)
+                      }}
+                    >
+                      <div className="piano-tabs__chord">
+                        {event.notes.map((note) => {
+                          const endBeat = quartersAt(song, note.start + note.duration);
+                          if (endBeat <= row.startBeat) return null;
+                          const name =
+                            (prefs.noteNames === "ru" ? RUSSIAN : LETTERS)[
+                              ((note.pitch % 12) + 12) % 12
+                            ] ?? "C";
+                          const finger = prefs.fingers
+                            ? (note.finger ?? note.scoreFinger)
+                            : undefined;
+                          const noteEnd = xAt(Math.min(row.endBeat, endBeat));
+                          return (
+                            <div
+                              className="piano-tabs__tone"
+                              key={note.id}
+                              style={{ width: Math.max(0, noteEnd - left), height: toneHeight }}
+                            >
+                              {attack && (
+                                <span
+                                  className="piano-tabs__note"
+                                  data-start={note.startBeat}
+                                  data-end={endBeat}
+                                  data-current={
+                                    note.start <= time && time < note.start + note.duration
+                                  }
+                                  aria-label={
+                                    finger === undefined
+                                      ? t("Таб {note}", { note: name })
+                                      : t("Таб {note}, палец {finger}", { note: name, finger })
+                                  }
+                                >
+                                  {prefs.fingers && (
+                                    <span
+                                      className="piano-tabs__finger"
+                                      aria-hidden="true"
+                                      style={{
+                                        color:
+                                          finger && prefs.fingerColors === "fingers"
+                                            ? `#${FINGER_COLOR[finger].toString(16).padStart(6, "0")}`
+                                            : prefs.scoreColor
+                                      }}
+                                    >
+                                      {finger ?? "\u00a0"}
+                                    </span>
+                                  )}
+                                  <strong aria-hidden="true">{name}</strong>
+                                </span>
+                              )}
+                              <span
+                                className="piano-tabs__sustain"
+                                style={{
+                                  left: attack
+                                    ? (prefs.noteNames === "ru" ? 84 : 32) * prefs.zoom
+                                    : 0
+                                }}
+                                aria-hidden="true"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="piano-tabs__cursor" aria-hidden="true" />
+                </div>
               </div>
-              <span className="piano-tabs__sustain" aria-hidden="true" />
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

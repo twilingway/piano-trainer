@@ -98,14 +98,26 @@ export function ConnectedCourseLessonBar() {
 }
 
 export function ConnectedPianoTabs() {
-  const { song, source, stage } = useRuntimeSelector(
+  const { song, baseSong, source, stage } = useRuntimeSelector(
     (runtime) => ({
       song: runtime.song,
+      baseSong: runtime.current.baseSong,
       source: runtime.trainer.snapshotSource,
       stage: runtime.course.active?.selection.stage
     }),
     shallowEqual
   );
   const time = useTrainerSelector(source, (snapshot) => snapshot?.time ?? -2);
-  return stage ? <PianoTabs song={song} time={time} stage={stage} /> : null;
+  const prefs = useAppSelector((state) => state.preferences.staff);
+  const liveBeat = useRuntimeCommand((runtime) => runtime.trainer.liveBeat);
+  return stage ? (
+    <PianoTabs
+      song={song}
+      baseSong={baseSong}
+      time={time}
+      liveBeat={liveBeat}
+      stage={stage}
+      prefs={prefs}
+    />
+  ) : null;
 }

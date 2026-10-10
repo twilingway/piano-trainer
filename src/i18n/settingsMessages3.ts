@@ -1,6 +1,9 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
+  "Эти настройки применяются к нотному стану и пианинным табам.": {
+    en: "These settings apply to the score and piano tabs."
+  },
   "Поправка: {offset} мс · Разброс: {jitter} мс · Стабильность: {quality} · Образцы: {samples}/24":
     {
       en: "Offset: {offset} ms · Jitter: {jitter} ms · Stability: {quality} · Samples: {samples}/24"
