@@ -28,8 +28,9 @@ interface Generation {
 const cache = new Map<string, Generation>();
 const NO_TOKENS: readonly GeneratedToken[] = [];
 
-export function useWordTyping(song: Song, songKey: string, blocked = false) {
-  const prefs = useAppSelector((state) => state.preferences.word);
+export function useWordTyping(song: Song, songKey: string, blocked = false, suspended = false) {
+  const storedPrefs = useAppSelector((state) => state.preferences.word);
+  const prefs = { ...storedPrefs, enabled: storedPrefs.enabled && !suspended };
   const dispatch = useAppDispatch();
   const saveError = useAppSelector(
     (state) => state.persistence.errors[persistenceKey("word-typing-prefs-v1", "write")]

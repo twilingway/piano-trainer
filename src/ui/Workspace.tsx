@@ -6,10 +6,14 @@ import type { SplitDirection, TakeStaff } from "../app/useTakeReview";
 import { DEFAULT_STAFF_SHARE } from "../app/screenLayout";
 import type { ScreenLayout } from "../app/screenLayout";
 import { Staff } from "../staff/Staff";
+import type { StaffPresentation } from "../staff/staffPresentation";
 import { ReaderGeometryProvider } from "../staff/readerGeometry";
 import { KeysHandles, LaneTopHandle, StaffHandle, TickerSlot } from "./LayoutHandles";
 
 interface Props {
+  readonly staffPresentation?: StaffPresentation | undefined;
+  readonly staffRetry?: number;
+  readonly readingBeat?: number | undefined;
   /** The score on the staff; a MIDI song has none. */
   readonly staffXml: string | undefined;
   readonly prefs: StaffPrefs;
@@ -80,8 +84,10 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
       <div className="staff-slot">
         {transcription && <span className="staff-label">{t("Оригинал")}</span>}
         <Staff
+          key={props.staffRetry ?? 0}
+          presentation={props.staffPresentation}
           musicXml={props.staffXml}
-          beat={props.beat}
+          beat={props.readingBeat ?? props.beat}
           zoom={prefs.zoom}
           noteColor={prefs.noteColor}
           scoreColor={prefs.scoreColor}
@@ -91,7 +97,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           fingerColors={prefs.fingerColors}
           breaksFromScore={props.fixedLines}
           onSeek={props.onSeek}
-          liveBeat={props.liveBeat}
+          liveBeat={props.staffPresentation ? undefined : props.liveBeat}
           marks={props.reviewMarks}
           maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
           shareGeometry={dualScore}

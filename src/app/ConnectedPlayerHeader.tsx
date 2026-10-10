@@ -10,6 +10,7 @@ import { COURSE_STAGE_LABELS } from "../ui/CourseCards";
 import { stagePhrases } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedCourseLessonBar } from "./ConnectedCourse";
+import { READING_TASK_LABELS } from "../ui/ReadingCourse";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPlayerHeader() {
@@ -35,7 +36,8 @@ export function ConnectedPlayerHeader() {
     trainerSpeed,
     inputMidiName,
     courseActive,
-    comparing
+    comparing,
+    readingTask
   } = useRuntimeSelector(
     (runtime) => ({
       sound: runtime.sound,
@@ -44,7 +46,7 @@ export function ConnectedPlayerHeader() {
       playing: runtime.playing,
       fullscreenActive: runtime.fullscreen.active,
       currentLesson: runtime.current.lesson,
-      hasArrangement: runtime.current.arrangement !== undefined,
+      hasArrangement: !runtime.reading.active && runtime.current.arrangement !== undefined,
       simplified: runtime.current.arrangement?.simplified ?? false,
       wordPracticeSong: runtime.word.practiceSong,
       wordEnabled: runtime.word.enabled,
@@ -59,7 +61,8 @@ export function ConnectedPlayerHeader() {
       trainerSpeed: runtime.trainer.speed,
       inputMidiName: runtime.input.midiName,
       courseActive: runtime.course.active,
-      comparing: runtime.comparing
+      comparing: runtime.comparing,
+      readingTask: runtime.reading.task
     }),
     shallowEqual
   );
@@ -88,22 +91,29 @@ export function ConnectedPlayerHeader() {
           source={trainerSnapshotSource}
           song={wordPracticeSong}
           title={
-            courseActive
-              ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
-              : lessonDisplayTitle(song.title, currentLesson, t)
+            readingTask
+              ? `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
+              : courseActive
+                ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
+                : lessonDisplayTitle(song.title, currentLesson, t)
           }
           playing={playing}
           soundLoading={sound === "loading" || (wordEnabled && (wordPending || Boolean(wordError)))}
           mode={trainerMode}
           {...playChoice}
           speed={trainerSpeed}
+          fixedPractice={readingTask !== null}
           difficulty={hasArrangement ? { simplified, onSimplified } : undefined}
           midi={inputMidiName}
           settingsOpen={settingsOpen}
           fullscreen={fullscreenActive}
           onFullscreen={() => void fullscreenToggle()}
           toggles={<HeaderSlot name="toggles" />}
-          game={<GameModeSegment wordTyping={wordEnabled} locked={playing} onChange={chooseGame} />}
+          game={
+            readingTask ? undefined : (
+              <GameModeSegment wordTyping={wordEnabled} locked={playing} onChange={chooseGame} />
+            )
+          }
           practice={
             wordEnabled && (
               <WordTextPopover
@@ -115,18 +125,22 @@ export function ConnectedPlayerHeader() {
             )
           }
           course={
-            !wordEnabled && !comparing && courseActive ? <ConnectedCourseLessonBar /> : undefined
+            !readingTask && !wordEnabled && !comparing && courseActive ? (
+              <ConnectedCourseLessonBar />
+            ) : undefined
           }
           timing={<HeaderSlot name="timingStatus" />}
           // A phone holds the game's strip in the menu.
           menuExtra={
             <>
-              <HeaderSlot name="modeSwitch" />
+              {!readingTask && <HeaderSlot name="modeSwitch" />}
               {wordEnabled && <WordQuality metrics={wordResult?.metrics} />}
             </>
           }
-          editing={screenEditing}
-          onToggleEditing={screenToggleEditing}
+          editing={!readingTask && screenEditing}
+          onToggleEditing={() => {
+            if (!readingTask) screenToggleEditing();
+          }}
           onLibrary={() => {
             setLibraryOpen(true);
           }}
@@ -139,13 +153,15 @@ export function ConnectedPlayerHeader() {
             setSettingsOpen((open) => !open);
           }}
         />
-        <ConnectedSongProgress
-          source={trainerSnapshotSource}
-          song={wordPracticeSong}
-          speed={trainerSpeed}
-          onSeek={trainerSeekToBeat}
-        />
-        <HeaderSlot name="modeSwitch" />
+        {!readingTask && (
+          <ConnectedSongProgress
+            source={trainerSnapshotSource}
+            song={wordPracticeSong}
+            speed={trainerSpeed}
+            onSeek={trainerSeekToBeat}
+          />
+        )}
+        {!readingTask && <HeaderSlot name="modeSwitch" />}
       </div>
     </>
   );

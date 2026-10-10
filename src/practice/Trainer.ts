@@ -8,42 +8,20 @@ import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
 import { ComboCounter } from "./combo";
 import type { ComboBoard, GradedStrike } from "./combo";
-import { keyLightPitches } from "./keyLights";
 import { RunCompletionTracker } from "./runCompletion";
 import type { RunCompletion } from "./runCompletion";
 import { PracticeSession } from "./session";
-import type { NoteStatus, PracticeEvent, PracticeOptions, PracticeStats } from "./session";
+import type { PracticeEvent, PracticeOptions } from "./session";
 import type { TimingConfig } from "./timingConfig";
 import { SongTimeline } from "./timing";
 import { beatAt } from "./sessionBeats";
 export { beatAt } from "./sessionBeats";
 import { timingPolicy } from "./timingPolicy";
-import type { TimingPolicy } from "./timingPolicy";
-
-export interface TrainerSnapshot {
-  readonly playing: boolean;
-  readonly waiting: boolean;
-  readonly finished: boolean;
-  readonly time: number;
-  readonly timingPolicy: TimingPolicy;
-  /** Beat of the last note that has started; what the staff cursor follows. */
-  readonly beat: number;
-  readonly stats: PracticeStats;
-  readonly diagnostic?: InputDiagnostic;
-  readonly noteStatuses?: Readonly<Record<string, NoteStatus | undefined>>;
-}
+import { ReadingAttackGate, trainerGuidance, type TrainerReadingPolicy } from "./readingPolicy";
+import type { InputDiagnostic, TrainerSnapshot } from "./trainerSnapshot";
+export type { InputDiagnostic, TrainerSnapshot } from "./trainerSnapshot";
 
 export type TrainerTiming = TimingConfig;
-export interface InputDiagnostic {
-  readonly source: string;
-  readonly deviceId: string;
-  readonly pitch: number;
-  readonly velocity: number;
-  readonly raw: number;
-  readonly corrected: number;
-  readonly offset: number;
-  readonly expired: boolean;
-}
 
 const NOTHING: ReadonlySet<number> = new Set();
 
@@ -68,6 +46,12 @@ export class Trainer {
   stopOnError = false;
   canStart = true;
   onInput: ((event: KeyEvent) => boolean) | undefined;
+  private reading: TrainerReadingPolicy | null = null;
+  private readonly readingGate = new ReadingAttackGate();
+
+  configureReading(policy: TrainerReadingPolicy | null): void {
+    this.reading = policy;
+  }
   private timing: TrainerTiming = {
     inputOffsets: {},
     manualInputOffsetMs: 0,
@@ -240,6 +224,7 @@ export class Trainer {
     }
     if (!this.playing && wasPlaying)
       this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 0);
+    if (session) this.reading?.onFrame(session, this.playing, now);
     this.publish();
   }
 
@@ -258,10 +243,12 @@ export class Trainer {
       (this.timing.inputOffsets[event.deviceId ?? event.source ?? "pointer"] ?? 0) +
       this.timing.manualInputOffsetMs;
     const corrected = raw - offset;
+    const fresh = this.readingGate.accept(event);
     if (event.type === "down") this.pressed.add(event.pitch);
     else this.pressed.delete(event.pitch);
     const session = this.session;
     if (session && this.playing) this.apply(session.tick(received));
+    if (session) this.reading?.onFrame(session, this.playing, received);
     const eventTime =
       session?.songTimeAt(corrected) ?? (event.type === "up" ? session?.time : undefined);
     this.diagnostic = {
@@ -306,9 +293,24 @@ export class Trainer {
       }
     }
     if (event.type === "down" && session) {
-      this.apply(
-        session.pressKeyAt(event.pitch, corrected, received, event.deviceId ?? event.source)
+      if (
+        this.reading &&
+        (!fresh ||
+          !this.playing ||
+          !session.waiting ||
+          !this.reading.allowInput(event, session, raw))
+      ) {
+        this.publish();
+        return;
+      }
+      const events = session.pressKeyAt(
+        event.pitch,
+        corrected,
+        received,
+        event.deviceId ?? event.source
       );
+      this.reading?.onJudgement(event, events, raw, corrected);
+      this.apply(events);
       this.publish();
     }
     if (event.type === "up" && session)
@@ -357,6 +359,8 @@ export class Trainer {
     this.onTake = undefined;
     this.onRunFinished = undefined;
     this.onInput = undefined;
+    this.reading = null;
+    this.readingGate.clear();
   }
 
   /**
@@ -415,27 +419,29 @@ export class Trainer {
   private frame(deltaMs: number): void {
     const session = this.session;
     if (!session) return;
-    if (this.playing) this.apply(session.tick(performance.now()));
-    this.onLights?.(keyLightPitches(session, this.playing && !this.performanceMode));
+    const now = performance.now();
+    if (this.playing) this.apply(session.tick(now));
+    this.reading?.onFrame(session, this.playing, now);
+    const guidance = trainerGuidance(session, this.reading, this.playing, this.performanceMode);
+    this.onLights?.(guidance.lights);
     this.view.draw({
       time: session.time - (this.timing.visualOffsetMs / 1000) * session.options.speed,
       hintTime: session.time,
       hintSpeed: session.options.speed,
-      hintNotes: session.keyHints(),
+      ...guidance.frame,
       lookAhead: LOOK_AHEAD_S,
       statusOf: (id) => session.statusOf(id),
       pressed: this.pressed,
       sounding: this.sounding,
-      due: this.playing || session.time < 0 ? session.nextDue() : [],
       owedNoteId: session.owedNote()?.id,
-      waitingFor: session.waiting ? session.nextDue() : [],
       hands: session.options.hands,
       owns: session.owns,
-      hints: !this.performanceMode,
       colorOf: this.comparison?.colorOf,
       board: this.board ?? this.combo.board(),
       graded: this.graded
     });
+    const cue = guidance.lights[0];
+    if (cue !== undefined) this.reading?.onCuePresented?.(cue, now);
     // The view has shown them: next frame grades only its own strikes.
     this.graded = [];
     const mirror = this.comparison?.mirror;

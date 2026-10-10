@@ -9,7 +9,7 @@ export function ConnectedNotices() {
       (runtime) => ({
         fullscreenError: runtime.fullscreen.error,
         wordStorageError: runtime.word.storageError,
-        gameRanked: runtime.game.ranked,
+        gameRanked: !runtime.reading.active && runtime.game.ranked,
         timingRankedReady: runtime.timing.rankedReady,
         libraryLoadError: runtime.library.loadError
       }),

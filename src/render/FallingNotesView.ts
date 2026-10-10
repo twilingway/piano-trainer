@@ -417,7 +417,8 @@ export class FallingNotesView {
         waiting: (state.waitingFor?.length ?? 0) > 0,
         ...(state.hintNotes ? { hintNotes: state.hintNotes } : {}),
         playing,
-        ...(state.hints === undefined ? {} : { hints: state.hints })
+        ...(state.hints === undefined ? {} : { hints: state.hints }),
+        ...(state.neutralKeys === undefined ? {} : { neutralKeys: state.neutralKeys })
       },
       this.keys,
       geometry,

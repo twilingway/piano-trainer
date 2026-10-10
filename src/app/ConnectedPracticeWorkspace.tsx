@@ -7,6 +7,7 @@ import {
 } from "./ConnectedPlayback";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedPianoTabs } from "./ConnectedCourse";
+import { ConnectedReadingPractice } from "./ConnectedReading";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPracticeWorkspace() {
@@ -36,7 +37,8 @@ export function ConnectedPracticeWorkspace() {
     snapshotWaiting,
     viewMirrorHostRef,
     courseTabs,
-    courseTopView
+    courseTopView,
+    reading
   } = useRuntimeSelector(
     (runtime) => ({
       displayPrefs: runtime.displayPrefs,
@@ -63,7 +65,9 @@ export function ConnectedPracticeWorkspace() {
       trainerHostRef: runtime.trainer.hostRef,
       snapshotWaiting: runtime.snapshot.waiting,
       viewMirrorHostRef: runtime.view.mirrorHostRef,
+      reading: runtime.reading,
       courseTabs:
+        !runtime.reading.active &&
         runtime.course.active !== null &&
         (runtime.course.saved.view === "tabs" || runtime.course.saved.view === "both") &&
         !runtime.comparing,
@@ -78,6 +82,7 @@ export function ConnectedPracticeWorkspace() {
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   return (
     <>
+      <ConnectedReadingPractice />
       <ConnectedWorkspace
         scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
         scoreFirst={courseTopView}
@@ -106,30 +111,35 @@ export function ConnectedPracticeWorkspace() {
           ) : undefined
         }
         gameBoard={
-          <ConnectedGameBoard
-            source={trainerSnapshotSource}
-            mode={trainerMode}
-            playing={playing}
-            onOverdrive={() => {
-              trainerTrainerRef.current?.activateOverdrive();
-            }}
-          />
+          !reading.active && (
+            <ConnectedGameBoard
+              source={trainerSnapshotSource}
+              mode={trainerMode}
+              playing={playing}
+              onOverdrive={() => {
+                trainerTrainerRef.current?.activateOverdrive();
+              }}
+            />
+          )
         }
-        staffXml={scoreStaffXml}
+        staffXml={reading.active ? reading.prompt?.musicXml : scoreStaffXml}
+        staffPresentation={reading.presentation}
+        staffRetry={reading.retry}
+        readingBeat={reading.prompt?.beat}
         prefs={displayPrefs}
         layout={screenLayout}
         onLayout={screenUpdateLayout}
         onResetLayout={screenResetLayout}
         layoutMoved={screenMoved}
-        editing={screenEditing}
+        editing={!reading.active && screenEditing}
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}
         fixedLines={scoreFixedLines}
         liveBeat={trainerLiveBeat}
         onSeek={trainerSeekToBeat}
-        reviewMarks={takesReviewMarks}
-        transcription={takesTranscription}
+        reviewMarks={reading.active ? undefined : takesReviewMarks}
+        transcription={reading.active ? undefined : takesTranscription}
         takeStaff={takesTakeStaff}
         splitDirection={takesSplitDirection}
         comparing={comparing}

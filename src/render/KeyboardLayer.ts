@@ -122,6 +122,7 @@ export interface KeysFrame {
   /** Notes crossing the hit line right now, by pitch. */
   readonly playing: ReadonlyMap<number, SongNote>;
   readonly hints?: boolean;
+  readonly neutralKeys?: boolean;
 }
 
 /**
@@ -367,7 +368,7 @@ export class KeyboardLayer {
       // A key with a fingered note is its finger's colour whoever plays it; the press and
       // the program's own colours are for keys without one.
       const color =
-        shown?.finger !== undefined
+        !frame.neutralKeys && shown?.finger !== undefined
           ? FINGER_COLOR[shown.finger]
           : pressed
             ? PRESSED_COLOR
@@ -398,7 +399,11 @@ export class KeyboardLayer {
       }
       const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
-      hint.visible = key !== undefined && shown?.finger !== undefined && frame.hints !== false;
+      hint.visible =
+        !frame.neutralKeys &&
+        key !== undefined &&
+        shown?.finger !== undefined &&
+        frame.hints !== false;
       hint.alpha = sounding ? 1 : hintStrength;
       if (!key || shown?.finger === undefined) continue;
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
