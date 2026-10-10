@@ -14,12 +14,14 @@ import {
   setStaffColors
 } from "./staffNoteColors";
 import type { BeatSpot } from "./liveCursor";
+import { watchStaffPresentation, type StaffPresentation } from "./staffPresentation";
 import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useRef } from "react";
 
 export { markKey } from "./staffNoteIndex";
 
 interface StaffProps {
+  readonly presentation?: StaffPresentation | undefined;
   readonly musicXml: string;
   /** Quarter notes from the start of the score; the cursor stands on the last entry at or before it. */
   readonly beat: number;
@@ -41,7 +43,7 @@ interface StaffProps {
   /** Notehead colours by markKey(beat, pitch): the review of the last take. */
   readonly marks?: ReadonlyMap<string, string> | undefined;
   /** Where the song is right now in quarters; a single line scrolls with it every frame. */
-  readonly liveBeat?: () => number;
+  readonly liveBeat?: (() => number) | undefined;
   /** Share of the window this staff may take; two staves stacked take less each. */
   readonly maxShare?: number;
   /** Publish this original score's layout for a second reader in the same workspace. */
@@ -216,7 +218,8 @@ export function Staff({
   maxShare = DEFAULT_MAX_SHARE,
   shareGeometry = false,
   sharedNoteNames,
-  liveBeat
+  liveBeat,
+  presentation
 }: StaffProps) {
   const publishGeometry = usePublishReaderGeometry();
   const readFrameBeat = useReaderFrameBeat();
@@ -224,6 +227,10 @@ export function Staff({
   /** OSMD draws here; the host around it scrolls. */
   const pageRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
+  const presentationRef = useRef(presentation);
+  useEffect(() => {
+    presentationRef.current = presentation;
+  });
   const baseSpacingRef = useRef(1);
   const paintedRef = useRef<SVGElement[]>([]);
   // Read by the loader and the zoom effect, which must land the cursor where the song is.
@@ -334,19 +341,30 @@ export function Staff({
       autoBeamOptions: { groups: [[1, 4]] }
     });
     baseSpacingRef.current = osmd.EngravingRules.VoiceSpacingMultiplierVexflow;
-    void osmd.load(musicXml).then(() => {
-      if (cancelled) return;
-      setStaffTempoLayout(osmd, musicXml);
-      osmd.Zoom = latest.current.zoom;
-      // Half the usual page margin: the view starts at the first line anyway.
-      osmd.EngravingRules.PageTopMargin = 2;
-      // A fixed count per line gets equal measures, so barlines line up from line to line.
-      osmd.EngravingRules.FixedMeasureWidth = breaksFromScore;
-      osmd.render();
-      osmd.cursor.show();
-      osmdRef.current = osmd;
-      relayout(osmd, host);
-    });
+    const presentationId = presentationRef.current?.id;
+    void osmd
+      .load(musicXml)
+      .then(() => {
+        if (cancelled) return;
+        setStaffTempoLayout(osmd, musicXml);
+        osmd.Zoom = latest.current.zoom;
+        // Half the usual page margin: the view starts at the first line anyway.
+        osmd.EngravingRules.PageTopMargin = 2;
+        // A fixed count per line gets equal measures, so barlines line up from line to line.
+        osmd.EngravingRules.FixedMeasureWidth = breaksFromScore;
+        osmd.render();
+        osmd.cursor.show();
+        osmdRef.current = osmd;
+        relayout(osmd, host);
+      })
+      .catch(() => {
+        if (
+          !cancelled &&
+          presentationId === presentationRef.current?.id &&
+          presentationId !== undefined
+        )
+          presentationRef.current?.onError(presentationId);
+      });
     // Wrapped pages re-flow; a compact single line also fits the space above the keys.
     const onResize = () => {
       window.clearTimeout(resizeTimer);
@@ -370,6 +388,18 @@ export function Staff({
       if (shareGeometry) publishGeometry(null);
     };
   }, [musicXml, singleLine, breaksFromScore, fingers, shareGeometry, publishGeometry]);
+
+  const presentationId = presentation?.id;
+  useEffect(() => {
+    if (presentationId === undefined) return;
+    return watchStaffPresentation(
+      () => osmdRef.current !== null && Boolean(hostRef.current?.querySelector("svg")),
+      (atMs) => {
+        const current = presentationRef.current;
+        if (current?.id === presentationId) current.onPresented(presentationId, atMs);
+      }
+    );
+  }, [presentationId, musicXml]);
 
   useEffect(() => {
     const osmd = osmdRef.current;

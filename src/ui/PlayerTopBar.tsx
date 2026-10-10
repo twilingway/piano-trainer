@@ -20,6 +20,7 @@ export type PracticeModeChoice = "wait" | "tempo";
 export type HandsChoice = "right" | "left" | "both" | "listen";
 
 interface Props {
+  readonly fixedPractice?: boolean;
   readonly title: string;
   readonly playing: boolean;
   readonly soundLoading: boolean;
@@ -105,13 +106,15 @@ export function PlayerTopBar(props: Props) {
             {props.midi ? `MIDI: ${props.midi}` : t("MIDI не подключено")}
           </p>
           {compact && props.course}
-          <CompactPracticeChoices
-            hands={props.hands}
-            mode={props.mode}
-            onHands={props.onHands}
-            onMode={props.onMode}
-            parts={props.parts}
-          />
+          {!props.fixedPractice && (
+            <CompactPracticeChoices
+              hands={props.hands}
+              mode={props.mode}
+              onHands={props.onHands}
+              onMode={props.onMode}
+              parts={props.parts}
+            />
+          )}
           {props.difficulty && <CompactDifficulty {...props.difficulty} />}
           {props.menuExtra}
           <div className="compact-controls__view-head">
@@ -210,6 +213,7 @@ export function PlayerTopBar(props: Props) {
             type="button"
             role="radio"
             aria-checked={props.mode === value}
+            disabled={props.fixedPractice}
             onClick={() => {
               props.onMode(value);
             }}
@@ -219,6 +223,7 @@ export function PlayerTopBar(props: Props) {
         ))}
       </div>
       <select
+        disabled={props.fixedPractice}
         className="game-select topbar-hands"
         aria-label={t("Руки")}
         value={choiceValue(props.hands, props.parts)}
@@ -255,6 +260,7 @@ export function PlayerTopBar(props: Props) {
       <label className="topbar-speed" title={t("Скорость")}>
         <span className="digits">{formatNumber(Math.round(props.speed * 100))}%</span>
         <input
+          disabled={props.fixedPractice}
           type="range"
           aria-label={t("Скорость")}
           min={0.01}

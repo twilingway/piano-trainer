@@ -6,6 +6,7 @@ import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
 import type { Hand } from "../fingering/fingering";
 import type { PracticeMode, PracticeOptions } from "../practice/session";
 import { Trainer } from "../practice/Trainer";
+import { READING_PRACTICE_OPTIONS } from "../practice/readingPolicy";
 import type { RunCompletion } from "../practice/runCompletion";
 import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
@@ -26,6 +27,7 @@ const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
 };
 
 interface Options {
+  readonly reading?: boolean;
   readonly course?:
     | {
         readonly stage: "right" | "left" | "both";
@@ -87,6 +89,7 @@ export function useTrainer({
   onReplay,
   gameOptions,
   ranked = false,
+  reading = false,
   wordTyping = false
 }: Options) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -132,11 +135,13 @@ export function useTrainer({
   const dispatch = useAppDispatch();
   const storedMode = useAppSelector((state) => state.preferences.player.mode);
   const setMode = (mode: PracticeMode) => {
+    if (reading) return;
     dispatch(preferencesActions.playerChanged({ mode }));
   };
-  const mode = ranked ? "tempo" : storedMode;
+  const mode = reading ? "wait" : ranked ? "tempo" : storedMode;
   const storedHandChoice = useAppSelector((state) => state.preferences.player.handChoice);
   const updateHandChoice = (handChoice: HandChoice) => {
+    if (reading) return;
     if (course) {
       dispatch(courseActions.listenOnlyChanged(handChoice === "listen"));
       setListening(false);
@@ -145,21 +150,27 @@ export function useTrainer({
     }
     dispatch(preferencesActions.playerChanged({ handChoice }));
   };
-  const handChoice = course
-    ? listening
-      ? "listen"
-      : course.stage
-    : ranked && storedHandChoice === "listen"
-      ? "both"
-      : storedHandChoice;
+  const handChoice = reading
+    ? "right"
+    : course
+      ? listening
+        ? "listen"
+        : course.stage
+      : ranked && storedHandChoice === "listen"
+        ? "both"
+        : storedHandChoice;
   /** A part picked by role; it belongs to the song (a new file drops it, a new key keeps it). */
   const chosenRole = useAppSelector((state) => state.practice.partRole);
   const partRoles = useMemo(
-    () => (ranked || wordTyping || courseContext !== undefined ? [] : choosableRoles(song.parts)),
-    [ranked, wordTyping, courseContext, song.parts]
+    () =>
+      reading || ranked || wordTyping || courseContext !== undefined
+        ? []
+        : choosableRoles(song.parts),
+    [reading, ranked, wordTyping, courseContext, song.parts]
   );
   const partRole = chosenRole !== null && partRoles.includes(chosenRole) ? chosenRole : null;
   const setHandChoice = (choice: HandChoice) => {
+    if (reading) return;
     if (ranked && snapshotSource.getSnapshot()?.playing) return;
     if (!course) dispatch(practiceActions.partRoleChosen(null));
     updateHandChoice(choice);
@@ -172,15 +183,19 @@ export function useTrainer({
     dispatch(preferencesActions.playerChanged({ speed }));
   };
   const setSpeed = (next: number) => {
+    if (reading) return;
     updateSpeed(Math.max(0.01, Math.min(1, next)));
   };
-  const speed = ranked ? 1 : storedSpeed;
-  const metronome = useAppSelector((state) => state.preferences.player.metronome);
+  const speed = reading || ranked ? 1 : storedSpeed;
+  const storedMetronome = useAppSelector((state) => state.preferences.player.metronome);
+  const metronome = !reading && storedMetronome;
   const setMetronome = (metronome: boolean) => {
+    if (reading) return;
     dispatch(preferencesActions.playerChanged({ metronome }));
   };
   const storedAccompaniment = useAppSelector((state) => state.preferences.player.accompaniment);
   const setAccompaniment = (accompaniment: boolean) => {
+    if (reading) return;
     if (course) {
       course.onAccompaniment(accompaniment);
       return;
@@ -188,7 +203,8 @@ export function useTrainer({
     dispatch(preferencesActions.playerChanged({ accompaniment }));
   };
   // Ranked and the word mode keep their own fixed rules: the program always accompanies.
-  const accompaniment = ranked || wordTyping || (course?.accompaniment ?? storedAccompaniment);
+  const accompaniment =
+    !reading && (ranked || wordTyping || (course?.accompaniment ?? storedAccompaniment));
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -251,6 +267,7 @@ export function useTrainer({
   });
 
   const practiceOptions = useMemo<PracticeOptions>(() => {
+    if (reading) return READING_PRACTICE_OPTIONS;
     if (listening) return { mode: "tempo", hands: new Set<Hand>(), speed };
     if (partRole) {
       const parts = (song.parts ?? []).filter((part) => part.role === partRole);
@@ -274,14 +291,15 @@ export function useTrainer({
     speed,
     accompaniment,
     gameOptions,
-    wordTyping
+    wordTyping,
+    reading
   ]);
 
   // The take to play back while comparing. Outside comparing it stays undefined, so a take
   // just finished does not reload the song: the run ends where it ended, with its results.
   const replaying = useMemo(
     () =>
-      compareSong && lastTake
+      !reading && compareSong && lastTake
         ? {
             song: compareSong,
             speed: lastTake.take.speed,
@@ -289,7 +307,7 @@ export function useTrainer({
             takeId: lastTake.take.id
           }
         : undefined,
-    [compareSong, lastTake]
+    [reading, compareSong, lastTake]
   );
 
   useEffect(() => {
@@ -339,7 +357,8 @@ export function useTrainer({
       preservePosition,
       ...(courseContext === undefined ? {} : { runContext: courseContext })
     });
-    if (!preservePosition && startFromRef.current !== null) trainer.seek(startFromRef.current);
+    if (!reading && !preservePosition && startFromRef.current !== null)
+      trainer.seek(startFromRef.current);
     if (
       listening &&
       (listenOnly
@@ -360,6 +379,7 @@ export function useTrainer({
     replaying,
     replayCount,
     wordTyping,
+    reading,
     courseContext
   ]);
 
@@ -372,6 +392,7 @@ export function useTrainer({
 
   /** A click on the staff: play from the first note at or after that beat. */
   const seekToBeat = (beat: number) => {
+    if (reading) return;
     const target = song.notes.find((note) => note.startBeat >= beat - 1e-6);
     const trainer = trainerRef.current;
     if (!target || !trainer) return;
@@ -389,6 +410,7 @@ export function useTrainer({
   };
 
   const toggleListening = async () => {
+    if (reading) return;
     if (ranked) return;
     if (listenOnly) {
       trainerRef.current?.setPlaying(false);
@@ -441,7 +463,7 @@ export function useTrainer({
       onHands: setHandChoice,
       // Ranked and the word mode keep their own rules: no parts, no accompaniment switch.
       parts:
-        ranked || wordTyping
+        reading || ranked || wordTyping
           ? undefined
           : {
               roles: partRoles,

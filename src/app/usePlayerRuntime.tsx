@@ -13,6 +13,9 @@ import { usePlayerLibrary } from "./usePlayerLibrary";
 import { useShortcuts } from "./useShortcuts";
 import { useSong } from "./useSong";
 import { useCourse } from "./useCourse";
+import { useReadingCourse, useReadingTrainer } from "./useReadingCourse";
+import { readingDisplayProfile } from "./readingProfile";
+import { DEFAULT_SCREEN_LAYOUT } from "./screenLayout";
 import { useSound } from "./useSound";
 import { useScreenLayout } from "./useScreenLayout";
 import { useStaffPrefs } from "./useStaffPrefs";
@@ -43,8 +46,10 @@ export function usePlayerRuntime() {
   const { sound, ensureSound } = useSound();
   const current = useSong(startFromRef);
   const course = useCourse(current.showSong);
-  const { song, songKey } = current;
-  const word = useWordTyping(song, songKey, libraryOpen || settingsOpen);
+  const reading = useReadingCourse();
+  const song = reading.exercise?.song ?? current.song;
+  const songKey = reading.exercise?.id ?? current.songKey;
+  const word = useWordTyping(song, songKey, libraryOpen || settingsOpen, reading.active);
   const device = useDeviceRange();
   const { playable } = device;
   const game = useGameOptions(
@@ -52,60 +57,72 @@ export function usePlayerRuntime() {
     word.practiceSong.duration,
     word.enabled,
     playable,
-    course.active !== null
+    reading.active || course.active !== null
   );
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const screen = useScreenLayout(word.enabled ? "typing" : "piano");
+  const workspaceLayout = reading.active ? DEFAULT_SCREEN_LAYOUT : screen.layout;
   const displayPrefs = useMemo(
     () =>
-      game.performance
-        ? {
-            ...staffPrefs,
-            visible: course.active
-              ? course.saved.view === "staff" || course.saved.view === "both"
-              : staffPrefs.visible,
-            fingers: false,
-            hands: false,
-            labels: false,
-            noteNames: "off" as const,
-            chords: false
-          }
-        : course.active
+      reading.active
+        ? readingDisplayProfile(staffPrefs)
+        : game.performance
           ? {
               ...staffPrefs,
-              visible: course.saved.view === "staff" || course.saved.view === "both"
+              visible: course.active
+                ? course.saved.view === "staff" || course.saved.view === "both"
+                : staffPrefs.visible,
+              fingers: false,
+              hands: false,
+              labels: false,
+              noteNames: "off" as const,
+              chords: false
             }
-          : staffPrefs,
-    [game.performance, staffPrefs, course.active, course.saved.view]
+          : course.active
+            ? {
+                ...staffPrefs,
+                visible: course.saved.view === "staff" || course.saved.view === "both"
+              }
+            : staffPrefs,
+    [reading.active, game.performance, staffPrefs, course.active, course.saved.view]
   );
   const score = useStaffScore(song, current.baseSong, displayPrefs);
   const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
     withNames: score.withNames,
     fixedLines: score.fixedLines,
     measuresPerLine: staffPrefs.measuresPerLine,
-    autoReview: staffPrefs.autoReview
+    autoReview: !reading.active && staffPrefs.autoReview
   });
   const trainer = useTrainer({
     song: word.practiceSong,
-    sourceSong: current.sourceSong,
+    sourceSong: reading.exercise?.song ?? current.sourceSong,
+    reading: reading.active,
     songKey: word.practiceKey,
     wordTyping: word.enabled,
     startFromRef,
     ensureSound,
     onNoteClick: current.cycleFinger,
     onTake: takes.recordTake,
-    onRunFinished: course.controller.finish,
-    course: course.practice,
+    onRunFinished: reading.active ? reading.finish : course.controller.finish,
+    course: reading.active ? undefined : course.practice,
     compareSong: takes.compareSong,
     lastTake: takes.lastTake,
     replayCount: takes.replayCount,
-    comparing: takes.comparing,
+    comparing: !reading.active && takes.comparing,
     onReplay: takes.replay,
     gameOptions: game.options,
-    ranked: game.ranked
+    ranked: !reading.active && game.ranked
   });
+  useReadingTrainer(
+    reading,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen || settingsOpen || reading.intro
+  );
   const workspacePrefs =
-    course.active && takes.comparing ? { ...displayPrefs, visible: true } : displayPrefs;
+    !reading.active && course.active && takes.comparing
+      ? { ...displayPrefs, visible: true }
+      : displayPrefs;
   const snapshot = useTrainerSelector(
     trainer.snapshotSource,
     selectTrainerStatus,
@@ -119,7 +136,13 @@ export function usePlayerRuntime() {
     device.intercept,
     trainer.trainerReady
   );
-  const fit = useRangeFit(song.notes, trainer.playerHands, playable, current, !word.enabled);
+  const fit = useRangeFit(
+    song.notes,
+    trainer.playerHands,
+    playable,
+    current,
+    !word.enabled && !reading.active
+  );
   const timing = useTimingControls({
     trainerRef: trainer.trainerRef,
     ensureSound,
@@ -130,11 +153,11 @@ export function usePlayerRuntime() {
     locked: game.ranked && snapshot.playing
   });
   useGameRuntime(trainer.trainerRef, trainer.trainerReady, {
-    loop: game.range.loop,
-    ranked: game.ranked,
-    stopOnError: game.stopOnError,
+    loop: !reading.active && game.range.loop,
+    ranked: !reading.active && game.ranked,
+    stopOnError: !reading.active && game.stopOnError,
     rankedReady: timing.rankedReady,
-    performance: game.performance,
+    performance: !reading.active && game.performance,
     canStart: !word.enabled || (!word.pending && !word.error),
     resumeWhenReady: word.enabled,
     deviceId: timing.profile?.deviceId ?? ""
@@ -146,18 +169,18 @@ export function usePlayerRuntime() {
     trainerRef: trainer.trainerRef,
     trainerReady: trainer.trainerReady,
     song: word.practiceSong,
-    baseSong: word.enabled ? word.practiceSong : current.baseSong,
+    baseSong: reading.active || word.enabled ? word.practiceSong : current.baseSong,
     staffPrefs: workspacePrefs,
     updateStaffPrefs,
     fallingNames: score.nameStyle,
-    comparing: takes.comparing,
+    comparing: !reading.active && takes.comparing,
     lastTake: takes.lastTake,
     computerKeys: word.keyboard,
     placement: {
-      lift: screen.layout.keysLift,
-      scale: screen.layout.keysScale,
-      x: screen.layout.keysX,
-      y: screen.layout.keysY
+      lift: workspaceLayout.keysLift,
+      scale: workspaceLayout.keysScale,
+      x: workspaceLayout.keysX,
+      y: workspaceLayout.keysY
     }
   });
   const library = usePlayerLibrary({
@@ -178,7 +201,8 @@ export function usePlayerRuntime() {
   };
   const startOver = () => {
     setResultClosed(false);
-    trainer.restart();
+    if (reading.active) reading.newSeries();
+    else trainer.restart();
   };
   useShortcuts({
     play,
@@ -187,7 +211,7 @@ export function usePlayerRuntime() {
       : computerKeyboard.editing
   });
 
-  const toggles = (
+  const toggles = !reading.active && (
     <ViewToggles
       prefs={staffPrefs}
       hasScore={Boolean(score.staffXml)}
@@ -226,6 +250,7 @@ export function usePlayerRuntime() {
   );
 
   const chooseGame = (enabled: boolean) => {
+    if (reading.active) reading.exit();
     computerKeyboard.endEditing();
     startFromRef.current = null;
     word.update({ enabled });
@@ -239,6 +264,7 @@ export function usePlayerRuntime() {
   );
 
   return {
+    reading,
     displayPrefs: workspacePrefs,
     sound,
     t,
@@ -257,7 +283,7 @@ export function usePlayerRuntime() {
     game,
     staffPrefs,
     updateStaffPrefs,
-    screen,
+    screen: { ...screen, layout: workspaceLayout },
     score,
     takes,
     trainer,
@@ -269,9 +295,9 @@ export function usePlayerRuntime() {
     view,
     library,
     listening,
-    review,
+    review: reading.active ? null : review,
     lastTake,
-    comparing,
+    comparing: !reading.active && comparing,
     playing,
     play,
     startOver,

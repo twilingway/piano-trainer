@@ -3651,3 +3651,74 @@ button.song-card.song-card__open {
     margin-right: 0;
   }
 }
+
+.reading-course-card {
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.reading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.reading-practice {
+  padding: 10px 16px;
+  max-height: 38vh;
+  overflow-y: auto;
+  flex: 0 0 auto;
+}
+.reading-practice p {
+  margin: 8px 0;
+}
+.reading-muted {
+  opacity: 0.7;
+}
+.reading-hint {
+  font-size: 1.2rem;
+}
+.reading-hint-settings label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 16px 8px 0;
+}
+.reading-hint-settings input[type="number"] {
+  width: 64px;
+}
+.reading-results-scroll {
+  overflow-x: auto;
+}
+.reading-results table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.reading-results th,
+.reading-results td {
+  text-align: left;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+.reading-intro-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reading-intro-keys > div {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+}
+@media (max-width: 640px) {
+  .reading-practice {
+    padding: 8px;
+    max-height: 34vh;
+  }
+  .reading-actions {
+    gap: 6px;
+  }
+}

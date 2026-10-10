@@ -12,6 +12,8 @@ import { COURSE_LESSONS, coursePhraseSong } from "./courseCatalog";
 import { courseSource } from "./courseController";
 import { resolveSelection, type CourseAccessMode, type CourseLesson } from "../course/model";
 import { configureStore } from "@reduxjs/toolkit";
+import { readingReducer, type ReadingRoot } from "./readingSlice";
+import { loadReadingState, registerReadingPersistence } from "./readingPersistence";
 import { preferencesReducer } from "./preferencesSlice";
 import { persistenceReducer } from "./persistenceSlice";
 import {
@@ -31,6 +33,8 @@ export function createAppStore(
 ) {
   const storage = options.storage ?? browserPreferenceStorage();
   const loaded = loadPreferences(storage);
+  const reading = loadReadingState(storage);
+  Object.assign(loaded.persistence.errors, reading.errors);
   const courseLessons = options.courseLessons ?? COURSE_LESSONS;
   const course = loadCourseState(storage, courseLessons, options.courseAccess);
   Object.assign(loaded.persistence.errors, course.errors);
@@ -44,14 +48,17 @@ export function createAppStore(
     }
   }
   const preloadedState = hydrateSongOverrides(
-    { ...loaded, song: initialSong, course: course.course },
+    { ...loaded, song: initialSong, course: course.course, reading: reading.reading },
     storage
   );
-  const listener = createPersistenceListener<PreferenceRoot & SongRoot & ReviewRoot & CourseRoot>();
+  const listener = createPersistenceListener<
+    PreferenceRoot & SongRoot & ReviewRoot & CourseRoot & ReadingRoot
+  >();
   registerPreferencePersistence(listener, storage);
   registerSongPersistence(listener, storage);
   registerReviewPersistence(listener, storage);
   registerCoursePersistence(listener, storage);
+  registerReadingPersistence(listener, storage);
   return configureStore({
     reducer: {
       preferences: preferencesReducer,
@@ -60,7 +67,8 @@ export function createAppStore(
       practice: practiceReducer,
       library: libraryReducer,
       review: reviewReducer,
-      course: courseReducer
+      course: courseReducer,
+      reading: readingReducer
     },
     preloadedState,
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().prepend(listener.middleware)

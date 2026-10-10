@@ -11,6 +11,7 @@ import { createAppStore } from "./store";
 import { progressKey, type CourseLesson } from "../course/model";
 const observed = vi.hoisted(() => ({
   header: vi.fn(),
+  progress: vi.fn(),
   settings: vi.fn(),
   result: vi.fn(),
   library: vi.fn(),
@@ -24,7 +25,7 @@ vi.mock("./ConnectedSettings", () => ({
 }));
 vi.mock("./ConnectedPlayback", () => ({
   ConnectedPlayerTopBar: observed.header,
-  ConnectedSongProgress: () => null
+  ConnectedSongProgress: observed.progress
 }));
 vi.mock("../ui/GameModeSwitch", () => ({ GameModeSegment: () => null }));
 vi.mock("../ui/WordTextPopover", () => ({ WordTextPopover: () => null }));
@@ -40,6 +41,7 @@ const initial = (): PlayerRuntime =>
     snapshot: { finished: false },
     trainer: { snapshotSource: {}, mode: "wait", speed: 1, playChoice: { hands: "both" } },
     takes: { canReview: false },
+    reading: { active: false, task: null },
     course: { active: null, saved: { progress: {} }, controller: { open: vi.fn() } },
     fullscreen: { error: null, active: false },
     word: { storageError: null, enabled: false, pending: false, practiceSong: { title: "A" } },
@@ -191,5 +193,75 @@ describe("connected regions without React Compiler", () => {
     };
     view.render();
     expect(view.container.textContent).toBe("");
+  });
+  it("uses fixed reading controls and suppresses previous course, game and result UI", () => {
+    const lesson: CourseLesson = {
+      id: "previous-course",
+      number: 1,
+      title: "Previous course",
+      goal: "Synthetic",
+      stages: ["right"],
+      phrases: [{ id: "first", version: "1", musicXml: "synthetic" }]
+    };
+    const phrase = lesson.phrases[0];
+    if (!phrase) throw new Error("Missing fixture phrase");
+    observed.runtime = initial();
+    observed.runtime = {
+      ...observed.runtime,
+      reading: { ...observed.runtime.reading, active: true, task: "check" },
+      trainer: {
+        ...observed.runtime.trainer,
+        playChoice: { ...observed.runtime.trainer.playChoice, hands: "right" }
+      },
+      snapshot: { ...observed.runtime.snapshot, finished: true },
+      course: {
+        ...observed.runtime.course,
+        active: {
+          lesson,
+          phrase,
+          selection: { lessonId: lesson.id, stage: "right", phraseId: phrase.id }
+        }
+      },
+      game: { ...observed.runtime.game, ranked: true },
+      timing: { ...observed.runtime.timing, rankedReady: false },
+      modeSwitch: <div>Previous game mode</div>
+    };
+    const view = mount(
+      <>
+        <ConnectedPlayerHeader />
+        <ConnectedPlayerWindows />
+        <ConnectedNotices />
+      </>
+    );
+    const props = observed.header.mock.lastCall?.[0] as {
+      title: string;
+      fixedPractice: boolean;
+      mode: string;
+      hands: string;
+      speed: number;
+      difficulty: unknown;
+      game: unknown;
+      course: unknown;
+    };
+    expect(props.title).toBe("Читаю пять нот · Проверяю чтение без подсказок");
+    expect(props.fixedPractice).toBe(true);
+    expect([props.mode, props.hands, props.speed]).toEqual(["wait", "right", 1]);
+    expect(props.difficulty).toBeUndefined();
+    expect(props.game).toBeUndefined();
+    expect(props.course).toBeUndefined();
+    expect(observed.progress).not.toHaveBeenCalled();
+    expect(view.container.textContent).toBe("");
+    expect(observed.result.mock.lastCall?.[0]).toMatchObject({ open: false });
+
+    observed.runtime = {
+      ...observed.runtime,
+      reading: { ...observed.runtime.reading, active: false, task: null }
+    };
+    view.render();
+    expect(observed.header.mock.lastCall?.[0]).toMatchObject({ fixedPractice: false });
+    expect(observed.progress).toHaveBeenCalledOnce();
+    expect(view.container.textContent).toContain("Previous game mode");
+    expect(view.container.textContent).toContain("Рейтинг недоступен");
+    expect(observed.result.mock.lastCall?.[0]).toMatchObject({ open: true });
   });
 });

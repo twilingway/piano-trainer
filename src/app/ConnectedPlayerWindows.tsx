@@ -6,6 +6,7 @@ import { downloadLesson } from "./lessonExport";
 import { LESSONS } from "./lessons";
 import { PREVIOUS_COURSE_LESSONS } from "./courseCatalog";
 import { ConnectedCourseCards } from "./ConnectedCourse";
+import { ConnectedReadingCard } from "./ConnectedReading";
 import { phraseCompleted, nextSelection } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
@@ -21,7 +22,8 @@ export function ConnectedPlayerWindows() {
     source,
     canReview,
     courseActive,
-    courseProgress
+    courseProgress,
+    readingActive
   } = useRuntimeSelector(
     (runtime) => ({
       libraryOpen: runtime.libraryOpen,
@@ -33,7 +35,8 @@ export function ConnectedPlayerWindows() {
       source: runtime.trainer.snapshotSource,
       canReview: runtime.takes.canReview,
       courseActive: runtime.course.active,
-      courseProgress: runtime.course.saved.progress
+      courseProgress: runtime.course.saved.progress,
+      readingActive: runtime.reading.active
     }),
     shallowEqual
   );
@@ -72,7 +75,7 @@ export function ConnectedPlayerWindows() {
       />
       <ConnectedResultDialog
         source={source}
-        open={finished && !listening && !comparing && !resultClosed}
+        open={!readingActive && finished && !listening && !comparing && !resultClosed}
         canReview={canReview}
         course={courseActive !== null}
         onClose={() => {
@@ -119,7 +122,12 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       lessons={LESSONS.filter((lesson) => !PREVIOUS_COURSE_LESSONS.includes(lesson))}
       previousLessons={PREVIOUS_COURSE_LESSONS}
-      course={<ConnectedCourseCards onChoose={onClose} />}
+      course={
+        <>
+          <ConnectedReadingCard onChoose={onClose} />
+          <ConnectedCourseCards onChoose={onClose} />
+        </>
+      }
       current={lesson}
       currentSource={source}
       onLesson={(exerciseId, levelId) => {

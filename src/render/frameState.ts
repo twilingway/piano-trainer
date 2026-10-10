@@ -28,6 +28,7 @@ export interface FrameState {
   /** Whether the player plays a note: in their hands and on their keyboard. */
   readonly owns: (note: SongNote) => boolean;
   readonly hints?: boolean;
+  readonly neutralKeys?: boolean;
   /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
   /** The combo and accuracy board; none on a view that only mirrors another. */
