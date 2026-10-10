@@ -20,6 +20,7 @@ export function useTabsCursor(
     let frame = 0,
       lastFrame = performance.now(),
       lastBeat: number | undefined,
+      lastFollow: boolean | undefined,
       manualUntil = 0,
       dragging = false;
     const hold = () => {
@@ -83,7 +84,7 @@ export function useTabsCursor(
         current.follow &&
         !dragging &&
         now >= manualUntil &&
-        currentBeat !== lastBeat
+        (currentBeat !== lastBeat || current.follow !== lastFollow)
       ) {
         const ease = 1 - Math.exp(-Math.min(0.1, (now - lastFrame) / 1000) / 0.35);
         const bounds = grid.getBoundingClientRect();
@@ -91,12 +92,11 @@ export function useTabsCursor(
         if (current.overflowing) {
           const wanted = Math.max(
             0,
-            bounds.left - view.left + host.scrollLeft + spot.x - host.clientWidth / 2
+            bounds.left - view.left + host.scrollLeft + grid.clientLeft + spot.x - view.width / 2
           );
-          const difference = wanted - host.scrollLeft;
-          const jumped = lastBeat === undefined || Math.abs(currentBeat - lastBeat) > 0.5;
-          host.scrollLeft +=
-            jumped || Math.abs(difference) > host.clientWidth * 3 ? difference : difference * ease;
+          // The musical clock already moves continuously. A second easing puts the two readers
+          // at different screen positions because their musical intervals have different widths.
+          host.scrollLeft = wanted;
         }
         const wantedTop = Math.max(
           0,
@@ -108,6 +108,7 @@ export function useTabsCursor(
             : (wantedTop - host.scrollTop) * ease;
       }
       lastBeat = currentBeat;
+      lastFollow = current.follow;
       lastFrame = now;
       frame = requestAnimationFrame(draw);
     };
