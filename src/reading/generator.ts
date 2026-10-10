@@ -53,7 +53,11 @@ function musicXmlForPitches(pitches: readonly number[]): string {
 <pitch><step>${STEPS[pitch] ?? "C"}</step><octave>4</octave></pitch>
 <duration>1</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>`
     );
-    const header = measure === 0 ? `${ATTRIBUTES}<direction><sound tempo="120"/></direction>` : "";
+    const header =
+      measure === 0
+        ? `${ATTRIBUTES}<direction><direction-type><metronome><beat-unit>quarter</beat-unit>
+<per-minute>120</per-minute></metronome></direction-type><sound tempo="120"/></direction>`
+        : "";
     return `<measure number="${String(measure + 1)}">${header}${notes.join("")}</measure>`;
   });
   return `<?xml version="1.0" encoding="UTF-8"?>
