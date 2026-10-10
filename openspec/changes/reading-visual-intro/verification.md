@@ -1,7 +1,7 @@
 # Проверка визуального знакомства
 
-Ветка `feat/reading-visual-intro`, [PR #148](https://github.com/twilingway/piano-trainer/pull/148)
-в `dev`. Основная папка чистая, на `dev`.
+Ветка `feat/reading-visual-intro`, [PR #148](https://github.com/twilingway/piano-trainer/pull/148) в
+`dev`. Основная папка чистая, на `dev`.
 
 ## Автоматические проверки
 
