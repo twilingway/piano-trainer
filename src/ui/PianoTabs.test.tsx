@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { act, type ReactNode } from "react";
+import { act, useEffect, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +9,19 @@ import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { DEFAULT_STAFF_PREFS, type StaffPrefs } from "../app/staffPreferences";
 import type { Song } from "../song/song";
 import { PianoTabs } from "./PianoTabs";
+import {
+  ReaderGeometryProvider,
+  usePublishReaderGeometry,
+  type ReaderGeometry
+} from "../staff/readerGeometry";
+
+function GeometryPublisher({ geometry }: { readonly geometry: ReaderGeometry | null }) {
+  const publish = usePublishReaderGeometry();
+  useEffect(() => {
+    publish(geometry);
+  }, [geometry, publish]);
+  return null;
+}
 const readerStyles = readFileSync(resolve("src/styles.css"), "utf8");
 
 let host: HTMLDivElement;
@@ -119,8 +132,10 @@ beforeEach(() => {
     const system = this.closest<HTMLElement>(".piano-tabs__system");
     const content = this.closest<HTMLElement>(".piano-tabs__content");
     const isGrid = this.classList.contains("piano-tabs__grid");
+    const padding = content?.style.paddingInline;
+    const startPadding = padding === "" ? content?.style.paddingLeft : padding;
     const left = isGrid
-      ? Number.parseFloat(content?.style.paddingInline ?? "0") +
+      ? Number.parseFloat(startPadding === "" ? "0" : (startPadding ?? "0")) +
         Number.parseFloat(system?.style.marginLeft ?? "0") +
         Number.parseFloat(this.style.marginInline || "0") +
         Number.parseFloat(
@@ -151,6 +166,65 @@ afterEach(async () => {
 });
 
 describe("piano tabs reader", () => {
+  it("shares barlines independently of attacks and discards old score geometry", async () => {
+    const geometry: ReaderGeometry = {
+      svgOffsetX: 400,
+      viewportWidth: 840,
+      spots: [
+        { beat: 0, x: 50, line: 0 },
+        { beat: 1, x: 110, line: 0 }
+      ],
+      systems: [
+        {
+          line: 0,
+          startBeat: 0,
+          endBeat: 4,
+          width: 240,
+          barlines: [
+            { beat: 0, x: 20 },
+            { beat: 4, x: 240 }
+          ]
+        }
+      ]
+    };
+    const node = (key: string, snapshot: ReaderGeometry | null) => (
+      <ReaderGeometryProvider key={key}>
+        <GeometryPublisher geometry={snapshot} />
+        <PianoTabs song={short} time={1} stage="both" prefs={preferences({ singleLine: true })} />
+      </ReaderGeometryProvider>
+    );
+    await render(node("first", geometry));
+    expect(host.querySelector(".piano-tabs")?.getAttribute("data-shared-geometry")).toBe("true");
+    expect(host.querySelector<HTMLElement>(".piano-tabs__barline")?.style.left).toBe("20px");
+    expect(host.querySelector<HTMLElement>(".piano-tabs__event")?.style.left).toBe("50px");
+    draw(100);
+    expect(host.querySelector<HTMLElement>(".piano-tabs__cursor")?.style.transform).toBe(
+      "translateX(110px)"
+    );
+    expect(scrollHost().scrollLeft).toBe(90);
+    await render(
+      <ReaderGeometryProvider key="wrapped">
+        <GeometryPublisher
+          geometry={{
+            ...geometry,
+            systems: geometry.systems.map((system) => ({ ...system, width: 1600 }))
+          }}
+        />
+        <PianoTabs
+          song={short}
+          time={1}
+          stage="both"
+          prefs={preferences({ singleLine: false, follow: true })}
+        />
+      </ReaderGeometryProvider>
+    );
+    draw(200);
+    expect(scrollHost().scrollLeft).toBe(0);
+    await render(node("second", null));
+    expect(host.querySelector(".piano-tabs")?.getAttribute("data-shared-geometry")).toBe("false");
+    expect(host.querySelector(".piano-tabs__barline")).toBeNull();
+    expect(host.querySelector<HTMLElement>(".piano-tabs__event")?.style.left).toBe("0px");
+  });
   it.each(["en", "ru"] as const)(
     "centres %s names on their musical attack and keeps edge glyphs outside the sticky label area",
     async (noteNames) => {

@@ -1,5 +1,6 @@
 import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
+import { spotAt, type BeatSpot } from "../staff/liveCursor";
 
 export interface TabEvent {
   readonly id: string;
@@ -84,6 +85,9 @@ export interface TabRow {
   readonly offsets: readonly number[];
   readonly width: number;
   readonly events: readonly TabLayoutEvent[];
+  /** Shared score anchors retain its cursor interpolation, including tied entries and rests. */
+  readonly cursorSpots?: readonly BeatSpot[];
+  readonly barlines?: readonly { readonly beat: number; readonly x: number }[];
 }
 
 /** Interpolating the shared grid preserves rhythmic position within long notes and rests. */
@@ -104,6 +108,11 @@ function positionOnGrid(
     if (beat <= end) return left + ((beat - start) / (end - start)) * (right - left);
   }
   return offsets.at(-1) ?? 0;
+}
+
+/** Durations can reach a final barline beyond the last live-cursor anchor. */
+export function tabContentX(row: TabRow, beat: number): number {
+  return positionOnGrid(row.boundaries, row.offsets, beat);
 }
 
 /** Fixed musical widths never expand to fill a wide viewport. Wraps occur only at measure edges. */
@@ -185,5 +194,10 @@ export function positionInTabs(
   const rowIndex = index < 0 ? rows.length - 1 : index;
   const row = rows[rowIndex];
   if (!row) return undefined;
-  return { row: rowIndex, x: positionOnGrid(row.boundaries, row.offsets, beat) };
+  return {
+    row: rowIndex,
+    x: row.cursorSpots
+      ? (spotAt(row.cursorSpots, beat)?.x ?? 0)
+      : positionOnGrid(row.boundaries, row.offsets, beat)
+  };
 }

@@ -5,8 +5,10 @@ import { FINGER_COLOR } from "../render/fingerColors";
 import { detectChords, type ChordKind } from "../song/harmony";
 import { quartersAt, type Song } from "../song/song";
 import type { CourseStageId } from "./CourseCards";
-import { buildPianoTabs, layoutPianoTabs, positionInTabs } from "./pianoTabsLayout";
+import { buildPianoTabs, layoutPianoTabs, tabContentX } from "./pianoTabsLayout";
 import { useTabsCursor } from "./useTabsCursor";
+import { useReaderGeometry } from "../staff/readerGeometry";
+import { layoutTabsOnScore, scoreTabLabelSize } from "./pianoTabsScoreLayout";
 
 export { buildPianoTabs } from "./pianoTabsLayout";
 
@@ -41,6 +43,7 @@ export function PianoTabs({
   prefs = DEFAULT_STAFF_PREFS
 }: Props) {
   const { t } = useI18n();
+  const geometry = useReaderGeometry();
   const model = useMemo(() => buildPianoTabs(song), [song]);
   const chords = useMemo(
     () => (prefs.chords ? detectChords(baseSong) : []),
@@ -70,16 +73,18 @@ export function PianoTabs({
   const zoom = prefs.zoom * scale;
   const labelWidth = viewportWidth < 720 ? 70 : 100;
   // Labels are centred on the attack; gutters keep edge labels clear of sticky hand names.
-  const noteGutter = (prefs.noteNames === "ru" ? 48 : 18) * zoom;
+  const noteGutter = geometry ? 0 : (prefs.noteNames === "ru" ? 48 : 18) * zoom;
   const rows = useMemo(
     () =>
-      layoutPianoTabs(model, {
-        zoom,
-        singleLine: prefs.singleLine,
-        measuresPerLine: prefs.measuresPerLine,
-        noteNames: prefs.noteNames,
-        viewportWidth: Math.max(36, viewportWidth - labelWidth - noteGutter * 2)
-      }),
+      geometry
+        ? layoutTabsOnScore(model, geometry)
+        : layoutPianoTabs(model, {
+            zoom,
+            singleLine: prefs.singleLine,
+            measuresPerLine: prefs.measuresPerLine,
+            noteNames: prefs.noteNames,
+            viewportWidth: Math.max(36, viewportWidth - labelWidth - noteGutter * 2)
+          }),
     [
       model,
       zoom,
@@ -88,10 +93,12 @@ export function PianoTabs({
       prefs.noteNames,
       viewportWidth,
       labelWidth,
-      noteGutter
+      noteGutter,
+      geometry
     ]
   );
-  const naturalWidth = Math.max(0, ...rows.map((row) => row.width)) + labelWidth + noteGutter * 2;
+  const naturalWidth =
+    Math.max(0, ...rows.map((row) => row.width)) + (geometry ? 0 : labelWidth) + noteGutter * 2;
   const padding = Math.max(0, (viewportWidth - naturalWidth) / 2);
   const centerCursor = prefs.singleLine && prefs.follow;
   const musicalOverflow = naturalWidth > viewportWidth;
@@ -103,16 +110,23 @@ export function PianoTabs({
     beat,
     liveBeat,
     prefs.follow,
-    centerCursor || naturalWidth > viewportWidth
+    geometry ? prefs.singleLine : centerCursor || naturalWidth > viewportWidth,
+    geometry?.viewportWidth
   );
   if (song.notes.length === 0) return <div className="piano-tabs">{t("Пока нет нот")}</div>;
   const style = {
     "--tabs-zoom": zoom,
     "--tabs-notes": prefs.noteColor,
-    "--tabs-score": prefs.scoreColor
+    "--tabs-score": prefs.scoreColor,
+    "--tabs-origin": `${String(geometry?.svgOffsetX ?? 0)}px`
   } as CSSProperties;
   return (
-    <section className="piano-tabs" style={style} aria-label={t("Пианинные табы")}>
+    <section
+      className="piano-tabs"
+      data-shared-geometry={Boolean(geometry)}
+      style={style}
+      aria-label={t("Пианинные табы")}
+    >
       <div
         className="piano-tabs__scroll"
         data-musical-overflow={musicalOverflow}
@@ -143,7 +157,16 @@ export function PianoTabs({
       >
         <div
           className="piano-tabs__content"
-          style={{ width: naturalWidth + edgeSpace * 2, paddingInline: edgeSpace }}
+          style={
+            geometry
+              ? {
+                  width:
+                    naturalWidth + geometry.svgOffsetX + (prefs.singleLine ? viewportWidth / 2 : 0),
+                  paddingLeft: geometry.svgOffsetX,
+                  paddingRight: prefs.singleLine ? viewportWidth / 2 : 0
+                }
+              : { width: naturalWidth + edgeSpace * 2, paddingInline: edgeSpace }
+          }
         >
           {rows.map((row, rowIndex) => {
             const rightCount = Math.max(
@@ -158,23 +181,22 @@ export function PianoTabs({
             const chordHeight = prefs.chords ? 24 * zoom : 0;
             const rightHeight = rightCount * toneHeight + 8 * zoom;
             const height = rightHeight + leftCount * toneHeight + 8 * zoom;
-            const xAt = (value: number) => positionInTabs([row], value)?.x ?? 0;
+            const xAt = (value: number) => tabContentX(row, value);
             return (
               <div
                 className="piano-tabs__system"
                 data-tab-row={rowIndex}
                 key={row.startBeat}
                 style={{
-                  marginLeft: Math.max(
-                    0,
-                    (naturalWidth - row.width - labelWidth - noteGutter * 2) / 2
-                  )
+                  marginLeft: geometry
+                    ? 0
+                    : Math.max(0, (naturalWidth - row.width - labelWidth - noteGutter * 2) / 2)
                 }}
               >
                 <div
                   className="piano-tabs__labels"
                   style={{
-                    width: labelWidth,
+                    width: geometry ? 0 : labelWidth,
                     paddingTop: chordHeight,
                     gridTemplateRows: `${String(rightHeight)}px ${String(height - rightHeight)}px`
                   }}
@@ -196,13 +218,22 @@ export function PianoTabs({
                       className="piano-tabs__column"
                       data-beat={start}
                       data-end={row.boundaries[index + 1]}
-                      data-measure={model.measures.has(start)}
+                      data-measure={!geometry && model.measures.has(start)}
                       data-current={start <= beat && beat < (row.boundaries[index + 1] ?? start)}
                       style={{
                         left: row.offsets[index],
                         width: (row.offsets[index + 1] ?? 0) - (row.offsets[index] ?? 0),
                         top: chordHeight
                       }}
+                      aria-hidden="true"
+                    />
+                  ))}
+                  {row.barlines?.map(({ beat: measureBeat, x }) => (
+                    <div
+                      key={measureBeat}
+                      className="piano-tabs__barline"
+                      data-beat={measureBeat}
+                      style={{ left: x, top: chordHeight }}
                       aria-hidden="true"
                     />
                   ))}
@@ -250,6 +281,19 @@ export function PianoTabs({
                               {attack && (
                                 <span
                                   className="piano-tabs__note"
+                                  style={
+                                    geometry
+                                      ? {
+                                          fontSize: scoreTabLabelSize(
+                                            row,
+                                            left,
+                                            event.hand,
+                                            name,
+                                            zoom
+                                          )
+                                        }
+                                      : undefined
+                                  }
                                   data-start={note.startBeat}
                                   data-end={endBeat}
                                   data-current={
