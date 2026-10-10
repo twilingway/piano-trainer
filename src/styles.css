@@ -240,6 +240,32 @@
 .piano-tabs__column[data-measure="true"] {
   border-left: 1px solid var(--tabs-score);
 }
+.piano-tabs[data-shared-geometry="true"] .piano-tabs__grid {
+  border-inline: 0;
+}
+.piano-tabs[data-shared-geometry="true"] {
+  padding-inline: 0;
+}
+.piano-tabs[data-shared-geometry="true"] .piano-tabs__labels {
+  flex-basis: 0;
+  padding-right: 0;
+  margin-left: calc(-1 * var(--tabs-origin));
+  margin-right: var(--tabs-origin);
+}
+.piano-tabs[data-shared-geometry="true"] .piano-tabs__labels span {
+  width: max-content;
+  padding-right: 8px;
+  background: var(--bg);
+}
+.piano-tabs[data-shared-geometry="true"] .piano-tabs__column {
+  border-left: 0;
+}
+.piano-tabs__barline {
+  position: absolute;
+  bottom: 0;
+  border-left: 1px solid var(--tabs-score);
+  pointer-events: none;
+}
 .piano-tabs__column[data-current="true"] {
   background: rgb(0 213 244 / 6%);
 }

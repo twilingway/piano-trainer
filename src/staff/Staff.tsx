@@ -3,6 +3,9 @@ import { centreLivePosition, createStaffFollow } from "./staffFollow";
 import { beatPositions, indexNotes, type NoteIndex } from "./staffNoteIndex";
 import { fitCompactStaff, staffZoom } from "./fitCompactStaff";
 import { setStaffTempoLayout } from "./staffTempoLayout";
+import { usePublishReaderGeometry, useReaderFrameBeat } from "./readerGeometry";
+import { readStaffGeometry } from "./staffReaderGeometry";
+import { sharedReaderSpacing } from "./sharedReaderSpacing";
 import {
   highlightUnderCursor,
   paintMarks,
@@ -41,6 +44,10 @@ interface StaffProps {
   readonly liveBeat?: () => number;
   /** Share of the window this staff may take; two staves stacked take less each. */
   readonly maxShare?: number;
+  /** Publish this original score's layout for a second reader in the same workspace. */
+  readonly shareGeometry?: boolean;
+  /** Labels in a second reader may require wider shared engraving. */
+  readonly sharedNoteNames?: "off" | "ru" | "en" | undefined;
 }
 
 const BEAT_EPSILON = 1e-6;
@@ -207,12 +214,17 @@ export function Staff({
   onSeek,
   marks,
   maxShare = DEFAULT_MAX_SHARE,
+  shareGeometry = false,
+  sharedNoteNames,
   liveBeat
 }: StaffProps) {
+  const publishGeometry = usePublishReaderGeometry();
+  const readFrameBeat = useReaderFrameBeat();
   const hostRef = useRef<HTMLDivElement>(null);
   /** OSMD draws here; the host around it scrolls. */
   const pageRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
+  const baseSpacingRef = useRef(1);
   const paintedRef = useRef<SVGElement[]>([]);
   // Read by the loader and the zoom effect, which must land the cursor where the song is.
   const latest = useRef({ beat, zoom, follow, singleLine, maxShare });
@@ -255,6 +267,10 @@ export function Staff({
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     setStaffColors(osmd, noteColor, scoreColor);
+    osmd.EngravingRules.VoiceSpacingMultiplierVexflow = sharedReaderSpacing(
+      baseSpacingRef.current,
+      sharedNoteNames
+    );
     osmd.Zoom = staffZoom(host, latest.current.zoom);
     osmd.render();
     fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
@@ -288,12 +304,16 @@ export function Staff({
       host.scrollTop = target.top;
     }
     targetRef.current = null;
+    if (shareGeometry) {
+      publishGeometry(readStaffGeometry(osmd, host, beatXRef.current, linesRef.current));
+    }
   });
 
   useEffect(() => {
     const host = hostRef.current;
     const page = pageRef.current;
     if (!host || !page) return;
+    if (shareGeometry) publishGeometry(null);
     let cancelled = false;
     let resizeTimer = 0;
     const osmd = new OpenSheetMusicDisplay(page, {
@@ -313,6 +333,7 @@ export function Staff({
       autoBeam: true,
       autoBeamOptions: { groups: [[1, 4]] }
     });
+    baseSpacingRef.current = osmd.EngravingRules.VoiceSpacingMultiplierVexflow;
     void osmd.load(musicXml).then(() => {
       if (cancelled) return;
       setStaffTempoLayout(osmd, musicXml);
@@ -346,15 +367,16 @@ export function Staff({
       osmd.clear();
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
       page.replaceChildren();
+      if (shareGeometry) publishGeometry(null);
     };
-  }, [musicXml, singleLine, breaksFromScore, fingers]);
+  }, [musicXml, singleLine, breaksFromScore, fingers, shareGeometry, publishGeometry]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
     const host = hostRef.current;
     if (!osmd || !host) return;
     relayout(osmd, host);
-  }, [zoom, noteColor, scoreColor, fingerColors]);
+  }, [zoom, noteColor, scoreColor, fingerColors, sharedNoteNames]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
@@ -385,9 +407,12 @@ export function Staff({
     let paintedMap: readonly BeatSpot[] | undefined;
     const reader = hostRef.current;
     const controller = reader ? createStaffFollow(reader) : undefined;
-    const step = () => {
+    const step = (timestamp: number) => {
       const host = hostRef.current;
-      const beatNow = liveBeatRef.current?.() ?? latest.current.beat;
+      const beatNow = readFrameBeat(
+        timestamp,
+        () => liveBeatRef.current?.() ?? latest.current.beat
+      );
       const osmd = osmdRef.current;
       const entryBeat = entryBeatAt(beatXRef.current, beatNow);
       if (osmd && (entryBeat !== paintedBeat || paintedMap !== beatXRef.current)) {
@@ -431,7 +456,7 @@ export function Staff({
       controller?.dispose();
       cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [readFrameBeat]);
 
   /**
    * The beat of the drawn note nearest to a click, measured on screen. OSMD's

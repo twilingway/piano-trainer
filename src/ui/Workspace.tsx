@@ -6,6 +6,7 @@ import type { SplitDirection, TakeStaff } from "../app/useTakeReview";
 import { DEFAULT_STAFF_SHARE } from "../app/screenLayout";
 import type { ScreenLayout } from "../app/screenLayout";
 import { Staff } from "../staff/Staff";
+import { ReaderGeometryProvider } from "../staff/readerGeometry";
 import { KeysHandles, LaneTopHandle, StaffHandle, TickerSlot } from "./LayoutHandles";
 
 interface Props {
@@ -93,6 +94,8 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           liveBeat={props.liveBeat}
           marks={props.reviewMarks}
           maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
+          shareGeometry={dualScore}
+          sharedNoteNames={dualScore ? prefs.noteNames : undefined}
         />
       </div>
       {transcription && (
@@ -143,7 +146,9 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
         )}
         {dualScore ? (
           <div className="course-score-stack">
-            {props.scoreFirst === "staff" ? [staffBoard, tabsBoard] : [tabsBoard, staffBoard]}
+            <ReaderGeometryProvider key={props.staffXml}>
+              {props.scoreFirst === "staff" ? [staffBoard, tabsBoard] : [tabsBoard, staffBoard]}
+            </ReaderGeometryProvider>
           </div>
         ) : (
           staffBoard

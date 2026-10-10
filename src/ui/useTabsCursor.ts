@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import { positionInTabs, type TabRow } from "./pianoTabsLayout";
+import { useReaderFrameBeat } from "../staff/readerGeometry";
 
 /** Animation reads the trainer clock; it never extrapolates musical time. */
 export function useTabsCursor(
@@ -8,11 +9,13 @@ export function useTabsCursor(
   beat: number,
   liveBeat: (() => number) | undefined,
   follow: boolean,
-  overflowing: boolean
+  overflowing: boolean,
+  centreWidth?: number
 ) {
-  const latest = useRef({ rows, beat, liveBeat, follow, overflowing });
+  const readFrameBeat = useReaderFrameBeat();
+  const latest = useRef({ rows, beat, liveBeat, follow, overflowing, centreWidth });
   useLayoutEffect(() => {
-    latest.current = { rows, beat, liveBeat, follow, overflowing };
+    latest.current = { rows, beat, liveBeat, follow, overflowing, centreWidth };
   });
   useEffect(() => {
     const host = scrollRef.current;
@@ -63,7 +66,7 @@ export function useTabsCursor(
     const highlights = [...notes, ...columns];
     const draw = (now: number) => {
       const current = latest.current;
-      const currentBeat = current.liveBeat?.() ?? current.beat;
+      const currentBeat = readFrameBeat(now, () => current.liveBeat?.() ?? current.beat);
       const spot = positionInTabs(current.rows, currentBeat);
       systems.forEach((system, index) => {
         const cursor = cursors[index];
@@ -92,7 +95,12 @@ export function useTabsCursor(
         if (current.overflowing) {
           const wanted = Math.max(
             0,
-            bounds.left - view.left + host.scrollLeft + grid.clientLeft + spot.x - view.width / 2
+            bounds.left -
+              view.left +
+              host.scrollLeft +
+              grid.clientLeft +
+              spot.x -
+              (current.centreWidth ?? view.width) / 2
           );
           // The musical clock already moves continuously. A second easing puts the two readers
           // at different screen positions because their musical intervals have different widths.
@@ -121,5 +129,5 @@ export function useTabsCursor(
       for (const type of ["wheel", "touchstart", "keydown"] as const)
         host.removeEventListener(type, hold);
     };
-  }, [scrollRef, rows]);
+  }, [scrollRef, rows, readFrameBeat]);
 }
