@@ -92,36 +92,63 @@
 }
 .course-lesson-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  font-size: 12px;
-}
-.course-lesson-bar > strong {
-  flex: 0 1 260px;
+  gap: 6px;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px;
 }
 .course-phrase-choice {
   flex-wrap: nowrap;
   min-width: 0;
 }
 .course-phrase-choice > span {
-  flex: 0 0 124px;
+  flex: 0 0 auto;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .course-phrase-choice select {
-  flex: 0 0 240px;
-  width: 240px;
+  flex: 0 0 180px;
+  width: 180px;
   min-width: 0;
   height: 36px;
   box-sizing: border-box;
+}
+.course-phrase-position__full,
+.course-completed__label,
+.course-next__label {
+  display: none;
+}
+.course-next {
+  min-width: 36px;
+  padding-inline: 8px;
+}
+.compact-controls__menu .course-lesson-bar {
+  flex-direction: column;
+  align-items: stretch;
+  padding-block: 6px;
+  border-block: 1px solid var(--border);
+}
+.compact-controls__menu .course-phrase-choice {
+  flex-direction: column;
+  align-items: stretch;
+}
+.topbar .compact-controls__menu .course-phrase-choice select {
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+}
+.compact-controls__menu
+  :is(.course-phrase-position__full, .course-completed__label, .course-next__label) {
+  display: inline;
+}
+.compact-controls__menu .course-phrase-position__short {
+  display: none;
+}
+.compact-controls__menu .course-next {
+  justify-content: space-between;
 }
 .course-stage-progress {
   margin-left: 6px;
@@ -288,9 +315,6 @@
   }
   .piano-tabs__labels {
     flex-basis: 70px;
-  }
-  .course-lesson-bar {
-    padding-inline: 8px;
   }
 }
 
@@ -1347,6 +1371,9 @@ select:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 700;
+}
+.topbar--course .topbar-title {
+  flex: 1 1 0;
 }
 
 .play-button {
@@ -3068,47 +3095,6 @@ button.song-card.song-card__open {
     --mobile-bar-width: calc(52px + env(safe-area-inset-right));
   }
 
-  /* Course controls and tabs share the staff's free space beside the fixed toolbar. */
-  .course-lesson-bar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    flex: 0 0 auto;
-    gap: 6px;
-    min-width: 0;
-    max-height: 40dvh;
-    margin-right: calc(52px + env(safe-area-inset-right));
-    padding: 8px;
-    box-sizing: border-box;
-    overflow: auto;
-  }
-
-  .course-lesson-bar > strong {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .course-lesson-bar > :is(.course-phrase-choice, .course-completed, .game-button) {
-    grid-column: 1 / -1;
-  }
-
-  .course-lesson-bar .course-phrase-choice {
-    align-items: stretch;
-    flex-direction: column;
-    flex-wrap: nowrap;
-  }
-
-  .course-lesson-bar .course-phrase-choice > span {
-    flex-basis: auto;
-  }
-
-  .course-lesson-bar .course-phrase-choice select {
-    flex: 0 0 auto;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    height: 44px;
-  }
-
   .course-score-slot {
     margin-right: var(--mobile-bar-width);
   }
@@ -3406,27 +3392,6 @@ button.song-card.song-card__open {
   }
 }
 
-@media (width > 640px) and (height <= 500px) {
-  .course-lesson-bar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 364px);
-  }
-
-  .course-lesson-bar .course-phrase-choice {
-    grid-area: 1 / 2;
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .course-lesson-bar .course-phrase-choice > span {
-    flex: 0 0 124px;
-  }
-
-  .course-lesson-bar .course-phrase-choice select {
-    flex: 1;
-    width: 0;
-  }
-}
-
 /* The wide bar's own pieces: the game, the text, the view and the timing chip. */
 .topbar > .game-mode-segment,
 .topbar > .bar-popover,
@@ -3579,6 +3544,9 @@ button.song-card.song-card__open {
 }
 /* A laptop's bar gives up the song's name first, then the tempo and the small print. */
 @media (900px < width <= 1280px) and (height > 500px) {
+  .topbar--course .topbar-title {
+    display: none;
+  }
   .topbar {
     gap: 6px;
   }

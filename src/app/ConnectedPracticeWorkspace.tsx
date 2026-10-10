@@ -6,7 +6,7 @@ import {
   ConnectedWorkspace
 } from "./ConnectedPlayback";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
-import { ConnectedCourseLessonBar, ConnectedPianoTabs } from "./ConnectedCourse";
+import { ConnectedPianoTabs } from "./ConnectedCourse";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPracticeWorkspace() {
@@ -78,7 +78,6 @@ export function ConnectedPracticeWorkspace() {
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   return (
     <>
-      {!wordEnabled && !comparing && <ConnectedCourseLessonBar />}
       <ConnectedWorkspace
         scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
         scoreFirst={courseTopView}
