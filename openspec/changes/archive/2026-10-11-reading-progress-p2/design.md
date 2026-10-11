@@ -2,7 +2,7 @@
 
 ## Context
 
-См. [аудит](../../../docs/READING_P2_AUDIT.md) и proposal.md. P1 уже связывает ReadingSession,
+См. [аудит](../../../../docs/READING_P2_AUDIT.md) и proposal.md. P1 уже связывает ReadingSession,
 Trainer, Staff и один Redux slice; новый слой не должен создавать альтернативные часы или базу.
 Владелец согласовал P2 11.10.2026 и предложил IndexedDB для растущей истории. Реализация разрешена;
 прогресс переносится в существующую IndexedDB, настройки других подсистем не мигрируются.

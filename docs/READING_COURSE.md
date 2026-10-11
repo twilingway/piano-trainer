@@ -23,10 +23,11 @@
 Планы продолжения: [основной roadmap](TWILING_KEYS_READING_ROADMAP.md),
 [дополнение по сольфеджио и гармонии](TWILING_KEYS_MUSIC_THEORY_ADDENDUM.md),
 [аудит P2](READING_P2_AUDIT.md) и
-[OpenSpec P2](../openspec/changes/reading-progress-p2/proposal.md). P2 согласован 11.10.2026.
-Реализация влита в dev через [PR #149](https://github.com/twilingway/piano-trainer/pull/149).
-Результаты и оставшаяся мобильная приёмка записаны в
-[проверке P2](../openspec/changes/reading-progress-p2/verification.md).
+[OpenSpec P2](../openspec/changes/archive/2026-10-11-reading-progress-p2/proposal.md). P2 согласован
+и принят 11.10.2026. Реализация влита в dev через
+[PR #149](https://github.com/twilingway/piano-trainer/pull/149). Мобильное исправление влито через
+[PR #150](https://github.com/twilingway/piano-trainer/pull/150). Завершённая приёмка записана в
+[проверке P2](../openspec/changes/archive/2026-10-11-reading-progress-p2/verification.md).
 
 ## Прогресс и повторение P2
 
