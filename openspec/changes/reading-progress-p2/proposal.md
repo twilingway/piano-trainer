@@ -32,8 +32,8 @@ P3–P8, новый сервис/база, микрофон, зависимос�
    повторение через 3 дня. Это настраиваемые в политике гипотезы, без зачёта/блокировки заданий.
 4. Сохраняются 20 результатов на вид задания и журнал последних 256 предъявленных
    последовательностей; «новая» проверка гарантируется только относительно этого окна.
-5. Этот PR содержит документы и проект OpenSpec. Production-реализация начинается после явного
-   согласования данного предложения, как требует раздел 14 дополнения.
+5. Предложение согласовано владельцем 11.10.2026. По его предложению данные P2 хранятся в
+   существующей IndexedDB, с безопасной миграцией из localStorage. Production-реализация разрешена.
 
 ## Capabilities
 
@@ -53,6 +53,6 @@ P1 пока описан в активном `five-note-reading`, а не в `op
 `src/reading`, `src/app/readingSlice.ts`, `readingPersistence.ts`, `useReadingCourse.ts`,
 `ConnectedReading.tsx`, `src/ui/ReadingCourse.tsx`, `src/i18n/readingMessages.ts` и их тесты. Не
 меняются публичные контракты song/fingering/recording, музыкальные часы и глобальные предпочтения.
-Прогресс остаётся локальным; лицензируемые уроки не публикуются. Источники и аудит находятся в
-`docs/TWILING_KEYS_READING_ROADMAP.md`, `docs/TWILING_KEYS_MUSIC_THEORY_ADDENDUM.md`,
+Прогресс остаётся локальным в IndexedDB; лицензируемые уроки не публикуются. Источники и аудит
+находятся в `docs/TWILING_KEYS_READING_ROADMAP.md`, `docs/TWILING_KEYS_MUSIC_THEORY_ADDENDUM.md`,
 `docs/READING_P2_AUDIT.md`.
