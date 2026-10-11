@@ -1,5 +1,10 @@
 import { generateReadingExercise, readingSequenceForSeed, READING_PITCHES } from "./generator";
-import { READING_OBSERVATION_WINDOW, READING_REPEAT_INTERVAL_MS, readingMedian } from "./progress";
+import {
+  READING_OBSERVATION_WINDOW,
+  READING_REPEAT_INTERVAL_MS,
+  readingMedian,
+  readingIndependentDates
+} from "./progress";
 import type { ReadingExercise, ReadingTask } from "./types";
 import type {
   ReadingPlan,
@@ -109,16 +114,19 @@ export function buildAdaptivePlan(
     );
   });
   const difficulty = readingQuota(weights, policy.difficultySlots);
-  const overdue = windows
-    .map((entries, index) => ({
-      index,
-      lastIndependentAt: entries
-        .filter((entry) => entry.independentCorrect)
-        .reduce<number | null>(
-          (last, entry) => (last === null ? entry.completedAt : Math.max(last, entry.completedAt)),
-          null
-        )
-    }))
+  const independentDates = readingIndependentDates(profile.observations, profile.lastIndependent);
+  const overdue = READING_PITCHES.map((pitch, index) => ({
+    index,
+    lastIndependentAt: independentDates
+      .filter(
+        (entry) =>
+          entry.expectedMidi === pitch && (source === "all" || entry.inputSource === source)
+      )
+      .reduce<number | null>(
+        (last, entry) => (last === null ? entry.completedAt : Math.max(last, entry.completedAt)),
+        null
+      )
+  }))
     .filter(
       (entry) =>
         entry.lastIndependentAt === null || now - entry.lastIndependentAt >= policy.repeatIntervalMs

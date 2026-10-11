@@ -2,6 +2,7 @@ import { READING_PITCHES } from "./generator";
 import type { ReadingNoteResult, ReadingResult } from "./types";
 import type {
   ReadingMetrics,
+  ReadingIndependentDate,
   ReadingObservation,
   ReadingProfile,
   ReadingPurpose,
@@ -20,7 +21,33 @@ export const READING_PURPOSES: readonly ReadingPurpose[] = [
 ];
 
 export function emptyReadingProfile(): ReadingProfile {
-  return { observations: [], processedRunIds: [], delayedDueAt: null };
+  return { observations: [], lastIndependent: [], processedRunIds: [], delayedDueAt: null };
+}
+
+/** Calendar evidence survives the bounded observations used to estimate difficulty. */
+export function readingIndependentDates(
+  observations: readonly ReadingObservation[],
+  previous: readonly ReadingIndependentDate[] = []
+): readonly ReadingIndependentDate[] {
+  const dates = new Map<string, ReadingIndependentDate>();
+  const add = (entry: ReadingIndependentDate): void => {
+    const key = `${String(entry.expectedMidi)}:${entry.inputSource}`;
+    const existing = dates.get(key);
+    if (!existing || entry.completedAt > existing.completedAt) dates.set(key, entry);
+  };
+  previous.forEach(add);
+  for (const entry of observations) {
+    if (entry.independentCorrect && entry.purpose !== "phrases") {
+      add({
+        expectedMidi: entry.expectedMidi,
+        inputSource: entry.inputSource,
+        completedAt: entry.completedAt
+      });
+    }
+  }
+  return [...dates.values()].sort(
+    (a, b) => a.expectedMidi - b.expectedMidi || a.inputSource.localeCompare(b.inputSource)
+  );
 }
 
 export function readingPurpose(result: ReadingResult): ReadingPurpose {
@@ -79,6 +106,7 @@ export function addReadingResult(profile: ReadingProfile, result: ReadingResult)
   const dueAt = (result.completedAt ?? result.createdAt) + READING_REPEAT_INTERVAL_MS;
   return {
     observations: kept.reverse(),
+    lastIndependent: readingIndependentDates(observations, profile.lastIndependent),
     processedRunIds: [...profile.processedRunIds, runId],
     delayedDueAt:
       check && balanced ? Math.max(profile.delayedDueAt ?? dueAt, dueAt) : profile.delayedDueAt

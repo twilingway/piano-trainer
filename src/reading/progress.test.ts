@@ -11,7 +11,7 @@ import {
   summarizeReadingProfile,
   summarizeReadingResults
 } from "./progress";
-import { balancedReadingPlan } from "./adaptation";
+import { balancedReadingPlan, buildAdaptivePlan } from "./adaptation";
 
 function result(
   task: "notes" | "phrases" | "check",
@@ -154,6 +154,38 @@ describe("reading evidence and summaries", () => {
 });
 
 describe("compact profile", () => {
+  it("keeps the independent calendar date after more than20 assisted answers replace its window", () => {
+    const today = 86_400_000;
+    let profile = addReadingResult(emptyReadingProfile(), result("notes", "independent", today));
+    for (let index = 1; index <= 6; index++) {
+      const assisted = result("notes", `assist${String(index)}`, today + index * 10);
+      profile = addReadingResult(profile, {
+        ...assisted,
+        notes: assisted.notes.map((note) =>
+          note.expectedMidi === 67
+            ? { ...note, independentCorrect: false, unassistedSolved: false }
+            : note
+        )
+      });
+    }
+    expect(profile.observations.filter((entry) => entry.expectedMidi === 67)).toHaveLength(20);
+    expect(
+      profile.observations.some((entry) => entry.expectedMidi === 67 && entry.independentCorrect)
+    ).toBe(false);
+    expect(profile.lastIndependent.find((entry) => entry.expectedMidi === 67)).toMatchObject({
+      completedAt: today,
+      inputSource: "midi"
+    });
+    expect(buildAdaptivePlan(profile, "midi", today + 100).counts[4]).toBe(5);
+    expect(buildAdaptivePlan(profile, "midi", today + READING_REPEAT_INTERVAL_MS).counts[4]).toBe(
+      9
+    );
+    const phrases = addReadingResult(
+      profile,
+      result("phrases", "phrase", today + READING_REPEAT_INTERVAL_MS)
+    );
+    expect(phrases.lastIndependent).toEqual(profile.lastIndependent);
+  });
   it("updates delayed date only for distinct balanced checks, surviving training and backward calendar shifts", () => {
     const check = result("check", "check", 100_000);
     const first = addReadingResult(emptyReadingProfile(), check);

@@ -63,8 +63,15 @@ export interface ReadingObservation {
   readonly errorCount: number;
 }
 
+export interface ReadingIndependentDate {
+  readonly expectedMidi: number;
+  readonly inputSource: ReadingInputSource;
+  readonly completedAt: number;
+}
+
 export interface ReadingProfile {
   readonly observations: readonly ReadingObservation[];
+  readonly lastIndependent: readonly ReadingIndependentDate[];
   readonly processedRunIds: readonly string[];
   readonly delayedDueAt: number | null;
 }

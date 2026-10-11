@@ -30,10 +30,26 @@ function profileFor(weights: readonly number[], completedAt = 100): ReadingProfi
       errorCount: 0
     }))
   );
-  return { observations, processedRunIds: [], delayedDueAt: null };
+  return { observations, lastIndependent: [], processedRunIds: [], delayedDueAt: null };
 }
 
 describe("adaptive reading allocation", () => {
+  it("uses source-specific persistent dates and the newest date across all sources", () => {
+    const base = profileFor([0, 0, 0, 0, 0], 100);
+    const profile: ReadingProfile = {
+      ...base,
+      observations: base.observations.map((entry) =>
+        entry.expectedMidi === 67 ? { ...entry, independentCorrect: false } : entry
+      ),
+      lastIndependent: [
+        { expectedMidi: 67, inputSource: "midi", completedAt: 0 },
+        { expectedMidi: 67, inputSource: "keyboard", completedAt: 200 }
+      ]
+    };
+    const policy = { ...DEFAULT_READING_POLICY, repeatIntervalMs: 200 };
+    expect(buildAdaptivePlan(profile, "all", 250, policy).counts[4]).toBe(8);
+    expect(buildAdaptivePlan(profile, "midi", 250, policy).counts[4]).toBe(12);
+  });
   it("falls back when any note is missing data or the selected source has insufficient data", () => {
     expect(buildAdaptivePlan(emptyReadingProfile(), "all", 100).counts).toEqual([4, 4, 4, 4, 4]);
     const complete = profileFor([0, 1, 0, 0, 0]);
