@@ -7,6 +7,7 @@ import { LESSONS } from "./lessons";
 import { PREVIOUS_COURSE_LESSONS } from "./courseCatalog";
 import { ConnectedCourseCards } from "./ConnectedCourse";
 import { ConnectedReadingCard } from "./ConnectedReading";
+import { ConnectedIntervalCard } from "./ConnectedIntervals";
 import { phraseCompleted, nextSelection } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
@@ -36,7 +37,7 @@ export function ConnectedPlayerWindows() {
       canReview: runtime.takes.canReview,
       courseActive: runtime.course.active,
       courseProgress: runtime.course.saved.progress,
-      readingActive: runtime.reading.active
+      readingActive: runtime.practiceActive
     }),
     shallowEqual
   );
@@ -125,6 +126,7 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
       course={
         <>
           <ConnectedReadingCard onChoose={onClose} />
+          <ConnectedIntervalCard onChoose={onClose} />
           <ConnectedCourseCards onChoose={onClose} />
         </>
       }

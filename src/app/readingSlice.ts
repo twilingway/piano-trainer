@@ -8,9 +8,17 @@ import {
 import { songActions } from "./songSlice";
 import { addReadingResult, emptyReadingProfile, readingPurpose } from "../reading/progress";
 import type { ReadingPlan, ReadingProfile, ReadingSourceFilter } from "../reading/progressTypes";
+import type { IntervalMode, IntervalResult } from "../intervals/types";
+import {
+  emptyIntervalState,
+  mergeIntervalHistory,
+  type IntervalPersistentState
+} from "./intervalPersistence";
 
 export interface ReadingState {
-  schemaVersion: 2;
+  schemaVersion: 3;
+  activeCourse: "note-reading" | "interval-training" | null;
+  intervals: IntervalPersistentState;
   task: ReadingTask | null;
   seed: number;
   preferences: ReadingPreferences;
@@ -26,7 +34,9 @@ export interface ReadingRoot {
   reading: ReadingState;
 }
 export const initialReadingState: ReadingState = {
-  schemaVersion: 2,
+  schemaVersion: 3,
+  activeCourse: null,
+  intervals: emptyIntervalState(),
   task: null,
   seed: 1,
   preferences: DEFAULT_READING_PREFERENCES,
@@ -61,13 +71,30 @@ const readingSlice = createSlice({
       { payload }: PayloadAction<{ task: ReadingTask; seed: number; plan?: ReadingPlan }>
     ) {
       state.task = payload.task;
+      state.activeCourse = "note-reading";
       state.seed = payload.seed >>> 0;
       state.plan = payload.plan ? { ...payload.plan, counts: [...payload.plan.counts] } : null;
       state.selectionRevision++;
     },
     exit(state) {
-      state.task = null;
+      state.activeCourse = null;
       state.selectionRevision++;
+    },
+    intervalSelected(
+      state,
+      { payload }: PayloadAction<{ mode: IntervalMode; seed: number; generatorVersion?: number }>
+    ) {
+      state.activeCourse = "interval-training";
+      state.intervals.mode = payload.mode;
+      state.intervals.seed = payload.seed >>> 0;
+      state.intervals.generatorVersion = payload.generatorVersion ?? 1;
+      state.selectionRevision++;
+    },
+    intervalSourceFilterChanged(state, { payload }: PayloadAction<ReadingSourceFilter>) {
+      state.intervals.sourceFilter = payload;
+    },
+    intervalResultAdded(state, { payload }: PayloadAction<IntervalResult>) {
+      state.intervals.history = mergeIntervalHistory(state.intervals.history, [payload]);
     },
     hydrated(state, { payload }: PayloadAction<ReadingState>) {
       return { ...payload, selectionRevision: state.selectionRevision };
@@ -115,7 +142,7 @@ const readingSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase(songActions.songOpened, (state) => {
-      state.task = null;
+      state.activeCourse = null;
       state.selectionRevision++;
     });
   }

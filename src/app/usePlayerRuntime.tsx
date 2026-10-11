@@ -14,6 +14,8 @@ import { useShortcuts } from "./useShortcuts";
 import { useSong } from "./useSong";
 import { useCourse } from "./useCourse";
 import { useReadingCourse, useReadingTrainer } from "./useReadingCourse";
+import { useIntervalCourse } from "./useIntervalCourse";
+import { useIntervalAudioTrainer } from "./useIntervalAudio";
 import { readingDisplayProfile } from "./readingProfile";
 import { DEFAULT_SCREEN_LAYOUT } from "./screenLayout";
 import { useSound } from "./useSound";
@@ -47,9 +49,13 @@ export function usePlayerRuntime() {
   const current = useSong(startFromRef);
   const course = useCourse(current.showSong);
   const reading = useReadingCourse();
-  const song = reading.exercise?.song ?? current.song;
-  const songKey = reading.exercise?.id ?? current.songKey;
-  const word = useWordTyping(song, songKey, libraryOpen || settingsOpen, reading.active);
+  const intervals = useIntervalCourse();
+  const practiceActive = reading.active || intervals.active;
+  const ear = intervals.active && intervals.mode === "hear-and-choose";
+  const practiceExercise = intervals.exercise ?? reading.exercise;
+  const song = practiceExercise?.song ?? current.song;
+  const songKey = practiceExercise?.id ?? current.songKey;
+  const word = useWordTyping(song, songKey, libraryOpen || settingsOpen, practiceActive);
   const device = useDeviceRange();
   const { playable } = device;
   const game = useGameOptions(
@@ -57,15 +63,15 @@ export function usePlayerRuntime() {
     word.practiceSong.duration,
     word.enabled,
     playable,
-    reading.active || course.active !== null
+    practiceActive || course.active !== null
   );
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const screen = useScreenLayout(word.enabled ? "typing" : "piano");
-  const workspaceLayout = reading.active ? DEFAULT_SCREEN_LAYOUT : screen.layout;
+  const workspaceLayout = practiceActive ? DEFAULT_SCREEN_LAYOUT : screen.layout;
   const displayPrefs = useMemo(
     () =>
-      reading.active
-        ? readingDisplayProfile(staffPrefs)
+      practiceActive
+        ? { ...readingDisplayProfile(staffPrefs), visible: !ear, keys: !ear }
         : game.performance
           ? {
               ...staffPrefs,
@@ -84,43 +90,56 @@ export function usePlayerRuntime() {
                 visible: course.saved.view === "staff" || course.saved.view === "both"
               }
             : staffPrefs,
-    [reading.active, game.performance, staffPrefs, course.active, course.saved.view]
+    [practiceActive, ear, game.performance, staffPrefs, course.active, course.saved.view]
   );
   const score = useStaffScore(song, current.baseSong, displayPrefs);
   const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
     withNames: score.withNames,
     fixedLines: score.fixedLines,
     measuresPerLine: staffPrefs.measuresPerLine,
-    autoReview: !reading.active && staffPrefs.autoReview
+    autoReview: !practiceActive && staffPrefs.autoReview
   });
   const trainer = useTrainer({
     song: word.practiceSong,
-    sourceSong: reading.exercise?.song ?? current.sourceSong,
-    reading: reading.active,
+    sourceSong: practiceExercise?.song ?? current.sourceSong,
+    reading: practiceActive,
+    pianoBlocked: ear,
     songKey: word.practiceKey,
     wordTyping: word.enabled,
     startFromRef,
     ensureSound,
     onNoteClick: current.cycleFinger,
     onTake: takes.recordTake,
-    onRunFinished: reading.active ? reading.finish : course.controller.finish,
-    course: reading.active ? undefined : course.practice,
+    onRunFinished: intervals.active
+      ? intervals.publish
+      : reading.active
+        ? reading.finish
+        : course.controller.finish,
+    course: practiceActive ? undefined : course.practice,
     compareSong: takes.compareSong,
     lastTake: takes.lastTake,
     replayCount: takes.replayCount,
-    comparing: !reading.active && takes.comparing,
+    comparing: !practiceActive && takes.comparing,
     onReplay: takes.replay,
     gameOptions: game.options,
-    ranked: !reading.active && game.ranked
+    ranked: !practiceActive && game.ranked
   });
   useReadingTrainer(
-    reading,
+    intervals.active ? intervals : reading,
     trainer.trainerRef,
     trainer.trainerReady,
     libraryOpen || settingsOpen || reading.intro
   );
+  useIntervalAudioTrainer(
+    intervals.audio,
+    intervals.session,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen || settingsOpen || reading.intro,
+    intervals.publish
+  );
   const workspacePrefs =
-    !reading.active && course.active && takes.comparing
+    !practiceActive && course.active && takes.comparing
       ? { ...displayPrefs, visible: true }
       : displayPrefs;
   const snapshot = useTrainerSelector(
@@ -132,16 +151,21 @@ export function usePlayerRuntime() {
   const computerKeyboard = useComputerKeyboard();
   const input = useKeyInput(
     trainer.trainerRef,
-    word.enabled ? word.keyboardOptions : computerKeyboard.options,
+    ear
+      ? { ...computerKeyboard.options, blocked: true }
+      : word.enabled
+        ? word.keyboardOptions
+        : computerKeyboard.options,
     device.intercept,
-    trainer.trainerReady
+    trainer.trainerReady,
+    ear
   );
   const fit = useRangeFit(
     song.notes,
     trainer.playerHands,
     playable,
     current,
-    !word.enabled && !reading.active
+    !word.enabled && !practiceActive
   );
   const timing = useTimingControls({
     trainerRef: trainer.trainerRef,
@@ -153,12 +177,12 @@ export function usePlayerRuntime() {
     locked: game.ranked && snapshot.playing
   });
   useGameRuntime(trainer.trainerRef, trainer.trainerReady, {
-    loop: !reading.active && game.range.loop,
-    ranked: !reading.active && game.ranked,
-    stopOnError: !reading.active && game.stopOnError,
+    loop: !practiceActive && game.range.loop,
+    ranked: !practiceActive && game.ranked,
+    stopOnError: !practiceActive && game.stopOnError,
     rankedReady: timing.rankedReady,
-    performance: !reading.active && game.performance,
-    canStart: !word.enabled || (!word.pending && !word.error),
+    performance: !practiceActive && game.performance,
+    canStart: !ear && (!word.enabled || (!word.pending && !word.error)),
     resumeWhenReady: word.enabled,
     deviceId: timing.profile?.deviceId ?? ""
   });
@@ -169,11 +193,11 @@ export function usePlayerRuntime() {
     trainerRef: trainer.trainerRef,
     trainerReady: trainer.trainerReady,
     song: word.practiceSong,
-    baseSong: reading.active || word.enabled ? word.practiceSong : current.baseSong,
+    baseSong: practiceActive || word.enabled ? word.practiceSong : current.baseSong,
     staffPrefs: workspacePrefs,
     updateStaffPrefs,
     fallingNames: score.nameStyle,
-    comparing: !reading.active && takes.comparing,
+    comparing: !practiceActive && takes.comparing,
     lastTake: takes.lastTake,
     computerKeys: word.keyboard,
     placement: {
@@ -197,11 +221,13 @@ export function usePlayerRuntime() {
 
   const play = () => {
     setResultClosed(false);
-    void trainer.togglePlay();
+    if (ear) intervals.audio.togglePause();
+    else void trainer.togglePlay();
   };
   const startOver = () => {
     setResultClosed(false);
-    if (reading.active) reading.newSeries();
+    if (intervals.active) intervals.newSeries();
+    else if (reading.active) reading.newSeries();
     else trainer.restart();
   };
   useShortcuts({
@@ -211,7 +237,7 @@ export function usePlayerRuntime() {
       : computerKeyboard.editing
   });
 
-  const toggles = !reading.active && (
+  const toggles = !practiceActive && (
     <ViewToggles
       prefs={staffPrefs}
       hasScore={Boolean(score.staffXml)}
@@ -250,7 +276,7 @@ export function usePlayerRuntime() {
   );
 
   const chooseGame = (enabled: boolean) => {
-    if (reading.active) reading.exit();
+    if (practiceActive) reading.exit();
     computerKeyboard.endEditing();
     startFromRef.current = null;
     word.update({ enabled });
@@ -265,6 +291,8 @@ export function usePlayerRuntime() {
 
   return {
     reading,
+    intervals,
+    practiceActive,
     displayPrefs: workspacePrefs,
     sound,
     t,
@@ -295,10 +323,10 @@ export function usePlayerRuntime() {
     view,
     library,
     listening,
-    review: reading.active ? null : review,
+    review: practiceActive ? null : review,
     lastTake,
-    comparing: !reading.active && comparing,
-    playing,
+    comparing: !practiceActive && comparing,
+    playing: ear ? !intervals.audio.paused : playing,
     play,
     startOver,
     toggles,

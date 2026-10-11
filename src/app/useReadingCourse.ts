@@ -38,7 +38,7 @@ export function useReadingCourse() {
     null
   );
   const selectionKey = JSON.stringify({
-    task: saved.task,
+    task: saved.activeCourse === "note-reading" ? saved.task : null,
     seed: saved.seed,
     plan: saved.plan,
     revision: saved.selectionRevision
@@ -282,7 +282,7 @@ export function useReadingCourse() {
   }, [session, publish]);
   return {
     active: exercise !== null,
-    task: saved.task,
+    task: exercise?.task ?? null,
     purpose: saved.plan?.purpose ?? saved.task,
     profile: saved.profile,
     sourceFilter: saved.sourceFilter,
@@ -337,7 +337,12 @@ export function useReadingCourse() {
 }
 
 export function useReadingTrainer(
-  reading: ReturnType<typeof useReadingCourse>,
+  reading: {
+    policy: TrainerReadingPolicy | null;
+    session: { setActive: (active: boolean, atMs: number) => void } | null;
+    blockedRef: RefObject<boolean>;
+    suspend: () => void;
+  },
   trainerRef: RefObject<Trainer | null>,
   ready: boolean,
   blocked: boolean

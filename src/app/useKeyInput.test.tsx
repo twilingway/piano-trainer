@@ -22,23 +22,29 @@ vi.mock("../input/midiInput", () => ({
   listenToMidi: vi.fn()
 }));
 
-const trainer = { key: vi.fn(), pedal: vi.fn(), activateOverdrive: vi.fn() };
+const trainer = { key: vi.fn<Trainer["key"]>(), pedal: vi.fn(), activateOverdrive: vi.fn() };
 const trainerRef = { current: trainer as unknown as Trainer };
 const bindings = presetBindings("extended_range");
 let root: Root;
 let store: AppStore | undefined;
 let host: HTMLDivElement;
 
-function Harness({ options }: { options: KeyboardInputOptions }) {
-  useKeyInput(trainerRef, options);
+function Harness({
+  options,
+  pianoBlocked = false
+}: {
+  options: KeyboardInputOptions;
+  pianoBlocked?: boolean;
+}) {
+  useKeyInput(trainerRef, options, undefined, false, pianoBlocked);
   return null;
 }
-async function mount(options: KeyboardInputOptions = { bindings }) {
+async function mount(options: KeyboardInputOptions = { bindings }, pianoBlocked = false) {
   await act(async () => {
     store ??= createAppStore();
     root.render(
       <Provider store={store}>
-        <Harness options={options} />
+        <Harness options={options} pianoBlocked={pianoBlocked} />
       </Provider>
     );
     await Promise.resolve();
@@ -71,6 +77,35 @@ afterEach(async () => {
 });
 
 describe("computer keyboard sound and trainer sustain", () => {
+  it("blocks piano attacks and sound while retaining MIDI releases during ear choices", async () => {
+    let onMidi: ((event: MidiEvent, deviceId: string) => void) | undefined;
+    vi.mocked(midiSupported).mockReturnValue(true);
+    vi.mocked(listenToMidi).mockImplementation((listener) => {
+      onMidi = listener;
+      return Promise.resolve(() => undefined);
+    });
+    await mount({ bindings }, true);
+    await key("KeyG");
+    await key("KeyG", "keyup");
+    expect(soundNoteOn).not.toHaveBeenCalled();
+    expect(soundNoteOff).not.toHaveBeenCalled();
+    expect(trainer.key.mock.calls.every(([event]) => event.type === "up")).toBe(true);
+    trainer.key.mockClear();
+    onMidi?.({ type: "down", pitch: 60, velocity: 90, source: "midi", deviceId: "piano" }, "piano");
+    onMidi?.(
+      { type: "pedal", down: true, timestamp: 0, source: "midi", deviceId: "piano" },
+      "piano"
+    );
+    expect(trainer.key).not.toHaveBeenCalled();
+    expect(trainer.pedal).not.toHaveBeenCalled();
+    onMidi?.({ type: "up", pitch: 60, velocity: 0, source: "midi", deviceId: "piano" }, "piano");
+    expect(trainer.key).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ type: "up", pitch: 60 })
+    );
+    await mount({ bindings }, false);
+    await key("KeyG");
+    expect(soundNoteOn).toHaveBeenCalledExactlyOnceWith(60);
+  });
   it("sends physical release to the trainer while deferring sound release until pedal up", async () => {
     await mount();
     await key("Space");

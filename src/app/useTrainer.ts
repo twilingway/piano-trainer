@@ -1,5 +1,5 @@
 import { practiceActions } from "./practiceSlice";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
@@ -27,6 +27,7 @@ const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
 };
 
 interface Options {
+  readonly pianoBlocked?: boolean;
   readonly reading?: boolean;
   readonly course?:
     | {
@@ -90,6 +91,7 @@ export function useTrainer({
   gameOptions,
   ranked = false,
   reading = false,
+  pianoBlocked = false,
   wordTyping = false
 }: Options) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -104,6 +106,10 @@ export function useTrainer({
     courseContext?: string | undefined;
   } | null>(null);
   const viewRef = useRef<FallingNotesView | null>(null);
+  const pianoBlockedRef = useRef(pianoBlocked);
+  useLayoutEffect(() => {
+    pianoBlockedRef.current = pianoBlocked;
+  }, [pianoBlocked]);
   const noteClickRef = useRef<(noteId: string) => void>(() => undefined);
   const takeHandlerRef = useRef<(take: Take) => void>(() => undefined);
   const finishHandlerRef = useRef<((result: RunCompletion) => void) | undefined>(undefined);
@@ -213,9 +219,12 @@ export function useTrainer({
       noteClickRef.current(noteId);
     };
     view.onKeyPointer = (event) => {
+      if (pianoBlockedRef.current && event.type === "down") return;
       // A clicked key has no voice of its own, unlike the piano.
-      if (event.type === "down") soundNoteOn(event.pitch);
-      else soundNoteOff(event.pitch);
+      if (!pianoBlockedRef.current) {
+        if (event.type === "down") soundNoteOn(event.pitch);
+        else soundNoteOff(event.pitch);
+      }
       trainerRef.current?.key({
         ...event,
         timestamp: performance.now(),

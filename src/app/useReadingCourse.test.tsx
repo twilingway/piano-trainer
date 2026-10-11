@@ -144,7 +144,7 @@ describe("reading course presentation and trainer wiring", () => {
       storage: {
         getItem: (key) =>
           key === "reading-course-v1"
-            ? JSON.stringify({ ...initialReadingState, task: "notes", seed: 1 })
+            ? JSON.stringify({ ...initialReadingState, schemaVersion: 1, task: "notes", seed: 1 })
             : null,
         setItem: () => undefined
       },
@@ -164,7 +164,7 @@ describe("reading course presentation and trainer wiring", () => {
     present();
     const originalSession = reading.session;
     await act(async () => {
-      release({ ...initialReadingState, task: "phrases", seed: 2 });
+      release({ ...initialReadingState, schemaVersion: 2, task: "phrases", seed: 2 });
       await store.flushReadingPersistence();
     });
     expect(reading.task).toBe("notes");
