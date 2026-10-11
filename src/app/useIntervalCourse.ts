@@ -153,7 +153,9 @@ export function useIntervalCourse() {
               )
                 return;
               const identity = session.identity();
-              if (identity) session.present(identity, atMs);
+              // RAF timestamps precede other callbacks in the same frame. Acknowledge receipt
+              // after Trainer's updates, so the current painted pair cannot look like a stale event.
+              if (identity) session.present(identity, Math.max(atMs, performance.now()));
               if (session.snapshot().presented) session.markStarted(Date.now());
               publish();
             },
