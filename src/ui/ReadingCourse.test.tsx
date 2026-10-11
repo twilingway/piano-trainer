@@ -4,13 +4,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
+import { addReadingResult, emptyReadingProfile } from "../reading/progress";
 import {
   DEFAULT_READING_PREFERENCES,
   type ReadingHintLevel,
   type ReadingResult,
   type ReadingTask
 } from "../reading/types";
-import { ReadingCourseCard, ReadingPracticePanel } from "./ReadingCourse";
+import { ReadingCourseCard, ReadingPracticePanel, ReadingResults } from "./ReadingCourse";
 
 let host: HTMLDivElement;
 let root: Root;
@@ -119,6 +120,123 @@ afterEach(async () => {
 });
 
 describe("reading course UI", () => {
+  it("does not label an old check as new material", async () => {
+    const check = result("check");
+    await render(<ReadingResults result={{ ...check, provenance: "legacy" }} />);
+    expect(host.textContent).toContain("Новизна этой серии не подтверждена.");
+    await render(<ReadingResults result={{ ...check, provenance: "native", newMaterial: true }} />);
+    expect(host.textContent).toContain("Новый порядок в пределах последних 256 показанных серий.");
+    await english();
+    expect(host.textContent).toContain("A new order compared with the last 256 sets shown.");
+  });
+
+  it("offers optional adaptive and delayed actions and changes only the summary source", async () => {
+    const onAdaptive = vi.fn();
+    const onDelayedCheck = vi.fn();
+    const onSourceFilter = vi.fn();
+    const onGenerationRetry = vi.fn();
+    const onNewSeries = vi.fn();
+    await render(
+      <ReadingPracticePanel
+        {...panelProps()}
+        purpose="adaptive"
+        onAdaptive={onAdaptive}
+        onDelayedCheck={onDelayedCheck}
+        onSourceFilter={onSourceFilter}
+        onGenerationRetry={onGenerationRetry}
+        onNewSeries={onNewSeries}
+        sourceFilter="all"
+        delayedDue
+        generationError
+      />
+    );
+    expect(host.querySelector("strong")?.textContent).toBe("Повторяю трудные ноты");
+    await click(button("Повторить трудные ноты"));
+    await click(button("Проверить чтение спустя время"));
+    await click(button("Повторить поиск серии"));
+    expect(onAdaptive).toHaveBeenCalledOnce();
+    expect(onDelayedCheck).toHaveBeenCalledOnce();
+    expect(onGenerationRetry).toHaveBeenCalledOnce();
+    const select = host.querySelector("select");
+    if (!select) throw new Error("Missing reading source filter");
+    await act(async () => {
+      await Promise.resolve();
+      select.value = "keyboard";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onSourceFilter).toHaveBeenCalledWith("keyboard");
+    expect(onNewSeries).not.toHaveBeenCalled();
+    expect(host.textContent).toContain("256 показанных серий");
+    await english();
+    expect(button("Repeat difficult notes").disabled).toBe(false);
+    expect(host.textContent).toContain("after a break");
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("new note order");
+    expect(host.textContent).toContain("Speed thresholds and review intervals are provisional");
+  });
+
+  it("shows separate purpose groups from the retained profile even without detailed history", async () => {
+    const profile = addReadingResult(
+      addReadingResult(emptyReadingProfile(), result("notes", "notes")),
+      result("phrases", "phrases")
+    );
+    await render(
+      <ReadingCourseCard onStart={noop} onIntro={noop} history={[]} profile={profile} />
+    );
+    expect(host.textContent).toContain("Завершено серий: 2");
+    const groups = [...host.querySelectorAll(".reading-progress-group")];
+    expect(groups).toHaveLength(5);
+    expect(groups[0]?.querySelector("h4")?.textContent).toBe("Читаю отдельные ноты");
+    expect(groups[0]?.textContent).toContain("Наблюдений: 20");
+    expect(groups[1]?.querySelector("h4")?.textContent).toBe("Читаю короткие фразы");
+    expect(groups[1]?.textContent).toContain("Наблюдений: 20");
+    expect(groups[2]?.textContent).toContain("Наблюдений: 0");
+    await english();
+    expect(groups[0]?.querySelector("h4")?.textContent).toBe("Read single notes");
+    expect(host.textContent).toContain("Median first key press, s");
+    expect(host.textContent).toContain("Median solution time, s");
+  });
+
+  it("keeps earlier MIDI errors when filtering a final keyboard answer and shows missing independent time", async () => {
+    const base = result();
+    const first = base.notes[0];
+    if (!first) throw new Error("Missing note fixture");
+    const mixed: ReadingResult = {
+      ...base,
+      notes: [
+        {
+          ...first,
+          responseLatencyMs: 3000,
+          attempts: first.attempts.map((attempt, index) => ({
+            ...attempt,
+            inputSource: index === 0 ? "midi" : "keyboard",
+            responseLatencyMs: index === 0 ? 1000 : 3000
+          }))
+        }
+      ]
+    };
+    await render(<ReadingResults result={mixed} sourceFilter="keyboard" />);
+    const row = host.querySelector("tbody tr");
+    expect([...(row?.querySelectorAll("td") ?? [])].map((cell) => cell.textContent)).toEqual([
+      "до 4",
+      "1",
+      "1",
+      "0",
+      "1.0",
+      "3.0",
+      "—"
+    ]);
+    expect(row?.querySelector('[aria-label="Пока нет данных о времени ответа"]')?.textContent).toBe(
+      "—"
+    );
+    expect(host.textContent).toContain("Самостоятельно с первой попытки: 0%");
+    expect(host.textContent).toContain("Решено без подсказок: 1/1");
+    await english();
+    expect(row?.querySelector('[aria-label="No response time data yet"]')?.textContent).toBe("—");
+    await render(<ReadingResults result={mixed} sourceFilter="midi" />);
+    expect(host.textContent).toContain("No answers for the selected input method yet.");
+    expect(host.querySelector("tbody tr td:nth-child(2)")?.textContent).toBe("0");
+  });
+
   it("offers all three tasks immediately, even without completed sets", async () => {
     const onStart = vi.fn();
     const onIntro = vi.fn();
@@ -200,15 +318,21 @@ describe("reading course UI", () => {
     const rows = [...(current?.querySelectorAll("tbody tr") ?? [])];
     expect([...(rows[0]?.querySelectorAll("td") ?? [])].map((cell) => cell.textContent)).toEqual([
       "до 4",
+      "4",
       "1",
-      "3/4",
+      "75",
+      "1.0",
+      "1.0",
       "1.0"
     ]);
     expect([...(rows[1]?.querySelectorAll("td") ?? [])].map((cell) => cell.textContent)).toEqual([
       "ре 4",
+      "4",
       "0",
-      "3/4",
-      "1.3"
+      "75",
+      "1.0",
+      "1.0",
+      "1.0"
     ]);
     expect(host.querySelector(".reading-history summary")?.textContent).toBe(
       "История этого задания: 1"
