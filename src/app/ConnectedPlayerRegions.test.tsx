@@ -42,6 +42,8 @@ const initial = (): PlayerRuntime =>
     trainer: { snapshotSource: {}, mode: "wait", speed: 1, playChoice: { hands: "both" } },
     takes: { canReview: false },
     reading: { active: false, task: null },
+    intervals: { active: false, mode: "see-and-play" },
+    practiceActive: false,
     course: { active: null, saved: { progress: {} }, controller: { open: vi.fn() } },
     fullscreen: { error: null, active: false },
     word: { storageError: null, enabled: false, pending: false, practiceSong: { title: "A" } },
@@ -209,6 +211,7 @@ describe("connected regions without React Compiler", () => {
     observed.runtime = {
       ...observed.runtime,
       reading: { ...observed.runtime.reading, active: true, task: "check" },
+      practiceActive: true,
       trainer: {
         ...observed.runtime.trainer,
         playChoice: { ...observed.runtime.trainer.playChoice, hands: "right" }
@@ -255,7 +258,8 @@ describe("connected regions without React Compiler", () => {
 
     observed.runtime = {
       ...observed.runtime,
-      reading: { ...observed.runtime.reading, active: false, task: null }
+      reading: { ...observed.runtime.reading, active: false, task: null },
+      practiceActive: false
     };
     view.render();
     expect(observed.header.mock.lastCall?.[0]).toMatchObject({ fixedPractice: false });

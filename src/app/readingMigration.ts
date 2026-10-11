@@ -17,6 +17,11 @@ import type {
   ReadingSourceFilter
 } from "../reading/progressTypes";
 import type { ReadingState } from "./readingSlice";
+import {
+  emptyIntervalState,
+  mergeIntervalHistory,
+  normalizeIntervalState
+} from "./intervalPersistence";
 
 export const object = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -247,7 +252,9 @@ export function mergeReadingProfiles(
 
 export function emptyReadingState(): ReadingState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
+    activeCourse: null,
+    intervals: emptyIntervalState(),
     selectionRevision: 0,
     task: null,
     seed: 1,
@@ -268,22 +275,42 @@ export function normalizeReadingState(value: unknown): {
   const reading = emptyReadingState();
   if (value === undefined) return { reading, invalid: false, blocked: false };
   const row = object(value);
-  if (typeof row.schemaVersion === "number" && row.schemaVersion > 2)
+  if (typeof row.schemaVersion === "number" && row.schemaVersion > 3)
     return { reading, invalid: false, blocked: true };
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    (row.schemaVersion !== undefined && row.schemaVersion !== 1 && row.schemaVersion !== 2)
+    (row.schemaVersion !== undefined && ![1, 2, 3].includes(row.schemaVersion as number))
   )
     return { reading, invalid: true, blocked: false };
   reading.task = task(row.task) ? row.task : null;
+  const intervalState = normalizeIntervalState(row.schemaVersion === 3 ? row.intervals : undefined);
+  reading.intervals = intervalState.intervals;
+  reading.activeCourse =
+    row.schemaVersion === 3
+      ? row.activeCourse === "note-reading" && reading.task
+        ? "note-reading"
+        : row.activeCourse === "interval-training" && reading.intervals.mode
+          ? "interval-training"
+          : null
+      : reading.task
+        ? "note-reading"
+        : null;
   reading.seed = finite(row.seed) ? row.seed >>> 0 : 1;
   reading.preferences = normalizePreferences(row.preferences);
   reading.sourceFilter = filter(row.sourceFilter) ? row.sourceFilter : "all";
   reading.plan = normalizePlan(row.plan, reading.task);
   const history = Array.isArray(row.history) ? row.history : [];
   let invalid =
+    intervalState.invalid ||
+    (row.schemaVersion === 3 && row.intervals === undefined) ||
+    (row.schemaVersion === 3 && row.activeCourse === "note-reading" && reading.task === null) ||
+    (row.schemaVersion === 3 &&
+      row.activeCourse === "interval-training" &&
+      reading.intervals.mode === null) ||
+    (row.schemaVersion === 3 &&
+      ![null, "note-reading", "interval-training"].includes(row.activeCourse as null | string)) ||
     (row.plan !== undefined && row.plan !== null && reading.plan === null) ||
     history.some((result) => !validResult(result));
   const migrated = history.filter(validResult).map(migrateResult);
@@ -306,12 +333,36 @@ export function normalizeReadingState(value: unknown): {
       : [],
     delayedDueAt: finite(profile.delayedDueAt) ? profile.delayedDueAt : null
   });
-  for (const result of deduped) reading.profile = addReadingResult(reading.profile, result);
-  reading.profile = mergeReadingProfiles(emptyReadingProfile(), reading.profile);
+  const preservedProfile =
+    (row.schemaVersion === 2 || row.schemaVersion === 3) &&
+    Array.isArray(profile.observations) &&
+    observations.every(validObservation) &&
+    Array.isArray(profile.lastIndependent) &&
+    dates.every(validIndependentDate) &&
+    Array.isArray(profile.processedRunIds) &&
+    profile.processedRunIds.every(text) &&
+    nullableFinite(profile.delayedDueAt) &&
+    deduped.every((result) => reading.profile.processedRunIds.includes(result.runId ?? result.id));
+  if (preservedProfile) {
+    reading.profile = {
+      observations: observations.filter(validObservation),
+      lastIndependent: dates.filter(validIndependentDate),
+      processedRunIds: (profile.processedRunIds as string[]).slice(),
+      delayedDueAt: profile.delayedDueAt as number | null
+    };
+  }
+  // P2 already has its compact profile; migration must not reassess its completed runs.
+  for (const result of deduped) {
+    if (!reading.profile.processedRunIds.includes(result.runId ?? result.id))
+      reading.profile = addReadingResult(reading.profile, result);
+  }
+  if (!preservedProfile)
+    reading.profile = mergeReadingProfiles(emptyReadingProfile(), reading.profile);
   const fingerprints = Array.isArray(row.presentedFingerprints)
     ? row.presentedFingerprints.filter(text)
     : [];
-  for (const result of row.schemaVersion === 2 && Array.isArray(row.presentedFingerprints)
+  for (const result of (row.schemaVersion === 2 || row.schemaVersion === 3) &&
+  Array.isArray(row.presentedFingerprints)
     ? []
     : deduped) {
     // The v1 id proves this order was shown, but does not prove its original novelty.
@@ -323,7 +374,14 @@ export function normalizeReadingState(value: unknown): {
 }
 
 export type ReadingPersistentField =
-  "selection" | "automaticHints" | "nameDelayMs" | "keyDelayMs" | "sourceFilter";
+  | "selection"
+  | "activeCourse"
+  | "intervalSelection"
+  | "intervalSourceFilter"
+  | "automaticHints"
+  | "nameDelayMs"
+  | "keyDelayMs"
+  | "sourceFilter";
 export function changedReadingFields(
   current: ReadingState,
   baseline: ReadingState
@@ -332,10 +390,22 @@ export function changedReadingFields(
   if (
     current.task !== baseline.task ||
     current.seed !== baseline.seed ||
-    current.plan !== baseline.plan ||
-    current.selectionRevision !== baseline.selectionRevision
+    current.plan !== baseline.plan
   )
     fields.push("selection");
+  if (
+    current.activeCourse !== baseline.activeCourse ||
+    current.selectionRevision !== baseline.selectionRevision
+  )
+    fields.push("activeCourse");
+  if (
+    current.intervals.mode !== baseline.intervals.mode ||
+    current.intervals.seed !== baseline.intervals.seed ||
+    current.intervals.generatorVersion !== baseline.intervals.generatorVersion
+  )
+    fields.push("intervalSelection");
+  if (current.intervals.sourceFilter !== baseline.intervals.sourceFilter)
+    fields.push("intervalSourceFilter");
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (current.preferences[key] !== baseline.preferences[key]) fields.push(key);
   }
@@ -348,6 +418,9 @@ export function mergeReadingState(
   incoming: ReadingState,
   fields: readonly ReadingPersistentField[] = [
     "selection",
+    "activeCourse",
+    "intervalSelection",
+    "intervalSourceFilter",
     "automaticHints",
     "nameDelayMs",
     "keyDelayMs",
@@ -355,6 +428,7 @@ export function mergeReadingState(
   ]
 ): ReadingState {
   const selection = fields.includes("selection") ? incoming : saved;
+  const intervals = fields.includes("intervalSelection") ? incoming.intervals : saved.intervals;
   const preferences = { ...saved.preferences };
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (fields.includes(key)) Object.assign(preferences, { [key]: incoming.preferences[key] });
@@ -365,7 +439,15 @@ export function mergeReadingState(
     ).values()
   ].sort((a, b) => (a.completedAt ?? a.createdAt) - (b.completedAt ?? b.createdAt));
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
+    activeCourse: fields.includes("activeCourse") ? incoming.activeCourse : saved.activeCourse,
+    intervals: {
+      ...intervals,
+      sourceFilter: fields.includes("intervalSourceFilter")
+        ? incoming.intervals.sourceFilter
+        : saved.intervals.sourceFilter,
+      history: mergeIntervalHistory(saved.intervals.history, incoming.intervals.history)
+    },
     selectionRevision: incoming.selectionRevision,
     task: selection.task,
     seed: selection.seed,

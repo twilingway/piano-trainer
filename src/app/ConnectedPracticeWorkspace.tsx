@@ -8,6 +8,7 @@ import {
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedPianoTabs } from "./ConnectedCourse";
 import { ConnectedReadingPractice } from "./ConnectedReading";
+import { ConnectedIntervalPractice } from "./ConnectedIntervals";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPracticeWorkspace() {
@@ -65,9 +66,9 @@ export function ConnectedPracticeWorkspace() {
       trainerHostRef: runtime.trainer.hostRef,
       snapshotWaiting: runtime.snapshot.waiting,
       viewMirrorHostRef: runtime.view.mirrorHostRef,
-      reading: runtime.reading,
+      reading: runtime.intervals.active ? runtime.intervals : runtime.reading,
       courseTabs:
-        !runtime.reading.active &&
+        !runtime.practiceActive &&
         runtime.course.active !== null &&
         (runtime.course.saved.view === "tabs" || runtime.course.saved.view === "both") &&
         !runtime.comparing,
@@ -83,6 +84,7 @@ export function ConnectedPracticeWorkspace() {
   return (
     <>
       <ConnectedReadingPractice />
+      <ConnectedIntervalPractice />
       <ConnectedWorkspace
         scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
         scoreFirst={courseTopView}

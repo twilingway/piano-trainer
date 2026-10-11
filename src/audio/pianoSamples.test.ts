@@ -13,7 +13,7 @@ const tone = vi.hoisted(() => ({
 vi.mock("tone", () => ({
   ToneAudioBuffers: vi.fn(function (options: (typeof tone.requests)[number]) {
     tone.requests.push(options);
-    return { get: (pitch: number) => `buffer:${String(pitch)}` };
+    return { get: (pitch: number) => `buffer:${String(pitch)}`, dispose: vi.fn() };
   })
 }));
 
@@ -53,11 +53,27 @@ describe("piano samples", () => {
     const loadedLayers: number[] = [];
     samples.onPianoLayerLoaded((layer) => loadedLayers.push(layer));
     const first = samples.loadPianoSamples();
+    const rejected = expect(first).rejects.toThrow("Piano samples could not be loaded");
     tone.requests[0]?.onerror();
-    await first;
+    await rejected;
     for (const request of tone.requests.slice(1)) request.onload();
     expect(loadedLayers).toEqual([1, 5, 15]);
     expect(samples.loadedPianoLayers().has(10)).toBe(false);
+  });
+
+  it("really retries failed first samples and ignores late success from that failed load", async () => {
+    const first = samples.loadPianoSamples();
+    const rejected = expect(first).rejects.toThrow();
+    const failed = tone.requests[0];
+    failed?.onerror();
+    await rejected;
+    const retried = samples.loadPianoSamples();
+    expect(tone.requests.map(layerOf)).toEqual(["10", "1", "5", "15", "10"]);
+    failed?.onload();
+    expect(samples.loadedPianoLayers().has(10)).toBe(false);
+    tone.requests[4]?.onload();
+    await retried;
+    expect(samples.loadedPianoLayers().has(10)).toBe(true);
   });
 
   it("loads once however often the sound starts", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import { soundNoteOff, soundNoteOn, startSoundOnFirstGesture } from "../audio/pianoSound";
@@ -18,8 +18,13 @@ export function useKeyInput(
   trainerRef: RefObject<Trainer | null>,
   keyboardOptions: KeyboardInputOptions,
   intercept?: (event: KeyEvent) => boolean,
-  trainerReady = false
+  trainerReady = false,
+  pianoBlocked = false
 ) {
+  const blockedRef = useRef(pianoBlocked);
+  useLayoutEffect(() => {
+    blockedRef.current = pianoBlocked;
+  }, [pianoBlocked]);
   const interceptRef = useRef(intercept);
   useEffect(() => {
     interceptRef.current = intercept;
@@ -49,6 +54,7 @@ export function useKeyInput(
       // A pedal sends "down" over and over while it moves: only the press itself is Overdrive.
       const pedalDown = new Map<string, boolean>();
       const onMidiKey = (event: MidiEvent, deviceId: string) => {
+        if (blockedRef.current && event.type !== "up") return;
         const chosen = midiDeviceRef.current;
         if (chosen !== "all" && chosen !== deviceId) return;
         // Our own key lights coming back through MIDI Thru are not the player's keys.
@@ -81,6 +87,10 @@ export function useKeyInput(
     const deferred = new Set<number>();
     return listenToComputerKeyboard(
       (event) => {
+        if (blockedRef.current) {
+          if (event.type === "up") trainerRef.current?.key(event);
+          return;
+        }
         if (event.type === "pedal") {
           if (event.down && !sustain) trainerRef.current?.activateOverdrive();
           sustain = event.down;
