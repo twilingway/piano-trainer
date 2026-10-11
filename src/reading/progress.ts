@@ -44,7 +44,10 @@ function observation(result: ReadingResult, note: ReadingNoteResult): ReadingObs
     firstAttemptCorrect: note.firstAttemptCorrect,
     independentCorrect: note.independentCorrect,
     unassistedSolved: note.unassistedSolved,
-    newMaterial: result.provenance === "native" && result.newMaterial === true,
+    newMaterial:
+      result.provenance === "native" &&
+      result.newMaterial === true &&
+      (readingPurpose(result) === "check" || readingPurpose(result) === "delayed-check"),
     firstLatencyMs: knownLatency(note.attempts[0]?.responseLatencyMs),
     responseLatencyMs: knownLatency(note.responseLatencyMs),
     errorCount: note.attempts.filter((attempt) => attempt.playedMidi !== note.expectedMidi).length

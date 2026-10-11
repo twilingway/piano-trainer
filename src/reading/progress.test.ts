@@ -39,6 +39,18 @@ function result(
 }
 
 describe("reading evidence and summaries", () => {
+  it("rejects invalid MIDI and source values without accepting an attack", () => {
+    const exercise = generateReadingExercise("notes", 1);
+    const session = new ReadingSession(exercise, DEFAULT_READING_PREFERENCES);
+    session.setActive(true, 0);
+    session.prepare("n", 60, 0);
+    session.present("n", 0);
+    for (const pitch of [NaN, Infinity, -1, 128, 60.5])
+      expect(session.answer(pitch, "midi", 100)).toBeNull();
+    expect(session.answer(60, "invalid" as "midi", 100)).toBeNull();
+    expect(session.answer(60, "keyboard", 200)?.attemptId).toBe(`${exercise.id}:0`);
+    expect(session.snapshot().answers[0]?.independentCorrect).toBe(true);
+  });
   it("retains actual assistance and distinct raw first/solution times", () => {
     const exercise = generateReadingExercise("notes", 1);
     const session = new ReadingSession(exercise, DEFAULT_READING_PREFERENCES, {
@@ -132,6 +144,9 @@ describe("reading evidence and summaries", () => {
     ).toBe(20);
     expect(summarizeReadingResults([phrase], "all", "phrases").totals.observationCount).toBe(20);
     expect(summary.totals.newMaterialCount).toBe(0);
+    expect(
+      summarizeReadingResults([{ ...single, newMaterial: true }]).totals.newMaterialCount
+    ).toBe(0);
     expect(summarizeReadingResults([result("check", "native", 4)]).totals.newMaterialCount).toBe(
       20
     );
