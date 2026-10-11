@@ -1,11 +1,56 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 
-import { listMySongs, loadMySong, removeMySong, saveMySong } from "./myLibrary";
+import {
+  listMySongs,
+  loadMySong,
+  removeMySong,
+  saveMySong,
+  loadLibrarySetting,
+  updateLibrarySetting,
+  saveFolderHandle,
+  loadFolderHandle
+} from "./myLibrary";
 
 const data = (...values: number[]) => new Uint8Array(values).buffer;
 
 describe("my library", () => {
+  it("merges concurrent settings updates and preserves songs and the folder", async () => {
+    const song = await saveMySong("settings.mid", "settings", data(8));
+    const folder = { name: "scores", kind: "directory" } as FileSystemDirectoryHandle;
+    await saveFolderHandle(folder);
+    await Promise.all([
+      updateLibrarySetting("atomic-test", (saved) => [...((saved ?? []) as string[]), "first"]),
+      updateLibrarySetting("atomic-test", (saved) => [...((saved ?? []) as string[]), "second"])
+    ]);
+    expect(await loadLibrarySetting("atomic-test")).toEqual(["first", "second"]);
+    expect(await loadMySong(song.id)).toBeDefined();
+    expect(await loadFolderHandle()).toEqual(folder);
+  });
+  it("rejects settings puts rolled back after request success", async () => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- Call the native method with its original receiver.
+    const original = IDBObjectStore.prototype.put;
+    const put = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      value: unknown,
+      key?: IDBValidKey
+    ) {
+      const result =
+        key === undefined ? original.call(this, value) : original.call(this, value, key);
+      result.addEventListener("success", () => {
+        this.transaction.abort();
+      });
+      return result;
+    });
+    try {
+      await expect(
+        updateLibrarySetting("abort-settings", () => ({ progress: 1 }))
+      ).rejects.toThrow();
+    } finally {
+      put.mockRestore();
+    }
+    expect(await loadLibrarySetting("abort-settings")).toBeUndefined();
+  });
   it("rejects a successful put when its transaction is then aborted", async () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoke the native method with its receiver via call below.
     const original = IDBObjectStore.prototype.put;

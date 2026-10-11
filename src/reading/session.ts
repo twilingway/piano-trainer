@@ -8,6 +8,13 @@ import type {
   ReadingResult,
   ReadingSnapshot
 } from "./types";
+import { READING_SKILL_ID } from "./progressTypes";
+
+export interface ReadingSessionMetadata {
+  readonly runId: string;
+  readonly startedAt: number | null;
+  readonly newMaterial?: boolean;
+}
 
 interface Prompt {
   noteId: string;
@@ -24,11 +31,28 @@ export class ReadingSession {
   private prompt: Prompt | null = null;
   private enabled = false;
   private answers: ReadingNoteResult[] = [];
+  private attemptCount = 0;
+  private startedAt: number | null = null;
+  private newMaterial = false;
 
   constructor(
     private readonly exercise: ReadingExercise,
-    private preferences: ReadingPreferences
-  ) {}
+    private preferences: ReadingPreferences,
+    private readonly metadata?: ReadingSessionMetadata
+  ) {
+    this.startedAt = metadata?.startedAt ?? null;
+    this.newMaterial = metadata?.newMaterial ?? false;
+  }
+
+  /** The shell supplies calendar time at the first visible presentation. */
+  markStarted(at: number): void {
+    if (this.startedAt === null && Number.isFinite(at) && at >= 0) this.startedAt = at;
+  }
+
+  /** The shell confirms novelty only after an authoritative journal transaction commits. */
+  confirmNewMaterial(value: boolean): void {
+    this.newMaterial = value;
+  }
 
   configure(preferences: ReadingPreferences): void {
     this.preferences = preferences;
@@ -137,8 +161,19 @@ export class ReadingSession {
 
   answer(pitch: number, inputSource: ReadingInputSource, atMs: number): ReadingAttempt | null {
     const p = this.prompt;
-    if (!p || !this.canAnswer(p.noteId, atMs)) return null;
+    if (
+      !p ||
+      !this.canAnswer(p.noteId, atMs) ||
+      !Number.isInteger(pitch) ||
+      pitch < 0 ||
+      pitch > 127 ||
+      !["midi", "keyboard", "pointer"].includes(inputSource)
+    )
+      return null;
     const attempt: ReadingAttempt = {
+      skillId: READING_SKILL_ID,
+      runId: this.metadata?.runId ?? this.exercise.id,
+      attemptId: `${this.metadata?.runId ?? this.exercise.id}:${String(this.attemptCount++)}`,
       exerciseId: this.exercise.id,
       noteId: p.noteId,
       expectedMidi: p.pitch,
@@ -159,7 +194,11 @@ export class ReadingSession {
         unassistedSolved: attempt.hintLevel === 0,
         responseLatencyMs: attempt.responseLatencyMs,
         hintLevel: attempt.hintLevel,
-        attempts: [...p.attempts]
+        attempts: [...p.attempts],
+        hintHistory: p.hints
+          .filter((hint) => hint.at <= atMs)
+          .map((hint) => ({ atMs: hint.at, level: hint.level })),
+        presentedAtMs: p.presentedAt
       });
       p.solved = true;
       this.close(atMs);
@@ -180,13 +219,29 @@ export class ReadingSession {
 
   result(id: string, createdAt: number): ReadingResult | null {
     if (this.answers.length !== 20) return null;
+    const runId = this.metadata?.runId ?? id;
+    let attemptIndex = 0;
     return {
       id,
+      skillId: READING_SKILL_ID,
+      runId,
+      startedAt: this.startedAt,
+      completedAt: createdAt,
+      provenance: "native",
+      newMaterial: this.newMaterial,
+      plan: this.exercise.plan ?? null,
       exerciseId: this.exercise.id,
       task: this.exercise.task,
       seed: this.exercise.seed,
       createdAt,
-      notes: [...this.answers]
+      notes: this.answers.map((note) => ({
+        ...note,
+        attempts: note.attempts.map((attempt) => ({
+          ...attempt,
+          runId,
+          attemptId: `${runId}:${String(attemptIndex++)}`
+        }))
+      }))
     };
   }
 }

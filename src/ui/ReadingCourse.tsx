@@ -1,32 +1,33 @@
 import { useI18n } from "../app/useI18n";
+import { readingPurpose, summarizeReadingResults } from "../reading/progress";
+import type { ReadingPurpose, ReadingSourceFilter } from "../reading/progressTypes";
 import type {
   ReadingHintLevel,
   ReadingPreferences,
   ReadingResult,
   ReadingTask
 } from "../reading/types";
+import {
+  READING_PURPOSE_LABELS,
+  ReadingMetricsTable,
+  ReadingProgress,
+  readingNoteName,
+  type ReadingProgressProps
+} from "./ReadingProgress";
+
+export { readingNoteName };
 
 export const READING_TASK_LABELS: Readonly<Record<ReadingTask, string>> = {
   notes: "Читаю отдельные ноты",
   phrases: "Читаю короткие фразы",
   check: "Проверяю чтение без подсказок"
 };
-const NAMES: Readonly<Record<number, string>> = {
-  60: "до",
-  62: "ре",
-  64: "ми",
-  65: "фа",
-  67: "соль"
-};
-export function readingNoteName(pitch: number, t: (key: string) => string): string {
-  return `${t(NAMES[pitch] ?? "Нота курса")} 4`;
-}
-
 export function ReadingCourseCard({
   onStart,
   onIntro,
-  history
-}: {
+  history,
+  ...progress
+}: ReadingProgressProps & {
   onStart: (task: ReadingTask) => void;
   onIntro: () => void;
   history: readonly ReadingResult[];
@@ -53,13 +54,19 @@ export function ReadingCourseCard({
           </button>
         ))}
       </div>
-      <p className="reading-muted">{t("Завершено серий: {number}", { number: history.length })}</p>
+      <p className="reading-muted">
+        {t("Завершено серий: {number}", {
+          number: progress.profile?.processedRunIds.length ?? history.length
+        })}
+      </p>
+      <ReadingProgress history={history} {...progress} />
     </section>
   );
 }
 
-interface PracticeProps {
+interface PracticeProps extends ReadingProgressProps {
   task: ReadingTask;
+  purpose?: ReadingPurpose;
   preferences: ReadingPreferences;
   onPreferences: (value: Partial<ReadingPreferences>) => void;
   onHint: () => void;
@@ -80,7 +87,7 @@ export function ReadingPracticePanel(props: PracticeProps) {
   return (
     <section className="reading-practice" aria-label={t("Читаю пять нот")}>
       <div className="reading-actions">
-        <strong>{t(READING_TASK_LABELS[task])}</strong>
+        <strong>{t(READING_PURPOSE_LABELS[props.purpose ?? task])}</strong>
         <span>{t("Нота {number} из 20", { number: Math.min(20, props.index + 1) })}</span>
         <button type="button" className="game-button" onClick={props.onNewSeries}>
           {t("Новая серия")}
@@ -161,7 +168,8 @@ export function ReadingPracticePanel(props: PracticeProps) {
           </label>
         </details>
       )}
-      {result && <ReadingResults result={result} />}
+      {result && <ReadingResults result={result} sourceFilter={props.sourceFilter} />}
+      <ReadingProgress {...props} />
       <details className="reading-history">
         <summary>
           {t("История этого задания: {number}", {
@@ -173,66 +181,58 @@ export function ReadingPracticePanel(props: PracticeProps) {
           .slice()
           .reverse()
           .map((item) => (
-            <ReadingResults key={item.id} result={item} />
+            <ReadingResults key={item.id} result={item} sourceFilter={props.sourceFilter} />
           ))}
       </details>
     </section>
   );
 }
 
-export function ReadingResults({ result }: { result: ReadingResult }) {
+export function ReadingResults({
+  result,
+  sourceFilter = "all"
+}: {
+  result: ReadingResult;
+  sourceFilter?: ReadingSourceFilter | undefined;
+}) {
   const { t } = useI18n();
-  const first = result.notes.filter((note) => note.firstAttemptCorrect).length;
-  const independent = result.notes.filter((note) => note.independentCorrect).length;
-  const unassisted = result.notes.filter((note) => note.unassistedSolved).length;
+  const purpose = readingPurpose(result);
+  const summary = summarizeReadingResults([result], sourceFilter, purpose);
+  const { totals } = summary;
   return (
     <div className="reading-results">
       <h4>{t("Результат чтения")}</h4>
-      <p>
-        {t("Верно с первой попытки: {number}/20", { number: first })} ·{" "}
-        {t("Самостоятельно с первой попытки: {percent}%", {
-          percent: Math.round((independent / 20) * 100)
-        })}{" "}
-        · {t("Решено без подсказок: {number}/20", { number: unassisted })}
-      </p>
-      <div className="reading-results-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>{t("Нота курса")}</th>
-              <th>{t("Ошибки чтения")}</th>
-              <th>{t("Самостоятельных ответов")}</th>
-              <th>{t("Среднее время ответа, с")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[60, 62, 64, 65, 67].map((pitch) => {
-              const notes = result.notes.filter((note) => note.expectedMidi === pitch);
-              const errors = notes.reduce(
-                (sum, note) =>
-                  sum + note.attempts.filter((attempt) => attempt.playedMidi !== pitch).length,
-                0
-              );
-              return (
-                <tr key={pitch}>
-                  <td>{readingNoteName(pitch, t)}</td>
-                  <td>{errors}</td>
-                  <td>
-                    {notes.filter((note) => note.independentCorrect).length}/{notes.length}
-                  </td>
-                  <td>
-                    {(
-                      notes.reduce((sum, note) => sum + note.responseLatencyMs, 0) /
-                      Math.max(1, notes.length) /
-                      1000
-                    ).toFixed(1)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <p>{t(READING_PURPOSE_LABELS[purpose])}</p>
+      {(purpose === "check" || purpose === "delayed-check") && (
+        <p className="reading-muted">
+          {t(
+            result.provenance === "native" && result.newMaterial === true
+              ? "Новый порядок в пределах последних 256 показанных серий."
+              : "Новизна этой серии не подтверждена."
+          )}
+        </p>
+      )}
+      {totals.observationCount > 0 && (
+        <p>
+          {t("Верно с первой попытки: {number}/{total}", {
+            number: totals.firstAttemptCorrectCount,
+            total: totals.observationCount
+          })}{" "}
+          ·{" "}
+          {t("Самостоятельно с первой попытки: {percent}%", {
+            percent: Math.round((totals.independentRate ?? 0) * 100)
+          })}{" "}
+          ·{" "}
+          {t("Решено без подсказок: {number}/{total}", {
+            number: totals.unassistedSolvedCount,
+            total: totals.observationCount
+          })}
+        </p>
+      )}
+      {totals.observationCount === 0 && (
+        <p>{t("Для выбранного способа ввода пока нет ответов.")}</p>
+      )}
+      <ReadingMetricsTable rows={summary.rows} />
     </div>
   );
 }

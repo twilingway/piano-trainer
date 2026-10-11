@@ -40,6 +40,57 @@ export const readingMessages: Messages = {
   "Клавиша через, с": { en: "Key after, s" },
   "История этого задания: {number}": { en: "History for this exercise: {number}" },
   "Результат чтения": { en: "Reading result" },
+  "Верно с первой попытки: {number}/{total}": { en: "Correct on first try: {number}/{total}" },
+  "Решено без подсказок: {number}/{total}": { en: "Solved without hints: {number}/{total}" },
+  "Мой прогресс чтения": { en: "My reading progress" },
+  "Сводка показывает последние ответы по каждой ноте отдельно для каждого задания и способа ввода.":
+    {
+      en: "The summary shows recent answers for each note, separately for each exercise and input method."
+    },
+  "Повторяю трудные ноты": { en: "Practice difficult notes" },
+  "Проверяю чтение спустя время": { en: "Check reading after a break" },
+  "Повторить трудные ноты": { en: "Repeat difficult notes" },
+  "Проверить чтение спустя время": { en: "Check reading after a break" },
+  "Пора проверить, как вы читаете ноты после перерыва.": {
+    en: "Time to check how you read notes after a break."
+  },
+  "Все способы ввода": { en: "All input methods" },
+  "MIDI-пианино": { en: "MIDI piano" },
+  "Ввод компьютерной клавиатурой": { en: "Computer keyboard" },
+  "Экранные клавиши": { en: "On-screen keys" },
+  "Способ ввода для сводки и следующей тренировки": {
+    en: "Input method for the summary and next practice set"
+  },
+  "Способ ввода определяется последним верным ответом. Все предыдущие ошибки и подсказки учитываются.":
+    {
+      en: "The input method comes from the final correct answer. All earlier errors and hints still count."
+    },
+  "Не удалось подобрать новый порядок нот для проверки.": {
+    en: "Could not find a new note order for the check."
+  },
+  "Повторить поиск серии": { en: "Try finding a set again" },
+  "Проверка отличается от последних 256 показанных серий. Более ранние серии могут повториться.": {
+    en: "The check differs from the last 256 sets shown. Earlier sets may repeat."
+  },
+  "Новый порядок в пределах последних 256 показанных серий.": {
+    en: "A new order compared with the last 256 sets shown."
+  },
+  "Новизна этой серии не подтверждена.": { en: "This set's newness is unconfirmed." },
+  "Тренировка подстраивается по ответам. Пороги скорости и сроки повторения пока пробные, это не оценка освоения.":
+    {
+      en: "Practice adapts to your answers. Speed thresholds and review intervals are provisional, not a mastery score."
+    },
+  "Наблюдений: {number}": { en: "Observations: {number}" },
+  "Наблюдений чтения": { en: "Reading observations" },
+  "Самостоятельно с первой попытки, %": { en: "Unassisted first tries, %" },
+  "Медиана первой атаки, с": { en: "Median first key press, s" },
+  "Медиана решения, с": { en: "Median solution time, s" },
+  "Медиана самостоятельного ответа, с": { en: "Median unassisted answer, s" },
+  "Пока нет данных о времени ответа": { en: "No response time data yet" },
+  "Пока нет ответов для этой ноты": { en: "No answers for this note yet" },
+  "Для выбранного способа ввода пока нет ответов.": {
+    en: "No answers for the selected input method yet."
+  },
   "Верно с первой попытки: {number}/20": { en: "Correct on first try: {number}/20" },
   "Самостоятельно с первой попытки: {percent}%": { en: "Unassisted first tries: {percent}%" },
   "Решено без подсказок: {number}/20": { en: "Solved without hints: {number}/20" },

@@ -1,11 +1,6 @@
-import type { ListenerMiddlewareInstance } from "@reduxjs/toolkit";
-import type { ReadingResult, ReadingTask } from "../reading/types";
-import {
-  initialReadingState,
-  normalizeReadingPreferences,
-  type ReadingRoot,
-  type ReadingState
-} from "./readingSlice";
+﻿import type { ListenerMiddlewareInstance } from "@reduxjs/toolkit";
+import type { ReadingRoot, ReadingState } from "./readingSlice";
+import { readingActions } from "./readingSlice";
 import {
   browserPreferenceStorage,
   persistenceKey,
@@ -13,105 +8,302 @@ import {
   type PreferenceStorage
 } from "./preferencePersistence";
 import { persistenceErrorChanged } from "./persistenceSlice";
+import {
+  changedReadingFields,
+  mergeReadingState,
+  normalizeReadingState,
+  readingJournal,
+  type ReadingPersistentField
+} from "./readingMigration";
+import { defaultReadingRepository, type ReadingRepository } from "./readingRepository";
 
 export const READING_STORAGE_KEY = "reading-course-v1";
-const object = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-const task = (value: unknown): value is ReadingTask =>
-  value === "notes" || value === "phrases" || value === "check";
-const finite = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value) && value >= 0;
-const pitch = (value: unknown) => finite(value) && Number.isInteger(value) && value <= 127;
-const level = (value: unknown) => value === 0 || value === 1 || value === 2;
-
-function validResult(value: unknown): value is ReadingResult {
-  const row = object(value);
-  if (
-    typeof row.id !== "string" ||
-    typeof row.exerciseId !== "string" ||
-    !task(row.task) ||
-    !finite(row.seed) ||
-    !finite(row.createdAt) ||
-    !Array.isArray(row.notes) ||
-    row.notes.length !== 20
-  )
-    return false;
-  return row.notes.every((value) => {
-    const note = object(value);
-    return (
-      typeof note.noteId === "string" &&
-      [60, 62, 64, 65, 67].includes(Number(note.expectedMidi)) &&
-      [note.firstAttemptCorrect, note.independentCorrect, note.unassistedSolved].every(
-        (value) => typeof value === "boolean"
-      ) &&
-      finite(note.responseLatencyMs) &&
-      level(note.hintLevel) &&
-      Array.isArray(note.attempts) &&
-      note.attempts.length > 0 &&
-      note.attempts.every((value) => {
-        const attempt = object(value);
-        return (
-          attempt.noteId === note.noteId &&
-          attempt.exerciseId === row.exerciseId &&
-          attempt.expectedMidi === note.expectedMidi &&
-          pitch(attempt.playedMidi) &&
-          finite(attempt.responseLatencyMs) &&
-          finite(attempt.atMs) &&
-          level(attempt.hintLevel) &&
-          ["midi", "keyboard", "pointer"].includes(String(attempt.inputSource))
-        );
-      })
-    );
-  });
+const READ_ERROR = "indexedDB:reading:read";
+const WRITE_ERROR = "indexedDB:reading:write";
+function persisted(reading: ReadingState) {
+  const { selectionRevision: _revision, ...saved } = reading;
+  return saved;
 }
 
+/** Synchronous legacy reader; its source remains untouched as a rollback backup. */
 export function loadReadingState(storage: PreferenceStorage = browserPreferenceStorage()): {
   reading: ReadingState;
   errors: Record<string, string>;
 } {
   const errors: Record<string, string> = {};
-  const reading: ReadingState = { ...initialReadingState, history: [] };
+  let normalized = normalizeReadingState(undefined);
   try {
     const raw = storage.getItem(READING_STORAGE_KEY);
-    if (raw === null) return { reading, errors };
-    const parsed: unknown = JSON.parse(raw);
-    const row = object(parsed);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid");
-    reading.task = task(row.task) ? row.task : null;
-    reading.seed = finite(row.seed) ? row.seed >>> 0 : 1;
-    reading.preferences = normalizeReadingPreferences(object(row.preferences));
-    const history = Array.isArray(row.history) ? row.history : [];
-    if (history.some((result) => !validResult(result)))
+    if (raw !== null) normalized = normalizeReadingState(JSON.parse(raw) as unknown);
+    if (normalized.invalid || normalized.blocked)
       errors[persistenceKey(READING_STORAGE_KEY, "read")] = "invalid";
-    const valid = history.filter(validResult);
-    reading.history = (["notes", "phrases", "check"] as const).flatMap((task) =>
-      valid.filter((result) => result.task === task).slice(-20)
-    );
   } catch (error) {
     errors[persistenceKey(READING_STORAGE_KEY, "read")] =
-      error instanceof SyntaxError || (error instanceof Error && error.message === "invalid")
-        ? "invalid"
-        : "unavailable";
+      error instanceof SyntaxError ? "invalid" : "unavailable";
   }
-  return { reading, errors };
+  return { reading: normalized.reading, errors };
+}
+
+interface ReadingStore<State> {
+  getState(): State;
+  dispatch(
+    action:
+      | ReturnType<typeof readingActions.hydrated>
+      | ReturnType<typeof readingActions.presented>
+      | ReturnType<typeof persistenceErrorChanged>
+  ): unknown;
+}
+
+function localProgressSince(current: ReadingState, baseline: ReadingState): ReadingState {
+  const known = new Set(baseline.profile.processedRunIds);
+  const historyIds = new Set(baseline.history.map((result) => result.runId ?? result.id));
+  const fingerprints = new Set(baseline.presentedFingerprints);
+  return {
+    ...current,
+    history: current.history.filter((result) => !historyIds.has(result.runId ?? result.id)),
+    profile: {
+      observations: current.profile.observations.filter((row) => !known.has(row.runId)),
+      lastIndependent: current.profile.lastIndependent.filter(
+        (row) =>
+          !baseline.profile.lastIndependent.some(
+            (previous) =>
+              previous.expectedMidi === row.expectedMidi &&
+              previous.inputSource === row.inputSource &&
+              previous.completedAt >= row.completedAt
+          )
+      ),
+      processedRunIds: current.profile.processedRunIds.filter((id) => !known.has(id)),
+      delayedDueAt:
+        current.profile.delayedDueAt !== baseline.profile.delayedDueAt
+          ? current.profile.delayedDueAt
+          : null
+    },
+    presentedFingerprints: current.presentedFingerprints.filter((key) => !fingerprints.has(key))
+  };
 }
 
 export function registerReadingPersistence<State extends PreferenceRoot & ReadingRoot>(
   listener: ListenerMiddlewareInstance<State>,
-  storage: PreferenceStorage
+  storage: PreferenceStorage,
+  repository: ReadingRepository = defaultReadingRepository
 ) {
-  return listener.startListening({
-    predicate: (_action, current, previous) => current.reading !== previous.reading,
-    effect: (_action, api) => {
-      const key = persistenceKey(READING_STORAGE_KEY, "write");
+  let allowed = false;
+  let initialized = false;
+  let releaseReady!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    releaseReady = resolve;
+  });
+  let writes = Promise.resolve();
+  let initialization: Promise<void> | undefined;
+  let initialBaseline: ReadingState | undefined;
+  let excludeLegacy = false;
+  let activeBeforeHydration = false;
+  const persist = (
+    store: ReadingStore<State>,
+    snapshot: ReadingState,
+    fields: readonly ReadingPersistentField[],
+    beforeHydration: boolean
+  ) => {
+    writes = writes.then(async () => {
+      await ready;
+      if (!allowed) return;
       try {
-        storage.setItem(READING_STORAGE_KEY, JSON.stringify(api.getState().reading));
-        api.dispatch(persistenceErrorChanged({ key, error: null }));
+        await repository.update((saved) => {
+          const normalized = normalizeReadingState(saved);
+          if (normalized.blocked) {
+            allowed = false;
+            throw new Error("future-schema");
+          }
+          const incoming =
+            beforeHydration && excludeLegacy && initialBaseline
+              ? localProgressSince(snapshot, initialBaseline)
+              : snapshot;
+          return persisted(mergeReadingState(normalized.reading, incoming, fields));
+        });
+        store.dispatch(persistenceErrorChanged({ key: WRITE_ERROR, error: null }));
       } catch {
-        api.dispatch(persistenceErrorChanged({ key, error: "unavailable" }));
+        store.dispatch(persistenceErrorChanged({ key: WRITE_ERROR, error: "unavailable" }));
       }
+    });
+  };
+  const unsubscribe = listener.startListening({
+    predicate: (action, current, previous) =>
+      action.type !== readingActions.hydrated.type && current.reading !== previous.reading,
+    effect: (_action, api) => {
+      const current = api.getState().reading;
+      const previous = api.getOriginalState().reading;
+      const fields = changedReadingFields(current, previous);
+      if (
+        fields.length === 0 &&
+        current.history === previous.history &&
+        current.profile === previous.profile &&
+        current.presentedFingerprints === previous.presentedFingerprints
+      )
+        return;
+      const latest = current.presentedFingerprints.at(-1);
+      persist(
+        api,
+        {
+          ...current,
+          presentedFingerprints:
+            current.presentedFingerprints !== previous.presentedFingerprints && latest
+              ? [latest]
+              : []
+        },
+        fields,
+        !initialized
+      );
     }
   });
+  return {
+    unsubscribe,
+    async knownFingerprints(store: ReadingStore<State>): Promise<readonly string[] | null> {
+      await ready;
+      let pending: Promise<void>;
+      do {
+        pending = writes;
+        await pending;
+      } while (pending !== writes);
+      if (!allowed) return null;
+      try {
+        const normalized = normalizeReadingState(await repository.load());
+        if (normalized.blocked) {
+          allowed = false;
+          store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: "invalid" }));
+          return null;
+        }
+        store.dispatch(
+          persistenceErrorChanged({ key: READ_ERROR, error: normalized.invalid ? "invalid" : null })
+        );
+        return [
+          ...new Set([
+            ...normalized.reading.presentedFingerprints,
+            ...store.getState().reading.presentedFingerprints
+          ])
+        ];
+      } catch {
+        allowed = false;
+        store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: "unavailable" }));
+        return null;
+      }
+    },
+    claimMaterial(store: ReadingStore<State>, fingerprint: string): Promise<boolean> {
+      if (!initialized) activeBeforeHydration = true;
+      let claimed = false;
+      const claim = writes.then(async () => {
+        await ready;
+        if (!allowed) {
+          store.dispatch(readingActions.presented(fingerprint));
+          return;
+        }
+        const locallyKnown = store.getState().reading.presentedFingerprints.includes(fingerprint);
+        try {
+          await repository.update((saved) => {
+            const normalized = normalizeReadingState(saved);
+            if (normalized.blocked) {
+              allowed = false;
+              throw new Error("future-schema");
+            }
+            claimed =
+              !locallyKnown && !normalized.reading.presentedFingerprints.includes(fingerprint);
+            return persisted({
+              ...normalized.reading,
+              presentedFingerprints: readingJournal([
+                ...normalized.reading.presentedFingerprints,
+                fingerprint
+              ])
+            });
+          });
+          store.dispatch(persistenceErrorChanged({ key: WRITE_ERROR, error: null }));
+          store.dispatch(readingActions.presented(fingerprint));
+        } catch {
+          claimed = false;
+          store.dispatch(persistenceErrorChanged({ key: WRITE_ERROR, error: "unavailable" }));
+          store.dispatch(readingActions.presented(fingerprint));
+        }
+      });
+      writes = claim;
+      return claim.then(() => claimed);
+    },
+    flushed: async () => {
+      await ready;
+      let pending: Promise<void>;
+      do {
+        pending = writes;
+        await pending;
+      } while (pending !== writes);
+    },
+    initialize(store: ReadingStore<State>, baseline = store.getState().reading): Promise<void> {
+      initialBaseline ??= baseline;
+      initialization ??= (async () => {
+        try {
+          const saved = await repository.load();
+          excludeLegacy = saved !== undefined;
+          const normalized = normalizeReadingState(saved);
+          if (normalized.blocked) {
+            store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: "invalid" }));
+            return;
+          }
+          const legacy = loadReadingState(storage);
+          const restored = saved === undefined ? legacy.reading : normalized.reading;
+          const current = store.getState().reading;
+          const fields = changedReadingFields(current, baseline);
+          // A presented series must keep its exact plan even if loading completes late.
+          if (
+            (activeBeforeHydration ||
+              current.presentedFingerprints !== baseline.presentedFingerprints) &&
+            !fields.includes("selection")
+          )
+            fields.push("selection");
+          store.dispatch(
+            readingActions.hydrated(
+              mergeReadingState(
+                restored,
+                saved === undefined ? current : localProgressSince(current, baseline),
+                fields
+              )
+            )
+          );
+          store.dispatch(
+            persistenceErrorChanged({
+              key: READ_ERROR,
+              error: normalized.invalid ? "invalid" : null
+            })
+          );
+          allowed = true;
+          if (
+            saved === undefined &&
+            storage.getItem(READING_STORAGE_KEY) !== null &&
+            Object.keys(legacy.errors).length === 0
+          ) {
+            try {
+              await repository.update((latest) => {
+                const loaded = normalizeReadingState(latest);
+                if (loaded.blocked) {
+                  allowed = false;
+                  throw new Error("future-schema");
+                }
+                return persisted(
+                  mergeReadingState(loaded.reading, restored, latest === undefined ? undefined : [])
+                );
+              });
+              store.dispatch(persistenceErrorChanged({ key: WRITE_ERROR, error: null }));
+            } catch {
+              store.dispatch(persistenceErrorChanged({ key: WRITE_ERROR, error: "unavailable" }));
+            }
+          }
+        } catch {
+          allowed = false;
+          store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: "unavailable" }));
+        } finally {
+          initialized = true;
+          releaseReady();
+        }
+      })();
+      return initialization;
+    },
+    get initialized() {
+      return initialized;
+    }
+  };
 }

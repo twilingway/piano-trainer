@@ -3721,15 +3721,35 @@ button.song-card.song-card__open {
 .reading-results-scroll {
   overflow-x: auto;
 }
-.reading-results table {
+.reading-results table,
+.reading-progress-group table {
   width: 100%;
   border-collapse: collapse;
 }
 .reading-results th,
-.reading-results td {
+.reading-results td,
+.reading-progress-group th,
+.reading-progress-group td {
   text-align: left;
   padding: 6px 10px;
   white-space: nowrap;
+}
+.reading-progress {
+  min-width: 0;
+  margin-top: 12px;
+}
+.reading-progress details {
+  margin-top: 12px;
+}
+.reading-progress label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.reading-progress-group {
+  min-width: 0;
 }
 .reading-intro .game-dialog__body {
   display: grid;

@@ -45,7 +45,12 @@ function database(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(SETTINGS)) db.createObjectStore(SETTINGS);
     };
     open.onsuccess = () => {
-      resolve(open.result);
+      const db = open.result;
+      db.onversionchange = () => {
+        db.close();
+        opening = undefined;
+      };
+      resolve(db);
     };
     open.onerror = () => {
       opening = undefined;
@@ -145,4 +150,59 @@ export async function saveFolderHandle(
 ): Promise<void> {
   if (handle) await write(SETTINGS, (settings) => settings.put(handle, FOLDER_KEY));
   else await write(SETTINGS, (settings) => settings.delete(FOLDER_KEY));
+}
+
+/** A namespaced setting from the existing library database. */
+export async function loadLibrarySetting(key: string): Promise<unknown> {
+  const transaction = (await database()).transaction(SETTINGS, "readonly");
+  const committed = new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => {
+      resolve();
+    };
+    transaction.onabort = () => {
+      reject(transaction.error ?? new Error("IndexedDB transaction aborted"));
+    };
+    transaction.onerror = () => {
+      reject(transaction.error ?? new Error("IndexedDB transaction failed"));
+    };
+  });
+  const [value] = await Promise.all([
+    request(transaction.objectStore(SETTINGS).get(key) as IDBRequest<unknown>),
+    committed
+  ]);
+  return value;
+}
+
+/** Read, merge and commit atomically, including across tabs. */
+export async function updateLibrarySetting(
+  key: string,
+  merge: (saved: unknown) => unknown
+): Promise<void> {
+  const transaction = (await database()).transaction(SETTINGS, "readwrite");
+  return new Promise((resolve, reject) => {
+    let failure: unknown;
+    transaction.oncomplete = () => {
+      resolve();
+    };
+    transaction.onabort = () => {
+      reject(
+        failure instanceof Error
+          ? failure
+          : (transaction.error ?? new Error("IndexedDB transaction aborted"))
+      );
+    };
+    transaction.onerror = () => {
+      reject(transaction.error ?? new Error("IndexedDB transaction failed"));
+    };
+    const settings = transaction.objectStore(SETTINGS);
+    const read = settings.get(key) as IDBRequest<unknown>;
+    read.onsuccess = () => {
+      try {
+        settings.put(merge(read.result), key);
+      } catch (error) {
+        failure = error;
+        transaction.abort();
+      }
+    };
+  });
 }
