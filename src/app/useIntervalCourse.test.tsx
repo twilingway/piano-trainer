@@ -219,6 +219,35 @@ afterEach(() => {
 });
 
 describe("interval course visual integration", () => {
+  it("finishes every pair when staff acknowledgement follows a later Trainer timestamp in the same frame", () => {
+    const practice = practiceForVisual();
+    present();
+    expected(practice);
+    nextVisual(practice);
+    expected(practice);
+    expect(interval.snapshot?.questionIndex).toBe(1);
+
+    for (let question = 1; question < 10; question++) {
+      frame(practice, now + 1);
+      expect(interval.snapshot?.active).toBe(false);
+      frame(practice, now + 650);
+      const frameStart = now - 1;
+      at(now + 1, () => {
+        const presentation = interval.presentation;
+        presentation?.onPresented(presentation.id, frameStart);
+      });
+      expect(interval.snapshot?.presented).toBe(true);
+      expect(accepts(practice)).toBe(true);
+      expected(practice);
+      nextVisual(practice);
+      expected(practice);
+      expect(interval.snapshot?.questionIndex).toBe(question + 1);
+    }
+    expect(interval.snapshot?.completed).toBe(true);
+    expect(interval.result?.questions).toHaveLength(10);
+    expect(store.getState().reading.intervals.history).toHaveLength(1);
+  });
+
   it("releases a held MIDI attack through ear mode before the next visual series", () => {
     select("see-and-play");
     if (!interval.exercise) throw new Error("Missing exercise");
