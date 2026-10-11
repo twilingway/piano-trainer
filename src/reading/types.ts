@@ -1,4 +1,5 @@
 import type { Song } from "../song/song";
+import type { ReadingHintEvent, ReadingPlan } from "./progressTypes";
 
 export type ReadingTask = "notes" | "phrases" | "check";
 export type ReadingHintLevel = 0 | 1 | 2;
@@ -17,6 +18,7 @@ export const DEFAULT_READING_PREFERENCES: ReadingPreferences = {
 };
 
 export interface ReadingExercise {
+  readonly plan?: ReadingPlan;
   readonly id: string;
   readonly task: ReadingTask;
   readonly seed: number;
@@ -26,6 +28,9 @@ export interface ReadingExercise {
 }
 
 export interface ReadingAttempt {
+  readonly skillId?: "note-reading";
+  readonly runId?: string;
+  readonly attemptId?: string;
   readonly exerciseId: string;
   readonly noteId: string;
   readonly expectedMidi: number;
@@ -37,6 +42,8 @@ export interface ReadingAttempt {
 }
 
 export interface ReadingNoteResult {
+  readonly hintHistory?: readonly ReadingHintEvent[] | null;
+  readonly presentedAtMs?: number | null;
   readonly noteId: string;
   readonly expectedMidi: number;
   readonly firstAttemptCorrect: boolean;
@@ -48,6 +55,13 @@ export interface ReadingNoteResult {
 }
 
 export interface ReadingResult {
+  readonly newMaterial?: boolean;
+  readonly skillId?: "note-reading";
+  readonly runId?: string;
+  readonly startedAt?: number | null;
+  readonly completedAt?: number;
+  readonly plan?: ReadingPlan | null;
+  readonly provenance?: "native" | "legacy";
   readonly id: string;
   readonly exerciseId: string;
   readonly task: ReadingTask;

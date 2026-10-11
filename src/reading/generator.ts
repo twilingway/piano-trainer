@@ -1,5 +1,6 @@
 import { songFromMusicXml } from "../song/musicxml";
 import type { ReadingExercise, ReadingTask } from "./types";
+import type { ReadingPlan } from "./progressTypes";
 
 export const READING_GENERATOR_VERSION = 1;
 export const READING_PITCHES = [60, 62, 64, 65, 67] as const;
@@ -9,7 +10,7 @@ function normalizeSeed(seed: number): number {
   return seed >>> 0;
 }
 
-function pitchesForSeed(seed: number): number[] {
+function pitchesForSeed(seed: number, counts?: readonly number[]): number[] {
   let state = normalizeSeed(seed);
   const random = (): number => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -17,7 +18,9 @@ function pitchesForSeed(seed: number): number[] {
     value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
     return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
   };
-  const pitches: number[] = Array.from({ length: 4 }, () => [...READING_PITCHES]).flat();
+  const pitches: number[] = counts
+    ? READING_PITCHES.flatMap((pitch, index) => Array<number>(counts[index] ?? 0).fill(pitch))
+    : Array.from({ length: 4 }, () => [...READING_PITCHES]).flat();
   for (let index = pitches.length - 1; index > 0; index--) {
     const other = Math.floor(random() * (index + 1));
     const value = pitches[index];
@@ -66,15 +69,36 @@ function musicXmlForPitches(pitches: readonly number[]): string {
 }
 
 /** The full source score is parsed once into the single musical session for this series. */
-export function generateReadingExercise(task: ReadingTask, seed: number): ReadingExercise {
+export function generateReadingExercise(
+  task: ReadingTask,
+  seed: number,
+  plan?: ReadingPlan
+): ReadingExercise {
   const normalized = normalizeSeed(seed);
-  const musicXml = musicXmlForPitches(pitchesForSeed(normalized));
+  const version = plan?.generatorVersion ?? READING_GENERATOR_VERSION;
+  const musicXml = musicXmlForPitches(readingSequenceForSeed(normalized, plan));
   return {
-    id: `reading-v${String(READING_GENERATOR_VERSION)}-${task}-${String(normalized)}`,
+    ...(plan ? { plan } : {}),
+    id: `reading-v${String(version)}-${task}-${String(normalized)}${version === 2 ? `-${plan?.purpose ?? task}-${plan?.counts.join(".") ?? ""}` : ""}`,
     task,
     seed: normalized,
-    generatorVersion: READING_GENERATOR_VERSION,
+    generatorVersion: version,
     musicXml,
     song: songFromMusicXml(musicXml, "")
   };
+}
+
+/** Candidate search never parses thousands of rejected XML scores. */
+export function readingSequenceForSeed(seed: number, plan?: ReadingPlan): readonly number[] {
+  if (
+    plan &&
+    (![1, 2].includes(plan.generatorVersion) ||
+      plan.counts.length !== 5 ||
+      plan.counts.some((count) => !Number.isInteger(count) || count < 0) ||
+      plan.counts.reduce((sum, count) => sum + count, 0) !== 20 ||
+      (plan.generatorVersion === 1 && plan.counts.some((count) => count !== 4)))
+  )
+    throw new RangeError("Invalid reading generation plan");
+  const version = plan?.generatorVersion ?? READING_GENERATOR_VERSION;
+  return pitchesForSeed(seed, version === 2 ? plan?.counts : undefined);
 }
