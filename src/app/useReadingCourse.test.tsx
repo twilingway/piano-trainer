@@ -9,6 +9,10 @@ import { createAppStore, type AppStore } from "./store";
 import { withTestStore } from "./storeTestSupport";
 import { readingActions } from "./readingSlice";
 import { useReadingCourse, useReadingTrainer } from "./useReadingCourse";
+import * as adaptation from "../reading/adaptation";
+import { createMemoryReadingRepository } from "./readingRepository";
+import { generateReadingExercise } from "../reading/generator";
+import { initialReadingState } from "./readingSlice";
 
 let root: Root;
 let host: HTMLDivElement;
@@ -111,7 +115,10 @@ beforeEach(() => {
     frames.delete(id);
   });
   configureReading.mockClear();
-  store = createAppStore({ storage: { getItem: () => null, setItem: () => undefined } });
+  store = createAppStore({
+    storage: { getItem: () => null, setItem: () => undefined },
+    readingRepository: createMemoryReadingRepository()
+  });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -127,6 +134,158 @@ afterEach(() => {
 });
 
 describe("reading course presentation and trainer wiring", () => {
+  it("preserves an already presented legacy selection when different IndexedDB selection loads late", async () => {
+    let release!: (saved: unknown) => void;
+    const loaded = new Promise<unknown>((resolve) => {
+      release = resolve;
+    });
+    const repository = createMemoryReadingRepository();
+    store = createAppStore({
+      storage: {
+        getItem: (key) =>
+          key === "reading-course-v1"
+            ? JSON.stringify({ ...initialReadingState, task: "notes", seed: 1 })
+            : null,
+        setItem: () => undefined
+      },
+      readingRepository: { ...repository, load: () => loaded }
+    });
+    render();
+    if (!reading.exercise) throw new Error("No restored exercise");
+    const practice = new PracticeSession(reading.exercise.song, {
+      mode: "wait",
+      hands: new Set(["right"]),
+      speed: 1,
+      accompaniment: false
+    });
+    practice.seek(0, now, { leadIn: false });
+    practice.tick(now);
+    update(practice, true, now);
+    present();
+    const originalSession = reading.session;
+    await act(async () => {
+      release({ ...initialReadingState, task: "phrases", seed: 2 });
+      await store.flushReadingPersistence();
+    });
+    expect(reading.task).toBe("notes");
+    expect(reading.exercise.seed).toBe(1);
+    expect(reading.session).toBe(originalSession);
+    expect(accepts(practice)).toBe(true);
+  });
+
+  it("waits for authoritative history before choosing a check", async () => {
+    let release!: (saved: unknown) => void;
+    const loaded = new Promise<unknown>((resolve) => {
+      release = resolve;
+    });
+    const repository = createMemoryReadingRepository();
+    store = createAppStore({
+      storage: { getItem: () => null, setItem: () => undefined },
+      readingRepository: { ...repository, load: () => loaded }
+    });
+    render();
+    const candidate = adaptation.chooseNewReadingCheck(1, []);
+    if (!candidate) throw new Error("No candidate");
+    const fingerprint = adaptation.readingFingerprint(candidate.exercise);
+    const search = vi.spyOn(adaptation, "chooseNewReadingCheck");
+    let selected!: Promise<boolean>;
+    act(() => {
+      selected = reading.start("check");
+    });
+    expect(search).not.toHaveBeenCalled();
+    expect(reading.task).toBeNull();
+    await act(async () => {
+      release({ ...initialReadingState, presentedFingerprints: [fingerprint] });
+      await selected;
+    });
+    expect(search).toHaveBeenCalledWith(1, expect.arrayContaining([fingerprint]), "check", "all");
+    expect(reading.exercise && adaptation.readingFingerprint(reading.exercise)).not.toBe(
+      fingerprint
+    );
+  });
+
+  it("keeps a replayed check out of new-material evidence", async () => {
+    const fingerprint = adaptation.readingFingerprint(generateReadingExercise("check", 42));
+    await act(async () => {
+      await store.readingPersistenceReady;
+    });
+    act(() => {
+      store.dispatch(readingActions.presented(fingerprint));
+    });
+    const practice = selection("check");
+    present();
+    await act(async () => {
+      await store.flushReadingPersistence();
+    });
+    for (let index = 0; index < 20; index++) {
+      const arrival = 1000 + index * 700;
+      practice.tick(arrival);
+      update(practice, true, arrival);
+      present(arrival);
+      answer(practice, arrival + 100);
+    }
+    act(() => {
+      reading.finish();
+    });
+    expect(reading.result?.newMaterial).toBe(false);
+  });
+
+  it("freezes the adaptive plan and keeps practice running while its source filter changes", () => {
+    act(() => {
+      void reading.startAdaptive();
+    });
+    const originalExercise = reading.exercise;
+    const originalSession = reading.session;
+    expect(store.getState().reading.plan?.purpose).toBe("adaptive");
+    expect(store.getState().reading.plan?.counts).toEqual([4, 4, 4, 4, 4]);
+    act(() => {
+      reading.setSourceFilter("midi");
+    });
+    expect(store.getState().reading.sourceFilter).toBe("midi");
+    expect(store.getState().reading.plan?.source).toBe("all");
+    expect(reading.exercise).toBe(originalExercise);
+    expect(reading.session).toBe(originalSession);
+    act(() => {
+      reading.newSeries();
+    });
+    expect(store.getState().reading.plan?.purpose).toBe("adaptive");
+    expect(store.getState().reading.plan?.source).toBe("midi");
+    expect(reading.session).not.toBe(originalSession);
+  });
+
+  it("keeps the prior practice when searching for a new check fails", async () => {
+    const practice = selection();
+    present();
+    const originalSession = reading.session;
+    vi.spyOn(adaptation, "chooseNewReadingCheck").mockReturnValue(null);
+    await act(async () => {
+      void reading.start("check");
+      await store.readingPersistenceReady;
+      await store.flushReadingPersistence();
+    });
+    expect(reading.generationError).toBe(true);
+    expect(reading.session).toBe(originalSession);
+    expect(accepts(practice)).toBe(true);
+    expect(store.getState().reading.history).toEqual([]);
+  });
+
+  it("records a series once only after an actual current presentation", async () => {
+    selection();
+    expect(store.getState().reading.presentedFingerprints).toEqual([]);
+    present();
+    present();
+    await act(async () => {
+      await store.flushReadingPersistence();
+    });
+    expect(store.getState().reading.presentedFingerprints).toHaveLength(1);
+    const originalSession = reading.session;
+    const original = store.getState().reading;
+    act(() => {
+      store.dispatch(readingActions.hydrated({ ...original, history: [] }));
+    });
+    expect(reading.session).toBe(originalSession);
+  });
+
   it("waits for a visible hint after a pause and records the actual shown level", () => {
     const practice = selection();
     expect(accepts(practice)).toBe(false);
@@ -248,7 +407,7 @@ describe("reading course presentation and trainer wiring", () => {
     expect(reading.snapshot?.answers[0]?.responseLatencyMs).toBe(300);
   });
 
-  it("saves exactly one completed result and starts the next series with a fresh session", () => {
+  it("saves exactly one completed result and starts the next series with a fresh session", async () => {
     const practice = selection("check");
     for (let index = 0; index < 20; index++) {
       const arrival = 1000 + index * 700;
@@ -268,8 +427,9 @@ describe("reading course presentation and trainer wiring", () => {
     expect(reading.result?.notes).toHaveLength(20);
     expect(reading.result?.notes.every((note) => note.independentCorrect)).toBe(true);
     const oldExercise = reading.exercise;
-    act(() => {
+    await act(async () => {
       reading.newSeries();
+      await store.flushReadingPersistence();
     });
     expect(reading.exercise?.song.notes.map((note) => note.pitch)).not.toEqual(
       oldExercise?.song.notes.map((note) => note.pitch)

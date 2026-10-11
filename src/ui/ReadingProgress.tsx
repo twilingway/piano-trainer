@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useI18n } from "../app/useI18n";
 import { summarizeReadingProfile, summarizeReadingResults } from "../reading/progress";
 import type {
@@ -110,9 +111,13 @@ export function ReadingProgress({
   onGenerationRetry
 }: ReadingProgressProps & { history: readonly ReadingResult[] }) {
   const { t } = useI18n();
-  const summary = profile
-    ? summarizeReadingProfile(profile, sourceFilter)
-    : summarizeReadingResults(history, sourceFilter);
+  const summary = useMemo(
+    () =>
+      profile
+        ? summarizeReadingProfile(profile, sourceFilter)
+        : summarizeReadingResults(history, sourceFilter),
+    [profile, sourceFilter, history]
+  );
   return (
     <section className="reading-progress">
       <div className="reading-actions">

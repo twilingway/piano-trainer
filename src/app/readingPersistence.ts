@@ -97,6 +97,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
   let initialization: Promise<void> | undefined;
   let initialBaseline: ReadingState | undefined;
   let excludeLegacy = false;
+  let activeBeforeHydration = false;
   const persist = (
     store: ReadingStore<State>,
     snapshot: ReadingState,
@@ -187,10 +188,14 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
       }
     },
     claimMaterial(store: ReadingStore<State>, fingerprint: string): Promise<boolean> {
+      if (!initialized) activeBeforeHydration = true;
       let claimed = false;
       const claim = writes.then(async () => {
         await ready;
-        if (!allowed) return;
+        if (!allowed) {
+          store.dispatch(readingActions.presented(fingerprint));
+          return;
+        }
         const locallyKnown = store.getState().reading.presentedFingerprints.includes(fingerprint);
         try {
           await repository.update((saved) => {
@@ -245,7 +250,8 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
           const fields = changedReadingFields(current, baseline);
           // A presented series must keep its exact plan even if loading completes late.
           if (
-            current.presentedFingerprints !== baseline.presentedFingerprints &&
+            (activeBeforeHydration ||
+              current.presentedFingerprints !== baseline.presentedFingerprints) &&
             !fields.includes("selection")
           )
             fields.push("selection");

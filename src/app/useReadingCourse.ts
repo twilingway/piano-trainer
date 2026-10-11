@@ -1,37 +1,68 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { generateReadingExercise, nextReadingSeed } from "../reading/generator";
+import { generateReadingExercise } from "../reading/generator";
+import { readingFingerprint } from "../reading/adaptation";
 import { readingPromptXml } from "../reading/prompt";
 import { ReadingSession } from "../reading/session";
 import { DEFAULT_READING_PREFERENCES } from "../reading/types";
-import type {
-  ReadingHintLevel,
-  ReadingPreferences,
-  ReadingResult,
-  ReadingTask
-} from "../reading/types";
+import type { ReadingHintLevel, ReadingPreferences, ReadingResult } from "../reading/types";
 import type { TrainerReadingPolicy } from "../practice/readingPolicy";
 import type { Trainer } from "../practice/Trainer";
 import type { RefObject } from "react";
-import { readingActions } from "./readingSlice";
+import { readingActions, type ReadingState } from "./readingSlice";
 import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
+import { useReadingGeneration } from "./useReadingGeneration";
 
 export function useReadingCourse() {
   const saved = useAppSelector((state) => state.reading);
   const dispatch = useAppDispatch();
   const store = useAppStore();
   const [intro, setIntro] = useState(false);
+  const [wallNow, setWallNow] = useState(() => Date.now());
+  const refreshClock = useCallback(() => {
+    setWallNow(Date.now());
+  }, []);
+  useEffect(() => {
+    const refreshVisible = () => {
+      if (document.visibilityState === "visible") refreshClock();
+    };
+    window.addEventListener("focus", refreshClock);
+    document.addEventListener("visibilitychange", refreshVisible);
+    return () => {
+      window.removeEventListener("focus", refreshClock);
+      document.removeEventListener("visibilitychange", refreshVisible);
+    };
+  }, [refreshClock]);
   const [retry, setRetry] = useState(0);
   const [errorId, setErrorId] = useState<string | null>(null);
   const [renderedHint, setRenderedHint] = useState<{ id: string; level: ReadingHintLevel } | null>(
     null
   );
-  const exercise = useMemo(
-    () => (saved.task ? generateReadingExercise(saved.task, saved.seed) : null),
-    [saved.task, saved.seed]
+  const selectionKey = JSON.stringify({
+    task: saved.task,
+    seed: saved.seed,
+    plan: saved.plan,
+    revision: saved.selectionRevision
+  });
+  const exercise = useMemo(() => {
+    const selection = JSON.parse(selectionKey) as Pick<ReadingState, "task" | "seed" | "plan">;
+    return selection.task
+      ? generateReadingExercise(selection.task, selection.seed, selection.plan ?? undefined)
+      : null;
+  }, [selectionKey]);
+  const run = useMemo(
+    () =>
+      exercise
+        ? {
+            runId: crypto.randomUUID(),
+            startedAt: null,
+            newMaterial: false
+          }
+        : null,
+    [exercise]
   );
   const session = useMemo(
-    () => (exercise ? new ReadingSession(exercise, DEFAULT_READING_PREFERENCES) : null),
-    [exercise]
+    () => (exercise && run ? new ReadingSession(exercise, DEFAULT_READING_PREFERENCES, run) : null),
+    [exercise, run]
   );
   const [published, setPublished] = useState<{
     session: ReadingSession;
@@ -45,6 +76,7 @@ export function useReadingCourse() {
   const errorRef = useRef(false);
   const sessionRef = useRef(session);
   const presentationIdRef = useRef("");
+  const journaledSession = useRef<ReadingSession | null>(null);
   const requestedHint = useRef<{
     session: ReadingSession;
     noteId: string;
@@ -83,7 +115,9 @@ export function useReadingCourse() {
     [exercise, index]
   );
   const noteId = snapshot?.noteId;
-  const id = exercise ? `${exercise.id}:${noteId ?? "preparing"}:${String(retry)}` : "";
+  const id = exercise
+    ? `${run?.runId ?? ""}:${exercise.id}:${noteId ?? "preparing"}:${String(retry)}`
+    : "";
   useEffect(() => {
     presentationIdRef.current = id;
   }, [id]);
@@ -101,12 +135,12 @@ export function useReadingCourse() {
           ? (Math.max(level, previousRequest.level) as ReadingHintLevel)
           : level;
       requestedHint.current = { session, noteId, level: requested };
-      const target = `${exercise?.id ?? ""}:${noteId}:${String(retry)}`;
+      const target = `${run?.runId ?? ""}:${exercise?.id ?? ""}:${noteId}:${String(retry)}`;
       setRenderedHint((previous) =>
         previous?.id === target && previous.level >= level ? previous : { id: target, level }
       );
     },
-    [session, exercise, retry]
+    [session, exercise, retry, run]
   );
 
   const policy = useMemo<TrainerReadingPolicy | null>(
@@ -188,6 +222,16 @@ export function useReadingCourse() {
               )
                 return;
               session.present(noteId, atMs);
+              if (!session.snapshot().presented) return;
+              session.markStarted(Date.now());
+              if (exercise && journaledSession.current !== session) {
+                journaledSession.current = session;
+                void store.claimReadingMaterial(readingFingerprint(exercise)).then((fresh) => {
+                  if (sessionRef.current === session) {
+                    session.confirmNewMaterial(fresh && exercise.task === "check");
+                  }
+                });
+              }
               publish();
             },
             onError(shownId: string) {
@@ -203,7 +247,7 @@ export function useReadingCourse() {
             }
           }
         : undefined,
-    [session, id, noteId, publish]
+    [session, id, noteId, publish, exercise, store]
   );
 
   useEffect(() => {
@@ -219,14 +263,11 @@ export function useReadingCourse() {
     };
   }, [session, hintLevel, snapshot?.noteId, snapshot?.active, snapshot?.presented, publish]);
 
-  const start = useCallback(
-    (task: ReadingTask) => {
-      const state = store.getState().reading;
-      dispatch(readingActions.select({ task, seed: nextReadingSeed(state.seed, task) }));
-      setIntro(false);
-    },
-    [store, dispatch]
-  );
+  const onSelected = useCallback(() => {
+    setIntro(false);
+    refreshClock();
+  }, [refreshClock]);
+  const generation = useReadingGeneration(onSelected);
   const finish = useCallback(() => {
     if (!session || finished?.session === session) return;
     const result = session.result(crypto.randomUUID(), Date.now());
@@ -242,6 +283,11 @@ export function useReadingCourse() {
   return {
     active: exercise !== null,
     task: saved.task,
+    purpose: saved.plan?.purpose ?? saved.task,
+    profile: saved.profile,
+    sourceFilter: saved.sourceFilter,
+    delayedDue: saved.profile.delayedDueAt !== null && wallNow >= saved.profile.delayedDueAt,
+    refreshClock,
     exercise,
     session,
     policy,
@@ -259,12 +305,12 @@ export function useReadingCourse() {
     intro,
     setIntro,
     blockedRef,
-    start,
+    ...generation,
     exit: () => dispatch(readingActions.exit()),
     finish,
     suspend,
     newSeries: () => {
-      if (saved.task) start(saved.task);
+      if (saved.task) void generation.select(saved.plan?.purpose ?? saved.task);
     },
     onRetry: () => {
       if (snapshot?.noteId) session?.requirePresentation(snapshot.noteId, performance.now());

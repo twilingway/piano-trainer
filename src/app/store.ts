@@ -14,6 +14,7 @@ import { resolveSelection, type CourseAccessMode, type CourseLesson } from "../c
 import { configureStore } from "@reduxjs/toolkit";
 import { readingReducer, type ReadingRoot } from "./readingSlice";
 import { loadReadingState, registerReadingPersistence } from "./readingPersistence";
+import type { ReadingRepository } from "./readingRepository";
 import { preferencesReducer } from "./preferencesSlice";
 import { persistenceReducer } from "./persistenceSlice";
 import {
@@ -29,6 +30,7 @@ export function createAppStore(
     storage?: PreferenceStorage;
     courseLessons?: readonly CourseLesson[];
     courseAccess?: CourseAccessMode;
+    readingRepository?: ReadingRepository;
   } = {}
 ) {
   const storage = options.storage ?? browserPreferenceStorage();
@@ -58,8 +60,12 @@ export function createAppStore(
   registerSongPersistence(listener, storage);
   registerReviewPersistence(listener, storage);
   registerCoursePersistence(listener, storage);
-  registerReadingPersistence(listener, storage);
-  return configureStore({
+  const readingPersistence = registerReadingPersistence(
+    listener,
+    storage,
+    options.readingRepository
+  );
+  const store = configureStore({
     reducer: {
       preferences: preferencesReducer,
       persistence: persistenceReducer,
@@ -72,6 +78,14 @@ export function createAppStore(
     },
     preloadedState,
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().prepend(listener.middleware)
+  });
+  const readingPersistenceReady = readingPersistence.initialize(store, reading.reading);
+  return Object.assign(store, {
+    readingPersistenceReady,
+    claimReadingMaterial: (fingerprint: string) =>
+      readingPersistence.claimMaterial(store, fingerprint),
+    knownReadingFingerprints: () => readingPersistence.knownFingerprints(store),
+    flushReadingPersistence: readingPersistence.flushed
   });
 }
 export type AppStore = ReturnType<typeof createAppStore>;

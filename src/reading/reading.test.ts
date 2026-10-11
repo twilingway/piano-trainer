@@ -125,11 +125,17 @@ describe("reading response and assistance", () => {
       session.answer(note.pitch, "midi", at + 100);
     });
     expect(session.result("run", 123)?.notes).toHaveLength(20);
+    session.markStarted(Number.NaN);
+    session.markStarted(-1);
+    session.markStarted(50);
+    session.markStarted(80);
+    session.confirmNewMaterial(true);
     expect(session.result("run", 123)).toMatchObject({
       id: "run",
       seed: 42,
       task: "notes",
       createdAt: 123
     });
+    expect(session.result("run", 123)).toMatchObject({ startedAt: 50, newMaterial: true });
   });
 });

@@ -32,12 +32,27 @@ export class ReadingSession {
   private enabled = false;
   private answers: ReadingNoteResult[] = [];
   private attemptCount = 0;
+  private startedAt: number | null = null;
+  private newMaterial = false;
 
   constructor(
     private readonly exercise: ReadingExercise,
     private preferences: ReadingPreferences,
     private readonly metadata?: ReadingSessionMetadata
-  ) {}
+  ) {
+    this.startedAt = metadata?.startedAt ?? null;
+    this.newMaterial = metadata?.newMaterial ?? false;
+  }
+
+  /** The shell supplies calendar time at the first visible presentation. */
+  markStarted(at: number): void {
+    if (this.startedAt === null && Number.isFinite(at) && at >= 0) this.startedAt = at;
+  }
+
+  /** The shell confirms novelty only after an authoritative journal transaction commits. */
+  confirmNewMaterial(value: boolean): void {
+    this.newMaterial = value;
+  }
 
   configure(preferences: ReadingPreferences): void {
     this.preferences = preferences;
@@ -210,10 +225,10 @@ export class ReadingSession {
       id,
       skillId: READING_SKILL_ID,
       runId,
-      startedAt: this.metadata?.startedAt ?? null,
+      startedAt: this.startedAt,
       completedAt: createdAt,
       provenance: "native",
-      newMaterial: this.metadata?.newMaterial === true,
+      newMaterial: this.newMaterial,
       plan: this.exercise.plan ?? null,
       exerciseId: this.exercise.id,
       task: this.exercise.task,
