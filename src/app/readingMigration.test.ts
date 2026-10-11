@@ -46,6 +46,33 @@ export function readingResult(id: string, createdAt = 123) {
 }
 
 describe("reading storage migration", () => {
+  it("merges MRU journals keeping the newest occurrence", () => {
+    const old = emptyReadingState();
+    old.presentedFingerprints = ["a", "b", "c"];
+    const fresh = emptyReadingState();
+    fresh.presentedFingerprints = ["b", "d"];
+    expect(mergeReadingState(old, fresh, []).presentedFingerprints).toEqual(["a", "c", "b", "d"]);
+  });
+  it("retains known independent dates when older observations are absent or truncated", () => {
+    const saved = emptyReadingState();
+    saved.profile = {
+      ...saved.profile,
+      lastIndependent: [{ expectedMidi: 60, inputSource: "midi", completedAt: 800 }]
+    };
+    const fresh = emptyReadingState();
+    fresh.profile = {
+      ...fresh.profile,
+      lastIndependent: [
+        { expectedMidi: 60, inputSource: "midi", completedAt: 600 },
+        { expectedMidi: 62, inputSource: "keyboard", completedAt: 900 }
+      ]
+    };
+    const normalized = normalizeReadingState(mergeReadingState(saved, fresh, [])).reading;
+    expect(normalized.profile.lastIndependent).toEqual([
+      { expectedMidi: 60, inputSource: "midi", completedAt: 800 },
+      { expectedMidi: 62, inputSource: "keyboard", completedAt: 900 }
+    ]);
+  });
   it("rejects malformed plans, string MIDI values and malformed native help history", () => {
     const plan = {
       purpose: "adaptive",

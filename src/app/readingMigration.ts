@@ -3,9 +3,15 @@ import {
   type ReadingResult,
   type ReadingTask
 } from "../reading/types";
-import { addReadingResult, emptyReadingProfile, readingPurpose } from "../reading/progress";
+import {
+  addReadingResult,
+  emptyReadingProfile,
+  readingPurpose,
+  readingIndependentDates
+} from "../reading/progress";
 import type {
   ReadingObservation,
+  ReadingIndependentDate,
   ReadingPlan,
   ReadingProfile,
   ReadingSourceFilter
@@ -29,6 +35,8 @@ const purpose = (value: unknown) =>
 const filter = (value: unknown): value is ReadingSourceFilter => value === "all" || source(value);
 const text = (value: unknown): value is string => typeof value === "string" && value.length > 0;
 const unique = (values: readonly string[]) => [...new Set(values)];
+export const readingJournal = (values: readonly string[]) =>
+  unique(values.toReversed()).reverse().slice(-256);
 
 function normalizePreferences(value: unknown) {
   const row = object(value);
@@ -189,6 +197,16 @@ function validObservation(value: unknown): value is ReadingObservation {
   );
 }
 
+function validIndependentDate(value: unknown): value is ReadingIndependentDate {
+  const row = object(value);
+  return (
+    finite(row.expectedMidi) &&
+    [60, 62, 64, 65, 67].includes(row.expectedMidi) &&
+    source(row.inputSource) &&
+    finite(row.completedAt)
+  );
+}
+
 /** Compact observations survive detailed-history pruning. */
 export function mergeReadingProfiles(
   saved: ReadingProfile,
@@ -218,6 +236,10 @@ export function mergeReadingProfiles(
           a.runId.localeCompare(b.runId) ||
           a.noteId.localeCompare(b.noteId)
       ),
+    lastIndependent: readingIndependentDates(
+      [...observations.values()],
+      [...saved.lastIndependent, ...incoming.lastIndependent]
+    ),
     processedRunIds: unique([...saved.processedRunIds, ...incoming.processedRunIds]),
     delayedDueAt: due.length ? Math.max(...due) : null
   };
@@ -273,9 +295,12 @@ export function normalizeReadingState(value: unknown): {
   );
   const profile = object(row.profile);
   const observations = Array.isArray(profile.observations) ? profile.observations : [];
+  const dates = Array.isArray(profile.lastIndependent) ? profile.lastIndependent : [];
+  invalid ||= dates.some((entry) => !validIndependentDate(entry));
   invalid ||= observations.some((entry) => !validObservation(entry));
   reading.profile = mergeReadingProfiles(emptyReadingProfile(), {
     observations: observations.filter(validObservation),
+    lastIndependent: dates.filter(validIndependentDate),
     processedRunIds: Array.isArray(profile.processedRunIds)
       ? unique(profile.processedRunIds.filter(text))
       : [],
@@ -286,12 +311,14 @@ export function normalizeReadingState(value: unknown): {
   const fingerprints = Array.isArray(row.presentedFingerprints)
     ? row.presentedFingerprints.filter(text)
     : [];
-  for (const result of deduped) {
+  for (const result of row.schemaVersion === 2 && Array.isArray(row.presentedFingerprints)
+    ? []
+    : deduped) {
     // The v1 id proves this order was shown, but does not prove its original novelty.
     if (result.exerciseId === `reading-v1-${result.task}-${String(result.seed >>> 0)}`)
       fingerprints.push(result.notes.map((note) => note.expectedMidi).join(","));
   }
-  reading.presentedFingerprints = unique(fingerprints).slice(-256);
+  reading.presentedFingerprints = readingJournal(fingerprints);
   return { reading, invalid, blocked: false };
 }
 
@@ -349,9 +376,9 @@ export function mergeReadingState(
       (purpose) => history.filter((result) => readingPurpose(result) === purpose).slice(-20)
     ),
     profile: mergeReadingProfiles(saved.profile, incoming.profile),
-    presentedFingerprints: unique([
+    presentedFingerprints: readingJournal([
       ...saved.presentedFingerprints,
       ...incoming.presentedFingerprints
-    ]).slice(-256)
+    ])
   };
 }

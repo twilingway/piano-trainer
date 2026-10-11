@@ -12,6 +12,7 @@ import {
   changedReadingFields,
   mergeReadingState,
   normalizeReadingState,
+  readingJournal,
   type ReadingPersistentField
 } from "./readingMigration";
 import { defaultReadingRepository, type ReadingRepository } from "./readingRepository";
@@ -46,7 +47,10 @@ export function loadReadingState(storage: PreferenceStorage = browserPreferenceS
 interface ReadingStore<State> {
   getState(): State;
   dispatch(
-    action: ReturnType<typeof readingActions.hydrated> | ReturnType<typeof persistenceErrorChanged>
+    action:
+      | ReturnType<typeof readingActions.hydrated>
+      | ReturnType<typeof readingActions.presented>
+      | ReturnType<typeof persistenceErrorChanged>
   ): unknown;
 }
 
@@ -59,6 +63,15 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
     history: current.history.filter((result) => !historyIds.has(result.runId ?? result.id)),
     profile: {
       observations: current.profile.observations.filter((row) => !known.has(row.runId)),
+      lastIndependent: current.profile.lastIndependent.filter(
+        (row) =>
+          !baseline.profile.lastIndependent.some(
+            (previous) =>
+              previous.expectedMidi === row.expectedMidi &&
+              previous.inputSource === row.inputSource &&
+              previous.completedAt >= row.completedAt
+          )
+      ),
       processedRunIds: current.profile.processedRunIds.filter((id) => !known.has(id)),
       delayedDueAt:
         current.profile.delayedDueAt !== baseline.profile.delayedDueAt
@@ -126,14 +139,94 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
         current.presentedFingerprints === previous.presentedFingerprints
       )
         return;
-      persist(api, current, fields, !initialized);
+      const latest = current.presentedFingerprints.at(-1);
+      persist(
+        api,
+        {
+          ...current,
+          presentedFingerprints:
+            current.presentedFingerprints !== previous.presentedFingerprints && latest
+              ? [latest]
+              : []
+        },
+        fields,
+        !initialized
+      );
     }
   });
   return {
     unsubscribe,
+    async knownFingerprints(store: ReadingStore<State>): Promise<readonly string[] | null> {
+      await ready;
+      let pending: Promise<void>;
+      do {
+        pending = writes;
+        await pending;
+      } while (pending !== writes);
+      if (!allowed) return null;
+      try {
+        const normalized = normalizeReadingState(await repository.load());
+        if (normalized.blocked) {
+          allowed = false;
+          store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: "invalid" }));
+          return null;
+        }
+        store.dispatch(
+          persistenceErrorChanged({ key: READ_ERROR, error: normalized.invalid ? "invalid" : null })
+        );
+        return [
+          ...new Set([
+            ...normalized.reading.presentedFingerprints,
+            ...store.getState().reading.presentedFingerprints
+          ])
+        ];
+      } catch {
+        allowed = false;
+        store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: "unavailable" }));
+        return null;
+      }
+    },
+    claimMaterial(store: ReadingStore<State>, fingerprint: string): Promise<boolean> {
+      let claimed = false;
+      const claim = writes.then(async () => {
+        await ready;
+        if (!allowed) return;
+        const locallyKnown = store.getState().reading.presentedFingerprints.includes(fingerprint);
+        try {
+          await repository.update((saved) => {
+            const normalized = normalizeReadingState(saved);
+            if (normalized.blocked) {
+              allowed = false;
+              throw new Error("future-schema");
+            }
+            claimed =
+              !locallyKnown && !normalized.reading.presentedFingerprints.includes(fingerprint);
+            return persisted({
+              ...normalized.reading,
+              presentedFingerprints: readingJournal([
+                ...normalized.reading.presentedFingerprints,
+                fingerprint
+              ])
+            });
+          });
+          store.dispatch(persistenceErrorChanged({ key: WRITE_ERROR, error: null }));
+          store.dispatch(readingActions.presented(fingerprint));
+        } catch {
+          claimed = false;
+          store.dispatch(persistenceErrorChanged({ key: WRITE_ERROR, error: "unavailable" }));
+          store.dispatch(readingActions.presented(fingerprint));
+        }
+      });
+      writes = claim;
+      return claim.then(() => claimed);
+    },
     flushed: async () => {
       await ready;
-      await writes;
+      let pending: Promise<void>;
+      do {
+        pending = writes;
+        await pending;
+      } while (pending !== writes);
     },
     initialize(store: ReadingStore<State>, baseline = store.getState().reading): Promise<void> {
       initialBaseline ??= baseline;

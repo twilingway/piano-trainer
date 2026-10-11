@@ -48,6 +48,107 @@ function deferred<T>() {
 }
 
 describe("reading preferences and progress", () => {
+  it("reads fresh authoritative fingerprints without dropping them behind a stale local journal", async () => {
+    const saved = emptyReadingState();
+    saved.presentedFingerprints = Array.from({ length: 256 }, (_, index) => `old-${String(index)}`);
+    const repository = createMemoryReadingRepository(saved);
+    const store = createAppStore({ storage: storage(), readingRepository: repository });
+    await store.readingPersistenceReady;
+    await repository.update((value) => ({
+      ...normalizeReadingState(value).reading,
+      presentedFingerprints: Array.from({ length: 256 }, (_, index) => `new-${String(index)}`)
+    }));
+    const known = await store.knownReadingFingerprints();
+    expect(known).toHaveLength(512);
+    expect(known).toContain("new-0");
+    expect(known).toContain("old-255");
+  });
+  it("blocks writes after a fresh novelty read fails", async () => {
+    let reads = 0;
+    const update = vi.fn();
+    const repository: ReadingRepository = {
+      load: () =>
+        ++reads === 1 ? Promise.resolve(undefined) : Promise.reject(new Error("read-failed")),
+      update
+    };
+    const store = createAppStore({ storage: storage(), readingRepository: repository });
+    await store.readingPersistenceReady;
+    expect(await store.knownReadingFingerprints()).toBe(null);
+    store.dispatch(readingActions.preferencesChanged({ nameDelayMs: 15000 }));
+    await store.flushReadingPersistence();
+    expect(update).not.toHaveBeenCalled();
+    expect(store.getState().persistence.errors["indexedDB:reading:read"]).toBe("unavailable");
+  });
+  it("waits for delayed hydration before claiming material and refreshes its MRU position", async () => {
+    const saved = emptyReadingState();
+    saved.presentedFingerprints = ["already-seen", "newer"];
+    const backing = createMemoryReadingRepository(saved);
+    const loaded = deferred<unknown>();
+    const store = createAppStore({
+      storage: storage(),
+      readingRepository: { ...backing, load: () => loaded.promise }
+    });
+    const claimed = store.claimReadingMaterial("already-seen");
+    loaded.resolve(saved);
+    expect(await claimed).toBe(false);
+    await store.flushReadingPersistence();
+    expect(normalizeReadingState(await backing.load()).reading.presentedFingerprints).toEqual([
+      "newer",
+      "already-seen"
+    ]);
+    expect(store.getState().reading.presentedFingerprints).toContain("already-seen");
+  });
+  it("commits material novelty once across two concurrent tabs", async () => {
+    const first = createAppStore({
+      storage: storage(),
+      readingRepository: defaultReadingRepository
+    });
+    const second = createAppStore({
+      storage: storage(),
+      readingRepository: defaultReadingRepository
+    });
+    await Promise.all([first.readingPersistenceReady, second.readingPersistenceReady]);
+    const claims = await Promise.all([
+      first.claimReadingMaterial("concurrent-claim"),
+      second.claimReadingMaterial("concurrent-claim")
+    ]);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    await Promise.all([first.flushReadingPersistence(), second.flushReadingPersistence()]);
+    expect(
+      normalizeReadingState(
+        await defaultReadingRepository.load()
+      ).reading.presentedFingerprints.filter((fp) => fp === "concurrent-claim")
+    ).toHaveLength(1);
+  });
+  it("reports failed material commit as unknown novelty while retaining a local presentation", async () => {
+    const store = createAppStore({
+      storage: storage(),
+      readingRepository: {
+        load: () => Promise.resolve(undefined),
+        update: () => Promise.reject(new Error("aborted"))
+      }
+    });
+    await store.readingPersistenceReady;
+    expect(await store.claimReadingMaterial("uncommitted")).toBe(false);
+    await store.flushReadingPersistence();
+    expect(store.getState().reading.presentedFingerprints).toContain("uncommitted");
+    expect(store.getState().persistence.errors["indexedDB:reading:write"]).toBe("unavailable");
+  });
+  it("keeps authoritative MRU order when a stale tab changes an unrelated preference", async () => {
+    const saved = emptyReadingState();
+    saved.presentedFingerprints = ["old", "recent"];
+    const repository = createMemoryReadingRepository(saved);
+    const first = createAppStore({ storage: storage(), readingRepository: repository });
+    const second = createAppStore({ storage: storage(), readingRepository: repository });
+    await Promise.all([first.readingPersistenceReady, second.readingPersistenceReady]);
+    expect(await first.claimReadingMaterial("old")).toBe(false);
+    second.dispatch(readingActions.preferencesChanged({ nameDelayMs: 15000 }));
+    await Promise.all([first.flushReadingPersistence(), second.flushReadingPersistence()]);
+    expect(normalizeReadingState(await repository.load()).reading.presentedFingerprints).toEqual([
+      "recent",
+      "old"
+    ]);
+  });
   it("gives IDB priority over untouched legacy progress even with pre-hydration writes", async () => {
     const old = { history: [result("legacy-backup")] };
     const saved = emptyReadingState();
@@ -93,10 +194,13 @@ describe("reading preferences and progress", () => {
     try {
       store.dispatch(readingActions.resultAdded(result("rolled-back")));
       await store.flushReadingPersistence();
+      expect(await store.claimReadingMaterial("rolled-back-claim")).toBe(false);
+      await store.flushReadingPersistence();
     } finally {
       put.mockRestore();
     }
     expect(store.getState().reading.history.some((row) => row.id === "rolled-back")).toBe(true);
+    expect(store.getState().reading.presentedFingerprints).toContain("rolled-back-claim");
     expect(store.getState().persistence.errors["indexedDB:reading:write"]).toBe("unavailable");
     expect(await defaultReadingRepository.load()).toEqual(before);
   });
