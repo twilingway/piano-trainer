@@ -24,8 +24,10 @@ const audio = vi.hoisted(() => ({
   ensure: vi.fn<() => Promise<boolean>>(),
   interrupted: new Set<() => void>(),
   start: vi.fn(),
-  reset: vi.fn()
+  reset: vi.fn(),
+  tap: vi.fn()
 }));
+vi.mock("../audio/rhythmTapSound", () => ({ soundRhythmTap: audio.tap }));
 vi.mock("../audio/pianoSound", () => ({
   soundAllOff: vi.fn(),
   audioTime: () => 0,
@@ -188,6 +190,7 @@ beforeEach(async () => {
   audio.interrupted.clear();
   audio.start.mockClear();
   audio.reset.mockClear();
+  audio.tap.mockClear();
   repository = createMemoryReadingRepository();
   store = createAppStore({
     storage: { getItem: () => null, setItem: () => undefined },
@@ -346,6 +349,33 @@ describe("rhythm preparation and ownership", () => {
 });
 
 describe("rhythm attacks and completed evidence", () => {
+  it("sounds local hits and extras once without changing their timestamps or grading", async () => {
+    select();
+    present();
+    await start();
+    const started = now;
+    space("keydown", started + 1000);
+    space("keyup", started + 1001);
+    expect(audio.tap).not.toHaveBeenCalled(); // The count-in is outside evaluation.
+    space("keydown", started + 4000);
+    space("keydown", started + 4001); // A held key does not produce another voice.
+    space("keyup", started + 4002);
+    space("keydown", started + 4500);
+    space("keyup", started + 4501); // Extra attack.
+    expect(audio.tap).toHaveBeenCalledTimes(2);
+    const exercise = course.exercise;
+    if (!exercise) throw new Error("Missing exercise");
+    frame(started + 4000 + exercise.durationS * 1000 + 251);
+    expect(course.result?.summary).toMatchObject({ hits: 1, misses: 9, extras: 1 });
+    expect(course.result?.attacks[0]).toMatchObject({
+      rawAtMs: started + 4000,
+      correctedAtMs: started + 4000,
+      deviationMs: 0
+    });
+    space("keydown", now + 1);
+    space("keyup", now + 2);
+    expect(audio.tap).toHaveBeenCalledTimes(2);
+  });
   it("finishes all ten pointer attacks on the shared clock and restores their raw evidence", async () => {
     select("pointer");
     present();
@@ -364,6 +394,7 @@ describe("rhythm attacks and completed evidence", () => {
     }
     frame(startMs + 4000 + exercise.durationS * 1000 + 251);
     expect(course.status).toBe("completed");
+    expect(audio.tap).toHaveBeenCalledTimes(10);
     expect(course.result?.summary).toMatchObject({
       expected: 10,
       hits: 10,
@@ -427,6 +458,7 @@ describe("rhythm attacks and completed evidence", () => {
       deviceId: "piano"
     });
     expect(course.result?.attacks[0]?.deviationMs).toBeCloseTo(100);
+    expect(audio.tap).not.toHaveBeenCalled();
   });
 });
 

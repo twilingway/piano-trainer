@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ensureMetronomeSound, metronomeSoundReady } from "../audio/pianoSound";
+import { soundRhythmTap } from "../audio/rhythmTapSound";
 import { generateRhythmExercise } from "../rhythm/generator";
 import { RhythmSession } from "../rhythm/session";
 import type { RhythmBpm, RhythmInputSource, RhythmOffsets, RhythmResult } from "../rhythm/types";
@@ -120,7 +121,7 @@ export function useRhythmCourse() {
               const session = sessionRef.current;
               const run = runRef.current;
               if (!session || !run || !["count-in", "running"].includes(statusRef.current)) return;
-              session.attack({
+              const attack = session.attack({
                 ...evidence,
                 runId: run.id,
                 source: evidence.event.source ?? "pointer",
@@ -130,6 +131,7 @@ export function useRhythmCourse() {
                 pitch: evidence.event.source === "midi" ? evidence.event.pitch : 60,
                 ...(evidence.event.channel === undefined ? {} : { channel: evidence.event.channel })
               });
+              if (attack && evidence.event.source !== "midi") soundRhythmTap();
             },
             onFrame(practice, playing) {
               if (!sessionRef.current || !["count-in", "running"].includes(statusRef.current))

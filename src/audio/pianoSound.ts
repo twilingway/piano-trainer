@@ -9,6 +9,7 @@ import {
   SAMPLE_PITCHES
 } from "./pianoSamples";
 import { cancelScheduledVoices } from "./scheduledVoices";
+import { stopRhythmTapSound } from "./rhythmTapSound";
 
 /*
  * The hand the program plays, voiced by the Salamander grand samples, one
@@ -81,6 +82,7 @@ export function soundNoteOff(pitch: number, at?: number): void {
 }
 
 export function soundAllOff(): void {
+  stopRhythmTapSound();
   cancelScheduledVoices();
   for (const sampler of samplers.values()) sampler.releaseAll();
   click?.dispose();
