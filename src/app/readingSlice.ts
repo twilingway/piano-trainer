@@ -10,6 +10,8 @@ import { addReadingResult, emptyReadingProfile, readingPurpose } from "../readin
 import type { ReadingPlan, ReadingProfile, ReadingSourceFilter } from "../reading/progressTypes";
 import type { IntervalMode, IntervalResult } from "../intervals/types";
 import type { RhythmBpm, RhythmInputSource, RhythmResult } from "../rhythm/types";
+import type { BassReadingResult, BassReadingTask } from "../reading/bassTypes";
+import { emptyBassState, mergeBassHistory, type BassPersistentState } from "./bassPersistence";
 import {
   emptyRhythmState,
   mergeRhythmHistory,
@@ -22,10 +24,11 @@ import {
 } from "./intervalPersistence";
 
 export interface ReadingState {
-  schemaVersion: 4;
-  activeCourse: "note-reading" | "interval-training" | "rhythm-training" | null;
+  schemaVersion: 5;
+  activeCourse: "note-reading" | "interval-training" | "rhythm-training" | "bass-reading" | null;
   intervals: IntervalPersistentState;
   rhythm: RhythmPersistentState;
+  bass: BassPersistentState;
   task: ReadingTask | null;
   seed: number;
   preferences: ReadingPreferences;
@@ -41,10 +44,11 @@ export interface ReadingRoot {
   reading: ReadingState;
 }
 export const initialReadingState: ReadingState = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   activeCourse: null,
   intervals: emptyIntervalState(),
   rhythm: emptyRhythmState(),
+  bass: emptyBassState(),
   task: null,
   seed: 1,
   preferences: DEFAULT_READING_PREFERENCES,
@@ -125,6 +129,22 @@ const readingSlice = createSlice({
     rhythmResultAdded(state, { payload }: PayloadAction<RhythmResult>) {
       state.rhythm.history = mergeRhythmHistory(state.rhythm.history, [payload]);
     },
+    bassSelected(
+      state,
+      { payload }: PayloadAction<{ task: BassReadingTask; seed: number; generatorVersion?: number }>
+    ) {
+      state.activeCourse = "bass-reading";
+      state.bass.task = payload.task;
+      state.bass.seed = payload.seed >>> 0;
+      state.bass.generatorVersion = payload.generatorVersion ?? 1;
+      state.selectionRevision++;
+    },
+    bassSourceFilterChanged(state, { payload }: PayloadAction<ReadingSourceFilter>) {
+      state.bass.sourceFilter = payload;
+    },
+    bassResultAdded(state, { payload }: PayloadAction<BassReadingResult>) {
+      state.bass.history = mergeBassHistory(state.bass.history, [payload]);
+    },
     hydrated(state, { payload }: PayloadAction<ReadingState>) {
       return { ...payload, selectionRevision: state.selectionRevision };
     },
@@ -140,6 +160,8 @@ const readingSlice = createSlice({
       state.preferences = normalizeReadingPreferences({ ...state.preferences, ...payload });
     },
     resultAdded(state, { payload }: PayloadAction<ReadingResult>) {
+      if (payload.skillId !== undefined && payload.skillId !== "note-reading") return;
+      if (payload.notes.some((note) => ![60, 62, 64, 65, 67].includes(note.expectedMidi))) return;
       if (
         state.history.some((result) => result.id === payload.id) ||
         state.profile.processedRunIds.includes(payload.runId ?? payload.id)

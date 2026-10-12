@@ -7,7 +7,7 @@ import type { Hand } from "../fingering/fingering";
 import type { PracticeMode, PracticeOptions } from "../practice/session";
 import { Trainer } from "../practice/Trainer";
 import { RHYTHM_PRACTICE_OPTIONS } from "../practice/rhythmPolicy";
-import { READING_PRACTICE_OPTIONS } from "../practice/readingPolicy";
+import { BASS_READING_PRACTICE_OPTIONS, READING_PRACTICE_OPTIONS } from "../practice/readingPolicy";
 import type { RunCompletion } from "../practice/runCompletion";
 import type { Take } from "../recording/take";
 import { FallingNotesView } from "../render/FallingNotesView";
@@ -30,6 +30,7 @@ const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
 interface Options {
   readonly pianoBlocked?: boolean;
   readonly reading?: boolean;
+  readonly readingHand?: Hand;
   readonly rhythm?: boolean;
   readonly course?:
     | {
@@ -93,6 +94,7 @@ export function useTrainer({
   gameOptions,
   ranked = false,
   reading = false,
+  readingHand = "right",
   rhythm = false,
   pianoBlocked = false,
   wordTyping = false
@@ -161,7 +163,9 @@ export function useTrainer({
   };
   const handChoice =
     reading || rhythm
-      ? "right"
+      ? reading
+        ? readingHand
+        : "right"
       : course
         ? listening
           ? "listen"
@@ -281,7 +285,8 @@ export function useTrainer({
 
   const practiceOptions = useMemo<PracticeOptions>(() => {
     if (rhythm) return RHYTHM_PRACTICE_OPTIONS;
-    if (reading) return READING_PRACTICE_OPTIONS;
+    if (reading)
+      return readingHand === "left" ? BASS_READING_PRACTICE_OPTIONS : READING_PRACTICE_OPTIONS;
     if (listening) return { mode: "tempo", hands: new Set<Hand>(), speed };
     if (partRole) {
       const parts = (song.parts ?? []).filter((part) => part.role === partRole);
@@ -307,6 +312,7 @@ export function useTrainer({
     gameOptions,
     wordTyping,
     reading,
+    readingHand,
     rhythm
   ]);
 

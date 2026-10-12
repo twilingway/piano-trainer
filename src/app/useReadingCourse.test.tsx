@@ -52,10 +52,19 @@ function selection(task: "notes" | "phrases" | "check" = "notes") {
   act(() => {
     store.dispatch(readingActions.select({ task, seed: 42 }));
   });
+  return practiceForSelection("right");
+}
+function bassSelection(task: "notes" | "phrases" = "notes") {
+  act(() => {
+    reading.startBass(task);
+  });
+  return practiceForSelection("left");
+}
+function practiceForSelection(hand: "left" | "right") {
   if (!reading.exercise) throw new Error("No exercise");
   const practice = new PracticeSession(reading.exercise.song, {
     mode: "wait",
-    hands: new Set(["right"]),
+    hands: new Set([hand]),
     speed: 1,
     accompaniment: false
   });
@@ -134,6 +143,101 @@ afterEach(() => {
 });
 
 describe("reading course presentation and trainer wiring", () => {
+  it("saves a complete bass run separately after a wrong octave without altering P2 evidence", async () => {
+    await act(async () => {
+      await store.readingPersistenceReady;
+    });
+    const previous = store.getState().reading;
+    const profile = JSON.stringify(previous.profile);
+    const practice = bassSelection();
+    present();
+    const pitch = practice.nextDue()[0]?.pitch;
+    if (pitch === undefined) throw new Error("No bass pitch");
+    const wrong = { ...event(practice), pitch: pitch + 12, timestamp: 1100 };
+    act(() => {
+      reading.policy?.onJudgement(wrong, practice.pressKeyAt(wrong.pitch, 1100), 1100, 1100);
+    });
+    expect(reading.snapshot?.answers).toEqual([]);
+    answer(practice, 1200);
+    for (let index = 1; index < 20; index++) {
+      const arrival = 1000 + index * 700;
+      practice.tick(arrival);
+      update(practice, true, arrival);
+      present(arrival);
+      answer(practice, arrival + 100);
+    }
+    act(() => {
+      reading.finish();
+      reading.finish();
+    });
+    await act(async () => {
+      await store.flushReadingPersistence();
+    });
+    expect(reading.bassResult?.notes).toHaveLength(20);
+    expect(reading.bassResult?.notes[0]).toMatchObject({
+      firstAttemptCorrect: false,
+      independentCorrect: false,
+      unassistedSolved: true
+    });
+    expect(store.getState().reading.bass.history).toHaveLength(1);
+    expect(store.getState().reading.history).toEqual(previous.history);
+    expect(JSON.stringify(store.getState().reading.profile)).toBe(profile);
+    expect(store.getState().reading.presentedFingerprints).toEqual(previous.presentedFingerprints);
+    expect(store.getState().reading.intervals).toEqual(previous.intervals);
+    expect(store.getState().reading.rhythm).toEqual(previous.rhythm);
+    const sequence = reading.exercise?.song.notes.map((note) => note.pitch);
+    act(() => {
+      reading.newSeries();
+    });
+    expect(reading.exercise?.song.notes.map((note) => note.pitch)).not.toEqual(sequence);
+    expect(reading.bassResult).toBeNull();
+    expect(reading.snapshot?.answers).toEqual([]);
+  });
+
+  it("offers bass help even when the previous right-hand selection was a check", () => {
+    selection("check");
+    const practice = bassSelection("phrases");
+    present();
+    act(() => {
+      reading.hint();
+    });
+    frame(1016);
+    expect(reading.snapshot?.hintLevel).toBe(1);
+    expect(reading.exercise?.song.notes.every((note) => note.hand === "left")).toBe(true);
+    expect(reading.prompt?.musicXml.match(/<note[ >]/g)).toHaveLength(4);
+    const session = reading.session;
+    act(() => {
+      reading.setBassSourceFilter("pointer");
+    });
+    expect(reading.session).toBe(session);
+    answer(practice, 1100);
+    expect(reading.snapshot?.answers[0]).toMatchObject({
+      firstAttemptCorrect: true,
+      independentCorrect: false,
+      hintLevel: 1
+    });
+  });
+
+  it("admits bass attacks only after the current presentation receipt, including delayed RAF callbacks", () => {
+    const practice = bassSelection();
+    now = 1050;
+    act(() => {
+      const presentation = reading.presentation;
+      if (presentation) presentation.onPresented(presentation.id, 1000);
+    });
+    expect(reading.policy?.allowInput(event(practice), practice, 1049)).toBe(false);
+    answer(practice, 1100);
+    expect(reading.snapshot?.answers[0]?.responseLatencyMs).toBe(50);
+    const old = reading.presentation;
+    const next = selection();
+    act(() => {
+      old?.onPresented(old.id, 1200);
+    });
+    expect(accepts(next)).toBe(false);
+    expect(reading.isBass).toBe(false);
+    expect(store.getState().reading.bass.history).toEqual([]);
+  });
+
   it("preserves an already presented legacy selection when different IndexedDB selection loads late", async () => {
     let release!: (saved: unknown) => void;
     const loaded = new Promise<unknown>((resolve) => {

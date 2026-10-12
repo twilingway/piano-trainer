@@ -44,7 +44,7 @@ export function ConnectedReadingPractice() {
   const reading = useRuntimeSelector((runtime) => runtime.reading);
   return (
     <>
-      {reading.intro && (
+      {reading.intro && reading.introCourse !== "bass" && (
         <ReadingIntro
           onStart={() => {
             reading.setIntro(false);
@@ -55,7 +55,7 @@ export function ConnectedReadingPractice() {
           }}
         />
       )}
-      {reading.task && (
+      {reading.task && !reading.isBass && (
         <ReadingPracticePanel
           task={reading.task}
           purpose={reading.purpose ?? reading.task}

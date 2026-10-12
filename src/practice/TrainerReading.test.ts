@@ -3,6 +3,7 @@ import type { FallingNotesView } from "../render/FallingNotesView";
 import type { Song } from "../song/song";
 import { Trainer, type TrainerSnapshot } from "./Trainer";
 import type { TrainerReadingPolicy } from "./readingPolicy";
+import { BASS_READING_PRACTICE_OPTIONS, READING_PRACTICE_OPTIONS } from "./readingPolicy";
 
 vi.mock("../audio/pianoSound", () => ({ soundAllOff: vi.fn() }));
 vi.mock("../audio/sessionAudio", () => ({
@@ -29,7 +30,7 @@ beforeEach(() => {
   vi.spyOn(performance, "now").mockImplementation(() => now);
 });
 afterEach(() => vi.restoreAllMocks());
-function fixture() {
+function fixture(song = SONG, bass = false) {
   let ticker: (ms: number) => void = () => undefined;
   const view = {
     onTick: (fn: (ms: number) => void) => {
@@ -41,11 +42,7 @@ function fixture() {
   const trainer = new Trainer(view as unknown as FallingNotesView);
   const snapshots: TrainerSnapshot[] = [];
   trainer.onSnapshot = (snapshot) => snapshots.push(snapshot);
-  trainer.load(
-    SONG,
-    { mode: "wait", hands: new Set(["right"]), speed: 1, accompaniment: false },
-    "reading"
-  );
+  trainer.load(song, bass ? BASS_READING_PRACTICE_OPTIONS : READING_PRACTICE_OPTIONS, "reading");
   let ready = false;
   let cue: number | undefined;
   const policy: TrainerReadingPolicy = {
@@ -84,6 +81,31 @@ function fixture() {
   };
 }
 describe("reading input policy", () => {
+  it("waits for fresh left-hand bass input without accompaniment or octave remapping", () => {
+    const song: Song = {
+      ...SONG,
+      notes: SONG.notes.map((note) => ({ ...note, pitch: 48, hand: "left" }))
+    };
+    const run = fixture(song, true);
+    run.frame(3000);
+    expect(run.latest()?.stats.hits).toBe(0);
+    expect(run.view.draw.mock.lastCall?.[0].hintNotes).toEqual([]);
+    run.ready();
+    run.key("down", 60, "keyboard");
+    expect(run.latest()?.stats.wrong).toBe(1);
+    expect(run.latest()?.stats.hits).toBe(0);
+    run.key("down", 48, "pointer");
+    expect(run.latest()?.stats.hits).toBe(1);
+    run.frame(3500);
+    run.key("down", 48, "pointer");
+    expect(run.latest()?.stats.hits).toBe(1);
+    run.key("up", 48, "pointer");
+    run.key("down", 48, "pointer");
+    expect(run.latest()?.stats.hits).toBe(2);
+    expect(run.latest()?.stats.misses).toBe(0);
+    expect(run.policy.onJudgement).toHaveBeenCalledTimes(3);
+  });
+
   it("does not accept an unseen note or a held key after readiness", () => {
     const run = fixture();
     run.frame(3000);

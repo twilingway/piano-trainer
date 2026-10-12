@@ -3,19 +3,8 @@ import {
   type ReadingResult,
   type ReadingTask
 } from "../reading/types";
-import {
-  addReadingResult,
-  emptyReadingProfile,
-  readingPurpose,
-  readingIndependentDates
-} from "../reading/progress";
-import type {
-  ReadingObservation,
-  ReadingIndependentDate,
-  ReadingPlan,
-  ReadingProfile,
-  ReadingSourceFilter
-} from "../reading/progressTypes";
+import { addReadingResult, emptyReadingProfile, readingPurpose } from "../reading/progress";
+import type { ReadingPlan, ReadingSourceFilter } from "../reading/progressTypes";
 import type { ReadingState } from "./readingSlice";
 import {
   emptyIntervalState,
@@ -23,6 +12,13 @@ import {
   normalizeIntervalState
 } from "./intervalPersistence";
 import { emptyRhythmState, mergeRhythmHistory, normalizeRhythmState } from "./rhythmPersistence";
+import { emptyBassState, mergeBassHistory, normalizeBassState } from "./bassPersistence";
+import {
+  validObservation,
+  validIndependentDate,
+  mergeReadingProfiles
+} from "./readingProfileMigration";
+export { mergeReadingProfiles } from "./readingProfileMigration";
 
 export const object = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -85,6 +81,7 @@ function normalizePlan(value: unknown, selectedTask?: ReadingTask | null): Readi
 function validResult(value: unknown): value is ReadingResult {
   const row = object(value);
   if (
+    (row.skillId !== undefined && row.skillId !== "note-reading") ||
     !text(row.id) ||
     !text(row.exerciseId) ||
     !task(row.task) ||
@@ -183,80 +180,13 @@ function migrateResult(value: ReadingResult): ReadingResult {
   };
 }
 
-function validObservation(value: unknown): value is ReadingObservation {
-  const row = object(value);
-  return (
-    text(row.runId) &&
-    text(row.noteId) &&
-    purpose(row.purpose) &&
-    finite(row.completedAt) &&
-    finite(row.expectedMidi) &&
-    [60, 62, 64, 65, 67].includes(row.expectedMidi) &&
-    source(row.inputSource) &&
-    [row.firstAttemptCorrect, row.independentCorrect, row.unassistedSolved].every(
-      (flag) => typeof flag === "boolean"
-    ) &&
-    nullableFinite(row.firstLatencyMs) &&
-    nullableFinite(row.responseLatencyMs) &&
-    finite(row.errorCount) &&
-    Number.isInteger(row.errorCount)
-  );
-}
-
-function validIndependentDate(value: unknown): value is ReadingIndependentDate {
-  const row = object(value);
-  return (
-    finite(row.expectedMidi) &&
-    [60, 62, 64, 65, 67].includes(row.expectedMidi) &&
-    source(row.inputSource) &&
-    finite(row.completedAt)
-  );
-}
-
-/** Compact observations survive detailed-history pruning. */
-export function mergeReadingProfiles(
-  saved: ReadingProfile,
-  incoming: ReadingProfile
-): ReadingProfile {
-  const observations = new Map<string, ReadingObservation>();
-  for (const row of [...saved.observations, ...incoming.observations]) {
-    const key = JSON.stringify([row.runId, row.noteId]);
-    if (!observations.has(key)) observations.set(key, row);
-  }
-  const groups = new Map<string, ReadingObservation[]>();
-  for (const row of [...observations.values()].sort(
-    (a, b) => a.completedAt - b.completedAt || a.runId.localeCompare(b.runId)
-  )) {
-    const key = JSON.stringify([row.expectedMidi, row.purpose, row.inputSource]);
-    const group = groups.get(key) ?? [];
-    group.push(row);
-    groups.set(key, group.slice(-20));
-  }
-  const due = [saved.delayedDueAt, incoming.delayedDueAt].filter(finite);
-  return {
-    observations: [...groups.values()]
-      .flat()
-      .sort(
-        (a, b) =>
-          a.completedAt - b.completedAt ||
-          a.runId.localeCompare(b.runId) ||
-          a.noteId.localeCompare(b.noteId)
-      ),
-    lastIndependent: readingIndependentDates(
-      [...observations.values()],
-      [...saved.lastIndependent, ...incoming.lastIndependent]
-    ),
-    processedRunIds: unique([...saved.processedRunIds, ...incoming.processedRunIds]),
-    delayedDueAt: due.length ? Math.max(...due) : null
-  };
-}
-
 export function emptyReadingState(): ReadingState {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     activeCourse: null,
     intervals: emptyIntervalState(),
     rhythm: emptyRhythmState(),
+    bass: emptyBassState(),
     selectionRevision: 0,
     task: null,
     seed: 1,
@@ -277,29 +207,34 @@ export function normalizeReadingState(value: unknown): {
   const reading = emptyReadingState();
   if (value === undefined) return { reading, invalid: false, blocked: false };
   const row = object(value);
-  if (typeof row.schemaVersion === "number" && row.schemaVersion > 4)
+  if (typeof row.schemaVersion === "number" && row.schemaVersion > 5)
     return { reading, invalid: false, blocked: true };
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    (row.schemaVersion !== undefined && ![1, 2, 3, 4].includes(row.schemaVersion as number))
+    (row.schemaVersion !== undefined && ![1, 2, 3, 4, 5].includes(row.schemaVersion as number))
   )
     return { reading, invalid: true, blocked: false };
   reading.task = task(row.task) ? row.task : null;
-  const modern = row.schemaVersion === 3 || row.schemaVersion === 4;
+  const modern = [3, 4, 5].includes(row.schemaVersion as number);
+  const hasRhythm = row.schemaVersion === 4 || row.schemaVersion === 5;
   const intervalState = normalizeIntervalState(modern ? row.intervals : undefined);
   reading.intervals = intervalState.intervals;
-  const rhythmState = normalizeRhythmState(row.schemaVersion === 4 ? row.rhythm : undefined);
+  const rhythmState = normalizeRhythmState(hasRhythm ? row.rhythm : undefined);
   reading.rhythm = rhythmState.rhythm;
+  const bassState = normalizeBassState(row.schemaVersion === 5 ? row.bass : undefined);
+  reading.bass = bassState.bass;
   reading.activeCourse = modern
     ? row.activeCourse === "note-reading" && reading.task
       ? "note-reading"
       : row.activeCourse === "interval-training" && reading.intervals.mode
         ? "interval-training"
-        : row.schemaVersion === 4 && row.activeCourse === "rhythm-training"
+        : hasRhythm && row.activeCourse === "rhythm-training"
           ? "rhythm-training"
-          : null
+          : row.schemaVersion === 5 && row.activeCourse === "bass-reading"
+            ? "bass-reading"
+            : null
     : reading.task
       ? "note-reading"
       : null;
@@ -311,7 +246,9 @@ export function normalizeReadingState(value: unknown): {
   let invalid =
     intervalState.invalid ||
     rhythmState.invalid ||
-    (row.schemaVersion === 4 && row.rhythm === undefined) ||
+    bassState.invalid ||
+    (row.schemaVersion === 5 && row.bass === undefined) ||
+    (hasRhythm && row.rhythm === undefined) ||
     (modern && row.intervals === undefined) ||
     (modern && row.activeCourse === "note-reading" && reading.task === null) ||
     (modern && row.activeCourse === "interval-training" && reading.intervals.mode === null) ||
@@ -320,7 +257,8 @@ export function normalizeReadingState(value: unknown): {
         null,
         "note-reading",
         "interval-training",
-        ...(row.schemaVersion === 4 ? ["rhythm-training"] : [])
+        ...(hasRhythm ? ["rhythm-training"] : []),
+        ...(row.schemaVersion === 5 ? ["bass-reading"] : [])
       ].includes(row.activeCourse as null | string)) ||
     (row.plan !== undefined && row.plan !== null && reading.plan === null) ||
     history.some((result) => !validResult(result));
@@ -390,6 +328,8 @@ export type ReadingPersistentField =
   | "intervalSelection"
   | "intervalSourceFilter"
   | "rhythmSelection"
+  | "bassSelection"
+  | "bassSourceFilter"
   | "automaticHints"
   | "nameDelayMs"
   | "keyDelayMs"
@@ -427,6 +367,15 @@ export function changedReadingFields(
     current.rhythm.generatorVersion !== baseline.rhythm.generatorVersion
   )
     fields.push("rhythmSelection");
+  if (
+    (current.selectionRevision !== baseline.selectionRevision &&
+      current.activeCourse === "bass-reading") ||
+    current.bass.task !== baseline.bass.task ||
+    current.bass.seed !== baseline.bass.seed ||
+    current.bass.generatorVersion !== baseline.bass.generatorVersion
+  )
+    fields.push("bassSelection");
+  if (current.bass.sourceFilter !== baseline.bass.sourceFilter) fields.push("bassSourceFilter");
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (current.preferences[key] !== baseline.preferences[key]) fields.push(key);
   }
@@ -443,6 +392,8 @@ export function mergeReadingState(
     "intervalSelection",
     "intervalSourceFilter",
     "rhythmSelection",
+    "bassSelection",
+    "bassSourceFilter",
     "automaticHints",
     "nameDelayMs",
     "keyDelayMs",
@@ -452,6 +403,7 @@ export function mergeReadingState(
   const selection = fields.includes("selection") ? incoming : saved;
   const intervals = fields.includes("intervalSelection") ? incoming.intervals : saved.intervals;
   const rhythm = fields.includes("rhythmSelection") ? incoming.rhythm : saved.rhythm;
+  const bass = fields.includes("bassSelection") ? incoming.bass : saved.bass;
   const preferences = { ...saved.preferences };
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (fields.includes(key)) Object.assign(preferences, { [key]: incoming.preferences[key] });
@@ -462,7 +414,7 @@ export function mergeReadingState(
     ).values()
   ].sort((a, b) => (a.completedAt ?? a.createdAt) - (b.completedAt ?? b.createdAt));
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     activeCourse: fields.includes("activeCourse") ? incoming.activeCourse : saved.activeCourse,
     intervals: {
       ...intervals,
@@ -474,6 +426,13 @@ export function mergeReadingState(
     rhythm: {
       ...rhythm,
       history: mergeRhythmHistory(saved.rhythm.history, incoming.rhythm.history)
+    },
+    bass: {
+      ...bass,
+      sourceFilter: fields.includes("bassSourceFilter")
+        ? incoming.bass.sourceFilter
+        : saved.bass.sourceFilter,
+      history: mergeBassHistory(saved.bass.history, incoming.bass.history)
     },
     selectionRevision: incoming.selectionRevision,
     task: selection.task,
