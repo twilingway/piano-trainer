@@ -7,8 +7,16 @@ import {
   startPianoSound,
   startSoundOnFirstGesture,
   ensureMetronomeSound,
-  metronomeSoundReady
+  metronomeSoundReady,
+  soundAllOff
 } from "./pianoSound";
+import { stopRhythmTapSound } from "./rhythmTapSound";
+vi.mock("./rhythmTapSound", () => ({ stopRhythmTapSound: vi.fn() }));
+
+it("stops local rhythm voices when the trainer silences playback", () => {
+  soundAllOff();
+  expect(stopRhythmTapSound).toHaveBeenCalledOnce();
+});
 
 it("prepares a metronome without waiting for piano samples and detects silent output", async () => {
   audio.start.mockResolvedValueOnce(undefined);
