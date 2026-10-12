@@ -7,6 +7,7 @@ import { LESSONS } from "./lessons";
 import { PREVIOUS_COURSE_LESSONS } from "./courseCatalog";
 import { ConnectedCourseCards } from "./ConnectedCourse";
 import { ConnectedReadingCard } from "./ConnectedReading";
+import { ConnectedRhythmCard } from "./ConnectedRhythm";
 import { ConnectedIntervalCard } from "./ConnectedIntervals";
 import { phraseCompleted, nextSelection } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
@@ -127,6 +128,7 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
         <>
           <ConnectedReadingCard onChoose={onClose} />
           <ConnectedIntervalCard onChoose={onClose} />
+          <ConnectedRhythmCard onChoose={onClose} />
           <ConnectedCourseCards onChoose={onClose} />
         </>
       }

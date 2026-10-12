@@ -2,6 +2,7 @@ import { soundAllOff } from "../audio/pianoSound";
 import { SessionAudio } from "../audio/sessionAudio";
 import type { KeyEvent } from "../input/midiInput";
 import type { FallingNotesView } from "../render/FallingNotesView";
+import { recordKeyInput } from "../recording/recordInput";
 import { TakeRecorder } from "../recording/take";
 import type { Take } from "../recording/take";
 import { quartersAt } from "../song/song";
@@ -13,11 +14,14 @@ import type { RunCompletion } from "./runCompletion";
 import { PracticeSession } from "./session";
 import type { PracticeEvent, PracticeOptions } from "./session";
 import type { TimingConfig } from "./timingConfig";
+import { maximumInputCompensation } from "./timingConfig";
 import { SongTimeline } from "./timing";
 import { beatAt } from "./sessionBeats";
 export { beatAt } from "./sessionBeats";
 import { timingPolicy } from "./timingPolicy";
 import { ReadingAttackGate, trainerGuidance, type TrainerReadingPolicy } from "./readingPolicy";
+import { processRhythmKey } from "./rhythmPolicy";
+import type { TrainerRhythmPolicy } from "./rhythmPolicy";
 import type { InputDiagnostic, TrainerSnapshot } from "./trainerSnapshot";
 export type { InputDiagnostic, TrainerSnapshot } from "./trainerSnapshot";
 
@@ -47,10 +51,14 @@ export class Trainer {
   canStart = true;
   onInput: ((event: KeyEvent) => boolean) | undefined;
   private reading: TrainerReadingPolicy | null = null;
+  private rhythm: TrainerRhythmPolicy | null = null;
   private readonly readingGate = new ReadingAttackGate();
 
   configureReading(policy: TrainerReadingPolicy | null): void {
     this.reading = policy;
+  }
+  configureRhythm(policy: TrainerRhythmPolicy | null): void {
+    this.rhythm = policy;
   }
   private timing: TrainerTiming = {
     inputOffsets: {},
@@ -182,13 +190,7 @@ export class Trainer {
     if (this.playing && !wasPlaying && !this.recorder) this.timing = this.nextTiming;
     if (session)
       session.setInputGrace(
-        Math.max(
-          0,
-          ...Object.values(this.timing.inputOffsets).map(
-            (offset) => offset + this.timing.manualInputOffsetMs
-          ),
-          this.timing.manualInputOffsetMs
-        )
+        this.rhythm ? this.rhythm.inputCompensationMs() : maximumInputCompensation(this.timing)
       );
     if (!this.playing) this.silence();
     const now = performance.now();
@@ -201,7 +203,7 @@ export class Trainer {
     if (this.playing && !wasPlaying && session) {
       if (this.recorder) {
         this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 1);
-      } else if (session.options.hands.size > 0) {
+      } else if (session.options.hands.size > 0 && !this.rhythm) {
         // A listen-through has no player: nothing to record.
         this.recorder = new TakeRecorder({
           songKey: this.songKey,
@@ -225,11 +227,27 @@ export class Trainer {
     if (!this.playing && wasPlaying)
       this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 0);
     if (session) this.reading?.onFrame(session, this.playing, now);
+    if (session) this.rhythm?.onFrame(session, this.playing, now);
     this.publish();
   }
 
   key(event: KeyEvent): void {
-    if (this.onInput?.(event)) return;
+    if (this.onInput?.(event) && !(this.rhythm && event.type === "up")) return;
+    if (this.rhythm) {
+      this.apply(
+        processRhythmKey(
+          event,
+          this.session,
+          this.rhythm,
+          this.readingGate,
+          this.timing,
+          this.playing
+        )
+      );
+      if (this.session) this.rhythm.onFrame(this.session, this.playing, performance.now());
+      this.publish();
+      return;
+    }
     if (
       this.allowedDeviceId &&
       event.deviceId !== this.allowedDeviceId &&
@@ -265,33 +283,16 @@ export class Trainer {
       this.publish();
       return;
     }
-    if (this.recorder && session) {
-      const inputTiming = {
-        rawTimestampMs: raw,
-        correctedTimestampMs: corrected,
-        inputOffsetMs: offset,
-        source: event.source ?? "pointer"
-      };
-      // Releases are kept even while paused: a key held over the pause still ends somewhere.
-      if (event.type === "down") {
-        this.recorder.noteOn(
-          event.pitch,
-          event.velocity,
-          eventTime,
-          this.realTime(corrected),
-          event.deviceId,
-          inputTiming
-        );
-      } else {
-        this.recorder.noteOff(
-          event.pitch,
-          eventTime,
-          this.realTime(corrected),
-          event.deviceId,
-          inputTiming
-        );
-      }
-    }
+    if (this.recorder && session)
+      recordKeyInput(
+        this.recorder,
+        event,
+        eventTime,
+        this.realTime(corrected),
+        raw,
+        corrected,
+        offset
+      );
     if (event.type === "down" && session) {
       if (
         this.reading &&
@@ -320,6 +321,7 @@ export class Trainer {
   configureTiming(timing: TrainerTiming): void {
     this.nextTiming = timing;
   }
+
   configureControls(controls: {
     loop: boolean;
     stopOnError: boolean;
@@ -360,6 +362,7 @@ export class Trainer {
     this.onRunFinished = undefined;
     this.onInput = undefined;
     this.reading = null;
+    this.rhythm = null;
     this.readingGate.clear();
   }
 
@@ -376,7 +379,8 @@ export class Trainer {
     return this.session
       ? quartersAt(
           this.session.song,
-          this.session.time - (this.timing.visualOffsetMs / 1000) * this.session.options.speed
+          Math.min(this.session.time, this.rhythm ? this.session.song.duration : Infinity) -
+            (this.timing.visualOffsetMs / 1000) * this.session.options.speed
         )
       : 0;
   }
@@ -387,6 +391,7 @@ export class Trainer {
   }
 
   pedal(down: boolean, timestamp = performance.now(), deviceId = ""): void {
+    if (this.rhythm) return;
     if (this.recorder && this.session) {
       if (performance.now() - timestamp > 250) return;
       const corrected =
@@ -422,6 +427,7 @@ export class Trainer {
     const now = performance.now();
     if (this.playing) this.apply(session.tick(now));
     this.reading?.onFrame(session, this.playing, now);
+    this.rhythm?.onFrame(session, this.playing, now);
     const guidance = trainerGuidance(session, this.reading, this.playing, this.performanceMode);
     this.onLights?.(guidance.lights);
     this.view.draw({
@@ -438,7 +444,7 @@ export class Trainer {
       owns: session.owns,
       colorOf: this.comparison?.colorOf,
       board: this.board ?? this.combo.board(),
-      graded: this.graded
+      graded: this.rhythm ? [] : this.graded
     });
     const cue = guidance.lights[0];
     if (cue !== undefined) this.reading?.onCuePresented?.(cue, now);

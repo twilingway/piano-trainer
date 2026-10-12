@@ -59,11 +59,16 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
   const historyIds = new Set(baseline.history.map((result) => result.runId ?? result.id));
   const fingerprints = new Set(baseline.presentedFingerprints);
   const intervalRuns = new Set(baseline.intervals.history.map((result) => result.runId));
+  const rhythmRuns = new Set(baseline.rhythm.history.map((result) => result.runId));
   return {
     ...current,
     intervals: {
       ...current.intervals,
       history: current.intervals.history.filter((result) => !intervalRuns.has(result.runId))
+    },
+    rhythm: {
+      ...current.rhythm,
+      history: current.rhythm.history.filter((result) => !rhythmRuns.has(result.runId))
     },
     history: current.history.filter((result) => !historyIds.has(result.runId ?? result.id)),
     profile: {
@@ -143,7 +148,8 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
         current.history === previous.history &&
         current.profile === previous.profile &&
         current.presentedFingerprints === previous.presentedFingerprints &&
-        current.intervals.history === previous.intervals.history
+        current.intervals.history === previous.intervals.history &&
+        current.rhythm.history === previous.rhythm.history
       )
         return;
       const latest = current.presentedFingerprints.at(-1);

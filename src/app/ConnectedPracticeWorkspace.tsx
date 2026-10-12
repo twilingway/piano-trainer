@@ -8,6 +8,7 @@ import {
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedPianoTabs } from "./ConnectedCourse";
 import { ConnectedReadingPractice } from "./ConnectedReading";
+import { ConnectedRhythmPractice } from "./ConnectedRhythm";
 import { ConnectedIntervalPractice } from "./ConnectedIntervals";
 
 import { shallowEqual } from "react-redux";
@@ -39,7 +40,8 @@ export function ConnectedPracticeWorkspace() {
     viewMirrorHostRef,
     courseTabs,
     courseTopView,
-    reading
+    reading,
+    rhythm
   } = useRuntimeSelector(
     (runtime) => ({
       displayPrefs: runtime.displayPrefs,
@@ -66,6 +68,7 @@ export function ConnectedPracticeWorkspace() {
       trainerHostRef: runtime.trainer.hostRef,
       snapshotWaiting: runtime.snapshot.waiting,
       viewMirrorHostRef: runtime.view.mirrorHostRef,
+      rhythm: runtime.rhythm,
       reading: runtime.intervals.active ? runtime.intervals : runtime.reading,
       courseTabs:
         !runtime.practiceActive &&
@@ -85,6 +88,7 @@ export function ConnectedPracticeWorkspace() {
     <>
       <ConnectedReadingPractice />
       <ConnectedIntervalPractice />
+      <ConnectedRhythmPractice />
       <ConnectedWorkspace
         scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
         scoreFirst={courseTopView}
@@ -113,7 +117,8 @@ export function ConnectedPracticeWorkspace() {
           ) : undefined
         }
         gameBoard={
-          !reading.active && (
+          !reading.active &&
+          !rhythm.active && (
             <ConnectedGameBoard
               source={trainerSnapshotSource}
               mode={trainerMode}
@@ -124,16 +129,22 @@ export function ConnectedPracticeWorkspace() {
             />
           )
         }
-        staffXml={reading.active ? reading.prompt?.musicXml : scoreStaffXml}
-        staffPresentation={reading.presentation}
-        staffRetry={reading.retry}
+        staffXml={
+          rhythm.active
+            ? rhythm.exercise?.musicXml
+            : reading.active
+              ? reading.prompt?.musicXml
+              : scoreStaffXml
+        }
+        staffPresentation={rhythm.active ? rhythm.presentation : reading.presentation}
+        staffRetry={rhythm.active ? rhythm.retry : reading.retry}
         readingBeat={reading.prompt?.beat}
         prefs={displayPrefs}
         layout={screenLayout}
         onLayout={screenUpdateLayout}
         onResetLayout={screenResetLayout}
         layoutMoved={screenMoved}
-        editing={!reading.active && screenEditing}
+        editing={!reading.active && !rhythm.active && screenEditing}
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}

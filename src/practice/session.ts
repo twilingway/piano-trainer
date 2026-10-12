@@ -1,4 +1,5 @@
 ﻿import type { Song, SongBeat, SongNote } from "../song/song";
+import { countIn } from "./sessionBeats";
 import { SessionScoring } from "./sessionScoring";
 import { difficultyWindows, judgeOffset, LEARNING_LATE_WINDOW_MS } from "./gameRules";
 import { SongTimeline } from "./timing";
@@ -76,8 +77,18 @@ export class PracticeSession {
       options.mode === "tempo" && options.learningWindow === true
     );
     for (const note of this.playerNotes) this.status.set(note.id, "pending");
-    this.beats = [...countIn(song.beats), ...song.beats];
-    this.leadIn = options.hands.size > 0 ? LEAD_IN_S : 0;
+    const beatSeconds =
+      song.beats[1] && song.beats[0] ? song.beats[1].time - song.beats[0].time : 0.5;
+    this.leadIn =
+      options.hands.size > 0
+        ? options.countInBeats === undefined
+          ? LEAD_IN_S
+          : options.countInBeats * beatSeconds
+        : 0;
+    this.beats = [
+      ...countIn(song.beats, this.leadIn, options.countInBeats !== undefined),
+      ...song.beats
+    ];
     this.time = 0 - this.leadIn;
     // Without a run-up the count-in clicks lie in the past: they must not all fire at once.
     const firstBeat = this.beats.findIndex((beat) => beat.time >= this.time);
@@ -134,6 +145,10 @@ export class PracticeSession {
 
   setInputGrace(compensationMs: number): void {
     this.inputGraceMs = (this.options.missGraceMs ?? 250) + Math.max(0, compensationMs);
+  }
+
+  get leadInSeconds(): number {
+    return this.leadIn;
   }
 
   songTimeAt(performanceMs: number): number | undefined {
@@ -558,23 +573,4 @@ export class PracticeSession {
       this.soundingAuto.push(note);
     }
   }
-}
-
-/** Clicks at the song's opening beat interval, filling the lead-in before time 0. */
-function countIn(beats: readonly SongBeat[]): SongBeat[] {
-  const first = beats[0];
-  const second = beats[1];
-  if (!first || !second) return [];
-  const interval = second.time - first.time;
-  const step = second.position - first.position;
-  if (interval <= 0) return [];
-  const clicks: SongBeat[] = [];
-  for (let count = 1; first.time - count * interval >= -LEAD_IN_S; count++) {
-    clicks.unshift({
-      time: first.time - count * interval,
-      position: first.position - count * step,
-      downbeat: false
-    });
-  }
-  return clicks;
 }

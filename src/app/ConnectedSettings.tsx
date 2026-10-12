@@ -369,7 +369,8 @@ function ConnectedSynchronizationSettings() {
       progress: runtime.timing.settingsProps.progress,
       running: runtime.timing.settingsProps.running,
       locked: runtime.timing.settingsProps.locked,
-      canCalibrate: runtime.timing.settingsProps.canCalibrate
+      canCalibrate: runtime.timing.settingsProps.canCalibrate,
+      tapAvailable: runtime.timing.settingsProps.onTap !== undefined
     }),
     shallowEqual
   );
@@ -377,6 +378,9 @@ function ConnectedSynchronizationSettings() {
   const onOffsets = useRuntimeCommand((runtime) => runtime.timing.settingsProps.onOffsets);
   const onStart = useRuntimeCommand((runtime) => runtime.timing.settingsProps.onStart);
   const onCancel = useRuntimeCommand((runtime) => runtime.timing.settingsProps.onCancel);
+  const onTap = useRuntimeCommand((runtime) => (atMs: number) => {
+    runtime.timing.settingsProps.onTap?.(atMs);
+  });
   const { profile, ...props } = state;
   return (
     <ConnectedTimingSettings
@@ -387,6 +391,7 @@ function ConnectedSynchronizationSettings() {
       onOffsets={onOffsets}
       onStart={onStart}
       onCancel={onCancel}
+      {...(state.tapAvailable ? { onTap } : {})}
     />
   );
 }

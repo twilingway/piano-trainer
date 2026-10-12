@@ -4038,3 +4038,75 @@ button.song-card.song-card__open {
     gap: 6px;
   }
 }
+
+.rhythm-practice {
+  min-width: 0;
+}
+.rhythm-actions .game-button,
+.rhythm-controls select {
+  min-width: 0;
+  max-width: 100%;
+}
+.rhythm-actions .game-button {
+  white-space: normal;
+}
+.rhythm-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+.rhythm-controls label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.rhythm-controls select {
+  min-height: 36px;
+}
+.rhythm-status {
+  min-height: 1.5em;
+}
+.rhythm-tap {
+  min-width: 120px;
+  min-height: 52px;
+  touch-action: none;
+  user-select: none;
+}
+.rhythm-tap[aria-disabled="true"] {
+  opacity: 0.5;
+}
+.rhythm-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px 16px;
+}
+.rhythm-metrics > div {
+  min-width: 0;
+}
+.rhythm-metrics dt {
+  opacity: 0.7;
+}
+.rhythm-metrics dd {
+  margin: 4px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.rhythm-progress-group {
+  padding-block: 8px;
+  border-bottom: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .rhythm-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .rhythm-tap-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rhythm-tap-actions .game-button {
+    min-width: 0;
+    white-space: normal;
+  }
+}

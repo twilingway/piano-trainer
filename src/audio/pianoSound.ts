@@ -106,6 +106,25 @@ export function audioTime(): number {
   return Tone.getContext().immediate();
 }
 
+/** Rhythm needs only the click voice, not downloaded piano samples. */
+export async function ensureMetronomeSound(): Promise<boolean> {
+  try {
+    await Tone.start();
+  } catch {
+    return false;
+  }
+  return metronomeSoundReady();
+}
+
+export function metronomeSoundReady(): boolean {
+  const destination = Tone.getDestination();
+  return (
+    Tone.getContext().state === "running" &&
+    !destination.mute &&
+    destination.volume.value !== -Infinity
+  );
+}
+
 export function scheduleSound(at: number, action: (audioSeconds: number) => void): number {
   return Tone.getContext().setTimeout(
     () => {
