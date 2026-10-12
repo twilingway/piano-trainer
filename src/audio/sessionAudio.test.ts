@@ -44,6 +44,45 @@ const note = (id: string, start: number, hand: "left" | "right" = "left"): SongN
   velocity: 90
 });
 
+it.each([60, 80, 100])(
+  "schedules all four count-in beats at %s BPM, then stops at score end",
+  (bpm) => {
+    const beatS = 60 / bpm;
+    const practice = new PracticeSession(
+      {
+        title: "rhythm",
+        source: "midi",
+        notes: [],
+        measures: [],
+        duration: 16 * beatS,
+        beats: Array.from({ length: 17 }, (_, index) => ({
+          time: index * beatS,
+          position: index,
+          downbeat: index % 4 === 0
+        }))
+      },
+      {
+        mode: "tempo",
+        hands: new Set(["right"]),
+        speed: 1,
+        countInBeats: 4,
+        accompaniment: false,
+        noteResult: false
+      }
+    );
+    practice.startClock(1000);
+    const scheduler = new SessionAudio();
+    scheduler.reset(1000);
+    for (let beat = -4; beat <= 16; beat++) {
+      scheduler.schedule(practice, 1000 + (beat + 4) * beatS * 1000, 0, true);
+      flushQueued();
+    }
+    expect(sound.click).toHaveBeenCalledTimes(20);
+    expect(sound.noteOn).not.toHaveBeenCalled();
+    scheduler.reset(1000);
+  }
+);
+
 function session(notes: readonly SongNote[], mode: "tempo" | "wait" = "tempo", to?: number) {
   const song: Song = {
     title: "test",

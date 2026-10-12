@@ -14,6 +14,8 @@ import { useShortcuts } from "./useShortcuts";
 import { useSong } from "./useSong";
 import { useCourse } from "./useCourse";
 import { useReadingCourse, useReadingTrainer } from "./useReadingCourse";
+import { useRhythmCourse } from "./useRhythmCourse";
+import { useRhythmTrainer } from "./useRhythmTrainer";
 import { useIntervalCourse } from "./useIntervalCourse";
 import { useIntervalAudioTrainer } from "./useIntervalAudio";
 import { readingDisplayProfile } from "./readingProfile";
@@ -50,9 +52,10 @@ export function usePlayerRuntime() {
   const course = useCourse(current.showSong);
   const reading = useReadingCourse();
   const intervals = useIntervalCourse();
-  const practiceActive = reading.active || intervals.active;
+  const rhythm = useRhythmCourse();
+  const practiceActive = reading.active || intervals.active || rhythm.active;
   const ear = intervals.active && intervals.mode === "hear-and-choose";
-  const practiceExercise = intervals.exercise ?? reading.exercise;
+  const practiceExercise = rhythm.exercise ?? intervals.exercise ?? reading.exercise;
   const song = practiceExercise?.song ?? current.song;
   const songKey = practiceExercise?.id ?? current.songKey;
   const word = useWordTyping(song, songKey, libraryOpen || settingsOpen, practiceActive);
@@ -102,19 +105,22 @@ export function usePlayerRuntime() {
   const trainer = useTrainer({
     song: word.practiceSong,
     sourceSong: practiceExercise?.song ?? current.sourceSong,
-    reading: practiceActive,
-    pianoBlocked: ear,
+    reading: reading.active || intervals.active,
+    rhythm: rhythm.active,
+    pianoBlocked: ear || rhythm.active,
     songKey: word.practiceKey,
     wordTyping: word.enabled,
     startFromRef,
     ensureSound,
     onNoteClick: current.cycleFinger,
-    onTake: takes.recordTake,
-    onRunFinished: intervals.active
-      ? intervals.publish
-      : reading.active
-        ? reading.finish
-        : course.controller.finish,
+    onTake: practiceActive ? () => undefined : takes.recordTake,
+    onRunFinished: rhythm.active
+      ? () => undefined
+      : intervals.active
+        ? intervals.publish
+        : reading.active
+          ? reading.finish
+          : course.controller.finish,
     course: practiceActive ? undefined : course.practice,
     compareSong: takes.compareSong,
     lastTake: takes.lastTake,
@@ -151,14 +157,15 @@ export function usePlayerRuntime() {
   const computerKeyboard = useComputerKeyboard();
   const input = useKeyInput(
     trainer.trainerRef,
-    ear
+    ear || rhythm.active
       ? { ...computerKeyboard.options, blocked: true }
       : word.enabled
         ? word.keyboardOptions
         : computerKeyboard.options,
-    device.intercept,
+    rhythm.active ? undefined : device.intercept,
     trainer.trainerReady,
-    ear
+    ear,
+    rhythm.active
   );
   const fit = useRangeFit(
     song.notes,
@@ -174,6 +181,7 @@ export function usePlayerRuntime() {
     deviceId: input.midiDeviceId,
     trainerReady: trainer.trainerReady,
     snapshotSource: trainer.snapshotSource,
+    localInput: rhythm.active && rhythm.source !== "midi",
     locked: game.ranked && snapshot.playing
   });
   useGameRuntime(trainer.trainerRef, trainer.trainerReady, {
@@ -186,6 +194,14 @@ export function usePlayerRuntime() {
     resumeWhenReady: word.enabled,
     deviceId: timing.profile?.deviceId ?? ""
   });
+  useRhythmTrainer(
+    rhythm,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen || settingsOpen,
+    input.devices,
+    input.midiDeviceId
+  );
   const view = useFallingView({
     hostRef: trainer.hostRef,
     hasScore: Boolean(score.staffXml),
@@ -221,20 +237,26 @@ export function usePlayerRuntime() {
 
   const play = () => {
     setResultClosed(false);
-    if (ear) intervals.audio.togglePause();
+    if (rhythm.active) {
+      if (snapshot.playing) rhythm.cancel();
+      else void rhythm.onStart();
+    } else if (ear) intervals.audio.togglePause();
     else void trainer.togglePlay();
   };
   const startOver = () => {
     setResultClosed(false);
-    if (intervals.active) intervals.newSeries();
+    if (rhythm.active) void rhythm.onRepeat();
+    else if (intervals.active) intervals.newSeries();
     else if (reading.active) reading.newSeries();
     else trainer.restart();
   };
   useShortcuts({
     play,
-    blocked: word.enabled
-      ? libraryOpen || settingsOpen || word.pending || Boolean(word.error)
-      : computerKeyboard.editing
+    blocked:
+      rhythm.active ||
+      (word.enabled
+        ? libraryOpen || settingsOpen || word.pending || Boolean(word.error)
+        : computerKeyboard.editing)
   });
 
   const toggles = !practiceActive && (
@@ -291,6 +313,7 @@ export function usePlayerRuntime() {
 
   return {
     reading,
+    rhythm,
     intervals,
     practiceActive,
     displayPrefs: workspacePrefs,

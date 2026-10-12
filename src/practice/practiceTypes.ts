@@ -20,6 +20,8 @@ export interface PracticeOptions {
   readonly from?: number;
   readonly to?: number;
   readonly missGraceMs?: number;
+  /** Explicit musical count-in; absence preserves the ordinary two-second lead-in. */
+  readonly countInBeats?: number;
   /** The keys the player's instrument has; their hands' notes outside it go to the program. */
   readonly playable?: PlayableRange | undefined;
   /** The song's parts the player plays, within `hands`; none = every part of those hands. */

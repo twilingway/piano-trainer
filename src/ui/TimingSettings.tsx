@@ -37,6 +37,7 @@ export interface TimingSettingsProps {
   ) => void;
   onStart: () => void;
   onCancel: () => void;
+  onTap?: (timestampMs: number) => void;
 }
 const QUALITY = {
   excellent: "отличная",
@@ -175,6 +176,30 @@ export function TimingSettings(props: TimingSettingsProps) {
           })}
           {progress.complete ? t(" · Готово") : !running ? t(" · Не завершено — повторите") : ""}
         </p>
+      )}
+      {running && props.onTap && (
+        <>
+          <p>{t("Для калибровки нажимайте пробел или «Ударить» под метроном.")}</p>
+          <button
+            type="button"
+            className="game-button"
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              props.onTap?.(event.timeStamp);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== " " && event.key !== "Enter") return;
+              event.preventDefault();
+              if (!event.repeat) props.onTap?.(event.timeStamp);
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+            }}
+          >
+            {t("Ударить")}
+          </button>
+        </>
       )}
       {locked && <p>{t("Во время рейтинговой игры настройки заблокированы.")}</p>}
       {props.canCalibrate === false && (

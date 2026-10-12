@@ -9,6 +9,12 @@ import { songActions } from "./songSlice";
 import { addReadingResult, emptyReadingProfile, readingPurpose } from "../reading/progress";
 import type { ReadingPlan, ReadingProfile, ReadingSourceFilter } from "../reading/progressTypes";
 import type { IntervalMode, IntervalResult } from "../intervals/types";
+import type { RhythmBpm, RhythmInputSource, RhythmResult } from "../rhythm/types";
+import {
+  emptyRhythmState,
+  mergeRhythmHistory,
+  type RhythmPersistentState
+} from "./rhythmPersistence";
 import {
   emptyIntervalState,
   mergeIntervalHistory,
@@ -16,9 +22,10 @@ import {
 } from "./intervalPersistence";
 
 export interface ReadingState {
-  schemaVersion: 3;
-  activeCourse: "note-reading" | "interval-training" | null;
+  schemaVersion: 4;
+  activeCourse: "note-reading" | "interval-training" | "rhythm-training" | null;
   intervals: IntervalPersistentState;
+  rhythm: RhythmPersistentState;
   task: ReadingTask | null;
   seed: number;
   preferences: ReadingPreferences;
@@ -34,9 +41,10 @@ export interface ReadingRoot {
   reading: ReadingState;
 }
 export const initialReadingState: ReadingState = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   activeCourse: null,
   intervals: emptyIntervalState(),
+  rhythm: emptyRhythmState(),
   task: null,
   seed: 1,
   preferences: DEFAULT_READING_PREFERENCES,
@@ -95,6 +103,27 @@ const readingSlice = createSlice({
     },
     intervalResultAdded(state, { payload }: PayloadAction<IntervalResult>) {
       state.intervals.history = mergeIntervalHistory(state.intervals.history, [payload]);
+    },
+    rhythmSelected(
+      state,
+      {
+        payload
+      }: PayloadAction<{
+        seed: number;
+        bpm: RhythmBpm;
+        inputSource: RhythmInputSource;
+        generatorVersion?: number;
+      }>
+    ) {
+      state.activeCourse = "rhythm-training";
+      state.rhythm.seed = payload.seed >>> 0;
+      state.rhythm.bpm = payload.bpm;
+      state.rhythm.inputSource = payload.inputSource;
+      state.rhythm.generatorVersion = payload.generatorVersion ?? 1;
+      state.selectionRevision++;
+    },
+    rhythmResultAdded(state, { payload }: PayloadAction<RhythmResult>) {
+      state.rhythm.history = mergeRhythmHistory(state.rhythm.history, [payload]);
     },
     hydrated(state, { payload }: PayloadAction<ReadingState>) {
       return { ...payload, selectionRevision: state.selectionRevision };

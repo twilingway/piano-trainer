@@ -88,6 +88,7 @@ interface Replay {
 }
 function Harness({
   reading = false,
+  rhythm = false,
   gameOptions,
   ranked = false,
   selectedSong = song,
@@ -96,6 +97,7 @@ function Harness({
   course
 }: {
   reading?: boolean;
+  rhythm?: boolean;
   gameOptions?: Parameters<typeof useTrainer>[0]["gameOptions"];
   ranked?: boolean;
   selectedSong?: Song;
@@ -111,6 +113,7 @@ function Harness({
     songKey: selectedSong.title,
     ranked,
     reading,
+    rhythm,
     ...(gameOptions ? { gameOptions } : {}),
     course,
     startFromRef,
@@ -180,6 +183,53 @@ async function mount(
 }
 
 describe("trainer runtime isolation", () => {
+  it("uses the fixed rhythm profile without changing saved ordinary preferences or seeking", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "wait",
+        handChoice: "left",
+        speed: 0.5,
+        metronome: false,
+        accompaniment: true
+      })
+    );
+    startFromRef.current = 2;
+    await act(async () => {
+      root.render(withTestStore(<Harness rhythm />, store));
+      await Promise.resolve();
+    });
+    expect(active().load).toHaveBeenLastCalledWith(
+      song,
+      expect.objectContaining({
+        mode: "tempo",
+        speed: 1,
+        hands: new Set(["right"]),
+        accompaniment: false,
+        noteResult: false,
+        countInBeats: 4
+      }),
+      song.title,
+      expect.anything()
+    );
+    expect(active().seek).not.toHaveBeenCalled();
+    expect(value.metronome).toBe(true);
+    act(() => {
+      value.setMode("wait");
+      value.setSpeed(0.7);
+      value.setMetronome(false);
+    });
+    expect(store.getState().preferences.player).toMatchObject({
+      mode: "wait",
+      handChoice: "left",
+      speed: 0.5,
+      metronome: false,
+      accompaniment: true
+    });
+    await mount();
+    expect(value.mode).toBe("wait");
+    expect(value.speed).toBe(0.5);
+    expect(value.metronome).toBe(false);
+  });
   it("keeps one reading music session when ordinary game options change", async () => {
     await act(async () => {
       root.render(withTestStore(<Harness reading gameOptions={{ difficulty: "normal" }} />, store));

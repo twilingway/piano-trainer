@@ -9,6 +9,7 @@ import { handStudyMessages } from "./handStudyMessages";
 import { courseMessages } from "./courseMessages";
 import { readingMessages } from "./readingMessages";
 import { intervalMessages } from "./intervalMessages";
+import { rhythmMessages } from "./rhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
@@ -21,5 +22,6 @@ export const messages: Messages = {
   ...handStudyMessages,
   ...courseMessages,
   ...readingMessages,
-  ...intervalMessages
+  ...intervalMessages,
+  ...rhythmMessages
 };

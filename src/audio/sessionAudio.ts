@@ -86,7 +86,11 @@ export class SessionAudio {
     }
     if (metronome)
       for (const [index, beat] of session.audioBeats.entries()) {
-        if (beat.time < session.startedFrom - 2) continue;
+        if (
+          beat.time < session.startedFrom - session.leadInSeconds ||
+          (session.options.countInBeats !== undefined && beat.time >= session.song.duration)
+        )
+          continue;
         schedule(`beat:${String(index)}`, beat.time, (at) => {
           scheduledClick(beat.downbeat, at);
         });

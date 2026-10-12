@@ -39,6 +39,7 @@ export function ConnectedPlayerHeader() {
     courseActive,
     comparing,
     readingTask,
+    rhythmActive,
     intervalMode,
     practiceActive
   } = useRuntimeSelector(
@@ -66,6 +67,7 @@ export function ConnectedPlayerHeader() {
       courseActive: runtime.course.active,
       comparing: runtime.comparing,
       readingTask: runtime.reading.task,
+      rhythmActive: runtime.rhythm.active,
       intervalMode: runtime.intervals.active ? runtime.intervals.mode : null,
       practiceActive: runtime.practiceActive
     }),
@@ -96,13 +98,15 @@ export function ConnectedPlayerHeader() {
           source={trainerSnapshotSource}
           song={wordPracticeSong}
           title={
-            intervalMode
-              ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
-              : readingTask
-                ? `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
-                : courseActive
-                  ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
-                  : lessonDisplayTitle(song.title, currentLesson, t)
+            rhythmActive
+              ? t("Ритм под метроном")
+              : intervalMode
+                ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
+                : readingTask
+                  ? `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
+                  : courseActive
+                    ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
+                    : lessonDisplayTitle(song.title, currentLesson, t)
           }
           playing={playing}
           soundLoading={sound === "loading" || (wordEnabled && (wordPending || Boolean(wordError)))}
@@ -160,7 +164,7 @@ export function ConnectedPlayerHeader() {
             setSettingsOpen((open) => !open);
           }}
         />
-        {!readingTask && (
+        {!practiceActive && (
           <ConnectedSongProgress
             source={trainerSnapshotSource}
             song={wordPracticeSong}
@@ -168,7 +172,7 @@ export function ConnectedPlayerHeader() {
             onSeek={trainerSeekToBeat}
           />
         )}
-        {!readingTask && <HeaderSlot name="modeSwitch" />}
+        {!practiceActive && <HeaderSlot name="modeSwitch" />}
       </div>
     </>
   );

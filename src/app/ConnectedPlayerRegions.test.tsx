@@ -43,6 +43,7 @@ const initial = (): PlayerRuntime =>
     takes: { canReview: false },
     reading: { active: false, task: null },
     intervals: { active: false, mode: "see-and-play" },
+    rhythm: { active: false },
     practiceActive: false,
     course: { active: null, saved: { progress: {} }, controller: { open: vi.fn() } },
     fullscreen: { error: null, active: false },

@@ -22,6 +22,7 @@ import {
   mergeIntervalHistory,
   normalizeIntervalState
 } from "./intervalPersistence";
+import { emptyRhythmState, mergeRhythmHistory, normalizeRhythmState } from "./rhythmPersistence";
 
 export const object = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -252,9 +253,10 @@ export function mergeReadingProfiles(
 
 export function emptyReadingState(): ReadingState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     activeCourse: null,
     intervals: emptyIntervalState(),
+    rhythm: emptyRhythmState(),
     selectionRevision: 0,
     task: null,
     seed: 1,
@@ -275,28 +277,32 @@ export function normalizeReadingState(value: unknown): {
   const reading = emptyReadingState();
   if (value === undefined) return { reading, invalid: false, blocked: false };
   const row = object(value);
-  if (typeof row.schemaVersion === "number" && row.schemaVersion > 3)
+  if (typeof row.schemaVersion === "number" && row.schemaVersion > 4)
     return { reading, invalid: false, blocked: true };
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    (row.schemaVersion !== undefined && ![1, 2, 3].includes(row.schemaVersion as number))
+    (row.schemaVersion !== undefined && ![1, 2, 3, 4].includes(row.schemaVersion as number))
   )
     return { reading, invalid: true, blocked: false };
   reading.task = task(row.task) ? row.task : null;
-  const intervalState = normalizeIntervalState(row.schemaVersion === 3 ? row.intervals : undefined);
+  const modern = row.schemaVersion === 3 || row.schemaVersion === 4;
+  const intervalState = normalizeIntervalState(modern ? row.intervals : undefined);
   reading.intervals = intervalState.intervals;
-  reading.activeCourse =
-    row.schemaVersion === 3
-      ? row.activeCourse === "note-reading" && reading.task
-        ? "note-reading"
-        : row.activeCourse === "interval-training" && reading.intervals.mode
-          ? "interval-training"
+  const rhythmState = normalizeRhythmState(row.schemaVersion === 4 ? row.rhythm : undefined);
+  reading.rhythm = rhythmState.rhythm;
+  reading.activeCourse = modern
+    ? row.activeCourse === "note-reading" && reading.task
+      ? "note-reading"
+      : row.activeCourse === "interval-training" && reading.intervals.mode
+        ? "interval-training"
+        : row.schemaVersion === 4 && row.activeCourse === "rhythm-training"
+          ? "rhythm-training"
           : null
-      : reading.task
-        ? "note-reading"
-        : null;
+    : reading.task
+      ? "note-reading"
+      : null;
   reading.seed = finite(row.seed) ? row.seed >>> 0 : 1;
   reading.preferences = normalizePreferences(row.preferences);
   reading.sourceFilter = filter(row.sourceFilter) ? row.sourceFilter : "all";
@@ -304,13 +310,18 @@ export function normalizeReadingState(value: unknown): {
   const history = Array.isArray(row.history) ? row.history : [];
   let invalid =
     intervalState.invalid ||
-    (row.schemaVersion === 3 && row.intervals === undefined) ||
-    (row.schemaVersion === 3 && row.activeCourse === "note-reading" && reading.task === null) ||
-    (row.schemaVersion === 3 &&
-      row.activeCourse === "interval-training" &&
-      reading.intervals.mode === null) ||
-    (row.schemaVersion === 3 &&
-      ![null, "note-reading", "interval-training"].includes(row.activeCourse as null | string)) ||
+    rhythmState.invalid ||
+    (row.schemaVersion === 4 && row.rhythm === undefined) ||
+    (modern && row.intervals === undefined) ||
+    (modern && row.activeCourse === "note-reading" && reading.task === null) ||
+    (modern && row.activeCourse === "interval-training" && reading.intervals.mode === null) ||
+    (modern &&
+      ![
+        null,
+        "note-reading",
+        "interval-training",
+        ...(row.schemaVersion === 4 ? ["rhythm-training"] : [])
+      ].includes(row.activeCourse as null | string)) ||
     (row.plan !== undefined && row.plan !== null && reading.plan === null) ||
     history.some((result) => !validResult(result));
   const migrated = history.filter(validResult).map(migrateResult);
@@ -334,7 +345,7 @@ export function normalizeReadingState(value: unknown): {
     delayedDueAt: finite(profile.delayedDueAt) ? profile.delayedDueAt : null
   });
   const preservedProfile =
-    (row.schemaVersion === 2 || row.schemaVersion === 3) &&
+    (row.schemaVersion === 2 || modern) &&
     Array.isArray(profile.observations) &&
     observations.every(validObservation) &&
     Array.isArray(profile.lastIndependent) &&
@@ -361,7 +372,7 @@ export function normalizeReadingState(value: unknown): {
   const fingerprints = Array.isArray(row.presentedFingerprints)
     ? row.presentedFingerprints.filter(text)
     : [];
-  for (const result of (row.schemaVersion === 2 || row.schemaVersion === 3) &&
+  for (const result of (row.schemaVersion === 2 || modern) &&
   Array.isArray(row.presentedFingerprints)
     ? []
     : deduped) {
@@ -378,6 +389,7 @@ export type ReadingPersistentField =
   | "activeCourse"
   | "intervalSelection"
   | "intervalSourceFilter"
+  | "rhythmSelection"
   | "automaticHints"
   | "nameDelayMs"
   | "keyDelayMs"
@@ -406,6 +418,15 @@ export function changedReadingFields(
     fields.push("intervalSelection");
   if (current.intervals.sourceFilter !== baseline.intervals.sourceFilter)
     fields.push("intervalSourceFilter");
+  if (
+    (current.selectionRevision !== baseline.selectionRevision &&
+      current.activeCourse === "rhythm-training") ||
+    current.rhythm.seed !== baseline.rhythm.seed ||
+    current.rhythm.bpm !== baseline.rhythm.bpm ||
+    current.rhythm.inputSource !== baseline.rhythm.inputSource ||
+    current.rhythm.generatorVersion !== baseline.rhythm.generatorVersion
+  )
+    fields.push("rhythmSelection");
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (current.preferences[key] !== baseline.preferences[key]) fields.push(key);
   }
@@ -421,6 +442,7 @@ export function mergeReadingState(
     "activeCourse",
     "intervalSelection",
     "intervalSourceFilter",
+    "rhythmSelection",
     "automaticHints",
     "nameDelayMs",
     "keyDelayMs",
@@ -429,6 +451,7 @@ export function mergeReadingState(
 ): ReadingState {
   const selection = fields.includes("selection") ? incoming : saved;
   const intervals = fields.includes("intervalSelection") ? incoming.intervals : saved.intervals;
+  const rhythm = fields.includes("rhythmSelection") ? incoming.rhythm : saved.rhythm;
   const preferences = { ...saved.preferences };
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (fields.includes(key)) Object.assign(preferences, { [key]: incoming.preferences[key] });
@@ -439,7 +462,7 @@ export function mergeReadingState(
     ).values()
   ].sort((a, b) => (a.completedAt ?? a.createdAt) - (b.completedAt ?? b.createdAt));
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     activeCourse: fields.includes("activeCourse") ? incoming.activeCourse : saved.activeCourse,
     intervals: {
       ...intervals,
@@ -447,6 +470,10 @@ export function mergeReadingState(
         ? incoming.intervals.sourceFilter
         : saved.intervals.sourceFilter,
       history: mergeIntervalHistory(saved.intervals.history, incoming.intervals.history)
+    },
+    rhythm: {
+      ...rhythm,
+      history: mergeRhythmHistory(saved.rhythm.history, incoming.rhythm.history)
     },
     selectionRevision: incoming.selectionRevision,
     task: selection.task,

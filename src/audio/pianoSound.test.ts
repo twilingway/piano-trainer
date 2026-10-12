@@ -5,8 +5,24 @@ import {
   scheduleSoundObserved,
   onPianoSoundInterrupted,
   startPianoSound,
-  startSoundOnFirstGesture
+  startSoundOnFirstGesture,
+  ensureMetronomeSound,
+  metronomeSoundReady
 } from "./pianoSound";
+
+it("prepares a metronome without waiting for piano samples and detects silent output", async () => {
+  audio.start.mockResolvedValueOnce(undefined);
+  expect(await ensureMetronomeSound()).toBe(true);
+  audio.mute = true;
+  expect(metronomeSoundReady()).toBe(false);
+  expect(await ensureMetronomeSound()).toBe(false);
+  audio.mute = false;
+  audio.state = "suspended";
+  expect(metronomeSoundReady()).toBe(false);
+  audio.state = "running";
+  audio.start.mockRejectedValueOnce(new Error("blocked"));
+  expect(await ensureMetronomeSound()).toBe(false);
+});
 
 const audio = vi.hoisted(() => ({
   state: "running",
