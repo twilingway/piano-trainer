@@ -27,6 +27,11 @@ export const READING_PRACTICE_OPTIONS: PracticeOptions = {
   noteResult: false
 };
 
+export const BASS_READING_PRACTICE_OPTIONS: PracticeOptions = {
+  ...READING_PRACTICE_OPTIONS,
+  hands: new Set(["left"])
+};
+
 /** A reading profile exposes only a cue explicitly confirmed as shown. */
 export function trainerGuidance(
   session: PracticeSession,

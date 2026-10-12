@@ -88,6 +88,7 @@ interface Replay {
 }
 function Harness({
   reading = false,
+  readingHand = "right",
   rhythm = false,
   gameOptions,
   ranked = false,
@@ -97,6 +98,7 @@ function Harness({
   course
 }: {
   reading?: boolean;
+  readingHand?: "left" | "right";
   rhythm?: boolean;
   gameOptions?: Parameters<typeof useTrainer>[0]["gameOptions"];
   ranked?: boolean;
@@ -113,6 +115,7 @@ function Harness({
     songKey: selectedSong.title,
     ranked,
     reading,
+    readingHand,
     rhythm,
     ...(gameOptions ? { gameOptions } : {}),
     course,
@@ -183,6 +186,63 @@ async function mount(
 }
 
 describe("trainer runtime isolation", () => {
+  it("routes the bass reading profile to the left without changing ordinary two-hand preferences", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "tempo",
+        handChoice: "both",
+        speed: 0.5,
+        accompaniment: true
+      })
+    );
+    const saved = store.getState().preferences.player;
+    const bassSong: Song = {
+      ...song,
+      title: "bass",
+      notes: [
+        {
+          id: "bass-note",
+          pitch: 48,
+          hand: "left",
+          start: 0,
+          startBeat: 0,
+          duration: 0.5
+        }
+      ]
+    };
+    await act(async () => {
+      root.render(
+        withTestStore(
+          <Harness
+            reading
+            readingHand="left"
+            selectedSong={bassSong}
+            gameOptions={{ playable: { low: 60, high: 72 } }}
+          />,
+          store
+        )
+      );
+      await Promise.resolve();
+    });
+    expect(value.handChoice).toBe("left");
+    expect(value.playerHands).toEqual(new Set(["left"]));
+    expect(active().load.mock.lastCall?.[1]).toEqual({
+      mode: "wait",
+      hands: new Set(["left"]),
+      speed: 1,
+      accompaniment: false,
+      noteResult: false
+    });
+    expect(store.getState().preferences.player).toEqual(saved);
+    await act(async () => {
+      root.render(withTestStore(<Harness />, store));
+      await Promise.resolve();
+    });
+    expect(value.handChoice).toBe("both");
+    expect(value.playerHands).toEqual(new Set(["right", "left"]));
+    expect(store.getState().preferences.player).toEqual(saved);
+  });
+
   it("uses the fixed rhythm profile without changing saved ordinary preferences or seeking", async () => {
     store.dispatch(
       preferencesActions.playerChanged({

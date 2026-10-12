@@ -1,4 +1,4 @@
-import type { ReadingHintLevel, ReadingInputSource } from "./types";
+import type { ReadingHintLevel, ReadingInputSource, ReadingSkillId } from "./types";
 
 export const READING_SKILL_ID = "note-reading";
 export type ReadingPurpose = "notes" | "phrases" | "check" | "adaptive" | "delayed-check";
@@ -29,7 +29,7 @@ interface SkillEventIdentity {
 export type LearningSkillEvent = SkillEventIdentity &
   (
     | {
-        readonly skillId: "note-reading";
+        readonly skillId: ReadingSkillId;
         readonly expectedMidi: number;
         readonly playedMidi: number;
       }

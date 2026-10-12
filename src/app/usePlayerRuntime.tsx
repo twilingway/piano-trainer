@@ -106,6 +106,7 @@ export function usePlayerRuntime() {
     song: word.practiceSong,
     sourceSong: practiceExercise?.song ?? current.sourceSong,
     reading: reading.active || intervals.active,
+    readingHand: reading.isBass ? "left" : "right",
     rhythm: rhythm.active,
     pianoBlocked: ear || rhythm.active,
     songKey: word.practiceKey,

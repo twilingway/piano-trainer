@@ -58,7 +58,10 @@ function knownLatency(value: number | undefined): number | null {
   return value !== undefined && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-function observation(result: ReadingResult, note: ReadingNoteResult): ReadingObservation | null {
+export function readingResultObservation(
+  result: ReadingResult,
+  note: ReadingNoteResult
+): ReadingObservation | null {
   const correct = note.attempts.findLast((attempt) => attempt.playedMidi === note.expectedMidi);
   if (!correct) return null;
   return {
@@ -83,11 +86,12 @@ function observation(result: ReadingResult, note: ReadingNoteResult): ReadingObs
 
 /** Idempotent reduction; detailed history can be trimmed without deleting the profile. */
 export function addReadingResult(profile: ReadingProfile, result: ReadingResult): ReadingProfile {
+  if (result.skillId && result.skillId !== "note-reading") return profile;
   const runId = result.runId ?? result.id;
   if (profile.processedRunIds.includes(runId)) return profile;
   const observations = [...profile.observations];
   for (const note of result.notes) {
-    const entry = observation(result, note);
+    const entry = readingResultObservation(result, note);
     if (entry) observations.push(entry);
   }
   observations.sort((a, b) => a.completedAt - b.completedAt);
@@ -143,14 +147,16 @@ function metrics(entries: readonly SummaryEntry[]): ReadingMetrics {
   };
 }
 
-function summary(
+export function summarizeReadingObservations(
   observations: readonly SummaryEntry[],
   source: ReadingSourceFilter,
-  purpose?: ReadingPurpose
+  purpose?: ReadingPurpose,
+  pitches: readonly number[] = READING_PITCHES,
+  purposes: readonly ReadingPurpose[] = READING_PURPOSES
 ): ReadingSummary {
   const entries = observations.filter((entry) => source === "all" || entry.inputSource === source);
   const rows = (selected: readonly SummaryEntry[]) =>
-    READING_PITCHES.map((expectedMidi) => ({
+    pitches.map((expectedMidi) => ({
       expectedMidi,
       ...metrics(selected.filter((entry) => entry.expectedMidi === expectedMidi))
     }));
@@ -163,7 +169,7 @@ function summary(
     purpose: purpose ?? null,
     rows: rows(selected),
     totals: metrics(selected),
-    byPurpose: READING_PURPOSES.map((current) => {
+    byPurpose: purposes.map((current) => {
       const grouped = entries.filter((entry) => entry.purpose === current);
       return { purpose: current, rows: rows(grouped), totals: metrics(grouped) };
     })
@@ -175,7 +181,7 @@ export function summarizeReadingProfile(
   source: ReadingSourceFilter = "all",
   purpose?: ReadingPurpose
 ): ReadingSummary {
-  return summary(profile.observations, source, purpose);
+  return summarizeReadingObservations(profile.observations, source, purpose);
 }
 
 export function summarizeReadingResults(
@@ -186,13 +192,14 @@ export function summarizeReadingResults(
   const seen = new Set<string>();
   const entries: SummaryEntry[] = [];
   for (const result of results) {
+    if (result.skillId && result.skillId !== "note-reading") continue;
     const runId = result.runId ?? result.id;
     if (seen.has(runId)) continue;
     seen.add(runId);
     for (const note of result.notes) {
-      const entry = observation(result, note);
+      const entry = readingResultObservation(result, note);
       if (entry) entries.push(entry);
     }
   }
-  return summary(entries, source, purpose);
+  return summarizeReadingObservations(entries, source, purpose);
 }

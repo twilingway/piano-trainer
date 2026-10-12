@@ -4,6 +4,7 @@ import type { ReadingHintEvent, ReadingPlan } from "./progressTypes";
 export type ReadingTask = "notes" | "phrases" | "check";
 export type ReadingHintLevel = 0 | 1 | 2;
 export type ReadingInputSource = "midi" | "keyboard" | "pointer";
+export type ReadingSkillId = "note-reading" | "bass-note-reading";
 
 export interface ReadingPreferences {
   readonly automaticHints: boolean;
@@ -18,6 +19,7 @@ export const DEFAULT_READING_PREFERENCES: ReadingPreferences = {
 };
 
 export interface ReadingExercise {
+  readonly skillId?: ReadingSkillId;
   readonly plan?: ReadingPlan;
   readonly id: string;
   readonly task: ReadingTask;
@@ -28,7 +30,7 @@ export interface ReadingExercise {
 }
 
 export interface ReadingAttempt {
-  readonly skillId?: "note-reading";
+  readonly skillId?: ReadingSkillId;
   readonly runId?: string;
   readonly attemptId?: string;
   readonly exerciseId: string;
@@ -56,7 +58,8 @@ export interface ReadingNoteResult {
 
 export interface ReadingResult {
   readonly newMaterial?: boolean;
-  readonly skillId?: "note-reading";
+  readonly skillId?: ReadingSkillId;
+  readonly generatorVersion?: number;
   readonly runId?: string;
   readonly startedAt?: number | null;
   readonly completedAt?: number;

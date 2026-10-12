@@ -60,6 +60,7 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
   const fingerprints = new Set(baseline.presentedFingerprints);
   const intervalRuns = new Set(baseline.intervals.history.map((result) => result.runId));
   const rhythmRuns = new Set(baseline.rhythm.history.map((result) => result.runId));
+  const bassRuns = new Set(baseline.bass.history.map((result) => result.runId));
   return {
     ...current,
     intervals: {
@@ -69,6 +70,10 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
     rhythm: {
       ...current.rhythm,
       history: current.rhythm.history.filter((result) => !rhythmRuns.has(result.runId))
+    },
+    bass: {
+      ...current.bass,
+      history: current.bass.history.filter((result) => !bassRuns.has(result.runId))
     },
     history: current.history.filter((result) => !historyIds.has(result.runId ?? result.id)),
     profile: {
@@ -120,7 +125,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
       try {
         await repository.update((saved) => {
           const normalized = normalizeReadingState(saved);
-          if (normalized.blocked) {
+          if (normalized.blocked || normalized.invalid) {
             allowed = false;
             throw new Error("future-schema");
           }
@@ -149,7 +154,8 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
         current.profile === previous.profile &&
         current.presentedFingerprints === previous.presentedFingerprints &&
         current.intervals.history === previous.intervals.history &&
-        current.rhythm.history === previous.rhythm.history
+        current.rhythm.history === previous.rhythm.history &&
+        current.bass.history === previous.bass.history
       )
         return;
       const latest = current.presentedFingerprints.at(-1);
@@ -179,14 +185,12 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
       if (!allowed) return null;
       try {
         const normalized = normalizeReadingState(await repository.load());
-        if (normalized.blocked) {
+        if (normalized.blocked || normalized.invalid) {
           allowed = false;
           store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: "invalid" }));
           return null;
         }
-        store.dispatch(
-          persistenceErrorChanged({ key: READ_ERROR, error: normalized.invalid ? "invalid" : null })
-        );
+        store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: null }));
         return [
           ...new Set([
             ...normalized.reading.presentedFingerprints,
@@ -212,7 +216,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
         try {
           await repository.update((saved) => {
             const normalized = normalizeReadingState(saved);
-            if (normalized.blocked) {
+            if (normalized.blocked || normalized.invalid) {
               allowed = false;
               throw new Error("future-schema");
             }
@@ -282,7 +286,8 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
               error: normalized.invalid ? "invalid" : null
             })
           );
-          allowed = true;
+          allowed =
+            !normalized.invalid && (saved !== undefined || Object.keys(legacy.errors).length === 0);
           if (
             saved === undefined &&
             storage.getItem(READING_STORAGE_KEY) !== null &&
@@ -291,7 +296,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
             try {
               await repository.update((latest) => {
                 const loaded = normalizeReadingState(latest);
-                if (loaded.blocked) {
+                if (loaded.blocked || loaded.invalid) {
                   allowed = false;
                   throw new Error("future-schema");
                 }

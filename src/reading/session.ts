@@ -20,6 +20,7 @@ interface Prompt {
   noteId: string;
   pitch: number;
   presentedAt: number | null;
+  firstPresentedAt: number | null;
   intervals: { from: number; to: number | null }[];
   hints: { at: number; level: ReadingHintLevel }[];
   attempts: ReadingAttempt[];
@@ -65,6 +66,7 @@ export class ReadingSession {
       noteId,
       pitch: expectedMidi,
       presentedAt: null,
+      firstPresentedAt: null,
       intervals: [],
       hints: [],
       attempts: [],
@@ -82,6 +84,7 @@ export class ReadingSession {
     )
       return;
     prompt.presentedAt = atMs;
+    prompt.firstPresentedAt ??= atMs;
     if (this.enabled) prompt.intervals.push({ from: atMs, to: null });
   }
 
@@ -171,7 +174,7 @@ export class ReadingSession {
     )
       return null;
     const attempt: ReadingAttempt = {
-      skillId: READING_SKILL_ID,
+      skillId: this.exercise.skillId ?? READING_SKILL_ID,
       runId: this.metadata?.runId ?? this.exercise.id,
       attemptId: `${this.metadata?.runId ?? this.exercise.id}:${String(this.attemptCount++)}`,
       exerciseId: this.exercise.id,
@@ -198,7 +201,7 @@ export class ReadingSession {
         hintHistory: p.hints
           .filter((hint) => hint.at <= atMs)
           .map((hint) => ({ atMs: hint.at, level: hint.level })),
-        presentedAtMs: p.presentedAt
+        presentedAtMs: p.firstPresentedAt
       });
       p.solved = true;
       this.close(atMs);
@@ -223,7 +226,8 @@ export class ReadingSession {
     let attemptIndex = 0;
     return {
       id,
-      skillId: READING_SKILL_ID,
+      skillId: this.exercise.skillId ?? READING_SKILL_ID,
+      generatorVersion: this.exercise.generatorVersion,
       runId,
       startedAt: this.startedAt,
       completedAt: createdAt,

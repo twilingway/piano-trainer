@@ -8,6 +8,7 @@ import {
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedPianoTabs } from "./ConnectedCourse";
 import { ConnectedReadingPractice } from "./ConnectedReading";
+import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
 import { ConnectedRhythmPractice } from "./ConnectedRhythm";
 import { ConnectedIntervalPractice } from "./ConnectedIntervals";
 
@@ -87,6 +88,7 @@ export function ConnectedPracticeWorkspace() {
   return (
     <>
       <ConnectedReadingPractice />
+      <ConnectedBassReadingPractice />
       <ConnectedIntervalPractice />
       <ConnectedRhythmPractice />
       <ConnectedWorkspace

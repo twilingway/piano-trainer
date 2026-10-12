@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { generateReadingExercise } from "../reading/generator";
+import { generateBassReadingExercise, nextBassReadingSeed } from "../reading/bassGenerator";
+import { toBassReadingResult, type BassReadingTask } from "../reading/bassTypes";
 import { readingFingerprint } from "../reading/adaptation";
 import { readingPromptXml } from "../reading/prompt";
 import { ReadingSession } from "../reading/session";
@@ -14,9 +16,11 @@ import { useReadingGeneration } from "./useReadingGeneration";
 
 export function useReadingCourse() {
   const saved = useAppSelector((state) => state.reading);
+  const isBass = saved.activeCourse === "bass-reading";
   const dispatch = useAppDispatch();
   const store = useAppStore();
   const [intro, setIntro] = useState(false);
+  const [introCourse, setIntroCourse] = useState<"right" | "bass">("right");
   const [wallNow, setWallNow] = useState(() => Date.now());
   const refreshClock = useCallback(() => {
     setWallNow(Date.now());
@@ -38,13 +42,24 @@ export function useReadingCourse() {
     null
   );
   const selectionKey = JSON.stringify({
-    task: saved.activeCourse === "note-reading" ? saved.task : null,
-    seed: saved.seed,
-    plan: saved.plan,
+    task: isBass ? saved.bass.task : saved.activeCourse === "note-reading" ? saved.task : null,
+    seed: isBass ? saved.bass.seed : saved.seed,
+    plan: isBass ? null : saved.plan,
+    bass: isBass,
+    generatorVersion: isBass ? saved.bass.generatorVersion : 1,
     revision: saved.selectionRevision
   });
   const exercise = useMemo(() => {
-    const selection = JSON.parse(selectionKey) as Pick<ReadingState, "task" | "seed" | "plan">;
+    const selection = JSON.parse(selectionKey) as Pick<ReadingState, "task" | "seed" | "plan"> & {
+      bass: boolean;
+      generatorVersion: number;
+    };
+    if (selection.bass && selection.task && selection.task !== "check")
+      return generateBassReadingExercise(
+        selection.task,
+        selection.seed,
+        selection.generatorVersion
+      );
     return selection.task
       ? generateReadingExercise(selection.task, selection.seed, selection.plan ?? undefined)
       : null;
@@ -221,10 +236,14 @@ export function useReadingCourse() {
                 !noteId
               )
                 return;
-              session.present(noteId, atMs);
+              session.present(noteId, Math.max(atMs, performance.now()));
               if (!session.snapshot().presented) return;
               session.markStarted(Date.now());
-              if (exercise && journaledSession.current !== session) {
+              if (
+                exercise &&
+                exercise.skillId !== "bass-note-reading" &&
+                journaledSession.current !== session
+              ) {
                 journaledSession.current = session;
                 void store.claimReadingMaterial(readingFingerprint(exercise)).then((fresh) => {
                   if (sessionRef.current === session) {
@@ -272,18 +291,36 @@ export function useReadingCourse() {
     if (!session || finished?.session === session) return;
     const result = session.result(crypto.randomUUID(), Date.now());
     if (result) {
-      dispatch(readingActions.resultAdded(result));
+      if (isBass) {
+        const bassResult = toBassReadingResult(result);
+        if (!bassResult) return;
+        dispatch(readingActions.bassResultAdded(bassResult));
+      } else dispatch(readingActions.resultAdded(result));
       setFinished({ session, result });
     }
-  }, [session, finished, dispatch]);
+  }, [session, finished, dispatch, isBass]);
   const suspend = useCallback(() => {
     session?.setActive(false, performance.now());
     publish();
   }, [session, publish]);
   return {
     active: exercise !== null,
+    isBass,
+    bassHistory: saved.bass.history,
+    bassSourceFilter: saved.bass.sourceFilter,
+    bassResult: finished?.session === session ? toBassReadingResult(finished.result) : null,
+    setBassSourceFilter: (value: typeof saved.bass.sourceFilter) =>
+      dispatch(readingActions.bassSourceFilterChanged(value)),
+    startBass: (task: BassReadingTask) => {
+      setIntro(false);
+      dispatch(readingActions.bassSelected({ task, seed: saved.bass.seed }));
+    },
+    openBassIntro: () => {
+      setIntroCourse("bass");
+      setIntro(true);
+    },
     task: exercise?.task ?? null,
-    purpose: saved.plan?.purpose ?? saved.task,
+    purpose: isBass ? saved.bass.task : (saved.plan?.purpose ?? saved.task),
     profile: saved.profile,
     sourceFilter: saved.sourceFilter,
     delayedDue: saved.profile.delayedDueAt !== null && wallNow >= saved.profile.delayedDueAt,
@@ -303,14 +340,26 @@ export function useReadingCourse() {
     history: saved.history,
     result: finished?.session === session ? finished.result : null,
     intro,
-    setIntro,
+    introCourse,
+    setIntro: (value: boolean) => {
+      setIntroCourse("right");
+      setIntro(value);
+    },
     blockedRef,
     ...generation,
     exit: () => dispatch(readingActions.exit()),
     finish,
     suspend,
     newSeries: () => {
-      if (saved.task) void generation.select(saved.plan?.purpose ?? saved.task);
+      if (isBass)
+        dispatch(
+          readingActions.bassSelected({
+            task: saved.bass.task,
+            seed: nextBassReadingSeed(saved.bass.seed, saved.bass.task),
+            generatorVersion: saved.bass.generatorVersion
+          })
+        );
+      else if (saved.task) void generation.select(saved.plan?.purpose ?? saved.task);
     },
     onRetry: () => {
       if (snapshot?.noteId) session?.requirePresentation(snapshot.noteId, performance.now());
@@ -324,7 +373,7 @@ export function useReadingCourse() {
         snapshot?.presented &&
         snapshot.active &&
         snapshot.noteId &&
-        saved.task !== "check"
+        exercise?.task !== "check"
       )
         requestHint(
           Math.min(2, Math.max(hintLevel, snapshot.hintLevel) + 1) as ReadingHintLevel,
