@@ -210,6 +210,31 @@ export class PracticeSession {
     return events;
   }
 
+  /** Commits a verified whole waiting pair without partially accepting its earlier attacks. */
+  commitWaitingGroup(
+    noteIds: readonly string[],
+    performanceMs: number
+  ): PracticeEvent[] | undefined {
+    const due = this.nextDue();
+    if (
+      this.finished ||
+      this.clockPaused ||
+      !this.waiting ||
+      this.options.mode !== "wait" ||
+      this.options.noteResult !== false ||
+      due.length !== 2 ||
+      !Number.isFinite(performanceMs) ||
+      performanceMs < this.lastPerformanceMs ||
+      noteIds.length !== due.length ||
+      new Set(noteIds).size !== due.length ||
+      due.some((note) => !noteIds.includes(note.id))
+    )
+      return undefined;
+    for (const note of due) this.status.set(note.id, "hit");
+    if (this.clockStarted) this.timeline.anchor(performanceMs, this.time, this.options.speed);
+    return due.map((note) => ({ type: "hit", noteId: note.id, offset: 0 }));
+  }
+
   releaseKeyAt(pitch: number, performanceMs: number, source = "default"): PracticeEvent[] {
     const eventTime = this.timeline.at(performanceMs);
     if (eventTime === undefined) return [];
