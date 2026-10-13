@@ -14,6 +14,11 @@ import {
 import { emptyRhythmState, mergeRhythmHistory, normalizeRhythmState } from "./rhythmPersistence";
 import { emptyBassState, mergeBassHistory, normalizeBassState } from "./bassPersistence";
 import {
+  emptyTwoHandState,
+  mergeTwoHandHistory,
+  normalizeTwoHandState
+} from "./twoHandPersistence";
+import {
   validObservation,
   validIndependentDate,
   mergeReadingProfiles
@@ -182,11 +187,12 @@ function migrateResult(value: ReadingResult): ReadingResult {
 
 export function emptyReadingState(): ReadingState {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     activeCourse: null,
     intervals: emptyIntervalState(),
     rhythm: emptyRhythmState(),
     bass: emptyBassState(),
+    coordination: emptyTwoHandState(),
     selectionRevision: 0,
     task: null,
     seed: 1,
@@ -207,24 +213,29 @@ export function normalizeReadingState(value: unknown): {
   const reading = emptyReadingState();
   if (value === undefined) return { reading, invalid: false, blocked: false };
   const row = object(value);
-  if (typeof row.schemaVersion === "number" && row.schemaVersion > 5)
+  if (typeof row.schemaVersion === "number" && row.schemaVersion > 6)
     return { reading, invalid: false, blocked: true };
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    (row.schemaVersion !== undefined && ![1, 2, 3, 4, 5].includes(row.schemaVersion as number))
+    (row.schemaVersion !== undefined && ![1, 2, 3, 4, 5, 6].includes(row.schemaVersion as number))
   )
     return { reading, invalid: true, blocked: false };
   reading.task = task(row.task) ? row.task : null;
-  const modern = [3, 4, 5].includes(row.schemaVersion as number);
-  const hasRhythm = row.schemaVersion === 4 || row.schemaVersion === 5;
+  const modern = [3, 4, 5, 6].includes(row.schemaVersion as number);
+  const hasRhythm = [4, 5, 6].includes(row.schemaVersion as number);
+  const hasBass = row.schemaVersion === 5 || row.schemaVersion === 6;
   const intervalState = normalizeIntervalState(modern ? row.intervals : undefined);
   reading.intervals = intervalState.intervals;
   const rhythmState = normalizeRhythmState(hasRhythm ? row.rhythm : undefined);
   reading.rhythm = rhythmState.rhythm;
-  const bassState = normalizeBassState(row.schemaVersion === 5 ? row.bass : undefined);
+  const bassState = normalizeBassState(hasBass ? row.bass : undefined);
   reading.bass = bassState.bass;
+  const coordinationState = normalizeTwoHandState(
+    row.schemaVersion === 6 ? row.coordination : undefined
+  );
+  reading.coordination = coordinationState.coordination;
   reading.activeCourse = modern
     ? row.activeCourse === "note-reading" && reading.task
       ? "note-reading"
@@ -232,9 +243,11 @@ export function normalizeReadingState(value: unknown): {
         ? "interval-training"
         : hasRhythm && row.activeCourse === "rhythm-training"
           ? "rhythm-training"
-          : row.schemaVersion === 5 && row.activeCourse === "bass-reading"
+          : hasBass && row.activeCourse === "bass-reading"
             ? "bass-reading"
-            : null
+            : row.schemaVersion === 6 && row.activeCourse === "two-hand-coordination"
+              ? "two-hand-coordination"
+              : null
     : reading.task
       ? "note-reading"
       : null;
@@ -247,7 +260,9 @@ export function normalizeReadingState(value: unknown): {
     intervalState.invalid ||
     rhythmState.invalid ||
     bassState.invalid ||
-    (row.schemaVersion === 5 && row.bass === undefined) ||
+    coordinationState.invalid ||
+    (row.schemaVersion === 6 && row.coordination === undefined) ||
+    (hasBass && row.bass === undefined) ||
     (hasRhythm && row.rhythm === undefined) ||
     (modern && row.intervals === undefined) ||
     (modern && row.activeCourse === "note-reading" && reading.task === null) ||
@@ -258,7 +273,8 @@ export function normalizeReadingState(value: unknown): {
         "note-reading",
         "interval-training",
         ...(hasRhythm ? ["rhythm-training"] : []),
-        ...(row.schemaVersion === 5 ? ["bass-reading"] : [])
+        ...(hasBass ? ["bass-reading"] : []),
+        ...(row.schemaVersion === 6 ? ["two-hand-coordination"] : [])
       ].includes(row.activeCourse as null | string)) ||
     (row.plan !== undefined && row.plan !== null && reading.plan === null) ||
     history.some((result) => !validResult(result));
@@ -330,6 +346,8 @@ export type ReadingPersistentField =
   | "rhythmSelection"
   | "bassSelection"
   | "bassSourceFilter"
+  | "twoHandSelection"
+  | "twoHandSourceFilter"
   | "automaticHints"
   | "nameDelayMs"
   | "keyDelayMs"
@@ -376,6 +394,15 @@ export function changedReadingFields(
   )
     fields.push("bassSelection");
   if (current.bass.sourceFilter !== baseline.bass.sourceFilter) fields.push("bassSourceFilter");
+  if (
+    (current.selectionRevision !== baseline.selectionRevision &&
+      current.activeCourse === "two-hand-coordination") ||
+    current.coordination.seed !== baseline.coordination.seed ||
+    current.coordination.generatorVersion !== baseline.coordination.generatorVersion
+  )
+    fields.push("twoHandSelection");
+  if (current.coordination.sourceFilter !== baseline.coordination.sourceFilter)
+    fields.push("twoHandSourceFilter");
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (current.preferences[key] !== baseline.preferences[key]) fields.push(key);
   }
@@ -394,6 +421,8 @@ export function mergeReadingState(
     "rhythmSelection",
     "bassSelection",
     "bassSourceFilter",
+    "twoHandSelection",
+    "twoHandSourceFilter",
     "automaticHints",
     "nameDelayMs",
     "keyDelayMs",
@@ -404,6 +433,9 @@ export function mergeReadingState(
   const intervals = fields.includes("intervalSelection") ? incoming.intervals : saved.intervals;
   const rhythm = fields.includes("rhythmSelection") ? incoming.rhythm : saved.rhythm;
   const bass = fields.includes("bassSelection") ? incoming.bass : saved.bass;
+  const coordination = fields.includes("twoHandSelection")
+    ? incoming.coordination
+    : saved.coordination;
   const preferences = { ...saved.preferences };
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (fields.includes(key)) Object.assign(preferences, { [key]: incoming.preferences[key] });
@@ -414,7 +446,7 @@ export function mergeReadingState(
     ).values()
   ].sort((a, b) => (a.completedAt ?? a.createdAt) - (b.completedAt ?? b.createdAt));
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     activeCourse: fields.includes("activeCourse") ? incoming.activeCourse : saved.activeCourse,
     intervals: {
       ...intervals,
@@ -433,6 +465,13 @@ export function mergeReadingState(
         ? incoming.bass.sourceFilter
         : saved.bass.sourceFilter,
       history: mergeBassHistory(saved.bass.history, incoming.bass.history)
+    },
+    coordination: {
+      ...coordination,
+      sourceFilter: fields.includes("twoHandSourceFilter")
+        ? incoming.coordination.sourceFilter
+        : saved.coordination.sourceFilter,
+      history: mergeTwoHandHistory(saved.coordination.history, incoming.coordination.history)
     },
     selectionRevision: incoming.selectionRevision,
     task: selection.task,

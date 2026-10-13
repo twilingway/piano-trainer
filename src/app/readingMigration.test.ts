@@ -1,4 +1,4 @@
-﻿// @vitest-environment happy-dom
+// @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 import { generateReadingExercise } from "../reading/generator";
 import { ReadingSession } from "../reading/session";
@@ -140,7 +140,7 @@ describe("reading storage migration", () => {
       history: [sample, { id: "broken" }]
     });
     expect(invalid).toBe(true);
-    expect(reading.schemaVersion).toBe(5);
+    expect(reading.schemaVersion).toBe(6);
     expect(reading.preferences.automaticHints).toBe(false);
     expect(reading.history).toHaveLength(1);
     const migrated = reading.history[0];

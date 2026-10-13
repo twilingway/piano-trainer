@@ -12,6 +12,12 @@ import type { IntervalMode, IntervalResult } from "../intervals/types";
 import type { RhythmBpm, RhythmInputSource, RhythmResult } from "../rhythm/types";
 import type { BassReadingResult, BassReadingTask } from "../reading/bassTypes";
 import { emptyBassState, mergeBassHistory, type BassPersistentState } from "./bassPersistence";
+import type { TwoHandResult } from "../reading/twoHandTypes";
+import {
+  emptyTwoHandState,
+  mergeTwoHandHistory,
+  type TwoHandPersistentState
+} from "./twoHandPersistence";
 import {
   emptyRhythmState,
   mergeRhythmHistory,
@@ -24,11 +30,18 @@ import {
 } from "./intervalPersistence";
 
 export interface ReadingState {
-  schemaVersion: 5;
-  activeCourse: "note-reading" | "interval-training" | "rhythm-training" | "bass-reading" | null;
+  schemaVersion: 6;
+  activeCourse:
+    | "note-reading"
+    | "interval-training"
+    | "rhythm-training"
+    | "bass-reading"
+    | "two-hand-coordination"
+    | null;
   intervals: IntervalPersistentState;
   rhythm: RhythmPersistentState;
   bass: BassPersistentState;
+  coordination: TwoHandPersistentState;
   task: ReadingTask | null;
   seed: number;
   preferences: ReadingPreferences;
@@ -44,11 +57,12 @@ export interface ReadingRoot {
   reading: ReadingState;
 }
 export const initialReadingState: ReadingState = {
-  schemaVersion: 5,
+  schemaVersion: 6,
   activeCourse: null,
   intervals: emptyIntervalState(),
   rhythm: emptyRhythmState(),
   bass: emptyBassState(),
+  coordination: emptyTwoHandState(),
   task: null,
   seed: 1,
   preferences: DEFAULT_READING_PREFERENCES,
@@ -144,6 +158,22 @@ const readingSlice = createSlice({
     },
     bassResultAdded(state, { payload }: PayloadAction<BassReadingResult>) {
       state.bass.history = mergeBassHistory(state.bass.history, [payload]);
+    },
+    twoHandSelected(
+      state,
+      { payload }: PayloadAction<{ seed: number; generatorVersion?: number }>
+    ) {
+      if (payload.generatorVersion !== undefined && payload.generatorVersion !== 1) return;
+      state.activeCourse = "two-hand-coordination";
+      state.coordination.seed = payload.seed >>> 0;
+      state.coordination.generatorVersion = payload.generatorVersion ?? 1;
+      state.selectionRevision++;
+    },
+    twoHandSourceFilterChanged(state, { payload }: PayloadAction<ReadingSourceFilter>) {
+      state.coordination.sourceFilter = payload;
+    },
+    twoHandResultAdded(state, { payload }: PayloadAction<TwoHandResult>) {
+      state.coordination.history = mergeTwoHandHistory(state.coordination.history, [payload]);
     },
     hydrated(state, { payload }: PayloadAction<ReadingState>) {
       return { ...payload, selectionRevision: state.selectionRevision };
