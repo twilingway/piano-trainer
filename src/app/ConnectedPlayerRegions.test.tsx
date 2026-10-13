@@ -13,6 +13,7 @@ import type { Locale } from "../i18n/locales";
 import { translate } from "../i18n/translate";
 import { readingMessages } from "../i18n/readingMessages";
 import { bassReadingMessages } from "../i18n/bassReadingMessages";
+import { twoHandMessages } from "../i18n/twoHandMessages";
 let activeLocale: Locale = "ru";
 const observed = vi.hoisted(() => ({
   header: vi.fn(),
@@ -25,7 +26,12 @@ const observed = vi.hoisted(() => ({
 vi.mock("./usePlayerRuntime", () => ({ usePlayerRuntime: () => observed.runtime }));
 vi.mock("./useI18n", () => ({
   useI18n: () => ({
-    t: (key: string) => translate(activeLocale, { ...readingMessages, ...bassReadingMessages }, key)
+    t: (key: string) =>
+      translate(
+        activeLocale,
+        { ...readingMessages, ...bassReadingMessages, ...twoHandMessages },
+        key
+      )
   })
 }));
 vi.mock("./ConnectedSettings", () => ({
@@ -53,6 +59,15 @@ const initial = (): PlayerRuntime =>
     reading: { active: false, task: null },
     intervals: { active: false, mode: "see-and-play" },
     rhythm: { active: false },
+    twoHand: {
+      active: false,
+      intro: false,
+      history: [],
+      sourceFilter: "all",
+      setSourceFilter: vi.fn(),
+      start: vi.fn(),
+      setIntro: vi.fn()
+    },
     practiceActive: false,
     course: { active: null, saved: { progress: {} }, controller: { open: vi.fn() } },
     fullscreen: { error: null, active: false },
@@ -109,6 +124,18 @@ function mount(children: React.ReactNode) {
   return { container, render };
 }
 describe("connected regions without React Compiler", () => {
+  it.each(["ru", "en"] as const)("labels the two-hand course in %s", (locale) => {
+    activeLocale = locale;
+    observed.runtime = initial();
+    observed.runtime.twoHand = { ...observed.runtime.twoHand, active: true };
+    observed.runtime.practiceActive = true;
+    mount(<ConnectedPlayerHeader />);
+    expect(observed.header.mock.lastCall?.[0]).toMatchObject({
+      title: locale === "ru" ? "Две руки: играю вместе" : "Two hands: play together",
+      hands: "both",
+      fixedPractice: true
+    });
+  });
   it.each([
     ["ru", "notes", "Левая рука: отдельные ноты", "Читаю пять нот · Читаю отдельные ноты"],
     ["ru", "phrases", "Левая рука: короткие фразы", "Читаю пять нот · Читаю короткие фразы"],

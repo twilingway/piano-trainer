@@ -51,6 +51,27 @@ export function mergeReadingProfiles(
   saved: ReadingProfile,
   incoming: ReadingProfile
 ): ReadingProfile {
+  const known = new Set(saved.observations.map((row) => JSON.stringify([row.runId, row.noteId])));
+  if (
+    incoming.observations.every((row) => known.has(JSON.stringify([row.runId, row.noteId]))) &&
+    incoming.lastIndependent.every((row) =>
+      saved.lastIndependent.some(
+        (previous) =>
+          previous.expectedMidi === row.expectedMidi &&
+          previous.inputSource === row.inputSource &&
+          previous.completedAt >= row.completedAt
+      )
+    ) &&
+    incoming.processedRunIds.every((id) => saved.processedRunIds.includes(id)) &&
+    (incoming.delayedDueAt === null ||
+      (saved.delayedDueAt !== null && incoming.delayedDueAt <= saved.delayedDueAt))
+  )
+    return {
+      ...saved,
+      observations: [...saved.observations],
+      lastIndependent: [...saved.lastIndependent],
+      processedRunIds: [...saved.processedRunIds]
+    };
   const observations = new Map<string, ReadingObservation>();
   for (const row of [...saved.observations, ...incoming.observations]) {
     const key = JSON.stringify([row.runId, row.noteId]);

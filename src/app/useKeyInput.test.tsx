@@ -22,7 +22,12 @@ vi.mock("../input/midiInput", () => ({
   listenToMidi: vi.fn()
 }));
 
-const trainer = { key: vi.fn<Trainer["key"]>(), pedal: vi.fn(), activateOverdrive: vi.fn() };
+const trainer = {
+  key: vi.fn<Trainer["key"]>(),
+  pedal: vi.fn(),
+  activateOverdrive: vi.fn(),
+  cancelInput: vi.fn()
+};
 const trainerRef = { current: trainer as unknown as Trainer };
 const bindings = presetBindings("extended_range");
 let root: Root;
@@ -77,6 +82,25 @@ afterEach(async () => {
 });
 
 describe("computer keyboard sound and trainer sustain", () => {
+  it("cancels a pair before blur-generated releases and when the view hides", async () => {
+    await mount();
+    await key("KeyG");
+    trainer.key.mockClear();
+    act(() => {
+      window.dispatchEvent(new Event("blur"));
+    });
+    expect(trainer.cancelInput.mock.invocationCallOrder[0]).toBeLessThan(
+      trainer.key.mock.invocationCallOrder[0] ?? Infinity
+    );
+    expect(trainer.key).toHaveBeenCalledWith(expect.objectContaining({ type: "up", pitch: 60 }));
+    trainer.cancelInput.mockClear();
+    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(trainer.cancelInput).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
   it("blocks piano attacks and sound while retaining MIDI releases during ear choices", async () => {
     let onMidi: ((event: MidiEvent, deviceId: string) => void) | undefined;
     vi.mocked(midiSupported).mockReturnValue(true);

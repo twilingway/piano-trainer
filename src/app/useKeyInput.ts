@@ -55,6 +55,13 @@ export function useKeyInput(
     const stopWarmUp = startSoundOnFirstGesture();
     let stopMidi: (() => void) | undefined;
     let disposed = false;
+    let previousInputs = new Set<string>();
+    const midiDevicesChanged = (next: MidiDevice[]) => {
+      const inputs = new Set(next.map((device) => device.id));
+      if ([...previousInputs].some((id) => !inputs.has(id))) trainerRef.current?.cancelInput(true);
+      previousInputs = inputs;
+      setDevices(next);
+    };
     if (midiSupported()) {
       // A pedal sends "down" over and over while it moves: only the press itself is Overdrive.
       const pedalDown = new Map<string, boolean>();
@@ -71,7 +78,7 @@ export function useKeyInput(
           trainerRef.current?.pedal(event.down, event.timestamp, event.deviceId);
         } else onKey(event);
       };
-      listenToMidi(onMidiKey, setDevices).then(
+      listenToMidi(onMidiKey, midiDevicesChanged).then(
         (stop) => {
           if (disposed) stop();
           else stopMidi = stop;
@@ -116,6 +123,7 @@ export function useKeyInput(
       },
       {
         ...keyboardOptions,
+        onCancelInput: () => trainerRef.current?.cancelInput(),
         owedNoteId: () => trainerRef.current?.nextDueNoteId(),
         onOverdrive: () => {
           trainerRef.current?.activateOverdrive();
@@ -125,8 +133,23 @@ export function useKeyInput(
   }, [trainerRef, keyboardOptions]);
 
   useEffect(() => {
+    const cancel = () => trainerRef.current?.cancelInput(true);
+    const hidden = () => {
+      if (document.hidden) cancel();
+    };
+    window.addEventListener("blur", cancel);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      cancel();
+      window.removeEventListener("blur", cancel);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [trainerRef]);
+
+  useEffect(() => {
+    if (midiDeviceRef.current !== midiDeviceId) trainerRef.current?.cancelInput(true);
     midiDeviceRef.current = midiDeviceId;
-  }, [midiDeviceId]);
+  }, [midiDeviceId, trainerRef]);
 
   const midiName = devices.length > 0 ? (devices[0]?.name ?? "MIDI") : undefined;
 

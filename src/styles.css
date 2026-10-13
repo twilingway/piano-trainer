@@ -3701,6 +3701,14 @@ button.song-card.song-card__open {
     margin-right: var(--mobile-bar-width, 0px);
   }
 }
+.two-hand-metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem 1rem;
+}
+.two-hand-metrics dd {
+  margin: 0;
+}
 .reading-muted {
   opacity: 0.7;
 }
@@ -4108,5 +4116,28 @@ button.song-card.song-card__open {
   .rhythm-tap-actions .game-button {
     min-width: 0;
     white-space: normal;
+  }
+}
+
+.two-hand-feedback {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-top: 0;
+  padding-block: 4px;
+  background: #020b12;
+}
+@media (max-height: 500px), (max-width: 640px) {
+  .reading-practice.two-hand-practice ~ .workspace .workspace-main > .staves,
+  .reading-practice.two-hand-practice ~ .workspace .workspace-main .staff {
+    max-height: none;
+  }
+  .reading-practice.two-hand-practice ~ .workspace .workspace-main .staff {
+    min-height: 140px;
+  }
+}
+@media (max-height: 500px) {
+  .reading-practice.two-hand-practice {
+    max-height: 24dvh;
   }
 }

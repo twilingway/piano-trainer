@@ -98,7 +98,7 @@ function Harness({
   course
 }: {
   reading?: boolean;
-  readingHand?: "left" | "right";
+  readingHand?: "left" | "right" | "both";
   rhythm?: boolean;
   gameOptions?: Parameters<typeof useTrainer>[0]["gameOptions"];
   ranked?: boolean;
@@ -240,6 +240,24 @@ describe("trainer runtime isolation", () => {
     });
     expect(value.handChoice).toBe("both");
     expect(value.playerHands).toEqual(new Set(["right", "left"]));
+    expect(store.getState().preferences.player).toEqual(saved);
+  });
+
+  it("uses both player parts for the fixed pair profile without changing saved preferences", async () => {
+    const saved = store.getState().preferences.player;
+    await act(async () => {
+      root.render(withTestStore(<Harness reading readingHand="both" />, store));
+      await Promise.resolve();
+    });
+    expect(value.handChoice).toBe("both");
+    expect(value.playerHands).toEqual(new Set(["left", "right"]));
+    expect(active().load.mock.lastCall?.[1]).toEqual({
+      mode: "wait",
+      hands: new Set(["left", "right"]),
+      speed: 1,
+      accompaniment: false,
+      noteResult: false
+    });
     expect(store.getState().preferences.player).toEqual(saved);
   });
 

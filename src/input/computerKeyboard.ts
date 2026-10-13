@@ -20,6 +20,8 @@ export interface KeyboardInputOptions {
   readonly owedNoteId?: () => string | undefined;
   /** The Overdrive key was pressed: in both games, unless the player gave it a piano note. */
   readonly onOverdrive?: () => void;
+  /** Called before synthetic releases from blur, hiding or listener disposal. */
+  readonly onCancelInput?: () => void;
 }
 /** A key event as a word-mode token ("modifier:code"); Shift with Alt types nothing. */
 export function wordTokenId(event: KeyboardEvent): string | undefined {
@@ -111,6 +113,7 @@ export function listenToComputerKeyboard(
     emit(state.release(event.code), event.timeStamp);
   };
   const clear = () => {
+    options.onCancelInput?.();
     emit(state.clear(), performance.now());
   };
   const visibility = () => {

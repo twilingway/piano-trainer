@@ -34,6 +34,7 @@ import { DEFAULT_CAMERA } from "./worldCamera";
 import type { CameraPrefs } from "./worldCamera";
 import { USUAL_PLACEMENT, fitRange, viewGeometry } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewParts } from "./viewGeometry";
+import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 
 export type { FallingNoteNames } from "./bakeLabels";
 export type { FrameState } from "./frameState";
@@ -61,6 +62,7 @@ export class FallingNotesView {
   onNoteClick: ((noteId: string) => void) | undefined;
   /** A key pressed or released with the mouse (or a finger on a touch screen). */
   onKeyPointer: ((event: KeyEvent) => void) | undefined;
+  onInputCancel: ((resetAll?: boolean) => void) | undefined;
 
   private readonly app = new Application();
   private notesLayer: NotesLayer | undefined;
@@ -161,9 +163,9 @@ export class FallingNotesView {
     );
     keyboard.showStickers(this.labels);
     this.keyboard = keyboard;
-    const computerKeyboard = new ComputerKeyboardLayer(renderer, (event) => {
-      this.onKeyPointer?.(event);
-    });
+    const computerKeyboard = new ComputerKeyboardLayer(renderer, (event) =>
+      this.onKeyPointer?.(event)
+    );
     computerKeyboard.setKeys(this.computer);
     computerKeyboard.showStickers(this.labels);
     this.computerKeyboard = computerKeyboard;
@@ -196,12 +198,8 @@ export class FallingNotesView {
     this.unbindKeyboardPointer = bindKeyboardPointer(
       stage,
       this.app.canvas,
-      (event) => {
-        this.keysPointer(event);
-      },
-      () => {
-        this.keysLayer?.releaseMouse();
-      }
+      this.keysPointer.bind(this),
+      viewKeyRelease(this)
     );
     await keyboard.loadPaintedFaces(this.keyStyle);
     this.ready = true;
@@ -327,12 +325,12 @@ export class FallingNotesView {
 
   /** Physical/legacy keys and the flat key fallback share the stage's pointer gesture. */
   private keysPointer(event: FederatedPointerEvent): void {
-    if (event.target !== this.app.stage || !this.parts.keys) return;
+    if (!this.parts.keys || (this.computer && event.target !== this.app.stage)) return;
     const point = this.roadMode
       ? this.road?.keysPointAt(event.global.x, event.global.y)
       : { x: event.global.x + this.pan - this.offset.x, y: event.global.y - this.offset.y };
-    const pitch = point && this.keysLayer?.pitchAt(point.x, point.y);
-    if (pitch !== undefined) this.keysLayer?.pressWithMouse(pitch);
+    const computer = this.computer ? this.computerKeyboard : undefined;
+    playViewKeyPointer(event, point, this.keyboard, computer);
   }
 
   /**
@@ -340,6 +338,7 @@ export class FallingNotesView {
    * (`tokens` say what each key types and plays); undefined brings the piano back.
    */
   setComputerKeys(keys: ComputerKeyboard | undefined): void {
+    this.onInputCancel?.(true);
     this.keysLayer?.releaseMouse();
     const letter = (text: string) => this.computerKeyboard?.letter(text) ?? Texture.EMPTY;
     this.computer = keys
@@ -352,7 +351,7 @@ export class FallingNotesView {
   }
 
   /** The keyboard on screen: the computer's in the word mode, else the piano's. */
-  private get keysLayer(): KeysLayer | undefined {
+  get keysLayer(): KeysLayer | undefined {
     return this.computer ? this.computerKeyboard : this.keyboard;
   }
 
