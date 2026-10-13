@@ -86,14 +86,18 @@ describe("computer keyboard sound and trainer sustain", () => {
     await mount();
     await key("KeyG");
     trainer.key.mockClear();
-    await act(async () => window.dispatchEvent(new Event("blur")));
+    act(() => {
+      window.dispatchEvent(new Event("blur"));
+    });
     expect(trainer.cancelInput.mock.invocationCallOrder[0]).toBeLessThan(
       trainer.key.mock.invocationCallOrder[0] ?? Infinity
     );
     expect(trainer.key).toHaveBeenCalledWith(expect.objectContaining({ type: "up", pitch: 60 }));
     trainer.cancelInput.mockClear();
     vi.spyOn(document, "hidden", "get").mockReturnValue(true);
-    await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
     expect(trainer.cancelInput).toHaveBeenCalled();
     vi.restoreAllMocks();
   });

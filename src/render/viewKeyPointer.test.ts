@@ -5,13 +5,15 @@ import { FallingNotesView } from "./FallingNotesView";
 import { KeyboardLayer } from "./KeyboardLayer";
 import { PointerKeys } from "./pointerKeys";
 import { releaseViewKeyPointer } from "./viewKeyPointer";
+import type { KeyEvent } from "../input/midiInput";
 
 function harness(roadMode: boolean) {
-  const emit = vi.fn();
+  const emit = vi.fn<(event: KeyEvent) => void>();
   const cancel = vi.fn();
+  const pitchAt = vi.fn((x: number) => (x < 100 ? 48 : 60));
   const keyboard = Object.assign(Object.create(KeyboardLayer.prototype) as object, {
     pointers: new PointerKeys(emit),
-    pitchAt: vi.fn((x: number) => (x < 100 ? 48 : 60))
+    pitchAt
   }) as unknown as KeyboardLayer;
   const stage = {};
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
@@ -32,7 +34,7 @@ function harness(roadMode: boolean) {
       timeStamp: raw + 5,
       nativeEvent: { timeStamp: raw }
     }) as unknown as FederatedPointerEvent;
-  return { emit, cancel, keyboard, view, event };
+  return { emit, cancel, keyboard, view, event, pitchAt };
 }
 
 describe("flat and projected pointer routes", () => {
@@ -41,8 +43,8 @@ describe("flat and projected pointer routes", () => {
     run.view.keysPointer(run.event(1, 0, 100));
     run.view.keysPointer(run.event(2, 100, 120));
     run.view.keysPointer(run.event(2, 100, 130));
-    expect(run.keyboard.pitchAt).toHaveBeenCalledWith(10, 15);
-    expect(run.keyboard.pitchAt).toHaveBeenCalledWith(110, 15);
+    expect(run.pitchAt).toHaveBeenCalledWith(10, 15);
+    expect(run.pitchAt).toHaveBeenCalledWith(110, 15);
     expect(run.emit.mock.calls.map(([key]) => [key.type, key.pitch, key.timestamp])).toEqual([
       ["down", 48, 100],
       ["down", 60, 120]

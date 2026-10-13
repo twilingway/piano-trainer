@@ -29,18 +29,18 @@ const song: Song = {
 };
 function harness() {
   now = 1000;
-  let tick = (_delta: number) => undefined;
+  let tick: (delta: number) => void = () => undefined;
   const view = {
     onTick: (callback: typeof tick) => {
       tick = callback;
     },
     setSong: vi.fn(),
-    draw: vi.fn()
+    draw: vi.fn<FallingNotesView["draw"]>()
   };
   const trainer = new Trainer(view as unknown as FallingNotesView);
   let pending: readonly string[] | undefined;
-  const input = vi.fn();
-  const commit = vi.fn((_ids: readonly string[], _accepted: boolean) => {
+  const input = vi.fn<TrainerPairPolicy["onInput"]>();
+  const commit = vi.fn<NonNullable<TrainerPairPolicy["onCommit"]>>(() => {
     pending = undefined;
   });
   const cancel = vi.fn();
@@ -65,7 +65,9 @@ function harness() {
     cancel,
     cue,
     view,
-    frame: () => tick(16),
+    frame: () => {
+      tick(16);
+    },
     request: (ids: readonly string[]) => {
       pending = ids;
     }
@@ -125,7 +127,7 @@ describe("Trainer pair policy", () => {
     const run = harness();
     const takes = vi.fn();
     run.trainer.onTake = takes;
-    const snapshot = vi.fn();
+    const snapshot = vi.fn<NonNullable<Trainer["onSnapshot"]>>();
     run.trainer.onSnapshot = snapshot;
     const down = {
       type: "down" as const,
@@ -167,9 +169,7 @@ describe("Trainer pair policy", () => {
 
   it("shows and acknowledges only current pair cues and cancels lost input before cleanup", () => {
     const run = harness();
-    expect(
-      run.view.draw.mock.lastCall?.[0].hintNotes.map((note: { pitch: number }) => note.pitch)
-    ).toEqual([48, 60]);
+    expect(run.view.draw.mock.lastCall?.[0].hintNotes?.map((note) => note.pitch)).toEqual([48, 60]);
     expect(run.cue).toHaveBeenCalledWith([48, 60], now);
     run.trainer.key({ type: "down", pitch: 48, velocity: 90, timestamp: now });
     run.cancel.mockClear();
