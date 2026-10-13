@@ -68,6 +68,66 @@ describe("TwoHandSession", () => {
     input("up", pair.pitches[0], 1150);
     expect(session.tick(1401).answers).toHaveLength(1);
   });
+  it("retains an up delivered before the first down as prefix evidence", () => {
+    const { session, pair, input } = setup();
+    input("up", pair.pitches[0], 1100);
+    expect(session.snapshot().status).toBe("ready");
+    input("down", pair.pitches[1], 1190);
+    input("down", pair.pitches[0], 1010, 1200);
+    expect(session.snapshot().status).toBe("early-release");
+    input("up", pair.pitches[1], 1250);
+    input("up", pair.pitches[0], 1260);
+    expect(session.tick(1511).answers).toHaveLength(0);
+    input("down", pair.pitches[0], 1520);
+    input("down", pair.pitches[1], 1530);
+    input("up", pair.pitches[0], 1540);
+    input("up", pair.pitches[1], 1550);
+    expect(session.tick(1801).answers[0]?.attempts.map((a) => a.outcome)).toEqual([
+      "early-release",
+      "success"
+    ]);
+  });
+  it("retains mixed-origin error even when device offsets differ", () => {
+    const { exercise, session, pair, input } = setup();
+    input("down", pair.pitches[0], 1010, 1010, { offsetMs: 0 });
+    input("down", pair.pitches[1], 1100, 1100, { source: "midi", offsetMs: 40 });
+    expect(session.snapshot().status).toBe("mixed-origin");
+    input("up", pair.pitches[0], 1120, 1120, { offsetMs: 0 });
+    input("up", pair.pitches[1], 1130, 1130, { source: "midi", offsetMs: 40 });
+    session.tick(1381);
+    const result = completeFrom(session, exercise, 1500);
+    expect(result.pairs[0]?.attempts.map((a) => a.outcome)).toEqual(["mixed-origin", "success"]);
+    expect(validateTwoHandResult(result)).toEqual(result);
+  });
+  it("rejects a fresh restrike of an expected pitch as the third attack", () => {
+    const { session, pair, input } = setup();
+    input("down", pair.pitches[0], 1010);
+    input("down", pair.pitches[1], 1100);
+    input("up", pair.pitches[0], 1110);
+    input("down", pair.pitches[0], 1120);
+    expect(session.snapshot().status).toBe("third-note");
+    input("up", pair.pitches[0], 1130);
+    input("up", pair.pitches[1], 1140);
+    expect(session.tick(1391).answers).toHaveLength(0);
+  });
+  it("seeds pre-existing ownership without creating an answer or synthetic release", () => {
+    const { session, pair, input } = setup();
+    session.seedHeld(
+      [{ kind: "down", pitch: pair.pitches[0], source: "keyboard", atMs: 10 }],
+      1001
+    );
+    input("down", pair.pitches[0], 1010);
+    input("down", pair.pitches[1], 1020);
+    expect(session.snapshot().status).toBe("ready");
+    input("up", pair.pitches[0], 1030);
+    input("up", pair.pitches[1], 1040);
+    expect(session.tick(1300).answers).toHaveLength(0);
+    input("down", pair.pitches[0], 1310);
+    input("down", pair.pitches[1], 1320);
+    input("up", pair.pitches[0], 1330);
+    input("up", pair.pitches[1], 1340);
+    expect(session.tick(1591).answers[0]?.firstAttemptCorrect).toBe(true);
+  });
   it.each(["wrong-note", "third-note", "mixed-origin", "too-slow"] as const)(
     "records one %s failure",
     (reason) => {
@@ -182,7 +242,7 @@ describe("TwoHandSession", () => {
     input("up", pair.pitches[1], 1210, 1460, { offsetMs: 40 });
     expect(session.tick(1460 + 1000 / fps).answers[0]?.spreadMs).toBe(180);
   });
-  it("does not let cancel or a changing offset prove a release", () => {
+  it("does not let cancel or an explicit timing change prove a release", () => {
     const { session, pair, input } = setup();
     input("down", pair.pitches[0], 1010);
     input("down", pair.pitches[1], 1020);
@@ -192,6 +252,7 @@ describe("TwoHandSession", () => {
     expect(session.tick(1500).answers).toHaveLength(0);
     input("down", pair.pitches[0], 1510);
     input("down", pair.pitches[1], 1520, 1520, { offsetMs: 10 });
+    session.cancel(1521);
     input("up", pair.pitches[0], 1530);
     input("up", pair.pitches[1], 1540);
     expect(session.tick(2000).answers).toHaveLength(0);
@@ -223,7 +284,14 @@ describe("TwoHandSession", () => {
 });
 function completed() {
   const { exercise, session } = setup();
-  let at = 1000;
+  return completeFrom(session, exercise, 1000);
+}
+function completeFrom(
+  session: TwoHandSession,
+  exercise: ReturnType<typeof generateTwoHandExercise>,
+  startAt: number
+) {
+  let at = startAt;
   for (const pair of exercise.pairs) {
     session.prepare(pair.id, at);
     session.present(pair.id, at);

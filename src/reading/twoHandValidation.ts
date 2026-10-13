@@ -110,7 +110,6 @@ export function validateTwoHandResult(value: unknown): TwoHandResult | null {
             event.atMs < attempt.boundaryAtMs ||
             !active(event.atMs) ||
             event.receivedAtMs > attempt.finalizedAtMs ||
-            (event.offsetMs ?? 0) !== attempt.offsetMs ||
             (event.runId !== undefined && event.runId !== r.runId) ||
             (event.presentationId !== undefined && event.presentationId !== attempt.presentationId)
           )
@@ -126,6 +125,7 @@ export function validateTwoHandResult(value: unknown): TwoHandResult | null {
           evaluation.first.atMs !== attempt.firstDownAtMs ||
           (evaluation.second?.atMs ?? null) !== attempt.secondDownAtMs ||
           evaluation.first.source !== attempt.inputSource ||
+          (evaluation.first.offsetMs ?? 0) !== attempt.offsetMs ||
           evaluation.spreadMs !== attempt.spreadMs ||
           outcome !== attempt.outcome ||
           (attemptIndex === pair.attempts.length - 1
@@ -170,6 +170,8 @@ function validEvent(event: TwoHandEvent): boolean {
     event.receivedAtMs - event.atMs <= 250 &&
     Number.isInteger(event.sequence) &&
     event.sequence >= 0 &&
+    (event.offsetMs === undefined ||
+      (typeof event.offsetMs === "number" && Number.isFinite(event.offsetMs))) &&
     (event.ownerId === undefined || text(event.ownerId)) &&
     (event.deviceId === undefined || text(event.deviceId)) &&
     (event.channel === undefined ||

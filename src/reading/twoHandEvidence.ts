@@ -56,6 +56,7 @@ export function evaluateTwoHandEvents(
       continue;
     }
     if (held.has(owner)) continue;
+    const alreadyHeldPitch = [...held.values()].some((down) => down.pitch === event.pitch);
     held.set(owner, event);
     if (closed) continue;
     if (!first) {
@@ -72,7 +73,10 @@ export function evaluateTwoHandEvents(
       reason = second ? "third-note" : "wrong-note";
       continue;
     }
-    if (event.pitch === first.pitch || event.pitch === second?.pitch) continue;
+    if (event.pitch === first.pitch || event.pitch === second?.pitch) {
+      if (second && !alreadyHeldPitch) reason = "third-note";
+      continue;
+    }
     if (second) {
       reason = "third-note";
       continue;

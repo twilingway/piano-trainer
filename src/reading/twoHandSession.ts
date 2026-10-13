@@ -120,6 +120,26 @@ export class TwoHandSession {
     this.cancel(atMs);
     this.held.clear();
   }
+  /** Ownership handoff never creates answer evidence, even for old physical attacks. */
+  seedHeld(events: readonly TwoHandInput[], atMs: number): void {
+    if (!validTime(atMs)) return;
+    this.cancel(atMs);
+    this.held.clear();
+    for (const event of events.slice(0, 256)) {
+      if (
+        event.kind !== "down" ||
+        !validTime(event.atMs) ||
+        !Number.isInteger(event.pitch) ||
+        event.pitch < 0 ||
+        event.pitch > 127 ||
+        !["midi", "keyboard", "pointer"].includes(event.source) ||
+        (event.channel !== undefined &&
+          (!Number.isInteger(event.channel) || event.channel < 0 || event.channel > 15))
+      )
+        continue;
+      this.held.set(twoHandOwner(event), { ...event });
+    }
+  }
   private canUse(atMs: number): boolean {
     const p = this.prompt;
     return (
@@ -159,13 +179,13 @@ export class TwoHandSession {
     if (event.kind === "up" && previous && event.atMs >= previous.atMs) this.held.delete(owner);
     if (event.kind === "down" && !previous) this.held.set(owner, event);
     if (!p || !this.canUse(event.atMs)) return this.snapshot();
-    if (p.events.length === 0 && (event.kind !== "down" || previous || this.held.size !== 1))
+    // Retain prefix releases: an earlier down can still arrive within the horizon.
+    if (
+      !p.events.some((item) => item.kind === "down") &&
+      event.kind === "down" &&
+      (previous || this.held.size !== 1)
+    )
       return this.snapshot();
-    const first = p.events.find((item) => item.kind === "down");
-    if (first && (event.offsetMs ?? 0) !== (first.offsetMs ?? 0)) {
-      this.cancel(receivedAtMs);
-      return this.snapshot();
-    }
     if (p.events.length >= 256) {
       this.cancel(receivedAtMs);
       this.status = "overflow";
@@ -181,10 +201,13 @@ export class TwoHandSession {
     const p = this.prompt;
     if (!p || !this.active || p.solved || !p.events.length) return this.snapshot();
     const evaluation = evaluateTwoHandEvents(p.pair, p.events, this.now);
+    if (!evaluation.first) {
+      this.status = "ready";
+      return this.snapshot();
+    }
     this.held = new Map(evaluation.held);
     this.status = evaluation.reason ?? (evaluation.second ? "release" : "waiting-second");
     if (
-      !evaluation.first ||
       evaluation.held.size ||
       this.held.size ||
       evaluation.releasedAtMs === null ||
