@@ -12,6 +12,36 @@ const down: KeyEvent = {
   timestamp: 100
 };
 describe("ownership before pair entry", () => {
+  it("recovers matching expired releases without deleting a newer held attack", () => {
+    const held = new TrainerInputHolds();
+    held.record({ ...down, timestamp: 1000 }, 1000);
+    held.record({ ...down, type: "up", timestamp: 1100 }, 1351);
+    expect(held.snapshot()).toEqual([]);
+    held.record({ ...down, timestamp: 1400 }, 1400);
+    held.record({ ...down, type: "up", timestamp: 1100 }, 1401);
+    expect(held.snapshot()).toEqual([{ ...down, timestamp: 1400 }]);
+  });
+  it("uses delivery order for identical raw timestamps", () => {
+    const held = new TrainerInputHolds();
+    held.record({ ...down, type: "up", timestamp: 1100 }, 1200);
+    held.record({ ...down, timestamp: 1100 }, 1202);
+    expect(held.snapshot()).toEqual([{ ...down, timestamp: 1100 }]);
+    held.record({ ...down, type: "up", timestamp: 1099 }, 1203);
+    expect(held.snapshot()).toHaveLength(1);
+    held.record({ ...down, type: "up", timestamp: 1100 }, 1204);
+    expect(held.snapshot()).toEqual([]);
+  });
+  it("retains a prefix release and never hands a late older down to the next policy", () => {
+    const held = new TrainerInputHolds();
+    held.record({ ...down, type: "up", timestamp: 1100 }, 1200);
+    held.record({ ...down, timestamp: 1000 }, 1201);
+    expect(held.snapshot()).toEqual([]);
+    held.record({ ...down, timestamp: 1202 }, 1202);
+    held.record({ ...down, type: "up", timestamp: 1101 }, 1203);
+    expect(held.snapshot()).toEqual([{ ...down, timestamp: 1202 }]);
+    held.record({ ...down, type: "up", timestamp: 1210 }, 1210);
+    expect(held.snapshot()).toEqual([]);
+  });
   it("keeps exact device/channel ownership and ignores old release of a fresh attack", () => {
     const held = new TrainerInputHolds();
     held.record(down, 100);

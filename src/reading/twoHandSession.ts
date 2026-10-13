@@ -172,7 +172,11 @@ export class TwoHandSession {
     const owner = twoHandOwner(event);
     if (age < 0) return this.snapshot();
     if (age > 250) {
-      if (event.kind === "up" && this.held.has(owner)) this.resetInput(receivedAtMs);
+      const held = this.held.get(owner);
+      if (event.kind === "up" && held && event.atMs >= held.atMs) {
+        this.cancel(receivedAtMs);
+        this.held.delete(owner);
+      }
       return this.snapshot();
     }
     const previous = this.held.get(owner);

@@ -28,6 +28,32 @@ function setup() {
   return { exercise, session, pair, input };
 }
 describe("TwoHandSession", () => {
+  it("ignores expired offs of an older attack while the new pair is held", () => {
+    const { session, pair, input } = setup();
+    input("down", pair.pitches[0], 1500);
+    input("down", pair.pitches[1], 1510);
+    input("up", pair.pitches[0], 1100, 1511);
+    expect(session.snapshot().status).toBe("release");
+    input("up", pair.pitches[0], 1520);
+    input("up", pair.pitches[1], 1530);
+    expect(session.tick(1781).answers).toHaveLength(1);
+  });
+  it("cancels an expired matching off but retains the other physically held key", () => {
+    const { session, pair, input } = setup();
+    input("down", pair.pitches[0], 1010);
+    input("down", pair.pitches[1], 1020);
+    input("up", pair.pitches[0], 1030, 1281);
+    input("down", pair.pitches[0], 1290);
+    input("down", pair.pitches[1], 1300);
+    input("up", pair.pitches[0], 1310);
+    input("up", pair.pitches[1], 1320);
+    expect(session.tick(1571).answers).toHaveLength(0);
+    input("down", pair.pitches[0], 1600);
+    input("down", pair.pitches[1], 1610);
+    input("up", pair.pitches[0], 1620);
+    input("up", pair.pitches[1], 1630);
+    expect(session.tick(1881).answers).toHaveLength(1);
+  });
   it.each([false, true])("accepts either order at the inclusive 200ms boundary: %s", (reverse) => {
     const { session, pair, input } = setup();
     const [a, b] = reverse ? pair.pitches.toReversed() : pair.pitches;
@@ -332,7 +358,7 @@ describe("two-hand evidence and summary", () => {
         {
           kind: parsed.type,
           pitch: parsed.pitch,
-          channel: parsed.channel,
+          channel: required(parsed.channel),
           source: "midi",
           deviceId: "piano",
           atMs

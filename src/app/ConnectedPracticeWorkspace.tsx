@@ -9,6 +9,7 @@ import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedPianoTabs } from "./ConnectedCourse";
 import { ConnectedReadingPractice } from "./ConnectedReading";
 import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
+import { ConnectedTwoHandPractice } from "./ConnectedTwoHand";
 import { ConnectedRhythmPractice } from "./ConnectedRhythm";
 import { ConnectedIntervalPractice } from "./ConnectedIntervals";
 
@@ -70,7 +71,11 @@ export function ConnectedPracticeWorkspace() {
       snapshotWaiting: runtime.snapshot.waiting,
       viewMirrorHostRef: runtime.view.mirrorHostRef,
       rhythm: runtime.rhythm,
-      reading: runtime.intervals.active ? runtime.intervals : runtime.reading,
+      reading: runtime.twoHand.active
+        ? runtime.twoHand
+        : runtime.intervals.active
+          ? runtime.intervals
+          : runtime.reading,
       courseTabs:
         !runtime.practiceActive &&
         runtime.course.active !== null &&
@@ -89,6 +94,7 @@ export function ConnectedPracticeWorkspace() {
     <>
       <ConnectedReadingPractice />
       <ConnectedBassReadingPractice />
+      <ConnectedTwoHandPractice />
       <ConnectedIntervalPractice />
       <ConnectedRhythmPractice />
       <ConnectedWorkspace

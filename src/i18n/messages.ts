@@ -11,6 +11,7 @@ import { readingMessages } from "./readingMessages";
 import { intervalMessages } from "./intervalMessages";
 import { rhythmMessages } from "./rhythmMessages";
 import { bassReadingMessages } from "./bassReadingMessages";
+import { twoHandMessages } from "./twoHandMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
@@ -25,5 +26,6 @@ export const messages: Messages = {
   ...readingMessages,
   ...intervalMessages,
   ...rhythmMessages,
-  ...bassReadingMessages
+  ...bassReadingMessages,
+  ...twoHandMessages
 };

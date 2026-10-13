@@ -6,6 +6,8 @@ import { SongTimeline } from "./timing";
 import { SessionHolds } from "./sessionHolds";
 import { ownsNote } from "./playableRange";
 import { NoteResult } from "./noteResult";
+import { waitingPairForCommit } from "./waitingPair";
+import { sessionErrorStats } from "./sessionErrorStats";
 
 export type {
   PracticeMode,
@@ -215,21 +217,8 @@ export class PracticeSession {
     noteIds: readonly string[],
     performanceMs: number
   ): PracticeEvent[] | undefined {
-    const due = this.nextDue();
-    if (
-      this.finished ||
-      this.clockPaused ||
-      !this.waiting ||
-      this.options.mode !== "wait" ||
-      this.options.noteResult !== false ||
-      due.length !== 2 ||
-      !Number.isFinite(performanceMs) ||
-      performanceMs < this.lastPerformanceMs ||
-      noteIds.length !== due.length ||
-      new Set(noteIds).size !== due.length ||
-      due.some((note) => !noteIds.includes(note.id))
-    )
-      return undefined;
+    const due = waitingPairForCommit(this, noteIds, performanceMs);
+    if (!due || this.clockPaused || performanceMs < this.lastPerformanceMs) return undefined;
     for (const note of due) this.status.set(note.id, "hit");
     if (this.clockStarted) this.timeline.anchor(performanceMs, this.time, this.options.speed);
     return due.map((note) => ({ type: "hit", noteId: note.id, offset: 0 }));
@@ -454,24 +443,13 @@ export class PracticeSession {
       if (value === "hit") hits++;
       else if (value === "missed") misses++;
     }
-    const errors = new Map<number, number>();
-    for (const pitch of [...this.wrongPitches, ...this.missedPitches]) {
-      errors.set(pitch, (errors.get(pitch) ?? 0) + 1);
-    }
-    const troubleSpots = [...errors]
-      .map(([pitch, count]) => ({ pitch, errors: count }))
-      .sort((a, b) => b.errors - a.errors || a.pitch - b.pitch)
-      .slice(0, 5);
-    const meanOffset =
-      this.offsets.length === 0
-        ? 0
-        : this.offsets.reduce((sum, value) => sum + value, 0) / this.offsets.length;
+    const errors = sessionErrorStats(this.wrongPitches, this.missedPitches, this.offsets);
     return {
       hits,
       misses,
       wrong: this.wrongPitches.length,
-      meanOffset,
-      troubleSpots,
+      meanOffset: errors.meanOffset,
+      troubleSpots: errors.troubleSpots,
       ...(this.options.noteResult !== false ? { noteResult: this.result.snapshot(this.time) } : {}),
       ...(this.options.mode === "tempo"
         ? {

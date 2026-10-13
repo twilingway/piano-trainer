@@ -3701,6 +3701,14 @@ button.song-card.song-card__open {
     margin-right: var(--mobile-bar-width, 0px);
   }
 }
+.two-hand-metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem 1rem;
+}
+.two-hand-metrics dd {
+  margin: 0;
+}
 .reading-muted {
   opacity: 0.7;
 }
