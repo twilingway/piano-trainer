@@ -6,7 +6,7 @@
       design с read-only spec_architect и explorer аудитами.
 - [x] 1.2 Провести независимое ревью, pnpm check и pnpm spec:validate; записать evidence в
       verification.md и открыть draft PR плана в dev.
-- [ ] 1.3 Получить подтверждение конкретных решений proposal; записать ответ пользователя в
+- [x] 1.3 Получить подтверждение конкретных решений proposal; записать ответ пользователя в
       verification.md. Production групп 2–7 до подтверждения не начинать.
 
 ## 2. Генератор и парная нотация
