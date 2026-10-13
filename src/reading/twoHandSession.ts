@@ -134,7 +134,7 @@ export class TwoHandSession {
         event.pitch > 127 ||
         !["midi", "keyboard", "pointer"].includes(event.source) ||
         (event.channel !== undefined &&
-          (!Number.isInteger(event.channel) || event.channel < 0 || event.channel > 15))
+          (!Number.isInteger(event.channel) || event.channel < 1 || event.channel > 16))
       )
         continue;
       this.held.set(twoHandOwner(event), { ...event });
@@ -165,7 +165,7 @@ export class TwoHandSession {
       (event.presentationId !== undefined && event.presentationId !== p?.presentationId) ||
       !Number.isFinite(event.offsetMs ?? 0) ||
       (event.channel !== undefined &&
-        (!Number.isInteger(event.channel) || event.channel < 0 || event.channel > 15))
+        (!Number.isInteger(event.channel) || event.channel < 1 || event.channel > 16))
     )
       return this.snapshot();
     const age = receivedAtMs - event.atMs;

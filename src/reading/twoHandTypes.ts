@@ -27,6 +27,7 @@ export interface TwoHandInput {
   readonly atMs: number;
   readonly offsetMs?: number;
   readonly deviceId?: string;
+  /** One-based MIDI channel, matching parseMidiMessage (1–16). */
   readonly channel?: number;
   readonly ownerId?: string;
   readonly runId?: string;

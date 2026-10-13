@@ -6,6 +6,7 @@ import { TwoHandSession } from "./twoHandSession";
 import { validateTwoHandResult } from "./twoHandValidation";
 import { summarizeTwoHandResults } from "./twoHandProgress";
 import type { TwoHandInput } from "./twoHandTypes";
+import { parseMidiMessage } from "../input/midiInput";
 
 function setup() {
   const exercise = generateTwoHandExercise(1);
@@ -259,16 +260,16 @@ describe("TwoHandSession", () => {
   });
   it("rejects MIDI channel mixing while physical releases bypass sustain", () => {
     const { session, pair, input } = setup();
-    input("down", pair.pitches[0], 1010, 1010, { source: "midi", deviceId: "piano", channel: 0 });
-    input("down", pair.pitches[1], 1020, 1020, { source: "midi", deviceId: "piano", channel: 1 });
+    input("down", pair.pitches[0], 1010, 1010, { source: "midi", deviceId: "piano", channel: 1 });
+    input("down", pair.pitches[1], 1020, 1020, { source: "midi", deviceId: "piano", channel: 2 });
     expect(session.snapshot().status).toBe("mixed-origin");
-    input("up", pair.pitches[0], 1030, 1030, { source: "midi", deviceId: "piano", channel: 0 });
-    input("up", pair.pitches[1], 1040, 1040, { source: "midi", deviceId: "piano", channel: 1 });
+    input("up", pair.pitches[0], 1030, 1030, { source: "midi", deviceId: "piano", channel: 1 });
+    input("up", pair.pitches[1], 1040, 1040, { source: "midi", deviceId: "piano", channel: 2 });
     session.tick(1291);
-    input("down", pair.pitches[0], 1300, 1300, { source: "midi", deviceId: "piano", channel: 0 });
-    input("down", pair.pitches[1], 1310, 1310, { source: "midi", deviceId: "piano", channel: 0 });
-    input("up", pair.pitches[0], 1320, 1320, { source: "midi", deviceId: "piano", channel: 0 });
-    input("up", pair.pitches[1], 1330, 1330, { source: "midi", deviceId: "piano", channel: 0 });
+    input("down", pair.pitches[0], 1300, 1300, { source: "midi", deviceId: "piano", channel: 1 });
+    input("down", pair.pitches[1], 1310, 1310, { source: "midi", deviceId: "piano", channel: 1 });
+    input("up", pair.pitches[0], 1320, 1320, { source: "midi", deviceId: "piano", channel: 1 });
+    input("up", pair.pitches[1], 1330, 1330, { source: "midi", deviceId: "piano", channel: 1 });
     expect(session.tick(1581).answers[0]?.attempts).toHaveLength(2);
   });
   it("bounds event storage without granting overflow success", () => {
@@ -317,6 +318,79 @@ function completeFrom(
   return required(session.result("result", 2000));
 }
 describe("two-hand evidence and summary", () => {
+  it("accepts actual channel16 MIDI messages through a full series and stored evidence", () => {
+    const { exercise, session } = setup();
+    const midi = (kind: "down" | "up", pitch: number, atMs: number) => {
+      const parsed = required(
+        parseMidiMessage(
+          new Uint8Array([kind === "down" ? 0x9f : 0x8f, pitch, kind === "down" ? 80 : 0])
+        )
+      );
+      if (parsed.type === "pedal") throw new Error("Expected physical key event");
+      expect(parsed.channel).toBe(16);
+      session.input(
+        {
+          kind: parsed.type,
+          pitch: parsed.pitch,
+          channel: parsed.channel,
+          source: "midi",
+          deviceId: "piano",
+          atMs
+        },
+        atMs
+      );
+    };
+    session.seedHeld(
+      [
+        {
+          kind: "down",
+          pitch: exercise.pairs[0]?.pitches[0] ?? 48,
+          source: "midi",
+          channel: 16,
+          deviceId: "piano",
+          atMs: 10
+        }
+      ],
+      1000
+    );
+    midi("up", exercise.pairs[0]?.pitches[0] ?? 48, 1001);
+    let atMs = 1010;
+    for (const pair of exercise.pairs) {
+      session.prepare(pair.id, atMs);
+      session.present(pair.id, atMs);
+      midi("down", pair.pitches[0], atMs + 10);
+      midi("down", pair.pitches[1], atMs + 110);
+      midi("up", pair.pitches[0], atMs + 120);
+      midi("up", pair.pitches[1], atMs + 130);
+      session.tick(atMs + 381);
+      atMs += 500;
+    }
+    const result = required(session.result("channel16", 2000));
+    expect(result.pairs.every((pair) => pair.independentCorrect)).toBe(true);
+    expect(validateTwoHandResult(result)).toEqual(result);
+    const invalid = JSON.parse(JSON.stringify(result)) as {
+      pairs: { attempts: { events: { channel: number }[] }[] }[];
+    };
+    required(required(required(invalid.pairs[0]).attempts[0]).events[0]).channel = 0;
+    expect(validateTwoHandResult(invalid)).toBeNull();
+  });
+  it.each([0, 17])(
+    "excludes invalid supplied MIDI channel%i from ownership and evidence",
+    (channel) => {
+      const { session, pair, input } = setup();
+      session.seedHeld(
+        [{ kind: "down", pitch: pair.pitches[0], source: "midi", channel, atMs: 10 }],
+        1000
+      );
+      input("down", pair.pitches[0], 1010, 1010, { source: "midi", channel });
+      expect(session.snapshot().status).toBe("ready");
+      input("down", pair.pitches[0], 1020);
+      input("down", pair.pitches[1], 1030);
+      input("up", pair.pitches[0], 1040);
+      input("up", pair.pitches[1], 1050);
+      expect(session.tick(1301).answers[0]?.independentCorrect).toBe(true);
+    }
+  );
   it("validates all ten physical proofs and rejects tampered evidence/metrics", () => {
     const result = completed();
     expect(validateTwoHandResult(result)).toEqual(result);

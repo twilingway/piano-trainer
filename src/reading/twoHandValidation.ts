@@ -175,6 +175,6 @@ function validEvent(event: TwoHandEvent): boolean {
     (event.ownerId === undefined || text(event.ownerId)) &&
     (event.deviceId === undefined || text(event.deviceId)) &&
     (event.channel === undefined ||
-      (Number.isInteger(event.channel) && event.channel >= 0 && event.channel <= 15))
+      (Number.isInteger(event.channel) && event.channel >= 1 && event.channel <= 16))
   );
 }
