@@ -10,6 +10,7 @@ export interface KeyEvent extends InputMetadata {
   readonly velocity: number;
   /** The MIDI channel, 1–16; only MIDI keys have one. */
   readonly channel?: number;
+  readonly pointerType?: string | undefined;
 }
 
 /** The sustain pedal pressed or released. */

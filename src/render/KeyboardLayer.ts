@@ -14,6 +14,7 @@ import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
 import { bakeKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
+import { PointerKeys, type KeyPointer } from "./pointerKeys";
 
 const HAND_HINT: Readonly<Record<Hand, number>> = {
   right: FINGER_COLOR[3],
@@ -155,15 +156,16 @@ export class KeyboardLayer {
   private readonly lightOf = new Map<number, Texture>();
   private lightTextures = new Map<string, Texture>();
   /** The key the mouse holds down, if any. */
-  private mouseKey: number | undefined;
+  private readonly pointers: PointerKeys;
   /** The front bevel's height on screen, white and black: the finger digit stands above it. */
   private bevel = { white: 3, black: 3 };
 
   constructor(
     private readonly renderer: Renderer,
     private readonly digitTextures: ReadonlyMap<Finger, Texture>,
-    private readonly onKeyPointer: (event: KeyEvent) => void
+    onKeyPointer: (event: KeyEvent) => void
   ) {
+    this.pointers = new PointerKeys(onKeyPointer);
     this.container.addChild(this.keyboard, this.rail, this.felt, this.stickers, this.hints);
     this.rail.eventMode = "none";
     this.rail.visible = false;
@@ -173,24 +175,7 @@ export class KeyboardLayer {
       const sprite = new NineSliceSprite({ texture: Texture.WHITE, ...NO_SLICE });
       sprite.eventMode = "static";
       sprite.cursor = "pointer";
-      sprite.on("pointerdown", () => {
-        this.pressWithMouse(pitch);
-      });
-      // Dragging across the keys with the button held plays each one: a glissando.
-      sprite.on("pointerover", (event) => {
-        if (
-          this.mouseKey !== undefined &&
-          (event.buttons & 1) === 1 &&
-          document.elementFromPoint(event.clientX, event.clientY) === this.renderer.canvas
-        )
-          this.pressWithMouse(pitch);
-      });
-      sprite.on("pointerup", () => {
-        this.releaseMouse();
-      });
-      sprite.on("pointerupoutside", () => {
-        this.releaseMouse();
-      });
+      // The stage owns gestures for both flat and projected keys, without duplicate delivery.
       this.keySprites.set(pitch, sprite);
       const digit = new Sprite();
       digit.anchor.set(0.5, 1);
@@ -548,15 +533,18 @@ export class KeyboardLayer {
   }
 
   pressWithMouse(pitch: number): void {
-    if (this.mouseKey === pitch) return;
-    this.releaseMouse();
-    this.mouseKey = pitch;
-    this.onKeyPointer({ type: "down", pitch, velocity: 90 });
+    this.pressPointer(pitch, { pointerId: -1, pointerType: "mouse" });
   }
 
   releaseMouse(): void {
-    if (this.mouseKey === undefined) return;
-    this.onKeyPointer({ type: "up", pitch: this.mouseKey, velocity: 0 });
-    this.mouseKey = undefined;
+    this.pointers.clear();
+  }
+
+  pressPointer(pitch: number, pointer: KeyPointer): void {
+    this.pointers.press(pitch, pointer);
+  }
+
+  releasePointer(pointer: KeyPointer): void {
+    this.pointers.release(pointer);
   }
 }

@@ -13,7 +13,14 @@ describe("keyboard pointer gestures", () => {
   const play = vi.fn();
   const release = vi.fn();
   const event = (pointerId = 1, buttons = 1) =>
-    ({ pointerId, buttons, clientX: 10, clientY: 20 }) as FederatedPointerEvent;
+    ({
+      pointerId,
+      buttons,
+      clientX: 10,
+      clientY: 20,
+      timeStamp: 100,
+      pointerType: "touch"
+    }) as FederatedPointerEvent;
 
   beforeEach(() => {
     play.mockClear();
@@ -79,5 +86,20 @@ describe("keyboard pointer gestures", () => {
     window.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 1 }));
     expect(play).not.toHaveBeenCalled();
     expect(release).not.toHaveBeenCalled();
+  });
+
+  it("retains the other touch and distinguishes physical outside up from capture loss", () => {
+    stage.emit("pointerdown", event(1));
+    stage.emit("pointerdown", event(2));
+    expect(play).toHaveBeenCalledTimes(2);
+    const up = event(1, 0);
+    stage.emit("pointerupoutside", up);
+    expect(release).toHaveBeenLastCalledWith(up, false);
+    stage.emit("pointermove", event(2));
+    expect(play).toHaveBeenCalledTimes(3);
+    canvas.dispatchEvent(new PointerEvent("lostpointercapture", { pointerId: 2 }));
+    expect(release.mock.lastCall?.[1]).toBe(true);
+    stage.emit("pointermove", event(2));
+    expect(play).toHaveBeenCalledTimes(3);
   });
 });

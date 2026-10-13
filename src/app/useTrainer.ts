@@ -7,6 +7,7 @@ import type { Hand } from "../fingering/fingering";
 import type { PracticeMode, PracticeOptions } from "../practice/session";
 import { Trainer } from "../practice/Trainer";
 import { RHYTHM_PRACTICE_OPTIONS } from "../practice/rhythmPolicy";
+import { TWO_HAND_PRACTICE_OPTIONS } from "../practice/twoHandPolicy";
 import { BASS_READING_PRACTICE_OPTIONS, READING_PRACTICE_OPTIONS } from "../practice/readingPolicy";
 import type { RunCompletion } from "../practice/runCompletion";
 import type { Take } from "../recording/take";
@@ -30,7 +31,7 @@ const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
 interface Options {
   readonly pianoBlocked?: boolean;
   readonly reading?: boolean;
-  readonly readingHand?: Hand;
+  readonly readingHand?: Hand | "both";
   readonly rhythm?: boolean;
   readonly course?:
     | {
@@ -235,11 +236,12 @@ export function useTrainer({
       }
       trainerRef.current?.key({
         ...event,
-        timestamp: performance.now(),
+        timestamp: event.timestamp ?? performance.now(),
         source: "pointer",
         deviceId: "pointer"
       });
     };
+    view.onInputCancel = (resetAll) => trainerRef.current?.cancelInput(resetAll);
     let disposed = false;
     const mounted = view.mount(host).then(() => {
       if (disposed) return;
@@ -286,7 +288,11 @@ export function useTrainer({
   const practiceOptions = useMemo<PracticeOptions>(() => {
     if (rhythm) return RHYTHM_PRACTICE_OPTIONS;
     if (reading)
-      return readingHand === "left" ? BASS_READING_PRACTICE_OPTIONS : READING_PRACTICE_OPTIONS;
+      return readingHand === "both"
+        ? TWO_HAND_PRACTICE_OPTIONS
+        : readingHand === "left"
+          ? BASS_READING_PRACTICE_OPTIONS
+          : READING_PRACTICE_OPTIONS;
     if (listening) return { mode: "tempo", hands: new Set<Hand>(), speed };
     if (partRole) {
       const parts = (song.parts ?? []).filter((part) => part.role === partRole);

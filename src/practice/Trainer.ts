@@ -3,8 +3,7 @@ import { SessionAudio } from "../audio/sessionAudio";
 import type { KeyEvent } from "../input/midiInput";
 import type { FallingNotesView } from "../render/FallingNotesView";
 import { recordKeyInput } from "../recording/recordInput";
-import { TakeRecorder } from "../recording/take";
-import type { Take } from "../recording/take";
+import type { Take, TakeRecorder } from "../recording/take";
 import { quartersAt } from "../song/song";
 import type { Song, SongNote } from "../song/song";
 import { ComboCounter } from "./combo";
@@ -22,12 +21,15 @@ import { timingPolicy } from "./timingPolicy";
 import { ReadingAttackGate, trainerGuidance, type TrainerReadingPolicy } from "./readingPolicy";
 import { processRhythmKey } from "./rhythmPolicy";
 import type { TrainerRhythmPolicy } from "./rhythmPolicy";
+import { pairGuidance, stepTrainerPair, cancelPairInput } from "./twoHandPolicy";
+import type { TrainerPairPolicy } from "./twoHandPolicy";
+import { createTrainerRecorder, finishTrainerTake } from "./trainerRecording";
+import { drawTrainerMirror } from "./trainerView";
+import { TrainerInputHolds } from "./trainerInputHolds";
 import type { InputDiagnostic, TrainerSnapshot } from "./trainerSnapshot";
 export type { InputDiagnostic, TrainerSnapshot } from "./trainerSnapshot";
 
 export type TrainerTiming = TimingConfig;
-
-const NOTHING: ReadonlySet<number> = new Set();
 
 /** Two seconds fill the lane: at 114 BPM a quarter spans about 79 px of a 300 px lane. */
 const LOOK_AHEAD_S = 2;
@@ -52,6 +54,8 @@ export class Trainer {
   onInput: ((event: KeyEvent) => boolean) | undefined;
   private reading: TrainerReadingPolicy | null = null;
   private rhythm: TrainerRhythmPolicy | null = null;
+  private pair: TrainerPairPolicy | null = null;
+  private readonly inputHolds = new TrainerInputHolds();
   private readonly readingGate = new ReadingAttackGate();
 
   configureReading(policy: TrainerReadingPolicy | null): void {
@@ -59,6 +63,16 @@ export class Trainer {
   }
   configureRhythm(policy: TrainerRhythmPolicy | null): void {
     this.rhythm = policy;
+  }
+  configurePair(policy: TrainerPairPolicy | null): void {
+    if (this.pair === policy) return;
+    this.cancelInput();
+    this.pair = policy;
+    policy?.seedHeld?.(this.inputHolds.snapshot(), performance.now());
+  }
+  /** Loss of physical input cancels before any cleanup-generated releases arrive. */
+  cancelInput(resetAll = false): void {
+    cancelPairInput(this.pair, this.inputHolds, this.pressed, this.onLights, resetAll);
   }
   private timing: TrainerTiming = {
     inputOffsets: {},
@@ -122,6 +136,7 @@ export class Trainer {
       runContext
     }: { preservePosition?: boolean; runContext?: string } = {}
   ): void {
+    this.cancelInput();
     const now = performance.now();
     const previous = preservePosition ? this.session : undefined;
     const resume = previous !== undefined && this.playing;
@@ -165,6 +180,7 @@ export class Trainer {
   }
 
   private move(from: number, restart: boolean): void {
+    this.cancelInput();
     this.resumePending = false;
     if (!this.session) return;
     if (restart) this.run.restart();
@@ -203,24 +219,9 @@ export class Trainer {
     if (this.playing && !wasPlaying && session) {
       if (this.recorder) {
         this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 1);
-      } else if (session.options.hands.size > 0 && !this.rhythm) {
+      } else if (session.options.hands.size > 0 && !this.rhythm && !this.pair) {
         // A listen-through has no player: nothing to record.
-        this.recorder = new TakeRecorder({
-          songKey: this.songKey,
-          mode: session.options.mode,
-          speed: session.options.speed,
-          hands: [...session.options.hands],
-          ...(session.options.playable ? { playable: session.options.playable } : {}),
-          ...(session.options.parts ? { parts: [...session.options.parts] } : {}),
-          from: session.startedFrom,
-          timing: {
-            rulesVersion: 2,
-            difficulty: session.options.difficulty ?? "normal",
-            learningWindow:
-              session.options.mode === "tempo" && session.options.learningWindow === true,
-            ...this.timing
-          }
-        });
+        this.recorder = createTrainerRecorder(session, this.songKey, this.timing);
         this.takeTimeline.reset(now, 0, 1);
       }
     }
@@ -228,10 +229,12 @@ export class Trainer {
       this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 0);
     if (session) this.reading?.onFrame(session, this.playing, now);
     if (session) this.rhythm?.onFrame(session, this.playing, now);
+    if (session) this.apply(stepTrainerPair(this.pair, session, this.playing, now));
     this.publish();
   }
 
   key(event: KeyEvent): void {
+    this.inputHolds.record(event, performance.now());
     if (this.onInput?.(event) && !(this.rhythm && event.type === "up")) return;
     if (this.rhythm) {
       this.apply(
@@ -261,6 +264,18 @@ export class Trainer {
       (this.timing.inputOffsets[event.deviceId ?? event.source ?? "pointer"] ?? 0) +
       this.timing.manualInputOffsetMs;
     const corrected = raw - offset;
+    if (this.pair) {
+      if (event.type === "down") this.pressed.add(event.pitch);
+      else this.pressed.delete(event.pitch);
+      const session = this.session;
+      if (session && this.playing) this.apply(session.tick(received));
+      if (session) {
+        this.pair.onInput(event, session, this.playing, raw, corrected, received);
+        this.apply(stepTrainerPair(this.pair, session, this.playing, received));
+      }
+      this.publish();
+      return;
+    }
     const fresh = this.readingGate.accept(event);
     if (event.type === "down") this.pressed.add(event.pitch);
     else this.pressed.delete(event.pitch);
@@ -363,6 +378,7 @@ export class Trainer {
     this.onInput = undefined;
     this.reading = null;
     this.rhythm = null;
+    this.pair = null;
     this.readingGate.clear();
   }
 
@@ -391,7 +407,7 @@ export class Trainer {
   }
 
   pedal(down: boolean, timestamp = performance.now(), deviceId = ""): void {
-    if (this.rhythm) return;
+    if (this.rhythm || this.pair) return;
     if (this.recorder && this.session) {
       if (performance.now() - timestamp > 250) return;
       const corrected =
@@ -412,13 +428,7 @@ export class Trainer {
     const session = this.session;
     this.recorder = undefined;
     if (!recorder || !session || recorder.isEmpty) return;
-    const take = recorder.finish(
-      session.time,
-      this.realTime(),
-      `${String(Date.now())}-${String(Math.round(Math.random() * 1e6))}`,
-      new Date().toISOString()
-    );
-    this.onTake?.(take);
+    this.onTake?.(finishTrainerTake(recorder, session, this.realTime()));
   }
 
   private frame(deltaMs: number): void {
@@ -428,7 +438,10 @@ export class Trainer {
     if (this.playing) this.apply(session.tick(now));
     this.reading?.onFrame(session, this.playing, now);
     this.rhythm?.onFrame(session, this.playing, now);
-    const guidance = trainerGuidance(session, this.reading, this.playing, this.performanceMode);
+    this.apply(stepTrainerPair(this.pair, session, this.playing, now));
+    const guidance = this.pair
+      ? pairGuidance(session, this.pair, this.playing)
+      : trainerGuidance(session, this.reading, this.playing, this.performanceMode);
     this.onLights?.(guidance.lights);
     this.view.draw({
       time: session.time - (this.timing.visualOffsetMs / 1000) * session.options.speed,
@@ -444,27 +457,14 @@ export class Trainer {
       owns: session.owns,
       colorOf: this.comparison?.colorOf,
       board: this.board ?? this.combo.board(),
-      graded: this.rhythm ? [] : this.graded
+      graded: this.rhythm || this.pair ? [] : this.graded
     });
     const cue = guidance.lights[0];
     if (cue !== undefined) this.reading?.onCuePresented?.(cue, now);
+    if (guidance.lights.length > 0) this.pair?.onCuePresented?.(guidance.lights, now);
     // The view has shown them: next frame grades only its own strikes.
     this.graded = [];
-    const mirror = this.comparison?.mirror;
-    mirror?.view.draw({
-      time: session.time,
-      hintTime: session.time,
-      hintSpeed: session.options.speed,
-      hintNotes: [],
-      lookAhead: LOOK_AHEAD_S,
-      statusOf: () => undefined,
-      pressed: NOTHING,
-      sounding: NOTHING,
-      due: [],
-      hands: session.options.hands,
-      owns: session.owns,
-      colorOf: mirror.colorOf
-    });
+    drawTrainerMirror(this.comparison?.mirror, session);
     this.sinceSnapshot += deltaMs;
     const beat = beatAt(session.song, session.time);
     if (this.sinceSnapshot >= SNAPSHOT_INTERVAL_MS || beat !== this.lastBeat) this.publish();
@@ -516,6 +516,7 @@ export class Trainer {
   }
 
   private silence(): void {
+    this.cancelInput();
     if (this.session) this.apply(this.session.stopAuto());
     this.sounding.clear();
     this.onLights?.([]);
