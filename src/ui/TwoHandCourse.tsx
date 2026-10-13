@@ -52,7 +52,21 @@ export interface TwoHandPracticeProps extends TwoHandProgressProps {
 export function TwoHandPracticePanel(props: TwoHandPracticeProps) {
   const { t } = useI18n();
   return (
-    <section className="reading-practice" aria-label={t(TWO_HAND_TITLE)}>
+    <section className="reading-practice two-hand-practice" aria-label={t(TWO_HAND_TITLE)}>
+      {props.renderError ? (
+        <p className="two-hand-feedback" role="alert">
+          {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
+          <button type="button" onClick={props.onRetry}>
+            {t("Повторить загрузку стана")}
+          </button>
+        </p>
+      ) : (
+        <p className="two-hand-feedback" role="status" aria-live="polite">
+          {props.result
+            ? t("Серия двух рук завершена")
+            : t(TWO_HAND_STATUS[props.ready ? props.status : "unpresented"])}
+        </p>
+      )}
       <div className="reading-actions">
         <strong>{t(TWO_HAND_TITLE)}</strong>
         <span>{t("Пара {number} из 10", { number: Math.min(10, props.index + 1) })}</span>
@@ -73,20 +87,6 @@ export function TwoHandPracticePanel(props: TwoHandPracticeProps) {
           {t("Подсказка")}
         </button>
       </div>
-      {props.renderError ? (
-        <p role="alert">
-          {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
-          <button type="button" onClick={props.onRetry}>
-            {t("Повторить загрузку стана")}
-          </button>
-        </p>
-      ) : (
-        <p role="status" aria-live="polite">
-          {props.result
-            ? t("Серия двух рук завершена")
-            : t(TWO_HAND_STATUS[props.ready ? props.status : "unpresented"])}
-        </p>
-      )}
       <p className="reading-muted">
         {t(
           "Без MIDI играйте двумя клавишами ПК или двумя касаниями. Одной мышью совместную атаку выполнить нельзя."

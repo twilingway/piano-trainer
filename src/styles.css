@@ -4118,3 +4118,26 @@ button.song-card.song-card__open {
     white-space: normal;
   }
 }
+
+.two-hand-feedback {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-top: 0;
+  padding-block: 4px;
+  background: #020b12;
+}
+@media (max-height: 500px), (max-width: 640px) {
+  .reading-practice.two-hand-practice ~ .workspace .workspace-main > .staves,
+  .reading-practice.two-hand-practice ~ .workspace .workspace-main .staff {
+    max-height: none;
+  }
+  .reading-practice.two-hand-practice ~ .workspace .workspace-main .staff {
+    min-height: 140px;
+  }
+}
+@media (max-height: 500px) {
+  .reading-practice.two-hand-practice {
+    max-height: 24dvh;
+  }
+}

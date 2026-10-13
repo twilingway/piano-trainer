@@ -13,6 +13,19 @@ import type { Trainer } from "../practice/Trainer";
 import { readingActions } from "./readingSlice";
 import { useAppDispatch, useAppSelector } from "./storeHooks";
 
+interface TwoHandSelection {
+  active: boolean;
+  seed: number;
+  version: number;
+  revision: number;
+}
+
+// A selection is a new run even when its musical seed is unchanged. Keep the whole
+// selection as this call's input so compiler memoization preserves that identity.
+function selectedExercise(selection: TwoHandSelection) {
+  return selection.active ? generateTwoHandExercise(selection.seed, selection.version) : null;
+}
+
 export function useTwoHandCourse() {
   const active = useAppSelector((state) => state.reading.activeCourse === "two-hand-coordination");
   const saved = useAppSelector((state) => state.reading.coordination);
@@ -24,10 +37,7 @@ export function useTwoHandCourse() {
     () => ({ active, seed: saved.seed, version: saved.generatorVersion, revision }),
     [active, saved.seed, saved.generatorVersion, revision]
   );
-  const exercise = useMemo(
-    () => (selection.active ? generateTwoHandExercise(selection.seed, selection.version) : null),
-    [selection]
-  );
+  const exercise = useMemo(() => selectedExercise(selection), [selection]);
   const session = useMemo(() => {
     if (!exercise) return null;
     const run = new TwoHandSession(exercise, DEFAULT_READING_PREFERENCES, {
