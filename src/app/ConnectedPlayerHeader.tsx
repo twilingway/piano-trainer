@@ -11,6 +11,7 @@ import { stagePhrases } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedCourseLessonBar } from "./ConnectedCourse";
 import { READING_TASK_LABELS } from "../ui/ReadingCourse";
+import { BASS_READING_TASK_LABELS } from "../ui/BassReadingProgress";
 import { INTERVAL_MODE_LABELS } from "../ui/IntervalCourse";
 
 import { shallowEqual } from "react-redux";
@@ -39,6 +40,7 @@ export function ConnectedPlayerHeader() {
     courseActive,
     comparing,
     readingTask,
+    readingIsBass,
     rhythmActive,
     intervalMode,
     practiceActive
@@ -67,6 +69,7 @@ export function ConnectedPlayerHeader() {
       courseActive: runtime.course.active,
       comparing: runtime.comparing,
       readingTask: runtime.reading.task,
+      readingIsBass: runtime.reading.isBass,
       rhythmActive: runtime.rhythm.active,
       intervalMode: runtime.intervals.active ? runtime.intervals.mode : null,
       practiceActive: runtime.practiceActive
@@ -103,7 +106,9 @@ export function ConnectedPlayerHeader() {
               : intervalMode
                 ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
                 : readingTask
-                  ? `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
+                  ? readingIsBass && readingTask !== "check"
+                    ? t(BASS_READING_TASK_LABELS[readingTask])
+                    : `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
                   : courseActive
                     ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
                     : lessonDisplayTitle(song.title, currentLesson, t)

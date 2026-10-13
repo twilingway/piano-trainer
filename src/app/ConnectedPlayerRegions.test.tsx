@@ -9,6 +9,11 @@ import { ConnectedPlayerWindows } from "./ConnectedPlayerWindows";
 import { ConnectedNotices } from "./ConnectedPlayerNotices";
 import { createAppStore } from "./store";
 import { progressKey, type CourseLesson } from "../course/model";
+import type { Locale } from "../i18n/locales";
+import { translate } from "../i18n/translate";
+import { readingMessages } from "../i18n/readingMessages";
+import { bassReadingMessages } from "../i18n/bassReadingMessages";
+let activeLocale: Locale = "ru";
 const observed = vi.hoisted(() => ({
   header: vi.fn(),
   progress: vi.fn(),
@@ -18,7 +23,11 @@ const observed = vi.hoisted(() => ({
   runtime: {} as PlayerRuntime
 }));
 vi.mock("./usePlayerRuntime", () => ({ usePlayerRuntime: () => observed.runtime }));
-vi.mock("./useI18n", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock("./useI18n", () => ({
+  useI18n: () => ({
+    t: (key: string) => translate(activeLocale, { ...readingMessages, ...bassReadingMessages }, key)
+  })
+}));
 vi.mock("./ConnectedSettings", () => ({
   ConnectedPlayerSettings: observed.settings,
   ConnectedResultDialog: observed.result
@@ -76,6 +85,7 @@ let cleanup = () => undefined;
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  activeLocale = "ru";
 });
 function mount(children: React.ReactNode) {
   const container = document.createElement("div");
@@ -99,6 +109,47 @@ function mount(children: React.ReactNode) {
   return { container, render };
 }
 describe("connected regions without React Compiler", () => {
+  it.each([
+    ["ru", "notes", "Левая рука: отдельные ноты", "Читаю пять нот · Читаю отдельные ноты"],
+    ["ru", "phrases", "Левая рука: короткие фразы", "Читаю пять нот · Читаю короткие фразы"],
+    ["en", "notes", "Left hand: single notes", "Read five notes · Read single notes"],
+    ["en", "phrases", "Left hand: short phrases", "Read five notes · Read short phrases"]
+  ] as const)(
+    "uses the %s bass %s title and updates on an isBass-only change",
+    (locale, task, bassTitle, trebleTitle) => {
+      activeLocale = locale;
+      observed.runtime = initial();
+      observed.runtime = {
+        ...observed.runtime,
+        reading: { ...observed.runtime.reading, active: true, isBass: true, task },
+        practiceActive: true,
+        trainer: {
+          ...observed.runtime.trainer,
+          playChoice: { ...observed.runtime.trainer.playChoice, hands: "left" }
+        }
+      };
+      const view = mount(<ConnectedPlayerHeader />);
+      expect(observed.header.mock.lastCall?.[0]).toMatchObject({
+        title: bassTitle,
+        hands: "left",
+        fixedPractice: true,
+        mode: "wait",
+        speed: 1
+      });
+      const renders = observed.header.mock.calls.length;
+      observed.runtime = {
+        ...observed.runtime,
+        reading: { ...observed.runtime.reading, isBass: false }
+      };
+      view.render();
+      expect(observed.header.mock.calls.length).toBe(renders + 1);
+      expect(observed.header.mock.lastCall?.[0]).toMatchObject({
+        title: trebleTitle,
+        hands: "left",
+        fixedPractice: true
+      });
+    }
+  );
   it("offers the credited course task in the result modal and waits for the next click", () => {
     const lesson: CourseLesson = {
       id: "synthetic",
