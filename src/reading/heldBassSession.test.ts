@@ -90,8 +90,8 @@ export class HeldBassHarness {
     this.frame(start + spread + 251);
     return start + spread + 251;
   }
-  reachTerminal(): { readonly rawEnd: number; readonly lastPitch: number } {
-    this.initial();
+  reachTerminal(start = true): { readonly rawEnd: number; readonly lastPitch: number } {
+    if (start) this.initial();
     let previous = this.fragment.melodyPitches[0] ?? 60;
     for (let step = 1; step < this.fragment.steps.length; step++) {
       const attack = this.now + 500 + Math.max(0, this.offset);
@@ -104,8 +104,8 @@ export class HeldBassHarness {
     }
     return { rawEnd: this.now + 500 + this.offset, lastPitch: previous };
   }
-  finish(): void {
-    const { rawEnd, lastPitch } = this.reachTerminal();
+  finish(fromStarted = false): void {
+    const { rawEnd, lastPitch } = this.reachTerminal(!fromStarted);
     this.frame(Math.max(rawEnd, this.now + 500));
     expect(this.core.snapshot().status).toBe("release");
     this.event("up", lastPitch, rawEnd, this.now);
@@ -515,6 +515,100 @@ describe("held-bass physical and terminal boundaries", () => {
 });
 
 describe("held-bass bounded strict saved proof", () => {
+  it.each([0, 100, -50])(
+    "actual step hints have bounded clock proof with fixed offset %i",
+    (offset) => {
+      const h = new HeldBassHarness(1, offset);
+      h.prepare(0);
+      h.core.showHint(h.fragment.id, 0, 1, h.now);
+      h.initial();
+      const cue = h.now + 500 + offset;
+      h.frame(cue);
+      h.core.showHint(h.fragment.id, 1, 1, h.now);
+      h.finish(true);
+      for (let index = 1; index < 10; index++) {
+        h.now++;
+        h.prepare(index);
+        h.finish();
+      }
+      const result = h.core.result(20000);
+      if (!result) throw new Error("No result");
+      expect(validateHeldBassResult(result)).toEqual(result);
+      const fragment = result.fragments[0];
+      const hint = fragment?.hintHistory.find((hint) => hint.step === 1);
+      if (!fragment || !hint) throw new Error("No next-step hint");
+      for (const changed of [
+        { ...hint, atMs: hint.presentedAtMs + 1 },
+        {
+          ...hint,
+          atMs: cue - 1,
+          clock: hint.clock.filter((segment) => segment.performanceMs <= cue - 1)
+        },
+        { ...hint, offsetMs: hint.offsetMs + 1 },
+        { ...hint, step: 0 },
+        { ...hint, onsets: [] },
+        { ...hint, clock: Array.from({ length: 65 }, () => hint.clock[0]) },
+        {
+          ...hint,
+          onsets: hint.onsets.map((onset) => ({ ...onset, attackAtMs: onset.atMs - 250 }))
+        }
+      ]) {
+        const mutated = {
+          ...fragment,
+          hintHistory: fragment.hintHistory.map((item) => (item === hint ? changed : item))
+        };
+        expect(
+          validateHeldBassResult({ ...result, fragments: [mutated, ...result.fragments.slice(1)] })
+        ).toBeNull();
+      }
+    }
+  );
+  it("canceled attempt retains independently replayable shown-hint proof and rejects future-step forgeries", () => {
+    const h = new HeldBassHarness();
+    h.prepare(0);
+    h.initial();
+    h.frame(h.now + 500);
+    h.core.showHint(h.fragment.id, 1, 2, h.now);
+    h.core.setActive(false, h.now + 1);
+    h.core.setActive(true, h.now + 2);
+    h.event("up", h.fragment.bassPitch, h.now + 3);
+    h.event("up", h.fragment.melodyPitches[0] ?? 60, h.now + 1);
+    h.now++;
+    h.prepare(0);
+    h.finish();
+    for (let index = 1; index < 10; index++) {
+      h.now++;
+      h.prepare(index);
+      h.finish();
+    }
+    const result = h.core.result(20000);
+    if (!result) throw new Error("No result");
+    const fragment = result.fragments[0];
+    const hint = fragment?.hintHistory[0];
+    if (!fragment || !hint) throw new Error("No canceled hint");
+    expect(
+      fragment.attempts.some((attempt) => attempt.presentationId === hint.presentationId)
+    ).toBe(false);
+    expect(validateHeldBassResult(result)).toEqual(result);
+    expect(
+      validateHeldBassResult({
+        ...result,
+        fragments: [
+          { ...fragment, hintHistory: [{ ...hint, atMs: hint.presentedAtMs + 1 }] },
+          ...result.fragments.slice(1)
+        ]
+      })
+    ).toBeNull();
+    expect(
+      validateHeldBassResult({
+        ...result,
+        fragments: [
+          { ...fragment, hintHistory: [{ ...hint, step: 0 }] },
+          ...result.fragments.slice(1)
+        ]
+      })
+    ).toBeNull();
+  });
   it("same physical history and fixed clock commits remain equal at15 and60FPS", () => {
     const run = (fps: number): unknown => {
       const h = new HeldBassHarness();

@@ -422,7 +422,13 @@ export class HeldBassSession {
       presentedAtMs: p.presentedAt ?? p.boundary,
       step: p.onsets.length,
       atMs,
-      level
+      level,
+      clock: p.clock.map((segment) => ({ ...segment })),
+      onsets: p.onsets.map((onset) => ({ ...onset, noteIds: [...onset.noteIds] })),
+      offsetMs:
+        p.events
+          .toSorted((a, b) => a.atMs - b.atMs || a.sequence - b.sequence)
+          .find((event) => event.kind === "down")?.offsetMs ?? 0
     });
   }
   snapshot(): HeldBassSnapshot {

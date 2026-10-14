@@ -69,6 +69,9 @@ export interface HeldBassHint {
   readonly step: number;
   readonly atMs: number;
   readonly level: ReadingHintLevel;
+  readonly clock: readonly ClockSegment[];
+  readonly onsets: readonly HeldBassOnset[];
+  readonly offsetMs: number;
 }
 export interface HeldBassAttempt {
   readonly attemptId: string;

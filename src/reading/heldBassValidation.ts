@@ -1,12 +1,13 @@
 const array = (value: unknown): boolean => Array.isArray(value);
 import { heldBassFragmentsForSeed } from "./heldBassGenerator";
 import { evaluateHeldBassEvents } from "./heldBassEvidence";
-import { validHeldBassClock } from "./heldBassClock";
+import { heldBassReadyAt, validHeldBassClock } from "./heldBassClock";
 import { twoHandElapsed } from "./twoHandEvidence";
 import type {
   HeldBassAttempt,
   HeldBassEvent,
   HeldBassFragment,
+  HeldBassHint,
   HeldBassResult
 } from "./heldBassTypes";
 
@@ -164,6 +165,51 @@ function validateAttempt(
     attempt.outcome === (evaluation.reason ?? (success ? "success" : null))
   );
 }
+function validateHintProof(
+  fragment: HeldBassFragment,
+  hint: HeldBassHint,
+  runId: string,
+  attempt?: HeldBassAttempt
+): boolean {
+  if (
+    !array(hint.clock) ||
+    !array(hint.onsets) ||
+    hint.onsets.length !== hint.step ||
+    !Number.isFinite(hint.offsetMs) ||
+    !validHeldBassClock(fragment, hint.clock, hint.onsets, hint.atMs) ||
+    !heldBassReadyAt(fragment, hint.clock, hint.onsets, hint.step, hint.atMs - hint.offsetMs)
+  )
+    return false;
+  for (const segment of hint.clock)
+    if (!keys(segment, "performanceMs songSeconds speed acceptsInput")) return false;
+  for (let step = 0; step < hint.onsets.length; step++) {
+    const onset = hint.onsets[step];
+    if (
+      !onset ||
+      !keys(onset, "runId fragmentId presentationId step noteIds atMs attackAtMs") ||
+      onset.runId !== runId ||
+      onset.fragmentId !== fragment.id ||
+      onset.presentationId !== hint.presentationId ||
+      onset.step !== step ||
+      !equal(onset.noteIds, fragment.steps[step]) ||
+      !time(onset.atMs) ||
+      !time(onset.attackAtMs) ||
+      onset.attackAtMs < hint.presentedAtMs ||
+      onset.atMs <= onset.attackAtMs + 250 ||
+      onset.atMs > hint.atMs ||
+      (step > 0 && onset.atMs <= (hint.onsets[step - 1]?.atMs ?? 0))
+    )
+      return false;
+  }
+  if (!attempt) return true;
+  const offset = hint.atMs < attempt.firstDownAtMs ? 0 : attempt.offsetMs;
+  return (
+    hint.offsetMs === offset &&
+    equal(hint.onsets, attempt.onsets.slice(0, hint.step)) &&
+    hint.clock.length <= attempt.clock.length &&
+    hint.clock.every((segment, index) => equal(segment, attempt.clock[index]))
+  );
+}
 /** Returns detached bounded evidence; unknown runtime fields and fabricated clock jumps are rejected. */
 export function validateHeldBassResult(value: unknown): HeldBassResult | null {
   try {
@@ -251,7 +297,7 @@ export function validateHeldBassResult(value: unknown): HeldBassResult | null {
           (item) => item.presentationId === hint.presentationId
         );
         if (
-          !keys(hint, "presentationId presentedAtMs step atMs level") ||
+          !keys(hint, "presentationId presentedAtMs step atMs level clock onsets offsetMs") ||
           !text(hint.presentationId) ||
           !hint.presentationId.startsWith(`${result.runId}:presentation:`) ||
           !time(hint.presentedAtMs) ||
@@ -265,6 +311,7 @@ export function validateHeldBassResult(value: unknown): HeldBassResult | null {
           hint.step >= source.steps.length ||
           ![1, 2].includes(hint.level) ||
           hint.level <= (shown.get(key) ?? 0) ||
+          !validateHintProof(source, hint, result.runId, attempt) ||
           (attempt &&
             (hint.presentedAtMs !== attempt.presentedAtMs ||
               !attempt.activeIntervals.some(
