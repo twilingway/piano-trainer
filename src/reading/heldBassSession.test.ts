@@ -515,6 +515,42 @@ describe("held-bass physical and terminal boundaries", () => {
 });
 
 describe("held-bass bounded strict saved proof", () => {
+  it.each([-50, 50])(
+    "shown hint before first physical-down delivery keeps unknown offset at0 (%i)",
+    (offset) => {
+      const h = new HeldBassHarness(1, offset);
+      h.prepare(0);
+      const start = h.now + 10 + Math.max(0, offset);
+      h.frame(start + 40);
+      h.core.showHint(h.fragment.id, 0, 1, h.now);
+      h.event("down", h.fragment.bassPitch, start, start + 200);
+      h.event("down", h.fragment.melodyPitches[0] ?? 60, start + 50, start + 205);
+      h.frame(start + 301);
+      expect(h.core.snapshot().step).toBe(1);
+      h.finish(true);
+      for (let index = 1; index < 10; index++) {
+        h.now++;
+        h.prepare(index);
+        h.finish();
+      }
+      const result = h.core.result(20000);
+      if (!result) throw new Error("No result");
+      const hint = result.fragments[0]?.hintHistory[0];
+      expect(hint).toMatchObject({ offsetMs: 0 });
+      expect(validateHeldBassResult(result)).toEqual(result);
+      const fragment = result.fragments[0];
+      if (!fragment || !hint) throw new Error("No delayed hint");
+      expect(
+        validateHeldBassResult({
+          ...result,
+          fragments: [
+            { ...fragment, hintHistory: [{ ...hint, offsetMs: offset }] },
+            ...result.fragments.slice(1)
+          ]
+        })
+      ).toBeNull();
+    }
+  );
   it.each([0, 100, -50])(
     "actual step hints have bounded clock proof with fixed offset %i",
     (offset) => {

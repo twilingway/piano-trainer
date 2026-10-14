@@ -202,7 +202,8 @@ function validateHintProof(
       return false;
   }
   if (!attempt) return true;
-  const offset = hint.atMs < attempt.firstDownAtMs ? 0 : attempt.offsetMs;
+  const firstDelivery = attempt.events.find((event) => event.kind === "down")?.receivedAtMs;
+  const offset = firstDelivery !== undefined && hint.atMs >= firstDelivery ? attempt.offsetMs : 0;
   return (
     hint.offsetMs === offset &&
     equal(hint.onsets, attempt.onsets.slice(0, hint.step)) &&
