@@ -62,7 +62,7 @@ export function stepTrainerPair(
 
 export function pairGuidance(
   session: PracticeSession,
-  policy: TrainerPairPolicy,
+  policy: Pick<TrainerPairPolicy, "cuePitches">,
   playing: boolean
 ) {
   const pitches = playing ? policy.cuePitches() : [];

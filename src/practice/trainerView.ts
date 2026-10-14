@@ -1,8 +1,65 @@
 import type { FallingNotesView } from "../render/FallingNotesView";
-import type { SongNote } from "../song/song";
+import { quartersAt, type SongNote } from "../song/song";
 import type { PracticeSession } from "./session";
+import type { PracticeEvent } from "./practiceTypes";
+import type { ComboCounter, GradedStrike } from "./combo";
 
 const NOTHING: ReadonlySet<number> = new Set();
+
+type TrainerDraw = Parameters<FallingNotesView["draw"]>[0];
+type SceneOverrides = Omit<
+  TrainerDraw,
+  "time" | "hintTime" | "hintSpeed" | "lookAhead" | "statusOf" | "owedNoteId" | "hands" | "owns"
+>;
+
+export function drawTrainerScene(
+  view: FallingNotesView,
+  session: PracticeSession,
+  visualOffsetMs: number,
+  overrides: SceneOverrides
+): void {
+  view.draw({
+    time: session.time - (visualOffsetMs / 1000) * session.options.speed,
+    hintTime: session.time,
+    hintSpeed: session.options.speed,
+    ...overrides,
+    lookAhead: 2,
+    statusOf: (id) => session.statusOf(id),
+    owedNoteId: session.owedNote()?.id,
+    hands: session.options.hands,
+    owns: session.owns
+  });
+}
+
+export function trainerGrade(
+  event: Extract<PracticeEvent, { type: "hit" | "miss" | "wrong" }>,
+  combo: ComboCounter,
+  pitchOf: ReadonlyMap<string, number>
+): GradedStrike | undefined {
+  const grade = combo.record(event);
+  const pitch = event.type === "wrong" ? event.pitch : pitchOf.get(event.noteId);
+  return grade && pitch !== undefined
+    ? {
+        grade,
+        pitch,
+        ...(event.type === "hit" ? { offsetMs: event.offset * 1000, assisted: event.assisted } : {})
+      }
+    : undefined;
+}
+
+export function trainerQuarters(
+  session: PracticeSession | undefined,
+  visualOffsetMs: number,
+  clampEnd: boolean
+): number {
+  return session
+    ? quartersAt(
+        session.song,
+        Math.min(session.time, clampEnd ? session.song.duration : Infinity) -
+          (visualOffsetMs / 1000) * session.options.speed
+      )
+    : 0;
+}
 
 export function drawTrainerMirror(
   mirror:
