@@ -6,7 +6,7 @@
       нот, release/следующий фрагмент, сохранность истории; evidence previous change.
 - [x] 1.2 Read-only spec_architect/explorer, proposal/specs/design; проверить одноclock TEMPO,
       независимые members и существующие WAIT/tap guards.
-- [ ] 1.3 Независимое ревью плана, pnpm check/spec:validate, evidence, draft task PR в dev;
+- [x] 1.3 Независимое ревью плана, pnpm check/spec:validate, evidence, draft task PR в dev;
       проверить чистый основной dev и опубликованный SHA.
 - [ ] 1.4 Пользователь подтверждает конкретные правила proposal; записать ответ в verification. Ни
       одна production задача2–6 не начинается до1.4.

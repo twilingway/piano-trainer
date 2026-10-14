@@ -1,5 +1,9 @@
 # Проверка плана P4b-4
 
+Опубликован draft PR160: https://github.com/twilingway/piano-trainer/pull/160. Ветка отслеживает
+свой origin/docs/reading-independent-rhythms-p4b, planning artifacts4/4 готовы;1.4 ждёт
+подтверждения пользователя. Это не готовый production курс и не разрешение применять новые правила.
+
 ## База и границы
 
 База — merge15918fda9efce06df57add3dc704071a5a9c6c4dbf8. Основная папка чистая наdev, обновлена
