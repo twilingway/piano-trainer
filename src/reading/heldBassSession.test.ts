@@ -246,6 +246,31 @@ describe("held-bass course generator and journal", () => {
     h.core.showHint(h.fragment.id, 0, 2, h.now + 1);
     expect(h.core.snapshot().hintLevel).toBe(0);
   });
+  it("retains visible help for the same step across retry without revealing another step", () => {
+    const h = new HeldBassHarness();
+    h.prepare(0);
+    h.core.showHint(h.fragment.id, 0, 1, h.now);
+    h.initial();
+    h.frame(h.now + 500);
+    h.core.showHint(h.fragment.id, 1, 2, h.now);
+    h.event("down", 61, h.now + 1);
+    h.event("up", 61, h.now + 1);
+    h.event("up", h.fragment.melodyPitches[0] ?? 60, h.now + 1);
+    h.event("up", h.fragment.bassPitch, h.now + 1);
+    h.frame(h.now + 251);
+    h.now++;
+    h.prepare(0);
+    expect(h.core.snapshot().hintLevel).toBe(1);
+    h.initial();
+    expect(h.core.snapshot().hintLevel).toBe(2);
+    h.frame(h.now + 500);
+    const previous = h.fragment.melodyPitches[0] ?? 60;
+    const pitch = h.fragment.melodyPitches[1] ?? 60;
+    h.event("up", previous, h.now);
+    h.event("down", pitch, h.now + 1);
+    h.frame(h.now + 251);
+    expect(h.core.snapshot().hintLevel).toBe(0);
+  });
 });
 
 describe("held-bass physical and terminal boundaries", () => {

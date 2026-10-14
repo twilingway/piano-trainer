@@ -441,9 +441,7 @@ export class HeldBassSession {
       heldBassReadyAt(p.fragment, p.clock, p.onsets, step, this.now - offset);
     const hintLevel = Math.max(
       0,
-      ...(p?.hints
-        .filter((hint) => hint.presentationId === p.presentationId && hint.step === step)
-        .map((hint) => hint.level) ?? [])
+      ...(p?.hints.filter((hint) => hint.step === step).map((hint) => hint.level) ?? [])
     ) as ReadingHintLevel;
     return {
       fragmentId: p?.fragment.id ?? null,
