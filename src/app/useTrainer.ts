@@ -432,9 +432,13 @@ export function useTrainer({
   };
 
   const togglePlay = async () => {
+    const generation = assignmentRef.current.generation,
+      trainer = trainerRef.current;
     await ensureSound();
-    if (snapshotSource.getSnapshot()?.finished) restart();
-    trainerRef.current?.setPlaying(!(snapshotSource.getSnapshot()?.playing ?? false));
+    if (generation !== assignmentRef.current.generation || trainer !== trainerRef.current) return;
+    const state = snapshotSource.getSnapshot();
+    if (state?.finished && !state.playing) restart();
+    trainer?.setPlaying(!(state?.playing ?? false));
   };
 
   const toggleListening = async () => {

@@ -14,6 +14,7 @@ import { translate } from "../i18n/translate";
 import { readingMessages } from "../i18n/readingMessages";
 import { bassReadingMessages } from "../i18n/bassReadingMessages";
 import { twoHandMessages } from "../i18n/twoHandMessages";
+import { heldBassMessages } from "../i18n/heldBassMessages";
 let activeLocale: Locale = "ru";
 const observed = vi.hoisted(() => ({
   header: vi.fn(),
@@ -29,7 +30,7 @@ vi.mock("./useI18n", () => ({
     t: (key: string) =>
       translate(
         activeLocale,
-        { ...readingMessages, ...bassReadingMessages, ...twoHandMessages },
+        { ...readingMessages, ...bassReadingMessages, ...twoHandMessages, ...heldBassMessages },
         key
       )
   })
@@ -60,6 +61,15 @@ const initial = (): PlayerRuntime =>
     intervals: { active: false, mode: "see-and-play" },
     rhythm: { active: false },
     twoHand: {
+      active: false,
+      intro: false,
+      history: [],
+      sourceFilter: "all",
+      setSourceFilter: vi.fn(),
+      start: vi.fn(),
+      setIntro: vi.fn()
+    },
+    heldBass: {
       active: false,
       intro: false,
       history: [],
@@ -124,6 +134,20 @@ function mount(children: React.ReactNode) {
   return { container, render };
 }
 describe("connected regions without React Compiler", () => {
+  it.each(["ru", "en"] as const)("labels the held bass course in %s", (locale) => {
+    activeLocale = locale;
+    observed.runtime = initial();
+    observed.runtime.heldBass = { ...observed.runtime.heldBass, active: true };
+    observed.runtime.practiceActive = true;
+    mount(<ConnectedPlayerHeader />);
+    expect(observed.header.mock.lastCall?.[0]).toMatchObject({
+      title: locale === "ru" ? "Держу бас, играю мелодию" : "Hold the bass, play the melody",
+      hands: "both",
+      fixedPractice: true,
+      mode: "wait",
+      speed: 1
+    });
+  });
   it.each(["ru", "en"] as const)("labels the two-hand course in %s", (locale) => {
     activeLocale = locale;
     observed.runtime = initial();

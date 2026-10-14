@@ -63,7 +63,11 @@ export function mergeHeldBassHistory(
         spreadMs: fragment.spreadMs,
         heldDurationMs: fragment.heldDurationMs,
         melodyPitches: [...fragment.melodyPitches],
-        hintHistory: fragment.hintHistory.map((hint) => ({ ...hint })),
+        hintHistory: fragment.hintHistory.map((hint) => ({
+          ...hint,
+          clock: hint.clock.map((segment) => ({ ...segment })),
+          onsets: hint.onsets.map((onset) => ({ ...onset, noteIds: [...onset.noteIds] }))
+        })),
         attempts: fragment.attempts.map((attempt) => ({
           attemptId: attempt.attemptId,
           presentationId: attempt.presentationId,

@@ -1,6 +1,6 @@
 import { useI18n } from "../app/useI18n";
 import { GameDialog } from "./GameDialog";
-import { twoHandNoteName } from "./TwoHandProgress";
+import { TwoHandBindings } from "./TwoHandBindings";
 import type { BassReadingKeyBinding } from "./BassReadingIntro";
 
 export function TwoHandIntro({
@@ -32,33 +32,7 @@ export function TwoHandIntro({
             "Нотные партии задают руки. Приложение проверяет высоты и атаки, но не видит ваши руки и пальцы."
           )}
         </p>
-        <div className="reading-results-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>{t("Руки")}</th>
-                <th>{t("Нота курса")}</th>
-                <th>{t("Палец")}</th>
-                <th>{t("Клавиши ПК для двух рук")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {([48, 50, 52, 53, 55, 60, 62, 64, 65, 67] as const).map((pitch, index) => (
-                <tr key={pitch}>
-                  <td>{t(index < 5 ? "Левая рука" : "Правая рука")}</td>
-                  <td>{twoHandNoteName(pitch, t)}</td>
-                  <td>{index < 5 ? 5 - index : index - 4}</td>
-                  <td>
-                    {bindings
-                      .filter((binding) => binding.pitch === pitch)
-                      .map((binding) => binding.label)
-                      .join(", ") || t("Нет назначения для этой ноты")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TwoHandBindings bindings={bindings} />
         <p>
           {t(
             "Назначения показаны без переноса октавы и модификаторов. Проверьте октаву; изменить раскладку можно в «Настройки → Ввод с ПК»."

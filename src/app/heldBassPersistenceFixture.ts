@@ -25,9 +25,18 @@ export function makeHeldBassResult(
       noteResult: false,
       countInBeats: 0
     });
-    if (!practice.registerVerifiedOnsets({ runId, fragmentId: fragment.id, steps: fragment.steps }))
-      throw new Error("Cannot register fixture onsets");
     course.prepare(fragment.id, at);
+    const presentationId = course.snapshot().presentationId;
+    if (
+      !presentationId ||
+      !practice.registerVerifiedOnsets({
+        runId,
+        fragmentId: fragment.id,
+        presentationId,
+        steps: fragment.steps
+      })
+    )
+      throw new Error("Cannot register fixture onsets");
     course.present(fragment.id, at);
     course.setActive(true, at);
     practice.startClock(at);

@@ -16,7 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:compiler": "vitest run src/app/useTwoHandCourse.test.tsx --mode development",
+    "test:compiler": "vitest run src/app/useTwoHandCourse.test.tsx src/app/useHeldBassCourse.test.tsx --mode development",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:compiler && pnpm build",
     "spec": "cross-env OPENSPEC_TELEMETRY=0 openspec",
     "spec:status": "cross-env OPENSPEC_TELEMETRY=0 openspec status",
