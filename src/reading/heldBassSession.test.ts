@@ -316,6 +316,43 @@ describe("held-bass physical and terminal boundaries", () => {
     bad.frame(terminal.rawEnd);
     expect(bad.core.snapshot().answers).toHaveLength(0);
   });
+  it.each(["immediate", "delayed", "out-of-order"])(
+    "rejects terminal fresh down after all release, with %s delivery",
+    (delivery) => {
+      const h = new HeldBassHarness();
+      h.prepare(0);
+      const { rawEnd, lastPitch } = h.reachTerminal();
+      h.frame(rawEnd);
+      h.event("up", lastPitch, rawEnd);
+      h.event("up", h.fragment.bassPitch, rawEnd);
+      if (delivery === "out-of-order") {
+        h.event("up", lastPitch, rawEnd + 150, rawEnd + 160);
+        h.event("down", lastPitch, rawEnd + 100, rawEnd + 200);
+      } else {
+        h.event("down", lastPitch, rawEnd + 100, rawEnd + (delivery === "delayed" ? 200 : 100));
+        h.event("up", lastPitch, rawEnd + 150, rawEnd + (delivery === "delayed" ? 250 : 150));
+      }
+      h.frame(rawEnd + 401);
+      expect(h.core.snapshot()).toMatchObject({
+        status: "third-note",
+        answers: [],
+        retryCommand: { fragmentId: h.fragment.id }
+      });
+      h.now++;
+      h.prepare(0);
+      h.finish();
+      expect(h.core.snapshot().answers[0]?.attempts.map((attempt) => attempt.outcome)).toEqual([
+        "third-note",
+        "success"
+      ]);
+      for (let index = 1; index < 10; index++) {
+        h.now++;
+        h.prepare(index);
+        h.finish();
+      }
+      expect(validateHeldBassResult(h.core.result(20000))).not.toBeNull();
+    }
+  );
   it("supports two-note RH legato, rejects a third different held RH", () => {
     const seed = Array.from({ length: 30 }, (_, seed) => seed).find((seed) => {
       const f = generateHeldBassExercise(seed).fragments[0];

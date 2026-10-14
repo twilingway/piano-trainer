@@ -68,7 +68,8 @@ export function evaluateHeldBassEvents(
     if (held.has(owner)) continue;
     const pitchHeld = [...held.values()].some((item) => item.pitch === event.pitch);
     held.set(owner, event);
-    if (closed || reason) continue;
+    if (closed && !reason) reason = "third-note";
+    if (reason) continue;
     if (!first) {
       first = event;
       if (event.pitch === fragment.bassPitch) bassDownAtMs = event.atMs;
