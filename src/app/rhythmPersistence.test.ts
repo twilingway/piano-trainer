@@ -154,7 +154,7 @@ describe("rhythm schema4 persistence", () => {
     const { rhythm: _rhythm, ...old } = saved;
     const first = normalizeReadingState({ ...old, schemaVersion: 3 });
     expect(first.invalid).toBe(false);
-    expect(first.reading).toMatchObject({ ...old, schemaVersion: 7 });
+    expect(first.reading).toMatchObject({ ...old, schemaVersion: 8 });
     expect(first.reading.profile).toEqual(saved.profile);
     expect(first.reading.rhythm.history).toEqual([]);
     expect(normalizeReadingState(first.reading).reading).toEqual(first.reading);
@@ -312,7 +312,7 @@ describe("rhythm schema4 persistence", () => {
   });
   it("blocks future/read failures and later downgrade attempts without overwriting data", async () => {
     for (const load of [
-      () => Promise.resolve({ schemaVersion: 8, marker: "future" }),
+      () => Promise.resolve({ schemaVersion: 9, marker: "future" }),
       () => Promise.reject(new Error("read denied"))
     ]) {
       const update = vi.fn();
@@ -327,7 +327,7 @@ describe("rhythm schema4 persistence", () => {
     const repository = createMemoryReadingRepository(emptyReadingState());
     const store = createAppStore({ storage: storage(), readingRepository: repository });
     await store.readingPersistenceReady;
-    const future = { schemaVersion: 8, marker: "future-after-hydration" };
+    const future = { schemaVersion: 9, marker: "future-after-hydration" };
     await repository.update(() => future);
     store.dispatch(readingActions.rhythmResultAdded(result("cannot-downgrade")));
     await store.flushReadingPersistence();
@@ -381,7 +381,7 @@ describe("rhythm schema4 persistence", () => {
     const saved = await repository.load();
     expect(saved).not.toHaveProperty("selectionRevision");
     expect(saved).toMatchObject({
-      schemaVersion: 7,
+      schemaVersion: 8,
       rhythm: { seed: 8, bpm: 80, inputSource: "pointer", history: [] }
     });
     expect(backing.getItem(READING_STORAGE_KEY)).toBe(legacy);

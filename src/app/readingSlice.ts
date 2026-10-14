@@ -2,6 +2,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   DEFAULT_READING_PREFERENCES,
   type ReadingPreferences,
+  type ReadingInputSource,
   type ReadingResult,
   type ReadingTask
 } from "../reading/types";
@@ -35,8 +36,15 @@ import {
   type IntervalPersistentState
 } from "./intervalPersistence";
 
+import type { IndependentRhythmResult } from "../independentRhythm/types";
+import {
+  emptyIndependentRhythmState,
+  mergeIndependentRhythmHistory,
+  type IndependentRhythmPersistentState
+} from "./independentRhythmPersistence";
+
 export interface ReadingState {
-  schemaVersion: 7;
+  schemaVersion: 8;
   activeCourse:
     | "note-reading"
     | "interval-training"
@@ -44,12 +52,14 @@ export interface ReadingState {
     | "bass-reading"
     | "two-hand-coordination"
     | "held-bass-reading"
+    | "independent-rhythm-reading"
     | null;
   intervals: IntervalPersistentState;
   rhythm: RhythmPersistentState;
   bass: BassPersistentState;
   coordination: TwoHandPersistentState;
   heldBass: HeldBassPersistentState;
+  independentRhythm: IndependentRhythmPersistentState;
   task: ReadingTask | null;
   seed: number;
   preferences: ReadingPreferences;
@@ -65,13 +75,14 @@ export interface ReadingRoot {
   reading: ReadingState;
 }
 export const initialReadingState: ReadingState = {
-  schemaVersion: 7,
+  schemaVersion: 8,
   activeCourse: null,
   intervals: emptyIntervalState(),
   rhythm: emptyRhythmState(),
   bass: emptyBassState(),
   coordination: emptyTwoHandState(),
   heldBass: emptyHeldBassState(),
+  independentRhythm: emptyIndependentRhythmState(),
   task: null,
   seed: 1,
   preferences: DEFAULT_READING_PREFERENCES,
@@ -199,6 +210,33 @@ const readingSlice = createSlice({
     },
     heldBassResultAdded(state, { payload }: PayloadAction<HeldBassResult>) {
       state.heldBass.history = mergeHeldBassHistory(state.heldBass.history, [payload]);
+    },
+    independentRhythmSelected(
+      state,
+      { payload }: PayloadAction<{ seed: number; generatorVersion?: number }>
+    ) {
+      if (payload.generatorVersion !== undefined && payload.generatorVersion !== 1) return;
+      state.activeCourse = "independent-rhythm-reading";
+      state.independentRhythm.seed = payload.seed >>> 0;
+      state.independentRhythm.generatorVersion = payload.generatorVersion ?? 1;
+      state.selectionRevision++;
+    },
+    independentRhythmResultAdded(state, { payload }: PayloadAction<IndependentRhythmResult>) {
+      state.independentRhythm.history = mergeIndependentRhythmHistory(
+        state.independentRhythm.history,
+        [payload]
+      );
+    },
+    independentRhythmSourceChanged(state, { payload }: PayloadAction<ReadingInputSource>) {
+      if (state.independentRhythm.inputSource === payload) return;
+      state.independentRhythm.inputSource = payload;
+      if (state.activeCourse === "independent-rhythm-reading") state.selectionRevision++;
+    },
+    independentRhythmSourceFilterChanged(state, { payload }: PayloadAction<ReadingSourceFilter>) {
+      state.independentRhythm.sourceFilter = payload;
+    },
+    independentRhythmKeyHintsChanged(state, { payload }: PayloadAction<boolean>) {
+      state.independentRhythm.showKeyHints = payload;
     },
     hydrated(state, { payload }: PayloadAction<ReadingState>) {
       return { ...payload, selectionRevision: state.selectionRevision };

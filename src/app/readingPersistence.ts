@@ -20,6 +20,11 @@ import { defaultReadingRepository, type ReadingRepository } from "./readingRepos
 export const READING_STORAGE_KEY = "reading-course-v1";
 const READ_ERROR = "indexedDB:reading:read";
 const WRITE_ERROR = "indexedDB:reading:write";
+const independentPreferenceActions = new Map<string, ReadingPersistentField>([
+  [readingActions.independentRhythmSourceChanged.type, "independentRhythmSource"],
+  [readingActions.independentRhythmSourceFilterChanged.type, "independentRhythmSourceFilter"],
+  [readingActions.independentRhythmKeyHintsChanged.type, "independentRhythmKeyHints"]
+]);
 function persisted(reading: ReadingState) {
   const { selectionRevision: _revision, ...saved } = reading;
   return saved;
@@ -62,6 +67,9 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
   const rhythmRuns = new Set(baseline.rhythm.history.map((result) => result.runId));
   const bassRuns = new Set(baseline.bass.history.map((result) => result.runId));
   const coordinationRuns = new Set(baseline.coordination.history.map((result) => result.runId));
+  const independentRhythmRuns = new Set(
+    baseline.independentRhythm.history.map((result) => result.runId)
+  );
   const heldBassRuns = new Set(baseline.heldBass.history.map((result) => result.runId));
   return {
     ...current,
@@ -84,6 +92,12 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
     heldBass: {
       ...current.heldBass,
       history: current.heldBass.history.filter((result) => !heldBassRuns.has(result.runId))
+    },
+    independentRhythm: {
+      ...current.independentRhythm,
+      history: current.independentRhythm.history.filter(
+        (result) => !independentRhythmRuns.has(result.runId)
+      )
     },
     history: current.history.filter((result) => !historyIds.has(result.runId ?? result.id)),
     profile: {
@@ -123,6 +137,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
   let initialBaseline: ReadingState | undefined;
   let excludeLegacy = false;
   let activeBeforeHydration = false;
+  const explicitBeforeHydration = new Set<ReadingPersistentField>();
   const persist = (
     store: ReadingStore<State>,
     snapshot: ReadingState,
@@ -153,11 +168,17 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
   };
   const unsubscribe = listener.startListening({
     predicate: (action, current, previous) =>
-      action.type !== readingActions.hydrated.type && current.reading !== previous.reading,
-    effect: (_action, api) => {
+      action.type !== readingActions.hydrated.type &&
+      (current.reading !== previous.reading || independentPreferenceActions.has(action.type)),
+    effect: (action, api) => {
       const current = api.getState().reading;
       const previous = api.getOriginalState().reading;
       const fields = changedReadingFields(current, previous);
+      const explicit = independentPreferenceActions.get(action.type);
+      if (explicit) {
+        if (!fields.includes(explicit)) fields.push(explicit);
+        if (!initialized) explicitBeforeHydration.add(explicit);
+      }
       if (
         fields.length === 0 &&
         current.history === previous.history &&
@@ -167,7 +188,8 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
         current.rhythm.history === previous.rhythm.history &&
         current.bass.history === previous.bass.history &&
         current.coordination.history === previous.coordination.history &&
-        current.heldBass.history === previous.heldBass.history
+        current.heldBass.history === previous.heldBass.history &&
+        current.independentRhythm.history === previous.independentRhythm.history
       )
         return;
       const latest = current.presentedFingerprints.at(-1);
@@ -276,6 +298,8 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
           const restored = saved === undefined ? legacy.reading : normalized.reading;
           const current = store.getState().reading;
           const fields = changedReadingFields(current, baseline);
+          for (const field of explicitBeforeHydration)
+            if (!fields.includes(field)) fields.push(field);
           // A presented series must keep its exact plan even if loading completes late.
           if (
             (activeBeforeHydration ||
