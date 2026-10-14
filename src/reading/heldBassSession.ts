@@ -381,6 +381,7 @@ export class HeldBassSession {
     p.onsets.push({ ...request, attackAtMs: attack.atMs });
     this.pendingCommit = null;
     if (!this.readClock(receipt)) this.cancel(receipt.atMs);
+    else this.tick(receipt.atMs);
   }
   suggestHint(atMs: number): ReadingHintLevel {
     const p = this.prompt;

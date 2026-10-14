@@ -233,6 +233,22 @@ describe("held-bass course generator and journal", () => {
     h.finish();
     expect(h.core.snapshot().answers[0]?.attempts).toHaveLength(1);
   });
+  it("acknowledged clock advances status to travelling and hold instead of retaining old readiness", () => {
+    const h = new HeldBassHarness();
+    h.prepare(0);
+    h.initial();
+    expect(h.core.snapshot()).toMatchObject({ step: 1, status: "travelling", ready: false });
+    h.frame(h.now + 499);
+    expect(h.core.snapshot()).toMatchObject({ status: "travelling", ready: false });
+    h.frame(h.now + 1);
+    expect(h.core.snapshot()).toMatchObject({ status: "ready", ready: true });
+    h.reachTerminal(false);
+    expect(h.core.snapshot()).toMatchObject({
+      step: h.fragment.steps.length,
+      status: "hold",
+      ready: false
+    });
+  });
   it("actual shown help belongs to whole fragment and never leaks to the next step", () => {
     const h = new HeldBassHarness();
     h.prepare(0);
