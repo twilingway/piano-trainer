@@ -1,5 +1,20 @@
 # Проверка P4b-3
 
+## После merge159
+
+Пользователь сообщил «влил продолжаю». GitHub подтверждает merge
+18fda9efce06df57add3dc704071a5a9c6c4dbf8; основной dev обновлён `git pull --ff-only`, чистый,
+origin/dev совпадает. CI merge successful:
+https://github.com/twilingway/piano-trainer/actions/runs/38592629493. Automatically delete head
+branches включён. Файлы task/worker worktrees сохранены.
+
+На http://localhost:5190/ после загрузки основной папки fetch текущих useHeldBassCourse/Trainer
+отдаёт новый код. В видимом Chrome main root, seed1, реальные DOM keyboard события F/E/R: готовность
+второй правой ноты → сообщение о release → фрагмент2; история1 прежнего QA-профиля сохранилась.
+Pause остановила current scene. Это postmerge проверка основного стенда, не preview ветки. Первичная
+navigate превысила10с, но страница загрузилась; повторные DOM/fetch проверки успешны. Сервер не
+запускался/не перезапускался. Hardware6.4 остаётся открытой по договорённости.
+
 ## Реализация и приёмка ветки
 
 Реализован согласованный курс «Держу бас, играю мелодию»:10 фрагментов2/4, initial200мс, непрерывный
