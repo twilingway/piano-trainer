@@ -12,6 +12,12 @@ import type { IntervalMode, IntervalResult } from "../intervals/types";
 import type { RhythmBpm, RhythmInputSource, RhythmResult } from "../rhythm/types";
 import type { BassReadingResult, BassReadingTask } from "../reading/bassTypes";
 import { emptyBassState, mergeBassHistory, type BassPersistentState } from "./bassPersistence";
+import type { HeldBassResult } from "../reading/heldBassTypes";
+import {
+  emptyHeldBassState,
+  mergeHeldBassHistory,
+  type HeldBassPersistentState
+} from "./heldBassPersistence";
 import type { TwoHandResult } from "../reading/twoHandTypes";
 import {
   emptyTwoHandState,
@@ -30,18 +36,20 @@ import {
 } from "./intervalPersistence";
 
 export interface ReadingState {
-  schemaVersion: 6;
+  schemaVersion: 7;
   activeCourse:
     | "note-reading"
     | "interval-training"
     | "rhythm-training"
     | "bass-reading"
     | "two-hand-coordination"
+    | "held-bass-reading"
     | null;
   intervals: IntervalPersistentState;
   rhythm: RhythmPersistentState;
   bass: BassPersistentState;
   coordination: TwoHandPersistentState;
+  heldBass: HeldBassPersistentState;
   task: ReadingTask | null;
   seed: number;
   preferences: ReadingPreferences;
@@ -57,12 +65,13 @@ export interface ReadingRoot {
   reading: ReadingState;
 }
 export const initialReadingState: ReadingState = {
-  schemaVersion: 6,
+  schemaVersion: 7,
   activeCourse: null,
   intervals: emptyIntervalState(),
   rhythm: emptyRhythmState(),
   bass: emptyBassState(),
   coordination: emptyTwoHandState(),
+  heldBass: emptyHeldBassState(),
   task: null,
   seed: 1,
   preferences: DEFAULT_READING_PREFERENCES,
@@ -174,6 +183,22 @@ const readingSlice = createSlice({
     },
     twoHandResultAdded(state, { payload }: PayloadAction<TwoHandResult>) {
       state.coordination.history = mergeTwoHandHistory(state.coordination.history, [payload]);
+    },
+    heldBassSelected(
+      state,
+      { payload }: PayloadAction<{ seed: number; generatorVersion?: number }>
+    ) {
+      if (payload.generatorVersion !== undefined && payload.generatorVersion !== 1) return;
+      state.activeCourse = "held-bass-reading";
+      state.heldBass.seed = payload.seed >>> 0;
+      state.heldBass.generatorVersion = payload.generatorVersion ?? 1;
+      state.selectionRevision++;
+    },
+    heldBassSourceFilterChanged(state, { payload }: PayloadAction<ReadingSourceFilter>) {
+      state.heldBass.sourceFilter = payload;
+    },
+    heldBassResultAdded(state, { payload }: PayloadAction<HeldBassResult>) {
+      state.heldBass.history = mergeHeldBassHistory(state.heldBass.history, [payload]);
     },
     hydrated(state, { payload }: PayloadAction<ReadingState>) {
       return { ...payload, selectionRevision: state.selectionRevision };

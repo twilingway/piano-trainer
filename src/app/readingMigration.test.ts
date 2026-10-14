@@ -140,7 +140,7 @@ describe("reading storage migration", () => {
       history: [sample, { id: "broken" }]
     });
     expect(invalid).toBe(true);
-    expect(reading.schemaVersion).toBe(6);
+    expect(reading.schemaVersion).toBe(7);
     expect(reading.preferences.automaticHints).toBe(false);
     expect(reading.history).toHaveLength(1);
     const migrated = reading.history[0];

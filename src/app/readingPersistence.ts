@@ -62,6 +62,7 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
   const rhythmRuns = new Set(baseline.rhythm.history.map((result) => result.runId));
   const bassRuns = new Set(baseline.bass.history.map((result) => result.runId));
   const coordinationRuns = new Set(baseline.coordination.history.map((result) => result.runId));
+  const heldBassRuns = new Set(baseline.heldBass.history.map((result) => result.runId));
   return {
     ...current,
     intervals: {
@@ -79,6 +80,10 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
     coordination: {
       ...current.coordination,
       history: current.coordination.history.filter((result) => !coordinationRuns.has(result.runId))
+    },
+    heldBass: {
+      ...current.heldBass,
+      history: current.heldBass.history.filter((result) => !heldBassRuns.has(result.runId))
     },
     history: current.history.filter((result) => !historyIds.has(result.runId ?? result.id)),
     profile: {
@@ -161,7 +166,8 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
         current.intervals.history === previous.intervals.history &&
         current.rhythm.history === previous.rhythm.history &&
         current.bass.history === previous.bass.history &&
-        current.coordination.history === previous.coordination.history
+        current.coordination.history === previous.coordination.history &&
+        current.heldBass.history === previous.heldBass.history
       )
         return;
       const latest = current.presentedFingerprints.at(-1);
