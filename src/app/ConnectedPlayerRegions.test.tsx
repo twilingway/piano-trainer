@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlayerRuntimeProvider, type PlayerRuntime } from "./PlayerRuntimeProvider";
 import { ConnectedPlayerHeader } from "./ConnectedPlayerHeader";
 import { ConnectedPlayerWindows } from "./ConnectedPlayerWindows";
+import { ConnectedPracticeWorkspace } from "./ConnectedPracticeWorkspace";
 import { ConnectedNotices } from "./ConnectedPlayerNotices";
 import { createAppStore } from "./store";
 import { progressKey, type CourseLesson } from "../course/model";
@@ -15,6 +16,7 @@ import { readingMessages } from "../i18n/readingMessages";
 import { bassReadingMessages } from "../i18n/bassReadingMessages";
 import { twoHandMessages } from "../i18n/twoHandMessages";
 import { heldBassMessages } from "../i18n/heldBassMessages";
+import { independentRhythmMessages } from "../i18n/independentRhythmMessages";
 let activeLocale: Locale = "ru";
 const observed = vi.hoisted(() => ({
   header: vi.fn(),
@@ -22,6 +24,7 @@ const observed = vi.hoisted(() => ({
   settings: vi.fn(),
   result: vi.fn(),
   library: vi.fn(),
+  workspace: vi.fn(),
   runtime: {} as PlayerRuntime
 }));
 vi.mock("./usePlayerRuntime", () => ({ usePlayerRuntime: () => observed.runtime }));
@@ -30,7 +33,13 @@ vi.mock("./useI18n", () => ({
     t: (key: string) =>
       translate(
         activeLocale,
-        { ...readingMessages, ...bassReadingMessages, ...twoHandMessages, ...heldBassMessages },
+        {
+          ...readingMessages,
+          ...bassReadingMessages,
+          ...twoHandMessages,
+          ...heldBassMessages,
+          ...independentRhythmMessages
+        },
         key
       )
   })
@@ -41,7 +50,11 @@ vi.mock("./ConnectedSettings", () => ({
 }));
 vi.mock("./ConnectedPlayback", () => ({
   ConnectedPlayerTopBar: observed.header,
-  ConnectedSongProgress: observed.progress
+  ConnectedSongProgress: observed.progress,
+  ConnectedWorkspace: observed.workspace,
+  ConnectedGameBoard: () => null,
+  ConnectedWordBoard: () => null,
+  ConnectedWordTicker: () => null
 }));
 vi.mock("../ui/GameModeSwitch", () => ({ GameModeSegment: () => null }));
 vi.mock("../ui/WordTextPopover", () => ({ WordTextPopover: () => null }));
@@ -78,6 +91,42 @@ const initial = (): PlayerRuntime =>
       start: vi.fn(),
       setIntro: vi.fn()
     },
+    independentRhythm: {
+      active: false,
+      intro: false,
+      history: [],
+      sourceFilter: "all",
+      setSourceFilter: vi.fn(),
+      start: vi.fn(),
+      setIntro: vi.fn(),
+      phase: "pulse",
+      status: "preparation",
+      ready: false,
+      allReleased: true,
+      source: "keyboard",
+      midiAvailable: false,
+      midiChannel: null,
+      showKeyHints: false,
+      countInBeat: undefined,
+      error: null,
+      result: null,
+      pulseSummary: null,
+      setSource: vi.fn(),
+      setShowKeyHints: vi.fn(),
+      onStart: vi.fn(),
+      onRepeat: vi.fn(),
+      newSeries: vi.fn(),
+      exit: vi.fn(),
+      onGoToRhythm: vi.fn(),
+      onRetryStaff: vi.fn(),
+      prompt: { musicXml: "independent-rhythm-score", beat: undefined },
+      presentation: {
+        id: "independent-rhythm-presentation",
+        onPresented: vi.fn(),
+        onError: vi.fn()
+      },
+      retry: 0
+    },
     practiceActive: false,
     course: { active: null, saved: { progress: {} }, controller: { open: vi.fn() } },
     fullscreen: { error: null, active: false },
@@ -93,6 +142,8 @@ const initial = (): PlayerRuntime =>
       }
     },
     screen: { editing: false },
+    view: { mirrorHostRef: { current: null } },
+    score: {},
     input: {},
     playing: false,
     sound: "idle",
@@ -103,7 +154,7 @@ const initial = (): PlayerRuntime =>
     setLibraryOpen: vi.fn(),
     setSettingsOpen: vi.fn(),
     setResultClosed: vi.fn(),
-    computerKeyboard: { endEditing: vi.fn() },
+    computerKeyboard: { endEditing: vi.fn(), bindings: {} },
     startOver: vi.fn()
   }) as unknown as PlayerRuntime;
 let cleanup = () => undefined;
@@ -113,6 +164,7 @@ afterEach(() => {
   activeLocale = "ru";
 });
 function mount(children: React.ReactNode) {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const container = document.createElement("div");
   const root = createRoot(container);
   const store = createAppStore({ storage: { getItem: () => null, setItem: vi.fn() } });
@@ -134,6 +186,58 @@ function mount(children: React.ReactNode) {
   return { container, render };
 }
 describe("connected regions without React Compiler", () => {
+  it.each(["ru", "en"] as const)(
+    "labels the independent rhythm course with fixed tempo controls in %s",
+    (locale) => {
+      activeLocale = locale;
+      observed.runtime = initial();
+      observed.runtime.independentRhythm = { ...observed.runtime.independentRhythm, active: true };
+      observed.runtime.practiceActive = true;
+      observed.runtime.trainer = { ...observed.runtime.trainer, mode: "tempo" };
+      mount(<ConnectedPlayerHeader />);
+      expect(observed.header.mock.lastCall?.[0]).toMatchObject({
+        title: locale === "ru" ? "Играю два ритма" : "Play two rhythms",
+        hands: "both",
+        fixedPractice: true,
+        mode: "tempo",
+        speed: 1
+      });
+      expect(observed.progress).not.toHaveBeenCalled();
+    }
+  );
+  it("uses the independent rhythm presentation and suppresses ordinary result and game UI", () => {
+    observed.runtime = initial();
+    observed.runtime.independentRhythm = { ...observed.runtime.independentRhythm, active: true };
+    observed.runtime.practiceActive = true;
+    observed.runtime.trainer = { ...observed.runtime.trainer, mode: "tempo" };
+    observed.runtime.snapshot = { ...observed.runtime.snapshot, finished: true };
+    mount(
+      <>
+        <ConnectedPlayerHeader />
+        <ConnectedPracticeWorkspace />
+        <ConnectedPlayerWindows />
+      </>
+    );
+    const header = observed.header.mock.lastCall?.[0] as {
+      game?: unknown;
+      course?: unknown;
+      difficulty?: unknown;
+    };
+    expect(header.game).toBeUndefined();
+    expect(header.course).toBeUndefined();
+    expect(header.difficulty).toBeUndefined();
+    expect(observed.result.mock.lastCall?.[0]).toMatchObject({ open: false });
+    expect(observed.workspace.mock.lastCall?.[0]).toMatchObject({
+      staffXml: "independent-rhythm-score",
+      staffPresentation: observed.runtime.independentRhythm.presentation,
+      staffRetry: 0,
+      readingBeat: undefined,
+      gameBoard: false,
+      editing: false,
+      reviewMarks: undefined,
+      transcription: undefined
+    });
+  });
   it.each(["ru", "en"] as const)("labels the held bass course in %s", (locale) => {
     activeLocale = locale;
     observed.runtime = initial();

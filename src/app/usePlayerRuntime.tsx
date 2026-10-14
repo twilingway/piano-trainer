@@ -17,6 +17,10 @@ import { useReadingCourse, useReadingTrainer } from "./useReadingCourse";
 import { useRhythmCourse } from "./useRhythmCourse";
 import { useTwoHandCourse, useTwoHandTrainer } from "./useTwoHandCourse";
 import { useHeldBassCourse, useHeldBassTrainer } from "./useHeldBassCourse";
+import {
+  useIndependentRhythmCourse,
+  useIndependentRhythmTrainer
+} from "./useIndependentRhythmCourse";
 import { useRhythmTrainer } from "./useRhythmTrainer";
 import { useIntervalCourse } from "./useIntervalCourse";
 import { useIntervalAudioTrainer } from "./useIntervalAudio";
@@ -57,11 +61,22 @@ export function usePlayerRuntime() {
   const rhythm = useRhythmCourse();
   const twoHand = useTwoHandCourse();
   const heldBass = useHeldBassCourse();
+  const independentRhythm = useIndependentRhythmCourse();
   const practiceActive =
-    reading.active || intervals.active || rhythm.active || twoHand.active || heldBass.active;
+    reading.active ||
+    intervals.active ||
+    rhythm.active ||
+    twoHand.active ||
+    heldBass.active ||
+    independentRhythm.active;
   const ear = intervals.active && intervals.mode === "hear-and-choose";
   const practiceExercise =
-    heldBass.scene ?? twoHand.exercise ?? rhythm.exercise ?? intervals.exercise ?? reading.exercise;
+    independentRhythm.scene ??
+    heldBass.scene ??
+    twoHand.exercise ??
+    rhythm.exercise ??
+    intervals.exercise ??
+    reading.exercise;
   const song = practiceExercise?.song ?? current.song;
   const songKey = practiceExercise?.id ?? current.songKey;
   const word = useWordTyping(song, songKey, libraryOpen || settingsOpen, practiceActive);
@@ -114,6 +129,7 @@ export function usePlayerRuntime() {
     reading: reading.active || intervals.active || twoHand.active || heldBass.active,
     readingHand: twoHand.active || heldBass.active ? "both" : reading.isBass ? "left" : "right",
     rhythm: rhythm.active,
+    independentRhythm: independentRhythm.active,
     pianoBlocked: ear || rhythm.active,
     songKey: word.practiceKey,
     wordTyping: word.enabled,
@@ -121,17 +137,19 @@ export function usePlayerRuntime() {
     ensureSound,
     onNoteClick: current.cycleFinger,
     onTake: practiceActive ? () => undefined : takes.recordTake,
-    onRunFinished: heldBass.active
-      ? heldBass.finish
-      : twoHand.active
-        ? twoHand.finish
-        : rhythm.active
-          ? () => undefined
-          : intervals.active
-            ? intervals.publish
-            : reading.active
-              ? reading.finish
-              : course.controller.finish,
+    onRunFinished: independentRhythm.active
+      ? () => undefined
+      : heldBass.active
+        ? heldBass.finish
+        : twoHand.active
+          ? twoHand.finish
+          : rhythm.active
+            ? () => undefined
+            : intervals.active
+              ? intervals.publish
+              : reading.active
+                ? reading.finish
+                : course.controller.finish,
     course: practiceActive ? undefined : course.practice,
     compareSong: takes.compareSong,
     lastTake: takes.lastTake,
@@ -145,26 +163,41 @@ export function usePlayerRuntime() {
     intervals.active ? intervals : reading,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen || settingsOpen || reading.intro || twoHand.intro || heldBass.intro
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro
   );
   useTwoHandTrainer(
     twoHand,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen || settingsOpen || twoHand.intro || heldBass.intro
+    libraryOpen || settingsOpen || twoHand.intro || heldBass.intro || independentRhythm.intro
   );
   useHeldBassTrainer(
     heldBass,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen || settingsOpen || reading.intro || twoHand.intro || heldBass.intro
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro
   );
   useIntervalAudioTrainer(
     intervals.audio,
     intervals.session,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen || settingsOpen || reading.intro || twoHand.intro || heldBass.intro,
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro,
     intervals.publish
   );
   const workspacePrefs =
@@ -204,7 +237,9 @@ export function usePlayerRuntime() {
     deviceId: input.midiDeviceId,
     trainerReady: trainer.trainerReady,
     snapshotSource: trainer.snapshotSource,
-    localInput: rhythm.active && rhythm.source !== "midi",
+    localInput:
+      (rhythm.active && rhythm.source !== "midi") ||
+      (independentRhythm.active && independentRhythm.source !== "midi"),
     locked: game.ranked && snapshot.playing
   });
   useGameRuntime(trainer.trainerRef, trainer.trainerReady, {
@@ -217,6 +252,7 @@ export function usePlayerRuntime() {
       !ear &&
       !twoHand.intro &&
       !heldBass.intro &&
+      !independentRhythm.intro &&
       !reading.intro &&
       (!word.enabled || (!word.pending && !word.error)),
     resumeWhenReady: word.enabled,
@@ -226,7 +262,25 @@ export function usePlayerRuntime() {
     rhythm,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen || settingsOpen || reading.intro || twoHand.intro || heldBass.intro,
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro,
+    input.devices,
+    input.midiDeviceId
+  );
+  useIndependentRhythmTrainer(
+    independentRhythm,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro,
     input.devices,
     input.midiDeviceId
   );
@@ -265,7 +319,10 @@ export function usePlayerRuntime() {
 
   const play = () => {
     setResultClosed(false);
-    if (heldBass.active && heldBass.snapshot?.completed) {
+    if (independentRhythm.active) {
+      if (snapshot.playing) independentRhythm.cancel();
+      else void independentRhythm.onStart();
+    } else if (heldBass.active && heldBass.snapshot?.completed) {
       void heldBass.playAgain(ensureSound);
     } else if (twoHand.active && twoHand.snapshot?.completed) {
       void twoHand.playAgain(ensureSound);
@@ -277,7 +334,8 @@ export function usePlayerRuntime() {
   };
   const startOver = () => {
     setResultClosed(false);
-    if (heldBass.active) heldBass.newSeries();
+    if (independentRhythm.active) independentRhythm.onRepeat();
+    else if (heldBass.active) heldBass.newSeries();
     else if (twoHand.active) twoHand.newSeries();
     else if (rhythm.active) void rhythm.onRepeat();
     else if (intervals.active) intervals.newSeries();
@@ -288,6 +346,7 @@ export function usePlayerRuntime() {
     play,
     blocked:
       rhythm.active ||
+      independentRhythm.active ||
       (word.enabled
         ? libraryOpen || settingsOpen || word.pending || Boolean(word.error)
         : computerKeyboard.editing)
@@ -346,6 +405,7 @@ export function usePlayerRuntime() {
   );
 
   return {
+    independentRhythm,
     heldBass,
     twoHand,
     reading,
