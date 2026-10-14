@@ -963,6 +963,54 @@ describe("trainer runtime isolation", () => {
     expect(active().setPlaying).toHaveBeenLastCalledWith(true);
   });
 
+  it("pauses a playing terminal horizon without reloading the scene", async () => {
+    await act(async () => {
+      root.render(withTestStore(<Harness reading readingHand="both" />, store));
+      await Promise.resolve();
+    });
+    const trainer = active(),
+      loads = trainer.load.mock.calls.length;
+    act(() => {
+      trainer.onSnapshot?.(snapshot({ playing: true, finished: true, time: song.duration }));
+    });
+    await act(async () => {
+      await value.togglePlay();
+    });
+    expect(trainer.load).toHaveBeenCalledTimes(loads);
+    expect(trainer.setPlaying).toHaveBeenLastCalledWith(false);
+  });
+
+  it("ignores pending Play after the selected fragment changes", async () => {
+    let resolveSound: () => void = () => undefined;
+    ensureSound = () =>
+      new Promise<void>((resolve) => {
+        resolveSound = resolve;
+      });
+    await act(async () => {
+      root.render(withTestStore(<Harness reading readingHand="both" />, store));
+      await Promise.resolve();
+    });
+    const pending = value.togglePlay();
+    await act(async () => {
+      root.render(
+        withTestStore(
+          <Harness reading readingHand="both" selectedSong={{ ...song, title: "next fragment" }} />,
+          store
+        )
+      );
+      await Promise.resolve();
+    });
+    const trainer = active(),
+      loads = trainer.load.mock.calls.length;
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      resolveSound();
+      await pending;
+    });
+    expect(trainer.load).toHaveBeenCalledTimes(loads);
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+  });
+
   it("guards ranked hand changes with the latest snapshot and seeks using the same trainer", async () => {
     await mount(true);
     const initial = value.handChoice;

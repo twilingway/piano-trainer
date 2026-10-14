@@ -14,6 +14,7 @@ import { READING_TASK_LABELS } from "../ui/ReadingCourse";
 import { BASS_READING_TASK_LABELS } from "../ui/BassReadingProgress";
 import { INTERVAL_MODE_LABELS } from "../ui/IntervalCourse";
 import { TWO_HAND_TITLE } from "../ui/TwoHandProgress";
+import { HELD_BASS_TITLE } from "../ui/HeldBassProgress";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPlayerHeader() {
@@ -43,6 +44,7 @@ export function ConnectedPlayerHeader() {
     readingTask,
     readingIsBass,
     twoHandActive,
+    heldBassActive,
     rhythmActive,
     intervalMode,
     practiceActive
@@ -73,6 +75,7 @@ export function ConnectedPlayerHeader() {
       readingTask: runtime.reading.task,
       readingIsBass: runtime.reading.isBass,
       twoHandActive: runtime.twoHand.active,
+      heldBassActive: runtime.heldBass.active,
       rhythmActive: runtime.rhythm.active,
       intervalMode: runtime.intervals.active ? runtime.intervals.mode : null,
       practiceActive: runtime.practiceActive
@@ -104,19 +107,21 @@ export function ConnectedPlayerHeader() {
           source={trainerSnapshotSource}
           song={wordPracticeSong}
           title={
-            twoHandActive
-              ? t(TWO_HAND_TITLE)
-              : rhythmActive
-                ? t("Ритм под метроном")
-                : intervalMode
-                  ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
-                  : readingTask
-                    ? readingIsBass && readingTask !== "check"
-                      ? t(BASS_READING_TASK_LABELS[readingTask])
-                      : `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
-                    : courseActive
-                      ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
-                      : lessonDisplayTitle(song.title, currentLesson, t)
+            heldBassActive
+              ? t(HELD_BASS_TITLE)
+              : twoHandActive
+                ? t(TWO_HAND_TITLE)
+                : rhythmActive
+                  ? t("Ритм под метроном")
+                  : intervalMode
+                    ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
+                    : readingTask
+                      ? readingIsBass && readingTask !== "check"
+                        ? t(BASS_READING_TASK_LABELS[readingTask])
+                        : `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
+                      : courseActive
+                        ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
+                        : lessonDisplayTitle(song.title, currentLesson, t)
           }
           playing={playing}
           soundLoading={sound === "loading" || (wordEnabled && (wordPending || Boolean(wordError)))}

@@ -1,3 +1,4 @@
+import { normalizeReadingCourses } from "./readingCourseMigration";
 import {
   DEFAULT_READING_PREFERENCES,
   type ReadingResult,
@@ -6,18 +7,11 @@ import {
 import { addReadingResult, emptyReadingProfile, readingPurpose } from "../reading/progress";
 import type { ReadingPlan, ReadingSourceFilter } from "../reading/progressTypes";
 import type { ReadingState } from "./readingSlice";
-import {
-  emptyIntervalState,
-  mergeIntervalHistory,
-  normalizeIntervalState
-} from "./intervalPersistence";
-import { emptyRhythmState, mergeRhythmHistory, normalizeRhythmState } from "./rhythmPersistence";
-import { emptyBassState, mergeBassHistory, normalizeBassState } from "./bassPersistence";
-import {
-  emptyTwoHandState,
-  mergeTwoHandHistory,
-  normalizeTwoHandState
-} from "./twoHandPersistence";
+import { emptyIntervalState, mergeIntervalHistory } from "./intervalPersistence";
+import { emptyRhythmState, mergeRhythmHistory } from "./rhythmPersistence";
+import { emptyHeldBassState, mergeHeldBassHistory } from "./heldBassPersistence";
+import { emptyBassState, mergeBassHistory } from "./bassPersistence";
+import { emptyTwoHandState, mergeTwoHandHistory } from "./twoHandPersistence";
 import {
   validObservation,
   validIndependentDate,
@@ -187,12 +181,13 @@ function migrateResult(value: ReadingResult): ReadingResult {
 
 export function emptyReadingState(): ReadingState {
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     activeCourse: null,
     intervals: emptyIntervalState(),
     rhythm: emptyRhythmState(),
     bass: emptyBassState(),
     coordination: emptyTwoHandState(),
+    heldBass: emptyHeldBassState(),
     selectionRevision: 0,
     task: null,
     seed: 1,
@@ -213,69 +208,27 @@ export function normalizeReadingState(value: unknown): {
   const reading = emptyReadingState();
   if (value === undefined) return { reading, invalid: false, blocked: false };
   const row = object(value);
-  if (typeof row.schemaVersion === "number" && row.schemaVersion > 6)
+  if (typeof row.schemaVersion === "number" && row.schemaVersion > 7)
     return { reading, invalid: false, blocked: true };
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    (row.schemaVersion !== undefined && ![1, 2, 3, 4, 5, 6].includes(row.schemaVersion as number))
+    (row.schemaVersion !== undefined &&
+      ![1, 2, 3, 4, 5, 6, 7].includes(row.schemaVersion as number))
   )
     return { reading, invalid: true, blocked: false };
   reading.task = task(row.task) ? row.task : null;
-  const modern = [3, 4, 5, 6].includes(row.schemaVersion as number);
-  const hasRhythm = [4, 5, 6].includes(row.schemaVersion as number);
-  const hasBass = row.schemaVersion === 5 || row.schemaVersion === 6;
-  const intervalState = normalizeIntervalState(modern ? row.intervals : undefined);
-  reading.intervals = intervalState.intervals;
-  const rhythmState = normalizeRhythmState(hasRhythm ? row.rhythm : undefined);
-  reading.rhythm = rhythmState.rhythm;
-  const bassState = normalizeBassState(hasBass ? row.bass : undefined);
-  reading.bass = bassState.bass;
-  const coordinationState = normalizeTwoHandState(
-    row.schemaVersion === 6 ? row.coordination : undefined
-  );
-  reading.coordination = coordinationState.coordination;
-  reading.activeCourse = modern
-    ? row.activeCourse === "note-reading" && reading.task
-      ? "note-reading"
-      : row.activeCourse === "interval-training" && reading.intervals.mode
-        ? "interval-training"
-        : hasRhythm && row.activeCourse === "rhythm-training"
-          ? "rhythm-training"
-          : hasBass && row.activeCourse === "bass-reading"
-            ? "bass-reading"
-            : row.schemaVersion === 6 && row.activeCourse === "two-hand-coordination"
-              ? "two-hand-coordination"
-              : null
-    : reading.task
-      ? "note-reading"
-      : null;
+  const modern = [3, 4, 5, 6, 7].includes(row.schemaVersion as number);
+  const { invalid: coursesInvalid, ...courses } = normalizeReadingCourses(row, reading.task);
+  Object.assign(reading, courses);
   reading.seed = finite(row.seed) ? row.seed >>> 0 : 1;
   reading.preferences = normalizePreferences(row.preferences);
   reading.sourceFilter = filter(row.sourceFilter) ? row.sourceFilter : "all";
   reading.plan = normalizePlan(row.plan, reading.task);
   const history = Array.isArray(row.history) ? row.history : [];
   let invalid =
-    intervalState.invalid ||
-    rhythmState.invalid ||
-    bassState.invalid ||
-    coordinationState.invalid ||
-    (row.schemaVersion === 6 && row.coordination === undefined) ||
-    (hasBass && row.bass === undefined) ||
-    (hasRhythm && row.rhythm === undefined) ||
-    (modern && row.intervals === undefined) ||
-    (modern && row.activeCourse === "note-reading" && reading.task === null) ||
-    (modern && row.activeCourse === "interval-training" && reading.intervals.mode === null) ||
-    (modern &&
-      ![
-        null,
-        "note-reading",
-        "interval-training",
-        ...(hasRhythm ? ["rhythm-training"] : []),
-        ...(hasBass ? ["bass-reading"] : []),
-        ...(row.schemaVersion === 6 ? ["two-hand-coordination"] : [])
-      ].includes(row.activeCourse as null | string)) ||
+    coursesInvalid ||
     (row.plan !== undefined && row.plan !== null && reading.plan === null) ||
     history.some((result) => !validResult(result));
   const migrated = history.filter(validResult).map(migrateResult);
@@ -348,6 +301,8 @@ export type ReadingPersistentField =
   | "bassSourceFilter"
   | "twoHandSelection"
   | "twoHandSourceFilter"
+  | "heldBassSelection"
+  | "heldBassSourceFilter"
   | "automaticHints"
   | "nameDelayMs"
   | "keyDelayMs"
@@ -403,6 +358,15 @@ export function changedReadingFields(
     fields.push("twoHandSelection");
   if (current.coordination.sourceFilter !== baseline.coordination.sourceFilter)
     fields.push("twoHandSourceFilter");
+  if (
+    (current.selectionRevision !== baseline.selectionRevision &&
+      current.activeCourse === "held-bass-reading") ||
+    current.heldBass.seed !== baseline.heldBass.seed ||
+    current.heldBass.generatorVersion !== baseline.heldBass.generatorVersion
+  )
+    fields.push("heldBassSelection");
+  if (current.heldBass.sourceFilter !== baseline.heldBass.sourceFilter)
+    fields.push("heldBassSourceFilter");
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (current.preferences[key] !== baseline.preferences[key]) fields.push(key);
   }
@@ -423,6 +387,8 @@ export function mergeReadingState(
     "bassSourceFilter",
     "twoHandSelection",
     "twoHandSourceFilter",
+    "heldBassSelection",
+    "heldBassSourceFilter",
     "automaticHints",
     "nameDelayMs",
     "keyDelayMs",
@@ -436,6 +402,7 @@ export function mergeReadingState(
   const coordination = fields.includes("twoHandSelection")
     ? incoming.coordination
     : saved.coordination;
+  const heldBass = fields.includes("heldBassSelection") ? incoming.heldBass : saved.heldBass;
   const preferences = { ...saved.preferences };
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (fields.includes(key)) Object.assign(preferences, { [key]: incoming.preferences[key] });
@@ -446,7 +413,7 @@ export function mergeReadingState(
     ).values()
   ].sort((a, b) => (a.completedAt ?? a.createdAt) - (b.completedAt ?? b.createdAt));
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     activeCourse: fields.includes("activeCourse") ? incoming.activeCourse : saved.activeCourse,
     intervals: {
       ...intervals,
@@ -472,6 +439,13 @@ export function mergeReadingState(
         ? incoming.coordination.sourceFilter
         : saved.coordination.sourceFilter,
       history: mergeTwoHandHistory(saved.coordination.history, incoming.coordination.history)
+    },
+    heldBass: {
+      ...heldBass,
+      sourceFilter: fields.includes("heldBassSourceFilter")
+        ? incoming.heldBass.sourceFilter
+        : saved.heldBass.sourceFilter,
+      history: mergeHeldBassHistory(saved.heldBass.history, incoming.heldBass.history)
     },
     selectionRevision: incoming.selectionRevision,
     task: selection.task,

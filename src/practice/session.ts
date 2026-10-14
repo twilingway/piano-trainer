@@ -7,7 +7,14 @@ import { SessionHolds } from "./sessionHolds";
 import { ownsNote } from "./playableRange";
 import { NoteResult } from "./noteResult";
 import { waitingPairForCommit } from "./waitingPair";
-import { sessionErrorStats } from "./sessionErrorStats";
+import { practiceStats } from "./sessionErrorStats";
+import * as transitions from "./sessionTransitions";
+import {
+  VerifiedWaitingOnsets,
+  type VerifiedOnsetScope,
+  type ScopedVerifiedOnset
+} from "./verifiedWaitingOnset";
+import { heldBassClockReceipt, type HeldBassClockReceipt } from "./heldBassClock";
 
 export type {
   PracticeMode,
@@ -64,6 +71,7 @@ export class PracticeSession {
   private result!: NoteResult;
   private readonly finalizedChords = new Set<string>();
   private readonly hitTimes = new Map<string, number>();
+  private readonly verifiedOnsets = new VerifiedWaitingOnsets();
 
   constructor(song: Song, options: PracticeOptions) {
     this.song = song;
@@ -161,6 +169,24 @@ export class PracticeSession {
     return this.timeline.performanceAt(songSeconds);
   }
 
+  registerVerifiedOnsets(scope: VerifiedOnsetScope): boolean {
+    return (
+      (!this.clockStarted ||
+        (this.clockPaused && this.time <= 0 && this.stats().hits === 0 && !this.finished)) &&
+      this.verifiedOnsets.register(scope, this.song, this.options)
+    );
+  }
+
+  clockReceipt(atMs: number): HeldBassClockReceipt {
+    return heldBassClockReceipt(
+      this.timeline.snapshot(),
+      this.nextDue(),
+      this.song.duration,
+      this.time,
+      atMs
+    );
+  }
+
   tick(performanceMs: number): PracticeEvent[] {
     if (!this.clockStarted) this.startClock(performanceMs);
     if (this.clockPaused || performanceMs < this.lastPerformanceMs) return [];
@@ -170,8 +196,18 @@ export class PracticeSession {
       const crossing = performanceMs - ((target - due.start) / this.options.speed) * 1000;
       this.timeline.anchor(crossing, due.start, 0);
     }
+    if (
+      this.verifiedOnsets.registered &&
+      !due &&
+      target >= this.song.duration &&
+      (this.timeline.segmentAt(performanceMs)?.speed ?? 0) > 0
+    ) {
+      const crossing = performanceMs - (target - this.song.duration) * 1000;
+      this.timeline.anchor(crossing, this.song.duration, 0);
+    }
     this.lastPerformanceMs = performanceMs;
-    const events = this.advance(Math.max(0, target - this.time) / this.options.speed, true);
+    const end = this.verifiedOnsets.registered ? Math.min(target, this.song.duration) : target;
+    const events = this.advance(Math.max(0, end - this.time) / this.options.speed, true);
     this.updateHolds(this.time - (this.inputGraceMs / 1000) * this.options.speed);
     return events;
   }
@@ -221,6 +257,25 @@ export class PracticeSession {
     if (!due || this.clockPaused || performanceMs < this.lastPerformanceMs) return undefined;
     for (const note of due) this.status.set(note.id, "hit");
     if (this.clockStarted) this.timeline.anchor(performanceMs, this.time, this.options.speed);
+    return due.map((note) => ({ type: "hit", noteId: note.id, offset: 0 }));
+  }
+
+  commitVerifiedOnset(request: ScopedVerifiedOnset, atMs: number): PracticeEvent[] | undefined {
+    const due = this.nextDue();
+    if (
+      !this.clockStarted ||
+      this.finished ||
+      this.clockPaused ||
+      !this.waiting ||
+      !Number.isFinite(atMs) ||
+      atMs < this.lastPerformanceMs ||
+      !this.verifiedOnsets.accepts(request, due)
+    )
+      return undefined;
+    for (const note of due) this.status.set(note.id, "hit");
+    this.verifiedOnsets.committed();
+    this.lastPerformanceMs = atMs;
+    this.timeline.anchor(atMs, this.time, this.options.speed);
     return due.map((note) => ({ type: "hit", noteId: note.id, offset: 0 }));
   }
 
@@ -335,7 +390,10 @@ export class PracticeSession {
     }
 
     const allPlayed = this.playerNotes.every((note) => this.status.get(note.id) !== "pending");
-    const finishGrace = timestampClock ? (this.inputGraceMs / 1000) * this.options.speed : 0;
+    const finishGrace =
+      timestampClock && !this.verifiedOnsets.registered
+        ? (this.inputGraceMs / 1000) * this.options.speed
+        : 0;
     if (
       allPlayed &&
       this.time >= (this.options.to ?? this.song.duration) + finishGrace &&
@@ -437,55 +495,36 @@ export class PracticeSession {
   }
 
   stats(): PracticeStats {
-    let hits = 0;
-    let misses = 0;
-    for (const value of this.status.values()) {
-      if (value === "hit") hits++;
-      else if (value === "missed") misses++;
-    }
-    const errors = sessionErrorStats(this.wrongPitches, this.missedPitches, this.offsets);
-    return {
-      hits,
-      misses,
-      wrong: this.wrongPitches.length,
-      meanOffset: errors.meanOffset,
-      troubleSpots: errors.troubleSpots,
-      ...(this.options.noteResult !== false ? { noteResult: this.result.snapshot(this.time) } : {}),
-      ...(this.options.mode === "tempo"
-        ? {
-            game: this.game.snapshot(this.time / this.options.speed),
-            hold: this.holds.snapshot(this.time / this.options.speed)
-          }
-        : {})
-    };
+    return practiceStats(
+      this.status,
+      this.wrongPitches,
+      this.missedPitches,
+      this.offsets,
+      this.options,
+      this.result,
+      this.time,
+      this.game,
+      this.holds
+    );
   }
 
   /** Preserve accepted notes and physical spans during an unchanged renderer reload. */
   inheritNoteResult(previous: PracticeSession): void {
     if (
-      JSON.stringify([
+      transitions.sameSessionResult(
         this.playerNotes,
-        this.options.mode,
-        this.options.speed,
-        this.options.to,
-        this.song.duration
-      ]) ===
-      JSON.stringify([
+        this.options,
+        this.song.duration,
         previous.playerNotes,
-        previous.options.mode,
-        previous.options.speed,
-        previous.options.to,
+        previous.options,
         previous.song.duration
-      ])
+      )
     )
       this.result = previous.result;
   }
 
   private resultNotes(notes: readonly SongNote[]): SongNote[] {
-    return notes.map((note) => ({
-      ...note,
-      duration: Math.max(0, Math.min(note.duration, (this.options.to ?? Infinity) - note.start))
-    }));
+    return transitions.sessionResultNotes(notes, this.options.to);
   }
 
   private get matchWindow(): number {
@@ -501,13 +540,7 @@ export class PracticeSession {
   }
 
   private scoringNotes(notes: readonly SongNote[]): SongNote[] {
-    return notes.map((note) => ({
-      ...note,
-      start: note.start / this.options.speed,
-      duration:
-        Math.max(0, Math.min(note.duration, (this.options.to ?? Infinity) - note.start)) /
-        this.options.speed
-    }));
+    return transitions.sessionScoringNotes(notes, this.options.speed, this.options.to);
   }
 
   private createHolds(): SessionHolds {
@@ -526,54 +559,25 @@ export class PracticeSession {
   }
 
   private finalizeChords(): void {
-    for (let index = 0; index < this.playerNotes.length;) {
-      const first = this.playerNotes[index];
-      if (!first) break;
-      const chord: SongNote[] = [];
-      while (index < this.playerNotes.length) {
-        const member = this.playerNotes[index];
-        if (!member || member.start - first.start > CHORD_WINDOW_S) break;
-        chord.push(member);
-        index++;
-      }
-      if (
-        chord.length < 2 ||
-        this.finalizedChords.has(first.id) ||
-        chord.some((note) => this.status.get(note.id) === "pending")
-      )
-        continue;
-      if (chord.some((note) => this.status.get(note.id) === "skipped")) continue;
-      this.game.chord(
-        first.id,
-        chord.every((note) => this.status.get(note.id) === "hit"),
-        chord.every((note) => this.status.get(note.id) === "hit")
-          ? Math.max(
-              ...chord.map((note) => this.hitTimes.get(note.id) ?? note.start / this.options.speed)
-            )
-          : Math.max(...chord.map((note) => note.start)) / this.options.speed + this.lateWindow
-      );
-      this.finalizedChords.add(first.id);
-    }
+    transitions.finalizeSessionChords(
+      this.playerNotes,
+      this.status,
+      this.finalizedChords,
+      this.hitTimes,
+      this.options.speed,
+      this.lateWindow,
+      this.game
+    );
   }
 
   private playAuto(events: PracticeEvent[]): void {
-    for (let index = this.soundingAuto.length - 1; index >= 0; index--) {
-      const note = this.soundingAuto[index];
-      if (note && Math.min(note.start + note.duration, this.options.to ?? Infinity) <= this.time) {
-        this.soundingAuto.splice(index, 1);
-        events.push({ type: "autoNoteOff", pitch: note.pitch });
-      }
-    }
-    while (this.autoStartIndex < this.autoNotes.length) {
-      const note = this.autoNotes[this.autoStartIndex];
-      if (!note || note.start > this.time) break;
-      this.autoStartIndex++;
-      events.push(
-        note.velocity === undefined
-          ? { type: "autoNoteOn", pitch: note.pitch }
-          : { type: "autoNoteOn", pitch: note.pitch, velocity: note.velocity }
-      );
-      this.soundingAuto.push(note);
-    }
+    this.autoStartIndex = transitions.advanceSessionAuto(
+      this.autoNotes,
+      this.soundingAuto,
+      this.autoStartIndex,
+      this.time,
+      this.options.to ?? Infinity,
+      events
+    );
   }
 }

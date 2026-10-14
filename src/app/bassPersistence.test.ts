@@ -126,7 +126,7 @@ describe("bass schema5 persistence", () => {
       const { bass: _bass, ...old } = modern;
       const normalized = normalizeReadingState({ ...old, schemaVersion: version });
       expect(normalized.invalid).toBe(false);
-      expect(normalized.reading.schemaVersion).toBe(6);
+      expect(normalized.reading.schemaVersion).toBe(7);
       expect(normalized.reading.bass).toEqual(emptyBassState());
       expect(normalized.reading.profile.processedRunIds).toEqual(["p2-processed"]);
       expect(normalizeReadingState(normalized.reading).reading).toEqual(normalized.reading);
@@ -167,7 +167,7 @@ describe("bass schema5 persistence", () => {
     const restored = createAppStore({ storage: backing, readingRepository: repository });
     await restored.readingPersistenceReady;
     expect(restored.getState().reading).toMatchObject({
-      schemaVersion: 6,
+      schemaVersion: 7,
       activeCourse: "bass-reading",
       bass: { task: "phrases", seed: 7, sourceFilter: "pointer", history: [sample] }
     });
@@ -294,7 +294,7 @@ describe("bass schema5 persistence", () => {
     expect(store.getState().persistence.errors["indexedDB:reading:write"]).toBe("unavailable");
   });
   it.each([
-    { schemaVersion: 7, marker: "future" },
+    { schemaVersion: 8, marker: "future" },
     { ...emptyReadingState(), bass: undefined },
     { ...emptyReadingState(), bass: { ...emptyBassState(), history: [{ id: "corrupt" }] } }
   ])(

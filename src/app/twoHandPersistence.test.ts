@@ -201,7 +201,7 @@ describe("coordination schema6 persistence", () => {
                 : null
       });
       expect(first.invalid).toBe(false);
-      expect(first.reading.schemaVersion).toBe(6);
+      expect(first.reading.schemaVersion).toBe(7);
       expect(first.reading.coordination).toEqual(emptyTwoHandState());
       expect(first.reading.history).toEqual(modern.history);
       if (version >= 2) expect(first.reading.profile).toEqual(modern.profile);
@@ -304,7 +304,7 @@ describe("coordination schema6 persistence", () => {
     const restored = createAppStore({ storage: backing, readingRepository: repository });
     await restored.readingPersistenceReady;
     expect(restored.getState().reading).toMatchObject({
-      schemaVersion: 6,
+      schemaVersion: 7,
       activeCourse: "two-hand-coordination",
       coordination: { seed: 7, generatorVersion: 1, sourceFilter: "keyboard", history: [sample] }
     });
@@ -418,7 +418,7 @@ describe("coordination schema6 persistence", () => {
     expect(saved.history).toContainEqual(legacy.history[0]);
   });
   it.each([
-    { schemaVersion: 7, marker: "future" },
+    { schemaVersion: 8, marker: "future" },
     { ...emptyReadingState(), coordination: undefined },
     {
       ...emptyReadingState(),
@@ -440,7 +440,7 @@ describe("coordination schema6 persistence", () => {
   );
   it("blocks destructive writes if corruption or a future schema appears after hydration", async () => {
     for (const invalid of [
-      { schemaVersion: 7, marker: "future-after-hydration" },
+      { schemaVersion: 8, marker: "future-after-hydration" },
       { ...emptyReadingState(), coordination: { ...emptyTwoHandState(), generatorVersion: 99 } }
     ]) {
       const repository = createMemoryReadingRepository();

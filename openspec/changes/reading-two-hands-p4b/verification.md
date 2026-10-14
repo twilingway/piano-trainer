@@ -115,3 +115,25 @@ source-preview некоторые немедленные captures после rel
 предпросмотра требует повторной проверки на корневом URL после merge; полную стабильность reload
 render не заявляем. Физический MIDI/rollover ПК/мультитач, слышимость и настоящий hidden остаются
 задачей7.4. Change не архивируется до этой приёмки.
+
+## Post-merge #158
+
+MERGED в dev d863da148c151403182bbac0070ca679e1228265, основная папка обновлена ff-only, совпадает с
+origin/dev и остаётся чистой. Удалённая ветка #158 отсутствует, auto-delete включён. CI merge
+success: https://github.com/twilingway/piano-trainer/actions/runs/38456698780, включая pnpm
+check/spec:validate; последний PR gate также success.
+
+На прежнем пользовательском5190/PID98836 проверены актуальные /src/app/usePlayerRuntime.tsx и
+/src/app/useTwoHandCourse.ts. Видимый сфокусированный Chrome page8 открыт на корневом URL. Seed2:
+два полных прохода10пар с одной кнопкой повторного старта, каждый 0 ошибок/0 помощи/ 10
+самостоятельных; история4→5→6. После reload остановленная пара1, история6 и filter keyboard. Both
+staves/клавиши видны без forced resize после загрузки/смены языка. RU/EN и desktop/mobile
+320×568/390×844/667×375 просмотрены, body overflow/console errors нет. Выход восстановил обычную
+песню, правую руку и75%. Музыкальные часы не подменялись, использовались DOM down/up.
+
+Локальное evidence в .browser-artifacts/: p4b2-post-merge.md, p4b2-merged-desktop-idle.png,
+p4b2-merged-320.png, p4b2-merged-390.png, p4b2-merged-667.png, p4b2-merged-en.png,
+p4b2-merged-first-run.json, p4b2-merged-repeat-run.json. Это закрывает7.5; полная7.3 остаётся
+открытой (real source switch/ordinary two-hand/road). По новому указанию пользователя MIDI
+проверяется после всех шагов с его пианино по docs/MIDI_COURSE_ACCEPTANCE.md. Hardware7.4 не
+объявлена пройденной, change не архивирован; эта отложенная проверка не блокирует следующие этапы.
