@@ -13,6 +13,7 @@ import { rhythmMessages } from "./rhythmMessages";
 import { bassReadingMessages } from "./bassReadingMessages";
 import { twoHandMessages } from "./twoHandMessages";
 import { heldBassMessages } from "./heldBassMessages";
+import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
@@ -29,5 +30,6 @@ export const messages: Messages = {
   ...rhythmMessages,
   ...bassReadingMessages,
   ...twoHandMessages,
-  ...heldBassMessages
+  ...heldBassMessages,
+  ...independentRhythmMessages
 };
