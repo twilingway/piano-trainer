@@ -1,0 +1,17 @@
+# Python 3.11. PyPI plus official PyTorch CUDA wheels; TLS verification stays on.
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.5.1+cu124
+torchaudio==2.5.1+cu124
+yt-dlp[default]==2026.8.19
+yt-dlp-ejs==0.8.0
+numpy==1.26.4
+mediapipe==0.10.21
+av==16.1.0
+transkun==2.0.1
+ncls==0.0.70
+pretty-midi==0.2.11.post0
+scipy==1.17.1
+soxr==1.1.0
+moduleconf==0.1.4
+pillow==12.3.0
+setuptools==80.9.0

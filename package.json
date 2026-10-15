@@ -25,7 +25,12 @@
     "word-typing:benchmark": "node --experimental-strip-types src/wordTypingTools/benchmark.ts",
     "lesson-video:setup": "node --experimental-strip-types src/lessonVideoTools/cli.ts setup",
     "lesson-video:prepare": "node --experimental-strip-types src/lessonVideoTools/cli.ts prepare",
-    "lesson-video:frames": "node --experimental-strip-types src/lessonVideoTools/cli.ts frames"
+    "lesson-video:frames": "node --experimental-strip-types src/lessonVideoTools/cli.ts frames",
+    "lesson-video:setup-capture": "node --experimental-strip-types src/lessonVideoTools/cli.ts setup-capture",
+    "lesson-video:download": "node --experimental-strip-types src/lessonVideoTools/cli.ts download",
+    "lesson-video:music": "node --experimental-strip-types src/lessonVideoTools/cli.ts music",
+    "lesson-video:hands": "node --experimental-strip-types src/lessonVideoTools/cli.ts hands",
+    "lesson-video:export": "node --experimental-strip-types src/lessonVideoTools/cli.ts export"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.13.0",
