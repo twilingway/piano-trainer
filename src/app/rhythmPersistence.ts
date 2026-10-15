@@ -1,5 +1,6 @@
 import { summarizeRhythm } from "../rhythm/progress";
 import type { RhythmBpm, RhythmInputSource, RhythmResult } from "../rhythm/types";
+import { accept, mergeCourseHistory, normalizeCourseState } from "./courseStore";
 
 export interface RhythmPersistentState {
   seed: number;
@@ -154,37 +155,22 @@ export function mergeRhythmHistory(
   saved: readonly RhythmResult[],
   incoming: readonly RhythmResult[]
 ): ReturnType<typeof cloneRhythmResult>[] {
-  const unique = new Map<string, RhythmResult>();
   // Committed evidence wins over a stale tab's copy of the same run.
-  for (const result of [...saved, ...incoming]) {
-    if (!unique.has(result.runId)) unique.set(result.runId, result);
-  }
-  return [...unique.values()]
-    .sort((a, b) => a.completedAt - b.completedAt || a.runId.localeCompare(b.runId))
-    .slice(-20)
-    .map(cloneRhythmResult);
+  return mergeCourseHistory(saved, incoming, { copy: cloneRhythmResult });
 }
 export function normalizeRhythmState(value: unknown): {
   rhythm: RhythmPersistentState;
   invalid: boolean;
 } {
-  const rhythm = emptyRhythmState();
-  if (value === undefined) return { rhythm, invalid: false };
-  const row = object(value);
-  const history = Array.isArray(row.history) ? row.history : [];
-  const invalid =
-    !value ||
-    typeof value !== "object" ||
-    Array.isArray(value) ||
-    !integer(row.seed) ||
-    row.generatorVersion !== 1 ||
-    !bpm(row.bpm) ||
-    !source(row.inputSource) ||
-    !Array.isArray(row.history) ||
-    history.some((result) => !validRhythmResult(result));
-  rhythm.seed = integer(row.seed) ? row.seed >>> 0 : 1;
-  rhythm.bpm = bpm(row.bpm) ? row.bpm : 60;
-  rhythm.inputSource = source(row.inputSource) ? row.inputSource : "keyboard";
-  rhythm.history = mergeRhythmHistory([], history.filter(validRhythmResult));
-  return { rhythm, invalid };
+  const { state, invalid } = normalizeCourseState(value, {
+    empty: emptyRhythmState,
+    fields: {
+      seed: (value) => (integer(value) ? value >>> 0 : undefined),
+      bpm: accept(bpm),
+      inputSource: accept(source)
+    },
+    validate: (result) => (validRhythmResult(result) ? result : null),
+    merge: mergeRhythmHistory
+  });
+  return { rhythm: state, invalid };
 }
