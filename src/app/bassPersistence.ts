@@ -1,6 +1,7 @@
 import { bassReadingSequenceForSeed } from "../reading/bassGenerator";
 import type { BassReadingResult, BassReadingTask } from "../reading/bassTypes";
 import type { ReadingSourceFilter } from "../reading/progressTypes";
+import { accept, mergeCourseHistory, normalizeCourseState } from "./courseStore";
 
 export interface BassPersistentState {
   task: BassReadingTask;
@@ -144,39 +145,26 @@ export function mergeBassHistory(
   saved: readonly BassReadingResult[],
   incoming: readonly BassReadingResult[]
 ) {
-  const unique = new Map<string, BassReadingResult>();
-  // A committed run wins over a stale copy in another tab.
-  for (const result of [...saved, ...incoming]) {
-    if (validBassResult(result) && !unique.has(result.runId)) unique.set(result.runId, result);
-  }
-  const sorted = [...unique.values()].sort(
-    (a, b) => a.completedAt - b.completedAt || a.runId.localeCompare(b.runId)
-  );
-  return (["notes", "phrases"] as const)
-    .flatMap((task) => sorted.filter((result) => result.task === task).slice(-20))
-    .map(cloneBassResult);
+  return mergeCourseHistory(saved, incoming, {
+    validate: (result) => (validBassResult(result) ? result : null),
+    groups: { of: (result) => result.task, order: ["notes", "phrases"] },
+    copy: cloneBassResult
+  });
 }
 export function normalizeBassState(value: unknown): {
   bass: BassPersistentState;
   invalid: boolean;
 } {
-  const bass = emptyBassState();
-  if (value === undefined) return { bass, invalid: false };
-  const row = object(value);
-  const history = Array.isArray(row.history) ? row.history : [];
-  const invalid =
-    !value ||
-    typeof value !== "object" ||
-    Array.isArray(value) ||
-    !task(row.task) ||
-    !seed(row.seed) ||
-    row.generatorVersion !== 1 ||
-    !filter(row.sourceFilter) ||
-    !Array.isArray(row.history) ||
-    history.some((result) => !validBassResult(result));
-  bass.task = task(row.task) && row.generatorVersion === 1 ? row.task : "notes";
-  bass.seed = seed(row.seed) ? row.seed : 1;
-  bass.sourceFilter = filter(row.sourceFilter) ? row.sourceFilter : "all";
-  bass.history = mergeBassHistory([], history.filter(validBassResult));
-  return { bass, invalid };
+  const { state, invalid } = normalizeCourseState(value, {
+    empty: emptyBassState,
+    fields: {
+      task: (value, row) =>
+        task(value) ? (row.generatorVersion === 1 ? value : "notes") : undefined,
+      seed: accept(seed),
+      sourceFilter: accept(filter)
+    },
+    validate: (result) => (validBassResult(result) ? result : null),
+    merge: mergeBassHistory
+  });
+  return { bass: state, invalid };
 }

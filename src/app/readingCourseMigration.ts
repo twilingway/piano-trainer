@@ -1,87 +1,38 @@
-import { normalizeIndependentRhythmState } from "./independentRhythmPersistence";
 import type { ReadingState } from "./readingSlice";
 import type { ReadingTask } from "../reading/types";
-import { normalizeIntervalState } from "./intervalPersistence";
-import { normalizeRhythmState } from "./rhythmPersistence";
-import { normalizeBassState } from "./bassPersistence";
-import { normalizeTwoHandState } from "./twoHandPersistence";
-import { normalizeHeldBassState } from "./heldBassPersistence";
+import { READING_COURSE_STORES, type ReadingCourseStates } from "./courseStores";
+
+const COURSE_SCHEMAS: readonly unknown[] = [3, 4, 5, 6, 7, 8];
 
 /** Schema-specific siblings are normalized together; P2 stays outside this boundary. */
 export function normalizeReadingCourses(
   row: Record<string, unknown>,
   selectedTask: ReadingTask | null
 ) {
-  const modern = [3, 4, 5, 6, 7, 8].includes(row.schemaVersion as number);
-  const hasRhythm = [4, 5, 6, 7, 8].includes(row.schemaVersion as number);
-  const hasBass = [5, 6, 7, 8].includes(row.schemaVersion as number);
-  const intervalState = normalizeIntervalState(modern ? row.intervals : undefined);
-  const rhythmState = normalizeRhythmState(hasRhythm ? row.rhythm : undefined);
-  const bassState = normalizeBassState(hasBass ? row.bass : undefined);
-  const coordinationState = normalizeTwoHandState(
-    [6, 7, 8].includes(row.schemaVersion as number) ? row.coordination : undefined
-  );
-  const heldBassState = normalizeHeldBassState(
-    [7, 8].includes(row.schemaVersion as number) ? row.heldBass : undefined
-  );
-  const independentRhythmState = normalizeIndependentRhythmState(
-    row.schemaVersion === 8 ? row.independentRhythm : undefined
-  );
-  const activeCourse: ReadingState["activeCourse"] = modern
+  const modern = COURSE_SCHEMAS.includes(row.schemaVersion);
+  const stored = (since: number) => modern && (row.schemaVersion as number) >= since;
+  const states: Record<string, unknown> = {};
+  let invalid = false;
+  let activeCourse: ReadingState["activeCourse"] = modern
     ? row.activeCourse === "note-reading" && selectedTask
       ? "note-reading"
-      : row.activeCourse === "interval-training" && intervalState.intervals.mode
-        ? "interval-training"
-        : hasRhythm && row.activeCourse === "rhythm-training"
-          ? "rhythm-training"
-          : hasBass && row.activeCourse === "bass-reading"
-            ? "bass-reading"
-            : [6, 7, 8].includes(row.schemaVersion as number) &&
-                row.activeCourse === "two-hand-coordination"
-              ? "two-hand-coordination"
-              : [7, 8].includes(row.schemaVersion as number) &&
-                  row.activeCourse === "held-bass-reading"
-                ? "held-bass-reading"
-                : row.schemaVersion === 8 && row.activeCourse === "independent-rhythm-reading"
-                  ? "independent-rhythm-reading"
-                  : null
+      : null
     : selectedTask
       ? "note-reading"
       : null;
-  const invalid =
-    independentRhythmState.invalid ||
-    (row.schemaVersion === 8 && row.independentRhythm === undefined) ||
-    intervalState.invalid ||
-    rhythmState.invalid ||
-    bassState.invalid ||
-    coordinationState.invalid ||
-    heldBassState.invalid ||
-    ([7, 8].includes(row.schemaVersion as number) && row.heldBass === undefined) ||
-    ([6, 7, 8].includes(row.schemaVersion as number) && row.coordination === undefined) ||
-    (hasBass && row.bass === undefined) ||
-    (hasRhythm && row.rhythm === undefined) ||
-    (modern && row.intervals === undefined) ||
+  const known: unknown[] = [null, "note-reading"];
+  for (const course of READING_COURSE_STORES) {
+    const present = stored(course.since);
+    const { state, invalid: malformed } = course.normalize(present ? row[course.key] : undefined);
+    states[course.key] = state;
+    const chosen = present && row.activeCourse === course.course;
+    const resumable = course.resumable?.(state) ?? true;
+    if (chosen && resumable) activeCourse = course.course;
+    if (present) known.push(course.course);
+    invalid ||= malformed || (present && row[course.key] === undefined) || (chosen && !resumable);
+  }
+  invalid ||=
     (modern && row.activeCourse === "note-reading" && selectedTask === null) ||
-    (modern && row.activeCourse === "interval-training" && intervalState.intervals.mode === null) ||
-    (modern &&
-      ![
-        null,
-        "note-reading",
-        "interval-training",
-        ...(hasRhythm ? ["rhythm-training"] : []),
-        ...(hasBass ? ["bass-reading"] : []),
-        ...([6, 7, 8].includes(row.schemaVersion as number) ? ["two-hand-coordination"] : []),
-        ...([7, 8].includes(row.schemaVersion as number) ? ["held-bass-reading"] : []),
-        ...(row.schemaVersion === 8 ? ["independent-rhythm-reading"] : [])
-      ].includes(row.activeCourse as null | string));
-  return {
-    intervals: intervalState.intervals,
-    rhythm: rhythmState.rhythm,
-    bass: bassState.bass,
-    coordination: coordinationState.coordination,
-    heldBass: heldBassState.heldBass,
-    independentRhythm: independentRhythmState.independentRhythm,
-    activeCourse,
-    invalid
-  };
+    (modern && !known.includes(row.activeCourse));
+  return { ...(states as unknown as ReadingCourseStates), activeCourse, invalid };
 }
