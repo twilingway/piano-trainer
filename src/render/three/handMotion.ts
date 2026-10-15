@@ -1,6 +1,6 @@
 import type { Finger } from "../../fingering/fingering";
 import { placeHand } from "./handPlacement.ts";
-import type { HandPlan } from "./handPlacement.ts";
+import type { FingerState, HandPlan } from "./handPlacement.ts";
 
 // The living hand over a plan, after Zhu, Ramakrishnan, Hamann and Neff, "A system for automatic
 // animation of piano performances" (CAVW 2012): the wrist follows the fingertips and turns after
@@ -74,6 +74,34 @@ const FOLLOW: Readonly<Record<Finger, Partial<Record<Finger, number>>>> = {
   5: { 4: 0.4 }
 };
 const FOLLOW_MAX = 0.35;
+/** A free finger keeps this many white keys from a neighbour reaching towards it. */
+const FINGER_GAP = 0.8;
+
+/**
+ * Each finger's offset once the free ones make way: a finger reaching towards a neighbour pushes
+ * it aside instead of lying across it. A pressing finger keeps its key, and the thumb is left to
+ * pass under the others.
+ */
+function makeWay(
+  fingers: Readonly<Record<Finger, FingerState>>,
+  direction: number
+): Record<Finger, number> {
+  // Along the hand from the thumb, in white keys.
+  const along = {} as Record<Finger, number>;
+  for (const finger of FINGERS) along[finger] = finger - 1 + direction * fingers[finger].offset;
+  const free = (finger: Finger) => 1 - fingers[finger].press;
+  for (const finger of [3, 4, 5] as const) {
+    const short = along[(finger - 1) as Finger] + FINGER_GAP - along[finger];
+    if (short > 0) along[finger] += short * free(finger);
+  }
+  for (const finger of [4, 3, 2] as const) {
+    const short = along[finger] - along[(finger + 1) as Finger] + FINGER_GAP;
+    if (short > 0) along[finger] -= short * free(finger);
+  }
+  const offsets = {} as Record<Finger, number>;
+  for (const finger of FINGERS) offsets[finger] = direction * (along[finger] - (finger - 1));
+  return offsets;
+}
 
 function wave(time: number, hertz: number, phase = 0): number {
   return Math.sin(2 * Math.PI * hertz * time + phase);
@@ -119,7 +147,8 @@ export function liveTarget(plan: HandPlan, time: number): LiveHand {
   const direction = plan.hand === "right" ? 1 : -1;
   // Fingertips in white keys from the thumb's key; the middle finger sits at the centre.
   const centre = 2 * direction;
-  const at = (finger: Finger) => direction * (finger - 1) + fingers[finger].offset - centre;
+  const offsets = makeWay(fingers, direction);
+  const at = (finger: Finger) => direction * (finger - 1) + offsets[finger] - centre;
   const home = (finger: Finger) => direction * (finger - 1) - centre;
 
   let pull = 0,
@@ -167,7 +196,7 @@ export function liveTarget(plan: HandPlan, time: number): LiveHand {
     const bend = own + (1 - own) * (Math.min(FOLLOW_MAX, follow) + idle);
     live[finger] = {
       bend: [bend, bend, bend],
-      reach: fingers[finger].offset * WHITE_MM,
+      reach: offsets[finger] * WHITE_MM,
       depth: fingers[finger].depth
     };
   }
