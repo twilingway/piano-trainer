@@ -12,12 +12,18 @@ import { assertNoLink, digest, exists, readJson, safeDirectory, writeJson } from
 
 const { Midi } = MidiPackage;
 
+/** Partial hand evidence must not masquerade as complete MIDI parts. */
+export function midiHandPolicy(notes: readonly CapturedNote[]): "complete-hands" | "unassigned" {
+  return notes.every((note) => note.hand !== null) ? "complete-hands" : "unassigned";
+}
+
 /** MIDI cannot encode unknown note-offs; every chosen interval is described in notes.json. */
 export function notesMidi(notes: readonly CapturedNote[]): Uint8Array {
   const midi = new Midi();
   midi.header.setTempo(120);
-  for (const hand of ["left", "right", null] as const) {
-    const selected = notes.filter((note) => note.hand === hand);
+  const hands = midiHandPolicy(notes) === "complete-hands" ? (["left", "right"] as const) : [null];
+  for (const hand of hands) {
+    const selected = hand === null ? notes : notes.filter((note) => note.hand === hand);
     if (!selected.length) continue;
     const track = midi.addTrack();
     track.name = hand ?? "unassigned";
@@ -102,6 +108,10 @@ candidates — близость кончика к области клавиши;
 offset/estimatedOffset — предсказание модели. keyRelease — отдельно подтверждённое отпускание.
 acousticEnd может быть неизвестным; педаль не доказывает удержание пальцем.
 MIDI использует keyRelease либо estimatedOffset и не переносит неопределённость JSON.
+Если рука известна для каждой ноты, MIDI содержит отдельные дорожки left/right.
+Если хотя бы одна рука неизвестна, ВСЕ ноты помещаются в одну дорожку unassigned.
+Частичные назначения рук остаются в JSON; midiHandPolicy описывает выбранный вариант.
+Это не восстановление исходных партий: импорт одной дорожки может разделить её по высоте.
 Каждый экспортный note-off имеет это правило в notes.json; JSON — главный источник.
 evidence/index.json связывает JPG с исходными кадрами и PTS.
 review.json хранит ручные решения отдельно от raw; никаких скрытых исправлений landmarks.
@@ -172,6 +182,7 @@ export async function exportCapture(root: string, options: CaptureOptions): Prom
       sourceSha256: source.video.sha256,
       backend: rawMusic.backend,
       notes,
+      midiHandPolicy: midiHandPolicy(notes),
       midiOffsetPolicy:
         "keyRelease if reviewed, otherwise model estimatedOffset; never observed by default"
     });

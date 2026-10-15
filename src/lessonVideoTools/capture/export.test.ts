@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import MidiPackage from "@tonejs/midi";
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,11 +8,13 @@ import { captureDirectory, readCapture } from "./acquire";
 import type { CaptureSource } from "./acquire";
 import type * as Acquire from "./acquire.ts";
 import { evidence } from "./evidence";
-import { exportCapture } from "./export";
+import { exportCapture, notesMidi } from "./export";
 import type { StageReceipt } from "./inference";
+import { captureNotes } from "./model";
 import type { CapturedNote, HandFrame, MusicPrediction, Review } from "./model";
 import { captureOptions } from "./options";
 import { digest, exists, readJson, writeJson } from "../runtime";
+import { songFromMidi } from "../../song/midi";
 
 vi.mock("./acquire.ts", async (original) => ({
   ...(await original<typeof Acquire>()),
@@ -159,7 +162,10 @@ describe("Claude export bundle", () => {
       }
     );
     await exportCapture(f.root, options);
-    const json = (await readJson(resolve(f.bundle, "notes.json"))) as { notes: CapturedNote[] };
+    const json = (await readJson(resolve(f.bundle, "notes.json"))) as {
+      notes: CapturedNote[];
+      midiHandPolicy: string;
+    };
     const midi = new Midi(new Uint8Array(await readFile(resolve(f.bundle, "notes.mid"))));
     const midiNotes = midi.tracks.flatMap((track) => track.notes);
     expect(midiNotes).toHaveLength(json.notes.length);
@@ -181,7 +187,9 @@ describe("Claude export bundle", () => {
       estimatedOffset: 0.75,
       keyRelease: 1
     });
-    expect(midi.tracks.map((track) => track.name)).toEqual(["left", "unassigned"]);
+    expect(midi.tracks.map((track) => track.name)).toEqual(["unassigned"]);
+    expect(json.midiHandPolicy).toBe("unassigned");
+    expect(json.notes.map((note) => note.hand)).toEqual(["left", null, null]);
     const manifest = (await readJson(resolve(f.bundle, "manifest.json"))) as Manifest;
     for (const [file, hash] of Object.entries(manifest.files))
       expect(await digest(resolve(f.bundle, file))).toBe(hash);
@@ -258,5 +266,68 @@ describe("Claude export bundle", () => {
     );
     await expect(exportCapture(f.root, options)).rejects.toThrow("Evidence диапазона не найден");
     expect(await exists(resolve(f.bundle, "manifest.json"))).toBe(false);
+  });
+});
+
+describe("capture MIDI hand metadata", () => {
+  function notes(count: number): CapturedNote[] {
+    return captureNotes(
+      Array.from({ length: count }, (_, index) => ({
+        id: `note-${String(index)}`,
+        pitch: index === 0 ? 55 : index % 2 ? 48 : 72,
+        onset: Math.ceil(index / 2) * 0.125,
+        offset: Math.ceil(index / 2) * 0.125 + 0.0625,
+        velocity: 90
+      })),
+      [],
+      { schemaVersion: 1, sourceSha256: "a".repeat(64), mirrored: false, keys: [] }
+    );
+  }
+
+  it("keeps bass present on import when only one low right-hand note was reviewed", () => {
+    const partial = notes(1225).map((note, index) =>
+      index === 0 ? { ...note, hand: "right" as const } : note
+    );
+    const data = notesMidi(partial);
+    const midi = new Midi(data);
+    expect(midi.tracks.map((track) => [track.name, track.notes.length])).toEqual([
+      ["unassigned", 1225]
+    ]);
+
+    const song = songFromMidi(Uint8Array.from(data).buffer, "Partial capture");
+    expect(song.notes).toHaveLength(1225);
+    // One track invokes the existing pitch fallback, not a false 1-vs-1224 part split.
+    expect(song.notes.filter((note) => note.hand === "left")).toHaveLength(613);
+    expect(song.notes.filter((note) => note.hand === "right")).toHaveLength(612);
+    expect(
+      song.notes.filter((note) => note.pitch === 48).every((note) => note.hand === "left")
+    ).toBe(true);
+    for (const note of partial) {
+      const actual = song.notes.find(
+        (entry) => entry.pitch === note.pitch && Math.abs(entry.start - note.onset) < 0.001
+      );
+      expect(actual).toBeDefined();
+      expect(actual?.duration).toBeCloseTo(note.estimatedOffset - note.onset, 3);
+    }
+    // The fallback does not turn the partial evidence into an inferred original hand.
+    expect(partial[0]?.hand).toBe("right");
+    expect(song.notes.find((note) => note.pitch === 55)?.hand).toBe("left");
+  });
+
+  it("exports complete hand assignments as separate tracks with every note retained", () => {
+    const complete = notes(9).map((note) => ({
+      ...note,
+      hand: note.pitch < 60 ? ("left" as const) : ("right" as const)
+    }));
+    const data = notesMidi(complete);
+    const midi = new Midi(data);
+    expect(midi.tracks.map((track) => [track.name, track.notes.length])).toEqual([
+      ["left", 5],
+      ["right", 4]
+    ]);
+    const song = songFromMidi(Uint8Array.from(data).buffer, "Complete capture");
+    expect(song.notes).toHaveLength(9);
+    expect(song.notes.filter((note) => note.hand === "left")).toHaveLength(5);
+    expect(song.notes.filter((note) => note.hand === "right")).toHaveLength(4);
   });
 });
