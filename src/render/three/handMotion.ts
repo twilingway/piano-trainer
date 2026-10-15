@@ -88,11 +88,19 @@ const LIFTED_DRIFT_MM: Readonly<Record<Finger, number>> = {
   4: -3.4,
   5: -11.2
 };
+/**
+ * How much further a neighbour may turn towards a free finger than the finger itself before it
+ * turns along: their first phalanges lie side by side at the knuckles. A finger straightened onto
+ * the black keys lifts its first phalanx to the free one's height, so it gets less room. Measured
+ * on the rig for 2.5 mm of skin between them.
+ */
+const TURN_LAG_MM = 12;
+const BLACK_TURN_LAG_MM = 5;
 
 /**
  * Each finger's offset once the free ones make way: a finger reaching towards a neighbour pushes
- * it aside instead of lying across it. A pressing finger keeps its key, and the thumb is left to
- * pass under the others.
+ * it aside instead of lying across it, at the tip and at the knuckle. A pressing finger keeps its
+ * key, and the thumb is left to pass under the others.
  */
 function makeWay(
   fingers: Readonly<Record<Finger, FingerState>>,
@@ -105,12 +113,24 @@ function makeWay(
   for (const finger of FINGERS)
     along[finger] = finger - 1 + direction * fingers[finger].offset + drift(finger);
   const free = (finger: Finger) => 1 - fingers[finger].press;
+  // How far a finger turns along the hand at its knuckle, and the lead it allows a neighbour.
+  const turned = (finger: Finger) => along[finger] - drift(finger) - (finger - 1);
+  const room = (finger: Finger) =>
+    (TURN_LAG_MM + (BLACK_TURN_LAG_MM - TURN_LAG_MM) * fingers[finger].depth) / WHITE_MM;
   for (const finger of [3, 4, 5] as const) {
-    const short = along[(finger - 1) as Finger] + FINGER_GAP - along[finger];
+    const before = (finger - 1) as Finger;
+    const short = Math.max(
+      along[before] + FINGER_GAP - along[finger],
+      turned(before) - room(before) - turned(finger)
+    );
     if (short > 0) along[finger] += short * free(finger);
   }
   for (const finger of [4, 3, 2] as const) {
-    const short = along[finger] - along[(finger + 1) as Finger] + FINGER_GAP;
+    const after = (finger + 1) as Finger;
+    const short = Math.max(
+      along[finger] - along[after] + FINGER_GAP,
+      turned(finger) - turned(after) - room(after)
+    );
     if (short > 0) along[finger] -= short * free(finger);
   }
   const offsets = {} as Record<Finger, number>;
