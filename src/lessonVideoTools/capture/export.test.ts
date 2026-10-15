@@ -11,7 +11,8 @@ import { evidence } from "./evidence";
 import { exportCapture, notesMidi } from "./export";
 import type { StageReceipt } from "./inference";
 import { captureNotes } from "./model";
-import type { CapturedNote, HandFrame, MusicPrediction, Review } from "./model";
+import type { CapturedNote, HandFrame, MusicPrediction, PedalCandidate, Review } from "./model";
+import type { PlaybackNote } from "./pedal";
 import { captureOptions } from "./options";
 import { digest, exists, readJson, writeJson } from "../runtime";
 import { songFromMidi } from "../../song/midi";
@@ -29,7 +30,7 @@ afterEach(async () => {
 });
 
 interface Manifest {
-  status: { notes: string; fingers: string; hands: string };
+  status: { notes: string; fingers: string; hands: string; pedal: string };
   files: Record<string, string>;
   coverage: { observedFrames: number; framesWithHands: number };
 }
@@ -98,11 +99,12 @@ async function fixture() {
     await writeJson(resolve(directory, `${stage}.receipt.json`), receipt);
     return receipt;
   }
-  async function music() {
+  async function music(pedalCandidates?: readonly PedalCandidate[]) {
     const prediction: MusicPrediction = {
       schemaVersion: 1,
       backend: { model: "synthetic" },
       warnings: [],
+      ...(pedalCandidates === undefined ? {} : { pedalCandidates }),
       notes: [
         { id: "first", pitch: 60, onset: 0.5, offset: 0.75, velocity: 90 },
         { id: "chord", pitch: 64, onset: 0.5, offset: 1, velocity: 80 },
@@ -141,6 +143,122 @@ async function fixture() {
 }
 
 describe("Claude export bundle", () => {
+  it("rejects ambiguous same-pitch overlap before creating a bundle and preserves raw JSON", async () => {
+    const f = await fixture();
+    const receipt = await f.music();
+    const options = await f.review(
+      { music: receipt.files["music.raw.json"] ?? null, hands: null },
+      {
+        notes: [
+          {
+            eventId: "first",
+            keyRelease: 1.75,
+            hand: "right",
+            evidence: ["frame-2"],
+            reason: "Synthetic overlapping physical release"
+          }
+        ]
+      }
+    );
+    await expect(exportCapture(f.root, options)).rejects.toThrow("Перекрываются ноты высоты 60");
+    expect(await exists(f.bundle)).toBe(false);
+    expect(await digest(resolve(f.directory, "music.raw.json"))).toBe(
+      receipt.files["music.raw.json"]
+    );
+  });
+
+  it("round-trips base CC64 MIDI and separate baked playback without changing reviewed notes", async () => {
+    const f = await fixture();
+    const pedalCandidates: PedalCandidate[] = [
+      { time: 0.625, value: 64, source: "transkun", estimated: true },
+      { time: 1.625, value: 0, source: "transkun", estimated: true }
+    ];
+    const receipt = await f.music(pedalCandidates);
+    const options = await f.review(
+      { music: receipt.files["music.raw.json"] ?? null, hands: null },
+      {
+        notes: ["first", "chord", "repeat"].map((eventId) => ({
+          eventId,
+          hand: eventId === "chord" ? ("right" as const) : ("left" as const),
+          reviewNotes: true,
+          evidence: ["frame-2"],
+          reason: "Synthetic notes checked independently of pedal"
+        }))
+      }
+    );
+    await exportCapture(f.root, options);
+    const json = (await readJson(resolve(f.bundle, "notes.json"))) as {
+      notes: CapturedNote[];
+      pedalCandidates: PedalCandidate[];
+      midiHandPolicy: string;
+    };
+    const playback = (await readJson(resolve(f.bundle, "playback.json"))) as {
+      notes: PlaybackNote[];
+      warnings: string[];
+    };
+    expect(json.midiHandPolicy).toBe("complete-hands");
+    expect(json.pedalCandidates).toEqual(pedalCandidates);
+    expect(
+      json.notes.map((note) => [
+        note.offset,
+        note.estimatedOffset,
+        note.keyRelease,
+        note.acousticEnd
+      ])
+    ).toEqual([
+      [0.75, 0.75, null, null],
+      [1, 1, null, null],
+      [1.5, 1.5, null, null]
+    ]);
+    expect(playback.notes.map((note) => [note.eventId, note.baseEnd, note.exportedEnd])).toEqual([
+      ["first", 0.75, 1.25],
+      ["chord", 1, 1.625],
+      ["repeat", 1.5, 1.625]
+    ]);
+    expect(playback.warnings).toEqual([]);
+    for (const [file, ends, hasPedal] of [
+      ["notes.mid", [0.75, 1, 1.5], true],
+      ["playback.mid", [1.25, 1.625, 1.625], false]
+    ] as const) {
+      const midi = new Midi(new Uint8Array(await readFile(resolve(f.bundle, file))));
+      expect(midi.tracks.map((track) => track.channel)).toEqual([0, 1]);
+      for (const track of midi.tracks) {
+        const controls = track.controlChanges[64] ?? [];
+        expect(controls).toHaveLength(hasPedal ? 2 : 0);
+        if (hasPedal) {
+          expect(controls.map((control) => control.time)).toEqual([0.625, 1.625]);
+          expect(controls.map((control) => Math.round(control.value * 127))).toEqual([64, 0]);
+        }
+      }
+      const midiNotes = midi.tracks.flatMap((track) => track.notes);
+      expect(midiNotes).toHaveLength(3);
+      json.notes.forEach((note, index) => {
+        const actual = midiNotes.find(
+          (entry) => entry.midi === note.pitch && Math.abs(entry.time - note.onset) < 0.001
+        );
+        expect(actual).toBeDefined();
+        expect((actual?.time ?? 0) + (actual?.duration ?? 0)).toBeCloseTo(ends[index] ?? 0, 3);
+      });
+    }
+    const manifest = (await readJson(resolve(f.bundle, "manifest.json"))) as Manifest;
+    expect(manifest.status.notes).toBe("reviewed");
+    expect(manifest.status.pedal).toBe("draft");
+    for (const [file, expected] of Object.entries(manifest.files))
+      expect(await digest(resolve(f.bundle, file))).toBe(expected);
+    expect(await digest(resolve(f.bundle, "music.raw.json"))).toBe(receipt.files["music.raw.json"]);
+  });
+
+  it("exports an explicit empty pedal prediction as draft rather than missing", async () => {
+    const f = await fixture();
+    await f.music([]);
+    await exportCapture(f.root, f.options);
+    const manifest = (await readJson(resolve(f.bundle, "manifest.json"))) as Manifest;
+    expect(manifest.status.pedal).toBe("draft");
+    expect((await readJson(resolve(f.bundle, "notes.json"))) as object).toMatchObject({
+      pedalCandidates: []
+    });
+  });
+
   it("keeps chords, repeated notes and reviewed/model note-offs consistent between JSON and MIDI", async () => {
     const f = await fixture(),
       receipt = await f.music();
@@ -165,6 +283,7 @@ describe("Claude export bundle", () => {
     const json = (await readJson(resolve(f.bundle, "notes.json"))) as {
       notes: CapturedNote[];
       midiHandPolicy: string;
+      pedalCandidates: readonly PedalCandidate[] | null;
     };
     const midi = new Midi(new Uint8Array(await readFile(resolve(f.bundle, "notes.mid"))));
     const midiNotes = midi.tracks.flatMap((track) => track.notes);
@@ -189,19 +308,30 @@ describe("Claude export bundle", () => {
     });
     expect(midi.tracks.map((track) => track.name)).toEqual(["unassigned"]);
     expect(json.midiHandPolicy).toBe("unassigned");
+    expect(json.pedalCandidates).toBeNull();
     expect(json.notes.map((note) => note.hand)).toEqual(["left", null, null]);
     const manifest = (await readJson(resolve(f.bundle, "manifest.json"))) as Manifest;
     for (const [file, hash] of Object.entries(manifest.files))
       expect(await digest(resolve(f.bundle, file))).toBe(hash);
     expect(manifest.files["manifest.json"]).toBeUndefined();
-    expect(manifest.status).toEqual({ notes: "draft", fingers: "draft", hands: "missing" });
+    expect(manifest.status).toEqual({
+      notes: "draft",
+      fingers: "draft",
+      hands: "missing",
+      pedal: "missing"
+    });
   });
 
   it("exports explicit missing stages and source evidence without invented notes or poses", async () => {
     const f = await fixture();
     await exportCapture(f.root, f.options);
     const manifest = (await readJson(resolve(f.bundle, "manifest.json"))) as Manifest;
-    expect(manifest.status).toEqual({ notes: "missing", fingers: "missing", hands: "missing" });
+    expect(manifest.status).toEqual({
+      notes: "missing",
+      fingers: "missing",
+      hands: "missing",
+      pedal: "missing"
+    });
     expect(await exists(resolve(f.bundle, "notes.mid"))).toBe(false);
     expect(await exists(resolve(f.bundle, "hands.raw.jsonl"))).toBe(false);
     expect(manifest.files["evidence/index.json"]).toMatch(/^[a-f0-9]{64}$/);
@@ -218,7 +348,12 @@ describe("Claude export bundle", () => {
     );
     await exportCapture(f.root, options);
     const manifest = (await readJson(resolve(f.bundle, "manifest.json"))) as Manifest;
-    expect(manifest.status).toEqual({ notes: "missing", fingers: "missing", hands: "reviewed" });
+    expect(manifest.status).toEqual({
+      notes: "missing",
+      fingers: "missing",
+      hands: "reviewed",
+      pedal: "missing"
+    });
     expect(manifest.coverage).toMatchObject({ observedFrames: 3, framesWithHands: 0 });
     expect(vi.mocked(evidence).mock.calls[0]?.[5]).toContain("frame-1");
     expect(await digest(resolve(f.bundle, "hands.raw.jsonl"))).toBe(
@@ -312,6 +447,73 @@ describe("capture MIDI hand metadata", () => {
     // The fallback does not turn the partial evidence into an inferred original hand.
     expect(partial[0]?.hand).toBe("right");
     expect(song.notes.find((note) => note.pitch === 55)?.hand).toBe("left");
+  });
+
+  it("preserves same-time CC64 order so pedal-down then pedal-up finishes released", () => {
+    const data = notesMidi(notes(1), [
+      { time: 0, value: 64, source: "transkun", estimated: true },
+      { time: 0, value: 63, source: "transkun", estimated: true }
+    ]);
+    const controls = new Midi(data).tracks[0]?.controlChanges[64] ?? [];
+    expect(controls.map((control) => Math.round(control.value * 127))).toEqual([64, 63]);
+  });
+
+  it("writes pedal-down before a note-off at the exact same tick", () => {
+    const first = notes(1)[0];
+    if (!first) throw new Error("Synthetic note missing");
+    const data = notesMidi(
+      [{ ...first, pitch: 48, onset: 0, estimatedOffset: 0.5 }],
+      [{ time: 0.5, value: 64, source: "transkun", estimated: true }]
+    );
+    // Full status bytes let us inspect the actual SMF event order, not an importer view.
+    const bytes = Array.from(data);
+    const index = bytes.findIndex(
+      (value, position) =>
+        value === 0xb0 && bytes[position + 1] === 64 && bytes[position + 2] === 64
+    );
+    expect(index).toBeGreaterThan(0);
+    expect(bytes.slice(index, index + 7)).toEqual([0xb0, 64, 64, 0, 0x80, 48, 0]);
+    expect(new Midi(data).tracks[0]?.notes[0]?.duration).toBe(0.5);
+  });
+
+  it("rejects nested same-pitch intervals merged by the partial-hand fallback", () => {
+    const base = notes(2);
+    const first = base[0],
+      second = base[1];
+    if (!first || !second) throw new Error("Synthetic notes missing");
+    const overlapping: CapturedNote[] = [
+      { ...first, pitch: 48, onset: 0, estimatedOffset: 1.5, hand: "left" },
+      { ...second, pitch: 48, onset: 1, estimatedOffset: 1.25 }
+    ];
+    const before = JSON.stringify(overlapping);
+    expect(() => notesMidi(overlapping)).toThrow("Перекрываются ноты высоты 48");
+    expect(JSON.stringify(overlapping)).toBe(before);
+    expect(() => notesMidi(overlapping.map((note) => ({ ...note, hand: "left" })))).toThrow(
+      "Перекрываются"
+    );
+  });
+
+  it("round-trips overlapping pitches on separate hand channels and touching repeats on one channel", () => {
+    const base = notes(3);
+    const first = base[0],
+      second = base[1],
+      third = base[2];
+    if (!first || !second || !third) throw new Error("Synthetic notes missing");
+    const data = notesMidi([
+      { ...first, pitch: 48, onset: 0, estimatedOffset: 1.5, hand: "left" },
+      { ...second, pitch: 48, onset: 1, estimatedOffset: 1.25, hand: "right" },
+      { ...third, pitch: 48, onset: 1.5, estimatedOffset: 2, hand: "left" }
+    ]);
+    const midi = new Midi(data);
+    expect(
+      midi.tracks.map((track) => track.notes.map((note) => [note.time, note.time + note.duration]))
+    ).toEqual([
+      [
+        [0, 1.5],
+        [1.5, 2]
+      ],
+      [[1, 1.25]]
+    ]);
   });
 
   it("exports complete hand assignments as separate tracks with every note retained", () => {

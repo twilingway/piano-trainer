@@ -85,6 +85,23 @@ export function predictionFrom(value: unknown): MusicPrediction {
       throw new Error("Неверная или повторная нота модели.");
     ids.add(note.id);
   }
+  if (data.pedalCandidates !== undefined) {
+    if (!Array.isArray(data.pedalCandidates)) throw new Error("Неверные кандидаты педали.");
+    let previous = -Infinity;
+    for (const item of data.pedalCandidates) {
+      const pedal = record(item);
+      if (
+        !finite(pedal.time) ||
+        pedal.time < 0 ||
+        pedal.time < previous ||
+        !integer(pedal.value, 0, 127) ||
+        pedal.source !== "transkun" ||
+        pedal.estimated !== true
+      )
+        throw new Error("Неверный или неупорядоченный кандидат педали.");
+      previous = pedal.time;
+    }
+  }
   return data as unknown as MusicPrediction;
 }
 

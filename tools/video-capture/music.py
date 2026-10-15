@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 def normalize_notes(notes, offset):
+    _validate_source_offset(offset)
     result = []
     for note in sorted(notes, key=lambda item: (item.start, item.pitch, item.end)):
         onset, end = float(note.start) + offset, float(note.end) + offset
@@ -18,6 +19,45 @@ def normalize_notes(notes, offset):
         result.append({'id': f'note-{len(result) + 1:06d}', 'pitch': int(note.pitch),
                        'onset': onset, 'offset': end, 'velocity': int(note.velocity)})
     return result
+
+
+def _validate_source_offset(offset):
+    if isinstance(offset, bool) or not isinstance(offset, (int, float)) or not math.isfinite(offset):
+        raise ValueError('Source offset must be finite')
+
+
+def _normalize_pedal_events(events, offset):
+    _validate_source_offset(offset)
+    result = []
+    for event in events:
+        if not isinstance(event, dict):
+            raise ValueError('Invalid sustain pedal candidate')
+        raw_time, value = event.get('time'), event.get('value')
+        if (isinstance(raw_time, bool) or not isinstance(raw_time, (int, float))
+                or not math.isfinite(raw_time)):
+            raise ValueError('Sustain pedal time must be finite')
+        time = raw_time + offset
+        if not math.isfinite(time) or time < 0:
+            raise ValueError('Sustain pedal time must be nonnegative and finite')
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 127:
+            raise ValueError('Sustain pedal value must be an integer from 0 to 127')
+        result.append({'time': time, 'value': value, 'source': 'transkun', 'estimated': True})
+    # Keep down/up/down transitions at one timestamp. Only adjacent equal
+    # events in stable chronological order are redundant.
+    ordered = sorted(result, key=lambda event: event['time'])
+    unique = []
+    for event in ordered:
+        if unique and event['time'] == unique[-1]['time'] and event['value'] == unique[-1]['value']:
+            continue
+        unique.append(event)
+    return unique
+
+
+def normalize_pedal_candidates(instruments, offset):
+    events = ({'time': control.time, 'value': control.value}
+              for instrument in instruments for control in instrument.control_changes
+              if control.number == 64)
+    return _normalize_pedal_events(events, offset)
 
 
 def transcribe(args):
@@ -67,6 +107,7 @@ def transcribe(args):
                           'segmentHopSeconds': model.segmentHopSizeInSecond,
                           'torchVersion': torch.__version__, 'cudaVersion': torch.version.cuda},
               'notes': notes,
+              'pedalCandidates': normalize_pedal_candidates(midi.instruments, args.source_offset),
               'warnings': ['Model note ends are estimates, not observed physical key releases.',
                            'Automatic transcription has not been reviewed.']}
     with open(args.output, 'x', encoding='utf-8') as target:
@@ -75,9 +116,15 @@ def transcribe(args):
 
 def export_midi(args):
     import pretty_midi
-    notes = json.loads(Path(args.notes).read_text(encoding='utf-8'))
-    if isinstance(notes, dict):
-        notes = notes['notes']
+    payload = json.loads(Path(args.notes).read_text(encoding='utf-8'))
+    if isinstance(payload, dict):
+        notes = payload['notes']
+        candidates = payload.get('pedalCandidates', [])
+        if not isinstance(candidates, list):
+            raise ValueError('Sustain pedal candidates must be a list')
+        pedals = _normalize_pedal_events(candidates, 0)
+    else:
+        notes, pedals = payload, []
     midi = pretty_midi.PrettyMIDI(initial_tempo=120, resolution=10000)
     instrument = pretty_midi.Instrument(program=0)
     for note in notes:
@@ -87,6 +134,59 @@ def export_midi(args):
             raise ValueError('Invalid note interval for MIDI export')
         instrument.notes.append(pretty_midi.Note(velocity=note.get('velocity') or 80,
                                                 pitch=note['pitch'], start=onset, end=end))
+    instrument.control_changes = [pretty_midi.ControlChange(number=64, value=event['value'],
+                                                          time=event['time']) for event in pedals]
     midi.instruments.append(instrument)
+    # pretty_midi sorts simultaneous controllers by value. Restore their
+    # stable source order, including distinct times quantized to the same tick.
+    from io import BytesIO
+    import mido
+    buffer = BytesIO()
+    midi.write(buffer)
+    buffer.seek(0)
+    encoded = mido.MidiFile(file=buffer)
+    pedal_order = {}
+    for event in pedals:
+        tick = int(midi.time_to_tick(event['time']))
+        pedal_order.setdefault(tick, []).append(event['value'])
+    for track in encoded.tracks:
+        tick = 0
+        controls = {}
+        for message in track:
+            tick += message.time
+            if message.type == 'control_change' and message.control == 64:
+                controls.setdefault(tick, []).append(message)
+        for tick, messages in controls.items():
+            values = pedal_order[tick]
+            if len(messages) != len(values):
+                raise ValueError('MIDI writer changed sustain pedal event count')
+            for message, value in zip(messages, values):
+                message.value = value
+    # For [down, up) sustain intervals, all CC64 changes at a tick take
+    # effect before that tick's note-off/on. Preserve metadata and setup slots.
+    def performance_event(message):
+        return (message.type in ('note_on', 'note_off')
+                or (message.type == 'control_change' and message.control == 64))
+
+    for track in encoded.tracks:
+        groups = []
+        tick = 0
+        for message in track:
+            tick += message.time
+            if not groups or groups[-1][0] != tick:
+                groups.append((tick, []))
+            groups[-1][1].append(message)
+        ordered_track = []
+        previous_tick = 0
+        for tick, group in groups:
+            performance = iter(sorted(
+                (message for message in group if performance_event(message)),
+                key=lambda message: 0 if message.type == 'control_change' else 1))
+            ordered = [next(performance) if performance_event(message) else message
+                       for message in group]
+            for index, message in enumerate(ordered):
+                ordered_track.append(message.copy(time=tick - previous_tick if index == 0 else 0))
+            previous_tick = tick
+        track[:] = ordered_track
     with open(args.output, 'xb') as target:
-        midi.write(target)
+        encoded.save(file=target)
