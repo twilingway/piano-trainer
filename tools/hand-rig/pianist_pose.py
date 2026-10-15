@@ -159,7 +159,8 @@ for x in ("L", "R"):
 # --- arms must not go into the body: arm skin against the trunk and thighs on the deformed mesh
 ARM_BONES = ("upperarm01", "lowerarm01", "lowerarm02", "wrist", "metacarpal", "finger")
 ARMPIT = 0.45           # of the upper arm from the shoulder: closer in, skin meets the chest anyway
-SKIN_TOL = 0.004        # skin may press this deep into skin
+SKIN_TOL = 0.004        # forearm and hand skin may press this deep into the trunk
+UPPER_TOL = 0.012       # the upper arm rests on the side of the chest: soft on soft, it gives more
 
 
 def penetration():
@@ -196,25 +197,26 @@ def penetration():
         if hit[0] is None:
             continue
         depth = -(co[i] - hit[0]).dot(hit[1])
-        if depth > worst[x][0]:
-            worst[x] = (depth, name)
+        over = depth - (UPPER_TOL if name.startswith("upperarm") else SKIN_TOL)
+        if over > worst[x][0]:
+            worst[x] = (over, name)
     ev.to_mesh_clear()
     for m in subs:
         m.show_viewport = True
     return worst
 
 
-# Elbows move out until no arm skin is inside the trunk or thighs (beyond SKIN_TOL).
-SPREAD0, SPREAD_STEP, SPREAD_MAX = 0.3, 0.1, 1.2
+# Elbows hang by the trunk and move out only until no arm skin is inside it (beyond SKIN_TOL).
+SPREAD0, SPREAD_STEP, SPREAD_MAX = 0.02, 0.04, 1.2     # elbows start at the trunk (piano technique)
 for x in ("L", "R"):
     spread = SPREAD0
     place_arm(x, spread)
     while True:
-        depth, part = penetration()[x]
-        if depth <= SKIN_TOL or spread >= SPREAD_MAX:
+        depth, part = penetration()[x]       # beyond its tolerance
+        if depth <= 0 or spread >= SPREAD_MAX:
             break
         spread += SPREAD_STEP
         place_arm(x, spread)
-    report["arm into body mm " + x] = (round(depth * 1000, 1), part)
+    report["arm past tolerance mm " + x] = (round(depth * 1000, 1), part)
     report["elbow spread " + x] = round(spread, 2)
 print("pianist seated", report)
