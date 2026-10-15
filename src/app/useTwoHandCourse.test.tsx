@@ -12,10 +12,10 @@ import type { KeyEvent } from "../input/midiInput";
 
 let root: Root, host: HTMLDivElement, store: AppStore;
 let course: ReturnType<typeof useTwoHandCourse>, now: number;
-const configurePair = vi.fn(),
+const configureCourse = vi.fn(),
   setPlaying = vi.fn();
 const trainerRef = {
-  current: { configurePair, setPlaying, cancelInput: vi.fn() } as unknown as Trainer
+  current: { configureCourse, setPlaying, cancelInput: vi.fn() } as unknown as Trainer
 };
 function Harness({ connect = false }: { connect?: boolean }) {
   const value = useTwoHandCourse();
@@ -189,7 +189,7 @@ describe("two-hand course shell", () => {
     act(() => {
       root.render(withTestStore(<Harness connect />, store));
     });
-    expect(configurePair).toHaveBeenLastCalledWith(course.policy);
+    expect(configureCourse).toHaveBeenLastCalledWith("pair", course.policy);
     expect(setPlaying).toHaveBeenCalledWith(true);
     expect(course.playRequestedRef.current).toBe(false);
   });

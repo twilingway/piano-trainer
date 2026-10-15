@@ -51,7 +51,7 @@ function fixture(song = SONG, bass = false) {
     onJudgement: vi.fn(),
     cuePitch: () => cue
   };
-  trainer.configureReading(policy);
+  trainer.configureCourse("reading", policy);
   trainer.setPlaying(true);
   const frame = (at: number) => {
     now = at;

@@ -60,7 +60,7 @@ function harness() {
     seedHeld,
     cuePitches: () => [48, 60]
   };
-  trainer.configureHeldBass(policy);
+  trainer.configureCourse("heldBass", policy);
   trainer.load(song, HELD_BASS_PRACTICE_OPTIONS, "held");
   trainer.setPlaying(true);
   now = 3000;
@@ -165,16 +165,16 @@ describe("Trainer held-bass transport", () => {
 
   it("seeds pre-held ownership and excludes ordinary/pair policies", () => {
     const run = harness();
-    run.trainer.configureHeldBass(null);
+    run.trainer.configureCourse("heldBass", null);
     run.trainer.key({ type: "down", pitch: 70, velocity: 90, timestamp: now });
     const pairInput = vi.fn();
-    run.trainer.configurePair({
+    run.trainer.configureCourse("pair", {
       onFrame: () => undefined,
       onInput: pairInput,
       cancel: vi.fn(),
       cuePitches: () => []
     });
-    run.trainer.configureHeldBass({ ...run.policy });
+    run.trainer.configureCourse("heldBass", { ...run.policy });
     expect(run.seedHeld).toHaveBeenLastCalledWith(
       [expect.objectContaining({ pitch: 70, type: "down" })],
       now

@@ -46,7 +46,7 @@ function harness(source: "keyboard" | "pointer" | "midi" = "midi", bpm: RhythmBp
     },
     onFrame: vi.fn()
   };
-  trainer.configureRhythm(policy);
+  trainer.configureCourse("rhythm", policy);
   trainer.configureTiming({
     inputOffsets: { piano: 100, keyboard: 100, pointer: 100, foreign: 1000 },
     manualInputOffsetMs: 0,

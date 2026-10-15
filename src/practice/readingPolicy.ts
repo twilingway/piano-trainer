@@ -1,6 +1,7 @@
 import type { KeyEvent } from "../input/midiInput";
 import type { PracticeEvent, PracticeOptions, PracticeSession } from "./session";
 import { keyLightPitches } from "./keyLights";
+import { NO_EVENTS, type TrainerCourse } from "./trainerCourse";
 
 export interface TrainerReadingPolicy {
   readonly onFrame: (session: PracticeSession, playing: boolean, atMs: number) => void;
@@ -80,4 +81,29 @@ export class ReadingAttackGate {
   clear(): void {
     this.held.clear();
   }
+}
+
+export function readingCourse(policy: TrainerReadingPolicy): TrainerCourse {
+  return {
+    kind: "reading",
+    policy,
+    ownsInput: false,
+    smoothClock: false,
+    gradesRun: true,
+    playsAfterFinish: false,
+    overdrive: true,
+    step: (session, playing, atMs) => {
+      policy.onFrame(session, playing, atMs);
+      return NO_EVENTS;
+    },
+    key: (event, context) => {
+      context.ordinary(event, policy);
+    },
+    guidance: (session, playing, performance) =>
+      trainerGuidance(session, policy, playing, performance),
+    cuePresented: (lights, atMs) => {
+      const cue = lights[0];
+      if (cue !== undefined) policy.onCuePresented?.(cue, atMs);
+    }
+  };
 }

@@ -419,7 +419,7 @@ export function useHeldBassTrainer(
   useEffect(() => {
     if (!ready) return;
     const trainer = trainerRef.current;
-    trainer?.configureHeldBass(policy);
+    trainer?.configureCourse("heldBass", policy);
     if (playRequestedRef.current && trainer && policy) {
       playRequestedRef.current = false;
       if (!blockedRef.current) trainer.setPlaying(true);
@@ -429,7 +429,7 @@ export function useHeldBassTrainer(
     };
     document.addEventListener("visibilitychange", hidden);
     return () => {
-      trainer?.configureHeldBass(null);
+      trainer?.configureCourse("heldBass", null);
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [policy, trainerRef, ready, blockedRef, playRequestedRef]);

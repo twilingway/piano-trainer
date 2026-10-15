@@ -53,7 +53,7 @@ function harness() {
     onCuePresented: cue,
     onCommit: commit
   };
-  trainer.configurePair(policy);
+  trainer.configureCourse("pair", policy);
   trainer.load(song, TWO_HAND_PRACTICE_OPTIONS, "pair");
   trainer.setPlaying(true);
   now = 4000;
@@ -77,7 +77,7 @@ function harness() {
 describe("Trainer pair policy", () => {
   it("hands pre-held third notes to the pair core as ownership without issuing an attack", () => {
     const run = harness();
-    run.trainer.configurePair(null);
+    run.trainer.configureCourse("pair", null);
     run.trainer.key({
       type: "down",
       pitch: 70,
@@ -90,7 +90,7 @@ describe("Trainer pair policy", () => {
     const seedHeld = vi.fn();
     const onInput = vi.fn();
     const cancel = vi.fn();
-    run.trainer.configurePair({
+    run.trainer.configureCourse("pair", {
       onFrame: () => undefined,
       onInput,
       cancel,
@@ -114,7 +114,7 @@ describe("Trainer pair policy", () => {
     run.trainer.cancelInput(true);
     expect(cancel).toHaveBeenCalledWith(now, true);
     const nextSeed = vi.fn();
-    run.trainer.configurePair({
+    run.trainer.configureCourse("pair", {
       onFrame: () => undefined,
       onInput,
       cancel,

@@ -16,16 +16,7 @@ import { SongTimeline } from "./timing";
 import { beatAt } from "./sessionBeats";
 export { beatAt } from "./sessionBeats";
 import { ReadingAttackGate, type TrainerReadingPolicy } from "./readingPolicy";
-import { processRhythmKey } from "./rhythmPolicy";
-import type { TrainerRhythmPolicy } from "./rhythmPolicy";
-import { stepTrainerPair } from "./twoHandPolicy";
-import type { TrainerPairPolicy } from "./twoHandPolicy";
-import { stepTrainerHeldBass, type TrainerHeldBassPolicy } from "./heldBassPolicy";
-import {
-  observeIndependentRhythmInput,
-  stepIndependentRhythm,
-  type TrainerIndependentRhythmPolicy
-} from "./independentRhythmPolicy";
+import type { CourseKeyContext, CourseKind, CoursePolicies, KeyTimes } from "./trainerCourse";
 import { createTrainerRecorder, finishTrainerTake } from "./trainerRecording";
 import {
   drawTrainerMirror,
@@ -34,7 +25,6 @@ import {
   trainerGrade
 } from "./trainerView";
 import { TrainerCoursePolicies } from "./trainerCoursePolicies";
-import { processScopedInput } from "./trainerScopedInput";
 import { processPianoInput } from "./trainerPianoInput";
 import { TrainerInputHolds } from "./trainerInputHolds";
 import * as snapshots from "./trainerSnapshot";
@@ -67,20 +57,9 @@ export class Trainer {
   private readonly inputHolds = new TrainerInputHolds();
   private readonly readingGate = new ReadingAttackGate();
 
-  configureReading(policy: TrainerReadingPolicy | null): void {
-    this.courses.configureReading(policy);
-  }
-  configureRhythm(policy: TrainerRhythmPolicy | null): void {
-    this.courses.configureRhythm(policy);
-  }
-  configurePair(policy: TrainerPairPolicy | null): void {
-    this.courses.configurePair(policy);
-  }
-  configureHeldBass(policy: TrainerHeldBassPolicy | null): void {
-    this.courses.configureHeldBass(policy);
-  }
-  configureIndependentRhythm(policy: TrainerIndependentRhythmPolicy | null): void {
-    this.courses.configureIndependentRhythm(policy);
+  /** One course at a time; null removes it only when the active course is of this kind. */
+  configureCourse<K extends CourseKind>(kind: K, policy: CoursePolicies[K] | null): void {
+    this.courses.configure(kind, policy);
   }
   cancelInput(resetAll = false): void {
     this.courses.cancelInput(resetAll);
@@ -166,7 +145,7 @@ export class Trainer {
     this.silence();
     this.songKey = songKey;
     this.session = new PracticeSession(song, options);
-    if (this.courses.heldBass) this.session.registerVerifiedOnsets(this.courses.heldBass.onsets);
+    this.courses.current?.attach?.(this.session);
     if (position !== undefined) this.session.seek(position, now, { leadIn: false });
     if (previous) this.session.inheritNoteResult(previous);
     this.timing = this.nextTiming;
@@ -217,29 +196,23 @@ export class Trainer {
   }
 
   setPlaying(playing: boolean): void {
-    const { reading, rhythm, pair, heldBass, independentRhythm } = this.courses;
+    const course = this.courses.current;
     this.resumePending = false;
     const session = this.session;
     const wasPlaying = this.playing;
     this.playing =
-      playing &&
-      this.canStart &&
-      (session?.finished !== true || heldBass !== null || independentRhythm !== null);
+      playing && this.canStart && (session?.finished !== true || course?.playsAfterFinish === true);
     if (this.playing && !wasPlaying && !this.recorder) this.timing = this.nextTiming;
     if (session)
       session.setInputGrace(
-        (independentRhythm ?? rhythm)?.inputCompensationMs() ??
-          maximumInputCompensation(this.timing)
+        course?.inputCompensationMs?.() ?? maximumInputCompensation(this.timing)
       );
     if (!this.playing) this.silence();
     const now = performance.now();
     if (session && this.playing && !wasPlaying) {
       this.run.begin(session.startedFrom);
       session.resumeClock(now);
-      if (
-        independentRhythm &&
-        !independentRhythm.onStart(now, session.tempoClockReceipt(now), this.inputHolds.snapshot())
-      ) {
+      if (course?.start && !course.start(session, now, this.inputHolds.snapshot())) {
         this.playing = false;
         session.pauseClock(now);
         this.publish();
@@ -251,7 +224,7 @@ export class Trainer {
     if (this.playing && !wasPlaying && session) {
       if (this.recorder) {
         this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 1);
-      } else if (session.options.hands.size > 0 && !this.courses.hasDedicatedInput) {
+      } else if (session.options.hands.size > 0 && !course?.ownsInput) {
         // A listen-through has no player: nothing to record.
         this.recorder = createTrainerRecorder(session, this.songKey, this.timing);
         this.takeTimeline.reset(now, 0, 1);
@@ -259,76 +232,69 @@ export class Trainer {
     }
     if (!this.playing && wasPlaying)
       this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 0);
-    if (session) reading?.onFrame(session, this.playing, now);
-    if (session) rhythm?.onFrame(session, this.playing, now);
-    if (session) this.apply(stepTrainerPair(pair, session, this.playing, now));
-    if (session) this.apply(stepTrainerHeldBass(heldBass, session, this.playing, now));
-    stepIndependentRhythm(independentRhythm, session, this.playing, now);
+    if (session && course) this.apply(course.step(session, this.playing, now));
     this.publish();
   }
 
   key(event: KeyEvent): void {
-    const { reading, rhythm, pair, heldBass, independentRhythm } = this.courses;
     this.inputHolds.record(event, performance.now());
-    if (independentRhythm) {
-      const session = this.session,
-        received = performance.now();
-      if (event.type === "down") this.pressed.add(event.pitch);
-      else this.pressed.delete(event.pitch);
-      if (session && this.playing) this.apply(session.tick(received));
-      if (session)
-        observeIndependentRhythmInput(independentRhythm, session, event, this.playing, received);
-      this.publish();
-      return;
-    }
-    if (!heldBass && this.onInput?.(event) && !(rhythm && event.type === "up")) return;
-    if (rhythm) {
-      this.apply(
-        processRhythmKey(event, this.session, rhythm, this.readingGate, this.timing, this.playing)
-      );
-      if (this.session) rhythm.onFrame(this.session, this.playing, performance.now());
-      this.publish();
-      return;
-    }
-    if (
-      this.allowedDeviceId &&
-      event.deviceId !== this.allowedDeviceId &&
-      !(this.allowedDeviceId === "keyboard" && event.source !== "midi")
-    )
-      return;
+    const course = this.courses.current;
+    if (course) course.key(event, this.keyContext());
+    else this.ordinaryKey(event, null);
+  }
+
+  private keyContext(): CourseKeyContext {
+    return {
+      session: this.session,
+      playing: () => this.playing,
+      timing: this.timing,
+      pressed: this.pressed,
+      gate: this.readingGate,
+      intercept: (event) => this.onInput?.(event) === true,
+      admits: (event) => this.admits(event),
+      times: (event) => this.keyTimes(event),
+      ordinary: (event, reading) => {
+        this.ordinaryKey(event, reading);
+      },
+      apply: (events) => {
+        this.apply(events);
+      },
+      publish: () => {
+        this.publish();
+      }
+    };
+  }
+
+  private admits(event: KeyEvent): boolean {
+    return (
+      !this.allowedDeviceId ||
+      event.deviceId === this.allowedDeviceId ||
+      (this.allowedDeviceId === "keyboard" && event.source !== "midi")
+    );
+  }
+
+  private keyTimes(event: KeyEvent): KeyTimes | undefined {
     const received = performance.now();
     const raw = event.timestamp ?? received;
-    if (!Number.isFinite(raw)) return;
+    if (!Number.isFinite(raw)) return undefined;
     const offset =
       (this.timing.inputOffsets[event.deviceId ?? event.source ?? "pointer"] ?? 0) +
       this.timing.manualInputOffsetMs;
-    const corrected = raw - offset;
-    const scoped = heldBass ?? pair;
-    if (scoped) {
-      if (event.type === "down") this.pressed.add(event.pitch);
-      else this.pressed.delete(event.pitch);
-      processScopedInput(
-        event,
-        this.session,
-        heldBass,
-        pair,
-        this.playing,
-        raw,
-        corrected,
-        received,
-        (events) => {
-          this.apply(events);
-        }
-      );
-      this.publish();
-      return;
-    }
+    return { raw, corrected: raw - offset, received };
+  }
+
+  private ordinaryKey(event: KeyEvent, reading: TrainerReadingPolicy | null): void {
+    if (this.onInput?.(event)) return;
+    if (!this.admits(event)) return;
+    const times = this.keyTimes(event);
+    if (!times) return;
+    const { raw, corrected, received } = times;
     const fresh = this.readingGate.accept(event);
     if (event.type === "down") this.pressed.add(event.pitch);
     else this.pressed.delete(event.pitch);
     processPianoInput(event, {
       session: this.session,
-      reading: reading,
+      reading,
       playing: () => this.playing,
       fresh,
       raw,
@@ -379,7 +345,7 @@ export class Trainer {
     if (this.canStart && this.resumePending && this.resumeWhenReady) this.setPlaying(true);
   }
   activateOverdrive(): void {
-    if (this.courses.independentRhythm) return;
+    if (this.courses.current?.overdrive === false) return;
     if (this.playing) this.session?.activateOverdrive(performance.now());
     this.publish();
   }
@@ -409,9 +375,7 @@ export class Trainer {
     return trainerQuarters(
       this.session,
       this.timing.visualOffsetMs,
-      this.courses.rhythm !== null ||
-        this.courses.heldBass !== null ||
-        this.courses.independentRhythm !== null
+      this.courses.current?.smoothClock === true
     );
   }
 
@@ -421,7 +385,7 @@ export class Trainer {
   }
 
   pedal(down: boolean, timestamp = performance.now(), deviceId = ""): void {
-    if (this.courses.hasDedicatedInput) return;
+    if (this.courses.current?.ownsInput) return;
     if (this.recorder && this.session) {
       if (performance.now() - timestamp > 250) return;
       const corrected =
@@ -445,16 +409,12 @@ export class Trainer {
   }
 
   private frame(deltaMs: number): void {
-    const { reading, rhythm, pair, heldBass, independentRhythm } = this.courses;
+    const course = this.courses.current;
     const session = this.session;
     if (!session) return;
     const now = performance.now();
     if (this.playing) this.apply(session.tick(now));
-    reading?.onFrame(session, this.playing, now);
-    rhythm?.onFrame(session, this.playing, now);
-    this.apply(stepTrainerPair(pair, session, this.playing, now));
-    this.apply(stepTrainerHeldBass(heldBass, session, this.playing, now));
-    stepIndependentRhythm(independentRhythm, session, this.playing, now);
+    if (course) this.apply(course.step(session, this.playing, now));
     drawGuidedTrainerScene(
       this.view,
       session,
@@ -462,10 +422,7 @@ export class Trainer {
         playing: this.playing,
         performance: this.performanceMode,
         visualOffsetMs: this.timing.visualOffsetMs,
-        reading: reading,
-        scoped: heldBass ?? pair,
-        rhythm: rhythm !== null,
-        independentRhythm: independentRhythm,
+        course,
         pressed: this.pressed,
         sounding: this.sounding,
         colorOf: this.comparison?.colorOf,
@@ -484,7 +441,7 @@ export class Trainer {
   }
 
   private apply(events: readonly PracticeEvent[]): void {
-    const { heldBass, independentRhythm } = this.courses;
+    const course = this.courses.current;
     for (const event of events) {
       switch (event.type) {
         case "autoNoteOn":
@@ -496,7 +453,7 @@ export class Trainer {
         case "beat":
           break;
         case "finished":
-          if (heldBass || independentRhythm) break;
+          if (course && !course.gradesRun) break;
           {
             const result = this.run.finish(this.session?.stats().noteResult);
             if (result) this.onRunFinished?.(result);
@@ -512,7 +469,7 @@ export class Trainer {
         case "hit":
         case "miss":
         case "wrong": {
-          if (heldBass || independentRhythm) break;
+          if (course && !course.gradesRun) break;
           if (event.type === "hit") this.run.hit();
           const grade = trainerGrade(event, this.combo, this.pitchOf);
           if (grade) this.graded.push(grade);
@@ -542,7 +499,7 @@ export class Trainer {
       beatAt(session.song, session.time),
       this.textNoteIds,
       this.diagnostic,
-      this.courses.independentRhythm
+      this.courses.current
     );
     this.lastBeat = state.snapshot.beat;
     this.board = state.board;

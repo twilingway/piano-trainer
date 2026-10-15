@@ -22,8 +22,8 @@ let now: number;
 let visible: DocumentVisibilityState;
 let frameId: number;
 let frames: Map<number, FrameRequestCallback>;
-const configureReading = vi.fn();
-const trainerRef = { current: { configureReading } as unknown as Trainer };
+const configureCourse = vi.fn();
+const trainerRef = { current: { configureCourse } as unknown as Trainer };
 
 function Harness({ blocked = false }: { blocked?: boolean }) {
   const value = useReadingCourse();
@@ -123,7 +123,7 @@ beforeEach(() => {
   vi.stubGlobal("cancelAnimationFrame", (id: number) => {
     frames.delete(id);
   });
-  configureReading.mockClear();
+  configureCourse.mockClear();
   store = createAppStore({
     storage: { getItem: () => null, setItem: () => undefined },
     readingRepository: createMemoryReadingRepository()
