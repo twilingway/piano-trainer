@@ -111,8 +111,26 @@ describe("liveTarget", () => {
     // Down the keyboard from the thumb's key, in millimetres.
     const tip = (finger: Finger) => (finger - 1) * 23.5 - hand.fingers[finger].reach;
     expect(tip(4)).toBeCloseTo(3.5 * 23.5);
-    expect(tip(5) - tip(4)).toBeGreaterThanOrEqual(0.8 * 23.5 - 1e-9);
+    // The lifted pose draws the fifth 11.2 mm in, less as it bends: the gap holds where it shows.
+    const drawnIn = 11.2 * (1 - hand.fingers[5].bend[0]);
+    expect(tip(5) - drawnIn - tip(4)).toBeGreaterThanOrEqual(0.7 * 23.5 - 1e-9);
     expect(tip(4) - tip(3)).toBeCloseTo(2 * 23.5);
+  });
+
+  it("turns a free finger along with a neighbour reaching towards it on a black key", () => {
+    // Right hand C4-D#4-G4 on 1-2-5: the index turns half a key towards the free middle finger.
+    const chord = [
+      { start: 1, duration: 1, pitch: C4, finger: 1 as const },
+      { start: 1, duration: 1, pitch: 63, finger: 2 as const },
+      { start: 1, duration: 1, pitch: 67, finger: 5 as const }
+    ];
+    const planned = planHand(chord, "right");
+    if (!planned) throw new Error("no plan");
+    const { fingers } = liveTarget(planned, 1.5);
+    expect(fingers[2].depth).toBe(1);
+    expect(fingers[2].reach).toBeCloseTo(0.5 * 23.5);
+    // Their first phalanges stay clear only if the middle finger turns within 5 mm of the index.
+    expect(fingers[3].reach).toBeGreaterThanOrEqual(fingers[2].reach - 5 - 1e-9);
   });
 });
 
