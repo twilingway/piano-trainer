@@ -41,6 +41,19 @@ FELT = (0.1500, 0.1530, 0.0, 0.007)         # red felt along the name board's fo
 CHEEK_Y = (-0.034, 0.200)
 CHEEK_Z = (-0.076, 0.034)
 
+# --- the stage (STAGE): side panels down to the floor, a bench, the sustain footswitch and its cable
+STAGE = globals().get("STAGE", False)
+FLOOR = -KEY_TOP              # the floor below the white tops
+PANEL_T = 0.03                # the stand's side panels, under the cheeks
+BENCH_W, BENCH_D, BENCH_H = 0.56, 0.32, 0.49
+SEAT_T, BENCH_LEG = 0.05, 0.04
+BENCH_GAP = globals().get("BENCH_GAP", 0.28)   # from the keys' front to the seat's front edge
+PEDAL_W, PEDAL_L = 0.075, 0.20                 # the footswitch's base
+PEDAL_BASE, PEDAL_PLATE, PEDAL_TILT = 0.018, 0.012, math.radians(9)
+PEDAL_X = globals().get("PEDAL_X", 0.16)       # right of the keyboard's centre, under the right foot
+PEDAL_BACK = KEY_FRONT + 0.15                  # the footswitch's back edge (its hinge), under the keyboard
+CABLE_R = 0.0025
+
 
 def material(name, color, roughness, coat=0.0):
     m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
@@ -223,6 +236,37 @@ def cheek(bm):
     profile_x(bm, [(y0, z0), (y1, z0), (y1, z1)] + list(reversed(arc)), -CHEEK_W / 2, CHEEK_W / 2)
 
 
+def box(bm, x0, x1, y0, y1, z0, z1):
+    prism(bm, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], z0, z1)
+
+
+def panel(bm):
+    """A side panel of the stand: from the floor up to the table, under a cheek."""
+    box(bm, -PANEL_T / 2, PANEL_T / 2, TABLE[0], TABLE[1], FLOOR, TABLE[2])
+
+
+def bench(bm):
+    """Origin at the seat's top centre."""
+    box(bm, -BENCH_W / 2, BENCH_W / 2, -BENCH_D / 2, BENCH_D / 2, -SEAT_T, 0)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            x = sx * (BENCH_W / 2 - BENCH_LEG)
+            y = sy * (BENCH_D / 2 - BENCH_LEG)
+            box(bm, x - BENCH_LEG / 2, x + BENCH_LEG / 2, y - BENCH_LEG / 2, y + BENCH_LEG / 2,
+                -BENCH_H, -SEAT_T)
+
+
+def pedal_base(bm):
+    """Origin on the floor at the back edge's centre; the switch runs towards the player (-Y)."""
+    box(bm, -PEDAL_W / 2, PEDAL_W / 2, -PEDAL_L, 0, 0, PEDAL_BASE)
+
+
+def pedal_plate(bm):
+    """Origin on the hinge at the back; at rest the object turns -PEDAL_TILT about X (front up),
+    pressed it comes down to 0."""
+    box(bm, -PEDAL_W / 2 + 0.004, PEDAL_W / 2 - 0.004, -PEDAL_L + 0.01, 0, 0, PEDAL_PLATE)
+
+
 def build_kit():
     kit = collection("piano_kit", hidden=True)
     parts = {
@@ -237,6 +281,11 @@ def build_kit():
         "felt": part("felt", box_x(*FELT), MAT["felt"], coll=kit),
         "cheek": part("cheek", cheek, MAT["case"], 0.004, coll=kit),
     }
+    if STAGE:
+        parts["panel"] = part("panel", panel, MAT["case"], 0.004, coll=kit)
+        parts["bench"] = part("bench", bench, MAT["case"], 0.006, coll=kit)
+        parts["pedal-base"] = part("pedal-base", pedal_base, MAT["case"], 0.003, coll=kit)
+        parts["pedal-plate"] = part("pedal-plate", pedal_plate, MAT["case"], 0.002, coll=kit)
     return parts
 
 
@@ -281,7 +330,45 @@ def assemble(parts, low, high):
     place(parts["table"], "table", piano, centre, width + 2 * CHEEK_W + 0.12)
     place(parts["cheek"], "cheek-left", piano, left - GAP - CHEEK_W / 2)
     place(parts["cheek"], "cheek-right", piano, right + GAP + CHEEK_W / 2)
+    if STAGE:
+        place(parts["panel"], "panel-left", piano, left - GAP - CHEEK_W / 2)
+        place(parts["panel"], "panel-right", piano, right + GAP + CHEEK_W / 2)
+        seat = place(parts["bench"], "bench", piano, centre)
+        seat.location = (centre, KEY_FRONT - BENCH_GAP - BENCH_D / 2, BENCH_H)
+        x = centre + PEDAL_X
+        base = place(parts["pedal-base"], "pedal-base", piano, x)
+        base.location = (x, PEDAL_BACK, 0)
+        plate = place(parts["pedal-plate"], "pedal-plate", piano, x)
+        plate.location = (x, PEDAL_BACK, PEDAL_BASE)
+        plate.rotation_euler.x = -PEDAL_TILT
+        cable(piano, x, right)
     return piano
+
+
+def cable(coll, x, right):
+    """The footswitch's cord: out of its back, along the floor under the stand, up the right panel's
+    inside to the keyboard's back."""
+    name = "pedal-cable"
+    curve = bpy.data.curves.get(name) or bpy.data.curves.new(name, "CURVE")
+    curve.splines.clear()
+    curve.dimensions = "3D"
+    curve.bevel_depth = CABLE_R
+    curve.bevel_resolution = 2
+    back = KEY_FRONT + TABLE[1]
+    up_x = right - 0.04
+    points = [(x, PEDAL_BACK + 0.005, 0.008), (x, PEDAL_BACK + 0.06, CABLE_R),
+              (up_x - 0.08, back - 0.05, CABLE_R), (up_x, back - 0.01, 0.08),
+              (up_x, back - 0.01, KEY_TOP + TABLE[2] - 0.01), (up_x - 0.05, back - 0.04, KEY_TOP + TABLE[2] + 0.005)]
+    spline = curve.splines.new("BEZIER")
+    spline.bezier_points.add(len(points) - 1)
+    for bp, co in zip(spline.bezier_points, points):
+        bp.co = co
+        bp.handle_left_type = bp.handle_right_type = "AUTO"
+    curve.materials.clear()
+    curve.materials.append(MAT["case"])
+    o = bpy.data.objects.new(name, curve)
+    coll.objects.link(o)
+    return o
 
 
 def export(parts, path):
