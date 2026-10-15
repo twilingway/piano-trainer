@@ -32,6 +32,7 @@ export type IndependentRhythmPanelStatus =
   | "failed"
   | "passed"
   | "completed"
+  | "empty"
   | "cancelled"
   | "error";
 export interface IndependentRhythmConnection {
@@ -333,6 +334,14 @@ export class IndependentRhythmController {
       this.hintReceipts = [];
       this.state = this.freshState("passed");
       for (const listener of this.listeners) listener();
+    } else if (
+      this.pulse &&
+      !proof.extras.length &&
+      !proof.outcomes.some((note) => note.outcome === "hit")
+    ) {
+      // Not a single attack in the series: start over from the pulse without a result.
+      this.cancel();
+      this.update({ status: "empty" });
     } else if (this.pulse && !this.state.result) {
       const result = createIndependentRhythmResult(this.exercise, this.pulse, proof, {
         startedAt: this.startedAt,

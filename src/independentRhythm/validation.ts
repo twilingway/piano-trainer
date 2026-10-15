@@ -3,14 +3,21 @@ import { validHeldBassInput } from "../reading/heldBassOwnership";
 import { validRhythmClock } from "./clock";
 import { evaluateIndependentRhythm } from "./evidence";
 import { generateIndependentRhythmExercise, independentRhythmFingerprint } from "./generator";
+import { summarizeIndependentRhythmOutcomes } from "./progress";
 import type {
   IndependentRhythmConfig,
   IndependentRhythmPhaseExercise,
   IndependentRhythmPhaseResult,
-  IndependentRhythmResult
+  IndependentRhythmResult,
+  IndependentRhythmSummary
 } from "./types";
 
 const equal = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+/** Timing counts follow the current on-time band, so a stored copy is not compared on them. */
+const withoutTiming = (summary: IndependentRhythmSummary) => {
+  const hand = ({ onTime, early, late, ...rest }: IndependentRhythmSummary["left"]) => rest;
+  return { ...summary, left: hand(summary.left), right: hand(summary.right) };
+};
 const time = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value) && value >= 0;
 const text = (value: unknown): value is string =>
@@ -112,7 +119,7 @@ export function validateIndependentRhythmPhase(
     value.channel === evaluation.channel &&
     equal(value.outcomes, evaluation.outcomes) &&
     equal(value.extras, evaluation.extras) &&
-    equal(value.summary, evaluation.summary) &&
+    equal(withoutTiming(value.summary), withoutTiming(evaluation.summary)) &&
     value.outcomes.every((note) => note.outcome !== "pending") &&
     value.passed ===
       (evaluation.outcomes.every((note) => note.outcome === "hit") && !evaluation.extras.length)
@@ -169,7 +176,15 @@ export function validateIndependentRhythmResult(value: unknown): IndependentRhyt
       result.series.startedAtMs < result.pulse.finalizedAtMs
     )
       return null;
-    return result as IndependentRhythmResult;
+    const summarize = (phase: IndependentRhythmPhaseResult) => ({
+      ...phase,
+      summary: summarizeIndependentRhythmOutcomes(phase.outcomes, phase.extras)
+    });
+    return {
+      ...(result as IndependentRhythmResult),
+      pulse: summarize(result.pulse),
+      series: summarize(result.series)
+    };
   } catch {
     return null;
   }

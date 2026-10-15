@@ -79,6 +79,9 @@ export const independentRhythmMessages: Messages = {
   "Два ритма завершены. Сравните показатели левой и правой партий.": {
     en: "Two rhythms completed. Compare the left and right part metrics."
   },
+  "Проход не засчитан: не было ни одного удара. Повтор начинается с проверки пульса.": {
+    en: "The run did not count: there was not a single attack. Retrying starts with the pulse check."
+  },
   "Проход двух ритмов отменён без результата. Повтор начинается с проверки пульса.": {
     en: "The two-rhythm run was cancelled without a result. Retrying starts with the pulse check."
   },

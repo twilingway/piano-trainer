@@ -178,7 +178,7 @@ describe("rhythm onset evaluation", () => {
     expect(session.snapshot().misses.every((miss) => miss.source === "keyboard")).toBe(true);
   });
 
-  it("records signed and absolute medians only for hits, with zero neither early nor late", () => {
+  it("records signed and absolute medians only for hits, with the on-time band in neither early nor late", () => {
     const exercise = generateRhythmExercise(0);
     const session = new RhythmSession(exercise, config);
     const deviations = [-100, 0, 50, 150];
@@ -191,8 +191,9 @@ describe("rhythm onset evaluation", () => {
     expect(result.summary).toMatchObject({
       expected: 10,
       hits: 4,
+      onTime: 2,
       early: 1,
-      late: 2,
+      late: 1,
       misses: 6
     });
     expect(result.summary.signedMedianMs).toBeCloseTo(25);
@@ -203,6 +204,18 @@ describe("rhythm onset evaluation", () => {
       "run-1:2",
       "run-1:3"
     ]);
+  });
+
+  it("counts hits within 50 ms inclusive as on time", () => {
+    const exercise = generateRhythmExercise(0);
+    const session = new RhythmSession(exercise, config);
+    const deviations = [-50, -51, 0, 50, 51];
+    exercise.onsets
+      .slice(0, 5)
+      .forEach((onset, index) =>
+        session.attack(event(onset.timeS + (deviations[index] ?? 0) / 1000))
+      );
+    expect(finish(session).summary).toMatchObject({ hits: 5, onTime: 3, early: 1, late: 1 });
   });
 
   it("cancels without producing a result or letting late callbacks revive it", () => {

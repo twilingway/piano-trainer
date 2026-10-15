@@ -266,6 +266,25 @@ describe("independent rhythm React shell and actual tempo clock", () => {
     expect(required(course.scene).song).not.toBe(oldScene.song);
     expect(course.ready).toBe(false);
   });
+  it("does not save a two-rhythm series without a single attack and repeats from the pulse", async () => {
+    select();
+    await start();
+    solvePhase();
+    expect(course.status).toBe("passed");
+    now += 100;
+    loadScene();
+    await start();
+    const current = required(practice);
+    frame(
+      required(current.tempoClockReceipt(now).startPerformanceMs) +
+        current.song.duration * 1000 +
+        251
+    );
+    expect(course.status).toBe("empty");
+    expect(course.phase).toBe("pulse");
+    expect(course.result).toBeNull();
+    expect(store.getState().reading.independentRhythm.history).toHaveLength(0);
+  });
   it("does not install the observer or start before actual Staff presentation", async () => {
     select(false);
     expect(configureCourse).not.toHaveBeenCalled();

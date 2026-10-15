@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 import { generateIndependentRhythmExercise } from "./generator";
+import { summarizeIndependentRhythmOutcomes } from "./progress";
 import { IndependentRhythmPhaseSession } from "./session";
 import { rhythmHarness } from "./testSupport";
 
@@ -306,5 +307,25 @@ describe("independent tempo evaluator", () => {
     run.finish();
     expect(run.session.snapshot().status).toBe("overflow");
     expect(run.session.result()).toBeNull();
+  });
+});
+
+describe("independent rhythm timing band", () => {
+  it("splits each hand's hits into on time, early and late at 50 ms inclusive", () => {
+    const note = (hand: "left" | "right", onset: number, deviationMs: number) => ({
+      noteId: `${hand}-${String(onset)}`,
+      pitch: hand === "left" ? 48 : 60,
+      hand,
+      onset,
+      outcome: "hit" as const,
+      eventSequence: onset,
+      deviationMs
+    });
+    const summary = summarizeIndependentRhythmOutcomes(
+      [note("right", 0, -50), note("right", 1, 20), note("right", 2, 51), note("left", 3, -60)],
+      []
+    );
+    expect(summary.right).toMatchObject({ hits: 3, onTime: 2, early: 0, late: 1 });
+    expect(summary.left).toMatchObject({ hits: 1, onTime: 0, early: 1, late: 0 });
   });
 });

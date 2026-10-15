@@ -1,3 +1,4 @@
+import { summarizeRhythm } from "../rhythm/progress";
 import type { RhythmBpm, RhythmInputSource, RhythmResult } from "../rhythm/types";
 
 export interface RhythmPersistentState {
@@ -131,8 +132,6 @@ export function validRhythmResult(value: unknown): value is RhythmResult {
     summary.expected === 10 &&
     summary.hits === deviations.length &&
     summary.misses === row.misses.length &&
-    summary.early === deviations.filter((value) => value < 0).length &&
-    summary.late === deviations.filter((value) => value > 0).length &&
     summary.extras === extras &&
     summary.restExtras === restExtras &&
     summary.hitRate === deviations.length / 10 &&
@@ -147,7 +146,8 @@ function cloneRhythmResult(result: RhythmResult) {
     offsets: { ...result.offsets },
     attacks: result.attacks.map((attack) => ({ ...attack })),
     misses: result.misses.map((miss) => ({ ...miss })),
-    summary: { ...result.summary }
+    // Timing counts are derived, so runs saved under an older on-time rule read as current.
+    summary: summarizeRhythm(result.summary.expected, result.attacks, result.misses)
   };
 }
 export function mergeRhythmHistory(
