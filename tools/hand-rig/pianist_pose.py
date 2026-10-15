@@ -7,7 +7,7 @@ the knee forward, shoulder -> elbow -> wrist with the elbow out and down. The sp
 the head looks down at the keys. Wrists go to WRIST targets above the keys, palms down; the left
 sole stays flat on the floor, the right forefoot rests on the sustain footswitch.
 """
-import bpy, math
+import bpy, math, os
 from mathutils import Matrix, Quaternion, Vector
 
 G = globals()
@@ -133,9 +133,10 @@ for name, deg in zip(("neck01", "head"), LOOK):
     turn(pose[name], Matrix.Rotation(math.radians(deg), 4, side), world(pose[name]))
 
 
-def place_arm(x, spread):
+def place_arm(x, spread, want=None):
     """Shoulder -> elbow -> wrist by two-bone IK, the elbow out by `spread` (metres of pole offset),
-    then the palm turned down by the forearm and bent by the wrist."""
+    then the palm turned down by the forearm and bent by the wrist; `want`: the wrist bone's world
+    rotation, if the hand solver has one."""
     out = -1 if x == "L" else 1
     for name in ("upperarm01", "lowerarm01", "lowerarm02", "wrist", "elbow"):
         pose[f"{name}.{x}"].matrix_basis = Matrix.Identity(4)
@@ -155,12 +156,13 @@ def place_arm(x, spread):
     # radius rolls over the ulna); the wrist only bends. One bone taking it all folds the skin.
     wb = pose[f"wrist.{x}"]
     axis = (wrist - elbow).normalized()
-    flat = Vector((axis.x, axis.y, 0)).normalized()
-    y = (Vector((0, 1, 0)).lerp(flat, HAND_FOLLOWS).normalized() + Vector((0, 0, -0.15))).normalized()
-    z = Vector((0, 0, -1))
-    xa = y.cross(z).normalized()
-    z = xa.cross(y)
-    want = Matrix((xa, y, z)).transposed().to_quaternion()
+    if want is None:
+        flat = Vector((axis.x, axis.y, 0)).normalized()
+        y = (Vector((0, 1, 0)).lerp(flat, HAND_FOLLOWS).normalized() + Vector((0, 0, -0.15))).normalized()
+        z = Vector((0, 0, -1))
+        xa = y.cross(z).normalized()
+        z = xa.cross(y)
+        want = Matrix((xa, y, z)).transposed().to_quaternion()
     have = lambda: (rig.matrix_world @ wb.matrix).to_quaternion()
     q = want @ have().inverted()
     if q.w < 0:
@@ -172,7 +174,8 @@ def place_arm(x, spread):
     swing = want @ have().inverted()
     if swing.w < 0:
         swing.negate()
-    if swing.angle > WRIST_MAX:         # a wrist bends this far at most; the hand keeps the rest
+    report["wrist wanted deg " + x] = round(math.degrees(swing.angle))
+    if swing.angle > WRIST_MAX:        # a wrist bends this far at most; the hand keeps the rest
         swing = Quaternion().slerp(swing, WRIST_MAX / swing.angle)
     turn(wb, swing.to_matrix().to_4x4(), world(wb))
     report["pronation deg " + x] = round(math.degrees(twist))
@@ -226,7 +229,7 @@ def penetration():
     names = {g.index: g.name for g in body.vertex_groups}
     owner = []
     for v in body.data.vertices:
-        best = max(v.groups, key=lambda g: g.weight, default=None)
+        best = max((g for g in v.groups if names[g.group] in rig.data.bones), key=lambda g: g.weight, default=None)
         owner.append(names[best.group] if best else "")
     arm = {i for i, n in enumerate(owner) if n.split(".")[0].rstrip("0123456789-") in
            ("upperarm", "lowerarm", "elbow", "wrist", "metacarpal", "finger")}
@@ -257,17 +260,24 @@ def penetration():
 
 # Elbows hang by the trunk and move out only until no arm skin is inside it (beyond SKIN_TOL).
 SPREAD0, SPREAD_STEP, SPREAD_MAX = 0.02, 0.04, 1.2     # elbows start at the trunk (piano technique)
-for x in ("L", "R"):
-    spread = SPREAD0
-    place_arm(x, spread)
+SPREAD_OF = {}
+
+
+def fit_elbow(x, want=None, spread=SPREAD0):
+    place_arm(x, spread, want)
     while True:
         depth, part = penetration()[x]       # beyond its tolerance
         if depth <= 0 or spread >= SPREAD_MAX:
             break
         spread += SPREAD_STEP
-        place_arm(x, spread)
+        place_arm(x, spread, want)
+    SPREAD_OF[x] = spread
     report["arm past tolerance mm " + x] = (round(depth * 1000, 1), part)
     report["elbow spread " + x] = round(spread, 2)
+
+
+for x in ("L", "R"):
+    fit_elbow(x)
 
 
 # --- the seat is soft, and so is the pianist. Skin below the seat's top is flattened onto it, a little
@@ -381,4 +391,166 @@ def sit():
 
 
 sit()
+
+
+# --- the hands on the keys: the hand study's solver (hand_solver.py) per hand; the arm brings the
+# wrist where the solver wants it, the elbow kept as fitted above, then fitted again by the trunk.
+# HANDS: finger -> semitone from C4 per hand; by default the five-finger position, every finger
+# resting on its key (KEY_DIP 0: nothing pressed).
+HANDS = G.get("HANDS", {"L": {1: -5, 2: -7, 3: -8, 4: -10, 5: -12}, "R": {1: 0, 2: 2, 3: 4, 4: 5, 5: 7}})
+ROOT = G.get("ROOT", r"E:/MySource/ReactJS/piano-trainer")
+fx = bpy.data.collections.get("pianist_fx") or bpy.data.collections.new("pianist_fx")
+if fx.name not in bpy.context.scene.collection.children:
+    bpy.context.scene.collection.children.link(fx)
+fx.hide_render = True
+SOLVES = 3              # a hand solved with the elbow as fitted; the elbow pushed out by it means a new solve
+
+
+def wrist_excess(x, wrist_at, frame, hand_in_wrist):
+    """Degrees the wrist would bend past WRIST_MAX to hold the hand frame at wrist_at with the elbow as
+    fitted. The wrist bends by the swing that takes the forearm's axis, as the hand carries it at rest,
+    onto the forearm placed by the IK (the twist goes to pronation): place_arm's own split."""
+    b, ua = rig.data.bones, pose[f"upperarm01.{x}"]
+    in_wrist = b[f"wrist.{x}"].matrix_local.to_3x3().inverted() @ (b[f"lowerarm01.{x}"].tail_local
+                                                                  - b[f"lowerarm01.{x}"].head_local)
+    shoulder = world(ua)
+    pole = shoulder + Vector((SPREAD_OF[x] * (-1 if x == "L" else 1), -0.2, -0.3))
+    elbow, wrist = two_bone(shoulder, ua.length, pose[f"lowerarm01.{x}"].length + pose[f"lowerarm02.{x}"].length,
+                            wrist_at, pole)
+    swing = (frame @ hand_in_wrist.inverted() @ in_wrist).angle(wrist - elbow)
+    return max(0.0, math.degrees(swing - WRIST_MAX))
+
+
+for x, keys in HANDS.items():
+    hand_fwd = (world(pose[f"finger3-1.{x}"]) - world(pose[f"wrist.{x}"])).normalized()
+    for solve in range(SOLVES):
+        hand = {"__name__": "hand_solver", "ROOT": ROOT, "rig": rig, "mesh": bpy.data.objects["PianistBody"],
+                "fx": fx, "SIDE": x, "pose": keys, "hover_x": {}, "KEY_DIP": G.get("KEY_DIP", 0.0),
+                "ROLL": math.radians(G.get("ROLL_DEG", 2)), "HAND_FWD": hand_fwd}
+
+        def arm(wrist_at, frame, yaw, x=x, hand=hand):
+            WRIST[x] = wrist_at
+            place_arm(x, SPREAD_OF[x], (frame @ hand["HAND_IN_WRIST"].inverted()).to_quaternion())
+
+        hand["place_arm"] = arm
+        hand["wrist_excess"] = lambda wrist_at, frame, x=x, hand=hand: wrist_excess(x, wrist_at, frame,
+                                                                                    hand["HAND_IN_WRIST"])
+        exec(open(os.path.join(ROOT, "tools/hand-rig/hand_solver.py"), encoding="utf-8").read(), hand)
+        WRIST[x] = world(pose[f"wrist.{x}"])
+        # from the solver's own elbow: tucking it in again would turn the forearm under the solved hand
+        solved_with = SPREAD_OF[x]
+        fit_elbow(x, (rig.matrix_world @ pose[f"wrist.{x}"].matrix).to_quaternion(), solved_with)
+        report["hand solves " + x] = solve + 1
+        if SPREAD_OF[x] == solved_with:
+            break
+    tips = {f: hand["world"](f"finger{f}-3.{x}", "tail") for f in keys}
+    report["hand " + x] = {"miss mm": {f: round((tips[f].xy - hand["targets"][f].xy).length * 1000, 1) for f in keys},
+                           "fit residual mm": round(math.sqrt(hand["residual"]) * 1000, 1),
+                           "adjust": hand["adjust"],
+                           "skin in keys, fingers mm": hand["mesh_check"]()}
+
+
+# --- the muscle in the thumb's web. A thumb drawn in to the index finger folds the back of the web into
+# a pit under linear skinning; a real hand has the first dorsal interosseous there, and the skin stretches
+# over it. The muscle is an ellipsoid between the thumb's and the index finger's metacarpals, placed from
+# the posed bones and keeping its volume: squeezed across, it thickens. A Shrinkwrap pushes the skin out
+# of it along the skin's normals (the folded skin can sit deep inside, where the nearest surface point
+# is on the palm side), and a smooth in a ring round the held skin blends it in.
+WEB_SHIFT, WEB_ALONG = 0.15, 0.75      # towards the wrist, of the metacarpals; the length's share: the belly
+WEB_THICK = 0.009                      # half its thickness at rest, before the fit to the skin
+WEB_REACH = 1.8                        # held skin: within this many muscle radii at rest
+WEB_RINGS = 3                          # the blend ring round the held skin, in edges
+
+
+def web_frame(points, palm, scale=1.0):
+    """Centre and half axes (along the metacarpals, across, out of the back of the hand) of the muscle
+    between the thumb's metacarpal A->T and the index finger's I0->I1; right-handed, so its normals
+    point out on either hand."""
+    A, T, I0, I1 = points
+    base, tip = (A + I0) / 2, (T + I1) / 2
+    u = (tip - base).normalized()
+    th, ix = A.lerp(T, 0.55 - WEB_SHIFT), I0.lerp(I1, 0.45 - WEB_SHIFT)
+    w = u.cross(th - ix).normalized()
+    if w.dot(palm) > 0:
+        w.negate()
+    v = w.cross(u)
+    return (th + ix) / 2, u * (0.4 * WEB_ALONG * (tip - base).length), v * (0.5 * (th - ix).length), w
+
+
+def hold_web(x):
+    from collections import deque
+    import bmesh
+    body = bpy.data.objects["PianistBody"]
+    bones = rig.data.bones
+    names = {g.index: g.name for g in body.vertex_groups}
+    rest_pts = [bones[f"{n}.{x}"].head_local for n in ("finger1-1", "finger1-2", "metacarpal1", "finger2-1")]
+    C0, a0, b0, w0 = web_frame(rest_pts, bones[f"wrist.{x}"].matrix_local.to_3x3().col[2])
+    c0 = w0 * WEB_THICK
+    to_rest = Matrix((a0, b0, c0)).transposed().inverted()
+    to_rig_ = rig.matrix_world.inverted() @ body.matrix_world
+    rest_co = [to_rig_ @ v.co for v in body.data.vertices]
+    radius = lambda p: (to_rest @ (p - C0)).length
+    bone_of = [names[max((g for g in v.groups if names[g.group] in bones), key=lambda g: g.weight).group]
+               if any(names[g.group] in bones for g in v.groups) else "" for v in body.data.vertices]
+    own = [i for i, n in enumerate(bone_of) if n.endswith("." + x) and (rest_co[i] - C0).length < 0.06]
+    fit = 0.97 * min(radius(rest_co[i]) for i in own)        # just under the rest skin: at rest it holds nothing
+    # the back of the web; the thumb's and the index finger's phalanges keep their own shape
+    hold = [i for i in own if radius(rest_co[i]) < WEB_REACH * fit and (rest_co[i] - C0).dot(w0) > -0.3 * WEB_THICK * fit
+            and not bone_of[i].startswith(("finger1-2", "finger1-3", "finger2"))]
+    nb = {}
+    for e in body.data.edges:
+        p, q = e.vertices
+        nb.setdefault(p, []).append(q)
+        nb.setdefault(q, []).append(p)
+    ring = {i: 0 for i in hold}
+    todo = deque(hold)
+    while todo:
+        i = todo.popleft()
+        if ring[i] < WEB_RINGS:
+            for j in nb[i]:
+                if j not in ring:
+                    ring[j] = ring[i] + 1
+                    todo.append(j)
+    held, blend = (body.vertex_groups.get(n) or body.vertex_groups.new(name=n)
+                   for n in (f"muscle-web.{x}", f"muscle-web-blend.{x}"))
+    for g in (held, blend):
+        g.remove(list(range(len(body.data.vertices))))
+    held.add(hold, 1.0, "REPLACE")
+    for i, d in ring.items():
+        if d:
+            blend.add([i], 1 - (d - 1) / WEB_RINGS, "REPLACE")
+
+    muscle = bpy.data.objects.get(f"muscle-web.{x}")
+    if muscle is None:
+        mesh = bpy.data.meshes.new(f"muscle-web.{x}")
+        bm = bmesh.new()
+        bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=16, radius=1.0)
+        bm.to_mesh(mesh)
+        bm.free()
+        muscle = bpy.data.objects.new(mesh.name, mesh)
+        rig.users_collection[0].objects.link(muscle)
+        muscle.display_type, muscle.hide_render, muscle.hide_viewport = "WIRE", True, True
+    posed = [pose[f"{n}.{x}"].head for n in ("finger1-1", "finger1-2", "metacarpal1", "finger2-1")]
+    C, a, b, w = web_frame(posed, pose[f"wrist.{x}"].matrix.to_3x3().col[2])
+    c = w * (WEB_THICK * a0.length * b0.length / (a.length * b.length))
+    muscle.matrix_world = rig.matrix_world @ Matrix.Translation(C) @ (Matrix((a, b, c)).transposed() * fit).to_4x4()
+
+    sw = body.modifiers.get(f"muscle-web.{x}") or body.modifiers.new(f"muscle-web.{x}", "SHRINKWRAP")
+    sw.target, sw.vertex_group = muscle, held.name
+    sw.wrap_method, sw.wrap_mode, sw.cull_face = "PROJECT", "OUTSIDE", "OFF"
+    sw.use_project_x = sw.use_project_y = sw.use_project_z = False      # along the skin's normals
+    sw.use_positive_direction, sw.use_negative_direction = True, False
+    sm = body.modifiers.get(f"muscle-web-smooth.{x}") or body.modifiers.new(f"muscle-web-smooth.{x}", "SMOOTH")
+    sm.vertex_group, sm.factor, sm.iterations = blend.name, 0.5, 6
+    after = next(i for i, m in enumerate(body.modifiers) if m.type == "ARMATURE")
+    for m in (sw, sm):
+        after += 1
+        body.modifiers.move(list(body.modifiers).index(m), after)
+    view.update()
+    report["web muscle " + x] = {"held verts": len(hold), "half axes mm": [round(v.length * fit * 1000) for v in (a0, b0, c0)],
+                                 "posed thickness mm": round(c.length * fit * 1000, 1)}
+
+
+for x in ("L", "R"):
+    hold_web(x)
 print("pianist seated", report)
