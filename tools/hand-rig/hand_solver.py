@@ -34,6 +34,12 @@ PLAY_DEPTH = 0.035                   # preferred tip depth from the key's front 
 THUMB_DEPTH = 0.015                  # the thumb plays nearer the edge: it sits behind the fingers
 EDGE_DEPTH = 0.008                   # the front edge: the outer fingers of a full stretch
 THUMB_SIDE = 0.006                   # and its tip may sit this far off the key's middle line
+# MEAN_DEPTH (the caller's): only the tips' mean depth is held, not each tip's. A hand turned to the keys
+# (towards a far register) lays its tips on an oblique line: the far side deeper, the near side nearer the
+# edge; one depth per finger would make it contort to stay square. FIT_DEPTH: each tip's depth in the
+# latest rigid fit, the depth a pressing finger may curl to before it is curled back.
+MEAN_DEPTH = globals().get("MEAN_DEPTH", False)
+FIT_DEPTH = {}
 
 
 def empty(name, loc):
@@ -587,7 +593,7 @@ def hand_cost(t, R, tips, body, hover_z, rest_pads, clear={}, reach={}, curled=N
     """Rigid hand at wrist t, frame R; tips and body points (point, radius, pad) in the hand frame;
     clear: a pressed finger's tip height over its key, where known; reach: (knuckle, shortest,
     longest) of pressed fingers that may still curl or straighten, like the thumb always may."""
-    c = 0.0
+    c, misses = 0.0, []
     for f in pose:
         tip = t + R @ tips[f]
         contact = key_contact(pose[f], tip, clear.get(f, TIP_CLEAR))
@@ -609,7 +615,11 @@ def hand_cost(t, R, tips, body, hover_z, rest_pads, clear={}, reach={}, curled=N
         depth = THUMB_DEPTH if f == 1 else PLAY_DEPTH
         if f in (min(pose), max(pose)) and len(pose) > 1:
             depth += (EDGE_DEPTH - depth) * drop / STRETCH_DROP
-        c += (0.3 * (contact.y - key_front(key_of(pose[f])[1]) - depth)) ** 2
+        misses.append(contact.y - key_front(key_of(pose[f])[1]) - depth)
+    if MEAN_DEPTH and misses:
+        c += len(misses) * (0.3 * sum(misses) / len(misses)) ** 2     # a shift of every tip costs as before
+    else:
+        c += sum((0.3 * m) ** 2 for m in misses)
     # free fingers hang over their own keys
     for f, hx in hover_x.items():
         tip = t + R @ tips[f]
@@ -663,6 +673,14 @@ t0 = (sum(anchors.values(), Vector()) - sum((R0 @ local_tip_at(f, 0) for f in an
 best, residual = nelder_mead(cost, [*t0, YAW0, PITCH0, ROLL0, 0.3], [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.3])
 best, residual = nelder_mead(cost, best, [0.003, 0.003, 0.003, 0.03, 0.03, 0.03, 0.1])
 SPREAD_FIT = min(max(best[6], 0.0), SPREAD_MAX)
+
+
+def fit_depths(t, R, tips):
+    if MEAN_DEPTH:
+        FIT_DEPTH.update({f: key_contact(semi, t + R @ tips[f]).y - key_front(key_of(semi)[1]) for f, semi in pose.items()})
+
+
+fit_depths(Vector(best[:3]), frame_from(*best[3:6]), {f: local_tip_at(f, best[6]) for f in pose})
 
 # 3. The arm brings the wrist there (the caller's place_arm: wrist point, hand frame, yaw).
 reset()
@@ -783,7 +801,7 @@ def press_finger(f, start):
         set_finger(f, SPREAD_FIT, v[0], (v[1], v[2]))
         # 10 degrees at the knuckle or 0.3 of curl scale cost as much as 2 mm of miss; a tip deeper
         # than the playing depth (towards the black keys) curls back
-        deep = world(f"finger{f}-3.{SIDE}", "tail").y - key_front(black) - PLAY_DEPTH
+        deep = world(f"finger{f}-3.{SIDE}", "tail").y - key_front(black) - max(PLAY_DEPTH, FIT_DEPTH.get(f, 0.0))
         return (contact_miss(f) + (0.2 * max(0.0, deep)) ** 2
                 + (0.002 * v[1] / 10) ** 2 + (0.002 * v[2] / 10) ** 2
                 + (0.01 * max(0.0, abs(v[2]) - YAW_EASY) / 5) ** 2
@@ -939,6 +957,7 @@ for _ in range(2):
                 + turn_cost(v[3:6], stretch_drop(SPREAD_FIT), v[:3]))
 
     turn, residual = nelder_mead(refit, turn, [0.003, 0.003, 0.003, 0.05, 0.03, 0.03], iters=800)
+    fit_depths(Vector(turn[:3]), frame_from(*turn[3:6]), tips)
     place_arm(Vector(turn[:3]), frame_from(*turn[3:6]), turn[3])
     settle()
     if quality() < kept[0]:

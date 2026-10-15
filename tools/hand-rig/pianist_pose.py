@@ -3,8 +3,9 @@
 Run inside Blender: exec(open(".../pianist_pose.py").read(), {...overrides}).
 The rig turns to face the keys (+Y); the pelvis sits on the front half of the bench; legs and arms
 are placed by an analytic two-bone IK (the same math the game will run): hip -> knee -> ankle with
-the knee forward, shoulder -> elbow -> wrist with the elbow out and down. The spine leans forward,
-the head looks down at the keys. Wrists go to WRIST targets above the keys, palms down; the left
+the knee forward, shoulder -> elbow -> wrist with the elbow out and down. The body follows the hands:
+the pelvis slides on the bench, the spine leans and turns, the clavicles reach, the head looks at the
+hands. Wrists go to WRIST targets above the keys, palms down; the left
 sole stays flat on the floor, the right forefoot rests on the sustain footswitch.
 """
 import bpy, math, os
@@ -17,14 +18,39 @@ CENTRE = (X0 + (-28 + 5) * WHITE_W + X0 + 28 * WHITE_W) / 2     # between A0 and
 HIP_ABOVE_SEAT = G.get("HIP_ABOVE_SEAT", 0.10)                   # hip joints over the seat
 HIP_BEHIND_EDGE = G.get("HIP_BEHIND_EDGE", 0.10)                 # ...and behind its front edge
 LEAN = G.get("LEAN", (4, 4, 3))                                  # spine01..03 forward, degrees
-LOOK = G.get("LOOK", (10, 14))                                   # neck01, head down, degrees
 PEDAL_X, PEDAL_BACK, PEDAL_TOP = 0.16, KEY_FRONT + 0.15, 0.045
 ANKLE_UP, FOOT_REACH = 0.075, 0.15                               # ankle over the floor; ankle -> ball
-WRIST_MAX = math.radians(G.get("WRIST_MAX_DEG", 25))             # bend and deviation of the wrist together
+WRIST_MAX = math.radians(G.get("WRIST_MAX_DEG", 25))             # the wrist's flexion and extension
+ULNAR_MAX = math.radians(G.get("ULNAR_MAX_DEG", 35))             # its deviation towards the little finger
+RADIAL_MAX = math.radians(G.get("RADIAL_MAX_DEG", 20))           # ...and towards the thumb
+HAND_YAW_FREE = math.radians(30)        # the hand may turn this far off its register yaw towards the forearm
+# The hand turns to the keys with the register, fitted to a pianist filmed from above (Seven Nation Army
+# capture v3, 1238 onsets, wrist -> middle knuckle; the filmed pianist's shoulders put where this body
+# puts them for the same two hands): (white keys from its own shoulder to the hand's middle, + to the
+# treble; degrees, + fingers to the bass), straight between knots, flat past the ends. In towards the
+# middle both hands turn about a degree a key, the right reaching into the bass alone far more; out
+# past the shoulder the left points to the bass, the right stays nearly square. Never past HAND_YAW_MAX
+# (the fingers still play along the keys; the wrist takes the forearm's angle beyond it).
+REGISTER_YAW = G.get("REGISTER_YAW", {"L": ((-13, 12), (-4, 12), (0, 2), (8, -6)),
+                                      "R": ((-15, 46), (-11, 13), (-3, 0), (1, -2), (9, -4))})
+HAND_YAW_MAX = math.radians(G.get("HAND_YAW_MAX_DEG", 45))
+ACROSS_MAX = G.get("ACROSS_MAX_DEG", 45)  # the upper arm in across the chest past straight forward, degrees
+TWIST_MAX = G.get("TWIST_MAX_DEG", 60)    # the upper arm's twist in its socket that brings the elbow's hinge round
+CHEST_FRONT = 0.12                        # an elbow in towards the midline stays this far in front of the shoulder
 TWIST_SHARE = 0.4                                                # of the pronation on the upper forearm bone
-# Where the wrists go: x across the keyboard, y towards the keys, z up (world).
-WRIST = G.get("WRIST", {"L": Vector((CENTRE - 0.17, KEY_FRONT - 0.11, KEY_TOP + 0.04)),
-                        "R": Vector((CENTRE + 0.17, KEY_FRONT - 0.11, KEY_TOP + 0.04))})
+# HANDS: finger -> semitone from C4 per hand; by default the five-finger position, every finger
+# resting on its key (KEY_DIP 0: nothing pressed). The body follows them; SOLVE_HANDS False leaves the
+# fingers out (the body alone, a quick run).
+HANDS = G.get("HANDS", {"L": {1: -5, 2: -7, 3: -8, 4: -10, 5: -12}, "R": {1: 0, 2: 2, 3: 4, 4: 5, 5: 7}})
+SOLVE_HANDS = G.get("SOLVE_HANDS", True)
+ROOT = G.get("ROOT", r"E:/MySource/ReactJS/piano-trainer")
+kb = {}
+exec(open(os.path.join(ROOT, "tools/hand-rig/hand_keys.py"), encoding="utf-8").read(), kb)
+HAND_X = {x: sum(kb["key_of"](s)[0] for s in keys.values()) / len(keys) for x, keys in HANDS.items()}
+# Where the wrists go: x across the keyboard, y towards the keys, z up (world); by default behind the
+# middle of the hand's keys (the hand solver moves them on).
+WRIST = G.get("WRIST", {x: Vector((HAND_X.get(x, CENTRE + (-0.17 if x == "L" else 0.17)), KEY_FRONT - 0.11,
+                                   KEY_TOP + 0.04)) for x in ("L", "R")})
 HAND_FOLLOWS = 1.0      # how much of the forearm's turn across the keys the hand keeps; the wrist bends the rest
                         # sideways. A pianist's hand goes on in the forearm's line: half of it bent the wrist aside
 FEET = G.get("FEET", {"L": Vector((CENTRE - 0.14, KEY_FRONT - 0.02, 0)),            # ball of the foot
@@ -86,6 +112,8 @@ def hinge_to(upper, helper, lower_dir):
         if have.cross(want).dot(axis) < 0:
             angle = -angle
         turn(upper, Matrix.Rotation(angle, 4, axis), world(upper))
+        return angle
+    return 0.0
 
 
 def bend_keys(joint, x, bend_deg):
@@ -125,29 +153,259 @@ def two_bone(root, a, b, goal, pole):
     return root + u * x + v.normalized() * h, root + u * dist
 
 
-# --- the spine leans forward, the head looks down at the keys (about the rig's side axis)
-side = rig.matrix_world.to_3x3() @ Vector((1, 0, 0))
-for name, deg in zip(("spine01", "spine02", "spine03"), LEAN):
-    turn(pose[name], Matrix.Rotation(math.radians(deg), 4, side), world(pose[name]))
-for name, deg in zip(("neck01", "head"), LOOK):
-    turn(pose[name], Matrix.Rotation(math.radians(deg), 4, side), world(pose[name]))
+def smooth(a, b, x):
+    u = min(max((x - a) / (b - a), 0.0), 1.0)
+    return u * u * (3 - 2 * u)
 
 
-def place_arm(x, spread, want=None):
-    """Shoulder -> elbow -> wrist by two-bone IK, the elbow out by `spread` (metres of pole offset),
-    then the palm turned down by the forearm and bent by the wrist; `want`: the wrist bone's world
-    rotation, if the hand solver has one."""
+def thumb_side(x):
+    """The wrist bone's own direction across the palm towards the thumb (its Y runs along the hand)."""
+    b = rig.data.bones
+    v = b[f"wrist.{x}"].matrix_local.to_3x3().inverted() @ (b[f"finger2-1.{x}"].head_local - b[f"finger5-1.{x}"].head_local)
+    v.y = 0
+    return v.normalized()
+
+
+THUMB_SIDE = {x: thumb_side(x) for x in ("L", "R")}
+WRIST_NORM = 4
+
+
+def register_yaw(x, shoulder):
+    """The hand's neutral turn on the keys, radians, + counter-clockwise from above (fingers to the bass):
+    REGISTER_YAW at the middle of its keys (the wrist's x without them) from the shoulder."""
+    u = (HAND_X.get(x, WRIST[x].x) - shoulder.x) / WHITE_W
+    knots = REGISTER_YAW[x]
+    deg = knots[0][1] if u <= knots[0][0] else knots[-1][1]
+    for (u0, d0), (u1, d1) in zip(knots, knots[1:]):
+        if u0 <= u <= u1:
+            deg = d0 + (d1 - d0) * (u - u0) / (u1 - u0)
+    return min(max(math.radians(deg), -HAND_YAW_MAX), HAND_YAW_MAX)
+
+
+def wrist_load(x, rest, now):
+    """How hard the wrist bends, 1 at its limit: `rest`, `now` the forearm's direction in the wrist bone's
+    frame with the hand as at rest on it and as placed. The forearm turned towards the thumb side is the
+    hand deviated towards the little finger (ulnar, up to ULNAR_MAX), the other way RADIAL_MAX; flexion
+    either way WRIST_MAX; a rounded box between (WRIST_NORM): a little flexion hardly limits deviation,
+    an ellipse held the hand short of the keys. Returns (load, ulnar deviation, flexion) in radians."""
+    s = THUMB_SIDE[x]
+    n = Vector((0, 1, 0)).cross(s)
+    dev = math.atan2(now.dot(s), now.y) - math.atan2(rest.dot(s), rest.y)
+    flex = math.atan2(now.dot(n), now.y) - math.atan2(rest.dot(n), rest.y)
+    load = (abs(dev / (ULNAR_MAX if dev > 0 else RADIAL_MAX)) ** WRIST_NORM + abs(flex / WRIST_MAX) ** WRIST_NORM)
+    return load ** (1 / WRIST_NORM), dev, flex
+
+
+# --- the body follows the hands. The pelvis slides along the bench and turns a little, the spine leans
+# forward (LEAN at rest), sideways and turns, the clavicles bring a far hand's shoulder out towards it,
+# the head looks at the hands. A small search over (slide, yaw, side lean, extra forward lean) keeps each
+# arm's reach (shoulder to wrist over the arm's length) under REACH_COMFY at the least body motion, the
+# trunk turned FACE of the way towards the hands. The search turns the joints' points the way the bones
+# will turn, without touching the rig; the bones then take the found turns.
+report = {}
+side = rig.matrix_world.to_3x3() @ Vector((1, 0, 0))            # the rig's side axis: a turn about it leans forward
+REACH_COMFY = G.get("REACH_COMFY", 0.80)
+REACH_SIGMA = 0.03                       # reach past REACH_COMFY that costs as much as one SIGMA of body motion
+FACE = G.get("FACE", 0.3)                # of the angle to the hands' middle the trunk turns on its own
+HEAD_FOLLOW = G.get("HEAD_FOLLOW", 0.6)  # of the turn to look at the hands the neck and head take; the eyes the rest
+SIGMA = (0.05, 20, 8, 8)                 # slide m, yaw, side lean, forward lean degrees
+LOW = (-0.10, -35, -15, -4)              # the seat's half width less the buttocks'; a spine's comfortable range
+HIGH = (0.10, 35, 15, 15)
+SPINE = ("spine01", "spine02", "spine03")
+YAW_SHARE = {"pelvis": 0.2, "spine01": 0.15, "spine02": 0.35, "spine03": 0.3}   # the lumbar spine turns least
+SIDE_SHARE = dict(zip(SPINE, (0.4, 0.4, 0.2)))
+LEAN_OF = dict(zip(SPINE, LEAN))
+FWD_SHARE = {n: d / sum(LEAN) for n, d in LEAN_OF.items()}
+CLAV_FROM, CLAV_MAX = 0.7, math.radians(18)     # a clavicle reaches from this reach on, this far at most
+TRACK = ("pelvis", *SPINE, "neck01", "head", "clavicle.L", "clavicle.R", "upperarm01.L", "upperarm01.R")
+UNDER = {n: [c.name for c in rig.data.bones[n].children_recursive if c.name in TRACK] for n in TRACK}
+ARM = {x: sum(pose[f"{n}.{x}"].length for n in ("upperarm01", "lowerarm01", "lowerarm02")) for x in ("L", "R")}
+REST = {n: world(pose[n]) for n in TRACK}
+mid = sum((WRIST[x] for x in HANDS), Vector()) / max(len(HANDS), 1) if HANDS else REST["spine03"] + Vector((0, 1, 0))
+YAW_GOAL = math.degrees(math.atan2(mid.x - REST["pelvis"].x, mid.y - REST["pelvis"].y))
+
+
+def body_turns(p):
+    """The bones' world turns for p = (slide, yaw, side lean, forward lean), root first; yaw > 0 turns
+    towards +X (the treble), side lean > 0 leans that way."""
+    _, yaw, lean, fwd = p
+    turns = []
+    for name in ("pelvis", *SPINE):
+        r = Matrix.Rotation(-math.radians(yaw * YAW_SHARE[name]), 3, "Z")
+        if name != "pelvis":
+            r = r @ Matrix.Rotation(math.radians(lean * SIDE_SHARE[name]), 3, "Y") \
+                  @ Matrix.Rotation(math.radians(LEAN_OF[name] + fwd * FWD_SHARE[name]), 3, side)
+        turns.append((name, r))
+    return turns
+
+
+def clavicle_turn(x, pts):
+    """The clavicle's turn bringing the shoulder towards a far wrist: none up to reach CLAV_FROM, CLAV_MAX
+    at full reach."""
+    c, s = pts[f"clavicle.{x}"], pts[f"upperarm01.{x}"]
+    a, b = s - c, WRIST[x] - c
+    k = smooth(CLAV_FROM, 1.0, (WRIST[x] - s).length / ARM[x])
+    axis = a.cross(b)
+    if k == 0 or axis.length < 1e-9:
+        return Matrix.Identity(3), s
+    r = Matrix.Rotation(min(a.angle(b), CLAV_MAX) * k, 3, axis.normalized())
+    return r, c + r @ a
+
+
+def simulate(p):
+    """The tracked joints after the body's turns, and the chest's turn (world)."""
+    pts = {n: v + Vector((p[0], 0, 0)) for n, v in REST.items()}
+    chest = Matrix.Identity(3)
+    for name, r in body_turns(p):
+        pivot = pts[name]
+        for d in UNDER[name]:
+            pts[d] = pivot + r @ (pts[d] - pivot)
+        chest = r @ chest
+    return pts, chest
+
+
+def arm_room(x, shoulder, chest):
+    """How badly the arm fits, 0 if some elbow on its IK circle lets the hand take its register's yaw
+    (the wrist's deviation within its limit and HAND_YAW_FREE), keeps an elbow in towards the midline
+    CHEST_FRONT in front of the shoulder and the upper arm within ACROSS_MAX: a hand reaching across the
+    body needs the room in front of the chest. Sums of the overshoots in units of 5 degrees and 2 cm, the best elbow."""
     out = -1 if x == "L" else 1
+    ua = pose[f"upperarm01.{x}"].length
+    la = ARM[x] - ua
+    d = WRIST[x] - shoulder
+    dist = min(d.length, (ua + la) * 0.999)
+    u = d.normalized()
+    along = (ua * ua - la * la + dist * dist) / (2 * dist)
+    h = math.sqrt(max(ua * ua - along * along, 0.0))
+    a = u.cross(Vector((0, 0, 1))).normalized()
+    b = u.cross(a)
+    to_chest = chest.inverted()
+    yaw = register_yaw(x, shoulder)
+    best = float("inf")
+    for k in range(24):
+        t = k * math.pi / 12
+        elbow = shoulder + u * along + (a * math.cos(t) + b * math.sin(t)) * h
+        f = shoulder + u * dist - elbow
+        ulnar = -out * (math.atan2(f.x, f.y) + yaw)
+        dev = max(0.0, ulnar - HAND_YAW_FREE - ULNAR_MAX, -ulnar - HAND_YAW_FREE - RADIAL_MAX)
+        e = to_chest @ (elbow - shoulder)
+        medial = -out * e.x
+        across = math.degrees(math.asin(max(-1.0, min(1.0, medial / ua))))
+        bad = math.degrees(dev) / 5 + max(0.0, across - ACROSS_MAX) / 5
+        if medial > 0.03:
+            bad += max(0.0, CHEST_FRONT - e.y) / 0.02
+        best = min(best, bad)
+    return best
+
+
+def body_cost(p):
+    pts, chest = simulate(p)
+    c = 0.0
+    for x in HANDS:
+        shoulder = clavicle_turn(x, pts)[1]
+        reach = (WRIST[x] - shoulder).length / ARM[x]
+        c += (max(0.0, reach - REACH_COMFY) / REACH_SIGMA) ** 2 + arm_room(x, shoulder, chest) ** 2
+    goal = (0.0, FACE * YAW_GOAL, 0.0, 0.0)
+    return c + sum(((v - g) / s) ** 2 for v, g, s in zip(p, goal, SIGMA))
+
+
+def solve_body():
+    """Coordinate search with halving steps: four smooth parameters, a few hundred cheap evaluations."""
+    p, step = [0.0] * 4, [0.02, 4.0, 2.0, 2.0]
+    best = body_cost(p)
+    for _ in range(8):
+        better = True
+        while better:
+            better = False
+            for i in range(4):
+                for s in (step[i], -step[i]):
+                    q = list(p)
+                    q[i] = min(max(q[i] + s, LOW[i]), HIGH[i])
+                    c = body_cost(q)
+                    if c < best - 1e-12:
+                        p, best, better = q, c, True
+        step = [s / 2 for s in step]
+    return p
+
+
+BODY = G.get("BODY") or solve_body()
+BODY_TURN = Matrix.Rotation(-math.radians(BODY[1]), 3, "Z")     # the trunk's turn: the elbows' poles turn with it
+sim, sim_chest = simulate(BODY)
+pb = pose["pelvis"]
+pb.matrix = Matrix.Translation(rig_rot @ Vector((BODY[0], 0, 0))) @ pb.matrix
+view.update()
+for name, r in body_turns(BODY):
+    turn(pose[name], r.to_4x4(), world(pose[name]))
+for x in ("L", "R"):
+    r, _ = clavicle_turn(x, {n: world(pose[n]) for n in TRACK})
+    turn(pose[f"clavicle.{x}"], r.to_4x4(), world(pose[f"clavicle.{x}"]))
+    report["clavicle deg " + x] = round(math.degrees(r.to_quaternion().angle), 1)
+    report["reach before arms " + x] = round((WRIST[x] - world(pose[f"upperarm01.{x}"])).length / ARM[x], 2)
+report["body"] = {"slide mm": round(BODY[0] * 1000), "yaw deg": round(BODY[1], 1), "side lean deg": round(BODY[2], 1),
+                  "forward extra deg": round(BODY[3], 1), "yaw goal deg": round(YAW_GOAL, 1),
+                  "search vs bones mm": round(max((sim[n] - world(pose[n])).length for n in TRACK[:6]) * 1000, 2)}
+
+
+def look_at_hands():
+    """Neck and head turn HEAD_FOLLOW of the way to look at the middle of the hands' keys: across
+    (about the vertical) first, then down (about the face's side axis), split between the two bones."""
+    eyes = [o for o in rig.children if ".eye." in o.name]
+    eye = sum((o.matrix_world.translation for o in eyes), Vector()) / len(eyes) if eyes else world(pose["head"])
+    keys_x = sum(HAND_X.values()) / len(HAND_X) if HAND_X else CENTRE
+    look = Vector((keys_x, KEY_FRONT + 0.04, KEY_TOP)) - eye
+    rest = rig.data.bones["head"].matrix_local.to_3x3()
+
+    def face():
+        return (rig_rot.inverted() @ pose["head"].matrix.to_3x3() @ rest.inverted() @ rig_rot) @ Vector((0, 1, 0))
+
+    f = face()
+    across = math.atan2(f.x * look.y - f.y * look.x, f.x * look.x + f.y * look.y)
+    for name, share in (("neck01", 0.4), ("head", 0.6)):
+        turn(pose[name], Matrix.Rotation(across * HEAD_FOLLOW * share, 4, "Z"), world(pose[name]))
+    f = face()
+    down = math.asin(look.normalized().z) - math.asin(f.z)
+    axis = f.cross(Vector((0, 0, 1))).normalized()
+    for name, share in (("neck01", 0.4), ("head", 0.6)):
+        turn(pose[name], Matrix.Rotation(down * HEAD_FOLLOW * share, 4, axis), world(pose[name]))
+    report["head"] = {"across deg": round(math.degrees(across * HEAD_FOLLOW), 1),
+                      "down deg": round(math.degrees(down * HEAD_FOLLOW), 1)}
+
+
+look_at_hands()
+
+
+def pole_of(x, spread, swing, shoulder, wrist_goal):
+    """Where the elbow bends to: out by `spread` (metres), back and down in the trunk's frame, swung
+    `swing` degrees round the shoulder -> wrist line."""
+    offset = BODY_TURN @ Vector((spread * (-1 if x == "L" else 1), -0.2, -0.3))
+    if swing:
+        offset = Matrix.Rotation(math.radians(swing), 3, (wrist_goal - shoulder).normalized()) @ offset
+    return shoulder + offset
+
+
+SHOULDER = {}   # per side: the upper arm across the chest and its twist in the socket, degrees
+LOAD = {}       # per side: the wrist's load (wrist_load) for the hand wanted and for the hand facing the keys
+
+
+def place_arm(x, spread, want=None, swing=0.0):
+    """Shoulder -> elbow -> wrist by two-bone IK, the elbow out by `spread` (metres of pole offset) and
+    swung by `swing` (pole_of), then the palm turned down by the forearm and bent by the wrist; `want`:
+    the wrist bone's world rotation, if the hand solver has one."""
     for name in ("upperarm01", "lowerarm01", "lowerarm02", "wrist", "elbow"):
         pose[f"{name}.{x}"].matrix_basis = Matrix.Identity(4)
     view.update()
     # arms: elbow out, back and down; the forearm's two bones stay in line
     shoulder = world(pose[f"upperarm01.{x}"])
     ua, la1, la2 = pose[f"upperarm01.{x}"], pose[f"lowerarm01.{x}"], pose[f"lowerarm02.{x}"]
-    pole = shoulder + Vector((spread * out, -0.2, -0.3))
+    pole = pole_of(x, spread, swing, shoulder, WRIST[x])
     elbow, wrist = two_bone(shoulder, ua.length, la1.length + la2.length, WRIST[x], pole)
     aim(ua, elbow)
-    hinge_to(ua, pose[f"elbow.{x}"], (wrist - elbow).normalized())
+    twist_ua = hinge_to(ua, pose[f"elbow.{x}"], (wrist - elbow).normalized())
+    # the shoulder as the trunk sees it: the upper arm's angle in towards the midline (across the chest)
+    chest = rig.matrix_world.to_3x3() @ (pose["spine03"].matrix.to_3x3() @ pose["spine03"].bone.matrix_local.to_3x3().inverted())         @ rig.matrix_world.to_3x3().inverted()
+    d = chest.inverted() @ (elbow - shoulder).normalized()
+    SHOULDER[x] = {"across": math.degrees(math.asin(max(-1.0, min(1.0, -d.x * (-1 if x == "L" else 1))))),
+                   "twist": math.degrees(twist_ua)}
     aim(la1, wrist)
     half_bend(pose[f"elbow.{x}"], shoulder, elbow, wrist)
     bend_keys("elbow", x, math.degrees((elbow - shoulder).angle(wrist - elbow)))
@@ -174,17 +432,28 @@ def place_arm(x, spread, want=None):
     swing = want @ have().inverted()
     if swing.w < 0:
         swing.negate()
-    report["wrist wanted deg " + x] = round(math.degrees(swing.angle))
-    if swing.angle > WRIST_MAX:        # a wrist bends this far at most; the hand keeps the rest
-        swing = Quaternion().slerp(swing, WRIST_MAX / swing.angle)
+    rest_axis = have().to_matrix().inverted() @ axis
+    load, dev, flex = wrist_load(x, rest_axis, want.to_matrix().inverted() @ axis)
+    # the hand at its register's yaw on the keys, palm down: only its deviation counts, the hand solver
+    # picks the pitch itself
+    yaw = register_yaw(x, shoulder)
+    y = Matrix.Rotation(yaw, 3, "Z") @ Vector((0, 1, -0.15)).normalized()
+    xa = y.cross(Vector((0, 0, -1))).normalized()
+    keys = Matrix((xa, y, xa.cross(y))).transposed()
+    keys_dev = wrist_load(x, rest_axis, keys.inverted() @ axis)[1]
+    LOAD[x] = {"wanted": load, "keys": max(0.0, abs(keys_dev) - HAND_YAW_FREE) / (ULNAR_MAX if keys_dev > 0 else RADIAL_MAX)}
+    report["register yaw deg " + x] = round(math.degrees(yaw), 1)
+    report["wrist wanted deg " + x] = {"ulnar": round(math.degrees(dev)), "flex": round(math.degrees(flex))}
+    if load > 1:                       # the wrist bends this far at most; the hand keeps the rest
+        swing = Quaternion().slerp(swing, 1 / load)
     turn(wb, swing.to_matrix().to_4x4(), world(wb))
+    _, dev, flex = wrist_load(x, rest_axis, have().to_matrix().inverted() @ axis)
     report["pronation deg " + x] = round(math.degrees(twist))
-    report["wrist bend deg " + x] = round(math.degrees(swing.angle))
+    report["wrist bend deg " + x] = {"ulnar": round(math.degrees(dev)), "flex": round(math.degrees(flex))}
     report["wrist miss mm " + x] = round((world(wb) - WRIST[x]).length * 1000)
     report["reach " + x] = round((WRIST[x] - shoulder).length / (ua.length + la1.length + la2.length), 2)
 
 
-report = {}
 for x in ("L", "R"):
     out = -1 if x == "L" else 1                      # the left side is towards -X at the piano
 
@@ -193,7 +462,8 @@ for x in ("L", "R"):
     ball = FEET[x]
     ankle_goal = ball + Vector((0, -FOOT_REACH, ANKLE_UP - (ball.z if x == "L" else 0)))
     knee, ankle = two_bone(hip, upper.length, lower.length, ankle_goal, hip + Vector((0, 0.5, 0.3)))
-    thigh_rest = rig.matrix_world.to_3x3() @ (upper.bone.tail_local - upper.bone.head_local)
+    pelvis_turn = (rig.matrix_world @ pose["pelvis"].matrix @ pose["pelvis"].bone.matrix_local.inverted()).to_3x3()
+    thigh_rest = pelvis_turn @ (upper.bone.tail_local - upper.bone.head_local)
     aim(upper, knee)
     if f"hip.{x}" in pose:
         half_bend(pose[f"hip.{x}"], hip - thigh_rest, hip, knee)
@@ -263,17 +533,48 @@ SPREAD0, SPREAD_STEP, SPREAD_MAX = 0.02, 0.04, 1.2     # elbows start at the tru
 SPREAD_OF = {}
 
 
-def fit_elbow(x, want=None, spread=SPREAD0):
-    place_arm(x, spread, want)
-    while True:
-        depth, part = penetration()[x]       # beyond its tolerance
-        if depth <= 0 or spread >= SPREAD_MAX:
-            break
-        spread += SPREAD_STEP
-        place_arm(x, spread, want)
-    SPREAD_OF[x] = spread
+SWING_OF = {}
+TRIED = {}
+SWINGS = G.get("SWINGS", [s * k for k in range(20, 161, 20) for s in (1, -1)])    # degrees round the shoulder -> wrist line
+
+
+def fit_elbow(x, want=None, spread=SPREAD0, swing=0.0):
+    """The elbow at `swing`, out from `spread` until no arm skin is in the trunk. A wrist that would bend
+    past its limits there (for `want`, or with no hand solved yet for the hand facing the keys: a hand
+    reaching across the body) has the elbow swung round instead, behind the hand and in front of the
+    trunk: the least swing that frees the wrist, else the swing that loads it least."""
+    def fit(sw):
+        sp = spread
+        place_arm(x, sp, want, sw)
+        while True:
+            depth, part = penetration()[x]       # beyond its tolerance
+            if depth <= 0 or sp >= SPREAD_MAX:
+                break
+            sp += SPREAD_STEP
+            place_arm(x, sp, want, sw)
+        return sp, depth, part, LOAD[x]["keys" if want is None else "wanted"], dict(SHOULDER[x])
+
+    tried = {swing: fit(swing)}
+    TRIED[x] = tried
+    if tried[swing][3] > 1:
+        for sw in SWINGS:
+            if sw != swing:
+                tried[sw] = fit(sw)
+        clear = [sw for sw, t in tried.items() if t[1] <= 0 and (sw == 0 or (t[4]["across"] <= ACROSS_MAX
+                                                                          and abs(t[4]["twist"]) <= TWIST_MAX))]
+        free = [sw for sw in clear if tried[sw][3] <= 1]
+        if free:
+            swing = min(free, key=abs)
+        elif clear:
+            swing = min(clear, key=lambda sw: tried[sw][3])
+        sp, depth, part, load, _ = tried[swing]
+        place_arm(x, sp, want, swing)
+    sp, depth, part, load, _ = tried[swing]
+    SPREAD_OF[x], SWING_OF[x] = sp, swing
     report["arm past tolerance mm " + x] = (round(depth * 1000, 1), part)
-    report["elbow spread " + x] = round(spread, 2)
+    report["elbow spread " + x] = round(sp, 2)
+    report["elbow swing deg " + x] = swing
+    report["wrist load " + x] = round(load, 2)
 
 
 for x in ("L", "R"):
@@ -287,11 +588,6 @@ for x in ("L", "R"):
 SEAT_GIVE = G.get("SEAT_GIVE", 0.008)
 DENT_R = 0.03                   # the dent's edge: from full depth under the contact to none
 BULGE_H, BULGE_R = 0.12, 0.12   # the pressed flesh bulges this high above the contact and this far round it
-
-
-def smooth(a, b, x):
-    u = min(max((x - a) / (b - a), 0.0), 1.0)
-    return u * u * (3 - 2 * u)
 
 
 def sit():
@@ -395,10 +691,6 @@ sit()
 
 # --- the hands on the keys: the hand study's solver (hand_solver.py) per hand; the arm brings the
 # wrist where the solver wants it, the elbow kept as fitted above, then fitted again by the trunk.
-# HANDS: finger -> semitone from C4 per hand; by default the five-finger position, every finger
-# resting on its key (KEY_DIP 0: nothing pressed).
-HANDS = G.get("HANDS", {"L": {1: -5, 2: -7, 3: -8, 4: -10, 5: -12}, "R": {1: 0, 2: 2, 3: 4, 4: 5, 5: 7}})
-ROOT = G.get("ROOT", r"E:/MySource/ReactJS/piano-trainer")
 fx = bpy.data.collections.get("pianist_fx") or bpy.data.collections.new("pianist_fx")
 if fx.name not in bpy.context.scene.collection.children:
     bpy.context.scene.collection.children.link(fx)
@@ -407,30 +699,35 @@ SOLVES = 3              # a hand solved with the elbow as fitted; the elbow push
 
 
 def wrist_excess(x, wrist_at, frame, hand_in_wrist):
-    """Degrees the wrist would bend past WRIST_MAX to hold the hand frame at wrist_at with the elbow as
+    """Degrees the wrist would bend past its limits (wrist_load, in WRIST_MAX's degrees) to hold the hand frame at wrist_at with the elbow as
     fitted. The wrist bends by the swing that takes the forearm's axis, as the hand carries it at rest,
     onto the forearm placed by the IK (the twist goes to pronation): place_arm's own split."""
     b, ua = rig.data.bones, pose[f"upperarm01.{x}"]
     in_wrist = b[f"wrist.{x}"].matrix_local.to_3x3().inverted() @ (b[f"lowerarm01.{x}"].tail_local
                                                                   - b[f"lowerarm01.{x}"].head_local)
     shoulder = world(ua)
-    pole = shoulder + Vector((SPREAD_OF[x] * (-1 if x == "L" else 1), -0.2, -0.3))
+    pole = pole_of(x, SPREAD_OF[x], SWING_OF[x], shoulder, wrist_at)
     elbow, wrist = two_bone(shoulder, ua.length, pose[f"lowerarm01.{x}"].length + pose[f"lowerarm02.{x}"].length,
                             wrist_at, pole)
-    swing = (frame @ hand_in_wrist.inverted() @ in_wrist).angle(wrist - elbow)
-    return max(0.0, math.degrees(swing - WRIST_MAX))
+    load = wrist_load(x, in_wrist, (frame @ hand_in_wrist.inverted()).inverted() @ (wrist - elbow))[0]
+    return max(0.0, (load - 1) * math.degrees(WRIST_MAX))
 
 
-for x, keys in HANDS.items():
+for x, keys in (HANDS if SOLVE_HANDS else {}).items():
+    # the neutral hand: pitched as the arm holds it, turned to its register (the solver's YAW0 is
+    # asin(-HAND_FWD.x)); the wrist bends between it and the forearm
     hand_fwd = (world(pose[f"finger3-1.{x}"]) - world(pose[f"wrist.{x}"])).normalized()
+    yaw = register_yaw(x, world(pose[f"upperarm01.{x}"]))
+    hand_fwd = Vector((-math.sin(yaw), 0, hand_fwd.z))
+    hand_fwd.y = math.sqrt(max(0.0, 1 - hand_fwd.x ** 2 - hand_fwd.z ** 2))
     for solve in range(SOLVES):
         hand = {"__name__": "hand_solver", "ROOT": ROOT, "rig": rig, "mesh": bpy.data.objects["PianistBody"],
                 "fx": fx, "SIDE": x, "pose": keys, "hover_x": {}, "KEY_DIP": G.get("KEY_DIP", 0.0),
-                "ROLL": math.radians(G.get("ROLL_DEG", 2)), "HAND_FWD": hand_fwd}
+                "ROLL": math.radians(G.get("ROLL_DEG", 2)), "HAND_FWD": hand_fwd, "MEAN_DEPTH": True}
 
         def arm(wrist_at, frame, yaw, x=x, hand=hand):
             WRIST[x] = wrist_at
-            place_arm(x, SPREAD_OF[x], (frame @ hand["HAND_IN_WRIST"].inverted()).to_quaternion())
+            place_arm(x, SPREAD_OF[x], (frame @ hand["HAND_IN_WRIST"].inverted()).to_quaternion(), SWING_OF[x])
 
         hand["place_arm"] = arm
         hand["wrist_excess"] = lambda wrist_at, frame, x=x, hand=hand: wrist_excess(x, wrist_at, frame,
@@ -438,10 +735,10 @@ for x, keys in HANDS.items():
         exec(open(os.path.join(ROOT, "tools/hand-rig/hand_solver.py"), encoding="utf-8").read(), hand)
         WRIST[x] = world(pose[f"wrist.{x}"])
         # from the solver's own elbow: tucking it in again would turn the forearm under the solved hand
-        solved_with = SPREAD_OF[x]
-        fit_elbow(x, (rig.matrix_world @ pose[f"wrist.{x}"].matrix).to_quaternion(), solved_with)
+        solved_with = SPREAD_OF[x], SWING_OF[x]
+        fit_elbow(x, (rig.matrix_world @ pose[f"wrist.{x}"].matrix).to_quaternion(), *solved_with)
         report["hand solves " + x] = solve + 1
-        if SPREAD_OF[x] == solved_with:
+        if (SPREAD_OF[x], SWING_OF[x]) == solved_with:
             break
     tips = {f: hand["world"](f"finger{f}-3.{x}", "tail") for f in keys}
     report["hand " + x] = {"miss mm": {f: round((tips[f].xy - hand["targets"][f].xy).length * 1000, 1) for f in keys},
