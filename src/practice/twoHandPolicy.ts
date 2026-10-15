@@ -1,6 +1,7 @@
 import type { KeyEvent } from "../input/midiInput";
 import type { PracticeEvent, PracticeOptions, PracticeSession } from "./session";
-import type { TrainerInputHolds } from "./trainerInputHolds";
+import type { TrainerCourse } from "./trainerCourse";
+import { processScopedKey } from "./trainerScopedInput";
 
 /** Pair assessment owns freshness and event ordering, independently of ordinary wait input. */
 export interface TrainerPairPolicy {
@@ -32,20 +33,6 @@ export const TWO_HAND_PRACTICE_OPTIONS: PracticeOptions = {
   noteResult: false
 };
 
-export function cancelPairInput(
-  policy: TrainerPairPolicy | null,
-  holds: TrainerInputHolds,
-  pressed: Set<number>,
-  lights: ((pitches: readonly number[]) => void) | undefined,
-  resetAll: boolean
-): void {
-  if (resetAll) holds.clear();
-  if (!policy) return;
-  policy.cancel(performance.now(), resetAll);
-  pressed.clear();
-  lights?.([]);
-}
-
 /** A validated pure result is the sole entry point to the session's atomic pair commit. */
 export function stepTrainerPair(
   policy: TrainerPairPolicy | null,
@@ -75,6 +62,36 @@ export function pairGuidance(
       waitingFor: notes,
       hints: notes.length > 0,
       neutralKeys: true
+    }
+  };
+}
+
+export function pairCourse(policy: TrainerPairPolicy): TrainerCourse {
+  return {
+    kind: "pair",
+    policy,
+    ownsInput: true,
+    smoothClock: false,
+    gradesRun: true,
+    playsAfterFinish: false,
+    overdrive: true,
+    seed: (held, atMs) => policy.seedHeld?.(held, atMs),
+    step: (session, playing, atMs) => stepTrainerPair(policy, session, playing, atMs),
+    key: (event, context) => {
+      processScopedKey(event, context, {
+        intercepts: true,
+        onInput: (session, playing, { raw, corrected, received }) => {
+          policy.onInput(event, session, playing, raw, corrected, received);
+        },
+        step: (session, playing, atMs) => stepTrainerPair(policy, session, playing, atMs)
+      });
+    },
+    guidance: (session, playing) => pairGuidance(session, policy, playing),
+    cuePresented: (lights, atMs) => {
+      if (lights.length > 0) policy.onCuePresented?.(lights, atMs);
+    },
+    cancel: (atMs, resetAll) => {
+      policy.cancel(atMs, resetAll);
     }
   };
 }

@@ -2,6 +2,8 @@ import type { KeyEvent } from "../input/midiInput";
 import type { PracticeOptions, PracticeSession, PracticeEvent } from "./session";
 import type { ReadingAttackGate } from "./readingPolicy";
 import type { TimingConfig } from "./timingConfig";
+import { trainerGuidance } from "./readingPolicy";
+import { NO_EVENTS, type TrainerCourse } from "./trainerCourse";
 
 export interface RhythmAttackEvidence {
   readonly event: KeyEvent;
@@ -68,4 +70,40 @@ export function processRhythmKey(
     events.push(...session.pressKeyAt(60, corrected, received, event.deviceId ?? event.source));
   }
   return events;
+}
+
+export function rhythmCourse(policy: TrainerRhythmPolicy): TrainerCourse {
+  return {
+    kind: "rhythm",
+    policy,
+    ownsInput: true,
+    smoothClock: true,
+    gradesRun: true,
+    playsAfterFinish: false,
+    overdrive: true,
+    inputCompensationMs: () => policy.inputCompensationMs(),
+    step: (session, playing, atMs) => {
+      policy.onFrame(session, playing, atMs);
+      return NO_EVENTS;
+    },
+    key: (event, context) => {
+      // Releases pass even when the interceptor took them: the rhythm lane must let go.
+      if (context.intercept(event) && event.type !== "up") return;
+      context.apply(
+        processRhythmKey(
+          event,
+          context.session,
+          policy,
+          context.gate,
+          context.timing,
+          context.playing()
+        )
+      );
+      if (context.session) policy.onFrame(context.session, context.playing(), performance.now());
+      context.publish();
+    },
+    guidance: (session, playing, performance) =>
+      trainerGuidance(session, null, playing, performance),
+    cuePresented: () => undefined
+  };
 }

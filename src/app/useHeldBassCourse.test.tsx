@@ -11,10 +11,10 @@ import { useHeldBassCourse, useHeldBassTrainer } from "./useHeldBassCourse";
 
 let root: Root, host: HTMLDivElement, store: AppStore, now: number;
 let course: ReturnType<typeof useHeldBassCourse>;
-const configureHeldBass = vi.fn(),
+const configureCourse = vi.fn(),
   setPlaying = vi.fn();
 const trainerRef = {
-  current: { configureHeldBass, setPlaying, cancelInput: vi.fn() } as unknown as Trainer
+  current: { configureCourse, setPlaying, cancelInput: vi.fn() } as unknown as Trainer
 };
 function Harness({ connect = false }: { connect?: boolean }) {
   const value = useHeldBassCourse();
@@ -174,7 +174,7 @@ describe("held bass course shell with the actual single clock", () => {
     act(() => {
       root.render(withTestStore(<Harness connect />, store));
     });
-    expect(configureHeldBass).toHaveBeenLastCalledWith(course.policy);
+    expect(configureCourse).toHaveBeenLastCalledWith("heldBass", course.policy);
     expect(setPlaying).toHaveBeenCalledWith(true);
   });
   it("retries the whole current fragment and rejects receipts from its old scene", () => {

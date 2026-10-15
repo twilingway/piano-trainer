@@ -1,18 +1,23 @@
 import type { PracticeSession } from "./session";
 import type { TrainerInputHolds } from "./trainerInputHolds";
-import type { TrainerReadingPolicy } from "./readingPolicy";
-import type { TrainerRhythmPolicy } from "./rhythmPolicy";
-import { cancelPairInput, type TrainerPairPolicy } from "./twoHandPolicy";
-import type { TrainerHeldBassPolicy } from "./heldBassPolicy";
-import type { TrainerIndependentRhythmPolicy } from "./independentRhythmPolicy";
+import type { CourseKind, CoursePolicies, TrainerCourse } from "./trainerCourse";
+import { readingCourse } from "./readingPolicy";
+import { rhythmCourse } from "./rhythmPolicy";
+import { pairCourse } from "./twoHandPolicy";
+import { heldBassCourse } from "./heldBassPolicy";
+import { independentRhythmCourse } from "./independentRhythmPolicy";
 
-/** Exclusive course policies share physical ownership across load and phase boundaries. */
+const COURSES: { readonly [K in CourseKind]: (policy: CoursePolicies[K]) => TrainerCourse } = {
+  reading: readingCourse,
+  rhythm: rhythmCourse,
+  pair: pairCourse,
+  heldBass: heldBassCourse,
+  independentRhythm: independentRhythmCourse
+};
+
+/** One exclusive course; physical ownership crosses load and phase boundaries. */
 export class TrainerCoursePolicies {
-  reading: TrainerReadingPolicy | null = null;
-  rhythm: TrainerRhythmPolicy | null = null;
-  pair: TrainerPairPolicy | null = null;
-  heldBass: TrainerHeldBassPolicy | null = null;
-  independentRhythm: TrainerIndependentRhythmPolicy | null = null;
+  current: TrainerCourse | null = null;
 
   constructor(
     private readonly inputHolds: TrainerInputHolds,
@@ -21,69 +26,30 @@ export class TrainerCoursePolicies {
     private readonly session: () => PracticeSession | undefined
   ) {}
 
-  get hasDedicatedInput(): boolean {
-    return !!(this.rhythm ?? this.pair ?? this.heldBass ?? this.independentRhythm);
-  }
-
   clear(): void {
-    this.reading = null;
-    this.rhythm = null;
-    this.pair = null;
-    this.heldBass = null;
-    this.independentRhythm = null;
+    this.current = null;
   }
 
-  configureReading(policy: TrainerReadingPolicy | null): void {
-    if (policy) this.configureIndependentRhythm(null);
-    if (policy) this.configureHeldBass(null);
-    this.reading = policy;
-  }
-  configureRhythm(policy: TrainerRhythmPolicy | null): void {
-    if (policy) this.configureIndependentRhythm(null);
-    if (policy) this.configureHeldBass(null);
-    this.rhythm = policy;
-  }
-  configurePair(policy: TrainerPairPolicy | null): void {
-    if (policy) this.configureIndependentRhythm(null);
-    if (this.pair === policy) return;
+  /** Null removes the course only when it is of this kind: every course hook sends its own null. */
+  configure<K extends CourseKind>(kind: K, policy: CoursePolicies[K] | null): void {
+    const current = this.current;
+    if (policy === null ? current?.kind !== kind : current?.policy === policy) return;
     this.cancelInput();
-    if (policy) this.heldBass = null;
-    this.pair = policy;
-    policy?.seedHeld?.(this.inputHolds.snapshot(), performance.now());
+    const next = policy === null ? null : COURSES[kind](policy);
+    this.current = next;
+    if (!next) return;
+    const session = this.session();
+    if (session) next.attach?.(session);
+    next.seed?.(this.inputHolds.snapshot(), performance.now());
   }
-  configureHeldBass(policy: TrainerHeldBassPolicy | null): void {
-    if (policy) this.configureIndependentRhythm(null);
-    if (this.heldBass === policy) return;
-    this.cancelInput();
-    this.heldBass = policy;
-    if (policy) {
-      this.reading = null;
-      this.rhythm = null;
-      this.pair = null;
-      this.session()?.registerVerifiedOnsets(policy.onsets);
-      policy.seedHeld?.(this.inputHolds.snapshot(), performance.now());
-    }
-  }
-  configureIndependentRhythm(policy: TrainerIndependentRhythmPolicy | null): void {
-    if (this.independentRhythm === policy) return;
-    this.cancelInput();
-    this.independentRhythm = policy;
-    if (policy) {
-      this.reading = null;
-      this.rhythm = null;
-      this.pair = null;
-      this.heldBass = null;
-      policy.seedHeld(this.inputHolds.snapshot(), performance.now());
-    }
-  }
+
   /** Loss of physical input cancels before any cleanup-generated releases arrive. */
   cancelInput(resetAll = false): void {
-    cancelPairInput(this.pair, this.inputHolds, this.pressed, this.onLights(), resetAll);
-    const scoped = this.independentRhythm ?? this.heldBass;
-    if (scoped) {
-      scoped.cancel(performance.now(), resetAll);
-      this.pressed.clear();
-      this.onLights()?.([]);
-    }
+    if (resetAll) this.inputHolds.clear();
+    const cancel = this.current?.cancel;
+    if (!cancel) return;
+    cancel(performance.now(), resetAll);
+    this.pressed.clear();
+    this.onLights()?.([]);
   }
 }

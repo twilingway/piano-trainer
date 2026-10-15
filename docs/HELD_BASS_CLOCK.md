@@ -26,10 +26,10 @@ freeze anchor. Музыкальный end — crossing `song.duration`: при r
 сокращённым валидным proof. Оценщик отменяет такую попытку; успешная история не может опираться на
 усечённую временную карту. Копии receipts не позволяют переписать внутренний clock.
 
-`Trainer.configureHeldBass` исключает reading/rhythm/pair policy. Raw input поступает и при движении
-к следующему onset, и после музыкального конца. `onFrame` может вернуть scoped request; shell
-подтверждает его результатом настоящего commit и новым receipt. Cues подтверждаются после draw.
-Preheld передаются через общий `TrainerInputHolds` как владение, без искусственных атак.
+`Trainer.configureCourse("heldBass", policy)` вытесняет любой другой курс. Raw input поступает и при
+движении к следующему onset, и после музыкального конца. `onFrame` может вернуть scoped request;
+shell подтверждает его результатом настоящего commit и новым receipt. Cues подтверждаются после
+draw. Preheld передаются через общий `TrainerInputHolds` как владение, без искусственных атак.
 
 Автоматическое событие `finished` в этом режиме не вызывает silence, cancel, запись дубля,
 рейтинговый callback или loop. Trainer продолжает принимать физические releases и frame callbacks,

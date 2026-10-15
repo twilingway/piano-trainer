@@ -40,12 +40,14 @@ let practice: PracticeSession | null;
 let policy: TrainerIndependentRhythmPolicy | null;
 let playing: boolean, blocked: boolean, devices: readonly MidiDevice[], selectedDeviceId: string;
 const held = new Map<number, KeyEvent>();
-const configureIndependentRhythm = vi.fn((next: TrainerIndependentRhythmPolicy | null) => {
-  if (policy === next) return;
-  policy?.cancel(now);
-  policy = next;
-  policy?.seedHeld([...held.values()], now);
-});
+const configureCourse = vi.fn(
+  (_kind: "independentRhythm", next: TrainerIndependentRhythmPolicy | null) => {
+    if (policy === next) return;
+    policy?.cancel(now);
+    policy = next;
+    policy?.seedHeld([...held.values()], now);
+  }
+);
 const setPlaying = vi.fn((next: boolean) => {
   if (!practice) return;
   if (next) {
@@ -59,7 +61,7 @@ const setPlaying = vi.fn((next: boolean) => {
     practice.pauseClock(now);
   }
 });
-const trainerRef = { current: { configureIndependentRhythm, setPlaying } as unknown as Trainer };
+const trainerRef = { current: { configureCourse, setPlaying } as unknown as Trainer };
 function Harness() {
   const value = useIndependentRhythmCourse();
   useIndependentRhythmTrainer(value, trainerRef, true, blocked, devices, selectedDeviceId);
@@ -213,7 +215,7 @@ describe("independent rhythm React shell and actual tempo clock", () => {
   it("runs two manually started fresh Songs, preserves the permit only in memory and saves once", async () => {
     select();
     expect(course.status).toBe("preparation");
-    expect(configureIndependentRhythm).toHaveBeenLastCalledWith(course.policy);
+    expect(configureCourse).toHaveBeenLastCalledWith("independentRhythm", course.policy);
     await start();
     expect(course.status).toBe("count-in");
     const pulseSong = required(course.scene).song;
@@ -266,7 +268,7 @@ describe("independent rhythm React shell and actual tempo clock", () => {
   });
   it("does not install the observer or start before actual Staff presentation", async () => {
     select(false);
-    expect(configureIndependentRhythm).not.toHaveBeenCalled();
+    expect(configureCourse).not.toHaveBeenCalled();
     await start();
     expect(audio.ensure).not.toHaveBeenCalled();
     expect(setPlaying).not.toHaveBeenCalledWith(true);
@@ -274,7 +276,7 @@ describe("independent rhythm React shell and actual tempo clock", () => {
       const shown = required(course.presentation);
       shown.onPresented(shown.id, now);
     });
-    expect(configureIndependentRhythm).toHaveBeenLastCalledWith(course.policy);
+    expect(configureCourse).toHaveBeenLastCalledWith("independentRhythm", course.policy);
     await start();
     expect(playing).toBe(true);
   });

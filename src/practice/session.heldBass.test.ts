@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Song } from "../song/song";
 import { PracticeSession } from "./session";
-import { HELD_BASS_PRACTICE_OPTIONS } from "./heldBassPolicy";
+import { HELD_BASS_PRACTICE_OPTIONS, isHeldBassScope } from "./heldBassPolicy";
 import type { ScopedVerifiedOnset, VerifiedOnsetScope } from "./verifiedWaitingOnset";
 
 const song: Song = {
@@ -189,5 +189,35 @@ describe("scoped held-bass onset and clock", () => {
     expect(snapshot.segments.at(-1)?.speed).toBe(1);
     if (snapshot.segments[0]) Reflect.set(snapshot.segments[0], "performanceMs", -999);
     expect(session.clockReceipt(4600).segments[0]?.performanceMs).toBe(1000);
+  });
+});
+
+describe("held-bass scope shape", () => {
+  it("is checked by the course while the session keeps only generic onset invariants", () => {
+    expect(isHeldBassScope(scope, song, HELD_BASS_PRACTICE_OPTIONS)).toBe(true);
+    const melodyFirst: Song = {
+      ...song,
+      notes: song.notes.map((note) => (note.id === "bass" ? { ...note, hand: "right" } : note))
+    };
+    expect(isHeldBassScope(scope, melodyFirst, HELD_BASS_PRACTICE_OPTIONS)).toBe(false);
+    expect(
+      isHeldBassScope(scope, song, { ...HELD_BASS_PRACTICE_OPTIONS, hands: new Set(["right"]) })
+    ).toBe(false);
+    expect(isHeldBassScope(scope, { ...song, duration: 1.5 }, HELD_BASS_PRACTICE_OPTIONS)).toBe(
+      false
+    );
+    const three: Song = {
+      ...song,
+      duration: 1.5,
+      notes: [
+        ...song.notes,
+        { id: "r2", pitch: 64, hand: "right", start: 1, startBeat: 2, duration: 0.5 }
+      ]
+    };
+    const threeScope = { ...scope, steps: [...scope.steps, ["r2"]] };
+    expect(isHeldBassScope(threeScope, three, HELD_BASS_PRACTICE_OPTIONS)).toBe(false);
+    expect(
+      new PracticeSession(three, HELD_BASS_PRACTICE_OPTIONS).registerVerifiedOnsets(threeScope)
+    ).toBe(true);
   });
 });

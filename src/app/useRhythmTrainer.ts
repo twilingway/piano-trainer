@@ -35,10 +35,10 @@ export function useRhythmTrainer(
   ]);
   useLayoutEffect(() => {
     const trainer = trainerRef.current;
-    trainer?.configureRhythm(policy);
+    trainer?.configureCourse("rhythm", policy);
     return () => {
       cancel();
-      trainer?.configureRhythm(null);
+      trainer?.configureCourse("rhythm", null);
     };
   }, [trainerRef, trainerReady, policy, cancel]);
   useEffect(() => {

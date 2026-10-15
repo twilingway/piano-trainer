@@ -404,13 +404,13 @@ export function useReadingTrainer(
   useEffect(() => {
     if (!ready) return;
     const trainer = trainerRef.current;
-    trainer?.configureReading(policy);
+    trainer?.configureCourse("reading", policy);
     const onVisibility = () => {
       if (document.visibilityState === "hidden") suspend();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      trainer?.configureReading(null);
+      trainer?.configureCourse("reading", null);
       document.removeEventListener("visibilitychange", onVisibility);
       session?.setActive(false, performance.now());
     };

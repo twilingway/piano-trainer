@@ -15,7 +15,10 @@ export interface ScopedVerifiedOnset {
   readonly noteIds: readonly string[];
 }
 
-/** A scope is immutable and belongs to one fresh current-fragment session. */
+/**
+ * A scope is immutable and belongs to one fresh current-fragment session. Only the invariants of
+ * verified onsets live here; a course checks its own shape before registering.
+ */
 export class VerifiedWaitingOnsets {
   private scope: VerifiedOnsetScope | undefined;
   private step = 0;
@@ -30,33 +33,29 @@ export class VerifiedWaitingOnsets {
       options.noteResult !== false ||
       options.speed !== 1 ||
       options.accompaniment !== false ||
-      options.hands.size !== 2 ||
-      !options.hands.has("left") ||
-      !options.hands.has("right") ||
       options.from !== undefined ||
       options.to !== undefined ||
       options.parts !== undefined ||
       options.playable !== undefined ||
-      ![2, 4].includes(scope.steps.length)
+      scope.steps.length === 0
     )
       return false;
     const allIds = scope.steps.flat();
     if (new Set(allIds).size !== allIds.length || allIds.length !== song.notes.length) return false;
-    if (
-      scope.steps.some((ids, index) => {
-        const notes = song.notes.filter((note) => note.start === index * 0.5);
-        return (
-          ids.length !== (index === 0 ? 2 : 1) ||
-          notes.length !== ids.length ||
-          notes.some((note) => !ids.includes(note.id)) ||
-          (index === 0
-            ? notes.filter((note) => note.hand === "left").length !== 1
-            : notes.some((note) => note.hand !== "right"))
-        );
-      }) ||
-      song.duration !== scope.steps.length * 0.5
-    )
-      return false;
+    // Every step is all the notes of one start, and the starts follow one another.
+    let previous = -Infinity;
+    for (const ids of scope.steps) {
+      const notes = song.notes.filter((note) => ids.includes(note.id));
+      const start = notes[0]?.start;
+      if (
+        start === undefined ||
+        start <= previous ||
+        notes.length !== ids.length ||
+        notes.some((note) => note.start !== start)
+      )
+        return false;
+      previous = start;
+    }
     this.scope = { ...scope, steps: scope.steps.map((ids) => [...ids]) };
     return true;
   }

@@ -3,13 +3,8 @@ import { quartersAt, type SongNote } from "../song/song";
 import type { PracticeSession } from "./session";
 import type { PracticeEvent } from "./practiceTypes";
 import type { ComboBoard, ComboCounter, GradedStrike } from "./combo";
-import { trainerGuidance, type TrainerReadingPolicy } from "./readingPolicy";
-import { pairGuidance, type TrainerPairPolicy } from "./twoHandPolicy";
-import type { TrainerHeldBassPolicy } from "./heldBassPolicy";
-import {
-  independentRhythmGuidance,
-  type TrainerIndependentRhythmPolicy
-} from "./independentRhythmPolicy";
+import { trainerGuidance } from "./readingPolicy";
+import type { TrainerCourse } from "./trainerCourse";
 
 const NOTHING: ReadonlySet<number> = new Set();
 
@@ -17,10 +12,7 @@ interface GuidedScene {
   readonly playing: boolean;
   readonly performance: boolean;
   readonly visualOffsetMs: number;
-  readonly reading: TrainerReadingPolicy | null;
-  readonly scoped: TrainerPairPolicy | TrainerHeldBassPolicy | null;
-  readonly rhythm: boolean;
-  readonly independentRhythm: TrainerIndependentRhythmPolicy | null;
+  readonly course: TrainerCourse | null;
   readonly pressed: ReadonlySet<number>;
   readonly sounding: ReadonlySet<number>;
   readonly colorOf: ((note: SongNote) => number | undefined) | undefined;
@@ -35,12 +27,10 @@ export function drawGuidedTrainerScene(
   scene: GuidedScene,
   now: number
 ): void {
-  const { independentRhythm, scoped, reading } = scene;
-  const guidance = independentRhythm
-    ? independentRhythmGuidance(independentRhythm)
-    : scoped
-      ? pairGuidance(session, scoped, scene.playing)
-      : trainerGuidance(session, reading, scene.playing, scene.performance);
+  const { course } = scene;
+  const guidance = course
+    ? course.guidance(session, scene.playing, scene.performance)
+    : trainerGuidance(session, null, scene.playing, scene.performance);
   scene.onLights?.(guidance.lights);
   drawTrainerScene(
     view,
@@ -52,16 +42,11 @@ export function drawGuidedTrainerScene(
       sounding: scene.sounding,
       colorOf: scene.colorOf,
       board: scene.board,
-      graded: scene.rhythm || scoped || independentRhythm ? [] : scene.graded
+      graded: course?.ownsInput ? [] : scene.graded
     },
-    independentRhythm?.statusOf
+    course?.statusOf
   );
-  const cue = guidance.lights[0];
-  if (cue !== undefined) reading?.onCuePresented?.(cue, now);
-  if (guidance.lights.length > 0) {
-    scoped?.onCuePresented?.(guidance.lights, now);
-    independentRhythm?.onCuePresented?.(guidance.lights, now);
-  }
+  course?.cuePresented(guidance.lights, now);
 }
 
 type TrainerDraw = Parameters<FallingNotesView["draw"]>[0];

@@ -1,6 +1,7 @@
 import type { KeyEvent } from "../input/midiInput";
 import type { NoteStatus, PracticeOptions, PracticeSession, PracticeStats } from "./session";
 import type { TempoClockReceipt } from "./tempoClock";
+import { NO_EVENTS, type TrainerCourse } from "./trainerCourse";
 
 export interface TrainerIndependentRhythmPolicy {
   readonly inputCompensationMs: () => number;
@@ -78,4 +79,45 @@ export function stepIndependentRhythm(
   atMs: number
 ): void {
   if (policy && session) policy.onFrame(session, playing, atMs, session.tempoClockReceipt(atMs));
+}
+
+export function independentRhythmCourse(policy: TrainerIndependentRhythmPolicy): TrainerCourse {
+  return {
+    kind: "independentRhythm",
+    policy,
+    ownsInput: true,
+    smoothClock: true,
+    gradesRun: false,
+    playsAfterFinish: true,
+    overdrive: false,
+    inputCompensationMs: () => policy.inputCompensationMs(),
+    seed: (held, atMs) => {
+      policy.seedHeld(held, atMs);
+    },
+    start: (session, atMs, held) => policy.onStart(atMs, session.tempoClockReceipt(atMs), held),
+    step: (session, playing, atMs) => {
+      stepIndependentRhythm(policy, session, playing, atMs);
+      return NO_EVENTS;
+    },
+    // Original pitches reach the course before the interceptor and the device filter.
+    key: (event, context) => {
+      const session = context.session,
+        received = performance.now();
+      if (event.type === "down") context.pressed.add(event.pitch);
+      else context.pressed.delete(event.pitch);
+      if (session && context.playing()) context.apply(session.tick(received));
+      if (session)
+        observeIndependentRhythmInput(policy, session, event, context.playing(), received);
+      context.publish();
+    },
+    guidance: () => independentRhythmGuidance(policy),
+    cuePresented: (lights, atMs) => {
+      if (lights.length > 0) policy.onCuePresented?.(lights, atMs);
+    },
+    cancel: (atMs, resetAll) => {
+      policy.cancel(atMs, resetAll);
+    },
+    ...(policy.statusOf ? { statusOf: policy.statusOf } : {}),
+    stats: () => policy.stats?.()
+  };
 }

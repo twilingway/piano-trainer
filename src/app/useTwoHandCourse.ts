@@ -364,7 +364,7 @@ export function useTwoHandTrainer(
   useEffect(() => {
     if (!ready) return;
     const trainer = trainerRef.current;
-    trainer?.configurePair(policy);
+    trainer?.configureCourse("pair", policy);
     if (playRequestedRef.current && trainer && policy) {
       playRequestedRef.current = false;
       if (!blockedRef.current) trainer.setPlaying(true);
@@ -374,7 +374,7 @@ export function useTwoHandTrainer(
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      trainer?.configurePair(null);
+      trainer?.configureCourse("pair", null);
       document.removeEventListener("visibilitychange", onVisibility);
       suspend();
     };

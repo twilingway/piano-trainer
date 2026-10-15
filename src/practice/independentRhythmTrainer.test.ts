@@ -88,7 +88,7 @@ function run(offsetMs = 0) {
       return outcome === "miss" ? "missed" : outcome;
     }
   };
-  trainer.configureIndependentRhythm(policy);
+  trainer.configureCourse("independentRhythm", policy);
   return {
     trainer,
     phase,

@@ -76,9 +76,9 @@ let reading: ReturnType<typeof useReadingCourse>;
 let now: number;
 let visible: DocumentVisibilityState;
 let mounted: boolean;
-const configureReading = vi.fn();
+const configureCourse = vi.fn();
 const setPlaying = vi.fn();
-const trainerRef = { current: { configureReading, setPlaying } as unknown as Trainer };
+const trainerRef = { current: { configureCourse, setPlaying } as unknown as Trainer };
 
 function Harness({ blocked = false }: { blocked?: boolean }) {
   const p2 = useReadingCourse();
@@ -193,7 +193,7 @@ beforeEach(async () => {
   vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visible);
   vi.stubGlobal("requestAnimationFrame", () => 1);
   vi.stubGlobal("cancelAnimationFrame", () => undefined);
-  configureReading.mockClear();
+  configureCourse.mockClear();
   setPlaying.mockClear();
   audio.owners.length = 0;
   repository = createMemoryReadingRepository();
@@ -258,7 +258,7 @@ describe("interval course visual integration", () => {
     } as unknown as FallingNotesView);
     const first = interval.exercise.song.notes[0];
     if (!first) throw new Error("Missing first note");
-    real.configureReading(interval.policy);
+    real.configureCourse("reading", interval.policy);
     real.load(interval.exercise.song, READING_PRACTICE_OPTIONS, interval.exercise.id);
     at(now, () => {
       real.setPlaying(true);
@@ -286,13 +286,13 @@ describe("interval course visual integration", () => {
     });
     expect(interval.snapshot?.noteRole).toBe(1);
     select("hear-and-choose");
-    real.configureReading(interval.policy);
+    real.configureCourse("reading", interval.policy);
     real.load(interval.exercise.song, READING_PRACTICE_OPTIONS, interval.exercise.id);
     at(3100, () => {
       midi("up");
     });
     select("see-and-play");
-    real.configureReading(interval.policy);
+    real.configureCourse("reading", interval.policy);
     real.load(interval.exercise.song, READING_PRACTICE_OPTIONS, interval.exercise.id);
     at(now, () => {
       real.setPlaying(true);
@@ -318,7 +318,7 @@ describe("interval course visual integration", () => {
     if (!interval.exercise) throw new Error("Missing exercise");
     const view = { onTick: vi.fn(), setSong: vi.fn(), draw: vi.fn() };
     const real = new Trainer(view as unknown as FallingNotesView);
-    real.configureReading(interval.policy);
+    real.configureCourse("reading", interval.policy);
     real.load(interval.exercise.song, READING_PRACTICE_OPTIONS, interval.exercise.id);
     at(now, () => {
       real.setPlaying(true);
@@ -658,6 +658,6 @@ describe("exclusive course ownership", () => {
     expect(interval.session).toBeNull();
     expect(reading.session).toBeNull();
     expect(exiting.disposed).toBe(true);
-    expect(configureReading).toHaveBeenLastCalledWith(null);
+    expect(configureCourse).toHaveBeenLastCalledWith("reading", null);
   });
 });

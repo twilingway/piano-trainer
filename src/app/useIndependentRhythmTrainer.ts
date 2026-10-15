@@ -24,9 +24,9 @@ export function useIndependentRhythmTrainer(
   useLayoutEffect(() => {
     if (!ready || !presented || !policy) return;
     const trainer = trainerRef.current;
-    trainer?.configureIndependentRhythm(policy);
+    trainer?.configureCourse("independentRhythm", policy);
     return () => {
-      trainer?.configureIndependentRhythm(null);
+      trainer?.configureCourse("independentRhythm", null);
     };
   }, [policy, presented, trainerRef, ready]);
   useEffect(() => {
