@@ -1,9 +1,7 @@
 import type { ReadingPersistentField } from "./readingPersistentFields";
 export { changedReadingFields, type ReadingPersistentField } from "./readingPersistentFields";
-import {
-  emptyIndependentRhythmState,
-  mergeIndependentRhythmHistory
-} from "./independentRhythmPersistence";
+import { emptyIndependentRhythmState } from "./independentRhythmPersistence";
+import { READING_COURSE_STORES, courseSlot, type ReadingCourseStates } from "./courseStores";
 import { normalizeReadingCourses } from "./readingCourseMigration";
 import {
   DEFAULT_READING_PREFERENCES,
@@ -13,11 +11,11 @@ import {
 import { addReadingResult, emptyReadingProfile, readingPurpose } from "../reading/progress";
 import type { ReadingPlan, ReadingSourceFilter } from "../reading/progressTypes";
 import type { ReadingState } from "./readingSlice";
-import { emptyIntervalState, mergeIntervalHistory } from "./intervalPersistence";
-import { emptyRhythmState, mergeRhythmHistory } from "./rhythmPersistence";
-import { emptyHeldBassState, mergeHeldBassHistory } from "./heldBassPersistence";
-import { emptyBassState, mergeBassHistory } from "./bassPersistence";
-import { emptyTwoHandState, mergeTwoHandHistory } from "./twoHandPersistence";
+import { emptyIntervalState } from "./intervalPersistence";
+import { emptyRhythmState } from "./rhythmPersistence";
+import { emptyHeldBassState } from "./heldBassPersistence";
+import { emptyBassState } from "./bassPersistence";
+import { emptyTwoHandState } from "./twoHandPersistence";
 import {
   validObservation,
   validIndependentDate,
@@ -324,16 +322,16 @@ export function mergeReadingState(
   ]
 ): ReadingState {
   const selection = fields.includes("selection") ? incoming : saved;
-  const intervals = fields.includes("intervalSelection") ? incoming.intervals : saved.intervals;
-  const rhythm = fields.includes("rhythmSelection") ? incoming.rhythm : saved.rhythm;
-  const bass = fields.includes("bassSelection") ? incoming.bass : saved.bass;
-  const coordination = fields.includes("twoHandSelection")
-    ? incoming.coordination
-    : saved.coordination;
-  const heldBass = fields.includes("heldBassSelection") ? incoming.heldBass : saved.heldBass;
-  const independentRhythm = fields.includes("independentRhythmSelection")
-    ? incoming.independentRhythm
-    : saved.independentRhythm;
+  const courses: Record<string, unknown> = {};
+  for (const course of READING_COURSE_STORES) {
+    const own = courseSlot(saved, course.key);
+    const theirs = courseSlot(incoming, course.key);
+    const merged = { ...(fields.includes(course.selection.field) ? theirs : own) };
+    for (const { field, key } of course.preferences)
+      merged[key as string] = fields.includes(field) ? theirs[key as string] : own[key as string];
+    merged.history = course.mergeHistory(own.history as never, theirs.history as never);
+    courses[course.key] = merged;
+  }
   const preferences = { ...saved.preferences };
   for (const key of ["automaticHints", "nameDelayMs", "keyDelayMs"] as const) {
     if (fields.includes(key)) Object.assign(preferences, { [key]: incoming.preferences[key] });
@@ -346,54 +344,7 @@ export function mergeReadingState(
   return {
     schemaVersion: 8,
     activeCourse: fields.includes("activeCourse") ? incoming.activeCourse : saved.activeCourse,
-    intervals: {
-      ...intervals,
-      sourceFilter: fields.includes("intervalSourceFilter")
-        ? incoming.intervals.sourceFilter
-        : saved.intervals.sourceFilter,
-      history: mergeIntervalHistory(saved.intervals.history, incoming.intervals.history)
-    },
-    rhythm: {
-      ...rhythm,
-      history: mergeRhythmHistory(saved.rhythm.history, incoming.rhythm.history)
-    },
-    bass: {
-      ...bass,
-      sourceFilter: fields.includes("bassSourceFilter")
-        ? incoming.bass.sourceFilter
-        : saved.bass.sourceFilter,
-      history: mergeBassHistory(saved.bass.history, incoming.bass.history)
-    },
-    coordination: {
-      ...coordination,
-      sourceFilter: fields.includes("twoHandSourceFilter")
-        ? incoming.coordination.sourceFilter
-        : saved.coordination.sourceFilter,
-      history: mergeTwoHandHistory(saved.coordination.history, incoming.coordination.history)
-    },
-    heldBass: {
-      ...heldBass,
-      sourceFilter: fields.includes("heldBassSourceFilter")
-        ? incoming.heldBass.sourceFilter
-        : saved.heldBass.sourceFilter,
-      history: mergeHeldBassHistory(saved.heldBass.history, incoming.heldBass.history)
-    },
-    independentRhythm: {
-      ...independentRhythm,
-      inputSource: fields.includes("independentRhythmSource")
-        ? incoming.independentRhythm.inputSource
-        : saved.independentRhythm.inputSource,
-      sourceFilter: fields.includes("independentRhythmSourceFilter")
-        ? incoming.independentRhythm.sourceFilter
-        : saved.independentRhythm.sourceFilter,
-      showKeyHints: fields.includes("independentRhythmKeyHints")
-        ? incoming.independentRhythm.showKeyHints
-        : saved.independentRhythm.showKeyHints,
-      history: mergeIndependentRhythmHistory(
-        saved.independentRhythm.history,
-        incoming.independentRhythm.history
-      )
-    },
+    ...(courses as unknown as ReadingCourseStates),
     selectionRevision: incoming.selectionRevision,
     task: selection.task,
     seed: selection.seed,

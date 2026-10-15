@@ -1,4 +1,5 @@
 import type { IntervalMode, IntervalResult, IntervalSourceFilter } from "../intervals/types";
+import { accept, mergeCourseHistory, normalizeCourseState } from "./courseStore";
 
 export interface IntervalPersistentState {
   mode: IntervalMode | null;
@@ -167,40 +168,33 @@ export function mergeIntervalHistory(
   saved: readonly IntervalResult[],
   incoming: readonly IntervalResult[]
 ): ReturnType<typeof cloneIntervalResult>[] {
-  const unique = new Map<string, IntervalResult>();
   // A stale sibling snapshot must not replace an already committed run.
-  for (const result of [...saved, ...incoming]) {
-    if (!unique.has(result.runId)) unique.set(result.runId, result);
-  }
-  const sorted = [...unique.values()].sort(
-    (a, b) => a.completedAt - b.completedAt || a.runId.localeCompare(b.runId)
-  );
-  return (["see-and-play", "hear-and-choose"] as const)
-    .flatMap((mode) => sorted.filter((result) => result.mode === mode).slice(-20))
-    .map(cloneIntervalResult);
+  return mergeCourseHistory(saved, incoming, {
+    groups: { of: (result) => result.mode, order: ["see-and-play", "hear-and-choose"] },
+    copy: cloneIntervalResult
+  });
 }
 
 export function normalizeIntervalState(value: unknown): {
   intervals: IntervalPersistentState;
   invalid: boolean;
 } {
-  const intervals = emptyIntervalState();
-  if (value === undefined) return { intervals, invalid: false };
-  const row = object(value);
-  const history = Array.isArray(row.history) ? row.history : [];
-  const invalid =
-    !value ||
-    typeof value !== "object" ||
-    Array.isArray(value) ||
-    !(row.mode === null || mode(row.mode)) ||
-    !integer(row.seed) ||
-    row.generatorVersion !== 1 ||
-    !filter(row.sourceFilter) ||
-    !Array.isArray(row.history) ||
-    history.some((result) => !validIntervalResult(result));
-  intervals.mode = mode(row.mode) && row.generatorVersion === 1 ? row.mode : null;
-  intervals.seed = integer(row.seed) ? row.seed >>> 0 : 1;
-  intervals.sourceFilter = filter(row.sourceFilter) ? row.sourceFilter : "all";
-  intervals.history = mergeIntervalHistory([], history.filter(validIntervalResult));
-  return { intervals, invalid };
+  const { state, invalid } = normalizeCourseState(value, {
+    empty: emptyIntervalState,
+    fields: {
+      mode: (value, row) =>
+        value === null
+          ? null
+          : mode(value)
+            ? row.generatorVersion === 1
+              ? value
+              : null
+            : undefined,
+      seed: (value) => (integer(value) ? value >>> 0 : undefined),
+      sourceFilter: accept(filter)
+    },
+    validate: (result) => (validIntervalResult(result) ? result : null),
+    merge: mergeIntervalHistory
+  });
+  return { intervals: state, invalid };
 }
