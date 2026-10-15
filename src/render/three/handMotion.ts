@@ -74,8 +74,20 @@ const FOLLOW: Readonly<Record<Finger, Partial<Record<Finger, number>>>> = {
   5: { 4: 0.4 }
 };
 const FOLLOW_MAX = 0.35;
-/** A free finger keeps this many white keys from a neighbour reaching towards it. */
-const FINGER_GAP = 0.8;
+/** A free fingertip keeps this many white keys from a neighbour's tip reaching towards it. */
+const FINGER_GAP = 0.7;
+/**
+ * How far a lifted fingertip draws in along the hand, towards the little finger: the lifted pose
+ * (relaxed.json) against the pressed one (fingers-31), measured on the rig. A finger bent
+ * halfway draws in half as far.
+ */
+const LIFTED_DRIFT_MM: Readonly<Record<Finger, number>> = {
+  1: 1.1,
+  2: 9.3,
+  3: 2.2,
+  4: -3.4,
+  5: -11.2
+};
 
 /**
  * Each finger's offset once the free ones make way: a finger reaching towards a neighbour pushes
@@ -84,11 +96,14 @@ const FINGER_GAP = 0.8;
  */
 function makeWay(
   fingers: Readonly<Record<Finger, FingerState>>,
+  bends: Readonly<Record<Finger, number>>,
   direction: number
 ): Record<Finger, number> {
-  // Along the hand from the thumb, in white keys.
+  // Where each tip shows, along the hand from the thumb in white keys: a lifted finger draws in.
+  const drift = (finger: Finger) => (LIFTED_DRIFT_MM[finger] / WHITE_MM) * (1 - bends[finger]);
   const along = {} as Record<Finger, number>;
-  for (const finger of FINGERS) along[finger] = finger - 1 + direction * fingers[finger].offset;
+  for (const finger of FINGERS)
+    along[finger] = finger - 1 + direction * fingers[finger].offset + drift(finger);
   const free = (finger: Finger) => 1 - fingers[finger].press;
   for (const finger of [3, 4, 5] as const) {
     const short = along[(finger - 1) as Finger] + FINGER_GAP - along[finger];
@@ -99,7 +114,8 @@ function makeWay(
     if (short > 0) along[finger] -= short * free(finger);
   }
   const offsets = {} as Record<Finger, number>;
-  for (const finger of FINGERS) offsets[finger] = direction * (along[finger] - (finger - 1));
+  for (const finger of FINGERS)
+    offsets[finger] = direction * (along[finger] - drift(finger) - (finger - 1));
   return offsets;
 }
 
@@ -147,7 +163,17 @@ export function liveTarget(plan: HandPlan, time: number): LiveHand {
   const direction = plan.hand === "right" ? 1 : -1;
   // Fingertips in white keys from the thumb's key; the middle finger sits at the centre.
   const centre = 2 * direction;
-  const offsets = makeWay(fingers, direction);
+  const bends = {} as Record<Finger, number>;
+  for (const finger of FINGERS) {
+    const own = fingers[finger].press;
+    let follow = 0;
+    for (const [other, share] of Object.entries(FOLLOW[finger])) {
+      follow += share * fingers[Number(other) as Finger].press;
+    }
+    const idle = 0.04 * (1 + wave(time, 0.25 + 0.06 * finger, finger)) * 0.5;
+    bends[finger] = own + (1 - own) * (Math.min(FOLLOW_MAX, follow) + idle);
+  }
+  const offsets = makeWay(fingers, bends, direction);
   const at = (finger: Finger) => direction * (finger - 1) + offsets[finger] - centre;
   const home = (finger: Finger) => direction * (finger - 1) - centre;
 
@@ -187,13 +213,7 @@ export function liveTarget(plan: HandPlan, time: number): LiveHand {
 
   const live = {} as Record<Finger, LiveFinger>;
   for (const finger of FINGERS) {
-    const own = fingers[finger].press;
-    let follow = 0;
-    for (const [other, share] of Object.entries(FOLLOW[finger])) {
-      follow += share * fingers[Number(other) as Finger].press;
-    }
-    const idle = 0.04 * (1 + wave(time, 0.25 + 0.06 * finger, finger)) * 0.5;
-    const bend = own + (1 - own) * (Math.min(FOLLOW_MAX, follow) + idle);
+    const bend = bends[finger];
     live[finger] = {
       bend: [bend, bend, bend],
       reach: offsets[finger] * WHITE_MM,

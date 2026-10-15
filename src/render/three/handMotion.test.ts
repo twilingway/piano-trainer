@@ -111,7 +111,9 @@ describe("liveTarget", () => {
     // Down the keyboard from the thumb's key, in millimetres.
     const tip = (finger: Finger) => (finger - 1) * 23.5 - hand.fingers[finger].reach;
     expect(tip(4)).toBeCloseTo(3.5 * 23.5);
-    expect(tip(5) - tip(4)).toBeGreaterThanOrEqual(0.8 * 23.5 - 1e-9);
+    // The lifted pose draws the fifth 11.2 mm in, less as it bends: the gap holds where it shows.
+    const drawnIn = 11.2 * (1 - hand.fingers[5].bend[0]);
+    expect(tip(5) - drawnIn - tip(4)).toBeGreaterThanOrEqual(0.7 * 23.5 - 1e-9);
     expect(tip(4) - tip(3)).toBeCloseTo(2 * 23.5);
   });
 });
