@@ -48,6 +48,13 @@ export interface MusicPrediction {
   readonly backend: Readonly<Record<string, unknown>>;
   readonly notes: readonly RawNote[];
   readonly warnings: readonly string[];
+  readonly pedalCandidates?: readonly PedalCandidate[];
+}
+export interface PedalCandidate {
+  readonly time: number;
+  readonly value: number;
+  readonly source: "transkun";
+  readonly estimated: true;
 }
 export interface FingerCandidate {
   readonly frameIndex: number;

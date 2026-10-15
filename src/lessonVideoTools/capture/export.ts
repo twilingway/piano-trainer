@@ -5,28 +5,57 @@ import { captureDirectory, readCapture } from "./acquire.ts";
 import { evidence } from "./evidence.ts";
 import { readStage } from "./inference.ts";
 import { applyReview, bindReview, captureNotes } from "./model.ts";
-import type { Calibration, CapturedNote, Review } from "./model.ts";
+import type { Calibration, CapturedNote, PedalCandidate, Review } from "./model.ts";
 import type { CaptureOptions } from "./options.ts";
+import { playbackNotes } from "./pedal.ts";
+import { orderPedalEvents } from "./midiPedalOrder.ts";
 import { calibrationFrom, parseFrames, predictionFrom, reviewFrom } from "./validate.ts";
 import { assertNoLink, digest, exists, readJson, safeDirectory, writeJson } from "../runtime.ts";
 
 const { Midi } = MidiPackage;
 
+/** Partial hand evidence must not masquerade as complete MIDI parts. */
+export function midiHandPolicy(notes: readonly CapturedNote[]): "complete-hands" | "unassigned" {
+  return notes.every((note) => note.hand !== null) ? "complete-hands" : "unassigned";
+}
+
 /** MIDI cannot encode unknown note-offs; every chosen interval is described in notes.json. */
-export function notesMidi(notes: readonly CapturedNote[]): Uint8Array {
+export function notesMidi(
+  notes: readonly CapturedNote[],
+  pedals: readonly PedalCandidate[] = []
+): Uint8Array {
+  return midiBytes(notes, pedals);
+}
+
+function midiBytes(
+  notes: readonly CapturedNote[],
+  pedals: readonly PedalCandidate[],
+  ends?: ReadonlyMap<string, number>
+): Uint8Array {
   const midi = new Midi();
   midi.header.setTempo(120);
-  for (const hand of ["left", "right", null] as const) {
-    const selected = notes.filter((note) => note.hand === hand);
+  const hands = midiHandPolicy(notes) === "complete-hands" ? (["left", "right"] as const) : [null];
+  for (const hand of hands) {
+    const selected = hand === null ? notes : notes.filter((note) => note.hand === hand);
     if (!selected.length) continue;
     const track = midi.addTrack();
+    track.channel = midi.tracks.length - 1;
     track.name = hand ?? "unassigned";
-    for (const note of selected) {
-      const end = note.keyRelease ?? note.estimatedOffset;
+    for (const pedal of pedals)
+      track.addCC({ number: 64, time: pedal.time, value: pedal.value / 127 });
+    const previousEnds = new Map<number, number>();
+    for (const note of [...selected].sort((a, b) => a.onset - b.onset)) {
+      const end = ends?.get(note.id) ?? note.keyRelease ?? note.estimatedOffset;
       if (note.onset < 0 || end <= note.onset)
         throw new Error(
           "MIDI требует неотрицательного времени и положительной длительности; исправьте review."
         );
+      if (note.onset < (previousEnds.get(note.pitch) ?? -Infinity))
+        throw new Error(
+          `Перекрываются ноты высоты ${String(note.pitch)} на MIDI-дорожке ${track.name}: ${note.id}. ` +
+            "MIDI не сохраняет такие интервалы однозначно; исправьте review, исходный JSON не изменён."
+        );
+      previousEnds.set(note.pitch, end);
       track.addNote({
         midi: note.pitch,
         time: note.onset,
@@ -35,7 +64,7 @@ export function notesMidi(notes: readonly CapturedNote[]): Uint8Array {
       });
     }
   }
-  return midi.toArray();
+  return orderPedalEvents(midi.toArray());
 }
 
 export function reviewStatus(
@@ -71,6 +100,7 @@ const HANDOFF = `# Данные для Claude Code
 
 Пакет содержит наблюдения исполнения, без привязки к скелету или Blender.
 Откройте manifest.json: missing/draft/reviewed указаны отдельно для нот, пальцев и поз.
+Педаль имеет отдельный статус missing/draft; проверка нот не подтверждает педаль.
 Проверенная музыка не означает проверенные позы. При draft сначала сверяйте evidence.
 
 ## Время и координаты
@@ -101,7 +131,19 @@ teacherFinger, writtenFinger, computedFinger имеют независимое �
 candidates — близость кончика к области клавиши; это НЕ подтверждение нажатия.
 offset/estimatedOffset — предсказание модели. keyRelease — отдельно подтверждённое отпускание.
 acousticEnd может быть неизвестным; педаль не доказывает удержание пальцем.
-MIDI использует keyRelease либо estimatedOffset и не переносит неопределённость JSON.
+notes.mid использует keyRelease либо estimatedOffset и сохраняет оценённые CC64 на каналах нот.
+pedalCandidates — оценки Transkun, не измерения; null означает отсутствие данных, [] — пустой вывод.
+playback.mid не содержит CC64: удержание уже включено в длительности для текущего проигрывателя.
+playback.json хранит baseEnd, exportedEnd и происхождение каждой длительности, а также предупреждения.
+Порог педали — 64, интервал [down, up); продление ограничено следующей атакой той же высоты.
+Исходная длительность никогда не сокращается; открытая педаль ограничена концом источника.
+Длинные ноты playback обозначают звучание, а не удержание пальца; для анимации используйте notes.json.
+Экспорт отклоняет перекрытия одной высоты на одном канале: MIDI не сохраняет их интервалы однозначно.
+MIDI не переносит неопределённость JSON.
+Если рука известна для каждой ноты, MIDI содержит отдельные дорожки left/right.
+Если хотя бы одна рука неизвестна, ВСЕ ноты помещаются в одну дорожку unassigned.
+Частичные назначения рук остаются в JSON; midiHandPolicy описывает выбранный вариант.
+Это не восстановление исходных партий: импорт одной дорожки может разделить её по высоте.
 Каждый экспортный note-off имеет это правило в notes.json; JSON — главный источник.
 evidence/index.json связывает JPG с исходными кадрами и PTS.
 review.json хранит ручные решения отдельно от raw; никаких скрытых исправлений landmarks.
@@ -161,21 +203,49 @@ export async function exportCapture(root: string, options: CaptureOptions): Prom
   }
   const bundle = resolve(directory, options.bundle);
   if (await exists(bundle)) throw new Error("Bundle уже существует. Укажите новое имя --bundle.");
+  const playback = rawMusic
+    ? playbackNotes(notes, rawMusic.pedalCandidates, source.timelineEndSeconds)
+    : null;
+  // Validate both representations before any bundle files become visible.
+  const midiExports =
+    playback && rawMusic
+      ? {
+          notes: notesMidi(notes, rawMusic.pedalCandidates),
+          playback: midiBytes(
+            notes,
+            [],
+            new Map(playback.notes.map((note) => [note.eventId, note.exportedEnd]))
+          )
+        }
+      : null;
   await safeDirectory(root, bundle);
   await writeJson(resolve(bundle, "source.json"), source);
   if (calibration) await writeJson(resolve(bundle, "calibration.json"), calibration);
   if (review) await writeJson(resolve(bundle, "review.json"), review);
-  if (rawMusic) {
+  if (rawMusic && playback && midiExports) {
     await copyFile(resolve(directory, "music.raw.json"), resolve(bundle, "music.raw.json"));
     await writeJson(resolve(bundle, "notes.json"), {
       schemaVersion: 1,
       sourceSha256: source.video.sha256,
       backend: rawMusic.backend,
       notes,
+      pedalCandidates: rawMusic.pedalCandidates ?? null,
+      midiHandPolicy: midiHandPolicy(notes),
+      midiPedalPolicy: "base note-offs plus estimated CC64 on every used note channel",
       midiOffsetPolicy:
         "keyRelease if reviewed, otherwise model estimatedOffset; never observed by default"
     });
-    await writeFile(resolve(bundle, "notes.mid"), notesMidi(notes), { flag: "wx" });
+    await writeFile(resolve(bundle, "notes.mid"), midiExports.notes, {
+      flag: "wx"
+    });
+    await writeJson(resolve(bundle, "playback.json"), {
+      schemaVersion: 1,
+      sourceSha256: source.video.sha256,
+      policy: "estimated sustain baked into note durations; no CC64; never physical key release",
+      ...playback,
+      warnings: [...rawMusic.warnings, ...playback.warnings]
+    });
+    await writeFile(resolve(bundle, "playback.mid"), midiExports.playback, { flag: "wx" });
   }
   for (const file of ["hands.raw.jsonl", "hands.summary.json"])
     if (handsReceipt) await copyFile(resolve(directory, file), resolve(bundle, file));
@@ -229,7 +299,11 @@ export async function exportCapture(root: string, options: CaptureOptions): Prom
   await writeJson(resolve(bundle, "manifest.json"), {
     schemaVersion: 1,
     sourceSha256: source.video.sha256,
-    status: { ...status, hands: frames.length ? status.hands : "missing" },
+    status: {
+      ...status,
+      hands: frames.length ? status.hands : "missing",
+      pedal: rawMusic?.pedalCandidates === undefined ? "missing" : "draft"
+    },
     coverage: {
       start: first,
       end: last,
