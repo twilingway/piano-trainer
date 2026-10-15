@@ -1,3 +1,4 @@
+import { normalizeIndependentRhythmState } from "./independentRhythmPersistence";
 import type { ReadingState } from "./readingSlice";
 import type { ReadingTask } from "../reading/types";
 import { normalizeIntervalState } from "./intervalPersistence";
@@ -11,16 +12,21 @@ export function normalizeReadingCourses(
   row: Record<string, unknown>,
   selectedTask: ReadingTask | null
 ) {
-  const modern = [3, 4, 5, 6, 7].includes(row.schemaVersion as number);
-  const hasRhythm = [4, 5, 6, 7].includes(row.schemaVersion as number);
-  const hasBass = [5, 6, 7].includes(row.schemaVersion as number);
+  const modern = [3, 4, 5, 6, 7, 8].includes(row.schemaVersion as number);
+  const hasRhythm = [4, 5, 6, 7, 8].includes(row.schemaVersion as number);
+  const hasBass = [5, 6, 7, 8].includes(row.schemaVersion as number);
   const intervalState = normalizeIntervalState(modern ? row.intervals : undefined);
   const rhythmState = normalizeRhythmState(hasRhythm ? row.rhythm : undefined);
   const bassState = normalizeBassState(hasBass ? row.bass : undefined);
   const coordinationState = normalizeTwoHandState(
-    [6, 7].includes(row.schemaVersion as number) ? row.coordination : undefined
+    [6, 7, 8].includes(row.schemaVersion as number) ? row.coordination : undefined
   );
-  const heldBassState = normalizeHeldBassState(row.schemaVersion === 7 ? row.heldBass : undefined);
+  const heldBassState = normalizeHeldBassState(
+    [7, 8].includes(row.schemaVersion as number) ? row.heldBass : undefined
+  );
+  const independentRhythmState = normalizeIndependentRhythmState(
+    row.schemaVersion === 8 ? row.independentRhythm : undefined
+  );
   const activeCourse: ReadingState["activeCourse"] = modern
     ? row.activeCourse === "note-reading" && selectedTask
       ? "note-reading"
@@ -30,23 +36,28 @@ export function normalizeReadingCourses(
           ? "rhythm-training"
           : hasBass && row.activeCourse === "bass-reading"
             ? "bass-reading"
-            : [6, 7].includes(row.schemaVersion as number) &&
+            : [6, 7, 8].includes(row.schemaVersion as number) &&
                 row.activeCourse === "two-hand-coordination"
               ? "two-hand-coordination"
-              : row.schemaVersion === 7 && row.activeCourse === "held-bass-reading"
+              : [7, 8].includes(row.schemaVersion as number) &&
+                  row.activeCourse === "held-bass-reading"
                 ? "held-bass-reading"
-                : null
+                : row.schemaVersion === 8 && row.activeCourse === "independent-rhythm-reading"
+                  ? "independent-rhythm-reading"
+                  : null
     : selectedTask
       ? "note-reading"
       : null;
   const invalid =
+    independentRhythmState.invalid ||
+    (row.schemaVersion === 8 && row.independentRhythm === undefined) ||
     intervalState.invalid ||
     rhythmState.invalid ||
     bassState.invalid ||
     coordinationState.invalid ||
     heldBassState.invalid ||
-    (row.schemaVersion === 7 && row.heldBass === undefined) ||
-    ([6, 7].includes(row.schemaVersion as number) && row.coordination === undefined) ||
+    ([7, 8].includes(row.schemaVersion as number) && row.heldBass === undefined) ||
+    ([6, 7, 8].includes(row.schemaVersion as number) && row.coordination === undefined) ||
     (hasBass && row.bass === undefined) ||
     (hasRhythm && row.rhythm === undefined) ||
     (modern && row.intervals === undefined) ||
@@ -59,8 +70,9 @@ export function normalizeReadingCourses(
         "interval-training",
         ...(hasRhythm ? ["rhythm-training"] : []),
         ...(hasBass ? ["bass-reading"] : []),
-        ...([6, 7].includes(row.schemaVersion as number) ? ["two-hand-coordination"] : []),
-        ...(row.schemaVersion === 7 ? ["held-bass-reading"] : [])
+        ...([6, 7, 8].includes(row.schemaVersion as number) ? ["two-hand-coordination"] : []),
+        ...([7, 8].includes(row.schemaVersion as number) ? ["held-bass-reading"] : []),
+        ...(row.schemaVersion === 8 ? ["independent-rhythm-reading"] : [])
       ].includes(row.activeCourse as null | string));
   return {
     intervals: intervalState.intervals,
@@ -68,6 +80,7 @@ export function normalizeReadingCourses(
     bass: bassState.bass,
     coordination: coordinationState.coordination,
     heldBass: heldBassState.heldBass,
+    independentRhythm: independentRhythmState.independentRhythm,
     activeCourse,
     invalid
   };

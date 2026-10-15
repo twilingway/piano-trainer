@@ -11,6 +11,7 @@ import { ConnectedReadingPractice } from "./ConnectedReading";
 import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
 import { ConnectedTwoHandPractice } from "./ConnectedTwoHand";
 import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
+import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
 import { ConnectedRhythmPractice } from "./ConnectedRhythm";
 import { ConnectedIntervalPractice } from "./ConnectedIntervals";
 
@@ -72,13 +73,15 @@ export function ConnectedPracticeWorkspace() {
       snapshotWaiting: runtime.snapshot.waiting,
       viewMirrorHostRef: runtime.view.mirrorHostRef,
       rhythm: runtime.rhythm,
-      reading: runtime.heldBass.active
-        ? runtime.heldBass
-        : runtime.twoHand.active
-          ? runtime.twoHand
-          : runtime.intervals.active
-            ? runtime.intervals
-            : runtime.reading,
+      reading: runtime.independentRhythm.active
+        ? runtime.independentRhythm
+        : runtime.heldBass.active
+          ? runtime.heldBass
+          : runtime.twoHand.active
+            ? runtime.twoHand
+            : runtime.intervals.active
+              ? runtime.intervals
+              : runtime.reading,
       courseTabs:
         !runtime.practiceActive &&
         runtime.course.active !== null &&
@@ -99,6 +102,7 @@ export function ConnectedPracticeWorkspace() {
       <ConnectedBassReadingPractice />
       <ConnectedTwoHandPractice />
       <ConnectedHeldBassPractice />
+      <ConnectedIndependentRhythmPractice />
       <ConnectedIntervalPractice />
       <ConnectedRhythmPractice />
       <ConnectedWorkspace

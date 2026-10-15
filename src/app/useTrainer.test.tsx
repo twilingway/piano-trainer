@@ -90,6 +90,7 @@ function Harness({
   reading = false,
   readingHand = "right",
   rhythm = false,
+  independentRhythm = false,
   gameOptions,
   ranked = false,
   selectedSong = song,
@@ -100,6 +101,7 @@ function Harness({
   reading?: boolean;
   readingHand?: "left" | "right" | "both";
   rhythm?: boolean;
+  independentRhythm?: boolean;
   gameOptions?: Parameters<typeof useTrainer>[0]["gameOptions"];
   ranked?: boolean;
   selectedSong?: Song;
@@ -117,6 +119,7 @@ function Harness({
     reading,
     readingHand,
     rhythm,
+    independentRhythm,
     ...(gameOptions ? { gameOptions } : {}),
     course,
     startFromRef,
@@ -186,6 +189,51 @@ async function mount(
 }
 
 describe("trainer runtime isolation", () => {
+  it("keeps independent rhythms in fixed tempo with both hands and restores ordinary preferences", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "wait",
+        handChoice: "left",
+        speed: 0.5,
+        metronome: false,
+        accompaniment: true
+      })
+    );
+    const saved = store.getState().preferences.player;
+    startFromRef.current = 2;
+    await act(async () => {
+      root.render(withTestStore(<Harness independentRhythm />, store));
+      await Promise.resolve();
+    });
+    expect(value.mode).toBe("tempo");
+    expect(value.handChoice).toBe("both");
+    expect(value.speed).toBe(1);
+    expect(value.metronome).toBe(true);
+    expect(value.playChoice.parts).toBeUndefined();
+    expect(active().seek).not.toHaveBeenCalled();
+    expect(active().load.mock.lastCall?.[1]).toEqual({
+      mode: "tempo",
+      hands: new Set(["left", "right"]),
+      speed: 1,
+      accompaniment: false,
+      noteResult: false,
+      learningWindow: false,
+      countInBeats: 4
+    });
+    act(() => {
+      value.setMode("wait");
+      value.setHandChoice("right");
+      value.setSpeed(0.8);
+      value.setMetronome(false);
+    });
+    expect(store.getState().preferences.player).toEqual(saved);
+    await mount();
+    expect(value.mode).toBe("wait");
+    expect(value.handChoice).toBe("left");
+    expect(value.speed).toBe(0.5);
+    expect(value.metronome).toBe(false);
+  });
+
   it("routes the bass reading profile to the left without changing ordinary two-hand preferences", async () => {
     store.dispatch(
       preferencesActions.playerChanged({

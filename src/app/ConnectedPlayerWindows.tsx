@@ -10,6 +10,7 @@ import { ConnectedReadingCard } from "./ConnectedReading";
 import { ConnectedBassReadingCard } from "./ConnectedBassReading";
 import { ConnectedTwoHandCard } from "./ConnectedTwoHand";
 import { ConnectedHeldBassCard } from "./ConnectedHeldBass";
+import { ConnectedIndependentRhythmCard } from "./ConnectedIndependentRhythm";
 import { ConnectedRhythmCard } from "./ConnectedRhythm";
 import { ConnectedIntervalCard } from "./ConnectedIntervals";
 import { phraseCompleted, nextSelection } from "../course/model";
@@ -133,6 +134,7 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
           <ConnectedBassReadingCard onChoose={onClose} />
           <ConnectedTwoHandCard onChoose={onClose} />
           <ConnectedHeldBassCard onChoose={onClose} />
+          <ConnectedIndependentRhythmCard onChoose={onClose} />
           <ConnectedIntervalCard onChoose={onClose} />
           <ConnectedRhythmCard onChoose={onClose} />
           <ConnectedCourseCards onChoose={onClose} />

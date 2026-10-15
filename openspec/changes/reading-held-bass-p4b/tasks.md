@@ -49,7 +49,7 @@
 - [x] 6.1 Reviewer реализации, narrow suites, pnpm check и pnpm spec:validate, точное evidence.
 - [x] 6.2 Видимый Chrome: full10 fragments2/4, retry after RH, bass/end/frozen wait/help/повтор/
       reload/exit/RU/EN/mobile/settings; screenshots/console, hardware отдельно.
-- [ ] 6.3 Task PR в dev; после user merge ff-only обновить основной5190, проверить SHA/CI/served
+- [x] 6.3 Task PR в dev; после user merge ff-only обновить основной5190, проверить SHA/CI/served
       files без запуска сервера.
 - [ ] 6.4 После всех шагов совместная hardware-приёмка по docs/MIDI_COURSE_ACCEPTANCE.md:
       пользователь подключает MIDI, агент даёт по одному клику/нажатию и сверяет ответ. До этого

@@ -1,5 +1,6 @@
-﻿import type { Song, SongBeat, SongNote } from "../song/song";
-import { countIn } from "./sessionBeats";
+import { pendingKeyHints } from "./sessionTransitions";
+import type { Song, SongBeat, SongNote } from "../song/song";
+import { countIn, sessionLeadIn } from "./sessionBeats";
 import { SessionScoring } from "./sessionScoring";
 import { difficultyWindows, judgeOffset, LEARNING_LATE_WINDOW_MS } from "./gameRules";
 import { SongTimeline } from "./timing";
@@ -15,6 +16,7 @@ import {
   type ScopedVerifiedOnset
 } from "./verifiedWaitingOnset";
 import { heldBassClockReceipt, type HeldBassClockReceipt } from "./heldBassClock";
+import { tempoClockReceipt, type TempoClockReceipt } from "./tempoClock";
 
 export type {
   PracticeMode,
@@ -87,14 +89,7 @@ export class PracticeSession {
       options.mode === "tempo" && options.learningWindow === true
     );
     for (const note of this.playerNotes) this.status.set(note.id, "pending");
-    const beatSeconds =
-      song.beats[1] && song.beats[0] ? song.beats[1].time - song.beats[0].time : 0.5;
-    this.leadIn =
-      options.hands.size > 0
-        ? options.countInBeats === undefined
-          ? LEAD_IN_S
-          : options.countInBeats * beatSeconds
-        : 0;
+    this.leadIn = sessionLeadIn(song, options, LEAD_IN_S);
     this.beats = [
       ...countIn(song.beats, this.leadIn, options.countInBeats !== undefined),
       ...song.beats
@@ -185,6 +180,10 @@ export class PracticeSession {
       this.time,
       atMs
     );
+  }
+
+  tempoClockReceipt(atMs: number): TempoClockReceipt {
+    return tempoClockReceipt(this.timeline.snapshot(), this.song.duration, this.time, atMs);
   }
 
   tick(performanceMs: number): PracticeEvent[] {
@@ -342,12 +341,12 @@ export class PracticeSession {
 
   /** All pending key cues, so a late attack cannot hide the following preparation. */
   keyHints(): SongNote[] {
-    this.hintNotes.length = 0;
-    for (const note of this.playerNotes) {
-      if (note.start > this.time + 0.3 * this.options.speed) break;
-      if (this.status.get(note.id) === "pending") this.hintNotes.push(note);
-    }
-    return this.hintNotes;
+    return pendingKeyHints(
+      this.playerNotes,
+      this.status,
+      this.time + 0.3 * this.options.speed,
+      this.hintNotes
+    );
   }
 
   /** True while the wait mode holds the song for the player. */
