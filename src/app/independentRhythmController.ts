@@ -11,11 +11,13 @@ import type {
   IndependentRhythmConfig,
   IndependentRhythmPhaseResult,
   IndependentRhythmResult,
+  IndependentRhythmSnapshot,
   IndependentRhythmSummary
 } from "../independentRhythm/types";
 import type { KeyEvent } from "../input/midiInput";
 import type { Trainer } from "../practice/Trainer";
 import type { TrainerIndependentRhythmPolicy } from "../practice/independentRhythmPolicy";
+import type { NoteStatus } from "../practice/session";
 import type { ReadingInputSource } from "../reading/types";
 import { recordHeldBassOwner } from "../reading/heldBassOwnership";
 import type { HeldBassInput } from "../reading/heldBassTypes";
@@ -79,6 +81,8 @@ export class IndependentRhythmController {
   private generation = 0;
   private phase: "pulse" | "two-hands" = "pulse";
   private phaseSession: IndependentRhythmPhaseSession | null = null;
+  private phaseSnapshot: IndependentRhythmSnapshot | null = null;
+  private noteStatuses = new Map<string, NoteStatus>();
   private settledSession: IndependentRhythmPhaseSession | null = null;
   private pulse: IndependentRhythmPhaseResult | null = null;
   private fixed: IndependentRhythmConfig | null = null;
@@ -140,7 +144,7 @@ export class IndependentRhythmController {
     for (const listener of this.listeners) listener();
   }
   private publish(): void {
-    const snapshot = this.phaseSession?.snapshot();
+    const snapshot = this.phaseSnapshot;
     const status = snapshot?.status;
     if (status === "cancelled" || status === "overflow") {
       this.cancel();
@@ -155,6 +159,15 @@ export class IndependentRhythmController {
         : {}),
       ...(this.phase === "pulse" && snapshot ? { pulseSummary: snapshot.summary } : {})
     });
+  }
+  private cachePhase(snapshot: IndependentRhythmSnapshot | null): void {
+    this.phaseSnapshot = snapshot;
+    this.noteStatuses = new Map(
+      snapshot?.outcomes.map((note) => [
+        note.noteId,
+        note.outcome === "hit" ? "hit" : note.outcome === "miss" ? "missed" : "pending"
+      ]) ?? []
+    );
   }
   private live(id: string): boolean {
     return !this.disposed && this.state.scene.id === id;
@@ -173,6 +186,7 @@ export class IndependentRhythmController {
     this.audioPending = false;
     this.phaseSession?.cancel(performance.now());
     this.phaseSession = null;
+    this.cachePhase(null);
     this.pulse = null;
     this.fixed = null;
     this.phase = "pulse";
@@ -190,6 +204,7 @@ export class IndependentRhythmController {
       this.runId = crypto.randomUUID();
       this.phase = "pulse";
       this.phaseSession = null;
+      this.cachePhase(null);
       this.pulse = null;
       this.fixed = null;
       this.presentedAt = null;
@@ -213,7 +228,7 @@ export class IndependentRhythmController {
     this.update({ midiAvailable: !!connection.deviceId });
   };
   readonly configureHints = (enabled: boolean): void => {
-    if (this.showHints !== enabled && this.phaseSession?.snapshot().active) this.cancel();
+    if (this.showHints !== enabled && this.phaseSnapshot?.active) this.cancel();
     this.showHints = enabled;
   };
   readonly present = (id: string, at: number): void => {
@@ -294,6 +309,7 @@ export class IndependentRhythmController {
     this.phaseSession.present(this.presentedAt ?? performance.now());
     for (const receipt of this.hintReceipts)
       this.phaseSession.showKeys(receipt.pitches, receipt.at);
+    this.cachePhase(this.phaseSession.snapshot());
     if (this.phase === "pulse") this.startedAt = Date.now();
     connection.trainer.setPlaying(true);
   };
@@ -312,6 +328,7 @@ export class IndependentRhythmController {
       this.phase = "two-hands";
       this.generation++;
       this.phaseSession = null;
+      this.cachePhase(null);
       this.presentedAt = null;
       this.hintReceipts = [];
       this.state = this.freshState("passed");
@@ -344,20 +361,20 @@ export class IndependentRhythmController {
           at
         );
         const started = this.phaseSession.start(at);
-        if (started) {
-          this.phaseSession.tick(at, receipt);
-        }
+        this.cachePhase(
+          started ? this.phaseSession.tick(at, receipt) : this.phaseSession.snapshot()
+        );
         this.publish();
         return started;
       },
       onFrame: (_practice, playing, now, receipt) => {
         if (!this.live(id) || !this.phaseSession) return;
-        if (this.phaseSession.snapshot().finished) {
+        if (this.phaseSnapshot?.finished) {
           this.complete();
           return;
         }
         if (
-          this.phaseSession.snapshot().active &&
+          this.phaseSnapshot?.active &&
           (!playing ||
             this.connection?.blocked ||
             document.visibilityState === "hidden" ||
@@ -367,7 +384,7 @@ export class IndependentRhythmController {
           this.cancel();
           return;
         }
-        this.phaseSession.tick(now, receipt);
+        this.cachePhase(this.phaseSession.tick(now, receipt));
         this.publish();
         this.complete();
       },
@@ -376,12 +393,15 @@ export class IndependentRhythmController {
         const input = inputFor(event, raw);
         if (received >= raw && received - raw <= 250)
           recordHeldBassOwner(this.held, this.releases, input, received);
-        this.phaseSession?.input({ ...input, offsetMs: raw - corrected }, received, receipt);
+        if (this.phaseSession)
+          this.cachePhase(
+            this.phaseSession.input({ ...input, offsetMs: raw - corrected }, received, receipt)
+          );
         this.publish();
         this.complete();
       },
       cancel: (_at, resetAll) => {
-        if (!this.live(id) || this.expectedStop || this.phaseSession?.snapshot().finished) return;
+        if (!this.live(id) || this.expectedStop || this.phaseSnapshot?.finished) return;
         if (resetAll) {
           this.held.clear();
           this.releases.clear();
@@ -400,7 +420,7 @@ export class IndependentRhythmController {
         this.live(id) &&
         this.showHints &&
         this.state.ready &&
-        !this.phaseSession?.snapshot().active &&
+        !this.phaseSnapshot?.active &&
         ["preparation", "passed"].includes(this.state.status)
           ? [48, 60]
           : [],
@@ -408,7 +428,7 @@ export class IndependentRhythmController {
         if (
           !this.live(id) ||
           !this.state.ready ||
-          this.phaseSession?.snapshot().active ||
+          this.phaseSnapshot?.active ||
           !pitches.includes(48) ||
           !pitches.includes(60) ||
           this.hintReceipts.length
@@ -416,14 +436,10 @@ export class IndependentRhythmController {
           return;
         this.hintReceipts.push({ pitches: [48, 60], at });
       },
-      statusOf: (noteId) => {
-        const outcome = this.phaseSession
-          ?.snapshot()
-          .outcomes.find((note) => note.noteId === noteId)?.outcome;
-        return outcome === "hit" ? "hit" : outcome === "miss" ? "missed" : "pending";
-      },
+      statusOf: (noteId) =>
+        this.live(id) ? (this.noteStatuses.get(noteId) ?? "pending") : undefined,
       stats: () => {
-        const summary = this.phaseSession?.snapshot().summary;
+        const summary = this.phaseSnapshot?.summary;
         return {
           hits: (summary?.left.hits ?? 0) + (summary?.right.hits ?? 0),
           misses: (summary?.left.misses ?? 0) + (summary?.right.misses ?? 0),
@@ -438,6 +454,7 @@ export class IndependentRhythmController {
     this.disposed = true;
     this.generation++;
     this.phaseSession?.cancel(performance.now());
+    this.cachePhase(null);
     this.listeners.clear();
   };
   readonly activate = (): void => {
