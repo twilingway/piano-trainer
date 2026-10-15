@@ -9,7 +9,8 @@ skeleton (bone names after MPFB, as in HandRig); the skeleton pieces ride on the
 the body ("PianistBody", base level of the Multires) gets automatic weights. The body faces -Y.
 """
 import bpy, math, os
-from mathutils import Matrix, Quaternion, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
+from mathutils.bvhtree import BVHTree
 
 ROOT = globals().get("ROOT", r"E:/MySource/ReactJS/piano-trainer")
 LIB = os.path.join(ROOT, "blender/assets/human-base-meshes/bundle/human-base-meshes-bundle-v1.4.1/"
@@ -135,6 +136,112 @@ for poly in me.polygons:
     poly.use_smooth = True
 src_body.hide_set(True)
 src_body.hide_render = True
+
+# --- the skeleton inside the skin. The bundle's skeleton is another man's: after the uniform scale and
+# the limbs' aim its spine stands 2 cm out of the back, the skull through the scalp, the big toe through
+# the foot. Piece by piece from the pelvis out (the bundle's pieces hang on each other, so a turned piece
+# carries what hangs on it), a piece is turned a little about its joint and shrunk a little towards it
+# until it lies SKIN_MARGIN under the skin the viewer sees (one subdivision level). The pelvis, the rib
+# cage, the shoulder blades and the long limb bones only shrink: turning them would carry the arms and
+# legs off their fit. The hands are left as they are: the Studio hand will replace them.
+SKIN_MARGIN = 0.002
+MAX_TURN = math.radians(8)
+MIN_SCALE = 0.85
+FIT_POINTS = 1500       # vertices per piece the fit looks at
+NO_TURN = ("hip", "ripcage", "shoulder_scapula", "arm_humerus", "arm_radius", "leg_femur", "leg_tibula",
+           "foot_talus", "foot_center", "clavicle")
+HAND = ("hand_center", "metacarpal.", "proximal.", "middle.", "distal.")
+
+
+def in_hand(name):
+    return name.startswith(HAND) and not name.split(".")[1].isdigit()
+
+
+sub = body.modifiers.new("fit", "SUBSURF")
+sub.levels = 1
+view.update()
+ev = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+skin_me = ev.to_mesh()
+skin = BVHTree.FromPolygons([body.matrix_world @ v.co for v in skin_me.vertices],
+                            [tuple(p.vertices) for p in skin_me.polygons])
+ev.to_mesh_clear()
+body.modifiers.remove(sub)
+
+
+def sample(o):
+    pts = [o.matrix_world @ v.co for v in o.data.vertices]
+    return pts[::max(1, len(pts) // FIT_POINTS)]
+
+
+def overshoot(pts):
+    """Sum of squared depths past SKIN_MARGIN under the skin, and the deepest point outside it."""
+    total, worst = 0.0, 0.0
+    for p in pts:
+        loc, normal, _, d = skin.find_nearest(p)
+        out = d if (p - loc).dot(normal) > 0 else -d
+        if out > -SKIN_MARGIN:
+            total += (out + SKIN_MARGIN) ** 2
+        worst = max(worst, out)
+    return total, worst
+
+
+def place_in_skin(o, turn, chain):
+    """Pattern search over a turn about the piece's joint (x, y, z) and its own shrink. `chain`: points of
+    what hangs on it and should come inside with it (the spine above a vertebra). A piece on the midline
+    only nods (about x): turned or tilted aside it would make the body lopsided."""
+    j = o.matrix_world.translation.copy()
+    own, rest = sample(o), chain
+    def moved(q):
+        r = Euler(q[:3]).to_matrix()
+        return [j + r @ ((p - j) * q[3]) for p in own], [j + r @ (p - j) for p in rest]
+    def cost(q):
+        a, b = moved(q)
+        return overshoot(a)[0] + overshoot(b)[0] + 0.03 * (q[0] ** 2 + q[1] ** 2 + q[2] ** 2) + 0.004 * (1 - q[3]) ** 2
+    q, best = [0.0, 0.0, 0.0, 1.0], cost([0.0, 0.0, 0.0, 1.0])
+    if overshoot(own)[1] <= -SKIN_MARGIN and not chain:
+        return q
+    midline = not o.name.endswith((".L", ".R"))
+    steps = [math.radians(2) * turn, math.radians(2) * turn * (not midline), math.radians(2) * turn * (not midline), 0.03]
+    while max(steps) > 1e-3:
+        better = False
+        for k in range(4):
+            for sign in (1, -1):
+                c = q[:]
+                c[k] += sign * steps[k]
+                if k < 3 and abs(c[k]) > MAX_TURN or k == 3 and not MIN_SCALE <= c[k] <= 1:
+                    continue
+                v = cost(c)
+                if v < best:
+                    q, best, better = c, v, True
+        if not better:
+            steps = [s / 2 for s in steps]
+    return q
+
+
+skin_fit = {}
+order = [skel["hip"]]
+for o in order:
+    order.extend(c for c in o.children if c.name.startswith(P))
+for o in order:
+    name = o.name[len(P):]
+    if in_hand(name):
+        continue
+    turn = not name.startswith(NO_TURN) and (name.startswith(("spine_", "sacral", "skull")) or not o.children)
+    chain = [p for c in o.children_recursive if c.name[len(P):].startswith("spine_") for p in sample(c)] \
+        if name.startswith(("spine_", "sacral")) else []
+    before = overshoot(sample(o))[1]
+    q = place_in_skin(o, turn, chain)
+    if q != [0.0, 0.0, 0.0, 1.0]:
+        if q[3] != 1.0:
+            o.data = o.data.copy()
+            o.data.transform(Matrix.Scale(q[3], 4))
+        j = o.matrix_world.translation.copy()
+        transform(o, Matrix.Translation(j) @ Euler(q[:3]).to_matrix().to_4x4() @ Matrix.Translation(-j))
+    after = overshoot(sample(o))[1]
+    if before > 0.001 or after > 0.001:
+        skin_fit[name] = (round(before * 1000), round(after * 1000), round(math.degrees(max(map(abs, q[:3]))), 1),
+                          round(q[3], 2))
+print("skeleton into the skin (mm out before, after, deg turned, scale)", skin_fit)
 
 # --- the armature from the fitted joints
 arm_data = bpy.data.armatures.new("PianistRig")
