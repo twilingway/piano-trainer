@@ -138,6 +138,36 @@ describe("rhythm schema4 persistence", () => {
       normalized.reading.rhythm.history[0]?.misses.every((miss) => miss.source === "pointer")
     ).toBe(true);
   });
+  it("recounts timing of a run saved under the sign-only rule and still rejects a deviation past the window", () => {
+    const current = result("sign-only");
+    const saved = {
+      ...current,
+      attacks: current.attacks.map((attack, index) =>
+        index === 0 ? { ...attack, deviationMs: 20 } : attack
+      ),
+      summary: { ...current.summary, onTime: undefined, early: 0, late: 1 }
+    };
+    expect(validRhythmResult(saved)).toBe(true);
+    const state = emptyReadingState();
+    const normalized = normalizeReadingState({
+      ...state,
+      rhythm: { ...state.rhythm, history: [saved] }
+    });
+    expect(normalized.invalid).toBe(false);
+    expect(normalized.reading.rhythm.history[0]?.summary).toMatchObject({
+      hits: 10,
+      onTime: 10,
+      early: 0,
+      late: 0
+    });
+    const corrupt = {
+      ...saved,
+      attacks: saved.attacks.map((attack, index) =>
+        index === 0 ? { ...attack, deviationMs: 151 } : attack
+      )
+    };
+    expect(validRhythmResult(corrupt)).toBe(false);
+  });
   it("migrates schema3 without reassessing or pruning P2/P3 and is idempotent", () => {
     const saved = emptyReadingState();
     const reading = readingResult("p2");

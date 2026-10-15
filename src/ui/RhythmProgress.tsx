@@ -17,6 +17,7 @@ export function RhythmMetrics({ summary }: { summary: RhythmSummary }) {
   const counts = [
     ["Ожидаемые удары", summary.expected],
     ["Попадания ритма", summary.hits],
+    ["Попадания вовремя", summary.onTime],
     ["Ранние попадания", summary.early],
     ["Поздние попадания", summary.late],
     ["Пропуски ритма", summary.misses],

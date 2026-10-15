@@ -23,7 +23,7 @@ export function RhythmCourseCard({ onStart }: { onStart: () => void }) {
 }
 
 export type RhythmPanelStatus =
-  "idle" | "preparing" | "count-in" | "running" | "completed" | "cancelled" | "error";
+  "idle" | "preparing" | "count-in" | "running" | "completed" | "empty" | "cancelled" | "error";
 
 export interface RhythmPanelProps {
   bpm: RhythmBpm;
@@ -69,6 +69,7 @@ export function RhythmPanel(props: RhythmPanelProps) {
     "count-in": "Слушайте отсчёт. Первая нота — после четырёх долей.",
     running: "Отбивайте начала нот. На паузах не нажимайте.",
     completed: "Серия ритма завершена.",
+    empty: "Серия не засчитана: не было ни одного удара. Повторите с отсчёта.",
     cancelled: "Серия прервана без результата. Начните снова с отсчёта.",
     error: "Ритм не начался. Проверьте готовность и повторите."
   }[props.status];

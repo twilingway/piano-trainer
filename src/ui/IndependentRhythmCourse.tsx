@@ -46,6 +46,7 @@ export type IndependentRhythmPanelStatus =
   | "failed"
   | "passed"
   | "completed"
+  | "empty"
   | "cancelled"
   | "error";
 export interface IndependentRhythmPracticeProps extends IndependentRhythmProgressProps {
@@ -81,6 +82,7 @@ const STATUS: Readonly<
     "Пульс пока не пройден: нужны 8 попаданий и 0 лишних атак. Повторите или потренируйтесь в «Ритме».",
   passed: "Пульс проверен. Отпустите все клавиши и вручную начните два ритма.",
   completed: "Два ритма завершены. Сравните показатели левой и правой партий.",
+  empty: "Проход не засчитан: не было ни одного удара. Повтор начинается с проверки пульса.",
   cancelled: "Проход двух ритмов отменён без результата. Повтор начинается с проверки пульса.",
   error: "Два ритма не готовы. Проверьте звук, ноты и выбранный ввод, затем повторите."
 };

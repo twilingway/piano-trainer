@@ -1,4 +1,5 @@
 import type { ReadingInputSource } from "../reading/types";
+import { rhythmTiming } from "../rhythm/types";
 import type {
   IndependentRhythmExtra,
   IndependentRhythmHandSummary,
@@ -29,8 +30,9 @@ export function summarizeIndependentRhythmOutcomes(
       hits: hits.length,
       misses: notes.filter((note) => note.outcome === "miss").length,
       extras: extras.filter((extra) => extra.hand === which).length,
-      early: deviations.filter((value) => value < 0).length,
-      late: deviations.filter((value) => value > 0).length,
+      onTime: deviations.filter((value) => rhythmTiming(value) === "on-time").length,
+      early: deviations.filter((value) => rhythmTiming(value) === "early").length,
+      late: deviations.filter((value) => rhythmTiming(value) === "late").length,
       signedDeviationMs: rhythmMedian(deviations),
       absoluteDeviationMs: rhythmMedian(deviations.map(Math.abs))
     };

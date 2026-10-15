@@ -1,3 +1,4 @@
+import { rhythmTiming } from "./types";
 import type { RhythmAttack, RhythmMiss, RhythmResult, RhythmSummary } from "./types";
 
 function median(values: readonly number[]): number | null {
@@ -20,8 +21,9 @@ export function summarizeRhythm(
   return {
     expected,
     hits: deviations.length,
-    early: deviations.filter((value) => value < 0).length,
-    late: deviations.filter((value) => value > 0).length,
+    onTime: deviations.filter((value) => rhythmTiming(value) === "on-time").length,
+    early: deviations.filter((value) => rhythmTiming(value) === "early").length,
+    late: deviations.filter((value) => rhythmTiming(value) === "late").length,
     misses: misses.length,
     extras: extras.length,
     restExtras: extras.filter((attack) => attack.inRest).length,

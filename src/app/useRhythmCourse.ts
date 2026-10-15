@@ -11,7 +11,8 @@ import { calibrationIsCurrent, getTimingProfile } from "./timingPreferences";
 import { readingActions } from "./readingSlice";
 import { useAppDispatch, useAppSelector } from "./storeHooks";
 
-type Status = "idle" | "preparing" | "count-in" | "running" | "completed" | "cancelled" | "error";
+type Status =
+  "idle" | "preparing" | "count-in" | "running" | "completed" | "empty" | "cancelled" | "error";
 interface Connection {
   trainer: Trainer | null;
   blocked: boolean;
@@ -163,9 +164,11 @@ export function useRhythmCourse() {
               } else if (statusRef.current === "count-in") changeStatus("running");
               if (session.snapshot().status === "completed") {
                 const completed = session.result(Date.now());
-                changeStatus("completed");
+                // A run without a single attack says nothing about rhythm: it is not saved.
+                const empty = completed?.attacks.length === 0;
+                changeStatus(empty ? "empty" : "completed");
                 connectionRef.current.trainer?.setPlaying(false);
-                if (completed) {
+                if (completed && !empty) {
                   setResult(completed);
                   dispatch(readingActions.rhythmResultAdded(completed));
                 }

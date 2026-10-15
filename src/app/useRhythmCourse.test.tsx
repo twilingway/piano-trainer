@@ -376,6 +376,20 @@ describe("rhythm attacks and completed evidence", () => {
     space("keyup", now + 2);
     expect(audio.tap).toHaveBeenCalledTimes(2);
   });
+  it("saves a set with only extra taps as ten misses", async () => {
+    select();
+    present();
+    await start();
+    const started = now;
+    space("keydown", started + 4500);
+    space("keyup", started + 4501);
+    const exercise = course.exercise;
+    if (!exercise) throw new Error("Missing exercise");
+    frame(started + 4000 + exercise.durationS * 1000 + 251);
+    expect(course.status).toBe("completed");
+    expect(course.result?.summary).toMatchObject({ hits: 0, misses: 10, extras: 1 });
+    expect(store.getState().reading.rhythm.history).toHaveLength(1);
+  });
   it("finishes all ten pointer attacks on the shared clock and restores their raw evidence", async () => {
     select("pointer");
     present();
@@ -512,7 +526,9 @@ describe("rhythm cancellation", () => {
       const exercise = course.exercise;
       if (!exercise) throw new Error("Missing rhythm exercise");
       frame(now + 4000 + exercise.durationS * 1000 + 251);
-      expect(course.result?.summary).toMatchObject({ hits: 0, misses: 10, extras: 0 });
+      expect(course.status).toBe("empty");
+      expect(course.result).toBeNull();
+      expect(store.getState().reading.rhythm.history).toHaveLength(0);
     }
   );
 });

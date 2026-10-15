@@ -41,6 +41,9 @@ export const rhythmMessages: Messages = {
     en: "Tap the start of each note. Do not tap during rests."
   },
   "Серия ритма завершена.": { en: "Rhythm set complete." },
+  "Серия не засчитана: не было ни одного удара. Повторите с отсчёта.": {
+    en: "The set did not count: there was not a single tap. Retry from the count-in."
+  },
   "Серия прервана без результата. Начните снова с отсчёта.": {
     en: "The set was interrupted without a result. Start again with the count-in."
   },
@@ -62,6 +65,7 @@ export const rhythmMessages: Messages = {
   "Результат ритма": { en: "Rhythm result" },
   "Ожидаемые удары": { en: "Expected taps" },
   "Попадания ритма": { en: "Rhythm hits" },
+  "Попадания вовремя": { en: "On-time hits" },
   "Ранние попадания": { en: "Early hits" },
   "Поздние попадания": { en: "Late hits" },
   "Пропуски ритма": { en: "Missed taps" },

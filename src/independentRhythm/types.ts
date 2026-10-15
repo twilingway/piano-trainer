@@ -61,6 +61,7 @@ export interface IndependentRhythmHandSummary {
   readonly hits: number;
   readonly misses: number;
   readonly extras: number;
+  readonly onTime: number;
   readonly early: number;
   readonly late: number;
   readonly signedDeviationMs: number | null;

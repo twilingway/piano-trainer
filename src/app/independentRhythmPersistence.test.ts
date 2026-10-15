@@ -49,6 +49,27 @@ describe("independentRhythm schema8 persistence", () => {
       ).toBe(true);
     }
   });
+  it("recounts hand timing of a run saved under the sign-only rule", () => {
+    const sample = result("sign-only");
+    const signOnly = (hand: typeof sample.series.summary.left) => {
+      const { onTime: _onTime, ...rest } = hand;
+      return { ...rest, early: 0, late: hand.hits };
+    };
+    const saved = {
+      ...sample,
+      series: {
+        ...sample.series,
+        summary: {
+          ...sample.series.summary,
+          left: signOnly(sample.series.summary.left),
+          right: signOnly(sample.series.summary.right)
+        }
+      }
+    };
+    const restored = validateIndependentRhythmResult(saved);
+    expect(restored?.series.summary).toEqual(sample.series.summary);
+    expect(restored?.series.summary.right).toMatchObject({ hits: 12, onTime: 12, late: 0 });
+  });
   it("keeps twenty committed runs, dedupes both identities and deep-copies every nested proof", () => {
     const samples = Array.from({ length: 22 }, (_, index) =>
       result(`run-${String(index)}`, 2000 + index, index === 0)

@@ -33,6 +33,7 @@ function HandMetrics({ title, summary }: { title: string; summary: IndependentRh
     ["Попадания ритма", summary.hits],
     ["Пропуски ритма", summary.misses],
     ["Лишние удары", summary.extras],
+    ["Попадания вовремя", summary.onTime],
     ["Ранние попадания", summary.early],
     ["Поздние попадания", summary.late]
   ] as const;

@@ -6,6 +6,14 @@ export const RHYTHM_BPMS: readonly RhythmBpm[] = [60, 80, 100];
 export const RHYTHM_RULES_VERSION = 1;
 export const RHYTHM_WINDOW_MS = 150;
 export const RHYTHM_DELIVERY_GRACE_MS = 250;
+/** A hit within this many milliseconds either side counts as on time, not early or late. */
+export const RHYTHM_ON_TIME_MS = 50;
+
+export function rhythmTiming(deviationMs: number): "early" | "on-time" | "late" {
+  // Deviations come from float song times; the band edge stays inclusive like the match window.
+  const edge = RHYTHM_ON_TIME_MS + 1e-6;
+  return deviationMs < -edge ? "early" : deviationMs > edge ? "late" : "on-time";
+}
 
 export interface RhythmOnset {
   readonly id: string;
@@ -77,6 +85,7 @@ export interface RhythmMiss {
 export interface RhythmSummary {
   readonly expected: number;
   readonly hits: number;
+  readonly onTime: number;
   readonly early: number;
   readonly late: number;
   readonly misses: number;
