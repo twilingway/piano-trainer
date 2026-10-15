@@ -72,6 +72,43 @@ def half_bend(helper, a, joint, b):
         turn(helper, Matrix.Rotation((joint - a).angle(b - joint) / 2, 4, axis.normalized()), joint)
 
 
+def hinge_to(upper, helper, lower_dir):
+    """Turns the upper bone about its own axis (the humerus or the femur rotating in its socket) so
+    the joint's hinge (the helper's X axis, pianist_rig.py) stands square to the bend: the lower bone
+    then swings in the joint's own plane and the bony point stays behind the bend."""
+    axis = (world(upper, "tail") - world(upper)).normalized()
+    want = lower_dir.cross(axis)
+    have = rig.matrix_world.to_3x3() @ helper.matrix.to_3x3().col[0]
+    want, have = (v - axis * v.dot(axis) for v in (want, have))
+    if want.length > 1e-6 and have.length > 1e-6:
+        angle = have.angle(want)
+        if have.cross(want).dot(axis) < 0:
+            angle = -angle
+        turn(upper, Matrix.Rotation(angle, 4, axis), world(upper))
+
+
+def bend_keys(joint, x, bend_deg):
+    """Blends the joint's corrective shapes (pianist_rig.py) by the bend between its two bones: from
+    the rest pose's bend through each key's angle, one key at a time."""
+    keys = bpy.data.objects["PianistBody"].data.shape_keys
+    if not keys:
+        return
+    named = sorted((int(k.name.rsplit("-", 1)[1]), k) for k in keys.key_blocks if k.name.startswith(f"{joint}.{x}-"))
+    up, low = {"elbow": ("upperarm01", "lowerarm01"), "knee": ("upperleg01", "lowerleg01")}[joint]
+    bu, bl = rig.data.bones[f"{up}.{x}"], rig.data.bones[f"{low}.{x}"]
+    rest = math.degrees((bu.tail_local - bu.head_local).angle(bl.tail_local - bl.head_local))
+    angles = [rest] + [a for a, _ in named]
+    for i, (a, k) in enumerate(named, 1):
+        lo, hi = angles[i - 1], angles[i + 1] if i + 1 < len(angles) else None
+        if bend_deg <= lo:
+            k.value = 0.0
+        elif bend_deg <= a:
+            k.value = (bend_deg - lo) / (a - lo)
+        else:
+            k.value = 1.0 if hi is None else max(0.0, (hi - bend_deg) / (hi - a))
+    report[f"{joint} bend deg {x}"] = round(bend_deg)
+
+
 def two_bone(root, a, b, goal, pole):
     """The middle joint of a two-bone chain from `root` with lengths a, b reaching `goal`, bent
     towards `pole`. A goal out of reach is pulled in along the line to it."""
@@ -105,8 +142,10 @@ def place_arm(x, spread):
     pole = shoulder + Vector((spread * out, -0.2, -0.3))
     elbow, wrist = two_bone(shoulder, ua.length, la1.length + la2.length, WRIST[x], pole)
     aim(ua, elbow)
+    hinge_to(ua, pose[f"elbow.{x}"], (wrist - elbow).normalized())
     aim(la1, wrist)
     half_bend(pose[f"elbow.{x}"], shoulder, elbow, wrist)
+    bend_keys("elbow", x, math.degrees((elbow - shoulder).angle(wrist - elbow)))
     # palm down, fingers to the keys: the wrist bone's Y forward and a little down, its Z (palm) down.
     # The forearm turns the palm (pronation: twist about its own axis, shared by its two bones as the
     # radius rolls over the ulna); the wrist only bends. One bone taking it all folds the skin.
@@ -148,8 +187,10 @@ for x in ("L", "R"):
     ankle_goal = ball + Vector((0, -FOOT_REACH, ANKLE_UP - (ball.z if x == "L" else 0)))
     knee, ankle = two_bone(hip, upper.length, lower.length, ankle_goal, hip + Vector((0, 0.5, 0.3)))
     aim(upper, knee)
+    hinge_to(upper, pose[f"knee.{x}"], (ankle - knee).normalized())
     aim(lower, ankle)
     half_bend(pose[f"knee.{x}"], hip, knee, ankle)
+    bend_keys("knee", x, math.degrees((knee - hip).angle(ankle - knee)))
     aim(pose[f"foot.{x}"], ball + Vector((0, 0, 0.02)))
     aim(pose[f"toe.{x}"], ball + Vector((0, 0.06, 0.012 + (ball.z if x == "R" else 0))))
     report["ankle miss mm " + x] = round((world(lower, "tail") - ankle_goal).length * 1000)

@@ -9,7 +9,7 @@ skeleton (bone names after MPFB, as in HandRig); the skeleton pieces ride on the
 the body ("PianistBody", base level of the Multires) gets automatic weights. The body faces -Y.
 """
 import bpy, math, os
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 ROOT = globals().get("ROOT", r"E:/MySource/ReactJS/piano-trainer")
 LIB = os.path.join(ROOT, "blender/assets/human-base-meshes/bundle/human-base-meshes-bundle-v1.4.1/"
@@ -288,46 +288,281 @@ bpy.ops.object.parent_set(type="ARMATURE_AUTO")
 
 # --- joint helpers: a bone at each elbow and knee that turns half the bend (pianist_pose.py and the
 # game set it). The skin ring around the joint follows it, so under linear skinning the bend keeps
-# its volume instead of collapsing like a let-down balloon.
-HELPERS = {"elbow": ("upperarm01", "lowerarm01", 0.05), "knee": ("upperleg01", "lowerleg01", 0.06)}
+# its volume instead of collapsing like a let-down balloon. Only on the flexor side, though: on the
+# extensor side a bony point shows through the skin (the olecranon behind the elbow, the patella in
+# front of the knee), and the skin over it rides the lower bone rigidly so the bent joint is pointed.
+# The helper's X axis is the joint's hinge: bending turns the lower bone about -X, towards the flexors.
+# The bundle names the forearm bones the other way round (its "arm_radius" carries the olecranon), so
+# the point is found as the extensor-most vertex of the pieces listed, whatever their names.
+HELPERS = {"elbow": ("upperarm01", "lowerarm01", 0.05, -FORWARD, ("arm_radius", "arm_ulna")),
+           "knee": ("upperleg01", "lowerleg01", 0.06, FORWARD, ("leg_patella", "leg_tibula"))}
 HELPER_RADIAL = 0.09    # only skin this close to the limb's axis: not the trunk next to the elbow
+POINT_BLEND = 0.03      # above the bony point the extensor skin passes from the upper bone to the lower
+EXT_CONE = (60, 100)    # degrees round the limb from the bony point: extensor treatment -> flexor
+RING = {"elbow": False, "knee": True}  # the helper carries a skin ring; at the elbow that ring rose as a
+                                       # lump where the forearm's muscles press into the biceps
+
+
+def smooth(a, b, x):
+    u = min(max((x - a) / (b - a), 0.0), 1.0)
+    return u * u * (3 - 2 * u)
+
+
+hinges = {}
+for x in SIDES:
+    for h, (up, low, reach, ext_hint, pieces) in HELPERS.items():
+        bu = arm_data.bones[f"{up}.{x}"]
+        j, up_dir = bu.tail_local.copy(), (bu.tail_local - bu.head_local).normalized()
+        radial = lambda p: (p - j) - up_dir * (p - j).dot(up_dir)
+        near = [skel[f"{n}.{x}"].matrix_world @ vert.co for n in pieces for vert in skel[f"{n}.{x}"].data.vertices]
+        near = [p for p in near if abs((p - j).dot(up_dir)) < reach]
+        hint = (ext_hint - up_dir * ext_hint.dot(up_dir)).normalized()
+        tip = max(near, key=lambda p: radial(p).dot(hint))
+        ext = radial(tip).normalized()
+        depth = radial(tip).dot(ext)
+        top = min((p - j).dot(up_dir) for p in near if radial(p).dot(ext) > depth - 0.012)
+        hinges[h, x] = (j, up_dir, ext, top, tip)
+
 view.objects.active = rig
 bpy.ops.object.mode_set(mode="EDIT")
 eb = arm_data.edit_bones
 for x in SIDES:
-    for h, (up, _, _) in HELPERS.items():
+    for h, (up, *_) in HELPERS.items():
         u = eb[f"{up}.{x}"]
         b = eb.new(f"{h}.{x}")
         b.head = u.tail.copy()
         b.tail = u.tail + (u.tail - u.head).normalized() * 0.05
-        b.roll = u.roll
+        b.align_roll(hinges[h, x][2])          # Z to the bony point, so X = Y x Z is the hinge
         b.parent = u
 bpy.ops.object.mode_set(mode="OBJECT")
 groups_by_name = {g.name: g for g in body.vertex_groups}
+extensor = {}                                   # (joint, side) -> {vertex: extensor share}, for the shapes
 for x in SIDES:
-    for h, (up, low, reach) in HELPERS.items():
+    for h, (up, low, reach, _, _) in HELPERS.items():
         bu, bl = arm_data.bones[f"{up}.{x}"], arm_data.bones[f"{low}.{x}"]
-        joint_p = bu.tail_local
-        up_dir = (bu.tail_local - bu.head_local).normalized()
+        joint_p, up_dir, ext, top, _ = hinges[h, x]
         low_dir = (bl.tail_local - bl.head_local).normalized()
         gu, gl = groups_by_name[f"{up}.{x}"], groups_by_name[f"{low}.{x}"]
         helper = body.vertex_groups.new(name=f"{h}.{x}")
+        ext_side = extensor[h, x] = {}
         for vert in me.vertices:
             p = body.matrix_world @ vert.co - joint_p
-            t = p.dot(up_dir)
-            axis = up_dir if t < 0 else low_dir
+            t_up = p.dot(up_dir)
+            axis = up_dir if t_up < 0 else low_dir
             t = p.dot(axis)
-            if abs(t) >= reach or (p - axis * t).length > HELPER_RADIAL:
+            r = p - axis * t
+            if abs(t) >= reach or r.length > HELPER_RADIAL:
                 continue
             ws = {e.group: e.weight for e in vert.groups}
             share = ws.get(gu.index, 0.0) + ws.get(gl.index, 0.0)
             if share < 0.01:
                 continue
-            k = 0.5 * (1 + math.cos(math.pi * abs(t) / reach))
-            for g in (gu, gl):
-                if g.index in ws:
-                    g.add([vert.index], ws[g.index] * (1 - k), "REPLACE")
-            helper.add([vert.index], share * k, "REPLACE")
+            k = 0.5 * (1 + math.cos(math.pi * abs(t) / reach)) if RING[h] else 0.0
+            e = 1 - smooth(*EXT_CONE, math.degrees(r.angle(ext, math.pi)))
+            ext_side[vert.index] = e
+            m = e * (1 - smooth(0.7 * reach, reach, abs(t)))
+            below = smooth(top - POINT_BLEND, top, t_up)    # 1 from the top of the bony point down
+            wu = (1 - m) * ws.get(gu.index, 0.0) * (1 - k) + m * share * (1 - below)
+            wl = (1 - m) * ws.get(gl.index, 0.0) * (1 - k) + m * share * below
+            for g, w in ((gu, wu), (gl, wl)):
+                if w > 0 or g.index in ws:
+                    g.add([vert.index], w, "REPLACE")
+            helper.add([vert.index], (1 - m) * share * k, "REPLACE")
+
+# --- corrective shapes per bend: linear skinning pinches the flexor side into a notch and loses its
+# volume. The target is the skinned skin relaxed on the flexor side by Blender's Corrective Smooth (it
+# keeps the rest pose's edge lengths, so the skin stretches as one sheet instead of tucking a flap into
+# the crease) and blown up along its normals until the joint holds its rest volume. The extensor side
+# keeps the skinned result, its skin drawn onto the bony point. That is for a joint with the helper's
+# ring (the knee); without it (the elbow) the skinned crease is kept as it is and only the flattened
+# sides are rounded (round_sides).
+# Each target is taken back through the vertex's own skinning, sum(w_i M_i)^-1, into a shape key
+# "elbow.L-090" (bend in degrees between the two bones); pianist_pose.py and the game blend the keys
+# by the bend angle, starting from the rest pose's bend.
+BEND_KEYS = (45, 90, 135)
+KEY_REACH = {"elbow": 0.12, "knee": 0.15}       # along the limb from the joint
+KEY_RADIAL = {"elbow": 0.09, "knee": 0.12}
+POINT_SKIN = {"elbow": 0.004, "knee": 0.009}    # skin over the bent joint's bony point
+POINT_R = {"elbow": 0.035, "knee": 0.06}        # how far round the point the skin is drawn onto it
+RELAX = (0.5, 20)                               # Corrective Smooth: factor, iterations
+VOLUME_REACH = {"elbow": (0.04, 0.10), "knee": (0.05, 0.12)}  # lost volume spread evenly to the 1st, fading out by the 2nd
+ROUND_SMOOTH = 4                                # passes over the rounding push, so it has no ridges
+
+
+def round_sides(co, region, j, up_dir, ext, turn, up_group):
+    """For a joint without the helper's ring: the skin on its sides (a quarter turn round the limb from
+    the bony point) carried round the joint on an arc, turned by its own share of the lower bone's turn. Skinning
+    blends the upper bone's place and the lower bone's into a straight chord, which flattens the side
+    of the bend; the crease and the bony point keep the skinned shape. The upper bone stays at rest."""
+    push = {}
+    for i, (_, fade, _, _) in region.items():
+        p0 = rest_co[i] - j
+        weights = skin_weights[i]
+        s = 1 - sum(w for g, w in weights if g == up_group) / sum(w for _, w in weights)
+        arc = j + Quaternion().slerp(turn, s) @ p0
+        around = (p0 - up_dir * p0.dot(up_dir)).angle(ext, 0.0)
+        push[i] = (arc - co[i]) * (math.sin(around) ** 2 * fade)
+    links = {i: [k for k in vert_links[i] if k in push] for i in push}
+    for _ in range(ROUND_SMOOTH):
+        push = {i: (d + sum((push[k] for k in links[i]), Vector()) / len(links[i])) / 2 if links[i] else d
+                for i, d in push.items()}
+    for i, d in push.items():
+        co[i] = co[i] + d
+    return max((d.length for d in push.values()), default=0.0)
+
+
+def skinning(pose_mats, i):
+    m, total = Matrix(((0,) * 4,) * 4), 0.0
+    for g, w in skin_weights[i]:
+        mat = pose_mats.get(g)
+        if mat is not None:
+            m += mat * w
+            total += w
+    return m * (1 / total) if total > 0 else Matrix.Identity(4)
+
+
+def face_normal(co, poly):
+    """Newell's normal of a polygon, its length twice the area."""
+    n = Vector()
+    for a, b in zip(poly, poly[1:] + poly[:1]):
+        pa, pb = co[a], co[b]
+        n += Vector(((pa.y - pb.y) * (pa.z + pb.z), (pa.z - pb.z) * (pa.x + pb.x), (pa.x - pb.x) * (pa.y + pb.y)))
+    return n
+
+
+def volume(co, faces, origin):
+    """Signed volume of the cone from `origin` over the faces."""
+    v = 0.0
+    for poly in faces:
+        a = co[poly[0]] - origin
+        for b, c in zip(poly[1:-1], poly[2:]):
+            v += a.dot((co[b] - origin).cross(co[c] - origin)) / 6
+    return v
+
+
+# weights, rest positions and faces read once: mesh vertex references do not survive adding shape keys
+skin_weights = [[(e.group, e.weight) for e in vert.groups if e.weight > 0] for vert in me.vertices]
+rest_co = [rig.matrix_world.inverted() @ body.matrix_world @ vert.co for vert in me.vertices]
+polys = [tuple(poly.vertices) for poly in me.polygons]
+vert_faces = [[] for _ in me.vertices]
+for f, poly in enumerate(polys):
+    for vi in poly:
+        vert_faces[vi].append(f)
+vert_links = [set() for _ in me.vertices]
+for poly in polys:
+    for a, b in zip(poly, poly[1:] + poly[:1]):
+        vert_links[a].add(b)
+        vert_links[b].add(a)
+WINDING = 1 if face_normal(rest_co, polys[0]).dot(me.polygons[0].normal) > 0 else -1
+me.shape_keys or body.shape_key_add(name="Basis", from_mix=False)
+groups_by_name = {g.name: g for g in body.vertex_groups}
+to_body = body.matrix_world.inverted() @ rig.matrix_world
+key_error, volume_report, round_report = {}, {}, {}
+for x in SIDES:
+    for h, (up, low, *_) in HELPERS.items():
+        j, up_dir, ext, _, tip = hinges[h, x]
+        hinge = arm_data.bones[f"{h}.{x}"].matrix_local.to_3x3().col[0].normalized()
+        bl = arm_data.bones[f"{low}.{x}"]
+        low_rest = (bl.tail_local - bl.head_local).normalized()
+        n0 = (up_dir + low_rest).normalized()
+        ext_side = extensor[h, x]
+        region = {}                                     # vertex: (lower limb, fade, flexor share, nearness)
+        for i, p in enumerate(rest_co):
+            lower = (p - j).dot(n0) >= 0
+            axis = low_rest if lower else up_dir
+            t = (p - j).dot(axis)
+            if abs(t) < KEY_REACH[h] and ((p - j) - axis * t).length < KEY_RADIAL[h]:
+                e = ext_side.get(i, 1 - smooth(*EXT_CONE, math.degrees(
+                    ((p - j) - up_dir * (p - j).dot(up_dir)).angle(ext, math.pi))))
+                fade = 1 - smooth(0.7 * KEY_REACH[h], KEY_REACH[h], abs(t))
+                region[i] = (lower, fade, (1 - e) * fade, 1 - smooth(*VOLUME_REACH[h], abs(t)))
+        faces = [poly for poly in polys if all(vi in region for vi in poly)]
+        rest_volume = volume(rest_co, faces, j)
+        if RING[h]:
+            relax_group = body.vertex_groups.new(name="relax")
+            for i, (_, _, flex, _) in region.items():
+                if flex > 0:
+                    relax_group.add([i], flex, "REPLACE")
+            relax = body.modifiers.new("relax", "CORRECTIVE_SMOOTH")
+            relax.factor, relax.iterations = RELAX
+            relax.smooth_type, relax.rest_source = "LENGTH_WEIGHTED", "ORCO"
+            relax.vertex_group = relax_group.name
+        for deg in BEND_KEYS:
+            for pb in rig.pose.bones:
+                pb.matrix_basis = Matrix.Identity(4)
+            view.update()
+            low_dir = Matrix.Rotation(math.radians(deg), 3, -hinge) @ up_dir
+            pl = rig.pose.bones[f"{low}.{x}"]
+            turn_low = Matrix.Translation(j) @ low_rest.rotation_difference(low_dir).to_matrix().to_4x4() \
+                @ Matrix.Translation(-j)
+            pl.matrix = turn_low @ pl.matrix
+            ph = rig.pose.bones[f"{h}.{x}"]
+            ph.matrix = Matrix.Translation(j) @ Matrix.Rotation(math.radians(deg) / 2, 4, -hinge) \
+                @ Matrix.Translation(-j) @ ph.matrix
+            view.update()
+            pose_mats = {groups_by_name[b.name].index: b.matrix @ b.bone.matrix_local.inverted()
+                         for b in rig.pose.bones if b.name in groups_by_name}
+            ev = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+            ev_me = ev.to_mesh()
+            co = [rig.matrix_world.inverted() @ body.matrix_world @ vert.co for vert in ev_me.vertices]
+            ev.to_mesh_clear()
+            lost = rest_volume - volume(co, faces, j)
+            if not RING[h]:
+                turned = round_sides(co, region, j, up_dir, ext, low_rest.rotation_difference(low_dir),
+                                     groups_by_name[f"{up}.{x}"].index)
+                round_report[f"{h}.{x}-{deg:03d}"] = round(1000 * turned, 1)
+            # the lost volume back, along the normals, where the skin is relaxed and near the joint
+            push = {i: flex * near * RING[h] for i, (_, _, flex, near) in region.items()}
+            for _ in range(3):
+                gap = rest_volume - volume(co, faces, j)
+                normals, areas = {}, {}
+                for i in region:
+                    n = sum((face_normal(co, polys[f]) for f in vert_faces[i]), Vector()) * WINDING
+                    areas[i] = n.length / 2 / len(vert_faces[i])
+                    normals[i] = n.normalized()
+                grow = sum(push[i] * areas[i] for i in region)
+                if gap <= 0 or grow <= 0:
+                    break
+                step = gap / grow
+                for i in region:
+                    co[i] = co[i] + normals[i] * (step * push[i])
+            point, out = turn_low @ tip, turn_low.to_3x3() @ ext
+            key = body.shape_key_add(name=f"{h}.{x}-{deg:03d}", from_mix=False)
+            targets = {}
+            for i, (_, fade, flex, _) in region.items():
+                target = co[i]
+                over = (target - point).dot(out)            # skin over the bony point, drawn down onto it
+                spread = ((target - point) - out * over).length
+                if RING[h] and over > POINT_SKIN[h]:
+                    target = target - out * ((over - POINT_SKIN[h]) * (fade - flex)
+                                             * (1 - smooth(0, POINT_R[h], spread)) * min(deg / 90, 1))
+                targets[i] = target
+                key.data[i].co = to_body @ (skinning(pose_mats, i).inverted() @ target)
+            volume_report[key.name] = (round(lost * 1e6), round((rest_volume - volume(co, faces, j)) * 1e6))
+            key.value = 1
+            mods = [m for m in body.modifiers if m.type != "ARMATURE"]
+            for m in mods:
+                m.show_viewport = False
+            view.update()
+            ev = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+            ev_me = ev.to_mesh()
+            key_error[key.name] = round(1000 * max(
+                ((rig.matrix_world.inverted() @ body.matrix_world @ ev_me.vertices[i].co) - t).length
+                for i, t in targets.items()), 2)
+            ev.to_mesh_clear()
+            for m in mods:
+                m.show_viewport = True
+            key.value = 0
+        if RING[h]:
+            body.modifiers.remove(relax)
+            body.vertex_groups.remove(relax_group)
+for pb in rig.pose.bones:
+    pb.matrix_basis = Matrix.Identity(4)
+view.update()
+print("shape key error mm (bake pose, key on)", key_error)
+print("joint volume lost by skinning -> left, cm3", volume_report)
+print("sides rounded out, max mm", round_report)
+
 groups = {g.index: g.name for g in body.vertex_groups}
 used = {groups[x.group] for vert in me.vertices for x in vert.groups if x.weight > 0.01}
 unweighted = sum(1 for vert in me.vertices if not any(x.weight > 0.01 for x in vert.groups))
