@@ -94,9 +94,12 @@ def bend_keys(joint, x, bend_deg):
     if not keys:
         return
     named = sorted((int(k.name.rsplit("-", 1)[1]), k) for k in keys.key_blocks if k.name.startswith(f"{joint}.{x}-"))
-    up, low = {"elbow": ("upperarm01", "lowerarm01"), "knee": ("upperleg01", "lowerleg01")}[joint]
-    bu, bl = rig.data.bones[f"{up}.{x}"], rig.data.bones[f"{low}.{x}"]
-    rest = math.degrees((bu.tail_local - bu.head_local).angle(bl.tail_local - bl.head_local))
+    if joint == "hip":
+        rest = 0.0                      # the hip's bend is taken from the thigh's rest direction
+    else:
+        up, low = {"elbow": ("upperarm01", "lowerarm01"), "knee": ("upperleg01", "lowerleg01")}[joint]
+        bu, bl = rig.data.bones[f"{up}.{x}"], rig.data.bones[f"{low}.{x}"]
+        rest = math.degrees((bu.tail_local - bu.head_local).angle(bl.tail_local - bl.head_local))
     angles = [rest] + [a for a, _ in named]
     for i, (a, k) in enumerate(named, 1):
         lo, hi = angles[i - 1], angles[i + 1] if i + 1 < len(angles) else None
@@ -186,7 +189,11 @@ for x in ("L", "R"):
     ball = FEET[x]
     ankle_goal = ball + Vector((0, -FOOT_REACH, ANKLE_UP - (ball.z if x == "L" else 0)))
     knee, ankle = two_bone(hip, upper.length, lower.length, ankle_goal, hip + Vector((0, 0.5, 0.3)))
+    thigh_rest = rig.matrix_world.to_3x3() @ (upper.bone.tail_local - upper.bone.head_local)
     aim(upper, knee)
+    if f"hip.{x}" in pose:
+        half_bend(pose[f"hip.{x}"], hip - thigh_rest, hip, knee)
+        bend_keys("hip", x, math.degrees(thigh_rest.angle(knee - hip)))
     hinge_to(upper, pose[f"knee.{x}"], (ankle - knee).normalized())
     aim(lower, ankle)
     half_bend(pose[f"knee.{x}"], hip, knee, ankle)

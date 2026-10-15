@@ -286,7 +286,7 @@ rig.select_set(True)
 view.objects.active = rig
 bpy.ops.object.parent_set(type="ARMATURE_AUTO")
 
-# --- joint helpers: a bone at each elbow and knee that turns half the bend (pianist_pose.py and the
+# --- joint helpers: a bone at each elbow, knee and hip that turns half the bend (pianist_pose.py and the
 # game set it). The skin ring around the joint follows it, so under linear skinning the bend keeps
 # its volume instead of collapsing like a let-down balloon. Only on the flexor side, though: on the
 # extensor side a bony point shows through the skin (the olecranon behind the elbow, the patella in
@@ -294,13 +294,19 @@ bpy.ops.object.parent_set(type="ARMATURE_AUTO")
 # The helper's X axis is the joint's hinge: bending turns the lower bone about -X, towards the flexors.
 # The bundle names the forearm bones the other way round (its "arm_radius" carries the olecranon), so
 # the point is found as the extensor-most vertex of the pieces listed, whatever their names.
+# The hip has no such point (the buttock sits on the bench), so its skin is all ring: the groin's
+# fold and the buttock both follow the helper. The pelvis bone runs up the spine and the thigh hangs
+# off it unconnected, so the hip's joint is the thigh's head and its rest bend is nil: the "upper"
+# side is the thigh's rest direction carried on into the trunk.
 HELPERS = {"elbow": ("upperarm01", "lowerarm01", 0.05, -FORWARD, ("arm_radius", "arm_ulna")),
-           "knee": ("upperleg01", "lowerleg01", 0.06, FORWARD, ("leg_patella", "leg_tibula"))}
+           "knee": ("upperleg01", "lowerleg01", 0.06, FORWARD, ("leg_patella", "leg_tibula")),
+           "hip": ("pelvis", "upperleg01", 0.08, -FORWARD, ())}
 HELPER_RADIAL = 0.09    # only skin this close to the limb's axis: not the trunk next to the elbow
 POINT_BLEND = 0.03      # above the bony point the extensor skin passes from the upper bone to the lower
 EXT_CONE = (60, 100)    # degrees round the limb from the bony point: extensor treatment -> flexor
-RING = {"elbow": False, "knee": True}  # the helper carries a skin ring; at the elbow that ring rose as a
-                                       # lump where the forearm's muscles press into the biceps
+RING = {"elbow": False, "knee": True, "hip": True}  # the helper carries a skin ring; at the elbow that
+                                                    # ring rose as a lump where the forearm's muscles press into the biceps
+MIDLINE = 0.03          # a hip's skin fades out this close to the body's midplane: the other leg is not its own
 
 
 def smooth(a, b, x):
@@ -308,15 +314,31 @@ def smooth(a, b, x):
     return u * u * (3 - 2 * u)
 
 
+def sided(name, x):
+    return f"{name}.{x}" if f"{name}.{x}" in arm_data.bones else name
+
+
+mid_x = arm_data.bones["pelvis"].head_local.x
+
+
+def own_side(p, j):
+    """1 on the joint's side of the midplane, fading to 0 at it."""
+    return smooth(0, MIDLINE, (p.x - mid_x) * math.copysign(1, j.x - mid_x))
+
+
 hinges = {}
 for x in SIDES:
     for h, (up, low, reach, ext_hint, pieces) in HELPERS.items():
-        bu = arm_data.bones[f"{up}.{x}"]
-        j, up_dir = bu.tail_local.copy(), (bu.tail_local - bu.head_local).normalized()
+        bu, bl = arm_data.bones[sided(up, x)], arm_data.bones[sided(low, x)]
+        j = bl.head_local.copy()
+        up_dir = (bu.tail_local - bu.head_local if bl.use_connect else bl.tail_local - bl.head_local).normalized()
         radial = lambda p: (p - j) - up_dir * (p - j).dot(up_dir)
+        hint = (ext_hint - up_dir * ext_hint.dot(up_dir)).normalized()
+        if not pieces:
+            hinges[h, x] = (j, up_dir, hint, 0.0, j)
+            continue
         near = [skel[f"{n}.{x}"].matrix_world @ vert.co for n in pieces for vert in skel[f"{n}.{x}"].data.vertices]
         near = [p for p in near if abs((p - j).dot(up_dir)) < reach]
-        hint = (ext_hint - up_dir * ext_hint.dot(up_dir)).normalized()
         tip = max(near, key=lambda p: radial(p).dot(hint))
         ext = radial(tip).normalized()
         depth = radial(tip).dot(ext)
@@ -328,21 +350,21 @@ bpy.ops.object.mode_set(mode="EDIT")
 eb = arm_data.edit_bones
 for x in SIDES:
     for h, (up, *_) in HELPERS.items():
-        u = eb[f"{up}.{x}"]
+        j, up_dir, ext = hinges[h, x][:3]
         b = eb.new(f"{h}.{x}")
-        b.head = u.tail.copy()
-        b.tail = u.tail + (u.tail - u.head).normalized() * 0.05
-        b.align_roll(hinges[h, x][2])          # Z to the bony point, so X = Y x Z is the hinge
-        b.parent = u
+        b.head = j
+        b.tail = j + up_dir * 0.05
+        b.align_roll(ext)                      # Z to the bony point, so X = Y x Z is the hinge
+        b.parent = eb[sided(up, x)]
 bpy.ops.object.mode_set(mode="OBJECT")
 groups_by_name = {g.name: g for g in body.vertex_groups}
 extensor = {}                                   # (joint, side) -> {vertex: extensor share}, for the shapes
 for x in SIDES:
-    for h, (up, low, reach, _, _) in HELPERS.items():
-        bu, bl = arm_data.bones[f"{up}.{x}"], arm_data.bones[f"{low}.{x}"]
+    for h, (up, low, reach, _, pieces) in HELPERS.items():
+        bu, bl = arm_data.bones[sided(up, x)], arm_data.bones[sided(low, x)]
         joint_p, up_dir, ext, top, _ = hinges[h, x]
         low_dir = (bl.tail_local - bl.head_local).normalized()
-        gu, gl = groups_by_name[f"{up}.{x}"], groups_by_name[f"{low}.{x}"]
+        gu, gl = groups_by_name[sided(up, x)], groups_by_name[sided(low, x)]
         helper = body.vertex_groups.new(name=f"{h}.{x}")
         ext_side = extensor[h, x] = {}
         for vert in me.vertices:
@@ -357,8 +379,8 @@ for x in SIDES:
             share = ws.get(gu.index, 0.0) + ws.get(gl.index, 0.0)
             if share < 0.01:
                 continue
-            k = 0.5 * (1 + math.cos(math.pi * abs(t) / reach)) if RING[h] else 0.0
-            e = 1 - smooth(*EXT_CONE, math.degrees(r.angle(ext, math.pi)))
+            k = 0.5 * (1 + math.cos(math.pi * abs(t) / reach)) * own_side(p + joint_p, joint_p) if RING[h] else 0.0
+            e = 1 - smooth(*EXT_CONE, math.degrees(r.angle(ext, math.pi))) if pieces else 0.0
             ext_side[vert.index] = e
             m = e * (1 - smooth(0.7 * reach, reach, abs(t)))
             below = smooth(top - POINT_BLEND, top, t_up)    # 1 from the top of the bony point down
@@ -380,12 +402,12 @@ for x in SIDES:
 # "elbow.L-090" (bend in degrees between the two bones); pianist_pose.py and the game blend the keys
 # by the bend angle, starting from the rest pose's bend.
 BEND_KEYS = (45, 90, 135)
-KEY_REACH = {"elbow": 0.12, "knee": 0.15}       # along the limb from the joint
-KEY_RADIAL = {"elbow": 0.09, "knee": 0.12}
-POINT_SKIN = {"elbow": 0.004, "knee": 0.009}    # skin over the bent joint's bony point
+KEY_REACH = {"elbow": 0.12, "knee": 0.15, "hip": 0.15}     # along the limb from the joint
+KEY_RADIAL = {"elbow": 0.09, "knee": 0.12, "hip": 0.15}
+POINT_SKIN = {"elbow": 0.004, "knee": 0.009}    # skin over the bent joint's bony point (the hip has none)
 POINT_R = {"elbow": 0.035, "knee": 0.06}        # how far round the point the skin is drawn onto it
 RELAX = (0.5, 20)                               # Corrective Smooth: factor, iterations
-VOLUME_REACH = {"elbow": (0.04, 0.10), "knee": (0.05, 0.12)}  # lost volume spread evenly to the 1st, fading out by the 2nd
+VOLUME_REACH = {"elbow": (0.04, 0.10), "knee": (0.05, 0.12), "hip": (0.05, 0.12)}  # lost volume spread evenly to the 1st, fading out by the 2nd
 ROUND_SMOOTH = 4                                # passes over the rounding push, so it has no ridges
 
 
@@ -459,10 +481,10 @@ groups_by_name = {g.name: g for g in body.vertex_groups}
 to_body = body.matrix_world.inverted() @ rig.matrix_world
 key_error, volume_report, round_report = {}, {}, {}
 for x in SIDES:
-    for h, (up, low, *_) in HELPERS.items():
+    for h, (up, low, _, _, pieces) in HELPERS.items():
         j, up_dir, ext, _, tip = hinges[h, x]
         hinge = arm_data.bones[f"{h}.{x}"].matrix_local.to_3x3().col[0].normalized()
-        bl = arm_data.bones[f"{low}.{x}"]
+        bl = arm_data.bones[sided(low, x)]
         low_rest = (bl.tail_local - bl.head_local).normalized()
         n0 = (up_dir + low_rest).normalized()
         ext_side = extensor[h, x]
@@ -473,8 +495,10 @@ for x in SIDES:
             t = (p - j).dot(axis)
             if abs(t) < KEY_REACH[h] and ((p - j) - axis * t).length < KEY_RADIAL[h]:
                 e = ext_side.get(i, 1 - smooth(*EXT_CONE, math.degrees(
-                    ((p - j) - up_dir * (p - j).dot(up_dir)).angle(ext, math.pi))))
-                fade = 1 - smooth(0.7 * KEY_REACH[h], KEY_REACH[h], abs(t))
+                    ((p - j) - up_dir * (p - j).dot(up_dir)).angle(ext, math.pi)))) if pieces else 0.0
+                fade = (1 - smooth(0.7 * KEY_REACH[h], KEY_REACH[h], abs(t))) * own_side(p, j)
+                if fade <= 0:
+                    continue
                 region[i] = (lower, fade, (1 - e) * fade, 1 - smooth(*VOLUME_REACH[h], abs(t)))
         faces = [poly for poly in polys if all(vi in region for vi in poly)]
         rest_volume = volume(rest_co, faces, j)
@@ -492,7 +516,7 @@ for x in SIDES:
                 pb.matrix_basis = Matrix.Identity(4)
             view.update()
             low_dir = Matrix.Rotation(math.radians(deg), 3, -hinge) @ up_dir
-            pl = rig.pose.bones[f"{low}.{x}"]
+            pl = rig.pose.bones[sided(low, x)]
             turn_low = Matrix.Translation(j) @ low_rest.rotation_difference(low_dir).to_matrix().to_4x4() \
                 @ Matrix.Translation(-j)
             pl.matrix = turn_low @ pl.matrix
@@ -509,7 +533,7 @@ for x in SIDES:
             lost = rest_volume - volume(co, faces, j)
             if not RING[h]:
                 turned = round_sides(co, region, j, up_dir, ext, low_rest.rotation_difference(low_dir),
-                                     groups_by_name[f"{up}.{x}"].index)
+                                     groups_by_name[sided(up, x)].index)
                 round_report[f"{h}.{x}-{deg:03d}"] = round(1000 * turned, 1)
             # the lost volume back, along the normals, where the skin is relaxed and near the joint
             push = {i: flex * near * RING[h] for i, (_, _, flex, near) in region.items()}
@@ -533,7 +557,7 @@ for x in SIDES:
                 target = co[i]
                 over = (target - point).dot(out)            # skin over the bony point, drawn down onto it
                 spread = ((target - point) - out * over).length
-                if RING[h] and over > POINT_SKIN[h]:
+                if RING[h] and h in POINT_SKIN and over > POINT_SKIN[h]:
                     target = target - out * ((over - POINT_SKIN[h]) * (fade - flex)
                                              * (1 - smooth(0, POINT_R[h], spread)) * min(deg / 90, 1))
                 targets[i] = target
