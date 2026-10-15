@@ -8,7 +8,7 @@ the head looks down at the keys. Wrists go to WRIST targets above the keys, palm
 sole stays flat on the floor, the right forefoot rests on the sustain footswitch.
 """
 import bpy, math
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 G = globals()
 KEY_TOP, KEY_FRONT, X0, WHITE_W = 0.74, 0.30, 0.36, 0.0235
@@ -20,9 +20,12 @@ LEAN = G.get("LEAN", (4, 4, 3))                                  # spine01..03 f
 LOOK = G.get("LOOK", (10, 14))                                   # neck01, head down, degrees
 PEDAL_X, PEDAL_BACK, PEDAL_TOP = 0.16, KEY_FRONT + 0.15, 0.045
 ANKLE_UP, FOOT_REACH = 0.075, 0.15                               # ankle over the floor; ankle -> ball
+WRIST_MAX = math.radians(G.get("WRIST_MAX_DEG", 25))             # bend and deviation of the wrist together
+TWIST_SHARE = 0.4                                                # of the pronation on the upper forearm bone
 # Where the wrists go: x across the keyboard, y towards the keys, z up (world).
-WRIST = G.get("WRIST", {"L": Vector((X0 - 7 * WHITE_W + 2 * WHITE_W, KEY_FRONT - 0.11, KEY_TOP + 0.04)),
-                        "R": Vector((X0 + 2 * WHITE_W, KEY_FRONT - 0.11, KEY_TOP + 0.04))})
+WRIST = G.get("WRIST", {"L": Vector((CENTRE - 0.17, KEY_FRONT - 0.11, KEY_TOP + 0.04)),
+                        "R": Vector((CENTRE + 0.17, KEY_FRONT - 0.11, KEY_TOP + 0.04))})
+HAND_FOLLOWS = 0.5      # how much of the forearm's turn across the keys the hand keeps; the wrist bends the rest
 FEET = G.get("FEET", {"L": Vector((CENTRE - 0.14, KEY_FRONT - 0.02, 0)),            # ball of the foot
                       "R": Vector((CENTRE + PEDAL_X, PEDAL_BACK - 0.07, PEDAL_TOP))})
 
@@ -62,6 +65,13 @@ def aim(pb, point_world):
     turn(pb, (world(pb, "tail") - head).rotation_difference(point_world - head).to_matrix().to_4x4(), head)
 
 
+def half_bend(helper, a, joint, b):
+    """Turns a joint helper (pianist_rig.py) half the bend between a->joint and joint->b."""
+    axis = (joint - a).cross(b - joint)
+    if axis.length > 1e-9:
+        turn(helper, Matrix.Rotation((joint - a).angle(b - joint) / 2, 4, axis.normalized()), joint)
+
+
 def two_bone(root, a, b, goal, pole):
     """The middle joint of a two-bone chain from `root` with lengths a, b reaching `goal`, bent
     towards `pole`. A goal out of reach is pulled in along the line to it."""
@@ -81,6 +91,53 @@ for name, deg in zip(("spine01", "spine02", "spine03"), LEAN):
 for name, deg in zip(("neck01", "head"), LOOK):
     turn(pose[name], Matrix.Rotation(math.radians(deg), 4, side), world(pose[name]))
 
+
+def place_arm(x, spread):
+    """Shoulder -> elbow -> wrist by two-bone IK, the elbow out by `spread` (metres of pole offset),
+    then the palm turned down by the forearm and bent by the wrist."""
+    out = -1 if x == "L" else 1
+    for name in ("upperarm01", "lowerarm01", "lowerarm02", "wrist", "elbow"):
+        pose[f"{name}.{x}"].matrix_basis = Matrix.Identity(4)
+    view.update()
+    # arms: elbow out, back and down; the forearm's two bones stay in line
+    shoulder = world(pose[f"upperarm01.{x}"])
+    ua, la1, la2 = pose[f"upperarm01.{x}"], pose[f"lowerarm01.{x}"], pose[f"lowerarm02.{x}"]
+    pole = shoulder + Vector((spread * out, -0.2, -0.3))
+    elbow, wrist = two_bone(shoulder, ua.length, la1.length + la2.length, WRIST[x], pole)
+    aim(ua, elbow)
+    aim(la1, wrist)
+    half_bend(pose[f"elbow.{x}"], shoulder, elbow, wrist)
+    # palm down, fingers to the keys: the wrist bone's Y forward and a little down, its Z (palm) down.
+    # The forearm turns the palm (pronation: twist about its own axis, shared by its two bones as the
+    # radius rolls over the ulna); the wrist only bends. One bone taking it all folds the skin.
+    wb = pose[f"wrist.{x}"]
+    axis = (wrist - elbow).normalized()
+    flat = Vector((axis.x, axis.y, 0)).normalized()
+    y = (Vector((0, 1, 0)).lerp(flat, HAND_FOLLOWS).normalized() + Vector((0, 0, -0.15))).normalized()
+    z = Vector((0, 0, -1))
+    xa = y.cross(z).normalized()
+    z = xa.cross(y)
+    want = Matrix((xa, y, z)).transposed().to_quaternion()
+    have = lambda: (rig.matrix_world @ wb.matrix).to_quaternion()
+    q = want @ have().inverted()
+    if q.w < 0:
+        q.negate()                      # the short way round
+    along = Vector((q.x, q.y, q.z)).dot(axis)
+    twist = 2 * math.atan2(along, q.w)
+    for bone_, share, pivot in ((la1, TWIST_SHARE, elbow), (la2, 1 - TWIST_SHARE, world(la2))):
+        turn(bone_, Matrix.Rotation(twist * share, 4, axis), pivot)
+    swing = want @ have().inverted()
+    if swing.w < 0:
+        swing.negate()
+    if swing.angle > WRIST_MAX:         # a wrist bends this far at most; the hand keeps the rest
+        swing = Quaternion().slerp(swing, WRIST_MAX / swing.angle)
+    turn(wb, swing.to_matrix().to_4x4(), world(wb))
+    report["pronation deg " + x] = round(math.degrees(twist))
+    report["wrist bend deg " + x] = round(math.degrees(swing.angle))
+    report["wrist miss mm " + x] = round((world(wb) - WRIST[x]).length * 1000)
+    report["reach " + x] = round((WRIST[x] - shoulder).length / (ua.length + la1.length + la2.length), 2)
+
+
 report = {}
 for x in ("L", "R"):
     out = -1 if x == "L" else 1                      # the left side is towards -X at the piano
@@ -92,27 +149,72 @@ for x in ("L", "R"):
     knee, ankle = two_bone(hip, upper.length, lower.length, ankle_goal, hip + Vector((0, 0.5, 0.3)))
     aim(upper, knee)
     aim(lower, ankle)
+    half_bend(pose[f"knee.{x}"], hip, knee, ankle)
     aim(pose[f"foot.{x}"], ball + Vector((0, 0, 0.02)))
     aim(pose[f"toe.{x}"], ball + Vector((0, 0.06, 0.012 + (ball.z if x == "R" else 0))))
     report["ankle miss mm " + x] = round((world(lower, "tail") - ankle_goal).length * 1000)
 
-    # arms: elbow out, back and down; the forearm's two bones stay in line
-    shoulder = world(pose[f"upperarm01.{x}"])
-    ua, la1, la2 = pose[f"upperarm01.{x}"], pose[f"lowerarm01.{x}"], pose[f"lowerarm02.{x}"]
-    pole = shoulder + Vector((0.3 * out, -0.2, -0.3))
-    elbow, wrist = two_bone(shoulder, ua.length, la1.length + la2.length, WRIST[x], pole)
-    aim(ua, elbow)
-    aim(la1, wrist)
-    # palm down, fingers to the keys: the wrist bone's Y forward and a little down, its Z (palm) down
-    wb = pose[f"wrist.{x}"]
-    y = Vector((0, 1, -0.15)).normalized()
-    z = Vector((0, 0, -1))
-    xa = y.cross(z).normalized()
-    z = xa.cross(y)
-    head = to_rig @ world(wb)
-    wb.matrix = Matrix.Translation(head) @ (rig_rot @ Matrix((xa, y, z)).transposed()).to_4x4()
-    view.update()
-    report["wrist miss mm " + x] = round((world(wb) - WRIST[x]).length * 1000)
-    report["reach " + x] = round((WRIST[x] - shoulder).length / (ua.length + la1.length + la2.length), 2)
 
+
+# --- arms must not go into the body: arm skin against the trunk and thighs on the deformed mesh
+ARM_BONES = ("upperarm01", "lowerarm01", "lowerarm02", "wrist", "metacarpal", "finger")
+ARMPIT = 0.45           # of the upper arm from the shoulder: closer in, skin meets the chest anyway
+SKIN_TOL = 0.004        # skin may press this deep into skin
+
+
+def penetration():
+    """Deepest arm vertex inside the trunk or thighs per side, in metres, on the posed mesh."""
+    from mathutils.bvhtree import BVHTree
+    body = bpy.data.objects["PianistBody"]
+    subs = [m for m in body.modifiers if m.type == "SUBSURF"]
+    for m in subs:
+        m.show_viewport = False
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = body.evaluated_get(dg)
+    me = ev.to_mesh()
+    co = [body.matrix_world @ v.co for v in me.vertices]
+    names = {g.index: g.name for g in body.vertex_groups}
+    owner = []
+    for v in body.data.vertices:
+        best = max(v.groups, key=lambda g: g.weight, default=None)
+        owner.append(names[best.group] if best else "")
+    arm = {i for i, n in enumerate(owner) if n.split(".")[0].rstrip("0123456789-") in
+           ("upperarm", "lowerarm", "elbow", "wrist", "metacarpal", "finger")}
+    trunk_faces = [tuple(p.vertices) for p in me.polygons if not arm.intersection(p.vertices)]
+    bvh = BVHTree.FromPolygons(co, trunk_faces)
+    worst = {"L": (0.0, None), "R": (0.0, None)}
+    for i in arm:
+        name = owner[i]
+        x = name[-1]
+        if name.startswith("upperarm"):
+            sh = world(pose[f"upperarm01.{x}"])
+            el = world(pose[f"upperarm01.{x}"], "tail")
+            t = (co[i] - sh).dot(el - sh) / (el - sh).length_squared
+            if t < ARMPIT:
+                continue
+        hit = bvh.find_nearest(co[i], 0.08)
+        if hit[0] is None:
+            continue
+        depth = -(co[i] - hit[0]).dot(hit[1])
+        if depth > worst[x][0]:
+            worst[x] = (depth, name)
+    ev.to_mesh_clear()
+    for m in subs:
+        m.show_viewport = True
+    return worst
+
+
+# Elbows move out until no arm skin is inside the trunk or thighs (beyond SKIN_TOL).
+SPREAD0, SPREAD_STEP, SPREAD_MAX = 0.3, 0.1, 1.2
+for x in ("L", "R"):
+    spread = SPREAD0
+    place_arm(x, spread)
+    while True:
+        depth, part = penetration()[x]
+        if depth <= SKIN_TOL or spread >= SPREAD_MAX:
+            break
+        spread += SPREAD_STEP
+        place_arm(x, spread)
+    report["arm into body mm " + x] = (round(depth * 1000, 1), part)
+    report["elbow spread " + x] = round(spread, 2)
 print("pianist seated", report)

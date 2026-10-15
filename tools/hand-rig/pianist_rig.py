@@ -8,7 +8,7 @@ its joint onto the body's centre line. The armature "PianistRig" takes its joint
 skeleton (bone names after MPFB, as in HandRig); the skeleton pieces ride on their bones rigidly and
 the body ("PianistBody", base level of the Multires) gets automatic weights. The body faces -Y.
 """
-import bpy, os
+import bpy, math, os
 from mathutils import Matrix, Vector
 
 ROOT = globals().get("ROOT", r"E:/MySource/ReactJS/piano-trainer")
@@ -285,6 +285,49 @@ body.select_set(True)
 rig.select_set(True)
 view.objects.active = rig
 bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+
+# --- joint helpers: a bone at each elbow and knee that turns half the bend (pianist_pose.py and the
+# game set it). The skin ring around the joint follows it, so under linear skinning the bend keeps
+# its volume instead of collapsing like a let-down balloon.
+HELPERS = {"elbow": ("upperarm01", "lowerarm01", 0.05), "knee": ("upperleg01", "lowerleg01", 0.06)}
+HELPER_RADIAL = 0.09    # only skin this close to the limb's axis: not the trunk next to the elbow
+view.objects.active = rig
+bpy.ops.object.mode_set(mode="EDIT")
+eb = arm_data.edit_bones
+for x in SIDES:
+    for h, (up, _, _) in HELPERS.items():
+        u = eb[f"{up}.{x}"]
+        b = eb.new(f"{h}.{x}")
+        b.head = u.tail.copy()
+        b.tail = u.tail + (u.tail - u.head).normalized() * 0.05
+        b.roll = u.roll
+        b.parent = u
+bpy.ops.object.mode_set(mode="OBJECT")
+groups_by_name = {g.name: g for g in body.vertex_groups}
+for x in SIDES:
+    for h, (up, low, reach) in HELPERS.items():
+        bu, bl = arm_data.bones[f"{up}.{x}"], arm_data.bones[f"{low}.{x}"]
+        joint_p = bu.tail_local
+        up_dir = (bu.tail_local - bu.head_local).normalized()
+        low_dir = (bl.tail_local - bl.head_local).normalized()
+        gu, gl = groups_by_name[f"{up}.{x}"], groups_by_name[f"{low}.{x}"]
+        helper = body.vertex_groups.new(name=f"{h}.{x}")
+        for vert in me.vertices:
+            p = body.matrix_world @ vert.co - joint_p
+            t = p.dot(up_dir)
+            axis = up_dir if t < 0 else low_dir
+            t = p.dot(axis)
+            if abs(t) >= reach or (p - axis * t).length > HELPER_RADIAL:
+                continue
+            ws = {e.group: e.weight for e in vert.groups}
+            share = ws.get(gu.index, 0.0) + ws.get(gl.index, 0.0)
+            if share < 0.01:
+                continue
+            k = 0.5 * (1 + math.cos(math.pi * abs(t) / reach))
+            for g in (gu, gl):
+                if g.index in ws:
+                    g.add([vert.index], ws[g.index] * (1 - k), "REPLACE")
+            helper.add([vert.index], share * k, "REPLACE")
 groups = {g.index: g.name for g in body.vertex_groups}
 used = {groups[x.group] for vert in me.vertices for x in vert.groups if x.weight > 0.01}
 unweighted = sum(1 for vert in me.vertices if not any(x.weight > 0.01 for x in vert.groups))
