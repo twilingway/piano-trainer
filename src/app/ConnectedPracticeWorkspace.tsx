@@ -44,6 +44,7 @@ export function ConnectedPracticeWorkspace() {
     viewMirrorHostRef,
     courseTabs,
     courseTopView,
+    practiceActive,
     reading,
     rhythm
   } = useRuntimeSelector(
@@ -87,7 +88,8 @@ export function ConnectedPracticeWorkspace() {
         runtime.course.active !== null &&
         (runtime.course.saved.view === "tabs" || runtime.course.saved.view === "both") &&
         !runtime.comparing,
-      courseTopView: runtime.course.saved.topView
+      courseTopView: runtime.course.saved.topView,
+      practiceActive: runtime.practiceActive
     }),
     shallowEqual
   );
@@ -155,6 +157,7 @@ export function ConnectedPracticeWorkspace() {
         staffPresentation={rhythm.active ? rhythm.presentation : reading.presentation}
         staffRetry={rhythm.active ? rhythm.retry : reading.retry}
         readingBeat={reading.prompt?.beat}
+        course={practiceActive}
         prefs={displayPrefs}
         layout={screenLayout}
         onLayout={screenUpdateLayout}

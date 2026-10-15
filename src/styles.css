@@ -781,6 +781,29 @@ body {
   padding-inline: 50%;
 }
 
+/* A course's exercise is fitted to the width and centred; one too long for a phone follows the cursor. */
+.staff--course {
+  scrollbar-width: none;
+}
+
+.staff--course::-webkit-scrollbar {
+  height: 0;
+}
+
+.staff--course .staff-page {
+  display: block;
+  width: fit-content;
+  margin-inline: auto;
+  padding-inline: 0;
+}
+
+/* A course's cursor stands before the note, thin, so it never hides the notehead. */
+.staff--course .staff-cursor {
+  width: 2px;
+  margin-left: -1px;
+  box-shadow: 0 0 4px rgb(63 214 255 / 60%);
+}
+
 /* The score, or the score and the take written out: side by side or stacked. */
 .staves {
   position: relative;

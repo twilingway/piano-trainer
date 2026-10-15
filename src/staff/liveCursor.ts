@@ -56,19 +56,21 @@ export function placeCursorLine(
   line: HTMLElement | null,
   spots: readonly BeatSpot[],
   lines: readonly { readonly top: number; readonly bottom: number }[],
-  beat: number
+  beat: number,
+  /** A course moves the cursor off the notehead, or hides it over a single position. */
+  { offsetX = 0, hidden = false }: { readonly offsetX?: number; readonly hidden?: boolean } = {}
 ): void {
   if (!line) return;
   const svg = host?.querySelector("svg");
   const spot = spotAt(spots, beat);
   const box = spot && lines.find((item) => item.top === spot.line);
-  if (!host || !svg || !spot || !box) {
+  if (hidden || !host || !svg || !spot || !box) {
     line.style.visibility = "hidden";
     return;
   }
   const origin = svg.getBoundingClientRect();
   const view = host.getBoundingClientRect();
-  const left = origin.left - view.left + host.scrollLeft + spot.x;
+  const left = origin.left - view.left + host.scrollLeft + spot.x + offsetX;
   const top = origin.top - view.top + host.scrollTop + box.top;
   line.style.visibility = "visible";
   line.style.transform = `translate(${String(left)}px, ${String(top)}px)`;
