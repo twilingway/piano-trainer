@@ -2,6 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseOptions } from "./options.ts";
 import { frames, prepare, setup } from "./pipeline.ts";
+import { isCaptureCommand } from "./capture/options.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const help = `Локальный разбор видеоуроков (без сервера и загрузки аудио в облако).
@@ -18,6 +19,11 @@ pnpm lesson-video:frames --video путь --id lesson-01 --every 30 [--course-ro
 Другой источник, диапазон или модель требуют нового --id. Подробнее: docs/VIDEO_LESSON_PIPELINE.md.`;
 
 async function main(): Promise<void> {
+  if (isCaptureCommand(process.argv[2])) {
+    const { captureCli } = await import("./capture/cli.ts");
+    await captureCli(root, process.argv.slice(2));
+    return;
+  }
   const options = parseOptions(process.argv.slice(2));
   if (options.help) {
     console.log(help);
