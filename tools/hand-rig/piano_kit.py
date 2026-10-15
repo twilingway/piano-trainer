@@ -47,6 +47,7 @@ FLOOR = -KEY_TOP              # the floor below the white tops
 PANEL_T = 0.03                # the stand's side panels, under the cheeks
 BENCH_W, BENCH_D, BENCH_H = 0.56, 0.32, 0.49
 SEAT_T, BENCH_LEG = 0.05, 0.04
+SEAT_CUTS = 27                 # across the seat's top each way: about 2 x 1.1 cm cells
 BENCH_GAP = globals().get("BENCH_GAP", 0.28)   # from the keys' front to the seat's front edge
 PEDAL_W, PEDAL_L = 0.075, 0.20                 # the footswitch's base
 PEDAL_BASE, PEDAL_PLATE, PEDAL_TILT = 0.018, 0.012, math.radians(9)
@@ -246,8 +247,11 @@ def panel(bm):
 
 
 def bench(bm):
-    """Origin at the seat's top centre."""
+    """Origin at the seat's top centre. The seat's top is a grid: the cushion is dented where the
+    pianist sits (pianist_pose.py)."""
     box(bm, -BENCH_W / 2, BENCH_W / 2, -BENCH_D / 2, BENCH_D / 2, -SEAT_T, 0)
+    top = next(f for f in bm.faces if all(abs(v.co.z) < 1e-6 for v in f.verts))
+    bmesh.ops.subdivide_edges(bm, edges=list(top.edges), cuts=SEAT_CUTS, use_grid_fill=True)
     for sx in (-1, 1):
         for sy in (-1, 1):
             x = sx * (BENCH_W / 2 - BENCH_LEG)

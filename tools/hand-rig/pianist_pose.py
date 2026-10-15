@@ -267,4 +267,117 @@ for x in ("L", "R"):
         place_arm(x, spread)
     report["arm past tolerance mm " + x] = (round(depth * 1000, 1), part)
     report["elbow spread " + x] = round(spread, 2)
+
+
+# --- the seat is soft, and so is the pianist. Skin below the seat's top is flattened onto it, a little
+# under, where the cushion gives (SEAT_GIVE); the flesh pressed away bulges round the contact, and the
+# cushion is dented under it. The body's part is a shape key "seat", taken back through the skinning
+# as pianist_rig.py's joint keys are; the dent goes into the seat's own copy of the bench mesh.
+SEAT_GIVE = G.get("SEAT_GIVE", 0.008)
+DENT_R = 0.03                   # the dent's edge: from full depth under the contact to none
+BULGE_H, BULGE_R = 0.12, 0.12   # the pressed flesh bulges this high above the contact and this far round it
+
+
+def smooth(a, b, x):
+    u = min(max((x - a) / (b - a), 0.0), 1.0)
+    return u * u * (3 - 2 * u)
+
+
+def sit():
+    from mathutils.kdtree import KDTree
+    body = bpy.data.objects["PianistBody"]
+    blocks = body.data.shape_keys.key_blocks
+    if "seat" in blocks:
+        body.shape_key_remove(blocks["seat"])
+    seat = next(o for o in bpy.data.collections["piano"].all_objects if o.name.startswith("bench"))
+    old = seat.data if seat.data.name == "bench-seated" else None
+    seat.data = bpy.data.meshes["bench"].copy()
+    if old:
+        bpy.data.meshes.remove(old)
+    seat.data.name = "bench-seated"
+    cushion = [v for v in seat.data.vertices if abs(v.co.z) < 1e-6]
+    xs = [(seat.matrix_world @ v.co) for v in cushion]
+    x0, x1 = min(p.x for p in xs), max(p.x for p in xs)
+    y0, y1 = min(p.y for p in xs), max(p.y for p in xs)
+    top = seat.matrix_world.translation.z
+    plane = top - SEAT_GIVE
+
+    subs = [m for m in body.modifiers if m.type == "SUBSURF"]
+    for m in subs:
+        m.show_viewport = False
+    view.update()
+    ev = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    me = ev.to_mesh()
+    rot = body.matrix_world.to_3x3()
+    co = [body.matrix_world @ v.co for v in me.vertices]
+    normals = [(rot @ v.normal).normalized() for v in me.vertices]
+    area = [0.0] * len(co)
+    for poly in me.polygons:
+        for vi in poly.vertices:
+            area[vi] += poly.area / len(poly.vertices)
+    ev.to_mesh_clear()
+
+    contact = [i for i, p in enumerate(co) if x0 <= p.x <= x1 and y0 <= p.y <= y1 and top - 0.1 < p.z < plane]
+    delta = {i: Vector((0, 0, plane - co[i].z)) for i in contact}
+    pressed = sum(d.z * area[i] for i, d in delta.items())
+    kd = KDTree(len(contact))
+    for k, i in enumerate(contact):
+        kd.insert(Vector((co[i].x, co[i].y, 0)), k)
+    kd.balance()
+    band = {}
+    if contact:
+        for i, p in enumerate(co):
+            h = p.z - plane
+            if i in delta or not 0 < h < BULGE_H:
+                continue
+            dist = kd.find(Vector((p.x, p.y, 0)))[2]
+            if dist < BULGE_R:
+                band[i] = (1 - h / BULGE_H) ** 2 * (1 - dist / BULGE_R)
+    grow = sum(w * area[i] for i, w in band.items())
+    bulge = pressed / grow if grow > 0 else 0.0
+    for i, w in band.items():
+        delta[i] = normals[i] * (w * bulge)
+
+    # world offsets back through each vertex's skinning into the rest shape
+    names = {g.index: g.name for g in body.vertex_groups}
+    mats = {b.name: (b.matrix @ b.bone.matrix_local.inverted()).to_3x3() for b in pose}
+    to_rig = rig.matrix_world.to_3x3().inverted()
+    to_body = (body.matrix_world.inverted() @ rig.matrix_world).to_3x3()
+    key = body.shape_key_add(name="seat", from_mix=False)
+    for i, d in delta.items():
+        m, total = Matrix(((0,) * 3,) * 3), 0.0
+        for g in body.data.vertices[i].groups:
+            b = mats.get(names[g.group])
+            if b is not None and g.weight > 0:
+                m += b * g.weight
+                total += g.weight
+        if total > 0:
+            key.data[i].co = key.data[i].co + to_body @ ((m * (1 / total)).inverted() @ (to_rig @ d))
+    key.value = 1.0
+    view.update()
+    ev = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    me = ev.to_mesh()
+    below = max((plane - (body.matrix_world @ me.vertices[i].co).z for i in contact), default=0.0)
+    ev.to_mesh_clear()
+    for m in subs:
+        m.show_viewport = True
+
+    # the cushion's dent: full under the contact, easing out over DENT_R
+    dent = 0.0
+    if contact:
+        for v in cushion:
+            p = seat.matrix_world @ v.co
+            depth = SEAT_GIVE * (1 - smooth(0.012, 0.012 + DENT_R, kd.find(Vector((p.x, p.y, 0)))[2]))
+            v.co.z -= depth / seat.matrix_world.to_scale().z
+            dent = max(dent, depth)
+    seat.data.update()
+    view.update()
+    report["seat contact verts"] = len(contact)
+    report["seat pressed cm3"] = round(pressed * 1e6)
+    report["seat bulge mm"] = round(1000 * bulge * max(band.values(), default=0), 1)
+    report["seat dent mm"] = round(dent * 1000, 1)
+    report["seat skin left below mm"] = round(below * 1000, 1)
+
+
+sit()
 print("pianist seated", report)
