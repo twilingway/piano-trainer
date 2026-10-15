@@ -47,6 +47,7 @@ export const independentRhythmMessages: Messages = {
   },
   "Проверка пульса C4": { en: "C4 pulse check" },
   "Два ритма C3/C4": { en: "Two rhythms: C3/C4" },
+  "Два ритма · ±150 мс": { en: "Two rhythms · ±150 ms" },
   "Выберите способ ввода, отпустите все клавиши и начните проверку пульса.": {
     en: "Choose an input method, release all keys, and start the pulse check."
   },

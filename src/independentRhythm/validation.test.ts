@@ -7,6 +7,22 @@ import { summarizeIndependentRhythmResults } from "./progress";
 import { validateIndependentRhythmResult } from "./validation";
 
 describe("strict independent rhythm replay", () => {
+  it("replays exactly 32 actual preparation receipts and rejects a 33rd receipt", () => {
+    const original = successfulIndependentRhythmResult();
+    const help = Array.from({ length: 32 }, () => ({
+      presentationId: original.pulse.config.presentationId,
+      atMs: original.pulse.presentedAtMs,
+      pitches: [48, 60]
+    }));
+    const result = { ...original, pulse: { ...original.pulse, help } };
+    expect(validateIndependentRhythmResult(result)).toEqual(result);
+    expect(
+      validateIndependentRhythmResult({
+        ...result,
+        pulse: { ...result.pulse, help: [...help, ...help.slice(0, 1)] }
+      })
+    ).toBeNull();
+  });
   it("accepts complete proofs and returns detached deeply copied data", () => {
     const result = successfulIndependentRhythmResult();
     const validated = validateIndependentRhythmResult(result);

@@ -218,10 +218,11 @@ export function usePlayerRuntime() {
       : word.enabled
         ? word.keyboardOptions
         : computerKeyboard.options,
-    rhythm.active ? undefined : device.intercept,
+    rhythm.active || independentRhythm.active ? undefined : device.intercept,
     trainer.trainerReady,
     ear,
-    rhythm.active
+    rhythm.active || independentRhythm.active,
+    independentRhythm.active
   );
   const fit = useRangeFit(
     song.notes,
@@ -396,7 +397,19 @@ export function usePlayerRuntime() {
     startFromRef.current = null;
     word.update({ enabled });
   };
-  const timingStatus = <PracticeTimingStatus policy={snapshot.timingPolicy} ranked={game.ranked} />;
+  const timingStatus = independentRhythm.active ? (
+    <span
+      className="practice-timing-status"
+      role="status"
+      title={t(
+        "Каждая нота проверяется отдельно в окне ±150 мс. Разрыв совместных атак показывается отдельно, без дополнительного порога 200 мс."
+      )}
+    >
+      {t("Два ритма · ±150 мс")}
+    </span>
+  ) : (
+    <PracticeTimingStatus policy={snapshot.timingPolicy} ranked={game.ranked} />
+  );
   const modeSwitch = (
     <GameModeSwitch wordTyping={word.enabled} locked={playing} onChange={chooseGame}>
       {word.enabled && wordSettings}

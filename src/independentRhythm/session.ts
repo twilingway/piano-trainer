@@ -196,7 +196,7 @@ export class IndependentRhythmPhaseSession {
       pitches.some((pitch) => pitch !== 48 && pitch !== 60)
     )
       return;
-    if (this.help.length >= 31) {
+    if (this.help.length >= 32) {
       this.cancel(now);
       this.overflow = true;
       return;

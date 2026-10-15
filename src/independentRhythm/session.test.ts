@@ -294,6 +294,8 @@ describe("independent tempo evaluator", () => {
     const session = new IndependentRhythmPhaseSession(exercise.pulse, config);
     session.present(100);
     for (let index = 0; index < 32; index++) session.showKeys([48, 60], 100 + index);
+    expect(session.snapshot().status).toBe("preparation");
+    session.showKeys([48, 60], 132);
     expect(session.snapshot().status).toBe("overflow");
     expect(session.start(200)).toBe(false);
   });

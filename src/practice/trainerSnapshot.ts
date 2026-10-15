@@ -3,6 +3,7 @@ import type { TimingPolicy } from "./timingPolicy";
 import { timingPolicy } from "./timingPolicy";
 import type { PracticeSession } from "./session";
 import type { ComboBoard } from "./combo";
+import type { TrainerIndependentRhythmPolicy } from "./independentRhythmPolicy";
 import type { KeyEvent } from "../input/midiInput";
 
 export interface TrainerSnapshot {
@@ -34,10 +35,11 @@ export function trainerSnapshot(
   playing: boolean,
   beat: number,
   textNoteIds: readonly string[],
-  diagnostic: InputDiagnostic | undefined
+  diagnostic: InputDiagnostic | undefined,
+  independentRhythm?: TrainerIndependentRhythmPolicy | null
 ): { snapshot: TrainerSnapshot; board: ComboBoard | undefined } {
-  const stats = session.stats();
-  const game = stats.game;
+  const stats = independentRhythm?.stats?.() ?? session.stats();
+  const game = independentRhythm ? undefined : stats.game;
   return {
     board: game
       ? { combo: game.combo, best: game.maxCombo, accuracy: (game.accuracy ?? 100) / 100 }

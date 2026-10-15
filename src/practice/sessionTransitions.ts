@@ -107,3 +107,17 @@ export function advanceSessionAuto(
   }
   return from;
 }
+
+export function pendingKeyHints(
+  notes: readonly SongNote[],
+  status: ReadonlyMap<string, NoteStatus>,
+  until: number,
+  target: SongNote[]
+): SongNote[] {
+  target.length = 0;
+  for (const note of notes) {
+    if (note.start > until) break;
+    if (status.get(note.id) === "pending") target.push(note);
+  }
+  return target;
+}

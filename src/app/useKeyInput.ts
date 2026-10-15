@@ -20,8 +20,13 @@ export function useKeyInput(
   intercept?: (event: KeyEvent) => boolean,
   trainerReady = false,
   pianoBlocked = false,
-  rhythm = false
+  rhythm = false,
+  observeAllInputs = false
 ) {
+  const observeAllRef = useRef(observeAllInputs);
+  useLayoutEffect(() => {
+    observeAllRef.current = observeAllInputs;
+  }, [observeAllInputs]);
   const rhythmRef = useRef(rhythm);
   useLayoutEffect(() => {
     rhythmRef.current = rhythm;
@@ -68,7 +73,13 @@ export function useKeyInput(
       const onMidiKey = (event: MidiEvent, deviceId: string) => {
         if (blockedRef.current && event.type !== "up") return;
         const chosen = midiDeviceRef.current;
-        if (event.type !== "up" && chosen !== "all" && chosen !== deviceId) return;
+        if (
+          event.type !== "up" &&
+          chosen !== "all" &&
+          chosen !== deviceId &&
+          !(observeAllRef.current && event.type === "down")
+        )
+          return;
         // Our own key lights coming back through MIDI Thru are not the player's keys.
         if (event.type !== "pedal" && isEcho(event)) return;
         if (event.type === "pedal") {

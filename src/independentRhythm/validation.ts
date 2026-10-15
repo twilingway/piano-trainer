@@ -60,7 +60,7 @@ export function validateIndependentRhythmPhase(
     !array(value.events) ||
     value.events.length > 256 ||
     !array(value.help) ||
-    value.help.length > 31 ||
+    value.help.length > 32 ||
     !array(value.outcomes) ||
     !array(value.extras)
   )
