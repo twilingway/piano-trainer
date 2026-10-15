@@ -51,4 +51,16 @@ describe("two-hand generation", () => {
     expect(prompt.musicXml).not.toContain("fingering");
     expect(twoHandPromptXml(exercise, 6, 1).musicXml).toContain("lyric");
   });
+
+  it("writes hinted names with the interface's label, letters by default", () => {
+    const exercise = generateTwoHandExercise(17);
+    const pair = exercise.pairs[0];
+    if (!pair) throw new Error("pair expected");
+    const letters = twoHandPromptXml(exercise, 0, 1).musicXml;
+    const octave = (pitch: number) => String(Math.floor(pitch / 12) - 1);
+    expect(letters).toMatch(new RegExp(`<text>[A-G]${octave(pair.pitches[1])}</text>`));
+    const named = twoHandPromptXml(exercise, 0, 1, (pitch) => `нота ${String(pitch)} <&>`).musicXml;
+    expect(named).toContain(`<text>нота ${String(pair.pitches[1])} &lt;&amp;&gt;</text>`);
+    expect(named).toContain(`<text>нота ${String(pair.pitches[0])} &lt;&amp;&gt;</text>`);
+  });
 });

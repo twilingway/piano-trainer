@@ -14,6 +14,8 @@ interface Props {
   readonly staffPresentation?: StaffPresentation | undefined;
   readonly staffRetry?: number;
   readonly readingBeat?: number | undefined;
+  /** A reading course is on: its staff is fitted and its cursor leaves the note readable. */
+  readonly course?: boolean;
   /** The score on the staff; a MIDI song has none. */
   readonly staffXml: string | undefined;
   readonly prefs: StaffPrefs;
@@ -102,6 +104,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
           shareGeometry={dualScore}
           sharedNoteNames={dualScore ? prefs.noteNames : undefined}
+          course={props.course ?? false}
         />
       </div>
       {transcription && (

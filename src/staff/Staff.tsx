@@ -15,8 +15,10 @@ import {
 } from "./staffNoteColors";
 import type { BeatSpot } from "./liveCursor";
 import { watchStaffPresentation, type StaffPresentation } from "./staffPresentation";
+import { courseCursor, courseStaffXml, courseStaffZoom } from "./courseStaff";
+import { courseRoom, lineExtent, showDrawing } from "./courseStaffView";
 import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 
 export { markKey } from "./staffNoteIndex";
 
@@ -50,6 +52,8 @@ interface StaffProps {
   readonly shareGeometry?: boolean;
   /** Labels in a second reader may require wider shared engraving. */
   readonly sharedNoteNames?: "off" | "ru" | "en" | undefined;
+  /** A reading course: no highlight, a fitted zoom and a cursor that leaves the note readable. */
+  readonly course?: boolean;
 }
 
 const BEAT_EPSILON = 1e-6;
@@ -219,9 +223,14 @@ export function Staff({
   shareGeometry = false,
   sharedNoteNames,
   liveBeat,
-  presentation
+  presentation,
+  course = false
 }: StaffProps) {
   const publishGeometry = usePublishReaderGeometry();
+  const shownXml = useMemo(
+    () => (course ? courseStaffXml(musicXml) : musicXml),
+    [course, musicXml]
+  );
   const readFrameBeat = useReaderFrameBeat();
   const hostRef = useRef<HTMLDivElement>(null);
   /** OSMD draws here; the host around it scrolls. */
@@ -234,7 +243,7 @@ export function Staff({
   const baseSpacingRef = useRef(1);
   const paintedRef = useRef<SVGElement[]>([]);
   // Read by the loader and the zoom effect, which must land the cursor where the song is.
-  const latest = useRef({ beat, zoom, follow, singleLine, maxShare });
+  const latest = useRef({ beat, zoom, follow, singleLine, maxShare, course });
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
   const noteIndexRef = useRef<NoteIndex>({
@@ -250,12 +259,12 @@ export function Staff({
   const marksRef = useRef(marks);
 
   useEffect(() => {
-    latest.current = { beat, zoom, follow, singleLine, maxShare };
+    latest.current = { beat, zoom, follow, singleLine, maxShare, course };
   });
 
   const showBeat = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     moveCursor(osmd, liveBeatRef.current?.() ?? latest.current.beat);
-    paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
+    if (!latest.current.course) paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
     // A single line with a live position scrolls every frame on its own and needs no steering.
     const live = latest.current.singleLine;
     if (latest.current.follow) {
@@ -278,8 +287,14 @@ export function Staff({
       baseSpacingRef.current,
       sharedNoteNames
     );
-    osmd.Zoom = staffZoom(host, latest.current.zoom);
+    // A course ignores the song's saved zoom and the phone's smaller staff: its short exercise is
+    // the main thing on screen and is fitted to the room it has.
+    osmd.Zoom = latest.current.course ? 1 : staffZoom(host, latest.current.zoom);
     osmd.render();
+    if (latest.current.course) {
+      osmd.Zoom *= courseStaffZoom(lineExtent(osmd), courseRoom(host, latest.current.maxShare));
+      osmd.render();
+    }
     fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
     paintStaffNotes(osmd, noteColor);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
@@ -310,6 +325,7 @@ export function Staff({
       } else host.scrollLeft = target.left;
       host.scrollTop = target.top;
     }
+    if (latest.current.course) showDrawing(host);
     targetRef.current = null;
     if (shareGeometry) {
       publishGeometry(readStaffGeometry(osmd, host, beatXRef.current, linesRef.current));
@@ -343,10 +359,10 @@ export function Staff({
     baseSpacingRef.current = osmd.EngravingRules.VoiceSpacingMultiplierVexflow;
     const presentationId = presentationRef.current?.id;
     void osmd
-      .load(musicXml)
+      .load(shownXml)
       .then(() => {
         if (cancelled) return;
-        setStaffTempoLayout(osmd, musicXml);
+        setStaffTempoLayout(osmd, shownXml);
         osmd.Zoom = latest.current.zoom;
         // Half the usual page margin: the view starts at the first line anyway.
         osmd.EngravingRules.PageTopMargin = 2;
@@ -387,7 +403,7 @@ export function Staff({
       page.replaceChildren();
       if (shareGeometry) publishGeometry(null);
     };
-  }, [musicXml, singleLine, breaksFromScore, fingers, shareGeometry, publishGeometry]);
+  }, [shownXml, singleLine, breaksFromScore, fingers, shareGeometry, publishGeometry]);
 
   const presentationId = presentation?.id;
   useEffect(() => {
@@ -447,7 +463,8 @@ export function Staff({
       const entryBeat = entryBeatAt(beatXRef.current, beatNow);
       if (osmd && (entryBeat !== paintedBeat || paintedMap !== beatXRef.current)) {
         moveCursor(osmd, beatNow);
-        paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
+        if (!latest.current.course)
+          paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
         paintedBeat = entryBeat;
         paintedMap = beatXRef.current;
       }
@@ -477,7 +494,10 @@ export function Staff({
         cursorLineRef.current,
         beatXRef.current,
         linesRef.current,
-        beatNow
+        beatNow,
+        latest.current.course && osmd
+          ? courseCursor(beatXRef.current.length, unitInPixels * osmd.Zoom)
+          : undefined
       );
       frame = requestAnimationFrame(step);
     };
@@ -523,7 +543,7 @@ export function Staff({
 
   return (
     <div
-      className={singleLine ? "staff staff--single" : "staff staff--wrapped"}
+      className={`${singleLine ? "staff staff--single" : "staff staff--wrapped"}${course ? " staff--course" : ""}`}
       ref={hostRef}
       onPointerDown={(event) => {
         if (event.button !== 0) return;

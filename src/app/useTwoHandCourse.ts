@@ -12,6 +12,10 @@ import type { TrainerPairPolicy } from "../practice/twoHandPolicy";
 import type { Trainer } from "../practice/Trainer";
 import { readingActions } from "./readingSlice";
 import { useAppDispatch, useAppSelector } from "./storeHooks";
+import { useI18n } from "./useI18n";
+import { messages } from "../i18n/messages";
+import { translate } from "../i18n/translate";
+import { twoHandNoteName } from "../ui/TwoHandProgress";
 
 interface TwoHandSelection {
   active: boolean;
@@ -105,9 +109,16 @@ export function useTwoHandCourse() {
     requested?.session === session && requested.pairId === pair?.id
       ? requested.level
       : (snapshot?.hintLevel ?? 0);
+  const { locale } = useI18n();
+  // The staff names a hinted note exactly as the hint line beside it does.
   const prompt = useMemo(
-    () => (exercise ? twoHandPromptXml(exercise, index, hintLevel) : null),
-    [exercise, index, hintLevel]
+    () =>
+      exercise
+        ? twoHandPromptXml(exercise, index, hintLevel, (pitch) =>
+            twoHandNoteName(pitch, (key) => translate(locale, messages, key))
+          )
+        : null,
+    [exercise, index, hintLevel, locale]
   );
   const id =
     exercise && pair ? `${exercise.id}:${String(revision)}:${pair.id}:${String(retry)}` : "";
