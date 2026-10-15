@@ -97,6 +97,23 @@ describe("liveTarget", () => {
     const tip = knuckleSide(pinky, 5) + pinky.wrist.x + pinky.wrist.yaw * TIP_MM[5];
     expect(tip).toBeCloseTo(23.5);
   });
+
+  it("moves a free finger aside when its neighbour reaches towards it", () => {
+    // Left hand C4-A3-F3 on 1-3-4: the fourth reaches half a key past its place, towards the fifth.
+    const chord = [
+      { start: 1, duration: 1, pitch: C4, finger: 1 as const },
+      { start: 1, duration: 1, pitch: 57, finger: 3 as const },
+      { start: 1, duration: 1, pitch: 53, finger: 4 as const }
+    ];
+    const planned = planHand(chord, "left");
+    if (!planned) throw new Error("no plan");
+    const hand = liveTarget(planned, 1.5);
+    // Down the keyboard from the thumb's key, in millimetres.
+    const tip = (finger: Finger) => (finger - 1) * 23.5 - hand.fingers[finger].reach;
+    expect(tip(4)).toBeCloseTo(3.5 * 23.5);
+    expect(tip(5) - tip(4)).toBeGreaterThanOrEqual(0.8 * 23.5 - 1e-9);
+    expect(tip(4) - tip(3)).toBeCloseTo(2 * 23.5);
+  });
 });
 
 describe("HandSprings", () => {
