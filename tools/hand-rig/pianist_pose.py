@@ -25,7 +25,8 @@ TWIST_SHARE = 0.4                                                # of the pronat
 # Where the wrists go: x across the keyboard, y towards the keys, z up (world).
 WRIST = G.get("WRIST", {"L": Vector((CENTRE - 0.17, KEY_FRONT - 0.11, KEY_TOP + 0.04)),
                         "R": Vector((CENTRE + 0.17, KEY_FRONT - 0.11, KEY_TOP + 0.04))})
-HAND_FOLLOWS = 0.5      # how much of the forearm's turn across the keys the hand keeps; the wrist bends the rest
+HAND_FOLLOWS = 1.0      # how much of the forearm's turn across the keys the hand keeps; the wrist bends the rest
+                        # sideways. A pianist's hand goes on in the forearm's line: half of it bent the wrist aside
 FEET = G.get("FEET", {"L": Vector((CENTRE - 0.14, KEY_FRONT - 0.02, 0)),            # ball of the foot
                       "R": Vector((CENTRE + PEDAL_X, PEDAL_BACK - 0.07, PEDAL_TOP))})
 

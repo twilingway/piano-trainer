@@ -137,13 +137,250 @@ for poly in me.polygons:
 src_body.hide_set(True)
 src_body.hide_render = True
 
+# --- the hand's bones from its own skin. The bundle's skeleton is another man's, its fingers lie
+# otherwise than the skin's: bones on its joints stood up to 5 cm out of the fingers. So each finger's
+# centre line is traced in the skin, section by section from the tip back to where the finger joins the
+# palm, and its joints are set along that line at the skeleton's phalanx lengths, scaled by the hand's
+# length; a knuckle beyond the free part lies on the line carried on into the palm. The thumb's
+# metacarpal goes on the same way to its base in the thenar. The skeleton's hand is then put onto
+# these bones (below), so its phalanges bend where the skin's fingers bend.
+import bmesh, heapq
+TIP_IN = 0.005          # a distal bone's tail this far inside the fingertip
+CARPUS = 0.022          # the wrist bone's length; the metacarpals start further on
+MC_BASE = 0.28          # a finger's metacarpal starts this far from the wrist to its knuckle
+STEP = 0.003            # between the finger's sections
+WIDENS = 1.5            # a section this much wider than the finger's median: the palm or the web
+FINGER_OF = {"thumb": 1, "index": 2, "middle": 3, "ring": 4, "little": 5}
+
+
+def frame(y, z):
+    """Columns X, Y, Z with Y along `y` and Z towards `z`."""
+    y = y.normalized()
+    z = (z - y * z.dot(y)).normalized()
+    return Matrix((y.cross(z), y, z)).transposed()
+
+
+def smoothstep(a, b, x):
+    u = min(max((x - a) / (b - a), 0.0), 1.0)
+    return u * u * (3 - 2 * u)
+
+
+def finger_line(bmh, tip, d):
+    """Centres of a finger's sections from the tip back to the palm, each plane square to the finger's
+    own direction there (`d`, base to tip, refined as the line grows)."""
+    line, widths = [], []
+    p = tip - d * STEP
+    while len(line) < 40:
+        loops = section(bmh, p, d)
+        if not loops:
+            break
+        c, g = min(loops, key=lambda r: (r[0] - p).length)
+        width = max((q - c).length for q in g)
+        if (c - p).length > 0.012 or len(widths) >= 3 and width > WIDENS * sorted(widths)[len(widths) // 2]:
+            break
+        line.append(c)
+        widths.append(width)
+        if len(line) >= 3:
+            d = (line[max(0, len(line) - 6)] - line[-1]).normalized()
+        p = c - d * STEP
+    return line
+
+
+def far_end(piece, start):
+    """The point of a piece's mesh farthest from `start`: the tip of a distal phalanx or a toe."""
+    o = skel[piece]
+    return max((o.matrix_world @ v.co for v in o.data.vertices), key=lambda p: (p - start).length)
+
+
+def along_line(poly, s):
+    """The point `s` along a polyline, carried on straight past its end."""
+    for a, b in zip(poly, poly[1:]):
+        l = (b - a).length
+        if s <= l:
+            return a.lerp(b, s / l)
+        s -= l
+    return poly[-1] + (poly[-1] - poly[-2]).normalized() * s
+
+
+bmb = bmesh.new()
+bmb.from_mesh(me)
+bmb.verts.ensure_lookup_table()
+HAND_BONES, hand_report = {}, {}
+for x in SIDES:
+    w, e = joint(f"hand_center.{x}"), joint(f"arm_radius.{x}")
+    axis = (w - e).normalized()
+    along = lambda p: (p - w).dot(axis)
+    # the hand: the skin past the wrist connected to it (the thigh next to it is another surface)
+    seed = min((v for v in bmb.verts if 0.04 < along(v.co) < 0.06), key=lambda v: ((v.co - w) - axis * along(v.co)).length)
+    hand, todo = {seed}, [seed]
+    while todo:
+        v = todo.pop()
+        for edge in v.link_edges:
+            u = edge.other_vert(v)
+            if u not in hand and along(u.co) > -0.005:
+                hand.add(u)
+                todo.append(u)
+    # geodesic distance from the wrist over the hand's edges: the fingertips are its five far peaks
+    dist = {v: 0.0 for v in hand if along(v.co) < 0.005}
+    heap = [(0.0, v.index) for v in dist]
+    heapq.heapify(heap)
+    while heap:
+        dv, i = heapq.heappop(heap)
+        v = bmb.verts[i]
+        if dv > dist[v]:
+            continue
+        for edge in v.link_edges:
+            u = edge.other_vert(v)
+            if u in hand and dv + edge.calc_length() < dist.get(u, 1e9):
+                dist[u] = dv + edge.calc_length()
+                heapq.heappush(heap, (dist[u], u.index))
+    def peak(v):
+        near = {u for e1 in v.link_edges for u in (e1.other_vert(v),)}
+        near |= {e2.other_vert(u) for u in near for e2 in u.link_edges}
+        return all(dist.get(u, 0.0) <= dist[v] for u in near if u in hand)
+    tips = []
+    for v in sorted((v for v in hand if dist.get(v, 0.0) > 0.08 and peak(v)), key=lambda v: -dist[v]):
+        if all((v.co - t.co).length > 0.015 for t in tips):
+            tips.append(v)
+    assert len(tips) == 5, f"{len(tips)} fingertips on the {x} hand"
+    bmh = bmb.copy()
+    bmh.verts.ensure_lookup_table()
+    keep = {v.index for v in hand}
+    bmesh.ops.delete(bmh, geom=[v for v in bmh.verts if v.index not in keep], context="VERTS")
+    bmh.edges.index_update()
+
+    # which tip is which: the thumb's is the nearest the wrist, the rest go from the index across
+    across = joint(f"metacarpal.index.{x}") - joint(f"metacarpal.little.{x}")
+    thumb = min(tips, key=lambda t: along(t.co))
+    rest = sorted((t for t in tips if t is not thumb), key=lambda t: -t.co.dot(across))
+    tip_of = {1: thumb, 2: rest[0], 3: rest[1], 4: rest[2], 5: rest[3]}
+
+    # the skeleton's phalanges and the hand's scale: wrist to the middle fingertip, skin over skeleton
+    names = {f: n for n, f in FINGER_OF.items()}
+    def chain(f):
+        n = names[f]
+        kinds = ("metacarpal", "proximal", "distal") if f == 1 else ("proximal", "middle", "distal")
+        pts = [joint(f"{k}.{n}.{x}") for k in kinds]
+        return pts + [far_end(f"distal.{n}.{x}", pts[-1])]
+    k = (tip_of[3].co - w).length / (chain(3)[-1] - w).length
+    joints, lines, inner = {}, {}, []
+    for f, t in tip_of.items():
+        near = [v.co for v in hand if (v.co - t.co).length < 0.025 and dist[v] > dist[t] - 0.03]
+        d = (t.co - sum(near, Vector()) / len(near)).normalized()
+        line = lines[f] = finger_line(bmh, t.co, d)
+        end = line[0] + (t.co - line[0]).normalized() * max((t.co - line[0]).length - TIP_IN, 0.0)
+        poly = [end] + line
+        free = sum((b - a).length for a, b in zip(poly, poly[1:]))
+        lengths = [(b - a).length * k for a, b in zip(chain(f), chain(f)[1:])]
+        joints[f] = [along_line(poly, sum(lengths[i:])) for i in range(3)] + [end]
+        inner += [(f, i) for i in range(3) if sum(lengths[i:]) > free]
+    hand_bvh = BVHTree.FromBMesh(bmh)
+    bmh.free()
+
+    def palm_of(joints):
+        knuckles = (joints[2][0] - joints[5][0]).normalized()
+        palm = knuckles.cross(joints[3][0] - w).normalized()
+        return knuckles, -palm if palm.x * (1 if x == "L" else -1) > 0 else palm   # the A pose's palm faces the thigh
+
+    # A joint past the finger's free part (a knuckle, the thumb's base) lies on the line carried on
+    # straight, which runs out towards the back of the hand: it goes to the middle of the hand's
+    # thickness there, between the palm's skin and the back's.
+    palm = palm_of(joints)[1]
+    # The thumb's base, though, is no straight run of the thumb (that came out at the wrist's side): it
+    # sits in the thenar where the skeleton has it, taken over in the hand's frame (wrist, middle
+    # knuckle, palm) at the skin's size.
+    hc, mid = joint(f"hand_center.{x}"), joint(f"proximal.middle.{x}")
+    s_palm = (joint(f"metacarpal.index.{x}") - joint(f"metacarpal.little.{x}")).cross(mid - hc)
+    s_frame, k_frame = frame(mid - hc, s_palm if s_palm.dot(palm_of(joints)[1]) > 0 else -s_palm), \
+        frame(joints[3][0] - w, palm)
+    joints[1][0] = w + k_frame @ s_frame.transposed() @ (joint(f"metacarpal.thumb.{x}") - hc) \
+        * ((joints[3][0] - w).length / (mid - hc).length)
+    for f, i in inner:
+        p = joints[f][i]
+        a = hand_bvh.ray_cast(p + palm * 0.04, -palm, 0.08)[0]
+        b = hand_bvh.ray_cast(p - palm * 0.04, palm, 0.08)[0]
+        if a is not None and b is not None:
+            joints[f][i] = (a + b) / 2
+
+    # rolls: the fingers flex about the knuckle line, their Z towards the palm; the thumb's pad faces
+    # the palm and the index finger
+    knuckles, palm = palm_of(joints)
+    def flex_z(head, tail):
+        y = (tail - head).normalized()
+        z = (knuckles - y * knuckles.dot(y)).normalized().cross(y)
+        return z if z.dot(palm) > 0 else -z
+    to_index = joints[2][0] - joints[1][0]
+    thumb_palm = (palm * 0.8 + (to_index - palm * to_index.dot(palm)).normalized() * 0.6).normalized()
+    bones = {f"wrist.{x}": (w, w + (joints[3][0] - w).normalized() * CARPUS, palm, f"lowerarm02.{x}", True)}
+    for f in (2, 3, 4, 5):
+        j, mc = joints[f], f"metacarpal{f - 1}.{x}"
+        base = w.lerp(j[0], MC_BASE)
+        bones[mc] = (base, j[0], flex_z(base, j[0]), f"wrist.{x}", False)
+        for i in (1, 2, 3):
+            bones[f"finger{f}-{i}.{x}"] = (j[i - 1], j[i], flex_z(j[i - 1], j[i]),
+                                           mc if i == 1 else f"finger{f}-{i - 1}.{x}", i > 1)
+    for i in (1, 2, 3):
+        j = joints[1]
+        bones[f"finger1-{i}.{x}"] = (j[i - 1], j[i], thumb_palm, f"wrist.{x}" if i == 1 else f"finger1-{i - 1}.{x}", i > 1)
+    HAND_BONES[x] = bones
+    hand_report[x] = {"scale": round(k, 3),
+                      "free part mm": {f: round(sum((b - a).length for a, b in zip(l, l[1:])) * 1000) for f, l in lines.items()},
+                      "phalanges mm": {f: [round((b - a).length * 1000) for a, b in zip(j, j[1:])] for f, j in joints.items()}}
+bmb.free()
+print("hands from the skin", hand_report)
+
+# the skeleton's hand onto those bones: every piece turned and scaled so its joint sits on its bone's
+# head, its length runs along the bone and its palm side faces the bone's Z (the palm)
+
+
+def hand_bone(piece):
+    kind, name = piece.split(".")[:2]
+    f = FINGER_OF[name]
+    if kind == "metacarpal":
+        return "finger1-1" if f == 1 else f"metacarpal{f - 1}"
+    return f"finger{f}-{min({'proximal': 1, 'middle': 2, 'distal': 3}[kind] + (f == 1), 3)}"
+
+
+def depth(o):
+    return 0 if o.parent is None else 1 + depth(o.parent)
+
+
+for x in SIDES:
+    hc = skel[f"hand_center.{x}"]
+    pieces = [hc] + sorted((o for o in hc.children_recursive if o.name.startswith(P)), key=depth)
+    orig = {o: o.matrix_world.copy() for o in pieces}
+    at = lambda n: orig[skel[f"{n}.{x}"]].translation
+    palm = (at("metacarpal.index") - at("metacarpal.little")).cross(at("proximal.middle") - at("hand_center")).normalized()
+    if palm.x * (1 if x == "L" else -1) > 0:
+        palm = -palm                       # the A pose's palm faces the thigh
+    to_index = at("metacarpal.index") - at("metacarpal.thumb")
+    thumb_palm = (palm * 0.8 + (to_index - palm * to_index.dot(palm)).normalized() * 0.6).normalized()
+    hb = HAND_BONES[x]
+    for o in pieces:
+        name = o.name[len(P):-2]
+        start = orig[o].translation
+        kids = [c for c in o.children if c.name.startswith(P)]
+        if name == "hand_center":
+            end, target, z_s = at("metacarpal.middle"), hb[f"wrist.{x}"], palm
+            k = (hb[f"finger2-1.{x}"][0] - hb[f"finger5-1.{x}"][0]).length / (at("proximal.index") - at("proximal.little")).length
+        else:
+            end = orig[kids[0]].translation if kids else max((orig[o] @ v.co for v in o.data.vertices),
+                                                             key=lambda p: (p - start).length)
+            target = hb[hand_bone(name) + "." + x]
+            z_s = thumb_palm if name.endswith("thumb") else palm
+            k = (target[1] - target[0]).length / (end - start).length
+        head, tail, z_t = target[:3]
+        turn = frame(tail - head, z_t) @ frame(end - start, z_s).transposed()
+        o.matrix_world = Matrix.Translation(head) @ (turn * k).to_4x4() @ Matrix.Translation(-start) @ orig[o]
+        view.update()
+
 # --- the skeleton inside the skin. The bundle's skeleton is another man's: after the uniform scale and
 # the limbs' aim its spine stands 2 cm out of the back, the skull through the scalp, the big toe through
 # the foot. Piece by piece from the pelvis out (the bundle's pieces hang on each other, so a turned piece
 # carries what hangs on it), a piece is turned a little about its joint and shrunk a little towards it
 # until it lies SKIN_MARGIN under the skin the viewer sees (one subdivision level). The pelvis, the rib
 # cage, the shoulder blades and the long limb bones only shrink: turning them would carry the arms and
-# legs off their fit. The hands are left as they are: the Studio hand will replace them.
+# legs off their fit. The hand's pieces sit on the skin's hand bones already: they only shrink.
 SKIN_MARGIN = 0.002
 MAX_TURN = math.radians(8)
 MIN_SCALE = 0.85
@@ -224,9 +461,8 @@ for o in order:
     order.extend(c for c in o.children if c.name.startswith(P))
 for o in order:
     name = o.name[len(P):]
-    if in_hand(name):
-        continue
-    turn = not name.startswith(NO_TURN) and (name.startswith(("spine_", "sacral", "skull")) or not o.children)
+    turn = not in_hand(name) and not name.startswith(NO_TURN) and \
+        (name.startswith(("spine_", "sacral", "skull")) or not o.children)
     chain = [p for c in o.children_recursive if c.name[len(P):].startswith("spine_") for p in sample(c)] \
         if name.startswith(("spine_", "sacral")) else []
     before = overshoot(sample(o))[1]
@@ -267,12 +503,6 @@ def bone(name, head, tail, parent=None, roll_to=FORWARD, connect=False):
     return b
 
 
-def far_end(piece, start):
-    """The point of a piece's mesh farthest from `start`: the tip of a distal phalanx or a toe."""
-    o = skel[piece]
-    return max((o.matrix_world @ v.co for v in o.data.vertices), key=lambda p: (p - start).length)
-
-
 def near_end(piece, to):
     o = skel[piece]
     return min((o.matrix_world @ v.co for v in o.data.vertices), key=lambda p: (p - to).length)
@@ -295,26 +525,8 @@ for x in SIDES:
     mid = elbow.lerp(wrist, 0.5)
     bone(f"lowerarm01.{x}", elbow, mid, f"upperarm01.{x}", connect=True)
     bone(f"lowerarm02.{x}", mid, wrist, f"lowerarm01.{x}", connect=True)
-    # The palm: from the index to the little finger's base, and from the wrist down the middle finger.
-    across = joint(f"metacarpal.index.{x}") - joint(f"metacarpal.little.{x}")
-    along = joint(f"proximal.middle.{x}") - wrist
-    palm = across.cross(along).normalized()
-    if palm.x * (1 if x == "L" else -1) > 0:
-        palm = -palm                       # the A pose's palm faces the thigh
-    bone(f"wrist.{x}", wrist, joint(f"metacarpal.middle.{x}"), f"lowerarm02.{x}", roll_to=palm, connect=True)
-    for f, n in FINGERS.items():
-        mc = f"metacarpal{f - 1}.{x}"
-        bone(mc, joint(f"metacarpal.{n}.{x}"), joint(f"proximal.{n}.{x}"), f"wrist.{x}", roll_to=palm)
-        chain = [joint(f"proximal.{n}.{x}"), joint(f"middle.{n}.{x}"), joint(f"distal.{n}.{x}")]
-        chain.append(far_end(f"distal.{n}.{x}", chain[-1]))
-        for j in (1, 2, 3):
-            bone(f"finger{f}-{j}.{x}", chain[j - 1], chain[j], mc if j == 1 else f"finger{f}-{j - 1}.{x}",
-                 roll_to=palm, connect=j > 1)
-    thumb = [joint(f"metacarpal.thumb.{x}"), joint(f"proximal.thumb.{x}"), joint(f"distal.thumb.{x}")]
-    thumb.append(far_end(f"distal.thumb.{x}", thumb[-1]))
-    for j in (1, 2, 3):
-        bone(f"finger1-{j}.{x}", thumb[j - 1], thumb[j], f"wrist.{x}" if j == 1 else f"finger1-{j - 1}.{x}",
-             roll_to=palm, connect=j > 1)
+    for name, (head, tail, z, parent, connect) in HAND_BONES[x].items():     # the hand's bones from its skin
+        bone(name, head, tail, parent, roll_to=z, connect=connect)
 
     hip, knee, ankle = joint(f"leg_femur.{x}"), joint(f"leg_tibula.{x}"), joint(f"foot_talus.{x}")
     bone(f"upperleg01.{x}", hip, knee, "pelvis")
@@ -392,6 +604,25 @@ body.select_set(True)
 rig.select_set(True)
 view.objects.active = rig
 bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+
+groups = {g.name: g for g in body.vertex_groups}
+
+# The forearm turns the palm down by twisting its two bones (pianist_pose.py: 40 % on the upper, the
+# rest on the lower). The automatic weights pass from one to the other within a few centimetres in
+# the middle, so the skin twisted there in one step, like a screw. Spread along the whole forearm,
+# the pronation winds the skin gradually from the elbow to the wrist.
+TWIST_RAMP = (0.15, 0.85)       # of the forearm from the elbow: all on the upper bone -> all on the lower
+for x in SIDES:
+    g1, g2 = groups[f"lowerarm01.{x}"], groups[f"lowerarm02.{x}"]
+    e, wr = arm_data.bones[f"lowerarm01.{x}"].head_local, arm_data.bones[f"lowerarm02.{x}"].tail_local
+    for vert in me.vertices:
+        ws = {g.group: g.weight for g in vert.groups}
+        total = ws.get(g1.index, 0.0) + ws.get(g2.index, 0.0)
+        if total <= 0:
+            continue
+        s = smoothstep(*TWIST_RAMP, (vert.co - e).dot(wr - e) / (wr - e).length_squared)
+        g1.add([vert.index], total * (1 - s), "REPLACE")
+        g2.add([vert.index], total * s, "REPLACE")
 
 # --- joint helpers: a bone at each elbow, knee and hip that turns half the bend (pianist_pose.py and the
 # game set it). The skin ring around the joint follows it, so under linear skinning the bend keeps
