@@ -14,7 +14,7 @@ from mathutils import Matrix, Quaternion, Vector
 G = globals()
 KEY_TOP, KEY_FRONT, X0, WHITE_W = 0.74, 0.30, 0.36, 0.0235
 BENCH_H, BENCH_GAP = G.get("BENCH_H", 0.49), G.get("BENCH_GAP", 0.32)
-CENTRE = (X0 + (-28 + 5) * WHITE_W + X0 + 28 * WHITE_W) / 2     # between A0 and C8
+SEAT_X = G.get("SEAT_X", X0)        # the bench's and the body's middle across the keys: in front of C4, as pianists sit
 HIP_ABOVE_SEAT = G.get("HIP_ABOVE_SEAT", 0.10)                   # hip joints over the seat
 HIP_BEHIND_EDGE = G.get("HIP_BEHIND_EDGE", 0.10)                 # ...and behind its front edge
 LEAN = G.get("LEAN", (4, 4, 3))                                  # spine01..03 forward, degrees
@@ -49,12 +49,12 @@ exec(open(os.path.join(ROOT, "tools/hand-rig/hand_keys.py"), encoding="utf-8").r
 HAND_X = {x: sum(kb["key_of"](s)[0] for s in keys.values()) / len(keys) for x, keys in HANDS.items()}
 # Where the wrists go: x across the keyboard, y towards the keys, z up (world); by default behind the
 # middle of the hand's keys (the hand solver moves them on).
-WRIST = G.get("WRIST", {x: Vector((HAND_X.get(x, CENTRE + (-0.17 if x == "L" else 0.17)), KEY_FRONT - 0.11,
+WRIST = G.get("WRIST", {x: Vector((HAND_X.get(x, SEAT_X + (-0.17 if x == "L" else 0.17)), KEY_FRONT - 0.11,
                                    KEY_TOP + 0.04)) for x in ("L", "R")})
 HAND_FOLLOWS = 1.0      # how much of the forearm's turn across the keys the hand keeps; the wrist bends the rest
                         # sideways. A pianist's hand goes on in the forearm's line: half of it bent the wrist aside
-FEET = G.get("FEET", {"L": Vector((CENTRE - 0.14, KEY_FRONT - 0.02, 0)),            # ball of the foot
-                      "R": Vector((CENTRE + PEDAL_X, PEDAL_BACK - 0.07, PEDAL_TOP))})
+FEET = G.get("FEET", {"L": Vector((SEAT_X - 0.14, KEY_FRONT - 0.02, 0)),            # ball of the foot
+                      "R": Vector((SEAT_X + PEDAL_X, PEDAL_BACK - 0.07, PEDAL_TOP))})
 
 view = bpy.context.view_layer
 rig = bpy.data.objects["PianistRig"]
@@ -67,7 +67,7 @@ view.update()
 # --- the rig turned to the keys, the hip joints on the bench
 hip_mid = rig.data.bones["pelvis"].head_local.copy()
 seat_front = KEY_FRONT - BENCH_GAP
-target = Vector((CENTRE, seat_front - HIP_BEHIND_EDGE, BENCH_H + HIP_ABOVE_SEAT))
+target = Vector((SEAT_X, seat_front - HIP_BEHIND_EDGE, BENCH_H + HIP_ABOVE_SEAT))
 rig.matrix_world = Matrix.Translation(target) @ Matrix.Rotation(math.pi, 4, "Z") @ Matrix.Translation(-hip_mid)
 view.update()
 to_rig = rig.matrix_world.inverted()
@@ -354,7 +354,7 @@ def look_at_hands():
     (about the vertical) first, then down (about the face's side axis), split between the two bones."""
     eyes = [o for o in rig.children if ".eye." in o.name]
     eye = sum((o.matrix_world.translation for o in eyes), Vector()) / len(eyes) if eyes else world(pose["head"])
-    keys_x = sum(HAND_X.values()) / len(HAND_X) if HAND_X else CENTRE
+    keys_x = sum(HAND_X.values()) / len(HAND_X) if HAND_X else SEAT_X
     look = Vector((keys_x, KEY_FRONT + 0.04, KEY_TOP)) - eye
     rest = rig.data.bones["head"].matrix_local.to_3x3()
 

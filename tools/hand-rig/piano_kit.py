@@ -52,7 +52,8 @@ SEAT_CUTS = 27                 # across the seat's top each way: about 2 x 1.1 c
 BENCH_GAP = globals().get("BENCH_GAP", 0.32)   # from the keys' front to the seat's front edge: forearms level, elbows ahead of the trunk
 PEDAL_W, PEDAL_L = 0.075, 0.20                 # the footswitch's base
 PEDAL_BASE, PEDAL_PLATE, PEDAL_TILT = 0.018, 0.012, math.radians(9)
-PEDAL_X = globals().get("PEDAL_X", 0.16)       # right of the keyboard's centre, under the right foot
+SEAT_X = globals().get("SEAT_X", X0)           # the bench's middle across the keys: in front of C4 (pianist_pose)
+PEDAL_X = globals().get("PEDAL_X", 0.16)       # right of the bench's middle, under the right foot
 PEDAL_BACK = KEY_FRONT + 0.15                  # the footswitch's back edge (its hinge), under the keyboard
 CABLE_R = 0.0025
 
@@ -338,9 +339,9 @@ def assemble(parts, low, high):
     if STAGE:
         place(parts["panel"], "panel-left", piano, left - GAP - CHEEK_W / 2)
         place(parts["panel"], "panel-right", piano, right + GAP + CHEEK_W / 2)
-        seat = place(parts["bench"], "bench", piano, centre)
-        seat.location = (centre, KEY_FRONT - BENCH_GAP - BENCH_D / 2, BENCH_H)
-        x = centre + PEDAL_X
+        seat = place(parts["bench"], "bench", piano, SEAT_X)
+        seat.location = (SEAT_X, KEY_FRONT - BENCH_GAP - BENCH_D / 2, BENCH_H)
+        x = SEAT_X + PEDAL_X
         base = place(parts["pedal-base"], "pedal-base", piano, x)
         base.location = (x, PEDAL_BACK, 0)
         plate = place(parts["pedal-plate"], "pedal-plate", piano, x)
