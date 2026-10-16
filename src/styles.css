@@ -1588,6 +1588,22 @@ select:disabled {
   outline-offset: -2px;
 }
 
+.song-progress__preview {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--accent);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .waiting-pill {
   position: absolute;
   z-index: 2;

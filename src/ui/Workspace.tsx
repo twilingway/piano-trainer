@@ -1,5 +1,7 @@
 import { useI18n } from "../app/useI18n";
 import type { ReactNode, RefObject } from "react";
+import { useMemo } from "react";
+import { secondsAt, type Song } from "../song/song";
 
 import type { StaffPrefs } from "../app/useStaffPrefs";
 import type { SplitDirection, TakeStaff } from "../app/useTakeReview";
@@ -11,6 +13,7 @@ import { ReaderGeometryProvider } from "../staff/readerGeometry";
 import { KeysHandles, LaneTopHandle, StaffHandle, TickerSlot } from "./LayoutHandles";
 
 interface Props {
+  readonly timelineSong?: Song | undefined;
   readonly staffPresentation?: StaffPresentation | undefined;
   readonly staffRetry?: number;
   readonly readingBeat?: number | undefined;
@@ -61,6 +64,16 @@ interface Props {
 export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const { t } = useI18n();
   const { prefs, transcription, takeStaff } = props;
+  // Stable for the score's lifetime: the engraving adapter reads this mapping at relayout.
+  const timeline = useMemo(() => {
+    const song = props.timelineSong;
+    return song
+      ? {
+          timeAtBeat: (beat: number) => secondsAt(song, beat),
+          beats: song.beats.map((beat) => beat.position)
+        }
+      : undefined;
+  }, [props.timelineSong]);
   // The lane shows notes and keys, only the keys (a strip), or nothing at all.
   const laneMode = prefs.lane ? "full" : prefs.keys ? "keys" : "hidden";
   // With the lane hidden or cut to its keys, the staff may take more of the screen.
@@ -105,6 +118,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           shareGeometry={dualScore}
           sharedNoteNames={dualScore ? prefs.noteNames : undefined}
           course={props.course ?? false}
+          timeline={timeline}
         />
       </div>
       {transcription && (
@@ -125,6 +139,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             liveBeat={props.liveBeat}
             marks={transcription.marks}
             maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
+            timeline={timeline}
           />
         </div>
       )}

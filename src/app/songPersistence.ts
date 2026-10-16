@@ -61,7 +61,7 @@ export function loadSongState(player: PlayerPrefs): SongState {
     librarySource: player.librarySource,
     transpose: 0,
     octave: 0,
-    simplified: true,
+    simplified: player.simplified,
     revision: 0,
     overridesByKey: {}
   };
@@ -97,9 +97,14 @@ export function registerSongPersistence<State extends SongRoot & PreferenceRoot>
     effect: (action, api) => {
       const previous = api.getOriginalState(),
         current = api.getState();
-      if (songActions.songOpened.match(action) || songActions.librarySourceChanged.match(action)) {
+      if (
+        songActions.songOpened.match(action) ||
+        songActions.librarySourceChanged.match(action) ||
+        songActions.simplifiedChanged.match(action)
+      ) {
         api.dispatch(
           preferencesActions.playerChanged({
+            simplified: current.song.simplified,
             ...(current.song.lesson
               ? { lesson: current.song.lesson, librarySource: null }
               : { librarySource: current.song.librarySource })

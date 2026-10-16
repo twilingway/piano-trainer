@@ -14,6 +14,8 @@ export interface PlayerPrefs {
   readonly accompaniment: boolean;
   /** A MIDI song's notes as its staff writes them rather than as the file plays them. */
   readonly notesAsWritten: boolean;
+  /** The selected song's arrangement, restored with its library source. */
+  readonly simplified: boolean;
   /** The last lesson and level opened; what comes up when a library song cannot. */
   readonly lesson: LessonChoice | null;
   /** The library song on screen, `my:<id>` or `dir:<path>`; null for a lesson. */
@@ -29,13 +31,14 @@ export const DEFAULT_PLAYER_PREFS: PlayerPrefs = {
   metronome: true,
   accompaniment: true,
   notesAsWritten: true,
+  simplified: true,
   lesson: null,
   librarySource: null
 };
 
 export function normalizePlayerPrefs(value: unknown): PlayerPrefs {
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  const bool = (key: "metronome" | "accompaniment" | "notesAsWritten") =>
+  const bool = (key: "metronome" | "accompaniment" | "notesAsWritten" | "simplified") =>
     typeof raw[key] === "boolean" ? raw[key] : DEFAULT_PLAYER_PREFS[key];
   const lesson =
     raw.lesson && typeof raw.lesson === "object" ? (raw.lesson as Record<string, unknown>) : {};
@@ -53,6 +56,7 @@ export function normalizePlayerPrefs(value: unknown): PlayerPrefs {
     metronome: bool("metronome"),
     accompaniment: bool("accompaniment"),
     notesAsWritten: bool("notesAsWritten"),
+    simplified: bool("simplified"),
     lesson:
       typeof lesson.exerciseId === "string" && typeof lesson.levelId === "string"
         ? { exerciseId: lesson.exerciseId, levelId: lesson.levelId }

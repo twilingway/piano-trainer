@@ -19,6 +19,7 @@ import { shallowEqual } from "react-redux";
 export function ConnectedPracticeWorkspace() {
   const {
     displayPrefs,
+    timelineSong,
     listening,
     comparing,
     playing,
@@ -50,6 +51,7 @@ export function ConnectedPracticeWorkspace() {
   } = useRuntimeSelector(
     (runtime) => ({
       displayPrefs: runtime.displayPrefs,
+      timelineSong: runtime.word.practiceSong,
       listening: runtime.listening,
       comparing: runtime.comparing,
       playing: runtime.playing,
@@ -108,6 +110,7 @@ export function ConnectedPracticeWorkspace() {
       <ConnectedIntervalPractice />
       <ConnectedRhythmPractice />
       <ConnectedWorkspace
+        timelineSong={timelineSong}
         scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
         scoreFirst={courseTopView}
         source={trainerSnapshotSource}
