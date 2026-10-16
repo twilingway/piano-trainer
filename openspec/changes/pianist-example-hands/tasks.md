@@ -24,7 +24,7 @@
 
 ## 4. Библиотека
 
-- [ ] 4.1 `tools/hand-rig/hand_library.py` и `tools/hand-rig/poses/library/seven-nation-army.json`.
+- [x] 4.1 `tools/hand-rig/hand_library.py` и `tools/hand-rig/poses/library/seven-nation-army.json`.
       Проверка: каждый удар песни находит свою запись; аккорд октавой выше — ту же запись со
       сдвигом.
 
