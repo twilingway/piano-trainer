@@ -450,6 +450,8 @@ def place_arm(x, spread, want=None, swing=0.0):
     if load > 1:                       # the wrist bends this far at most; the hand keeps the rest
         swing = Quaternion().slerp(swing, 1 / load)
     turn(wb, swing.to_matrix().to_4x4(), world(wb))
+    short = want @ have().inverted()   # the turn the hand was wanted but the wrist could not take
+    LOAD[x]["short deg"] = math.degrees(2 * math.acos(min(1.0, abs(short.w))))
     _, dev, flex = wrist_load(x, rest_axis, have().to_matrix().inverted() @ axis)
     report["pronation deg " + x] = round(math.degrees(twist))
     report["wrist bend deg " + x] = {"ulnar": round(math.degrees(dev)), "flex": round(math.degrees(flex))}
@@ -706,6 +708,7 @@ if fx.name not in bpy.context.scene.collection.children:
 fx.hide_render = True
 SOLVES = 3              # a hand solved with the elbow as fitted; the elbow pushed out by it means a new solve
 EXAMPLES = G.get("EXAMPLES", {})       # per side, a pose from the video for hand_solver's EXAMPLE
+CLAMP = {}      # per side, at the solver's last arm: the wrist's load for its hand and the turn the wrist cut off
 
 
 def wrist_excess(x, wrist_at, frame, hand_in_wrist):
@@ -739,6 +742,7 @@ for x, keys in (HANDS if SOLVE_HANDS else {}).items():
         def arm(wrist_at, frame, yaw, x=x, hand=hand):
             WRIST[x] = wrist_at
             place_arm(x, SPREAD_OF[x], (frame @ hand["HAND_IN_WRIST"].inverted()).to_quaternion(), SWING_OF[x])
+            CLAMP[x] = {"load wanted": round(LOAD[x]["wanted"], 2), "short deg": round(LOAD[x]["short deg"], 1)}
 
         hand["place_arm"] = arm
         hand["wrist_excess"] = lambda wrist_at, frame, x=x, hand=hand: wrist_excess(x, wrist_at, frame,
@@ -755,7 +759,8 @@ for x, keys in (HANDS if SOLVE_HANDS else {}).items():
     report["hand " + x] = {"miss mm": {f: round((tips[f].xy - hand["targets"][f].xy).length * 1000, 1) for f in keys},
                            "fit residual mm": round(math.sqrt(hand["residual"]) * 1000, 1),
                            "adjust": hand["adjust"],
-                           "skin in keys, fingers mm": hand["mesh_check"]()}
+                           "skin in keys, fingers mm": hand["mesh_check"](),
+                           "wrist clamp": CLAMP.get(x)}
     if EXAMPLES.get(x):
         report["hand " + x]["example"] = hand["example_report"]()
 
