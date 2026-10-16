@@ -416,6 +416,64 @@ describe("PlasmaLayer", () => {
     layer.destroy();
   });
 
+  it("ignites quickly then keeps the release tail visible without emitting more musical embers", async () => {
+    mockAssets();
+    const layer = new PlasmaLayer();
+    await layer.load();
+    layer.draw([anchor], [source], [source], 600, 0.05);
+    layer.draw([anchor], [source], [], 600, 0.05);
+    const flame = firstVisible(layer, 3);
+    const attackAlpha = flame.alpha;
+    expect(attackAlpha).toBeGreaterThan(0.8);
+    expect(visible(layer, 0)).toHaveLength(2);
+    for (let index = 0; index < 10; index++) layer.draw([anchor], [], [], 600, 0.05);
+    expect(flame.visible).toBe(true);
+    expect(flame.alpha).toBeGreaterThan(attackAlpha * 0.5);
+    expect(flame.alpha).toBeLessThan(attackAlpha);
+    expect(flame.tint).toBe(source.color);
+    for (let index = 0; index < 10; index++) layer.draw([anchor], [], [], 600, 0.05);
+    expect(flame.visible).toBe(true);
+    expect(flame.alpha).toBeGreaterThan(attackAlpha * 0.25);
+    expect(visible(layer, 0)).toHaveLength(2);
+    for (let index = 0; index < 70; index++) layer.draw([anchor], [], [], 600, 0.05);
+    expect(flame.visible).toBe(false);
+    expect(visible(layer, 2)).toHaveLength(0);
+    expect(visible(layer, 0)).toHaveLength(2);
+    layer.destroy();
+  });
+
+  it("freezes a released flame during pause and removes the tail immediately on reset", async () => {
+    mockAssets();
+    const layer = new PlasmaLayer();
+    await layer.load();
+    layer.draw([anchor], [source], [source], 600, 0.05);
+    layer.draw([anchor], [], [], 600, 0.05);
+    const flame = firstVisible(layer, 3);
+    const before = {
+      alpha: flame.alpha,
+      height: flame.height,
+      tint: flame.tint,
+      texture: flame.texture
+    };
+    for (let index = 0; index < 100; index++) layer.draw([anchor], [], [], 600, 0);
+    expect(flame.visible).toBe(true);
+    expect({
+      alpha: flame.alpha,
+      height: flame.height,
+      tint: flame.tint,
+      texture: flame.texture
+    }).toEqual(before);
+    layer.clear();
+    expect(flame.visible).toBe(false);
+    expect(layer.container.children.every((_, index) => visible(layer, index).length === 0)).toBe(
+      true
+    );
+    layer.draw([anchor], [], [], 600, 0.05);
+    expect(visible(layer, 3)).toHaveLength(0);
+    expect(visible(layer, 2)).toHaveLength(0);
+    layer.destroy();
+  });
+
   it("fades flames after release and retires embers within their visual lifetime", async () => {
     mockAssets();
     const layer = new PlasmaLayer();

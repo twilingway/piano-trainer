@@ -430,6 +430,16 @@ export class KeyboardLayer {
         // The sticker fills the bottom of the key; the finger sits at the top of its free part.
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
+      if (this.modelFaces) {
+        // Undo the atlas-to-model stretch: keyGeometry uses 2 source pixels per world unit
+        // across the key, then crops 8%/7% from each side of its UVs.
+        const oldHeight = hint.height;
+        const depth = key.black ? 85 : 142;
+        const sourceHeight = key.black ? blackHeight : keyboardHeight;
+        const usableWidth = key.black ? 0.84 : 0.86;
+        hint.scale.y *= sourceHeight / (2 * depth * usableWidth);
+        if (stickers) hint.y += hint.height - oldHeight;
+      }
     }
   }
 

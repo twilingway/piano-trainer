@@ -1,4 +1,4 @@
-import { Group, PointLight, Vector3 } from "three";
+import { Group, SpotLight, Vector3 } from "three";
 import type { Texture } from "pixi.js";
 import { describe, expect, it } from "vitest";
 import type { EnergySource } from "../noteEnergy";
@@ -114,8 +114,8 @@ describe("note light selection", () => {
     expect((projected.x + 1) * 640).toBeCloseTo(want.x + keys.offset.x);
     expect((1 - projected.y) * 360).toBeCloseTo(want.y + keys.offset.y);
     const [held] = picker.update([source(61, { progress: 0.1 })], camera);
-    expect(held?.z).toBe(10);
-    expect(held?.y).toBe(135);
+    expect(held?.z).toBe(-145);
+    expect(held?.y).toBe(160);
   });
 
   it("ignores pitches outside the visible range and clears old results after layout", () => {
@@ -135,21 +135,32 @@ describe("note light selection", () => {
 
 describe("Three note light lifecycle", () => {
   it.each([1, 1.5])(
-    "lights hands above the key fronts and keeps nearby coloured spill at scale %s",
+    "opens a broad soft cone from the hit line towards hands at scale %s",
     (scale) => {
-      const keys = scene(0, scale);
+      const keys = scene(120, scale);
       const pool = new ThreeNoteLights();
       pool.layout(keyBoxes(keys));
       for (let frame = 0; frame < 20; frame++)
         pool.update([source(60, { color: 0x0080ff })], keys.camera, 0.1);
-      const first = pool.group.children[0] as PointLight;
+      const first = pool.group.children[0] as SpotLight;
       const boxes = keyBoxes(keys);
       const played = boxes.find((box) => box.pitch === 60);
       const neighbor = boxes.find((box) => box.pitch === 64);
       if (!played || !neighbor) throw new Error("missing test keys");
       expect(first.position.x).toBe(played.x);
-      expect(first.position.y).toBe(135);
-      expect(first.position.z).toBe(10);
+      expect(first.position.y).toBe(160);
+      expect(first.position.z).toBe(-145);
+      expect(first.angle).toBe(0.75);
+      expect(first.penumbra).toBe(0.9);
+      expect(first.decay).toBe(2);
+      expect(first.target.parent).toBe(first);
+      pool.group.scale.setScalar(scale);
+      pool.group.position.x = (-keys.pan / 2) * scale;
+      pool.group.updateMatrixWorld(true);
+      const target = first.target.getWorldPosition(new Vector3());
+      expect(target.x).toBeCloseTo((played.x - keys.pan / 2) * scale);
+      expect(target.y).toBeCloseTo(55 * scale);
+      expect(target.z).toBeCloseTo(40 * scale);
       expect(first.color.r).toBe(0);
       expect(first.color.g).toBeCloseTo(128 / 255);
       expect(first.color.b).toBe(1);
@@ -157,8 +168,17 @@ describe("Three note light lifecycle", () => {
         new Vector3(neighbor.x, neighbor.top, -71)
       );
       expect(neighborDistance * scale).toBeLessThan(first.distance);
-      expect(first.distance).toBe(300 * scale);
-      expect(first.intensity).toBeCloseTo(13000 * scale ** 2);
+      const axis = target.clone().sub(first.getWorldPosition(new Vector3())).normalize();
+      const neighborDirection = new Vector3(
+        (neighbor.x - keys.pan / 2) * scale,
+        neighbor.top * scale,
+        -71 * scale
+      )
+        .sub(first.getWorldPosition(new Vector3()))
+        .normalize();
+      expect(axis.dot(neighborDirection)).toBeGreaterThan(Math.cos(first.angle));
+      expect(first.distance).toBe(420 * scale);
+      expect(first.intensity).toBeCloseTo(90000 * scale ** 2);
       pool.dispose();
     }
   );
@@ -168,13 +188,15 @@ describe("Three note light lifecycle", () => {
     const pool = new ThreeNoteLights();
     pool.layout(keyBoxes(keys));
     pool.update([source(60)], keys.camera, 0.1);
-    const first = pool.group.children[0] as PointLight;
+    const first = pool.group.children[0] as SpotLight;
     const position = first.position.clone();
+    const target = first.target.position.clone();
     const color = first.color.clone();
     const intensity = first.intensity;
     pool.update([source(72, { color: 0x0000ff })], keys.camera, 0);
     expect(first.intensity).toBe(intensity);
     expect(first.position).toEqual(position);
+    expect(first.target.position).toEqual(target);
     expect(first.color).toEqual(color);
     pool.dispose();
   });
@@ -185,7 +207,7 @@ describe("Three note light lifecycle", () => {
     pool.layout(keyBoxes(keys));
     const sameNote = source(60);
     pool.update([sameNote], keys.camera, 0.1);
-    const lights = pool.group.children as PointLight[];
+    const lights = pool.group.children as SpotLight[];
     expect(lights[0]?.intensity).toBeGreaterThan(0);
     pool.clear();
     expect(lights.every((light) => light.intensity === 0)).toBe(true);
@@ -201,11 +223,15 @@ describe("Three note light lifecycle", () => {
     const keys = scene();
     const pool = new ThreeNoteLights();
     pool.layout(keyBoxes(keys));
-    const lights = [...pool.group.children];
+    const lights = [...pool.group.children] as SpotLight[];
     expect(lights).toHaveLength(NOTE_LIGHT_LIMIT);
-    expect(lights.every((light) => light instanceof PointLight && !light.castShadow)).toBe(true);
+    expect(lights.every((light) => light instanceof SpotLight && !light.castShadow)).toBe(true);
+    expect(
+      lights.every((light) => light.children.length === 1 && light.children[0] === light.target)
+    ).toBe(true);
     pool.update([source(60)], keys.camera, 0.1);
-    const first = lights[0] as PointLight;
+    const first = lights[0];
+    if (!first) throw new Error("missing test light");
     const intensity = first.intensity;
     expect(intensity).toBeGreaterThan(0);
     pool.update([], keys.camera, 0);
@@ -222,5 +248,8 @@ describe("Three note light lifecycle", () => {
     pool.dispose();
     expect(parent.children).toHaveLength(0);
     expect(pool.group.children).toHaveLength(0);
+    expect(
+      lights.every((light) => light.children.length === 0 && light.target.parent === null)
+    ).toBe(true);
   });
 });

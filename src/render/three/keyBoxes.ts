@@ -35,7 +35,8 @@ export function keyBoxes(scene: KeysScene): KeyBox[] {
     uv: {
       u0: key.x / width,
       u1: (key.x + key.width) / width,
-      v0: source.y / height,
+      // Three models the entire white top, including its narrow back between the black keys.
+      v0: key.black ? source.y / height : 0,
       v1: (source.y + source.height) / height
     }
   }));

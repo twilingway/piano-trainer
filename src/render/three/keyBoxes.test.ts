@@ -74,10 +74,22 @@ describe("3D key boxes", () => {
     const boxes = keyBoxes(scene(0));
     const c4 = boxes.find((box) => box.pitch === 60);
     const cSharp = boxes.find((box) => box.pitch === 61);
-    expect(c4?.uv.v0).toBeCloseTo(0.6);
+    expect(c4?.uv.v0).toBe(0);
     expect(c4?.uv.v1).toBeCloseTo(1);
     expect(cSharp?.uv.v0).toBe(0);
     expect(cSharp?.uv.v1).toBeCloseTo(0.6);
     expect(c4 && c4.uv.u1 > c4.uv.u0).toBe(true);
+  });
+
+  it("uses the full white-key depth without sampling extra texture padding", () => {
+    const original = scene(0);
+    const padded = { ...original, texture: { width: 1600, height: 140 } as Texture };
+    const boxes = keyBoxes(padded);
+    const white = boxes.find((box) => box.pitch === 60);
+    const black = boxes.find((box) => box.pitch === 61);
+    expect(white?.uv.v0).toBe(0);
+    expect(white?.uv.v1).toBeCloseTo(100 / 140);
+    expect(black?.uv.v0).toBe(0);
+    expect(black?.uv.v1).toBeCloseTo(60 / 140);
   });
 });

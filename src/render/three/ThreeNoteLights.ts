@@ -1,10 +1,10 @@
-import { Group, PointLight } from "three";
+import { Group, SpotLight } from "three";
 import type { EnergySource } from "../noteEnergy";
 import type { WorldCamera } from "../worldCamera";
 import type { KeyBox } from "./keyBoxes";
 
 export const NOTE_LIGHT_LIMIT = 8;
-const LIGHT_POWER = 13000;
+const LIGHT_POWER = 90000;
 const MAX_LOCAL_ENERGY = 1.4;
 const MAX_TOTAL_ENERGY = 4.5;
 
@@ -77,13 +77,13 @@ export class NoteLightSelection {
       const energy = noteLightEnergy(source);
       if (!candidate || energy === 0) continue;
       const progress = source.sounding ? 1 : unit(source.progress);
-      // After impact the source rises above the key fronts to light fingers and the hand backs.
+      // The sounding cone opens from the hit line towards the fingertips and the hand backs.
       const depth = source.sounding
-        ? -10
+        ? 145
         : camera.near.z + (1 - progress) * (camera.roadFarZ - camera.near.z);
       candidate.x += candidate.box.x * energy;
       candidate.y +=
-        (source.sounding ? 135 : Math.max(camera.near.y, candidate.box.top) + 32) * energy;
+        (source.sounding ? 160 : Math.max(camera.near.y, candidate.box.top) + 32) * energy;
       // Three stores the app's left-handed world with its Z axis reversed.
       candidate.z -= depth * energy;
       candidate.red += ((source.color >> 16) & 255) * energy;
@@ -146,8 +146,9 @@ export class ThreeNoteLights {
   readonly group = new Group();
   private readonly selection = new NoteLightSelection();
   private readonly lights = Array.from({ length: NOTE_LIGHT_LIMIT }, () => {
-    const light = new PointLight(0xffffff, 0, 300, 2);
+    const light = new SpotLight(0xffffff, 0, 420, 0.75, 0.9, 2);
     light.castShadow = false;
+    light.add(light.target);
     this.group.add(light);
     return light;
   });
@@ -172,10 +173,11 @@ export class ThreeNoteLights {
       const sample = samples[index];
       if (!light || !sample) continue;
       const scale = camera.params.prefs.scale;
-      light.distance = 300 * scale;
+      light.distance = 420 * scale;
       const target = sample.energy * LIGHT_POWER * scale ** 2;
       if (sample.energy > 0) {
         light.position.set(sample.x, sample.y, sample.z);
+        light.target.position.set(0, 55 - sample.y, 40 - sample.z);
         light.color.setRGB(sample.red, sample.green, sample.blue);
       }
       const rate = target > light.intensity ? 35 : 16;
@@ -186,6 +188,10 @@ export class ThreeNoteLights {
 
   dispose(): void {
     this.layout([]);
+    for (const light of this.lights) {
+      light.dispose();
+      light.clear();
+    }
     this.group.removeFromParent();
     this.group.clear();
   }

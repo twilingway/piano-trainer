@@ -56,8 +56,14 @@ The visible mist sprite does not illuminate geometry by itself. In Three.js one 
 shadowless RectAreaLight along the actual keyboard width provides neutral light from the back edge
 down and forward across the keys and hands, with a gentle falloff past the middle. It uses Three's
 built-in RectAreaLightUniformsLib/LTC addon with the existing standard materials; no dependency is
-added. The eight coloured note PointLights remain separate: at most nine local light sources, in
-addition to the dimmed ambient scene lighting. Mist baking and musical-sign assets are unchanged.
+added. Eight coloured note SpotLights form broad soft cones from sounding notes towards the fingers,
+rather than overhead isotropic blobs: at most nine local light sources in addition to the dimmed
+ambient scene lighting. Targets belong to their lights, preserving the fixed eight-light group. Mist
+baking and musical-sign assets are unchanged.
+
+Local flame release retains the last note tint and uses a slower visual response than attack. It
+visibly fades for about two seconds with a small tail up to roughly 4.5 seconds; release immediately
+stops new musical-sign emission. Pause freezes the tail; seek and clear remove it at once.
 
 Both loops use the vendored Arcadia engine and the named export `bakePlasmaLoop` from
 `src/fxTools/bakePlasmaLoop.ts`, loaded in a browser on the task Vite stand. Load the JSON through

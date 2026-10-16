@@ -319,7 +319,7 @@ export class PlasmaLayer {
     for (let index = 0; index < this.flames.length; index++) {
       const flame = this.flames[index];
       if (!flame) continue;
-      const response = flame.target > flame.intensity ? 20 : 7;
+      const response = flame.target > flame.intensity ? 20 : 1.2;
       flame.intensity += (flame.target - flame.intensity) * (1 - Math.exp(-response * delta));
       const anchor = this.anchors.get(flame.pitch);
       const texture = this.frames[(Math.floor(this.clock * FPS) + index * 5) % FRAME_COUNT];
