@@ -65,6 +65,44 @@ function harness(song = SONG) {
 function down(trainer: Trainer, timestamp: number, pitch = 60, deviceId = "piano") {
   trainer.key({ type: "down", pitch, velocity: 90, timestamp, source: "midi", deviceId });
 }
+describe("Trainer seek playback intent", () => {
+  it.each(["before first play", "paused", "finished"] as const)(
+    "keeps a seek stopped when %s until Play is requested",
+    (state) => {
+      const run = harness();
+      if (state !== "before first play") {
+        run.trainer.setPlaying(true);
+        run.frame(state === "finished" ? 5500 : 3500, 200);
+        if (state === "paused") run.trainer.setPlaying(false);
+      }
+      expect(run.latest()?.playing).toBe(false);
+      run.trainer.seek(1);
+      const soughtTime = run.latest()?.time;
+      expect(run.latest()?.playing).toBe(false);
+      expect(run.latest()?.finished).toBe(false);
+      run.frame(6000, 200);
+      expect(run.latest()?.time).toBe(soughtTime);
+      expect(run.latest()?.playing).toBe(false);
+      run.trainer.setPlaying(true);
+      run.frame(6200, 200);
+      expect(run.latest()?.playing).toBe(true);
+      expect(run.latest()?.time).toBeCloseTo((soughtTime ?? 0) + 0.2);
+    }
+  );
+
+  it("continues the same playback after a seek made while playing", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(3500);
+    run.trainer.seek(1);
+    const soughtTime = run.latest()?.time;
+    expect(run.latest()?.playing).toBe(true);
+    run.frame(3700, 200);
+    expect(run.latest()?.playing).toBe(true);
+    expect(run.latest()?.time).toBeCloseTo((soughtTime ?? 0) + 0.2);
+  });
+});
+
 describe("Trainer input timestamps", () => {
   it("publishes the applied policy rather than a stored learning preference", () => {
     const run = harness();

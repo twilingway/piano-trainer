@@ -434,7 +434,7 @@ export function useTrainer({
   // Read by the staff every frame; stable, so the staff never re-subscribes.
   const liveBeat = useCallback(() => trainerRef.current?.quarters() ?? 0, []);
 
-  /** A click on the staff: play from the first note at or after that beat. */
+  /** Seek to the first note at or after the beat, preserving play or pause. */
   const seekToBeat = (beat: number) => {
     if (reading || rhythm || independentRhythm) return;
     const target = song.notes.find((note) => note.startBeat >= beat - 1e-6);
@@ -442,9 +442,6 @@ export function useTrainer({
     if (!target || !trainer) return;
     startFromRef.current = target.start;
     trainer.seek(target.start);
-    void ensureSound().then(() => {
-      trainerRef.current?.setPlaying(true);
-    });
   };
 
   const togglePlay = async () => {

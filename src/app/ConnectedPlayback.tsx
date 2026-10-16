@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import type { Song } from "../song/song";
+import { secondsAt } from "../song/song";
 import { GameBoard } from "../ui/GameBoard";
 import { PlayerTopBar, CompactSongPosition, SongScoreboard } from "../ui/PlayerTopBar";
 import { SongProgress } from "../ui/SongProgress";
@@ -87,6 +88,7 @@ export function ConnectedSongProgress({
       time={time}
       duration={song.duration}
       ticks={ticks}
+      timeAtShare={(share) => secondsAt(song, share * totalQuarters)}
       onSeek={(share) => {
         onSeek(share * totalQuarters);
       }}

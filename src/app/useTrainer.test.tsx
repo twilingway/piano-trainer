@@ -188,6 +188,29 @@ async function mount(
   });
 }
 
+describe("seek playback intent", () => {
+  it.each([
+    { playing: false, finished: false },
+    { playing: true, finished: false },
+    { playing: false, finished: true }
+  ])("seeks without starting audio or changing playback: %j", async (state) => {
+    const sound = vi.fn(() => Promise.resolve());
+    ensureSound = sound;
+    await mount();
+    const trainer = active();
+    trainer.onSnapshot?.(snapshot(state));
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      value.seekToBeat(4);
+      await Promise.resolve();
+    });
+    expect(startFromRef.current).toBe(2);
+    expect(trainer.seek).toHaveBeenCalledExactlyOnceWith(2);
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    expect(sound).not.toHaveBeenCalled();
+  });
+});
+
 describe("trainer runtime isolation", () => {
   it("keeps independent rhythms in fixed tempo with both hands and restores ordinary preferences", async () => {
     store.dispatch(
@@ -1080,6 +1103,6 @@ describe("trainer runtime isolation", () => {
     });
     expect(startFromRef.current).toBe(2);
     expect(active().seek).toHaveBeenLastCalledWith(2);
-    expect(active().setPlaying).toHaveBeenLastCalledWith(true);
+    expect(active().setPlaying).not.toHaveBeenCalled();
   });
 });

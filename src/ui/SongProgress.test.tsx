@@ -22,6 +22,7 @@ function render(time: number, duration = 138) {
       time={time}
       duration={duration}
       ticks={[]}
+      timeAtShare={(share) => share * duration}
       onSeek={vi.fn()}
     />
   );
@@ -52,7 +53,14 @@ describe("song progress time", () => {
     try {
       act(() => {
         root.render(
-          <SongProgress progress={0.99} time={137} duration={138} ticks={[]} onSeek={onSeek} />
+          <SongProgress
+            progress={0.99}
+            time={137}
+            duration={138}
+            ticks={[]}
+            timeAtShare={(share) => share * 138}
+            onSeek={onSeek}
+          />
         );
       });
       const slider = host.querySelector<HTMLDivElement>('[role="slider"]');
@@ -64,6 +72,88 @@ describe("song progress time", () => {
         slider.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
       });
       expect(onSeek.mock.calls).toEqual([[0.5], [1]]);
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      host.remove();
+    }
+  });
+
+  it("previews the mapped seek time, clamps both edges and leaves the current time untouched", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const onSeek = vi.fn();
+    // Two equal beat spans with different tempos: halfway is not half the duration.
+    const timeAtShare = vi.fn((share: number) =>
+      share <= 0.5 ? share * 60 : 30 + (share - 0.5) * 180
+    );
+    try {
+      act(() => {
+        root.render(
+          <SongProgress
+            progress={0.2}
+            time={12}
+            duration={120}
+            ticks={[]}
+            timeAtShare={timeAtShare}
+            onSeek={onSeek}
+          />
+        );
+      });
+      const slider = host.querySelector<HTMLDivElement>('[role="slider"]');
+      if (!slider) throw new Error("Missing progress controls");
+      vi.spyOn(slider, "getBoundingClientRect").mockReturnValue({
+        left: 100,
+        width: 200
+      } as DOMRect);
+      const move = (clientX: number, pointerType = "mouse") => {
+        act(() => {
+          slider.dispatchEvent(
+            new PointerEvent("pointermove", { bubbles: true, clientX, pointerType })
+          );
+        });
+        return host.querySelector<HTMLElement>(".song-progress__preview");
+      };
+      expect(move(200)?.textContent).toBe("00:30");
+      expect(timeAtShare).toHaveBeenLastCalledWith(0.5);
+      expect(host.querySelector(".song-progress__time")?.textContent).toBe("00:12 / 02:00");
+      expect(onSeek).not.toHaveBeenCalled();
+      act(() => {
+        slider.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 200 }));
+      });
+      expect(onSeek).toHaveBeenLastCalledWith(0.5);
+      const start = move(50);
+      expect(start?.textContent).toBe("00:00");
+      expect(start?.style.left).toBe("0%");
+      expect(start?.style.transform).toBe("translateX(-0%)");
+      const end = move(350);
+      expect(end?.textContent).toBe("02:00");
+      expect(end?.style.left).toBe("100%");
+      expect(end?.style.transform).toBe("translateX(-100%)");
+      act(() => {
+        slider.dispatchEvent(new PointerEvent("pointerout", { bubbles: true }));
+      });
+      expect(host.querySelector(".song-progress__preview")).toBeNull();
+      move(200);
+      act(() => {
+        slider.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      });
+      expect(host.querySelector(".song-progress__preview")).toBeNull();
+      expect(move(200, "touch")).toBeNull();
+      move(200);
+      act(() => {
+        slider.dispatchEvent(
+          new PointerEvent("pointerdown", {
+            bubbles: true,
+            clientX: 250,
+            pointerType: "touch"
+          })
+        );
+      });
+      expect(host.querySelector(".song-progress__preview")).toBeNull();
+      expect(onSeek).toHaveBeenLastCalledWith(0.75);
     } finally {
       act(() => {
         root.unmount();
