@@ -580,6 +580,10 @@ YAW0, PITCH0, ROLL0 = math.asin(-HAND_FWD.x), math.asin(HAND_FWD.z), ROLL
 # The hand turns at the wrist and the forearm follows part of the turn (the elbow swings out): a wide
 # reach turns the whole hand, as pianists do, instead of splaying one finger at its knuckle.
 YAW_SIGMA = 0.6                        # radians of hand yaw that cost as much as 10 mm of miss
+# Per-tip depths hold the yaw; with only their mean held, a hand whose thumb sits on its key's front
+# bound lowers the mean by turning round the thumb, so the neutral must hold the yaw instead.
+if MEAN_DEPTH:
+    YAW_SIGMA = 0.15
 STRETCH_YAW = math.radians(15)         # the extra turn of a full stretch
 
 
