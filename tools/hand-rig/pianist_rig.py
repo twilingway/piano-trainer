@@ -13,8 +13,8 @@ from mathutils import Euler, Matrix, Quaternion, Vector
 from mathutils.bvhtree import BVHTree
 
 ROOT = globals().get("ROOT", r"E:/MySource/ReactJS/piano-trainer")
-LIB = os.path.join(ROOT, "blender/assets/human-base-meshes/bundle/human-base-meshes-bundle-v1.4.1/"
-                         "human_base_meshes_bundle.blend")
+LIB = globals().get("LIB", os.path.join(ROOT, "blender/assets/human-base-meshes/bundle/human-base-meshes-bundle-v1.4.1/"
+                                                "human_base_meshes_bundle.blend"))
 exec(open(os.path.join(ROOT, "tools/hand-rig/studio_geo.py"), encoding="utf-8").read())
 
 SCENE = "pianist"
@@ -28,7 +28,8 @@ UP = Vector((0, 0, 1))
 SIDES = ("L", "R")
 
 scene = bpy.data.scenes.get(SCENE) or bpy.data.scenes.new(SCENE)
-bpy.context.window.scene = scene
+if bpy.context.window:                  # none when run headless (blender -b --scene pianist)
+    bpy.context.window.scene = scene
 
 
 def drop_collection(name):
@@ -151,6 +152,11 @@ MC_BASE = 0.28          # a finger's metacarpal starts this far from the wrist t
 STEP = 0.003            # between the finger's sections
 WIDENS = 1.5            # a section this much wider than the finger's median: the palm or the web
 FINGER_OF = {"thumb": 1, "index": 2, "middle": 3, "ring": 4, "little": 5}
+# The filmed pianist's fingers, knuckle to tip on the key plane (Seven Nation Army capture: 90th
+# percentile over the frames where the finger lies straight, both hands' mean; the palm is as wide as
+# this skin's, 61 mm across the knuckles). This skin's are shorter by 8-30 %; its fingers are drawn out
+# to these. The thumb stays (within 5 % of the film, which measures it worst).
+FILMED_FINGER = globals().get("FILMED_FINGER", {2: 0.105, 3: 0.110, 4: 0.100, 5: 0.075})
 
 
 def frame(y, z):
@@ -302,6 +308,38 @@ for x in SIDES:
         if a is not None and b is not None:
             joints[f][i] = (a + b) / 2
 
+    # Each finger drawn out past its knuckle: every phalanx by the same factor, the skin over it carried
+    # with the point of the phalanx it lies on (the tip's pad moves with the tip). A skin vertex follows
+    # each finger by the inverse fourth power of its distance to it, so the webs between fingers of
+    # different factors stay smooth; the palm lies behind the knuckles and does not move.
+    stretch = {}
+    for f in (1, 2, 3, 4, 5):
+        J = joints[f]
+        fs = FILMED_FINGER[f] / (sum((b - a).length for a, b in zip(J, J[1:])) + TIP_IN) if f in FILMED_FINGER else 1.0
+        Q = [J[0]]
+        for a, b in zip(J, J[1:]):
+            Q.append(Q[-1] + (b - a) * fs)
+        stretch[f] = (J, Q, round(fs, 3))
+    shift = {}
+    for v in hand:
+        ws, ds = 0.0, Vector()
+        for f, (J, Q, _) in stretch.items():
+            best = None
+            for i in range(3):
+                seg = J[i + 1] - J[i]
+                t = min(max((v.co - J[i]).dot(seg) / seg.length_squared, 0.0), 1.0)
+                d = (v.co - J[i] - seg * t).length
+                if best is None or d < best[0]:
+                    best = (d, Q[i].lerp(Q[i + 1], t) - J[i].lerp(J[i + 1], t))
+            w4 = 1.0 / (best[0] ** 4 + 1e-12)
+            ws, ds = ws + w4, ds + best[1] * w4
+        if (ds / ws).length > 1e-5:
+            shift[v.index] = ds / ws
+    for i, d in shift.items():
+        me.vertices[i].co += d
+    for f, (J, Q, _) in stretch.items():
+        joints[f] = Q
+
     # rolls: the fingers flex about the knuckle line, their Z towards the palm; the thumb's pad faces
     # the palm and the index finger
     knuckles, palm = palm_of(joints)
@@ -323,7 +361,7 @@ for x in SIDES:
         j = joints[1]
         bones[f"finger1-{i}.{x}"] = (j[i - 1], j[i], thumb_palm, f"wrist.{x}" if i == 1 else f"finger1-{i - 1}.{x}", i > 1)
     HAND_BONES[x] = bones
-    hand_report[x] = {"scale": round(k, 3),
+    hand_report[x] = {"scale": round(k, 3), "drawn out": {f: v[2] for f, v in stretch.items()},
                       "free part mm": {f: round(sum((b - a).length for a, b in zip(l, l[1:])) * 1000) for f, l in lines.items()},
                       "phalanges mm": {f: [round((b - a).length * 1000) for a, b in zip(j, j[1:])] for f, j in joints.items()}}
 bmb.free()
