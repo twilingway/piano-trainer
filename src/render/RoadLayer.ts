@@ -5,10 +5,10 @@ import {
   Matrix,
   PerspectiveMesh,
   RenderTexture,
-  Sprite,
-  Texture
+  Sprite
 } from "pixi.js";
-import type { Application, PointData, Renderer } from "pixi.js";
+import type { Application, PointData, Renderer, Texture } from "pixi.js";
+import { bakeFog, bakeSpark } from "./roadTextures";
 import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
@@ -24,6 +24,7 @@ import { handSurface } from "./handProjection";
 import type { HandsGeometry } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
 import { ThreeKeysHost } from "./three/ThreeKeysHost";
+import type { EnergySource } from "./noteEnergy";
 import type { HandsLayer } from "./HandsLayer";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
@@ -123,6 +124,7 @@ export class RoadLayer {
   private hitY = 0;
   private bottom = 0;
   private clock = 0;
+  private plasmaClock = 0;
   /** Sparks owed to each held key: the fraction of a spark carried to the next frame. */
   private held = new Map<number, number>();
 
@@ -169,6 +171,15 @@ export class RoadLayer {
     this.sparkTexture = bakeSpark(renderer);
     this.three =
       app && keyboard && new ThreeKeysHost(app, this.container, this.keys, keyboard, hands);
+  }
+
+  setEnergy(sources: readonly EnergySource[], deltaSeconds: number): void {
+    this.three?.setEnergy(sources, deltaSeconds);
+    this.plasmaClock += Math.min(0.05, Math.max(0, deltaSeconds));
+  }
+
+  clearEnergy(): void {
+    this.three?.clearEnergy();
   }
 
   beginNotes(): void {
@@ -247,7 +258,8 @@ export class RoadLayer {
       alpha,
       this.clock,
       this.size.height,
-      (y, offset, lift) => this.notePlace(keyX, y, offset, lift) ?? { x: 0, y: 0 }
+      (y, offset, lift) => this.notePlace(keyX, y, offset, lift) ?? { x: 0, y: 0 },
+      this.plasmaClock
     );
     return true;
   }
@@ -443,7 +455,7 @@ export class RoadLayer {
     }));
     this.drawHorizon();
     if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
-    this.drawHitLine(strikes);
+    this.drawHitLine();
     const held = new Map<number, number>();
     for (const strike of strikes) {
       const owed = this.held.get(strike.pitch);
@@ -489,55 +501,9 @@ export class RoadLayer {
     line.rect(0, y - 0.5, width, 1).fill({ color: HORIZON_COLOR, alpha: 0.6 });
   }
 
-  private drawHitLine(strikes: readonly Strike[]): void {
-    const { y: height, left, right } = this.hit;
-    const line = this.hitLine;
-    line.clear();
-    if (!this.wire && this.projection) {
-      const keyboardLeft = Math.max(left, this.projection.at(-this.pan, 1).x);
-      const keyboardRight = Math.min(right, this.projection.at(this.size.width - this.pan, 1).x);
-      if (keyboardRight <= keyboardLeft) return;
-      // Behind the projected keys, only a diffuse glow hints at the road edge.
-      for (let step = 7; step >= 1; step--) {
-        line
-          .rect(keyboardLeft, height - step * 3, keyboardRight - keyboardLeft, step * 6)
-          .fill({ color: HORIZON_COLOR, alpha: 0.008 });
-      }
-      return;
-    }
-    // In place of the felt, as in the mockup: a glowing blue band over the keys under a bright
-    // wire that crackles a little where a key is struck.
-    for (let step = 1; step <= 6; step++) {
-      line
-        .rect(left, height - step * 3, right - left, step * 6)
-        .fill({ color: HORIZON_COLOR, alpha: 0.05 });
-    }
-    // The band's core shimmers: its brightness drifts along it in slow waves, never still.
-    const shimmerStep = 24;
-    for (let x = left; x < right; x += shimmerStep) {
-      const wave =
-        Math.sin(x * 0.013 + this.clock * 1.7) * 0.5 + Math.sin(x * 0.041 - this.clock * 2.9) * 0.5;
-      line
-        .rect(x, height - 3, shimmerStep + 1, 6)
-        .fill({ color: HORIZON_COLOR, alpha: 0.42 + 0.18 * wave });
-    }
-    // Round every sounding key the line flares in its note's colour, fading out to the sides.
-    for (const strike of strikes) {
-      for (let ring = 1; ring <= 5; ring++) {
-        const reach = ring * 26;
-        line
-          .rect(strike.x - reach, (strike.screenY ?? height) - 3 - ring, reach * 2, 6 + ring * 2)
-          .fill({ color: strike.color, alpha: 0.12 });
-      }
-    }
-    const step = 6;
-    line.moveTo(left, height);
-    for (let x = left + step; x <= right; x += step) {
-      const near = strikes.some((strike) => Math.abs(strike.x - x) < 40);
-      const jitter = Math.sin(x * 0.37 + this.clock * 31) * Math.sin(x * 0.11 - this.clock * 17);
-      line.lineTo(x, height + jitter * (near ? 4 : 0));
-    }
-    line.stroke({ width: 2, color: 0xffffff, alpha: 0.95 });
+  private drawHitLine(): void {
+    // The flame now marks the edge; keep no flat colour bars under it.
+    this.hitLine.clear();
   }
 
   private emit(strike: Strike, count: number): void {
@@ -550,7 +516,7 @@ export class RoadLayer {
       if (!spark) {
         const sprite = new Sprite(this.sparkTexture);
         sprite.anchor.set(0.5);
-        sprite.blendMode = "add";
+        sprite.blendMode = "normal";
         this.effects.addChild(sprite);
         spark = { sprite, vx: 0, vy: 0, life: 0 };
         this.sparks.push(spark);
@@ -581,31 +547,4 @@ export class RoadLayer {
       spark.sprite.scale.set(0.4 + spark.life);
     }
   }
-}
-
-/** A soft round dot: bright middle, fading edge. */
-function bakeSpark(renderer: Renderer): Texture {
-  const dot = new Graphics();
-  for (let ring = 6; ring >= 1; ring--) {
-    dot.circle(8, 8, ring * 1.3).fill({ color: 0xffffff, alpha: 0.25 });
-  }
-  const texture = renderer.generateTexture({ target: dot, resolution: 2 });
-  dot.destroy();
-  return texture;
-}
-
-/** A vertical fade, opaque at the top: the fog, tinted the background's colour. */
-function bakeFog(): Texture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1;
-  canvas.height = 128;
-  const context = canvas.getContext("2d");
-  if (!context) return Texture.WHITE;
-  const gradient = context.createLinearGradient(0, 0, 0, 128);
-  gradient.addColorStop(0, "rgba(255, 255, 255, 0.92)");
-  gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.55)");
-  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, 1, 128);
-  return Texture.from(canvas);
 }

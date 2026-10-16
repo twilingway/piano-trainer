@@ -3,6 +3,7 @@ import type { Application, WebGLRenderer } from "pixi.js";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
 import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
+import type { EnergySource } from "../noteEnergy";
 import type { ThreeStage } from "./ThreeStage";
 
 /**
@@ -17,6 +18,8 @@ export class ThreeKeysHost {
   private wanted = false;
   private active = false;
   private destroyed = false;
+  private energy: readonly EnergySource[] = [];
+  private energyDeltaSeconds: number | undefined;
   /**
    * Holds the road's place on the stage while the road is drawn on its own: a container on the
    * stage cannot be drawn alone, its parent's visibility decides its children's.
@@ -57,11 +60,24 @@ export class ThreeKeysHost {
     return this.active;
   }
 
+  /** The same snapshot that feeds the road's plasma and local burning. */
+  setEnergy(sources: readonly EnergySource[], deltaSeconds?: number): void {
+    this.energy = sources;
+    this.energyDeltaSeconds = deltaSeconds;
+  }
+
+  clearEnergy(): void {
+    this.energy = [];
+    this.energyDeltaSeconds = undefined;
+    this.stage?.clearEnergy();
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     void this.setEnabled(false);
     this.destroyed = true;
     this.app.canvas.removeEventListener("webglcontextrestored", this.contextRestored);
+    this.clearEnergy();
     this.stage?.dispose();
     this.stage = undefined;
   }
@@ -157,7 +173,9 @@ export class ThreeKeysHost {
           (frame.pressed.has(pitch) || (!played && frame.sounding.has(pitch))),
         this.app.screen,
         this.app.ticker.deltaMS / 1000,
-        hands
+        hands,
+        this.energy,
+        this.energyDeltaSeconds
       );
     } catch (error) {
       console.warn("3D keys failed, keeping the perspective keys", error);

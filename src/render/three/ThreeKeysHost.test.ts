@@ -10,6 +10,7 @@ import { ThreeKeysHost } from "./ThreeKeysHost";
 const mocks = vi.hoisted(() => ({
   construct: vi.fn(),
   draw: vi.fn(),
+  clearEnergy: vi.fn(),
   dispose: vi.fn(),
   loadKit: vi.fn(),
   loadHand: vi.fn()
@@ -19,6 +20,7 @@ vi.mock("./ThreeStage", () => ({
   ThreeStage: class {
     hands = {};
     draw = mocks.draw;
+    clearEnergy = mocks.clearEnergy;
     dispose = mocks.dispose;
     constructor(...args: unknown[]) {
       mocks.construct(...args);
@@ -115,6 +117,54 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
+  it("uses effect delta for paused lights while hands keep their existing frame delta", async () => {
+    const view = fixture();
+    await view.host.setEnabled(true);
+    view.host.setEnergy([], 0);
+    view.tick();
+    expect(mocks.draw.mock.calls[0]?.[4]).toBe(0.016);
+    expect(mocks.draw.mock.calls[0]?.[7]).toBe(0);
+    view.host.setEnergy([], 0.05);
+    view.tick();
+    expect(mocks.draw.mock.calls[1]?.[7]).toBe(0.05);
+    view.host.destroy();
+  });
+
+  it("clears stage energy synchronously before the next frame on seek or a new song", async () => {
+    const view = fixture();
+    await view.host.setEnabled(true);
+    const energy = [
+      { id: "same-note", pitch: 60, color: 0xff3040, strength: 1, progress: 1, sounding: true }
+    ];
+    view.host.setEnergy(energy, 0.016);
+    view.tick();
+    view.host.clearEnergy();
+    expect(mocks.clearEnergy).toHaveBeenCalledOnce();
+    expect(mocks.draw).toHaveBeenCalledOnce();
+    view.tick();
+    expect(mocks.draw.mock.calls[1]?.[6]).toEqual([]);
+    view.host.setEnergy(energy, 0);
+    view.tick();
+    expect(mocks.draw.mock.calls[2]?.[7]).toBe(0);
+    view.host.destroy();
+  });
+
+  it("passes the road's shared energy snapshot into Three and clears it on destruction", async () => {
+    const view = fixture();
+    const energy = [
+      { id: "note-60", pitch: 60, color: 0xff3040, strength: 1, progress: 1, sounding: true }
+    ];
+    view.host.setEnergy(energy);
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(mocks.draw.mock.calls[0]?.[6]).toBe(energy);
+    view.host.setEnergy([]);
+    view.tick();
+    expect(mocks.draw.mock.calls[1]?.[6]).toEqual([]);
+    view.host.destroy();
+    expect(mocks.dispose).toHaveBeenCalledOnce();
+  });
+
   it("clears Pixi upload flags before Three initializes and invalidates its changed bindings", async () => {
     const view = fixture();
     mocks.construct.mockImplementation(() => {

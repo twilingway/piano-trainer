@@ -15,6 +15,7 @@ import { ComputerKeys, noteColor } from "./computerKeys";
 import type { ComputerKeyboard } from "./computerKeys";
 import type { FallingNoteNames } from "./bakeLabels";
 import { HandsLayer } from "./HandsLayer";
+import { NotePlasma } from "./NotePlasma";
 import { FxLayer } from "./FxLayer";
 import type { FxKey } from "./FxLayer";
 import { FpsMeter } from "./FpsMeter";
@@ -23,7 +24,7 @@ import type { FrameState } from "./frameState";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer } from "./KeyboardLayer";
 import type { KeyStyle } from "./KeyboardLayer";
-import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
+import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
 import { easePan, panAfterResize, panToShow, upcomingSpans } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
@@ -31,7 +32,7 @@ import { RoadLayer } from "./RoadLayer";
 import type { RoadShape, Strike } from "./RoadLayer";
 import { DEFAULT_CAMERA } from "./worldCamera";
 import type { CameraPrefs } from "./worldCamera";
-import { USUAL_PLACEMENT, fitRange, viewGeometry } from "./viewGeometry";
+import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewParts } from "./viewGeometry";
 import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 
@@ -75,6 +76,7 @@ export class FallingNotesView {
   private readonly hud = new HudLayer();
   /** Bursts, light and glitter on the keys at the hit line. */
   private readonly fx = new FxLayer();
+  private readonly plasma = new NotePlasma();
   /** Keys the program was sounding last frame: a key that starts to sound bursts too. */
   private readonly wasSounding = new Set<number>();
   private digitTextures = new Map<Finger, Texture>();
@@ -181,12 +183,13 @@ export class FallingNotesView {
       notes.root,
       notes.cards,
       this.keysRoot,
+      this.plasma.container,
       this.road.effects,
       this.hands.container,
       this.fx.container,
       this.hud.container
     );
-    await loadViewAssets(this.fx, notes, this.road, this.hands);
+    await Promise.all([loadViewAssets(this.fx, notes, this.road, this.hands), this.plasma.load()]);
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -378,6 +381,7 @@ export class FallingNotesView {
     this.songNotes = shown.notes;
     this.hud.clear();
     this.fx.clear();
+    this.plasma.clear(this.road);
     this.wasSounding.clear();
     // The new song's keys are elsewhere: the scroll lands on them rather than gliding there.
     this.panSnap = true;
@@ -394,12 +398,19 @@ export class FallingNotesView {
     const geometry = this.geometry(height);
     this.scroll(state, width);
     const road = this.roadMode ? this.road : undefined;
-    this.notesLayer.draw(
-      road ? { ...state, lookAhead: state.lookAhead * ROAD_LOOK_AHEAD_FACTOR } : state,
+    const noteState = road
+      ? { ...state, lookAhead: state.lookAhead * ROAD_LOOK_AHEAD_FACTOR }
+      : state;
+    this.plasma.draw(
+      noteState,
+      this.songNotes,
       this.keys,
       geometry,
-      road
+      this.road,
+      this.roadMode && this.parts.keys && !this.computer,
+      this.app.ticker.deltaMS / 1000
     );
+    this.notesLayer.draw(noteState, this.keys, geometry, road);
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = this.notesLayer.playing;
     this.keysLayer?.draw(
@@ -601,16 +612,14 @@ export class FallingNotesView {
 
   /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */
   private fitPiano(width: number): number {
-    const { low, high, total } = fitRange(
+    const layout = fitPianoKeys(
       width,
-      this.range.low,
-      this.range.high,
+      this.range,
       this.rangeFitsSong,
-      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches,
-      this.rangeFitsViewport
+      this.rangeFitsViewport,
+      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches
     );
-    this.keys = layoutKeyboard(total, low, high);
-    this.whiteWidth = [...this.keys.values()].find((key) => !key.black)?.width ?? 0;
-    return total;
+    Object.assign(this, layout);
+    return layout.total;
   }
 }

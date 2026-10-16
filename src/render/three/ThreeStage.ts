@@ -16,6 +16,7 @@ import {
 import { WebGLRenderer } from "three";
 import type { Object3D } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { EnergySource } from "../noteEnergy";
 import { keyBoxes } from "./keyBoxes";
 import type { KeyBox } from "./keyBoxes";
 import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
@@ -24,6 +25,9 @@ import type { KitPart, PianoKit } from "./pianoKit";
 import { LiveHands } from "./liveHands";
 import type { HandsSource } from "./liveHands";
 import { projectionMatrix, viewMatrix } from "./threeCamera";
+import { ThreeNoteLights } from "./ThreeNoteLights";
+import { ThreeKeyEmission } from "./ThreeKeyEmission";
+import { ThreeRimLights } from "./ThreeRimLights";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
@@ -45,6 +49,9 @@ export class ThreeStage {
   private readonly scene = new Scene();
   private readonly camera = new Camera();
   private readonly keys = new Group();
+  private readonly noteLights = new ThreeNoteLights();
+  private readonly keyEmission = new ThreeKeyEmission();
+  private readonly rimLights = new ThreeRimLights();
   /** Pixi's picture of the flat keys: colours, lights and stickers for the top faces. */
   private readonly picture = new ExternalTexture();
   /** The painted keys tinted ivory, as the kit is: their colours and stickers stay readable. */
@@ -78,11 +85,11 @@ export class ThreeStage {
     this.renderer.autoClear = false;
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
     this.camera.matrixAutoUpdate = false;
-    const sun = new DirectionalLight(0xffffff, 2.4);
+    const sun = new DirectionalLight(0xffffff, 0.45);
     // Above and in front of the keys, a little to the left: the rounded edges read on both sides.
     sun.position.set(-150, 900, 900);
-    this.scene.add(new HemisphereLight(0xffffff, 0x9a9fac, 1.8), sun, this.keys);
-    this.keys.add(this.body);
+    this.scene.add(new HemisphereLight(0xffffff, 0x9a9fac, 0.25), sun, this.keys);
+    this.keys.add(this.body, this.noteLights.group, this.rimLights.group);
     if (this.hands) this.keys.add(this.hands.group);
   }
 
@@ -93,7 +100,9 @@ export class ThreeStage {
     down: (pitch: number) => boolean,
     screen: { readonly width: number; readonly height: number },
     deltaSeconds: number,
-    hands: HandsSource | undefined
+    hands: HandsSource | undefined,
+    energy: readonly EnergySource[] = [],
+    energyDeltaSeconds = deltaSeconds
   ): void {
     if (keys.version !== this.version) this.build(keys);
     this.picture.sourceTexture = picture;
@@ -103,6 +112,8 @@ export class ThreeStage {
     this.keys.position.x = (-keys.pan / 2) * scale;
     const step = Math.min(1, deltaSeconds * DIP_RATE);
     this.hands?.update(hands, deltaSeconds);
+    this.noteLights.update(energy, keys.camera, energyDeltaSeconds);
+    this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
       const target = Math.max(down(pitch) ? 1 : 0, this.hands?.keys.get(pitch) ?? 0) * DIP;
       hinge.rotation.x += (target - hinge.rotation.x) * step;
@@ -126,8 +137,15 @@ export class ThreeStage {
     this.renderer.resetState();
   }
 
+  clearEnergy(): void {
+    this.noteLights.clear();
+    this.keyEmission.clear();
+  }
+
   dispose(): void {
     this.clear();
+    this.noteLights.dispose();
+    this.rimLights.dispose();
     this.board.dispose();
     this.white.map?.dispose();
     this.black.bumpMap?.dispose();
@@ -140,6 +158,8 @@ export class ThreeStage {
     this.clear();
     this.version = keys.version;
     const boxes = keyBoxes(keys);
+    this.noteLights.layout(boxes);
+    this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
     const black = new Set(boxes.filter((box) => box.black).map((box) => box.pitch));
     for (const box of boxes) {
       const part = box.black
@@ -148,7 +168,12 @@ export class ThreeStage {
       const geometry = keyGeometry(this.part(part), box);
       geometry.computeBoundingBox();
       const bottom = geometry.boundingBox?.min.y ?? 0;
-      const mesh = new Mesh(geometry, [this.top, box.black ? this.black : this.white]);
+      const materials = this.keyEmission.create(
+        box.pitch,
+        this.top,
+        box.black ? this.black : this.white
+      );
+      const mesh = new Mesh(geometry, materials);
       // The hinge sits on the key's back bottom edge; the key hangs forward from it.
       mesh.position.set(0, -bottom, box.back);
       const hinge = new Group();
@@ -201,6 +226,7 @@ export class ThreeStage {
       this.keys.remove(hinge);
     }
     this.hinged = [];
+    this.keyEmission.dispose();
     // The case shares the kit's geometry: nothing of its own to free.
     this.body.clear();
   }

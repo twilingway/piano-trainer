@@ -1,4 +1,4 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
 import { Container, Sprite, Texture, TextureSource, TilingSprite } from "pixi.js";
 
@@ -75,6 +75,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
   // Exercise frame wiring with real draw(), substituting only the GPU-backed layers.
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
     ready: true,
+    parts: { keys: true, notes: true, hands: false },
     app: { screen: { width: 800, height: 600 }, ticker: { deltaMS: 16 } },
     laidOutFor: { width: 800, height: 600 },
     geometry: () => ({ hitY: 400, whiteWidth: 40 }),
@@ -85,6 +86,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
     keyboard: { draw: keyboardDraw },
     hands: { container: { visible: false } },
     fx: { draw: effectsDraw },
+    plasma: { draw: vi.fn() },
     hud: { draw: vi.fn() },
     roadMode,
     keyStyle: "perspective",
