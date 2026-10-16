@@ -13,7 +13,7 @@ from mathutils import Matrix, Quaternion, Vector
 
 G = globals()
 KEY_TOP, KEY_FRONT, X0, WHITE_W = 0.74, 0.30, 0.36, 0.0235
-BENCH_H, BENCH_GAP = 0.49, G.get("BENCH_GAP", 0.28)
+BENCH_H, BENCH_GAP = G.get("BENCH_H", 0.49), G.get("BENCH_GAP", 0.32)
 CENTRE = (X0 + (-28 + 5) * WHITE_W + X0 + 28 * WHITE_W) / 2     # between A0 and C8
 HIP_ABOVE_SEAT = G.get("HIP_ABOVE_SEAT", 0.10)                   # hip joints over the seat
 HIP_BEHIND_EDGE = G.get("HIP_BEHIND_EDGE", 0.10)                 # ...and behind its front edge
