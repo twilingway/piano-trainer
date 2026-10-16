@@ -187,10 +187,13 @@ def wrist_load(x, rest, now):
     frame with the hand as at rest on it and as placed. The forearm turned towards the thumb side is the
     hand deviated towards the little finger (ulnar, up to ULNAR_MAX), the other way RADIAL_MAX; flexion
     either way WRIST_MAX; a rounded box between (WRIST_NORM): a little flexion hardly limits deviation,
-    an ellipse held the hand short of the keys. Returns (load, ulnar deviation, flexion) in radians."""
+    an ellipse held the hand short of the keys. Deviation counts from the straight hand (the wrist bone's
+    Y, the middle metacarpal, along the forearm), not from rest: the rest hand is turned to the thumb
+    side (L 6, R 12 degrees), which ate that much of the ulnar range. Returns (load, ulnar deviation,
+    flexion) in radians."""
     s = THUMB_SIDE[x]
     n = Vector((0, 1, 0)).cross(s)
-    dev = math.atan2(now.dot(s), now.y) - math.atan2(rest.dot(s), rest.y)
+    dev = math.atan2(now.dot(s), now.y)
     flex = math.atan2(now.dot(n), now.y) - math.atan2(rest.dot(n), rest.y)
     load = (abs(dev / (ULNAR_MAX if dev > 0 else RADIAL_MAX)) ** WRIST_NORM + abs(flex / WRIST_MAX) ** WRIST_NORM)
     return load ** (1 / WRIST_NORM), dev, flex
@@ -483,6 +486,10 @@ ARM_BONES = ("upperarm01", "lowerarm01", "lowerarm02", "wrist", "metacarpal", "f
 ARMPIT = 0.45           # of the upper arm from the shoulder: closer in, skin meets the chest anyway
 SKIN_TOL = 0.004        # forearm and hand skin may press this deep into the trunk
 UPPER_TOL = 0.012       # the upper arm rests on the side of the chest: soft on soft, it gives more
+PEN_SLACK = 0.001       # past the tolerances: the measure jitters by a fraction of a millimetre from pose to pose,
+                        # and every elbow step out for it bends the wrist some 4-5 degrees further
+PEN_GAIN = 0.0005       # a step out that takes less than this off the depth stops the elbow: what is left sits
+                        # by the armpit, where the elbow going out hardly moves the skin (a 1 mm plateau out to 0.54)
 
 
 def penetration():
@@ -546,10 +553,12 @@ def fit_elbow(x, want=None, spread=SPREAD0, swing=0.0):
     def fit(sw):
         sp = spread
         place_arm(x, sp, want, sw)
+        last = None
         while True:
             depth, part = penetration()[x]       # beyond its tolerance
-            if depth <= 0 or sp >= SPREAD_MAX:
+            if depth <= PEN_SLACK or sp >= SPREAD_MAX or (last is not None and last - depth < PEN_GAIN):
                 break
+            last = depth
             sp += SPREAD_STEP
             place_arm(x, sp, want, sw)
         return sp, depth, part, LOAD[x]["keys" if want is None else "wanted"], dict(SHOULDER[x])
@@ -560,7 +569,7 @@ def fit_elbow(x, want=None, spread=SPREAD0, swing=0.0):
         for sw in SWINGS:
             if sw != swing:
                 tried[sw] = fit(sw)
-        clear = [sw for sw, t in tried.items() if t[1] <= 0 and (sw == 0 or (t[4]["across"] <= ACROSS_MAX
+        clear = [sw for sw, t in tried.items() if t[1] <= PEN_SLACK and (sw == 0 or (t[4]["across"] <= ACROSS_MAX
                                                                           and abs(t[4]["twist"]) <= TWIST_MAX))]
         free = [sw for sw in clear if tried[sw][3] <= 1]
         if free:
