@@ -691,10 +691,10 @@ def turn_cost(a, drop=0.0, t=None):
     yaw0 = YAW0 + MIRROR * STRETCH_YAW * drop / STRETCH_DROP
     c = 0.01 ** 2 * (((a[0] - yaw0) / YAW_SIGMA) ** 2 + ((a[1] - PITCH0) / 0.2) ** 2 + ((a[2] - ROLL0) / 0.35) ** 2)
     if EXAMPLE:
-        # a wall at the tolerance: one degree past it costs as much as 10 mm of miss. The wrist is not
-        # asked: the video shows a wrist that holds this hand, so a load past the rig's limit is reported
+        # a wall at the tolerance: one degree past it costs as much as 10 mm of miss, so within it the
+        # wrist below picks the turn the arm can hold; a load left past the limit is reported
         c += (0.01 * math.degrees(max(0.0, abs(a[0] - YAW0) - EXAMPLE_YAW_TOL))) ** 2
-    elif t is not None and "wrist_excess" in globals():
+    if t is not None and "wrist_excess" in globals():
         c += (0.003 * wrist_excess(Vector(t), frame_from(*a))) ** 2
     return c
 
