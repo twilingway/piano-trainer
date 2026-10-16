@@ -11,7 +11,7 @@ A shape is the hand, the pressed keys with their fingers, and the thumb's state.
 lowest pressed key; placement is kept relative to the anchor key's centre (x in white keys, depth in
 cm, yaw in degrees), the median of the shape's repeats. Repeats whose landmarks were off the keys
 (tipOffKey) give the placement only when the shape has no clean repeat; the entry then says so.
-Onsets with a note still without a finger are left out.
+Onsets with a note still without a finger, or with the thumb's state unknown, are left out.
 
 nearest() wants the same hand and finger set (else None: the old solver), and ranks by the same
 intervals, the same black/white pattern, the thumb's state, register distance and repeats.
@@ -39,10 +39,13 @@ def shape_of(hand, pressed, thumb):
 
 def build(features, song):
     groups = {}
-    skipped = 0
+    skipped = {"finger": 0, "thumb": 0}
     for o in features["onsets"]:
         if any(n["finger"] is None for n in o["notes"]):
-            skipped += 1
+            skipped["finger"] += 1
+            continue
+        if o["thumb"] is None:
+            skipped["thumb"] += 1
             continue
         anchor_x = min(o["notes"], key=lambda n: n["pitch"])["x"]
         key, anchor, rel = shape_of(o["hand"], [(n["finger"], n["pitch"]) for n in o["notes"]], o["thumb"])
@@ -98,7 +101,7 @@ def place(entry, anchor_x):
 def check(features, library):
     own_fail, octave_fail, nearer, n = [], [], [], 0
     for o in features["onsets"]:
-        if any(nt["finger"] is None for nt in o["notes"]):
+        if any(nt["finger"] is None for nt in o["notes"]) or o["thumb"] is None:
             continue
         n += 1
         pressed = [(nt["finger"], nt["pitch"]) for nt in o["notes"]]
@@ -138,7 +141,7 @@ def main():
             json.dump(lib, f, indent=1)
             f.write("\n")
         print(f"entries {len(lib['entries'])} from {sum(e['count'] for e in lib['entries'])} onsets; "
-              f"left out without a finger {skipped}; offKeyOnly {[e['id'] for e in lib['entries'] if e['offKeyOnly']]}")
+              f"left out: no finger {skipped['finger']}, thumb unknown {skipped['thumb']}; offKeyOnly {[e['id'] for e in lib['entries'] if e['offKeyOnly']]}")
         for e in lib["entries"]:
             print(e["id"], "x", e["count"], "from", e["placementFrom"], e["placement"])
     else:
