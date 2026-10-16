@@ -39,6 +39,7 @@ export function songFromMidi(data: ArrayBuffer, title: string): Song {
         pitch: note.midi,
         start: note.time,
         duration: note.duration,
+        velocity: Math.max(1, Math.min(127, Math.round(note.velocity * 127))),
         startBeat: note.ticks / midi.header.ppq,
         hand: part?.hand ?? handByPitch(note.midi),
         ...(part ? { part: part.id } : {})
