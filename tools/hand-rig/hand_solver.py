@@ -7,8 +7,11 @@ x a free finger hangs over), HAND_FWD (wrist -> middle knuckle of the neutral ha
 place_arm(wrist_at, frame, yaw), which brings the wrist to a point with the hand frame (side to the
 thumb, forward, up) and leaves the rest of the arm to the caller; optionally wrist_excess(wrist_at,
 frame), degrees the wrist would bend past its limit there, so the fit keeps to hands the arm can
-hold. Leaves its results in the same
-namespace: turn, residual, SPREAD_FIT, targets, adjust, before, collision_report(), mesh_check().
+hold. Optionally EXAMPLE, a pose taken from the video (hand_library.py): {"knuckle_x": metres, the
+knuckles' middle across the keys; "yaw": radians in this solver's sense, + fingers to the bass;
+"thumb": "pressing", "tucked" or "visible"}. Leaves its results in the same
+namespace: turn, residual, SPREAD_FIT, targets, adjust, before, collision_report(), mesh_check(),
+and with EXAMPLE example_report().
 Bones carry MPFB names (studio_rig.py, pianist_rig.py): +X flexes; +Z turns to the pinky on the right
 hand and to the thumb on the left, which mirrors it (MIRROR).
 Solver from hand.py: the hand is a rigid body with "apple" curl, fitted by Nelder-Mead so the
@@ -40,6 +43,15 @@ THUMB_SIDE = 0.006                   # and its tip may sit this far off the key'
 # latest rigid fit, the depth a pressing finger may curl to before it is curled back.
 MEAN_DEPTH = globals().get("MEAN_DEPTH", False)
 FIT_DEPTH = {}
+# EXAMPLE: the video gives the knuckles' place across the keys and the hand's turn on the key plane, not
+# their depth (projected along the camera's rays, the knuckles land too deep) nor the height, pitch or
+# roll: the tips on their keys set the depth and height, the rig's neutral the pitch and roll.
+EXAMPLE = globals().get("EXAMPLE")
+EXAMPLE_YAW_TOL = math.radians(5)      # the refit may turn the hand this far off the example
+# The knuckles' x from the frame is not held: they stand above the key plane, and their projection
+# drifts across x by up to 15 mm (left-hand single fingers missed 6-8 mm when pulled to it). The tips
+# on their keys place the hand along the keyboard; the knuckles' offset stays in the report.
+KNUCKLE_PULL = 0.0                     # 1 mm of the knuckles off the example's x costs as this many mm of tip miss
 
 
 def empty(name, loc):
@@ -536,12 +548,20 @@ K3_UP = APPLE_DROP + TIP_CLEAR - globals().get("K3_LOW", 0.005)   # a little und
 STRETCH_DROP = 0.02                    # knuckles this much lower at full spread
 SPREAD_MAX = 1.5                       # pinky up to 30 deg, index -18 deg at the knuckle
 SAMPLES = [0, 0.375, 0.75, 1.125, 1.5]
-tip_samples, body_samples = [], []
+tip_samples, body_samples, knuckle_samples = [], [], []
+
+
+def knuckles_world():
+    """The middle of the knuckles of fingers 2-5, as the video's knuckle point."""
+    return sum((world(f"finger{f}-1.{SIDE}") for f in (2, 3, 4, 5)), Vector()) / 4
+
+
 for sp in SAMPLES:
     apply_curl(sp)
     M = hand_frame().transposed()
     w0 = world(f"wrist.{SIDE}")
     tip_samples.append({f: M @ (world(f"finger{f}-3.{SIDE}", "tail") - w0) for f in range(1, 6)})
+    knuckle_samples.append(M @ (knuckles_world() - w0))
     # the skin under fingers 2..5 for the key penalty: (point, palm-side radius, may squish a key)
     body = {}
     for f in range(2, 6):
@@ -566,6 +586,17 @@ def local_tip_at(f, sp):
     return tip_samples[i][f].lerp(tip_samples[i + 1][f], sp - i)
 
 
+def local_knuckles_at(sp):
+    sp = min(max(sp, 0.0), SPREAD_MAX) / SPREAD_MAX * (len(SAMPLES) - 1)
+    i = min(int(sp), len(SAMPLES) - 2)
+    return knuckle_samples[i].lerp(knuckle_samples[i + 1], sp - i)
+
+
+def knuckle_cost(t, R, local):
+    """The knuckles held at the example's place across the keys."""
+    return (KNUCKLE_PULL * ((t + R @ local).x - EXAMPLE["knuckle_x"])) ** 2 if EXAMPLE else 0.0
+
+
 def local_body_at(f, sp):
     sp = min(max(sp, 0.0), SPREAD_MAX) / SPREAD_MAX * (len(SAMPLES) - 1)
     i = min(int(sp), len(SAMPLES) - 2)
@@ -585,6 +616,8 @@ YAW_SIGMA = 0.6                        # radians of hand yaw that cost as much a
 if MEAN_DEPTH:
     YAW_SIGMA = 0.15
 STRETCH_YAW = math.radians(15)         # the extra turn of a full stretch
+if EXAMPLE:                            # the example's turn already holds its stretch
+    YAW0, STRETCH_YAW = EXAMPLE["yaw"], 0.0
 
 
 def stretch_drop(spread):
@@ -657,7 +690,11 @@ def turn_cost(a, drop=0.0, t=None):
     costs as much as 3 mm of miss per degree."""
     yaw0 = YAW0 + MIRROR * STRETCH_YAW * drop / STRETCH_DROP
     c = 0.01 ** 2 * (((a[0] - yaw0) / YAW_SIGMA) ** 2 + ((a[1] - PITCH0) / 0.2) ** 2 + ((a[2] - ROLL0) / 0.35) ** 2)
-    if t is not None and "wrist_excess" in globals():
+    if EXAMPLE:
+        # a wall at the tolerance: one degree past it costs as much as 10 mm of miss. The wrist is not
+        # asked: the video shows a wrist that holds this hand, so a load past the rig's limit is reported
+        c += (0.01 * math.degrees(max(0.0, abs(a[0] - YAW0) - EXAMPLE_YAW_TOL))) ** 2
+    elif t is not None and "wrist_excess" in globals():
         c += (0.003 * wrist_excess(Vector(t), frame_from(*a))) ** 2
     return c
 
@@ -674,8 +711,17 @@ R0 = frame_from(YAW0, PITCH0, ROLL0)
 anchors = {f: key_contact(semi, Vector((0, KEY_FRONT + TIP_IN, 0))) for f, semi in pose.items()}
 anchors.update({f: Vector((hx, KEY_FRONT + TIP_IN, KEY_TOP + TIP_CLEAR)) for f, hx in hover_x.items()})
 t0 = (sum(anchors.values(), Vector()) - sum((R0 @ local_tip_at(f, 0) for f in anchors), Vector())) / len(anchors)
-best, residual = nelder_mead(cost, [*t0, YAW0, PITCH0, ROLL0, 0.3], [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.3])
-best, residual = nelder_mead(cost, best, [0.003, 0.003, 0.003, 0.03, 0.03, 0.03, 0.1])
+if EXAMPLE:
+    # the hand frame is the example's: only the wrist point and the spread are fitted
+    def example_cost(v):
+        return cost([*v[:3], YAW0, PITCH0, ROLL0, v[3]]) + knuckle_cost(Vector(v[:3]), R0, local_knuckles_at(v[3]))
+
+    ex, residual = nelder_mead(example_cost, [*t0, 0.3], [0.01, 0.01, 0.01, 0.3])
+    ex, residual = nelder_mead(example_cost, ex, [0.003, 0.003, 0.003, 0.1])
+    best = [*ex[:3], YAW0, PITCH0, ROLL0, ex[3]]
+else:
+    best, residual = nelder_mead(cost, [*t0, YAW0, PITCH0, ROLL0, 0.3], [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.3])
+    best, residual = nelder_mead(cost, best, [0.003, 0.003, 0.003, 0.03, 0.03, 0.03, 0.1])
 SPREAD_FIT = min(max(best[6], 0.0), SPREAD_MAX)
 
 
@@ -744,6 +790,22 @@ def lift_thumb():
     tip = world(f"finger1-3.{SIDE}", "tail")
     _, t1, p1 = solve_ik(1, tip + Vector((0, 0, max(0.0, KEY_TOP + HOVER - tip.z))),
                          knuckle + H.col[0] * 0.05 + H.col[2] * 0.03)
+    for o in (t1, p1):
+        bpy.data.objects.remove(o)
+
+
+# A tucked thumb (EXAMPLE) lies under the palm: its tip below the index finger's knuckle, towards the
+# middle finger and the wrist, in the hand frame (side to the thumb, forward, up); never in the keys.
+TUCK_FROM_INDEX = Vector((-0.010, -0.015, -0.030))
+
+
+def tuck_thumb():
+    thumb_to_home()
+    H = hand_frame()
+    goal = world(f"finger2-1.{SIDE}") + H @ TUCK_FROM_INDEX
+    goal.z = max(goal.z, KEY_TOP + HOVER)
+    knuckle = world(f"finger1-2.{SIDE}")
+    _, t1, p1 = solve_ik(1, goal, knuckle + H.col[0] * 0.05 + H.col[2] * 0.03)
     for o in (t1, p1):
         bpy.data.objects.remove(o)
 
@@ -885,6 +947,8 @@ press_v = {}
 def settle():
     if 1 in pose:
         targets[1] = press_thumb()
+    elif EXAMPLE and EXAMPLE.get("thumb") == "tucked":
+        tuck_thumb()
     else:
         lift_thumb()
     for f in curl_base:
@@ -954,11 +1018,12 @@ for _ in range(2):
         clear[f] = t.z - pressed_top(key_of(pose[f])[1], t.y) + pad_depth(f) - PAD_SQUISH / 2
 
     curled = {f: local_tip_at(f, SPREAD_FIT) for f in range(2, 6)}
+    knuckles = hand_frame().transposed() @ (knuckles_world() - world(f"wrist.{SIDE}"))
 
     def refit(v):
-        return (hand_cost(Vector(v[:3]), frame_from(*v[3:6]), tips, body, None, False, clear, reach, curled,
-                          stretch_drop(SPREAD_FIT), REFIT_THUMB_PULL)
-                + turn_cost(v[3:6], stretch_drop(SPREAD_FIT), v[:3]))
+        t, R = Vector(v[:3]), frame_from(*v[3:6])
+        return (hand_cost(t, R, tips, body, None, False, clear, reach, curled, stretch_drop(SPREAD_FIT), REFIT_THUMB_PULL)
+                + turn_cost(v[3:6], stretch_drop(SPREAD_FIT), v[:3]) + knuckle_cost(t, R, knuckles))
 
     turn, residual = nelder_mead(refit, turn, [0.003, 0.003, 0.003, 0.05, 0.03, 0.03], iters=800)
     fit_depths(Vector(turn[:3]), frame_from(*turn[3:6]), tips)
@@ -1009,3 +1074,14 @@ for _ in range(2):
 for m in mesh.modifiers:
     m.show_viewport = True
 vl.update()
+
+
+def example_report():
+    """How the posed hand keeps to the example: its turn on the key plane and the knuckles across the keys
+    (as the video measures them: wrist -> middle knuckle, + fingers to the treble), and the thumb tip."""
+    fwd = world(f"finger3-1.{SIDE}") - world(f"wrist.{SIDE}")
+    yaw = math.atan2(-fwd.x, fwd.y)
+    thumb = world(f"finger1-3.{SIDE}", "tail")
+    return {"yaw off deg": round(math.degrees(yaw - EXAMPLE["yaw"]), 1),
+            "knuckles off mm": round((knuckles_world().x - EXAMPLE["knuckle_x"]) * 1000, 1),
+            "thumb": EXAMPLE.get("thumb"), "thumb tip over keys mm": round((thumb.z - KEY_TOP) * 1000, 1)}

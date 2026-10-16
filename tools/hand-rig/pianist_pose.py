@@ -705,6 +705,7 @@ if fx.name not in bpy.context.scene.collection.children:
     bpy.context.scene.collection.children.link(fx)
 fx.hide_render = True
 SOLVES = 3              # a hand solved with the elbow as fitted; the elbow pushed out by it means a new solve
+EXAMPLES = G.get("EXAMPLES", {})       # per side, a pose from the video for hand_solver's EXAMPLE
 
 
 def wrist_excess(x, wrist_at, frame, hand_in_wrist):
@@ -732,7 +733,8 @@ for x, keys in (HANDS if SOLVE_HANDS else {}).items():
     for solve in range(SOLVES):
         hand = {"__name__": "hand_solver", "ROOT": ROOT, "rig": rig, "mesh": bpy.data.objects["PianistBody"],
                 "fx": fx, "SIDE": x, "pose": keys, "hover_x": {}, "KEY_DIP": G.get("KEY_DIP", 0.0),
-                "ROLL": math.radians(G.get("ROLL_DEG", 2)), "HAND_FWD": hand_fwd, "MEAN_DEPTH": True}
+                "ROLL": math.radians(G.get("ROLL_DEG", 2)), "HAND_FWD": hand_fwd, "MEAN_DEPTH": True,
+                "EXAMPLE": EXAMPLES.get(x)}
 
         def arm(wrist_at, frame, yaw, x=x, hand=hand):
             WRIST[x] = wrist_at
@@ -754,6 +756,8 @@ for x, keys in (HANDS if SOLVE_HANDS else {}).items():
                            "fit residual mm": round(math.sqrt(hand["residual"]) * 1000, 1),
                            "adjust": hand["adjust"],
                            "skin in keys, fingers mm": hand["mesh_check"]()}
+    if EXAMPLES.get(x):
+        report["hand " + x]["example"] = hand["example_report"]()
 
 
 # --- the muscle in the thumb's web. A thumb drawn in to the index finger folds the back of the web into
