@@ -49,6 +49,10 @@ in auto mode without an allow rule.
   yes, like any branch (the global branching rule). E: holds the pnpm store, so an install is
   seconds: `pnpm install --frozen-lockfile`. `local-lessons/` is git-ignored and does not come with
   the worktree; copy it in only if the task needs a real score.
+- **Its own dev stand.** A task that needs a browser gets a port from `5191–5199` in the brief, and
+  the executor runs `pnpm dev --port <port> --strictPort` from its worktree, never `5190` (the
+  user's stand, the main folder on `dev`). Parallel executors get different ports. The stand stops
+  with the task; `AGENTS.md`, section `Local preview`, has the full rule.
 - **Windows sandbox.** `~/.codex/config.toml` has `[windows] sandbox = "unelevated"` since
   2026-09-26: the elevated sandbox fails with `helper_unknown_error: setup refresh had errors` on
   every CLI from 0.155 (openai/codex#46515, #24098; `codex doctor` shows "sandbox provisioning
