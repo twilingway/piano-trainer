@@ -14,6 +14,7 @@ import type { KeyboardLayer } from "./KeyboardLayer";
 import type { FxLayer } from "./FxLayer";
 import { RoadLayer } from "./RoadLayer";
 import { worldCamera } from "./worldCamera";
+import { layoutKeyboard } from "./keyboardLayout";
 
 function notesHarness(songNotes: readonly SongNote[] = notes) {
   const flatDraw = vi.fn<FlatNoteBlocks["draw"]>();
@@ -348,5 +349,60 @@ describe("listening", () => {
     const geometry = { keyboardTop: 400, keyboardHeight: 100, blackHeight: 60, whiteWidth: 40 };
     layer.draw(0, 0.016, new Set(), keys as never, geometry, (x, y) => ({ x, y }));
     expect([...poses.keys()]).toEqual(["left", "right"]);
+  });
+});
+
+describe("keyboard initial centring", () => {
+  function panHarness(roadMode: boolean, pitch = 60) {
+    const setPan = vi.fn();
+    const keysRoot = new Container();
+    const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
+      total: 2288,
+      pan: 0,
+      panSnap: false,
+      whiteWidth: 44,
+      keys: layoutKeyboard(2288),
+      songNotes: [{ id: "next", pitch, start: 0, duration: 1 }],
+      app: { ticker: { deltaMS: 16 } },
+      placement: { x: 0, y: 0 },
+      keysFloor: 200,
+      keysRoot,
+      hands: { container: new Container() },
+      roadMode,
+      road: { setPan, setKeysOffset: vi.fn() }
+    }) as unknown as FallingNotesView;
+    const frame: FrameState = {
+      time: 0,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(),
+      owns: () => true
+    };
+    const scroll = () => {
+      (view as unknown as { scroll: (state: FrameState, width: number) => void }).scroll(
+        frame,
+        1920
+      );
+    };
+    view.setRange(21, 108);
+    return { scroll, setPan, keysRoot };
+  }
+
+  it.each([false, true])("centres 88 keys at 1920px with road=%s", (roadMode) => {
+    const { scroll, setPan, keysRoot } = panHarness(roadMode);
+    scroll();
+    scroll();
+    // Equal 184px overflow on either side instead of all 368px on the right.
+    if (roadMode) expect(setPan).toHaveBeenLastCalledWith(184);
+    else expect(keysRoot.x).toBe(-184);
+  });
+
+  it("still brings an extreme upcoming key into view", () => {
+    const { scroll, setPan } = panHarness(true, 21);
+    scroll();
+    expect(setPan).toHaveBeenLastCalledWith(0);
   });
 });

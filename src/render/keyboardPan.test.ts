@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { easePan, panToShow } from "./keyboardPan";
+import { easePan, panAfterResize, panToShow } from "./keyboardPan";
 
 // A keyboard 3000 px wide seen through a 1000 px view, 50 px of margin.
 const show = (current: number, spans: { left: number; right: number }[]) =>
@@ -40,5 +40,47 @@ describe("easePan", () => {
     expect(easePan(easePan(0, 100, 0.05, 0.35), 100, 0.05, 0.35)).toBeCloseTo(once, 9);
     expect(once).toBeGreaterThan(0);
     expect(once).toBeLessThan(100);
+  });
+});
+
+describe("panAfterResize", () => {
+  it.each([0, -80, 120])(
+    "preserves a centre offset of %ipx through 1920 to 1280 and back",
+    (offset) => {
+      const large = { width: 1920, total: 2288 };
+      const small = { width: 1280, total: 2288 };
+      const pan = 184 + offset;
+      const resized = panAfterResize(pan, large, small);
+      expect(resized).toBe(504 + offset);
+      expect(panAfterResize(resized, small, large)).toBe(pan);
+    }
+  );
+
+  it.each([
+    [0, 0],
+    [1008, 368]
+  ])("clamps edge pan %ipx immediately when widening the viewport", (pan, expected) => {
+    const reframed = panAfterResize(
+      pan,
+      { width: 1280, total: 2288 },
+      { width: 1920, total: 2288 }
+    );
+    expect(reframed).toBe(expected);
+    // The first eased frame must also stay within both keyboard edges.
+    const nextFrame = easePan(reframed, expected === 0 ? 368 : 0, 0.016, 0.35);
+    expect(nextFrame).toBeGreaterThanOrEqual(0);
+    expect(nextFrame).toBeLessThanOrEqual(368);
+  });
+
+  it("centres a keyboard narrower than the viewport with a negative pan", () => {
+    expect(panAfterResize(0, { width: 1280, total: 1500 }, { width: 1920, total: 1500 })).toBe(
+      -210
+    );
+  });
+
+  it("preserves the scroll through responsive changes in key width", () => {
+    expect(panAfterResize(184, { width: 1920, total: 2288 }, { width: 768, total: 1664 })).toBe(
+      448
+    );
   });
 });

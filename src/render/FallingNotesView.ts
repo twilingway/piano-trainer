@@ -25,8 +25,7 @@ import { KeyboardLayer } from "./KeyboardLayer";
 import type { KeyStyle } from "./KeyboardLayer";
 import { HIGHEST_PITCH, LOWEST_PITCH, layoutKeyboard } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
-import { easePan, panToShow } from "./keyboardPan";
-import type { Span } from "./keyboardPan";
+import { easePan, panAfterResize, panToShow, upcomingSpans } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
 import { RoadLayer } from "./RoadLayer";
 import type { RoadShape, Strike } from "./RoadLayer";
@@ -41,10 +40,6 @@ export type { FrameState } from "./frameState";
 
 /** Seconds the scroll takes to go most of the way to where it is headed. */
 const PAN_SMOOTHING_S = 0.35;
-/** How far ahead, as a share of the lane's time, the scroll looks for keys to bring in. */
-const PAN_LOOK_AHEAD = 0.6;
-/** Keys the scroll considers at most, earliest first. */
-const PAN_NOTES = 24;
 /** The road needs a longer approach so distant notes are readable before reaching the keys. */
 const ROAD_LOOK_AHEAD_FACTOR = 4;
 const NO_SOUNDING_KEYS: ReadonlySet<number> = new Set();
@@ -115,6 +110,7 @@ export class FallingNotesView {
   private total = 0;
   /** How far the view is scrolled along the keyboard. */
   private pan = 0;
+  private panLayout = { width: 0, total: 0 };
   private ready = false;
   private resizeObserver: ResizeObserver | undefined;
   private fpsMeter: FpsMeter | undefined;
@@ -253,6 +249,7 @@ export class FallingNotesView {
     this.range = { low, high };
     this.rangeFitsSong = fitsSong;
     this.rangeFitsViewport = fitsViewport;
+    this.panSnap = true;
     this.laidOutFor = { width: 0, height: 0 };
   }
 
@@ -512,17 +509,9 @@ export class FallingNotesView {
   private scroll(state: FrameState, width: number): void {
     let pan = Math.min(0, (this.total - width) / 2);
     if (this.total > width) {
-      const until = state.time + state.lookAhead * PAN_LOOK_AHEAD;
-      const spans: Span[] = [];
-      for (const note of this.songNotes) {
-        if (note.start >= until) break;
-        if (note.start + note.duration <= state.time) continue;
-        if (state.hands.size > 0 && !state.owns(note)) continue;
-        const key = this.keys.get(note.pitch);
-        if (key) spans.push({ left: key.x, right: key.x + key.width });
-        if (spans.length >= PAN_NOTES) break;
-      }
-      const target = panToShow(this.pan, spans, width, this.total, this.whiteWidth);
+      const spans = upcomingSpans(state, this.songNotes, this.keys);
+      const current = this.panSnap ? (this.total - width) / 2 : this.pan;
+      const target = panToShow(current, spans, width, this.total, this.whiteWidth);
       pan = this.panSnap
         ? target
         : easePan(this.pan, target, this.app.ticker.deltaMS / 1000, PAN_SMOOTHING_S);
@@ -575,7 +564,8 @@ export class FallingNotesView {
     // The computer keys fill the width; the piano's range may be wider and scroll.
     const total = this.computer ? computerWidth(width, this.placement.scale) : this.fitPiano(width);
     this.total = total;
-    this.pan = Math.min(this.pan, Math.max(0, total - width));
+    this.pan = panAfterResize(this.pan, this.panLayout, { width, total });
+    this.panLayout = { width, total };
     const geometry = this.geometry(height);
     if (this.computer) this.keys = layoutComputerKeys(total, geometry).keys;
     this.keysLayer?.layout(this.keys, geometry, total);
