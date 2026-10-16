@@ -130,6 +130,9 @@ export const uiMessagesExtra = {
   "Ход песни": {
     en: "Song progress"
   },
+  "{elapsed} из {total}": {
+    en: "{elapsed} of {total}"
+  },
   "Текст: язык, партия, раскладка и качество": {
     en: "Text: language, part, layout and quality"
   },

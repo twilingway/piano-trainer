@@ -84,6 +84,8 @@ export function ConnectedSongProgress({
   return (
     <SongProgress
       progress={progress}
+      time={time}
+      duration={song.duration}
       ticks={ticks}
       onSeek={(share) => {
         onSeek(share * totalQuarters);
