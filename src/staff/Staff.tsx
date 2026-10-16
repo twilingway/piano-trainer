@@ -10,7 +10,6 @@ import { entryBeatAt, placeCursorLine } from "./liveCursor";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
 import { beatPositions, indexNotes, type NoteIndex } from "./staffNoteIndex";
 import { fitCompactStaff, staffZoom } from "./fitCompactStaff";
-import { fittedTimelineZoom } from "./fitStaffTimeline";
 import { fitWrappedStaff } from "./fitWrappedStaff";
 import { timelineSpots } from "./staffTimelineSpots";
 import { installUniformStaffLayout } from "./uniformStaffLayout";
@@ -192,18 +191,6 @@ export function Staff({
     // the main thing on screen and is fitted to the room it has.
     osmd.Zoom = latest.current.course ? 1 : staffZoom(host, latest.current.zoom);
     osmd.render();
-    const initialAxis = uniformRef.current?.getAxis();
-    if (initialAxis) {
-      const fitted = fittedTimelineZoom(
-        osmd.Zoom,
-        initialAxis.pixelsPerSecond,
-        latest.current.zoom
-      );
-      if (fitted < osmd.Zoom) {
-        osmd.Zoom = fitted;
-        osmd.render();
-      }
-    }
     if (!latest.current.course && !latest.current.singleLine && breaksFromScore)
       fitWrappedStaff(osmd);
     if (latest.current.course) {
