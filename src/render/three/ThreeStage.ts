@@ -28,6 +28,11 @@ import { projectionMatrix, viewMatrix } from "./threeCamera";
 import { ThreeNoteLights } from "./ThreeNoteLights";
 import { ThreeKeyEmission } from "./ThreeKeyEmission";
 import { ThreeRimLights } from "./ThreeRimLights";
+import { ThreeRoadNotes } from "./ThreeRoadNotes";
+import { ThreeRoadTrails } from "./ThreeRoadTrails";
+import { ThreeNoteAura } from "./ThreeNoteAura";
+import { ThreeRoadGuides } from "./ThreeRoadGuides";
+import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
@@ -49,6 +54,13 @@ export class ThreeStage {
   private readonly scene = new Scene();
   private readonly camera = new Camera();
   private readonly keys = new Group();
+  private readonly road = new Group();
+  private readonly lighting = new Group();
+  private readonly roadNotes = new ThreeRoadNotes();
+  private readonly roadTrails = new ThreeRoadTrails();
+  private readonly noteAura = new ThreeNoteAura();
+  private readonly roadGuides = new ThreeRoadGuides();
+  private boxes: readonly KeyBox[] = [];
   private readonly noteLights = new ThreeNoteLights();
   private readonly keyEmission = new ThreeKeyEmission();
   private readonly rimLights = new ThreeRimLights();
@@ -88,8 +100,21 @@ export class ThreeStage {
     const sun = new DirectionalLight(0xffffff, 0.45);
     // Above and in front of the keys, a little to the left: the rounded edges read on both sides.
     sun.position.set(-150, 900, 900);
-    this.scene.add(new HemisphereLight(0xffffff, 0x9a9fac, 0.25), sun, this.keys);
-    this.keys.add(this.body, this.noteLights.group, this.rimLights.group);
+    this.scene.add(
+      new HemisphereLight(0xffffff, 0x9a9fac, 0.25),
+      sun,
+      this.road,
+      this.keys,
+      this.lighting
+    );
+    this.road.add(
+      this.roadGuides.group,
+      this.roadTrails.group,
+      this.roadNotes.group,
+      this.noteAura.group
+    );
+    this.keys.add(this.body);
+    this.lighting.add(this.noteLights.group, this.rimLights.group);
     if (this.hands) this.keys.add(this.hands.group);
   }
 
@@ -102,7 +127,8 @@ export class ThreeStage {
     deltaSeconds: number,
     hands: HandsSource | undefined,
     energy: readonly EnergySource[] = [],
-    energyDeltaSeconds = deltaSeconds
+    energyDeltaSeconds = deltaSeconds,
+    roadFrame?: ThreeRoadFrame
   ): void {
     if (keys.version !== this.version) this.build(keys);
     this.picture.sourceTexture = picture;
@@ -110,6 +136,36 @@ export class ThreeStage {
     const scale = params.prefs.scale;
     this.keys.scale.setScalar(scale);
     this.keys.position.x = (-keys.pan / 2) * scale;
+    this.road.scale.copy(this.keys.scale);
+    this.road.position.copy(this.keys.position);
+    this.lighting.scale.copy(this.keys.scale);
+    this.lighting.position.copy(this.keys.position);
+    this.road.visible = roadFrame !== undefined;
+    this.roadNotes.setViewport(screen.width, screen.height);
+    if (roadFrame) {
+      this.noteAura.update(
+        roadFrame.notes,
+        keys.camera.near.y,
+        roadFrame.visualTime,
+        roadFrame.noteCount
+      );
+      this.roadTrails.update(
+        roadFrame.notes,
+        keys.camera.near.y,
+        roadFrame.visualTime,
+        roadFrame.noteCount,
+        (keys.camera.roadFarZ - keys.camera.near.z) * 0.22
+      );
+      if (roadFrame.guides)
+        this.roadGuides.update(this.boxes, keys.camera, roadFrame.beats, roadFrame.beatCount);
+      else this.roadGuides.clear();
+      this.roadNotes.update(
+        roadFrame.notes,
+        keys.camera.near.y,
+        roadFrame.visualTime,
+        roadFrame.noteCount
+      );
+    }
     const step = Math.min(1, deltaSeconds * DIP_RATE);
     this.hands?.update(hands, deltaSeconds);
     this.noteLights.update(energy, keys.camera, energyDeltaSeconds);
@@ -120,8 +176,9 @@ export class ThreeStage {
     }
     this.camera.matrix.copy(viewMatrix(params)).invert();
     this.camera.matrixWorldNeedsUpdate = true;
+    const detached = keys.offset.x !== 0 || keys.offset.y !== 0;
     this.camera.projectionMatrix.copy(
-      projectionMatrix(params, screen.width, screen.height, keys.offset)
+      projectionMatrix(params, screen.width, screen.height, detached ? undefined : keys.offset)
     );
     this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();
     this.renderer.resetState();
@@ -132,7 +189,19 @@ export class ThreeStage {
       this.context.drawingBufferHeight
     );
     this.renderer.clearDepth();
+    if (detached) this.keys.visible = false;
     this.renderer.render(this.scene, this.camera);
+    if (detached) {
+      this.keys.visible = true;
+      this.road.visible = false;
+      this.camera.projectionMatrix.copy(
+        projectionMatrix(params, screen.width, screen.height, keys.offset)
+      );
+      this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();
+      this.renderer.clearDepth();
+      this.renderer.render(this.scene, this.camera);
+      this.road.visible = roadFrame !== undefined;
+    }
     // Hand the context back as WebGL defaults: Pixi's own reset leaves depth testing on.
     this.renderer.resetState();
   }
@@ -146,6 +215,10 @@ export class ThreeStage {
     this.clear();
     this.noteLights.dispose();
     this.rimLights.dispose();
+    this.roadNotes.dispose();
+    this.roadTrails.dispose();
+    this.noteAura.dispose();
+    this.roadGuides.dispose();
     this.board.dispose();
     this.white.map?.dispose();
     this.black.bumpMap?.dispose();
@@ -158,6 +231,7 @@ export class ThreeStage {
     this.clear();
     this.version = keys.version;
     const boxes = keyBoxes(keys);
+    this.boxes = boxes;
     this.noteLights.layout(boxes);
     this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
     const black = new Set(boxes.filter((box) => box.black).map((box) => box.pitch));

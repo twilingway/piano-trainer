@@ -16,6 +16,8 @@ interface Props {
   readonly onKeyStyle: (style: KeyStyle) => void;
   readonly handStyle: HandStyle;
   readonly onHandStyle: (style: HandStyle) => void;
+  readonly roadGuides: boolean;
+  readonly onRoadGuides: (on: boolean) => void;
   readonly road: { readonly far: number; readonly horizon: number };
   readonly onRoad: (road: { far?: number; horizon?: number }) => void;
   readonly camera: CameraPrefs;
@@ -34,6 +36,8 @@ export function KeyboardSettings({
   onKeyStyle,
   handStyle,
   onHandStyle,
+  roadGuides,
+  onRoadGuides,
   camera,
   onCamera,
   road,
@@ -129,6 +133,18 @@ export function KeyboardSettings({
             </span>
           </label>
         </>
+      )}
+      {keyStyle === "3d" && (
+        <label className="setting">
+          <span>{t("Линии дороги")}</span>
+          <input
+            type="checkbox"
+            checked={roadGuides}
+            onChange={(event) => {
+              onRoadGuides(event.target.checked);
+            }}
+          />
+        </label>
       )}
       <label className="setting">
         <span>{t("Названия нот на клавишах")}</span>

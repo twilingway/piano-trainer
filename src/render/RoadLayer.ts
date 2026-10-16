@@ -8,7 +8,7 @@ import {
   Sprite
 } from "pixi.js";
 import type { Application, PointData, Renderer, Texture } from "pixi.js";
-import { bakeFog, bakeSpark } from "./roadTextures";
+import { bakeFog, bakeSpark, drawRoadHorizon } from "./roadTextures";
 import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
@@ -24,6 +24,8 @@ import { handSurface } from "./handProjection";
 import type { HandsGeometry } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
 import { ThreeKeysHost } from "./three/ThreeKeysHost";
+import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
+import { readableRoadTop } from "./readableRoadNote";
 import type { EnergySource } from "./noteEnergy";
 import type { HandsLayer } from "./HandsLayer";
 
@@ -71,7 +73,6 @@ const MAX_SPARKS = 400;
 const SPARKS_PER_BURST = 24;
 const SPARKS_PER_HELD_S = 30;
 const SPARK_LIFE_S = 0.7;
-const HORIZON_COLOR = 0x3fd6ff;
 
 interface Spark {
   readonly sprite: Sprite;
@@ -100,7 +101,6 @@ export class RoadLayer {
   private readonly road: PerspectiveMesh;
   private readonly glow: PerspectiveMesh;
   private readonly glows = new Container();
-  private readonly hitLine = new Graphics();
   /** The glowing horizon and the flashes of notes coming over it. */
   private readonly horizon = new Graphics();
   private readonly arrivals = new HorizonBurstLayer();
@@ -125,6 +125,8 @@ export class RoadLayer {
   private bottom = 0;
   private clock = 0;
   private plasmaClock = 0;
+  private readonly nativeRoad = new ThreeRoadFrame();
+  private lastLane: Container | undefined;
   /** Sparks owed to each held key: the fraction of a spark carried to the next frame. */
   private held = new Map<number, number>();
 
@@ -165,17 +167,20 @@ export class RoadLayer {
       this.legacyKeys
     );
     this.container.eventMode = "none";
-    this.hitLine.blendMode = "add";
-    this.effects.addChild(this.hitLine);
     this.effects.eventMode = "none";
     this.sparkTexture = bakeSpark(renderer);
     this.three =
-      app && keyboard && new ThreeKeysHost(app, this.container, this.keys, keyboard, hands);
+      app &&
+      keyboard &&
+      new ThreeKeysHost(app, this.container, this.keys, keyboard, hands, () => {
+        this.restoreRoad();
+      });
   }
 
   setEnergy(sources: readonly EnergySource[], deltaSeconds: number): void {
     this.three?.setEnergy(sources, deltaSeconds);
     this.plasmaClock += Math.min(0.05, Math.max(0, deltaSeconds));
+    this.nativeRoad.visualTime = this.plasmaClock;
   }
 
   clearEnergy(): void {
@@ -183,6 +188,7 @@ export class RoadLayer {
   }
 
   beginNotes(): void {
+    this.nativeRoad.begin();
     this.glass.begin();
   }
 
@@ -201,6 +207,7 @@ export class RoadLayer {
 
   endNotes(): void {
     this.glass.end();
+    this.three?.setRoadFrame(this.nativeRoad);
   }
 
   noteLaneX(keyX: number): number {
@@ -234,6 +241,8 @@ export class RoadLayer {
 
   /** The measure lines lie on the floor with the notes, where the lane texture puts them. */
   beatY(y: number): number {
+    if (this.three?.drawsRoad && this.camera)
+      this.nativeRoad.beat(y, this.size.height, this.camera);
     return y;
   }
 
@@ -247,8 +256,27 @@ export class RoadLayer {
     bottom: number,
     width: number,
     tint: number,
-    alpha: number
+    alpha: number,
+    duration = 0,
+    id = "",
+    tailOffset = 0
   ): boolean {
+    if (this.three?.drawsRoad && this.camera) {
+      this.nativeRoad.add(
+        keyX,
+        top,
+        bottom,
+        width,
+        tint,
+        alpha,
+        this.size.height,
+        this.camera,
+        duration,
+        id,
+        tailOffset
+      );
+      return true;
+    }
     if (!this.glass.ready || !this.projection || bottom <= top) return false;
     this.glass.draw(
       top,
@@ -302,7 +330,13 @@ export class RoadLayer {
     );
     const near = this.three?.on ? PANEL_EDGE : KEYS_BACK;
     this.camera = this.perspective
-      ? worldCamera(viewWidth, Math.max(1, bottom - handRoom), this.cameraPrefs, near)
+      ? worldCamera(
+          viewWidth,
+          Math.max(1, bottom - handRoom),
+          this.cameraPrefs,
+          near,
+          this.three?.on ? this.shape.horizon : undefined
+        )
       : undefined;
     const legacy = legacyRoadProjection(viewWidth, height, bottom, this.shape);
     this.projection = this.camera?.road ?? legacy.projection;
@@ -316,7 +350,6 @@ export class RoadLayer {
     this.road.texture = this.texture;
     this.glow.texture = this.texture;
     this.hit = { y: this.hitY, left: 0, right: viewWidth };
-    this.placeHitLine();
     this.staff.draw(this.projection, this.pan);
     this.setPan(this.pan, true);
   }
@@ -325,18 +358,22 @@ export class RoadLayer {
   setKeyStyle(style: KeyStyle): Promise<void> {
     const loaded = this.three?.setEnabled(style === "3d") ?? Promise.resolve();
     this.perspective = style === "perspective" || style === "3d";
-    this.placeHitLine();
     return loaded;
   }
 
-  /** Behind the perspective keys a glow; over flat keys and the 3D panel's edge a bright wire. */
-  private get wire(): boolean {
-    return !this.perspective || this.three?.on === true;
+  get drawsNativeRoad(): boolean {
+    return this.three?.drawsRoad === true;
   }
 
-  private placeHitLine(): void {
-    if (this.wire) this.effects.addChildAt(this.hitLine, 0);
-    else this.container.addChildAt(this.hitLine, this.container.getChildIndex(this.keys.container));
+  setRoadGuides(on: boolean): void {
+    this.nativeRoad.guides = on;
+    this.staff.container.visible = on;
+  }
+
+  fitHoldTop(x: number, top: number, bottom: number, width: number, duration = 0): number {
+    return this.three?.drawsRoad && this.camera
+      ? readableRoadTop(x, top, bottom, width, this.size.height, this.camera, duration)
+      : top;
   }
 
   setShape(shape: RoadShape): void {
@@ -440,7 +477,11 @@ export class RoadLayer {
     deltaSeconds: number
   ): void {
     if (this.size.width < 1) return;
-    this.renderer.render({ container: lane, target: this.texture, clear: true });
+    this.lastLane = lane;
+    const native = this.three?.drawsRoad === true;
+    this.road.renderable = this.glows.renderable = !native;
+    this.staff.container.visible = !native || this.nativeRoad.guides;
+    if (!native) this.renderer.render({ container: lane, target: this.texture, clear: true });
     this.renderer.render({
       container: keys,
       target: this.keysTexture,
@@ -455,7 +496,6 @@ export class RoadLayer {
     }));
     this.drawHorizon();
     if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
-    this.drawHitLine();
     const held = new Map<number, number>();
     for (const strike of strikes) {
       const owed = this.held.get(strike.pitch);
@@ -467,6 +507,18 @@ export class RoadLayer {
     }
     this.held = held;
     this.moveSparks(deltaSeconds);
+  }
+
+  private restoreRoad(): void {
+    this.road.renderable = this.glows.renderable = true;
+    if (this.lastLane)
+      this.renderer.render({ container: this.lastLane, target: this.texture, clear: true });
+    if (!this.camera) return;
+    this.glass.begin();
+    this.nativeRoad.replay(this.size.height, this.camera, (x, top, bottom, width, color, alpha) => {
+      this.drawHold(x, top, bottom, width, color, alpha);
+    });
+    this.glass.end();
   }
 
   destroy(): void {
@@ -488,22 +540,9 @@ export class RoadLayer {
   private drawHorizon(): void {
     const line = this.horizon;
     line.clear();
-    const projection = this.projection;
-    if (!projection) return;
-    const y = this.horizonY;
-    const width = this.viewWidth;
-    // Across the whole view, quiet as in the mockup: a thin blue line in a faint haze that
-    // reaches further down onto the road than up; the notes' flashes are the bright part.
-    for (let step = 1; step <= 6; step++) {
-      line.rect(0, y - step, width, step + step * 4).fill({ color: HORIZON_COLOR, alpha: 0.018 });
-    }
-    line.rect(0, y - 1.5, width, 3).fill({ color: HORIZON_COLOR, alpha: 0.18 });
-    line.rect(0, y - 0.5, width, 1).fill({ color: HORIZON_COLOR, alpha: 0.6 });
-  }
-
-  private drawHitLine(): void {
-    // The flame now marks the edge; keep no flat colour bars under it.
-    this.hitLine.clear();
+    if (this.three?.drawsRoad && !this.nativeRoad.guides) return;
+    if (!this.projection) return;
+    drawRoadHorizon(line, this.horizonY, this.viewWidth);
   }
 
   private emit(strike: Strike, count: number): void {

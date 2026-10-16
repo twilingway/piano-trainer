@@ -13,7 +13,7 @@ import type { FlatNoteBlocks } from "./FlatNoteBlocks";
 import type { KeyboardLayer } from "./KeyboardLayer";
 import type { FxLayer } from "./FxLayer";
 import { RoadLayer } from "./RoadLayer";
-import { worldCamera } from "./worldCamera";
+import { CAMERA_PRESETS, DEFAULT_CAMERA, worldCamera } from "./worldCamera";
 import { layoutKeyboard } from "./keyboardLayout";
 
 function notesHarness(songNotes: readonly SongNote[] = notes) {
@@ -67,7 +67,7 @@ const notes: SongNote[] = [
   { id: "right", pitch: 72, hand: "right", finger: 1, start: 0, startBeat: 0, duration: 1 }
 ];
 
-function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) {
+function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, nativeRoad = true) {
   const keyboardDraw = vi.fn<KeyboardLayer["draw"]>();
   const effectsDraw = vi.fn<FxLayer["draw"]>();
   const roadDraw = vi.fn<RoadLayer["draw"]>();
@@ -90,7 +90,10 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
     hud: { draw: vi.fn() },
     roadMode,
     keyStyle: "perspective",
+    cameraPrefs: DEFAULT_CAMERA,
     road: {
+      drawsNativeRoad: nativeRoad,
+      setCamera: vi.fn(),
       draw: roadDraw,
       hitLineY: 400,
       notePlace: (x: number, y: number) => ({ x, y, scale: 1 }),
@@ -98,6 +101,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes) 
       beginNotes: vi.fn(),
       endNotes: vi.fn(),
       drawHold: vi.fn(() => false),
+      fitHoldTop: (_x: number, top: number) => top,
       clarity: () => 1,
       scenePan: 0
     },
@@ -222,6 +226,71 @@ describe("accompaniment fire independent of key colours", () => {
     expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(roadMode ? 8 : 2);
     expect(notesDraw.mock.calls[0]?.[0].time).toBe(0.1);
   });
+  it("switches overhead and perspective flight independently without changing musical time", () => {
+    const { view, notesDraw } = viewHarness(true);
+    Object.assign(view, { keyStyle: "3d", layout: vi.fn() });
+    const frame: FrameState = {
+      time: 0.1,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(),
+      owns: () => false
+    };
+    for (const [prefs, expected] of [
+      [CAMERA_PRESETS.top, 2.22],
+      [CAMERA_PRESETS.player, 6],
+      [CAMERA_PRESETS.hands, 6],
+      [CAMERA_PRESETS.top, 2.22]
+    ] as const) {
+      view.setCamera(prefs);
+      view.draw(frame);
+      expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(expected);
+      expect(notesDraw.mock.lastCall?.[0].time).toBe(0.1);
+    }
+    expect(frame.lookAhead).toBe(2);
+  });
+  it.each([false, true])("retains computer-keyboard travel with road=%s", (roadMode) => {
+    const { view, notesDraw } = viewHarness(roadMode);
+    Object.assign(view, {
+      keyStyle: "3d",
+      cameraPrefs: CAMERA_PRESETS.top,
+      computer: { frame: (frame: FrameState) => frame }
+    });
+    view.draw({
+      time: -0.5,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(),
+      owns: () => false
+    });
+    expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(roadMode ? 8 : 2);
+    expect(notesDraw.mock.lastCall?.[0].time).toBe(-0.5);
+  });
+  it.each([CAMERA_PRESETS.top, CAMERA_PRESETS.player])(
+    "keeps legacy travel while the selected 3D host is unavailable at pitch $pitch",
+    (prefs) => {
+      const { view, notesDraw } = viewHarness(true, notes, false);
+      Object.assign(view, { keyStyle: "3d", cameraPrefs: prefs });
+      view.draw({
+        time: -0.5,
+        lookAhead: 2,
+        statusOf: () => undefined,
+        pressed: new Set(),
+        sounding: new Set(),
+        due: [],
+        hands: new Set(),
+        owns: () => false
+      });
+      expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(8);
+      expect(notesDraw.mock.lastCall?.[0].time).toBe(-0.5);
+    }
+  );
   it("keeps digits and names inside the lower end with and without the road", () => {
     const layouts = [false, true].map((roadMode) => {
       const { view, sprites } = viewHarness(roadMode);

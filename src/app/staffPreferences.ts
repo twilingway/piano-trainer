@@ -33,6 +33,8 @@ export interface StaffPrefs {
   readonly handStyle: HandStyle;
   /** The trial road view: notes in perspective, glowing, with sparks. */
   readonly road: boolean;
+  /** Optional lane guides on the 3D road. */
+  readonly roadGuides: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
   readonly noteCardsConfigured: boolean;
@@ -70,6 +72,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   hands: false,
   handStyle: "rendered",
   road: false,
+  roadGuides: false,
   noteCards: false,
   noteCardsConfigured: true,
   labels: false,
@@ -117,6 +120,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     hands: boolean("hands"),
     handStyle: choice("handStyle", ["drawn", "rendered"]),
     road: boolean("road"),
+    roadGuides: boolean("roadGuides"),
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),
     labels: boolean("labels"),

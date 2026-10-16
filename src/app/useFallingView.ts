@@ -170,6 +170,10 @@ export function useFallingView({
     viewRef.current?.setComputerKeys(computerKeys);
   }, [viewRef, trainerReady, computerKeys]);
 
+  useEffect(() => {
+    viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
+  }, [viewRef, trainerReady, staffPrefs.roadGuides]);
+
   const { lift, scale, x, y } = placement;
   useEffect(() => {
     viewRef.current?.setKeysPlacement({ lift, scale, x, y });

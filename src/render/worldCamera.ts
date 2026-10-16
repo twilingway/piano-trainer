@@ -21,7 +21,7 @@ export const CAMERA_LIMITS = {
   fov: [25, 85],
   height: [25, 1000],
   distance: [120, 1200],
-  pitch: [-5, 85],
+  pitch: [-5, 90],
   targetY: [-250, 250],
   scale: [0.55, 1.6]
 } as const;
@@ -31,7 +31,7 @@ export const CAMERA_LIMITS = {
  */
 export const CAMERA_PRESETS = {
   player: DEFAULT_CAMERA,
-  top: { ...DEFAULT_CAMERA, height: 803, distance: 400, pitch: 72 },
+  top: { ...DEFAULT_CAMERA, height: 803, distance: 120, pitch: 90 },
   hands: { ...DEFAULT_CAMERA, height: 212, distance: 300, pitch: 42 }
 } as const satisfies Record<string, CameraPrefs>;
 export function normalizeCamera(value: unknown): CameraPrefs {
@@ -62,6 +62,8 @@ export interface CameraParams {
   /** How much the default distance and height grow with the view's height. */
   readonly fit: number;
   readonly prefs: CameraPrefs;
+  /** Constant pixels per world unit before the user's scale, for the strict overhead view. */
+  readonly orthographicScale?: number;
 }
 export interface RoadNear {
   readonly y: number;
@@ -94,7 +96,8 @@ export function worldCamera(
   width: number,
   height: number,
   prefs: CameraPrefs = DEFAULT_CAMERA,
-  near: RoadNear = KEYS_BACK
+  near: RoadNear = KEYS_BACK,
+  horizonShare?: number
 ): WorldCamera {
   const fit = Math.max(1, height / 375);
   const defaultAngle = rad(DEFAULT_CAMERA.pitch);
@@ -114,14 +117,16 @@ export function worldCamera(
     defaultBottomDepth;
   const originY = height - 8 + defaultBottomY;
   const angle = rad(prefs.pitch),
-    ca = Math.cos(angle),
-    sa = Math.sin(angle);
+    ca = prefs.pitch === 90 ? 0 : Math.cos(angle),
+    sa = prefs.pitch === 90 ? 1 : Math.sin(angle);
+  const orthographicScale =
+    prefs.pitch === 90 ? focal / Math.max(1, prefs.height * fit - 22 * prefs.scale) : undefined;
   const project = (x: number, y: number, z: number): Projected => {
     const yy = y * prefs.scale - prefs.height * fit;
     const zz = z * prefs.scale + prefs.distance * fit;
     const depth = -yy * sa + zz * ca;
     if (depth <= 1) return { x: 0, y: 0, scale: 0 };
-    const scale = focal / depth;
+    const scale = orthographicScale ?? focal / depth;
     return {
       x: width / 2 + x * prefs.scale * scale,
       y: originY - (yy * ca + zz * sa) * scale + prefs.targetY,
@@ -136,20 +141,48 @@ export function worldCamera(
     farZ: number,
     progress: number
   ): Projected => {
+    if (orthographicScale !== undefined)
+      return project(x, y, farZ + (nearZ - farZ) * Math.max(0, Math.min(1, progress)));
     const yy = y * prefs.scale - prefs.height * fit;
     const nearDepth = -yy * sa + (nearZ * prefs.scale + prefs.distance * fit) * ca;
     const farDepth = -yy * sa + (farZ * prefs.scale + prefs.distance * fit) * ca;
     const depth = depthAtScreenProgress(progress, nearDepth, farDepth);
     return project(x, y, farZ + (nearZ - farZ) * depth);
   };
-  const roadFarZ = near.z + 1500 * fit;
+  const fallbackSpan = 1500 * fit;
+  let roadFarZ = near.z + fallbackSpan;
+  if (horizonShare !== undefined && Number.isFinite(horizonShare) && height > 0) {
+    const hit = project(0, near.y, near.z);
+    if (hit.scale > 0 && hit.y > 0) {
+      const share = Math.max(0, Math.min(0.95, horizonShare));
+      const targetY = Math.max(0, Math.min(height * 0.9, hit.y * share));
+      const q = (originY + prefs.targetY - targetY) / focal;
+      const denominator = q * ca - sa;
+      if (Math.abs(denominator) > 1e-8) {
+        const yy = near.y * prefs.scale - prefs.height * fit;
+        const zz =
+          orthographicScale !== undefined
+            ? (originY + prefs.targetY - targetY) / orthographicScale
+            : (yy * (ca + q * sa)) / denominator;
+        const solved = (zz - prefs.distance * fit) / prefs.scale;
+        const span = solved - near.z;
+        // Near-horizontal views may never reach this screen row on the road plane.
+        if (Number.isFinite(solved) && span >= Math.max(1, fit) && span <= fallbackSpan * 8) {
+          const far = project(0, near.y, solved);
+          if (far.scale > 0 && Number.isFinite(far.y)) roadFarZ = solved;
+        }
+      }
+    }
+  }
   const road: RoadProjection = {
     at: (x, t) => project(sourceX(x), near.y, near.z + (1 - t) * (roadFarZ - near.z)),
     progressAt: (depth) => depth,
     depthAt: (progress) => progress
   };
-  const params = { width, focal, originY, fit, prefs };
-  return { params, project, projectAtProgress, sourceX, roadFarZ, road, near };
+  const params: CameraParams = { width, focal, originY, fit, prefs };
+  const projectionParams =
+    orthographicScale === undefined ? params : { ...params, orthographicScale };
+  return { params: projectionParams, project, projectAtProgress, sourceX, roadFarZ, road, near };
 }
 export function insidePolygon(x: number, y: number, points: readonly Projected[]): boolean {
   let inside = false;

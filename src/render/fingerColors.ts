@@ -6,9 +6,9 @@ import type { Finger, Hand } from "../fingering/fingering";
  */
 export const FINGER_COLOR: Readonly<Record<Finger, number>> = {
   1: 0xc528f5,
-  2: 0xffdb32,
+  2: 0xffcf32,
   3: 0x00a9f5,
-  4: 0xff9400,
+  4: 0xff285b,
   5: 0x00df50
 };
 
@@ -20,7 +20,7 @@ export const HAND_COLOR: Readonly<Record<Hand, number>> = {
 
 /**
  * The word-typing palette, as on a touch-typing chart: the index fingers tell the hands apart
- * (left orange, right yellow), the other fingers share a colour on both hands; no thumbs type,
+ * (left crimson, right gold), the other fingers share a colour on both hands; no thumbs type,
  * so the middle fingers take the thumb's purple.
  */
 export const TYPING_FINGER_COLOR: Readonly<Record<Hand, Readonly<Record<Finger, number>>>> = {

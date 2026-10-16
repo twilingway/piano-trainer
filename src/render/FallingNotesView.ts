@@ -11,13 +11,12 @@ import { bindKeyboardPointer } from "./bindKeyboardPointer";
 import { ComputerKeyboardLayer } from "./ComputerKeyboardLayer";
 import type { KeysLayer } from "./ComputerKeyboardLayer";
 import { computerGeometry, computerWidth, layoutComputerKeys } from "./computerKeyboardLayout";
-import { ComputerKeys, noteColor } from "./computerKeys";
+import { ComputerKeys } from "./computerKeys";
 import type { ComputerKeyboard } from "./computerKeys";
 import type { FallingNoteNames } from "./bakeLabels";
 import { HandsLayer } from "./HandsLayer";
 import { NotePlasma } from "./NotePlasma";
 import { FxLayer } from "./FxLayer";
-import type { FxKey } from "./FxLayer";
 import { FpsMeter } from "./FpsMeter";
 import { loadViewAssets, loadViewFonts } from "./viewAssets";
 import type { FrameState } from "./frameState";
@@ -26,10 +25,12 @@ import { KeyboardLayer } from "./KeyboardLayer";
 import type { KeyStyle } from "./KeyboardLayer";
 import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
-import { easePan, panAfterResize, panToShow, upcomingSpans } from "./keyboardPan";
+import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
+import { roadApproach } from "./roadApproach";
 import { RoadLayer } from "./RoadLayer";
-import type { RoadShape, Strike } from "./RoadLayer";
+import type { RoadShape } from "./RoadLayer";
+import { drawViewEffects, viewStrikes } from "./viewEffects";
 import { DEFAULT_CAMERA } from "./worldCamera";
 import type { CameraPrefs } from "./worldCamera";
 import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry } from "./viewGeometry";
@@ -39,10 +40,6 @@ import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 export type { FallingNoteNames } from "./bakeLabels";
 export type { FrameState } from "./frameState";
 
-/** Seconds the scroll takes to go most of the way to where it is headed. */
-const PAN_SMOOTHING_S = 0.35;
-/** The road needs a longer approach so distant notes are readable before reaching the keys. */
-const ROAD_LOOK_AHEAD_FACTOR = 4;
 const NO_SOUNDING_KEYS: ReadonlySet<number> = new Set();
 
 /**
@@ -123,6 +120,7 @@ export class FallingNotesView {
   private noteNames: FallingNoteNames | undefined;
   private cards = true;
   private keyStyle: KeyStyle = "arcade";
+  private roadGuides = false;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
 
   async mount(host: HTMLElement): Promise<void> {
@@ -169,6 +167,7 @@ export class FallingNotesView {
     this.computerKeyboard = computerKeyboard;
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
     this.road.setCamera(this.cameraPrefs);
+    this.road.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
     void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
     this.road.container.visible = false;
@@ -290,6 +289,11 @@ export class FallingNotesView {
       this.laidOutFor = { width: 0, height: 0 };
   }
 
+  setRoadGuides(on: boolean): void {
+    this.roadGuides = on;
+    this.road?.setRoadGuides(on);
+  }
+
   setRoadShape(shape: RoadShape): void {
     this.road?.setShape(shape);
     this.laidOutFor = { width: 0, height: 0 };
@@ -399,7 +403,14 @@ export class FallingNotesView {
     this.scroll(state, width);
     const road = this.roadMode ? this.road : undefined;
     const noteState = road
-      ? { ...state, lookAhead: state.lookAhead * ROAD_LOOK_AHEAD_FACTOR }
+      ? {
+          ...state,
+          lookAhead: roadApproach(
+            state.lookAhead,
+            !this.computer && this.keyStyle === "3d" && road.drawsNativeRoad,
+            this.cameraPrefs.pitch
+          )
+        }
       : state;
     this.plasma.draw(
       noteState,
@@ -445,14 +456,7 @@ export class FallingNotesView {
     }
     // The road takes a picture of the keys; whole hands stay in their own projected overlay.
     if (road) {
-      const strikes: Strike[] = [];
-      for (const [pitch, note] of playing) {
-        const key = this.keys.get(pitch);
-        // The player's own notes while held, and the program's while it sounds them.
-        const own = state.owns(note) && state.pressed.has(pitch);
-        if (!key || !(own || state.sounding.has(pitch))) continue;
-        strikes.push({ pitch, x: key.x + key.width / 2, color: noteColor(note, this.computer) });
-      }
+      const strikes = viewStrikes(playing, state, this.keys, this.computer);
       road.draw(
         this.notesLayer.root,
         this.keysRoot,
@@ -462,40 +466,18 @@ export class FallingNotesView {
       );
     }
     const hitLineY = road ? road.hitLineY : geometry.hitY;
-    const fxKey = (pitch: number): FxKey | undefined => {
-      const key = this.keys.get(pitch);
-      if (!key) return undefined;
-      const note = playing.get(pitch) ?? state.due.find((item) => item.pitch === pitch);
-      const color = note ? noteColor(note, this.computer) : 0xffffff;
-      const projected = road?.notePlace(key.x + key.width / 2, geometry.hitY);
-      return {
-        pitch,
-        x: projected?.x ?? key.x + key.width / 2 - this.pan,
-        width: key.width * (projected?.scale ?? 1),
-        y: projected?.y ?? hitLineY,
-        color
-      };
-    };
-    const struck: FxKey[] = [];
-    for (const strike of state.graded ?? []) {
-      const key = strike.grade === "miss" ? undefined : fxKey(strike.pitch);
-      if (key) struck.push(key);
-    }
-    // The program's own notes, for the hand the player leaves to it, flash as they sound.
-    for (const pitch of state.sounding) {
-      const key = this.wasSounding.has(pitch) ? undefined : fxKey(pitch);
-      if (key) struck.push(key);
-    }
-    this.wasSounding.clear();
-    for (const pitch of state.sounding) this.wasSounding.add(pitch);
-    // A note burns away on its key while it sounds: the player's held notes and the program's.
-    const sounding: FxKey[] = [];
-    for (const [pitch, note] of playing) {
-      const own = state.owns(note) && state.pressed.has(pitch);
-      const key = own || state.sounding.has(pitch) ? fxKey(pitch) : undefined;
-      if (key) sounding.push(key);
-    }
-    this.fx.draw(struck, sounding, hitLineY, this.app.ticker.deltaMS / 1000);
+    drawViewEffects(
+      this.fx,
+      state,
+      playing,
+      this.keys,
+      this.computer,
+      road,
+      this.pan,
+      geometry.hitY,
+      this.wasSounding,
+      this.app.ticker.deltaMS / 1000
+    );
     // React's GameBoard owns the score panels; Pixi only draws transient strike grades.
     this.hud.draw(
       undefined,
@@ -518,17 +500,17 @@ export class FallingNotesView {
    * the player's hands' first (every hand's when listening), smoothly.
    */
   private scroll(state: FrameState, width: number): void {
-    let pan = Math.min(0, (this.total - width) / 2);
-    if (this.total > width) {
-      const spans = upcomingSpans(state, this.songNotes, this.keys);
-      const current = this.panSnap ? (this.total - width) / 2 : this.pan;
-      const target = panToShow(current, spans, width, this.total, this.whiteWidth);
-      pan = this.panSnap
-        ? target
-        : easePan(this.pan, target, this.app.ticker.deltaMS / 1000, PAN_SMOOTHING_S);
-      // The ease never quite arrives: settle once it is within half a pixel.
-      if (Math.abs(target - pan) < 0.5) pan = target;
-    }
+    const pan = followKeyboardPan(
+      state,
+      this.songNotes,
+      this.keys,
+      this.pan,
+      this.panSnap,
+      width,
+      this.total,
+      this.whiteWidth,
+      this.app.ticker.deltaMS / 1000
+    );
     this.panSnap = false;
     this.pan = pan;
     // Flat, the lane and the keys slide; on the road they are pictures and the road scrolls them.

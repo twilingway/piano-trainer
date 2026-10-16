@@ -185,6 +185,7 @@ function ConnectedKeyboardSettings() {
     (state) => ({
       keyStyle: state.preferences.staff.keyStyle,
       handStyle: state.preferences.staff.handStyle,
+      roadGuides: state.preferences.staff.roadGuides,
       far: state.preferences.staff.roadFar,
       horizon: state.preferences.staff.roadHorizon,
       camera: state.preferences.staff.camera
@@ -199,6 +200,7 @@ function ConnectedKeyboardSettings() {
   const onShowLabels = useRuntimeCommand((runtime) => runtime.view.setShowLabels);
   const onKeyStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyStyle);
   const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
+  const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
   const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
   return (
@@ -206,12 +208,14 @@ function ConnectedKeyboardSettings() {
       {...view}
       keyStyle={state.keyStyle}
       handStyle={state.handStyle}
+      roadGuides={state.roadGuides}
       road={{ far: state.far, horizon: state.horizon }}
       camera={state.camera}
       onKeyRange={onKeyRange}
       onShowLabels={onShowLabels}
       onKeyStyle={onKeyStyle}
       onHandStyle={onHandStyle}
+      onRoadGuides={onRoadGuides}
       onRoad={onRoad}
       onCamera={onCamera}
       toggles={<ConnectedSettingsToggles />}

@@ -1,8 +1,9 @@
-import type { MeshStandardMaterial } from "three";
+import type { Color, MeshStandardMaterial } from "three";
 import type { EnergySource } from "../noteEnergy";
 
 interface KeyEmission {
   readonly materials: [MeshStandardMaterial, MeshStandardMaterial];
+  readonly baseColors: [Color, Color];
   red: number;
   green: number;
   blue: number;
@@ -26,8 +27,25 @@ export class ThreeKeyEmission {
     for (const material of materials) {
       material.emissive.setRGB(0, 0, 0);
       material.emissiveIntensity = 0;
+      material.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <emissivemap_fragment>",
+          `#include <emissivemap_fragment>
+           float keyRim = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.0);
+           totalEmissiveRadiance *= 0.85 + keyRim * 0.8;`
+        );
+      };
+      material.customProgramCacheKey = () => "three-key-neon-v1";
     }
-    this.keys.set(pitch, { materials, red: 0, green: 0, blue: 0, weight: 0, intensity: 0 });
+    this.keys.set(pitch, {
+      materials,
+      baseColors: [top.color.clone(), body.color.clone()],
+      red: 0,
+      green: 0,
+      blue: 0,
+      weight: 0,
+      intensity: 0
+    });
     return materials;
   }
 
@@ -56,15 +74,24 @@ export class ThreeKeyEmission {
         top.emissive.setRGB(key.red * factor, key.green * factor, key.blue * factor);
         body.emissive.copy(top.emissive);
       }
-      top.emissiveIntensity = key.intensity * 0.42;
-      body.emissiveIntensity = key.intensity * 0.34;
+      top.color.copy(key.baseColors[0]).lerp(top.emissive, key.intensity * 0.9);
+      body.color.copy(key.baseColors[1]).lerp(body.emissive, key.intensity * 0.9);
+      top.emissiveIntensity = key.intensity * 1.05;
+      body.emissiveIntensity = key.intensity * 0.9;
     }
   }
 
   clear(): void {
     for (const key of this.keys.values()) {
       key.intensity = key.weight = 0;
-      for (const material of key.materials) material.emissiveIntensity = 0;
+      for (let index = 0; index < key.materials.length; index++) {
+        const material = key.materials[index];
+        const base = key.baseColors[index];
+        if (material && base) {
+          material.emissiveIntensity = 0;
+          material.color.copy(base);
+        }
+      }
     }
   }
 

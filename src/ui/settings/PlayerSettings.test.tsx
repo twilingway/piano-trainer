@@ -121,6 +121,10 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
                   updateStaffPrefs({ keyStyle });
                 },
                 handStyle: staffPrefs.handStyle,
+                roadGuides: staffPrefs.roadGuides,
+                onRoadGuides: (roadGuides) => {
+                  updateStaffPrefs({ roadGuides });
+                },
                 onHandStyle: (handStyle) => {
                   updateStaffPrefs({ handStyle });
                 },
@@ -404,5 +408,45 @@ describe("player settings organization", () => {
     });
     expect(select("Вид клавиш").value).toBe("3d");
     expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
+  });
+
+  it("offers optional road guides disabled by default and keeps the choice after reload", async () => {
+    await render(false);
+    await section("Вид");
+    await act(async () => {
+      await Promise.resolve();
+      const keys = select("Вид клавиш");
+      keys.value = "3d";
+      keys.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const guides = () =>
+      Array.from(host.querySelectorAll("label"))
+        .find((label) => label.textContent.includes("Линии дороги"))
+        ?.querySelector<HTMLInputElement>("input");
+    expect(guides()?.checked).toBe(false);
+    await act(async () => {
+      guides()?.click();
+      await Promise.resolve();
+    });
+    expect(guides()?.checked).toBe(true);
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      roadGuides: true
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    store = createAppStore();
+    await render(false);
+    await section("Вид");
+    expect(guides()?.checked).toBe(true);
+    await act(async () => {
+      setInterfaceLanguage("en");
+      await Promise.resolve();
+    });
+    expect(host.textContent).toContain("Road guide lines");
+    expect(onMode).not.toHaveBeenCalled();
+    expect(onRules).not.toHaveBeenCalled();
   });
 });

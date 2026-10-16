@@ -6,6 +6,7 @@ import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
 import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
 import { ThreeKeysHost } from "./ThreeKeysHost";
+import { ThreeRoadFrame } from "./ThreeRoadFrame";
 
 const mocks = vi.hoisted(() => ({
   construct: vi.fn(),
@@ -31,6 +32,18 @@ vi.mock("./pianoKit", () => ({ loadPianoKit: mocks.loadKit }));
 vi.mock("./liveHands", () => ({ loadHand: mocks.loadHand }));
 
 class SharedContext {
+  readonly MAX_TEXTURE_IMAGE_UNITS = 34930;
+  readonly TEXTURE0 = 33984;
+  readonly TEXTURE_2D = 3553;
+  readonly textures = new Map<number, WebGLTexture | null>();
+  currentUnit = this.TEXTURE0;
+  getParameter = vi.fn(() => 4);
+  activeTexture(unit: number): void {
+    this.currentUnit = unit;
+  }
+  bindTexture(_target: number, texture: WebGLTexture | null): void {
+    this.textures.set(this.currentUnit, texture);
+  }
   flipY = true;
   premultiply = true;
   bindingsDirty = false;
@@ -64,12 +77,16 @@ function fixture() {
     remove: vi.fn((callback: () => void) => callbacks.delete(callback))
   };
   const app = { renderer, ticker, stage, canvas, render, screen: { width: 800, height: 600 } };
+  const restoreRoad = vi.fn(() => {
+    expect(gl.bindingsDirty).toBe(false);
+  });
   const host = new ThreeKeysHost(
     app as unknown as Application,
     road,
     keys as unknown as PerspectiveKeyboardLayer,
     {} as KeyboardLayer,
-    hands as unknown as HandsLayer
+    hands as unknown as HandsLayer,
+    restoreRoad
   );
   return {
     gl,
@@ -84,6 +101,7 @@ function fixture() {
     render,
     ticker,
     host,
+    restoreRoad,
     tick: () => {
       [...callbacks].forEach((callback) => {
         callback();
@@ -117,6 +135,20 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
+  it("passes native road snapshots only while the actual Three view can draw them", async () => {
+    const view = fixture();
+    const frame = new ThreeRoadFrame();
+    view.host.setRoadFrame(frame);
+    expect(view.host.drawsRoad).toBe(false);
+    await view.host.setEnabled(true);
+    expect(view.host.drawsRoad).toBe(true);
+    view.tick();
+    expect(mocks.draw.mock.calls[0]?.[8]).toBe(frame);
+    view.keys.container.visible = false;
+    expect(view.host.drawsRoad).toBe(false);
+    view.host.destroy();
+  });
+
   it("uses effect delta for paused lights while hands keep their existing frame delta", async () => {
     const view = fixture();
     await view.host.setEnabled(true);
@@ -246,6 +278,10 @@ describe("shared WebGL keyboard recovery", () => {
         view.tick();
       }).not.toThrow();
       expect(view.host.on).toBe(false);
+      expect(view.restoreRoad).toHaveBeenCalledOnce();
+      expect(view.restoreRoad.mock.invocationCallOrder[0]).toBeLessThan(
+        view.renderer.render.mock.invocationCallOrder.at(-1) ?? 0
+      );
       expect(view.keys.container.renderable).toBe(true);
       expect(view.stage.children).toEqual([view.road, view.overlay]);
       expect(view.hands.live).toBe(false);

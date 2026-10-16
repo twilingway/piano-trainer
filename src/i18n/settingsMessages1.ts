@@ -143,6 +143,9 @@ export const settingsMessages1 = {
   "Вид рук": {
     en: "Hands"
   },
+  "Линии дороги": {
+    en: "Road guide lines"
+  },
   Рисованные: {
     en: "Drawn"
   },

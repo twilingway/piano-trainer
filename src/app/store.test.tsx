@@ -21,6 +21,13 @@ afterEach(() => {
 });
 
 describe("application preferences", () => {
+  it("starts with the metronome off and preserves a later saved opt-in", () => {
+    const fresh = createAppStore();
+    expect(fresh.getState().preferences.player.metronome).toBe(false);
+    fresh.dispatch(preferencesActions.playerChanged({ metronome: true }));
+    expect(createAppStore().getState().preferences.player.metronome).toBe(true);
+  });
+
   it("does not let a stale tab's speed or song choice overwrite a saved metronome choice", () => {
     const first = createAppStore(),
       stale = createAppStore();
@@ -137,7 +144,7 @@ describe("application preferences", () => {
     expect(state.preferences.player).toMatchObject({
       speed: 0.75,
       handChoice: "right",
-      metronome: true
+      metronome: false
     });
     expect(state.preferences.keyLights.enabled).toBe(false);
     expect(state.persistence.errors[persistenceKey("word-typing-prefs-v1", "read")]).toBe(

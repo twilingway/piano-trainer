@@ -30,6 +30,10 @@ export function useKeyboardSettings(
       });
     },
     handStyle: staffPrefs.handStyle,
+    roadGuides: staffPrefs.roadGuides,
+    onRoadGuides: (roadGuides) => {
+      updateStaffPrefs({ roadGuides });
+    },
     onHandStyle: (handStyle) => {
       updateStaffPrefs({ handStyle });
     },

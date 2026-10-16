@@ -25,10 +25,12 @@ describe("whole-key note emission", () => {
     expect(top.emissive.r).toBe(0);
     expect(top.emissive.g).toBeCloseTo(128 / 255);
     expect(top.emissive.b).toBe(1);
+    expect(top.color.r).toBeLessThan(0.13);
+    expect(top.color.b).toBe(1);
     expect(body.emissive).toEqual(top.emissive);
-    expect(top.emissiveIntensity).toBeGreaterThan(0.4);
-    expect(top.emissiveIntensity).toBeLessThanOrEqual(0.42);
-    expect(body.emissiveIntensity).toBeGreaterThan(0.3);
+    expect(top.emissiveIntensity).toBeGreaterThan(1);
+    expect(top.emissiveIntensity).toBeLessThanOrEqual(1.05);
+    expect(body.emissiveIntensity).toBeGreaterThan(0.8);
     expect(other.every((material) => material.emissiveIntensity === 0)).toBe(true);
     expect(template.emissiveIntensity).toBe(1);
     emission.dispose();
@@ -43,8 +45,8 @@ describe("whole-key note emission", () => {
       emission.update([source(60, { color: 0xff0000 }), source(60, { color: 0x0000ff })], 0.1);
     expect(top.emissive.r).toBeCloseTo(0.5);
     expect(top.emissive.b).toBeCloseTo(0.5);
-    expect(top.emissiveIntensity).toBeLessThanOrEqual(0.42);
-    expect(body.emissiveIntensity).toBeLessThanOrEqual(0.34);
+    expect(top.emissiveIntensity).toBeLessThanOrEqual(1.05);
+    expect(body.emissiveIntensity).toBeLessThanOrEqual(0.9);
     emission.dispose();
     template.dispose();
   });
@@ -64,6 +66,8 @@ describe("whole-key note emission", () => {
     emission.clear();
     expect(top.emissiveIntensity).toBe(0);
     expect(body.emissiveIntensity).toBe(0);
+    expect(top.color).toEqual(template.color);
+    expect(body.color).toEqual(template.color);
     emission.update([source(60)], 0);
     expect(top.emissiveIntensity).toBe(0);
     emission.dispose();
