@@ -21,7 +21,7 @@ import { keyBoxes } from "./keyBoxes";
 import { PianoCase } from "./PianoCase";
 import type { KeyBox } from "./keyBoxes";
 import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
-import { KIT_DEPTH, KIT_TOP, KIT_WHITE, roadContactBoard, splitUp, whitePart } from "./pianoKit";
+import { KIT_DEPTH, KIT_TOP, KIT_WHITE, splitUp, whitePart } from "./pianoKit";
 import type { KitPart, PianoKit } from "./pianoKit";
 import { LiveHands } from "./liveHands";
 import type { HandsSource } from "./liveHands";
@@ -38,7 +38,6 @@ import { ThreeRoadGuides } from "./ThreeRoadGuides";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { drawSceneCameraPasses } from "./sceneCameraPasses";
 import type { WorldCamera } from "../worldCamera";
-import { PANEL_EDGE } from "../worldCamera";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
@@ -90,7 +89,6 @@ export class ThreeStage {
   /** The case around the keys: rails, cheeks and the back panel. */
   private readonly body = new Group();
   private readonly cabinet = new PianoCase(this.case);
-  private readonly board: BufferGeometry;
   /** The live hands, once their model has loaded; without it the sprite hands stay. */
   readonly hands: LiveHands | undefined;
   private hinged: Hinged[] = [];
@@ -103,8 +101,6 @@ export class ThreeStage {
     hand: Object3D | undefined
   ) {
     this.hands = hand && new LiveHands(hand);
-    // Only the board's vertical front stays; rear bevels/caps must not occlude the road's mist.
-    this.board = roadContactBoard(this.part("board"), -PANEL_EDGE.z / KIT_DEPTH);
     this.renderer = new WebGLRenderer({ canvas, context });
     this.renderer.autoClear = false;
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
@@ -269,7 +265,6 @@ export class ThreeStage {
     this.roadTrails.dispose();
     this.noteAura.dispose();
     this.roadGuides.dispose();
-    this.board.dispose();
     this.white.map?.dispose();
     this.black.bumpMap?.dispose();
     for (const material of [this.top, this.white, this.black, this.case, this.felt])
@@ -318,7 +313,6 @@ export class ThreeStage {
     const left = Math.min(...whites.map((box) => box.x - box.width / 2));
     const right = Math.max(...whites.map((box) => box.x + box.width / 2));
     const across = (whites[0]?.width ?? 0) / KIT_WHITE;
-    const cheek = 0.034 * across;
     if (whites[0]) this.hands?.layout(whites[0]);
     const add = (
       geometry: BufferGeometry,
@@ -331,9 +325,7 @@ export class ThreeStage {
       mesh.scale.set(sx, 1000, KIT_DEPTH);
       this.body.add(mesh);
     };
-    const width = right - left + 2 * cheek;
     const centre = (left + right) / 2;
-    add(this.board, this.case, centre, width);
     add(this.part("felt"), this.felt, centre, right - left);
     this.cabinet.layout(left, right, across);
     this.body.add(this.cabinet.group);
