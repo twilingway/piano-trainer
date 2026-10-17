@@ -19,6 +19,12 @@ plays in tempo, plays the other hand, records every take and compares it with th
   later". Keys are flat and a later catalog silently overrides an earlier one, so a Russian key must
   be unique across catalogs: if the same word means different things in two places, reword one.
   Write both languages the way a person would say it — short, plain, no bureaucratic phrasing.
+- **UTF-8 for files and publishing.** Write text files, PR descriptions and issue bodies as UTF-8
+  (without BOM unless a format requires it). On Windows, do not pipe Cyrillic text from PowerShell
+  into Python or other native programs through the default console encoding: characters can become
+  literal question marks before the file is written. Use a direct UTF-8 file write or an ASCII-safe
+  byte transfer, pass multiline GitHub text with `--body-file`, and read the published body back to
+  verify that it matches the local UTF-8 text. A successful CLI exit does not verify encoding.
 - pnpm, never npm. Linter and formatter are ESLint + Prettier, not Biome.
 - **Pure core, thin shell.** `src/fingering`, `src/song`, `src/practice/session.ts` and
   `src/recording` (except `history.ts`, which touches `localStorage`) are pure TypeScript: no React,
