@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:compiler": "vitest run src/app/useTwoHandCourse.test.tsx src/app/useHeldBassCourse.test.tsx src/app/useIndependentRhythmCourse.test.tsx --mode development",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:compiler && pnpm build",
+    "check:changed": "node --experimental-strip-types src/checkTools/changed.ts",
     "spec": "cross-env OPENSPEC_TELEMETRY=0 openspec",
     "spec:status": "cross-env OPENSPEC_TELEMETRY=0 openspec status",
     "spec:validate": "cross-env OPENSPEC_TELEMETRY=0 openspec validate --all",
