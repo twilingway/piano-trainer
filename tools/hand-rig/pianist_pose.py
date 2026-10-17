@@ -747,8 +747,8 @@ def place_hand(x, keys):
     if G.get("KEY_DIP", 0.0) > 0:          # the press layer: the pressed fingers take the key's travel down
         base = {f: dict(v) for f, v in ang.items()}
         for f in e["press"]:
-            ang[int(f)]["mcp" if int(f) != 1 else "t_mcp"] += hand_mech.press_depth(prest, base, e["rootVec"], int(f),
-                                                                                 G["KEY_DIP"] * 1000)
+            for k, v in hand_mech.press_delta(prest, base, e["rootVec"], int(f), G["KEY_DIP"] * 1000).items():
+                ang[int(f)][k] += v
     J = hand_mech.hand_joints(prest, ang, e["rootVec"])
     D, R = keys_mirror(x), hand_rotation(e["rootVec"])
     frame = D @ R @ rest["F"] @ D @ rig.data.bones[f"wrist.{x}"].matrix_local.to_3x3()   # the wrist bone, world

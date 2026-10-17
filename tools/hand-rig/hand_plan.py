@@ -56,9 +56,10 @@ def move_time(a, b, hand):
 
 
 def hover_lift(rest, pose, mm=HOVER):
-    """Degrees at MCP (the thumb's t_mcp) that lift each pressing finger's tip by mm: the ready pose."""
+    """Per pressing finger, the flexion deltas (hand_mech.press_delta) that lift its tip straight up by mm:
+    the ready pose."""
     ang, root = pose["angles"], pose["rootVec"]
-    return {f: round(M.press_depth(rest, ang, root, f, mm), 1) for f in pose["press"]}
+    return {f: M.press_delta(rest, ang, root, f, -mm) for f in pose["press"]}
 
 
 def plan(rest, library, hand, strikes):

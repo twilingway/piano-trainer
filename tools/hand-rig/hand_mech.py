@@ -255,7 +255,8 @@ def violations(g):
 WHITE_W, BLACK_FRONT, BLACK_TOP = 23.5, 55.0, 12.0       # mm (hand_keys.py's keys)
 WHITE_PCS = (0, 2, 4, 5, 7, 9, 11)
 CONTACT_X = {False: 6.0, True: 3.0}      # mm: a pressing tip's axis off its key's centre line (MED)
-CONTACT_Y = {False: (15.0, 110.0), True: (60.0, 125.0)}   # mm into the keys: the contact stretch (p27)
+CONTACT_Y = {False: (15.0, 55.0), True: (60.0, 125.0)}    # mm into the keys: a white key short of the blacks
+CONTACT_Y_DEEP = {False: (15.0, 110.0), True: (60.0, 125.0)}   # ...and between them, when the hand cannot
 TIP_ABOVE = 0.8                          # of the finger's radius: the tip's axis over the key top (hand_shape)
 CLEAR = 2.0                              # mm: a free finger's joints over the white top, past TIP_ABOVE
 KEY_DIP = 10.0                           # mm: a key's travel, the press layer
@@ -353,13 +354,14 @@ def angles(shape, curl, k=None, spread=None, lift=None):
     return out
 
 
-def key_target(pitch, finger, mirror):
-    """Where a pressing tip's axis goes on its key: a box across x and y, a height z."""
+def key_target(pitch, finger, mirror, deep=False):
+    """Where a pressing tip's axis goes on its key: a box across x and y (deep: a white key's stretch between
+    the blacks too), a height z."""
     octave, pc = divmod(pitch - 60, 12)
     black = pc not in WHITE_PCS
     x = (octave * 7 + WHITE_PCS.index(pc - 1 if black else pc) + (0.5 if black else 0.0)) * WHITE_W
     return {"pitch": pitch, "finger": finger, "black": black, "x": -x if mirror else x, "dx": CONTACT_X[black],
-            "y": CONTACT_Y[black], "z": R_FINGER[finger] * TIP_ABOVE + (BLACK_TOP if black else 0.0)}
+            "y": (CONTACT_Y_DEEP if deep else CONTACT_Y)[black], "z": R_FINGER[finger] * TIP_ABOVE + (BLACK_TOP if black else 0.0)}
 
 
 def contact(tip, t):
@@ -493,20 +495,39 @@ def lift_free(rest, shape, pose, free):
     return lift
 
 
-def press_depth(rest, ang, root, f, depth=KEY_DIP):
-    """The press layer: extra flexion (deg; MCP, the thumb's t_mcp) that takes finger f's tip down by depth."""
-    key, hi = ("mcp", LIM["mcp"][1]) if f != 1 else ("t_mcp", LIM["t_mcp"][1])
-    z0 = hand_joints(rest, ang, root)[CHAIN[f][-1]][2]
-    a, b = 0.0, max(0.0, hi - ang[f][key])
-    for _ in range(30):
-        mid = (a + b) / 2
-        trial = {g: dict(v) for g, v in ang.items()}
-        trial[f][key] += mid
-        if z0 - hand_joints(rest, trial, root)[CHAIN[f][-1]][2] < depth:
-            a = mid
-        else:
-            b = mid
-    return round(b, 1)
+def add_angles(ang, delta):
+    """Angles with per finger deltas {f: {joint: deg}} added (press_delta's)."""
+    out = {g: dict(v) for g, v in ang.items()}
+    for f, d in delta.items():
+        for k, v in d.items():
+            out[f][k] += v
+    return out
+
+
+def press_delta(rest, ang, root, f, depth=KEY_DIP):
+    """The press layer: extra flexion {joint: deg} that takes finger f's tip straight down by depth mm (up for
+    a negative depth), the tip kept over its point of the key. Fingers 2-5 bend MCP and PIP (DIP with PIP in
+    its BEND_SPLIT share): MCP alone swings the tip back along the finger. The thumb lies on its side, its MCP
+    and IP bend along the keys, so it goes down at its CMC, towards the palm. Every joint stays in its walls."""
+    np = _np()
+    tip = lambda d: hand_joints(rest, add_angles(ang, {f: d}), root)[CHAIN[f][-1]]
+    goal = tip({}) - np.array([0.0, 0.0, depth])
+    if f == 1:
+        a, b = THUMB_PALMAR_MIN - ang[1]["cmc_palmar"], THUMB_PALMAR_MAX - ang[1]["cmc_palmar"]
+        for _ in range(30):                   # the tip's height falls as the CMC turns towards the palm
+            mid = (a + b) / 2
+            if tip({"cmc_palmar": mid})[2] > goal[2]:
+                a = mid
+            else:
+                b = mid
+        return {"cmc_palmar": round((a + b) / 2, 1)}
+    a = ang[f]
+    share = BEND_SPLIT[f][2] / BEND_SPLIT[f][1]
+    lo = [LIM["mcp"][0] - a["mcp"], max(LIM["pip"][0] - a["pip"], (LIM["dip"][0] - a["dip"]) / share)]
+    hi = [LIM["mcp"][1] - a["mcp"], min(LIM["pip"][1] - a["pip"], (LIM["dip"][1] - a["dip"]) / share)]
+    of = lambda q: {"mcp": q[0], "pip": q[1], "dip": q[1] * share}
+    q, _ = _fit([0.0, 0.0], lo, hi, lambda q: tip(of(q)) - goal)
+    return {k: round(float(v), 1) for k, v in of(q).items()}
 
 
 def canonical_shape(library, hand):
@@ -558,15 +579,18 @@ def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z, hold=None, re
     yaw0 = sx * where["yawDeg"] if where else 0.0
     keep = list(notes)
     while True:
-        targets = [key_target(p, f, mirror) for f, p in keep]
-        start = ((sx * where["wristX"] * WHITE_W, where["wristDepthCm"] * 10.0) if where else
-                 (float(np.mean([t["x"] for t in targets])), -100.0))
-        pose = None
-        if hold is not None and abs(hold["rootVec"][0] - yaw0) <= yaw_tol + 0.05:
-            pose = _fingers(rest, shape, targets, list(hold["rootVec"]), hold["curl"])
-            if max(pose["miss"].values()) > MISS_MM:
-                pose = None
-        pose = pose or _solve(rest, shape, targets, yaw0, start, wrist_z, yaw_tol=yaw_tol)
+        # the hand stays if its fingers reach from there, deeper between the blacks if they must; it moves
+        # only when they cannot, to white keys short of the blacks first
+        tries = ([("hold", False), ("hold", True)] if hold is not None and
+                 abs(hold["rootVec"][0] - yaw0) <= yaw_tol + 0.05 else []) + [("solve", False), ("solve", True)]
+        for how, deep in tries:
+            targets = [key_target(p, f, mirror, deep) for f, p in keep]
+            start = ((sx * where["wristX"] * WHITE_W, where["wristDepthCm"] * 10.0) if where else
+                     (float(np.mean([t["x"] for t in targets])), -100.0))
+            pose = (_fingers(rest, shape, targets, list(hold["rootVec"]), hold["curl"]) if how == "hold" else
+                    _solve(rest, shape, targets, yaw0, start, wrist_z, yaw_tol=yaw_tol))
+            if max(pose["miss"].values()) <= MISS_MM:
+                break
         bad = {f: m for f, m in pose["miss"].items() if m > MISS_MM}
         if not bad:
             break
@@ -585,7 +609,7 @@ def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z, hold=None, re
     free = [f for f in (1, 2, 3, 4, 5) if f not in {f for f, _ in keep}]
     lift = lift_free(rest, shape, pose, free)
     ang = angles(shape, pose["curl"], pose["k"], pose["spread"], lift)
-    press = {f: press_depth(rest, ang, pose["root"], f) for f, _ in keep}
+    press = {f: press_delta(rest, ang, pose["root"], f) for f, _ in keep}
     yaw, pitch, roll = pose["root"][:3]
     return {"hand": hand, "notes": list(notes), "source": source, "flags": flags, "dropped": dropped,
             "root": {"yawDeg": round(sx * yaw, 2), "pitchDeg": round(pitch, 2), "rollDeg": round(roll, 2),
