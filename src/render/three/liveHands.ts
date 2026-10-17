@@ -1,18 +1,11 @@
-import {
-  Bone,
-  Group,
-  LinearSRGBColorSpace,
-  Matrix4,
-  Mesh,
-  PropertyBinding,
-  Quaternion,
-  Vector3
-} from "three";
-import type { BufferGeometry, MeshStandardMaterial, Object3D } from "three";
+import { Bone, Group, LinearSRGBColorSpace, Matrix4, Mesh, PropertyBinding } from "three";
+import type { BufferGeometry, MeshStandardMaterial, Object3D, Quaternion } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
+import type { SongBeat } from "../../song/song";
+import type { SourcePerformanceIdentity } from "../../song/sourcePerformance";
 import type { Finger, Hand } from "../../fingering/fingering";
-import type { HandNotes, PlanChunk } from "./handSolver/chunks";
+import type { HandNotes, HandRests, PlanChunk } from "./handSolver/chunks";
 import {
   BLACK_TOP,
   CHAIN,
@@ -20,74 +13,76 @@ import {
   KEY_DIP,
   R_FINGER,
   TIP_ABOVE,
-  WHITE_W,
   at,
   handJoints,
   isBlack,
-  keyTarget,
   keyUnder,
-  rad,
-  rootRotation,
   tipOf,
   whitePosition
 } from "./handSolver/mech";
 import type { Vec3 } from "./handSolver/mech";
-import type { FingeredNote, PlanKey } from "./handSolver/plan";
-import { READY } from "./handSolver/plan";
+import type { FingeredNote, PlanKey, PlanTiming } from "./handSolver/plan";
 import { STUDIO_FRAME, STUDIO_REST } from "./handSolver/rest";
-import { knownUntil, sampleTrack } from "./handSolver/track";
+import { knownUntil } from "./handSolver/track";
 import type { HandAt, Track, TrackPose } from "./handSolver/track";
+import {
+  BoneFrame,
+  SOLVER_TO_GLTF,
+  aimForearm,
+  armToWorld,
+  handSpaceLayout,
+  solverPoint
+} from "./handPose";
+import { HandSkin } from "./handSkin";
+import { StudioThumbRoll } from "./studioThumbRoll";
+import { KIT_DEPTH } from "./pianoKit";
+import { keyDrive, keyDriveFront, keyFrontDip } from "./handContact";
+import { fitScenePose, sampleSceneTrack } from "./handScenePose";
+import type { SkinGeometry } from "./skinGeometry";
 
 /** What the hands play: the song's notes of each hand and the song time now. */
 export interface HandsSource {
   readonly time: number;
+  readonly beats?: readonly SongBeat[] | undefined;
+  readonly performance?: SourcePerformanceIdentity | undefined;
   readonly notes: Readonly<Record<Hand, readonly FingeredNote[]>>;
 }
 
 /** Plans the hands' notes somewhere and hands the plan on in parts; returns a cancel. */
-export type Planner = (notes: HandNotes, onChunk: (chunk: PlanChunk) => void) => () => void;
+export interface ScenePlanChunk extends PlanChunk {
+  /** Scene contact was fitted off the frame loop by the worker. */
+  readonly sceneFit?: boolean;
+}
+
+export interface ScenePlanContext {
+  readonly timing?: PlanTiming;
+  readonly rest?: HandRests;
+  readonly skin?: Readonly<Record<Hand, SkinGeometry | undefined>>;
+}
+
+export type Planner = (
+  notes: HandNotes,
+  onChunk: (chunk: ScenePlanChunk) => void,
+  context?: ScenePlanContext
+) => () => void;
 
 /** The plan in a worker, off the frame loop. */
-export const workerPlanner: Planner = (notes, onChunk) => {
+export const workerPlanner: Planner = (notes, onChunk, context) => {
   const worker = new Worker(new URL("./handPlan.worker.ts", import.meta.url), { type: "module" });
-  worker.onmessage = (event: MessageEvent<PlanChunk>) => {
+  worker.onmessage = (event: MessageEvent<ScenePlanChunk>) => {
     onChunk(event.data);
   };
   worker.onerror = (error) => {
     console.warn("3D hands: the plan failed", error);
   };
-  worker.postMessage(notes);
+  worker.postMessage({ notes, ...context });
   return () => {
     worker.terminate();
   };
 };
 
-/** A white key across, metres: the solver's keyboard. */
-const WHITE_M = WHITE_W / 1000;
-/** Mm: the keys' length from the white front, the solver's keyboard. */
+/** Mm into the keys: the solver keyboard's length. */
 const KEY_LENGTH = 150;
-/** How far the forearm keeps to the hand's line across the keys; the rest runs straight from the player. */
-const FOREARM_WITH_HAND = 0.5;
-/** The forearm rises this much a metre from the elbow to the wrist. */
-const FOREARM_RISE = 0.1;
-const Y_AXIS = new Vector3(0, 1, 0);
-/** Into the keys, glTF axes: the player sits towards +Z. */
-const INTO_KEYS = new Vector3(0, 0, -1);
-/** The thumb's nail in its last bone's frame, from hand.glb's nail mesh: the thumb's bones are
- * rolled 45° off the other fingers'. */
-const THUMB_NAIL = new Vector3(0.717, 0, -0.697).normalize();
-/** Deg: the thumb's nail turned from the back of the hand towards its side away from the index. */
-const THUMB_NAIL_TILT = 60;
-/** Blender (Z up, keys towards +Y) to glTF (Y up): (x, y, z) → (x, z, -y). */
-// prettier-ignore
-const TO_GLTF = new Matrix4().set(
-  1, 0, 0, 0,
-  0, 0, 1, 0,
-  0, -1, 0, 0,
-  0, 0, 0, 1
-);
-const gltf = (v: Vec3) => new Vector3(v[0], v[2], -v[1]);
-
 export async function loadHand(): Promise<Object3D> {
   const model = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/hand.glb`);
   model.scene.traverse((node) => {
@@ -120,36 +115,22 @@ interface Phalanx {
   readonly joint: number;
 }
 
-/**
- * The hand frame's map from the rig's armature (Blender axes, units) to the solver's world (mm):
- * p ↦ R·F·S·(p − w) + t, as hand_mech.rest_from_rig and hand_joints have it.
- */
-function armToWorld(root: HandAt["root"]): { m: readonly Vec3[]; t: Vec3 } {
-  const R = rootRotation(root);
-  const { F, w, S } = STUDIO_FRAME;
-  const row = (r: Vec3): Vec3 => {
-    const col = (j: 0 | 1 | 2) => S * (r[0] * F[0][j] + r[1] * F[1][j] + r[2] * F[2][j]);
-    return [col(0), col(1), col(2)];
-  };
-  const m = [row(R[0]), row(R[1]), row(R[2])];
-  const off = m.map((r) => r[0] * w[0] + r[1] * w[1] + r[2] * w[2]);
-  return { m, t: [root[3] - at(off, 0), root[4] - at(off, 1), root[5] - at(off, 2)] };
-}
-
 /** One hand of the studio rig, its bones set on the solver's joints every frame. */
 export class LiveRig {
   /** Places the solver's world on the keys: metres in glTF axes, C4's centre, the white front and top
    * at the origin; mirrored for the left hand. */
   readonly space = new Group();
   private readonly rig: Object3D;
+  private readonly frame: BoneFrame;
+  private readonly thumbRoll: StudioThumbRoll;
   private readonly phalanges: Phalanx[] = [];
   private readonly arm: Bone;
   private readonly wrist: Bone;
   /** The wrist on the forearm at rest: its turn and how far from the forearm's head. */
   private readonly wristRest: Quaternion;
   private readonly wristOnArm: number;
-  /** The thumb's nail axis in each of its bones' own frames. */
-  private readonly nails = new Map<Bone, Vector3>();
+  readonly skin: HandSkin;
+  readonly geometry: SkinGeometry | undefined;
   /** The solver's joints now, mm in the hand's (for the left hand mirrored) world. */
   joints: Vec3[] | undefined;
 
@@ -161,6 +142,7 @@ export class LiveRig {
     const rig = scene.getObjectByName("HandRig");
     if (!rig) throw new Error("hand.glb has no HandRig");
     this.rig = rig;
+    this.frame = new BoneFrame(rig);
     const arm = scene.getObjectByName(nodeName("lowerarm02.R"));
     const wrist = scene.getObjectByName(nodeName("wrist.R"));
     if (!(arm instanceof Bone) || !(wrist instanceof Bone)) throw new Error("hand.glb has no arm");
@@ -185,24 +167,28 @@ export class LiveRig {
           joint: j
         });
       }
-    // The thumb's nail at rest in the armature, then in each thumb bone's own frame.
-    const tip = this.phalanges.find((p) => p.finger === 1 && p.joint === 2);
-    if (!tip) throw new Error("hand.glb has no thumb");
-    const nail = THUMB_NAIL.clone().applyQuaternion(this.armTurn(tip.bone));
-    for (const p of this.phalanges)
-      if (p.finger === 1)
-        this.nails.set(p.bone, nail.clone().applyQuaternion(this.armTurn(p.bone).invert()));
+    this.thumbRoll = new StudioThumbRoll(this.frame, this.phalanges);
     this.space.add(scene);
     this.space.visible = false;
+    this.skin = new HandSkin(this.space, new Map(this.phalanges.map((p) => [p.bone, p.finger])));
+    const calibration: HandAt = {
+      root: [0, 10, -10, 0, -80, 40],
+      angles: {
+        1: { cmc_radial: 35, cmc_palmar: 15, t_mcp: 30, t_ip: 25 },
+        2: { mcp: 20, pip: 30, dip: 20, abd: 0 },
+        3: { mcp: 20, pip: 30, dip: 20, abd: 0 },
+        4: { mcp: 20, pip: 30, dip: 20, abd: 0 },
+        5: { mcp: 20, pip: 30, dip: 20, abd: 0 }
+      }
+    };
+    this.pose(calibration);
+    this.geometry = this.skin.supportCount ? this.skin.bake(STUDIO_REST, calibration) : undefined;
+    this.pose(undefined);
   }
 
   /** `c4` is C4's centre in the keys' group, `white` a white key across in its units. */
   layout(c4: number, white: number): void {
-    const k = white / WHITE_M;
-    const mirror = this.hand === "left" ? -1 : 1;
-    this.space.scale.set(mirror * k, k, k);
-    // The white keys' top sits at 22 in the keys' group, their front edge at 0.
-    this.space.position.set(c4, 22, 0);
+    handSpaceLayout(this.space, c4, white, this.hand);
   }
 
   /** Poses the rig at the solver's hand, or hides it. */
@@ -223,101 +209,30 @@ export class LiveRig {
       r2[0], r2[1], r2[2], t[2],
       0, 0, 0, 1
     );
-    // Armature (glTF axes) → solver world (Blender axes, mm) → metres in glTF axes.
+    // Armature axes to solver world millimetres, then glTF metres.
     this.rig.matrix
-      .copy(TO_GLTF)
+      .copy(SOLVER_TO_GLTF)
       .multiply(new Matrix4().makeScale(0.001, 0.001, 0.001))
       .multiply(place)
-      .multiply(TO_GLTF.clone().invert());
+      .multiply(SOLVER_TO_GLTF.clone().invert());
     this.rig.matrixWorldNeedsUpdate = true;
     this.rig.updateMatrixWorld(true);
     const toArm = new Matrix4().copy(this.rig.matrix).invert();
-    const inArm = (p: Vec3) => gltf([p[0] / 1000, p[1] / 1000, p[2] / 1000]).applyMatrix4(toArm);
-    const up = gltf(STUDIO_FRAME.F[2]).normalize();
-    const away = inArm(at(X, 1)).sub(inArm(at(X, 5)));
+    const inArm = (p: Vec3) =>
+      solverPoint([p[0] / 1000, p[1] / 1000, p[2] / 1000]).applyMatrix4(toArm);
     for (const p of this.phalanges) {
       p.bone.quaternion.copy(p.rest);
       p.bone.updateMatrixWorld(true);
     }
+    const up = solverPoint(STUDIO_FRAME.F[2]).normalize();
+    const away = inArm(at(X, 1)).sub(inArm(at(X, 5)));
     for (const p of this.phalanges) {
-      this.aim(p.bone, inArm(at(X, at(CHAIN[p.finger], p.joint + 1))));
-      if (p.finger === 1) this.turnNail(p.bone, up, away);
+      const chain = CHAIN[p.finger];
+      this.frame.aim(p.bone, inArm(at(X, at(chain, p.joint + 1))));
+      if (p.finger === 1) this.thumbRoll.pose(p.bone, up, away);
     }
-    this.aimForearm();
-  }
-
-  /** A bone's turn in the armature's frame. */
-  private armTurn(bone: Object3D): Quaternion {
-    const rel = new Matrix4().copy(this.rig.matrixWorld).invert().multiply(bone.matrixWorld);
-    const turn = new Quaternion();
-    rel.decompose(new Vector3(), turn, new Vector3());
-    return turn;
-  }
-
-  private armHead(bone: Object3D): Vector3 {
-    return new Vector3().setFromMatrixPosition(
-      new Matrix4().copy(this.rig.matrixWorld).invert().multiply(bone.matrixWorld)
-    );
-  }
-
-  /** Sets a bone's local turn so its armature turn becomes `turn`. */
-  private setArmTurn(bone: Bone, turn: Quaternion): void {
-    const parent = this.armTurn(bone).multiply(bone.quaternion.clone().invert());
-    bone.quaternion.copy(parent.invert().multiply(turn));
-    bone.updateMatrixWorld(true);
-  }
-
-  /** Turns a bone about its head, the shortest way, so its tail points at `target` (armature frame). */
-  private aim(bone: Bone, target: Vector3): void {
-    const turn = this.armTurn(bone);
-    const along = Y_AXIS.clone().applyQuaternion(turn);
-    const want = target.clone().sub(this.armHead(bone)).normalize();
-    this.setArmTurn(bone, new Quaternion().setFromUnitVectors(along, want).multiply(turn));
-  }
-
-  /** The thumb lies tilted on its side: its nail THUMB_NAIL_TILT from the back of the hand towards
-   * the side away from the index finger. */
-  private turnNail(bone: Bone, up: Vector3, away: Vector3): void {
-    const nail = this.nails.get(bone);
-    if (!nail) return;
-    const turn = this.armTurn(bone);
-    const b = Y_AXIS.clone().applyQuaternion(turn);
-    const back = up.clone().sub(b.clone().multiplyScalar(up.dot(b)));
-    const have = nail.clone().applyQuaternion(turn);
-    have.sub(b.clone().multiplyScalar(have.dot(b)));
-    if (back.lengthSq() < 1e-12 || have.lengthSq() < 1e-12) return;
-    back.normalize();
-    const side = b.clone().cross(back);
-    if (side.dot(away) < 0) side.negate();
-    const tilt = rad(THUMB_NAIL_TILT);
-    const want = back.multiplyScalar(Math.cos(tilt)).addScaledVector(side, Math.sin(tilt));
-    const angle = have.angleTo(want) * (have.clone().cross(want).dot(b) > 0 ? 1 : -1);
-    this.setArmTurn(bone, new Quaternion().setFromAxisAngle(b, angle).multiply(turn));
-  }
-
-  /**
-   * Lays the forearm behind the wrist, nearly straight from the player: half along the hand's own
-   * line across the keys, rising a little to the wrist. It moves with the hand and carries the
-   * hand's twist, so the skin at the wrist neither folds nor wrings.
-   */
-  private aimForearm(): void {
-    const turn = new Quaternion();
-    this.rig.matrix.decompose(new Vector3(), turn, new Vector3());
-    const hand = Y_AXIS.clone().applyQuaternion(this.wrist.quaternion).applyQuaternion(turn);
-    hand.y = 0;
-    const along = hand
-      .normalize()
-      .lerp(INTO_KEYS, 1 - FOREARM_WITH_HAND)
-      .normalize()
-      .setY(FOREARM_RISE)
-      .normalize()
-      .applyQuaternion(turn.invert());
-    // The forearm as the wrist sits on it at rest, then swung the shortest way onto `along`.
-    const rest = this.wrist.quaternion.clone().multiply(this.wristRest.clone().invert());
-    const axis = Y_AXIS.clone().applyQuaternion(rest);
-    this.arm.quaternion.copy(rest).premultiply(new Quaternion().setFromUnitVectors(axis, along));
-    this.arm.position.copy(this.wrist.position).addScaledVector(along, -this.wristOnArm);
-    this.arm.updateMatrixWorld(true);
+    aimForearm(this.frame, this.arm, this.wrist, this.wristRest, this.wristOnArm);
+    this.skin.update(hand);
   }
 }
 
@@ -337,15 +252,32 @@ export interface KeyPress {
   readonly along: number;
 }
 
-/** Both hands over the 3D keys, posed by the example solver's plan. */
+/** A rig driven by the existing plan, with its own measured hand anatomy. */
+export interface HandPlayer {
+  readonly geometry?: Readonly<Record<Hand, SkinGeometry | undefined>>;
+  readonly rest: HandRests;
+  contact?(
+    hand: Hand,
+    finger: Finger,
+    pitch: number
+  ): { height: number; along: number } | undefined;
+  pose(poses: Readonly<Record<Hand, HandAt | undefined>>, source?: HandsSource): void;
+}
+
+/** Both hands share one streamed plan, song time and key-contact calculation. */
 export class LiveHands {
   readonly group = new Group();
   private readonly rigs: readonly LiveRig[];
   private lanes: Record<Hand, Lane> = { left: emptyLane(), right: emptyLane() };
   private notes: HandsSource["notes"] | undefined;
   private cancel: (() => void) | undefined;
-  /** The keys' units in a solver millimetre. */
-  private unitsPerMm = 1;
+  private player: HandPlayer | undefined;
+  private readonly ends: Record<Hand, number> = { left: -Infinity, right: -Infinity };
+  private readonly joints: Record<Hand, readonly Vec3[] | undefined> = {
+    left: undefined,
+    right: undefined
+  };
+  readonly poses: Record<Hand, HandAt | undefined> = { left: undefined, right: undefined };
 
   constructor(
     model: Object3D,
@@ -355,83 +287,166 @@ export class LiveHands {
     for (const rig of this.rigs) this.group.add(rig.space);
   }
 
-  /** `white` is any white key: its pitch, centre and width in the keys' group. */
+  /** Changes anatomy once; stale chunks are invalid immediately, including before the next frame. */
+  setPlayer(player: HandPlayer | undefined): void {
+    if (this.player === player) return;
+    this.cancel?.();
+    this.cancel = undefined;
+    this.notes = undefined;
+    this.lanes = { left: emptyLane(), right: emptyLane() };
+    this.poses.left = this.poses.right = undefined;
+    this.player?.pose(this.poses);
+    this.player = player;
+    this.keys.clear();
+  }
+
   layout(white: { readonly pitch: number; readonly x: number; readonly width: number }): void {
     const c4 = white.x - whitePosition(white.pitch) * white.width;
     for (const rig of this.rigs) rig.layout(c4, white.width);
-    this.unitsPerMm = white.width / WHITE_W;
   }
 
-  /** The keys the hands push down now. */
   readonly keys = new Map<number, KeyPress>();
 
   update(source: HandsSource | undefined): void {
-    this.group.visible = source !== undefined;
+    this.group.visible = source !== undefined && this.player === undefined;
     this.keys.clear();
-    if (!source) return;
+    if (!source) {
+      this.poses.left = this.poses.right = undefined;
+      for (const rig of this.rigs) rig.pose(undefined);
+      this.player?.pose(this.poses);
+      return;
+    }
     if (source.notes.left !== this.notes?.left || source.notes.right !== this.notes.right)
       this.replan(source.notes);
     for (const rig of this.rigs) {
       const hand = rig === this.rigs[0] ? "left" : "right";
       const track: Track = this.lanes[hand];
-      // Hidden until the plan has reached the song's time.
-      rig.pose(
+      const rest = this.player?.rest[hand] ?? STUDIO_REST;
+      let pose =
         source.time <= knownUntil(track)
-          ? sampleTrack(track, source.time, STUDIO_REST, hand === "left")
-          : undefined
-      );
-      this.press(hand, rig, source);
+          ? sampleSceneTrack(
+              track,
+              source.time,
+              rest,
+              hand === "left",
+              undefined,
+              this.player?.geometry?.[hand] ?? rig.geometry
+            )
+          : undefined;
+      if (pose && this.player && track.done && source.time > this.ends[hand]) {
+        const u = Math.min(1, (source.time - this.ends[hand]) / 0.12);
+        const lift = 20 * u * u * (3 - 2 * u);
+        pose = {
+          ...pose,
+          root: [...pose.root.slice(0, 5), pose.root[5] + lift] as unknown as HandAt["root"]
+        };
+      }
+      this.poses[hand] = pose;
+      rig.pose(this.player ? undefined : pose);
+      this.joints[hand] = pose ? handJoints(rest, pose.angles, pose.root) : undefined;
     }
+    this.player?.pose(this.poses, source);
+    for (const [i, hand] of (["left", "right"] as const).entries())
+      this.press(hand, at(this.rigs, i), this.joints[hand], source);
   }
 
-  /** Stops the planner. */
-  dispose(): void {
+  /** Cancel streaming work and invalidate its notes before switching to a complete native clip. */
+  suspend(): void {
     this.cancel?.();
     this.cancel = undefined;
+    this.notes = undefined;
+    this.lanes = { left: emptyLane(), right: emptyLane() };
+    this.poses.left = this.poses.right = undefined;
+    this.keys.clear();
+    this.group.visible = false;
+  }
+
+  dispose(): void {
+    this.suspend();
   }
 
   private replan(notes: HandsSource["notes"]): void {
     this.cancel?.();
     this.notes = notes;
+    for (const hand of ["left", "right"] as const)
+      this.ends[hand] = notes[hand].reduce(
+        (end, note) => Math.max(end, note.start + note.duration),
+        -Infinity
+      );
     const lanes: Record<Hand, Lane> = { left: emptyLane(), right: emptyLane() };
     this.lanes = lanes;
-    this.cancel = this.planner({ left: notes.left, right: notes.right }, (chunk) => {
-      // A part of a cancelled plan never reaches the new lanes.
-      if (this.lanes !== lanes) return;
-      const lane = lanes[chunk.hand];
-      lane.keys.push(...chunk.keys);
-      lane.poses.push(...chunk.poses);
-      lane.done = chunk.done;
-    });
+    this.cancel = this.planner(
+      { left: notes.left, right: notes.right },
+      (chunk) => {
+        if (this.lanes !== lanes) return;
+        const lane = lanes[chunk.hand];
+        lane.keys.push(...chunk.keys);
+        lane.poses.push(
+          ...(chunk.sceneFit
+            ? chunk.poses
+            : chunk.poses.map((pose) =>
+                fitScenePose(
+                  pose,
+                  this.player?.rest[chunk.hand] ?? STUDIO_REST,
+                  chunk.hand,
+                  undefined,
+                  this.player?.geometry?.[chunk.hand] ??
+                    at(this.rigs, chunk.hand === "left" ? 0 : 1).geometry
+                )
+              ))
+        );
+        lane.done = chunk.done;
+      },
+      {
+        ...(this.player ? { rest: this.player.rest, timing: "score" as const } : {}),
+        skin: this.player?.geometry ?? {
+          left: at(this.rigs, 0).geometry,
+          right: at(this.rigs, 1).geometry
+        }
+      }
+    );
   }
 
-  /**
-   * Keys go down under the tips that sink below their tops, as deep as the tips go: a playing finger
-   * pushes its note's key, any other the key under it.
-   */
-  private press(hand: Hand, rig: LiveRig, source: HandsSource): void {
-    const X = rig.joints;
+  private press(
+    hand: Hand,
+    rig: LiveRig,
+    X: readonly Vec3[] | undefined,
+    source: HandsSource
+  ): void {
     if (!X) return;
-    const mirror = hand === "left";
-    const t = source.time;
-    const played = new Map<Finger, number>();
-    for (const note of source.notes[hand]) {
-      if (note.finger === undefined || t < note.start - READY || t > note.start + note.duration)
-        continue;
-      const target = keyTarget(note.pitch, note.finger, mirror);
-      const tip = tipOf(X, note.finger);
-      if (Math.abs(tip[0] - target.x) <= (target.black ? 6.5 : WHITE_W / 2))
-        played.set(note.finger, note.pitch);
-    }
+    const mirror = hand === "left",
+      t = source.time;
+    const track = this.lanes[hand];
+    const next = track.keys.findIndex((key) => key.t > t);
+    const key = track.keys[Math.max(0, next < 0 ? track.keys.length - 1 : next - 1)];
+    const played = key ? track.poses[key.strike]?.pitches : undefined;
     for (const f of FINGERS) {
       const tip = tipOf(X, f);
       if (tip[1] < 0 || tip[1] > KEY_LENGTH) continue;
-      const pitch = played.get(f) ?? keyUnder(tip[0], tip[1], mirror).pitch;
-      const depth = R_FINGER[f] * TIP_ABOVE + (isBlack(pitch) ? BLACK_TOP : 0) - tip[2];
-      if (depth <= 0) continue;
-      const drop = Math.min(depth, KEY_DIP) * this.unitsPerMm;
-      if (drop > (this.keys.get(pitch)?.drop ?? 0))
-        this.keys.set(pitch, { drop, along: tip[1] * this.unitsPerMm });
+      const under = keyUnder(tip[0], tip[1], mirror).pitch;
+      const getContact = (pitch: number) =>
+        this.player?.contact
+          ? this.player.contact(hand, f, pitch)
+          : this.player
+            ? { height: tip[2] - R_FINGER[f] * TIP_ABOVE, along: tip[1] }
+            : rig.skin.contact(f, pitch, mirror);
+      let pitch = played?.[f] ?? under;
+      let contact = getContact(pitch);
+      let depth = contact ? (isBlack(pitch) ? BLACK_TOP : 0) - contact.height : 0;
+      // An upcoming READY note cannot steal pressure from the physical key still under the finger.
+      if (depth <= 0 && pitch !== under) {
+        pitch = under;
+        contact = getContact(pitch);
+        depth = contact ? (isBlack(pitch) ? BLACK_TOP : 0) - contact.height : 0;
+      }
+      if (!contact || depth <= 0) continue;
+      const frontDip = Math.min(keyFrontDip(depth, contact.along), KEY_DIP);
+      const previous = this.keys.get(pitch);
+      if (!previous || frontDip > keyDriveFront(previous.drop, previous.along))
+        this.keys.set(pitch, {
+          drop: keyDrive(frontDip, contact.along),
+          along: (contact.along * KIT_DEPTH) / 1000
+        });
     }
   }
 }

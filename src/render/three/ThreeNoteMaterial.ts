@@ -1,160 +1,106 @@
-import { DoubleSide, MeshStandardMaterial, ShaderMaterial, Vector2 } from "three";
-
-import { createNoteHaloMaterial } from "./noteHaloMaterial";
+import { DoubleSide, ShaderMaterial } from "three";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import { NOTE_SLAB_ATTRIBUTES, NOTE_SLAB_VERTEX } from "./noteSlabGeometry";
 
-const BODY_DECLARATIONS = /* glsl */ `
-attribute vec3 noteSize;
-attribute float noteAlpha;
+const VERTEX = /* glsl */ `
+${NOTE_LANE_SHADER}
 ${NOTE_SLAB_ATTRIBUTES}
-${NOTE_LANE_SHADER}
-varying vec3 vNoteTint;
-varying vec3 vNoteNormal;
-varying float vNoteAlpha;
-`;
-
-/** Each ring retains its world-space corner radius and narrow vertical chamfer. */
-const BODY_VERTEX = /* glsl */ `
-${NOTE_SLAB_VERTEX}
-vec3 transformed = slabPoint;
-vNoteTint = instanceColor;
-vNoteNormal = normal;
-vNoteAlpha = noteAlpha;
-`;
-
-export function createNoteBodyMaterial(): MeshStandardMaterial {
-  const material = new MeshStandardMaterial({
-    color: 0x969696,
-    emissive: 0x8a8a8a,
-    roughness: 0.18,
-    flatShading: true,
-    metalness: 0.16,
-    transparent: true,
-    opacity: 0.94,
-    depthWrite: true
-  });
-  material.onBeforeCompile = (shader) => {
-    shader.vertexShader = `${BODY_DECLARATIONS}\n${shader.vertexShader}`
-      .replace("#include <begin_vertex>", BODY_VERTEX)
-      .replace(
-        "#include <project_vertex>",
-        "#include <project_vertex>\ngl_Position = projectNoteLane(gl_Position);"
-      );
-    shader.fragmentShader = /* glsl */ `
-varying vec3 vNoteTint;
-varying vec3 vNoteNormal;
-varying float vNoteAlpha;
-${shader.fragmentShader}`
-      .replace(
-        "#include <color_fragment>",
-        "#include <color_fragment>\ndiffuseColor.a *= vNoteAlpha;"
-      )
-      .replace(
-        "#include <emissivemap_fragment>",
-        /* glsl */ `#include <emissivemap_fragment>
-vec3 noteNormal = normalize(vNoteNormal);
-float noteFront = max(noteNormal.z, 0.0);
-float noteTop = max(noteNormal.y, 0.0);
-float noteVertical = abs(noteNormal.y);
-float noteBevel = noteVertical * (1.0 - noteVertical) * 4.0;
-vec3 noteEdgeTint = mix(vNoteTint, vec3(1.0), noteBevel * 0.40);
-totalEmissiveRadiance *= noteEdgeTint * (0.48 + 0.20 * noteFront + 0.30 * noteTop + 0.35 * noteBevel);`
-      );
-  };
-  material.customProgramCacheKey = () => "three-road-note-slab-lane-v2";
-  return material;
-}
-
-const SURFACE_VERTEX = /* glsl */ `
-${NOTE_LANE_SHADER}
 attribute vec3 noteSize;
 attribute float noteAlpha;
-uniform float halo;
-varying vec2 vPoint;
+varying vec3 vPoint;
 varying vec3 vSize;
 varying vec3 vTint;
 varying float vAlpha;
+varying float vClipW;
+varying float vNearGap;
+varying float vWorldWidth;
+varying float vProjectedWidth;
 void main() {
-  float margin = halo * noteSize.x * 0.65;
-  vec2 span = noteSize.xz + vec2(margin * 2.0);
-  vPoint = position.xy * span;
+  ${NOTE_SLAB_VERTEX}
+  mat4 viewNote = modelViewMatrix * instanceMatrix;
+  vec4 view = viewNote * vec4(slabPoint, 1.0);
+  vec4 clip = projectNoteLane(projectionMatrix * view);
+  vPoint = slabPoint;
   vSize = noteSize;
   vTint = instanceColor;
   vAlpha = noteAlpha;
-  vec3 point = vec3(vPoint.x, noteSize.y * 0.5 + noteSize.x * 0.003, -vPoint.y);
-  gl_Position = projectNoteLane(projectionMatrix * modelViewMatrix * instanceMatrix * vec4(point, 1.0));
+  vClipW = clip.w;
+  float depthScale = abs(projectionMatrix[2][2] + projectionMatrix[2][3]);
+  vNearGap = (clip.z + clip.w) / max(depthScale, 0.000001);
+  vWorldWidth = length((viewNote * vec4(noteSize.x, 0.0, 0.0, 0.0)).xyz);
+  vProjectedWidth = length((projectionMatrix * vec4(vWorldWidth, 0.0, 0.0, 0.0)).xy);
+  gl_Position = clip;
 }
 `;
 
-const SURFACE_FRAGMENT = /* glsl */ `
-uniform float halo;
+const FRAGMENT = /* glsl */ `
 uniform float visualTime;
-varying vec2 vPoint;
+varying vec3 vPoint;
 varying vec3 vSize;
 varying vec3 vTint;
 varying float vAlpha;
+varying float vClipW;
+varying float vNearGap;
+varying float vWorldWidth;
+varying float vProjectedWidth;
 float roundedRect(vec2 point, vec2 halfSize, float radius) {
   vec2 q = abs(point) - halfSize + vec2(radius);
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
+float noteVolumeFade(float clipW, float gap, float width, float projectedWidth) {
+  if (clipW <= 0.0) return 0.0;
+  return smoothstep(0.0, max(width * 0.8, 0.001), gap)
+    * (1.0 - smoothstep(0.8, 2.0, projectedWidth / clipW));
+}
+// The same radiance applies to caps, sides and bevels, independent of scene lights or facing.
+float noteGlow(float rim, float flow) {
+  return mix(0.88 + 0.02 * flow, 0.96, rim);
+}
+// A thin line along each chamfer centre leaves the rest of the bevel transparent.
+// The four vertical corner lines have the same width as both rounded cap perimeters.
+float noteEdgeDistance(float footprint, float qy, float qx, float qz, float radius, float bevel) {
+  float radial = max(0.0, -footprint) - bevel * 0.5;
+  float vertical = max(0.0, qy) - bevel * 0.5;
+  float capEdge = sqrt(radial * radial + vertical * vertical);
+  float corner = radius * 0.29289322;
+  float dx = qx - corner;
+  float dz = qz - corner;
+  return min(capEdge, sqrt(dx * dx + dz * dz));
+}
+float noteGlassAlpha(float rim) {
+  return mix(0.055, 0.68, rim);
+}
 void main() {
+  float fade = noteVolumeFade(vClipW, vNearGap, vWorldWidth, vProjectedWidth);
+  if (fade <= 0.0 || vAlpha <= 0.0) discard;
+  vec3 halfSize = vSize * 0.5;
+  vec3 q = halfSize - abs(vPoint);
   float radius = min(vSize.x * 0.11, vSize.z * 0.45);
   float bevel = min(vSize.x * 0.025, min(radius * 0.45, vSize.y * 0.25));
-  float distance = roundedRect(vPoint, vSize.xz * 0.5 - vec2(bevel), radius - bevel);
-  float aa = max(fwidth(distance), 0.08);
-  if (halo > 0.5) {
-    float outside = max(distance, 0.0);
-    float inside = min(distance, 0.0);
-    float spread = max(vSize.x * 0.28, 0.3);
-    float glow = exp(-outside * outside / (2.0 * spread * spread));
-    glow *= exp(-inside * inside / (2.0 * spread * spread * 0.15));
-    float opacity = glow * vAlpha * 0.68;
-    if (opacity < 0.002) discard;
-    gl_FragColor = vec4(vTint * 1.08, opacity);
-  } else {
-    float coverage = 1.0 - smoothstep(-aa, aa, distance);
-    if (coverage < 0.002) discard;
-    float lineWidth = clamp(vSize.x * 0.045, 0.35, 1.25);
-    float rim = 1.0 - smoothstep(lineWidth - aa, lineWidth + aa, -distance);
-    float across = vPoint.x / max(vSize.x, 0.001);
-    float flow = sin(vPoint.y * 0.055 + visualTime * 1.8 + sin(across * 6.0 + visualTime * 0.7));
-    float reflectionPosition = (across + 0.2) / 0.14;
-    float reflection = exp(-reflectionPosition * reflectionPosition);
-    float highlightPosition = (across + 0.32) / 0.035;
-    float highlight = exp(-highlightPosition * highlightPosition);
-    float along = clamp(vPoint.y / max(vSize.z, 0.001) + 0.5, 0.0, 1.0);
-    float front = (1.0 - along) * (1.0 - along) * (1.0 - along);
-    float side = across * across * 4.0;
-    float glass = 0.43 + side * 0.13 + front * 0.22 + flow * 0.045 + reflection * 0.14;
-    vec3 face = vTint * glass + vec3(highlight * 0.025);
-    vec3 edge = vTint * (1.15 + front * 0.15 + reflection * 0.12) + vec3(0.018);
-    vec3 tint = mix(face, edge, rim);
-    float tubeWidth = max(aa * 0.55, vSize.x * 0.014);
-    float tube = 1.0 - smoothstep(tubeWidth, tubeWidth + aa, abs(distance + lineWidth * 0.32));
-    tint = mix(tint * 1.22, mix(vTint, vec3(1.0), 0.74) * 1.35, tube);
-    gl_FragColor = vec4(tint, coverage * vAlpha * mix(0.9, 1.0, rim));
-  }
+  float footprint = roundedRect(vPoint.xz, halfSize.xz, radius);
+  float edgeDistance = noteEdgeDistance(footprint, q.y, q.x, q.z, radius, bevel);
+  float aa = max(fwidth(edgeDistance), 0.06);
+  float lineWidth = 0.18;
+  float rim = 1.0 - smoothstep(lineWidth, lineWidth + aa, edgeDistance);
+  float across = abs(vPoint.x) / max(vSize.x, 0.001);
+  float flow = sin(abs(vPoint.z) * 0.055 + visualTime * 1.8 + sin(across * 6.0));
+  vec3 tint = mix(vTint, mix(vTint, vec3(1.0), 0.06), rim) * noteGlow(rim, flow);
+  gl_FragColor = vec4(tint, vAlpha * fade * noteGlassAlpha(rim));
+  #include <colorspace_fragment>
 }
 `;
 
-/** A continuous neon face and its separate hue-preserving halo share the same world footprint. */
-export function createNoteSurfaceMaterial(halo: boolean): ShaderMaterial {
-  if (halo) return createNoteHaloMaterial();
+/** Back then front surfaces expose the far outline through glass without occluding other notes. */
+export function createNoteBodyMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: {
-      halo: { value: 0 },
-      visualTime: { value: 0 },
-      viewport: { value: new Vector2(1440, 900) }
-    },
-    vertexShader: SURFACE_VERTEX,
-    fragmentShader: SURFACE_FRAGMENT,
+    uniforms: { visualTime: { value: 0 } },
+    vertexShader: VERTEX,
+    fragmentShader: FRAGMENT,
     transparent: true,
-    depthWrite: false,
     depthTest: true,
-    polygonOffset: true,
-    polygonOffsetFactor: -1,
-    polygonOffsetUnits: -4,
-    side: DoubleSide
+    depthWrite: false,
+    toneMapped: false,
+    side: DoubleSide,
+    forceSinglePass: false
   });
 }

@@ -29,6 +29,7 @@ const view = {
   setRoadGuides: vi.fn(),
   setKeyboardDim: vi.fn(),
   setFreeCamera: vi.fn(),
+  setPerformanceScene: vi.fn(),
   hands: { setStyle: vi.fn() }
 };
 const trainer = { setPlaying: vi.fn(), load: vi.fn(), seek: vi.fn() };

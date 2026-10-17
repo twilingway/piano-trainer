@@ -174,3 +174,28 @@ describe("scaled skinned inspection bounds", () => {
     v.dispose();
   });
 });
+
+it("keeps submillimetre depth detail and fits far to orbit distance without rescanning meshes", () => {
+  const v = setup();
+  const camera = v.view.camera;
+  expect(camera.near).toBeCloseTo(Math.sqrt(600 ** 2 + 800 ** 2 + 400 ** 2) / 400);
+  expect(camera.far).toBeLessThan(100000);
+  expect(Math.abs(new Vector3(0, 0, -25000).project(camera).z)).toBeLessThan(1);
+  const direction = camera.getWorldDirection(new Vector3());
+  const at = camera.position.clone().addScaledVector(direction, 1000).project(camera).z;
+  const beyond = camera.position.clone().addScaledVector(direction, 1000.06).project(camera).z;
+  // More than two 24-bit depth steps separate the AO fringe from its receiver.
+  expect(((beyond - at) * (2 ** 24 - 1)) / 2).toBeGreaterThan(2);
+  const geometry = (v.subject.children[0] as Mesh).geometry;
+  const bounds = vi.spyOn(geometry, "computeBoundingBox");
+  const originalFar = camera.far;
+  for (let i = 0; i < 100; i++)
+    v.canvas.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, cancelable: true }));
+  v.view.update(800, 600, v.subject);
+  expect(camera.far).toBeGreaterThan(originalFar);
+  for (const point of [new Vector3(300, 400, 200), new Vector3(-300, -400, -200)]) {
+    expect(Math.abs(point.project(camera).z)).toBeLessThan(1);
+  }
+  expect(bounds).not.toHaveBeenCalled();
+  v.dispose();
+});

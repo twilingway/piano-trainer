@@ -179,6 +179,7 @@ export function useFallingView({
     viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
     viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
     viewRef.current?.setFreeCamera(staffPrefs.freeCamera);
+    viewRef.current?.setPerformanceScene(staffPrefs.performanceScene);
     if (viewRef.current) viewRef.current.hands.pianist = PIANIST_AVAILABLE && staffPrefs.pianist;
   }, [
     viewRef,
@@ -186,7 +187,8 @@ export function useFallingView({
     staffPrefs.roadGuides,
     staffPrefs.keyboardDim,
     staffPrefs.pianist,
-    staffPrefs.freeCamera
+    staffPrefs.freeCamera,
+    staffPrefs.performanceScene
   ]);
 
   const { lift, scale, x, y } = placement;

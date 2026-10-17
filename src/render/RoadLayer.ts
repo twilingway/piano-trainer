@@ -33,26 +33,8 @@ import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
 import { readableRoadTop } from "./readableRoadNote";
 import type { EnergySource } from "./noteEnergy";
 
-/** A key being struck right now: where on the hit line, and in what colour. */
-export interface Strike {
-  /** The key struck: a strike carries on from frame to frame while its key is held. */
-  readonly pitch: number;
-  readonly x: number;
-  readonly color: number;
-  readonly screenY?: number | undefined;
-}
-
-/** A note coming over the horizon: where it appears and how bright its flash still is. */
-export interface Arrival {
-  /** Across the flat scene: the middle of the note's key. */
-  readonly x: number;
-  readonly color: number;
-  /** 1 as it appears, fading to 0 as it moves on. */
-  readonly age: number;
-  readonly width: number;
-  readonly screenX?: number | undefined;
-  readonly screenY?: number | undefined;
-}
+import type { Strike, Arrival } from "./roadTypes";
+export type { Strike, Arrival } from "./roadTypes";
 
 const FOG_REACH = 0.5;
 const FOG_COLOR = 0x020c18;
@@ -243,7 +225,7 @@ export class RoadLayer {
   }
 
   private noteLane(keyX: number): NoteLaneProjection | undefined {
-    if (this.freeCamera)
+    if (this.freeCamera || this.three?.performanceScene)
       return this.noteLaneY(keyX) === BLACK_NOTE_FLOOR ? FREE_BLACK_LANE : undefined;
     return this.three?.on && this.noteLaneY(keyX) === BLACK_NOTE_FLOOR ? this.blackLane : undefined;
   }
@@ -276,7 +258,8 @@ export class RoadLayer {
     alpha: number,
     duration = 0,
     id = "",
-    tailOffset = 0
+    tailOffset = 0,
+    pitch?: number
   ): boolean {
     if (this.three?.drawsRoad && this.camera) {
       this.nativeRoad.add(
@@ -291,7 +274,8 @@ export class RoadLayer {
         duration,
         id,
         tailOffset,
-        this.noteLane(keyX)
+        this.noteLane(keyX),
+        pitch
       );
       return true;
     }
@@ -384,7 +368,7 @@ export class RoadLayer {
   }
 
   setSceneEffects(layers: readonly Container[]): void {
-    this.three?.setSceneEffects(layers);
+    this.three?.setSceneEffects(layers, [this.horizon, this.arrivals.container]);
   }
 
   setFreeCamera(on: boolean, changed: (on: boolean) => void): void {
@@ -397,7 +381,17 @@ export class RoadLayer {
     return this.three?.freeCamera === true;
   }
 
+  get sceneCamera(): boolean {
+    return this.three?.sceneCamera === true;
+  }
+
   resetFreeCamera = (): void => this.three?.resetFreeCamera();
+
+  setPerformanceScene = (on: boolean): void => this.three?.setPerformanceScene(on);
+
+  setSongTime = (time: number): void => {
+    this.nativeRoad.songTime = time;
+  };
 
   setKeyboardDim = (on: boolean): void => this.three?.setKeyboardDim(on);
 
@@ -508,7 +502,7 @@ export class RoadLayer {
   }
 
   keysPointAt(x: number, y: number): { x: number; y: number } | undefined {
-    if (this.freeCamera) return freeRoadKeyPoint(this.three, x, y, this.keyboardTopY);
+    if (this.sceneCamera) return freeRoadKeyPoint(this.three, x, y, this.keyboardTopY);
     x -= this.keys.container.x;
     y -= this.keys.container.y;
     if (this.perspective) return this.keys.container.visible ? this.keys.pointAt(x, y) : undefined;

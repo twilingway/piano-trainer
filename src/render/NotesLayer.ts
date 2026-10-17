@@ -428,7 +428,8 @@ export class NotesLayer {
             arrivalAlpha,
             note.duration,
             note.id,
-            bounds.top - (hitY - (note.start + note.duration - state.time) * pixelsPerSecond)
+            bounds.top - (hitY - (note.start + note.duration - state.time) * pixelsPerSecond),
+            note.pitch
           )
         )
           body.visible = false;
