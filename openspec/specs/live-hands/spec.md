@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change live-hands. Update Purpose after archive.
+Живые руки вида «3D»: где стоит кисть над клавишами и как пальцы нажимают ноты песни.
 
 ## Requirements
 
