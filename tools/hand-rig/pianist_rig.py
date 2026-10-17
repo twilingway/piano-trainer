@@ -340,12 +340,23 @@ for x in SIDES:
     for f, (J, Q, _) in stretch.items():
         joints[f] = Q
 
-    # rolls: the fingers flex about the knuckle line, their Z towards the palm; the thumb's pad faces
-    # the palm and the index finger
+    # rolls: a finger flexes about one hinge, the knuckle line square to its knuckle-to-tip run, at
+    # every joint (PIP and DIP are pure hinges); its Z towards the palm. The skin's fingers curve a
+    # little sideways (the index 5 mm at PIP), so the inner joints go onto the finger's flexion
+    # plane: an offset along the hinge does not swing as the finger bends. The thumb's pad faces
+    # the palm and the index finger.
     knuckles, palm = palm_of(joints)
-    def flex_z(head, tail):
+    hinge = {}
+    for f in (2, 3, 4, 5):
+        j = joints[f]
+        run = (j[3] - j[0]).normalized()
+        hinge[f] = (knuckles - run * knuckles.dot(run)).normalized()
+        for i in (1, 2):
+            j[i] = j[i] - hinge[f] * (j[i] - j[0]).dot(hinge[f])
+
+    def flex_z(head, tail, axis):
         y = (tail - head).normalized()
-        z = (knuckles - y * knuckles.dot(y)).normalized().cross(y)
+        z = (axis - y * axis.dot(y)).normalized().cross(y)
         return z if z.dot(palm) > 0 else -z
     to_index = joints[2][0] - joints[1][0]
     thumb_palm = (palm * 0.8 + (to_index - palm * to_index.dot(palm)).normalized() * 0.6).normalized()
@@ -353,9 +364,9 @@ for x in SIDES:
     for f in (2, 3, 4, 5):
         j, mc = joints[f], f"metacarpal{f - 1}.{x}"
         base = w.lerp(j[0], MC_BASE)
-        bones[mc] = (base, j[0], flex_z(base, j[0]), f"wrist.{x}", False)
+        bones[mc] = (base, j[0], flex_z(base, j[0], hinge[f]), f"wrist.{x}", False)
         for i in (1, 2, 3):
-            bones[f"finger{f}-{i}.{x}"] = (j[i - 1], j[i], flex_z(j[i - 1], j[i]),
+            bones[f"finger{f}-{i}.{x}"] = (j[i - 1], j[i], flex_z(j[i - 1], j[i], hinge[f]),
                                            mc if i == 1 else f"finger{f}-{i - 1}.{x}", i > 1)
     for i in (1, 2, 3):
         j = joints[1]
