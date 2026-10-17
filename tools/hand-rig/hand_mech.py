@@ -343,7 +343,11 @@ def angles(shape, curl, k=None, spread=None, lift=None):
         out[f] = {"mcp": m - lift.get(f, 0.0), "pip": p, "dip": d, "abd": spread.get(f, s["abd"])}
     t = dict(shape["thumb"])
     t["t_mcp"], t["t_ip"] = t["t_mcp"] * k.get(1, 1.0), t["t_ip"] * k.get(1, 1.0)
-    t["cmc_radial"] = spread.get(1, t["cmc_radial"])
+    sp = spread.get(1)
+    if isinstance(sp, (tuple, list)):         # the thumb's spread is its CMC: radial and palmar
+        t["cmc_radial"], t["cmc_palmar"] = sp
+    elif sp is not None:
+        t["cmc_radial"] = sp
     t["cmc_palmar"] -= lift.get(1, 0.0)
     out[1] = t
     return out
@@ -434,28 +438,38 @@ def _solve(rest, shape, targets, yaw0, start, wrist_z, k_band=K_BAND):
             p, _ = _fit(p, lo, hi, res2, active)
         if worst(p) <= MISS_MM:
             break
-    root, curl = [p[0], p[1], p[2], p[3], p[4], wrist_z], p[5]
+    return _fingers(rest, shape, targets, [p[0], p[1], p[2], p[3], p[4], wrist_z], p[5], k_band)
+
+
+def _fingers(rest, shape, targets, root, curl, k_band=K_BAND):
+    """Step 3 at a given root and curl: k and spread per pressed finger. Returns the pose and its misses."""
+    np = _np()
+    pressed = {t["finger"]: t for t in targets}
+    floor = [(i, R_FINGER[f] * TIP_ABOVE) for f in pressed for i in CHAIN[f][1:-1] if f != 1]
     k, spread = {}, {}
     for f, t in pressed.items():
         if f == 1:
             th = shape["thumb"]
             kr = k_range((th["t_mcp"], th["t_ip"]), (LIM["t_mcp"], LIM["t_ip"]), k_band)
-            sr, s0 = (THUMB_RADIAL_MIN, THUMB_RADIAL_MAX), th["cmc_radial"]
+            sr, s0 = [(THUMB_RADIAL_MIN, THUMB_RADIAL_MAX), (THUMB_PALMAR_MIN, THUMB_PALMAR_MAX)],                 [th["cmc_radial"], th["cmc_palmar"]]
         else:
             c = curl * shape["fingers"][str(f)]["rel"]
             kr = k_range([b * c for b in BEND_SPLIT[f]], [LIM[j] for j in ("mcp", "pip", "dip")], k_band)
-            sr, s0 = ABD[f], shape["fingers"][str(f)]["abd"]
+            sr, s0 = [ABD[f]], [shape["fingers"][str(f)]["abd"]]
         if kr[0] > kr[1]:
             kr = (kr[1], kr[1])
 
-        def res3(q, f=f, t=t):
-            X = hand_joints(rest, angles(shape, curl, {f: q[0]}, {f: q[1]}), root)
+        def res3(q, f=f, t=t, s0=s0):
+            sp = tuple(q[1:]) if f == 1 else q[1]
+            X = hand_joints(rest, angles(shape, curl, {f: q[0]}, {f: sp}), root)
             fl = [min(0.0, X[i][2] - z) for i, z in floor if i in CHAIN[f]]
-            near = [REF_W * (q[0] - 1.0) / REF["k"], REF_W * (q[1] - s0) / REF["spread"]]
+            near = [REF_W * (q[0] - 1.0) / REF["k"]] + [REF_W * (v - v0) / REF["spread"] for v, v0 in zip(q[1:], s0)]
             return np.array(contact(X[CHAIN[f][-1]], t) + fl + near)
 
-        q, _ = _fit([min(max(1.0, kr[0]), kr[1]), min(max(s0, sr[0]), sr[1])], [kr[0], sr[0]], [kr[1], sr[1]], res3)
-        k[f], spread[f] = float(q[0]), float(q[1])
+        x0 = [min(max(1.0, kr[0]), kr[1])] + [min(max(v, a), b) for v, (a, b) in zip(s0, sr)]
+        q, _ = _fit(x0, [kr[0]] + [a for a, _ in sr], [kr[1]] + [b for _, b in sr], res3)
+        k[f] = float(q[0])
+        spread[f] = tuple(float(v) for v in q[1:]) if f == 1 else float(q[1])
     X = hand_joints(rest, angles(shape, curl, k, spread), root)
     miss = {f: float(np.linalg.norm(contact(X[CHAIN[f][-1]], t))) for f, t in pressed.items()}
     return {"root": [float(v) for v in root], "curl": float(curl), "k": k, "spread": spread, "miss": miss}
@@ -504,8 +518,10 @@ def canonical_shape(library, hand):
             "thumb": {k: median(t[k] for t in th) for k in THUMB_KEYS}}
 
 
-def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z):
+def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z, hold=None):
     """The hand's pose for notes [(finger, pitch)] in three layers, the contact made in the design's order.
+    hold: the previous strike's pose (hand_plan.py); the hand stays where it was if its pressed fingers reach
+    their keys by k and spread alone (and its yaw is within the example's tolerance), as a pianist's does.
     Returns root, curl, per finger k and spread, the explicit angles, the press layer, misses and flags."""
     import hand_library
     np = _np()
@@ -530,7 +546,12 @@ def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z):
         targets = [key_target(p, f, mirror) for f, p in keep]
         start = ((sx * where["wristX"] * WHITE_W, where["wristDepthCm"] * 10.0) if where else
                  (float(np.mean([t["x"] for t in targets])), -100.0))
-        pose = _solve(rest, shape, targets, yaw0, start, wrist_z)
+        pose = None
+        if hold is not None and abs(hold["rootVec"][0] - yaw0) <= YAW_TOL:
+            pose = _fingers(rest, shape, targets, list(hold["rootVec"]), hold["curl"])
+            if max(pose["miss"].values()) > MISS_MM:
+                pose = None
+        pose = pose or _solve(rest, shape, targets, yaw0, start, wrist_z)
         bad = {f: m for f, m in pose["miss"].items() if m > MISS_MM}
         if not bad:
             break
@@ -555,7 +576,8 @@ def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z):
             "root": {"yawDeg": round(sx * yaw, 2), "pitchDeg": round(pitch, 2), "rollDeg": round(roll, 2),
                      "wristMm": [round(v, 1) for v in pose["root"][3:]]},
             "exampleYawDeg": round(sx * yaw0, 2), "curl": round(pose["curl"], 3),
-            "k": {f: round(v, 3) for f, v in pose["k"].items()}, "spread": {f: round(v, 1) for f, v in pose["spread"].items()},
+            "k": {f: round(v, 3) for f, v in pose["k"].items()}, "spread": {f: [round(u, 1) for u in v] if isinstance(v, tuple) else round(v, 1)
+                                                    for f, v in pose["spread"].items()},
             "lift": lift, "press": press, "missMm": {f: round(v, 2) for f, v in pose["miss"].items()},
             "angles": ang, "rootVec": pose["root"], "shape": shape, "violations": violations_of(ang, pose["root"])}
 
