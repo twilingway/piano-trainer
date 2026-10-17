@@ -25,7 +25,7 @@ SEARCH = 0.050                          # s: the onset frame may move this far t
 PICK_REACH = 1.5                        # white keys: a hand's nearest tip must be this close to a key
 TRACK_JUMP = 60                         # px: a window frame's hand without the anchor's trackId
                                         # must have its wrist this close to the anchor's
-WHITE_L, BLACK_L = 15.0, 9.5            # cm, as the rig's keys (live_demo.py)
+WHITE_L, BLACK_L = 15.0, 9.5            # cm, as the rig's keys (white 150 mm, black 95 mm)
 BLACK_FRONT = WHITE_L - BLACK_L         # cm: the black front edge behind the white one
 PERCENTILE = 80                         # of the frames: the unoccluded, unlit key
 CALIB_FRAMES = 31

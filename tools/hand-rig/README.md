@@ -35,10 +35,10 @@ solved poses (`poses/<id>.json`) are kept as keyframe data for a later playing a
   white keys' front top edge) and lays out collection `piano` from MIDI `LOW` to `HIGH` (C2..C6) in
   the solver's coordinates; `{"EXPORT": True}` writes the kit to `blender/exports/piano-kit.glb` for
   three.js. Ivory grain and the velvet bump are procedural: Blender only, not in the glTF.
-- `node --experimental-strip-types src/render/three/handDemo.ts` plans a phrase with
-  `handPlacement.ts` and writes `blender/exports/hand-demo.json`; `live_demo.py` then keys the rig
-  (fingers-31 base, each finger between relaxed and pressed, knuckle turns for reach) and the keys.
-  Run `piano_kit.py` first: it rebuilds the keys and drops their keys.
+- `hand_rest.py`, after `studio_rig.py`, writes the studio hand's rest (MCPs, phalanx lengths, the
+  hand frame) to `poses/studio-rest.json` for the live hands' solver in
+  `src/render/three/handSolver`; `hand_golden.py` (plain Python) runs this solver on it and writes
+  the port's reference results to `src/render/three/handSolver/golden.json`.
 - `hand_skin.py`, after `studio_rig.py`, makes the hand a person's: object `HandNails` (a plate per
   finger on the distal phalanx, skinned to it alone, lunula and free edge in a colour attribute) and
   the skin maps in the hand's UVs, computed per texel from its rest position against the bones —
