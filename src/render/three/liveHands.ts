@@ -14,13 +14,18 @@ import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
 import type { Finger, Hand } from "../../fingering/fingering";
 import type { HandNotes, PlanChunk } from "./handSolver/chunks";
 import {
+  BLACK_TOP,
   CHAIN,
   FINGERS,
   KEY_DIP,
+  R_FINGER,
+  TIP_ABOVE,
   WHITE_W,
   at,
   handJoints,
+  isBlack,
   keyTarget,
+  keyUnder,
   rootRotation,
   tipOf,
   whitePosition
@@ -58,6 +63,8 @@ export const workerPlanner: Planner = (notes, onChunk) => {
 
 /** A white key across, metres: the solver's keyboard. */
 const WHITE_M = WHITE_W / 1000;
+/** Mm: the keys' length from the white front, the solver's keyboard. */
+const KEY_LENGTH = 150;
 /** How far the forearm keeps to the hand's line across the keys; the rest runs straight from the player. */
 const FOREARM_WITH_HAND = 0.5;
 /** The forearm rises this much a metre from the elbow to the wrist. */
@@ -313,6 +320,13 @@ interface Lane {
 
 const emptyLane = (): Lane => ({ keys: [], poses: [], done: false });
 
+/** A key a tip pushes down: how deep its top sinks under the tip and how far from the white front
+ * that tip is, both in the keys' units. */
+export interface KeyPress {
+  readonly drop: number;
+  readonly along: number;
+}
+
 /** Both hands over the 3D keys, posed by the example solver's plan. */
 export class LiveHands {
   readonly group = new Group();
@@ -320,6 +334,8 @@ export class LiveHands {
   private lanes: Record<Hand, Lane> = { left: emptyLane(), right: emptyLane() };
   private notes: HandsSource["notes"] | undefined;
   private cancel: (() => void) | undefined;
+  /** The keys' units in a solver millimetre. */
+  private unitsPerMm = 1;
 
   constructor(
     model: Object3D,
@@ -333,10 +349,11 @@ export class LiveHands {
   layout(white: { readonly pitch: number; readonly x: number; readonly width: number }): void {
     const c4 = white.x - whitePosition(white.pitch) * white.width;
     for (const rig of this.rigs) rig.layout(c4, white.width);
+    this.unitsPerMm = white.width / WHITE_W;
   }
 
-  /** How far each key the hands play is down now, 0..1. */
-  readonly keys = new Map<number, number>();
+  /** The keys the hands push down now. */
+  readonly keys = new Map<number, KeyPress>();
 
   update(source: HandsSource | undefined): void {
     this.group.visible = source !== undefined;
@@ -378,19 +395,33 @@ export class LiveHands {
     });
   }
 
-  /** Keys go down with the tips that press them, as deep as the tips go. */
+  /**
+   * Keys go down under the tips that sink below their tops, as deep as the tips go: a playing finger
+   * pushes its note's key, any other the key under it.
+   */
   private press(hand: Hand, rig: LiveRig, source: HandsSource): void {
     const X = rig.joints;
     if (!X) return;
+    const mirror = hand === "left";
     const t = source.time;
+    const played = new Map<Finger, number>();
     for (const note of source.notes[hand]) {
       if (note.finger === undefined || t < note.start - READY || t > note.start + note.duration)
         continue;
-      const target = keyTarget(note.pitch, note.finger, hand === "left");
+      const target = keyTarget(note.pitch, note.finger, mirror);
       const tip = tipOf(X, note.finger);
-      if (Math.abs(tip[0] - target.x) > (target.black ? 6.5 : WHITE_W / 2)) continue;
-      const dip = Math.min(1, Math.max(0, (target.z - tip[2]) / KEY_DIP));
-      this.keys.set(note.pitch, Math.max(this.keys.get(note.pitch) ?? 0, dip));
+      if (Math.abs(tip[0] - target.x) <= (target.black ? 6.5 : WHITE_W / 2))
+        played.set(note.finger, note.pitch);
+    }
+    for (const f of FINGERS) {
+      const tip = tipOf(X, f);
+      if (tip[1] < 0 || tip[1] > KEY_LENGTH) continue;
+      const pitch = played.get(f) ?? keyUnder(tip[0], tip[1], mirror).pitch;
+      const depth = R_FINGER[f] * TIP_ABOVE + (isBlack(pitch) ? BLACK_TOP : 0) - tip[2];
+      if (depth <= 0) continue;
+      const drop = Math.min(depth, KEY_DIP) * this.unitsPerMm;
+      if (drop > (this.keys.get(pitch)?.drop ?? 0))
+        this.keys.set(pitch, { drop, along: tip[1] * this.unitsPerMm });
     }
   }
 }

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import library from "../../../tools/hand-rig/poses/library/seven-nation-army.json";
 import { planChunks } from "./handSolver/chunks";
 import type { Library } from "./handSolver/library";
-import { CHAIN, FINGERS, at, handJoints } from "./handSolver/mech";
+import { CHAIN, FINGERS, KEY_DIP, at, handJoints } from "./handSolver/mech";
 import type { Vec3 } from "./handSolver/mech";
 import { planHand, strikesOf } from "./handSolver/plan";
 import type { FingeredNote } from "./handSolver/plan";
@@ -160,7 +160,7 @@ describe("LiveHands", () => {
     const dips: [number, number][] = [];
     for (let time = -0.3; time <= 0.8; time += 1 / 120) {
       hands.update({ time, notes });
-      dips.push([time, hands.keys.get(60) ?? 0]);
+      dips.push([time, (hands.keys.get(60)?.drop ?? 0) / KEY_DIP]);
     }
     const between = dips.filter(([time]) => time > 0.3 && time < 0.5).map(([, dip]) => dip);
     const held = dips.filter(([time]) => time > 0.1 && time < 0.3).map(([, dip]) => dip);
