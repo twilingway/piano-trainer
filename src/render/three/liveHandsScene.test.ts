@@ -110,6 +110,7 @@ interface Sample {
   readonly pitch: number;
   readonly pressed: boolean;
   readonly time: number;
+  readonly bone: string;
 }
 
 const FINGER_BONE = /^finger(\d)-\dR$/;
@@ -153,9 +154,11 @@ function penetrations(
           if (hits.length % 2 === 0) continue;
           let heaviest = 0;
           for (let j = 1; j < 4; j++) if (weights.getComponent(i, j) > weights.getComponent(i, heaviest)) heaviest = j;
-          const finger = fingerOf[joints.getComponent(i, heaviest)] ?? 0;
+          const boneIndex = joints.getComponent(i, heaviest);
+          const finger = fingerOf[boneIndex] ?? 0;
+          const bone = skin.skeleton.bones[boneIndex]?.name ?? "?";
           const depth = hits[0]?.distance ?? 0;
-          const id = `${String(finger)}:${String(key.pitch)}`;
+          const id = `${bone}:${String(key.pitch)}`;
           if (depth > (deepest.get(id)?.depth ?? 0))
             deepest.set(id, {
               depth,
@@ -163,7 +166,8 @@ function penetrations(
               hand,
               pitch: key.pitch,
               pressed: key.hinge.rotation.x > 0,
-              time
+              time,
+              bone
             });
         }
       }
@@ -234,7 +238,7 @@ describe("live hands in the real scene", () => {
       const black = list.filter((s) => isBlack(s.pitch));
       process.stdout.write(
         `W=${String(width)} ${label}: ${String(list.length)} contacts, max ${worst ? worst.depth.toFixed(2) : "0"}` +
-          (worst ? ` (finger ${String(worst.finger)} ${worst.hand} on ${String(worst.pitch)} at ${worst.time.toFixed(2)} s, ${(worst as Sample & { song?: string }).song ?? ""})` : "") +
+          (worst ? ` (${worst.bone} ${worst.hand} on ${String(worst.pitch)} at ${worst.time.toFixed(2)} s, ${(worst as Sample & { song?: string }).song ?? ""})` : "") +
           `, black max ${Math.max(0, ...black.map((s) => s.depth)).toFixed(2)}\n`
       );
     };
