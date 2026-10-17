@@ -22,6 +22,10 @@ Full gate before declaring work complete — format, lint, typecheck, unit tests
 pnpm check
 ```
 
+The quick gate while working, `pnpm check:changed`: prettier and eslint only on the files changed
+against `origin/dev` (with caches), incremental tsc, `vitest --changed`, no build. It does not
+replace `pnpm check` before a pull request.
+
 Narrower checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm format`. One test
 file or case:
 
