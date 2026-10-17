@@ -26,6 +26,7 @@ import {
   isBlack,
   keyTarget,
   keyUnder,
+  rad,
   rootRotation,
   tipOf,
   whitePosition
@@ -72,6 +73,11 @@ const FOREARM_RISE = 0.1;
 const Y_AXIS = new Vector3(0, 1, 0);
 /** Into the keys, glTF axes: the player sits towards +Z. */
 const INTO_KEYS = new Vector3(0, 0, -1);
+/** The thumb's nail in its last bone's frame, from hand.glb's nail mesh: the thumb's bones are
+ * rolled 45° off the other fingers'. */
+const THUMB_NAIL = new Vector3(0.717, 0, -0.697).normalize();
+/** Deg: the thumb's nail turned from the back of the hand towards its side away from the index. */
+const THUMB_NAIL_TILT = 60;
 /** Blender (Z up, keys towards +Y) to glTF (Y up): (x, y, z) → (x, z, -y). */
 // prettier-ignore
 const TO_GLTF = new Matrix4().set(
@@ -142,8 +148,8 @@ export class LiveRig {
   /** The wrist on the forearm at rest: its turn and how far from the forearm's head. */
   private readonly wristRest: Quaternion;
   private readonly wristOnArm: number;
-  /** The nail's axis in a phalanx's own frame (the bones share their convention). */
-  private readonly nail: Vector3;
+  /** The thumb's nail axis in each of its bones' own frames. */
+  private readonly nails = new Map<Bone, Vector3>();
   /** The solver's joints now, mm in the hand's (for the left hand mirrored) world. */
   joints: Vec3[] | undefined;
 
@@ -179,15 +185,13 @@ export class LiveRig {
           joint: j
         });
       }
-    // The nail: the axis of finger2-2 along the back of the hand at rest.
-    const index = this.phalanges.find((p) => p.finger === 2 && p.joint === 1);
-    if (!index) throw new Error("hand.glb has no index finger");
-    const up = gltf(STUDIO_FRAME.F[2]);
-    const restTurn = this.armTurn(index.bone);
-    const axes = [new Vector3(1, 0, 0), new Vector3(0, 0, 1)];
-    const along = axes.map((a) => a.clone().applyQuaternion(restTurn).dot(up));
-    const k = Math.abs(at(along, 0)) >= Math.abs(at(along, 1)) ? 0 : 1;
-    this.nail = at(axes, k).multiplyScalar(Math.sign(at(along, k)) || 1);
+    // The thumb's nail at rest in the armature, then in each thumb bone's own frame.
+    const tip = this.phalanges.find((p) => p.finger === 1 && p.joint === 2);
+    if (!tip) throw new Error("hand.glb has no thumb");
+    const nail = THUMB_NAIL.clone().applyQuaternion(this.armTurn(tip.bone));
+    for (const p of this.phalanges)
+      if (p.finger === 1)
+        this.nails.set(p.bone, nail.clone().applyQuaternion(this.armTurn(p.bone).invert()));
     this.space.add(scene);
     this.space.visible = false;
   }
@@ -271,16 +275,22 @@ export class LiveRig {
     this.setArmTurn(bone, new Quaternion().setFromUnitVectors(along, want).multiply(turn));
   }
 
-  /** The thumb lies on its side: its nail in the palm's plane, away from the index finger. */
+  /** The thumb lies tilted on its side: its nail THUMB_NAIL_TILT from the back of the hand towards
+   * the side away from the index finger. */
   private turnNail(bone: Bone, up: Vector3, away: Vector3): void {
+    const nail = this.nails.get(bone);
+    if (!nail) return;
     const turn = this.armTurn(bone);
     const b = Y_AXIS.clone().applyQuaternion(turn);
-    let want = b.clone().cross(up);
-    if (want.dot(away) < 0) want.negate();
-    const have = this.nail.clone().applyQuaternion(turn);
-    want = want.sub(b.clone().multiplyScalar(want.dot(b)));
+    const back = up.clone().sub(b.clone().multiplyScalar(up.dot(b)));
+    const have = nail.clone().applyQuaternion(turn);
     have.sub(b.clone().multiplyScalar(have.dot(b)));
-    if (want.lengthSq() < 1e-12 || have.lengthSq() < 1e-12) return;
+    if (back.lengthSq() < 1e-12 || have.lengthSq() < 1e-12) return;
+    back.normalize();
+    const side = b.clone().cross(back);
+    if (side.dot(away) < 0) side.negate();
+    const tilt = rad(THUMB_NAIL_TILT);
+    const want = back.multiplyScalar(Math.cos(tilt)).addScaledVector(side, Math.sin(tilt));
     const angle = have.angleTo(want) * (have.clone().cross(want).dot(b) > 0 ? 1 : -1);
     this.setArmTurn(bone, new Quaternion().setFromAxisAngle(b, angle).multiply(turn));
   }
