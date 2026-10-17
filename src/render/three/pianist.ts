@@ -5,6 +5,7 @@ import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import { whitePosition } from "./handSolver/mech";
 import { keyBoxes } from "./keyBoxes";
 import { pianistModelUrl } from "./pianistModel";
+import { PianistAppearance } from "./pianistAppearance";
 
 /** The lab's saved trial: eight seconds of the two index fingers, not a way to play a song. */
 export const PIANIST_TRIAL_CLIP = "IndexFingerTest_8s";
@@ -73,6 +74,7 @@ export class Pianist {
   /** The model's frame: metres in glTF axes, C4's centre at the white keys' front top edge. */
   readonly space = new Group();
   private laidOut = -1;
+  private readonly appearance: PianistAppearance;
 
   constructor(readonly model: PianistModel) {
     this.space.add(model.scene);
@@ -81,6 +83,7 @@ export class Pianist {
       mixer.clipAction(model.clip).play();
       mixer.setTime(0);
     }
+    this.appearance = new PianistAppearance(model.scene);
   }
 
   /** `white` is any white key: its pitch, centre and width in the keys' group. */
@@ -89,6 +92,10 @@ export class Pianist {
     this.space.scale.setScalar(white.width / LAB_WHITE_M);
     // The white keys' top sits at 22 in the keys' group, their front edge at 0.
     this.space.position.set(c4, 22, 0);
+  }
+
+  dispose(): void {
+    this.appearance.dispose();
   }
 
   /** Lays the pianist out on the keys whenever they change. */
