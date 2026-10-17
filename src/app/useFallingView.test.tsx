@@ -28,6 +28,7 @@ const view = {
   setRange: vi.fn(),
   setRoadGuides: vi.fn(),
   setKeyboardDim: vi.fn(),
+  setFreeCamera: vi.fn(),
   hands: { setStyle: vi.fn() }
 };
 const trainer = { setPlaying: vi.fn(), load: vi.fn(), seek: vi.fn() };
@@ -126,6 +127,23 @@ it("switches the keyboard camera independently without restarting playback", asy
     );
   });
   expect(view.setKeyboardTop).toHaveBeenLastCalledWith(true);
+  expect(trainer.load).not.toHaveBeenCalled();
+  expect(trainer.seek).not.toHaveBeenCalled();
+  expect(trainer.setPlaying).not.toHaveBeenCalled();
+});
+it("switches inspection independently without restarting playback or changing learning camera prefs", async () => {
+  await act(async () => {
+    root.render(<Harness prefs={{ ...DEFAULT_STAFF_PREFS, keyStyle: "3d" }} />);
+    await Promise.resolve();
+  });
+  vi.clearAllMocks();
+  await act(async () => {
+    root.render(<Harness prefs={{ ...DEFAULT_STAFF_PREFS, keyStyle: "3d", freeCamera: true }} />);
+    await Promise.resolve();
+  });
+  expect(view.setFreeCamera).toHaveBeenLastCalledWith(true);
+  expect(view.setKeyStyle).not.toHaveBeenCalled();
+  expect(view.setCamera).not.toHaveBeenCalled();
   expect(trainer.load).not.toHaveBeenCalled();
   expect(trainer.seek).not.toHaveBeenCalled();
   expect(trainer.setPlaying).not.toHaveBeenCalled();

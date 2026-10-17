@@ -39,9 +39,8 @@ export class NotePlasma {
     visible: boolean,
     deltaSeconds: number
   ): void {
-    road?.setMistLayer(this.layer.mist);
     const on = road !== undefined && visible;
-    this.container.visible = on;
+    this.container.visible = on && !road.drawsNativeRoad;
     if (!on) {
       this.clear();
       road?.clearEnergy();
@@ -61,6 +60,11 @@ export class NotePlasma {
     this.lastTime = frame.time;
     const sources = energySources(notes, frame, (note) => noteColor(note, undefined));
     road.setEnergy(sources, delta);
+    if (road.drawsNativeRoad) {
+      this.layer.clear();
+      this.attacks.clear();
+      return;
+    }
     const anchors: PlasmaAnchor[] = [];
     for (const key of keys.values()) {
       const spot = road.notePlace(key.x + key.width / 2, geometry.hitY);

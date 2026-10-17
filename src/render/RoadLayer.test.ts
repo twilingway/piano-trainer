@@ -23,6 +23,10 @@ function fixture() {
     nativeRoad: frame,
     three,
     road: { renderable: true },
+    fog: new Container(),
+    horizon: new Container(),
+    arrivals: { container: new Container(), draw: vi.fn() },
+    effects: new Container(),
     glows: { renderable: true },
     staff: { container: new Container() },
     renderer: { render: vi.fn() },
@@ -114,4 +118,40 @@ describe("raised native note shell wiring", () => {
       expect(frame.notes[0]?.bottom).toBeGreaterThan(camera.near.z);
     }
   );
+});
+
+describe("inspection key input", () => {
+  it.each([
+    { x: 80, y: 20 },
+    { x: 90, y: 125 }
+  ])("adds the keyboard top once for white and black source hits", (point) => {
+    const state = {
+      three: { freeCamera: true, freeKeysPointAt: vi.fn(() => point) },
+      keyboardTopY: 400
+    };
+    const layer = Object.assign(
+      Object.create(RoadLayer.prototype) as object,
+      state
+    ) as unknown as RoadLayer;
+    expect(layer.keysPointAt(200, 250)).toEqual({ x: point.x, y: point.y + 400 });
+    state.three.freeKeysPointAt.mockReturnValue(undefined as unknown as typeof point);
+    expect(layer.keysPointAt(200, 250)).toBeUndefined();
+  });
+
+  it("excludes old horizon, fog, sparks and staff overlays in normal native 3D, restoring fallback", () => {
+    const v = fixture();
+    v.draw(0.016);
+    expect(v.internals.fog.renderable).toBe(false);
+    expect(v.internals.arrivals.container.renderable).toBe(false);
+    expect(v.internals.effects.renderable).toBe(false);
+    expect(v.internals.drawHorizon).not.toHaveBeenCalled();
+    expect(v.internals.sparks.draw).not.toHaveBeenCalled();
+    v.three.drawsRoad = false;
+    v.draw(0.016);
+    expect(v.internals.fog.renderable).toBe(true);
+    expect(v.internals.arrivals.container.renderable).toBe(true);
+    expect(v.internals.effects.renderable).toBe(true);
+    expect(v.internals.drawHorizon).toHaveBeenCalledOnce();
+    expect(v.internals.sparks.draw).toHaveBeenCalledOnce();
+  });
 });

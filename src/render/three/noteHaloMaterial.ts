@@ -92,7 +92,7 @@ export function createNoteHaloMaterial(): ShaderMaterial {
     fragmentShader: FRAGMENT,
     transparent: true,
     blending: AdditiveBlending,
-    depthTest: false,
+    depthTest: true,
     depthWrite: false
   });
 }

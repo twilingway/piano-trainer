@@ -11,7 +11,9 @@ import {
   LinearSRGBColorSpace,
   Mesh,
   MeshStandardMaterial,
-  Scene
+  Scene,
+  Raycaster,
+  Vector2
 } from "three";
 import { WebGLRenderer } from "three";
 import type { Object3D } from "three";
@@ -38,6 +40,7 @@ import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { drawSceneCameraPasses } from "./sceneCameraPasses";
 import type { WorldCamera } from "../worldCamera";
 import { PANEL_EDGE } from "../worldCamera";
+import { FreeSceneCamera } from "./FreeSceneCamera";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
@@ -59,6 +62,11 @@ interface Hinged {
 /** The keyboard drawn by three.js into Pixi's own WebGL context, on Pixi's camera. */
 export class ThreeStage {
   private readonly renderer: WebGLRenderer;
+  private readonly free: FreeSceneCamera;
+  private freeEnabled = false;
+  private readonly raycaster = new Raycaster();
+  private readonly occluders: Object3D[] = [];
+  private readonly pointer = new Vector2();
   private readonly scene = new Scene();
   private readonly roadCamera = new Camera();
   private readonly keyboardCamera = new Camera();
@@ -100,6 +108,7 @@ export class ThreeStage {
     private readonly kit: PianoKit,
     hand: Object3D | undefined
   ) {
+    this.free = new FreeSceneCamera(canvas);
     this.hands = hand && new LiveHands(hand);
     // Only the board's vertical front stays; rear bevels/caps must not occlude the road's mist.
     this.board = roadContactBoard(this.part("board"), -PANEL_EDGE.z / KIT_DEPTH);
@@ -133,7 +142,11 @@ export class ThreeStage {
     );
     this.keys.add(this.body, this.appearance.group);
     this.lighting.add(this.noteLights.group, this.rimLights.group);
-    if (this.hands) this.keys.add(this.hands.group);
+    this.occluders.push(this.body);
+    if (this.hands) {
+      this.keys.add(this.hands.group);
+      this.occluders.push(this.hands.group);
+    }
   }
 
   /** Draws the keys over whatever is in the frame now, keeping it: the road under them. */
@@ -155,7 +168,7 @@ export class ThreeStage {
     const { params } = roadCamera;
     const scale = params.prefs.scale;
     this.keys.scale.setScalar(scale);
-    this.keys.position.x = (-keys.pan / 2) * scale;
+    this.keys.position.x = this.freeEnabled ? 0 : (-keys.pan / 2) * scale;
     this.road.scale.copy(this.keys.scale);
     this.road.position.copy(this.keys.position);
     this.lighting.scale.copy(this.keys.scale);
@@ -202,9 +215,12 @@ export class ThreeStage {
       hinge.rotation.x += (target - hinge.rotation.x) * step;
     }
     const detached = keys.offset.x !== 0 || keys.offset.y !== 0;
-    const separate = detached || keyboardCamera !== roadCamera;
-    this.configureCamera(this.roadCamera, roadCamera, screen);
-    if (separate) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
+    const separate = !this.freeEnabled && (detached || keyboardCamera !== roadCamera);
+    if (this.freeEnabled) this.free.update(screen.width, screen.height, this.keys);
+    else {
+      this.configureCamera(this.roadCamera, roadCamera, screen);
+      if (separate) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
+    }
     this.renderer.resetState();
     try {
       this.renderer.setViewport(
@@ -219,7 +235,7 @@ export class ThreeStage {
         this.scene,
         this.road,
         this.keys,
-        this.roadCamera,
+        this.freeEnabled ? this.free.camera : this.roadCamera,
         this.keyboardCamera,
         separate
       );
@@ -243,9 +259,41 @@ export class ThreeStage {
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
   }
 
+  setFreeCamera(on: boolean): void {
+    this.freeEnabled = on;
+    this.free.setEnabled(on);
+  }
+
+  resetFreeCamera(): void {
+    this.free.invalidate();
+  }
+
+  /** Actual mesh hits share the inspection camera and the current key hinge transforms. */
+  freeKeyAt(x: number, y: number, width: number, height: number): number | undefined {
+    if (!this.freeEnabled) return undefined;
+    this.pointer.set((2 * x) / Math.max(1, width) - 1, 1 - (2 * y) / Math.max(1, height));
+    this.scene.updateMatrixWorld(true);
+    this.raycaster.setFromCamera(this.pointer, this.free.camera);
+    const hits = this.raycaster.intersectObjects(
+      [...this.hinged.map(({ mesh }) => mesh), ...this.occluders],
+      true
+    );
+    const hit = hits.find(({ object }) => {
+      let part: Object3D | null = object;
+      while (part) {
+        if (!part.visible) return false;
+        part = part.parent;
+      }
+      return true;
+    });
+    return hit && this.hinged.find(({ mesh }) => mesh === hit.object)?.pitch;
+  }
+
   /** Something of the host's that rides with the keys: the local pianist. */
   addToKeys(object: Object3D): void {
     this.keys.add(object);
+    this.occluders.push(object);
+    this.free.invalidate();
   }
 
   clearEnergy(): void {
@@ -258,6 +306,7 @@ export class ThreeStage {
   }
 
   dispose(): void {
+    this.free.dispose();
     this.clear();
     this.appearance.dispose();
     this.noteLights.dispose();
@@ -275,6 +324,7 @@ export class ThreeStage {
   }
 
   private build(keys: KeysScene): void {
+    this.free.invalidate();
     this.clear(true);
     this.version = keys.version;
     const boxes = keyBoxes(keys);

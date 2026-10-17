@@ -1,5 +1,4 @@
-import { Application, Container, Texture } from "pixi.js";
-import type { FederatedPointerEvent } from "pixi.js";
+import { Application, Container, Texture, type FederatedPointerEvent } from "pixi.js";
 
 import type { Finger } from "../fingering/fingering";
 import type { Locale } from "../i18n/locales";
@@ -8,8 +7,7 @@ import type { Song, SongNote } from "../song/song";
 import { publishOverlayLayout } from "./viewOverlayLayout";
 import { bakeDigits, bakeNames } from "./bakeLabels";
 import { bindKeyboardPointer } from "./bindKeyboardPointer";
-import { ComputerKeyboardLayer } from "./ComputerKeyboardLayer";
-import type { KeysLayer } from "./ComputerKeyboardLayer";
+import { ComputerKeyboardLayer, type KeysLayer } from "./ComputerKeyboardLayer";
 import { computerGeometry, computerWidth, layoutComputerKeys } from "./computerKeyboardLayout";
 import { ComputerKeys, type ComputerKeyboard } from "./computerKeys";
 import type { FallingNoteNames } from "./bakeLabels";
@@ -17,6 +15,7 @@ import { HandsLayer } from "./HandsLayer";
 import { NotePlasma } from "./NotePlasma";
 import { FxLayer } from "./FxLayer";
 import { FpsMeter } from "./FpsMeter";
+import { FreeCameraLegend } from "./FreeCameraLegend";
 import { loadViewAssets, loadViewFonts } from "./viewAssets";
 import type { FrameState } from "./frameState";
 import { HudLayer } from "./HudLayer";
@@ -27,7 +26,8 @@ import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
 import { roadApproach } from "./roadApproach";
 import { RoadLayer, type RoadShape } from "./RoadLayer";
-import { drawViewEffects, viewStrikes } from "./viewEffects";
+import { drawViewKeys } from "./drawViewKeys";
+import { drawViewEffects, drawViewHud, viewStrikes } from "./viewEffects";
 import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
 import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewParts } from "./viewGeometry";
@@ -35,8 +35,6 @@ import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 
 export type { FallingNoteNames } from "./bakeLabels";
 export type { FrameState } from "./frameState";
-
-const NO_SOUNDING_KEYS: ReadonlySet<number> = new Set();
 
 /**
  * The Synthesia-style picture: notes fall onto a keyboard, each carrying the
@@ -111,6 +109,8 @@ export class FallingNotesView {
   private fpsMeter: FpsMeter | undefined;
   private fpsVisible = false;
   private locale: Locale = "ru";
+  private freeLegend: FreeCameraLegend | undefined;
+  private freeCamera = false;
   private unbindKeyboardPointer: (() => void) | undefined;
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
@@ -129,6 +129,7 @@ export class FallingNotesView {
       autoDensity: true
     });
     host.appendChild(this.app.canvas);
+    this.freeLegend = new FreeCameraLegend(host, () => this.road?.resetFreeCamera(), this.locale);
     this.fpsMeter = new FpsMeter(host, this.app.ticker, this.locale, this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
     this.resizeObserver = new ResizeObserver(() => {
@@ -163,6 +164,7 @@ export class FallingNotesView {
     this.computerKeyboard = computerKeyboard;
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
     this.road.setCamera(this.cameraPrefs);
+    this.applyFreeCamera();
     this.road.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
     void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
@@ -180,8 +182,8 @@ export class FallingNotesView {
       this.keysRoot,
       this.plasma.container,
       this.road.effects,
-      this.hands.container,
       this.fx.container,
+      this.hands.container,
       this.hud.container
     );
     await Promise.all([loadViewAssets(this.fx, notes, this.road, this.hands), this.plasma.load()]);
@@ -209,6 +211,7 @@ export class FallingNotesView {
   setKeyStyle(style: KeyStyle): void {
     if (style === this.keyStyle) return;
     this.keyStyle = style;
+    this.applyFreeCamera();
     const loaded = this.road?.setKeyStyle(style);
     this.road?.setCamera(this.cameraPrefs);
     this.syncRoad();
@@ -242,6 +245,7 @@ export class FallingNotesView {
     this.locale = locale;
     this.hud.setLocale(locale);
     this.fpsMeter?.setLocale(locale);
+    this.freeLegend?.setLocale(locale);
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */
@@ -287,9 +291,19 @@ export class FallingNotesView {
       this.laidOutFor = { width: 0, height: 0 };
   }
 
-  setKeyboardDim(on: boolean): void {
-    this.road?.setKeyboardDim(on);
+  setFreeCamera(on: boolean): void {
+    this.freeCamera = on;
+    this.applyFreeCamera();
   }
+
+  private applyFreeCamera(): void {
+    this.road?.setFreeCamera(this.freeCamera && this.keyStyle === "3d" && !this.computer, (on) => {
+      this.freeLegend?.setVisible(on);
+      if (!on) this.panSnap = true;
+    });
+  }
+
+  setKeyboardDim = (on: boolean): void => this.road?.setKeyboardDim(on);
 
   setRoadGuides(on: boolean): void {
     this.roadGuides = on;
@@ -359,6 +373,7 @@ export class FallingNotesView {
       : undefined;
     this.computerKeyboard?.setKeys(this.computer);
     this.syncKeyboards();
+    this.applyFreeCamera();
     this.road?.setCamera(this.cameraPrefs);
     this.syncRoad();
     if (this.song) this.setSong(this.song);
@@ -435,36 +450,18 @@ export class FallingNotesView {
     this.notesLayer.draw(noteState, this.keys, geometry, road);
     // Notes crossing the hit line right now: their finger is shown on the key too.
     const playing = this.notesLayer.playing;
-    this.keysLayer?.draw(
-      {
-        pressed: state.pressed,
-        // Only the key-colour layer hides accompaniment; fire follows every sounding note.
-        sounding: state.hands.size === 0 ? state.sounding : NO_SOUNDING_KEYS,
-        due: state.due,
-        hintTime: state.hintTime ?? state.time,
-        hintSpeed: state.hintSpeed ?? 1,
-        waiting: (state.waitingFor?.length ?? 0) > 0,
-        ...(state.hintNotes ? { hintNotes: state.hintNotes } : {}),
-        playing,
-        ...(state.hints === undefined ? {} : { hints: state.hints }),
-        ...(state.neutralKeys === undefined ? {} : { neutralKeys: state.neutralKeys })
-      },
+    drawViewKeys(
+      this.keysLayer,
+      this.hands,
       this.keys,
       geometry,
-      this.labels
+      this.labels,
+      state,
+      playing,
+      road,
+      this.pan,
+      this.app.ticker.deltaMS / 1000
     );
-    if (this.hands.container.visible) {
-      this.hands.draw(
-        state.time,
-        this.app.ticker.deltaMS / 1000,
-        state.hands,
-        this.keys,
-        geometry,
-        (x, y, reach) => (road ? road.handPlace(x, y, geometry, reach) : { x: x - this.pan, y }),
-        state.waitingFor ?? [],
-        state.hintSpeed ?? 1
-      );
-    }
     // The road takes a picture of the keys; whole hands stay in their own projected overlay.
     if (road) {
       const strikes = viewStrikes(playing, state, this.keys, this.computer);
@@ -476,31 +473,35 @@ export class FallingNotesView {
         this.app.ticker.deltaMS / 1000
       );
     }
+    // Native objects keep drawing; only screen-projected decorations leave inspection view.
+    const inspect = road?.freeCamera === true;
+    this.notesLayer.cards.renderable = !inspect;
+    this.plasma.container.renderable = !road?.drawsNativeRoad;
+    this.hands.container.renderable = !inspect;
+    this.fx.container.renderable = !road?.drawsNativeRoad;
+    if (this.road) this.road.effects.renderable = !road?.drawsNativeRoad;
     const hitLineY = road ? road.hitLineY : geometry.hitY;
-    drawViewEffects(
-      this.fx,
+    if (!road?.drawsNativeRoad)
+      drawViewEffects(
+        this.fx,
+        state,
+        playing,
+        this.keys,
+        this.computer,
+        road,
+        this.pan,
+        geometry.hitY,
+        this.wasSounding,
+        this.app.ticker.deltaMS / 1000
+      );
+    // React's GameBoard owns the score panels; Pixi only draws transient strike grades.
+    drawViewHud(
+      this.hud,
       state,
-      playing,
       this.keys,
-      this.computer,
       road,
       this.pan,
       geometry.hitY,
-      this.wasSounding,
-      this.app.ticker.deltaMS / 1000
-    );
-    // React's GameBoard owns the score panels; Pixi only draws transient strike grades.
-    this.hud.draw(
-      undefined,
-      state.graded ?? [],
-      (pitch) => {
-        const key = this.keys.get(pitch);
-        return (
-          key &&
-          (road?.notePlace(key.x + key.width / 2, geometry.hitY)?.x ??
-            key.x + key.width / 2 - this.pan)
-        );
-      },
       hitLineY,
       this.app.ticker.deltaMS / 1000
     );
@@ -542,6 +543,7 @@ export class FallingNotesView {
   destroy(): void {
     this.unbindKeyboardPointer?.();
     this.fpsMeter?.destroy();
+    this.freeLegend?.destroy();
     this.ready = false;
     this.resizeObserver?.disconnect();
     // Off the stage in the road view, so the stage's own destroy would miss them.
