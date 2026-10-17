@@ -184,6 +184,8 @@ function ConnectedKeyboardSettings() {
   const state = useAppSelector(
     (state) => ({
       keyStyle: state.preferences.staff.keyStyle,
+      notesPerspective: state.preferences.staff.road,
+      keyboardTop: state.preferences.staff.keyboardOrientation === "top",
       handStyle: state.preferences.staff.handStyle,
       roadGuides: state.preferences.staff.roadGuides,
       far: state.preferences.staff.roadFar,
@@ -199,6 +201,10 @@ function ConnectedKeyboardSettings() {
   const onKeyRange = useRuntimeCommand((runtime) => runtime.view.setKeyRange);
   const onShowLabels = useRuntimeCommand((runtime) => runtime.view.setShowLabels);
   const onKeyStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyStyle);
+  const onNotesPerspective = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onNotesPerspective
+  );
+  const onKeyboardTop = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardTop);
   const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
   const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
@@ -207,6 +213,10 @@ function ConnectedKeyboardSettings() {
     <KeyboardSettings
       {...view}
       keyStyle={state.keyStyle}
+      notesPerspective={state.notesPerspective}
+      onNotesPerspective={onNotesPerspective}
+      keyboardTop={state.keyboardTop}
+      onKeyboardTop={onKeyboardTop}
       handStyle={state.handStyle}
       roadGuides={state.roadGuides}
       road={{ far: state.far, horizon: state.horizon }}

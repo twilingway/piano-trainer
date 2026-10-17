@@ -9,6 +9,7 @@ const MAX_LOCAL_ENERGY = 1.4;
 const MAX_TOTAL_ENERGY = 4.5;
 
 interface LightSample {
+  pitch: number;
   x: number;
   y: number;
   z: number;
@@ -24,6 +25,7 @@ interface Candidate extends LightSample {
 }
 
 const emptySample = (): LightSample => ({
+  pitch: 0,
   x: 0,
   y: 0,
   z: 0,
@@ -126,6 +128,7 @@ export class NoteLightSelection {
       if (!best) continue;
       best.selected = true;
       const weight = best.energy;
+      sample.pitch = best.box.pitch;
       sample.x = best.x / weight;
       sample.y = best.y / weight;
       sample.z = best.z / weight;
@@ -145,6 +148,9 @@ export class NoteLightSelection {
 export class ThreeNoteLights {
   readonly group = new Group();
   private readonly selection = new NoteLightSelection();
+  private boxes = new Map<number, KeyBox>();
+  private lastSources: readonly EnergySource[] = [];
+  private lastCamera: WorldCamera | undefined;
   private readonly lights = Array.from({ length: NOTE_LIGHT_LIMIT }, () => {
     const light = new SpotLight(0xffffff, 0, 420, 0.75, 0.9, 2);
     light.castShadow = false;
@@ -153,13 +159,78 @@ export class ThreeNoteLights {
     return light;
   });
 
-  layout(boxes: readonly KeyBox[]): void {
+  layout(boxes: readonly KeyBox[], camera = this.lastCamera): void {
+    const oldScale = this.lastCamera?.params.prefs.scale ?? 1;
+    const retained = new Map<
+      number,
+      {
+        intensity: number;
+        relativeX: number;
+        y: number;
+        z: number;
+        red: number;
+        green: number;
+        blue: number;
+      }
+    >();
+    for (let index = 0; index < this.lights.length; index++) {
+      const light = this.lights[index];
+      const sample = this.selection.samples[index];
+      const box = sample && this.boxes.get(sample.pitch);
+      if (!light || !sample || !box || light.intensity <= 0) continue;
+      retained.set(sample.pitch, {
+        intensity: light.intensity / oldScale ** 2,
+        relativeX: (light.position.x - box.x) / box.width,
+        y: light.position.y,
+        z: light.position.z,
+        red: light.color.r,
+        green: light.color.g,
+        blue: light.color.b
+      });
+    }
     this.selection.layout(boxes);
-    this.clear();
+    this.boxes = new Map(boxes.map((box) => [box.pitch, box]));
+    const samples = camera
+      ? this.selection.update(this.lastSources, camera)
+      : this.selection.samples;
+    const scale = camera?.params.prefs.scale ?? oldScale;
+    this.lastCamera = camera;
+    for (let index = 0; index < this.lights.length; index++) {
+      const light = this.lights[index];
+      const sample = samples[index];
+      if (!light || !sample) continue;
+      light.distance = 420 * scale;
+      light.intensity = 0;
+      if (sample.energy <= 0) continue;
+      const saved = retained.get(sample.pitch);
+      this.place(light, sample);
+      light.intensity = (saved?.intensity ?? 0) * scale ** 2;
+      retained.delete(sample.pitch);
+    }
+    // Preserve already fading visible lights too, without advancing their release envelope.
+    const tails = retained.entries();
+    for (let index = 0; index < this.lights.length; index++) {
+      const light = this.lights[index];
+      const sample = samples[index];
+      if (!light || !sample || sample.energy > 0) continue;
+      let tail = tails.next();
+      while (!tail.done && !this.boxes.has(tail.value[0])) tail = tails.next();
+      if (tail.done) break;
+      const [pitch, saved] = tail.value;
+      const box = this.boxes.get(pitch);
+      if (!box) continue;
+      sample.pitch = pitch;
+      light.position.set(box.x + saved.relativeX * box.width, saved.y, saved.z);
+      light.target.position.set(0, 55 - saved.y, 40 - saved.z);
+      light.color.setRGB(saved.red, saved.green, saved.blue);
+      light.intensity = saved.intensity * scale ** 2;
+    }
   }
 
   /** Seek, song changes and effect resets discard light immediately, without a release tail. */
   clear(): void {
+    this.lastSources = [];
+    this.lastCamera = undefined;
     this.selection.clear();
     for (const light of this.lights) light.intensity = 0;
   }
@@ -167,6 +238,8 @@ export class ThreeNoteLights {
   update(sources: readonly EnergySource[], camera: WorldCamera, deltaSeconds: number): void {
     const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(0.1, deltaSeconds)) : 0;
     if (delta === 0) return;
+    this.lastSources = sources;
+    this.lastCamera = camera;
     const samples = this.selection.update(sources, camera);
     for (let index = 0; index < this.lights.length; index++) {
       const light = this.lights[index];
@@ -176,9 +249,7 @@ export class ThreeNoteLights {
       light.distance = 420 * scale;
       const target = sample.energy * LIGHT_POWER * scale ** 2;
       if (sample.energy > 0) {
-        light.position.set(sample.x, sample.y, sample.z);
-        light.target.position.set(0, 55 - sample.y, 40 - sample.z);
-        light.color.setRGB(sample.red, sample.green, sample.blue);
+        this.place(light, sample);
       }
       const rate = target > light.intensity ? 35 : 16;
       light.intensity += (target - light.intensity) * (1 - Math.exp(-delta * rate));
@@ -187,6 +258,7 @@ export class ThreeNoteLights {
   }
 
   dispose(): void {
+    this.clear();
     this.layout([]);
     for (const light of this.lights) {
       light.dispose();
@@ -194,5 +266,11 @@ export class ThreeNoteLights {
     }
     this.group.removeFromParent();
     this.group.clear();
+  }
+
+  private place(light: SpotLight, sample: LightSample): void {
+    light.position.set(sample.x, sample.y, sample.z);
+    light.target.position.set(0, 55 - sample.y, 40 - sample.z);
+    light.color.setRGB(sample.red, sample.green, sample.blue);
   }
 }

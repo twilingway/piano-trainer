@@ -21,6 +21,7 @@ const view = {
   setNoteCards: vi.fn(),
   setKeyStyle: vi.fn(),
   setCamera: vi.fn(),
+  setKeyboardTop: vi.fn(),
   setRoadShape: vi.fn(),
   setComputerKeys: vi.fn(),
   setKeysPlacement: vi.fn(),
@@ -107,4 +108,24 @@ describe("road guide view preference", () => {
     expect(view.setRoadGuides).toHaveBeenLastCalledWith(false);
     expect(view.setRoad).not.toHaveBeenCalled();
   });
+});
+
+it("switches the keyboard camera independently without restarting playback", async () => {
+  await act(async () => {
+    await Promise.resolve();
+    root.render(<Harness prefs={{ ...DEFAULT_STAFF_PREFS, keyStyle: "3d" }} />);
+  });
+  vi.clearAllMocks();
+  await act(async () => {
+    await Promise.resolve();
+    root.render(
+      <Harness
+        prefs={{ ...DEFAULT_STAFF_PREFS, keyStyle: "3d", road: true, keyboardOrientation: "top" }}
+      />
+    );
+  });
+  expect(view.setKeyboardTop).toHaveBeenLastCalledWith(true);
+  expect(trainer.load).not.toHaveBeenCalled();
+  expect(trainer.seek).not.toHaveBeenCalled();
+  expect(trainer.setPlaying).not.toHaveBeenCalled();
 });

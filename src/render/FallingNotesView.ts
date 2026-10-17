@@ -11,8 +11,7 @@ import { bindKeyboardPointer } from "./bindKeyboardPointer";
 import { ComputerKeyboardLayer } from "./ComputerKeyboardLayer";
 import type { KeysLayer } from "./ComputerKeyboardLayer";
 import { computerGeometry, computerWidth, layoutComputerKeys } from "./computerKeyboardLayout";
-import { ComputerKeys } from "./computerKeys";
-import type { ComputerKeyboard } from "./computerKeys";
+import { ComputerKeys, type ComputerKeyboard } from "./computerKeys";
 import type { FallingNoteNames } from "./bakeLabels";
 import { HandsLayer } from "./HandsLayer";
 import { NotePlasma } from "./NotePlasma";
@@ -21,18 +20,16 @@ import { FpsMeter } from "./FpsMeter";
 import { loadViewAssets, loadViewFonts } from "./viewAssets";
 import type { FrameState } from "./frameState";
 import { HudLayer } from "./HudLayer";
-import { KeyboardLayer } from "./KeyboardLayer";
-import type { KeyStyle } from "./KeyboardLayer";
+import { KeyboardLayer, type KeyStyle } from "./KeyboardLayer";
 import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
 import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
 import { roadApproach } from "./roadApproach";
-import { RoadLayer } from "./RoadLayer";
-import type { RoadShape } from "./RoadLayer";
+import { RoadLayer, type RoadShape } from "./RoadLayer";
 import { drawViewEffects, viewStrikes } from "./viewEffects";
-import { DEFAULT_CAMERA } from "./worldCamera";
-import type { CameraPrefs } from "./worldCamera";
+import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
+import { nativeRoadCamera } from "./nativeRoadCamera";
 import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewParts } from "./viewGeometry";
 import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
@@ -166,7 +163,7 @@ export class FallingNotesView {
     computerKeyboard.showStickers(this.labels);
     this.computerKeyboard = computerKeyboard;
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
-    this.road.setCamera(this.cameraPrefs);
+    this.road.setCamera(this.roadCameraPrefs);
     this.road.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
     void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
@@ -214,6 +211,8 @@ export class FallingNotesView {
     if (style === this.keyStyle) return;
     this.keyStyle = style;
     const loaded = this.road?.setKeyStyle(style);
+    this.road?.setCamera(this.roadCameraPrefs);
+    this.syncRoad();
     this.laidOutFor = { width: 0, height: 0 };
     const keyboard = this.keyboard;
     if (!keyboard) return;
@@ -299,20 +298,32 @@ export class FallingNotesView {
     this.laidOutFor = { width: 0, height: 0 };
   }
 
+  setKeyboardTop(on: boolean): void {
+    this.road?.setKeyboardTop(on);
+    this.relayout();
+  }
+
   setCamera(prefs: CameraPrefs): void {
     this.cameraPrefs = prefs;
-    this.road?.setCamera(prefs);
+    this.road?.setCamera(this.roadCameraPrefs);
     this.laidOutFor = { width: 0, height: 0 };
+  }
+
+  private get roadCameraPrefs(): CameraPrefs {
+    const direct = this.keyStyle === "3d" && !this.computer && !this.roadWanted;
+    return nativeRoadCamera(this.cameraPrefs, direct);
   }
 
   setRoad(on: boolean): void {
     this.roadWanted = on;
+    this.road?.setCamera(this.roadCameraPrefs);
     this.syncRoad();
+    this.relayout();
   }
 
   /** Puts the road on or off: on when asked for and the notes show, with or without the keys. */
   private syncRoad(): void {
-    const on = this.roadWanted && this.parts.notes;
+    const on = (this.roadWanted || (this.keyStyle === "3d" && !this.computer)) && this.parts.notes;
     if (!this.road || !this.notesLayer || on === this.roadMode) return;
     this.roadMode = on;
     this.keyboard?.showFelt(!on);
@@ -350,6 +361,8 @@ export class FallingNotesView {
       : undefined;
     this.computerKeyboard?.setKeys(this.computer);
     this.syncKeyboards();
+    this.road?.setCamera(this.roadCameraPrefs);
+    this.syncRoad();
     if (this.song) this.setSong(this.song);
     this.laidOutFor = { width: 0, height: 0 };
   }
@@ -408,7 +421,7 @@ export class FallingNotesView {
           lookAhead: roadApproach(
             state.lookAhead,
             !this.computer && this.keyStyle === "3d" && road.drawsNativeRoad,
-            this.cameraPrefs.pitch
+            this.roadCameraPrefs.pitch
           )
         }
       : state;
@@ -509,7 +522,8 @@ export class FallingNotesView {
       width,
       this.total,
       this.whiteWidth,
-      this.app.ticker.deltaMS / 1000
+      this.app.ticker.deltaMS / 1000,
+      this.roadMode && this.road?.drawsNativeRoad && this.roadCameraPrefs.pitch === 90
     );
     this.panSnap = false;
     this.pan = pan;
@@ -549,7 +563,9 @@ export class FallingNotesView {
   private geometry(height: number): Geometry {
     const { parts, placement, labels, rangeFitsViewport: fits } = this;
     if (this.computer) return computerGeometry(height, this.total, parts, placement);
-    return viewGeometry(height, this.whiteWidth, parts, labels, fits, placement);
+    // Native hands rest on the physical keys and need no sprite-palm strip.
+    const layoutParts = this.roadMode && this.hands.live ? { ...parts, hands: false } : parts;
+    return viewGeometry(height, this.whiteWidth, layoutParts, labels, fits, placement);
   }
 
   private layout(width: number, height: number): void {

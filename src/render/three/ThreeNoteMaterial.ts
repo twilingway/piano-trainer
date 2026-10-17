@@ -1,19 +1,21 @@
 import { DoubleSide, MeshStandardMaterial, ShaderMaterial, Vector2 } from "three";
 
 import { createNoteHaloMaterial } from "./noteHaloMaterial";
+import { NOTE_SLAB_ATTRIBUTES, NOTE_SLAB_VERTEX } from "./noteSlabGeometry";
 
 const BODY_DECLARATIONS = /* glsl */ `
 attribute vec3 noteSize;
 attribute float noteAlpha;
+${NOTE_SLAB_ATTRIBUTES}
 varying vec3 vNoteTint;
 varying vec3 vNoteNormal;
 varying float vNoteAlpha;
 `;
 
-/** The unit rounded box supplies its corner normals; changing length never stretches the bevel. */
+/** Each ring retains its world-space corner radius and narrow vertical chamfer. */
 const BODY_VERTEX = /* glsl */ `
-float noteRadius = min(noteSize.x * 0.12, min(noteSize.y * 0.45, noteSize.z * 0.45));
-vec3 transformed = sign(position) * (noteSize * 0.5 - vec3(noteRadius)) + normal * noteRadius;
+${NOTE_SLAB_VERTEX}
+vec3 transformed = slabPoint;
 vNoteTint = instanceColor;
 vNoteNormal = normal;
 vNoteAlpha = noteAlpha;
@@ -22,7 +24,7 @@ vNoteAlpha = noteAlpha;
 export function createNoteBodyMaterial(): MeshStandardMaterial {
   const material = new MeshStandardMaterial({
     color: 0x969696,
-    emissive: 0xa8a8a8,
+    emissive: 0x8a8a8a,
     roughness: 0.18,
     flatShading: true,
     metalness: 0.16,
@@ -50,11 +52,13 @@ ${shader.fragmentShader}`
 vec3 noteNormal = normalize(vNoteNormal);
 float noteFront = max(noteNormal.z, 0.0);
 float noteTop = max(noteNormal.y, 0.0);
-float noteBevel = noteTop * (1.0 - noteTop) * 4.0;
-totalEmissiveRadiance *= vNoteTint * (0.8 + 0.5 * noteFront + 0.25 * noteTop + 0.35 * noteBevel);`
+float noteVertical = abs(noteNormal.y);
+float noteBevel = noteVertical * (1.0 - noteVertical) * 4.0;
+vec3 noteEdgeTint = mix(vNoteTint, vec3(1.0), noteBevel * 0.40);
+totalEmissiveRadiance *= noteEdgeTint * (0.48 + 0.20 * noteFront + 0.30 * noteTop + 0.35 * noteBevel);`
       );
   };
-  material.customProgramCacheKey = () => "three-road-note-body-v4";
+  material.customProgramCacheKey = () => "three-road-note-slab-v1";
   return material;
 }
 
@@ -73,7 +77,7 @@ void main() {
   vSize = noteSize;
   vTint = instanceColor;
   vAlpha = noteAlpha;
-  vec3 point = vec3(vPoint.x, noteSize.y * 0.5 + noteSize.x * 0.025, -vPoint.y);
+  vec3 point = vec3(vPoint.x, noteSize.y * 0.5 + noteSize.x * 0.003, -vPoint.y);
   gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(point, 1.0);
 }
 `;
@@ -90,8 +94,9 @@ float roundedRect(vec2 point, vec2 halfSize, float radius) {
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 void main() {
-  float radius = min(vSize.x * 0.12, min(vSize.y * 0.45, vSize.z * 0.45));
-  float distance = roundedRect(vPoint, vSize.xz * 0.5 - vec2(radius * 0.25), radius);
+  float radius = min(vSize.x * 0.11, vSize.z * 0.45);
+  float bevel = min(vSize.x * 0.025, min(radius * 0.45, vSize.y * 0.25));
+  float distance = roundedRect(vPoint, vSize.xz * 0.5 - vec2(bevel), radius - bevel);
   float aa = max(fwidth(distance), 0.08);
   if (halo > 0.5) {
     float outside = max(distance, 0.0);
@@ -105,7 +110,7 @@ void main() {
   } else {
     float coverage = 1.0 - smoothstep(-aa, aa, distance);
     if (coverage < 0.002) discard;
-    float lineWidth = clamp(vSize.x * 0.095, 0.55, 2.1);
+    float lineWidth = clamp(vSize.x * 0.045, 0.35, 1.25);
     float rim = 1.0 - smoothstep(lineWidth - aa, lineWidth + aa, -distance);
     float across = vPoint.x / max(vSize.x, 0.001);
     float flow = sin(vPoint.y * 0.055 + visualTime * 1.8 + sin(across * 6.0 + visualTime * 0.7));

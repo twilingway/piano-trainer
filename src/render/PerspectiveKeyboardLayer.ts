@@ -21,6 +21,9 @@ export interface KeysScene {
   readonly faces: readonly { readonly key: KeyRect; readonly source: Face["source"] }[];
   readonly texture: Texture;
   readonly camera: WorldCamera;
+  /** Explicit cameras; `camera` remains the road alias for older scene fixtures. */
+  readonly roadCamera?: WorldCamera;
+  readonly keyboardCamera?: WorldCamera;
   readonly pan: number;
   /** The keys dragged off the hit line, on screen. */
   readonly offset: { readonly x: number; readonly y: number };
@@ -35,6 +38,7 @@ export class PerspectiveKeyboardLayer {
   private geometry: Geometry | undefined;
   private readonly frontTexture = bakeFront();
   private camera: WorldCamera | undefined;
+  private roadCamera: WorldCamera | undefined;
   private pan = 0;
   private version = 0;
 
@@ -75,11 +79,19 @@ export class PerspectiveKeyboardLayer {
     }
   }
 
-  draw(camera: WorldCamera, pan: number): void {
+  draw(roadCamera: WorldCamera, pan: number, keyboardCamera = roadCamera): void {
     if (!this.texture) return;
-    if (camera !== this.camera) this.version++;
-    this.camera = camera;
+    // Projection changes and pan do not alter meshes. Only the world basis/light scale does.
+    const previous = this.roadCamera;
+    if (
+      roadCamera.params.width !== previous?.params.width ||
+      roadCamera.params.prefs.scale !== previous.params.prefs.scale
+    )
+      this.version++;
+    this.camera = keyboardCamera;
+    this.roadCamera = roadCamera;
     this.pan = pan;
+    const camera = keyboardCamera;
     for (const face of this.faces) {
       const key = face.key;
       const centre = camera.sourceX(key.x + key.width / 2 - pan);
@@ -93,10 +105,19 @@ export class PerspectiveKeyboardLayer {
   }
 
   get scene(): KeysScene | undefined {
-    const { texture, camera } = this;
-    if (!texture || !camera) return undefined;
+    const { texture, camera, roadCamera } = this;
+    if (!texture || !camera || !roadCamera) return undefined;
     const { faces, pan, version } = this;
-    return { faces, texture, camera, pan, offset: this.container.position, version };
+    return {
+      faces,
+      texture,
+      camera: roadCamera,
+      roadCamera,
+      keyboardCamera: camera,
+      pan,
+      offset: this.container.position,
+      version
+    };
   }
 
   pointAt(x: number, y: number): { x: number; y: number } | undefined {

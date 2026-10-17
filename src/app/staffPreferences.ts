@@ -5,6 +5,7 @@ import type { CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_ROAD_SHAPE } from "../render/RoadLayer";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { KeyRange } from "./useFallingView";
+import type { KeyboardOrientation } from "./viewProfiles";
 
 export interface StaffPrefs {
   readonly zoom: number;
@@ -46,6 +47,8 @@ export interface StaffPrefs {
   readonly keyRange: KeyRange;
   /** The look of the keys. */
   readonly keyStyle: KeyStyle;
+  /** Independent top keyboard camera inside a native 3D view. */
+  readonly keyboardOrientation: KeyboardOrientation;
   /** The take's review opens by itself at the end of a run. */
   readonly autoReview: boolean;
   /** The road's width at the horizon, as a share of its width at the keys. */
@@ -79,6 +82,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   fps: false,
   keyRange: "song",
   keyStyle: "arcade",
+  keyboardOrientation: "follow",
   autoReview: false,
   camera: DEFAULT_CAMERA,
   roadFar: DEFAULT_ROAD_SHAPE.far,
@@ -127,6 +131,8 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     fps: boolean("fps"),
     keyRange: choice("keyRange", ["song", "3oct", "4oct", "88", "61", "49", "25"]),
     keyStyle: choice("keyStyle", ["classic", "arcade", "perspective", "3d"]),
+    keyboardOrientation:
+      raw.keyStyle === "3d" && raw.keyboardOrientation === "top" ? "top" : "follow",
     autoReview: boolean("autoReview"),
     camera: normalizeCamera(raw.camera),
     roadFar: number("roadFar", 0.1, 0.9),

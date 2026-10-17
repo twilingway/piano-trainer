@@ -147,6 +147,9 @@ export function useFallingView({
     viewRef.current?.setKeyStyle(staffPrefs.keyStyle);
     viewRef.current?.hands.setStyle(staffPrefs.handStyle);
     viewRef.current?.setCamera(staffPrefs.camera);
+    viewRef.current?.setKeyboardTop(
+      staffPrefs.keyStyle === "3d" && staffPrefs.road && staffPrefs.keyboardOrientation === "top"
+    );
     viewRef.current?.setRoadShape({ far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon });
   }, [
     viewRef,
@@ -162,6 +165,7 @@ export function useFallingView({
     staffPrefs.keyStyle,
     staffPrefs.handStyle,
     staffPrefs.camera,
+    staffPrefs.keyboardOrientation,
     staffPrefs.roadFar,
     staffPrefs.roadHorizon
   ]);

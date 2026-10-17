@@ -143,6 +143,10 @@ export const settingsMessages1 = {
   "Вид рук": {
     en: "Hands"
   },
+  "Проекция нот": { en: "Note projection" },
+  Прямо: { en: "Straight" },
+  "В перспективе": { en: "In perspective" },
+  "Клавиатура сверху": { en: "Top-down keyboard" },
   "Линии дороги": {
     en: "Road guide lines"
   },

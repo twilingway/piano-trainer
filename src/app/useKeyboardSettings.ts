@@ -24,10 +24,15 @@ export function useKeyboardSettings(
     },
     keyStyle: staffPrefs.keyStyle,
     onKeyStyle: (keyStyle) => {
-      updateStaffPrefs({
-        keyStyle,
-        ...(keyStyle === "perspective" || keyStyle === "3d" ? { road: true } : {})
-      });
+      updateStaffPrefs({ keyStyle });
+    },
+    notesPerspective: staffPrefs.road,
+    onNotesPerspective: (road) => {
+      updateStaffPrefs({ road });
+    },
+    keyboardTop: staffPrefs.keyboardOrientation === "top",
+    onKeyboardTop: (top) => {
+      updateStaffPrefs({ keyboardOrientation: top ? "top" : "follow" });
     },
     handStyle: staffPrefs.handStyle,
     roadGuides: staffPrefs.roadGuides,

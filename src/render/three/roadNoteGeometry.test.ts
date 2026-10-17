@@ -1,3 +1,4 @@
+import { NOTE_SLAB_THICKNESS } from "../noteDimensions";
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { layoutKeyboard } from "../keyboardLayout";
@@ -124,8 +125,8 @@ describe("road note world geometry", () => {
                 checked++;
               }
               // Existing Pixi labels use lift=.28*sourceWidth, and notePlace divides that by two.
-              expect(camera.near.y + note.width * 0.28).toBeCloseTo(
-                camera.near.y + (key.width * 1.08 * 0.28) / 2
+              expect(camera.near.y + note.width * NOTE_SLAB_THICKNESS).toBeCloseTo(
+                camera.near.y + (key.width * 1.08 * NOTE_SLAB_THICKNESS) / 2
               );
             }
           }

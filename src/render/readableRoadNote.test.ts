@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NOTE_SLAB_THICKNESS } from "./noteDimensions";
 import { holdBounds } from "./holdBounds";
 import { readableRoadTop } from "./readableRoadNote";
 import {
@@ -12,7 +13,7 @@ import {
 function face(camera: WorldCamera, keyX: number, sourceY: number, width: number, hitY: number) {
   return camera.project(
     camera.sourceX(keyX),
-    camera.near.y + (width / 2) * 0.28,
+    camera.near.y + (width / 2) * NOTE_SLAB_THICKNESS,
     camera.near.z + (1 - sourceY / hitY) * (camera.roadFarZ - camera.near.z)
   );
 }
@@ -36,7 +37,10 @@ describe("readable road notes", () => {
               const before = face(camera, viewportWidth / 2, bottom, width, hitY);
               const adjusted = readableRoadTop(viewportWidth / 2, top, bottom, width, hitY, camera);
               const after = face(camera, viewportWidth / 2, adjusted, width, hitY);
-              const minimum = Math.max(18, Math.min(30, width * before.scale * 0.8));
+              const minimum =
+                camera.params.orthographicScale === undefined
+                  ? Math.max(24, Math.min(64, width * before.scale * 0.8))
+                  : Math.max(18, Math.min(30, width * before.scale * 0.8));
               const available = before.y - face(camera, viewportWidth / 2, 0, width, hitY).y;
               expect(before.y - after.y).toBeGreaterThanOrEqual(
                 Math.min(minimum, available) - 1e-6
@@ -77,6 +81,23 @@ describe("readable road notes", () => {
     expect(readableRoadTop(640, short.top, short.bottom, 44, hitY, camera, 0.01)).toBeLessThan(
       short.top
     );
+  });
+
+  it("keeps short perspective blocks proportional to their visible width", () => {
+    const camera = worldCamera(1920, 828, CAMERA_PRESETS.player, PANEL_EDGE, 0.1);
+    const hitY = camera.road.at(960, 1).y;
+    for (const width of [44, 80, 120]) {
+      const bottom = hitY * 0.95;
+      const top = readableRoadTop(960, bottom - 0.1, bottom, width, hitY, camera, 0.08);
+      const lower = face(camera, 960, bottom, width, hitY);
+      const upper = face(camera, 960, top, width, hitY);
+      expect(lower.y - upper.y).toBeGreaterThanOrEqual(24 - 1e-6);
+      expect(lower.y - upper.y).toBeLessThanOrEqual(64 + 1e-6);
+      expect(lower.y - upper.y).toBeCloseTo(
+        Math.min(64, Math.max(24, width * lower.scale * 0.8)),
+        6
+      );
+    }
   });
 
   it("stops at the horizon when there is insufficient room for the digit", () => {

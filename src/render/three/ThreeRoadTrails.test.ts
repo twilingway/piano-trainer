@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { WorldRoadNote } from "./roadNoteGeometry";
 import { ROAD_TRAIL_CAPACITY, RoadTrailSelection } from "./roadTrailGeometry";
 import { ThreeRoadTrails } from "./ThreeRoadTrails";
+import { CAMERA_PRESETS, PANEL_EDGE, worldCamera } from "../worldCamera";
+import { worldRoadNote } from "./roadNoteGeometry";
 
 const note = (
   bottom: number,
@@ -19,6 +21,35 @@ const note = (
 });
 
 describe("same-lane trail geometry", () => {
+  it("checks the original score gap while drawing between the displayed readable tails", () => {
+    const selection = new RoadTrailSelection(8);
+    expect(selection.update([note(0.5, 0.9, { textureOffset: -0.3 }), note(2, 2.1)], 2, 1.32)).toBe(
+      0
+    );
+    expect(selection.update([note(0.5, 0.9, { textureOffset: -0.2 }), note(2, 2.1)], 2, 1.32)).toBe(
+      1
+    );
+    expect(selection.trails[0]).toMatchObject({ bottom: 0.9, top: 2 });
+    // A repeat gap trims the displayed end; a valid score connection still spans that trim.
+    expect(
+      selection.update([note(0.5, 0.55, { textureOffset: 0.05 }), note(1.9, 2)], 2, 1.32)
+    ).toBe(1);
+    expect(selection.trails[0]).toMatchObject({ bottom: 0.55, top: 1.9 });
+    // Reused entries must not retain an earlier note's readability offset.
+    expect(selection.update([note(0.5, 0.9), note(2, 2.1)], 2, 1.32)).toBe(1);
+  });
+  it("joins a hit-line point to the next note without retaining old anchors or exceeding max gap", () => {
+    const selection = new RoadTrailSelection(8);
+    const next = [note(200, 250, { color: 0x0000ff })];
+    const anchors = [note(100, 100, { color: 0xff0000 })];
+    expect(selection.update(next, 1, 100, anchors, 1)).toBe(1);
+    expect(selection.trails[0]).toMatchObject({ bottom: 100, top: 200, color: 0x800080 });
+    expect(selection.update(next, 1, 99, anchors, 1)).toBe(0);
+    expect(selection.update(next, 1, 100, anchors, 0)).toBe(0);
+    expect(selection.update(next, 1, 100)).toBe(0);
+    expect(selection.update([...anchors, ...next], 2, 100)).toBe(0);
+    expect(selection.update(next, 1, 100, [note(100, 100, { x: 70 })], 1)).toBe(0);
+  });
   it("connects consecutive nonoverlapping notes in depth order without crossing lanes or changing input", () => {
     const selection = new RoadTrailSelection(8);
     const input = [
@@ -68,6 +99,25 @@ describe("same-lane trail geometry", () => {
     expect(selection.trails[0]).toMatchObject({ bottom: 1100, top: 1120 });
   });
 
+  it("keeps the same short-gap cutoff when camera projection changes the world-space span", () => {
+    const selection = new RoadTrailSelection(8);
+    for (const prefs of Object.values(CAMERA_PRESETS)) {
+      const camera = worldCamera(1920, 828, prefs, PANEL_EDGE, 0.1);
+      const near = worldRoadNote(800, 720, 800, 40, 0xff0000, 1, 828, camera);
+      const far = worldRoadNote(800, 100, 140, 40, 0x0000ff, 1, 828, camera);
+      const close = worldRoadNote(800, 500, 550, 40, 0x0000ff, 1, 828, camera);
+      if (!near || !far || !close) throw new Error("expected visible road notes");
+      const maxGap = (camera.roadFarZ - camera.near.z) * 0.22;
+      expect(selection.update([near, far], 2, maxGap)).toBe(0);
+      expect(selection.update([near, close], 2, maxGap)).toBe(1);
+      expect(selection.trails[0]).toMatchObject({
+        bottom: near.top,
+        top: close.bottom,
+        color: 0x800080
+      });
+    }
+  });
+
   it("honours noteCount, rejects invisible inputs, and reuses fixed output storage", () => {
     const selection = new RoadTrailSelection(4);
     const storage = selection.trails;
@@ -99,6 +149,19 @@ function mesh(trails: ThreeRoadTrails): InstancedMesh {
 }
 
 describe("instanced neon trail rendering", () => {
+  it("renders a bridge from the hit line after the previous body disappears", () => {
+    const trails = new ThreeRoadTrails();
+    const batch = mesh(trails);
+    trails.update([note(200, 250)], 50, 4, 1, 200, [note(100, 100)], 1);
+    expect(batch.count).toBe(1);
+    expect(batch.geometry.getAttribute("noteSize").getZ(0)).toBe(100);
+    const matrix = new Matrix4();
+    batch.getMatrixAt(0, matrix);
+    expect(matrix.elements[14]).toBe(-150);
+    trails.update([note(200, 250)], 50, 4, 1, 200, [], 0);
+    expect(batch.count).toBe(0);
+    trails.dispose();
+  });
   it("draws a narrow translucent ribbon in one additive instance batch", () => {
     const trails = new ThreeRoadTrails();
     trails.update([note(100, 150), note(200, 250)], 50, 4);

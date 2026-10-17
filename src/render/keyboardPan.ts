@@ -98,8 +98,10 @@ export function followKeyboardPan(
   width: number,
   total: number,
   margin: number,
-  deltaSeconds: number
+  deltaSeconds: number,
+  fitOverhead = false
 ): number {
+  if (fitOverhead) return (total - width) / 2;
   if (total <= width) return Math.min(0, (total - width) / 2);
   const spans = upcomingSpans(state, notes, keys);
   const target = panToShow(snap ? (total - width) / 2 : current, spans, width, total, margin);

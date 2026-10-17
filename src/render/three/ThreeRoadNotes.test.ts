@@ -51,7 +51,7 @@ describe("instanced world road notes", () => {
       expect(layer.geometry.getAttribute("noteAlpha").getX(0)).toBeCloseTo(0.8);
       const size = layer.geometry.getAttribute("noteSize");
       expect(size.getX(0)).toBe(20);
-      expect(size.getY(0)).toBeCloseTo(5.6);
+      expect(size.getY(0)).toBeCloseTo(3.6);
       expect(size.getZ(0)).toBe(178);
     }
     const normals = body.geometry.getAttribute("normal");

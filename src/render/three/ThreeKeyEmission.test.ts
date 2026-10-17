@@ -98,4 +98,43 @@ describe("whole-key note emission", () => {
     template.dispose();
     map.dispose();
   });
+
+  it("rebinds the exact paused colour and envelope onto fresh materials without advancing time", () => {
+    const emission = new ThreeKeyEmission();
+    const template = new MeshStandardMaterial();
+    const original = emission.create(60, template, template);
+    emission.update([source(60)], 0.03);
+    const intensity = original[0].emissiveIntensity;
+    const tint = original[0].emissive.clone();
+    const dispose = original.map((material) => vi.spyOn(material, "dispose"));
+    emission.beginLayout();
+    const fresh = emission.create(60, template, template);
+    const unplayed = emission.create(72, template, template);
+    emission.endLayout();
+    emission.update([source(60, { color: 0xff0000 })], 0);
+    expect(fresh[0]).not.toBe(original[0]);
+    expect(dispose.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(fresh[0].emissiveIntensity).toBe(intensity);
+    expect(fresh[0].emissive).toEqual(tint);
+    expect(fresh[1].emissive).toEqual(tint);
+    expect(unplayed.every((material) => material.emissiveIntensity === 0)).toBe(true);
+    emission.dispose();
+    template.dispose();
+  });
+
+  it("discards a rebuild snapshot on reset so the same paused note stays dark", () => {
+    const emission = new ThreeKeyEmission();
+    const template = new MeshStandardMaterial();
+    emission.create(60, template, template);
+    emission.update([source(60)], 0.1);
+    emission.beginLayout();
+    emission.clear();
+    const fresh = emission.create(60, template, template);
+    emission.endLayout();
+    emission.update([source(60)], 0);
+    expect(fresh.every((material) => material.emissiveIntensity === 0)).toBe(true);
+    expect(fresh[0].color).toEqual(template.color);
+    emission.dispose();
+    template.dispose();
+  });
 });

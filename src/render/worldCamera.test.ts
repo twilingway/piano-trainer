@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { Vector3 } from "three";
+import { projectionMatrix, viewMatrix } from "./three/threeCamera";
 import {
   CAMERA_PRESETS,
   CAMERA_LIMITS,
@@ -207,6 +209,63 @@ describe("shared world camera", () => {
     }
   });
 
+  it("approaches the upper reachable horizon instead of falling back near the keys", () => {
+    const prefs = { fov: 84, height: 135, distance: 260, pitch: 40, targetY: 0, scale: 1.1 };
+    for (const height of [375, 500, 610, 828, 1080]) {
+      const legacy = worldCamera(1920, height, prefs, PANEL_EDGE);
+      const legacyFar = legacy.road.at(960, 0).y;
+      let lastFar = -Infinity;
+      for (const share of [0, 0.01, 0.05, 0.1]) {
+        const camera = worldCamera(1920, height, prefs, PANEL_EDGE, share);
+        const far = camera.road.at(960, 0);
+        expect(camera.roadFarZ).toBeGreaterThan(legacy.roadFarZ);
+        expect(far.y).toBeGreaterThanOrEqual(lastFar - 1e-6);
+        expect(far.y).toBeGreaterThan(0);
+        expect(far.y).toBeLessThan(height * 0.1);
+        expect(far.y).toBeLessThan(legacyFar);
+        expect(keySurface(camera, 0, false)).toEqual(keySurface(legacy, 0, false));
+        expect(camera.road.at(960, 1)).toEqual(legacy.road.at(960, 1));
+        lastFar = far.y;
+      }
+    }
+  });
+
+  it("respects a deliberately lower horizon while clipping unreachable requests safely", () => {
+    const prefs = { fov: 84, height: 135, distance: 260, pitch: 40, targetY: 0, scale: 1.1 };
+    const lower = worldCamera(1920, 610, prefs, PANEL_EDGE, 0.4);
+    expect(lower.road.at(960, 0).y).toBeCloseTo(lower.road.at(960, 1).y * 0.4, 7);
+    const unreachable = worldCamera(1920, 610, prefs, PANEL_EDGE, 0);
+    expect(unreachable.roadFarZ).toBe(25000);
+    const exactVanishingShare =
+      (unreachable.params.originY - unreachable.params.focal * Math.tan((40 * Math.PI) / 180)) /
+      unreachable.road.at(960, 1).y;
+    const singular = worldCamera(1920, 610, prefs, PANEL_EDGE, exactVanishingShare);
+    expect(singular.roadFarZ).toBe(25000);
+    expect(singular.road.at(960, 0)).toEqual(unreachable.road.at(960, 0));
+  });
+
+  it("keeps fitted far geometry inside Three's actual clip plane at high scale and large viewports", () => {
+    for (const height of [610, 1080, 4000])
+      for (const pitch of [-5, 0, 40, 85, 90])
+        for (const scale of [0.55, 1.6]) {
+          const camera = worldCamera(
+            1920,
+            height,
+            { fov: 84, height: 1000, distance: 1200, pitch, targetY: 0, scale },
+            PANEL_EDGE,
+            0
+          );
+          const point = camera.project(0, PANEL_EDGE.y, camera.roadFarZ);
+          if (point.scale <= 0) continue;
+          const ndc = new Vector3(0, PANEL_EDGE.y * scale, -camera.roadFarZ * scale)
+            .applyMatrix4(viewMatrix(camera.params))
+            .applyMatrix4(projectionMatrix(camera.params, 1920, height));
+          expect(ndc.z).toBeGreaterThan(-1);
+          expect(ndc.z).toBeLessThan(1);
+          expect(Number.isFinite(ndc.y)).toBe(true);
+        }
+  });
+
   it("keeps fitted or fallback roads finite at every persisted camera limit", () => {
     let checked = 0;
     for (const fov of CAMERA_LIMITS.fov)
@@ -225,9 +284,7 @@ describe("shared world camera", () => {
                   );
                   expect(Number.isFinite(camera.roadFarZ)).toBe(true);
                   expect(camera.roadFarZ).toBeGreaterThan(camera.near.z);
-                  expect(camera.roadFarZ).toBeLessThanOrEqual(
-                    camera.near.z + 1500 * (640 / 375) * 8
-                  );
+                  expect(camera.roadFarZ).toBeLessThanOrEqual(25000);
                   for (const progress of [0, 0.5, 1]) {
                     const point = camera.road.at(640, progress);
                     expect([point.x, point.y, point.scale].every(Number.isFinite)).toBe(true);

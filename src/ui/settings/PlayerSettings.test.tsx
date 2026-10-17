@@ -120,6 +120,12 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
                 onKeyStyle: (keyStyle) => {
                   updateStaffPrefs({ keyStyle });
                 },
+                notesPerspective: staffPrefs.road,
+                onNotesPerspective: (road) => {
+                  updateStaffPrefs({ road });
+                },
+                keyboardTop: false,
+                onKeyboardTop: noop,
                 handStyle: staffPrefs.handStyle,
                 roadGuides: staffPrefs.roadGuides,
                 onRoadGuides: (roadGuides) => {
@@ -407,6 +413,13 @@ describe("player settings organization", () => {
       keys.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(select("Вид клавиш").value).toBe("3d");
+    expect(host.querySelector("input[aria-label='Угол обзора']")).toBeNull();
+    await act(async () => {
+      await Promise.resolve();
+      const projection = select("Проекция нот");
+      projection.value = "perspective";
+      projection.dispatchEvent(new Event("change", { bubbles: true }));
+    });
     expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
   });
 

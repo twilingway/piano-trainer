@@ -8,18 +8,18 @@ import {
   PlaneGeometry,
   Vector2
 } from "three";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { createNoteSlabGeometry, NOTE_SLAB_THICKNESS } from "./noteSlabGeometry";
 import type { WorldRoadNote } from "./roadNoteGeometry";
 import { createNoteBodyMaterial, createNoteSurfaceMaterial } from "./ThreeNoteMaterial";
 
 export const THREE_ROAD_NOTE_CAPACITY = 1024;
-export const THREE_ROAD_NOTE_THICKNESS = 0.28;
+export const THREE_ROAD_NOTE_THICKNESS = NOTE_SLAB_THICKNESS;
 
 /** Three bounded draw calls: real rounded bodies, a glass/neon face and an exterior halo. */
 export class ThreeRoadNotes {
   readonly group = new Group();
   readonly capacity: number;
-  private readonly bodyGeometry = new RoundedBoxGeometry(1, 1, 1, 2, 0.12);
+  private readonly bodyGeometry = createNoteSlabGeometry();
   private readonly planeGeometry = new PlaneGeometry(1, 1);
   private readonly bodyMaterial = createNoteBodyMaterial();
   private readonly faceMaterial = createNoteSurfaceMaterial(false);

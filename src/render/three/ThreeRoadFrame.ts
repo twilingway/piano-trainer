@@ -1,19 +1,58 @@
 import type { WorldCamera } from "../worldCamera";
 import { worldRoadNote } from "./roadNoteGeometry";
 import type { WorldRoadNote } from "./roadNoteGeometry";
+import { ROAD_TRAIL_ANCHOR_CAPACITY } from "./roadTrailGeometry";
 
 /** Reusable visual snapshot; all positions come from the existing score-time layout. */
 export class ThreeRoadFrame {
   readonly notes: WorldRoadNote[] = [];
   readonly beats: number[] = [];
+  readonly trailAnchors: WorldRoadNote[] = [];
   guides = false;
   noteCount = 0;
   beatCount = 0;
+  trailAnchorCount = 0;
   visualTime = 0;
 
   begin(): void {
     this.noteCount = 0;
     this.beatCount = 0;
+    this.trailAnchorCount = 0;
+  }
+
+  addTrailAnchor(
+    keyX: number,
+    width: number,
+    color: number,
+    alpha: number,
+    camera: WorldCamera
+  ): void {
+    const x = camera.sourceX(keyX);
+    if (
+      this.trailAnchorCount >= ROAD_TRAIL_ANCHOR_CAPACITY ||
+      !Number.isFinite(x) ||
+      !Number.isFinite(camera.near.z) ||
+      !Number.isFinite(width) ||
+      !Number.isFinite(color) ||
+      !Number.isFinite(alpha) ||
+      width <= 0 ||
+      alpha <= 0
+    )
+      return;
+    const anchor = this.trailAnchors[this.trailAnchorCount] ?? {
+      x: 0,
+      top: 0,
+      bottom: 0,
+      width: 0,
+      color: 0,
+      alpha: 0
+    };
+    anchor.x = x;
+    anchor.top = anchor.bottom = camera.near.z;
+    anchor.width = width / 2;
+    anchor.color = color;
+    anchor.alpha = alpha;
+    this.trailAnchors[this.trailAnchorCount++] = anchor;
   }
 
   add(

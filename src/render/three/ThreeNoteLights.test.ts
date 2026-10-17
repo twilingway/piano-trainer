@@ -252,4 +252,60 @@ describe("Three note light lifecycle", () => {
       lights.every((light) => light.children.length === 0 && light.target.parent === null)
     ).toBe(true);
   });
+
+  it("rebinds held paused lights to new key geometry and scale without changing their envelope", () => {
+    const keys = scene();
+    const pool = new ThreeNoteLights();
+    const boxes = keyBoxes(keys);
+    pool.layout(boxes, keys.camera);
+    pool.update([source(60, { color: 0x0080ff })], keys.camera, 0.03);
+    const lights = [...pool.group.children] as SpotLight[];
+    const light = lights[0];
+    if (!light) throw new Error("missing held light");
+    const intensity = light.intensity;
+    const tint = light.color.clone();
+    const moved = boxes.map((box) => ({ ...box, x: box.x + 40, width: box.width * 1.2 }));
+    const changed = scene(0, 1.5).camera;
+    pool.layout(moved, changed);
+    pool.update([source(72, { color: 0xff0000 })], changed, 0);
+    expect(pool.group.children).toEqual(lights);
+    expect(light.position.x).toBe(moved.find((box) => box.pitch === 60)?.x);
+    expect(light.position.y).toBe(160);
+    expect(light.position.z).toBe(-145);
+    expect(light.color).toEqual(tint);
+    expect(light.intensity / 1.5 ** 2).toBeCloseTo(intensity, 8);
+    expect(light.distance).toBe(420 * 1.5);
+    pool.clear();
+    pool.layout(moved, changed);
+    pool.update([source(60)], changed, 0);
+    expect(lights.every((candidate) => candidate.intensity === 0)).toBe(true);
+    pool.dispose();
+  });
+
+  it("preserves a visible release tail on paused rebind but removes lights outside the new range", () => {
+    const keys = scene();
+    const pool = new ThreeNoteLights();
+    const boxes = keyBoxes(keys);
+    pool.layout(boxes, keys.camera);
+    pool.update([source(60)], keys.camera, 0.1);
+    pool.update([], keys.camera, 0.03);
+    const light = pool.group.children[0] as SpotLight;
+    const intensity = light.intensity;
+    const x = light.position.x;
+    pool.layout(
+      boxes.map((box) => ({ ...box, x: box.x + 40 })),
+      keys.camera
+    );
+    pool.update([], keys.camera, 0);
+    expect(light.intensity).toBe(intensity);
+    expect(light.position.x).toBe(x + 40);
+    pool.layout(
+      boxes.filter((box) => box.pitch !== 60),
+      keys.camera
+    );
+    expect(pool.group.children.every((candidate) => (candidate as SpotLight).intensity === 0)).toBe(
+      true
+    );
+    pool.dispose();
+  });
 });

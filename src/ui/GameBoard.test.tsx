@@ -43,6 +43,7 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   fps: false,
   keyRange: "song",
   keyStyle: "arcade",
+  keyboardOrientation: "follow",
   autoReview: false,
   roadFar: 0.5,
   camera: DEFAULT_CAMERA,

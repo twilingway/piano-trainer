@@ -89,6 +89,8 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
     plasma: { draw: vi.fn() },
     hud: { draw: vi.fn() },
     roadMode,
+    roadWanted: roadMode,
+    directCameraPrefs: CAMERA_PRESETS.top,
     keyStyle: "perspective",
     cameraPrefs: DEFAULT_CAMERA,
     road: {
@@ -476,4 +478,50 @@ describe("keyboard initial centring", () => {
     scroll();
     expect(setPan).toHaveBeenLastCalledWith(0);
   });
+});
+
+describe("native hands layout", () => {
+  it("keeps keyboard geometry and offset clamp stable when live hands are enabled", () => {
+    interface LayoutHarness {
+      geometry(height: number): unknown;
+    }
+    const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
+      parts: { keys: true, notes: true, hands: false },
+      whiteWidth: 44,
+      labels: false,
+      rangeFitsViewport: false,
+      placement: { lift: 0, scale: 1, x: 0, y: 125 },
+      roadMode: true,
+      hands: { live: true }
+    });
+    const before = (view as unknown as LayoutHarness).geometry(610);
+    Object.assign(view, { parts: { keys: true, notes: true, hands: true } });
+    expect((view as unknown as LayoutHarness).geometry(610)).toEqual(before);
+    Object.assign(view, { roadMode: false });
+    expect((view as unknown as LayoutHarness).geometry(610)).not.toEqual(before);
+  });
+});
+
+it("keeps native 3D enabled for direct notes and restores perspective without changing song time", () => {
+  const { view, notesDraw } = viewHarness(true);
+  const saved = { ...DEFAULT_CAMERA, pitch: 40 };
+  Object.assign(view, { keyStyle: "3d", relayout: vi.fn(), cameraPrefs: saved });
+  const state: FrameState = {
+    time: 5,
+    lookAhead: 2,
+    statusOf: () => undefined,
+    pressed: new Set(),
+    sounding: new Set(),
+    due: [],
+    hands: new Set(),
+    owns: () => false
+  };
+  view.setRoad(false);
+  view.draw(state);
+  expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(2.22);
+  expect(notesDraw.mock.lastCall?.[3]).toBeDefined();
+  view.setRoad(true);
+  view.draw(state);
+  expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(6);
+  expect(state.time).toBe(5);
 });

@@ -12,6 +12,7 @@ import {
 } from "three";
 import type { WorldRoadNote } from "./roadNoteGeometry";
 import { ROAD_TRAIL_CAPACITY, ROAD_TRAIL_MAX_GAP, RoadTrailSelection } from "./roadTrailGeometry";
+const NO_ANCHORS: readonly WorldRoadNote[] = [];
 
 const VERTEX = /* glsl */ `
 attribute vec3 noteSize;
@@ -95,14 +96,16 @@ export class ThreeRoadTrails {
     floorY: number,
     visualTime = 0,
     noteCount = notes.length,
-    maxGap = ROAD_TRAIL_MAX_GAP
+    maxGap = ROAD_TRAIL_MAX_GAP,
+    anchors: readonly WorldRoadNote[] = NO_ANCHORS,
+    anchorCount = anchors.length
   ): void {
     if (this.disposed) return;
     if (!Number.isFinite(floorY)) {
       this.clear();
       return;
     }
-    const used = this.selection.update(notes, noteCount, maxGap);
+    const used = this.selection.update(notes, noteCount, maxGap, anchors, anchorCount);
     for (let index = 0; index < used; index++) {
       const trail = this.selection.trails[index];
       if (!trail) continue;

@@ -14,6 +14,10 @@ interface Props {
   readonly onShowLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
+  readonly notesPerspective: boolean;
+  readonly onNotesPerspective: (on: boolean) => void;
+  readonly keyboardTop: boolean;
+  readonly onKeyboardTop: (on: boolean) => void;
   readonly handStyle: HandStyle;
   readonly onHandStyle: (style: HandStyle) => void;
   readonly roadGuides: boolean;
@@ -34,6 +38,10 @@ export function KeyboardSettings({
   onShowLabels,
   keyStyle,
   onKeyStyle,
+  notesPerspective,
+  onNotesPerspective,
+  keyboardTop,
+  onKeyboardTop,
   handStyle,
   onHandStyle,
   roadGuides,
@@ -83,6 +91,32 @@ export function KeyboardSettings({
         </select>
       </label>
       <label className="setting">
+        <span>{t("Проекция нот")}</span>
+        <select
+          className="game-select"
+          aria-label={t("Проекция нот")}
+          value={notesPerspective ? "perspective" : "direct"}
+          onChange={(event) => {
+            onNotesPerspective(event.target.value === "perspective");
+          }}
+        >
+          <option value="direct">{t("Прямо")}</option>
+          <option value="perspective">{t("В перспективе")}</option>
+        </select>
+      </label>
+      {keyStyle === "3d" && notesPerspective && (
+        <label className="setting">
+          <span>{t("Клавиатура сверху")}</span>
+          <input
+            type="checkbox"
+            checked={keyboardTop}
+            onChange={(event) => {
+              onKeyboardTop(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      <label className="setting">
         <span>{t("Вид рук")}</span>
         <select
           className="game-select"
@@ -97,7 +131,11 @@ export function KeyboardSettings({
         </select>
       </label>
       {keyStyle === "perspective" || keyStyle === "3d" ? (
-        <CameraSettings camera={camera} onChange={onCamera} />
+        <CameraSettings
+          camera={camera}
+          onChange={onCamera}
+          direct={keyStyle === "3d" && !notesPerspective}
+        />
       ) : (
         <>
           <label className="setting">

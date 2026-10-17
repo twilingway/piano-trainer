@@ -16,6 +16,7 @@ import { PIANO_LOOK } from "./noteLook";
 import type { NoteLook } from "./noteLook";
 import { fitNoteLabel, noteLabelInset } from "./noteLabelLayout";
 import { GLASS_LIFT_SHARE } from "./RoadGlassLayer";
+import { NOTE_SLAB_THICKNESS } from "./noteDimensions";
 import type { KeyRect } from "./keyboardLayout";
 import {
   CARD_FACE_OFFSET,
@@ -33,6 +34,7 @@ import { ARRIVAL_DURATION_S, arrivalCardAlpha, noteArrivalAge } from "./noteArri
 import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 import { drawRoadBeatBars } from "./RoadBeatBars";
+import { RoadTrailAnchors } from "./RoadTrailAnchors";
 
 export { HAND_COLOR } from "./fingerColors";
 import { towardWhite } from "./fingerColors";
@@ -131,6 +133,7 @@ export class NotesLayer {
   private readonly cardFaces = new Map<string, Texture>();
   private cardsOn = true;
   private readonly flatBlocks = new FlatNoteBlocks();
+  private trailAnchors: RoadTrailAnchors | undefined;
   private noteNames: FallingNoteNames | undefined;
   /** How a note is written and coloured; in the word mode its key's column stands apart. */
   private look: NoteLook = PIANO_LOOK;
@@ -170,6 +173,7 @@ export class NotesLayer {
   /** The notes of `song`, each on the key of its pitch, written and coloured as `look` says. */
   setSong(song: Song, look: NoteLook = PIANO_LOOK): void {
     this.look = look;
+    this.trailAnchors = new RoadTrailAnchors(song.notes);
     this.beats = song.beats;
     this.repeated = repeatedNoteEnds(song.notes);
     const written = song.notes.map(look.written);
@@ -296,6 +300,7 @@ export class NotesLayer {
     // On the road the glass follows the note until its duration has elapsed.
     const trail = road !== undefined && cards;
     const flat = !cards && road === undefined;
+    this.trailAnchors?.draw(state, keys, this.look, road);
     this.flatBlocks.begin();
     for (const { note, body, beatSeconds, glow, frame, face, badge, digit, name } of this.notes) {
       if (note.start <= state.time && state.time < note.start + note.duration) {
@@ -429,7 +434,10 @@ export class NotesLayer {
           body.visible = false;
       }
 
-      const lift = key.width * ROAD_HOLD_WIDTH_SHARE * GLASS_LIFT_SHARE;
+      const lift =
+        key.width *
+        ROAD_HOLD_WIDTH_SHARE *
+        (road?.drawsNativeRoad ? NOTE_SLAB_THICKNESS : GLASS_LIFT_SHARE);
       const labelSpot = !flat ? road?.notePlace(keyCentre, bounds.bottom, 0, lift) : undefined;
       const labelTopSpot = !flat ? road?.notePlace(keyCentre, bounds.top, 0, lift) : undefined;
       const labelBottom = labelSpot?.y ?? bodyBounds.bottom;

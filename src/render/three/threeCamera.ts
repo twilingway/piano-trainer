@@ -37,14 +37,15 @@ export function projectionMatrix(
   offset: { readonly x: number; readonly y: number } = { x: 0, y: 0 }
 ): Matrix4 {
   const { focal } = params;
-  const cx = params.width / 2 + offset.x;
+  const cx = (params.originX ?? params.width / 2) + offset.x;
   const cy = params.originY + params.prefs.targetY + offset.y;
   if (params.orthographicScale !== undefined) {
     const scale = params.orthographicScale;
+    const scaleY = params.orthographicScaleY ?? scale;
     // prettier-ignore
     return new Matrix4().set(
       2 * scale / width, 0, 0, 2 * cx / width - 1,
-      0, 2 * scale / height, 0, 1 - 2 * cy / height,
+      0, 2 * scaleY / height, 0, 1 - 2 * cy / height,
       0, 0, -2 / (FAR - NEAR), -(FAR + NEAR) / (FAR - NEAR),
       0, 0, 0, 1
     );

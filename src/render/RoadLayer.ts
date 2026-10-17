@@ -14,13 +14,15 @@ import { RoadGlassLayer } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
-import { DEFAULT_CAMERA, normalizeCamera, worldCamera, KEYS_BACK, PANEL_EDGE } from "./worldCamera";
+import { DEFAULT_CAMERA, normalizeCamera } from "./worldCamera";
 import type { CameraPrefs, WorldCamera } from "./worldCamera";
 import { PerspectiveKeyboardLayer } from "./PerspectiveKeyboardLayer";
 import type { Geometry } from "./viewGeometry";
 import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeometry";
 import type { Projected, RoadProjection } from "./perspective";
 import { handSurface } from "./handProjection";
+import { mixedKeyboardCamera } from "./mixedKeyboardCamera";
+import { DEFAULT_ROAD_SHAPE, roadLayoutCamera, type RoadShape } from "./roadLayoutCamera";
 import type { HandsGeometry } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
 import { ThreeKeysHost } from "./three/ThreeKeysHost";
@@ -54,15 +56,7 @@ export interface Arrival {
 const FOG_REACH = 0.5;
 const FOG_COLOR = 0x020c18;
 
-export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
-
-/** The road's shape, the player's to tune: a wider keyboard wants a lower horizon. */
-export interface RoadShape {
-  /** The road's width at the horizon, as a share of its width at the hit line. */
-  readonly far: number;
-  /** The horizon, as a share of the way down from the top of the view to the hit line. */
-  readonly horizon: number;
-}
+export { DEFAULT_ROAD_SHAPE, type RoadShape } from "./roadLayoutCamera";
 
 const GLOW_STRENGTH = 10;
 /** The widest texture most GPUs, phones included, will take. */
@@ -96,6 +90,8 @@ export class RoadLayer {
   private shape: RoadShape = DEFAULT_ROAD_SHAPE;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
   private camera: WorldCamera | undefined;
+  private keyboardCamera: WorldCamera | undefined;
+  private keyboardTop = false;
   private readonly keyHeights = new Map<number, number>();
   /** The lane laid on the floor, and a blurred copy over it for the glow. */
   private readonly road: PerspectiveMesh;
@@ -180,11 +176,15 @@ export class RoadLayer {
   setEnergy(sources: readonly EnergySource[], deltaSeconds: number): void {
     this.three?.setEnergy(sources, deltaSeconds);
     this.plasmaClock += Math.min(0.05, Math.max(0, deltaSeconds));
-    this.nativeRoad.visualTime = this.plasmaClock;
   }
 
   clearEnergy(): void {
     this.three?.clearEnergy();
+  }
+
+  addTrailAnchor(x: number, width: number, color: number, alpha: number): void {
+    if (this.three?.drawsRoad && this.camera)
+      this.nativeRoad.addTrailAnchor(x, width, color, alpha, this.camera);
   }
 
   beginNotes(): void {
@@ -198,8 +198,12 @@ export class RoadLayer {
       this.keyHeights.set(key.x + key.width / 2, key.black ? 36 : 22);
     if (this.perspective) {
       this.keysShift = new Matrix().translate(0, -geometry.keyboardTop);
+      this.keyboardCamera =
+        this.keyboardTop && this.three?.on && this.camera
+          ? mixedKeyboardCamera(this.camera, geometry.keyboardHeight)
+          : this.camera;
       this.keys.layout(keys, geometry, this.keysTexture);
-      if (this.camera) this.keys.draw(this.camera, this.pan);
+      if (this.camera) this.keys.draw(this.camera, this.pan, this.keyboardCamera);
     }
     this.staff.setKeys(keys);
     if (this.projection) this.staff.draw(this.projection, this.pan);
@@ -328,14 +332,14 @@ export class RoadLayer {
       Math.max(1, keysHeight),
       this.perspective ? resolution : this.renderer.resolution
     );
-    const near = this.three?.on ? PANEL_EDGE : KEYS_BACK;
     this.camera = this.perspective
-      ? worldCamera(
+      ? roadLayoutCamera(
           viewWidth,
-          Math.max(1, bottom - handRoom),
+          width,
+          bottom - handRoom,
           this.cameraPrefs,
-          near,
-          this.three?.on ? this.shape.horizon : undefined
+          this.three?.on === true,
+          this.shape.horizon
         )
       : undefined;
     const legacy = legacyRoadProjection(viewWidth, height, bottom, this.shape);
@@ -380,6 +384,10 @@ export class RoadLayer {
     this.shape = shape;
   }
 
+  setKeyboardTop(on: boolean): void {
+    this.keyboardTop = on;
+  }
+
   setCamera(prefs: CameraPrefs): void {
     this.cameraPrefs = normalizeCamera(prefs);
   }
@@ -388,7 +396,7 @@ export class RoadLayer {
   setPan(pan: number, force = false): void {
     if (!force && pan === this.pan) return;
     this.pan = pan;
-    if (this.camera) this.keys.draw(this.camera, pan);
+    if (this.camera) this.keys.draw(this.camera, pan, this.keyboardCamera);
     else this.keysShift = new Matrix().translate(-pan, -this.size.height);
     const projection = this.projection;
     if (!projection) return;
@@ -436,7 +444,8 @@ export class RoadLayer {
   handPlace(x: number, y: number, geometry: HandsGeometry, reach?: number): Projected {
     if (this.camera) {
       const surface = handSurface(geometry, y, reach);
-      return this.camera.project(this.camera.sourceX(x - this.pan), surface.height, surface.depth);
+      const camera = this.keyboardCamera ?? this.camera;
+      return camera.project(camera.sourceX(x - this.pan), surface.height, surface.depth);
     }
     const share = (y - this.size.height) / Math.max(1, this.bottom - this.size.height);
     return { x: x - this.pan, y: this.hitY + share * (this.bottom - this.hitY), scale: 1 };
@@ -489,6 +498,7 @@ export class RoadLayer {
       transform: this.keysShift
     });
     this.clock += deltaSeconds;
+    this.nativeRoad.visualTime = this.clock;
     const strikes = flatStrikes.map((strike) => ({
       ...strike,
       x: this.project(strike.x),

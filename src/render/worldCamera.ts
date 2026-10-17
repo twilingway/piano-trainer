@@ -64,6 +64,17 @@ export interface CameraParams {
   readonly prefs: CameraPrefs;
   /** Constant pixels per world unit before the user's scale, for the strict overhead view. */
   readonly orthographicScale?: number;
+  /** Independent vertical fit for the derived overhead keyboard camera. */
+  readonly orthographicScaleY?: number;
+  /** Off-axis horizontal centre; absent for the ordinary road camera. */
+  readonly originX?: number;
+}
+/** Actual unpanned key bounds in world units; pan retains its source-pixel units. */
+export interface OverheadFit {
+  readonly left: number;
+  readonly right: number;
+  readonly pan: number;
+  readonly margin?: number;
 }
 export interface RoadNear {
   readonly y: number;
@@ -91,13 +102,17 @@ export interface WorldCamera {
   ) => Projected;
 }
 const rad = (angle: number) => (angle * Math.PI) / 180;
+/** Keep the fitted road within Three's 50000-unit clip plane, including scaled note bodies. */
+const MAX_ROAD_WORLD_Z = 25000;
+const SAFE_VIEW_DEPTH = 48000;
 /** One calibrated XYZ camera: source pixels map to half-millimetre world coordinates. */
 export function worldCamera(
   width: number,
   height: number,
   prefs: CameraPrefs = DEFAULT_CAMERA,
   near: RoadNear = KEYS_BACK,
-  horizonShare?: number
+  horizonShare?: number,
+  overheadFit?: OverheadFit
 ): WorldCamera {
   const fit = Math.max(1, height / 375);
   const defaultAngle = rad(DEFAULT_CAMERA.pitch);
@@ -115,12 +130,31 @@ export function worldCamera(
       DEFAULT_CAMERA.distance * fit * Math.sin(defaultAngle)) *
       defaultFocal) /
     defaultBottomDepth;
-  const originY = height - 8 + defaultBottomY;
+  let originY = height - 8 + defaultBottomY;
   const angle = rad(prefs.pitch),
     ca = prefs.pitch === 90 ? 0 : Math.cos(angle),
     sa = prefs.pitch === 90 ? 1 : Math.sin(angle);
-  const orthographicScale =
+  const initialOrthoScale =
     prefs.pitch === 90 ? focal / Math.max(1, prefs.height * fit - 22 * prefs.scale) : undefined;
+  let fitScale = 1;
+  if (initialOrthoScale !== undefined && overheadFit && width > 1) {
+    const { left, right, pan } = overheadFit;
+    if (Number.isFinite(left) && Number.isFinite(right) && right > left && Number.isFinite(pan)) {
+      const requestedMargin = overheadFit.margin;
+      const margin = Math.min(
+        width * 0.25,
+        Math.max(0, Number.isFinite(requestedMargin) ? (requestedMargin ?? 12) : 12)
+      );
+      const extent = Math.max(Math.abs(left - pan / 2), Math.abs(right - pan / 2));
+      const projectedExtent = extent * prefs.scale * initialOrthoScale;
+      if (projectedExtent > 0) fitScale = Math.min(1, (width / 2 - margin) / projectedExtent);
+    }
+  }
+  const orthographicScale =
+    initialOrthoScale === undefined ? undefined : initialOrthoScale * fitScale;
+  if (initialOrthoScale !== undefined && orthographicScale !== undefined)
+    originY -=
+      (near.z * prefs.scale + prefs.distance * fit) * (initialOrthoScale - orthographicScale);
   const project = (x: number, y: number, z: number): Projected => {
     const yy = y * prefs.scale - prefs.height * fit;
     const zz = z * prefs.scale + prefs.distance * fit;
@@ -158,19 +192,26 @@ export function worldCamera(
       const targetY = Math.max(0, Math.min(height * 0.9, hit.y * share));
       const q = (originY + prefs.targetY - targetY) / focal;
       const denominator = q * ca - sa;
-      if (Math.abs(denominator) > 1e-8) {
+      const depthOffset = prefs.height * fit * sa + prefs.distance * fit * ca;
+      const clipLimit = ca > 1e-8 ? (SAFE_VIEW_DEPTH - depthOffset) / (prefs.scale * ca) : Infinity;
+      const maxFarZ = Math.min(MAX_ROAD_WORLD_Z, clipLimit);
+      if (Number.isFinite(maxFarZ) && maxFarZ >= near.z + Math.max(1, fit)) {
         const yy = near.y * prefs.scale - prefs.height * fit;
         const zz =
           orthographicScale !== undefined
             ? (originY + prefs.targetY - targetY) / orthographicScale
-            : (yy * (ca + q * sa)) / denominator;
+            : Math.abs(denominator) > 1e-8
+              ? (yy * (ca + q * sa)) / denominator
+              : NaN;
         const solved = (zz - prefs.distance * fit) / prefs.scale;
         const span = solved - near.z;
-        // Near-horizontal views may never reach this screen row on the road plane.
-        if (Number.isFinite(solved) && span >= Math.max(1, fit) && span <= fallbackSpan * 8) {
-          const far = project(0, near.y, solved);
-          if (far.scale > 0 && Number.isFinite(far.y)) roadFarZ = solved;
-        }
+        // At or above the vanishing point, approach the furthest safe row instead of snapping near.
+        const fitted =
+          Number.isFinite(solved) && span > 0
+            ? Math.max(near.z + Math.max(1, fit), Math.min(maxFarZ, solved))
+            : maxFarZ;
+        const far = project(0, near.y, fitted);
+        if (far.scale > 0 && Number.isFinite(far.y) && far.y < hit.y) roadFarZ = fitted;
       }
     }
   }

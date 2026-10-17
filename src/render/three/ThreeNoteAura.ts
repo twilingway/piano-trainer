@@ -9,8 +9,13 @@ import {
   Matrix4,
   ShaderMaterial
 } from "three";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import type { WorldRoadNote } from "./roadNoteGeometry";
+import {
+  createNoteSlabGeometry,
+  NOTE_SLAB_ATTRIBUTES,
+  NOTE_SLAB_THICKNESS,
+  NOTE_SLAB_VERTEX
+} from "./noteSlabGeometry";
 
 export const NOTE_AURA_CAPACITY = 192;
 export const NOTE_AURA_LAYERS = 2;
@@ -46,6 +51,7 @@ attribute float noteAlpha;
 attribute vec4 noteParams;
 attribute float noteLayer;
 attribute float noteOffset;
+${NOTE_SLAB_ATTRIBUTES}
 varying vec3 vLocal;
 varying vec3 vSize;
 varying vec3 vTint;
@@ -54,15 +60,15 @@ varying float vAlpha;
 varying float vLayer;
 varying float vOffset;
 void main() {
-  float radius = min(noteSize.x * 0.12, min(noteSize.y * 0.45, noteSize.z * 0.45));
-  vec3 base = sign(position) * (noteSize * 0.5 - vec3(radius)) + normal * radius;
+  ${NOTE_SLAB_VERTEX}
+  vec3 base = slabPoint;
   // Constant inflation prevents endpoint interpolation from changing when the note is clipped.
   float inflate = noteSize.x * (0.075 + noteLayer * 0.035) * noteParams.w;
   float sideInflate = noteSize.x * (0.03 + noteLayer * 0.018) * noteParams.w;
   // Keep the top band above the glass face while tightening side and end overflow.
-  vec3 point = base + normal * vec3(sideInflate, inflate, sideInflate);
-  // Material coordinates follow the undeformed body and its original far end.
-  vLocal = base;
+  vec3 point = base + vec3(slabArc.x * sideInflate, slabProfile.x * 2.0 * inflate, slabArc.y * sideInflate);
+  // Static shell coordinates retain affine world anchoring as either end is clipped.
+  vLocal = point;
   vSize = noteSize;
   vTint = instanceColor;
   vParams = noteParams;
@@ -86,7 +92,7 @@ ${NOISE}
 void main() {
   vec3 local = vec3(vLocal.xy, vLocal.z + vSize.z * 0.5 + vOffset) / vSize.x;
   // The longitudinal coordinate is domain.y; time evolves only the third noise dimension.
-  float boilTime = visualTime * (0.5 + abs(vParams.y));
+  float boilTime = visualTime * (0.75 + abs(vParams.y) * 0.8);
   vec3 domain = vec3(local.x * 1.6, local.z * 0.85,
                      vParams.x + local.y * 1.1 + vLayer * 2.17);
   domain *= 0.8 + vParams.z * 0.1;
@@ -95,10 +101,10 @@ void main() {
   vec3 warped = domain + vec3((warp - 0.5) * 1.8, 0.0, 0.0) + flow;
   float molten = noise3(warped * vec3(1.0, 0.75, 1.0));
   float fine = noise3(warped * 2.4 + vec3(7.4, 3.1, 1.7));
-  float density = smoothstep(0.28, 0.72, molten * 0.72 + fine * 0.28);
-  // A continuous film connects the hotter tongues over the note's entire length.
-  float alpha = (0.10 + density * 0.40) * vAlpha;
-  alpha *= 1.0 - vLayer * 0.24;
+  float density = smoothstep(0.55, 0.78, molten * 0.72 + fine * 0.28);
+  // Transparent gaps separate the connected tongues; there is no uniform fog baseline.
+  float alpha = density * (0.04 + density * 0.34) * vAlpha;
+  alpha *= 1.0 - vLayer * 0.70;
   if (alpha < 0.003) discard;
   float heat = smoothstep(0.48, 0.78, molten) * (0.45 + fine * 0.55);
   vec3 moltenTint = mix(vTint, vec3(1.0), heat * 0.22);
@@ -109,7 +115,7 @@ void main() {
 /** Two noisy exterior shells share one draw call; the note body occludes their far sides. */
 export class ThreeNoteAura {
   readonly group = new Group();
-  private readonly geometry = new RoundedBoxGeometry(1, 1, 1, 3, 0.12);
+  private readonly geometry = createNoteSlabGeometry();
   private readonly time = { value: 0 };
   private readonly material = new ShaderMaterial({
     uniforms: { visualTime: this.time },
@@ -197,7 +203,7 @@ export class ThreeNoteAura {
           ? depth / note.width > 3
           : Number.isFinite(note.duration) && note.duration >= NOTE_AURA_MIN_DURATION;
       if (!eligible) continue;
-      const height = note.width * 0.28;
+      const height = note.width * NOTE_SLAB_THICKNESS;
       const centreY = floorY + height / 2;
       const centreZ = -(note.bottom + depth / 2);
       if (!Number.isFinite(depth) || !Number.isFinite(centreY) || !Number.isFinite(centreZ))

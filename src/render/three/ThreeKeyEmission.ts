@@ -10,6 +10,12 @@ interface KeyEmission {
   weight: number;
   intensity: number;
 }
+interface DisplayEmission {
+  readonly red: number;
+  readonly green: number;
+  readonly blue: number;
+  readonly intensity: number;
+}
 
 /**
  * Each whole key inherits the sounding note's colour, including its sides and front. Materials
@@ -17,6 +23,28 @@ interface KeyEmission {
  */
 export class ThreeKeyEmission {
   private readonly keys = new Map<number, KeyEmission>();
+  private readonly retained = new Map<number, DisplayEmission>();
+
+  /** Only numeric display state survives a rebuild; previous materials are released at once. */
+  beginLayout(): void {
+    this.retained.clear();
+    for (const [pitch, key] of this.keys) {
+      if (key.intensity > 0) {
+        const tint = key.materials[0].emissive;
+        this.retained.set(pitch, {
+          red: tint.r,
+          green: tint.g,
+          blue: tint.b,
+          intensity: key.intensity
+        });
+      }
+    }
+    this.releaseMaterials();
+  }
+
+  endLayout(): void {
+    this.retained.clear();
+  }
 
   create(
     pitch: number,
@@ -37,7 +65,7 @@ export class ThreeKeyEmission {
       };
       material.customProgramCacheKey = () => "three-key-neon-v1";
     }
-    this.keys.set(pitch, {
+    const key: KeyEmission = {
       materials,
       baseColors: [top.color.clone(), body.color.clone()],
       red: 0,
@@ -45,7 +73,15 @@ export class ThreeKeyEmission {
       blue: 0,
       weight: 0,
       intensity: 0
-    });
+    };
+    const previous = this.retained.get(pitch);
+    if (previous) {
+      key.intensity = previous.intensity;
+      for (const material of materials)
+        material.emissive.setRGB(previous.red, previous.green, previous.blue);
+      this.paint(key);
+    }
+    this.keys.set(pitch, key);
     return materials;
   }
 
@@ -74,14 +110,12 @@ export class ThreeKeyEmission {
         top.emissive.setRGB(key.red * factor, key.green * factor, key.blue * factor);
         body.emissive.copy(top.emissive);
       }
-      top.color.copy(key.baseColors[0]).lerp(top.emissive, key.intensity * 0.9);
-      body.color.copy(key.baseColors[1]).lerp(body.emissive, key.intensity * 0.9);
-      top.emissiveIntensity = key.intensity * 1.05;
-      body.emissiveIntensity = key.intensity * 0.9;
+      this.paint(key);
     }
   }
 
   clear(): void {
+    this.retained.clear();
     for (const key of this.keys.values()) {
       key.intensity = key.weight = 0;
       for (let index = 0; index < key.materials.length; index++) {
@@ -96,6 +130,19 @@ export class ThreeKeyEmission {
   }
 
   dispose(): void {
+    this.retained.clear();
+    this.releaseMaterials();
+  }
+
+  private paint(key: KeyEmission): void {
+    const [top, body] = key.materials;
+    top.color.copy(key.baseColors[0]).lerp(top.emissive, key.intensity * 0.9);
+    body.color.copy(key.baseColors[1]).lerp(body.emissive, key.intensity * 0.9);
+    top.emissiveIntensity = key.intensity * 1.05;
+    body.emissiveIntensity = key.intensity * 0.9;
+  }
+
+  private releaseMaterials(): void {
     for (const key of this.keys.values()) for (const material of key.materials) material.dispose();
     this.keys.clear();
   }

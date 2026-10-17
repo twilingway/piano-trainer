@@ -42,7 +42,7 @@ describe("exterior long-note lava aura", () => {
     const batch = mesh(aura);
     expect(batch.count).toBe(4);
     expect(aura.group.children).toHaveLength(1);
-    expect(batch.geometry.type).toBe("RoundedBoxGeometry");
+    expect(batch.geometry.name).toBe("note-chamfered-slab");
     const size = batch.geometry.getAttribute("noteSize");
     const layer = batch.geometry.getAttribute("noteLayer");
     expect([size.getZ(0), size.getZ(1), size.getZ(2), size.getZ(3)]).toEqual([2, 2, 62, 62]);
@@ -62,9 +62,9 @@ describe("exterior long-note lava aura", () => {
     for (let layer = 0; layer < NOTE_AURA_LAYERS; layer++) {
       batch.getMatrixAt(layer, matrix);
       expect(matrix.elements[12]).toBe(42);
-      expect(matrix.elements[13]).toBeCloseTo(52.8);
+      expect(matrix.elements[13]).toBeCloseTo(51.8);
       expect(size.getX(layer)).toBe(20);
-      expect(size.getY(layer)).toBeCloseTo(5.6);
+      expect(size.getY(layer)).toBeCloseTo(3.6);
       expect(matrix.elements[14] - size.getZ(layer) / 2).toBe(-420);
       expect(matrix.elements[14] + size.getZ(layer) / 2).toBe(-142);
     }

@@ -5,6 +5,33 @@ import { ThreeRoadFrame } from "./ThreeRoadFrame";
 describe("Three road visual snapshot", () => {
   const camera = worldCamera(1440, 900, undefined, PANEL_EDGE);
 
+  it("keeps bounded hit-line anchors separate from note bodies and reuses them after reset", () => {
+    const frame = new ThreeRoadFrame();
+    frame.addTrailAnchor(740, 44, 0xff0060, 0.8, camera);
+    const first = frame.trailAnchors[0];
+    expect(first).toEqual({
+      x: 10,
+      top: PANEL_EDGE.z,
+      bottom: PANEL_EDGE.z,
+      width: 22,
+      color: 0xff0060,
+      alpha: 0.8
+    });
+    expect(frame.noteCount).toBe(0);
+    expect(frame.trailAnchorCount).toBe(1);
+    frame.begin();
+    expect(frame.trailAnchorCount).toBe(0);
+    frame.addTrailAnchor(760, 26, 0x00ff60, 1, camera);
+    expect(frame.trailAnchors[0]).toBe(first);
+    for (let index = 0; index < 100; index++) frame.addTrailAnchor(760, 26, 0x00ff60, 1, camera);
+    expect(frame.trailAnchorCount).toBe(88);
+    frame.clear();
+    expect(frame.trailAnchorCount).toBe(0);
+    frame.addTrailAnchor(NaN, 26, 0x00ff60, 1, camera);
+    frame.addTrailAnchor(760, 0, 0x00ff60, 1, camera);
+    expect(frame.trailAnchorCount).toBe(0);
+  });
+
   it("reuses note storage and removes consumed durations without retaining previous frames", () => {
     const frame = new ThreeRoadFrame();
     frame.add(720, 100, 600, 44, 0x00df50, 1, 600, camera);
