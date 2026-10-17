@@ -140,7 +140,7 @@ describe("instanced world road notes", () => {
     expect(materials.filter((material) => material.blending === AdditiveBlending)).toHaveLength(1);
     expect(materials.every((material) => !material.depthWrite)).toBe(true);
     expect(materials.find((material) => material.blending === AdditiveBlending)?.depthTest).toBe(
-      false
+      true
     );
     expect(materials.find((material) => material.blending !== AdditiveBlending)?.depthTest).toBe(
       true

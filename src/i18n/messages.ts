@@ -1,4 +1,5 @@
 import type { Messages } from "./locales";
+import { freeCameraMessages } from "./freeCameraMessages";
 import { appMessages } from "./appMessages";
 import { settingsMessages1 } from "./settingsMessages1";
 import { settingsMessages2 } from "./settingsMessages2";
@@ -18,6 +19,7 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
   ...appMessages,
+  ...freeCameraMessages,
   ...settingsMessages1,
   ...settingsMessages2,
   ...settingsMessages3,

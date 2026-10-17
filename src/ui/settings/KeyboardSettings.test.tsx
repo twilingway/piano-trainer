@@ -85,3 +85,25 @@ describe("KeyboardSettings: the local pianist", () => {
     expect(pianistBox()).toBeUndefined();
   });
 });
+
+describe("free camera setting", () => {
+  it("shows and changes the 3D toggle, hiding it in other styles", () => {
+    const changed = vi.fn();
+    act(() => {
+      root.render(<KeyboardSettings {...base} freeCamera={true} onFreeCamera={changed} />);
+    });
+    const label = [...host.querySelectorAll("label")].find((node) =>
+      node.textContent.includes("Свободная камера")
+    );
+    const box = label?.querySelector("input");
+    expect(box?.checked).toBe(true);
+    act(() => box?.click());
+    expect(changed).toHaveBeenCalledWith(false);
+    act(() => {
+      root.render(
+        <KeyboardSettings {...base} keyStyle="classic" freeCamera={true} onFreeCamera={changed} />
+      );
+    });
+    expect(host.textContent).not.toContain("Свободная камера");
+  });
+});
