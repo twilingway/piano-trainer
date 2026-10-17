@@ -25,6 +25,8 @@ export const SPEED: Readonly<Record<Hand, { readonly wrist: number; readonly yaw
 export const READY = 0.06;
 /** S: a struck pose is kept at least this long. */
 export const TAP = 0.05;
+/** S: the fingers change between two strikes in at least this long, the hand moving or not. */
+const SHIFT = 0.1;
 /** Mm: the pressing fingers' tips over their keys while the hand is ready. */
 export const HOVER = 6;
 /** S: a note ending this close after the next onset is not held into it. */
@@ -209,7 +211,7 @@ export function* planSteps(
       const release = ends.length > 0 ? Math.max(...ends) : p.time + TAP;
       // The previous strike's key: its onset, or later when it came late.
       const struck = at(keys, keys.length - 1).t;
-      const depart = Math.max(struck + TAP, Math.min(release, ready - need));
+      const depart = Math.max(struck + TAP, Math.min(release, ready - Math.max(need, SHIFT)));
       if (depart < release - 1e-6) at(report, i - 1).flags.push("cut");
       const arrive = depart + need;
       if (arrive > ready + 1e-6) {

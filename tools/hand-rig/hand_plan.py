@@ -32,6 +32,7 @@ import hand_mech as M
 SPEED = {"left": {"wrist": 920.0, "yaw": 145.0}, "right": {"wrist": 503.0, "yaw": 101.0}}
 READY = 0.06          # s: the hand stands over the strike's keys this long before the onset (a third of a short gap)
 TAP = 0.05            # s: a struck pose is kept at least this long, however soon the next one comes
+SHIFT = 0.1           # s: the fingers change between two strikes in at least this long, the hand moving or not
 HOVER = 6.0           # mm: the pressing fingers' tips over their keys while the hand is ready
 HELD_EPS = 0.02       # s: a note ending this close after the next onset is not held into it
 LOOKAHEAD = 6         # strikes ahead a new hand position may cover (a bound on the search, not on the music)
@@ -110,7 +111,7 @@ def plan(rest, library, hand, strikes):
                           [h["end"] for h in sounding if h["pitch"] not in kept_pitches and h["end"] > p["time"]],
                           default=p["time"] + TAP)
             struck = keys[-1]["t"]           # the previous strike's key: its onset, or later when it came late
-            depart = max(struck + TAP, min(release, ready - need))
+            depart = max(struck + TAP, min(release, ready - max(need, SHIFT)))
             if depart < release - 1e-6:
                 report[i - 1]["flags"].append("cut")
             arrive = depart + need
