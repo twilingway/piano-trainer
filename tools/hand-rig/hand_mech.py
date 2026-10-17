@@ -395,7 +395,7 @@ def _fit(x0, lo, hi, fun, active=None):
     return hand_shape.fit(np.array(x0, float), act, np.array(lo, float), np.array(hi, float), fun)
 
 
-def _solve(rest, shape, targets, yaw0, start, wrist_z, k_band=K_BAND):
+def _solve(rest, shape, targets, yaw0, start, wrist_z, k_band=K_BAND, yaw_tol=YAW_TOL):
     """Steps 2 and 3 for the pressed targets: root and the hand's curl by the tips, then k and spread per
     pressed finger. Returns the pose and its misses."""
     np = _np()
@@ -420,8 +420,8 @@ def _solve(rest, shape, targets, yaw0, start, wrist_z, k_band=K_BAND):
         r = [c for f in pressed for c in X[CHAIN[f][-1]] - aim[f]]
         return np.array(r + [min(0.0, X[i][2] - z) for i, z in floor] + list(REF_W * (np.asarray(p) - ref) / sig))
 
-    lo = [yaw0 - YAW_TOL, PITCH[0], ROLL[0], -3000, -400, 0.0]
-    hi = [yaw0 + YAW_TOL, PITCH[1], ROLL[1], 3000, 400, cmax]
+    lo = [yaw0 - yaw_tol, PITCH[0], ROLL[0], -3000, -400, 0.0]
+    hi = [yaw0 + yaw_tol, PITCH[1], ROLL[1], 3000, 400, cmax]
 
     def worst(p):
         X = hand_joints(rest, angles(shape, p[5]), [p[0], p[1], p[2], p[3], p[4], wrist_z])
@@ -518,17 +518,21 @@ def canonical_shape(library, hand):
             "thumb": {k: median(t[k] for t in th) for k in THUMB_KEYS}}
 
 
-def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z, hold=None):
+def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z, hold=None, ref=None):
     """The hand's pose for notes [(finger, pitch)] in three layers, the contact made in the design's order.
     hold: the previous strike's pose (hand_plan.py); the hand stays where it was if its pressed fingers reach
     their keys by k and spread alone (and its yaw is within the example's tolerance), as a pianist's does.
+    ref: [(notes, thumb)] whose examples set the root's reference (their mean yaw and wrist) when the notes
+    as a whole have no example of their own (a nearest one may come from another register): a hand position
+    that covers several strikes stands where all of theirs do, its yaw within YAW_TOL of every one of their
+    examples (their yaws too far apart: the found example's reference, as without ref).
     Returns root, curl, per finger k and spread, the explicit angles, the press layer, misses and flags."""
     import hand_library
     np = _np()
     mirror = hand == "left"
     sx = -1.0 if mirror else 1.0
     canon = canonical_shape(library, hand)
-    flags, dropped = [], []
+    flags, dropped, yaw_tol = [], [], YAW_TOL
     found = hand_library.nearest(library, hand, list(notes), thumb)
     if found is None:
         shape, source, where = canon, "canonical", None
@@ -540,6 +544,17 @@ def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z, hold=None):
         s = entry.get("shape") or canon
         shape = {"fingers": s["fingers"], "thumb": s.get("thumb") or canon["thumb"]}
         where = hand_library.place(entry, key_target(anchor, 1, False)["x"] / WHITE_W)
+    if ref and source != "own":
+        wheres = []
+        for ns, th in ref:
+            got = hand_library.nearest(library, hand, list(ns), th)
+            if got is not None:
+                wheres.append(hand_library.place(got[0], key_target(got[1], 1, False)["x"] / WHITE_W))
+        yaws = [w["yawDeg"] for w in wheres]
+        if wheres and max(yaws) - min(yaws) < 2 * YAW_TOL:
+            where = {k: float(np.mean([w[k] for w in wheres])) for k in ("wristX", "wristDepthCm")}
+            where["yawDeg"] = (max(yaws) + min(yaws)) / 2
+            yaw_tol = YAW_TOL - (max(yaws) - min(yaws)) / 2
     yaw0 = sx * where["yawDeg"] if where else 0.0
     keep = list(notes)
     while True:
@@ -547,16 +562,16 @@ def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z, hold=None):
         start = ((sx * where["wristX"] * WHITE_W, where["wristDepthCm"] * 10.0) if where else
                  (float(np.mean([t["x"] for t in targets])), -100.0))
         pose = None
-        if hold is not None and abs(hold["rootVec"][0] - yaw0) <= YAW_TOL:
+        if hold is not None and abs(hold["rootVec"][0] - yaw0) <= yaw_tol + 0.05:
             pose = _fingers(rest, shape, targets, list(hold["rootVec"]), hold["curl"])
             if max(pose["miss"].values()) > MISS_MM:
                 pose = None
-        pose = pose or _solve(rest, shape, targets, yaw0, start, wrist_z)
+        pose = pose or _solve(rest, shape, targets, yaw0, start, wrist_z, yaw_tol=yaw_tol)
         bad = {f: m for f, m in pose["miss"].items() if m > MISS_MM}
         if not bad:
             break
         # within the joints' walls, would a wider k reach? yes: strained (the pose stays); no: impossible
-        wide = _solve(rest, shape, targets, yaw0, start, wrist_z, k_band=(0.0, 10.0))
+        wide = _solve(rest, shape, targets, yaw0, start, wrist_z, k_band=(0.0, 10.0), yaw_tol=yaw_tol)
         if all(m <= MISS_MM for m in wide["miss"].values()):
             flags.append("strained")
             break

@@ -6,6 +6,10 @@ fingers), the keys of its pose in time. Pure numpy over hand_mech.place(); no Bl
 - A note still sounding at the next onset whose finger the next strike does not need is held: it joins the
   next strike's placement, so its tip stays on its key while the hand moves. A note place() cannot keep is
   released at the hand's departure.
+- The hand stays where it is while its fingers reach the next strike's keys from there. When it must
+  move, it goes to the one position that covers this strike and as many following ones as fit one hand
+  (a finger on one key, the tips in contact, the yaw within every strike's example tolerance): a riff
+  inside a five-finger position is played by the fingers, not by the wrist.
 - The hand leaves a pose when its last note that is not held ends, but no later than the move needs at the
   teacher's speed limit (SPEED): a note that would make the hand late is let go early ("cut"). Late even so
   ("degraded"): the hand moves at the limit and arrives after the onset; the lag and the wrist's distance
@@ -30,6 +34,7 @@ READY = 0.06          # s: the hand stands over the strike's keys this long befo
 TAP = 0.05            # s: a struck pose is kept at least this long, however soon the next one comes
 HOVER = 6.0           # mm: the pressing fingers' tips over their keys while the hand is ready
 HELD_EPS = 0.02       # s: a note ending this close after the next onset is not held into it
+LOOKAHEAD = 6         # strikes ahead a new hand position may cover (a bound on the search, not on the music)
 JITTER_MM, JITTER_HALF, MEDIAN_N, WINDOW_FRAMES = 6.0, 15, 5, 3
 
 
@@ -64,17 +69,30 @@ def plan(rest, library, hand, strikes):
         own = [(n["finger"], n["pitch"]) for n in s["notes"]]
         used = {f for f, _ in own}
         held = [h for h in sounding if h["end"] > s["time"] + HELD_EPS and h["finger"] not in used]
-        hold = poses[-1] if poses else None
-        if i + 1 < len(strikes):
-            # one strike ahead: if this strike's and the next one's notes fit one hand position (as a chord),
-            # the hand takes it, and the next strike is played from it by the fingers
-            nxt = [(n["finger"], n["pitch"]) for n in strikes[i + 1]["notes"]]
-            if not used & {f for f, _ in nxt} and len({p_ for _, p_ in own + nxt}) == len(own + nxt):
-                cover = M.place(rest, library, hand, own + nxt + [(h["finger"], h["pitch"]) for h in held],
-                                s["thumb"], hold=hold)
-                if not cover["dropped"] and max(cover["missMm"].values()) <= M.MISS_MM:
-                    hold = cover
-        pose = M.place(rest, library, hand, own + [(h["finger"], h["pitch"]) for h in held], s["thumb"], hold=hold)
+        down = own + [(h["finger"], h["pitch"]) for h in held]
+        ref = [(own, s["thumb"])]            # held notes joined to a strike: still its example's root
+        prev = poses[-1] if poses else None
+        pose = None
+        if prev is not None:
+            # the hand stays where it is while its fingers reach the strike's keys from there
+            pose = M.place(rest, library, hand, down, s["thumb"], hold=prev, ref=ref)
+            if pose["rootVec"] != prev["rootVec"]:
+                pose = None
+        if pose is None:
+            # it has to move: to the position that covers this strike and as many of the next ones as fit
+            # one hand position (a finger on one key, a key under one finger, the tips in contact), so that
+            # a riff inside it is played by the fingers
+            hold, window, refs = prev, list(dict.fromkeys(down)), list(ref)
+            for nx in strikes[i + 1:i + 1 + LOOKAHEAD]:
+                pairs = [(n["finger"], n["pitch"]) for n in nx["notes"]]
+                wider = list(dict.fromkeys(window + pairs))
+                if len({f for f, _ in wider}) < len(wider) or len({p_ for _, p_ in wider}) < len(wider):
+                    break
+                cover = M.place(rest, library, hand, wider, s["thumb"], hold=hold, ref=refs + [(pairs, nx["thumb"])])
+                if cover["dropped"] or max(cover["missMm"].values()) > M.MISS_MM:
+                    break
+                hold, window, refs = cover, wider, refs + [(pairs, nx["thumb"])]
+            pose = M.place(rest, library, hand, down, s["thumb"], hold=hold, ref=ref)
         kept = [h for h in held if h["pitch"] not in pose["dropped"]]
         rep = {"id": s["id"], "time": s["time"], "flags": list(pose["flags"]), "held": [h["pitch"] for h in kept],
                "released": [h["pitch"] for h in held if h["pitch"] in pose["dropped"]], "lateS": 0.0, "missMm": 0.0}
