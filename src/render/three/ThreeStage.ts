@@ -42,8 +42,11 @@ import { PANEL_EDGE } from "../worldCamera";
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
 
-/** How far a held key turns on its back hinge: its front edge sinks about 9 units. */
-const DIP = (3.5 * Math.PI) / 180;
+/** The keys turn about a pivot this far behind the white front, units: a grand's balance rail,
+ * 250 mm, so a key sinks nearly level wherever a finger presses it. */
+const PIVOT = (250 * 142) / 150;
+/** How far a held key turns: its front edge sinks about 9 units. */
+const DIP = Math.asin(9 / PIVOT);
 /** How fast a key follows the finger, per second. */
 const DIP_RATE = 30;
 
@@ -190,7 +193,12 @@ export class ThreeStage {
     this.noteLights.update(energy, roadCamera, energyDeltaSeconds);
     this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
-      const target = Math.max(down(pitch) ? 1 : 0, this.hands?.keys.get(pitch) ?? 0) * DIP;
+      const press = this.hands?.keys.get(pitch);
+      // A finger's key turns until its top under the tip has sunk as deep as the tip.
+      const pressed = press
+        ? Math.asin(Math.min(1, press.drop / Math.max(1, PIVOT - press.along)))
+        : 0;
+      const target = Math.max(down(pitch) ? DIP : 0, pressed);
       hinge.rotation.x += (target - hinge.rotation.x) * step;
     }
     const detached = keys.offset.x !== 0 || keys.offset.y !== 0;
@@ -283,10 +291,10 @@ export class ThreeStage {
         box.black ? this.black : this.white
       );
       const mesh = new Mesh(geometry, materials);
-      // The hinge sits on the key's back bottom edge; the key hangs forward from it.
-      mesh.position.set(0, -bottom, box.back);
+      // The hinge sits at the pivot behind the key, level with its bottom; the key hangs forward.
+      mesh.position.set(0, -bottom, PIVOT);
       const hinge = new Group();
-      hinge.position.set(box.x, bottom, -box.back);
+      hinge.position.set(box.x, bottom, -PIVOT);
       hinge.add(mesh);
       this.keys.add(hinge);
       this.hinged.push({ pitch: box.pitch, hinge, mesh });
