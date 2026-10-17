@@ -867,7 +867,7 @@ def press_thumb():
 
 
 THUMB_BEND_MAX = 80.0              # the thumb's tip joint, degrees past rest
-YAW_EASY = 20.0                    # knuckle yaw past this is dear: the hand turns instead (step 5)
+YAW_EASY = 30.0 if EXAMPLE else 20.0   # knuckle yaw past this is dear: the hand turns instead (step 5; the example holds its turn)
 KNUCKLE_BACK = 10.0                # a pressing finger's knuckle bends back this far at most, degrees
 CURL_MIN = 0.4                     # and its curl flattens to this share of the apple at most
 STRAIGHT_FLEX = {f: rest_flex(f"metacarpal{f - 1}.{SIDE}", f"finger{f}-1.{SIDE}") for f in (2, 3, 4, 5)}
