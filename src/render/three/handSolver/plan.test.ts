@@ -21,18 +21,28 @@ describe("planHand", () => {
     const plan = planHand(STUDIO_REST, LIB, g.hand as Hand, strikes);
     const ms = (performance.now() - started) / strikes.length;
     process.stdout.write(`plan ${g.name}: ${ms.toFixed(1)} ms a strike\n`);
-    expect(plan.keys.map((k) => [k.phase, k.strike])).toEqual(g.keys.map((k) => [k.phase, k.strike]));
-    plan.keys.forEach((k, i) => expect(Math.abs(k.t - (g.keys[i]?.t ?? NaN))).toBeLessThan(TOL));
+    expect(plan.keys.map((k) => [k.phase, k.strike])).toEqual(
+      g.keys.map((k) => [k.phase, k.strike])
+    );
+    plan.keys.forEach((k, i) => {
+      expect(Math.abs(k.t - (g.keys[i]?.t ?? NaN))).toBeLessThan(TOL);
+    });
     expect(plan.report.map((r) => r.flags)).toEqual(g.report.map((r) => r.flags));
     expect(plan.report.map((r) => [r.held, r.released, r.lateS, r.missMm])).toEqual(
       g.report.map((r) => [r.held, r.released, r.lateS, r.missMm])
     );
     plan.poses.forEach((p, i) => {
-      const want = g.poses[i] as { rootVec: number[]; hover: Record<string, Record<string, number>> };
-      p.rootVec.forEach((v, j) => expect(Math.abs(v - (want.rootVec[j] ?? NaN))).toBeLessThan(TOL));
+      const want = g.poses[i] as {
+        rootVec: number[];
+        hover: Record<string, Record<string, number>>;
+      };
+      p.rootVec.forEach((v, j) => {
+        expect(Math.abs(v - (want.rootVec[j] ?? NaN))).toBeLessThan(TOL);
+      });
       expect([...p.hover.keys()].map(String).sort()).toEqual(Object.keys(want.hover).sort());
       for (const [f, d] of p.hover)
-        for (const [k, v] of Object.entries(d)) expect(v).toBeCloseTo(want.hover[String(f)]?.[k] ?? NaN, 6);
+        for (const [k, v] of Object.entries(d))
+          expect(v).toBeCloseTo(want.hover[String(f)]?.[k] ?? NaN, 6);
     });
   });
 });

@@ -132,7 +132,8 @@ export function solve(
   // Each tip aims at the point of its box nearest to where the pose puts it, the aims taken again
   // after every fit: a miss that is zero inside the box has a kink at its edge where descent stalls.
   const aim = new Map<Finger, Vec3>();
-  const joints = (p: readonly number[]) => handJoints(rest, angles(shape, at(p, 5)), withZ(p, wristZ));
+  const joints = (p: readonly number[]) =>
+    handJoints(rest, angles(shape, at(p, 5)), withZ(p, wristZ));
   const takeAims = (p: readonly number[]) => {
     const X = joints(p);
     for (const [f, t] of pressed) {
@@ -146,7 +147,8 @@ export function solve(
     const r: number[] = [];
     for (const f of pressed.keys()) {
       const tip = tipOf(X, f);
-      const a = aim.get(f) as Vec3;
+      const a = aim.get(f);
+      if (!a) throw new Error("no aim");
       r.push(tip[0] - a[0], tip[1] - a[1], tip[2] - a[2]);
     }
     for (const [i, z] of floor) r.push(Math.min(0, at(X, i)[2] - z));
@@ -223,7 +225,10 @@ export function fingers(
       s0.forEach((v0, i) => r.push((REF_W * (at(q, i + 1) - v0)) / REF.spread));
       return r;
     };
-    const x0 = [clamp(Math.max(1, kr[0]), -Infinity, kr[1]), ...s0.map((v, i) => clamp(v, ...at(sr, i)))];
+    const x0 = [
+      clamp(Math.max(1, kr[0]), -Infinity, kr[1]),
+      ...s0.map((v, i) => clamp(v, ...at(sr, i)))
+    ];
     const q = fit(x0, [kr[0], ...sr.map((r) => r[0])], [kr[1], ...sr.map((r) => r[1])], res3).x;
     k[f] = at(q, 0);
     spread[f] = f === 1 ? [at(q, 1), at(q, 2)] : at(q, 1);
@@ -236,7 +241,12 @@ export function fingers(
 
 /** A free finger whose joints would sink into the keys rises at MCP (the thumb at its CMC, palmar)
  * until they clear the white top; PIP and DIP keep the example's shape. */
-export function liftFree(rest: Rest, shape: Shape, pose: Fitted, free: readonly Finger[]): PerFinger<number> {
+export function liftFree(
+  rest: Rest,
+  shape: Shape,
+  pose: Fitted,
+  free: readonly Finger[]
+): PerFinger<number> {
   const lift: PerFinger<number> = {};
   for (const f of free) {
     const lo = f !== 1 ? LIM.mcp[0] : THUMB_PALMAR_MIN;
@@ -248,9 +258,9 @@ export function liftFree(rest: Rest, shape: Shape, pose: Fitted, free: readonly 
       const low = Math.min(...CHAIN[f].slice(1).map((i) => at(X, i)[2]));
       if (low >= R_FINGER[f] * TIP_ABOVE + CLEAR || cur - 1 < lo) break;
     }
-    if (lift[f] === 0) delete lift[f];
   }
-  return lift;
+  // A finger that needs no lift has none (its zero changed no joint while the others were lifted).
+  return Object.fromEntries(Object.entries(lift).filter(([, v]) => v !== 0));
 }
 
 /** The press layer: extra flexion that takes finger f's tip straight down by depth mm (up for a
@@ -262,9 +272,24 @@ export function pressDelta(
   f: Finger,
   depth: number = KEY_DIP
 ): AngleDelta[Finger] & object {
-  const tip = (d: AngleDelta[Finger] & object) => tipOf(handJoints(rest, addAngles(ang, { [f]: d }), root), f);
-  const t0 = tip({});
-  const goal: Vec3 = [t0[0], t0[1], t0[2] - depth];
+  const t0 = tipOf(handJoints(rest, ang, root), f);
+  const d = reachDelta(rest, ang, root, f, [t0[0], t0[1], t0[2] - depth]);
+  return Object.fromEntries(Object.entries(d).map(([k, v]) => [k, round(v, 1)]));
+}
+
+/** The extra flexion that takes finger f's tip to goal, every joint in its walls: fingers 2-5 at MCP
+ * and PIP (DIP with PIP in its share), with `spread` also sideways at MCP; the thumb at its CMC
+ * towards the palm (height only). */
+export function reachDelta(
+  rest: Rest,
+  ang: Angles,
+  root: Root,
+  f: Finger,
+  goal: Vec3,
+  spread = false
+): AngleDelta[Finger] & object {
+  const tip = (d: AngleDelta[Finger] & object) =>
+    tipOf(handJoints(rest, addAngles(ang, { [f]: d }), root), f);
   if (f === 1) {
     let a = THUMB_PALMAR_MIN - ang[1].cmc_palmar;
     let b = THUMB_PALMAR_MAX - ang[1].cmc_palmar;
@@ -274,20 +299,28 @@ export function pressDelta(
       if (tip({ cmc_palmar: mid })[2] > goal[2]) a = mid;
       else b = mid;
     }
-    return { cmc_palmar: round((a + b) / 2, 1) };
+    return { cmc_palmar: (a + b) / 2 };
   }
   const a = ang[f];
   const b = BEND_SPLIT[f];
   const share = b[2] / b[1];
   const lo = [LIM.mcp[0] - a.mcp, Math.max(LIM.pip[0] - a.pip, (LIM.dip[0] - a.dip) / share)];
   const hi = [LIM.mcp[1] - a.mcp, Math.min(LIM.pip[1] - a.pip, (LIM.dip[1] - a.dip) / share)];
-  const of = (q: readonly number[]) => ({ mcp: at(q, 0), pip: at(q, 1), dip: at(q, 1) * share });
-  const q = fit([0, 0], lo, hi, (x) => {
+  if (spread) {
+    lo.push(ABD[f][0] - a.abd);
+    hi.push(ABD[f][1] - a.abd);
+  }
+  const of = (q: readonly number[]) => ({
+    mcp: at(q, 0),
+    pip: at(q, 1),
+    dip: at(q, 1) * share,
+    ...(spread ? { abd: at(q, 2) } : {})
+  });
+  const q = fit(spread ? [0, 0, 0] : [0, 0], lo, hi, (x) => {
     const p = tip(of(x));
     return [p[0] - goal[0], p[1] - goal[1], p[2] - goal[2]];
   }).x;
-  const d = of(q);
-  return { mcp: round(d.mcp, 1), pip: round(d.pip, 1), dip: round(d.dip, 1) };
+  return of(q);
 }
 
 const canonical = new WeakMap<Library, Partial<Record<Hand, Shape>>>();
@@ -362,7 +395,8 @@ export function place(
     // The hand stays if its fingers reach from there, deeper between the blacks if they must; it
     // moves only when they cannot, to white keys short of the blacks first.
     const tries: (readonly ["hold" | "solve", boolean])[] = [];
-    if (hold && Math.abs(hold.rootVec[0] - yaw0) <= yawTol + 0.05) tries.push(["hold", false], ["hold", true]);
+    if (hold && Math.abs(hold.rootVec[0] - yaw0) <= yawTol + 0.05)
+      tries.push(["hold", false], ["hold", true]);
     tries.push(["solve", false], ["solve", true]);
     let targets: KeyTarget[] = [];
     let start: readonly [number, number] = [0, 0];
@@ -388,7 +422,7 @@ export function place(
     }
     if (!flags.includes("impossible")) flags.push("impossible");
     if (keep.length === 1) break;
-    let worst = bad[0] as [string, number];
+    let worst = at(bad, 0);
     for (const b of bad) if (b[1] > worst[1]) worst = b;
     const w = Number(worst[0]);
     dropped.push(...keep.filter(([f]) => f === w).map(([, p]) => p));

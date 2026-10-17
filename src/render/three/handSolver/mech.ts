@@ -15,7 +15,9 @@ export type ThumbAngles = Readonly<Record<ThumbKey, number>>;
 /** Explicit joint angles, degrees: the thumb's CMC, MCP and IP; MCP, PIP, DIP and spread of the rest. */
 export type Angles = { readonly 1: ThumbAngles } & Readonly<Record<LongFinger, FingerAngles>>;
 /** Per finger additions to its angles (the press and hover layers). */
-export type AngleDelta = { readonly [F in Finger]?: Readonly<Partial<Record<JointKey | ThumbKey, number>>> };
+export type AngleDelta = Readonly<
+  Partial<Record<Finger, Readonly<Partial<Record<JointKey | ThumbKey, number>>>>>
+>;
 /** yaw, pitch, roll (degrees) and the wrist's place (mm): + yaw = fingers to the treble. */
 export type Root = readonly [number, number, number, number, number, number];
 
@@ -106,7 +108,7 @@ export interface Rest {
 
 export const at = <T>(list: readonly T[], i: number): T => {
   const v = list[i];
-  if (v === undefined) throw new Error(`index ${i} out of ${list.length}`);
+  if (v === undefined) throw new Error(`index ${String(i)} out of ${String(list.length)}`);
   return v;
 };
 export const rad = (deg: number) => (deg * Math.PI) / 180;
@@ -216,7 +218,11 @@ export function curlMax(f: LongFinger): number {
 }
 
 /** The k with lo <= v * k <= hi for every (v, (lo, hi)), inside band. */
-export function kRange(vals: readonly number[], lims: readonly Range[], band: Range = K_BAND): Range {
+export function kRange(
+  vals: readonly number[],
+  lims: readonly Range[],
+  band: Range = K_BAND
+): Range {
   let [lo, hi] = band;
   vals.forEach((v, i) => {
     if (Math.abs(v) <= 1e-9) return;
@@ -230,7 +236,9 @@ export function kRange(vals: readonly number[], lims: readonly Range[], band: Ra
 }
 
 export interface Shape {
-  readonly fingers: Readonly<Record<"2" | "3" | "4" | "5", { readonly abd: number; readonly rel: number }>>;
+  readonly fingers: Readonly<
+    Record<"2" | "3" | "4" | "5", { readonly abd: number; readonly rel: number }>
+  >;
   readonly thumb: ThumbAngles;
 }
 
@@ -289,7 +297,7 @@ export function addAngles(ang: Angles, delta: AngleDelta): Angles {
   for (const f of FINGERS) {
     const d = delta[f];
     if (!d) continue;
-    for (const [key, v] of Object.entries(d)) out[f][key] = (out[f][key] ?? 0) + (v ?? 0);
+    for (const [key, v] of Object.entries(d)) out[f][key] = (out[f][key] ?? 0) + v;
   }
   return out as unknown as Angles;
 }
@@ -346,8 +354,8 @@ export function violations(ang: Angles, root: Root): string[] {
     if (!(lo - 0.05 <= v && v <= hi + 0.05)) bad.push(`${name} ${v.toFixed(1)}`);
   };
   for (const f of LONG) {
-    for (const k of ["mcp", "pip", "dip"] as const) out(`${f}.${k}`, ang[f][k], LIM[k]);
-    out(`${f}.abd`, ang[f].abd, ABD[f]);
+    for (const k of ["mcp", "pip", "dip"] as const) out(`${String(f)}.${k}`, ang[f][k], LIM[k]);
+    out(`${String(f)}.abd`, ang[f].abd, ABD[f]);
   }
   const t = ang[1];
   out("1.t_mcp", t.t_mcp, LIM.t_mcp);

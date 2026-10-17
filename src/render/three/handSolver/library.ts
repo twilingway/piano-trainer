@@ -1,5 +1,5 @@
 import type { Finger, Hand } from "../../../fingering/fingering";
-import { THUMB_KEYS, isBlack } from "./mech";
+import { THUMB_KEYS, at, isBlack } from "./mech";
 import type { Shape, ThumbAngles, ThumbKey } from "./mech";
 
 // The example library (tools/hand-rig/hand_library.py): a hand's placement and finger shape per
@@ -47,7 +47,7 @@ export function shapeOf(hand: Hand, pressed: readonly FingerPitch[], thumb: stri
     semitones: p - anchor,
     black: isBlack(p)
   }));
-  const key = `${hand[0]?.toUpperCase() ?? ""}:${sorted.map(([f, p]) => `${f}@${p}`).join(",")}:${thumb ?? "None"}`;
+  const key = `${hand[0]?.toUpperCase() ?? ""}:${sorted.map(([f, p]) => `${String(f)}@${String(p)}`).join(",")}:${thumb ?? "None"}`;
   return { key, anchor, rel };
 }
 
@@ -74,7 +74,8 @@ export function nearest(
   const fingers = fingerList(rel);
   const pool = library.entries.filter((e) => e.hand === hand && fingerList(e.pressed) === fingers);
   if (pool.length === 0) return undefined;
-  const iv = (ps: readonly PressedNote[]) => ps.map((r) => `${r.finger}:${r.semitones}`).join(",");
+  const iv = (ps: readonly PressedNote[]) =>
+    ps.map((r) => `${String(r.finger)}:${String(r.semitones)}`).join(",");
   const bw = (ps: readonly PressedNote[]) => ps.map((r) => r.black).join(",");
   const rank = (e: LibraryEntry): number[] => [
     iv(e.pressed) === iv(rel) ? 0 : 1,
@@ -83,7 +84,7 @@ export function nearest(
     Math.abs(e.anchorPitch - anchor),
     -e.count
   ];
-  let best = pool[0] as LibraryEntry;
+  let best = at(pool, 0);
   let bestRank = rank(best);
   for (const e of pool.slice(1)) {
     const r = rank(e);
@@ -113,7 +114,7 @@ function median(values: readonly number[]): number {
   const n = s.length;
   if (n === 0) throw new Error("median of nothing");
   const mid = Math.floor(n / 2);
-  return n % 2 ? (s[mid] as number) : ((s[mid - 1] as number) + (s[mid] as number)) / 2;
+  return n % 2 ? at(s, mid) : (at(s, mid - 1) + at(s, mid)) / 2;
 }
 
 /** The library's median shape for a hand: the default when no example has the finger set. */
@@ -124,9 +125,8 @@ export function canonicalShape(library: Library, hand: Hand): Shape {
     abd: median(shapes.map((s) => s.fingers[f].abd)),
     rel: median(shapes.map((s) => s.fingers[f].rel))
   });
-  const thumb = Object.fromEntries(THUMB_KEYS.map((k) => [k, median(thumbs.map((t) => t[k]))])) as Record<
-    ThumbKey,
-    number
-  >;
+  const thumb = Object.fromEntries(
+    THUMB_KEYS.map((k) => [k, median(thumbs.map((t) => t[k]))])
+  ) as Record<ThumbKey, number>;
   return { fingers: { 2: finger("2"), 3: finger("3"), 4: finger("4"), 5: finger("5") }, thumb };
 }

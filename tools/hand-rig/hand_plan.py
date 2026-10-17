@@ -55,11 +55,11 @@ def move_time(a, b, hand):
     return max(math.hypot(b[3] - a[3], b[4] - a[4]) / lim["wrist"], abs(b[0] - a[0]) / lim["yaw"])
 
 
-def hover_lift(rest, pose, mm=HOVER):
-    """Per pressing finger, the flexion deltas (hand_mech.press_delta) that lift its tip straight up by mm:
-    the ready pose."""
+def hover_lift(rest, pose, fingers, mm=HOVER):
+    """Per finger of the strike's own notes, the flexion deltas (hand_mech.press_delta) that lift its tip
+    straight up by mm: the ready pose. A held note's finger stays on its key."""
     ang, root = pose["angles"], pose["rootVec"]
-    return {f: M.press_delta(rest, ang, root, f, -mm) for f in pose["press"]}
+    return {f: M.press_delta(rest, ang, root, f, -mm) for f in pose["press"] if f in fingers}
 
 
 def plan(rest, library, hand, strikes):
@@ -97,7 +97,7 @@ def plan(rest, library, hand, strikes):
         kept = [h for h in held if h["pitch"] not in pose["dropped"]]
         rep = {"id": s["id"], "time": s["time"], "flags": list(pose["flags"]), "held": [h["pitch"] for h in kept],
                "released": [h["pitch"] for h in held if h["pitch"] in pose["dropped"]], "lateS": 0.0, "missMm": 0.0}
-        pose["hover"] = hover_lift(rest, pose)
+        pose["hover"] = hover_lift(rest, pose, used)
         if i == 0:
             keys.append({"t": round(s["time"] - READY, 4), "phase": "ready", "strike": 0})
         else:

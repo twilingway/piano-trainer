@@ -1,6 +1,6 @@
 import type { Finger, Hand } from "../../../fingering/fingering";
 import type { FingerPitch, Library } from "./library";
-import { MISS_MM, WRIST_Z } from "./mech";
+import { MISS_MM, WRIST_Z, at } from "./mech";
 import type { AngleDelta, Rest, Root } from "./mech";
 import { place, pressDelta } from "./place";
 import type { Hold, PlacedPose } from "./place";
@@ -58,7 +58,7 @@ export function strikesOf(notes: readonly FingeredNote[], hand: Hand): Strike[] 
     const first = group[0];
     if (!first) return;
     out.push({
-      id: `${hand[0] ?? ""}${out.length}`,
+      id: `${hand[0] ?? ""}${String(out.length)}`,
       time: first.start,
       thumb: null,
       notes: group.map((n) => ({ pitch: n.pitch, finger: n.finger, end: n.start + n.duration }))
@@ -82,7 +82,7 @@ export interface PlanKey {
 }
 
 export interface PlannedPose extends PlacedPose {
-  /** The ready pose's lift of each pressing finger: its tip HOVER mm over its key. */
+  /** The ready pose's lift of the strike's own fingers: their tips HOVER mm over their keys. */
   readonly hover: ReadonlyMap<Finger, AngleDelta[Finger] & object>;
 }
 
@@ -111,19 +111,24 @@ const same = (a: Root, b: Root) => a.every((v, i) => v === b[i]);
 /** Seconds the move between two roots needs at the speed limit. */
 export function moveTime(a: Root, b: Root, hand: Hand): number {
   const lim = SPEED[hand];
-  return Math.max(Math.hypot(b[3] - a[3], b[4] - a[4]) / lim.wrist, Math.abs(b[0] - a[0]) / lim.yaw);
+  return Math.max(
+    Math.hypot(b[3] - a[3], b[4] - a[4]) / lim.wrist,
+    Math.abs(b[0] - a[0]) / lim.yaw
+  );
 }
 
-function hoverLift(rest: Rest, pose: PlacedPose): PlannedPose["hover"] {
+/** The ready pose's lift of the strike's own fingers; a held note's finger stays on its key. */
+function hoverLift(rest: Rest, pose: PlacedPose, own: ReadonlySet<Finger>): PlannedPose["hover"] {
   const out = new Map<Finger, AngleDelta[Finger] & object>();
-  for (const f of pose.press.keys()) out.set(f, pressDelta(rest, pose.angles, pose.rootVec, f, -HOVER));
+  for (const f of pose.press.keys())
+    if (own.has(f)) out.set(f, pressDelta(rest, pose.angles, pose.rootVec, f, -HOVER));
   return out;
 }
 
 const uniquePairs = (pairs: readonly FingerPitch[]) => {
   const seen = new Set<string>();
   return pairs.filter(([f, p]) => {
-    const key = `${f}@${p}`;
+    const key = `${String(f)}@${String(p)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -144,7 +149,7 @@ export function* planSteps(
   const { keys, poses, report } = plan;
   let sounding: StrikeNote[] = [];
   for (let i = 0; i < strikes.length; i++) {
-    const s = strikes[i] as Strike;
+    const s = at(strikes, i);
     const own: FingerPitch[] = s.notes.map((n) => [n.finger, n.pitch]);
     const used = new Set(own.map(([f]) => f));
     const held = sounding.filter((h) => h.end > s.time + HELD_EPS && !used.has(h.finger));
@@ -188,11 +193,11 @@ export function* planSteps(
       lateS: 0,
       missMm: 0
     };
-    const planned: PlannedPose = { ...placed, hover: hoverLift(rest, placed) };
+    const planned: PlannedPose = { ...placed, hover: hoverLift(rest, placed, used) };
     if (i === 0) keys.push({ t: r4(s.time - READY), phase: "ready", strike: 0 });
     else {
-      const p = strikes[i - 1] as Strike;
-      const before = poses[i - 1] as PlannedPose;
+      const p = at(strikes, i - 1);
+      const before = at(poses, i - 1);
       const gap = s.time - p.time;
       let ready = s.time - Math.min(READY, gap / 3);
       const need = moveTime(before.rootVec, planned.rootVec, hand);
@@ -203,9 +208,9 @@ export function* planSteps(
       ];
       const release = ends.length > 0 ? Math.max(...ends) : p.time + TAP;
       // The previous strike's key: its onset, or later when it came late.
-      const struck = (keys[keys.length - 1] as PlanKey).t;
+      const struck = at(keys, keys.length - 1).t;
       const depart = Math.max(struck + TAP, Math.min(release, ready - need));
-      if (depart < release - 1e-6) (report[i - 1] as StrikeReport).flags.push("cut");
+      if (depart < release - 1e-6) at(report, i - 1).flags.push("cut");
       const arrive = depart + need;
       if (arrive > ready + 1e-6) {
         rep.flags.push("degraded");
@@ -221,12 +226,12 @@ export function* planSteps(
           );
         ready = arrive;
       }
-      if (depart > (keys[keys.length - 1] as PlanKey).t + 1e-6)
+      if (depart > at(keys, keys.length - 1).t + 1e-6)
         keys.push({ t: r4(depart), phase: "depart", strike: i - 1 });
       keys.push({ t: r4(ready), phase: "ready", strike: i });
     }
     keys.push({
-      t: r4(Math.max(s.time, (keys[keys.length - 1] as PlanKey).t + 1e-3)),
+      t: r4(Math.max(s.time, at(keys, keys.length - 1).t + 1e-3)),
       phase: "strike",
       strike: i
     });
@@ -240,7 +245,12 @@ export function* planSteps(
 }
 
 /** The whole plan of a hand. */
-export function planHand(rest: Rest, library: Library, hand: Hand, strikes: readonly Strike[]): HandPlan {
+export function planHand(
+  rest: Rest,
+  library: Library,
+  hand: Hand,
+  strikes: readonly Strike[]
+): HandPlan {
   const steps = planSteps(rest, library, hand, strikes);
   for (;;) {
     const step = steps.next();

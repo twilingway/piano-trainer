@@ -1,3 +1,5 @@
+import { at } from "./mech";
+
 // Projected Levenberg-Marquardt inside a box (tools/hand-rig/hand_shape.py's fit): a variable on a
 // wall that the gradient pushes out stays there for the step.
 
@@ -14,7 +16,7 @@ const dot = (a: readonly number[], b: readonly number[]) => {
 export function solveLinear(A: readonly (readonly number[])[], b: readonly number[]): number[] {
   const n = b.length;
   const M = A.map((row, i) => [...row, b[i] ?? 0]);
-  const row = (i: number) => M[i] as number[];
+  const row = (i: number) => at(M, i);
   for (let c = 0; c < n; c++) {
     let p = c;
     for (let r = c + 1; r < n; r++) if (Math.abs(row(r)[c] ?? 0) > Math.abs(row(p)[c] ?? 0)) p = r;
@@ -63,9 +65,11 @@ export function fit(
       xp[i] = xi + STEP <= high(i) ? xi + STEP : xi - STEP;
       const h = (xp[i] ?? 0) - xi;
       const rp = fun(xp);
-      for (let k = 0; k < r.length; k++) (J[k] as number[])[i] = ((rp[k] ?? 0) - (r[k] ?? 0)) / h;
+      for (let k = 0; k < r.length; k++) at(J, k)[i] = ((rp[k] ?? 0) - (r[k] ?? 0)) / h;
     }
-    const g = Array.from({ length: n }, (_, i) => J.reduce((s, row, k) => s + (row[i] ?? 0) * (r[k] ?? 0), 0));
+    const g = Array.from({ length: n }, (_, i) =>
+      J.reduce((s, row, k) => s + (row[i] ?? 0) * (r[k] ?? 0), 0)
+    );
     const free: number[] = [];
     for (let i = 0; i < n; i++) {
       const xi = x[i] ?? 0;
@@ -75,7 +79,9 @@ export function fit(
     }
     // No free variable: the step never lowers the cost and the loop below would give up anyway.
     if (free.length === 0) return { x, r };
-    const A = free.map((i) => free.map((j) => J.reduce((s, row) => s + (row[i] ?? 0) * (row[j] ?? 0), 0)));
+    const A = free.map((i) =>
+      free.map((j) => J.reduce((s, row) => s + (row[i] ?? 0) * (row[j] ?? 0), 0))
+    );
     const b = free.map((i) => -J.reduce((s, row, k) => s + (row[i] ?? 0) * (r[k] ?? 0), 0));
     let xn: number[];
     let rn: readonly number[];
