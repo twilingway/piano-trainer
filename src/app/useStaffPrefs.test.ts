@@ -128,6 +128,32 @@ describe("hand style preference", () => {
   });
 });
 
+describe("local pianist choice", () => {
+  it.each([undefined, "true", 1, null])(
+    "keeps the pianist off for missing or invalid saved value %s",
+    async (pianist) => {
+      localStorage.setItem("staff-prefs", JSON.stringify({ keyStyle: "3d", pianist }));
+      await mount();
+      expect(prefs.staffPrefs.pianist).toBe(false);
+    }
+  );
+
+  it("keeps the pianist on through a reload", async () => {
+    await mount();
+    await act(async () => {
+      prefs.updateStaffPrefs({ pianist: true });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs.pianist).toBe(true);
+  });
+});
+
 describe("falling note defaults", () => {
   it.each([undefined, "true", 1, null])(
     "keeps road guides off for missing or invalid saved value %s",

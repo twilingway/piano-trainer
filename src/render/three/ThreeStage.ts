@@ -243,6 +243,11 @@ export class ThreeStage {
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
   }
 
+  /** Something of the host's that rides with the keys: the local pianist. */
+  addToKeys(object: Object3D): void {
+    this.keys.add(object);
+  }
+
   clearEnergy(): void {
     this.noteLights.clear();
     this.keyEmission.clear();

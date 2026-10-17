@@ -2,8 +2,9 @@ import { Container, Matrix, Texture, UPDATE_PRIORITY } from "pixi.js";
 import type { Application, WebGLRenderer } from "pixi.js";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
-import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
+import type { KeysScene, PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
 import type { EnergySource } from "../noteEnergy";
+import type { Pianist } from "./pianist";
 import type { ThreeStage } from "./ThreeStage";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { SharedTextureBindings } from "./SharedTextureBindings";
@@ -28,6 +29,10 @@ export class ThreeKeysHost {
   private mist: Container | undefined;
   private readonly mistTransform = new Matrix();
   private energyDeltaSeconds: number | undefined;
+  /** The local pianist behind the keys, once asked for and loaded. */
+  private pianist: Pianist | undefined;
+  private pianistLoading = false;
+  private pianistStage: ThreeStage | undefined;
   /**
    * Holds the road's place on the stage while the road is drawn on its own: a container on the
    * stage cannot be drawn alone, its parent's visibility decides its children's.
@@ -222,6 +227,7 @@ export class ThreeKeysHost {
         renderer.render({ container: mist, clear: false, transform: this.mistTransform });
         mist.renderable = false;
       }
+      this.seatPianist(this.stage, scene);
       const picture = gl.texture.getGlSource(scene.texture.source).texture;
       const frame = this.keyboard.frame;
       const hands = this.hands?.container.visible
@@ -268,6 +274,32 @@ export class ThreeKeysHost {
       }
     }
   };
+
+  /** Seats the local pianist on the stage while the player wants it; loads it the first time. */
+  private seatPianist(stage: ThreeStage, keys: KeysScene): void {
+    const wanted = this.hands?.pianist === true;
+    if (wanted && !this.pianist && !this.pianistLoading) {
+      this.pianistLoading = true;
+      void import("./pianist")
+        .then(async ({ Pianist, loadPianist }) => {
+          const model = await loadPianist();
+          if (model && !this.destroyed) this.pianist = new Pianist(model);
+        })
+        .catch((error: unknown) => {
+          console.warn("Local pianist unavailable", error);
+        });
+    }
+    const pianist = this.pianist;
+    if (!pianist) return;
+    pianist.space.visible = wanted;
+    if (!wanted) return;
+    // A rebuilt stage (after a failure) takes the pianist over.
+    if (this.pianistStage !== stage) {
+      stage.addToKeys(pianist.space);
+      this.pianistStage = stage;
+    }
+    pianist.follow(keys);
+  }
 
   private visibleMist(): Container | undefined {
     const mist = this.mist;

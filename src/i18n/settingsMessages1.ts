@@ -152,6 +152,7 @@ export const settingsMessages1 = {
   "Линии дороги": {
     en: "Road guide lines"
   },
+  "Мой пианист (проба)": { en: "My pianist (preview)" },
   Рисованные: {
     en: "Drawn"
   },
