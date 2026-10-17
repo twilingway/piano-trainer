@@ -534,7 +534,7 @@ it("keeps native 3D enabled for direct notes and restores perspective without ch
 });
 
 describe("native effect policy", () => {
-  it("keeps Three data flowing while skipping Pixi impacts in normal 3D and restores them on fallback", () => {
+  it("keeps all Pixi impacts active beside Three and hides only old labels in inspection", () => {
     const v = viewHarness(true, notes, true);
     const frame: FrameState = {
       time: 0.1,
@@ -547,7 +547,7 @@ describe("native effect policy", () => {
       owns: () => true
     };
     v.view.draw(frame);
-    expect(v.effectsDraw).not.toHaveBeenCalled();
+    expect(v.effectsDraw).toHaveBeenCalledOnce();
     expect(v.roadDraw).toHaveBeenCalledOnce();
     const inside = v.view as unknown as {
       road: { drawsNativeRoad: boolean; freeCamera?: boolean };
@@ -555,14 +555,14 @@ describe("native effect policy", () => {
       fx: { container: Container };
     };
     expect(inside.plasma.draw).toHaveBeenCalledOnce();
-    expect(inside.fx.container.renderable).toBe(false);
+    expect(inside.fx.container.renderable).toBe(true);
     inside.road.freeCamera = true;
     v.view.draw(frame);
     expect(v.layer.cards.renderable).toBe(false);
     inside.road.freeCamera = false;
     inside.road.drawsNativeRoad = false;
     v.view.draw(frame);
-    expect(v.effectsDraw).toHaveBeenCalledOnce();
+    expect(v.effectsDraw).toHaveBeenCalledTimes(3);
     expect(inside.fx.container.renderable).toBe(true);
     expect(v.layer.cards.renderable).toBe(true);
   });

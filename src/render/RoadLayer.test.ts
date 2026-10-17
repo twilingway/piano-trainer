@@ -138,20 +138,17 @@ describe("inspection key input", () => {
     expect(layer.keysPointAt(200, 250)).toBeUndefined();
   });
 
-  it("excludes old horizon, fog, sparks and staff overlays in normal native 3D, restoring fallback", () => {
+  it("keeps horizon, mist and sparks active in native 3D and fallback", () => {
     const v = fixture();
-    v.draw(0.016);
-    expect(v.internals.fog.renderable).toBe(false);
-    expect(v.internals.arrivals.container.renderable).toBe(false);
-    expect(v.internals.effects.renderable).toBe(false);
-    expect(v.internals.drawHorizon).not.toHaveBeenCalled();
-    expect(v.internals.sparks.draw).not.toHaveBeenCalled();
-    v.three.drawsRoad = false;
     v.draw(0.016);
     expect(v.internals.fog.renderable).toBe(true);
     expect(v.internals.arrivals.container.renderable).toBe(true);
     expect(v.internals.effects.renderable).toBe(true);
     expect(v.internals.drawHorizon).toHaveBeenCalledOnce();
     expect(v.internals.sparks.draw).toHaveBeenCalledOnce();
+    v.three.drawsRoad = false;
+    v.draw(0.016);
+    expect(v.internals.drawHorizon).toHaveBeenCalledTimes(2);
+    expect(v.internals.sparks.draw).toHaveBeenCalledTimes(2);
   });
 });

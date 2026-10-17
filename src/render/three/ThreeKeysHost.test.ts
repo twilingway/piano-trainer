@@ -357,7 +357,7 @@ describe("free inspection host lifecycle", () => {
     expect(view.renderer.render).toHaveBeenCalled();
     expect(
       view.renderer.render.mock.calls.some(([options]) => options.container === view.road)
-    ).toBe(false);
+    ).toBe(true);
     view.keys.container.visible = false;
     view.tick();
     expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
@@ -373,4 +373,78 @@ describe("free inspection host lifecycle", () => {
     expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
     view.host.destroy();
   });
+});
+
+describe("Pixi FX under native hands", () => {
+  it("draws transformed effects before Three, once, restoring their original ownership", async () => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    view.overlay.position.set(30, -12);
+    fire.position.set(7, 2);
+    view.host.setSceneEffects([fire]);
+    await view.host.setEnabled(true);
+    const order: string[] = [];
+    view.renderer.render.mockImplementation((options) => {
+      order.push(
+        options.container === fire ? "fire" : options.container === view.road ? "road" : "hud"
+      );
+      if (options.container === view.stage) expect(fire.renderable).toBe(false);
+    });
+    mocks.draw.mockImplementation(() => {
+      order.push("three");
+      expect(fire.renderable).toBe(false);
+    });
+    view.tick();
+    expect(order).toEqual(["road", "fire", "three", "hud"]);
+    expect(
+      view.renderer.render.mock.calls.find(([options]) => options.container === fire)?.[0]
+    ).toMatchObject({ clear: false, transform: { tx: 37, ty: -10 } });
+    expect(fire.renderable).toBe(true);
+    expect(fire.parent).toBe(view.overlay);
+    view.host.destroy();
+    expect(fire.destroyed).toBe(false);
+  });
+
+  it.each(["three", "hud"])("restores FX flags after a %s failure", async (failure) => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    view.host.setSceneEffects([fire]);
+    await view.host.setEnabled(true);
+    if (failure === "three")
+      mocks.draw.mockImplementationOnce(() => {
+        throw new Error("draw failed");
+      });
+    else
+      view.renderer.render.mockImplementation((options) => {
+        if (options.container === view.stage) throw new Error("hud failed");
+      });
+    if (failure === "three") expect(view.tick).not.toThrow();
+    else expect(view.tick).toThrow("hud failed");
+    expect(fire.renderable).toBe(true);
+    expect(fire.parent).toBe(view.overlay);
+    view.host.destroy();
+  });
+});
+
+it("skips hidden or destroyed FX without suppressing native Three", async () => {
+  const view = fixture();
+  const fire = view.overlay.addChild(new Container());
+  view.host.setSceneEffects([fire]);
+  await view.host.setEnabled(true);
+  view.overlay.visible = false;
+  view.tick();
+  expect(mocks.draw).toHaveBeenCalledOnce();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === fire)).toBe(
+    false
+  );
+  view.overlay.visible = true;
+  view.renderer.render.mockClear();
+  view.tick();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === fire)).toBe(
+    true
+  );
+  expect(fire.renderable).toBe(true);
+  fire.destroy();
+  expect(view.tick).not.toThrow();
+  view.host.destroy();
 });

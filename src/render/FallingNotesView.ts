@@ -163,6 +163,7 @@ export class FallingNotesView {
     computerKeyboard.showStickers(this.labels);
     this.computerKeyboard = computerKeyboard;
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
+    this.road.setSceneEffects([this.plasma.container, this.road.effects, this.fx.container]);
     this.road.setCamera(this.cameraPrefs);
     this.applyFreeCamera();
     this.road.setRoadGuides(this.roadGuides);
@@ -476,24 +477,20 @@ export class FallingNotesView {
     // Native objects keep drawing; only screen-projected decorations leave inspection view.
     const inspect = road?.freeCamera === true;
     this.notesLayer.cards.renderable = !inspect;
-    this.plasma.container.renderable = !road?.drawsNativeRoad;
     this.hands.container.renderable = !inspect;
-    this.fx.container.renderable = !road?.drawsNativeRoad;
-    if (this.road) this.road.effects.renderable = !road?.drawsNativeRoad;
     const hitLineY = road ? road.hitLineY : geometry.hitY;
-    if (!road?.drawsNativeRoad)
-      drawViewEffects(
-        this.fx,
-        state,
-        playing,
-        this.keys,
-        this.computer,
-        road,
-        this.pan,
-        geometry.hitY,
-        this.wasSounding,
-        this.app.ticker.deltaMS / 1000
-      );
+    drawViewEffects(
+      this.fx,
+      state,
+      playing,
+      this.keys,
+      this.computer,
+      road,
+      this.pan,
+      geometry.hitY,
+      this.wasSounding,
+      this.app.ticker.deltaMS / 1000
+    );
     // React's GameBoard owns the score panels; Pixi only draws transient strike grades.
     drawViewHud(
       this.hud,
