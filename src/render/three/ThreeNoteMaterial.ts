@@ -151,7 +151,7 @@ export function createNoteSurfaceMaterial(halo: boolean): ShaderMaterial {
     fragmentShader: SURFACE_FRAGMENT,
     transparent: true,
     depthWrite: false,
-    depthTest: !halo,
+    depthTest: true,
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -4,

@@ -1,3 +1,4 @@
+import type { HudLayer } from "./HudLayer";
 import type { SongNote } from "../song/song";
 import { noteColor } from "./computerKeys";
 import type { ComputerKeys } from "./computerKeys";
@@ -72,4 +73,29 @@ export function drawViewEffects(
     if (key) sounding.push(key);
   }
   fx.draw(struck, sounding, hitLineY, deltaSeconds);
+}
+
+/** Transient grades keep their screen HUD ownership in every camera mode. */
+export function drawViewHud(
+  hud: Pick<HudLayer, "draw">,
+  state: FrameState,
+  keys: ReadonlyMap<number, KeyRect>,
+  road: RoadLayer | undefined,
+  pan: number,
+  hitY: number,
+  hitLineY: number,
+  deltaSeconds: number
+): void {
+  hud.draw(
+    undefined,
+    state.graded ?? [],
+    (pitch) => {
+      const key = keys.get(pitch);
+      return (
+        key && (road?.notePlace(key.x + key.width / 2, hitY)?.x ?? key.x + key.width / 2 - pan)
+      );
+    },
+    hitLineY,
+    deltaSeconds
+  );
 }

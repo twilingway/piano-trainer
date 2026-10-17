@@ -15,7 +15,10 @@ const mocks = vi.hoisted(() => ({
   setKeyboardDim: vi.fn(),
   dispose: vi.fn(),
   loadKit: vi.fn(),
-  loadHand: vi.fn()
+  loadHand: vi.fn(),
+  setFreeCamera: vi.fn(),
+  resetFreeCamera: vi.fn(),
+  freeKeyAt: vi.fn()
 }));
 
 vi.mock("./ThreeStage", () => ({
@@ -25,6 +28,9 @@ vi.mock("./ThreeStage", () => ({
     clearEnergy = mocks.clearEnergy;
     setKeyboardDim = mocks.setKeyboardDim;
     dispose = mocks.dispose;
+    setFreeCamera = mocks.setFreeCamera;
+    resetFreeCamera = mocks.resetFreeCamera;
+    freeKeyAt = mocks.freeKeyAt;
     constructor(...args: unknown[]) {
       mocks.construct(...args);
     }
@@ -62,6 +68,7 @@ function fixture() {
   const hands = { live: false, container: new Container(), time: 0, songNotes: [] };
   const renderer = {
     gl,
+    clear: vi.fn(),
     resetState: vi.fn(() => {
       gl.flipY = false;
       gl.premultiply = false;
@@ -138,89 +145,16 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
-  it("draws neutral mist before Three, keeps coloured effects over it and restores ownership and flags", async () => {
+  it("draws road, Three and HUD without an extra Pixi mist pass", async () => {
     const view = fixture();
-    const mist = new Container(),
-      colour = new Container();
-    view.overlay.position.set(30, -12);
-    mist.position.set(7, 2);
-    view.overlay.addChild(mist, colour);
-    view.host.setMistLayer(mist);
     await view.host.setEnabled(true);
     const order: string[] = [];
     view.renderer.render.mockImplementation((options: { container: Container }) => {
-      order.push(
-        options.container === mist ? "mist" : options.container === view.road ? "road" : "overlay"
-      );
-      if (options.container === view.stage) {
-        expect(mist.renderable).toBe(false);
-        expect(colour.renderable).toBe(true);
-      }
+      order.push(options.container === view.road ? "road" : "overlay");
     });
     mocks.draw.mockImplementation(() => order.push("three"));
     view.tick();
-    expect(order).toEqual(["road", "mist", "three", "overlay"]);
-    const call = view.renderer.render.mock.calls.find(([options]) => options.container === mist);
-    expect(call?.[0]).toMatchObject({ clear: false, transform: { tx: 37, ty: -10 } });
-    expect(mist.visible).toBe(true);
-    expect(mist.renderable).toBe(true);
-    expect(mist.parent).toBe(view.overlay);
-    expect(view.overlay.children).toEqual([mist, colour]);
-    view.host.destroy();
-    expect(mist.destroyed).toBe(false);
-  });
-
-  it("restores neutral mist before same-frame fallback after Three fails", async () => {
-    const view = fixture();
-    const mist = view.overlay.addChild(new Container());
-    view.host.setMistLayer(mist);
-    await view.host.setEnabled(true);
-    mocks.draw.mockImplementation(() => {
-      throw new Error("draw failed");
-    });
-    view.renderer.render.mockImplementation((options: { container: Container }) => {
-      if (options.container === view.stage) expect(mist.renderable).toBe(true);
-    });
-    view.tick();
-    expect(mist.renderable).toBe(true);
-    expect(mist.visible).toBe(true);
-    expect(mist.parent).toBe(view.overlay);
-    expect(view.host.on).toBe(false);
-    view.host.destroy();
-  });
-
-  it("restores mist flags even when the final Pixi overlay throws", async () => {
-    const view = fixture();
-    const mist = view.overlay.addChild(new Container());
-    view.host.setMistLayer(mist);
-    await view.host.setEnabled(true);
-    view.renderer.render.mockImplementation((options: { container: Container }) => {
-      if (options.container === view.stage) throw new Error("overlay failed");
-    });
-    expect(view.tick).toThrow("overlay failed");
-    expect(mist.renderable).toBe(true);
-    expect(mist.visible).toBe(true);
-    expect(mist.parent).toBe(view.overlay);
-    view.host.destroy();
-  });
-
-  it("does not draw hidden, non-renderable or destroyed mist ancestors as a separate pass", async () => {
-    const view = fixture();
-    const mist = view.overlay.addChild(new Container());
-    view.host.setMistLayer(mist);
-    await view.host.setEnabled(true);
-    for (const field of ["visible", "renderable"] as const) {
-      view.overlay[field] = false;
-      view.renderer.render.mockClear();
-      view.tick();
-      expect(view.renderer.render.mock.calls.some(([options]) => options.container === mist)).toBe(
-        false
-      );
-      expect(mist.renderable).toBe(true);
-      view.overlay[field] = true;
-    }
-    mist.destroy();
-    expect(view.tick).not.toThrow();
+    expect(order).toEqual(["road", "three", "overlay"]);
     view.host.destroy();
   });
 
@@ -407,4 +341,135 @@ describe("shared WebGL keyboard recovery", () => {
     await Promise.resolve();
     expect(view.renderer.resetState).not.toHaveBeenCalled();
   });
+});
+
+describe("free inspection host lifecycle", () => {
+  it("activates gestures only for visible native 3D and cleans up on exit and draw failure", async () => {
+    const view = fixture();
+    const changed = vi.fn();
+    view.host.onFreeCamera = changed;
+    view.host.setFreeCamera(true);
+    expect(changed).not.toHaveBeenCalled();
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(view.host.freeCamera).toBe(true);
+    expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(true);
+    expect(view.renderer.render).toHaveBeenCalled();
+    expect(
+      view.renderer.render.mock.calls.some(([options]) => options.container === view.road)
+    ).toBe(false);
+    view.keys.container.visible = false;
+    view.tick();
+    expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
+    view.keys.container.visible = true;
+    view.tick();
+    expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(true);
+    mocks.draw.mockImplementationOnce(() => {
+      throw new Error("context failed");
+    });
+    view.tick();
+    expect(view.host.freeCamera).toBe(false);
+    expect(changed).toHaveBeenLastCalledWith(false);
+    expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
+    view.host.destroy();
+  });
+});
+
+describe("Pixi FX under native hands", () => {
+  it("draws transformed effects before Three, once, restoring their original ownership", async () => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    view.overlay.position.set(30, -12);
+    fire.position.set(7, 2);
+    view.host.setSceneEffects([fire]);
+    await view.host.setEnabled(true);
+    const order: string[] = [];
+    view.renderer.render.mockImplementation((options) => {
+      order.push(
+        options.container === fire ? "fire" : options.container === view.road ? "road" : "hud"
+      );
+      if (options.container === view.stage) expect(fire.renderable).toBe(false);
+    });
+    mocks.draw.mockImplementation(() => {
+      order.push("three");
+      expect(fire.renderable).toBe(false);
+    });
+    view.tick();
+    expect(order).toEqual(["road", "fire", "three", "hud"]);
+    expect(
+      view.renderer.render.mock.calls.find(([options]) => options.container === fire)?.[0]
+    ).toMatchObject({ clear: false, transform: { tx: 37, ty: -10 } });
+    expect(fire.renderable).toBe(true);
+    expect(fire.parent).toBe(view.overlay);
+    view.host.destroy();
+    expect(fire.destroyed).toBe(false);
+  });
+
+  it.each(["three", "hud"])("restores FX flags after a %s failure", async (failure) => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    view.host.setSceneEffects([fire]);
+    await view.host.setEnabled(true);
+    if (failure === "three")
+      mocks.draw.mockImplementationOnce(() => {
+        throw new Error("draw failed");
+      });
+    else
+      view.renderer.render.mockImplementation((options) => {
+        if (options.container === view.stage) throw new Error("hud failed");
+      });
+    if (failure === "three") expect(view.tick).not.toThrow();
+    else expect(view.tick).toThrow("hud failed");
+    expect(fire.renderable).toBe(true);
+    expect(fire.parent).toBe(view.overlay);
+    view.host.destroy();
+  });
+});
+
+it("skips hidden or destroyed FX without suppressing native Three", async () => {
+  const view = fixture();
+  const fire = view.overlay.addChild(new Container());
+  view.host.setSceneEffects([fire]);
+  await view.host.setEnabled(true);
+  view.overlay.visible = false;
+  view.tick();
+  expect(mocks.draw).toHaveBeenCalledOnce();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === fire)).toBe(
+    false
+  );
+  view.overlay.visible = true;
+  view.renderer.render.mockClear();
+  view.tick();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === fire)).toBe(
+    true
+  );
+  expect(fire.renderable).toBe(true);
+  fire.destroy();
+  expect(view.tick).not.toThrow();
+  view.host.destroy();
+});
+
+it("keeps road bursts before Three without the projected background in free view", async () => {
+  const view = fixture();
+  const burst = view.road.addChild(new Container());
+  view.host.setSceneEffects([], [burst]);
+  await view.host.setEnabled(true);
+  view.tick();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === burst)).toBe(
+    false
+  );
+  view.renderer.render.mockClear();
+  view.host.setFreeCamera(true);
+  mocks.draw.mockImplementation(() => {
+    expect(burst.renderable).toBe(false);
+  });
+  view.tick();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === view.road)).toBe(
+    false
+  );
+  expect(
+    view.renderer.render.mock.calls.filter(([options]) => options.container === burst)
+  ).toHaveLength(1);
+  expect(burst.renderable).toBe(true);
+  view.host.destroy();
 });

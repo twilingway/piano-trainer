@@ -73,7 +73,6 @@ function setup() {
     hitLineY: 400,
     drawsNativeRoad: false,
     keysOffsetX: 0,
-    setMistLayer: vi.fn<RoadLayer["setMistLayer"]>(),
     notePlace: vi.fn((x: number, y: number) => ({ x: x + 10, y: y - 20, scale: 0.5 })),
     setEnergy: vi.fn<RoadLayer["setEnergy"]>(),
     clearEnergy: vi.fn()
@@ -107,15 +106,6 @@ describe("NotePlasma renderer integration", () => {
     view.effect.destroy();
   });
 
-  it("binds the same non-owning mist pass while active and when effects are hidden", () => {
-    const view = setup();
-    view.draw();
-    const first = view.road.setMistLayer.mock.calls[0]?.[0];
-    expect(first).toBeDefined();
-    view.draw(frame(), [], false);
-    expect(view.road.setMistLayer).toHaveBeenLastCalledWith(first);
-    view.effect.destroy();
-  });
   it("freezes a paused frame without consuming its attack, then emits once on resume", () => {
     const { draw, road } = setup();
     draw(frame({ playing: false }));

@@ -1,4 +1,4 @@
-import { Container, Matrix, Texture, UPDATE_PRIORITY } from "pixi.js";
+import { Container, Texture, UPDATE_PRIORITY } from "pixi.js";
 import type { Application, WebGLRenderer } from "pixi.js";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
@@ -8,6 +8,7 @@ import type { Pianist } from "./pianist";
 import type { ThreeStage } from "./ThreeStage";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { SharedTextureBindings } from "./SharedTextureBindings";
+import { SceneEffectsPass } from "./SceneEffectsPass";
 
 /**
  * Puts the three.js keys between the road and everything over it. While on, the app's own render
@@ -21,13 +22,13 @@ export class ThreeKeysHost {
   private wanted = false;
   private keyboardDim = false;
   private active = false;
+  private freeWanted = false;
+  private freeActive = false;
+  onFreeCamera: ((on: boolean) => void) | undefined;
   private sharedBindings: SharedTextureBindings | undefined;
   private destroyed = false;
   private energy: readonly EnergySource[] = [];
   private roadFrame: ThreeRoadFrame | undefined;
-  /** Non-owning reference: PlasmaLayer destroys the rim with its other effects. */
-  private mist: Container | undefined;
-  private readonly mistTransform = new Matrix();
   private energyDeltaSeconds: number | undefined;
   /** The local pianist behind the keys, once asked for and loaded. */
   private pianist: Pianist | undefined;
@@ -38,6 +39,8 @@ export class ThreeKeysHost {
    * stage cannot be drawn alone, its parent's visibility decides its children's.
    */
   private readonly placeholder = new Container();
+  private readonly effects = new SceneEffectsPass();
+  private readonly roadEffects = new SceneEffectsPass();
 
   constructor(
     private readonly app: Application,
@@ -93,20 +96,45 @@ export class ThreeKeysHost {
     this.roadFrame = frame;
   }
 
-  setMistLayer(layer: Container): void {
-    if (this.mist === layer) return;
-    this.mist?.off("destroyed", this.mistDestroyed);
-    this.mist = layer.destroyed ? undefined : layer;
-    this.mist?.once("destroyed", this.mistDestroyed);
+  setSceneEffects(layers: readonly Container[], roadLayers: readonly Container[] = []): void {
+    this.effects.setLayers(layers);
+    this.roadEffects.setLayers(roadLayers);
   }
-
-  private readonly mistDestroyed = (): void => {
-    this.mist = undefined;
-  };
 
   setKeyboardDim(dim: boolean): void {
     this.keyboardDim = dim;
     this.stage?.setKeyboardDim(dim);
+  }
+
+  setFreeCamera(on: boolean): void {
+    this.freeWanted = on;
+    this.syncFreeCamera();
+  }
+
+  get freeCamera(): boolean {
+    return this.freeActive;
+  }
+
+  resetFreeCamera(): void {
+    this.stage?.resetFreeCamera();
+  }
+
+  freeKeysPointAt(x: number, y: number): { x: number; y: number } | undefined {
+    const scene = this.keys.scene;
+    if (!this.freeActive || !scene) return undefined;
+    const pitch = this.stage?.freeKeyAt(x, y, this.app.screen.width, this.app.screen.height);
+    const face = scene.faces.find(({ key }) => key.pitch === pitch);
+    return (
+      face && { x: face.key.x + face.key.width / 2, y: face.source.y + face.source.height / 2 }
+    );
+  }
+
+  private syncFreeCamera(layered = this.active): void {
+    const on = this.freeWanted && this.active && layered;
+    if (on === this.freeActive) return;
+    this.freeActive = on;
+    this.stage?.setFreeCamera(on);
+    this.onFreeCamera?.(on);
   }
 
   clearEnergy(): void {
@@ -121,10 +149,10 @@ export class ThreeKeysHost {
     this.destroyed = true;
     this.app.canvas.removeEventListener("webglcontextrestored", this.contextRestored);
     this.clearEnergy();
+    this.effects.dispose();
+    this.roadEffects.dispose();
     this.stage?.dispose();
     this.stage = undefined;
-    this.mist?.off("destroyed", this.mistDestroyed);
-    this.mist = undefined;
   }
 
   private resetPixiState(): void {
@@ -189,6 +217,7 @@ export class ThreeKeysHost {
     const on = this.wanted && this.stage !== undefined;
     if (on === this.active) return;
     this.active = on;
+    this.syncFreeCamera();
     if (this.hands) this.hands.live = on && this.stage?.hands !== undefined;
     const { ticker } = this.app;
     // The ticker calls the app's render with the app as `this`, as Pixi itself added it.
@@ -210,6 +239,7 @@ export class ThreeKeysHost {
     const layered =
       this.stage !== undefined && this.road.visible && this.keys.container.visible && scene;
     this.layer(Boolean(layered));
+    this.syncFreeCamera(Boolean(layered));
     if (!layered || !this.stage) {
       renderer.render({ container: stage });
       return;
@@ -217,16 +247,11 @@ export class ThreeKeysHost {
     const gl = renderer as WebGLRenderer;
     // three left its own state (clear colour, blending) behind last frame.
     this.resetPixiState();
-    renderer.render({ container: this.road });
-    const mist = this.visibleMist();
-    const visible = mist?.visible ?? false;
-    const renderable = mist?.renderable ?? false;
+    const separateRoad = this.freeActive;
+    renderer.render({ container: separateRoad ? this.placeholder : this.road });
     try {
-      if (mist) {
-        mist.getGlobalTransform(this.mistTransform);
-        renderer.render({ container: mist, clear: false, transform: this.mistTransform });
-        mist.renderable = false;
-      }
+      if (separateRoad) this.roadEffects.draw(renderer);
+      this.effects.draw(renderer);
       this.seatPianist(this.stage, scene);
       const picture = gl.texture.getGlSource(scene.texture.source).texture;
       const frame = this.keyboard.frame;
@@ -249,10 +274,8 @@ export class ThreeKeysHost {
         this.roadFrame
       );
     } catch (error) {
-      if (mist && !mist.destroyed) {
-        mist.visible = visible;
-        mist.renderable = renderable;
-      }
+      this.effects.restore();
+      this.roadEffects.restore();
       console.warn("3D keys failed, keeping the perspective keys", error);
       // Restore the road, keys, sprite hands and normal ticker before drawing this frame again.
       void this.setEnabled(false);
@@ -268,10 +291,8 @@ export class ThreeKeysHost {
       this.resetPixiState();
       renderer.render({ container: stage, clear: false });
     } finally {
-      if (mist && !mist.destroyed) {
-        mist.visible = visible;
-        mist.renderable = renderable;
-      }
+      this.effects.restore();
+      this.roadEffects.restore();
     }
   };
 
@@ -299,18 +320,6 @@ export class ThreeKeysHost {
       this.pianistStage = stage;
     }
     pianist.follow(keys);
-  }
-
-  private visibleMist(): Container | undefined {
-    const mist = this.mist;
-    if (!mist || mist.destroyed) return undefined;
-    let ancestor: Container | null = mist;
-    while (ancestor) {
-      if (ancestor.destroyed || !ancestor.visible || !ancestor.renderable || ancestor.alpha <= 0)
-        return undefined;
-      ancestor = ancestor.parent;
-    }
-    return mist;
   }
 
   /** The road off the stage, drawn first, and three's keys in the Pixi keys' place; or back. */

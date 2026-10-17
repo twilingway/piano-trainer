@@ -14,8 +14,7 @@ import { RoadGlassLayer } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 
-import { DEFAULT_CAMERA, normalizeCamera } from "./worldCamera";
-import type { CameraPrefs, WorldCamera } from "./worldCamera";
+import { DEFAULT_CAMERA, normalizeCamera, type CameraPrefs, type WorldCamera } from "./worldCamera";
 import { PerspectiveKeyboardLayer } from "./PerspectiveKeyboardLayer";
 import type { Geometry } from "./viewGeometry";
 import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeometry";
@@ -24,7 +23,8 @@ import { handSurface } from "./handProjection";
 import { nativeViewCameras } from "./nativeViewCameras";
 import { RoadSparks } from "./RoadSparks";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
-import { projectNoteLane, type NoteLaneProjection } from "./noteLaneProjection";
+import type { NoteLaneProjection } from "./noteLaneProjection";
+import { FREE_BLACK_LANE, freeRoadKeyPoint, roadNotePlace } from "./roadScenePoints";
 import { DEFAULT_ROAD_SHAPE, roadLayoutCamera, type RoadShape } from "./roadLayoutCamera";
 import type { HandsGeometry, HandsLayer } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
@@ -54,7 +54,6 @@ export interface Arrival {
   readonly screenY?: number | undefined;
 }
 
-/** The fog over the far road reaches this share of the way down to the keys. */
 const FOG_REACH = 0.5;
 const FOG_COLOR = 0x020c18;
 
@@ -108,6 +107,7 @@ export class RoadLayer {
   /** The view's width: the scene (the whole keyboard) may be wider. */
   private viewWidth = 0;
   private hitY = 0;
+  private keyboardTopY = 0;
   private bottom = 0;
   private clock = 0;
   private plasmaClock = 0;
@@ -167,9 +167,7 @@ export class RoadLayer {
     this.plasmaClock += Math.min(0.05, Math.max(0, deltaSeconds));
   }
 
-  clearEnergy(): void {
-    this.three?.clearEnergy();
-  }
+  clearEnergy = (): void => this.three?.clearEnergy();
 
   addTrailAnchor(x: number, width: number, color: number, alpha: number): void {
     if (this.three?.drawsRoad && this.camera)
@@ -182,6 +180,7 @@ export class RoadLayer {
   }
 
   setKeyboard(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry): void {
+    this.keyboardTopY = geometry.keyboardTop;
     this.keyHeights.clear();
     const blackHeight = this.three?.on ? BLACK_NOTE_FLOOR : 36;
     for (const key of keys.values())
@@ -225,26 +224,17 @@ export class RoadLayer {
   }
 
   notePlace(keyX: number, y: number, offset = 0, lift = 0): Projected | undefined {
-    if (!this.projection || this.size.height <= 0) return undefined;
-    if (!this.camera) {
-      const spot = this.projection.at(
-        keyX - this.pan + offset,
-        Math.max(0, Math.min(1, y / this.size.height))
-      );
-      return { ...spot, y: spot.y - lift * spot.scale };
-    }
-    const progress = Math.max(0, Math.min(1, y / this.size.height));
-    const { near } = this.camera;
-    const lane = this.noteLane(keyX);
-    const keyHeight = this.keyHeights.get(keyX) ?? near.y;
-    // On the floor's own depth, as the arcade road does: the notes ride the road, not over it.
-    return projectNoteLane(
-      this.camera.project(
-        this.camera.sourceX(keyX - this.pan + offset),
-        keyHeight + lift / 2,
-        near.z + (1 - progress) * (this.camera.roadFarZ - near.z)
-      ),
-      lane
+    return roadNotePlace(
+      this.camera,
+      this.projection,
+      this.size.height,
+      this.pan,
+      keyX,
+      y,
+      offset,
+      lift,
+      this.noteLane(keyX),
+      this.keyHeights.get(keyX)
     );
   }
 
@@ -253,6 +243,8 @@ export class RoadLayer {
   }
 
   private noteLane(keyX: number): NoteLaneProjection | undefined {
+    if (this.freeCamera)
+      return this.noteLaneY(keyX) === BLACK_NOTE_FLOOR ? FREE_BLACK_LANE : undefined;
     return this.three?.on && this.noteLaneY(keyX) === BLACK_NOTE_FLOOR ? this.blackLane : undefined;
   }
 
@@ -391,13 +383,23 @@ export class RoadLayer {
     return this.three?.drawsRoad === true;
   }
 
-  setMistLayer(layer: Container): void {
-    this.three?.setMistLayer(layer);
+  setSceneEffects(layers: readonly Container[]): void {
+    this.three?.setSceneEffects(layers, [this.horizon, this.arrivals.container]);
   }
 
-  setKeyboardDim(on: boolean): void {
-    this.three?.setKeyboardDim(on);
+  setFreeCamera(on: boolean, changed: (on: boolean) => void): void {
+    if (!this.three) return;
+    this.three.onFreeCamera = changed;
+    this.three.setFreeCamera(on);
   }
+
+  get freeCamera(): boolean {
+    return this.three?.freeCamera === true;
+  }
+
+  resetFreeCamera = (): void => this.three?.resetFreeCamera();
+
+  setKeyboardDim = (on: boolean): void => this.three?.setKeyboardDim(on);
 
   setRoadGuides(on: boolean): void {
     this.nativeRoad.guides = on;
@@ -506,6 +508,7 @@ export class RoadLayer {
   }
 
   keysPointAt(x: number, y: number): { x: number; y: number } | undefined {
+    if (this.freeCamera) return freeRoadKeyPoint(this.three, x, y, this.keyboardTopY);
     x -= this.keys.container.x;
     y -= this.keys.container.y;
     if (this.perspective) return this.keys.container.visible ? this.keys.pointAt(x, y) : undefined;

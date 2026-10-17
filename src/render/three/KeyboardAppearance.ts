@@ -61,6 +61,9 @@ export class KeyboardAppearance {
     opacity: 0.26,
     depthTest: true,
     depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -2,
     side: DoubleSide
   });
   private readonly contacts = new InstancedMesh(this.geometry, this.material, KEY_CONTACT_LIMIT);
