@@ -56,7 +56,12 @@ export const BEND_SPLIT: Readonly<Record<LongFinger, Vec3>> = {
 
 export const WHITE_W = 23.5;
 export const BLACK_TOP = 12;
+/** Mm into the keys: the black keys' front edge; their width (piano_kit.py's). */
+export const BLACK_FRONT = 55;
+export const BLACK_W = 13.7;
 const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11];
+/** Whites with a black key between them and the next white. */
+const BLACK_AFTER = [0, 2, 5, 7, 9];
 /** A pressing tip's axis off its key's centre line, mm: white, black. */
 const CONTACT_X = { white: 6, black: 3 } as const;
 /** Mm into the keys: a white key short of the blacks, and between them when the hand cannot. */
@@ -64,7 +69,7 @@ const CONTACT_Y = { white: [15, 55], black: [60, 125] } as const;
 const CONTACT_Y_DEEP = { white: [15, 110], black: [60, 125] } as const;
 /** Of the finger's radius: the tip's axis over the key top. */
 export const TIP_ABOVE = 0.8;
-/** Mm: a free finger's joints over the white top, past TIP_ABOVE. */
+/** Mm: a free finger's joints over the key top, past TIP_ABOVE. */
 export const CLEAR = 2;
 /** Mm: a key's travel, the press layer. */
 export const KEY_DIP = 10;
@@ -311,6 +316,28 @@ export function whitePosition(pitch: number): number {
   const black = !WHITE_PCS.includes(pc);
   return octave * 7 + WHITE_PCS.indexOf(black ? pc - 1 : pc) + (black ? 0.5 : 0);
 }
+
+/** The key under a point of the keys' plane (x mirrored for a left hand) and its top. */
+export function keyUnder(
+  x: number,
+  y: number,
+  mirror: boolean
+): { readonly pitch: number; readonly top: number } {
+  const u = (mirror ? -x : x) / WHITE_W;
+  const white = (w: number) => {
+    const octave = Math.floor(w / 7);
+    return 60 + octave * 12 + at(WHITE_PCS, w - octave * 7);
+  };
+  const b = Math.floor(u);
+  const over =
+    y >= BLACK_FRONT &&
+    BLACK_AFTER.includes(at(WHITE_PCS, ((b % 7) + 7) % 7)) &&
+    Math.abs(u - b - 0.5) * WHITE_W <= BLACK_W / 2;
+  return over ? { pitch: white(b) + 1, top: BLACK_TOP } : { pitch: white(Math.round(u)), top: 0 };
+}
+
+/** The key top under a point of the keys' plane (x mirrored for a left hand): a black key's or the white. */
+export const keyTop = (x: number, y: number, mirror: boolean): number => keyUnder(x, y, mirror).top;
 
 export interface KeyTarget {
   readonly pitch: number;

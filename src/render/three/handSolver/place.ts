@@ -36,6 +36,7 @@ import {
   handJoints,
   kRange,
   keyTarget,
+  keyTop,
   norm,
   tipOf,
   violations
@@ -240,12 +241,14 @@ export function fingers(
 }
 
 /** A free finger whose joints would sink into the keys rises at MCP (the thumb at its CMC, palmar)
- * until they clear the white top; PIP and DIP keep the example's shape. */
+ * until they clear the key top under them, a black key's included; PIP and DIP keep the example's
+ * shape. */
 export function liftFree(
   rest: Rest,
   shape: Shape,
   pose: Fitted,
-  free: readonly Finger[]
+  free: readonly Finger[],
+  mirror: boolean
 ): PerFinger<number> {
   const lift: PerFinger<number> = {};
   for (const f of free) {
@@ -255,7 +258,12 @@ export function liftFree(
       const ang = angles(shape, pose.curl, pose.k, pose.spread, lift);
       const cur = f !== 1 ? ang[f].mcp : ang[1].cmc_palmar;
       const X = handJoints(rest, ang, pose.root);
-      const low = Math.min(...CHAIN[f].slice(1).map((i) => at(X, i)[2]));
+      const low = Math.min(
+        ...CHAIN[f].slice(1).map((i) => {
+          const p = at(X, i);
+          return p[2] - keyTop(p[0], p[1], mirror);
+        })
+      );
       if (low >= R_FINGER[f] * TIP_ABOVE + CLEAR || cur - 1 < lo) break;
     }
   }
@@ -433,7 +441,8 @@ export function place(
     rest,
     shape,
     pose,
-    FINGERS.filter((f) => !kept.has(f))
+    FINGERS.filter((f) => !kept.has(f)),
+    mirror
   );
   const ang = angles(shape, pose.curl, pose.k, pose.spread, lift);
   const press = new Map<Finger, AngleDelta[Finger] & object>();

@@ -253,12 +253,14 @@ def violations(g):
 #   python tools/hand-rig/hand_mech.py check <hand-poses dir> --rest <mech-report.json> [--from 2.7 --to 18.5]
 
 WHITE_W, BLACK_FRONT, BLACK_TOP = 23.5, 55.0, 12.0       # mm (hand_keys.py's keys)
+BLACK_W = 13.7                           # mm (piano_kit.py's black key)
 WHITE_PCS = (0, 2, 4, 5, 7, 9, 11)
+BLACK_AFTER = (0, 2, 5, 7, 9)            # whites with a black key between them and the next white
 CONTACT_X = {False: 6.0, True: 3.0}      # mm: a pressing tip's axis off its key's centre line (MED)
 CONTACT_Y = {False: (15.0, 55.0), True: (60.0, 125.0)}    # mm into the keys: a white key short of the blacks
 CONTACT_Y_DEEP = {False: (15.0, 110.0), True: (60.0, 125.0)}   # ...and between them, when the hand cannot
 TIP_ABOVE = 0.8                          # of the finger's radius: the tip's axis over the key top (hand_shape)
-CLEAR = 2.0                              # mm: a free finger's joints over the white top, past TIP_ABOVE
+CLEAR = 2.0                              # mm: a free finger's joints over the key top, past TIP_ABOVE
 KEY_DIP = 10.0                           # mm: a key's travel, the press layer
 MISS_MM, K_BAND, YAW_TOL = 6.0, (0.85, 1.15), 5.0      # a lesson, not a simulator: the tip in its key
 AIM_PASSES = 3                           # fits per release stage, the tips' aims taken anew before each
@@ -477,9 +479,19 @@ def _fingers(rest, shape, targets, root, curl, k_band=K_BAND):
     return {"root": [float(v) for v in root], "curl": float(curl), "k": k, "spread": spread, "miss": miss}
 
 
-def lift_free(rest, shape, pose, free):
+def key_top(x, y, mirror):
+    """The key top under a point of the keys' plane (x mirrored for a left hand): a black key's or the white."""
+    if y < BLACK_FRONT:
+        return 0.0
+    u = (-x if mirror else x) / WHITE_W
+    b = math.floor(u)
+    over = WHITE_PCS[b % 7] in BLACK_AFTER and abs(u - b - 0.5) * WHITE_W <= BLACK_W / 2
+    return BLACK_TOP if over else 0.0
+
+
+def lift_free(rest, shape, pose, free, mirror):
     """A free finger whose joints would sink into the keys rises at MCP (the thumb at its CMC, palmar) until
-    they clear the white top; PIP and DIP keep the example's shape."""
+    they clear the key top under them, a black key's included; PIP and DIP keep the example's shape."""
     lift = {}
     for f in free:
         lo = LIM["mcp"][0] if f != 1 else THUMB_PALMAR_MIN
@@ -488,7 +500,8 @@ def lift_free(rest, shape, pose, free):
             ang = angles(shape, pose["curl"], pose["k"], pose["spread"], lift)
             cur = ang[f]["mcp"] if f != 1 else ang[f]["cmc_palmar"]
             X = hand_joints(rest, ang, pose["root"])
-            if min(X[i][2] for i in CHAIN[f][1:]) >= R_FINGER[f] * TIP_ABOVE + CLEAR or cur - 1 < lo:
+            low = min(X[i][2] - key_top(X[i][0], X[i][1], mirror) for i in CHAIN[f][1:])
+            if low >= R_FINGER[f] * TIP_ABOVE + CLEAR or cur - 1 < lo:
                 break
         if lift[f] == 0.0:
             del lift[f]
@@ -607,7 +620,7 @@ def place(rest, library, hand, notes, thumb=None, wrist_z=WRIST_Z, hold=None, re
         dropped += [p for f, p in keep if f == worst]
         keep = [(f, p) for f, p in keep if f != worst]
     free = [f for f in (1, 2, 3, 4, 5) if f not in {f for f, _ in keep}]
-    lift = lift_free(rest, shape, pose, free)
+    lift = lift_free(rest, shape, pose, free, mirror)
     ang = angles(shape, pose["curl"], pose["k"], pose["spread"], lift)
     press = {f: press_delta(rest, ang, pose["root"], f) for f, _ in keep}
     yaw, pitch, roll = pose["root"][:3]
