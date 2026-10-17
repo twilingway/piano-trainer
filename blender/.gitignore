@@ -1,0 +1,7 @@
+# Local Blender workspace: scripts, renders, exports, asset bundles. Never committed,
+# except the working scenes in scenes/ (stored through Git LFS, see /.gitattributes).
+*
+!.gitignore
+!scenes/
+!scenes/**
+*.blend1
