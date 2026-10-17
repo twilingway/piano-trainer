@@ -1,5 +1,6 @@
 import { Box3, MOUSE, Mesh, SkinnedMesh, PerspectiveCamera, Vector3 } from "three";
 import type { Object3D } from "three";
+import { MAX_ROAD_WORLD_Z } from "../worldCamera";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 /** One inspection camera; gesture listeners exist only while this view is active. */
@@ -12,6 +13,8 @@ export class FreeSceneCamera {
   private readonly bounds = new Box3();
   private readonly centre = new Vector3();
   private readonly size = new Vector3();
+  private radius = 1;
+  private roadReach = MAX_ROAD_WORLD_Z;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.touchAction = this.canvas.style.touchAction;
@@ -73,6 +76,7 @@ export class FreeSceneCamera {
     }
     if (this.needsReset) this.reset(subject);
     this.controls.update();
+    this.updateClip();
     this.camera.updateMatrixWorld();
   }
 
@@ -101,6 +105,10 @@ export class FreeSceneCamera {
     this.bounds.getCenter(this.centre);
     this.bounds.getSize(this.size);
     const radius = Math.max(1, this.size.length() / 2);
+    this.radius = radius;
+    const scale = subject.getWorldScale(new Vector3());
+    this.roadReach =
+      MAX_ROAD_WORLD_Z * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z));
     const halfFov = Math.atan(
       Math.tan((this.camera.fov * Math.PI) / 360) * Math.min(1, this.camera.aspect)
     );
@@ -111,12 +119,24 @@ export class FreeSceneCamera {
     this.controls.target.copy(this.centre);
     this.controls.minDistance = Math.max(1, radius * 0.05);
     this.controls.maxDistance = distance * 20;
-    this.camera.near = Math.max(0.1, radius / 10000);
-    this.camera.far = Math.max(100000, distance * 50);
-    this.camera.updateProjectionMatrix();
+
     this.controls.update();
+    this.updateClip();
     this.camera.updateMatrixWorld();
     this.needsReset = false;
+  }
+
+  private updateClip(): void {
+    const near = Math.max(0.1, this.radius / 200);
+    // Keys/pianist bounds are cached at reset; leave room for the road beyond them.
+    const far = Math.max(
+      this.radius * 20,
+      this.camera.position.distanceTo(this.centre) + Math.max(this.radius * 4, this.roadReach * 1.1)
+    );
+    if (this.camera.near === near && this.camera.far === far) return;
+    this.camera.near = near;
+    this.camera.far = far;
+    this.camera.updateProjectionMatrix();
   }
 
   dispose(): void {
