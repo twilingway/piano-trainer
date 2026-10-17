@@ -697,72 +697,116 @@ def sit():
     report["seat skin left below mm"] = round(below * 1000, 1)
 
 
+# --- the hands on the keys: hand_mech.place() per hand (root, shape and press, the design's three layers),
+# or the caller's EXAMPLES (place()'s results, per side). The arm brings the wrist to the placed hand, the
+# elbow kept as fitted above, then fitted again by the trunk; the wrist bone takes the hand's frame and the
+# fingers aim at its joints. What the wrist would bend past its limits goes to the report, not cut off.
+import sys
+if os.path.join(ROOT, "tools/hand-rig") not in sys.path:
+    sys.path.insert(0, os.path.join(ROOT, "tools/hand-rig"))
+import hand_library, hand_mech
+SOLVES = 3              # the hand placed with the elbow as fitted; the elbow pushed out by it means a new arm
+EXAMPLES = G.get("EXAMPLES", {})       # per side, place()'s result for HANDS[side]; missing ones are placed here
+LIBRARY = G.get("LIBRARY", "seven-nation-army")          # the song whose example library place() searches
+THUMB = G.get("THUMB", {})             # per side, the thumb's state for place() ("tucked", ...)
+KEYS_ORIGIN = Vector((X0, KEY_FRONT, KEY_TOP))           # hand_mech's world: C4's centre, the white front, top
+CLAMP = {}      # per side, at the last arm: the wrist's load for its hand and the turn the wrist cut off
+
+
+def keys_mirror(x):
+    return Matrix(((-1.0 if x == "L" else 1.0, 0, 0), (0, 1, 0), (0, 0, 1)))
+
+
+def keys_point(x, p):
+    """A point of hand_mech's world (mm, x mirrored for a left hand) in the scene."""
+    return KEYS_ORIGIN + keys_mirror(x) @ Vector(tuple(p)) / 1000.0
+
+
+def hand_rotation(root):
+    yaw, pitch, roll = (math.radians(v) for v in root[:3])
+    return Matrix(((hand_mech._rot("z", -yaw) @ hand_mech._rot("x", -pitch) @ hand_mech._rot("y", -roll)).tolist()))
+
+
+def nail_axis(x, rest):
+    """The phalanx's local axis out of the nail: the one of finger2-2 along the back of the hand at rest; the
+    thumb shares the bone convention."""
+    up = keys_mirror(x) @ rest["F"][2]
+    ml = rig.data.bones[f"finger2-2.{x}"].matrix_local.to_3x3()
+    k = max((0, 2), key=lambda i: abs(ml.col[i].dot(up)))
+    return Vector([1.0 if i == k else 0.0 for i in range(3)]) * (1 if ml.col[k].dot(up) > 0 else -1)
+
+
+PLACED = {}     # per side: the placed hand (place()'s result) and its joints and wrist frame
+
+
+def place_hand(x, keys):
+    rest, prest = hand_mech.rest_from_rig(rig, x), hand_mech.rest_for_place(rig, x)
+    e = EXAMPLES.get(x) or hand_mech.place(prest, hand_library.load(LIBRARY), "left" if x == "L" else "right",
+                                           [(f, 60 + s) for f, s in keys.items()], THUMB.get(x))
+    ang = {int(f): dict(v) for f, v in e["angles"].items()}
+    if G.get("KEY_DIP", 0.0) > 0:          # the press layer: the pressed fingers take the key's travel down
+        base = {f: dict(v) for f, v in ang.items()}
+        for f in e["press"]:
+            ang[int(f)]["mcp" if int(f) != 1 else "t_mcp"] += hand_mech.press_depth(prest, base, e["rootVec"], int(f),
+                                                                                 G["KEY_DIP"] * 1000)
+    J = hand_mech.hand_joints(prest, ang, e["rootVec"])
+    D, R = keys_mirror(x), hand_rotation(e["rootVec"])
+    frame = D @ R @ rest["F"] @ D @ rig.data.bones[f"wrist.{x}"].matrix_local.to_3x3()   # the wrist bone, world
+    return {"rest": rest, "e": e, "J": J, "D": D, "R": R, "frame": frame}
+
+
+# the wrists' targets are the placed hands' before the body sits: the trunk follows them
+for x, keys in (HANDS if SOLVE_HANDS else {}).items():
+    PLACED[x] = place_hand(x, keys)
+    if "WRIST" not in G:
+        WRIST[x] = keys_point(x, PLACED[x]["J"][0])
+
+
 sit()
 
 
-# --- the hands on the keys: the hand study's solver (hand_solver.py) per hand; the arm brings the
-# wrist where the solver wants it, the elbow kept as fitted above, then fitted again by the trunk.
-fx = bpy.data.collections.get("pianist_fx") or bpy.data.collections.new("pianist_fx")
-if fx.name not in bpy.context.scene.collection.children:
-    bpy.context.scene.collection.children.link(fx)
-fx.hide_render = True
-SOLVES = 3              # a hand solved with the elbow as fitted; the elbow pushed out by it means a new solve
-EXAMPLES = G.get("EXAMPLES", {})       # per side, a pose from the video for hand_solver's EXAMPLE
-CLAMP = {}      # per side, at the solver's last arm: the wrist's load for its hand and the turn the wrist cut off
-
-
-def wrist_excess(x, wrist_at, frame, hand_in_wrist):
-    """Degrees the wrist would bend past its limits (wrist_load, in WRIST_MAX's degrees) to hold the hand frame at wrist_at with the elbow as
-    fitted. The wrist bends by the swing that takes the forearm's axis, as the hand carries it at rest,
-    onto the forearm placed by the IK (the twist goes to pronation): place_arm's own split."""
-    b, ua = rig.data.bones, pose[f"upperarm01.{x}"]
-    in_wrist = b[f"wrist.{x}"].matrix_local.to_3x3().inverted() @ (b[f"lowerarm01.{x}"].tail_local
-                                                                  - b[f"lowerarm01.{x}"].head_local)
-    shoulder = world(ua)
-    pole = pole_of(x, SPREAD_OF[x], SWING_OF[x], shoulder, wrist_at)
-    elbow, wrist = two_bone(shoulder, ua.length, pose[f"lowerarm01.{x}"].length + pose[f"lowerarm02.{x}"].length,
-                            wrist_at, pole)
-    load = wrist_load(x, in_wrist, (frame @ hand_in_wrist.inverted()).inverted() @ (wrist - elbow))[0]
-    return max(0.0, (load - 1) * math.degrees(WRIST_MAX))
-
-
-for x, keys in (HANDS if SOLVE_HANDS else {}).items():
-    # the neutral hand: pitched as the arm holds it, turned to its register (the solver's YAW0 is
-    # asin(-HAND_FWD.x)); the wrist bends between it and the forearm
-    hand_fwd = (world(pose[f"finger3-1.{x}"]) - world(pose[f"wrist.{x}"])).normalized()
-    yaw = register_yaw(x, world(pose[f"upperarm01.{x}"]))
-    hand_fwd = Vector((-math.sin(yaw), 0, hand_fwd.z))
-    hand_fwd.y = math.sqrt(max(0.0, 1 - hand_fwd.x ** 2 - hand_fwd.z ** 2))
+for x, h in PLACED.items():
+    rest, e, J, D, R, frame = (h[k] for k in ("rest", "e", "J", "D", "R", "frame"))
     for solve in range(SOLVES):
-        hand = {"__name__": "hand_solver", "ROOT": ROOT, "rig": rig, "mesh": bpy.data.objects["PianistBody"],
-                "fx": fx, "SIDE": x, "pose": keys, "hover_x": {}, "KEY_DIP": G.get("KEY_DIP", 0.0),
-                "ROLL": math.radians(G.get("ROLL_DEG", 2)), "HAND_FWD": hand_fwd, "MEAN_DEPTH": True,
-                "EXAMPLE": EXAMPLES.get(x)}
-
-        def arm(wrist_at, frame, yaw, x=x, hand=hand):
-            WRIST[x] = wrist_at
-            place_arm(x, SPREAD_OF[x], (frame @ hand["HAND_IN_WRIST"].inverted()).to_quaternion(), SWING_OF[x])
-            CLAMP[x] = {"load wanted": round(LOAD[x]["wanted"], 2), "short deg": round(LOAD[x]["short deg"], 1)}
-
-        hand["place_arm"] = arm
-        hand["wrist_excess"] = lambda wrist_at, frame, x=x, hand=hand: wrist_excess(x, wrist_at, frame,
-                                                                                    hand["HAND_IN_WRIST"])
-        exec(open(os.path.join(ROOT, "tools/hand-rig/hand_solver.py"), encoding="utf-8").read(), hand)
+        WRIST[x] = keys_point(x, J[0])
+        place_arm(x, SPREAD_OF[x], frame.to_quaternion(), SWING_OF[x])
+        CLAMP[x] = {"load wanted": round(LOAD[x]["wanted"], 2), "short deg": round(LOAD[x]["short deg"], 1)}
         WRIST[x] = world(pose[f"wrist.{x}"])
-        # from the solver's own elbow: tucking it in again would turn the forearm under the solved hand
         solved_with = SPREAD_OF[x], SWING_OF[x]
         fit_elbow(x, (rig.matrix_world @ pose[f"wrist.{x}"].matrix).to_quaternion(), *solved_with)
         report["hand solves " + x] = solve + 1
         if (SPREAD_OF[x], SWING_OF[x]) == solved_with:
             break
-    tips = {f: hand["world"](f"finger{f}-3.{x}", "tail") for f in keys}
-    report["hand " + x] = {"miss mm": {f: round((tips[f].xy - hand["targets"][f].xy).length * 1000, 1) for f in keys},
-                           "fit residual mm": round(math.sqrt(hand["residual"]) * 1000, 1),
-                           "adjust": hand["adjust"],
-                           "skin in keys, fingers mm": hand["mesh_check"](),
+    pb = pose[f"wrist.{x}"]
+    m = (rig.matrix_world.to_3x3().normalized().inverted() @ frame).to_4x4()
+    m.translation = pb.matrix.translation
+    pb.matrix = m
+    view.update()
+    up = D @ R @ Vector((0, 0, 1))                                     # the back of the hand, world
+    away = keys_point(x, J[1]) - keys_point(x, J[5])                   # the thumb's CMC off the index MCP
+    nail = nail_axis(x, rest)
+    for f, ch in hand_mech.CHAIN.items():
+        for j in range(3):
+            pbf = pose[f"finger{f}-{j + 1}.{x}"]
+            aim(pbf, keys_point(x, J[ch[j + 1]]))
+            if f == 1:
+                # the thumb lies on its side: its nail in the palm's plane, away from the index
+                b = (world(pbf, "tail") - world(pbf)).normalized()
+                want = b.cross(up)
+                want = want if want.dot(away) > 0 else -want
+                have = rig.matrix_world.to_3x3() @ pbf.matrix.to_3x3() @ nail
+                want, have = (v - b * v.dot(b) for v in (want, have))
+                if want.length > 1e-6 and have.length > 1e-6:
+                    a = have.angle(want) * (1 if have.cross(want).dot(b) > 0 else -1)
+                    turn(pbf, Matrix.Rotation(a, 4, b), world(pbf))
+    off = lambda p, q: round((p - q).length * 1000, 1)
+    report["hand " + x] = {"source": e["source"], "flags": e["flags"], "dropped": e["dropped"],
+                           "miss mm": e["missMm"],
+                           "rig off the placed hand mm": {
+                               "wrist": off(world(pb), keys_point(x, J[0])),
+                               "tips": max(off(world(pose[f"finger{f}-3.{x}"], "tail"), keys_point(x, J[ch[-1]]))
+                                           for f, ch in hand_mech.CHAIN.items())},
                            "wrist clamp": CLAMP.get(x)}
-    if EXAMPLES.get(x):
-        report["hand " + x]["example"] = hand["example_report"]()
 
 
 # --- the muscle in the thumb's web. A thumb drawn in to the index finger folds the back of the web into

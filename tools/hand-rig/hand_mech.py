@@ -53,6 +53,17 @@ def rest_from_rig(rig, side):
             "len": {f: [b[f"finger{f}-{j}.{side}"].length * S for j in (1, 2, 3)] for f in range(1, 6)}}
 
 
+def rest_for_place(rig, side):
+    """rest_from_rig in hand_shape.load_rest's form (numpy, with the neutral and index directions): place()'s
+    rest straight from the rig, without mech_sweep.py's report."""
+    import numpy as np
+    r = rest_from_rig(rig, side)
+    mcp = {f: np.array(tuple(v)) for f, v in r["mcp"].items()}
+    tip = {f: np.array(tuple(v)) for f, v in r["tip"].items()}
+    flat_ = lambda v: np.array([v[0], v[1], 0.0]) / math.hypot(v[0], v[1])
+    return {"mcp": mcp, "len": r["len"], "neutral": flat_(tip[3] - mcp[3]), "idx": flat_(mcp[2])}
+
+
 def to_armature(rest, p):
     """A hand-frame point (mm) in the rig's armature space."""
     q = rest["w"] + rest["F"].transposed() @ (Vector(p) / rest["S"])
