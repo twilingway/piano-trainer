@@ -186,7 +186,7 @@ export class ThreeStage {
       );
     }
     const step = Math.min(1, deltaSeconds * DIP_RATE);
-    this.hands?.update(hands, deltaSeconds);
+    this.hands?.update(hands);
     this.noteLights.update(energy, roadCamera, energyDeltaSeconds);
     this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
