@@ -833,7 +833,7 @@ def lift_finger(f):
 
 def press_thumb():
     """IK the pressed thumb onto its key, then nudge the IK target so its skin keeps out of the
-    keys and the fingers. Returns the contact point."""
+    keys and the fingers. Returns the contact point the thumb got to."""
     thumb_to_home()
     contact = key_contact(pose[1], world(f"finger1-3.{SIDE}", "tail"))
     knuckle = world(f"finger1-1.{SIDE}")
@@ -850,6 +850,11 @@ def press_thumb():
     v = min(tries, key=lambda r: r[1])[0]
     thumb_cost(v)
     adjust[1] = {"tip_bend": round(min(max(v[3], 0.0), THUMB_BEND_MAX), 1)}
+    # the IK slides the tip along its key from the home point: the contact is where it got (its side
+    # within THUMB_SIDE of the key's middle, as contact_miss judges it)
+    tip = world(f"finger1-3.{SIDE}", "tail")
+    contact = key_contact(pose[1], tip)
+    contact.x += max(-THUMB_SIDE, min(THUMB_SIDE, tip.x - contact.x))
     return contact
 
 
