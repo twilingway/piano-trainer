@@ -712,13 +712,15 @@ anchors = {f: key_contact(semi, Vector((0, KEY_FRONT + TIP_IN, 0))) for f, semi 
 anchors.update({f: Vector((hx, KEY_FRONT + TIP_IN, KEY_TOP + TIP_CLEAR)) for f, hx in hover_x.items()})
 t0 = (sum(anchors.values(), Vector()) - sum((R0 @ local_tip_at(f, 0) for f in anchors), Vector())) / len(anchors)
 if EXAMPLE:
-    # the hand frame is the example's: only the wrist point and the spread are fitted
+    # the turn is the example's; the wrist point, pitch, roll and spread are fitted (a wide thumb
+    # rolls the hand onto its side: held at the neutral roll, the thumb pulled the hand off the fingers)
     def example_cost(v):
-        return cost([*v[:3], YAW0, PITCH0, ROLL0, v[3]]) + knuckle_cost(Vector(v[:3]), R0, local_knuckles_at(v[3]))
+        return (cost([*v[:3], YAW0, *v[3:6]])
+                + knuckle_cost(Vector(v[:3]), frame_from(YAW0, *v[3:5]), local_knuckles_at(v[5])))
 
-    ex, residual = nelder_mead(example_cost, [*t0, 0.3], [0.01, 0.01, 0.01, 0.3])
-    ex, residual = nelder_mead(example_cost, ex, [0.003, 0.003, 0.003, 0.1])
-    best = [*ex[:3], YAW0, PITCH0, ROLL0, ex[3]]
+    ex, residual = nelder_mead(example_cost, [*t0, PITCH0, ROLL0, 0.3], [0.01, 0.01, 0.01, 0.1, 0.1, 0.3])
+    ex, residual = nelder_mead(example_cost, ex, [0.003, 0.003, 0.003, 0.03, 0.03, 0.1])
+    best = [*ex[:3], YAW0, *ex[3:6]]
 else:
     best, residual = nelder_mead(cost, [*t0, YAW0, PITCH0, ROLL0, 0.3], [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.3])
     best, residual = nelder_mead(cost, best, [0.003, 0.003, 0.003, 0.03, 0.03, 0.03, 0.1])
