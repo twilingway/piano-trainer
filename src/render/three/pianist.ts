@@ -5,6 +5,8 @@ import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import { whitePosition } from "./handSolver/mech";
 import { keyBoxes } from "./keyBoxes";
 import { pianistModelUrl } from "./pianistModel";
+import { PianistAppearance } from "./pianistAppearance";
+import { KIT_DEPTH } from "./pianoKit";
 import { createPianistBench } from "./pianistBench";
 import type { PianistBench } from "./pianistBench";
 
@@ -75,6 +77,7 @@ export class Pianist {
   /** The model's frame: metres in glTF axes, C4's centre at the white keys' front top edge. */
   readonly space = new Group();
   private laidOut = -1;
+  private readonly appearance: PianistAppearance;
   readonly bench: PianistBench | undefined;
 
   constructor(readonly model: PianistModel) {
@@ -84,18 +87,20 @@ export class Pianist {
       mixer.clipAction(model.clip).play();
       mixer.setTime(0);
     }
+    this.appearance = new PianistAppearance(model.scene);
     this.bench = createPianistBench(model.scene, this.space);
     if (this.bench) this.space.add(this.bench.group);
   }
 
   dispose(): void {
     this.bench?.dispose();
+    this.appearance.dispose();
   }
 
   /** `white` is any white key: its pitch, centre and width in the keys' group. */
   layout(white: { readonly pitch: number; readonly x: number; readonly width: number }): void {
     const c4 = white.x - whitePosition(white.pitch) * white.width;
-    this.space.scale.setScalar(white.width / LAB_WHITE_M);
+    this.space.scale.set(white.width / LAB_WHITE_M, 1000, KIT_DEPTH);
     // The white keys' top sits at 22 in the keys' group, their front edge at 0.
     this.space.position.set(c4, 22, 0);
   }

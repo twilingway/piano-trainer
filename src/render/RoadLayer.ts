@@ -383,6 +383,10 @@ export class RoadLayer {
     return this.three?.drawsRoad === true;
   }
 
+  setSceneEffects(layers: readonly Container[]): void {
+    this.three?.setSceneEffects(layers);
+  }
+
   setFreeCamera(on: boolean, changed: (on: boolean) => void): void {
     if (!this.three) return;
     this.three.onFreeCamera = changed;
@@ -535,9 +539,7 @@ export class RoadLayer {
     this.lastLane = lane;
     const native = this.three?.drawsRoad === true;
     this.road.renderable = this.glows.renderable = !native;
-    this.staff.container.visible = !native;
-    this.fog.renderable = this.horizon.renderable = this.arrivals.container.renderable = !native;
-    this.effects.renderable = !native;
+    this.staff.container.visible = !native || this.nativeRoad.guides;
     if (!native) this.renderer.render({ container: lane, target: this.texture, clear: true });
     this.renderer.render({
       container: keys,
@@ -552,11 +554,9 @@ export class RoadLayer {
       x: this.project(strike.x),
       screenY: this.notePlace(strike.x, this.size.height)?.y ?? this.hitY
     }));
-    if (!native) {
-      this.drawHorizon();
-      if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
-      this.sparks.draw(strikes, deltaSeconds);
-    }
+    this.drawHorizon();
+    if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
+    this.sparks.draw(strikes, deltaSeconds);
   }
 
   private restoreRoad(): void {

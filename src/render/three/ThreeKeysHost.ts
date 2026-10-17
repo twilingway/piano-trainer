@@ -8,6 +8,7 @@ import type { Pianist } from "./pianist";
 import type { ThreeStage } from "./ThreeStage";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { SharedTextureBindings } from "./SharedTextureBindings";
+import { SceneEffectsPass } from "./SceneEffectsPass";
 
 /**
  * Puts the three.js keys between the road and everything over it. While on, the app's own render
@@ -38,6 +39,7 @@ export class ThreeKeysHost {
    * stage cannot be drawn alone, its parent's visibility decides its children's.
    */
   private readonly placeholder = new Container();
+  private readonly effects = new SceneEffectsPass();
 
   constructor(
     private readonly app: Application,
@@ -93,6 +95,10 @@ export class ThreeKeysHost {
     this.roadFrame = frame;
   }
 
+  setSceneEffects(layers: readonly Container[]): void {
+    this.effects.setLayers(layers);
+  }
+
   setKeyboardDim(dim: boolean): void {
     this.keyboardDim = dim;
     this.stage?.setKeyboardDim(dim);
@@ -143,6 +149,7 @@ export class ThreeKeysHost {
     this.clearEnergy();
     this.pianist?.dispose();
     this.pianist = undefined;
+    this.effects.dispose();
     this.stage?.dispose();
     this.stage = undefined;
   }
@@ -239,8 +246,9 @@ export class ThreeKeysHost {
     const gl = renderer as WebGLRenderer;
     // three left its own state (clear colour, blending) behind last frame.
     this.resetPixiState();
-    renderer.render({ container: this.freeActive ? this.placeholder : this.road });
+    renderer.render({ container: this.road });
     try {
+      this.effects.draw(renderer);
       this.seatPianist(this.stage, scene);
       const picture = gl.texture.getGlSource(scene.texture.source).texture;
       const frame = this.keyboard.frame;
@@ -263,6 +271,7 @@ export class ThreeKeysHost {
         this.roadFrame
       );
     } catch (error) {
+      this.effects.restore();
       console.warn("3D keys failed, keeping the perspective keys", error);
       // Restore the road, keys, sprite hands and normal ticker before drawing this frame again.
       void this.setEnabled(false);
@@ -274,8 +283,12 @@ export class ThreeKeysHost {
       renderer.render({ container: stage });
       return;
     }
-    this.resetPixiState();
-    renderer.render({ container: stage, clear: false });
+    try {
+      this.resetPixiState();
+      renderer.render({ container: stage, clear: false });
+    } finally {
+      this.effects.restore();
+    }
   };
 
   /** Seats the local pianist on the stage while the player wants it; loads it the first time. */
