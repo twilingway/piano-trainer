@@ -121,6 +121,8 @@ export class ThreeKeysHost {
     this.destroyed = true;
     this.app.canvas.removeEventListener("webglcontextrestored", this.contextRestored);
     this.clearEnergy();
+    this.pianist?.dispose();
+    this.pianist = undefined;
     this.stage?.dispose();
     this.stage = undefined;
     this.mist?.off("destroyed", this.mistDestroyed);
