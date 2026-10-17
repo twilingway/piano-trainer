@@ -37,7 +37,7 @@ not. Its points are not used and its angles stay out of the record.
 import argparse, io, json, math, os, subprocess
 import numpy as np
 from hand_features import near_frames
-from hand_mech import ABD_MAX, BEND_SPLIT, LIM, R_FINGER, THUMB_PALMAR_MAX, THUMB_RADIAL_MAX
+from hand_mech import ABD, BEND_SPLIT, LIM, R_FINGER, THUMB_PALMAR_MAX, THUMB_RADIAL_MAX
 from video_hands import TIPS, apply
 
 WHITE_MM = 23.5                       # the plane's x unit, mm
@@ -69,7 +69,7 @@ def bounds():
            "1.t_mcp": LIM["t_mcp"], "1.t_ip": LIM["t_ip"], "scale": SCALE}
     for f in (2, 3, 4, 5):
         box[f"{f}.curl"] = (0.0, min(LIM[k][1] / b for k, b in zip(("mcp", "pip", "dip"), BEND_SPLIT[f])))
-        box[f"{f}.abd"] = (-ABD_MAX, ABD_MAX)
+        box[f"{f}.abd"] = ABD[f]
     for n, i in IX.items():
         lo[i], hi[i] = box[n]
     return lo, hi
@@ -101,7 +101,7 @@ def load_rest(path, side):
     mcp = {int(f): np.array(p) for f, p in r["rest"][side]["mcp"].items()}
     tip = {int(f): np.array(p) for f, p in r["rest"][side]["tip"].items()}
     return {"mcp": mcp, "len": {int(f): v for f, v in r["len"][side].items()},
-            "neutral": {f: flat(tip[f] - mcp[f]) for f in (2, 3, 4, 5)}, "idx": flat(mcp[2])}
+            "neutral": flat(tip[3] - mcp[3]), "idx": flat(mcp[2])}
 
 
 def hand_points(rest, x):
@@ -111,7 +111,7 @@ def hand_points(rest, x):
     for f in (2, 3, 4, 5):
         m, p, d = (math.radians(b * x[IX[f"{f}.curl"]]) for b in BEND_SPLIT[f])
         a = math.radians(x[IX[f"{f}.abd"]])
-        dirn = rz(a) @ rest["neutral"][f]
+        dirn = rz(a) @ rest["neutral"]
         q = rest["mcp"][f].copy()
         P[CHAIN[f][0]] = q
         for j, (L, h) in enumerate(zip(rest["len"][f], (-m, -m - p, -m - p - d))):
@@ -359,7 +359,7 @@ def distribution(out):
         for n in o["atWall"]:
             walls[n] = walls.get(n, 0) + 1
     print("  at a wall:", dict(sorted(walls.items(), key=lambda kv: -kv[1])) or "none")
-    print(f"  limits: MCP {LIM['mcp']}, PIP {LIM['pip']}, DIP {LIM['dip']}, abd +-{ABD_MAX}, thumb MCP {LIM['t_mcp']}, "
+    print(f"  limits: MCP {LIM['mcp']}, PIP {LIM['pip']}, DIP {LIM['dip']}, abd {ABD} (+ to the thumb), thumb MCP {LIM['t_mcp']}, "
           f"IP {LIM['t_ip']}, CMC radial {THUMB_RADIAL_MIN}..{THUMB_RADIAL_MAX}, palmar {THUMB_PALMAR_MIN}..{THUMB_PALMAR_MAX}")
 
 

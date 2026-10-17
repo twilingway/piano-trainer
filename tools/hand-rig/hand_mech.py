@@ -9,7 +9,7 @@ grasp(rest, R): the palm lies on a ball of radius R; every phalanx of fingers 2-
 palmar side touching it), each finger in the vertical plane through the ball's centre. The thumb wraps the
 ball along the great circle through its CMC, heading away from the little finger's tip but at most
 THUMB_RADIAL_MAX off the index. A joint that the ball would bend past its limit stops at the limit and is
-reported as squeezed; nothing here ever leaves a joint outside LIM or ABD_MAX.
+reported as squeezed; nothing here ever leaves a joint outside LIM or ABD.
 """
 import math
 try:
@@ -23,7 +23,10 @@ THUMB_RADIAL_MAX = 90.0                                 # the thumb off the inde
 THUMB_PALMAR_MAX = 45.0                                 # the thumb off the palm's plane, towards the palm
 # flexion limits, degrees (MED: textbook ranges; checked against the videos' angles in task 5.2)
 LIM = {"mcp": (-20, 90), "pip": (0, 110), "dip": (0, 80), "t_mcp": (-10, 60), "t_ip": (-15, 80)}
-ABD_MAX = 25.0                                          # a finger's plane off its rest direction at MCP (MED)
+# Spread at MCP, degrees, + towards the thumb: a finger's plane off the middle finger's rest direction (the
+# fingers together; the rig's rest hand is fanned, its little finger 27-33 deg out). The little finger goes
+# far out and hardly in, the index the other way (MED: the top video's fingers against the middle one)
+ABD = {2: (-15.0, 30.0), 3: (-20.0, 20.0), 4: (-25.0, 15.0), 5: (-45.0, 15.0)}
 # How a finger shares its bend between MCP, PIP and DIP, degrees: the medians of the side video's near hand
 # (Hn6tFiyNMBQ, MediaPipe world points; MCP below the palm's plane through landmarks 0, 5, 17). A top view
 # cannot split a bend between the joints, so a finger's shape from it is this split times one curl (MED)
@@ -121,18 +124,19 @@ def flat(v):
 
 def finger_on_ball(rest, f, C, R, spread=1.0):
     """Finger f (2-5) wrapped on the ball (centre C, radius R) in the vertical plane through its MCP whose
-    direction is its rest direction turned towards the ball's centre by spread (0..1), the turn held within
-    ABD_MAX. Returns the joints MCP..tip, the angles and the joints held at a limit."""
+    direction is the middle finger's rest direction turned towards the ball's centre by spread (0..1), the
+    turn held within ABD. Returns the joints MCP..tip, the angles and the joints held at a limit."""
     J0 = rest["mcp"][f]
     up = Vector((0, 0, 1))
-    neutral = flat(rest["tip"][f] - J0)
+    neutral = flat(rest["tip"][3] - rest["mcp"][3])
     radial = flat(J0 - C)
     d = neutral.lerp(radial, spread).normalized()
     abd = math.degrees(neutral.angle(d)) if (d - neutral).length > 1e-9 else 0.0
-    if abd > ABD_MAX:
-        turn = ABD_MAX if neutral.cross(d).z > 0 else -ABD_MAX
-        d = (Matrix.Rotation(math.radians(turn), 3, "Z") @ neutral).normalized()
-        abd = ABD_MAX
+    abd = abd if neutral.cross(d).z > 0 else -abd
+    lo, hi = ABD[f]
+    if not lo <= abd <= hi:
+        abd = min(max(abd, lo), hi)
+        d = (Matrix.Rotation(math.radians(abd), 3, "Z") @ neutral).normalized()
     m = d.cross(up)
     off = (C - J0).dot(m)
     Cp = C - m * off                                     # the ball's centre seen in the finger's plane
@@ -142,7 +146,7 @@ def finger_on_ball(rest, f, C, R, spread=1.0):
                         [LIM["mcp"], LIM["pip"], LIM["dip"]])
     h = turns(pts2)
     ang = {"mcp": -math.degrees(h[0]), "pip": -math.degrees(wrap(h[1] - h[0])),
-           "dip": -math.degrees(wrap(h[2] - h[1])), "abd": abd if neutral.cross(d).z > 0 else -abd}
+           "dip": -math.degrees(wrap(h[2] - h[1])), "abd": abd}
     return ([J0 + d * q.x + up * q.y for q in pts2], {k: round(v, 1) for k, v in ang.items()},
             [("mcp", "pip", "dip")[i] for i in sq])
 
@@ -215,7 +219,7 @@ def violations(g):
             lo, hi = LIM[k]
             if not lo - 0.05 <= a[k] <= hi + 0.05:
                 bad.append(f"{f}.{k} {a[k]}")
-        if abs(a["abd"]) > ABD_MAX + 0.05:
+        if not ABD[f][0] - 0.05 <= a["abd"] <= ABD[f][1] + 0.05:
             bad.append(f"{f}.abd {a['abd']}")
     a = g["angles"][1]
     for k in ("t_mcp", "t_ip"):
