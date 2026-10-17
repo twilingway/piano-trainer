@@ -18,6 +18,7 @@ import type { Object3D } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import type { EnergySource } from "../noteEnergy";
 import { keyBoxes } from "./keyBoxes";
+import { PianoCase } from "./PianoCase";
 import type { KeyBox } from "./keyBoxes";
 import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
 import { KIT_DEPTH, KIT_TOP, KIT_WHITE, roadContactBoard, splitUp, whitePart } from "./pianoKit";
@@ -88,6 +89,7 @@ export class ThreeStage {
   private readonly felt = new MeshStandardMaterial({ color: 0x951f2c, roughness: 0.95 });
   /** The case around the keys: rails, cheeks and the back panel. */
   private readonly body = new Group();
+  private readonly cabinet = new PianoCase(this.case);
   private readonly board: BufferGeometry;
   /** The live hands, once their model has loaded; without it the sprite hands stay. */
   readonly hands: LiveHands | undefined;
@@ -260,6 +262,7 @@ export class ThreeStage {
   dispose(): void {
     this.clear();
     this.appearance.dispose();
+    this.cabinet.dispose();
     this.noteLights.dispose();
     this.rimLights.dispose();
     this.roadNotes.dispose();
@@ -335,6 +338,8 @@ export class ThreeStage {
     add(this.part("slip"), this.case, centre, width);
     add(this.part("cheek"), this.case, left - cheek / 2, across);
     add(this.part("cheek"), this.case, right + cheek / 2, across);
+    this.cabinet.layout(left, right, across);
+    this.body.add(this.cabinet.group);
   }
 
   private part(name: KitPart): BufferGeometry {
@@ -351,7 +356,8 @@ export class ThreeStage {
     this.hinged = [];
     if (preserveEnergy) this.keyEmission.beginLayout();
     else this.keyEmission.dispose();
-    // The case shares the kit's geometry: nothing of its own to free.
+    // Kit geometry stays shared; only the procedural enclosure owns its meshes.
+    this.cabinet.clear();
     this.body.clear();
   }
 }
