@@ -9,6 +9,7 @@ import type { NoteNameStyle } from "../song/musicxml";
 import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
+import { PIANIST_AVAILABLE } from "../render/three/pianistModel";
 import type { StaffPrefs } from "./useStaffPrefs";
 import { useI18n } from "./useI18n";
 
@@ -177,7 +178,8 @@ export function useFallingView({
   useEffect(() => {
     viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
     viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
-  }, [viewRef, trainerReady, staffPrefs.roadGuides, staffPrefs.keyboardDim]);
+    if (viewRef.current) viewRef.current.hands.pianist = PIANIST_AVAILABLE && staffPrefs.pianist;
+  }, [viewRef, trainerReady, staffPrefs.roadGuides, staffPrefs.keyboardDim, staffPrefs.pianist]);
 
   const { lift, scale, x, y } = placement;
   useEffect(() => {

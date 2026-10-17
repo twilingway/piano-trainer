@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 
+import { PIANIST_AVAILABLE } from "../render/three/pianistModel";
 import type { KeyboardSettings } from "../ui/settings/KeyboardSettings";
 import type { useFallingView } from "./useFallingView";
 import type { StaffPrefs } from "./useStaffPrefs";
@@ -12,7 +13,11 @@ export function useKeyboardSettings(
   staffPrefs: StaffPrefs,
   updateStaffPrefs: (change: Partial<StaffPrefs>) => void,
   toggles: ReactNode
-): ComponentProps<typeof KeyboardSettings> & { fps: boolean; onFps: (show: boolean) => void } {
+): ComponentProps<typeof KeyboardSettings> & {
+  fps: boolean;
+  onFps: (show: boolean) => void;
+  onPianist: (on: boolean) => void;
+} {
   return {
     keyRange: view.keyRange,
     onKeyRange: view.setKeyRange,
@@ -34,6 +39,10 @@ export function useKeyboardSettings(
     keyboardDim: staffPrefs.keyboardDim,
     onKeyboardDim: (keyboardDim) => {
       updateStaffPrefs({ keyboardDim });
+    },
+    ...(PIANIST_AVAILABLE ? { pianist: staffPrefs.pianist } : {}),
+    onPianist: (pianist) => {
+      updateStaffPrefs({ pianist });
     },
     roadGuides: staffPrefs.roadGuides,
     onRoadGuides: (roadGuides) => {

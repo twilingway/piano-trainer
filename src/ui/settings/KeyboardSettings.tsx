@@ -22,6 +22,9 @@ interface Props {
   readonly onKeyboardDim: (dim: boolean) => void;
   readonly roadGuides: boolean;
   readonly onRoadGuides: (on: boolean) => void;
+  /** The local pianist instead of the live hands; absent when there is no local model. */
+  readonly pianist?: boolean;
+  readonly onPianist?: (on: boolean) => void;
   readonly road: { readonly far: number; readonly horizon: number };
   readonly onRoad: (road: { far?: number; horizon?: number }) => void;
   readonly camera: CameraPrefs;
@@ -46,6 +49,8 @@ export function KeyboardSettings({
   onKeyboardDim,
   roadGuides,
   onRoadGuides,
+  pianist,
+  onPianist,
   camera,
   onCamera,
   road,
@@ -176,6 +181,18 @@ export function KeyboardSettings({
             checked={roadGuides}
             onChange={(event) => {
               onRoadGuides(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && pianist !== undefined && onPianist && (
+        <label className="setting">
+          <span>{t("Мой пианист (проба)")}</span>
+          <input
+            type="checkbox"
+            checked={pianist}
+            onChange={(event) => {
+              onPianist(event.target.checked);
             }}
           />
         </label>

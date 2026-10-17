@@ -37,6 +37,7 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   handStyle: "drawn",
   road: true,
   roadGuides: false,
+  pianist: false,
   keyboardDim: false,
   noteCards: false,
   noteCardsConfigured: false,

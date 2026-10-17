@@ -19,6 +19,7 @@ import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 import { useAppSelector } from "./storeHooks";
 import { useI18n } from "./useI18n";
+import { PIANIST_AVAILABLE } from "../render/three/pianistModel";
 import { usePlayChoice } from "./usePlayChoice";
 import { useTrainerSelector, type TrainerSnapshotSource } from "./trainerSnapshots";
 
@@ -188,6 +189,7 @@ function ConnectedKeyboardSettings() {
       handStyle: state.preferences.staff.handStyle,
       keyboardDim: state.preferences.staff.keyboardDim,
       roadGuides: state.preferences.staff.roadGuides,
+      pianist: state.preferences.staff.pianist,
       far: state.preferences.staff.roadFar,
       horizon: state.preferences.staff.roadHorizon,
       camera: state.preferences.staff.camera
@@ -207,6 +209,7 @@ function ConnectedKeyboardSettings() {
   const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
   const onKeyboardDim = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardDim);
   const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
+  const onPianist = useRuntimeCommand((runtime) => runtime.keyboardSettings.onPianist);
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
   const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
   return (
@@ -219,6 +222,8 @@ function ConnectedKeyboardSettings() {
       keyboardDim={state.keyboardDim}
       onKeyboardDim={onKeyboardDim}
       roadGuides={state.roadGuides}
+      {...(PIANIST_AVAILABLE ? { pianist: state.pianist } : {})}
+      onPianist={onPianist}
       road={{ far: state.far, horizon: state.horizon }}
       camera={state.camera}
       onKeyRange={onKeyRange}

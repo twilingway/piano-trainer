@@ -128,6 +128,9 @@ export class HandsLayer {
     );
   }
 
+  /** The local pianist sits behind the 3D view's keys, the live hands playing in front of it. */
+  pianist = false;
+
   /** The song time of the last frame drawn, for the 3D view's live hands. */
   time = 0;
 
