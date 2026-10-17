@@ -20,6 +20,7 @@ vi.mock("./PlasmaLayer", async () => {
   return {
     PlasmaLayer: class {
       readonly container = new Container();
+      readonly mist = new Container();
       readonly draw = spies.draw;
       readonly clear = spies.clear;
       readonly destroy = spies.destroy;
@@ -70,6 +71,9 @@ function setup() {
   const effect = new NotePlasma();
   const road = {
     hitLineY: 400,
+    drawsNativeRoad: false,
+    keysOffsetX: 0,
+    setMistLayer: vi.fn<RoadLayer["setMistLayer"]>(),
     notePlace: vi.fn((x: number, y: number) => ({ x: x + 10, y: y - 20, scale: 0.5 })),
     setEnergy: vi.fn<RoadLayer["setEnergy"]>(),
     clearEnergy: vi.fn()
@@ -92,6 +96,26 @@ function lastDraw() {
 beforeEach(() => vi.clearAllMocks());
 
 describe("NotePlasma renderer integration", () => {
+  it("clips neutral mist only in native 3D and forwards the detached keyboard offset once", () => {
+    const view = setup();
+    view.draw();
+    expect(spies.draw.mock.calls.at(-1)?.[5]).toBe(false);
+    view.road.drawsNativeRoad = true;
+    view.road.keysOffsetX = 80;
+    view.draw();
+    expect(spies.draw.mock.calls.at(-1)?.slice(5)).toEqual([true, 80]);
+    view.effect.destroy();
+  });
+
+  it("binds the same non-owning mist pass while active and when effects are hidden", () => {
+    const view = setup();
+    view.draw();
+    const first = view.road.setMistLayer.mock.calls[0]?.[0];
+    expect(first).toBeDefined();
+    view.draw(frame(), [], false);
+    expect(view.road.setMistLayer).toHaveBeenLastCalledWith(first);
+    view.effect.destroy();
+  });
   it("freezes a paused frame without consuming its attack, then emits once on resume", () => {
     const { draw, road } = setup();
     draw(frame({ playing: false }));

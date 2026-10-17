@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import { RoadLayer } from "./RoadLayer";
 import type { EnergySource } from "./noteEnergy";
 import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
-import { PANEL_EDGE, worldCamera } from "./worldCamera";
+import { CAMERA_PRESETS, PANEL_EDGE, worldCamera } from "./worldCamera";
+import { noteProjectionCamera } from "./noteProjectionCamera";
+import { createNoteLaneProjection } from "./noteLaneProjection";
 
 function fixture() {
   const frame = new ThreeRoadFrame();
@@ -27,7 +29,7 @@ function fixture() {
     keysTexture: Texture.EMPTY,
     keysShift: new Matrix(),
     glass: { end: vi.fn() },
-    held: new Map(),
+    sparks: { draw: vi.fn() },
     clock: 10,
     plasmaClock: 2,
     drawHorizon: vi.fn(),
@@ -80,4 +82,36 @@ describe("road decorative time", () => {
     expect(frame.visualTime).toBeCloseTo(10.032);
     expect(internals.plasmaClock).toBeCloseTo(2.016);
   });
+});
+
+describe("raised native note shell wiring", () => {
+  it.each(["direct", "perspective"] as const)(
+    "keeps black labels, body and consumed anchors on one lane in %s",
+    (projection) => {
+      const keyboard = worldCamera(800, 600, CAMERA_PRESETS.top);
+      const camera = noteProjectionCamera(keyboard, projection, 600);
+      const lane = createNoteLaneProjection(camera, keyboard, 34, 800, 800);
+      const frame = new ThreeRoadFrame();
+      const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+        camera,
+        blackLane: lane,
+        keyHeights: new Map([[400, 34]]),
+        projection: camera.road,
+        size: { width: 800, height: 400 },
+        pan: 32,
+        three: { on: true, drawsRoad: true },
+        nativeRoad: frame
+      }) as unknown as RoadLayer;
+      const contact = road.notePlace(400, 400);
+      const key = keyboard.project(keyboard.sourceX(400 - 32), 34, 142);
+      expect(contact?.x).toBeCloseTo(key.x, 9);
+      expect(contact?.y).toBeCloseTo(key.y, 9);
+      expect(road.noteLaneY(400)).toBe(34);
+      road.drawHold(400, 100, 300, 26, 0xffcf32, 1, 2, "black");
+      road.addTrailAnchor(400, 26, 0xffcf32, 1);
+      expect(frame.notes[0]?.lane).toBe(lane);
+      expect(frame.trailAnchors[0]?.lane).toBe(lane);
+      expect(frame.notes[0]?.bottom).toBeGreaterThan(camera.near.z);
+    }
+  );
 });

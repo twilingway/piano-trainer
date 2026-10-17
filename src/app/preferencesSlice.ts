@@ -19,6 +19,7 @@ import { defaultTimingPreferences } from "./timingPreferences";
 import {
   activeViewFraming,
   DEFAULT_VIEW_FRAMING,
+  editViewCamera,
   hydrateViewProfiles,
   saveViewFraming,
   selectViewProfile,
@@ -114,6 +115,7 @@ const preferencesSlice = createSlice({
             ? {}
             : { keyboardOrientation: change.keyboardOrientation })
         });
+      const previousCamera = state.staff.camera;
       state.staff = {
         ...state.staff,
         ...change,
@@ -124,11 +126,15 @@ const preferencesSlice = createSlice({
       };
       if (change.road !== undefined && !state.staff.noteCardsConfigured)
         state.staff.noteCards = !change.road;
-      if (
-        change.camera !== undefined ||
-        change.roadFar !== undefined ||
-        change.roadHorizon !== undefined
-      )
+      if (change.camera !== undefined) {
+        const edited = editViewCamera(
+          state.viewProfiles,
+          { ...currentFraming(state), camera: previousCamera },
+          change.camera
+        );
+        state.viewProfiles = edited.profiles;
+        restoreFraming(state, edited.framing);
+      } else if (change.roadFar !== undefined || change.roadHorizon !== undefined)
         saveFraming(state);
     },
     viewProfileSelected(state, action: PayloadAction<Partial<ViewAxes>>) {

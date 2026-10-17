@@ -45,13 +45,13 @@
       палитры/ограничений и видимый одиночный удар/аккорд сверху и под низким углом, без белого
       пересвета и потери цифр. Обновить design по итоговым материалам.
 
-- [ ] 2.7 Разделить native3D lookAhead: pitch>=80 — 2,22 секунды песни, pitch<80 — независимые 6
+- [ ] 2.7 Разделить native3D lookAhead по N: direct90 — 2,22 секунды песни, perspective25 — 6
       секунд; разместить полный путь через horizon-fit и сохранить читаемый минимум высоты коротких
       нот: верхний ортографический вид 18–30 CSS px, перспектива 24–64 CSS px с учётом ширины.
       Проверка: pure-тесты readableRoadTop, обхода минимума для исходной длительности от 0,6
       секунды, сокращения остатка длинной ноты до нуля, контакта и видимого появления сверху;
-      сравнение с измерением оригинала V4 только для верхнего вида, переход top/player/hands/top
-      даёт 2,22/6/6/2,22 при одном времени сессии; музыкальные события и остальные виды прежние.
+      сравнение с измерением V4 для прямых нот; direct/perspective/direct даёт2,22/6/2,22 при
+      неизменной K, пресеты K не меняют скорость; музыкальные события и остальные виды прежние.
 - [ ] 2.8 Окружить фактически спроецированный контур ноты экранным гауссовым ореолом, сохранить
       гранёный материал и устранить z-fighting. Проверка: тесты геометрии/billboard/ресурсов,
       видимые короткие/длинные ноты, оба торца и разные ракурсы без резких границ и мерцания.
@@ -71,8 +71,9 @@
 ## 3. Подключение и совместимость
 
 - [ ] 3.1 Включить новые поверхности только при фактической готовности Three для piano style=3d,
-      скрыть прежние дубли в Pixi. Сохранить один Three renderer/canvas и одну основную камеру.
-      Проверка: тесты переходов loading/on/failure, отсутствие двойной ноты, pnpm typecheck.
+      скрыть прежние дубли в Pixi. Сохранить один Three renderer/canvas и общую сцену с K/N
+      камерами. Проверка: тесты переходов loading/on/failure, отсутствие двойной ноты, pnpm
+      typecheck.
 - [ ] 3.2 Сохранить туман, локальный огонь, знаки, прежние вспышки и HUD переходным Pixi-overlay;
       проверить порядок проходов, resetState и совпадение якорей. Проверка: видимая запись одиночной
       ноты/аккорда/удержания с клавишами и руками без грязного затемнения и пересвета.
@@ -107,60 +108,86 @@
 - [ ] 5.5 Подтвердить явное включение метронома ритмическим курсом при общем default false, не меняя
       сохранённый выбор обычной тренировки. Проверка: сценарий курса и релевантные тесты.
 
-## 6. Клавиатура сверху и независимые профили
+## 6. Независимые камеры пианино и нот — решение20
 
-- [ ] 6.10 Исправить фактическую контактную плоскость native: KEYS_BACK22/142 вместо PANEL_EDGE50,
-      mixed-fit читает road.near; board ниже поверхности клавиш и за передней плоскостью стыка.
-      Проверка: нет прежней чёрной щели52px при offset=0, корпус снизу сохранён, не возвращается
-      задняя полоса; perspective/top/mixed, hands on/off, white/black и resize. Повторить scoped
-      tests, GPU/foreground и общий контроль после изменения, не использовать прежние кадры как
-      доказательство исправления.
+- [x] 6.16 Ограничить весь neutral rim фактическими белыми keybed contact-bounds с мягким fade
+      внутрь концов. Проверка:25/49/61/88, K top/perspective, pan/scale/resize/keysOffset один раз,
+      invalid/empty anchors и native/legacy fallback; никакого viewport-sized haze или hard edge.
+      Только neutral filter/mask, цветные FX прежние; переиспользуемые uniforms/resources и dispose,
+      без per-frame texture allocations. Видимая узкая клавиатура не имеет дымки за щеками корпуса.
 
-- [x] 6.0 До mixed-camera интеграции добавить чистый ограниченный overhead range-fit по реальным
-      границам/viewport: только уменьшение проекции, 88 клавиш целиком по ширине, CameraPrefs и
-      world geometry неизменны. Проверка: 25/49/61/88, обычный pan/offset=0, desktop/mobile resize,
-      меньшие диапазоны не раздуваются, perspective прежняя, CPU/Three совпадают. Отдельно
-      воспроизвести и исправить щель при включении рук общим расчётом handRoom/hitY/keys contact.
+- [x] 6.15 Решение23: readonly neutral rim pass перед ThreeN/K, suppress только его в finalPixi с
+      try/finally restoration. Проверка: один rim, сохранённые transforms/ancestor visibility,
+      restore flags ДО fallback render, classic/loading/failure/context restore/FXoff прежние;
+      coloured flame/glyphs/old flashes остаютсяoverlay, nonowningref clear/dispose без leaks.
+      Видимый native direct/perspective и K presets: корпус/руки перед дымкой, без белой пелены.
 
-- [x] 6.1 Добавить чистую производную top-проекцию клавиш по контактной плоскости roadCamera,
-      viewport/keyboardHeight/handRoom и размещению. Проверка: white/black, 25/49/61/88, pan/scale,
-      разные camera/resize, конечный fallback; совпадение X/Y контактов при offset=0 до 1 CSS px,
-      намеренный offset сдвигает только клавиши. Derived-параметры не clamp к UI limits.
-- [ ] 6.2 Развести roadCamera/keyboardCamera в Stage/Host/RoadLayer, общий renderer/scene и два
-      прохода с clearDepth и восстановлением видимости после failure/restore. Проверка: один набор
-      мешей/света, без двойного кадра; false сохраняет прежний путь, дорога и её horizon-fit не
-      меняются. Скорость читает roadCamera.pitch, derived camera не создаётся каждый кадр и не
-      вызывает mesh rebuild на pan. Владение интеграционными файлами одно, без параллельных записей.
-- [ ] 6.3 Передать keyboardCamera в key polygons/inverse picking, подписи и handPlace fallback;
-      Three-руки следуют keysGroup, дорожные подписи и аура остаются на roadCamera. Проверка:
-      white/black pointer priority, наклейки/руки/контакты сверху, sprite fallback и keysOffset.
-- [x] 6.4 Ввести чистую нормализованную схему профилей style×projection×orientation и атомарный
-      переход active profile, без React/DOM/storage в расчёте. Проверка: независимость camera,
-      roadshape и полного piano layout; preset не меняет ключ; top недопустим вне3d; global prefs и
-      typing не копируются; reset активной записи и повреждённые поля.
-- [x] 6.5 Подключить persistence и однократную идемпотентную миграцию legacySeed. Проверка: старые
-      camera/layout сохраняются в активном виде, впервые выбранный профиль не наследует свежие
-      правки соседа, существующие новые записи приоритетны, reload восстанавливает выбор; никакой
-      очистки localStorage или потери других ключей. Проверено unit/store-тестами в полном pnpm
-      check 2505; видимая многопрофильная приёмка остаётся в 6.7.
-- [x] 6.6 Добавить «Клавиатура сверху»/«Keyboard from above» через t() и RU/EN-каталог, default
-      false; UI отображает orientation активной комбинации. Проверка: toggle/restore, изменение
-      style/road атомарно сохраняет/восстанавливает профиль, fallback и другие виды сохраняют
-      предпочтение без включения другого renderer; прежнее принудительное road:true не затирает
-      выбранную проекцию профиля.
-- [ ] 6.7 Проверить видимые два ракурса на desktop/mobile: дорога perspective/top, клавиши top,
-      49/61/88 и контроль25, pan/scale/keysHeight/keysOffset/resize, белые/чёрные указателем,
-      labels/руки и fallback. Переключать на play/wait/pause без сброса сессии; отдельные кадры и
-      запись не заменять прежними свидетельствами. Повторить focused/full check, spec:validate и
-      независимое reviewer-ревью перед объявлением готовности этого расширения.
-- [x] 6.8 Разделить nativeStage enable и notesProjection: 3d/direct не выключает Three-host,
-      использует derived roadCamera90 и общий top для клавиш, native ноты/аура/шлейфы/руки/ввод
-      сохраняются. Проверка: direct/perspective switch с разными профилями, эффективные окна 2,22/6,
-      отсутствие flat2D-регрессии/дублей, loading/failure/restore и остальные стили прежние.
-- [x] 6.9 Добавить локализованный select «Проекция нот»/«Note projection» и direct-specific
-      видимость controls: не показывать неэффективные перспективные presets/pitch и top-toggle,
-      сохранить действующий framing и скрытые CameraPrefs. Проверка: RU/EN, UI/direct/profile reload
-      и обратный переход без сброса сессии; материализация derived90 не записывается в prefs.
+- [x] 6.14 Решение22: чистая native laneY22/34 по GLB и NoteLaneProjection K/N contact correction на
+      layout, white slab thickness cap только при экстремальной ширине ради black clearance. Общая
+      ref через frame/body/face/halo/aura/trails/anchors/CPUlabels/readability; world near/time/keys
+      неизменны. Проверка: C/C#/D сверху/низко,25/49/61/88, обе N и три K, pan/scale/resize, exact
+      black contact без щели/white occlusion, совпадение shader/CPU, shortgap/pause/seek/dispose;
+      базовая дорога/такты прежние, новые absorption holes/culling не входят. Видимая приёмка
+      открыта.
+
+- [x] 6.12 Решение21: добавить глобальный native3d keyboardDim=false, saved true/false и
+      локализованный toggle «Приглушить клавиатуру»/«Dim keyboard». Проверка: defaults/reload,
+      независимость от noteprojection/camera/profiles, практика не сбрасывается, другие виды
+      прежние.
+- [x] 6.13 Оформление K: bright study и прежний dim, наклонный нейтральный свет слева, тонкие блики
+      фасок и ограниченная мягкая contact/AO тень под чёрными клавишами. Проверка: верхний/ низкий
+      ракурс, белая/чёрная idle+sound, labels/hue без пересвета; без новых lights/deps/
+      shadowmaps/per-frameGraphics; bounded resources/clear/dispose. Stage файл интегрировать только
+      после handoff его владельца решения20; пользовательская приёмка остаётся открытой.
+
+Все проверки ниже относятся к последнему уточнению. Предыдущие двухкамерные свидетельства не
+доказывают неизменность пианино при смене только проекции нот; приёмка новой семантики открыта.
+
+- [ ] 6.0 Сохранить bounded range-fit верхней K: все88 по ширине, меньшие диапазоны не раздуваются,
+      CameraPrefs/world geometry неизменны; KEYS_BACK22/142 и корпус ниже клавиш без чёрной щели.
+      Проверка: CPU/Three, hands on/off, desktop/mobile resize, белые/чёрные контакты и кейс снизу.
+- [x] 6.1 Добавить чистую derived N от независимой K: direct90 ortho, perspective25, affine X-scale
+      и off-axis hitY по K.contact, отдельный безопасный horizon-fit. Проверка: две проекции при
+      одинаковой K сверху/от игрока/у рук,25/49/61/88, pan/scale/resize, конечный fallback и контакт
+      до1 CSS px. Обратного вычисления K из N нет, sourceX=viewWidth, pan учитывается один раз;
+      tiny88-fit/horizon проверяет конечную derived N.height без изменения K или выхода far-clip.
+- [x] 6.2 Stage/Host рисуют roadGroup через N и keys+hands через K одним renderer/canvas/scene.
+      Проверка: общие lights/меши, restore visibility/depth после failure/context restore, никакой
+      подмены K direct-top, никаких дублей; cache derived camera без кадровых rebuild.
+- [x] 6.3 Развести потребителей: K для CPU keySurface/picking/handPlace/наклеек/рук и keysOffset, N
+      для notes/cards/digits/halo/readability/trails/aura; FX используют общий hit-contact.
+      Проверка: black-key priority, sprite fallback, world light anchors и inverse picking; lights
+      layout получает boxes отK и N для upcoming depth, общий near/scale; sounding cones и release
+      envelope при delta0 сохраняются, light pool не растёт.
+- [x] 6.4 В pure v1 selectViewProfile projection-only same-style transition переносит current
+      camera+ВЕСЬ layout+orientation и восстанавливает только target roadFar/roadHorizon. Проверка:
+      orientationByPair не переворачивает K; старый90 camera не заменяется player, матрица/placement
+      K byte-equivalent, immutable seed/unknown entries/reload и другие виды сохраняются. Обычные
+      style/orientation transitions остаются атомарными.
+- [x] 6.5 Добавить отдельный atomic camera-edit transition: все явные presets/sliders снимают
+      top-override, snapshot старой записи, follow получает текущие layout/roadshape и новую camera.
+      Проверка: «От игрока» и «У рук» после legacy top действительно видны без чужих высот/сдвигов;
+      notesProjection не меняется. Дублирующий checkbox убрать из UI, persisted top читать как
+      раньше.
+- [x] 6.6 UI сохраняет «Проекция нот» и все K controls в обоих режимах, включая Top90. Удалить
+      временный guard target90→player, native perspective UI pitch85/hiddenTop и другие ограничения,
+      противоречащие независимой K. Все player-facing строки RU/EN через t(). Проверка UI/store.
+- [x] 6.7 Скорость и geometry читают N: direct2,22/perspective6 при K90/25/42 одинаковы; смена
+      только пресета K не меняет notesProjection/скорость. Проверка: pure frame/integration tests,
+      song time/status/play intent/loop/take unchanged; render clock лавы без второго song clock.
+- [ ] 6.8 Видимая проверка invariance: при одном времени/viewport переключать direct/perspective с K
+      сверху/от игрока/у рук, руки on/off,25/49/61/88, pan/scale/heights/keysOffset/resize.
+      Клавиши/руки/полигоны не сдвигаются от селектора нот; проекция нот видимо меняется, контакты
+      точны при offset0. Отдельные screenshots/video, reload и fallback matrix; mobile readability
+      не подменяется проверкой overflow.
+- [x] 6.9 После интеграции выполнить focused tests, pnpm check, spec:validate и reviewer-ревью.
+      Итоговый75395 exit0:2544+1skip, Compiler23/build; spec55/55, source-review без замечаний. Код
+      после старта не менялся. User/performance acceptance остаются открыты.
+
+Отметки6.1–6.7 и6.12–6.16 закрывают реализацию, unit/source-review и узкие GPU/desktop свидетельства
+из verification.md. Они не объявляют выполненной полную матрицу6.0/6.8, мобильную читаемость или
+user/performance acceptance. Итоговый75395 прошёл2544+1skip/Compiler23/build после mask/cap, общий
+автоматический/reviewer gate6.9 закрыт; публикация и широкая приёмка учитываются отдельно.
 
 ## 4. Приёмка этапа
 
@@ -171,9 +198,9 @@
       устройстве; отдельно указать ограничения замера и число ресурсов. Проверка: сохранённый
       воспроизводимый отчёт, без обещания ускорения по одному CPU-замеру.
 - [x] 4.3 Сверить независимое reviewer-ревью с последним кодом и повторить общий контроль. Итоговый
-      pnpm check60679: 2507 тестов и один пропущен, Compiler23 и сборка; spec:validate55/55.
-      Исправлены подтверждённые замечания по originalTop и свету на паузе. Непроверенная визуальная
-      матрица остаётся в4.1/6.7 и verification.md.
+      pnpm check75395:2544 теста и один пропущен, Compiler23/build; spec:validate55/55. Финальное
+      source-review маски/planar cap без замечаний. Непроверенная визуальная матрица остаётся
+      в4.1/6.8 и verification.md.
 - [x] 4.4 Обновить текущий PR в dev и показать результат на запрошенном стенде 5191 с явным
       указанием этапа и оставшегося Pixi-overlay. Проверка: опубликованный commit/PR и актуальные
       файлы стенда; основная папка/dev и пользовательский 5190 сохранены. Не архивировать до
@@ -193,3 +220,8 @@
 dev, стенд5191 актуален. Условия и ограничения наблюдений записаны в verification.md;
 пользовательская визуальная приёмка, fallback/device matrix и сравнительная производительность не
 закрыты. OpenSpec не архивирован.
+
+Исторический fullcheck39576 дал2530+1skip/Compiler23/build до shader-packingfix. Его GPU-проблема
+исправлена и проверена GL0 на актуальных кадрах/записях; fullcheck24276 дал2540+1skip до последних
+mask/cap. Итоговый75395 прошёл2544+1skip/Compiler23/build. Проверенная реализация и автоматический
+gate задач6 отмечены выше; полная матрица6.0/6.8 и пользовательская/performance приёмка открыты.

@@ -27,6 +27,16 @@ function scene(pan: number, prefs = DEFAULT_CAMERA): KeysScene {
 }
 
 describe("3D key boxes", () => {
+  it("uses actual native black-key height while preserving the legacy geometry contract", () => {
+    const legacy = scene(0);
+    const native = { ...legacy, native: true };
+    expect(keyBoxes(native).find((box) => box.black)?.top).toBe(34);
+    expect(keyBoxes(legacy).find((box) => box.black)?.top).toBe(36);
+    const box = keyBoxes(native).find((box) => box.black);
+    if (!box) throw new Error("missing black key");
+    const expected = native.camera.project(box.x - box.width / 2, box.top, box.back);
+    expect(keySurface(native.camera, box.x, true, box.width * 2, 34).top[0]).toEqual(expected);
+  });
   it.each([
     [0, DEFAULT_CAMERA],
     [160, DEFAULT_CAMERA],

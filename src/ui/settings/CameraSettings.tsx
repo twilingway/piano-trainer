@@ -3,7 +3,6 @@ import { CAMERA_PRESETS, DEFAULT_CAMERA } from "../../render/worldCamera";
 import type { CameraPrefs } from "../../render/worldCamera";
 
 interface Props {
-  readonly direct?: boolean;
   readonly camera: CameraPrefs;
   readonly onChange: (camera: CameraPrefs) => void;
 }
@@ -38,53 +37,49 @@ const CONTROLS: readonly {
 ];
 
 /** Camera controls stay in the scrollable settings rather than covering the piano. */
-export function CameraSettings({ camera, onChange, direct = false }: Props) {
+export function CameraSettings({ camera, onChange }: Props) {
   const { t } = useI18n();
   return (
     <>
-      {!direct && (
-        <div className="setting" role="group" aria-label={t("Ракурс")}>
-          <span>{t("Ракурс")}</span>
+      <div className="setting" role="group" aria-label={t("Ракурс пианино")}>
+        <span>{t("Ракурс пианино")}</span>
+        <span className="setting-control">
+          {PRESETS.map(({ key, label }) => (
+            <button
+              className="game-button"
+              type="button"
+              key={key}
+              onClick={() => {
+                onChange({ ...CAMERA_PRESETS[key], scale: camera.scale });
+              }}
+            >
+              {t(label)}
+            </button>
+          ))}
+        </span>
+      </div>
+      {CONTROLS.map(({ key, label, min, max, step, suffix }) => (
+        <label className="setting" key={key}>
+          <span>{t(label)}</span>
           <span className="setting-control">
-            {PRESETS.map(({ key, label }) => (
-              <button
-                className="game-button"
-                type="button"
-                key={key}
-                onClick={() => {
-                  onChange({ ...CAMERA_PRESETS[key], scale: camera.scale });
-                }}
-              >
-                {t(label)}
-              </button>
-            ))}
-          </span>
-        </div>
-      )}
-      {CONTROLS.filter(({ key }) => !direct || key === "scale" || key === "targetY").map(
-        ({ key, label, min, max, step, suffix }) => (
-          <label className="setting" key={key}>
-            <span>{t(label)}</span>
-            <span className="setting-control">
-              <input
-                aria-label={t(label)}
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                value={camera[key]}
-                onChange={(event) => {
-                  onChange({ ...camera, [key]: Number(event.target.value) });
-                }}
-              />
-              <span className="digits">
-                {key === "scale" ? Math.round(camera[key] * 100) : camera[key]}
-                {suffix}
-              </span>
+            <input
+              aria-label={t(label)}
+              type="range"
+              min={min}
+              max={max}
+              step={step}
+              value={camera[key]}
+              onChange={(event) => {
+                onChange({ ...camera, [key]: Number(event.target.value) });
+              }}
+            />
+            <span className="digits">
+              {key === "scale" ? Math.round(camera[key] * 100) : camera[key]}
+              {suffix}
             </span>
-          </label>
-        )
-      )}
+          </span>
+        </label>
+      ))}
       <button
         className="game-button"
         type="button"

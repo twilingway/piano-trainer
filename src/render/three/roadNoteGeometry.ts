@@ -1,3 +1,4 @@
+import type { NoteLaneProjection } from "../noteLaneProjection";
 import type { WorldCamera } from "../worldCamera";
 
 /** Unpanned app-world coordinates: positive Z runs from the player towards the horizon. */
@@ -14,6 +15,7 @@ export interface WorldRoadNote {
   duration?: number;
   seed?: number;
   textureOffset?: number;
+  lane?: NoteLaneProjection | undefined;
 }
 
 /** Maps the existing hold bounds into the piano world; a supplied target is reused. */

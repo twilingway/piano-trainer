@@ -56,6 +56,15 @@ function firstVisible(layer: PlasmaLayer, group: number): Sprite {
 afterEach(() => vi.restoreAllMocks());
 
 describe("PlasmaLayer", () => {
+  it("exposes only the owned neutral mist group without moving coloured effects", () => {
+    const layer = new PlasmaLayer();
+    expect(layer.mist).toBe(layer.container.children[1]);
+    expect(layer.mist.parent).toBe(layer.container);
+    expect(layer.mist).not.toBe(layer.container.children[2]);
+    expect(layer.mist).not.toBe(layer.container.children[3]);
+    layer.destroy();
+    expect(layer.mist.destroyed).toBe(true);
+  });
   it("covers the entire white-key horizon and includes black keys in local flames", async () => {
     mockAssets();
     const layer = new PlasmaLayer();

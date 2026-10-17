@@ -103,8 +103,8 @@ export interface WorldCamera {
 }
 const rad = (angle: number) => (angle * Math.PI) / 180;
 /** Keep the fitted road within Three's 50000-unit clip plane, including scaled note bodies. */
-const MAX_ROAD_WORLD_Z = 25000;
-const SAFE_VIEW_DEPTH = 48000;
+export const MAX_ROAD_WORLD_Z = 25000;
+export const SAFE_VIEW_DEPTH = 48000;
 /** One calibrated XYZ camera: source pixels map to half-millimetre world coordinates. */
 export function worldCamera(
   width: number,
@@ -261,10 +261,11 @@ export function keySurface(
   camera: WorldCamera,
   centre: number,
   black: boolean,
-  sourceWidth = black ? 26 : 44
+  sourceWidth = black ? 26 : 44,
+  blackTop = 36
 ) {
   const half = sourceWidth / 4;
-  const y = black ? 36 : 22;
+  const y = black ? blackTop : 22;
   const frontZ = black ? 57 : 0;
   const bottomY = black ? 22 : 0;
   const top: readonly [Projected, Projected, Projected, Projected] = [

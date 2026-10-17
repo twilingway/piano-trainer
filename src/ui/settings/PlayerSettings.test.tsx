@@ -124,9 +124,11 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
                 onNotesPerspective: (road) => {
                   updateStaffPrefs({ road });
                 },
-                keyboardTop: false,
-                onKeyboardTop: noop,
                 handStyle: staffPrefs.handStyle,
+                keyboardDim: staffPrefs.keyboardDim,
+                onKeyboardDim: (keyboardDim) => {
+                  updateStaffPrefs({ keyboardDim });
+                },
                 roadGuides: staffPrefs.roadGuides,
                 onRoadGuides: (roadGuides) => {
                   updateStaffPrefs({ roadGuides });
@@ -413,7 +415,9 @@ describe("player settings organization", () => {
       keys.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(select("Вид клавиш").value).toBe("3d");
-    expect(host.querySelector("input[aria-label='Угол обзора']")).toBeNull();
+    expect(host.textContent).not.toContain("Клавиатура сверху");
+    expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
+    expect(host.querySelector("[aria-label='Ракурс пианино']")?.textContent).toContain("Сверху");
     await act(async () => {
       await Promise.resolve();
       const projection = select("Проекция нот");
@@ -421,6 +425,64 @@ describe("player settings organization", () => {
       projection.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
+    expect(host.querySelector<HTMLInputElement>("input[aria-label='Наклон камеры']")?.max).toBe(
+      "90"
+    );
+    expect(
+      Array.from(host.querySelectorAll("button")).some((button) => button.textContent === "Сверху")
+    ).toBe(true);
+    await act(async () => {
+      await Promise.resolve();
+      const legacyStyle = select("Вид клавиш");
+      legacyStyle.value = "perspective";
+      legacyStyle.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(host.querySelector<HTMLInputElement>("input[aria-label='Наклон камеры']")?.max).toBe(
+      "90"
+    );
+    expect(
+      Array.from(host.querySelectorAll("button")).some((button) => button.textContent === "Сверху")
+    ).toBe(true);
+  });
+
+  it("keeps the keyboard bright by default and persists optional dimming across projection changes", async () => {
+    await render(false);
+    await section("Вид");
+    await act(async () => {
+      await Promise.resolve();
+      const keys = select("Вид клавиш");
+      keys.value = "3d";
+      keys.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const dim = () =>
+      Array.from(host.querySelectorAll("label"))
+        .find((label) => label.textContent.includes("Приглушить клавиатуру"))
+        ?.querySelector<HTMLInputElement>("input");
+    expect(dim()?.checked).toBe(false);
+    await act(async () => {
+      await Promise.resolve();
+      dim()?.click();
+    });
+    expect(dim()?.checked).toBe(true);
+    await act(async () => {
+      await Promise.resolve();
+      const projection = select("Проекция нот");
+      projection.value = "perspective";
+      projection.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(dim()?.checked).toBe(true);
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      keyboardDim: true
+    });
+    await act(async () => {
+      await Promise.resolve();
+      root.unmount();
+    });
+    root = createRoot(host);
+    store = createAppStore();
+    await render(false);
+    await section("Вид");
+    expect(dim()?.checked).toBe(true);
   });
 
   it("offers optional road guides disabled by default and keeps the choice after reload", async () => {

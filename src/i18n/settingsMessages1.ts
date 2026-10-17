@@ -30,6 +30,8 @@ export const settingsMessages1 = {
   "Сбросить камеру": {
     en: "Reset camera"
   },
+  "Приглушить клавиатуру": { en: "Dim keyboard" },
+  "Ракурс пианино": { en: "Piano view" },
   Ракурс: {
     en: "View"
   },

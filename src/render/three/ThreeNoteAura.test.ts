@@ -27,6 +27,21 @@ function mesh(aura: ThreeNoteAura): InstancedMesh {
 }
 
 describe("exterior long-note lava aura", () => {
+  it("fits every batch within WebGL2's minimum sixteen vertex attribute slots", () => {
+    const aura = new ThreeNoteAura();
+    const batch = mesh(aura);
+    // Include even unused position/normal/UV streams, plus instance color and the mat4's four slots.
+    const geometrySlots = Object.values(batch.geometry.attributes).reduce(
+      (sum, attr) => sum + Math.ceil(attr.itemSize / 4),
+      0
+    );
+    expect(geometrySlots + 1 + 4).toBeLessThanOrEqual(16);
+    expect(batch.geometry.getAttribute("noteEnvelope").itemSize).toBe(3);
+    expect(batch.geometry.hasAttribute("noteAlpha")).toBe(false);
+    expect(batch.geometry.hasAttribute("noteOffset")).toBe(false);
+    expect(batch.geometry.hasAttribute("noteLayer")).toBe(false);
+    aura.dispose();
+  });
   it("gives each qualifying note exactly two shells in one rounded-geometry batch", () => {
     const aura = new ThreeNoteAura();
     aura.update(
@@ -44,9 +59,9 @@ describe("exterior long-note lava aura", () => {
     expect(aura.group.children).toHaveLength(1);
     expect(batch.geometry.name).toBe("note-chamfered-slab");
     const size = batch.geometry.getAttribute("noteSize");
-    const layer = batch.geometry.getAttribute("noteLayer");
+    const layer = batch.geometry.getAttribute("noteEnvelope");
     expect([size.getZ(0), size.getZ(1), size.getZ(2), size.getZ(3)]).toEqual([2, 2, 62, 62]);
-    expect([layer.getX(0), layer.getX(1), layer.getX(2), layer.getX(3)]).toEqual([0, 1, 0, 1]);
+    expect([layer.getY(0), layer.getY(1), layer.getY(2), layer.getY(3)]).toEqual([0, 1, 0, 1]);
     aura.dispose();
   });
 
@@ -90,8 +105,8 @@ describe("exterior long-note lava aura", () => {
       expect(color.r).toBe(0);
       expect(color.g).toBeCloseTo(128 / 255);
       expect(color.b).toBe(1);
-      expect(batch.geometry.getAttribute("noteAlpha").getX(layer)).toBeGreaterThanOrEqual(0.6);
-      expect(batch.geometry.getAttribute("noteAlpha").getX(layer)).toBeLessThanOrEqual(0.8);
+      expect(batch.geometry.getAttribute("noteEnvelope").getX(layer)).toBeGreaterThanOrEqual(0.6);
+      expect(batch.geometry.getAttribute("noteEnvelope").getX(layer)).toBeLessThanOrEqual(0.8);
     }
     expect(material.transparent).toBe(true);
     expect(material.blending).toBe(AdditiveBlending);
@@ -165,22 +180,22 @@ describe("exterior long-note lava aura", () => {
       aura.update([state], 50, 7);
       const batch = mesh(aura);
       const sizes = batch.geometry.getAttribute("noteSize");
-      const offsets = batch.geometry.getAttribute("noteOffset");
+      const offsets = batch.geometry.getAttribute("noteEnvelope");
       for (let layer = 0; layer < NOTE_AURA_LAYERS; layer++) {
         batch.getMatrixAt(layer, matrix);
         // Evaluate the shader's far-origin coordinate at the same retained world point.
         const localZ = -300 - matrix.elements[14];
         const coordinate =
-          (localZ + sizes.getZ(layer) * 0.5 + offsets.getX(layer)) / sizes.getX(layer);
+          (localZ + sizes.getZ(layer) * 0.5 + offsets.getZ(layer)) / sizes.getX(layer);
         coordinates.push(coordinate);
-        expect(offsets.getX(layer)).toBe(state.textureOffset);
+        expect(offsets.getZ(layer)).toBe(state.textureOffset);
       }
     }
     expect(coordinates).toEqual([6, 6, 6, 6, 6, 6, 6, 6]);
     aura.update([note({ textureOffset: Number.NaN }), note({ textureOffset: -5 })], 50);
-    const offsets = mesh(aura).geometry.getAttribute("noteOffset");
-    expect(offsets.getX(0)).toBe(0);
-    expect(offsets.getX(2)).toBe(-5);
+    const offsets = mesh(aura).geometry.getAttribute("noteEnvelope");
+    expect(offsets.getZ(0)).toBe(0);
+    expect(offsets.getZ(2)).toBe(-5);
     aura.dispose();
   });
 
@@ -190,7 +205,7 @@ describe("exterior long-note lava aura", () => {
     aura.update(input, 50);
     const batch = mesh(aura);
     const params = batch.geometry.getAttribute("noteParams");
-    const alpha = batch.geometry.getAttribute("noteAlpha");
+    const alpha = batch.geometry.getAttribute("noteEnvelope");
     for (let component = 0; component < 4; component++) {
       expect(new Set(input.map((_, index) => params.array[index * 8 + component])).size).toBe(
         input.length

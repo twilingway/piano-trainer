@@ -1,6 +1,7 @@
 import { Assets, Container, Rectangle, Sprite, Texture } from "pixi.js";
 import { emberAt, emberRateForHold, emberSizeForDuration } from "./emberMotion";
 import type { EmberPosition } from "./emberMotion";
+import { MistBoundsMask } from "./MistBoundsMask";
 import type { EnergySource } from "./noteEnergy";
 
 export interface PlasmaAnchor {
@@ -112,6 +113,7 @@ export class PlasmaLayer {
   private emberTexture?: Texture;
   private loading?: Promise<void>;
   private disposed = false;
+  private mistMask: MistBoundsMask | undefined;
   private clock = 0;
   private serial = 0;
   private nextEmber = 0;
@@ -161,6 +163,11 @@ export class PlasmaLayer {
     }
   }
 
+  /** The neutral rim keeps its ownership here while the native host draws it behind the piano. */
+  get mist(): Container {
+    return this.rimContainer;
+  }
+
   load(): Promise<void> {
     if (this.disposed) return Promise.resolve();
     return (this.loading ??= this.loadAssets());
@@ -186,13 +193,17 @@ export class PlasmaLayer {
     sources: readonly EnergySource[],
     attacks: readonly EnergySource[],
     height: number,
-    deltaSeconds: number
+    deltaSeconds: number,
+    clipMist = false,
+    mistOffsetX = 0
   ): void {
     if (this.disposed) return;
     const delta = Number.isFinite(deltaSeconds) ? Math.min(0.05, Math.max(0, deltaSeconds)) : 0;
     this.clock += delta;
     this.anchors.clear();
     for (const anchor of anchors) this.anchors.set(anchor.pitch, anchor);
+    if (clipMist) this.mistMask ??= new MistBoundsMask(this.rimContainer);
+    this.mistMask?.update(anchors, height, clipMist, mistOffsetX);
     this.drawRim(anchors, height);
     for (const flame of this.flames) {
       flame.target = 0;
@@ -435,6 +446,8 @@ export class PlasmaLayer {
     if (this.disposed) return;
     this.disposed = true;
     this.clear();
+    this.mistMask?.destroy();
+    this.mistMask = undefined;
     this.container.destroy({ children: true, texture: false, textureSource: false });
     for (const frame of this.frames) frame.destroy(false);
     for (const frame of this.mistFrames) frame.destroy(false);

@@ -7,8 +7,8 @@ import {
   RenderTexture,
   Sprite
 } from "pixi.js";
-import type { Application, PointData, Renderer, Texture } from "pixi.js";
-import { bakeFog, bakeSpark, drawRoadHorizon } from "./roadTextures";
+import type { Application, PointData, Renderer } from "pixi.js";
+import { bakeFog, drawRoadHorizon } from "./roadTextures";
 import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";
 import type { KeyRect } from "./keyboardLayout";
@@ -21,15 +21,17 @@ import type { Geometry } from "./viewGeometry";
 import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeometry";
 import type { Projected, RoadProjection } from "./perspective";
 import { handSurface } from "./handProjection";
-import { mixedKeyboardCamera } from "./mixedKeyboardCamera";
+import { nativeViewCameras } from "./nativeViewCameras";
+import { RoadSparks } from "./RoadSparks";
+import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
+import { projectNoteLane, type NoteLaneProjection } from "./noteLaneProjection";
 import { DEFAULT_ROAD_SHAPE, roadLayoutCamera, type RoadShape } from "./roadLayoutCamera";
-import type { HandsGeometry } from "./HandsLayer";
+import type { HandsGeometry, HandsLayer } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
 import { ThreeKeysHost } from "./three/ThreeKeysHost";
 import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
 import { readableRoadTop } from "./readableRoadNote";
 import type { EnergySource } from "./noteEnergy";
-import type { HandsLayer } from "./HandsLayer";
 
 /** A key being struck right now: where on the hit line, and in what colour. */
 export interface Strike {
@@ -62,20 +64,7 @@ const GLOW_STRENGTH = 10;
 /** The widest texture most GPUs, phones included, will take. */
 const MAX_TEXTURE_PX = 8192;
 const GLOW_ALPHA = 0.9;
-const MAX_SPARKS = 400;
-/** A burst when a key is struck, then a thin stream while it is held, per second. */
-const SPARKS_PER_BURST = 24;
-const SPARKS_PER_HELD_S = 30;
-const SPARK_LIFE_S = 0.7;
-
-interface Spark {
-  readonly sprite: Sprite;
-  vx: number;
-  vy: number;
-  life: number;
-}
-
-/** Shared world camera for the road, physical piano faces and every note/effect anchor.
+/** Independent note and piano cameras share physical contact and source geometry.
  * Existing flat layers supply baked materials; this layer only projects their geometry.
  */
 export class RoadLayer {
@@ -92,7 +81,10 @@ export class RoadLayer {
   private camera: WorldCamera | undefined;
   private keyboardCamera: WorldCamera | undefined;
   private keyboardTop = false;
+  private notesPerspective = true;
+  private cameraHeight = 1;
   private readonly keyHeights = new Map<number, number>();
+  private blackLane: NoteLaneProjection | undefined;
   /** The lane laid on the floor, and a blurred copy over it for the glow. */
   private readonly road: PerspectiveMesh;
   private readonly glow: PerspectiveMesh;
@@ -104,11 +96,9 @@ export class RoadLayer {
   private readonly glass = new RoadGlassLayer();
   /** Haze over the far road: lanes and notes come out of it as they near. */
   private readonly fog = new Sprite(bakeFog());
-  private readonly sparkTexture: Texture;
-  private readonly sparks: Spark[] = [];
+  private readonly sparks: RoadSparks;
   private size = { width: 0, height: 0 };
   /** The hit line on screen: where the road meets the keys. */
-  private hit = { y: 0, left: 0, right: 0 };
   private keysShift = new Matrix();
   /** The floor's perspective; undefined before the first layout. */
   private projection: RoadProjection | undefined;
@@ -123,15 +113,13 @@ export class RoadLayer {
   private plasmaClock = 0;
   private readonly nativeRoad = new ThreeRoadFrame();
   private lastLane: Container | undefined;
-  /** Sparks owed to each held key: the fraction of a spark carried to the next frame. */
-  private held = new Map<number, number>();
 
   /** The "3d" style's keys, drawn by three.js; without an app there are none. */
   private readonly three: ThreeKeysHost | undefined;
 
   constructor(
     private readonly renderer: Renderer,
-    app?: Application,
+    private readonly app?: Application,
     keyboard?: KeyboardLayer,
     hands?: HandsLayer
   ) {
@@ -164,7 +152,8 @@ export class RoadLayer {
     );
     this.container.eventMode = "none";
     this.effects.eventMode = "none";
-    this.sparkTexture = bakeSpark(renderer);
+    this.sparks = new RoadSparks(renderer);
+    this.effects.addChild(this.sparks.container);
     this.three =
       app &&
       keyboard &&
@@ -184,7 +173,7 @@ export class RoadLayer {
 
   addTrailAnchor(x: number, width: number, color: number, alpha: number): void {
     if (this.three?.drawsRoad && this.camera)
-      this.nativeRoad.addTrailAnchor(x, width, color, alpha, this.camera);
+      this.nativeRoad.addTrailAnchor(x, width, color, alpha, this.camera, this.noteLane(x));
   }
 
   beginNotes(): void {
@@ -194,16 +183,33 @@ export class RoadLayer {
 
   setKeyboard(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry): void {
     this.keyHeights.clear();
+    const blackHeight = this.three?.on ? BLACK_NOTE_FLOOR : 36;
     for (const key of keys.values())
-      this.keyHeights.set(key.x + key.width / 2, key.black ? 36 : 22);
+      this.keyHeights.set(key.x + key.width / 2, key.black ? blackHeight : WHITE_NOTE_FLOOR);
+    this.blackLane = undefined;
     if (this.perspective) {
       this.keysShift = new Matrix().translate(0, -geometry.keyboardTop);
-      this.keyboardCamera =
-        this.keyboardTop && this.three?.on && this.camera
-          ? mixedKeyboardCamera(this.camera, geometry.keyboardHeight)
-          : this.camera;
-      this.keys.layout(keys, geometry, this.keysTexture);
-      if (this.camera) this.keys.draw(this.camera, this.pan, this.keyboardCamera);
+      if (this.three?.on && this.camera) {
+        const cameras = nativeViewCameras(
+          this.camera,
+          geometry.keyboardHeight,
+          this.keyboardTop,
+          this.notesPerspective,
+          this.cameraHeight,
+          this.shape.horizon,
+          this.app?.screen.height ?? this.cameraHeight
+        );
+        this.keyboardCamera = cameras.keyboard;
+        this.camera = cameras.notes;
+        this.blackLane = cameras.blackLane;
+        this.projection = this.camera.road;
+        this.hitY = this.projection.at(this.viewWidth / 2, 1).y;
+        this.horizonY = this.projection.at(this.viewWidth / 2, 0).y;
+        this.fog.position.set(0, this.horizonY);
+        this.fog.height = Math.max(1, (this.hitY - this.horizonY) * FOG_REACH);
+      } else this.keyboardCamera = this.camera;
+      this.keys.layout(keys, geometry, this.keysTexture, this.three?.on === true);
+      if (this.camera) this.setPan(this.pan, true);
     }
     this.staff.setKeys(keys);
     if (this.projection) this.staff.draw(this.projection, this.pan);
@@ -229,14 +235,29 @@ export class RoadLayer {
     }
     const progress = Math.max(0, Math.min(1, y / this.size.height));
     const { near } = this.camera;
-    // On the 3D keys every note ends on the back panel's edge, whatever its key.
-    const keyHeight = this.three?.on ? near.y : (this.keyHeights.get(keyX) ?? 22);
+    const lane = this.noteLane(keyX);
+    const keyHeight = this.keyHeights.get(keyX) ?? near.y;
     // On the floor's own depth, as the arcade road does: the notes ride the road, not over it.
-    return this.camera.project(
-      this.camera.sourceX(keyX - this.pan + offset),
-      keyHeight + lift / 2,
-      near.z + (1 - progress) * (this.camera.roadFarZ - near.z)
+    return projectNoteLane(
+      this.camera.project(
+        this.camera.sourceX(keyX - this.pan + offset),
+        keyHeight + lift / 2,
+        near.z + (1 - progress) * (this.camera.roadFarZ - near.z)
+      ),
+      lane
     );
+  }
+
+  noteLaneY(keyX: number): number {
+    return this.keyHeights.get(keyX) ?? WHITE_NOTE_FLOOR;
+  }
+
+  private noteLane(keyX: number): NoteLaneProjection | undefined {
+    return this.three?.on && this.noteLaneY(keyX) === BLACK_NOTE_FLOOR ? this.blackLane : undefined;
+  }
+
+  get keysOffsetX(): number {
+    return this.keys.container.position.x;
   }
 
   get scenePan(): number {
@@ -277,7 +298,8 @@ export class RoadLayer {
         this.camera,
         duration,
         id,
-        tailOffset
+        tailOffset,
+        this.noteLane(keyX)
       );
       return true;
     }
@@ -332,11 +354,12 @@ export class RoadLayer {
       Math.max(1, keysHeight),
       this.perspective ? resolution : this.renderer.resolution
     );
+    this.cameraHeight = Math.max(1, bottom - handRoom);
     this.camera = this.perspective
       ? roadLayoutCamera(
           viewWidth,
           width,
-          bottom - handRoom,
+          this.cameraHeight,
           this.cameraPrefs,
           this.three?.on === true,
           this.shape.horizon
@@ -353,7 +376,6 @@ export class RoadLayer {
     this.fog.height = Math.max(1, (this.hitY - this.horizonY) * FOG_REACH);
     this.road.texture = this.texture;
     this.glow.texture = this.texture;
-    this.hit = { y: this.hitY, left: 0, right: viewWidth };
     this.staff.draw(this.projection, this.pan);
     this.setPan(this.pan, true);
   }
@@ -369,6 +391,14 @@ export class RoadLayer {
     return this.three?.drawsRoad === true;
   }
 
+  setMistLayer(layer: Container): void {
+    this.three?.setMistLayer(layer);
+  }
+
+  setKeyboardDim(on: boolean): void {
+    this.three?.setKeyboardDim(on);
+  }
+
   setRoadGuides(on: boolean): void {
     this.nativeRoad.guides = on;
     this.staff.container.visible = on;
@@ -376,12 +406,29 @@ export class RoadLayer {
 
   fitHoldTop(x: number, top: number, bottom: number, width: number, duration = 0): number {
     return this.three?.drawsRoad && this.camera
-      ? readableRoadTop(x, top, bottom, width, this.size.height, this.camera, duration)
+      ? readableRoadTop(
+          x,
+          top,
+          bottom,
+          width,
+          this.size.height,
+          this.camera,
+          duration,
+          this.noteLane(x)
+        )
       : top;
   }
 
   setShape(shape: RoadShape): void {
     this.shape = shape;
+  }
+
+  setNotesPerspective(on: boolean): void {
+    this.notesPerspective = on;
+  }
+
+  get keyboardOverhead(): boolean {
+    return this.keyboardCamera?.params.prefs.pitch === 90;
   }
 
   setKeyboardTop(on: boolean): void {
@@ -502,21 +549,11 @@ export class RoadLayer {
     const strikes = flatStrikes.map((strike) => ({
       ...strike,
       x: this.project(strike.x),
-      screenY: this.notePlace(strike.x, this.size.height)?.y ?? this.hit.y
+      screenY: this.notePlace(strike.x, this.size.height)?.y ?? this.hitY
     }));
     this.drawHorizon();
     if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
-    const held = new Map<number, number>();
-    for (const strike of strikes) {
-      const owed = this.held.get(strike.pitch);
-      // A burst on the strike, then a stream whose rate does not depend on the frame rate.
-      const due = owed === undefined ? SPARKS_PER_BURST : owed + SPARKS_PER_HELD_S * deltaSeconds;
-      const count = Math.floor(due);
-      this.emit(strike, count);
-      held.set(strike.pitch, due - count);
-    }
-    this.held = held;
-    this.moveSparks(deltaSeconds);
+    this.sparks.draw(strikes, deltaSeconds);
   }
 
   private restoreRoad(): void {
@@ -540,10 +577,10 @@ export class RoadLayer {
     this.keys.destroy();
     for (const mesh of [this.road, this.glow, this.legacyKeys]) mesh.geometry.destroy();
     this.container.destroy({ children: true });
+    this.sparks.destroy();
     this.effects.destroy({ children: true });
     this.texture.destroy(true);
     this.keysTexture.destroy(true);
-    this.sparkTexture.destroy(true);
   }
 
   /** The horizon glowing across the far end of the road, flashing where notes come over it. */
@@ -553,47 +590,5 @@ export class RoadLayer {
     if (this.three?.drawsRoad && !this.nativeRoad.guides) return;
     if (!this.projection) return;
     drawRoadHorizon(line, this.horizonY, this.viewWidth);
-  }
-
-  private emit(strike: Strike, count: number): void {
-    for (let index = 0; index < count; index++) {
-      let spark = this.sparks.find((item) => item.life <= 0);
-      // A full pool takes back its oldest spark, so a late strike is never left dark.
-      if (!spark && this.sparks.length >= MAX_SPARKS) {
-        spark = this.sparks.reduce((oldest, item) => (item.life < oldest.life ? item : oldest));
-      }
-      if (!spark) {
-        const sprite = new Sprite(this.sparkTexture);
-        sprite.anchor.set(0.5);
-        sprite.blendMode = "normal";
-        this.effects.addChild(sprite);
-        spark = { sprite, vx: 0, vy: 0, life: 0 };
-        this.sparks.push(spark);
-      }
-      spark.sprite.x = strike.x + (Math.random() - 0.5) * 10;
-      spark.sprite.y = strike.screenY ?? this.hit.y;
-      spark.sprite.tint = strike.color;
-      spark.vx = (Math.random() - 0.5) * 140;
-      spark.vy = -(80 + Math.random() * 260);
-      spark.life = SPARK_LIFE_S * (0.5 + Math.random() * 0.5);
-      spark.sprite.visible = true;
-    }
-  }
-
-  private moveSparks(deltaSeconds: number): void {
-    for (const spark of this.sparks) {
-      if (spark.life <= 0) continue;
-      spark.life -= deltaSeconds;
-      if (spark.life <= 0) {
-        spark.sprite.visible = false;
-        continue;
-      }
-      // Sparks rise, slow down and fade.
-      spark.vy += 220 * deltaSeconds;
-      spark.sprite.x += spark.vx * deltaSeconds;
-      spark.sprite.y += spark.vy * deltaSeconds;
-      spark.sprite.alpha = Math.min(1, spark.life / (SPARK_LIFE_S * 0.5));
-      spark.sprite.scale.set(0.4 + spark.life);
-    }
   }
 }

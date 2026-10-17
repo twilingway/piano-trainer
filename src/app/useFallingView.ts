@@ -148,7 +148,7 @@ export function useFallingView({
     viewRef.current?.hands.setStyle(staffPrefs.handStyle);
     viewRef.current?.setCamera(staffPrefs.camera);
     viewRef.current?.setKeyboardTop(
-      staffPrefs.keyStyle === "3d" && staffPrefs.road && staffPrefs.keyboardOrientation === "top"
+      staffPrefs.keyStyle === "3d" && staffPrefs.keyboardOrientation === "top"
     );
     viewRef.current?.setRoadShape({ far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon });
   }, [
@@ -176,7 +176,8 @@ export function useFallingView({
 
   useEffect(() => {
     viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
-  }, [viewRef, trainerReady, staffPrefs.roadGuides]);
+    viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
+  }, [viewRef, trainerReady, staffPrefs.roadGuides, staffPrefs.keyboardDim]);
 
   const { lift, scale, x, y } = placement;
   useEffect(() => {

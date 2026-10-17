@@ -39,6 +39,7 @@ export class NotePlasma {
     visible: boolean,
     deltaSeconds: number
   ): void {
+    road?.setMistLayer(this.layer.mist);
     const on = road !== undefined && visible;
     this.container.visible = on;
     if (!on) {
@@ -75,7 +76,15 @@ export class NotePlasma {
     }
     // Do not consume an attack while paused; resume emits it once.
     const attacks = delta > 0 ? this.attacks.update(sources) : [];
-    this.layer.draw(anchors, sources, attacks, Math.max(80, road.hitLineY), delta);
+    this.layer.draw(
+      anchors,
+      sources,
+      attacks,
+      Math.max(80, road.hitLineY),
+      delta,
+      road.drawsNativeRoad,
+      road.keysOffsetX
+    );
   }
 
   clear(road?: RoadLayer): void {

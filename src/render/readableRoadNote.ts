@@ -1,5 +1,6 @@
 import type { WorldCamera } from "./worldCamera";
-import { NOTE_SLAB_THICKNESS } from "./noteDimensions";
+import { noteSlabHeight } from "./noteDimensions";
+import type { NoteLaneProjection } from "./noteLaneProjection";
 
 export const READABLE_ROAD_DURATION_LIMIT = 0.6;
 
@@ -11,7 +12,8 @@ export function readableRoadTop(
   width: number,
   hitY: number,
   camera: WorldCamera,
-  duration = 0
+  duration = 0,
+  lane?: NoteLaneProjection
 ): number {
   // Sustained notes must consume to zero; a minimum would pin their burning tail in place.
   if (duration >= READABLE_ROAD_DURATION_LIMIT) return top;
@@ -47,7 +49,8 @@ export function readableRoadTop(
   if (nearBottom <= top) return top;
   const x = camera.sourceX(keyX);
   // Source pixels are twice world units; the actual upper face is one thickness above the road.
-  const y = camera.near.y + (width / 2) * NOTE_SLAB_THICKNESS;
+  const floorY = lane?.y ?? camera.near.y;
+  const y = floorY + noteSlabHeight(width / 2, floorY);
   const zBottom = camera.near.z + (1 - nearBottom / hitY) * span;
   const zTop = camera.near.z + (1 - top / hitY) * span;
   const lower = camera.project(x, y, zBottom);
@@ -61,10 +64,11 @@ export function readableRoadTop(
     upper.scale <= 0
   )
     return top;
+  const visibleScale = lower.scale * (lane?.scaleX ?? 1);
   const minimum =
     orthographicScale === undefined
-      ? Math.max(24, Math.min(64, width * lower.scale * 0.8))
-      : Math.max(18, Math.min(30, width * lower.scale * 0.8));
+      ? Math.max(24, Math.min(64, width * visibleScale * 0.8))
+      : Math.max(18, Math.min(30, width * visibleScale * 0.8));
   if (lower.y - upper.y >= minimum) return top;
 
   const fallback = Math.max(0, Math.min(top, nearBottom - 4));

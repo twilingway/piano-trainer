@@ -4,6 +4,7 @@ import type { Geometry } from "./viewGeometry";
 import { quadPoint } from "./perspective";
 import type { Projected } from "./perspective";
 import { insidePolygon, keySurface } from "./worldCamera";
+import { BLACK_NOTE_FLOOR } from "./noteDimensions";
 import type { WorldCamera } from "./worldCamera";
 
 interface Face {
@@ -21,6 +22,7 @@ export interface KeysScene {
   readonly faces: readonly { readonly key: KeyRect; readonly source: Face["source"] }[];
   readonly texture: Texture;
   readonly camera: WorldCamera;
+  readonly native?: boolean;
   /** Explicit cameras; `camera` remains the road alias for older scene fixtures. */
   readonly roadCamera?: WorldCamera;
   readonly keyboardCamera?: WorldCamera;
@@ -41,8 +43,15 @@ export class PerspectiveKeyboardLayer {
   private roadCamera: WorldCamera | undefined;
   private pan = 0;
   private version = 0;
+  private native = false;
 
-  layout(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, texture: Texture): void {
+  layout(
+    keys: ReadonlyMap<number, KeyRect>,
+    geometry: Geometry,
+    texture: Texture,
+    native = false
+  ): void {
+    this.native = native;
     this.destroyFaces();
     this.version++;
     this.texture = texture;
@@ -95,7 +104,13 @@ export class PerspectiveKeyboardLayer {
     for (const face of this.faces) {
       const key = face.key;
       const centre = camera.sourceX(key.x + key.width / 2 - pan);
-      const surface = keySurface(camera, centre, key.black, key.width);
+      const surface = keySurface(
+        camera,
+        centre,
+        key.black,
+        key.width,
+        this.native ? BLACK_NOTE_FLOOR : 36
+      );
       this.corners(face.top, surface.top);
       this.corners(face.front, surface.front);
       this.corners(face.side, surface.side);
@@ -112,6 +127,7 @@ export class PerspectiveKeyboardLayer {
       faces,
       texture,
       camera: roadCamera,
+      native: this.native,
       roadCamera,
       keyboardCamera: camera,
       pan,

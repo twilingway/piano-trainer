@@ -96,7 +96,6 @@ describe("atomic piano profile store", () => {
       expect(value).toEqual(["top", DEFAULT_VIEW_FRAMING.camera, DEFAULT_VIEW_FRAMING.layout]);
     expect(app.prefs().staff).toMatchObject({ keyRange: "88", hands: true, fingers: false });
     const player = app.prefs().player;
-    app.store.dispatch(actions.staffChanged({ camera: CAMERA_PRESETS.top }));
     app.store.dispatch(actions.staffChanged({ keyboardOrientation: "follow" }));
     expect(activeViewFraming(app.prefs().viewProfiles)).toEqual(saved);
     expect(app.prefs().player).toEqual(player);
@@ -104,13 +103,14 @@ describe("atomic piano profile store", () => {
   });
 
   it("reloads the active profile and its remembered axes even when legacy framing is stale", () => {
-    const app = harness();
-    app.store.dispatch(
-      actions.viewProfileSelected({ keyboardStyle: "3d", notesProjection: "perspective" })
-    );
-    app.store.dispatch(
-      actions.staffChanged({ keyboardOrientation: "top", camera: CAMERA_PRESETS.hands })
-    );
+    const app = harness({
+      [PREFERENCE_KEYS.staff]: {
+        keyStyle: "3d",
+        road: true,
+        keyboardOrientation: "top",
+        camera: CAMERA_PRESETS.hands
+      }
+    });
     app.store.dispatch(actions.layoutChanged({ mode: "piano", change: { keysX: 177 } }));
     app.saved.set(PREFERENCE_KEYS.staff, JSON.stringify({ keyStyle: "classic", road: false }));
     const loaded = loadPreferences(app.storage).preferences;
@@ -161,4 +161,95 @@ describe("atomic piano profile store", () => {
     expect(persisted.entries["future:profile"]).toEqual({ extra: [1, 2] });
     expect(persisted.legacySeed.camera).toEqual(DEFAULT_VIEW_FRAMING.camera);
   });
+});
+
+it("keeps the exact keyboard framing through projection switches and reload", () => {
+  const camera = { ...CAMERA_PRESETS.top, height: 930, targetY: -125, scale: 1.1 };
+  const app = harness({
+    [PREFERENCE_KEYS.staff]: {
+      keyStyle: "3d",
+      road: true,
+      camera,
+      keyboardOrientation: "top",
+      keyRange: "88"
+    },
+    [PREFERENCE_KEYS.layouts]: {
+      piano: {
+        staffShare: 0.6,
+        laneTop: 0.2,
+        keysLift: 0.1,
+        keysScale: 1.4,
+        keysX: 80,
+        keysY: 63,
+        tickerGap: 27
+      }
+    }
+  });
+  const layout = app.prefs().layouts.piano;
+  const player = app.prefs().player;
+  const observations: unknown[] = [];
+  const unsubscribe = app.store.subscribe(() => {
+    observations.push([
+      app.prefs().staff.camera,
+      app.prefs().staff.keyboardOrientation,
+      app.prefs().layouts.piano
+    ]);
+  });
+  app.store.dispatch(actions.staffChanged({ road: false }));
+  const direct = activeViewFraming(app.prefs().viewProfiles);
+  app.store.dispatch(actions.staffChanged({ road: true }));
+  unsubscribe();
+  expect(app.prefs().staff).toMatchObject({
+    road: true,
+    keyStyle: "3d",
+    keyRange: "88",
+    keyboardOrientation: "top",
+    camera
+  });
+  expect(observations.length).toBeGreaterThan(0);
+  for (const value of observations) expect(value).toEqual([camera, "top", layout]);
+  expect(app.prefs().player).toEqual(player);
+  const reloaded = loadPreferences(app.storage).preferences;
+  expect(reloaded.staff.camera).toEqual(app.prefs().staff.camera);
+  expect(reloaded.staff.keyboardOrientation).toBe("top");
+  expect(reloaded.layouts.piano).toEqual(layout);
+  app.store.dispatch(actions.staffChanged({ road: false }));
+  expect(activeViewFraming(app.prefs().viewProfiles)).toEqual(direct);
+});
+
+it("applies camera edits and clears top atomically while retaining layout and road shape", () => {
+  const app = harness({
+    [PREFERENCE_KEYS.staff]: {
+      keyStyle: "3d",
+      road: true,
+      keyboardOrientation: "top",
+      camera: CAMERA_PRESETS.hands,
+      roadFar: 0.4,
+      roadHorizon: 0.23
+    },
+    [PREFERENCE_KEYS.layouts]: {
+      piano: { staffShare: 0.58, laneTop: 0.3, keysScale: 1.4, keysY: 75 }
+    }
+  });
+  const before = activeViewFraming(app.prefs().viewProfiles);
+  const camera = { ...CAMERA_PRESETS.player, scale: 1.25, targetY: 51 };
+  const observations: unknown[] = [];
+  const unsubscribe = app.store.subscribe(() => {
+    observations.push([
+      app.prefs().staff.keyboardOrientation,
+      app.prefs().staff.camera,
+      app.prefs().layouts.piano
+    ]);
+  });
+  app.store.dispatch(actions.staffChanged({ camera }));
+  unsubscribe();
+  expect(observations.length).toBeGreaterThan(0);
+  for (const value of observations) expect(value).toEqual(["follow", camera, before.layout]);
+  expect(activeViewFraming(app.prefs().viewProfiles)).toEqual({ ...before, camera });
+  expect(loadPreferences(app.storage).preferences.staff).toMatchObject({
+    camera,
+    keyboardOrientation: "follow"
+  });
+  app.store.dispatch(actions.staffChanged({ keyboardOrientation: "top" }));
+  expect(activeViewFraming(app.prefs().viewProfiles)).toEqual(before);
 });

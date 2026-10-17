@@ -1,12 +1,14 @@
 import { DoubleSide, MeshStandardMaterial, ShaderMaterial, Vector2 } from "three";
 
 import { createNoteHaloMaterial } from "./noteHaloMaterial";
+import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import { NOTE_SLAB_ATTRIBUTES, NOTE_SLAB_VERTEX } from "./noteSlabGeometry";
 
 const BODY_DECLARATIONS = /* glsl */ `
 attribute vec3 noteSize;
 attribute float noteAlpha;
 ${NOTE_SLAB_ATTRIBUTES}
+${NOTE_LANE_SHADER}
 varying vec3 vNoteTint;
 varying vec3 vNoteNormal;
 varying float vNoteAlpha;
@@ -33,10 +35,12 @@ export function createNoteBodyMaterial(): MeshStandardMaterial {
     depthWrite: true
   });
   material.onBeforeCompile = (shader) => {
-    shader.vertexShader = `${BODY_DECLARATIONS}\n${shader.vertexShader}`.replace(
-      "#include <begin_vertex>",
-      BODY_VERTEX
-    );
+    shader.vertexShader = `${BODY_DECLARATIONS}\n${shader.vertexShader}`
+      .replace("#include <begin_vertex>", BODY_VERTEX)
+      .replace(
+        "#include <project_vertex>",
+        "#include <project_vertex>\ngl_Position = projectNoteLane(gl_Position);"
+      );
     shader.fragmentShader = /* glsl */ `
 varying vec3 vNoteTint;
 varying vec3 vNoteNormal;
@@ -58,11 +62,12 @@ vec3 noteEdgeTint = mix(vNoteTint, vec3(1.0), noteBevel * 0.40);
 totalEmissiveRadiance *= noteEdgeTint * (0.48 + 0.20 * noteFront + 0.30 * noteTop + 0.35 * noteBevel);`
       );
   };
-  material.customProgramCacheKey = () => "three-road-note-slab-v1";
+  material.customProgramCacheKey = () => "three-road-note-slab-lane-v2";
   return material;
 }
 
 const SURFACE_VERTEX = /* glsl */ `
+${NOTE_LANE_SHADER}
 attribute vec3 noteSize;
 attribute float noteAlpha;
 uniform float halo;
@@ -78,7 +83,7 @@ void main() {
   vTint = instanceColor;
   vAlpha = noteAlpha;
   vec3 point = vec3(vPoint.x, noteSize.y * 0.5 + noteSize.x * 0.003, -vPoint.y);
-  gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(point, 1.0);
+  gl_Position = projectNoteLane(projectionMatrix * modelViewMatrix * instanceMatrix * vec4(point, 1.0));
 }
 `;
 

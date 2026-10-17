@@ -16,7 +16,7 @@ import { PIANO_LOOK } from "./noteLook";
 import type { NoteLook } from "./noteLook";
 import { fitNoteLabel, noteLabelInset } from "./noteLabelLayout";
 import { GLASS_LIFT_SHARE } from "./RoadGlassLayer";
-import { NOTE_SLAB_THICKNESS } from "./noteDimensions";
+import { noteSlabHeight } from "./noteDimensions";
 import type { KeyRect } from "./keyboardLayout";
 import {
   CARD_FACE_OFFSET,
@@ -434,10 +434,9 @@ export class NotesLayer {
           body.visible = false;
       }
 
-      const lift =
-        key.width *
-        ROAD_HOLD_WIDTH_SHARE *
-        (road?.drawsNativeRoad ? NOTE_SLAB_THICKNESS : GLASS_LIFT_SHARE);
+      const lift = road?.drawsNativeRoad
+        ? 2 * noteSlabHeight((key.width * ROAD_HOLD_WIDTH_SHARE) / 2, road.noteLaneY(keyCentre))
+        : key.width * ROAD_HOLD_WIDTH_SHARE * GLASS_LIFT_SHARE;
       const labelSpot = !flat ? road?.notePlace(keyCentre, bounds.bottom, 0, lift) : undefined;
       const labelTopSpot = !flat ? road?.notePlace(keyCentre, bounds.top, 0, lift) : undefined;
       const labelBottom = labelSpot?.y ?? bodyBounds.bottom;

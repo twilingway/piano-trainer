@@ -185,8 +185,8 @@ function ConnectedKeyboardSettings() {
     (state) => ({
       keyStyle: state.preferences.staff.keyStyle,
       notesPerspective: state.preferences.staff.road,
-      keyboardTop: state.preferences.staff.keyboardOrientation === "top",
       handStyle: state.preferences.staff.handStyle,
+      keyboardDim: state.preferences.staff.keyboardDim,
       roadGuides: state.preferences.staff.roadGuides,
       far: state.preferences.staff.roadFar,
       horizon: state.preferences.staff.roadHorizon,
@@ -204,8 +204,8 @@ function ConnectedKeyboardSettings() {
   const onNotesPerspective = useRuntimeCommand(
     (runtime) => runtime.keyboardSettings.onNotesPerspective
   );
-  const onKeyboardTop = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardTop);
   const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
+  const onKeyboardDim = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardDim);
   const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
   const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
@@ -215,9 +215,9 @@ function ConnectedKeyboardSettings() {
       keyStyle={state.keyStyle}
       notesPerspective={state.notesPerspective}
       onNotesPerspective={onNotesPerspective}
-      keyboardTop={state.keyboardTop}
-      onKeyboardTop={onKeyboardTop}
       handStyle={state.handStyle}
+      keyboardDim={state.keyboardDim}
+      onKeyboardDim={onKeyboardDim}
       roadGuides={state.roadGuides}
       road={{ far: state.far, horizon: state.horizon }}
       camera={state.camera}

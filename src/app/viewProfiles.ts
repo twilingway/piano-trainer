@@ -151,10 +151,17 @@ export function selectViewProfile(
       ? profiles.active.notesProjection
       : projection(profiles.projectionByStyle[keyboardStyle], profiles.active.notesProjection));
   const pair = { keyboardStyle, notesProjection };
+  const projectionOnly =
+    keyboardStyle === profiles.active.keyboardStyle &&
+    selection.notesProjection !== undefined &&
+    selection.keyboardOrientation === undefined;
   const active = normalizeViewAxes({
     ...pair,
     keyboardOrientation:
-      selection.keyboardOrientation ?? profiles.orientationByPair[pairKey(pair)] ?? "follow"
+      selection.keyboardOrientation ??
+      (projectionOnly
+        ? profiles.active.keyboardOrientation
+        : (profiles.orientationByPair[pairKey(pair)] ?? "follow"))
   });
   const next = {
     ...saved,
@@ -165,6 +172,25 @@ export function selectViewProfile(
       [pairKey(active)]: active.keyboardOrientation
     }
   };
-  const framing = activeViewFraming(next);
+  const restored = activeViewFraming(next);
+  // Projection changes only the notes: even staff/lane heights can move the keyboard's viewport.
+  const framing = projectionOnly
+    ? { ...restored, camera: current.camera, layout: current.layout }
+    : restored;
   return { profiles: saveViewFraming(next, framing), framing };
+}
+
+/** Explicit camera controls take precedence over the optional top keyboard override. */
+export function editViewCamera(
+  profiles: ViewProfiles,
+  current: ViewFraming,
+  camera: CameraPrefs
+): { profiles: ViewProfiles; framing: ViewFraming } {
+  const selected = selectViewProfile(
+    profiles,
+    current,
+    profiles.active.keyboardStyle === "3d" ? { keyboardOrientation: "follow" } : {}
+  );
+  const framing = normalizeViewFraming({ ...current, camera }, profiles.legacySeed);
+  return { profiles: saveViewFraming(selected.profiles, framing), framing };
 }

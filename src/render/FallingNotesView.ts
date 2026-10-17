@@ -29,7 +29,6 @@ import { roadApproach } from "./roadApproach";
 import { RoadLayer, type RoadShape } from "./RoadLayer";
 import { drawViewEffects, viewStrikes } from "./viewEffects";
 import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
-import { nativeRoadCamera } from "./nativeRoadCamera";
 import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewParts } from "./viewGeometry";
 import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
@@ -163,7 +162,7 @@ export class FallingNotesView {
     computerKeyboard.showStickers(this.labels);
     this.computerKeyboard = computerKeyboard;
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
-    this.road.setCamera(this.roadCameraPrefs);
+    this.road.setCamera(this.cameraPrefs);
     this.road.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
     void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
@@ -211,7 +210,7 @@ export class FallingNotesView {
     if (style === this.keyStyle) return;
     this.keyStyle = style;
     const loaded = this.road?.setKeyStyle(style);
-    this.road?.setCamera(this.roadCameraPrefs);
+    this.road?.setCamera(this.cameraPrefs);
     this.syncRoad();
     this.laidOutFor = { width: 0, height: 0 };
     const keyboard = this.keyboard;
@@ -288,6 +287,10 @@ export class FallingNotesView {
       this.laidOutFor = { width: 0, height: 0 };
   }
 
+  setKeyboardDim(on: boolean): void {
+    this.road?.setKeyboardDim(on);
+  }
+
   setRoadGuides(on: boolean): void {
     this.roadGuides = on;
     this.road?.setRoadGuides(on);
@@ -305,18 +308,13 @@ export class FallingNotesView {
 
   setCamera(prefs: CameraPrefs): void {
     this.cameraPrefs = prefs;
-    this.road?.setCamera(this.roadCameraPrefs);
+    this.road?.setCamera(this.cameraPrefs);
     this.laidOutFor = { width: 0, height: 0 };
-  }
-
-  private get roadCameraPrefs(): CameraPrefs {
-    const direct = this.keyStyle === "3d" && !this.computer && !this.roadWanted;
-    return nativeRoadCamera(this.cameraPrefs, direct);
   }
 
   setRoad(on: boolean): void {
     this.roadWanted = on;
-    this.road?.setCamera(this.roadCameraPrefs);
+    this.road?.setNotesPerspective(on);
     this.syncRoad();
     this.relayout();
   }
@@ -361,7 +359,7 @@ export class FallingNotesView {
       : undefined;
     this.computerKeyboard?.setKeys(this.computer);
     this.syncKeyboards();
-    this.road?.setCamera(this.roadCameraPrefs);
+    this.road?.setCamera(this.cameraPrefs);
     this.syncRoad();
     if (this.song) this.setSong(this.song);
     this.laidOutFor = { width: 0, height: 0 };
@@ -421,7 +419,7 @@ export class FallingNotesView {
           lookAhead: roadApproach(
             state.lookAhead,
             !this.computer && this.keyStyle === "3d" && road.drawsNativeRoad,
-            this.roadCameraPrefs.pitch
+            this.roadWanted ? 25 : 90
           )
         }
       : state;
@@ -523,7 +521,7 @@ export class FallingNotesView {
       this.total,
       this.whiteWidth,
       this.app.ticker.deltaMS / 1000,
-      this.roadMode && this.road?.drawsNativeRoad && this.roadCameraPrefs.pitch === 90
+      this.roadMode && this.road?.drawsNativeRoad && this.road.keyboardOverhead
     );
     this.panSnap = false;
     this.pan = pan;

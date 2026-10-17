@@ -1,3 +1,4 @@
+import type { NoteLaneProjection } from "../noteLaneProjection";
 import type { WorldCamera } from "../worldCamera";
 import { worldRoadNote } from "./roadNoteGeometry";
 import type { WorldRoadNote } from "./roadNoteGeometry";
@@ -25,7 +26,8 @@ export class ThreeRoadFrame {
     width: number,
     color: number,
     alpha: number,
-    camera: WorldCamera
+    camera: WorldCamera,
+    lane?: NoteLaneProjection
   ): void {
     const x = camera.sourceX(keyX);
     if (
@@ -52,6 +54,7 @@ export class ThreeRoadFrame {
     anchor.width = width / 2;
     anchor.color = color;
     anchor.alpha = alpha;
+    anchor.lane = lane;
     this.trailAnchors[this.trailAnchorCount++] = anchor;
   }
 
@@ -66,7 +69,8 @@ export class ThreeRoadFrame {
     camera: WorldCamera,
     duration = 0,
     id = "",
-    tailOffset = 0
+    tailOffset = 0,
+    lane?: NoteLaneProjection
   ): void {
     const note = worldRoadNote(
       keyX,
@@ -81,6 +85,7 @@ export class ThreeRoadFrame {
     );
     if (!note) return;
     note.duration = duration;
+    note.lane = lane;
     note.textureOffset = (tailOffset * (camera.roadFarZ - camera.near.z)) / hitY;
     let hash = 2166136261;
     for (let index = 0; index < id.length; index++)

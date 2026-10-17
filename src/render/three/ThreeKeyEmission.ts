@@ -1,9 +1,11 @@
+import { MeshPhysicalMaterial } from "three";
 import type { Color, MeshStandardMaterial } from "three";
 import type { EnergySource } from "../noteEnergy";
 
 interface KeyEmission {
   readonly materials: [MeshStandardMaterial, MeshStandardMaterial];
   readonly baseColors: [Color, Color];
+  readonly templates: readonly [MeshStandardMaterial, MeshStandardMaterial];
   red: number;
   green: number;
   blue: number;
@@ -68,6 +70,7 @@ export class ThreeKeyEmission {
     const key: KeyEmission = {
       materials,
       baseColors: [top.color.clone(), body.color.clone()],
+      templates: [top, body],
       red: 0,
       green: 0,
       blue: 0,
@@ -83,6 +86,33 @@ export class ThreeKeyEmission {
     }
     this.keys.set(pitch, key);
     return materials;
+  }
+
+  /** Update existing clones without advancing, clearing or reallocating the note envelope. */
+  refreshAppearance(): void {
+    for (const key of this.keys.values()) {
+      for (let index = 0; index < key.materials.length; index++) {
+        const material = key.materials[index];
+        const template = key.templates[index];
+        const base = key.baseColors[index];
+        if (!material || !template || !base) continue;
+        base.copy(template.color);
+        material.map = template.map;
+        material.roughness = template.roughness;
+        material.metalness = template.metalness;
+        material.bumpMap = template.bumpMap;
+        material.bumpScale = template.bumpScale;
+        if (material instanceof MeshPhysicalMaterial && template instanceof MeshPhysicalMaterial) {
+          material.clearcoat = template.clearcoat;
+          material.clearcoatRoughness = template.clearcoatRoughness;
+          material.specularIntensity = template.specularIntensity;
+          material.sheen = template.sheen;
+          material.sheenRoughness = template.sheenRoughness;
+          material.sheenColor.copy(template.sheenColor);
+        }
+      }
+      this.paint(key);
+    }
   }
 
   update(sources: readonly EnergySource[], deltaSeconds: number): void {

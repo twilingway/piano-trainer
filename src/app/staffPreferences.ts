@@ -36,6 +36,8 @@ export interface StaffPrefs {
   readonly road: boolean;
   /** Optional lane guides on the 3D road. */
   readonly roadGuides: boolean;
+  /** Dim physical keys for a demonstration; study stays bright. */
+  readonly keyboardDim: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
   readonly noteCardsConfigured: boolean;
@@ -76,6 +78,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   handStyle: "rendered",
   road: false,
   roadGuides: false,
+  keyboardDim: false,
   noteCards: false,
   noteCardsConfigured: true,
   labels: false,
@@ -125,6 +128,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     handStyle: choice("handStyle", ["drawn", "rendered"]),
     road: boolean("road"),
     roadGuides: boolean("roadGuides"),
+    keyboardDim: boolean("keyboardDim"),
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),
     labels: boolean("labels"),

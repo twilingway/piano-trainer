@@ -3,6 +3,7 @@ import { CAMERA_PRESETS, DEFAULT_CAMERA } from "../render/worldCamera";
 import { DEFAULT_SCREEN_LAYOUT } from "./screenLayout";
 import {
   activeViewFraming,
+  editViewCamera,
   hydrateViewProfiles,
   normalizeViewAxes,
   saveViewFraming,
@@ -43,10 +44,10 @@ describe("view profile migration and pure transitions", () => {
       camera: CAMERA_PRESETS.top,
       layout: { ...layout, keysY: -80 }
     };
-    const direct = selectViewProfile(original, edited, { notesProjection: "direct" });
-    expect(direct.framing).toEqual(original.legacySeed);
-    const returned = selectViewProfile(direct.profiles, direct.framing, {
-      notesProjection: "perspective"
+    const classic = selectViewProfile(original, edited, { keyboardStyle: "classic" });
+    expect(classic.framing).toEqual(original.legacySeed);
+    const returned = selectViewProfile(classic.profiles, classic.framing, {
+      keyboardStyle: "3d"
     });
     expect(returned.framing).toEqual(edited);
     expect(returned.profiles.legacySeed).toEqual(original.legacySeed);
@@ -60,7 +61,7 @@ describe("view profile migration and pure transitions", () => {
     };
     choose({ keyboardOrientation: "top" });
     choose({ notesProjection: "direct" });
-    expect(profiles.active.keyboardOrientation).toBe("follow");
+    expect(profiles.active.keyboardOrientation).toBe("top");
     choose({ keyboardStyle: "classic" });
     choose({ notesProjection: "perspective" });
     choose({ keyboardStyle: "3d" });
@@ -107,5 +108,94 @@ describe("view profile migration and pure transitions", () => {
     const next = saveViewFraming(profiles, { ...framing, roadHorizon: 0.2 });
     expect(next.entries["future:projection:mode"]).toEqual(future);
     expect(hydrateViewProfiles(next, {}, {}).entries["future:projection:mode"]).toEqual(future);
+  });
+});
+
+describe("explicit native note projection", () => {
+  it("carries camera, every layout field and orientation while restoring only target road shape", () => {
+    const camera = { ...CAMERA_PRESETS.top, height: 930, scale: 1.1, targetY: -125 };
+    const fullLayout = {
+      ...layout,
+      staffShare: 0.62,
+      keysLift: 0.18,
+      keysX: 72,
+      tickerX: 120,
+      tickerScale: 1.7,
+      laneTop: 0.3
+    };
+    const original = hydrateViewProfiles(
+      null,
+      { ...legacy, camera, keyboardOrientation: "top" },
+      fullLayout
+    );
+    const targetKey = "3d:direct:top";
+    const profiles = {
+      ...original,
+      entries: {
+        ...original.entries,
+        [targetKey]: {
+          camera: CAMERA_PRESETS.player,
+          layout: DEFAULT_SCREEN_LAYOUT,
+          roadFar: 0.43,
+          roadHorizon: 0.32
+        }
+      },
+      orientationByPair: { ...original.orientationByPair, "3d:direct": "follow" }
+    };
+    const direct = selectViewProfile(profiles, activeViewFraming(profiles), {
+      notesProjection: "direct"
+    });
+    expect(direct.profiles.active.keyboardOrientation).toBe("top");
+    expect(direct.framing).toEqual({
+      camera,
+      layout: fullLayout,
+      roadFar: 0.43,
+      roadHorizon: 0.32
+    });
+    const returned = selectViewProfile(direct.profiles, direct.framing, {
+      notesProjection: "perspective"
+    });
+    expect(returned.framing).toEqual(original.legacySeed);
+    expect(returned.profiles.legacySeed).toEqual(original.legacySeed);
+    const reloaded = hydrateViewProfiles(JSON.parse(JSON.stringify(direct.profiles)), {}, {});
+    expect(activeViewFraming(reloaded)).toEqual(direct.framing);
+  });
+
+  it("preserves the keyboard camera on projection-only choices in every style, including overhead", () => {
+    for (const keyStyle of ["3d", "perspective", "classic", "arcade"]) {
+      const camera = keyStyle === "3d" ? CAMERA_PRESETS.hands : CAMERA_PRESETS.top;
+      const original = hydrateViewProfiles(null, { ...legacy, keyStyle, camera }, layout);
+      const result = selectViewProfile(original, activeViewFraming(original), {
+        notesProjection: "direct"
+      });
+      expect(result.framing.camera).toEqual(camera);
+      expect(result.framing.layout).toEqual(layout);
+    }
+  });
+
+  it("lets an explicit native camera edit clear top without restoring another profile's layout", () => {
+    const original = hydrateViewProfiles(null, { ...legacy, keyboardOrientation: "top" }, layout);
+    const current = activeViewFraming(original);
+    const profiles = {
+      ...original,
+      entries: {
+        ...original.entries,
+        "3d:perspective:follow": {
+          camera: CAMERA_PRESETS.top,
+          roadFar: 0.8,
+          roadHorizon: 0.5,
+          layout: DEFAULT_SCREEN_LAYOUT
+        }
+      }
+    };
+    const result = editViewCamera(profiles, current, CAMERA_PRESETS.player);
+    expect(result.profiles.active).toEqual({ ...original.active, keyboardOrientation: "follow" });
+    expect(result.framing).toEqual({ ...current, camera: CAMERA_PRESETS.player });
+    expect(result.profiles.entries[viewProfileKey(original.active)]).toEqual(current);
+    expect(result.profiles.legacySeed).toEqual(original.legacySeed);
+    const restoredTop = selectViewProfile(result.profiles, result.framing, {
+      keyboardOrientation: "top"
+    });
+    expect(restoredTop.framing).toEqual(current);
   });
 });

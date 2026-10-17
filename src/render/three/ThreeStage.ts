@@ -27,6 +27,8 @@ import type { HandsSource } from "./liveHands";
 import { projectionMatrix, viewMatrix } from "./threeCamera";
 import { ThreeNoteLights } from "./ThreeNoteLights";
 import { ThreeKeyEmission } from "./ThreeKeyEmission";
+import { KeyboardAppearance } from "./KeyboardAppearance";
+import { blackKeyCap } from "./blackKeyCap";
 import { ThreeRimLights } from "./ThreeRimLights";
 import { ThreeRoadNotes } from "./ThreeRoadNotes";
 import { ThreeRoadTrails } from "./ThreeRoadTrails";
@@ -67,6 +69,7 @@ export class ThreeStage {
   private boxes: readonly KeyBox[] = [];
   private readonly noteLights = new ThreeNoteLights();
   private readonly keyEmission = new ThreeKeyEmission();
+  private readonly appearance: KeyboardAppearance;
   private readonly rimLights = new ThreeRimLights();
   /** Pixi's picture of the flat keys: colours, lights and stickers for the top faces. */
   private readonly picture = new ExternalTexture();
@@ -102,23 +105,30 @@ export class ThreeStage {
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
     this.roadCamera.matrixAutoUpdate = false;
     this.keyboardCamera.matrixAutoUpdate = false;
+    this.top.vertexColors = true;
+    this.black.vertexColors = true;
     const sun = new DirectionalLight(0xffffff, 0.45);
     // Above and in front of the keys, a little to the left: the rounded edges read on both sides.
     sun.position.set(-150, 900, 900);
-    this.scene.add(
-      new HemisphereLight(0xffffff, 0x9a9fac, 0.25),
+    const hemisphere = new HemisphereLight(0xffffff, 0x9a9fac, 0.25);
+    this.appearance = new KeyboardAppearance({
+      top: this.top,
+      white: this.white,
+      black: this.black,
       sun,
-      this.road,
-      this.keys,
-      this.lighting
-    );
+      hemisphere,
+      refresh: () => {
+        this.keyEmission.refreshAppearance();
+      }
+    });
+    this.scene.add(hemisphere, sun, this.road, this.keys, this.lighting);
     this.road.add(
       this.roadGuides.group,
       this.roadTrails.group,
       this.roadNotes.group,
       this.noteAura.group
     );
-    this.keys.add(this.body);
+    this.keys.add(this.body, this.appearance.group);
     this.lighting.add(this.noteLights.group, this.rimLights.group);
     if (this.hands) this.keys.add(this.hands.group);
   }
@@ -230,8 +240,13 @@ export class ThreeStage {
     this.keyEmission.clear();
   }
 
+  setKeyboardDim(on: boolean): void {
+    this.appearance.setDim(on);
+  }
+
   dispose(): void {
     this.clear();
+    this.appearance.dispose();
     this.noteLights.dispose();
     this.rimLights.dispose();
     this.roadNotes.dispose();
@@ -251,6 +266,7 @@ export class ThreeStage {
     this.version = keys.version;
     const boxes = keyBoxes(keys);
     this.boxes = boxes;
+    this.appearance.layout(boxes);
     this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera);
     this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
     const black = new Set(boxes.filter((box) => box.black).map((box) => box.pitch));
@@ -355,5 +371,10 @@ function keyGeometry(part: BufferGeometry, box: KeyBox): BufferGeometry {
   geometry.setAttribute("uv", new BufferAttribute(uv, 2));
   geometry.scale(across, 1000, KIT_DEPTH);
   geometry.translate(0, KIT_TOP, 0);
+  if (box.black) return blackKeyCap(geometry);
+  geometry.setAttribute(
+    "color",
+    new BufferAttribute(new Float32Array(position.count * 3).fill(1), 3)
+  );
   return splitUp(geometry);
 }

@@ -15,7 +15,13 @@ const emptyNote = (): WorldRoadNote => ({ x: 0, top: 0, bottom: 0, width: 0, col
 const compareNotes = (a: LaneNote, b: LaneNote): number => {
   if (a.active !== b.active) return a.active ? -1 : 1;
   if (!a.active) return 0;
-  return a.x - b.x || a.bottom - b.bottom || a.top - b.top || a.color - b.color;
+  return (
+    a.x - b.x ||
+    (a.lane?.y ?? 0) - (b.lane?.y ?? 0) ||
+    a.bottom - b.bottom ||
+    a.top - b.top ||
+    a.color - b.color
+  );
 };
 const mixColor = (a: number, b: number): number => {
   const red = Math.round((((a >> 16) & 255) + ((b >> 16) & 255)) / 2);
@@ -71,7 +77,7 @@ export class RoadTrailSelection {
     for (let index = 0; index < count; index++) {
       const current = this.entries[index];
       if (!current) continue;
-      if (previous?.x !== current.x) {
+      if (previous?.x !== current.x || previous.lane?.y !== current.lane?.y) {
         previous = current;
         continue;
       }
@@ -90,6 +96,7 @@ export class RoadTrailSelection {
         target.width = Math.min(previous.width, current.width) * 0.65;
         target.color = mixColor(previous.color, current.color);
         target.alpha = Math.min(1, previous.alpha, current.alpha);
+        target.lane = current.lane;
         used++;
       }
       previous = current;
@@ -128,6 +135,7 @@ export class RoadTrailSelection {
       target.width = note.width;
       target.color = note.color;
       target.alpha = note.alpha;
+      target.lane = note.lane;
       target.originalTop = originalTop;
       target.active = true;
       count++;

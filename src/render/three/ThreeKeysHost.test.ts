@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   construct: vi.fn(),
   draw: vi.fn(),
   clearEnergy: vi.fn(),
+  setKeyboardDim: vi.fn(),
   dispose: vi.fn(),
   loadKit: vi.fn(),
   loadHand: vi.fn()
@@ -22,6 +23,7 @@ vi.mock("./ThreeStage", () => ({
     hands = {};
     draw = mocks.draw;
     clearEnergy = mocks.clearEnergy;
+    setKeyboardDim = mocks.setKeyboardDim;
     dispose = mocks.dispose;
     constructor(...args: unknown[]) {
       mocks.construct(...args);
@@ -65,7 +67,8 @@ function fixture() {
       gl.premultiply = false;
       gl.bindingsDirty = false;
     }),
-    render: vi.fn(),
+    render:
+      vi.fn<(options: { container: Container; clear?: boolean; transform?: unknown }) => void>(),
     texture: { getGlSource: vi.fn(() => ({ texture: {} })) }
   };
   const callbacks = new Set<() => void>();
@@ -135,6 +138,92 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
+  it("draws neutral mist before Three, keeps coloured effects over it and restores ownership and flags", async () => {
+    const view = fixture();
+    const mist = new Container(),
+      colour = new Container();
+    view.overlay.position.set(30, -12);
+    mist.position.set(7, 2);
+    view.overlay.addChild(mist, colour);
+    view.host.setMistLayer(mist);
+    await view.host.setEnabled(true);
+    const order: string[] = [];
+    view.renderer.render.mockImplementation((options: { container: Container }) => {
+      order.push(
+        options.container === mist ? "mist" : options.container === view.road ? "road" : "overlay"
+      );
+      if (options.container === view.stage) {
+        expect(mist.renderable).toBe(false);
+        expect(colour.renderable).toBe(true);
+      }
+    });
+    mocks.draw.mockImplementation(() => order.push("three"));
+    view.tick();
+    expect(order).toEqual(["road", "mist", "three", "overlay"]);
+    const call = view.renderer.render.mock.calls.find(([options]) => options.container === mist);
+    expect(call?.[0]).toMatchObject({ clear: false, transform: { tx: 37, ty: -10 } });
+    expect(mist.visible).toBe(true);
+    expect(mist.renderable).toBe(true);
+    expect(mist.parent).toBe(view.overlay);
+    expect(view.overlay.children).toEqual([mist, colour]);
+    view.host.destroy();
+    expect(mist.destroyed).toBe(false);
+  });
+
+  it("restores neutral mist before same-frame fallback after Three fails", async () => {
+    const view = fixture();
+    const mist = view.overlay.addChild(new Container());
+    view.host.setMistLayer(mist);
+    await view.host.setEnabled(true);
+    mocks.draw.mockImplementation(() => {
+      throw new Error("draw failed");
+    });
+    view.renderer.render.mockImplementation((options: { container: Container }) => {
+      if (options.container === view.stage) expect(mist.renderable).toBe(true);
+    });
+    view.tick();
+    expect(mist.renderable).toBe(true);
+    expect(mist.visible).toBe(true);
+    expect(mist.parent).toBe(view.overlay);
+    expect(view.host.on).toBe(false);
+    view.host.destroy();
+  });
+
+  it("restores mist flags even when the final Pixi overlay throws", async () => {
+    const view = fixture();
+    const mist = view.overlay.addChild(new Container());
+    view.host.setMistLayer(mist);
+    await view.host.setEnabled(true);
+    view.renderer.render.mockImplementation((options: { container: Container }) => {
+      if (options.container === view.stage) throw new Error("overlay failed");
+    });
+    expect(view.tick).toThrow("overlay failed");
+    expect(mist.renderable).toBe(true);
+    expect(mist.visible).toBe(true);
+    expect(mist.parent).toBe(view.overlay);
+    view.host.destroy();
+  });
+
+  it("does not draw hidden, non-renderable or destroyed mist ancestors as a separate pass", async () => {
+    const view = fixture();
+    const mist = view.overlay.addChild(new Container());
+    view.host.setMistLayer(mist);
+    await view.host.setEnabled(true);
+    for (const field of ["visible", "renderable"] as const) {
+      view.overlay[field] = false;
+      view.renderer.render.mockClear();
+      view.tick();
+      expect(view.renderer.render.mock.calls.some(([options]) => options.container === mist)).toBe(
+        false
+      );
+      expect(mist.renderable).toBe(true);
+      view.overlay[field] = true;
+    }
+    mist.destroy();
+    expect(view.tick).not.toThrow();
+    view.host.destroy();
+  });
+
   it("passes native road snapshots only while the actual Three view can draw them", async () => {
     const view = fixture();
     const frame = new ThreeRoadFrame();

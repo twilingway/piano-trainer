@@ -8,6 +8,7 @@ import {
   PlaneGeometry,
   Vector2
 } from "three";
+import { noteSlabHeight } from "../noteDimensions";
 import { createNoteSlabGeometry, NOTE_SLAB_THICKNESS } from "./noteSlabGeometry";
 import type { WorldRoadNote } from "./roadNoteGeometry";
 import { createNoteBodyMaterial, createNoteSurfaceMaterial } from "./ThreeNoteMaterial";
@@ -24,6 +25,7 @@ export class ThreeRoadNotes {
   private readonly bodyMaterial = createNoteBodyMaterial();
   private readonly faceMaterial = createNoteSurfaceMaterial(false);
   private readonly haloMaterial = createNoteSurfaceMaterial(true);
+  private readonly projections: InstancedBufferAttribute;
   private readonly sizes: InstancedBufferAttribute;
   private readonly alphas: InstancedBufferAttribute;
   private readonly colors: InstancedBufferAttribute;
@@ -39,14 +41,16 @@ export class ThreeRoadNotes {
     this.capacity = Number.isFinite(capacity)
       ? Math.max(1, Math.min(THREE_ROAD_NOTE_CAPACITY, Math.floor(capacity)))
       : THREE_ROAD_NOTE_CAPACITY;
+    this.projections = new InstancedBufferAttribute(new Float32Array(this.capacity * 3), 3);
     this.sizes = new InstancedBufferAttribute(new Float32Array(this.capacity * 3), 3);
     this.alphas = new InstancedBufferAttribute(new Float32Array(this.capacity), 1);
     this.colors = new InstancedBufferAttribute(new Float32Array(this.capacity * 3), 3);
     this.matrices = new InstancedBufferAttribute(new Float32Array(this.capacity * 16), 16);
-    for (const attribute of [this.sizes, this.alphas, this.colors, this.matrices])
+    for (const attribute of [this.sizes, this.projections, this.alphas, this.colors, this.matrices])
       attribute.setUsage(DynamicDrawUsage);
     for (const geometry of [this.bodyGeometry, this.planeGeometry]) {
       geometry.setAttribute("noteSize", this.sizes);
+      geometry.setAttribute("noteProjection", this.projections);
       geometry.setAttribute("noteAlpha", this.alphas);
     }
     this.body = new InstancedMesh(this.bodyGeometry, this.bodyMaterial, this.capacity);
@@ -95,13 +99,20 @@ export class ThreeRoadNotes {
         note.alpha <= 0
       )
         continue;
-      const height = note.width * THREE_ROAD_NOTE_THICKNESS;
+      const laneY = note.lane?.y ?? floorY;
+      const height = noteSlabHeight(note.width, laneY);
       const depth = note.top - note.bottom;
-      const centreY = floorY + height / 2;
+      const centreY = laneY + height / 2;
       const centreZ = -(note.top + note.bottom) / 2;
       if (!Number.isFinite(depth) || !Number.isFinite(centreY) || !Number.isFinite(centreZ))
         continue;
       this.sizes.setXYZ(used, note.width, height, depth);
+      this.projections.setXYZ(
+        used,
+        note.lane?.scaleX ?? 1,
+        note.lane?.offsetX ?? 0,
+        note.lane?.offsetY ?? 0
+      );
       this.alphas.setX(used, Math.min(1, note.alpha));
       this.color.setRGB(
         ((note.color >> 16) & 255) / 255,
@@ -117,6 +128,7 @@ export class ThreeRoadNotes {
     this.group.visible = used > 0;
     if (used > 0) {
       this.upload(this.sizes, used);
+      this.upload(this.projections, used);
       this.upload(this.alphas, used);
       this.upload(this.colors, used);
       this.upload(this.matrices, used);

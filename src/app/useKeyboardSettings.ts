@@ -30,11 +30,11 @@ export function useKeyboardSettings(
     onNotesPerspective: (road) => {
       updateStaffPrefs({ road });
     },
-    keyboardTop: staffPrefs.keyboardOrientation === "top",
-    onKeyboardTop: (top) => {
-      updateStaffPrefs({ keyboardOrientation: top ? "top" : "follow" });
-    },
     handStyle: staffPrefs.handStyle,
+    keyboardDim: staffPrefs.keyboardDim,
+    onKeyboardDim: (keyboardDim) => {
+      updateStaffPrefs({ keyboardDim });
+    },
     roadGuides: staffPrefs.roadGuides,
     onRoadGuides: (roadGuides) => {
       updateStaffPrefs({ roadGuides });

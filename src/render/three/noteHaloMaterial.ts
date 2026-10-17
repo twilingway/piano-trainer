@@ -1,6 +1,8 @@
+import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import { AdditiveBlending, ShaderMaterial, Vector2 } from "three";
 
 const VERTEX = /* glsl */ `
+${NOTE_LANE_SHADER}
 attribute vec3 noteSize;
 attribute float noteAlpha;
 uniform vec2 viewport;
@@ -15,11 +17,11 @@ varying float vRadius;
 void main() {
   mat4 projectNote = projectionMatrix * modelViewMatrix * instanceMatrix;
   vec3 halfSize = noteSize * 0.5;
-  vec4 c0 = projectNote * vec4(-halfSize.x, halfSize.y, -halfSize.z, 1.0);
-  vec4 c1 = projectNote * vec4(halfSize.x, halfSize.y, -halfSize.z, 1.0);
-  vec4 c2 = projectNote * vec4(halfSize.x, -halfSize.y, halfSize.z, 1.0);
-  vec4 c3 = projectNote * vec4(-halfSize.x, -halfSize.y, halfSize.z, 1.0);
-  vec4 centre = projectNote * vec4(0.0, 0.0, 0.0, 1.0);
+  vec4 c0 = projectNoteLane(projectNote * vec4(-halfSize.x, halfSize.y, -halfSize.z, 1.0));
+  vec4 c1 = projectNoteLane(projectNote * vec4(halfSize.x, halfSize.y, -halfSize.z, 1.0));
+  vec4 c2 = projectNoteLane(projectNote * vec4(halfSize.x, -halfSize.y, halfSize.z, 1.0));
+  vec4 c3 = projectNoteLane(projectNote * vec4(-halfSize.x, -halfSize.y, halfSize.z, 1.0));
+  vec4 centre = projectNoteLane(projectNote * vec4(0.0, 0.0, 0.0, 1.0));
   vec2 screen = max(viewport, vec2(1.0));
   vQ0 = c0.xy / max(c0.w, 0.001) * screen;
   vQ1 = c1.xy / max(c1.w, 0.001) * screen;

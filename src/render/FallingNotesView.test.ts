@@ -96,9 +96,11 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
     road: {
       drawsNativeRoad: nativeRoad,
       setCamera: vi.fn(),
+      setNotesPerspective: vi.fn(),
       draw: roadDraw,
       hitLineY: 400,
       notePlace: (x: number, y: number) => ({ x, y, scale: 1 }),
+      noteLaneY: () => 22,
       beatY: (y: number) => y,
       beginNotes: vi.fn(),
       endNotes: vi.fn(),
@@ -241,16 +243,17 @@ describe("accompaniment fire independent of key colours", () => {
       hands: new Set(),
       owns: () => false
     };
-    for (const [prefs, expected] of [
-      [CAMERA_PRESETS.top, 2.22],
-      [CAMERA_PRESETS.player, 6],
-      [CAMERA_PRESETS.hands, 6],
-      [CAMERA_PRESETS.top, 2.22]
-    ] as const) {
+    for (const prefs of [CAMERA_PRESETS.top, CAMERA_PRESETS.player, CAMERA_PRESETS.hands]) {
       view.setCamera(prefs);
-      view.draw(frame);
-      expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(expected);
-      expect(notesDraw.mock.lastCall?.[0].time).toBe(0.1);
+      for (const [perspective, expected] of [
+        [false, 2.22],
+        [true, 6]
+      ] as const) {
+        Object.assign(view, { roadWanted: perspective });
+        view.draw(frame);
+        expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(expected);
+        expect(notesDraw.mock.lastCall?.[0].time).toBe(0.1);
+      }
     }
     expect(frame.lookAhead).toBe(2);
   });
@@ -516,7 +519,9 @@ it("keeps native 3D enabled for direct notes and restores perspective without ch
     hands: new Set(),
     owns: () => false
   };
+  const roadCamera = vi.spyOn((view as unknown as { road: RoadLayer }).road, "setCamera");
   view.setRoad(false);
+  expect(roadCamera).not.toHaveBeenCalled();
   view.draw(state);
   expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(2.22);
   expect(notesDraw.mock.lastCall?.[3]).toBeDefined();
