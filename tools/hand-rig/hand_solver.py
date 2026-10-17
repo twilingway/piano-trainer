@@ -282,10 +282,16 @@ def key_contact(semi, tip, clear=TIP_CLEAR):
     """Closest playable point of a pressed key to a fingertip: slides along the key."""
     x, black = key_of(semi)
     lo = key_front(black) + 0.008
-    # White keys may be played between the black ones; PLAY_DEPTH prefers the front, and the
-    # collision penalties keep a finger that does not fit between the black keys out.
-    hi = key_front(black) + (0.06 if black else 0.075)
+    # White keys may be played between the black ones, as deep as a hand reaching for a black key
+    # takes them (a thumb on D#4 puts G4 and B4 at 115-120 mm in the video); PLAY_DEPTH prefers the
+    # front, and the collision penalties keep a finger that does not fit between the black keys out.
+    hi = key_front(black) + (0.06 if black else 0.13)
     y = min(max(tip.y, lo), hi)
+    if not black and y >= key_front(True):
+        # between the black keys the playable strip is the middle of what they leave of the key
+        left = x - WHITE_W / 2 + (BLACK_W / 2 if (semi - 1) % 12 not in WHITE_PCS else 0)
+        right = x + WHITE_W / 2 - (BLACK_W / 2 if (semi + 1) % 12 not in WHITE_PCS else 0)
+        x = (left + right) / 2
     return Vector((x, y, pressed_top(black, y) + clear))
 
 
