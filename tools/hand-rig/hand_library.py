@@ -4,14 +4,20 @@ lookup that finds the nearest example for given keys and fingers.
 Build (plain Python 3, after hand_features.py), then check:
     python tools/hand-rig/hand_library.py build <hand-poses dir> --song seven-nation-army
     python tools/hand-rig/hand_library.py check <hand-poses dir> --song seven-nation-army
-build reads features.json and writes poses/library/<song>.json next to this script (committed:
-numbers only, no frames, sound or song times). Pure Python, so Blender can import it.
+build reads features.json (and shapes.json from hand_shape.py, if there) and writes
+poses/library/<song>.json next to this script (committed: numbers only, no frames, sound or song
+times). Pure Python, so Blender can import it.
 
 A shape is the hand, the pressed keys with their fingers, and the thumb's state. Its anchor is the
 lowest pressed key; placement is kept relative to the anchor key's centre (x in white keys, depth in
 cm, yaw in degrees), the median of the shape's repeats. Repeats whose landmarks were off the keys
 (tipOffKey) give the placement only when the shape has no clean repeat; the entry then says so.
 Onsets with a note still without a finger, or with the thumb's state unknown, are left out.
+
+The shape is the median over the repeats whose fitted skeleton met the frame (shapes.json "ok"):
+per finger 2-5 its spread (deg) and its curl relative to the hand's mean curl, the split of a curl
+between MCP, PIP and DIP being hand_mech.BEND_SPLIT; the thumb's angles from the repeats where it was
+fitted (not tucked). No repeat fits: shape null, and build lists the entry.
 
 nearest() wants the same hand and finger set (else None: the old solver), and ranks by the same
 intervals, the same black/white pattern, the thumb's state, register distance and repeats.
@@ -37,7 +43,18 @@ def shape_of(hand, pressed, thumb):
     return key, anchor, rel
 
 
-def build(features, song):
+def merged_shape(fits):
+    """Median shape over fitted repeats (shapes.json records), or None."""
+    fits = [s for s in fits if s["ok"]]
+    if not fits:
+        return None
+    fingers = {f: {k: round(median(s["angles"][f][k] for s in fits), 3) for k in ("abd", "rel")} for f in "2345"}
+    thumbs = [s["angles"]["1"] for s in fits if s["angles"]["1"]]
+    thumb = {k: round(median(t[k] for t in thumbs), 1) for k in thumbs[0]} if thumbs else None
+    return {"fingers": fingers, "thumb": thumb, "from": len(fits)}
+
+
+def build(features, song, shapes=None):
     groups = {}
     skipped = {"finger": 0, "thumb": 0}
     for o in features["onsets"]:
@@ -50,7 +67,9 @@ def build(features, song):
         anchor_x = min(o["notes"], key=lambda n: n["pitch"])["x"]
         key, anchor, rel = shape_of(o["hand"], [(n["finger"], n["pitch"]) for n in o["notes"]], o["thumb"])
         g = groups.setdefault(key, {"id": key, "hand": o["hand"], "anchorPitch": anchor, "pressed": rel,
-                                    "thumb": o["thumb"], "clean": [], "off": []})
+                                    "thumb": o["thumb"], "clean": [], "off": [], "fits": []})
+        if shapes and o["id"] in shapes:
+            g["fits"].append(shapes[o["id"]])
         place = {"knuckleDx": o["knuckle"]["x"] - anchor_x, "knuckleDepthCm": o["knuckle"]["depthCm"],
                  "wristDx": o["wrist"]["x"] - anchor_x, "wristDepthCm": o["wrist"]["depthCm"], "yawDeg": o["yawDeg"]}
         g["off" if o["tipOffKey"] else "clean"].append((o["id"], place))
@@ -61,7 +80,7 @@ def build(features, song):
                         "thumb": g["thumb"],
                         "placement": {k: round(median(p[k] for _, p in used), 3) for k in PLACEMENT},
                         "count": len(g["clean"]) + len(g["off"]), "placementFrom": len(used),
-                        "offKeyOnly": not g["clean"],
+                        "offKeyOnly": not g["clean"], "shape": merged_shape(g["fits"]),
                         "source": {"song": song, "onsets": sorted(i for i, _ in g["clean"] + g["off"])}})
     entries.sort(key=lambda e: (e["hand"], e["anchorPitch"], e["id"]))
     return {"song": song, "units": {"x": "white keys from the anchor key's centre", "depth": "cm from the white front edge",
@@ -135,13 +154,19 @@ def main():
     a = ap.parse_args()
     features = json.load(open(os.path.join(a.folder, "features.json"), encoding="utf-8"))
     if a.command == "build":
-        lib, skipped = build(features, a.song)
+        shapes_path = os.path.join(a.folder, "shapes.json")
+        shapes = ({s["id"]: s for s in json.load(open(shapes_path, encoding="utf-8"))["onsets"]}
+                  if os.path.exists(shapes_path) else None)
+        lib, skipped = build(features, a.song, shapes)
         os.makedirs(os.path.dirname(library_path(a.song)), exist_ok=True)
         with open(library_path(a.song), "w", encoding="utf-8", newline="\n") as f:
             json.dump(lib, f, indent=1)
             f.write("\n")
         print(f"entries {len(lib['entries'])} from {sum(e['count'] for e in lib['entries'])} onsets; "
               f"left out: no finger {skipped['finger']}, thumb unknown {skipped['thumb']}; offKeyOnly {[e['id'] for e in lib['entries'] if e['offKeyOnly']]}")
+        if shapes is not None:
+            print(f"shapes: {sum(1 for e in lib['entries'] if e['shape'])}/{len(lib['entries'])} entries; "
+                  f"without a shape {[e['id'] for e in lib['entries'] if not e['shape']]}")
         for e in lib["entries"]:
             print(e["id"], "x", e["count"], "from", e["placementFrom"], e["placement"])
     else:

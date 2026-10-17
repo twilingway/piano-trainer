@@ -28,6 +28,33 @@
    "count": 13,
    "placementFrom": 13,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -24.6,
+      "rel": 0.961
+     },
+     "3": {
+      "abd": -4.6,
+      "rel": 1.692
+     },
+     "4": {
+      "abd": 0.7,
+      "rel": 1.235
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.053
+     }
+    },
+    "thumb": {
+     "cmc_radial": 22.2,
+     "cmc_palmar": 7.8,
+     "t_mcp": 25.0,
+     "t_ip": 5.2
+    },
+    "from": 5
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -69,6 +96,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 6.3,
+      "rel": 0.917
+     },
+     "3": {
+      "abd": 5.7,
+      "rel": 1.426
+     },
+     "4": {
+      "abd": -11.0,
+      "rel": 1.085
+     },
+     "5": {
+      "abd": -6.9,
+      "rel": 0.571
+     }
+    },
+    "thumb": {
+     "cmc_radial": 46.8,
+     "cmc_palmar": 37.0,
+     "t_mcp": 6.5,
+     "t_ip": 0.6
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -103,6 +157,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 15.4,
+      "rel": 0.45
+     },
+     "3": {
+      "abd": 11.3,
+      "rel": 1.51
+     },
+     "4": {
+      "abd": 2.7,
+      "rel": 1.286
+     },
+     "5": {
+      "abd": 4.6,
+      "rel": 0.753
+     }
+    },
+    "thumb": {
+     "cmc_radial": 42.1,
+     "cmc_palmar": 21.0,
+     "t_mcp": -0.6,
+     "t_ip": 2.4
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -132,6 +213,33 @@
    "count": 7,
    "placementFrom": 5,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -6.0,
+      "rel": 0.886
+     },
+     "3": {
+      "abd": -2.4,
+      "rel": 1.251
+     },
+     "4": {
+      "abd": -3.0,
+      "rel": 1.048
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.8
+     }
+    },
+    "thumb": {
+     "cmc_radial": 32.0,
+     "cmc_palmar": 0.5,
+     "t_mcp": 24.3,
+     "t_ip": 14.4
+    },
+    "from": 7
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -167,6 +275,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -13.3,
+      "rel": 0.906
+     },
+     "3": {
+      "abd": -3.0,
+      "rel": 1.357
+     },
+     "4": {
+      "abd": -0.3,
+      "rel": 1.064
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.674
+     }
+    },
+    "thumb": {
+     "cmc_radial": 25.9,
+     "cmc_palmar": -6.2,
+     "t_mcp": 29.5,
+     "t_ip": 9.5
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -196,6 +331,33 @@
    "count": 8,
    "placementFrom": 4,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -8.8,
+      "rel": 0.92
+     },
+     "3": {
+      "abd": -1.7,
+      "rel": 1.398
+     },
+     "4": {
+      "abd": 0.2,
+      "rel": 1.075
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.576
+     }
+    },
+    "thumb": {
+     "cmc_radial": 28.2,
+     "cmc_palmar": -10.5,
+     "t_mcp": 24.9,
+     "t_ip": 16.8
+    },
+    "from": 7
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -237,6 +399,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.4,
+      "rel": 0.255
+     },
+     "3": {
+      "abd": 3.3,
+      "rel": 1.694
+     },
+     "4": {
+      "abd": -4.3,
+      "rel": 1.348
+     },
+     "5": {
+      "abd": -4.2,
+      "rel": 0.703
+     }
+    },
+    "thumb": {
+     "cmc_radial": 38.8,
+     "cmc_palmar": 20.0,
+     "t_mcp": 3.8,
+     "t_ip": 2.7
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -266,6 +455,33 @@
    "count": 9,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -17.2,
+      "rel": 0.847
+     },
+     "3": {
+      "abd": -2.1,
+      "rel": 1.433
+     },
+     "4": {
+      "abd": 0.0,
+      "rel": 1.079
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.617
+     }
+    },
+    "thumb": {
+     "cmc_radial": 29.6,
+     "cmc_palmar": -11.2,
+     "t_mcp": 27.1,
+     "t_ip": 18.0
+    },
+    "from": 8
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -308,6 +524,33 @@
    "count": 2,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.4,
+      "rel": 1.132
+     },
+     "3": {
+      "abd": 6.45,
+      "rel": 1.329
+     },
+     "4": {
+      "abd": 0.65,
+      "rel": 0.639
+     },
+     "5": {
+      "abd": 2.7,
+      "rel": 0.9
+     }
+    },
+    "thumb": {
+     "cmc_radial": 41.5,
+     "cmc_palmar": 16.9,
+     "t_mcp": 7.0,
+     "t_ip": 5.9
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -338,6 +581,33 @@
    "count": 17,
    "placementFrom": 13,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 2.1,
+      "rel": 1.058
+     },
+     "3": {
+      "abd": 7.0,
+      "rel": 1.242
+     },
+     "4": {
+      "abd": 7.9,
+      "rel": 1.079
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.669
+     }
+    },
+    "thumb": {
+     "cmc_radial": 27.8,
+     "cmc_palmar": -11.7,
+     "t_mcp": 20.9,
+     "t_ip": 16.6
+    },
+    "from": 15
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -388,6 +658,33 @@
    "count": 6,
    "placementFrom": 6,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 15.7,
+      "rel": 1.37
+     },
+     "3": {
+      "abd": 7.4,
+      "rel": 1.71
+     },
+     "4": {
+      "abd": 0.2,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": 5.1,
+      "rel": 0.92
+     }
+    },
+    "thumb": {
+     "cmc_radial": 41.9,
+     "cmc_palmar": 14.2,
+     "t_mcp": 8.8,
+     "t_ip": 4.3
+    },
+    "from": 3
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -422,6 +719,33 @@
    "count": 6,
    "placementFrom": 5,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 3.65,
+      "rel": 0.899
+     },
+     "3": {
+      "abd": 14.45,
+      "rel": 1.268
+     },
+     "4": {
+      "abd": -5.05,
+      "rel": 1.095
+     },
+     "5": {
+      "abd": -4.85,
+      "rel": 0.752
+     }
+    },
+    "thumb": {
+     "cmc_radial": 39.5,
+     "cmc_palmar": 44.0,
+     "t_mcp": 10.3,
+     "t_ip": 11.8
+    },
+    "from": 6
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -461,6 +785,33 @@
    "count": 2,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.85,
+      "rel": 0.929
+     },
+     "3": {
+      "abd": 5.65,
+      "rel": 1.909
+     },
+     "4": {
+      "abd": -1.85,
+      "rel": 0.646
+     },
+     "5": {
+      "abd": -2.65,
+      "rel": 0.515
+     }
+    },
+    "thumb": {
+     "cmc_radial": 42.7,
+     "cmc_palmar": 15.6,
+     "t_mcp": 6.8,
+     "t_ip": 7.8
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -491,6 +842,33 @@
    "count": 2,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 12.6,
+      "rel": 0.992
+     },
+     "3": {
+      "abd": 9.3,
+      "rel": 1.361
+     },
+     "4": {
+      "abd": 5.9,
+      "rel": 1.155
+     },
+     "5": {
+      "abd": 12.0,
+      "rel": 0.491
+     }
+    },
+    "thumb": {
+     "cmc_radial": 40.2,
+     "cmc_palmar": 20.6,
+     "t_mcp": 3.7,
+     "t_ip": 2.8
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -521,6 +899,28 @@
    "count": 3,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 5.7,
+      "rel": 0.861
+     },
+     "3": {
+      "abd": -0.4,
+      "rel": 1.261
+     },
+     "4": {
+      "abd": -6.4,
+      "rel": 1.039
+     },
+     "5": {
+      "abd": -12.1,
+      "rel": 0.797
+     }
+    },
+    "thumb": null,
+    "from": 3
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -552,6 +952,33 @@
    "count": 6,
    "placementFrom": 5,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 9.9,
+      "rel": 0.936
+     },
+     "3": {
+      "abd": 0.5,
+      "rel": 1.242
+     },
+     "4": {
+      "abd": -2.0,
+      "rel": 1.067
+     },
+     "5": {
+      "abd": -15.35,
+      "rel": 0.746
+     }
+    },
+    "thumb": {
+     "cmc_radial": 35.0,
+     "cmc_palmar": 41.5,
+     "t_mcp": 16.2,
+     "t_ip": 11.4
+    },
+    "from": 6
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -586,6 +1013,28 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -16.9,
+      "rel": 0.925
+     },
+     "3": {
+      "abd": -10.5,
+      "rel": 1.31
+     },
+     "4": {
+      "abd": -6.4,
+      "rel": 1.034
+     },
+     "5": {
+      "abd": 5.3,
+      "rel": 0.732
+     }
+    },
+    "thumb": null,
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -615,6 +1064,33 @@
    "count": 5,
    "placementFrom": 4,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 6.5,
+      "rel": 0.938
+     },
+     "3": {
+      "abd": 1.7,
+      "rel": 1.247
+     },
+     "4": {
+      "abd": -1.1,
+      "rel": 1.073
+     },
+     "5": {
+      "abd": -2.9,
+      "rel": 0.747
+     }
+    },
+    "thumb": {
+     "cmc_radial": 24.5,
+     "cmc_palmar": 29.9,
+     "t_mcp": 22.2,
+     "t_ip": 17.0
+    },
+    "from": 5
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -648,6 +1124,28 @@
    "count": 12,
    "placementFrom": 12,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -5.95,
+      "rel": 0.821
+     },
+     "3": {
+      "abd": -8.35,
+      "rel": 1.278
+     },
+     "4": {
+      "abd": -5.75,
+      "rel": 1.089
+     },
+     "5": {
+      "abd": 5.6,
+      "rel": 0.806
+     }
+    },
+    "thumb": null,
+    "from": 12
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -688,6 +1186,28 @@
    "count": 4,
    "placementFrom": 4,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -12.35,
+      "rel": 0.817
+     },
+     "3": {
+      "abd": -18.2,
+      "rel": 1.222
+     },
+     "4": {
+      "abd": -13.45,
+      "rel": 1.117
+     },
+     "5": {
+      "abd": -12.75,
+      "rel": 0.833
+     }
+    },
+    "thumb": null,
+    "from": 4
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -730,6 +1250,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 1.7,
+      "rel": 0.879
+     },
+     "3": {
+      "abd": 1.0,
+      "rel": 1.26
+     },
+     "4": {
+      "abd": -0.5,
+      "rel": 1.085
+     },
+     "5": {
+      "abd": 8.7,
+      "rel": 0.775
+     }
+    },
+    "thumb": {
+     "cmc_radial": 29.8,
+     "cmc_palmar": 27.3,
+     "t_mcp": 9.7,
+     "t_ip": 13.3
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -769,6 +1316,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -0.8,
+      "rel": 0.857
+     },
+     "3": {
+      "abd": -1.8,
+      "rel": 1.289
+     },
+     "4": {
+      "abd": -2.7,
+      "rel": 1.1
+     },
+     "5": {
+      "abd": 8.2,
+      "rel": 0.754
+     }
+    },
+    "thumb": {
+     "cmc_radial": 51.9,
+     "cmc_palmar": 32.4,
+     "t_mcp": 14.8,
+     "t_ip": 8.2
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -808,6 +1382,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -1.3,
+      "rel": 0.915
+     },
+     "3": {
+      "abd": 1.4,
+      "rel": 1.282
+     },
+     "4": {
+      "abd": 5.6,
+      "rel": 1.084
+     },
+     "5": {
+      "abd": 24.5,
+      "rel": 0.719
+     }
+    },
+    "thumb": {
+     "cmc_radial": 36.1,
+     "cmc_palmar": 44.3,
+     "t_mcp": 18.2,
+     "t_ip": 21.5
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -842,6 +1443,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 2.0,
+      "rel": 0.849
+     },
+     "3": {
+      "abd": -6.2,
+      "rel": 1.222
+     },
+     "4": {
+      "abd": -2.1,
+      "rel": 1.14
+     },
+     "5": {
+      "abd": 14.1,
+      "rel": 0.789
+     }
+    },
+    "thumb": {
+     "cmc_radial": 31.5,
+     "cmc_palmar": 44.6,
+     "t_mcp": 38.7,
+     "t_ip": 9.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -876,6 +1504,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -910,6 +1539,33 @@
    "count": 4,
    "placementFrom": 4,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -9.1,
+      "rel": 0.898
+     },
+     "3": {
+      "abd": -8.7,
+      "rel": 1.222
+     },
+     "4": {
+      "abd": -1.2,
+      "rel": 1.142
+     },
+     "5": {
+      "abd": 21.2,
+      "rel": 0.774
+     }
+    },
+    "thumb": {
+     "cmc_radial": 30.5,
+     "cmc_palmar": 43.2,
+     "t_mcp": 14.9,
+     "t_ip": 14.9
+    },
+    "from": 3
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -947,6 +1603,33 @@
    "count": 2,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 1.25,
+      "rel": 1.254
+     },
+     "3": {
+      "abd": -4.95,
+      "rel": 1.374
+     },
+     "4": {
+      "abd": -6.75,
+      "rel": 0.972
+     },
+     "5": {
+      "abd": 2.1,
+      "rel": 0.4
+     }
+    },
+    "thumb": {
+     "cmc_radial": 26.8,
+     "cmc_palmar": -4.0,
+     "t_mcp": 16.3,
+     "t_ip": -3.1
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -982,6 +1665,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1011,6 +1695,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -18.3,
+      "rel": 0.918
+     },
+     "3": {
+      "abd": -3.9,
+      "rel": 1.203
+     },
+     "4": {
+      "abd": 5.8,
+      "rel": 1.1
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.78
+     }
+    },
+    "thumb": {
+     "cmc_radial": 14.9,
+     "cmc_palmar": 20.4,
+     "t_mcp": 30.4,
+     "t_ip": 25.9
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1055,6 +1766,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1094,6 +1806,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1133,6 +1846,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 0.2,
+      "rel": 0.961
+     },
+     "3": {
+      "abd": -3.3,
+      "rel": 1.396
+     },
+     "4": {
+      "abd": -0.7,
+      "rel": 1.177
+     },
+     "5": {
+      "abd": -7.0,
+      "rel": 0.467
+     }
+    },
+    "thumb": {
+     "cmc_radial": 50.7,
+     "cmc_palmar": 26.5,
+     "t_mcp": 11.0,
+     "t_ip": -12.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1167,6 +1907,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1196,6 +1937,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -7.6,
+      "rel": 0.739
+     },
+     "3": {
+      "abd": 3.1,
+      "rel": 1.232
+     },
+     "4": {
+      "abd": 6.1,
+      "rel": 1.212
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.817
+     }
+    },
+    "thumb": {
+     "cmc_radial": 23.9,
+     "cmc_palmar": -6.2,
+     "t_mcp": 25.1,
+     "t_ip": 14.2
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1230,6 +1998,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -8.9,
+      "rel": 0.834
+     },
+     "3": {
+      "abd": -12.3,
+      "rel": 1.229
+     },
+     "4": {
+      "abd": -3.0,
+      "rel": 1.151
+     },
+     "5": {
+      "abd": 18.3,
+      "rel": 0.787
+     }
+    },
+    "thumb": {
+     "cmc_radial": 41.4,
+     "cmc_palmar": 28.5,
+     "t_mcp": 28.9,
+     "t_ip": 14.4
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1259,6 +2054,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -3.9,
+      "rel": 0.891
+     },
+     "3": {
+      "abd": -5.1,
+      "rel": 0.947
+     },
+     "4": {
+      "abd": 0.8,
+      "rel": 1.273
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.889
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.3,
+     "cmc_palmar": 2.0,
+     "t_mcp": 31.8,
+     "t_ip": 17.3
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1303,6 +2125,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1347,6 +2170,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1386,6 +2210,33 @@
    "count": 3,
    "placementFrom": 3,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 20.9,
+      "rel": 1.94
+     },
+     "3": {
+      "abd": 1.2,
+      "rel": 0.838
+     },
+     "4": {
+      "abd": -5.5,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": -13.0,
+      "rel": 1.222
+     }
+    },
+    "thumb": {
+     "cmc_radial": 33.5,
+     "cmc_palmar": 22.0,
+     "t_mcp": 3.8,
+     "t_ip": 2.3
+    },
+    "from": 3
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1427,6 +2278,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 6.4,
+      "rel": 0.856
+     },
+     "3": {
+      "abd": 4.0,
+      "rel": 0.999
+     },
+     "4": {
+      "abd": 0.2,
+      "rel": 1.166
+     },
+     "5": {
+      "abd": 19.5,
+      "rel": 0.979
+     }
+    },
+    "thumb": {
+     "cmc_radial": 50.3,
+     "cmc_palmar": 17.1,
+     "t_mcp": 12.8,
+     "t_ip": 11.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1461,6 +2339,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 3.7,
+      "rel": 0.854
+     },
+     "3": {
+      "abd": -6.2,
+      "rel": 1.316
+     },
+     "4": {
+      "abd": -2.7,
+      "rel": 1.118
+     },
+     "5": {
+      "abd": -12.9,
+      "rel": 0.712
+     }
+    },
+    "thumb": {
+     "cmc_radial": 45.3,
+     "cmc_palmar": 34.8,
+     "t_mcp": 10.9,
+     "t_ip": 12.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1495,6 +2400,33 @@
    "count": 3,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 17.7,
+      "rel": 0.0
+     },
+     "3": {
+      "abd": 1.4,
+      "rel": 0.762
+     },
+     "4": {
+      "abd": -6.5,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": -22.4,
+      "rel": 2.744
+     }
+    },
+    "thumb": {
+     "cmc_radial": 40.9,
+     "cmc_palmar": 34.8,
+     "t_mcp": 4.1,
+     "t_ip": 10.3
+    },
+    "from": 3
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1526,6 +2458,33 @@
    "count": 2,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 1.7,
+      "rel": 1.464
+     },
+     "3": {
+      "abd": 1.0,
+      "rel": 0.872
+     },
+     "4": {
+      "abd": -8.5,
+      "rel": 0.758
+     },
+     "5": {
+      "abd": -7.4,
+      "rel": 0.907
+     }
+    },
+    "thumb": {
+     "cmc_radial": -0.5,
+     "cmc_palmar": 27.3,
+     "t_mcp": 25.5,
+     "t_ip": 13.8
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1556,6 +2515,33 @@
    "count": 4,
    "placementFrom": 4,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 3.1,
+      "rel": 0.949
+     },
+     "3": {
+      "abd": 6.2,
+      "rel": 1.375
+     },
+     "4": {
+      "abd": 8.0,
+      "rel": 1.013
+     },
+     "5": {
+      "abd": 22.85,
+      "rel": 0.663
+     }
+    },
+    "thumb": {
+     "cmc_radial": 27.2,
+     "cmc_palmar": 0.4,
+     "t_mcp": 23.7,
+     "t_ip": 11.9
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1588,6 +2574,33 @@
    "count": 8,
    "placementFrom": 7,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -3.8,
+      "rel": 0.915
+     },
+     "3": {
+      "abd": -3.2,
+      "rel": 1.258
+     },
+     "4": {
+      "abd": 1.3,
+      "rel": 1.094
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.729
+     }
+    },
+    "thumb": {
+     "cmc_radial": 33.8,
+     "cmc_palmar": 20.9,
+     "t_mcp": 28.5,
+     "t_ip": 11.6
+    },
+    "from": 5
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1629,6 +2642,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 15.1,
+      "rel": 0.933
+     },
+     "3": {
+      "abd": -16.3,
+      "rel": 1.324
+     },
+     "4": {
+      "abd": -11.6,
+      "rel": 1.119
+     },
+     "5": {
+      "abd": -25.0,
+      "rel": 0.625
+     }
+    },
+    "thumb": {
+     "cmc_radial": 46.7,
+     "cmc_palmar": 26.6,
+     "t_mcp": 13.5,
+     "t_ip": -8.7
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1668,6 +2708,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1712,6 +2753,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 4.4,
+      "rel": 0.908
+     },
+     "3": {
+      "abd": -5.6,
+      "rel": 1.242
+     },
+     "4": {
+      "abd": -1.7,
+      "rel": 1.068
+     },
+     "5": {
+      "abd": 16.6,
+      "rel": 0.781
+     }
+    },
+    "thumb": {
+     "cmc_radial": 52.0,
+     "cmc_palmar": 41.1,
+     "t_mcp": 17.8,
+     "t_ip": 10.3
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1751,6 +2819,33 @@
    "count": 4,
    "placementFrom": 4,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 1.25,
+      "rel": 0.913
+     },
+     "3": {
+      "abd": -0.2,
+      "rel": 1.28
+     },
+     "4": {
+      "abd": -0.75,
+      "rel": 1.079
+     },
+     "5": {
+      "abd": 3.15,
+      "rel": 0.738
+     }
+    },
+    "thumb": {
+     "cmc_radial": 51.7,
+     "cmc_palmar": 39.4,
+     "t_mcp": 19.4,
+     "t_ip": 12.3
+    },
+    "from": 4
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1793,6 +2888,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -6.6,
+      "rel": 1.584
+     },
+     "3": {
+      "abd": -4.7,
+      "rel": 1.354
+     },
+     "4": {
+      "abd": 1.5,
+      "rel": 0.392
+     },
+     "5": {
+      "abd": 4.8,
+      "rel": 0.669
+     }
+    },
+    "thumb": {
+     "cmc_radial": 46.4,
+     "cmc_palmar": 27.1,
+     "t_mcp": 10.7,
+     "t_ip": 9.8
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1827,6 +2949,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 7.9,
+      "rel": 0.987
+     },
+     "3": {
+      "abd": 1.9,
+      "rel": 1.346
+     },
+     "4": {
+      "abd": -3.1,
+      "rel": 0.931
+     },
+     "5": {
+      "abd": -3.0,
+      "rel": 0.736
+     }
+    },
+    "thumb": {
+     "cmc_radial": 50.5,
+     "cmc_palmar": 36.4,
+     "t_mcp": 18.3,
+     "t_ip": 9.4
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1856,6 +3005,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1885,6 +3035,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1919,6 +3070,33 @@
    "count": 2,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 18.45,
+      "rel": 1.014
+     },
+     "3": {
+      "abd": -1.75,
+      "rel": 0.839
+     },
+     "4": {
+      "abd": -11.45,
+      "rel": 1.29
+     },
+     "5": {
+      "abd": -19.95,
+      "rel": 0.857
+     }
+    },
+    "thumb": {
+     "cmc_radial": 48.2,
+     "cmc_palmar": 28.5,
+     "t_mcp": 7.7,
+     "t_ip": 6.3
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1954,6 +3132,33 @@
    "count": 2,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 19.05,
+      "rel": 0.728
+     },
+     "3": {
+      "abd": 5.1,
+      "rel": 0.842
+     },
+     "4": {
+      "abd": -3.25,
+      "rel": 0.485
+     },
+     "5": {
+      "abd": -19.9,
+      "rel": 1.945
+     }
+    },
+    "thumb": {
+     "cmc_radial": 47.8,
+     "cmc_palmar": 35.3,
+     "t_mcp": 5.6,
+     "t_ip": 6.8
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -1984,6 +3189,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -8.2,
+      "rel": 0.93
+     },
+     "3": {
+      "abd": -16.6,
+      "rel": 1.256
+     },
+     "4": {
+      "abd": -13.3,
+      "rel": 1.068
+     },
+     "5": {
+      "abd": 9.1,
+      "rel": 0.746
+     }
+    },
+    "thumb": {
+     "cmc_radial": 51.2,
+     "cmc_palmar": 44.1,
+     "t_mcp": 14.3,
+     "t_ip": 7.8
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2013,6 +3245,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -1.3,
+      "rel": 2.135
+     },
+     "3": {
+      "abd": -7.4,
+      "rel": 1.865
+     },
+     "4": {
+      "abd": -9.3,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": 6.4,
+      "rel": 0.0
+     }
+    },
+    "thumb": {
+     "cmc_radial": 10.0,
+     "cmc_palmar": -15.0,
+     "t_mcp": 1.3,
+     "t_ip": -12.1
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2042,6 +3301,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 17.8,
+      "rel": 0.024
+     },
+     "3": {
+      "abd": 7.4,
+      "rel": 2.007
+     },
+     "4": {
+      "abd": 1.0,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": 10.1,
+      "rel": 1.969
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.4,
+     "cmc_palmar": -14.4,
+     "t_mcp": 10.9,
+     "t_ip": 1.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2081,6 +3367,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 12.3,
+      "rel": 0.924
+     },
+     "3": {
+      "abd": -7.2,
+      "rel": 1.259
+     },
+     "4": {
+      "abd": -11.3,
+      "rel": 1.107
+     },
+     "5": {
+      "abd": -21.5,
+      "rel": 0.71
+     }
+    },
+    "thumb": {
+     "cmc_radial": 45.2,
+     "cmc_palmar": 27.9,
+     "t_mcp": 4.0,
+     "t_ip": 4.9
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2110,6 +3423,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 2.9,
+      "rel": 0.906
+     },
+     "3": {
+      "abd": 3.2,
+      "rel": 1.305
+     },
+     "4": {
+      "abd": 3.8,
+      "rel": 1.086
+     },
+     "5": {
+      "abd": 10.0,
+      "rel": 0.702
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.8,
+     "cmc_palmar": 3.2,
+     "t_mcp": 15.5,
+     "t_ip": -3.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2154,6 +3494,33 @@
    "count": 2,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 23.1,
+      "rel": 0.619
+     },
+     "3": {
+      "abd": -3.1,
+      "rel": 1.463
+     },
+     "4": {
+      "abd": -5.9,
+      "rel": 1.32
+     },
+     "5": {
+      "abd": -8.3,
+      "rel": 0.599
+     }
+    },
+    "thumb": {
+     "cmc_radial": 24.6,
+     "cmc_palmar": 9.7,
+     "t_mcp": 2.3,
+     "t_ip": -8.6
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2194,6 +3561,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 5.2,
+      "rel": 1.112
+     },
+     "3": {
+      "abd": -19.3,
+      "rel": 1.418
+     },
+     "4": {
+      "abd": -17.4,
+      "rel": 1.072
+     },
+     "5": {
+      "abd": -14.4,
+      "rel": 0.398
+     }
+    },
+    "thumb": {
+     "cmc_radial": 30.6,
+     "cmc_palmar": 24.2,
+     "t_mcp": 4.2,
+     "t_ip": -3.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2223,6 +3617,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 22.8,
+      "rel": 1.148
+     },
+     "3": {
+      "abd": -1.8,
+      "rel": 1.51
+     },
+     "4": {
+      "abd": -2.9,
+      "rel": 1.08
+     },
+     "5": {
+      "abd": 0.7,
+      "rel": 0.262
+     }
+    },
+    "thumb": {
+     "cmc_radial": 29.8,
+     "cmc_palmar": 18.5,
+     "t_mcp": 1.7,
+     "t_ip": -8.1
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2267,6 +3688,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2311,6 +3733,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -3.8,
+      "rel": 0.923
+     },
+     "3": {
+      "abd": -2.3,
+      "rel": 1.303
+     },
+     "4": {
+      "abd": -1.6,
+      "rel": 1.082
+     },
+     "5": {
+      "abd": -25.0,
+      "rel": 0.692
+     }
+    },
+    "thumb": {
+     "cmc_radial": 53.7,
+     "cmc_palmar": 34.7,
+     "t_mcp": 8.7,
+     "t_ip": 1.5
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2350,6 +3799,33 @@
    "count": 2,
    "placementFrom": 2,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 1.15,
+      "rel": 0.934
+     },
+     "3": {
+      "abd": -4.25,
+      "rel": 1.273
+     },
+     "4": {
+      "abd": -1.95,
+      "rel": 1.073
+     },
+     "5": {
+      "abd": -7.95,
+      "rel": 0.72
+     }
+    },
+    "thumb": {
+     "cmc_radial": 45.1,
+     "cmc_palmar": 27.1,
+     "t_mcp": 6.2,
+     "t_ip": 4.0
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2390,6 +3866,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 6.8,
+      "rel": 1.603
+     },
+     "3": {
+      "abd": -0.3,
+      "rel": 1.128
+     },
+     "4": {
+      "abd": 1.9,
+      "rel": 0.768
+     },
+     "5": {
+      "abd": 8.7,
+      "rel": 0.501
+     }
+    },
+    "thumb": {
+     "cmc_radial": 28.3,
+     "cmc_palmar": 21.1,
+     "t_mcp": 3.0,
+     "t_ip": 11.3
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2424,6 +3927,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 8.5,
+      "rel": 0.719
+     },
+     "3": {
+      "abd": -4.5,
+      "rel": 1.37
+     },
+     "4": {
+      "abd": -3.4,
+      "rel": 1.029
+     },
+     "5": {
+      "abd": -12.8,
+      "rel": 0.882
+     }
+    },
+    "thumb": {
+     "cmc_radial": 45.0,
+     "cmc_palmar": 24.3,
+     "t_mcp": 3.3,
+     "t_ip": 6.1
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2453,6 +3983,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -1.1,
+      "rel": 0.854
+     },
+     "3": {
+      "abd": -10.3,
+      "rel": 1.251
+     },
+     "4": {
+      "abd": -5.3,
+      "rel": 1.118
+     },
+     "5": {
+      "abd": 19.1,
+      "rel": 0.776
+     }
+    },
+    "thumb": {
+     "cmc_radial": 41.1,
+     "cmc_palmar": 45.0,
+     "t_mcp": 13.8,
+     "t_ip": 13.3
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2482,6 +4039,33 @@
    "count": 3,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 2.95,
+      "rel": 1.023
+     },
+     "3": {
+      "abd": 3.9,
+      "rel": 1.379
+     },
+     "4": {
+      "abd": 7.05,
+      "rel": 1.068
+     },
+     "5": {
+      "abd": 22.2,
+      "rel": 0.53
+     }
+    },
+    "thumb": {
+     "cmc_radial": 25.3,
+     "cmc_palmar": 11.1,
+     "t_mcp": 13.0,
+     "t_ip": -2.1
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2513,6 +4097,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 8.5,
+      "rel": 1.052
+     },
+     "3": {
+      "abd": 1.5,
+      "rel": 1.591
+     },
+     "4": {
+      "abd": 5.2,
+      "rel": 1.005
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 0.352
+     }
+    },
+    "thumb": {
+     "cmc_radial": 21.0,
+     "cmc_palmar": -15.0,
+     "t_mcp": 19.4,
+     "t_ip": -2.2
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2542,6 +4153,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -8.2,
+      "rel": 1.227
+     },
+     "3": {
+      "abd": -11.0,
+      "rel": 1.404
+     },
+     "4": {
+      "abd": -8.4,
+      "rel": 0.796
+     },
+     "5": {
+      "abd": 6.4,
+      "rel": 0.573
+     }
+    },
+    "thumb": {
+     "cmc_radial": 45.0,
+     "cmc_palmar": -15.0,
+     "t_mcp": 39.7,
+     "t_ip": -2.8
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2576,6 +4214,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 10.4,
+      "rel": 1.084
+     },
+     "3": {
+      "abd": -10.3,
+      "rel": 1.609
+     },
+     "4": {
+      "abd": -8.7,
+      "rel": 1.19
+     },
+     "5": {
+      "abd": -4.2,
+      "rel": 0.117
+     }
+    },
+    "thumb": {
+     "cmc_radial": 39.0,
+     "cmc_palmar": -13.3,
+     "t_mcp": 8.4,
+     "t_ip": -10.4
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2605,6 +4270,33 @@
    "count": 2,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 7.5,
+      "rel": 0.927
+     },
+     "3": {
+      "abd": -9.3,
+      "rel": 1.245
+     },
+     "4": {
+      "abd": -7.45,
+      "rel": 1.066
+     },
+     "5": {
+      "abd": 13.75,
+      "rel": 0.762
+     }
+    },
+    "thumb": {
+     "cmc_radial": 46.9,
+     "cmc_palmar": 42.7,
+     "t_mcp": 14.2,
+     "t_ip": 15.4
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2640,6 +4332,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 4.2,
+      "rel": 1.285
+     },
+     "3": {
+      "abd": -8.1,
+      "rel": 1.235
+     },
+     "4": {
+      "abd": -5.8,
+      "rel": 0.898
+     },
+     "5": {
+      "abd": 4.9,
+      "rel": 0.582
+     }
+    },
+    "thumb": {
+     "cmc_radial": 44.9,
+     "cmc_palmar": -15.0,
+     "t_mcp": 11.4,
+     "t_ip": 5.2
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2669,6 +4388,33 @@
    "count": 2,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 9.85,
+      "rel": 1.125
+     },
+     "3": {
+      "abd": -1.25,
+      "rel": 1.502
+     },
+     "4": {
+      "abd": -0.05,
+      "rel": 1.373
+     },
+     "5": {
+      "abd": 8.55,
+      "rel": 0.0
+     }
+    },
+    "thumb": {
+     "cmc_radial": 35.2,
+     "cmc_palmar": -7.7,
+     "t_mcp": 13.2,
+     "t_ip": -7.4
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2699,6 +4445,33 @@
    "count": 2,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.8,
+      "rel": 1.23
+     },
+     "3": {
+      "abd": -0.0,
+      "rel": 0.0
+     },
+     "4": {
+      "abd": -5.1,
+      "rel": 1.587
+     },
+     "5": {
+      "abd": 3.1,
+      "rel": 1.183
+     }
+    },
+    "thumb": {
+     "cmc_radial": 35.6,
+     "cmc_palmar": 0.9,
+     "t_mcp": 9.3,
+     "t_ip": 12.4
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2729,6 +4502,33 @@
    "count": 3,
    "placementFrom": 3,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 11.9,
+      "rel": 1.101
+     },
+     "3": {
+      "abd": 1.45,
+      "rel": 1.201
+     },
+     "4": {
+      "abd": 2.4,
+      "rel": 1.106
+     },
+     "5": {
+      "abd": 20.7,
+      "rel": 0.592
+     }
+    },
+    "thumb": {
+     "cmc_radial": 28.9,
+     "cmc_palmar": 6.6,
+     "t_mcp": 16.9,
+     "t_ip": -10.1
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2760,6 +4560,33 @@
    "count": 2,
    "placementFrom": 2,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 11.2,
+      "rel": 1.232
+     },
+     "3": {
+      "abd": -0.25,
+      "rel": 1.543
+     },
+     "4": {
+      "abd": 0.1,
+      "rel": 1.175
+     },
+     "5": {
+      "abd": 11.8,
+      "rel": 0.049
+     }
+    },
+    "thumb": {
+     "cmc_radial": 31.1,
+     "cmc_palmar": -6.8,
+     "t_mcp": 15.1,
+     "t_ip": -8.8
+    },
+    "from": 2
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2790,6 +4617,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.6,
+      "rel": 0.0
+     },
+     "3": {
+      "abd": -2.0,
+      "rel": 3.165
+     },
+     "4": {
+      "abd": -2.1,
+      "rel": 0.835
+     },
+     "5": {
+      "abd": 11.6,
+      "rel": 0.0
+     }
+    },
+    "thumb": {
+     "cmc_radial": 25.9,
+     "cmc_palmar": -15.0,
+     "t_mcp": 16.4,
+     "t_ip": -9.9
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2819,6 +4673,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -1.7,
+      "rel": 0.915
+     },
+     "3": {
+      "abd": -3.1,
+      "rel": 1.258
+     },
+     "4": {
+      "abd": 0.6,
+      "rel": 1.091
+     },
+     "5": {
+      "abd": -3.3,
+      "rel": 0.736
+     }
+    },
+    "thumb": {
+     "cmc_radial": 52.3,
+     "cmc_palmar": 11.4,
+     "t_mcp": 15.3,
+     "t_ip": 6.3
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2848,6 +4729,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 2.6,
+      "rel": 0.85
+     },
+     "3": {
+      "abd": 2.6,
+      "rel": 0.518
+     },
+     "4": {
+      "abd": -6.2,
+      "rel": 1.497
+     },
+     "5": {
+      "abd": 25.0,
+      "rel": 1.135
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.4,
+     "cmc_palmar": 24.0,
+     "t_mcp": 19.5,
+     "t_ip": -8.4
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2882,6 +4790,33 @@
    "count": 2,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 11.5,
+      "rel": 1.151
+     },
+     "3": {
+      "abd": -2.0,
+      "rel": 1.132
+     },
+     "4": {
+      "abd": -4.7,
+      "rel": 0.978
+     },
+     "5": {
+      "abd": 8.3,
+      "rel": 0.739
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.9,
+     "cmc_palmar": 13.3,
+     "t_mcp": 19.1,
+     "t_ip": -4.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2912,6 +4847,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": true,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2941,6 +4877,33 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -6.1,
+      "rel": 1.14
+     },
+     "3": {
+      "abd": -5.7,
+      "rel": 1.075
+     },
+     "4": {
+      "abd": -7.2,
+      "rel": 0.981
+     },
+     "5": {
+      "abd": 9.0,
+      "rel": 0.803
+     }
+    },
+    "thumb": {
+     "cmc_radial": 17.8,
+     "cmc_palmar": 19.5,
+     "t_mcp": 16.4,
+     "t_ip": -5.0
+    },
+    "from": 1
+   },
    "source": {
     "song": "seven-nation-army",
     "onsets": [
@@ -2970,6 +4933,7 @@
    "count": 1,
    "placementFrom": 1,
    "offKeyOnly": false,
+   "shape": null,
    "source": {
     "song": "seven-nation-army",
     "onsets": [

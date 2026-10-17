@@ -2,7 +2,8 @@
 
     blender -b <pianist .blend> --python tools/hand-rig/mech_sweep.py -- <out dir> [R,R,...]
 
-Writes <out dir>/mech-report.json (per hand and ball radius: angles, joints held at a limit, joints past a
+Writes <out dir>/mech-report.json (the rest geometry of both hands in the hand frame, which hand_shape.py
+reads, and per hand and ball radius: angles, joints held at a limit, joints past a
 wall - must be none - and the thumb-to-little gap) and, for the listed radii (default 400,110,60,33,21), the
 right hand's skeleton from the side, front and top into <out dir>/mech-R<r>-<view>.png. The scene's own
 objects are hidden from the render, not changed; the file is not saved.
@@ -22,6 +23,8 @@ os.makedirs(OUT, exist_ok=True)
 rig = next(o for o in bpy.data.objects if o.type == "ARMATURE" and "finger3-1.R" in o.data.bones)
 rests = {s: rest_from_rig(rig, s) for s in ("L", "R")}
 report = {"rig": rig.name, "len": {s: {f: [round(x, 1) for x in r["len"][f]] for f in r["len"]} for s, r in rests.items()},
+          "rest": {s: {k: {f: [round(c, 2) for c in r[k][f]] for f in r[k]} for k in ("mcp", "tip")}
+                   for s, r in rests.items()},
           "sweep": {}}
 for s, rest in rests.items():
     report["sweep"][s] = []

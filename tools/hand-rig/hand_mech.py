@@ -12,7 +12,10 @@ THUMB_RADIAL_MAX off the index. A joint that the ball would bend past its limit 
 reported as squeezed; nothing here ever leaves a joint outside LIM or ABD_MAX.
 """
 import math
-from mathutils import Matrix, Vector
+try:
+    from mathutils import Matrix, Vector
+except ImportError:                                     # outside Blender: the walls below, no geometry
+    pass
 
 R_FINGER = {1: 10.5, 2: 9.0, 3: 9.0, 4: 8.5, 5: 7.5}     # phalanx radius, mm (MED: adult averages)
 PALM_HALF = 13.0                                        # half the palm's thickness, mm
@@ -21,6 +24,10 @@ THUMB_PALMAR_MAX = 45.0                                 # the thumb off the palm
 # flexion limits, degrees (MED: textbook ranges; checked against the videos' angles in task 5.2)
 LIM = {"mcp": (-20, 90), "pip": (0, 110), "dip": (0, 80), "t_mcp": (-10, 60), "t_ip": (-15, 80)}
 ABD_MAX = 25.0                                          # a finger's plane off its rest direction at MCP (MED)
+# How a finger shares its bend between MCP, PIP and DIP, degrees: the medians of the side video's near hand
+# (Hn6tFiyNMBQ, MediaPipe world points; MCP below the palm's plane through landmarks 0, 5, 17). A top view
+# cannot split a bend between the joints, so a finger's shape from it is this split times one curl (MED)
+BEND_SPLIT = {2: (30.0, 24.0, 18.0), 3: (17.0, 26.0, 24.0), 4: (19.0, 30.0, 21.0), 5: (44.0, 17.0, 18.0)}
 
 
 def rest_from_rig(rig, side):
