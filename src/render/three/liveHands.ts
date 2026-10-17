@@ -349,7 +349,9 @@ export class LiveHands {
       const track: Track = this.lanes[hand];
       // Hidden until the plan has reached the song's time.
       rig.pose(
-        source.time <= knownUntil(track) ? sampleTrack(track, source.time, STUDIO_REST) : undefined
+        source.time <= knownUntil(track)
+          ? sampleTrack(track, source.time, STUDIO_REST, hand === "left")
+          : undefined
       );
       this.press(hand, rig, source);
     }

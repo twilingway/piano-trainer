@@ -1,5 +1,20 @@
 import type { Finger } from "../../../fingering/fingering";
-import { FINGERS, LONG, THUMB_KEYS, addAngles, at, handJoints, tipOf } from "./mech";
+import {
+  CHAIN,
+  CLEAR,
+  FINGERS,
+  LIM,
+  LONG,
+  R_FINGER,
+  THUMB_KEYS,
+  THUMB_PALMAR_MIN,
+  TIP_ABOVE,
+  addAngles,
+  at,
+  handJoints,
+  keyUnder,
+  tipOf
+} from "./mech";
 import type { AngleDelta, Angles, Rest, Root, Vec3 } from "./mech";
 import { reachDelta } from "./place";
 import type { PlanKey, PlannedPose } from "./plan";
@@ -92,11 +107,56 @@ const tipIn = (rest: Rest, at: HandAt, f: Finger): Vec3 =>
   tipOf(handJoints(rest, at.angles, at.root), f);
 
 /**
+ * Between two poses a finger free in both may sweep through the keys: it rises at MCP (the thumb at
+ * its CMC, palmar) until its joints clear the key tops, as liftFree lifts a free finger in a pose.
+ */
+function clearKeys(
+  rest: Rest,
+  ang: Angles,
+  root: Root,
+  free: readonly Finger[],
+  mirror: boolean
+): Angles {
+  let out = ang;
+  for (const f of free) {
+    const need = R_FINGER[f] * TIP_ABOVE + CLEAR;
+    const low = (a: Angles) => {
+      const X = handJoints(rest, a, root);
+      return Math.min(
+        ...CHAIN[f].slice(1).map((i) => {
+          const p = at(X, i);
+          return p[2] - keyUnder(p[0], p[1], mirror).top;
+        })
+      );
+    };
+    if (low(out) >= need) continue;
+    const base = out;
+    for (let deg = 1; deg <= 90; deg++) {
+      const lifted = addAngles(
+        base,
+        f === 1 ? { 1: { cmc_palmar: -deg } } : { [f]: { mcp: -deg } }
+      );
+      const cur = f === 1 ? lifted[1].cmc_palmar : lifted[f].mcp;
+      if (cur < (f === 1 ? THUMB_PALMAR_MIN : LIM.mcp[0])) break;
+      out = lifted;
+      if (low(lifted) >= need) break;
+    }
+  }
+  return out;
+}
+
+/**
  * The hand at song time t, or undefined while the track is empty. Between two keys whose poses
  * hold the same key down with one finger, that tip goes straight between its two places, so a held
- * note stays down while the hand moves.
+ * note stays down while the hand moves, and a finger sweeping through other keys rises over them
+ * (`mirror` for a left hand).
  */
-export function sampleTrack(track: Track, t: number, rest?: Rest): HandAt | undefined {
+export function sampleTrack(
+  track: Track,
+  t: number,
+  rest?: Rest,
+  mirror = false
+): HandAt | undefined {
   const { keys } = track;
   const first = keys[0];
   const last = keys[keys.length - 1];
@@ -127,5 +187,10 @@ export function sampleTrack(track: Track, t: number, rest?: Rest): HandAt | unde
     const goal: Vec3 = [mix(ta[0], tb[0], s), mix(ta[1], tb[1], s), mix(ta[2], tb[2], s)];
     angles = addAngles(angles, { [f]: reachDelta(rest, angles, root, f, goal, true) });
   }
-  return { root, angles };
+  const free = FINGERS.filter(
+    (f) =>
+      track.poses[a.strike]?.pitches[f] === undefined &&
+      track.poses[b.strike]?.pitches[f] === undefined
+  );
+  return { root, angles: clearKeys(rest, angles, root, free, mirror) };
 }
