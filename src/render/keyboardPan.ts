@@ -87,3 +87,25 @@ export function upcomingSpans(
   }
   return spans;
 }
+
+/** Follow upcoming owned keys, snapping a new song and settling sub-pixel movement. */
+export function followKeyboardPan(
+  state: FrameState,
+  notes: readonly SongNote[],
+  keys: ReadonlyMap<number, KeyRect>,
+  current: number,
+  snap: boolean,
+  width: number,
+  total: number,
+  margin: number,
+  deltaSeconds: number,
+  fitOverhead = false
+): number {
+  if (fitOverhead) return (total - width) / 2;
+  if (total <= width) return Math.min(0, (total - width) / 2);
+  const spans = upcomingSpans(state, notes, keys);
+  const target = panToShow(snap ? (total - width) / 2 : current, spans, width, total, margin);
+  const pan = snap ? target : easePan(current, target, deltaSeconds, 0.35);
+  // The ease never quite arrives: settle once it is within half a pixel.
+  return Math.abs(target - pan) < 0.5 ? target : pan;
+}

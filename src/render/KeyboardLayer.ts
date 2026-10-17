@@ -148,6 +148,8 @@ export class KeyboardLayer {
   private painted: PaintedFaces | undefined;
   /** The style the painted faces are of. */
   private style: Exclude<KeyStyle, "perspective" | "3d"> = "classic";
+  /** The model supplies its own bevels; its texture contains only paint and labels. */
+  private modelFaces = false;
   /** The rail under the keys, for a style that has one. */
   private railTexture: Texture | undefined;
   private readonly rail = new Sprite();
@@ -208,6 +210,7 @@ export class KeyboardLayer {
    * were. The faces take effect on the next layout. Assets caches every load.
    */
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
+    this.modelFaces = style === "3d";
     const paintedStyle = style === "perspective" || style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
@@ -253,8 +256,14 @@ export class KeyboardLayer {
     // A sticker keeps off a painted key's rounded sides and its front bevel.
     const painted = this.painted;
     const { white: WHITE_SLICE, black: BLACK_SLICE } = KEY_STYLES[this.style];
-    const whiteBevel = painted ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width : 3;
-    const blackBevel = painted ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width : 3;
+    const whiteBevel =
+      painted && !this.modelFaces
+        ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width
+        : 3;
+    const blackBevel =
+      painted && !this.modelFaces
+        ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width
+        : 3;
     this.bevel = { white: whiteBevel, black: blackBevel };
     // Nine-slice border bands include broad flat areas, especially on arcade keys.
     // Only reserve the narrow visible rim, rather than shrinking to their centre slice.
@@ -364,22 +373,32 @@ export class KeyboardLayer {
                 : undefined;
       const key = keys.get(pitch);
       // Held by the player or sounded by the program, a painted key sinks.
-      if (key && this.keyTextures) {
+      if (key && this.keyTextures && !this.modelFaces) {
         const face = this.faceOf(key.black, false, this.painted !== undefined && sounding);
         if (sprite.texture !== face) sprite.texture = face;
       }
-      sprite.tint = 0xffffff;
+      sprite.tint = this.modelFaces ? (key?.black ? 0x1a1816 : 0xf8f4e8) : 0xffffff;
       const light = this.keyFronts.get(pitch);
       if (light) {
         light.visible = key !== undefined && color !== undefined;
         if (light.visible && key && color !== undefined) {
           const strength = sounding ? LIGHT_SOUNDING : LIGHT_WAITING;
           light.tint = sounding ? color : towardWhite(color, Math.max(0, hintStrength - 0.75) * 2);
-          light.texture = this.lightOf.get(pitch) ?? Texture.EMPTY;
-          light.blendMode = key.black ? "add" : "normal";
+          light.texture = this.modelFaces
+            ? Texture.WHITE
+            : (this.lightOf.get(pitch) ?? Texture.EMPTY);
+          light.blendMode = !this.modelFaces && key.black ? "add" : "normal";
           light.alpha =
             (key.black ? strength.black : strength.white) * (sounding ? 1 : hintStrength);
-          light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
+          if (this.modelFaces) {
+            light.position.set(key.x, keyboardTop);
+            light.width = key.width;
+            light.height = key.black ? blackHeight : keyboardHeight;
+            light.alpha *= 0.8;
+          } else {
+            light.scale.set(1);
+            light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
+          }
         }
       }
       const hint = this.keyDigits.get(pitch);
@@ -411,6 +430,16 @@ export class KeyboardLayer {
         // The sticker fills the bottom of the key; the finger sits at the top of its free part.
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
+      if (this.modelFaces) {
+        // Undo the atlas-to-model stretch: keyGeometry uses 2 source pixels per world unit
+        // across the key, then crops 8%/7% from each side of its UVs.
+        const oldHeight = hint.height;
+        const depth = key.black ? 85 : 142;
+        const sourceHeight = key.black ? blackHeight : keyboardHeight;
+        const usableWidth = key.black ? 0.84 : 0.86;
+        hint.scale.y *= sourceHeight / (2 * depth * usableWidth);
+        if (stickers) hint.y += hint.height - oldHeight;
+      }
     }
   }
 
@@ -437,7 +466,7 @@ export class KeyboardLayer {
   private placeKey(sprite: NineSliceSprite, x: number, y: number, width: number, height: number) {
     sprite.x = x;
     sprite.y = y;
-    if (!this.painted) {
+    if (!this.painted || this.modelFaces) {
       sprite.scale.set(1);
       sprite.setSize(width, height);
       return;
@@ -460,9 +489,13 @@ export class KeyboardLayer {
       this.keyTextures = this.painted;
       for (const [pitch, sprite] of this.keySprites) {
         const isBlack = isBlackKey(pitch);
-        sprite.texture = isBlack ? this.painted.black : this.painted.white;
+        sprite.texture = this.modelFaces
+          ? Texture.WHITE
+          : isBlack
+            ? this.painted.black
+            : this.painted.white;
         const slices = KEY_STYLES[this.style];
-        Object.assign(sprite, isBlack ? slices.black : slices.white);
+        Object.assign(sprite, this.modelFaces ? NO_SLICE : isBlack ? slices.black : slices.white);
       }
       return;
     }
@@ -473,7 +506,12 @@ export class KeyboardLayer {
       { width: black?.width ?? 6, height: blackHeight }
     );
     for (const [pitch, sprite] of this.keySprites) {
-      sprite.texture = isBlackKey(pitch) ? this.keyTextures.black : this.keyTextures.white;
+      sprite.texture = this.modelFaces
+        ? Texture.WHITE
+        : isBlackKey(pitch)
+          ? this.keyTextures.black
+          : this.keyTextures.white;
+      Object.assign(sprite, NO_SLICE);
     }
     if (old) {
       for (const texture of [old.white, old.black, old.blackLit]) texture.destroy(true);

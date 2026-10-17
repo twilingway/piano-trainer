@@ -5,6 +5,7 @@ import type { CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_ROAD_SHAPE } from "../render/RoadLayer";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { KeyRange } from "./useFallingView";
+import type { KeyboardOrientation } from "./viewProfiles";
 
 export interface StaffPrefs {
   readonly zoom: number;
@@ -33,6 +34,10 @@ export interface StaffPrefs {
   readonly handStyle: HandStyle;
   /** The trial road view: notes in perspective, glowing, with sparks. */
   readonly road: boolean;
+  /** Optional lane guides on the 3D road. */
+  readonly roadGuides: boolean;
+  /** Dim physical keys for a demonstration; study stays bright. */
+  readonly keyboardDim: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
   readonly noteCardsConfigured: boolean;
@@ -44,6 +49,8 @@ export interface StaffPrefs {
   readonly keyRange: KeyRange;
   /** The look of the keys. */
   readonly keyStyle: KeyStyle;
+  /** Independent top keyboard camera inside a native 3D view. */
+  readonly keyboardOrientation: KeyboardOrientation;
   /** The take's review opens by itself at the end of a run. */
   readonly autoReview: boolean;
   /** The road's width at the horizon, as a share of its width at the keys. */
@@ -70,12 +77,15 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   hands: false,
   handStyle: "rendered",
   road: false,
+  roadGuides: false,
+  keyboardDim: false,
   noteCards: false,
   noteCardsConfigured: true,
   labels: false,
   fps: false,
   keyRange: "song",
   keyStyle: "arcade",
+  keyboardOrientation: "follow",
   autoReview: false,
   camera: DEFAULT_CAMERA,
   roadFar: DEFAULT_ROAD_SHAPE.far,
@@ -117,12 +127,16 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     hands: boolean("hands"),
     handStyle: choice("handStyle", ["drawn", "rendered"]),
     road: boolean("road"),
+    roadGuides: boolean("roadGuides"),
+    keyboardDim: boolean("keyboardDim"),
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),
     labels: boolean("labels"),
     fps: boolean("fps"),
     keyRange: choice("keyRange", ["song", "3oct", "4oct", "88", "61", "49", "25"]),
     keyStyle: choice("keyStyle", ["classic", "arcade", "perspective", "3d"]),
+    keyboardOrientation:
+      raw.keyStyle === "3d" && raw.keyboardOrientation === "top" ? "top" : "follow",
     autoReview: boolean("autoReview"),
     camera: normalizeCamera(raw.camera),
     roadFar: number("roadFar", 0.1, 0.9),

@@ -129,6 +129,38 @@ describe("hand style preference", () => {
 });
 
 describe("falling note defaults", () => {
+  it.each([undefined, "true", 1, null])(
+    "keeps road guides off for missing or invalid saved value %s",
+    async (roadGuides) => {
+      localStorage.setItem("staff-prefs", JSON.stringify({ keyStyle: "3d", roadGuides }));
+      await mount();
+      expect(prefs.staffPrefs.roadGuides).toBe(false);
+    }
+  );
+
+  it("preserves an explicit road guide choice through reload and later disabling", async () => {
+    await mount();
+    expect(prefs.staffPrefs.roadGuides).toBe(false);
+    await act(async () => {
+      prefs.updateStaffPrefs({ roadGuides: true });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs.roadGuides).toBe(true);
+    await act(async () => {
+      prefs.updateStaffPrefs({ roadGuides: false });
+      await Promise.resolve();
+    });
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      roadGuides: false
+    });
+  });
+
   it.each([null, { road: false }])(
     "starts with plain falling notes for saved prefs %j",
     async (saved) => {

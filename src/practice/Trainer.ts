@@ -90,6 +90,7 @@ export class Trainer {
   /** The song's notes' keys by note id: a missed note is shown on its key. */
   private pitchOf = new Map<string, number>();
   private playing = false;
+  private effectEpoch = 0;
   private recorder: TakeRecorder | undefined;
   /** Colours for the notes on this trainer's view, and a second view drawn in step with it. */
   private comparison:
@@ -155,6 +156,7 @@ export class Trainer {
     this.combo.reset();
     this.graded = [];
     this.playing = false;
+    this.effectEpoch++;
     this.view.setSong(song);
     this.lastBeat = -1;
     if (resume) this.setPlaying(true);
@@ -187,6 +189,7 @@ export class Trainer {
     this.silence();
     this.playing = false;
     const now = performance.now();
+    this.effectEpoch++;
     this.session.seek(from, now);
     this.session.pauseClock(now);
     this.combo.reset();
@@ -420,6 +423,7 @@ export class Trainer {
       session,
       {
         playing: this.playing,
+        effectEpoch: this.effectEpoch,
         performance: this.performanceMode,
         visualOffsetMs: this.timing.visualOffsetMs,
         course,

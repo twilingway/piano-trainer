@@ -184,7 +184,10 @@ function ConnectedKeyboardSettings() {
   const state = useAppSelector(
     (state) => ({
       keyStyle: state.preferences.staff.keyStyle,
+      notesPerspective: state.preferences.staff.road,
       handStyle: state.preferences.staff.handStyle,
+      keyboardDim: state.preferences.staff.keyboardDim,
+      roadGuides: state.preferences.staff.roadGuides,
       far: state.preferences.staff.roadFar,
       horizon: state.preferences.staff.roadHorizon,
       camera: state.preferences.staff.camera
@@ -198,20 +201,31 @@ function ConnectedKeyboardSettings() {
   const onKeyRange = useRuntimeCommand((runtime) => runtime.view.setKeyRange);
   const onShowLabels = useRuntimeCommand((runtime) => runtime.view.setShowLabels);
   const onKeyStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyStyle);
+  const onNotesPerspective = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onNotesPerspective
+  );
   const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
+  const onKeyboardDim = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardDim);
+  const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
   const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
   return (
     <KeyboardSettings
       {...view}
       keyStyle={state.keyStyle}
+      notesPerspective={state.notesPerspective}
+      onNotesPerspective={onNotesPerspective}
       handStyle={state.handStyle}
+      keyboardDim={state.keyboardDim}
+      onKeyboardDim={onKeyboardDim}
+      roadGuides={state.roadGuides}
       road={{ far: state.far, horizon: state.horizon }}
       camera={state.camera}
       onKeyRange={onKeyRange}
       onShowLabels={onShowLabels}
       onKeyStyle={onKeyStyle}
       onHandStyle={onHandStyle}
+      onRoadGuides={onRoadGuides}
       onRoad={onRoad}
       onCamera={onCamera}
       toggles={<ConnectedSettingsToggles />}

@@ -152,4 +152,22 @@ describe("mobile fullscreen preference", () => {
     expect(active()).toBe(false);
     expect(error()).toContain("не разрешил");
   });
+
+  it("requests fullscreen in the click stack and permits retry after Chrome's not granted rejection", async () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: false } as MediaQueryList);
+    request.mockRejectedValueOnce(new TypeError("not granted"));
+    await mount();
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>("[data-fullscreen-toggle]")?.click();
+      // Fullscreen must receive the gesture before a queued task or an await can run.
+      expect(request).toHaveBeenCalledOnce();
+      await Promise.resolve();
+    });
+    expect(active()).toBe(false);
+    expect(error()).toContain("не разрешил");
+    await click(true);
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(active()).toBe(true);
+    expect(error()).toBe("");
+  });
 });

@@ -16,14 +16,28 @@ import {
 import { WebGLRenderer } from "three";
 import type { Object3D } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { EnergySource } from "../noteEnergy";
 import { keyBoxes } from "./keyBoxes";
 import type { KeyBox } from "./keyBoxes";
 import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
-import { KIT_DEPTH, KIT_TOP, KIT_WHITE, splitUp, whitePart } from "./pianoKit";
+import { KIT_DEPTH, KIT_TOP, KIT_WHITE, roadContactBoard, splitUp, whitePart } from "./pianoKit";
 import type { KitPart, PianoKit } from "./pianoKit";
 import { LiveHands } from "./liveHands";
 import type { HandsSource } from "./liveHands";
 import { projectionMatrix, viewMatrix } from "./threeCamera";
+import { ThreeNoteLights } from "./ThreeNoteLights";
+import { ThreeKeyEmission } from "./ThreeKeyEmission";
+import { KeyboardAppearance } from "./KeyboardAppearance";
+import { blackKeyCap } from "./blackKeyCap";
+import { ThreeRimLights } from "./ThreeRimLights";
+import { ThreeRoadNotes } from "./ThreeRoadNotes";
+import { ThreeRoadTrails } from "./ThreeRoadTrails";
+import { ThreeNoteAura } from "./ThreeNoteAura";
+import { ThreeRoadGuides } from "./ThreeRoadGuides";
+import type { ThreeRoadFrame } from "./ThreeRoadFrame";
+import { drawSceneCameraPasses } from "./sceneCameraPasses";
+import type { WorldCamera } from "../worldCamera";
+import { PANEL_EDGE } from "../worldCamera";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
@@ -43,8 +57,20 @@ interface Hinged {
 export class ThreeStage {
   private readonly renderer: WebGLRenderer;
   private readonly scene = new Scene();
-  private readonly camera = new Camera();
+  private readonly roadCamera = new Camera();
+  private readonly keyboardCamera = new Camera();
   private readonly keys = new Group();
+  private readonly road = new Group();
+  private readonly lighting = new Group();
+  private readonly roadNotes = new ThreeRoadNotes();
+  private readonly roadTrails = new ThreeRoadTrails();
+  private readonly noteAura = new ThreeNoteAura();
+  private readonly roadGuides = new ThreeRoadGuides();
+  private boxes: readonly KeyBox[] = [];
+  private readonly noteLights = new ThreeNoteLights();
+  private readonly keyEmission = new ThreeKeyEmission();
+  private readonly appearance: KeyboardAppearance;
+  private readonly rimLights = new ThreeRimLights();
   /** Pixi's picture of the flat keys: colours, lights and stickers for the top faces. */
   private readonly picture = new ExternalTexture();
   /** The painted keys tinted ivory, as the kit is: their colours and stickers stay readable. */
@@ -72,17 +98,38 @@ export class ThreeStage {
     hand: Object3D | undefined
   ) {
     this.hands = hand && new LiveHands(hand);
-    // The board's top is left out: the road runs there, drawn before the keys.
-    this.board = splitUp(this.part("board").clone(), true);
+    // Only the board's vertical front stays; rear bevels/caps must not occlude the road's mist.
+    this.board = roadContactBoard(this.part("board"), -PANEL_EDGE.z / KIT_DEPTH);
     this.renderer = new WebGLRenderer({ canvas, context });
     this.renderer.autoClear = false;
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
-    this.camera.matrixAutoUpdate = false;
-    const sun = new DirectionalLight(0xffffff, 2.4);
+    this.roadCamera.matrixAutoUpdate = false;
+    this.keyboardCamera.matrixAutoUpdate = false;
+    this.top.vertexColors = true;
+    this.black.vertexColors = true;
+    const sun = new DirectionalLight(0xffffff, 0.45);
     // Above and in front of the keys, a little to the left: the rounded edges read on both sides.
     sun.position.set(-150, 900, 900);
-    this.scene.add(new HemisphereLight(0xffffff, 0x9a9fac, 1.8), sun, this.keys);
-    this.keys.add(this.body);
+    const hemisphere = new HemisphereLight(0xffffff, 0x9a9fac, 0.25);
+    this.appearance = new KeyboardAppearance({
+      top: this.top,
+      white: this.white,
+      black: this.black,
+      sun,
+      hemisphere,
+      refresh: () => {
+        this.keyEmission.refreshAppearance();
+      }
+    });
+    this.scene.add(hemisphere, sun, this.road, this.keys, this.lighting);
+    this.road.add(
+      this.roadGuides.group,
+      this.roadTrails.group,
+      this.roadNotes.group,
+      this.noteAura.group
+    );
+    this.keys.add(this.body, this.appearance.group);
+    this.lighting.add(this.noteLights.group, this.rimLights.group);
     if (this.hands) this.keys.add(this.hands.group);
   }
 
@@ -93,41 +140,119 @@ export class ThreeStage {
     down: (pitch: number) => boolean,
     screen: { readonly width: number; readonly height: number },
     deltaSeconds: number,
-    hands: HandsSource | undefined
+    hands: HandsSource | undefined,
+    energy: readonly EnergySource[] = [],
+    energyDeltaSeconds = deltaSeconds,
+    roadFrame?: ThreeRoadFrame
   ): void {
     if (keys.version !== this.version) this.build(keys);
     this.picture.sourceTexture = picture;
-    const { params } = keys.camera;
+    const roadCamera = keys.roadCamera ?? keys.camera;
+    const keyboardCamera = keys.keyboardCamera ?? roadCamera;
+    const { params } = roadCamera;
     const scale = params.prefs.scale;
     this.keys.scale.setScalar(scale);
     this.keys.position.x = (-keys.pan / 2) * scale;
+    this.road.scale.copy(this.keys.scale);
+    this.road.position.copy(this.keys.position);
+    this.lighting.scale.copy(this.keys.scale);
+    this.lighting.position.copy(this.keys.position);
+    this.road.visible = roadFrame !== undefined;
+    this.roadNotes.setViewport(screen.width, screen.height);
+    if (roadFrame) {
+      this.noteAura.update(
+        roadFrame.notes,
+        roadCamera.near.y,
+        roadFrame.visualTime,
+        roadFrame.noteCount
+      );
+      this.roadTrails.update(
+        roadFrame.notes,
+        roadCamera.near.y,
+        roadFrame.visualTime,
+        roadFrame.noteCount,
+        (roadCamera.roadFarZ - roadCamera.near.z) * 0.22,
+        roadFrame.trailAnchors,
+        roadFrame.trailAnchorCount
+      );
+      if (roadFrame.guides)
+        this.roadGuides.update(this.boxes, roadCamera, roadFrame.beats, roadFrame.beatCount);
+      else this.roadGuides.clear();
+      this.roadNotes.update(
+        roadFrame.notes,
+        roadCamera.near.y,
+        roadFrame.visualTime,
+        roadFrame.noteCount
+      );
+    }
     const step = Math.min(1, deltaSeconds * DIP_RATE);
     this.hands?.update(hands, deltaSeconds);
+    this.noteLights.update(energy, roadCamera, energyDeltaSeconds);
+    this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
       const target = Math.max(down(pitch) ? 1 : 0, this.hands?.keys.get(pitch) ?? 0) * DIP;
       hinge.rotation.x += (target - hinge.rotation.x) * step;
     }
-    this.camera.matrix.copy(viewMatrix(params)).invert();
-    this.camera.matrixWorldNeedsUpdate = true;
-    this.camera.projectionMatrix.copy(
-      projectionMatrix(params, screen.width, screen.height, keys.offset)
-    );
-    this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();
+    const detached = keys.offset.x !== 0 || keys.offset.y !== 0;
+    const separate = detached || keyboardCamera !== roadCamera;
+    this.configureCamera(this.roadCamera, roadCamera, screen);
+    if (separate) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
     this.renderer.resetState();
-    this.renderer.setViewport(
-      0,
-      0,
-      this.context.drawingBufferWidth,
-      this.context.drawingBufferHeight
+    try {
+      this.renderer.setViewport(
+        0,
+        0,
+        this.context.drawingBufferWidth,
+        this.context.drawingBufferHeight
+      );
+      this.renderer.clearDepth();
+      drawSceneCameraPasses(
+        this.renderer,
+        this.scene,
+        this.road,
+        this.keys,
+        this.roadCamera,
+        this.keyboardCamera,
+        separate
+      );
+    } finally {
+      // Return GL defaults even if a pass failed; the host can draw its Pixi fallback safely.
+      this.renderer.resetState();
+    }
+  }
+
+  private configureCamera(
+    camera: Camera,
+    world: WorldCamera,
+    screen: { readonly width: number; readonly height: number },
+    offset?: { readonly x: number; readonly y: number }
+  ): void {
+    camera.matrix.copy(viewMatrix(world.params)).invert();
+    camera.matrixWorldNeedsUpdate = true;
+    camera.projectionMatrix.copy(
+      projectionMatrix(world.params, screen.width, screen.height, offset)
     );
-    this.renderer.clearDepth();
-    this.renderer.render(this.scene, this.camera);
-    // Hand the context back as WebGL defaults: Pixi's own reset leaves depth testing on.
-    this.renderer.resetState();
+    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+  }
+
+  clearEnergy(): void {
+    this.noteLights.clear();
+    this.keyEmission.clear();
+  }
+
+  setKeyboardDim(on: boolean): void {
+    this.appearance.setDim(on);
   }
 
   dispose(): void {
     this.clear();
+    this.appearance.dispose();
+    this.noteLights.dispose();
+    this.rimLights.dispose();
+    this.roadNotes.dispose();
+    this.roadTrails.dispose();
+    this.noteAura.dispose();
+    this.roadGuides.dispose();
     this.board.dispose();
     this.white.map?.dispose();
     this.black.bumpMap?.dispose();
@@ -137,9 +262,13 @@ export class ThreeStage {
   }
 
   private build(keys: KeysScene): void {
-    this.clear();
+    this.clear(true);
     this.version = keys.version;
     const boxes = keyBoxes(keys);
+    this.boxes = boxes;
+    this.appearance.layout(boxes);
+    this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera);
+    this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
     const black = new Set(boxes.filter((box) => box.black).map((box) => box.pitch));
     for (const box of boxes) {
       const part = box.black
@@ -148,7 +277,12 @@ export class ThreeStage {
       const geometry = keyGeometry(this.part(part), box);
       geometry.computeBoundingBox();
       const bottom = geometry.boundingBox?.min.y ?? 0;
-      const mesh = new Mesh(geometry, [this.top, box.black ? this.black : this.white]);
+      const materials = this.keyEmission.create(
+        box.pitch,
+        this.top,
+        box.black ? this.black : this.white
+      );
+      const mesh = new Mesh(geometry, materials);
       // The hinge sits on the key's back bottom edge; the key hangs forward from it.
       mesh.position.set(0, -bottom, box.back);
       const hinge = new Group();
@@ -158,6 +292,7 @@ export class ThreeStage {
       this.hinged.push({ pitch: box.pitch, hinge, mesh });
     }
     this.buildBody(boxes);
+    this.keyEmission.endLayout();
   }
 
   /** Rails and back panel across the range, a cheek at each end. */
@@ -195,12 +330,14 @@ export class ThreeStage {
     return geometry;
   }
 
-  private clear(): void {
+  private clear(preserveEnergy = false): void {
     for (const { hinge, mesh } of this.hinged) {
       mesh.geometry.dispose();
       this.keys.remove(hinge);
     }
     this.hinged = [];
+    if (preserveEnergy) this.keyEmission.beginLayout();
+    else this.keyEmission.dispose();
     // The case shares the kit's geometry: nothing of its own to free.
     this.body.clear();
   }
@@ -234,5 +371,10 @@ function keyGeometry(part: BufferGeometry, box: KeyBox): BufferGeometry {
   geometry.setAttribute("uv", new BufferAttribute(uv, 2));
   geometry.scale(across, 1000, KIT_DEPTH);
   geometry.translate(0, KIT_TOP, 0);
+  if (box.black) return blackKeyCap(geometry);
+  geometry.setAttribute(
+    "color",
+    new BufferAttribute(new Float32Array(position.count * 3).fill(1), 3)
+  );
   return splitUp(geometry);
 }

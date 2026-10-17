@@ -1,4 +1,4 @@
-import { Assets, Container, Mesh, MeshGeometry, Texture } from "pixi.js";
+﻿import { Assets, Container, Mesh, MeshGeometry, Texture } from "pixi.js";
 import {
   bakeNoteMaterial,
   NOTE_BLOOM_MARGIN,
@@ -7,6 +7,11 @@ import {
 } from "./bakeNoteMaterial";
 
 const GLASS = new URL("../fx/note-glass-block.webp", import.meta.url).href;
+const PLASMA_COLUMNS = 8;
+const PLASMA_FRAMES = 96;
+const PLASMA_ROWS = 12;
+const PLASMA_FPS = 24;
+const PLASMA = new URL("../fx/plasma-flame.webp", import.meta.url).href;
 const FIRE = new URL("../fx/note-hold-fire.webp", import.meta.url).href;
 const FIRE_COLUMNS = 6;
 const FIRE_FRAMES = 24;
@@ -45,6 +50,10 @@ interface GlassMesh {
   smokePositions: Float32Array;
   smokeUvs: Float32Array;
   smokeFrame: number;
+  plasma: Mesh;
+  plasmaGeometry: MeshGeometry;
+  plasmaUvs: Float32Array;
+  plasmaFrame: number;
 }
 
 /** Pooled glass solids: a beveled top, two sides and a luminous front wall. */
@@ -52,6 +61,7 @@ export class RoadGlassLayer {
   readonly container = new Container({ sortableChildren: true });
   private texture: Texture | undefined;
   private fireAtlas: Texture | undefined;
+  private plasmaAtlas: Texture | undefined;
   private readonly material: Record<"face" | "emission" | "bloom" | "bevel", Texture>;
   private readonly pool: GlassMesh[] = [];
   private used = 0;
@@ -90,6 +100,12 @@ export class RoadGlassLayer {
     } catch (error) {
       console.warn("Road hold fire did not load; keeping steady glass", error);
     }
+    try {
+      const atlas = await Assets.load<Texture>(PLASMA);
+      if (!this.disposed) this.plasmaAtlas = atlas;
+    } catch (error) {
+      console.warn("Plasma surface unavailable; keeping existing note materials", error);
+    }
   }
 
   begin(): void {
@@ -104,7 +120,8 @@ export class RoadGlassLayer {
     alpha: number,
     time: number,
     hitY: number,
-    project: Project
+    project: Project,
+    plasmaTime = time
   ): void {
     if (!this.ready || bottom <= top || width <= 0 || alpha <= 0) return;
     const entry = this.pool[this.used] ?? this.create();
@@ -134,6 +151,7 @@ export class RoadGlassLayer {
       }
     }
     entry.geometry.getBuffer("aPosition").update();
+    this.drawPlasma(entry, tint, alpha, plasmaTime, bottom);
     entry.mesh.tint = tint;
     entry.mesh.alpha = alpha;
     entry.mesh.visible = true;
@@ -251,6 +269,7 @@ export class RoadGlassLayer {
           entry.bevel.visible =
           entry.bloom.visible =
           entry.walls.visible =
+          entry.plasma.visible =
           entry.smoke.visible =
             false;
     }
@@ -271,12 +290,47 @@ export class RoadGlassLayer {
       entry.wallGeometry.destroy();
       entry.smoke.destroy();
       entry.smokeGeometry.destroy();
+      entry.plasma.destroy();
+      entry.plasmaGeometry.destroy();
     }
     this.pool.length = 0;
     this.fireAtlas = undefined;
+    this.plasmaAtlas = undefined;
     this.texture = undefined;
     for (const texture of Object.values(this.material)) texture.destroy(true);
     if (!this.container.destroyed) this.container.destroy();
+  }
+
+  private drawPlasma(
+    entry: GlassMesh,
+    tint: number,
+    alpha: number,
+    time: number,
+    bottom: number
+  ): void {
+    const mesh = entry.plasma;
+    mesh.visible = this.plasmaAtlas !== undefined;
+    if (!this.plasmaAtlas) return;
+    mesh.texture = this.plasmaAtlas;
+    const frame = Math.floor((time * PLASMA_FPS + this.used * 3) % PLASMA_FRAMES);
+    if (entry.plasmaFrame !== frame) {
+      for (let row = 0; row < ROWS; row++) {
+        for (let column = 0; column < COLUMNS; column++) {
+          const index = (row * COLUMNS + column) * 2;
+          // Inset the bright plasma inside the glass; its outline remains visible.
+          entry.plasmaUvs[index] =
+            ((frame % PLASMA_COLUMNS) + 0.22 + (column / (COLUMNS - 1)) * 0.56) / PLASMA_COLUMNS;
+          entry.plasmaUvs[index + 1] =
+            (Math.floor(frame / PLASMA_COLUMNS) + (row / (ROWS - 1)) * 0.84) / PLASMA_ROWS;
+        }
+      }
+      entry.plasmaGeometry.getBuffer("aUV").update();
+      entry.plasmaFrame = frame;
+    }
+    entry.plasmaGeometry.getBuffer("aPosition").update();
+    mesh.tint = tint;
+    mesh.alpha = alpha * 0.16;
+    mesh.zIndex = bottom * 2 + 1.05;
   }
 
   private create(): GlassMesh {
@@ -404,7 +458,15 @@ export class RoadGlassLayer {
     const smoke = new Mesh({ geometry: smokeGeometry, texture: this.fireAtlas ?? Texture.WHITE });
     smoke.blendMode = "add";
     smoke.eventMode = "none";
-    this.container.addChild(bloom, walls, mesh, emission, bevel, smoke);
+    const plasmaUvs = new Float32Array(positions.length);
+    const plasmaGeometry = new MeshGeometry({ positions, uvs: plasmaUvs, indices });
+    const plasma = new Mesh({
+      geometry: plasmaGeometry,
+      texture: this.plasmaAtlas ?? Texture.WHITE
+    });
+    plasma.eventMode = "none";
+    plasma.blendMode = "add";
+    this.container.addChild(bloom, walls, mesh, emission, bevel, plasma, smoke);
     const entry = {
       mesh,
       emission,
@@ -421,7 +483,11 @@ export class RoadGlassLayer {
       smokeGeometry,
       smokePositions,
       smokeUvs,
-      smokeFrame: -1
+      smokeFrame: -1,
+      plasma,
+      plasmaGeometry,
+      plasmaUvs,
+      plasmaFrame: -1
     };
     this.pool.push(entry);
     return entry;

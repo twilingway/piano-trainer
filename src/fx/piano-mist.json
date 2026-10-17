@@ -1,0 +1,605 @@
+{
+  "app": "arcadia-effects",
+  "v": 2,
+  "doc": {
+    "v": 2,
+    "id": "fx_piano_mist",
+    "name": "Piano Rim Mist",
+    "comp": {
+      "w": 192,
+      "h": 96,
+      "dur": 12,
+      "fps": 60
+    },
+    "cam": {
+      "comp": 0
+    },
+    "exp": {
+      "cols": 8,
+      "rows": 12,
+      "frames": 96,
+      "cellW": 192,
+      "cellH": 96,
+      "t0": 6,
+      "t1": 12,
+      "mode": "rgba",
+      "thr": 0,
+      "ss": 2,
+      "pixelArt": false,
+      "cuts": null
+    },
+    "textures": [],
+    "layers": [
+      {
+        "id": "lr_mist_bed",
+        "name": "Continuous soft mist bed",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 12,
+        "blend": "normal",
+        "opacity": 0.08,
+        "em": {
+          "x": 0,
+          "y": 30,
+          "shape": "box",
+          "sx": 185,
+          "sy": 4,
+          "dir": "dir",
+          "angle": -90,
+          "spread": 45,
+          "speed": 4,
+          "speedRnd": 0.5,
+          "rate": 12,
+          "bursts": [],
+          "seed": 719,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          },
+          "subStep": false,
+          "path": {
+            "on": false,
+            "mode": "emit",
+            "closed": false,
+            "smooth": true,
+            "nodes": [
+              {
+                "x": -140,
+                "y": 0
+              },
+              {
+                "x": 140,
+                "y": 0
+              }
+            ],
+            "along": "random",
+            "jitter": 0,
+            "aim": "none",
+            "attract": 0,
+            "lock": 0,
+            "flow": 0,
+            "fast": true
+          },
+          "sub": {
+            "on": false,
+            "emit": "death",
+            "rate": 20,
+            "count": 8,
+            "startAt": 0,
+            "dir": "omni",
+            "spread": 60,
+            "speed": 90,
+            "speedRnd": 0.6,
+            "inherit": 0.25,
+            "maxGen": 1,
+            "genScale": 0.6,
+            "budget": 1500,
+            "under": false,
+            "pt": {
+              "life": 0.35,
+              "lifeRnd": 0.4,
+              "render": "sprite",
+              "sprite": {
+                "kind": "shape",
+                "id": "dot",
+                "p": {}
+              },
+              "trailCore": 0,
+              "size": 18,
+              "sizeRnd": 0.5,
+              "sizeOL": {
+                "pts": [
+                  {
+                    "t": 0,
+                    "v": 1
+                  },
+                  {
+                    "t": 0.6,
+                    "v": 0.7
+                  },
+                  {
+                    "t": 1,
+                    "v": 0.1
+                  }
+                ]
+              },
+              "sizeOT": {
+                "pts": [
+                  {
+                    "t": 0,
+                    "v": 1
+                  },
+                  {
+                    "t": 1,
+                    "v": 1
+                  }
+                ]
+              },
+              "opacityOL": {
+                "pts": [
+                  {
+                    "t": 0,
+                    "v": 1
+                  },
+                  {
+                    "t": 0.55,
+                    "v": 0.85
+                  },
+                  {
+                    "t": 1,
+                    "v": 0
+                  }
+                ]
+              },
+              "grad": {
+                "stops": [
+                  {
+                    "t": 0,
+                    "c": [255, 255, 255]
+                  },
+                  {
+                    "t": 0.3,
+                    "c": [255, 227, 122]
+                  },
+                  {
+                    "t": 0.7,
+                    "c": [255, 144, 48]
+                  },
+                  {
+                    "t": 1,
+                    "c": [176, 48, 16]
+                  }
+                ]
+              },
+              "tintTex": false,
+              "rot": 0,
+              "rotRnd": 1,
+              "spin": 0,
+              "spinRnd": 0,
+              "alignVel": false,
+              "stretch": 0,
+              "gravX": 0,
+              "gravY": 0,
+              "drag": 1.5,
+              "turbAmp": 0,
+              "turbFreq": 1.5,
+              "zigzag": 0,
+              "turbMode": "noise",
+              "turbScale": 90,
+              "turbOct": 2,
+              "turbRise": 0,
+              "turbWind": 0,
+              "turbSeed": 0,
+              "turbRamp": 0,
+              "squash": 0,
+              "glow": 0,
+              "glowSize": 1.6,
+              "glowBlur": 0.15,
+              "fps": 0
+            }
+          }
+        },
+        "pt": {
+          "life": 3.6,
+          "lifeRnd": 0.35,
+          "sprite": {
+            "kind": "shape",
+            "id": "soft",
+            "p": {}
+          },
+          "size": 66,
+          "sizeRnd": 0.45,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.6
+              },
+              {
+                "t": 0.5,
+                "v": 1
+              },
+              {
+                "t": 1,
+                "v": 1.3
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0
+              },
+              {
+                "t": 0.2,
+                "v": 0.7
+              },
+              {
+                "t": 0.65,
+                "v": 0.45
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [225, 230, 235]
+              }
+            ]
+          },
+          "tintTex": false,
+          "rot": 0,
+          "rotRnd": 1,
+          "spin": 0.08,
+          "spinRnd": 0.2,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": -1.5,
+          "drag": 0.5,
+          "turbAmp": 6,
+          "turbFreq": 0.45,
+          "squash": 0,
+          "glow": 0.15,
+          "glowSize": 2,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0,
+          "turbScale": 60,
+          "turbRise": 4,
+          "turbWind": 5,
+          "turbMode": "curl",
+          "turbOct": 3,
+          "turbSeed": 0,
+          "turbRamp": 0.2,
+          "sizeOT": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.2
+              },
+              {
+                "t": 0.7,
+                "v": 1
+              },
+              {
+                "t": 1,
+                "v": 0.4
+              }
+            ]
+          }
+        },
+        "glowL": 0.05,
+        "glowLR": 8,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 10,
+        "fadeR": 92,
+        "fadeSoft": 0.3
+      },
+      {
+        "id": "lr_mist_puffs",
+        "name": "Overlapping smoke puffs",
+        "type": "emitter",
+        "on": true,
+        "solo": false,
+        "start": 0,
+        "end": 12,
+        "blend": "normal",
+        "opacity": 0.24,
+        "em": {
+          "x": 0,
+          "y": 28,
+          "shape": "box",
+          "sx": 180,
+          "sy": 4,
+          "dir": "dir",
+          "angle": -90,
+          "spread": 45,
+          "speed": 9,
+          "speedRnd": 0.5,
+          "rate": 22,
+          "bursts": [],
+          "seed": 387,
+          "branch": {
+            "chance": 0,
+            "spread": 35,
+            "lifeScale": 0.6,
+            "sizeScale": 0.7,
+            "speedScale": 1,
+            "maxGen": 2
+          },
+          "subStep": false,
+          "path": {
+            "on": false,
+            "mode": "emit",
+            "closed": false,
+            "smooth": true,
+            "nodes": [
+              {
+                "x": -140,
+                "y": 0
+              },
+              {
+                "x": 140,
+                "y": 0
+              }
+            ],
+            "along": "random",
+            "jitter": 0,
+            "aim": "none",
+            "attract": 0,
+            "lock": 0,
+            "flow": 0,
+            "fast": true
+          },
+          "sub": {
+            "on": false,
+            "emit": "death",
+            "rate": 20,
+            "count": 8,
+            "startAt": 0,
+            "dir": "omni",
+            "spread": 60,
+            "speed": 90,
+            "speedRnd": 0.6,
+            "inherit": 0.25,
+            "maxGen": 1,
+            "genScale": 0.6,
+            "budget": 1500,
+            "under": false,
+            "pt": {
+              "life": 0.35,
+              "lifeRnd": 0.4,
+              "render": "sprite",
+              "sprite": {
+                "kind": "shape",
+                "id": "dot",
+                "p": {}
+              },
+              "trailCore": 0,
+              "size": 18,
+              "sizeRnd": 0.5,
+              "sizeOL": {
+                "pts": [
+                  {
+                    "t": 0,
+                    "v": 1
+                  },
+                  {
+                    "t": 0.6,
+                    "v": 0.7
+                  },
+                  {
+                    "t": 1,
+                    "v": 0.1
+                  }
+                ]
+              },
+              "sizeOT": {
+                "pts": [
+                  {
+                    "t": 0,
+                    "v": 1
+                  },
+                  {
+                    "t": 1,
+                    "v": 1
+                  }
+                ]
+              },
+              "opacityOL": {
+                "pts": [
+                  {
+                    "t": 0,
+                    "v": 1
+                  },
+                  {
+                    "t": 0.55,
+                    "v": 0.85
+                  },
+                  {
+                    "t": 1,
+                    "v": 0
+                  }
+                ]
+              },
+              "grad": {
+                "stops": [
+                  {
+                    "t": 0,
+                    "c": [255, 255, 255]
+                  },
+                  {
+                    "t": 0.3,
+                    "c": [255, 227, 122]
+                  },
+                  {
+                    "t": 0.7,
+                    "c": [255, 144, 48]
+                  },
+                  {
+                    "t": 1,
+                    "c": [176, 48, 16]
+                  }
+                ]
+              },
+              "tintTex": false,
+              "rot": 0,
+              "rotRnd": 1,
+              "spin": 0,
+              "spinRnd": 0,
+              "alignVel": false,
+              "stretch": 0,
+              "gravX": 0,
+              "gravY": 0,
+              "drag": 1.5,
+              "turbAmp": 0,
+              "turbFreq": 1.5,
+              "zigzag": 0,
+              "turbMode": "noise",
+              "turbScale": 90,
+              "turbOct": 2,
+              "turbRise": 0,
+              "turbWind": 0,
+              "turbSeed": 0,
+              "turbRamp": 0,
+              "squash": 0,
+              "glow": 0,
+              "glowSize": 1.6,
+              "glowBlur": 0.15,
+              "fps": 0
+            }
+          }
+        },
+        "pt": {
+          "life": 3.6,
+          "lifeRnd": 0.35,
+          "sprite": {
+            "kind": "shape",
+            "id": "smoke",
+            "p": {}
+          },
+          "size": 48,
+          "sizeRnd": 0.45,
+          "sizeOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.6
+              },
+              {
+                "t": 0.5,
+                "v": 1
+              },
+              {
+                "t": 1,
+                "v": 1.3
+              }
+            ]
+          },
+          "opacityOL": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0
+              },
+              {
+                "t": 0.2,
+                "v": 0.7
+              },
+              {
+                "t": 0.65,
+                "v": 0.45
+              },
+              {
+                "t": 1,
+                "v": 0
+              }
+            ]
+          },
+          "grad": {
+            "stops": [
+              {
+                "t": 0,
+                "c": [255, 255, 255]
+              },
+              {
+                "t": 1,
+                "c": [225, 230, 235]
+              }
+            ]
+          },
+          "tintTex": false,
+          "rot": 0,
+          "rotRnd": 1,
+          "spin": 0.08,
+          "spinRnd": 0.2,
+          "alignVel": false,
+          "stretch": 0,
+          "gravX": 0,
+          "gravY": -1.5,
+          "drag": 0.5,
+          "turbAmp": 12,
+          "turbFreq": 0.45,
+          "squash": 0,
+          "glow": 0.15,
+          "glowSize": 2,
+          "fps": 0,
+          "glowBlur": 0.15,
+          "render": "sprite",
+          "trailCore": 0,
+          "zigzag": 0,
+          "turbScale": 60,
+          "turbRise": 4,
+          "turbWind": 10,
+          "turbMode": "curl",
+          "turbOct": 3,
+          "turbSeed": 0,
+          "turbRamp": 0.2,
+          "sizeOT": {
+            "pts": [
+              {
+                "t": 0,
+                "v": 0.2
+              },
+              {
+                "t": 0.7,
+                "v": 1
+              },
+              {
+                "t": 1,
+                "v": 0.4
+              }
+            ]
+          }
+        },
+        "glowL": 0.08,
+        "glowLR": 8,
+        "fadeOn": false,
+        "fadeX": 0,
+        "fadeY": 10,
+        "fadeR": 92,
+        "fadeSoft": 0.3
+      }
+    ]
+  }
+}

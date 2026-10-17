@@ -54,7 +54,7 @@ export class HorizonBurstLayer {
       if (!sprite) {
         sprite = new Sprite(texture);
         sprite.anchor.set(0.5);
-        sprite.blendMode = "add";
+        sprite.blendMode = "normal";
         this.sprites.push(sprite);
         this.container.addChild(sprite);
       }

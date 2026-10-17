@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="80" viewBox="0 0 64 80">
+  <defs>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <g id="note" fill="white">
+      <ellipse cx="23" cy="56" rx="10" ry="7" transform="rotate(-22 23 56)"/>
+      <path d="M29 55V14h5v39zM34 14c2 10 18 11 16 24-1 7-7 11-12 13 5-6 8-11 4-16-3-4-7-5-8-7z"/>
+    </g>
+  </defs>
+  <use href="#note" opacity="0.85" filter="url(#glow)"/>
+  <path d="M20 53C7 45 17 36 12 25c10 7 11 16 14 20 3-8 1-12 5-19-1 13 8 16 2 27z" fill="white" opacity="0.28" filter="url(#glow)"/>
+  <use href="#note"/>
+</svg>

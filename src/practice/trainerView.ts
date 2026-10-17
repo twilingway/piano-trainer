@@ -10,6 +10,7 @@ const NOTHING: ReadonlySet<number> = new Set();
 
 interface GuidedScene {
   readonly playing: boolean;
+  readonly effectEpoch?: number;
   readonly performance: boolean;
   readonly visualOffsetMs: number;
   readonly course: TrainerCourse | null;
@@ -38,6 +39,8 @@ export function drawGuidedTrainerScene(
     scene.visualOffsetMs,
     {
       ...guidance.frame,
+      playing: scene.playing,
+      effectEpoch: scene.effectEpoch ?? 0,
       pressed: scene.pressed,
       sounding: scene.sounding,
       colorOf: scene.colorOf,

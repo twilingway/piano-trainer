@@ -1,3 +1,4 @@
+import { BLACK_NOTE_FLOOR } from "../noteDimensions";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 
 /** One key as a box in world units (about a millimetre), the sizes `keySurface` projects. */
@@ -29,13 +30,14 @@ export function keyBoxes(scene: KeysScene): KeyBox[] {
     x: scene.camera.sourceX(key.x + key.width / 2),
     width: key.width / 2,
     bottom: key.black ? 22 : 0,
-    top: key.black ? 36 : 22,
+    top: key.black ? (scene.native ? BLACK_NOTE_FLOOR : 36) : 22,
     front: key.black ? 57 : 0,
     back: 142,
     uv: {
       u0: key.x / width,
       u1: (key.x + key.width) / width,
-      v0: source.y / height,
+      // Three models the entire white top, including its narrow back between the black keys.
+      v0: key.black ? source.y / height : 0,
       v1: (source.y + source.height) / height
     }
   }));

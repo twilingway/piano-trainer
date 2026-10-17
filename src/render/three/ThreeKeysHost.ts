@@ -1,22 +1,33 @@
-import { Container, UPDATE_PRIORITY } from "pixi.js";
+import { Container, Matrix, Texture, UPDATE_PRIORITY } from "pixi.js";
 import type { Application, WebGLRenderer } from "pixi.js";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
 import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
+import type { EnergySource } from "../noteEnergy";
 import type { ThreeStage } from "./ThreeStage";
+import type { ThreeRoadFrame } from "./ThreeRoadFrame";
+import { SharedTextureBindings } from "./SharedTextureBindings";
 
 /**
  * Puts the three.js keys between the road and everything over it. While on, the app's own render
- * leaves the ticker and each frame is drawn in three passes on one WebGL context: the road, the
- * keys, then the rest of the stage. Until three has loaded, or if it cannot, the perspective keys
+ * leaves the ticker and each frame is drawn in passes on one WebGL context: the road and neutral mist,
+ * the keys, then the rest of the stage. Until three has loaded, or if it cannot, the perspective keys
  * stay as they are.
  */
 export class ThreeKeysHost {
   private stage: ThreeStage | undefined;
   private loading: Promise<void> | undefined;
   private wanted = false;
+  private keyboardDim = false;
   private active = false;
+  private sharedBindings: SharedTextureBindings | undefined;
   private destroyed = false;
+  private energy: readonly EnergySource[] = [];
+  private roadFrame: ThreeRoadFrame | undefined;
+  /** Non-owning reference: PlasmaLayer destroys the rim with its other effects. */
+  private mist: Container | undefined;
+  private readonly mistTransform = new Matrix();
+  private energyDeltaSeconds: number | undefined;
   /**
    * Holds the road's place on the stage while the road is drawn on its own: a container on the
    * stage cannot be drawn alone, its parent's visibility decides its children's.
@@ -29,17 +40,18 @@ export class ThreeKeysHost {
     private readonly road: Container,
     private readonly keys: PerspectiveKeyboardLayer,
     private readonly keyboard: KeyboardLayer,
-    private readonly hands: HandsLayer | undefined
+    private readonly hands: HandsLayer | undefined,
+    private readonly restoreRoad?: () => void
   ) {
     // Registered before Three's listener: restored contexts also inherit Pixi's upload state.
     app.canvas.addEventListener("webglcontextrestored", this.contextRestored);
   }
 
   private readonly contextRestored = (): void => {
-    this.app.renderer.resetState();
+    this.resetPixiState();
     // Three rebuilds its renderer later in this event; invalidate Pixi's caches afterwards.
     queueMicrotask(() => {
-      if (!this.destroyed) this.app.renderer.resetState();
+      if (!this.destroyed) this.resetPixiState();
     });
   };
 
@@ -57,13 +69,71 @@ export class ThreeKeysHost {
     return this.active;
   }
 
+  get drawsRoad(): boolean {
+    return (
+      this.active &&
+      this.road.visible &&
+      this.keys.container.visible &&
+      this.keys.scene !== undefined
+    );
+  }
+
+  /** The same snapshot that feeds the road's plasma and local burning. */
+  setEnergy(sources: readonly EnergySource[], deltaSeconds?: number): void {
+    this.energy = sources;
+    this.energyDeltaSeconds = deltaSeconds;
+  }
+
+  setRoadFrame(frame: ThreeRoadFrame): void {
+    this.roadFrame = frame;
+  }
+
+  setMistLayer(layer: Container): void {
+    if (this.mist === layer) return;
+    this.mist?.off("destroyed", this.mistDestroyed);
+    this.mist = layer.destroyed ? undefined : layer;
+    this.mist?.once("destroyed", this.mistDestroyed);
+  }
+
+  private readonly mistDestroyed = (): void => {
+    this.mist = undefined;
+  };
+
+  setKeyboardDim(dim: boolean): void {
+    this.keyboardDim = dim;
+    this.stage?.setKeyboardDim(dim);
+  }
+
+  clearEnergy(): void {
+    this.energy = [];
+    this.energyDeltaSeconds = undefined;
+    this.stage?.clearEnergy();
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     void this.setEnabled(false);
     this.destroyed = true;
     this.app.canvas.removeEventListener("webglcontextrestored", this.contextRestored);
+    this.clearEnergy();
     this.stage?.dispose();
     this.stage = undefined;
+    this.mist?.off("destroyed", this.mistDestroyed);
+    this.mist = undefined;
+  }
+
+  private resetPixiState(): void {
+    const renderer = this.app.renderer as WebGLRenderer;
+    if (this.sharedBindings) {
+      let empty: WebGLTexture | null = null;
+      try {
+        empty = renderer.texture.getGlSource(Texture.EMPTY.source).texture;
+      } catch {
+        /* Keep the fallback usable even when a texture upload failed. */
+      }
+      this.sharedBindings.release(empty);
+    }
+    renderer.resetState();
   }
 
   private load(): Promise<void> {
@@ -78,6 +148,7 @@ export class ThreeKeysHost {
     // three needs WebGL 2; anything else keeps the perspective keys.
     if (typeof WebGL2RenderingContext === "undefined" || !(gl instanceof WebGL2RenderingContext))
       return;
+    this.sharedBindings ??= new SharedTextureBindings(gl);
     try {
       const [{ ThreeStage }, { loadPianoKit }, { loadHand }] = await Promise.all([
         import("./ThreeStage"),
@@ -93,12 +164,13 @@ export class ThreeKeysHost {
       ]);
       if (this.destroyed) return;
       // Three creates empty 3D textures in its constructor: Pixi's upload flags must be off.
-      renderer.resetState();
+      this.resetPixiState();
       try {
         this.stage = new ThreeStage(this.app.canvas, gl, kit, hand);
+        this.stage.setKeyboardDim(this.keyboardDim);
       } finally {
         // Construction also changes GL bindings, even if 3D was disabled while loading.
-        renderer.resetState();
+        this.resetPixiState();
       }
     } catch (error) {
       console.warn("3D keys unavailable, keeping the perspective keys", error);
@@ -139,9 +211,17 @@ export class ThreeKeysHost {
     }
     const gl = renderer as WebGLRenderer;
     // three left its own state (clear colour, blending) behind last frame.
-    renderer.resetState();
+    this.resetPixiState();
     renderer.render({ container: this.road });
+    const mist = this.visibleMist();
+    const visible = mist?.visible ?? false;
+    const renderable = mist?.renderable ?? false;
     try {
+      if (mist) {
+        mist.getGlobalTransform(this.mistTransform);
+        renderer.render({ container: mist, clear: false, transform: this.mistTransform });
+        mist.renderable = false;
+      }
       const picture = gl.texture.getGlSource(scene.texture.source).texture;
       const frame = this.keyboard.frame;
       const hands = this.hands?.container.visible
@@ -157,21 +237,49 @@ export class ThreeKeysHost {
           (frame.pressed.has(pitch) || (!played && frame.sounding.has(pitch))),
         this.app.screen,
         this.app.ticker.deltaMS / 1000,
-        hands
+        hands,
+        this.energy,
+        this.energyDeltaSeconds,
+        this.roadFrame
       );
     } catch (error) {
+      if (mist && !mist.destroyed) {
+        mist.visible = visible;
+        mist.renderable = renderable;
+      }
       console.warn("3D keys failed, keeping the perspective keys", error);
       // Restore the road, keys, sprite hands and normal ticker before drawing this frame again.
       void this.setEnabled(false);
       this.stage.dispose();
       this.stage = undefined;
-      renderer.resetState();
+      this.resetPixiState();
+      this.restoreRoad?.();
+      this.resetPixiState();
       renderer.render({ container: stage });
       return;
     }
-    renderer.resetState();
-    renderer.render({ container: stage, clear: false });
+    try {
+      this.resetPixiState();
+      renderer.render({ container: stage, clear: false });
+    } finally {
+      if (mist && !mist.destroyed) {
+        mist.visible = visible;
+        mist.renderable = renderable;
+      }
+    }
   };
+
+  private visibleMist(): Container | undefined {
+    const mist = this.mist;
+    if (!mist || mist.destroyed) return undefined;
+    let ancestor: Container | null = mist;
+    while (ancestor) {
+      if (ancestor.destroyed || !ancestor.visible || !ancestor.renderable || ancestor.alpha <= 0)
+        return undefined;
+      ancestor = ancestor.parent;
+    }
+    return mist;
+  }
 
   /** The road off the stage, drawn first, and three's keys in the Pixi keys' place; or back. */
   private layer(on: boolean): void {

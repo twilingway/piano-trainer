@@ -14,8 +14,14 @@ interface Props {
   readonly onShowLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
+  readonly notesPerspective: boolean;
+  readonly onNotesPerspective: (on: boolean) => void;
   readonly handStyle: HandStyle;
   readonly onHandStyle: (style: HandStyle) => void;
+  readonly keyboardDim: boolean;
+  readonly onKeyboardDim: (dim: boolean) => void;
+  readonly roadGuides: boolean;
+  readonly onRoadGuides: (on: boolean) => void;
   readonly road: { readonly far: number; readonly horizon: number };
   readonly onRoad: (road: { far?: number; horizon?: number }) => void;
   readonly camera: CameraPrefs;
@@ -32,8 +38,14 @@ export function KeyboardSettings({
   onShowLabels,
   keyStyle,
   onKeyStyle,
+  notesPerspective,
+  onNotesPerspective,
   handStyle,
   onHandStyle,
+  keyboardDim,
+  onKeyboardDim,
+  roadGuides,
+  onRoadGuides,
   camera,
   onCamera,
   road,
@@ -76,6 +88,20 @@ export function KeyboardSettings({
           <option value="arcade">{t("Аркада")}</option>
           <option value="perspective">{t("Перспектива (с дорогой)")}</option>
           <option value="3d">{t("3D (с дорогой)")}</option>
+        </select>
+      </label>
+      <label className="setting">
+        <span>{t("Проекция нот")}</span>
+        <select
+          className="game-select"
+          aria-label={t("Проекция нот")}
+          value={notesPerspective ? "perspective" : "direct"}
+          onChange={(event) => {
+            onNotesPerspective(event.target.value === "perspective");
+          }}
+        >
+          <option value="direct">{t("Прямо")}</option>
+          <option value="perspective">{t("В перспективе")}</option>
         </select>
       </label>
       <label className="setting">
@@ -129,6 +155,30 @@ export function KeyboardSettings({
             </span>
           </label>
         </>
+      )}
+      {keyStyle === "3d" && (
+        <label className="setting">
+          <span>{t("Приглушить клавиатуру")}</span>
+          <input
+            type="checkbox"
+            checked={keyboardDim}
+            onChange={(event) => {
+              onKeyboardDim(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && (
+        <label className="setting">
+          <span>{t("Линии дороги")}</span>
+          <input
+            type="checkbox"
+            checked={roadGuides}
+            onChange={(event) => {
+              onRoadGuides(event.target.checked);
+            }}
+          />
+        </label>
       )}
       <label className="setting">
         <span>{t("Названия нот на клавишах")}</span>

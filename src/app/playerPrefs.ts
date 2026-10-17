@@ -28,7 +28,7 @@ export const DEFAULT_PLAYER_PREFS: PlayerPrefs = {
   mode: "wait",
   handChoice: "right",
   speed: 0.75,
-  metronome: true,
+  metronome: false,
   accompaniment: true,
   notesAsWritten: true,
   simplified: true,

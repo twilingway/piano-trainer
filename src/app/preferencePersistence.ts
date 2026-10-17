@@ -11,6 +11,7 @@ import { DEFAULT_SCREEN_LAYOUTS, normalizeLayout } from "./screenLayout";
 import { normalizeStaffPrefs } from "./staffPreferences";
 import { loadTimingPreferences } from "./timingPreferences";
 import { normalizeWordTypingPrefs } from "./wordTypingPreferences";
+import { activeViewFraming, hydrateViewProfiles } from "./viewProfiles";
 
 export type PreferenceStorage = Pick<Storage, "getItem" | "setItem">;
 export interface PreferenceRoot {
@@ -24,6 +25,7 @@ export const PREFERENCE_KEYS = {
   word: "word-typing-prefs-v1",
   game: "game-options-v1",
   layouts: "screen-layout",
+  viewProfiles: "piano-view-profiles-v1",
   deviceRange: "device-range-v1",
   midiOutput: "midi-output-v1",
   keyLights: "key-lights-v1",
@@ -70,6 +72,13 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
     }
   };
   const layouts = record(json(PREFERENCE_KEYS.layouts));
+  const rawStaff = json(PREFERENCE_KEYS.staff);
+  const viewProfiles = hydrateViewProfiles(
+    json(PREFERENCE_KEYS.viewProfiles),
+    rawStaff,
+    layouts.piano
+  );
+  const framing = activeViewFraming(viewProfiles);
   const lights = record(json(PREFERENCE_KEYS.keyLights));
   const output = record(json(PREFERENCE_KEYS.midiOutput));
   const mobile =
@@ -77,14 +86,24 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
     window.matchMedia("(max-width: 640px), (pointer: coarse) and (max-height: 640px)").matches;
   const preferences: PreferencesState = {
     player: normalizePlayerPrefs(json(PREFERENCE_KEYS.player)),
-    staff: normalizeStaffPrefs(json(PREFERENCE_KEYS.staff), mobile),
+    staff: {
+      ...normalizeStaffPrefs(rawStaff, mobile),
+      camera: framing.camera,
+      roadFar: framing.roadFar,
+      roadHorizon: framing.roadHorizon,
+      keyStyle: viewProfiles.active.keyboardStyle,
+      road: viewProfiles.active.notesProjection === "perspective",
+      keyboardOrientation: viewProfiles.active.keyboardOrientation
+    },
     keyboard: parseKeyboardPrefs(json(PREFERENCE_KEYS.keyboard)),
     word: normalizeWordTypingPrefs(json(PREFERENCE_KEYS.word), getInterfaceLanguage()),
     game: normalizeGamePreferences(json(PREFERENCE_KEYS.game)),
     layouts: {
-      piano: normalizeLayout(layouts.piano, DEFAULT_SCREEN_LAYOUTS.piano),
+      ...layouts,
+      piano: framing.layout,
       typing: normalizeLayout(layouts.typing, DEFAULT_SCREEN_LAYOUTS.typing)
     },
+    viewProfiles,
     deviceRange: parseDeviceRange(json(PREFERENCE_KEYS.deviceRange)),
     midiOutput:
       typeof output.id === "string" && typeof output.name === "string"

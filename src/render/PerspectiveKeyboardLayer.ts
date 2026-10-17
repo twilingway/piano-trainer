@@ -4,6 +4,7 @@ import type { Geometry } from "./viewGeometry";
 import { quadPoint } from "./perspective";
 import type { Projected } from "./perspective";
 import { insidePolygon, keySurface } from "./worldCamera";
+import { BLACK_NOTE_FLOOR } from "./noteDimensions";
 import type { WorldCamera } from "./worldCamera";
 
 interface Face {
@@ -21,6 +22,10 @@ export interface KeysScene {
   readonly faces: readonly { readonly key: KeyRect; readonly source: Face["source"] }[];
   readonly texture: Texture;
   readonly camera: WorldCamera;
+  readonly native?: boolean;
+  /** Explicit cameras; `camera` remains the road alias for older scene fixtures. */
+  readonly roadCamera?: WorldCamera;
+  readonly keyboardCamera?: WorldCamera;
   readonly pan: number;
   /** The keys dragged off the hit line, on screen. */
   readonly offset: { readonly x: number; readonly y: number };
@@ -35,10 +40,18 @@ export class PerspectiveKeyboardLayer {
   private geometry: Geometry | undefined;
   private readonly frontTexture = bakeFront();
   private camera: WorldCamera | undefined;
+  private roadCamera: WorldCamera | undefined;
   private pan = 0;
   private version = 0;
+  private native = false;
 
-  layout(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, texture: Texture): void {
+  layout(
+    keys: ReadonlyMap<number, KeyRect>,
+    geometry: Geometry,
+    texture: Texture,
+    native = false
+  ): void {
+    this.native = native;
     this.destroyFaces();
     this.version++;
     this.texture = texture;
@@ -75,15 +88,29 @@ export class PerspectiveKeyboardLayer {
     }
   }
 
-  draw(camera: WorldCamera, pan: number): void {
+  draw(roadCamera: WorldCamera, pan: number, keyboardCamera = roadCamera): void {
     if (!this.texture) return;
-    if (camera !== this.camera) this.version++;
-    this.camera = camera;
+    // Projection changes and pan do not alter meshes. Only the world basis/light scale does.
+    const previous = this.roadCamera;
+    if (
+      roadCamera.params.width !== previous?.params.width ||
+      roadCamera.params.prefs.scale !== previous.params.prefs.scale
+    )
+      this.version++;
+    this.camera = keyboardCamera;
+    this.roadCamera = roadCamera;
     this.pan = pan;
+    const camera = keyboardCamera;
     for (const face of this.faces) {
       const key = face.key;
       const centre = camera.sourceX(key.x + key.width / 2 - pan);
-      const surface = keySurface(camera, centre, key.black, key.width);
+      const surface = keySurface(
+        camera,
+        centre,
+        key.black,
+        key.width,
+        this.native ? BLACK_NOTE_FLOOR : 36
+      );
       this.corners(face.top, surface.top);
       this.corners(face.front, surface.front);
       this.corners(face.side, surface.side);
@@ -93,10 +120,20 @@ export class PerspectiveKeyboardLayer {
   }
 
   get scene(): KeysScene | undefined {
-    const { texture, camera } = this;
-    if (!texture || !camera) return undefined;
+    const { texture, camera, roadCamera } = this;
+    if (!texture || !camera || !roadCamera) return undefined;
     const { faces, pan, version } = this;
-    return { faces, texture, camera, pan, offset: this.container.position, version };
+    return {
+      faces,
+      texture,
+      camera: roadCamera,
+      native: this.native,
+      roadCamera,
+      keyboardCamera: camera,
+      pan,
+      offset: this.container.position,
+      version
+    };
   }
 
   pointAt(x: number, y: number): { x: number; y: number } | undefined {

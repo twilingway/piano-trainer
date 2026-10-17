@@ -4,6 +4,10 @@ import type { NoteStatus } from "../practice/session";
 import type { SongNote } from "../song/song";
 
 export interface FrameState {
+  /** Whether playback is running; waiting still animates decorative energy. */
+  readonly playing?: boolean;
+  /** Changes on explicit seeks and restarts, including short forward seeks. */
+  readonly effectEpoch?: number;
   /** Song seconds at the hit line. */
   readonly time: number;
   /** Song seconds between the top of the lane and the hit line. */

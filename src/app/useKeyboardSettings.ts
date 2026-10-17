@@ -24,12 +24,21 @@ export function useKeyboardSettings(
     },
     keyStyle: staffPrefs.keyStyle,
     onKeyStyle: (keyStyle) => {
-      updateStaffPrefs({
-        keyStyle,
-        ...(keyStyle === "perspective" || keyStyle === "3d" ? { road: true } : {})
-      });
+      updateStaffPrefs({ keyStyle });
+    },
+    notesPerspective: staffPrefs.road,
+    onNotesPerspective: (road) => {
+      updateStaffPrefs({ road });
     },
     handStyle: staffPrefs.handStyle,
+    keyboardDim: staffPrefs.keyboardDim,
+    onKeyboardDim: (keyboardDim) => {
+      updateStaffPrefs({ keyboardDim });
+    },
+    roadGuides: staffPrefs.roadGuides,
+    onRoadGuides: (roadGuides) => {
+      updateStaffPrefs({ roadGuides });
+    },
     onHandStyle: (handStyle) => {
       updateStaffPrefs({ handStyle });
     },

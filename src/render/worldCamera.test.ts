@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { Vector3 } from "three";
+import { projectionMatrix, viewMatrix } from "./three/threeCamera";
 import {
   CAMERA_PRESETS,
+  CAMERA_LIMITS,
   DEFAULT_CAMERA,
   insidePolygon,
   keySurface,
@@ -55,6 +58,40 @@ describe("shared world camera", () => {
     expect(camera.road.at(100, 1)).toEqual(camera.project(camera.sourceX(100), 22, 142));
     expect(camera.road.at(100, 0).scale).toBeLessThan(camera.road.at(100, 1).scale);
   });
+  it("looks straight down with parallel sides and no visible vertical key or note faces", () => {
+    expect(CAMERA_PRESETS.top.pitch).toBe(90);
+    for (const [width, height] of [
+      [390, 500],
+      [1280, 640],
+      [1920, 1000]
+    ] as const) {
+      const camera = worldCamera(width, height, CAMERA_PRESETS.top, PANEL_EDGE, 0.1);
+      const scale = camera.params.orthographicScale;
+      expect(scale).toBeCloseTo(camera.params.focal / (803 * camera.params.fit - 22), 10);
+      for (const x of [-200, 0, 200])
+        for (const z of [0, 142, camera.roadFarZ]) {
+          const floor = camera.project(x, 0, z);
+          for (const y of [22, 36, 50, 60]) expect(camera.project(x, y, z)).toEqual(floor);
+          expect(floor.scale).toBeCloseTo((scale ?? 0) / 2, 10);
+        }
+      for (const black of [false, true]) {
+        const surface = keySurface(camera, 0, black);
+        expect(surface.front[0]).toEqual(surface.front[3]);
+        expect(surface.front[1]).toEqual(surface.front[2]);
+        const rearWidth = surface.top[1].x - surface.top[0].x;
+        const frontWidth = surface.top[2].x - surface.top[3].x;
+        expect(frontWidth).toBeCloseTo(rearWidth, 10);
+      }
+    }
+  });
+  it("keeps overhead zoom uniform and retains perspective for manually selected angles", () => {
+    const camera = worldCamera(1280, 640, CAMERA_PRESETS.top, PANEL_EDGE, 0.1);
+    const zoom = worldCamera(1280, 640, { ...CAMERA_PRESETS.top, scale: 1.4 }, PANEL_EDGE, 0.1);
+    expect(zoom.project(100, 22, 142).scale).toBeGreaterThan(camera.project(100, 22, 142).scale);
+    const manual = worldCamera(1280, 640, { ...CAMERA_PRESETS.top, pitch: 89 });
+    expect(manual.params.orthographicScale).toBeUndefined();
+    expect(manual.project(100, 22, 142).scale).not.toBe(manual.project(100, 22, 500).scale);
+  });
   it("changes all geometry naturally when camera zoom changes", () => {
     const initial = worldCamera(667, 375),
       zoom = worldCamera(667, 375, { ...DEFAULT_CAMERA, fov: 25 });
@@ -71,7 +108,7 @@ describe("shared world camera", () => {
         distance: 300,
         targetY: "bad"
       })
-    ).toEqual({ ...DEFAULT_CAMERA, height: 25, pitch: 85, distance: 300 });
+    ).toEqual({ ...DEFAULT_CAMERA, height: 25, pitch: 90, distance: 300 });
     expect(normalizeCamera(null)).toEqual(DEFAULT_CAMERA);
   });
   it("keeps all bounded cameras finite", () => {
@@ -122,6 +159,139 @@ describe("shared world camera", () => {
     expect(hit.y).toBeCloseTo(edge.y, 1);
     // Above and behind the keys' own road start.
     expect(hit.y).toBeLessThan(worldCamera(1000, 500).road.at(300, 1).y);
+  });
+
+  it("keeps the old road span unless a finite horizon share is explicitly requested", () => {
+    for (const horizon of [undefined, NaN, Infinity]) {
+      const camera = worldCamera(1280, 640, CAMERA_PRESETS.top, PANEL_EDGE, horizon);
+      expect(camera.roadFarZ).toBe(PANEL_EDGE.z + 1500 * (640 / 375));
+    }
+  });
+
+  it.each(Object.entries(CAMERA_PRESETS))(
+    "fits the whole approach above the hit line in the %s preset",
+    (_, prefs) => {
+      for (const [width, height] of [
+        [390, 500],
+        [1280, 640],
+        [1920, 1000]
+      ] as const) {
+        const camera = worldCamera(width, height, prefs, PANEL_EDGE, 0.1);
+        const hit = camera.road.at(width / 2, 1);
+        const horizon = camera.road.at(width / 2, 0);
+        expect(camera.roadFarZ).toBeGreaterThan(camera.near.z);
+        expect(horizon.y).toBeCloseTo(hit.y * 0.1, 6);
+        for (const progress of [0, 0.125, 0.25, 0.5, 0.75, 1]) {
+          const point = camera.road.at(width / 2, progress);
+          expect(point.y).toBeGreaterThanOrEqual(-1e-6);
+          expect(point.y).toBeLessThanOrEqual(hit.y + 1e-6);
+          expect(point.scale).toBeGreaterThan(0);
+        }
+      }
+    }
+  );
+
+  it("restores all eight seconds of visible top-view approach without moving physical keys or contact", () => {
+    const before = worldCamera(1280, 640, CAMERA_PRESETS.top, PANEL_EDGE);
+    const fitted = worldCamera(1280, 640, CAMERA_PRESETS.top, PANEL_EDGE, 0.1);
+    expect(before.road.at(640, 0).y).toBeLessThan(0);
+    expect(fitted.road.at(640, 0).y).toBeGreaterThan(0);
+    expect(fitted.road.at(640, 1)).toEqual(before.road.at(640, 1));
+    for (const sourceX of [200, 640, 1080]) {
+      expect(keySurface(fitted, fitted.sourceX(sourceX), false)).toEqual(
+        keySurface(before, before.sourceX(sourceX), false)
+      );
+    }
+    for (const secondsUntilHit of [8, 6, 4, 2, 0]) {
+      const point = fitted.road.at(640, 1 - secondsUntilHit / 8);
+      expect(point.y).toBeGreaterThanOrEqual(0);
+      expect(point.y).toBeLessThanOrEqual(fitted.road.at(640, 1).y);
+    }
+  });
+
+  it("approaches the upper reachable horizon instead of falling back near the keys", () => {
+    const prefs = { fov: 84, height: 135, distance: 260, pitch: 40, targetY: 0, scale: 1.1 };
+    for (const height of [375, 500, 610, 828, 1080]) {
+      const legacy = worldCamera(1920, height, prefs, PANEL_EDGE);
+      const legacyFar = legacy.road.at(960, 0).y;
+      let lastFar = -Infinity;
+      for (const share of [0, 0.01, 0.05, 0.1]) {
+        const camera = worldCamera(1920, height, prefs, PANEL_EDGE, share);
+        const far = camera.road.at(960, 0);
+        expect(camera.roadFarZ).toBeGreaterThan(legacy.roadFarZ);
+        expect(far.y).toBeGreaterThanOrEqual(lastFar - 1e-6);
+        expect(far.y).toBeGreaterThan(0);
+        expect(far.y).toBeLessThan(height * 0.1);
+        expect(far.y).toBeLessThan(legacyFar);
+        expect(keySurface(camera, 0, false)).toEqual(keySurface(legacy, 0, false));
+        expect(camera.road.at(960, 1)).toEqual(legacy.road.at(960, 1));
+        lastFar = far.y;
+      }
+    }
+  });
+
+  it("respects a deliberately lower horizon while clipping unreachable requests safely", () => {
+    const prefs = { fov: 84, height: 135, distance: 260, pitch: 40, targetY: 0, scale: 1.1 };
+    const lower = worldCamera(1920, 610, prefs, PANEL_EDGE, 0.4);
+    expect(lower.road.at(960, 0).y).toBeCloseTo(lower.road.at(960, 1).y * 0.4, 7);
+    const unreachable = worldCamera(1920, 610, prefs, PANEL_EDGE, 0);
+    expect(unreachable.roadFarZ).toBe(25000);
+    const exactVanishingShare =
+      (unreachable.params.originY - unreachable.params.focal * Math.tan((40 * Math.PI) / 180)) /
+      unreachable.road.at(960, 1).y;
+    const singular = worldCamera(1920, 610, prefs, PANEL_EDGE, exactVanishingShare);
+    expect(singular.roadFarZ).toBe(25000);
+    expect(singular.road.at(960, 0)).toEqual(unreachable.road.at(960, 0));
+  });
+
+  it("keeps fitted far geometry inside Three's actual clip plane at high scale and large viewports", () => {
+    for (const height of [610, 1080, 4000])
+      for (const pitch of [-5, 0, 40, 85, 90])
+        for (const scale of [0.55, 1.6]) {
+          const camera = worldCamera(
+            1920,
+            height,
+            { fov: 84, height: 1000, distance: 1200, pitch, targetY: 0, scale },
+            PANEL_EDGE,
+            0
+          );
+          const point = camera.project(0, PANEL_EDGE.y, camera.roadFarZ);
+          if (point.scale <= 0) continue;
+          const ndc = new Vector3(0, PANEL_EDGE.y * scale, -camera.roadFarZ * scale)
+            .applyMatrix4(viewMatrix(camera.params))
+            .applyMatrix4(projectionMatrix(camera.params, 1920, height));
+          expect(ndc.z).toBeGreaterThan(-1);
+          expect(ndc.z).toBeLessThan(1);
+          expect(Number.isFinite(ndc.y)).toBe(true);
+        }
+  });
+
+  it("keeps fitted or fallback roads finite at every persisted camera limit", () => {
+    let checked = 0;
+    for (const fov of CAMERA_LIMITS.fov)
+      for (const height of CAMERA_LIMITS.height)
+        for (const distance of CAMERA_LIMITS.distance)
+          for (const pitch of CAMERA_LIMITS.pitch)
+            for (const targetY of CAMERA_LIMITS.targetY)
+              for (const scale of CAMERA_LIMITS.scale)
+                for (const horizon of [0, 0.1, 0.95]) {
+                  const camera = worldCamera(
+                    1280,
+                    640,
+                    { fov, height, distance, pitch, targetY, scale },
+                    PANEL_EDGE,
+                    horizon
+                  );
+                  expect(Number.isFinite(camera.roadFarZ)).toBe(true);
+                  expect(camera.roadFarZ).toBeGreaterThan(camera.near.z);
+                  expect(camera.roadFarZ).toBeLessThanOrEqual(25000);
+                  for (const progress of [0, 0.5, 1]) {
+                    const point = camera.road.at(640, progress);
+                    expect([point.x, point.y, point.scale].every(Number.isFinite)).toBe(true);
+                  }
+                  checked++;
+                }
+    expect(checked).toBe(192);
   });
 });
 
