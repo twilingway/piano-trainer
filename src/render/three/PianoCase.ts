@@ -26,18 +26,21 @@ export class PianoCase {
     const cheek = 0.034 * metres;
     const centre = (left + right) / 2;
     const width = right - left + 2 * cheek;
-    const bottom = -54;
+    const bottom = -15.5;
     // Vertical key/avatar units are millimetres; only the keyboard width follows metres.
     const floor = KIT_TOP - 740;
     const footHeight = 12;
     const legThickness = 0.024 * metres;
-    // Even a short controller leaves room for the seated player's knees and central pedal.
-    const span = Math.max(width - cheek, 0.72 * metres);
+    // Supports stay inside the keyboard outline, including in the overhead view.
+    const span = width - cheek;
     const supportLeft = centre - span / 2;
     const supportRight = centre + span / 2;
-    this.add("case-bottom", width, 29, 208, centre, bottom + 14.5, -86);
+    this.add("case-bottom", width, 3, 142, centre, bottom + 1.5, -71);
     // Below the white lane (22): the cap cannot cover notes entering at the key backs.
-    this.add("case-rear", width, 74, 46, centre, -17, -167);
+    this.add("case-rear", width, 35.5, 2, centre, 2.25, -143.5);
+    this.add("case-front-edge", width, 27.5, 1, centre, -1.75, 2);
+    this.add("case-left-edge", cheek, 49.5, 142, left - cheek / 2, 9.25, -71);
+    this.add("case-right-edge", cheek, 49.5, 142, right + cheek / 2, 9.25, -71);
     this.add(
       "stand-top-beam",
       span + legThickness,
@@ -59,32 +62,23 @@ export class PianoCase {
         `stand-${side}-panel`,
         legThickness,
         legTop - legBottom,
-        0.21 * KIT_DEPTH,
+        120,
         x,
         (legTop + legBottom) / 2,
-        -88
+        -71
       );
       this.add(
         `stand-${side}-foot`,
-        0.062 * metres,
+        0.032 * metres,
         footHeight,
-        0.34 * KIT_DEPTH,
+        142,
         x,
         floor + footHeight / 2,
-        -80,
+        -71,
         this.hardware
       );
     }
-    this.add(
-      "stand-rear-brace",
-      span,
-      45,
-      0.025 * KIT_DEPTH,
-      centre,
-      floor + 180,
-      -175,
-      this.hardware
-    );
+    this.add("stand-rear-brace", span, 45, 25, centre, floor + 180, -129, this.hardware);
   }
 
   private add(

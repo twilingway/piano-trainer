@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Box3, Mesh, MeshStandardMaterial, Raycaster, Vector3 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { PianoCase } from "./PianoCase";
@@ -22,7 +24,15 @@ describe("digital piano housing and stand", () => {
     const rear = new Box3().setFromObject(v.mesh("case-rear"));
     const bottom = new Box3().setFromObject(v.mesh("case-bottom"));
     expect(rear.max.y).toBeLessThan(KIT_TOP);
-    expect(rear.max.z).toBeLessThan(-143);
+    expect(rear.min.z).toBeCloseTo(-144.5, 3);
+    expect(rear.max.z).toBeCloseTo(-142.5, 3);
+    expect(bottom.min.z).toBeCloseTo(-142, 3);
+    expect(bottom.max.z).toBeCloseTo(0, 3);
+    for (const side of ["left", "right"]) {
+      const edge = new Box3().setFromObject(v.mesh(`case-${side}-edge`));
+      expect(edge.min.z).toBeCloseTo(-142, 3);
+      expect(edge.max.z).toBeCloseTo(0, 3);
+    }
     expect(bottom.max.y).toBeLessThan(-9);
     const ray = new Raycaster();
     ray.set(new Vector3(0, 0, -500), new Vector3(0, 0, 1));
@@ -71,8 +81,20 @@ describe("digital piano housing and stand", () => {
         const panel = new Box3().setFromObject(v.mesh(`stand-${side}-panel`));
         expect(foot.min.y).toBeCloseTo(floor, 3);
         expect(panel.min.y).toBeCloseTo(foot.max.y, 3);
-        expect(panel.max.y).toBeCloseTo(-54, 3);
-        expect(Math.abs(panel.getCenter(new Vector3()).x)).toBeGreaterThanOrEqual(0.35 * metres);
+        expect(panel.max.y).toBeCloseTo(-15.5, 3);
+        expect(foot.min.z).toBeGreaterThanOrEqual(-142.001);
+        expect(foot.max.z).toBeLessThanOrEqual(0.001);
+        expect(panel.min.z).toBeGreaterThanOrEqual(-142.001);
+        expect(panel.max.z).toBeLessThanOrEqual(0.001);
+      }
+      for (const object of v.cabinet.group.children) {
+        const bounds = new Box3().setFromObject(object);
+        if (object.name.startsWith("stand-")) {
+          expect(bounds.min.z).toBeGreaterThanOrEqual(-142.001);
+          expect(bounds.max.z).toBeLessThanOrEqual(0.001);
+        }
+        expect(bounds.min.x).toBeGreaterThanOrEqual(left - 0.034 * metres - 0.001);
+        expect(bounds.max.x).toBeLessThanOrEqual(right + 0.034 * metres + 0.001);
       }
       const ray = new Raycaster(new Vector3(0, floor + 350, 500), new Vector3(0, 0, -1));
       expect(ray.intersectObject(v.cabinet.group, true)).toHaveLength(0);
@@ -88,7 +110,7 @@ describe("digital piano housing and stand", () => {
     const shellDisposal = vi.spyOn(v.shell, "dispose");
     v.cabinet.layout(-300, 300, 936);
     expect(geometryDisposals.every((dispose) => dispose.mock.calls.length === 1)).toBe(true);
-    expect(v.cabinet.group.children).toHaveLength(8);
+    expect(v.cabinet.group.children).toHaveLength(11);
     const fresh = v.cabinet.group.children.filter(
       (object): object is Mesh => object instanceof Mesh
     );
@@ -105,5 +127,39 @@ describe("digital piano housing and stand", () => {
     v.cabinet.layout(-300, 300, 936);
     expect(v.cabinet.group.children).toHaveLength(0);
     v.shell.dispose();
+  });
+});
+
+it("leaves at least 3 mm below the actual white-key geometry at full dip", async () => {
+  const data = new Uint8Array(readFileSync("public/models/piano-kit.glb")).buffer;
+  const model = await new GLTFLoader().parseAsync(data, "");
+  const key = model.scene.getObjectByName("white-full");
+  if (!(key instanceof Mesh)) throw new Error("Missing white key");
+  const positions = (key as Mesh).geometry.getAttribute("position");
+  const pivot = (250 * 142) / 150;
+  const angle = Math.asin(9 / pivot);
+  let minimum = Infinity;
+  let front = -Infinity;
+  for (let i = 0; i < positions.count; i++) {
+    const y = KIT_TOP + positions.getY(i) * 1000;
+    const z = positions.getZ(i) * ((1000 * 142) / 150) + pivot;
+    minimum = Math.min(minimum, y * Math.cos(angle) - z * Math.sin(angle));
+    front = Math.max(front, z * Math.cos(angle) + y * Math.sin(angle) - pivot);
+  }
+  const v = setup();
+  const roof = new Box3().setFromObject(v.mesh("case-bottom")).max.y;
+  expect(minimum - roof).toBeGreaterThanOrEqual(3);
+  expect(roof).toBeCloseTo(-12.5, 3);
+  const frontWall = new Box3().setFromObject(v.mesh("case-front-edge"));
+  expect(frontWall.min.z - front).toBeGreaterThan(0.5);
+  expect(frontWall.max.z).toBeCloseTo(2.5, 3);
+  v.cabinet.dispose();
+  v.shell.dispose();
+  model.scene.traverse((object) => {
+    if (!(object instanceof Mesh)) return;
+    const mesh = object as Mesh;
+    mesh.geometry.dispose();
+    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material])
+      material.dispose();
   });
 });

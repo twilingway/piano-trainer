@@ -335,9 +335,6 @@ export class ThreeStage {
     const centre = (left + right) / 2;
     add(this.board, this.case, centre, width);
     add(this.part("felt"), this.felt, centre, right - left);
-    add(this.part("slip"), this.case, centre, width);
-    add(this.part("cheek"), this.case, left - cheek / 2, across);
-    add(this.part("cheek"), this.case, right + cheek / 2, across);
     this.cabinet.layout(left, right, across);
     this.body.add(this.cabinet.group);
   }
