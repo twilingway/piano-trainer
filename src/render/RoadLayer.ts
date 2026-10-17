@@ -384,7 +384,7 @@ export class RoadLayer {
   }
 
   setSceneEffects(layers: readonly Container[]): void {
-    this.three?.setSceneEffects(layers);
+    this.three?.setSceneEffects(layers, [this.horizon, this.arrivals.container]);
   }
 
   setFreeCamera(on: boolean, changed: (on: boolean) => void): void {

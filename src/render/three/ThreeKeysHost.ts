@@ -40,6 +40,7 @@ export class ThreeKeysHost {
    */
   private readonly placeholder = new Container();
   private readonly effects = new SceneEffectsPass();
+  private readonly roadEffects = new SceneEffectsPass();
 
   constructor(
     private readonly app: Application,
@@ -95,8 +96,9 @@ export class ThreeKeysHost {
     this.roadFrame = frame;
   }
 
-  setSceneEffects(layers: readonly Container[]): void {
+  setSceneEffects(layers: readonly Container[], roadLayers: readonly Container[] = []): void {
     this.effects.setLayers(layers);
+    this.roadEffects.setLayers(roadLayers);
   }
 
   setKeyboardDim(dim: boolean): void {
@@ -148,6 +150,7 @@ export class ThreeKeysHost {
     this.app.canvas.removeEventListener("webglcontextrestored", this.contextRestored);
     this.clearEnergy();
     this.effects.dispose();
+    this.roadEffects.dispose();
     this.stage?.dispose();
     this.stage = undefined;
   }
@@ -244,8 +247,10 @@ export class ThreeKeysHost {
     const gl = renderer as WebGLRenderer;
     // three left its own state (clear colour, blending) behind last frame.
     this.resetPixiState();
-    renderer.render({ container: this.road });
+    const separateRoad = this.freeActive;
+    renderer.render({ container: separateRoad ? this.placeholder : this.road });
     try {
+      if (separateRoad) this.roadEffects.draw(renderer);
       this.effects.draw(renderer);
       this.seatPianist(this.stage, scene);
       const picture = gl.texture.getGlSource(scene.texture.source).texture;
@@ -270,6 +275,7 @@ export class ThreeKeysHost {
       );
     } catch (error) {
       this.effects.restore();
+      this.roadEffects.restore();
       console.warn("3D keys failed, keeping the perspective keys", error);
       // Restore the road, keys, sprite hands and normal ticker before drawing this frame again.
       void this.setEnabled(false);
@@ -286,6 +292,7 @@ export class ThreeKeysHost {
       renderer.render({ container: stage, clear: false });
     } finally {
       this.effects.restore();
+      this.roadEffects.restore();
     }
   };
 

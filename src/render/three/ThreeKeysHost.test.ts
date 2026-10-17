@@ -357,7 +357,7 @@ describe("free inspection host lifecycle", () => {
     expect(view.renderer.render).toHaveBeenCalled();
     expect(
       view.renderer.render.mock.calls.some(([options]) => options.container === view.road)
-    ).toBe(true);
+    ).toBe(false);
     view.keys.container.visible = false;
     view.tick();
     expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
@@ -446,5 +446,30 @@ it("skips hidden or destroyed FX without suppressing native Three", async () => 
   expect(fire.renderable).toBe(true);
   fire.destroy();
   expect(view.tick).not.toThrow();
+  view.host.destroy();
+});
+
+it("keeps road bursts before Three without the projected background in free view", async () => {
+  const view = fixture();
+  const burst = view.road.addChild(new Container());
+  view.host.setSceneEffects([], [burst]);
+  await view.host.setEnabled(true);
+  view.tick();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === burst)).toBe(
+    false
+  );
+  view.renderer.render.mockClear();
+  view.host.setFreeCamera(true);
+  mocks.draw.mockImplementation(() => {
+    expect(burst.renderable).toBe(false);
+  });
+  view.tick();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === view.road)).toBe(
+    false
+  );
+  expect(
+    view.renderer.render.mock.calls.filter(([options]) => options.container === burst)
+  ).toHaveLength(1);
+  expect(burst.renderable).toBe(true);
   view.host.destroy();
 });
