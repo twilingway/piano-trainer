@@ -53,31 +53,96 @@ interface FlowNode {
   readonly position: CameraPoint;
   readonly velocity?: CameraPoint;
 }
-/** Continuous heading through a shot is selected before duration scaling and collision protection. */
+/** Shared physical tangents roll through every internal node, including inserted clearance bends. */
 export function cameraFlowNodes<T extends FlowNode>(
   nodes: readonly T[],
   unit: number,
-  speeds: ReadonlyMap<number, number> = new Map([
-    [36, 180],
-    [38, 70],
-    [42, 100],
-    [46, 160],
-    [50, 180],
-    [56, 140]
-  ])
-): T[] {
-  return nodes.map((node, index) => {
-    const speed = speeds.get(node.time) ?? 0,
+  blocked?: (a: CameraPoint, b: CameraPoint) => boolean
+): (T & { velocity?: CameraPoint })[] {
+  const result: (T & { velocity?: CameraPoint })[] = nodes.map((node, index) => {
+    const before = nodes[index - 1],
       next = nodes[index + 1];
-    if (!speed || !next) return node;
-    const length = Math.max(1, distance(node.position, next.position));
+    if (!before || !next || node.velocity) return { ...node };
+    const incoming = distance(before.position, node.position),
+      outgoing = distance(node.position, next.position);
+    const a = Math.max(1e-9, incoming),
+      b = Math.max(1e-9, outgoing);
+    let direction = point(
+      (node.position.x - before.position.x) / a + (next.position.x - node.position.x) / b,
+      (node.position.y - before.position.y) / a + (next.position.y - node.position.y) / b,
+      (node.position.z - before.position.z) / a + (next.position.z - node.position.z) / b
+    );
+    let length = Math.hypot(direction.x, direction.y, direction.z);
+    if (length < 1e-6) {
+      // A reversal needs a small sideways arc, never a zero-speed pivot.
+      direction = point(
+        -(node.position.z - before.position.z),
+        0,
+        node.position.x - before.position.x
+      );
+      length = Math.hypot(direction.x, direction.y, direction.z);
+      if (length < 1e-6) {
+        direction = point(1, 0, 0);
+        length = 1;
+      }
+    }
+    const speed = Math.min(
+      600 * unit,
+      Math.max(
+        12 * unit,
+        0.95 *
+          Math.min(
+            incoming / Math.max(1e-6, node.time - before.time),
+            outgoing / Math.max(1e-6, next.time - node.time)
+          )
+      )
+    );
     return {
       ...node,
       velocity: point(
-        ((next.position.x - node.position.x) * speed * unit) / length,
-        ((next.position.y - node.position.y) * speed * unit) / length,
-        ((next.position.z - node.position.z) * speed * unit) / length
+        (direction.x * speed) / length,
+        (direction.y * speed) / length,
+        (direction.z * speed) / length
       )
     };
   });
+  if (!blocked) return result;
+  // The polyline is already protected. Bound its rounded C2 bends with shared node velocities,
+  // so a correction on one segment cannot create a discontinuity on its neighbour.
+  for (let pass = 0; pass < 16; pass++) {
+    let changed = false;
+    for (let index = 1; index < result.length; index++) {
+      const a = result[index - 1],
+        b = result[index];
+      if (!a || !b) continue;
+      let previous = a.position,
+        unsafe = false;
+      for (let step = 1; step <= 64; step++) {
+        const next = cameraCurvePoint(
+          a.position,
+          b.position,
+          step / 64,
+          b.time - a.time,
+          a.velocity,
+          b.velocity
+        );
+        if (blocked(previous, next)) {
+          unsafe = true;
+          break;
+        }
+        previous = next;
+      }
+      if (!unsafe) continue;
+      for (const node of [a, b])
+        if (node.velocity)
+          node.velocity = point(
+            node.velocity.x * 0.5,
+            node.velocity.y * 0.5,
+            node.velocity.z * 0.5
+          );
+      changed = true;
+    }
+    if (!changed) break;
+  }
+  return result;
 }

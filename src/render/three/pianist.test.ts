@@ -1,4 +1,17 @@
-import { AnimationClip, Camera, Group, Mesh, Object3D, VectorKeyframeTrack } from "three";
+import {
+  AnimationClip,
+  Bone,
+  BufferGeometry,
+  Camera,
+  Float32BufferAttribute,
+  Group,
+  Mesh,
+  Object3D,
+  Skeleton,
+  SkinnedMesh,
+  Uint16BufferAttribute,
+  VectorKeyframeTrack
+} from "three";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Pianist, isHiddenArmPart, loadPianist } from "./pianist";
 
@@ -161,10 +174,16 @@ describe("native original-skeleton pianist", () => {
     const model = nativeModel(),
       arm = new Group();
     arm.name = "White_Closed_Glove_L";
-    model.scene.add(arm);
+    const marker = new Group(),
+      nail = new Group();
+    marker.name = "ridge-finger3-2L";
+    nail.name = "nail-finger3-3L";
+    model.scene.add(arm, marker, nail);
     loadNative.mockResolvedValueOnce(model);
     expect(await loadPianist(source)).toBe(model);
     expect(arm.visible).toBe(true);
+    expect(marker.visible).toBe(false);
+    expect(nail.visible).toBe(true);
     expect(localUrl).not.toHaveBeenCalled();
     loadNative.mockResolvedValueOnce(undefined);
     expect(await loadPianist(source)).toBeUndefined();
@@ -220,4 +239,67 @@ describe("fallback camera attention", () => {
     pianist.poseFallback(poses, hands, camera);
     expect(order).toEqual([]);
   });
+});
+
+it("hides only the lower body overhead and restores the original skin for other views", () => {
+  const model = nativeModel(),
+    leg = new Bone(),
+    wrist = new Bone();
+  leg.name = "lowerleg01.L";
+  wrist.name = "wrist.L";
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(new Array<number>(18).fill(0), 3));
+  geometry.setAttribute(
+    "skinIndex",
+    new Uint16BufferAttribute(
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+      4
+    )
+  );
+  geometry.setAttribute(
+    "skinWeight",
+    new Float32BufferAttribute(
+      [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+      4
+    )
+  );
+  geometry.setIndex([0, 1, 2, 3, 4, 5]);
+  geometry.addGroup(0, 3, 0);
+  geometry.addGroup(3, 3, 1);
+  const body = new SkinnedMesh(geometry);
+  body.name = "PianistBody";
+  body.add(leg, wrist);
+  body.bind(new Skeleton([leg, wrist]));
+  const shoe = new Mesh(),
+    trousers = new Mesh(),
+    hiddenShoe = new Mesh(),
+    hand = new Mesh();
+  shoe.name = "Ready_Oxford_Shoe_L";
+  hiddenShoe.name = "Ready_Oxford_Shoe_R";
+  hiddenShoe.visible = false;
+  trousers.name = "Tailored_Trousers";
+  hand.name = "nail-finger1-3.L";
+  model.scene.add(body, shoe, hiddenShoe, trousers, hand);
+  const pianist = new Pianist(model, source);
+  const bonesBefore = body.skeleton.bones.map((bone) => bone.matrixWorld.toArray());
+  pianist.setTopView(true);
+  const overhead = body.geometry;
+  expect(Array.from(overhead.index?.array ?? [])).toEqual([3, 4, 5]);
+  expect(Array.from(geometry.index?.array ?? [])).toEqual([0, 1, 2, 3, 4, 5]);
+  expect(overhead.groups.at(-1)).toEqual({ start: 0, count: 3, materialIndex: 1 });
+  expect(shoe.visible).toBe(false);
+  expect(trousers.visible).toBe(false);
+  expect(hand.visible).toBe(true);
+  expect(body.skeleton.bones.map((bone) => bone.matrixWorld.toArray())).toEqual(bonesBefore);
+  pianist.setTopView(false);
+  expect(body.geometry).toBe(geometry);
+  expect(shoe.visible).toBe(true);
+  expect(trousers.visible).toBe(true);
+  expect(hiddenShoe.visible).toBe(false);
+  pianist.setTopView(true);
+  expect(body.geometry).toBe(overhead);
+  const dispose = vi.spyOn(overhead, "dispose");
+  pianist.dispose();
+  expect(body.geometry).toBe(geometry);
+  expect(dispose).toHaveBeenCalledOnce();
 });

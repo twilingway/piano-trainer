@@ -97,7 +97,7 @@ void main() {
     cross2(vQ0 - vQ3, vPoint - vQ3) * orientation >= 0.0;
   float radius = inside ? vRadius * 0.4 : vRadius;
   float glow = exp(-distance * distance / (2.0 * radius * radius));
-  float alpha = min(0.28, glow * vAlpha * 0.28);
+  float alpha = min(0.46, glow * vAlpha * 0.46);
   if (alpha < 0.002) discard;
   gl_FragColor = vec4(vTint, alpha);
 }

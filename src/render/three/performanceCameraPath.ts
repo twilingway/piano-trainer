@@ -68,7 +68,7 @@ export class PerformanceCameraPath {
       },
       ...route
     ]);
-    this.nodes = protectedRoute.nodes;
+    this.nodes = cameraFlowNodes(protectedRoute.nodes, geometry.unit, (a, b) => this.blocked(a, b));
     this.detours = protectedRoute.detours;
   }
 
@@ -141,7 +141,13 @@ export class PerformanceCameraPath {
       node(7, right, hands, 34, "right-hands"),
       node(9, sideWide(1), centre, 56, "side-wide"),
       node(12, rear, centre, 56, "rear-wide"),
-      node(13, rear, centre, 56, "rear-wide"),
+      node(
+        13,
+        point(rear.x - 100 * unit, rear.y + 35 * unit, rear.z - 20 * unit),
+        centre,
+        56,
+        "rear-wide"
+      ),
       node(16, sideWide(-1), centre, 56, "side-wide"),
       node(18, left, hands, 34, "left-hands")
     ];
@@ -294,7 +300,7 @@ export class PerformanceCameraPath {
       node(38, portrait, face, 32, "face"),
       node(
         42,
-        point(portrait.x + 140 * unit, portrait.y, portrait.z - 80 * unit),
+        point(portrait.x + 220 * unit, portrait.y, portrait.z - 100 * unit),
         face,
         35,
         "face-drift"
@@ -315,9 +321,21 @@ export class PerformanceCameraPath {
       ),
       node(56, right, hands, 40, "side-hands"),
       node(62, wholeTop, point(lane?.x ?? key.x, key.y, key.z), 45, "top-whole-keyboard"),
-      node(66, wholeTop, point(lane?.x ?? key.x, key.y, key.z), 43, "top-whole-keyboard"),
+      node(
+        66,
+        point(wholeTop.x - 100 * unit, wholeTop.y + 50 * unit, wholeTop.z - 40 * unit),
+        point(lane?.x ?? key.x, key.y, key.z),
+        43,
+        "top-whole-keyboard"
+      ),
       node(68, closeTop, hands, 42, "top-hands"),
-      node(72, closeTop, hands, 40, "top-hands")
+      node(
+        72,
+        point(closeTop.x - 100 * unit, closeTop.y + 60 * unit, closeTop.z - 40 * unit),
+        hands,
+        40,
+        "top-hands"
+      )
     );
     travel(gapLane, 78, 0.42, true);
     nodes.push(node(102, secondPortrait, face, 36, "face-three-quarter"));
@@ -377,7 +395,7 @@ export class PerformanceCameraPath {
         if (n && (n.time === 108 || n.time === 116)) nodes[index] = { ...n, velocity };
       }
     }
-    return cameraFlowNodes(nodes, unit);
+    return nodes;
   }
 
   private blocked(a: CameraPoint, b: CameraPoint): boolean {
@@ -457,15 +475,14 @@ export class PerformanceCameraPath {
 
   sample(songTime: number): PerformanceCameraPose {
     const time = Number.isFinite(songTime) ? Math.max(16, Math.min(this.duration, songTime)) : 16;
-    const nodes = this.nodes,
-      local = time;
-    let right = nodes.findIndex((node) => node.time > local);
+    const nodes = this.nodes;
+    let right = nodes.findIndex((node) => node.time > time);
     if (right < 1) right = nodes.length - 1;
     const a = nodes[right - 1],
       b = nodes[right];
     if (!a || !b) throw new Error("Incomplete performance camera route");
     const seconds = Math.max(1e-6, b.time - a.time),
-      u = Math.max(0, Math.min(1, (local - a.time) / seconds)),
+      u = Math.max(0, Math.min(1, (time - a.time) / seconds)),
       t = quintic(u);
     const position = cameraCurvePoint(a.position, b.position, u, seconds, a.velocity, b.velocity);
     let target = pointMix(a.target, b.target, t);

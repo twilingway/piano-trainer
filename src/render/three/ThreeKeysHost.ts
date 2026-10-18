@@ -418,6 +418,10 @@ export class ThreeKeysHost {
       stage.addToKeys(pianist.space);
       this.pianistStage = stage;
     }
+    const camera = keys.keyboardCamera ?? keys.roadCamera ?? keys.camera;
+    pianist.setTopView(
+      !this.freeActive && !this.performanceWanted && camera.params.prefs.pitch === 90
+    );
     pianist.follow(keys);
   }
 

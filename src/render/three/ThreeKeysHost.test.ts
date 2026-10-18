@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   loadPianist: vi.fn(),
   pianistConstruct: vi.fn(),
   pianistSample: vi.fn(),
+  pianistTopView: vi.fn(),
   pianistDispose: vi.fn(),
   disposeModel: vi.fn(),
   setNativePianist: vi.fn(),
@@ -69,6 +70,7 @@ vi.mock("./pianist", () => ({
     readonly native: boolean;
     readonly rig = { pose: mocks.pose, setNativeHandsVisible: vi.fn() };
     sample = mocks.pianistSample;
+    setTopView = mocks.pianistTopView;
     poseFallback = mocks.pose;
     dispose = mocks.pianistDispose;
     follow = vi.fn();
@@ -103,7 +105,10 @@ function fixture() {
   const canvas = document.createElement("canvas");
   const stage = new Container();
   const road = new Container();
-  const keys = { container: new Container(), scene: { texture: { source: {} } } };
+  const keys = {
+    container: new Container(),
+    scene: { texture: { source: {} }, camera: { params: { prefs: { pitch: 25 } } } }
+  };
   const overlay = new Container();
   stage.addChild(road, overlay);
   const hands = {
@@ -772,5 +777,33 @@ it("reloads a previously unavailable native asset when trusted duration arrives 
   await settlePianist();
   expect(mocks.loadPianist).toHaveBeenCalledTimes(2);
   expect(mocks.loadPianist).toHaveBeenLastCalledWith(view.hands.songPerformance);
+  view.host.destroy();
+});
+
+it("hides the pianist lower body only in ordinary overhead, preserving perspective, free and performance", async () => {
+  const view = fixture(),
+    camera = { params: { prefs: { pitch: 90 } } };
+  Object.assign(view.keys.scene, { keyboardCamera: camera });
+  view.hands.pianist = true;
+  mocks.loadPianist.mockResolvedValueOnce({ scene: new Group(), clip: {}, performance: {} });
+  await view.host.setEnabled(true);
+  view.tick();
+  await settlePianist();
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(true);
+  camera.params.prefs.pitch = 42;
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(false);
+  camera.params.prefs.pitch = 90;
+  view.host.setFreeCamera(true);
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(false);
+  view.host.setFreeCamera(false);
+  view.host.setPerformanceScene(true);
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(false);
+  view.host.setPerformanceScene(false);
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(true);
   view.host.destroy();
 });

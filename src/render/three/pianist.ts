@@ -1,5 +1,5 @@
-import { AnimationMixer, Group, LinearSRGBColorSpace, Mesh, Vector3 } from "three";
-import type { AnimationClip, Camera, Material, Object3D, Texture } from "three";
+import { AnimationMixer, Group, LinearSRGBColorSpace, Mesh, SkinnedMesh, Vector3 } from "three";
+import type { AnimationClip, BufferGeometry, Camera, Material, Object3D, Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import { whitePosition } from "./handSolver/mech";
@@ -63,7 +63,12 @@ export async function loadPianist(
 function prepareModel(scene: Object3D, hideArms: boolean): void {
   const done = new Set<Material>();
   scene.traverse((node) => {
-    if (hideArms && isHiddenArmPart(node.name)) node.visible = false;
+    if (
+      (hideArms && isHiddenArmPart(node.name)) ||
+      /^ridge-finger[1-5]-[12][._]?[LR]$/.test(node.name) ||
+      /^(DEBUG(?:[_-]|$)|GEO-skeleton)/i.test(node.name)
+    )
+      node.visible = false;
     if (!(node instanceof Mesh)) return;
     // Its bounds are those of the rest pose: never cull the seated pianist.
     node.frustumCulled = false;
@@ -95,6 +100,42 @@ function toDisplayValues(material: Material): void {
   material.needsUpdate = true;
 }
 
+/** Keep the original skin and morph targets; only omit leg triangles in the overhead copy. */
+function withoutLegs(mesh: SkinnedMesh): BufferGeometry | undefined {
+  const geometry = mesh.geometry;
+  if (!geometry.hasAttribute("skinIndex") || !geometry.hasAttribute("skinWeight")) return undefined;
+  const joints = geometry.getAttribute("skinIndex"),
+    weights = geometry.getAttribute("skinWeight");
+  const legs = new Set(
+    mesh.skeleton.bones.flatMap((bone, i) =>
+      /^(upperleg|lowerleg|knee|foot|toe|thigh|shin)/i.test(bone.name) ? [i] : []
+    )
+  );
+  if (!legs.size) return undefined;
+  const leg = (vertex: number): boolean => {
+    let weight = 0;
+    for (let i = 0; i < 4; i++)
+      if (legs.has(joints.getComponent(vertex, i))) weight += weights.getComponent(vertex, i);
+    return weight >= 0.25;
+  };
+  const original = geometry.index;
+  const count = original?.count ?? geometry.getAttribute("position").count;
+  const groups = geometry.groups.length ? geometry.groups : [{ start: 0, count, materialIndex: 0 }];
+  const copy = geometry.clone(),
+    indices: number[] = [];
+  copy.clearGroups();
+  for (const group of groups) {
+    const start = indices.length;
+    for (let i = group.start; i + 2 < Math.min(count, group.start + group.count); i += 3) {
+      const triangle = [0, 1, 2].map((offset) => original?.getX(i + offset) ?? i + offset);
+      if (!triangle.some(leg)) indices.push(...triangle);
+    }
+    copy.addGroup(start, indices.length - start, group.materialIndex);
+  }
+  copy.setIndex(indices);
+  return copy;
+}
+
 /**
  * The pianist starts in the lab clip's seated frame. A compatible rig then follows the shared
  * hand plan; there is no animation clock of its own.
@@ -112,6 +153,12 @@ export class Pianist {
   private readonly cameraWorld = new Vector3();
   private readonly face: PianistFace | undefined;
   private disposed = false;
+  private lowerBody: { node: Object3D; visible: boolean }[] | undefined;
+  private readonly topBodies: {
+    mesh: SkinnedMesh;
+    original: BufferGeometry;
+    overhead: BufferGeometry;
+  }[] = [];
 
   constructor(
     readonly model: PianistModel,
@@ -143,6 +190,24 @@ export class Pianist {
 
   get native(): boolean {
     return this.nativeClip !== undefined;
+  }
+
+  /** Ordinary overhead lessons keep the legs and shoes out of the falling notes. */
+  setTopView(top: boolean): void {
+    if (this.disposed) return;
+    if (!this.lowerBody) {
+      this.lowerBody = [];
+      this.model.scene.traverse((node) => {
+        if (/^(Ready_Oxford_Shoe_[LR]|Tailored_Trousers)$/.test(node.name))
+          this.lowerBody?.push({ node, visible: node.visible });
+        if (!(node instanceof SkinnedMesh) || node.name !== "PianistBody") return;
+        const mesh = node as SkinnedMesh;
+        const overhead = withoutLegs(mesh);
+        if (overhead) this.topBodies.push({ mesh, original: mesh.geometry, overhead });
+      });
+    }
+    for (const { node, visible } of this.lowerBody) node.visible = top ? false : visible;
+    for (const body of this.topBodies) body.mesh.geometry = top ? body.overhead : body.original;
   }
 
   /** The camera is already configured; restore additive gaze before sampling original bone curves. */
@@ -189,6 +254,10 @@ export class Pianist {
     this.motion?.dispose();
     this.nativeClip?.dispose();
     this.appearance?.dispose();
+    for (const body of this.topBodies) {
+      body.mesh.geometry = body.original;
+      body.overhead.dispose();
+    }
     disposePianistModel(this.model.scene);
   }
 

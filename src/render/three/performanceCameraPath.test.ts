@@ -59,22 +59,40 @@ describe("finite performance route", () => {
       );
     expect(path.sample(200)).toEqual(path.sample(154.5));
   });
-  it("is history independent and has zero physical velocity at actual shot stops", () => {
+  it("is history independent and rolls through internal joins with continuous physical velocity", () => {
     const path = new PerformanceCameraPath(geometry),
       saved = path.sample(125.3);
     path.sample(20);
     path.sample(154.5);
     expect(path.sample(125.3)).toEqual(saved);
+    const h = 0.0001;
     for (const time of [
-      16, 22, 27, 29, 31, 34, 35, 38, 40, 42, 44, 84, 88, 90, 94, 100, 104, 112, 116, 120, 124, 128,
-      140, 144, 154.5
+      22, 27, 29, 31, 34, 35, 38, 40, 42, 44, 46, 48.3, 50.7, 53, 55, 58, 60, 64, 68, 72, 78, 84,
+      88, 90, 94, 100, 104, 112, 116, 120, 124, 128, 130, 138, 140, 144
     ]) {
-      const before = path.sample(time - 0.0001),
+      const before = path.sample(time - h),
         at = path.sample(time),
-        after = path.sample(time + 0.0001);
+        after = path.sample(time + h);
+      const incoming = point(
+        (at.position.x - before.position.x) / h,
+        (at.position.y - before.position.y) / h,
+        (at.position.z - before.position.z) / h
+      );
+      const outgoing = point(
+        (after.position.x - at.position.x) / h,
+        (after.position.y - at.position.y) / h,
+        (after.position.z - at.position.z) / h
+      );
+      expect(Math.hypot(incoming.x, incoming.y, incoming.z), String(time)).toBeGreaterThan(10);
+      expect(distance(incoming, outgoing), String(time)).toBeLessThan(0.05);
+      expect(distance(before.direction, after.direction) / (2 * h), String(time)).toBeLessThan(3);
+    }
+    for (const time of [16, path.duration]) {
+      const before = path.sample(time - h),
+        at = path.sample(time),
+        after = path.sample(time + h);
       expect(distance(before.position, at.position), String(time)).toBeLessThan(0.001);
       expect(distance(after.position, at.position), String(time)).toBeLessThan(0.001);
-      expect(distance(before.direction, after.direction), String(time)).toBeLessThan(0.0001);
     }
   });
   it("flies along centred tilted planes, finishing morph before travel and starting it after unhook", () => {
@@ -150,11 +168,18 @@ describe("finite performance route", () => {
     };
     const path = new PerformanceCameraPath(test);
     expect(path.detours).toBeGreaterThan(0);
-    for (let time = 16; time <= 154.5; time += 1 / 120)
+    let minimum = Infinity;
+    for (let time = 16; time <= path.duration; time += 1 / 120) {
+      const pose = path.sample(time);
       for (const box of test.obstacles)
-        expect(inside(path.sample(time).position, box, path.clearance - 0.01), String(time)).toBe(
-          false
+        expect(inside(pose.position, box, path.clearance - 0.01), String(time)).toBe(false);
+      if (time > 16.5 && time < path.duration - 1)
+        minimum = Math.min(
+          minimum,
+          distance(path.sample(time - 0.001).position, path.sample(time + 0.001).position) / 0.002
         );
+    }
+    expect(minimum).toBeGreaterThan(8);
   });
   it("traverses the entire keyboard at low height for eight seconds when its real corridor is clear", () => {
     const flight = {
@@ -307,4 +332,27 @@ it("keeps the higher final pullback within a natural25degree front gaze", () => 
     (Math.abs(Math.atan2(final.position.x - cx, cz - final.position.z)) * 180) / Math.PI
   ).toBeLessThan(25);
   expect(final.position.y).toBeGreaterThan(geometry.avatar.max.y);
+});
+
+it("keeps a visible drift through former rear/top holds and never parks during visible flight", () => {
+  const path = new PerformanceCameraPath(geometry);
+  for (const [start, end] of [
+    [34, 35],
+    [84, 88],
+    [90, 94]
+  ])
+    expect(
+      distance(path.sample(start ?? 0).position, path.sample(end ?? 0).position)
+    ).toBeGreaterThan(100);
+  let minimum = Infinity,
+    slowest = 0;
+  for (let time = 16.5; time < path.duration - 1; time += 0.01) {
+    const speed =
+      distance(path.sample(time - 0.001).position, path.sample(time + 0.001).position) / 0.002;
+    if (speed < minimum) {
+      minimum = speed;
+      slowest = time;
+    }
+  }
+  expect(minimum, String(slowest)).toBeGreaterThan(8);
 });
