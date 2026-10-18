@@ -30,6 +30,7 @@ export function lessonSong(choice: LessonChoice): Song {
   return {
     ...song,
     title: `${exercise.title} · ${level.title}`,
-    ...(level.stage ? { stage: level.stage } : {})
+    ...(level.stage ? { stage: level.stage } : {}),
+    ...(level.voice ? { voice: level.voice } : {})
   };
 }

@@ -18,6 +18,13 @@ const STAGES = import.meta.glob<string>("/local-lessons/*/*.stage.json", {
   import: "default",
   eager: true
 });
+/** "<level file name without extension>.voice.mp3" (or .ogg, .wav) beside a level: its sung voice from song time 0. */
+const VOICES = import.meta.glob<string>("/local-lessons/*/*.voice.{mp3,ogg,wav}", {
+  query: "?url",
+  import: "default",
+  eager: true
+});
+const VOICE_FORMATS = ["mp3", "ogg", "wav"];
 
 /** "3 Соль мажор.musicxml" -> "Соль мажор": the leading number only orders the levels. */
 function levelTitle(fileName: string): string {
@@ -35,7 +42,8 @@ function levelStage(path: string, text: string | undefined): SongStage | undefin
 
 export function buildLessons(
   files: Readonly<Record<string, string>>,
-  stages: Readonly<Record<string, string>> = {}
+  stages: Readonly<Record<string, string>> = {},
+  voices: Readonly<Record<string, string>> = {}
 ): Exercise[] {
   const byFolder = new Map<string, ExerciseLevel[]>();
   for (const [path, musicXml] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {
@@ -44,11 +52,15 @@ export function buildLessons(
     const levels = byFolder.get(folder) ?? [];
     const stagePath = path.replace(/\.(musicxml|xml)$/i, ".stage.json");
     const stage = levelStage(stagePath, stages[stagePath]);
+    const voice = VOICE_FORMATS.map(
+      (format) => voices[path.replace(/\.(musicxml|xml)$/i, `.voice.${format}`)]
+    ).find((url) => url !== undefined);
     levels.push({
       id: fileName,
       title: levelTitle(fileName),
       musicXml,
-      ...(stage ? { stage } : {})
+      ...(stage ? { stage } : {}),
+      ...(voice ? { voice } : {})
     });
     byFolder.set(folder, levels);
   }
@@ -59,4 +71,4 @@ export function buildLessons(
   }));
 }
 
-export const LOCAL_LESSONS: readonly Exercise[] = buildLessons(FILES, STAGES);
+export const LOCAL_LESSONS: readonly Exercise[] = buildLessons(FILES, STAGES, VOICES);

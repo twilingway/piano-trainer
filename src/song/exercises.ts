@@ -17,6 +17,8 @@ export interface ExerciseLevel {
   readonly musicXml: string;
   /** A local level's performance-scene dressing, from its own stage file. */
   readonly stage?: SongStage;
+  /** A local level's sung voice: the URL of its voice file, which starts at song time 0. */
+  readonly voice?: string;
 }
 
 export interface Exercise {

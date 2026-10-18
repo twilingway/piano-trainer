@@ -12,7 +12,10 @@ const sound = vi.hoisted(() => ({
   noteOn: vi.fn(),
   noteOff: vi.fn(),
   click: vi.fn(),
-  cancelVoices: vi.fn()
+  cancelVoices: vi.fn(),
+  voiceReady: true,
+  voiceStart: vi.fn(),
+  voiceStop: vi.fn()
 }));
 
 vi.mock("./pianoSound", () => ({
@@ -32,6 +35,11 @@ vi.mock("./scheduledVoices", () => ({
   scheduledNoteOff: sound.noteOff,
   scheduledClick: sound.click,
   cancelScheduledVoices: sound.cancelVoices
+}));
+vi.mock("./voiceTrack", () => ({
+  voiceTrackReady: () => sound.voiceReady,
+  startVoiceTrack: sound.voiceStart,
+  stopVoiceTrack: sound.voiceStop
 }));
 
 const note = (id: string, start: number, hand: "left" | "right" = "left"): SongNote => ({
@@ -83,7 +91,12 @@ it.each([60, 80, 100])(
   }
 );
 
-function session(notes: readonly SongNote[], mode: "tempo" | "wait" = "tempo", to?: number) {
+function session(
+  notes: readonly SongNote[],
+  mode: "tempo" | "wait" = "tempo",
+  to?: number,
+  { voice, speed = 1 }: { voice?: string; speed?: number } = {}
+) {
   const song: Song = {
     title: "test",
     source: "midi",
@@ -93,12 +106,13 @@ function session(notes: readonly SongNote[], mode: "tempo" | "wait" = "tempo", t
       { time: 0.5, position: 1, downbeat: false }
     ],
     measures: [],
-    duration: 2
+    duration: 2,
+    ...(voice === undefined ? {} : { voice })
   };
   const result = new PracticeSession(song, {
     mode,
     hands: new Set(["right"]),
-    speed: 1,
+    speed,
     ...(to === undefined ? {} : { to })
   });
   result.startClock(1000);
@@ -117,6 +131,7 @@ beforeEach(() => {
   sound.clock = 10;
   sound.nextJob = 0;
   sound.queued.clear();
+  sound.voiceReady = true;
 });
 
 describe("session audio scheduling", () => {
@@ -212,5 +227,70 @@ describe("session audio scheduling", () => {
     expect(sound.cancelled).toHaveBeenCalled();
     expect(sound.queued.size).toBe(0);
     expect(sound.cancelVoices).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("a lesson's voice track", () => {
+  it("starts at song time 0 on the same anchor and offset as the notes", () => {
+    const run = session([note("player", 0, "right")], "tempo", undefined, { voice: "v.mp3" });
+    const audio = new SessionAudio();
+    audio.reset(1000);
+    // Song 0 is performance 3000 after the lead-in: audio 12, heard 0.1 s early by the offset.
+    audio.schedule(run, 2800, 100, false);
+    flushQueued();
+    expect(sound.voiceStart).toHaveBeenCalledWith("v.mp3", 11.9, 0);
+    audio.schedule(run, 3200, 100, false);
+    flushQueued();
+    expect(sound.voiceStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("resumes from the current second, and stops on reset", () => {
+    const run = session([note("player", 0, "right")], "tempo", undefined, { voice: "v.mp3" });
+    run.tick(4000);
+    run.pauseClock(4000);
+    run.resumeClock(5000);
+    const audio = new SessionAudio();
+    audio.reset(5000);
+    expect(sound.voiceStop).toHaveBeenCalledTimes(1);
+    audio.schedule(run, 5000, 0, false);
+    flushQueued();
+    expect(sound.voiceStart).toHaveBeenCalledWith("v.mp3", 10, 1);
+    audio.reset(5500);
+    expect(sound.voiceStop).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits for its file, then starts from the second it is ready", () => {
+    const run = session([note("player", 0, "right")], "tempo", undefined, { voice: "v.mp3" });
+    const audio = new SessionAudio();
+    audio.reset(1000);
+    sound.voiceReady = false;
+    audio.schedule(run, 3000, 0, false);
+    flushQueued();
+    expect(sound.voiceStart).not.toHaveBeenCalled();
+    sound.voiceReady = true;
+    audio.schedule(run, 3500, 0, false);
+    flushQueued();
+    expect(sound.voiceStart).toHaveBeenCalledWith("v.mp3", 12.5, 0.5);
+  });
+
+  it("stops at the end of the chosen range", () => {
+    const run = session([note("player", 0, "right")], "tempo", 1, { voice: "v.mp3" });
+    const audio = new SessionAudio();
+    audio.reset(1000);
+    audio.schedule(run, 3800, 0, false);
+    flushQueued();
+    expect(sound.voiceStop).toHaveBeenLastCalledWith(13);
+  });
+
+  it.each([
+    ["wait mode", "wait" as const, 1],
+    ["a slower speed", "tempo" as const, 0.75]
+  ])("stays silent in %s", (_, mode, speed) => {
+    const run = session([note("player", 0, "right")], mode, undefined, { voice: "v.mp3", speed });
+    const audio = new SessionAudio();
+    audio.reset(1000);
+    audio.schedule(run, 4000, 0, false);
+    flushQueued();
+    expect(sound.voiceStart).not.toHaveBeenCalled();
   });
 });
