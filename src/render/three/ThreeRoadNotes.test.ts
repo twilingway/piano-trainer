@@ -28,7 +28,7 @@ describe("instanced world road notes", () => {
   it("puts a rounded solid on the road in unpanned Three coordinates and shares its colour across layers", () => {
     const notes = new ThreeRoadNotes(4);
     const layers = meshes(notes);
-    expect(layers).toHaveLength(3);
+    expect(layers).toHaveLength(2);
     notes.update([note()], 50, 3);
     expect(notes.group.visible).toBe(true);
     const body = layers[0];
@@ -91,7 +91,7 @@ describe("instanced world road notes", () => {
     });
     expect(layers[0]?.geometry.getAttribute("position")).toBe(initialPositions);
     expect(layers[0]?.instanceMatrix).toBe(layers[1]?.instanceMatrix);
-    expect(layers[0]?.instanceColor).toBe(layers[2]?.instanceColor);
+    expect(layers[0]?.instanceColor).toBe(layers[1]?.instanceColor);
     notes.dispose();
   });
 
@@ -138,7 +138,9 @@ describe("instanced world road notes", () => {
       .filter((material): material is ShaderMaterial => material instanceof ShaderMaterial);
     const timeUniforms = materials.map((material) => material.uniforms.visualTime);
     expect(materials.filter((material) => material.blending === AdditiveBlending)).toHaveLength(1);
-    expect(materials.every((material) => !material.depthWrite)).toBe(true);
+    expect(materials.find((material) => material.blending !== AdditiveBlending)?.depthWrite).toBe(
+      false
+    );
     expect(materials.find((material) => material.blending === AdditiveBlending)?.depthTest).toBe(
       true
     );
@@ -180,5 +182,29 @@ describe("instanced world road notes", () => {
     expect(layers.every((layer) => layer.count === 0)).toBe(true);
     expect(geometryDisposals.every((spy) => spy.mock.calls.length === 1)).toBe(true);
     expect(materialDisposals.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+  });
+  it("uses one closed emissive volume for both caps, sides and bevels during a full orbit", () => {
+    const notes = new ThreeRoadNotes(2);
+    notes.update([note()], 50, 17);
+    const layers = meshes(notes),
+      body = layers[0];
+    if (!body || !(body.material instanceof ShaderMaterial)) throw Error("Missing volume body");
+    expect(layers).toHaveLength(2);
+    expect(body.material.uniforms.visualTime?.value).toBe(17);
+    expect(body.material.lights).toBe(false);
+    const normals = body.geometry.getAttribute("normal");
+    for (const axis of [0, 1, 2]) {
+      const values = Array.from({ length: normals.count }, (_, i) => normals.getComponent(i, axis));
+      expect(Math.max(...values)).toBeGreaterThan(0.99);
+      expect(Math.min(...values)).toBeLessThan(-0.99);
+    }
+    expect(layers[0]?.instanceMatrix).toBe(layers[1]?.instanceMatrix);
+    notes.update([note({ color: 0xff0080 })], 50, 18);
+    const color = new Color();
+    body.getColorAt(0, color);
+    expect(color.r).toBe(1);
+    expect(color.b).toBeCloseTo(128 / 255);
+    expect(body.material.uniforms.visualTime?.value).toBe(18);
+    notes.dispose();
   });
 });

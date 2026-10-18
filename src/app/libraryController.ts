@@ -9,6 +9,7 @@ import {
   saveMySong
 } from "../library/myLibrary";
 import { songFromFileData } from "../library/songFile";
+import { loadLocalPerformance } from "../library/localPerformance";
 import type { Song } from "../song/song";
 import { libraryActions, type LibraryState } from "./librarySlice";
 import { persistenceErrorChanged } from "./persistenceSlice";
@@ -33,7 +34,8 @@ export const browserLibraryRepository = {
   folderPermission,
   pickFolder,
   readFolderSongs,
-  songFromFileData
+  songFromFileData,
+  loadLocalPerformance
 };
 export function createLibraryController(port: LibraryPort, repository = browserLibraryRepository) {
   let lifecycle = 0;
@@ -62,10 +64,10 @@ export function createLibraryController(port: LibraryPort, repository = browserL
         })
       );
   };
-  const parse = (name: string, data: ArrayBuffer) => {
+  const parse = async (name: string, data: ArrayBuffer) => {
     const song = repository.songFromFileData(name, data);
     if (song.notes.length === 0) throw new Error("В файле нет нот");
-    return song;
+    return repository.loadLocalPerformance(song, data);
   };
   const show = (song: Song, source: string | null) => {
     port.dispatch(libraryActions.errorChanged(null));
@@ -119,14 +121,17 @@ export function createLibraryController(port: LibraryPort, repository = browserL
         if (!alive() || !valid(revision)) return;
         if (source?.startsWith("my:")) {
           const stored = await repository.loadMySong(source.slice(3));
-          if (alive() && valid(revision) && stored)
-            show(parse(stored.fileName, stored.data), source);
+          if (alive() && valid(revision) && stored) {
+            const song = await parse(stored.fileName, stored.data);
+            if (alive() && valid(revision)) show(song, source);
+          }
         } else if (source?.startsWith("dir:")) {
           const entry = folder?.songs.find((item) => item.path === source.slice(4));
           if (entry) {
             const file = await entry.handle.getFile();
             const data = await file.arrayBuffer();
-            if (alive() && valid(revision)) show(parse(file.name, data), source);
+            const song = await parse(file.name, data);
+            if (alive() && valid(revision) && currentFolder(directoryRevision)) show(song, source);
           }
         }
         if (alive()) saved("restore", false);
@@ -149,7 +154,7 @@ export function createLibraryController(port: LibraryPort, repository = browserL
       const intent = begin();
       try {
         const data = await file.arrayBuffer();
-        const song = parse(file.name, data);
+        const song = await parse(file.name, data);
         const selection = valid(intent) ? show(song, null) : intent;
         try {
           const metadata = await repository.saveMySong(file.name, song.title, data);
@@ -169,7 +174,8 @@ export function createLibraryController(port: LibraryPort, repository = browserL
         const stored = await repository.loadMySong(id);
         if (!valid(revision)) return;
         if (!stored) throw new Error("Песни больше нет в библиотеке");
-        show(parse(stored.fileName, stored.data), `my:${id}`);
+        const song = await parse(stored.fileName, stored.data);
+        if (valid(revision)) show(song, `my:${id}`);
       } catch (problem) {
         if (valid(revision)) error(problem);
       }
@@ -183,7 +189,8 @@ export function createLibraryController(port: LibraryPort, repository = browserL
         if (!entry) throw new Error("Песни больше нет в папке");
         const file = await entry.handle.getFile();
         const data = await file.arrayBuffer();
-        if (valid(revision)) show(parse(file.name, data), `dir:${path}`);
+        const song = await parse(file.name, data);
+        if (valid(revision) && currentFolder(directoryRevision)) show(song, `dir:${path}`);
       } catch (problem) {
         if (!valid(revision) || !currentFolder(directoryRevision)) return;
         error(problem);

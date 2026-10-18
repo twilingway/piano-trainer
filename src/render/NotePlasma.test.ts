@@ -95,17 +95,24 @@ function lastDraw() {
 beforeEach(() => vi.clearAllMocks());
 
 describe("NotePlasma renderer integration", () => {
-  it("clips neutral mist only in native 3D and forwards the detached keyboard offset once", () => {
+  it("keeps native energy and legacy plasma until the scene pass owns effect readiness", () => {
     const view = setup();
-    view.draw();
-    expect(spies.draw.mock.calls.at(-1)?.[5]).toBe(false);
     view.road.drawsNativeRoad = true;
-    view.road.keysOffsetX = 80;
     view.draw();
-    expect(spies.draw.mock.calls.at(-1)?.slice(5)).toEqual([true, 80]);
+    expect(view.road.setEnergy).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ pitch: 60 })]),
+      0.016
+    );
+    // Native road readiness alone cannot hide effects: the world atlases may still be loading.
+    expect(view.effect.container.visible).toBe(true);
+    expect(spies.draw).toHaveBeenCalledOnce();
+    expect(view.road.notePlace).toHaveBeenCalled();
+    view.road.drawsNativeRoad = false;
+    view.draw();
+    expect(view.effect.container.visible).toBe(true);
+    expect(spies.draw).toHaveBeenCalledTimes(2);
     view.effect.destroy();
   });
-
   it("freezes a paused frame without consuming its attack, then emits once on resume", () => {
     const { draw, road } = setup();
     draw(frame({ playing: false }));

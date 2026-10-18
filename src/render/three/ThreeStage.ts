@@ -40,6 +40,8 @@ import { ThreeRoadGuides } from "./ThreeRoadGuides";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { drawSceneCameraPasses } from "./sceneCameraPasses";
 import type { WorldCamera } from "../worldCamera";
+import { PerformanceWorldStage } from "./PerformanceWorldStage";
+import { PerformanceScene } from "./PerformanceScene";
 import { FreeSceneCamera } from "./FreeSceneCamera";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
@@ -64,6 +66,9 @@ export class ThreeStage {
   private readonly renderer: WebGLRenderer;
   private readonly free: FreeSceneCamera;
   private freeEnabled = false;
+  private performanceEnabled = false;
+  private readonly performance: PerformanceScene;
+  private readonly worldStage: PerformanceWorldStage;
   private readonly raycaster = new Raycaster();
   private readonly occluders: Object3D[] = [];
   private readonly pointer = new Vector2();
@@ -73,6 +78,8 @@ export class ThreeStage {
   private readonly keys = new Group();
   private readonly road = new Group();
   private readonly lighting = new Group();
+  private readonly baseLighting = new Group();
+  private baseLightingVisible = true;
   private readonly roadNotes = new ThreeRoadNotes();
   private readonly roadTrails = new ThreeRoadTrails();
   private readonly noteAura = new ThreeNoteAura();
@@ -101,6 +108,10 @@ export class ThreeStage {
   readonly hands: LiveHands | undefined;
   private hinged: Hinged[] = [];
   private version = -1;
+  private disposed = false;
+  private nativePianist = false;
+  /** Pose the character after this frame's camera setup and before any scene render pass. */
+  beforeRender: ((camera: Camera) => void) | undefined;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -109,6 +120,8 @@ export class ThreeStage {
     hand: Object3D | undefined
   ) {
     this.free = new FreeSceneCamera(canvas);
+    this.performance = new PerformanceScene(this.scene);
+    this.worldStage = new PerformanceWorldStage(this.scene);
     this.hands = hand && new LiveHands(hand);
     this.renderer = new WebGLRenderer({ canvas, context });
     this.renderer.autoClear = false;
@@ -131,7 +144,8 @@ export class ThreeStage {
         this.keyEmission.refreshAppearance();
       }
     });
-    this.scene.add(hemisphere, sun, this.road, this.keys, this.lighting);
+    this.baseLighting.add(hemisphere, sun);
+    this.scene.add(this.baseLighting, this.road, this.keys, this.lighting);
     this.road.add(
       this.roadGuides.group,
       this.roadTrails.group,
@@ -157,7 +171,9 @@ export class ThreeStage {
     hands: HandsSource | undefined,
     energy: readonly EnergySource[] = [],
     energyDeltaSeconds = deltaSeconds,
-    roadFrame?: ThreeRoadFrame
+    roadFrame?: ThreeRoadFrame,
+    worldEffects = false,
+    songNotes?: HandsSource["notes"]
   ): void {
     if (keys.version !== this.version) this.build(keys);
     this.picture.sourceTexture = picture;
@@ -166,13 +182,33 @@ export class ThreeStage {
     const { params } = roadCamera;
     const scale = params.prefs.scale;
     this.keys.scale.setScalar(scale);
-    this.keys.position.x = this.freeEnabled ? 0 : (-keys.pan / 2) * scale;
+    this.keys.position.x =
+      this.freeEnabled || this.performanceEnabled ? 0 : (-keys.pan / 2) * scale;
     this.road.scale.copy(this.keys.scale);
     this.road.position.copy(this.keys.position);
     this.lighting.scale.copy(this.keys.scale);
     this.lighting.position.copy(this.keys.position);
     this.road.visible = roadFrame !== undefined;
     this.roadNotes.setViewport(screen.width, screen.height);
+    if (!this.nativePianist) this.hands?.update(hands);
+    if (this.performanceEnabled) {
+      this.worldStage.prepare(this.keys, this.boxes, roadCamera.near.z);
+      this.performance.lights.setStageLayout(this.worldStage.stage);
+    }
+    this.performance.setNotes(songNotes ?? hands?.notes);
+    this.performance.setRoad(roadFrame, roadCamera.near.y, roadCamera.near.z, roadCamera.roadFarZ);
+    const angle = this.performanceEnabled
+      ? this.performance.update(roadFrame?.songTime ?? 0, screen.width, screen.height, this.keys)
+      : 0;
+    this.roadNotes.performanceAngle =
+      this.roadTrails.performanceAngle =
+      this.noteAura.performanceAngle =
+        angle;
+    this.roadNotes.performanceScale =
+      this.roadTrails.performanceScale =
+      this.noteAura.performanceScale =
+        this.performanceEnabled ? this.performance.roadScale : 1;
+    this.roadNotes.nearZ = this.roadTrails.nearZ = this.noteAura.nearZ = roadCamera.near.z;
     if (roadFrame) {
       this.noteAura.update(
         roadFrame.notes,
@@ -189,7 +225,7 @@ export class ThreeStage {
         roadFrame.trailAnchors,
         roadFrame.trailAnchorCount
       );
-      if (roadFrame.guides)
+      if (roadFrame.guides && !this.performanceEnabled)
         this.roadGuides.update(this.boxes, roadCamera, roadFrame.beats, roadFrame.beatCount);
       else this.roadGuides.clear();
       this.roadNotes.update(
@@ -200,25 +236,44 @@ export class ThreeStage {
       );
     }
     const step = Math.min(1, deltaSeconds * DIP_RATE);
-    this.hands?.update(hands);
     this.noteLights.update(energy, roadCamera, energyDeltaSeconds);
     this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
-      const press = this.hands?.keys.get(pitch);
+      const press = this.nativePianist ? undefined : this.hands?.keys.get(pitch);
       // A finger's key turns until its top under the tip has sunk as deep as the tip.
       const pressed = press
         ? Math.asin(Math.min(1, press.drop / Math.max(1, PIVOT - press.along)))
         : 0;
       const target = Math.max(down(pitch) ? DIP : 0, pressed);
-      hinge.rotation.x += (target - hinge.rotation.x) * step;
+      hinge.rotation.x = press ? target : hinge.rotation.x + (target - hinge.rotation.x) * step;
     }
     const detached = keys.offset.x !== 0 || keys.offset.y !== 0;
-    const separate = !this.freeEnabled && (detached || keyboardCamera !== roadCamera);
-    if (this.freeEnabled) this.free.update(screen.width, screen.height, this.keys);
+    const separate =
+      !this.performanceEnabled && !this.freeEnabled && (detached || keyboardCamera !== roadCamera);
+    if (!this.performanceEnabled && this.freeEnabled)
+      this.free.update(screen.width, screen.height, this.keys);
     else {
       this.configureCamera(this.roadCamera, roadCamera, screen);
       if (separate) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
     }
+    this.worldStage.setDuration(this.performance.getDuration());
+    this.worldStage.update(
+      this.performanceEnabled,
+      roadFrame?.songTime ?? 0,
+      this.keys,
+      this.boxes,
+      energy,
+      this.performance.camera,
+      roadCamera.near.z,
+      worldEffects,
+      roadFrame
+    );
+    const camera = this.performanceEnabled
+      ? this.performance.camera
+      : this.freeEnabled
+        ? this.free.camera
+        : this.roadCamera;
+    this.beforeRender?.(camera);
     this.renderer.resetState();
     try {
       this.renderer.setViewport(
@@ -233,7 +288,7 @@ export class ThreeStage {
         this.scene,
         this.road,
         this.keys,
-        this.freeEnabled ? this.free.camera : this.roadCamera,
+        camera,
         this.keyboardCamera,
         separate
       );
@@ -257,21 +312,41 @@ export class ThreeStage {
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
   }
 
+  get nativeEffectsReady(): boolean {
+    return this.performanceEnabled && this.worldStage.ready;
+  }
+
   setFreeCamera(on: boolean): void {
     this.freeEnabled = on;
-    this.free.setEnabled(on);
+    this.free.setEnabled(on && !this.performanceEnabled);
+  }
+
+  setPerformanceScene(on: boolean): void {
+    if (on === this.performanceEnabled) return;
+    if (on) this.baseLightingVisible = this.baseLighting.visible;
+    this.baseLighting.visible = on ? false : this.baseLightingVisible;
+    this.performance.invalidate();
+    this.worldStage.invalidate();
+    this.performanceEnabled = on;
+    this.performance.lights.group.visible = on;
+    this.free.setEnabled(this.freeEnabled && !on);
   }
 
   resetFreeCamera(): void {
     this.free.invalidate();
+    this.performance.invalidate();
+    this.worldStage.invalidate();
   }
 
-  /** Actual mesh hits share the inspection camera and the current key hinge transforms. */
+  /** Actual mesh hits share the effective scene camera and the current key hinge transforms. */
   freeKeyAt(x: number, y: number, width: number, height: number): number | undefined {
-    if (!this.freeEnabled) return undefined;
+    if (!this.freeEnabled && !this.performanceEnabled) return undefined;
     this.pointer.set((2 * x) / Math.max(1, width) - 1, 1 - (2 * y) / Math.max(1, height));
     this.scene.updateMatrixWorld(true);
-    this.raycaster.setFromCamera(this.pointer, this.free.camera);
+    this.raycaster.setFromCamera(
+      this.pointer,
+      this.performanceEnabled ? this.performance.camera : this.free.camera
+    );
     const hits = this.raycaster.intersectObjects(
       [...this.hinged.map(({ mesh }) => mesh), ...this.occluders],
       true
@@ -292,10 +367,29 @@ export class ThreeStage {
     this.keys.add(object);
     this.occluders.push(object);
     this.free.invalidate();
+    this.performance.invalidate();
+    this.worldStage.invalidate();
+  }
+
+  removeFromKeys(object: Object3D): void {
+    object.removeFromParent();
+    const index = this.occluders.indexOf(object);
+    if (index >= 0) this.occluders.splice(index, 1);
+    this.free.invalidate();
+    this.performance.invalidate();
+    this.worldStage.invalidate();
+  }
+
+  setNativePianist(on: boolean): void {
+    if (on === this.nativePianist) return;
+    this.nativePianist = on;
+    if (on) this.hands?.suspend();
+    if (this.hands) this.hands.group.visible = false;
   }
 
   clearEnergy(): void {
     this.noteLights.clear();
+    this.worldStage.clear();
     this.keyEmission.clear();
   }
 
@@ -304,7 +398,13 @@ export class ThreeStage {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.beforeRender = undefined;
+    this.hands?.dispose();
     this.free.dispose();
+    this.performance.dispose();
+    this.worldStage.dispose();
     this.clear();
     this.appearance.dispose();
     this.cabinet.dispose();
@@ -327,6 +427,7 @@ export class ThreeStage {
     this.version = keys.version;
     const boxes = keyBoxes(keys);
     this.boxes = boxes;
+    this.performance.layout(boxes);
     this.appearance.layout(boxes);
     this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera);
     this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
@@ -395,7 +496,7 @@ export class ThreeStage {
     this.hinged = [];
     if (preserveEnergy) this.keyEmission.beginLayout();
     else this.keyEmission.dispose();
-    // Kit geometry stays shared; only the procedural enclosure owns its meshes.
+    // The case shares the kit's geometry: nothing of its own to free.
     this.cabinet.clear();
     this.body.clear();
   }

@@ -25,6 +25,8 @@ interface Props {
   /** The local pianist instead of the live hands; absent when there is no local model. */
   readonly pianist?: boolean;
   readonly freeCamera?: boolean;
+  readonly performanceScene?: boolean;
+  readonly onPerformanceScene?: (on: boolean) => void;
   readonly onFreeCamera?: (on: boolean) => void;
   readonly onPianist?: (on: boolean) => void;
   readonly road: { readonly far: number; readonly horizon: number };
@@ -53,6 +55,8 @@ export function KeyboardSettings({
   onRoadGuides,
   pianist,
   freeCamera,
+  performanceScene,
+  onPerformanceScene,
   onFreeCamera,
   onPianist,
   camera,
@@ -185,6 +189,18 @@ export function KeyboardSettings({
             checked={roadGuides}
             onChange={(event) => {
               onRoadGuides(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && onPerformanceScene && (
+        <label className="setting">
+          <span>{t("Сцена исполнения")}</span>
+          <input
+            type="checkbox"
+            checked={performanceScene ?? false}
+            onChange={(event) => {
+              onPerformanceScene(event.target.checked);
             }}
           />
         </label>

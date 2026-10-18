@@ -255,3 +255,30 @@ describe("inspection camera preference", () => {
     });
   });
 });
+
+describe("performance scene preference", () => {
+  it.each([undefined, "true", 1, null])(
+    "rejects invalid saved value %s",
+    async (performanceScene) => {
+      localStorage.setItem("staff-prefs", JSON.stringify({ performanceScene }));
+      await mount();
+      expect(prefs.staffPrefs.performanceScene).toBe(false);
+    }
+  );
+  it("restores scene mode without overwriting the saved camera", async () => {
+    await mount();
+    const camera = prefs.staffPrefs.camera;
+    await act(async () => {
+      prefs.updateStaffPrefs({ performanceScene: true });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs.performanceScene).toBe(true);
+    expect(prefs.staffPrefs.camera).toEqual(camera);
+  });
+});

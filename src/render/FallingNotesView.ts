@@ -15,6 +15,7 @@ import { HandsLayer } from "./HandsLayer";
 import { NotePlasma } from "./NotePlasma";
 import { FxLayer } from "./FxLayer";
 import { FpsMeter } from "./FpsMeter";
+import { ViewSceneCamera } from "./viewSceneCamera";
 import { FreeCameraLegend } from "./FreeCameraLegend";
 import { loadViewAssets, loadViewFonts } from "./viewAssets";
 import type { FrameState } from "./frameState";
@@ -110,7 +111,14 @@ export class FallingNotesView {
   private fpsVisible = false;
   private locale: Locale = "ru";
   private freeLegend: FreeCameraLegend | undefined;
-  private freeCamera = false;
+  private readonly sceneCamera = new ViewSceneCamera(
+    () => this.road,
+    () => this.keyStyle === "3d" && !this.computer,
+    (on) => {
+      this.freeLegend?.setVisible(on);
+      if (!on) this.panSnap = true;
+    }
+  );
   private unbindKeyboardPointer: (() => void) | undefined;
   /** Settings made before `mount`, applied to the layers once they exist. */
   private noteNames: FallingNoteNames | undefined;
@@ -165,7 +173,7 @@ export class FallingNotesView {
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
     this.road.setSceneEffects([this.plasma.container, this.road.effects, this.fx.container]);
     this.road.setCamera(this.cameraPrefs);
-    this.applyFreeCamera();
+    this.sceneCamera.apply();
     this.road.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
     void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
@@ -212,7 +220,7 @@ export class FallingNotesView {
   setKeyStyle(style: KeyStyle): void {
     if (style === this.keyStyle) return;
     this.keyStyle = style;
-    this.applyFreeCamera();
+    this.sceneCamera.apply();
     const loaded = this.road?.setKeyStyle(style);
     this.road?.setCamera(this.cameraPrefs);
     this.syncRoad();
@@ -292,17 +300,9 @@ export class FallingNotesView {
       this.laidOutFor = { width: 0, height: 0 };
   }
 
-  setFreeCamera(on: boolean): void {
-    this.freeCamera = on;
-    this.applyFreeCamera();
-  }
+  setPerformanceScene = this.sceneCamera.setPerformance;
 
-  private applyFreeCamera(): void {
-    this.road?.setFreeCamera(this.freeCamera && this.keyStyle === "3d" && !this.computer, (on) => {
-      this.freeLegend?.setVisible(on);
-      if (!on) this.panSnap = true;
-    });
-  }
+  setFreeCamera = this.sceneCamera.setFree;
 
   setKeyboardDim = (on: boolean): void => this.road?.setKeyboardDim(on);
 
@@ -374,7 +374,7 @@ export class FallingNotesView {
       : undefined;
     this.computerKeyboard?.setKeys(this.computer);
     this.syncKeyboards();
-    this.applyFreeCamera();
+    this.sceneCamera.apply();
     this.road?.setCamera(this.cameraPrefs);
     this.syncRoad();
     if (this.song) this.setSong(this.song);
@@ -422,6 +422,7 @@ export class FallingNotesView {
     if (!this.ready || !this.notesLayer || !this.keyboard) return;
     // Song time is shared; the road alone previews a longer approach.
     const state = this.computer?.frame(frame) ?? frame;
+    this.sceneCamera.frame(frame.hintTime ?? frame.time);
     const { width, height } = this.app.screen;
     if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
       this.layout(width, height);
@@ -475,7 +476,7 @@ export class FallingNotesView {
       );
     }
     // Native objects keep drawing; only screen-projected decorations leave inspection view.
-    const inspect = road?.freeCamera === true;
+    const inspect = road?.sceneCamera === true;
     this.notesLayer.cards.renderable = !inspect;
     this.hands.container.renderable = !inspect;
     const hitLineY = road ? road.hitLineY : geometry.hitY;

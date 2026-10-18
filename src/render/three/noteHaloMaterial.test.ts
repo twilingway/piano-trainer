@@ -91,7 +91,7 @@ describe("near-camera note halo", () => {
   it("preserves normal distant halos and caps oversized projected glows smoothly", () => {
     expect(fade(1000)).toBe(1);
     expect(sizeFade(80, 900)).toBe(1);
-    expect(radius(80, 900)).toBe(16);
+    expect(radius(80, 900)).toBe(9.6);
     expect(margin(80, 900)).toBe(48);
     for (const screen of [1, 320, 900, 2160]) {
       let previous = 1;

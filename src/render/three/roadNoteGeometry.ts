@@ -13,6 +13,7 @@ export interface WorldRoadNote {
   alpha: number;
   /** Original duration only controls decoration, never the score clock. */
   duration?: number;
+  pitch?: number | undefined;
   seed?: number;
   textureOffset?: number;
   lane?: NoteLaneProjection | undefined;

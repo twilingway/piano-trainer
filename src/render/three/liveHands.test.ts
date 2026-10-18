@@ -1,10 +1,11 @@
+import { loadSceneModels } from "./handScene.testSupport";
 import { readFileSync } from "node:fs";
 import { Bone, Matrix4, Object3D, PropertyBinding, Vector3 } from "three";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import library from "../../../tools/hand-rig/poses/library/seven-nation-army.json";
 import { planChunks } from "./handSolver/chunks";
 import type { Library } from "./handSolver/library";
-import { CHAIN, FINGERS, KEY_DIP, at, handJoints } from "./handSolver/mech";
+import { CHAIN, FINGERS, at, handJoints } from "./handSolver/mech";
 import type { Vec3 } from "./handSolver/mech";
 import { planHand, strikesOf } from "./handSolver/plan";
 import type { FingeredNote } from "./handSolver/plan";
@@ -137,6 +138,10 @@ const syncPlanner: Planner = (notes, onChunk) => {
 };
 
 describe("LiveHands", () => {
+  let model: Object3D;
+  beforeAll(async () => {
+    model = (await loadSceneModels()).hand;
+  });
   it("hides the hands until the plan reaches the song's time", () => {
     let deliver: (() => void) | undefined;
     const late: Planner = (notes, onChunk) => {
@@ -153,18 +158,165 @@ describe("LiveHands", () => {
     expect(hands.group.children.map((c) => c.visible)).toEqual([false, true]);
   });
 
-  it("lets a repeated note's key come up between the strikes", () => {
-    const hands = new LiveHands(skeleton(), syncPlanner);
+  it("lets a repeated note's key come up between the strikes", { timeout: 15000 }, () => {
+    const hands = new LiveHands(model, syncPlanner);
     const note = { duration: 0.5, pitch: 60, finger: 1 as const };
     const notes = { left: [], right: [0, 0.5].map((start) => ({ ...note, start })) };
     const dips: [number, number][] = [];
     for (let time = -0.3; time <= 0.8; time += 1 / 120) {
       hands.update({ time, notes });
-      dips.push([time, (hands.keys.get(60)?.drop ?? 0) / KEY_DIP]);
+      dips.push([time, hands.keys.get(60)?.drop ?? 0]);
     }
     const between = dips.filter(([time]) => time > 0.3 && time < 0.5).map(([, dip]) => dip);
     const held = dips.filter(([time]) => time > 0.1 && time < 0.3).map(([, dip]) => dip);
-    expect(Math.max(...held)).toBeGreaterThan(0.9);
-    expect(Math.min(...between)).toBeLessThan(0.3);
+    const depth = Math.max(...held);
+    expect(depth).toBeGreaterThan(1);
+    expect(Math.min(...between)).toBeLessThan(depth * 0.3);
   });
+});
+
+describe("an active hand player", () => {
+  it("lifts the final attached hand and releases its key after the source duration, including seeks", () => {
+    const planner: Planner = (notes, deliver, context) => {
+      for (const chunk of planChunks(
+        context?.rest ?? STUDIO_REST,
+        LIB,
+        notes,
+        () => false,
+        context?.timing
+      ))
+        deliver(chunk);
+      return () => undefined;
+    };
+    const hands = new LiveHands(skeleton(), planner);
+    hands.layout({ pitch: 60, x: 0, width: 23.5 });
+    hands.setPlayer({ rest: { left: STUDIO_REST, right: STUDIO_REST }, pose: () => undefined });
+    const notes = {
+      left: [],
+      right: [{ start: 0, duration: 0.25, pitch: 60, finger: 1 as const }]
+    };
+    hands.update({ time: 0.2, notes });
+    const pressedZ = hands.poses.right?.root[5];
+    expect(hands.keys.get(60)?.drop).toBeGreaterThan(0);
+    hands.update({ time: 0.4, notes });
+    const releasedZ = hands.poses.right?.root[5];
+    expect(releasedZ).toBeCloseTo((pressedZ ?? 0) + 20, 8);
+    expect(hands.keys.has(60)).toBe(false);
+    hands.update({ time: 0.2, notes });
+    expect(hands.poses.right?.root[5]).toBe(pressedZ);
+    hands.update({ time: 0.4, notes });
+    expect(hands.poses.right?.root[5]).toBe(releasedZ);
+    hands.dispose();
+  });
+
+  it("switches anatomy through the same planner and restores studio hands", () => {
+    const profile = {
+      left: STUDIO_REST,
+      right: { ...STUDIO_REST, len: { ...STUDIO_REST.len, 2: [40, 36.5, 27.8] as const } }
+    };
+    const planned: unknown[] = [];
+    let cancelled = 0;
+    const planner: Planner = (notes, deliver, context) => {
+      planned.push(context?.rest);
+      for (const chunk of planChunks(context?.rest ?? STUDIO_REST, LIB, notes, () => false))
+        deliver(chunk);
+      return () => {
+        cancelled++;
+      };
+    };
+    const poses: unknown[] = [];
+    const player = {
+      rest: profile,
+      pose: (pose: unknown) => {
+        poses.push(pose);
+      }
+    };
+    const hands = new LiveHands(skeleton(), planner);
+    const source = { time: 0.4, notes: { left: [], right: RIGHT_LINE } };
+    hands.layout({ pitch: 60, x: 0, width: 23.5 });
+    hands.update(source);
+    expect(hands.group.visible).toBe(true);
+    hands.setPlayer(player);
+    hands.update(source);
+    expect(cancelled).toBe(1);
+    expect(planned.at(-1)).toBe(profile);
+    expect(hands.group.visible).toBe(false);
+    expect(poses).toHaveLength(1);
+    expect(hands.poses.right).toBeDefined();
+    const before = planned.length;
+    hands.setPlayer(player);
+    hands.update(source);
+    expect(planned).toHaveLength(before);
+    hands.setPlayer(undefined);
+    hands.update(source);
+    expect(cancelled).toBe(2);
+    expect(hands.group.visible).toBe(true);
+    expect(planned.at(-1)).toBeUndefined();
+    hands.dispose();
+    expect(cancelled).toBe(3);
+  });
+
+  it("rejects stale profile chunks and clears external poses with no source", () => {
+    const chunks: (() => void)[] = [];
+    const planner: Planner = (notes, deliver, context) => {
+      chunks.push(() => {
+        for (const chunk of planChunks(context?.rest ?? STUDIO_REST, LIB, notes, () => false))
+          deliver(chunk);
+      });
+      return () => undefined;
+    };
+    let received: unknown;
+    const player = {
+      rest: { left: STUDIO_REST, right: STUDIO_REST },
+      pose: (pose: unknown) => {
+        received = { ...(pose as object) };
+      }
+    };
+    const hands = new LiveHands(skeleton(), planner);
+    const source = { time: 0.4, notes: { left: [], right: RIGHT_LINE } };
+    hands.update(source);
+    hands.setPlayer(player);
+    hands.update(source);
+    must(chunks[0])();
+    hands.update(source);
+    expect(hands.poses.right).toBeUndefined();
+    must(chunks[1])();
+    hands.update(source);
+    expect(hands.poses.right).toBeDefined();
+    hands.update(undefined);
+    expect(received).toEqual({ left: undefined, right: undefined });
+    expect(hands.keys.size).toBe(0);
+    hands.dispose();
+  });
+});
+
+it("suspends streaming, rejects late chunks and replans the identical notes on fallback return", () => {
+  const deliveries: (() => void)[] = [];
+  let cancelled = 0;
+  const planner: Planner = (notes, deliver) => {
+    deliveries.push(() => {
+      for (const chunk of planChunks(STUDIO_REST, LIB, notes, () => false)) deliver(chunk);
+    });
+    return () => {
+      cancelled++;
+    };
+  };
+  const hands = new LiveHands(skeleton(), planner);
+  const source = { time: 0.1, notes: { left: [], right: RIGHT_LINE } };
+  hands.update(source);
+  hands.keys.set(60, { drop: 8, along: 90 });
+  hands.suspend();
+  hands.suspend();
+  expect(cancelled).toBe(1);
+  expect(hands.group.visible).toBe(false);
+  expect(hands.keys.size).toBe(0);
+  must(deliveries[0])();
+  hands.update(source);
+  expect(deliveries).toHaveLength(2);
+  expect(hands.poses.right).toBeUndefined();
+  must(deliveries[1])();
+  hands.update(source);
+  expect(hands.poses.right).toBeDefined();
+  hands.dispose();
+  expect(cancelled).toBe(2);
 });

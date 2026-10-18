@@ -84,4 +84,73 @@ describe("planChunks", () => {
     expect(strikes).toBe(280);
     expect(firstMs).toBeLessThan(1000);
   });
+
+  it("plans each side with its own anatomy", () => {
+    const longer = {
+      ...STUDIO_REST,
+      mcp: {
+        ...STUDIO_REST.mcp,
+        2: [STUDIO_REST.mcp[2][0], STUDIO_REST.mcp[2][1] + 12, STUDIO_REST.mcp[2][2]] as const
+      },
+      len: { ...STUDIO_REST.len, 2: [40, 36.5, 27.8] as const }
+    };
+    const rests = { left: STUDIO_REST, right: longer };
+    const notes = {
+      left: [{ start: 1, duration: 0.3, pitch: 48, finger: 2 as const }],
+      right: [{ start: 1, duration: 0.3, pitch: 60, finger: 2 as const }]
+    };
+    const chunks = [...planChunks(rests, LIB, notes, () => false)];
+    for (const hand of ["left", "right"] as const) {
+      const expected = planHand(rests[hand], LIB, hand, strikesOf(notes[hand], hand));
+      expect(
+        chunks
+          .filter((c) => c.hand === hand)
+          .flatMap((c) => c.poses)
+          .map((p) => p.rootVec)
+      ).toEqual(expected.poses.map((p) => p.rootVec));
+    }
+    const studio = planHand(STUDIO_REST, LIB, "right", strikesOf(notes.right, "right"));
+    expect(chunks.find((c) => c.hand === "right")?.poses[0]?.rootVec).not.toEqual(
+      studio.poses[0]?.rootVec
+    );
+  });
+});
+
+it("streams optional score timing with exactly the same ordered source strikes as a whole plan", () => {
+  const notes = {
+    left: [{ start: 0, duration: 0.1, pitch: 48, finger: 3 as const }],
+    right: [
+      { start: 0.1234567, duration: 0.01, pitch: 60, finger: 1 as const },
+      { start: 0.1612345, duration: 0.01, pitch: 84, finger: 3 as const },
+      { start: 0.2012345, duration: 0.01, pitch: 84, finger: 3 as const }
+    ]
+  };
+  const chunks = [...planChunks(STUDIO_REST, LIB, notes, () => true, "score")];
+  for (const hand of ["left", "right"] as const) {
+    const keys = chunks.filter((chunk) => chunk.hand === hand).flatMap((chunk) => chunk.keys);
+    const whole = planHand(STUDIO_REST, LIB, hand, strikesOf(notes[hand], hand), "score");
+    expect(keys).toEqual(whole.keys);
+    expect(keys.filter((key) => key.phase === "strike").map((key) => key.t)).toEqual(
+      notes[hand].map((note) => note.start)
+    );
+    expect(
+      keys.every((key, index) => index === 0 || key.t > (keys[index - 1]?.t ?? Infinity))
+    ).toBe(true);
+  }
+});
+
+it("keeps rolled MIDI onsets separate in score mode instead of grouping them thirty milliseconds early", () => {
+  const notes = {
+    left: [],
+    right: [
+      { start: 1, duration: 0.5, pitch: 60, finger: 1 as const },
+      { start: 1.019, duration: 0.3, pitch: 62, finger: 2 as const },
+      { start: 1.04, duration: 0.3, pitch: 64, finger: 2 as const }
+    ]
+  };
+  const chunks = [...planChunks(STUDIO_REST, LIB, notes, () => false, "score")];
+  const strikes = chunks.flatMap((chunk) =>
+    chunk.keys.filter((key) => key.phase === "strike").map((key) => key.t)
+  );
+  expect(strikes).toEqual([1, 1.019, 1.04]);
 });

@@ -46,7 +46,8 @@ export function fit(
   lo: readonly number[],
   hi: readonly number[],
   fun: (x: readonly number[]) => readonly number[],
-  active: readonly boolean[] = x0.map(() => true)
+  active: readonly boolean[] = x0.map(() => true),
+  iterations = ITERS
 ): { x: number[]; r: readonly number[] } {
   const n = x0.length;
   const low = (i: number) => lo[i] ?? -Infinity;
@@ -55,7 +56,7 @@ export function fit(
   let r = fun(x);
   let cost = dot(r, r);
   let lam = 1e-3;
-  for (let iter = 0; iter < ITERS; iter++) {
+  for (let iter = 0; iter < iterations; iter++) {
     // Jacobian columns of the active variables; the others stay zero.
     const J: number[][] = r.map(() => new Array<number>(n).fill(0));
     for (let i = 0; i < n; i++) {
@@ -93,6 +94,12 @@ export function fit(
       free.forEach((i, a) => {
         xn[i] = Math.min(Math.max((x[i] ?? 0) + (dx[a] ?? 0), low(i)), high(i));
       });
+      // A singular or nonfinite residual must not send invalid coordinates into geometry.
+      if (!xn.every(Number.isFinite)) {
+        lam *= 4;
+        if (lam > 1e8) return { x, r };
+        continue;
+      }
       rn = fun(xn);
       cn = dot(rn, rn);
       if (cn < cost) break;

@@ -126,7 +126,7 @@ describe("inspection key input", () => {
     { x: 90, y: 125 }
   ])("adds the keyboard top once for white and black source hits", (point) => {
     const state = {
-      three: { freeCamera: true, freeKeysPointAt: vi.fn(() => point) },
+      three: { sceneCamera: true, freeKeysPointAt: vi.fn(() => point) },
       keyboardTopY: 400
     };
     const layer = Object.assign(

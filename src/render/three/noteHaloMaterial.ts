@@ -23,7 +23,7 @@ float haloSizeFade(float width, float screenShort) {
   return 1.0 - smoothstep(screenShort * 0.5, screenShort, width);
 }
 float haloRadius(float width, float screenShort) {
-  return min(max(width * 0.20, 0.75), max(1.0, screenShort * 0.06));
+  return min(max(width * 0.12, 0.65), max(1.0, screenShort * 0.06));
 }
 float haloMargin(float width, float screenShort) {
   return min(max(width * 0.6, 2.0), max(2.0, screenShort * 0.18));
@@ -97,7 +97,7 @@ void main() {
     cross2(vQ0 - vQ3, vPoint - vQ3) * orientation >= 0.0;
   float radius = inside ? vRadius * 0.4 : vRadius;
   float glow = exp(-distance * distance / (2.0 * radius * radius));
-  float alpha = min(0.5, glow * vAlpha * 0.5);
+  float alpha = min(0.46, glow * vAlpha * 0.46);
   if (alpha < 0.002) discard;
   gl_FragColor = vec4(vTint, alpha);
 }

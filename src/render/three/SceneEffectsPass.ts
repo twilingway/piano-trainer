@@ -20,11 +20,12 @@ export class SceneEffectsPass {
     }));
   }
 
-  draw(renderer: Renderer): void {
+  draw(renderer: Renderer, render = true): void {
     for (const layer of this.layers) {
       if (!isVisible(layer.container)) continue;
       layer.container.getGlobalTransform(layer.transform);
-      renderer.render({ container: layer.container, clear: false, transform: layer.transform });
+      if (render)
+        renderer.render({ container: layer.container, clear: false, transform: layer.transform });
       layer.savedRenderable = layer.container.renderable;
       layer.container.renderable = false;
     }
