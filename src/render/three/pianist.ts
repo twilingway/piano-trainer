@@ -19,6 +19,7 @@ import type { NativePerformance } from "./nativePianistClip";
 import { loadNativePianist } from "./nativePianistModel";
 import { CameraPerformerGaze } from "./CameraPerformerGaze";
 import { NativePerformerMotion } from "./NativePerformerMotion";
+import { NativeHandsView } from "./NativeHandsView";
 
 /** The lab's saved trial: eight seconds of the two index fingers, not a way to play a song. */
 export const PIANIST_TRIAL_CLIP = "IndexFingerTest_8s";
@@ -41,7 +42,8 @@ export interface PianistModel {
 
 /** The local pianist, or undefined when the model is not there. */
 export async function loadPianist(
-  source?: SourcePerformanceIdentity
+  source?: SourcePerformanceIdentity,
+  nativeOnly = false
 ): Promise<PianistModel | undefined> {
   try {
     const native = await loadNativePianist(source);
@@ -50,8 +52,9 @@ export async function loadPianist(
       return native;
     }
   } catch (error) {
-    console.warn("Native pianist unavailable, using the local trial model", error);
+    console.warn("Native pianist unavailable", error);
   }
+  if (nativeOnly) return undefined;
   const url = await pianistModelUrl();
   if (!url) return undefined;
   const model = await new GLTFLoader().loadAsync(url);
@@ -153,6 +156,9 @@ export class Pianist {
   private readonly cameraWorld = new Vector3();
   private readonly face: PianistFace | undefined;
   private disposed = false;
+  private bodyVisible = true;
+  private topView = false;
+  private readonly nativeHands: NativeHandsView | undefined;
   private lowerBody: { node: Object3D; visible: boolean }[] | undefined;
   private readonly topBodies: {
     mesh: SkinnedMesh;
@@ -171,6 +177,7 @@ export class Pianist {
       this.face = PianistFace.create(model.scene);
       this.gaze = new CameraPerformerGaze(model.scene);
       this.motion = new NativePerformerMotion(model.scene);
+      this.nativeHands = new NativeHandsView(model.scene);
       return;
     }
     this.rig = PianistRig.create(model.scene);
@@ -192,9 +199,18 @@ export class Pianist {
     return this.nativeClip !== undefined;
   }
 
+  /** Hiding the native body keeps its original animated hands and forearms. */
+  setBodyVisible(visible: boolean): void {
+    if (this.bodyVisible === visible) return;
+    this.bodyVisible = visible;
+    this.setTopView(this.topView);
+  }
+
   /** Ordinary overhead lessons keep the legs and shoes out of the falling notes. */
   setTopView(top: boolean): void {
     if (this.disposed) return;
+    this.topView = top;
+    this.nativeHands?.restore();
     if (!this.lowerBody) {
       this.lowerBody = [];
       this.model.scene.traverse((node) => {
@@ -208,6 +224,7 @@ export class Pianist {
     }
     for (const { node, visible } of this.lowerBody) node.visible = top ? false : visible;
     for (const body of this.topBodies) body.mesh.geometry = top ? body.overhead : body.original;
+    if (!this.bodyVisible) this.nativeHands?.showHands();
   }
 
   /** The camera is already configured; restore additive gaze before sampling original bone curves. */
@@ -220,6 +237,7 @@ export class Pianist {
     if (!valid) return;
     this.motion?.apply(source?.time ?? 0, source?.beats ?? []);
     this.face?.update(source?.time ?? 0);
+    if (!this.bodyVisible) this.nativeHands?.showHands();
     camera.getWorldPosition(this.cameraWorld);
     this.gaze?.apply(this.cameraWorld, source?.time ?? 0);
   }
@@ -254,6 +272,7 @@ export class Pianist {
     this.motion?.dispose();
     this.nativeClip?.dispose();
     this.appearance?.dispose();
+    this.nativeHands?.dispose();
     for (const body of this.topBodies) {
       body.mesh.geometry = body.original;
       body.overhead.dispose();

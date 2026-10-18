@@ -592,7 +592,8 @@ export class FallingNotesView {
       // On the road the computer keyboard is one slab, its picture its face.
       this.road.setKeyboard(
         this.computer ? new Map([[0, { pitch: 0, black: false, x: 0, width: total }]]) : this.keys,
-        geometry
+        geometry,
+        !this.parts.hands
       );
       // The road shows itself when it fits; off, it stays hidden whatever the layout.
       if (!this.roadMode) {

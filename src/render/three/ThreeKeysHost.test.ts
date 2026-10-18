@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   pianistConstruct: vi.fn(),
   pianistSample: vi.fn(),
   pianistTopView: vi.fn(),
+  pianistBodyVisible: vi.fn(),
   pianistDispose: vi.fn(),
   disposeModel: vi.fn(),
   setNativePianist: vi.fn(),
@@ -74,6 +75,7 @@ vi.mock("./pianist", () => ({
     readonly rig = { pose: mocks.pose, setNativeHandsVisible: vi.fn() };
     sample = mocks.pianistSample;
     setTopView = mocks.pianistTopView;
+    setBodyVisible = mocks.pianistBodyVisible;
     poseFallback = mocks.pose;
     dispose = mocks.pianistDispose;
     follow = vi.fn();
@@ -720,8 +722,69 @@ it("keeps sprite/Studio hands hidden for a complete native model even when the S
   expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
   view.hands.pianist = false;
   view.tick();
+  expect(view.hands.live).toBe(true);
+  expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
+  expect(mocks.pianistBodyVisible).toHaveBeenLastCalledWith(false);
+  view.hands.container.visible = false;
+  view.tick();
   expect(view.hands.live).toBe(false);
   expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
+  view.host.destroy();
+});
+
+it("loads native hands without a body, samples them and switches every visibility combination", async () => {
+  const view = fixture(),
+    camera = new Camera();
+  view.hands.songPerformance = sourcePerformance("hands-only");
+  mocks.loadPianist.mockResolvedValueOnce({ scene: new Group(), clip: {}, performance: {} });
+  mocks.draw.mockImplementation(function (this: { beforeRender?: (camera: Camera) => void }) {
+    this.beforeRender?.(camera);
+  });
+  await view.host.setEnabled(true);
+  view.tick();
+  await settlePianist();
+  view.hands.time = 42;
+  view.tick();
+  expect(mocks.loadPianist).toHaveBeenLastCalledWith(view.hands.songPerformance, true);
+  expect(mocks.pianistBodyVisible).toHaveBeenLastCalledWith(false);
+  expect(mocks.pianistSample).toHaveBeenLastCalledWith(
+    expect.objectContaining({ time: 42, performance: view.hands.songPerformance }),
+    camera
+  );
+  const space = mocks.addToKeys.mock.calls.at(-1)?.[0] as Group;
+  expect(space.visible).toBe(true);
+  for (const [body, hands, native] of [
+    [true, true, true],
+    [true, false, true],
+    [false, true, true],
+    [false, false, false]
+  ]) {
+    view.hands.pianist = body ?? false;
+    view.hands.container.visible = hands ?? false;
+    mocks.pianistSample.mockClear();
+    view.tick();
+    expect(space.visible).toBe(native);
+    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(native);
+    expect(mocks.pianistSample.mock.calls.length).toBe(native ? 1 : 0);
+    if (native) expect(mocks.pianistBodyVisible).toHaveBeenLastCalledWith(body);
+  }
+  expect(mocks.loadPianist).toHaveBeenCalledOnce();
+  view.host.destroy();
+});
+
+it("does not try the trial for hands alone, but can load it when the body is enabled later", async () => {
+  const view = fixture();
+  view.hands.songPerformance = sourcePerformance("missing-native");
+  await view.host.setEnabled(true);
+  view.tick();
+  await settlePianist();
+  view.tick();
+  expect(mocks.loadPianist).toHaveBeenCalledExactlyOnceWith(view.hands.songPerformance, true);
+  view.hands.pianist = true;
+  view.tick();
+  await settlePianist();
+  expect(mocks.loadPianist).toHaveBeenLastCalledWith(view.hands.songPerformance);
+  expect(mocks.loadPianist).toHaveBeenCalledTimes(2);
   view.host.destroy();
 });
 
@@ -771,6 +834,7 @@ it("drives native keys from physical source contacts and keeps manual presses ab
     const down = mocks.draw.mock.calls.at(-1)?.[2] as (pitch: number) => boolean;
     return down(pitch);
   };
+  view.hands.pianist = false;
   expect(downAt(1, 60)).toBe(true);
   expect(downAt(1.1, 60)).toBe(false);
   expect(downAt(2, 60)).toBe(true);

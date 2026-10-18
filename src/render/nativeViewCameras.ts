@@ -12,9 +12,12 @@ export function nativeViewCameras(
   perspective: boolean,
   roadHeight: number,
   horizon: number,
-  viewportHeight: number
+  viewportHeight: number,
+  keyboardBottom?: number
 ) {
-  const keyboard = keyboardTop ? mixedKeyboardCamera(base, keyboardHeight) : base;
+  let keyboard = keyboardTop ? mixedKeyboardCamera(base, keyboardHeight) : base;
+  if (keyboardBottom !== undefined && keyboard.params.prefs.pitch === 90)
+    keyboard = dockKeyboardCamera(keyboard, keyboardBottom);
   const notes = noteProjectionCamera(
     keyboard,
     perspective ? "perspective" : "direct",
@@ -29,4 +32,18 @@ export function nativeViewCameras(
     viewportHeight
   );
   return { keyboard, notes, blackLane };
+}
+
+/** Keep overhead keys on their layout floor while retaining the player's camera shift. */
+function dockKeyboardCamera(camera: WorldCamera, bottom: number): WorldCamera {
+  if (!Number.isFinite(bottom)) return camera;
+  const shift = bottom + camera.params.prefs.targetY - camera.project(0, 22, 0).y;
+  const moved = (point: ReturnType<WorldCamera["project"]>) => ({ ...point, y: point.y + shift });
+  return {
+    ...camera,
+    params: { ...camera.params, originY: camera.params.originY + shift },
+    project: (...args) => moved(camera.project(...args)),
+    projectAtProgress: (...args) => moved(camera.projectAtProgress(...args)),
+    road: { ...camera.road, at: (...args) => moved(camera.road.at(...args)) }
+  };
 }
