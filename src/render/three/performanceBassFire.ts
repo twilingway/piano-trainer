@@ -2,13 +2,18 @@
 const ONSET_SECONDS = 0.04;
 /** A burst flares at once and dies out over this many song seconds. */
 export const BASS_FIRE_SECONDS = 0.7;
+/** An onset is bass when it reaches within a fifth of the song's lowest left-hand note. */
+const BASS_RANGE_SEMITONES = 7;
 
 export interface BassOnset {
   readonly time: number;
   readonly pitch: number;
 }
 
-/** The lowest note of each left-hand onset, in song order: the bass the stage flares on. */
+/**
+ * The left-hand onsets whose lowest note lies within a fifth of the hand's lowest note in the
+ * song, in song order: a waltz's bass on beat 1 flares, its chords on beats 2 and 3 do not.
+ */
 export function performanceBassOnsets(
   left: readonly { readonly start: number; readonly pitch: number }[]
 ): BassOnset[] {
@@ -27,7 +32,8 @@ export function performanceBassOnsets(
     groupStart = note.start;
     onsets.push({ time: note.start, pitch: note.pitch });
   }
-  return onsets;
+  const lowest = Math.min(...onsets.map((onset) => onset.pitch));
+  return onsets.filter((onset) => onset.pitch <= lowest + BASS_RANGE_SEMITONES);
 }
 
 /** The latest bass burst's strength at a song time, 1 at its onset and 0 once it has died out. */

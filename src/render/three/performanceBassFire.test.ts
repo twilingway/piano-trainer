@@ -18,6 +18,23 @@ describe("bass fire", () => {
     ]);
     expect(performanceBassOnsets([])).toEqual([]);
   });
+  it("fires on a waltz's beat-1 bass and not on its chords on beats 2 and 3", () => {
+    const beat = 60 / 84;
+    const left = [41, 36, 34, 41].flatMap((bass, bar) => {
+      const start = bar * 3 * beat;
+      return [
+        { start, pitch: bass },
+        ...[1, 2].flatMap((offset) =>
+          [48 + bar, 53, 57].map((pitch) => ({ start: start + offset * beat, pitch }))
+        )
+      ];
+    });
+    const onsets = performanceBassOnsets(left);
+    expect(onsets.map((onset) => onset.pitch)).toEqual([41, 36, 34, 41]);
+    expect(onsets.map((onset) => onset.time)).toEqual([0, 3 * beat, 6 * beat, 9 * beat]);
+    expect(bassFireStrength(beat, onsets)).toBe(0);
+    expect(bassFireStrength(3 * beat, onsets)).toBe(1);
+  });
   it("flares at each onset and dies out before the next one, the same after any seek", () => {
     const onsets = performanceBassOnsets([
       { start: 1, pitch: 41 },
