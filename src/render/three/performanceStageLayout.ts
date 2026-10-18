@@ -33,7 +33,10 @@ export interface PerformanceSignPlacement {
 /** Behind the pianist's back and above the hat, facing the front cameras (towards -Z). */
 export function performanceSignPlacement(bounds: CameraBounds, unit = 1): PerformanceSignPlacement {
   const scale = Number.isFinite(unit) && unit > 0 ? unit : 1;
-  const width = Math.min(1800 * scale, Math.max(900 * scale, (bounds.max.x - bounds.min.x) * 0.95));
+  const width = Math.min(
+    2600 * scale,
+    Math.max(1300 * scale, (bounds.max.x - bounds.min.x) * 1.35)
+  );
   return {
     base: {
       x: (bounds.min.x + bounds.max.x) / 2,

@@ -58,6 +58,7 @@ export class PerformanceNeonSign {
   private texture: CanvasTexture;
   private readonly eye = new Vector3();
   private aspect = 1;
+  private readonly size = { width: 1, height: 1 };
   private textValue = "";
 
   constructor(text: string) {
@@ -149,6 +150,8 @@ export class PerformanceNeonSign {
   layout(placement: PerformanceSignPlacement): void {
     const width = Math.min(placement.width, placement.maxHeight / this.aspect),
       height = width * this.aspect;
+    this.size.width = width;
+    this.size.height = height;
     this.mesh.scale.set(width, height, 1);
     this.mesh.position.set(placement.base.x, placement.base.y + height / 2, placement.base.z);
   }
@@ -162,7 +165,11 @@ export class PerformanceNeonSign {
     const flicker = 0.94 + 0.04 * Math.sin(seconds * 7.3) + 0.02 * Math.sin(seconds * 23.9 + 1.3);
     this.mesh.material.opacity = Math.max(0, Math.min(1, fade)) * flicker;
     // Not tone mapped: a colour above 1 makes the additive glow brighter than the texture.
-    this.mesh.material.color.setScalar(1 + 1.6 * Math.max(0, Math.min(1, flash)));
+    const burst = Math.max(0, Math.min(1, flash));
+    this.mesh.material.color.setScalar(1 + 1.6 * burst);
+    // Brightness alone saturates in the glow; the sign also swells with the bass.
+    const swell = 1 + 0.14 * burst;
+    this.mesh.scale.set(this.size.width * swell, this.size.height * swell, 1);
     this.mesh.visible = front && fade > 0;
   }
 

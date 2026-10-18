@@ -1,14 +1,13 @@
 import { PerspectiveCamera, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { PerformanceCameraPath } from "./performanceCameraPath";
-import type { PerformanceCameraGeometry } from "./performanceCameraPath";
+import type { PerformanceCameraGeometry, PerformanceCameraPose } from "./performanceCameraPath";
 import { geometry } from "./performanceCameraPath.testSupport";
 import { distance, inside, point } from "./performanceCameraMath";
-import { performanceShortRoute } from "./performanceShortRoute";
 import { performanceSignPlacement } from "./performanceStageLayout";
 
-const { road, ...withoutRoad } = geometry;
-const SHOTS = ["front-wide", "side-hands", "notes-flight", "face", "top-hands", "final-wide"];
+const { road: _road, ...withoutRoad } = geometry;
+const sign = performanceSignPlacement(geometry.bounds, geometry.unit);
 /** The named shots in the order they hold the frame; the rise and clearance bends join them. */
 function shotOrder(path: PerformanceCameraPath): string[] {
   const shots: string[] = [];
@@ -27,24 +26,33 @@ function maxSpeed(path: PerformanceCameraPath): number {
     );
   return fastest;
 }
+/** Normalised device coordinates of world points seen from a sampled pose. */
+function project(pose: PerformanceCameraPose, aspect: number, points: readonly Vector3[]) {
+  const camera = new PerspectiveCamera(pose.fov, aspect, 1, 50000);
+  camera.position.set(pose.position.x, pose.position.y, pose.position.z);
+  camera.up.set(pose.up.x, pose.up.y, pose.up.z);
+  camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+  camera.updateMatrixWorld();
+  return points.map((p) => p.clone().project(camera));
+}
+const signCorners = [-1, 1].flatMap((side) =>
+  [0, sign.maxHeight].map(
+    (height) =>
+      new Vector3(sign.base.x + (side * sign.width) / 2, sign.base.y + height, sign.base.z)
+  )
+);
 
 describe("short-song camera route", () => {
-  it.each([25.7, 26, 28, 30])("plays each shot once, in order, two seconds apart: %s s", (song) => {
+  it.each([25.7, 26, 28, 30])("passes the sign, then flies through it: %s s", (song) => {
     const path = new PerformanceCameraPath({ ...geometry, duration: song });
     expect(path.opening).toBe(6);
     expect(path.duration).toBe(song);
-    expect(shotOrder(path)).toEqual(SHOTS);
-    expect(path.sample(song).shot).toBe("final-wide");
-    const times = [6, ...performanceShortRoute(geometry, 6, song).map((node) => node.time)];
-    for (let index = 1; index < times.length; index++)
-      expect((times[index] ?? 0) - (times[index - 1] ?? 0)).toBeGreaterThanOrEqual(2);
-    expect(times.at(-1)).toBe(song);
+    expect(shotOrder(path)).toEqual(["sign-pass", "sign-through"]);
   });
   it("stretches a song shorter than 25 s to a 25 s route", () => {
     const path = new PerformanceCameraPath({ ...geometry, duration: 12 });
-    expect(path.opening).toBe(6);
     expect(path.duration).toBe(25);
-    expect(shotOrder(path)).toEqual(SHOTS);
+    expect(shotOrder(path)).toEqual(["sign-pass", "sign-through"]);
   });
   it.each([
     ["road", geometry],
@@ -57,28 +65,64 @@ describe("short-song camera route", () => {
         String(song)
       ).toBeLessThanOrEqual(long);
   });
-  it("flies along the real tilted note road between the side and face shots", () => {
+  it("keeps the note road flat and never flies into it", () => {
     const path = new PerformanceCameraPath({ ...geometry, duration: 25.7 });
-    const flight = performanceShortRoute(geometry, 6, 25.7).filter((node) => node.forwardRoad);
-    expect(flight).toHaveLength(3);
-    const lanes = road?.lanes.map((lane) => lane.x) ?? [];
-    for (const node of flight) {
-      const pose = path.sample(node.time);
-      expect(pose.noteAngle).toBeCloseTo(0.24);
-      expect(pose.roadScale).toBeCloseTo(2.5);
-      expect(pose.crossing).toBe("through");
-      expect(pose.position.x).toBeGreaterThanOrEqual(Math.min(...lanes));
-      expect(pose.position.x).toBeLessThanOrEqual(Math.max(...lanes));
+    for (let time = 6; time <= 25.7; time += 0.05) {
+      const pose = path.sample(time);
+      expect(pose.noteAngle, String(time)).toBe(0);
+      expect(pose.crossing, String(time)).toBeUndefined();
+      expect(pose.roadScale, String(time)).toBe(1);
     }
-    const [first, , last] = flight;
-    expect((last?.time ?? 0) - (first?.time ?? 0)).toBeGreaterThan(4);
   });
-  it("swaps the note flight for a low front pass of the hands without a road", () => {
-    const path = new PerformanceCameraPath({ ...withoutRoad, duration: 26 });
-    expect(shotOrder(path)).toEqual(
-      SHOTS.map((shot) => (shot === "notes-flight" ? "front-low-hands" : shot))
-    );
-    for (let time = 6; time <= 26; time += 0.05) expect(path.sample(time).crossing).toBeUndefined();
+  it.each([1.6, 3440 / 1313, 0.56])(
+    "moves left to right holding the whole sign large above the pianist's head at aspect %s",
+    (aspect) => {
+      const path = new PerformanceCameraPath({ ...geometry, duration: 25.7, aspect });
+      const head = new Vector3(
+        (geometry.avatar.min.x + geometry.avatar.max.x) / 2,
+        geometry.avatar.max.y - 100,
+        (geometry.avatar.min.z + geometry.avatar.max.z) / 2
+      );
+      let x = -Infinity;
+      for (let time = 9; time <= 21.7; time += 0.1) {
+        const pose = path.sample(time);
+        expect(pose.shot).toBe("sign-pass");
+        expect(pose.position.x, String(time)).toBeGreaterThan(x);
+        x = pose.position.x;
+        const [first, ...rest] = project(pose, aspect, [head, ...signCorners]);
+        for (const corner of [first, ...rest]) {
+          expect(Math.abs(corner?.x ?? 2), String(time)).toBeLessThan(1);
+          expect(Math.abs(corner?.y ?? 2), String(time)).toBeLessThan(1);
+        }
+      }
+      // Seen square on, the sign spans more than half the frame's width.
+      const middle = project(path.sample(15.35), aspect, signCorners).map((corner) => corner.x);
+      expect(Math.max(...middle) - Math.min(...middle)).toBeGreaterThan(1);
+    }
+  );
+  it("flies straight through the sign's plane at the end and is still moving", () => {
+    const path = new PerformanceCameraPath({ ...geometry, duration: 25.7 });
+    let crossings = 0,
+      front = true;
+    for (let time = 6; time <= 25.7; time += 1 / 120) {
+      const pose = path.sample(time),
+        before = pose.position.z < sign.base.z;
+      if (before !== front) crossings++;
+      front = before;
+      if (!before) {
+        expect(pose.shot).toBe("sign-through");
+        expect(pose.position.x).toBeGreaterThan(sign.base.x - sign.width / 2);
+        expect(pose.position.x).toBeLessThan(sign.base.x + sign.width / 2);
+        expect(pose.position.y).toBeGreaterThan(sign.base.y);
+        expect(pose.position.y).toBeLessThan(sign.base.y + sign.maxHeight);
+      }
+    }
+    expect(crossings).toBe(1);
+    expect(path.sample(25.7).position.z).toBeGreaterThan(sign.base.z);
+    expect(path.sample(24).position.z).toBeLessThan(sign.base.z);
+    expect(
+      distance(path.sample(25.69).position, path.sample(25.7).position) / 0.01
+    ).toBeGreaterThan(100);
   });
   it("never enters a mesh and detours a blocked connector", () => {
     const blocked: PerformanceCameraGeometry = {
@@ -86,7 +130,7 @@ describe("short-song camera route", () => {
       duration: 26,
       obstacles: [
         ...geometry.obstacles,
-        { min: point(450, 400, -1600), max: point(750, 750, -1200) }
+        { min: point(-400, 1400, -1200), max: point(400, 1800, -800) }
       ]
     };
     const path = new PerformanceCameraPath(blocked);
@@ -97,37 +141,6 @@ describe("short-song camera route", () => {
         expect(inside(pose.position, box, path.clearance - 0.01), String(time)).toBe(false);
     }
   });
-  it.each([1.6, 3440 / 1313])(
-    "ends on a front view that holds the pianist and the sign at aspect %s",
-    (aspect) => {
-      const path = new PerformanceCameraPath({ ...geometry, duration: 26, aspect }),
-        pose = path.sample(26),
-        sign = performanceSignPlacement(geometry.bounds, geometry.unit);
-      const camera = new PerspectiveCamera(pose.fov, aspect, 1, 50000);
-      camera.position.set(pose.position.x, pose.position.y, pose.position.z);
-      camera.up.set(pose.up.x, pose.up.y, pose.up.z);
-      camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
-      camera.updateMatrixWorld();
-      expect(pose.position.z).toBeLessThan(geometry.avatar.min.z);
-      const corners: Vector3[] = [];
-      for (const x of [geometry.avatar.min.x, geometry.avatar.max.x])
-        for (const y of [geometry.avatar.min.y, geometry.avatar.max.y])
-          for (const z of [geometry.avatar.min.z, geometry.avatar.max.z])
-            corners.push(new Vector3(x, y, z));
-      for (const x of [sign.base.x - sign.width / 2, sign.base.x + sign.width / 2])
-        for (const y of [sign.base.y, sign.base.y + sign.maxHeight])
-          corners.push(new Vector3(x, y, sign.base.z));
-      const heights: number[] = [];
-      for (const corner of corners) {
-        const projected = corner.project(camera);
-        expect(Math.abs(projected.x)).toBeLessThan(1);
-        expect(Math.abs(projected.y)).toBeLessThan(1);
-        heights.push(projected.y);
-      }
-      // Lifted towards the sign: the pianist's feet and the sign's top sit evenly in the frame.
-      expect(Math.abs(Math.min(...heights) + Math.max(...heights))).toBeLessThan(0.2);
-    }
-  );
   it("repeats the same frame after pause and seek", () => {
     const path = new PerformanceCameraPath({ ...geometry, duration: 26 }),
       saved = path.sample(15.3);

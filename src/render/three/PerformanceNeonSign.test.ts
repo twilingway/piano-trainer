@@ -119,6 +119,18 @@ describe("neon sign mesh", () => {
     expect(sign.mesh.material.color.r).toBe(1);
     sign.dispose();
   });
+  it("swells with a bass burst around its middle and settles back to its placement", () => {
+    const sign = new PerformanceNeonSign("Sample sign");
+    sign.layout(placement);
+    const { x: width, y: height } = sign.mesh.scale;
+    sign.update(30, camera(-4000), 1, 1);
+    expect(sign.mesh.scale.x).toBeCloseTo(width * 1.14);
+    expect(sign.mesh.scale.y).toBeCloseTo(height * 1.14);
+    sign.update(30, camera(-4000), 1);
+    expect(sign.mesh.scale.x).toBe(width);
+    expect(sign.mesh.scale.y).toBe(height);
+    sign.dispose();
+  });
   it("gives a text of another size a new texture and frees the old one", () => {
     const { context } = recordingContext();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context as never);
