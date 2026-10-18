@@ -380,6 +380,11 @@ export class ThreeStage {
     this.worldStage.invalidate();
   }
 
+  /** The song's neon sign in the performance scene; none without text. */
+  setStageSign(text: string | undefined): void {
+    this.worldStage.setSign(text);
+  }
+
   setNativePianist(on: boolean): void {
     if (on === this.nativePianist) return;
     this.nativePianist = on;

@@ -279,3 +279,65 @@ it("preserves the original player-side opening and joins frame16 without a roll 
   hatGeometry.dispose();
   material.dispose();
 });
+
+it("plays a short song's compressed opening into its route no faster than a long song", () => {
+  const material = new MeshBasicMaterial(),
+    base = new BoxGeometry(1300, 22, 142),
+    hatGeometry = new BoxGeometry(400, 260, 450);
+  const run = (duration: number) => {
+    const scene = new Scene(),
+      subject = new Group(),
+      board = new Mesh(base, material),
+      hat = new Mesh(hatGeometry, material);
+    board.position.set(0, 11, -71);
+    hat.position.set(0, 1000, 125);
+    subject.add(board, hat);
+    scene.add(subject);
+    const performance = new PerformanceScene(scene);
+    performance.layout([{ ...key, x: 0 }]);
+    performance.setNotes({ left: [{ start: 0, duration, pitch: 60 }], right: [] });
+    const spots = performance.lights.group.children.filter(
+      (child): child is SpotLight => child instanceof SpotLight
+    );
+    performance.update(0, 1600, 1000, subject);
+    let position = performance.camera.position.clone(),
+      rotation = performance.camera.quaternion.clone(),
+      speed = 0,
+      turn = 0;
+    const lights = new Map<number, number[]>();
+    for (let time = 1 / 120; time <= Math.min(duration, 154.5); time += 1 / 120) {
+      performance.update(time, 1600, 1000, subject);
+      speed = Math.max(speed, position.distanceTo(performance.camera.position) * 120);
+      turn = Math.max(turn, rotation.angleTo(performance.camera.quaternion) * 120);
+      position = performance.camera.position.clone();
+      rotation = performance.camera.quaternion.clone();
+    }
+    for (const time of [0.9, 2.6, 6]) {
+      performance.update(time, 1600, 1000, subject);
+      lights.set(
+        time,
+        spots.map((spot) => spot.intensity)
+      );
+    }
+    performance.update(6 - 0.0001, 1600, 1000, subject);
+    const before = performance.camera.position.clone(),
+      fov = performance.camera.fov;
+    performance.update(6 + 0.0001, 1600, 1000, subject);
+    const joint = before.distanceTo(performance.camera.position);
+    performance.dispose();
+    return { speed, turn, lights, joint, fov };
+  };
+  const long = run(154.5),
+    short = run(25.7);
+  expect(short.speed).toBeLessThanOrEqual(long.speed);
+  expect(short.turn).toBeLessThan(3);
+  expect(short.lights.get(0.9)).toEqual([0, 0]);
+  expect(short.lights.get(2.6)).toEqual([0, 0]);
+  expect(short.lights.get(6)).toEqual([0.85, 1.05]);
+  expect(long.lights.get(6)).toEqual([0, 0]);
+  expect(short.fov).toBe(45);
+  expect(short.joint).toBeLessThan(0.01);
+  base.dispose();
+  hatGeometry.dispose();
+  material.dispose();
+});

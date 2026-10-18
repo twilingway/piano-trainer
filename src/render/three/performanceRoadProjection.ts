@@ -1,11 +1,16 @@
 import { point, quintic } from "./performanceCameraMath";
 import type { CameraPoint } from "./performanceCameraMath";
+import { PERFORMANCE_OPENING_SECONDS } from "./performanceSceneTimeline";
 
 export const PERFORMANCE_ROAD_TILT = 0.24;
 /** The same local longitudinal scale is applied to notes and the physical flight. */
-export function performanceRoadScale(span: number, songTime: number): number {
+export function performanceRoadScale(
+  span: number,
+  songTime: number,
+  openingSeconds = PERFORMANCE_OPENING_SECONDS
+): number {
   if (!Number.isFinite(span) || span <= 0) return 1;
-  return 1 + (2000 / span - 1) * quintic((songTime - 16) / 6);
+  return 1 + (2000 / span - 1) * quintic((songTime - openingSeconds) / 6);
 }
 export function performanceRoadPoint(
   anchor: CameraPoint,

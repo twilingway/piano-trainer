@@ -4,7 +4,12 @@ import { performanceRoadScale } from "./performanceRoadProjection";
 import { Box3, Color, PerspectiveCamera, Vector3 } from "three";
 import type { Object3D, Scene } from "three";
 import { posedSceneBounds } from "./posedSceneBounds";
-import { performanceSceneTimeline } from "./performanceSceneTimeline";
+import {
+  PERFORMANCE_OPENING_SECONDS,
+  performanceOpeningClock,
+  performanceOpeningSeconds,
+  performanceSceneTimeline
+} from "./performanceSceneTimeline";
 import type { HandsSource } from "./liveHands";
 import type { KeyBox } from "./keyBoxes";
 import { performanceCameraClipping } from "./performanceCameraClipping";
@@ -38,6 +43,7 @@ export class PerformanceScene {
   private boxes: readonly KeyBox[] = [];
   private notes: HandsSource["notes"] | undefined;
   private songDuration = Infinity;
+  private opening = performanceOpeningSeconds(Infinity);
 
   setNotes(notes: HandsSource["notes"] | undefined): void {
     if (notes === this.notes) return;
@@ -50,6 +56,7 @@ export class PerformanceScene {
           end = Math.max(end, note.start + note.duration);
       if (end > 0) this.songDuration = end;
     }
+    this.opening = performanceOpeningSeconds(this.songDuration);
     this.focusOpening();
     this.route = undefined;
   }
@@ -65,8 +72,10 @@ export class PerformanceScene {
     );
     if (notes.length === 0) return;
     const first = Math.min(...notes.map((note) => note.start));
+    // The notes under the close hand shot: the first 10 of the full opening's 16 seconds.
+    const hold = 10 * (this.opening / PERFORMANCE_OPENING_SECONDS);
     const pitches = new Set(
-      notes.filter((note) => note.start < first + 10).map((note) => note.pitch)
+      notes.filter((note) => note.start < first + hold).map((note) => note.pitch)
     );
     const opening = this.boxes.filter((box) => pitches.has(box.pitch));
     const white = this.boxes.find((box) => !box.black);
@@ -120,8 +129,11 @@ export class PerformanceScene {
   }
 
   update(time: number, width: number, height: number, subject: Object3D): number {
-    const frame = performanceSceneTimeline(time);
-    this.roadScale = this.road ? performanceRoadScale(this.road.farZ - this.road.nearZ, time) : 1;
+    const opening = this.opening,
+      frame = performanceSceneTimeline(time, opening);
+    this.roadScale = this.road
+      ? performanceRoadScale(this.road.farZ - this.road.nearZ, time, opening)
+      : 1;
     this.camera.aspect = Math.max(1, width) / Math.max(1, height);
     // Bounds are refreshed for the posed local model; no static bind-pose clipping.
     if (this.dirty || this.scale !== subject.scale.x) {
@@ -172,13 +184,14 @@ export class PerformanceScene {
       this.routeAspect = this.camera.aspect;
     }
     this.full.copy(this.route.geometry.top);
-    if (!Number.isFinite(time) || time <= 16) {
+    if (!Number.isFinite(time) || time <= opening) {
       this.camera.fov = 45;
-      const position = performanceOpeningPosition(time, this.close, this.route.geometry);
+      const position = performanceOpeningPosition(time, this.close, this.route.geometry, opening);
+      const clock = performanceOpeningClock(time, opening);
       this.camera.position.set(position.x, position.y, position.z);
       this.target
         .copy(this.keyCentre)
-        .lerp(this.centre, time > 14 ? (time > 14 ? quintic((time - 14) / 2) : 0) : 0);
+        .lerp(this.centre, clock > 14 ? (clock > 14 ? quintic((clock - 14) / 2) : 0) : 0);
       this.camera.up.copy(this.topUp);
       this.camera.lookAt(this.target);
     } else {
@@ -212,9 +225,10 @@ export class PerformanceScene {
       frame.spotFade * performanceOutroTimeline(time, this.songDuration).light,
       this.handSpan * subject.scale.x,
       subject.scale.x,
-      time
+      time,
+      opening
     );
-    return time > 16 ? this.route.sample(time).noteAngle : (frame.vertical * Math.PI) / 2;
+    return time > opening ? this.route.sample(time).noteAngle : (frame.vertical * Math.PI) / 2;
   }
 
   dispose(): void {

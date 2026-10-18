@@ -3,6 +3,7 @@ import type { Finger, Hand, TransitionKind } from "../fingering/fingering";
 import type { SongPart } from "./midiParts";
 import { hasSourcePerformance, withoutSourcePerformance } from "./sourcePerformance";
 import type { SourcePerformanceIdentity } from "./sourcePerformance";
+import type { SongStage } from "./songStage";
 import type { SourceFinger } from "./sourceFingering";
 
 export interface SongNote {
@@ -65,6 +66,8 @@ export interface Song {
   readonly simplified?: boolean;
   /** A MIDI song's notes as its written score has them rather than as the file plays them. */
   readonly asWritten?: boolean;
+  /** A local lesson level's performance-scene dressing. */
+  readonly stage?: SongStage;
 }
 
 /** Middle C and above go to the right hand when nothing better tells the hands apart. */

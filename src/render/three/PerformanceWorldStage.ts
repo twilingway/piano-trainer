@@ -10,10 +10,15 @@ import type { EnergySource } from "../noteEnergy";
 import type { KeyBox } from "./keyBoxes";
 import { posedSceneBounds } from "./posedSceneBounds";
 import { PerformancePlatform } from "./PerformancePlatform";
-import { performanceStageLayout, stageNotePoint } from "./performanceStageLayout";
-import type { PerformanceStageLayout } from "./performanceStageLayout";
+import { PerformanceNeonSign } from "./PerformanceNeonSign";
+import {
+  performanceSignPlacement,
+  performanceStageLayout,
+  stageNotePoint
+} from "./performanceStageLayout";
+import type { PerformanceSignPlacement, PerformanceStageLayout } from "./performanceStageLayout";
 import { PerformanceFxState, performanceAtlasFrame } from "./performanceFxState";
-import { performanceSceneTimeline } from "./performanceSceneTimeline";
+import { performanceOpeningSeconds, performanceSceneTimeline } from "./performanceSceneTimeline";
 import { WorldAtlasBatch } from "./WorldAtlasBatch";
 
 const FLAME = {
@@ -65,6 +70,7 @@ export class PerformanceWorldStage {
   readonly group = new Group();
   private readonly curtain = new PerformanceCurtain();
   private duration = Infinity;
+  private opening = performanceOpeningSeconds(Infinity);
   private fade = 1;
   private readonly platform = new PerformancePlatform();
   private readonly flame = new WorldAtlasBatch(FLAME, 512);
@@ -87,6 +93,8 @@ export class PerformanceWorldStage {
   private nearZ = -1;
   private lastOn = false;
   private layoutValue: PerformanceStageLayout | undefined;
+  private sign: PerformanceNeonSign | undefined;
+  private signPlacement: PerformanceSignPlacement | undefined;
 
   constructor(scene: Object3D) {
     this.group.add(
@@ -105,6 +113,22 @@ export class PerformanceWorldStage {
   }
   setDuration(duration: number): void {
     this.duration = Number.isFinite(duration) && duration > 0 ? duration : Infinity;
+    this.opening = performanceOpeningSeconds(this.duration);
+  }
+  /** A lesson's neon text behind the pianist; without text there is no sign object at all. */
+  setSign(text: string | undefined): void {
+    if (text === this.sign?.text) return;
+    if (!text) {
+      this.sign?.dispose();
+      this.sign = undefined;
+      return;
+    }
+    if (this.sign) this.sign.setText(text);
+    else {
+      this.sign = new PerformanceNeonSign(text);
+      this.group.add(this.sign.mesh);
+    }
+    if (this.signPlacement) this.sign.layout(this.signPlacement);
   }
   get lightFade(): number {
     return this.fade;
@@ -142,13 +166,13 @@ export class PerformanceWorldStage {
     posedSceneBounds(subject, this.bounds);
     if (this.bounds.isEmpty()) return;
     const unit = Math.max(0.001, subject.scale.x);
-    this.layoutValue = performanceStageLayout(
-      {
-        min: { x: this.bounds.min.x, y: this.bounds.min.y, z: this.bounds.min.z },
-        max: { x: this.bounds.max.x, y: this.bounds.max.y, z: this.bounds.max.z }
-      },
-      unit
-    );
+    const bounds = {
+      min: { x: this.bounds.min.x, y: this.bounds.min.y, z: this.bounds.min.z },
+      max: { x: this.bounds.max.x, y: this.bounds.max.y, z: this.bounds.max.z }
+    };
+    this.layoutValue = performanceStageLayout(bounds, unit);
+    this.signPlacement = performanceSignPlacement(bounds, unit);
+    this.sign?.layout(this.signPlacement);
     this.platform.layout(this.layoutValue);
     this.keys.clear();
     for (const box of boxes) {
@@ -193,6 +217,11 @@ export class PerformanceWorldStage {
     this.curtain.set(outro.blackout);
     const stage = this.layoutValue;
     if (!stage) return;
+    this.sign?.update(
+      time,
+      camera,
+      performanceSceneTimeline(time, this.opening).spotFade * this.fade
+    );
     const batches = [this.flame, this.mist, this.hit, this.glitter, this.ringFlame];
     for (const batch of batches) batch.begin(camera);
     for (const light of this.lights) light.intensity = 0;
@@ -223,7 +252,7 @@ export class PerformanceWorldStage {
         );
       }
     }
-    const reveal = performanceSceneTimeline(time).spotFade * this.fade;
+    const reveal = performanceSceneTimeline(time, this.opening).spotFade * this.fade;
     for (let index = 0; index < RING_PUFFS; index++)
       for (let layer = 0; layer < 3; layer++) {
         const angle = (index / RING_PUFFS) * Math.PI * 2 + layer * 0.07;
@@ -286,7 +315,7 @@ export class PerformanceWorldStage {
     const colors = visible
       ? performanceRingField(visible.notes, visible.noteCount)
       : sources.filter((source) => source.sounding);
-    const reveal = performanceSceneTimeline(time).spotFade * this.fade;
+    const reveal = performanceSceneTimeline(time, this.opening).spotFade * this.fade;
     let lightIndex = 0;
     for (const source of colors) {
       const ring = stageNotePoint(source.pitch, stage);
@@ -328,7 +357,7 @@ export class PerformanceWorldStage {
     }
   }
   private drawHits(time: number, stage: PerformanceStageLayout): void {
-    const reveal = performanceSceneTimeline(time).spotFade * this.fade;
+    const reveal = performanceSceneTimeline(time, this.opening).spotFade * this.fade;
     for (const hit of this.state.hits) {
       const age = time - hit.time;
       if (age < 0 || age >= HIT.frames / HIT.fps) continue;
@@ -380,6 +409,7 @@ export class PerformanceWorldStage {
   dispose(): void {
     this.clear();
     this.platform.dispose();
+    this.setSign(undefined);
     this.spirals.dispose();
     this.curtain.dispose();
     for (const batch of [this.flame, this.mist, this.hit, this.glitter, this.ringFlame])

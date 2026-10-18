@@ -27,5 +27,9 @@ export function lessonSong(choice: LessonChoice): Song {
   const level = exercise?.levels.find((item) => item.id === choice.levelId) ?? exercise?.levels[0];
   if (!exercise || !level) throw new Error(`No lesson ${choice.exerciseId}`);
   const song = songFromMusicXml(level.musicXml, exercise.title);
-  return { ...song, title: `${exercise.title} · ${level.title}` };
+  return {
+    ...song,
+    title: `${exercise.title} · ${level.title}`,
+    ...(level.stage ? { stage: level.stage } : {})
+  };
 }

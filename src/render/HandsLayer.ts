@@ -3,6 +3,7 @@ import { Assets, Container, PerspectiveMesh, Sprite, Texture } from "pixi.js";
 import type { Finger, Hand } from "../fingering/fingering";
 import type { Song, SongNote, SongBeat } from "../song/song";
 import type { SourcePerformanceIdentity } from "../song/sourcePerformance";
+import type { SongStage } from "../song/songStage";
 import { FINGER_COLOR } from "./fingerColors";
 import { HAND_RENDERS, handPoseSet } from "./handRenderCatalog";
 import type { HandStyle } from "./handRenderCatalog";
@@ -60,6 +61,8 @@ export class HandsLayer {
   private disposed = false;
   private beats: readonly SongBeat[] = [];
   songPerformance: SourcePerformanceIdentity | undefined;
+  /** The song's performance-scene dressing; the 3D view reads it with the notes. */
+  songStage: SongStage | undefined;
 
   constructor() {
     const markersRoot = new Container({ eventMode: "none" });
@@ -160,6 +163,7 @@ export class HandsLayer {
   setSong(song: Song): void {
     this.beats = song.beats;
     this.songPerformance = song.sourcePerformance;
+    this.songStage = song.stage;
     this.notes = {
       left: song.notes.filter((note) => note.hand === "left"),
       right: song.notes.filter((note) => note.hand === "right")

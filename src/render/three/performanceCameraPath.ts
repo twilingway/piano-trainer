@@ -1,8 +1,7 @@
-import {
-  performanceOpeningBank,
-  performanceRoadAnchors,
-  performanceTopPosition
-} from "./performanceCameraGeometry";
+import { performanceOpeningBank, performanceTopPosition } from "./performanceCameraGeometry";
+import { boundsCentre, performanceRouteAnchors } from "./performanceRouteAnchors";
+import { performanceShortRoute } from "./performanceShortRoute";
+import { performanceOpeningSeconds, performanceShortSong } from "./performanceSceneTimeline";
 import { cameraOrientation } from "./performanceCameraOrientation";
 import { cameraCurvePoint, cameraCurveVelocity, cameraFlowNodes } from "./performanceCameraCurve";
 import { performanceHeroFlight } from "./performanceHeroFlight";
@@ -25,7 +24,7 @@ import {
   quintic,
   segmentBlocked
 } from "./performanceCameraMath";
-import type { CameraBounds, CameraPoint } from "./performanceCameraMath";
+import type { CameraPoint } from "./performanceCameraMath";
 
 export type {
   PerformanceCameraRoad,
@@ -33,38 +32,32 @@ export type {
   PerformanceCameraPose
 } from "./performanceCameraTypes";
 const FLIGHT_START = 22;
-const boundsCentre = (box: CameraBounds): CameraPoint => pointMix(box.min, box.max, 0.5);
+/** A short song's route is stretched to this length so its shots stay two seconds apart. */
+const SHORT_ROUTE_SECONDS = 25;
 
 /** A prevalidated physical path. Sampling never integrates time or scans scene meshes. */
 export class PerformanceCameraPath {
   private readonly nodes: readonly Node[];
   readonly duration: number;
+  /** Song seconds of the opening; the route starts where it ends. */
+  readonly opening: number;
   readonly clearance: number;
   readonly detours: number;
 
   constructor(readonly geometry: PerformanceCameraGeometry) {
     this.clearance = Math.max(10 * geometry.unit, geometry.handSpan * 0.035);
-    this.duration =
+    const songDuration =
       geometry.duration !== undefined && Number.isFinite(geometry.duration)
-        ? Math.max(30, geometry.duration)
-        : 154.5;
-    const timeScale = (this.duration - FLIGHT_START) / 132.5;
-    const route = this.buildRoute().map((node) => ({
-      ...node,
-      time: FLIGHT_START + node.time * timeScale,
-      ...(node.velocity
-        ? {
-            velocity: point(
-              node.velocity.x / timeScale,
-              node.velocity.y / timeScale,
-              node.velocity.z / timeScale
-            )
-          }
-        : {})
-    }));
+        ? geometry.duration
+        : undefined;
+    const short = performanceShortSong(songDuration ?? Infinity);
+    this.opening = performanceOpeningSeconds(songDuration ?? Infinity);
+    this.duration =
+      songDuration === undefined ? 154.5 : Math.max(short ? SHORT_ROUTE_SECONDS : 30, songDuration);
+    const route = short ? this.buildShortRoute() : this.buildLongRoute();
     const protectedRoute = this.protect([
       {
-        time: 16,
+        time: this.opening,
         position: { ...geometry.top },
         target: boundsCentre(geometry.bounds),
         fov: 45,
@@ -78,34 +71,51 @@ export class PerformanceCameraPath {
     this.detours = protectedRoute.detours;
   }
 
+  private buildShortRoute(): Node[] {
+    return performanceShortRoute(this.geometry, this.opening, this.duration);
+  }
+
+  /** The 132.5-second shot list, stretched from 22 s to the end of the song. */
+  private buildLongRoute(): Node[] {
+    const timeScale = (this.duration - FLIGHT_START) / 132.5;
+    return this.buildRoute().map((node) => ({
+      ...node,
+      time: FLIGHT_START + node.time * timeScale,
+      ...(node.velocity
+        ? {
+            velocity: point(
+              node.velocity.x / timeScale,
+              node.velocity.y / timeScale,
+              node.velocity.z / timeScale
+            )
+          }
+        : {})
+    }));
+  }
+
   private buildRoute(): Node[] {
     const g = this.geometry,
       box = g.bounds,
       body = g.avatar,
       key = g.keyboard,
       unit = g.unit;
-    const centre = boundsCentre(box),
-      actor = boundsCentre(body);
-    const span = Math.max(400 * unit, box.max.x - box.min.x),
-      reach = Math.max(220 * unit, span * 0.28);
-    const hands = point(key.x, key.y + 70 * unit, key.z);
-    const face =
-      g.face ??
-      point(
-        actor.x,
-        body.max.y - (body.max.y - body.min.y) * 0.12,
-        body.min.z + (body.max.z - body.min.z) * 0.3
-      );
-    const halfFov = (48 * Math.PI) / 360;
-    const limitingFov = Math.atan(Math.tan(halfFov) * Math.min(1, g.aspect ?? 1.5));
-    const fit = (distance(box.min, box.max) / 2 / Math.sin(limitingFov)) * 1.12;
-    const wide = point(centre.x, centre.y + fit * 0.32, centre.z - fit * 1.3);
-    const revealTarget = point(centre.x, centre.y - fit * 0.055, centre.z);
+    const {
+      centre,
+      actor,
+      reach,
+      hands,
+      face,
+      fit,
+      wide,
+      revealTarget,
+      right,
+      portrait,
+      closeTop,
+      lane,
+      gapLane
+    } = performanceRouteAnchors(g);
     const rear = point(centre.x, centre.y + fit * 0.18, centre.z + fit * 1.12);
-    const right = point(box.max.x + 150 * unit, key.y + 260 * unit, key.z - 80 * unit);
     const left = point(box.min.x - 150 * unit, key.y + 260 * unit, key.z - 80 * unit);
-    const portrait = point(actor.x, face.y + 35 * unit, body.min.z - reach * 1.5);
-    const { centre: lane, gap: gapLane } = performanceRoadAnchors(g.road?.lanes ?? []);
     // The keyboard remains the stable visible composition anchor even during a rest.
     const roadTarget = point(lane?.x ?? key.x, key.y + 45 * unit, key.z);
     const node = (
@@ -283,10 +293,6 @@ export class PerformanceCameraPath {
       point(lane?.x ?? key.x, key.y + Math.max(850 * unit, topDistance), key.z + 80 * unit),
       g,
       keyboardWidth
-    );
-    const closeTop = performanceTopPosition(
-      point(key.x + 100 * unit, key.y + 700 * unit, key.z + 100 * unit),
-      g
     );
     nodes.push(
       node(38, portrait, face, 32, "face"),
@@ -466,7 +472,9 @@ export class PerformanceCameraPath {
   }
 
   sample(songTime: number): PerformanceCameraPose {
-    const time = Number.isFinite(songTime) ? Math.max(16, Math.min(this.duration, songTime)) : 16;
+    const time = Number.isFinite(songTime)
+      ? Math.max(this.opening, Math.min(this.duration, songTime))
+      : this.opening;
     const nodes = this.nodes;
     let right = nodes.findIndex((node) => node.time > time);
     if (right < 1) right = nodes.length - 1;

@@ -24,6 +24,26 @@ export function performanceStageLayout(bounds: CameraBounds, unit = 1): Performa
     unit: scale
   };
 }
+export interface PerformanceSignPlacement {
+  /** The middle of the sign's lower edge. */
+  readonly base: CameraPoint;
+  readonly width: number;
+  readonly maxHeight: number;
+}
+/** Behind the pianist's back and above the hat, facing the front cameras (towards -Z). */
+export function performanceSignPlacement(bounds: CameraBounds, unit = 1): PerformanceSignPlacement {
+  const scale = Number.isFinite(unit) && unit > 0 ? unit : 1;
+  const width = Math.min(1800 * scale, Math.max(900 * scale, (bounds.max.x - bounds.min.x) * 0.95));
+  return {
+    base: {
+      x: (bounds.min.x + bounds.max.x) / 2,
+      y: bounds.max.y + 150 * scale,
+      z: bounds.max.z + 200 * scale
+    },
+    width,
+    maxHeight: width * 0.4
+  };
+}
 /** Nine octave sectors include the two partial ends of the real A0–C8 keyboard. */
 export function stageNotePoint(pitch: number, stage: PerformanceStageLayout) {
   if (!Number.isInteger(pitch) || pitch < 21 || pitch > 108) return undefined;
