@@ -175,15 +175,18 @@ describe("native original-skeleton pianist", () => {
       arm = new Group();
     arm.name = "White_Closed_Glove_L";
     const marker = new Group(),
-      nail = new Group();
+      nail = new Group(),
+      anatomicalNails = new Group();
     marker.name = "ridge-finger3-2L";
     nail.name = "nail-finger3-3L";
-    model.scene.add(arm, marker, nail);
+    anatomicalNails.name = "HandNails";
+    model.scene.add(arm, marker, nail, anatomicalNails);
     loadNative.mockResolvedValueOnce(model);
     expect(await loadPianist(source)).toBe(model);
     expect(arm.visible).toBe(true);
     expect(marker.visible).toBe(false);
-    expect(nail.visible).toBe(true);
+    expect(nail.visible).toBe(false);
+    expect(anatomicalNails.visible).toBe(true);
     expect(localUrl).not.toHaveBeenCalled();
     loadNative.mockResolvedValueOnce(undefined);
     expect(await loadPianist(source)).toBeUndefined();

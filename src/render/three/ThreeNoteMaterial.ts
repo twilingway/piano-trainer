@@ -54,7 +54,7 @@ float noteVolumeFade(float clipW, float gap, float width, float projectedWidth) 
 }
 // The same radiance applies to caps, sides and bevels, independent of scene lights or facing.
 float noteGlow(float rim, float flow) {
-  return mix(0.88 + 0.02 * flow, 1.5, rim);
+  return mix(0.88 + 0.02 * flow, 2.0, rim);
 }
 // A thin line along each chamfer centre leaves the rest of the bevel transparent.
 // The four vertical corner lines have the same width as both rounded cap perimeters.
@@ -80,11 +80,11 @@ void main() {
   float footprint = roundedRect(vPoint.xz, halfSize.xz, radius);
   float edgeDistance = noteEdgeDistance(footprint, q.y, q.x, q.z, radius, bevel);
   float aa = max(fwidth(edgeDistance), 0.06);
-  float lineWidth = 0.18;
+  float lineWidth = max(0.18, aa * 0.65);
   float rim = 1.0 - smoothstep(lineWidth, lineWidth + aa, edgeDistance);
   float across = abs(vPoint.x) / max(vSize.x, 0.001);
   float flow = sin(abs(vPoint.z) * 0.055 + visualTime * 1.8 + sin(across * 6.0));
-  vec3 tint = mix(vTint, mix(vTint, vec3(1.0), 0.38), rim) * noteGlow(rim, flow);
+  vec3 tint = mix(vTint, mix(vTint, vec3(1.0), 0.65), rim) * noteGlow(rim, flow);
   gl_FragColor = vec4(tint, vAlpha * fade * noteGlassAlpha(rim));
   #include <colorspace_fragment>
 }
