@@ -2,7 +2,17 @@ import { inside, point, segmentBlocked } from "./performanceCameraMath";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 import type { PointLight } from "three";
 import { describe, expect, it } from "vitest";
-import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Scene, SpotLight, Vector3 } from "three";
+import {
+  Box3,
+  BoxGeometry,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  Scene,
+  SpotLight,
+  Vector3
+} from "three";
+import { performanceSignPlacement } from "./performanceStageLayout";
 import { PerformanceScene } from "./PerformanceScene";
 import type { KeyBox } from "./keyBoxes";
 
@@ -79,6 +89,19 @@ it("centres the intro on the opening notes and keeps the hand fill local", () =>
   expect(fill.distance).toBeGreaterThan(0);
   expect(fill.distance).toBeLessThanOrEqual(260);
   expect(fill.position.y - key.top).toBeLessThan(100);
+  performance.dispose();
+});
+
+it("centres a short song's intro only on the notes under its sub-second hands shot", () => {
+  const performance = new PerformanceScene(new Scene()),
+    subject = new Group();
+  performance.layout([{ ...key, pitch: 40, x: -330 }, key]);
+  performance.setNotes({
+    left: [{ start: 0, duration: 25, pitch: 40 }],
+    right: [{ start: 2, duration: 1, pitch: 60 }]
+  });
+  performance.update(0, 1200, 800, subject);
+  expect(performance.camera.position.x).toBe(-330);
   performance.dispose();
 });
 
@@ -277,5 +300,89 @@ it("preserves the original player-side opening and joins frame16 without a roll 
   performance.dispose();
   base.dispose();
   hatGeometry.dispose();
+  material.dispose();
+});
+
+it("plays a short song's compressed opening into its route no faster than a long song", () => {
+  const material = new MeshBasicMaterial(),
+    base = new BoxGeometry(1300, 22, 142),
+    hatGeometry = new BoxGeometry(400, 260, 450);
+  const run = (duration: number) => {
+    const scene = new Scene(),
+      subject = new Group(),
+      board = new Mesh(base, material),
+      hat = new Mesh(hatGeometry, material);
+    board.position.set(0, 11, -71);
+    hat.position.set(0, 1000, 125);
+    subject.add(board, hat);
+    scene.add(subject);
+    const performance = new PerformanceScene(scene);
+    performance.layout([{ ...key, x: 0 }]);
+    performance.setNotes({ left: [{ start: 0, duration, pitch: 60 }], right: [] });
+    const spots = performance.lights.group.children.filter(
+      (child): child is SpotLight => child instanceof SpotLight
+    );
+    performance.update(0, 1600, 1000, subject);
+    let position = performance.camera.position.clone(),
+      rotation = performance.camera.quaternion.clone(),
+      speed = 0,
+      turn = 0;
+    const lights = new Map<number, number[]>();
+    for (let time = 1 / 120; time <= Math.min(duration, 154.5); time += 1 / 120) {
+      performance.update(time, 1600, 1000, subject);
+      speed = Math.max(speed, position.distanceTo(performance.camera.position) * 120);
+      turn = Math.max(turn, rotation.angleTo(performance.camera.quaternion) * 120);
+      position = performance.camera.position.clone();
+      rotation = performance.camera.quaternion.clone();
+    }
+    for (const time of [0.9, 2.6, 6]) {
+      performance.update(time, 1600, 1000, subject);
+      lights.set(
+        time,
+        spots.map((spot) => spot.intensity)
+      );
+    }
+    performance.update(6 - 0.0001, 1600, 1000, subject);
+    const before = performance.camera.position.clone(),
+      fov = performance.camera.fov;
+    performance.update(6 + 0.0001, 1600, 1000, subject);
+    const joint = before.distanceTo(performance.camera.position);
+    performance.dispose();
+    return { speed, turn, lights, joint, fov };
+  };
+  const long = run(154.5),
+    short = run(25.7);
+  expect(short.speed).toBeLessThanOrEqual(long.speed);
+  expect(short.turn).toBeLessThan(3);
+  expect(short.lights.get(0.9)).toEqual([0, 0]);
+  expect(short.lights.get(2.6)).toEqual([0, 0]);
+  expect(short.lights.get(6)).toEqual([0.85, 1.05]);
+  expect(long.lights.get(6)).toEqual([0, 0]);
+  expect(short.fov).toBe(45);
+  expect(short.joint).toBeLessThan(0.01);
+  base.dispose();
+  hatGeometry.dispose();
+  material.dispose();
+});
+
+it("reaches a short song's far backdrop sign with the far plane", () => {
+  const material = new MeshBasicMaterial(),
+    box = new BoxGeometry(1300, 1800, 900),
+    scene = new Scene(),
+    subject = new Group();
+  const mesh = new Mesh(box, material);
+  mesh.position.set(0, 900, 250);
+  subject.add(mesh);
+  scene.add(subject);
+  const performance = new PerformanceScene(scene);
+  performance.layout([{ ...key, x: 0 }]);
+  performance.setNotes({ left: [{ start: 0, duration: 25.7, pitch: 60 }], right: [] });
+  performance.update(15, 1600, 1000, subject);
+  subject.updateMatrixWorld(true);
+  const sign = performanceSignPlacement(new Box3().setFromObject(subject));
+  const far = new Vector3(sign.base.x + sign.width / 2, sign.base.y + sign.maxHeight, sign.base.z);
+  expect(performance.camera.far).toBeGreaterThan(far.distanceTo(performance.camera.position));
+  performance.dispose();
+  box.dispose();
   material.dispose();
 });

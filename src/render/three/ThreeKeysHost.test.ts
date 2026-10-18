@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { Camera, Group } from "three";
 import type { SourcePerformanceIdentity } from "../../song/sourcePerformance";
+import type { SongStage } from "../../song/songStage";
 import { Container } from "pixi.js";
 import type { Application } from "pixi.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -32,6 +33,7 @@ const mocks = vi.hoisted(() => ({
   pianistDispose: vi.fn(),
   disposeModel: vi.fn(),
   setNativePianist: vi.fn(),
+  setSongStage: vi.fn(),
   addToKeys: vi.fn(),
   removeFromKeys: vi.fn(),
   pose: vi.fn()
@@ -42,6 +44,7 @@ vi.mock("./ThreeStage", () => ({
     beforeRender: ((camera: Camera) => void) | undefined;
     hands = mocks.handPresent ? { setPlayer: vi.fn(), poses: {} } : undefined;
     setNativePianist = mocks.setNativePianist;
+    setSongStage = mocks.setSongStage;
     addToKeys = mocks.addToKeys;
     removeFromKeys = mocks.removeFromKeys;
     get nativeEffectsReady() {
@@ -117,7 +120,8 @@ function fixture() {
     time: 0,
     songNotes: { left: [], right: [] } as NativeContactNotes,
     pianist: false,
-    songPerformance: undefined as SourcePerformanceIdentity | undefined
+    songPerformance: undefined as SourcePerformanceIdentity | undefined,
+    songStage: undefined as SongStage | undefined
   };
   const renderer = {
     gl,
@@ -213,6 +217,22 @@ describe("shared WebGL keyboard recovery", () => {
     mocks.draw.mockImplementation(() => order.push("three"));
     view.tick();
     expect(order).toEqual(["road", "three", "overlay"]);
+    view.host.destroy();
+  });
+
+  it("hands the song's stage sign to the 3D stage before it draws", async () => {
+    const view = fixture();
+    await view.host.setEnabled(true);
+    view.hands.songStage = { sign: "Sample sign" };
+    mocks.setSongStage.mockClear();
+    view.tick();
+    expect(mocks.setSongStage).toHaveBeenLastCalledWith({ sign: "Sample sign" });
+    expect(mocks.setSongStage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.draw.mock.invocationCallOrder.at(-1) ?? 0
+    );
+    view.hands.songStage = undefined;
+    view.tick();
+    expect(mocks.setSongStage).toHaveBeenLastCalledWith(undefined);
     view.host.destroy();
   });
 

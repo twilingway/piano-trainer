@@ -1,6 +1,10 @@
 import type { Camera } from "three";
 import { quintic } from "./performanceCameraMath";
-import { performanceSceneTimeline } from "./performanceSceneTimeline";
+import {
+  PERFORMANCE_OPENING_SECONDS,
+  performanceOpeningClock,
+  performanceSceneTimeline
+} from "./performanceSceneTimeline";
 import {
   AdditiveBlending,
   CircleGeometry,
@@ -193,16 +197,19 @@ export class PerformanceLights {
     fade: number,
     handSpan: number,
     unitScale = 1,
-    songTime = 0
+    songTime = 0,
+    openingSeconds = PERFORMANCE_OPENING_SECONDS
   ): void {
     this.fill.position.copy(centre).addScaledVector(this.up, handSpan * 0.2);
     this.fill.distance = Math.min(handSpan * 1.1, 260 * unitScale);
     const time = Number.isFinite(songTime) ? Math.max(0, songTime) : 0;
-    const spotFade = performanceSceneTimeline(time).spotFade;
+    const spotFade = performanceSceneTimeline(time, openingSeconds).spotFade;
+    // The hand reveal is part of the opening and keeps its proportions when that is shorter.
+    const clock = performanceOpeningClock(time, openingSeconds);
     const outro = spotFade > 0 ? Math.max(0, Math.min(1, fade / spotFade)) : 1;
     this.ambient.intensity = 0.65 * outro;
-    const attack = quintic((time - 12) / 1.5),
-      release = quintic((time - 16.8) / 2.2);
+    const attack = quintic((clock - 12) / 1.5),
+      release = quintic((clock - 16.8) / 2.2);
     this.fill.intensity = ((0.8 + 0.15 * attack) * (1 - release) + 0.04 * release) * outro;
     this.faceLights.forEach((light, index) => {
       light.intensity = (index === 0 ? 1.8 + this.faceCue * 3.2 : 0.95 + this.faceCue * 1.3) * fade;

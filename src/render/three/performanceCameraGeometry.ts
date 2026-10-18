@@ -9,6 +9,7 @@ import { point, pointMix, quintic, segmentBlocked } from "./performanceCameraMat
 import type { PerformanceCameraGeometry, PerformanceCameraRoad } from "./performanceCameraPath";
 import type { KeyBox } from "./keyBoxes";
 import { performanceNoteMatrix } from "./performanceNoteMatrix";
+import { PERFORMANCE_OPENING_SECONDS, performanceOpeningClock } from "./performanceSceneTimeline";
 
 export interface PerformanceRoadDimensions {
   readonly floorY: number;
@@ -188,9 +189,10 @@ export function performanceTopPosition(
 export function performanceOpeningPosition(
   time: number,
   close: CameraPoint,
-  geometry: Pick<PerformanceCameraGeometry, "avatar" | "obstacles" | "keyboard" | "top" | "unit">
+  geometry: Pick<PerformanceCameraGeometry, "avatar" | "obstacles" | "keyboard" | "top" | "unit">,
+  openingSeconds = PERFORMANCE_OPENING_SECONDS
 ): CameraPoint {
-  const seconds = Number.isFinite(time) ? time : 0;
+  const seconds = performanceOpeningClock(Number.isFinite(time) ? time : 0, openingSeconds);
   const upper = geometry.obstacles.filter(
     (box) => box.max.y > geometry.keyboard.y + 240 * geometry.unit
   );

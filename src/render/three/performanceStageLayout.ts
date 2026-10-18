@@ -1,3 +1,4 @@
+import { performanceShortFraming } from "./performanceShortFraming";
 import type { CameraBounds, CameraPoint } from "./performanceCameraMath";
 export interface PerformanceStageLayout {
   readonly centre: CameraPoint;
@@ -23,6 +24,16 @@ export function performanceStageLayout(bounds: CameraBounds, unit = 1): Performa
     thickness: 120 * scale,
     unit: scale
   };
+}
+export interface PerformanceSignPlacement {
+  /** The middle of the lower edge of the band the sign is centred in. */
+  readonly base: CameraPoint;
+  readonly width: number;
+  readonly maxHeight: number;
+}
+/** A giant backdrop behind the stage, filling the top of the short song's view, facing -Z. */
+export function performanceSignPlacement(bounds: CameraBounds): PerformanceSignPlacement {
+  return performanceShortFraming(bounds).sign;
 }
 /** Nine octave sectors include the two partial ends of the real A0–C8 keyboard. */
 export function stageNotePoint(pitch: number, stage: PerformanceStageLayout) {

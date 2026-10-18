@@ -25,7 +25,8 @@ export function transposeSong(song: Song, semitones: number, sourceKey: Key | un
   const xml =
     song.musicXml &&
     transposeMusicXml(song.musicXml, semitones, sourceKey ? fifthsForKey(sourceKey) : 0);
-  if (xml && song.source === "musicxml") return { ...songFromMusicXml(xml, title), title };
+  if (xml && song.source === "musicxml")
+    return { ...songFromMusicXml(xml, title), title, ...(song.stage ? { stage: song.stage } : {}) };
   return {
     ...song,
     title,

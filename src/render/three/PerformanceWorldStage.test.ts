@@ -190,3 +190,33 @@ describe("native stage atomic readiness and world effects", () => {
     expect(batch(stage, 5).count).toBe(1);
   });
 });
+
+describe("bass fire on the stage", () => {
+  const empty = { notes: [], noteCount: 0 };
+  const lit = (stage: PerformanceWorldStage) =>
+    stage.group.children.filter((child) => child instanceof PointLight && child.intensity > 0);
+  it("bursts around the platform at bass onsets only and dies out between them", async () => {
+    const { stage, subject, camera } = await loaded();
+    stage.setBassNotes({ left: [{ start: 21, pitch: 41 }] });
+    stage.update(true, 20.9, subject, boxes, [], camera, 142, true, empty);
+    expect(batch(stage, 5).count).toBe(0);
+    expect(lit(stage)).toHaveLength(0);
+    stage.update(true, 21, subject, boxes, [], camera, 142, true, empty);
+    expect(batch(stage, 5).count).toBe(12);
+    expect(batch(stage, 2).count).toBe(12);
+    expect(lit(stage).length).toBeGreaterThan(0);
+    stage.update(true, 21.8, subject, boxes, [], camera, 142, true, empty);
+    expect(batch(stage, 5).count).toBe(0);
+    expect(lit(stage)).toHaveLength(0);
+  });
+  it("never bursts without the song's bass notes", async () => {
+    const { stage, subject, camera } = await loaded();
+    stage.update(true, 21, subject, boxes, [], camera, 142, true, empty);
+    expect(batch(stage, 5).count).toBe(0);
+    stage.setBassNotes({ left: [{ start: 21, pitch: 41 }] });
+    stage.setBassNotes(undefined);
+    stage.update(true, 21, subject, boxes, [], camera, 142, true, empty);
+    expect(batch(stage, 5).count).toBe(0);
+    expect(lit(stage)).toHaveLength(0);
+  });
+});
