@@ -1,9 +1,10 @@
-import { point, segmentBlocked } from "./performanceCameraMath";
+import { inside, point, segmentBlocked } from "./performanceCameraMath";
 import { describe, expect, it } from "vitest";
 import { Matrix4, Vector3 } from "three";
 import {
   performanceRoadGeometry,
   performanceRoadAnchors,
+  performanceOpeningPosition,
   performanceTopPosition
 } from "./performanceCameraGeometry";
 import { performanceNoteMatrix } from "./performanceNoteMatrix";
@@ -85,4 +86,29 @@ it("keeps late top cameras on the player side and under an obstructing hat", () 
   expect(performanceTopPosition(point(0, 500, 130), { ...geometry, obstacles: [] })).toEqual(
     point(0, 500, 130)
   );
+});
+
+it("leaves left at the opening height and depth before rising outside the body, then returns high", () => {
+  const body = { min: point(-280, 100, 110), max: point(280, 1200, 550) };
+  const geometry = {
+    avatar: body,
+    obstacles: [body],
+    keyboard: point(0, 22, 30),
+    top: point(0, 3000, 650),
+    unit: 1
+  };
+  const close = point(0, 500, 31);
+  expect(performanceOpeningPosition(0, close, geometry)).toEqual(close);
+  expect(performanceOpeningPosition(10, close, geometry)).toEqual(close);
+  for (let time = 10; time <= 16; time += 1 / 60) {
+    const eye = performanceOpeningPosition(time, close, geometry);
+    expect(inside(eye, body, 60), String(time)).toBe(false);
+    if (time <= 11.4) {
+      expect(eye.y).toBe(close.y);
+      expect(eye.z).toBe(close.z);
+    }
+    if (time > 11.4 && time < 14) expect(eye.x).toBeLessThan(body.min.x - 150);
+    if (time >= 14) expect(eye.y).toBe(geometry.top.y);
+  }
+  expect(performanceOpeningPosition(16, close, geometry)).toEqual(geometry.top);
 });

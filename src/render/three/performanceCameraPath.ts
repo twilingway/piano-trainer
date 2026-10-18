@@ -1,4 +1,8 @@
-import { performanceRoadAnchors, performanceTopPosition } from "./performanceCameraGeometry";
+import {
+  performanceOpeningBank,
+  performanceRoadAnchors,
+  performanceTopPosition
+} from "./performanceCameraGeometry";
 import { cameraOrientation } from "./performanceCameraOrientation";
 import { cameraCurvePoint, cameraCurveVelocity, cameraFlowNodes } from "./performanceCameraCurve";
 import { performanceHeroFlight } from "./performanceHeroFlight";
@@ -65,6 +69,7 @@ export class PerformanceCameraPath {
         target: boundsCentre(geometry.bounds),
         fov: 45,
         shot: "rise",
+        bank: performanceOpeningBank(geometry.top, boundsCentre(geometry.bounds)),
         noteAngle: 0
       },
       ...route

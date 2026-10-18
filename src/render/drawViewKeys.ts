@@ -38,6 +38,8 @@ export function drawViewKeys(
     geometry,
     labels
   );
+  // The native pianist reads this same session snapshot even when sprite hands are hidden.
+  hands.time = state.time;
   if (hands.container.visible)
     hands.draw(
       state.time,

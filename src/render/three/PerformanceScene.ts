@@ -8,7 +8,7 @@ import { performanceSceneTimeline } from "./performanceSceneTimeline";
 import type { HandsSource } from "./liveHands";
 import type { KeyBox } from "./keyBoxes";
 import { performanceCameraClipping } from "./performanceCameraClipping";
-import { performanceCameraGeometry } from "./performanceCameraGeometry";
+import { performanceCameraGeometry, performanceOpeningPosition } from "./performanceCameraGeometry";
 import type { PerformanceRoadDimensions } from "./performanceCameraGeometry";
 import { PerformanceCameraPath } from "./performanceCameraPath";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
@@ -174,13 +174,11 @@ export class PerformanceScene {
     this.full.copy(this.route.geometry.top);
     if (!Number.isFinite(time) || time <= 16) {
       this.camera.fov = 45;
-      this.camera.position.copy(this.close).lerp(this.full, frame.rise);
-      const seconds = Number.isFinite(time) ? time : 0;
-      this.camera.position.z =
-        this.close.z + (this.full.z - this.close.z) * quintic((seconds - 10) / 2);
-      this.camera.position.y =
-        this.close.y + (this.full.y - this.close.y) * quintic((seconds - 12) / 4);
-      this.target.copy(this.keyCentre).lerp(this.centre, frame.rise);
+      const position = performanceOpeningPosition(time, this.close, this.route.geometry);
+      this.camera.position.set(position.x, position.y, position.z);
+      this.target
+        .copy(this.keyCentre)
+        .lerp(this.centre, time > 14 ? (time > 14 ? quintic((time - 14) / 2) : 0) : 0);
       this.camera.up.copy(this.topUp);
       this.camera.lookAt(this.target);
     } else {

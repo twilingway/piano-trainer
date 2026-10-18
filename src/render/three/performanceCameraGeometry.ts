@@ -1,10 +1,11 @@
+import { cameraOrientation } from "./performanceCameraOrientation";
 import { performanceFaceTarget } from "./performanceFaceTarget";
 import { performanceMeshObstacles } from "./performanceMeshObstacles";
 import { performanceKeyboardFlight } from "./performanceKeyboardFlight";
 import { Box3, Matrix4, Mesh, SkinnedMesh, Vector3 } from "three";
 import type { Object3D } from "three";
 import type { CameraBounds, CameraPoint } from "./performanceCameraMath";
-import { point, pointMix, segmentBlocked } from "./performanceCameraMath";
+import { point, pointMix, quintic, segmentBlocked } from "./performanceCameraMath";
 import type { PerformanceCameraGeometry, PerformanceCameraRoad } from "./performanceCameraPath";
 import type { KeyBox } from "./keyBoxes";
 import { performanceNoteMatrix } from "./performanceNoteMatrix";
@@ -133,7 +134,10 @@ export function performanceCameraGeometry(
   const revealZ = obstacles
     .filter((box) => box.min.y > keyboard.y + 300 * unit)
     .reduce((z, box) => Math.max(z, box.max.z + 100 * unit), top.z);
-  return { ...geometry, top: { ...geometry.top, z: revealZ } };
+  const revealX = obstacles.some((box) => box.max.y > keyboard.y + 300 * unit)
+    ? Math.min(top.x, keyboard.x - 180 * unit)
+    : top.x;
+  return { ...geometry, top: { ...geometry.top, x: revealX, z: revealZ } };
 }
 
 /** Stable centre/gap of the played lanes, independent of their incoming ordering. */
@@ -178,4 +182,41 @@ export function performanceTopPosition(
     if (probes.some((target) => segmentBlocked(result, target, box, 12 * unit)))
       result.y = Math.min(result.y, Math.max(key.y + 260 * unit, box.min.y - 40 * unit));
   return result;
+}
+
+/** Clear the animated upper-body envelope to the left before changing depth or height. */
+export function performanceOpeningPosition(
+  time: number,
+  close: CameraPoint,
+  geometry: Pick<PerformanceCameraGeometry, "avatar" | "obstacles" | "keyboard" | "top" | "unit">
+): CameraPoint {
+  const seconds = Number.isFinite(time) ? time : 0;
+  const upper = geometry.obstacles.filter(
+    (box) => box.max.y > geometry.keyboard.y + 240 * geometry.unit
+  );
+  const left =
+    Math.min(close.x, geometry.avatar.min.x, ...upper.map((box) => box.min.x)) -
+    180 * geometry.unit;
+  const exit = quintic((seconds - 10) / 1.4),
+    rise = quintic((seconds - 11.4) / 2.6),
+    returnToCentre = quintic((seconds - 14) / 2);
+  return point(
+    close.x + (left - close.x) * exit + (geometry.top.x - left) * returnToCentre,
+    close.y + (geometry.top.y - close.y) * rise,
+    close.z + (geometry.top.z - close.z) * rise
+  );
+}
+
+/** Match the original keyboard-up view when the left reveal joins the planned camera path. */
+export function performanceOpeningBank(position: CameraPoint, target: CameraPoint): number {
+  const { direction, up } = cameraOrientation(
+    position,
+    target,
+    { position, target },
+    { position, target },
+    0
+  );
+  const length = Math.max(1e-9, Math.hypot(direction.x, direction.y, direction.z));
+  const rightZ = (direction.x * up.y - direction.y * up.x) / length;
+  return Math.atan2(-rightZ, -up.z);
 }
