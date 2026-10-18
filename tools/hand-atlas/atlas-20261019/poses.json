@@ -4374,7 +4374,7 @@
         }
       ],
       "instruction": "Нажать: 2 → ре♯4 (D#4) · 4 → фа♯4 (F#4)",
-      "display_label": "ЗАЗОР",
+      "display_label": "ДОПУСТИМО",
       "geometry_status": "REJECTED_VALIDATION",
       "geometry_reasons": [
         "NONPAD_OR_OTHER_KEY_CLEARANCE",
@@ -4418,9 +4418,9 @@
           9.634161443715406
         ],
         "3": [
-          50.664541962927686,
-          23.848514675585577,
-          19.258373691684117
+          53.492755860636905,
+          22.095075924802554,
+          5.416777293760352
         ],
         "4": [
           18.18441156166613,
@@ -4436,7 +4436,7 @@
       "finger_abduction_degrees": [
         -19.268133199917273,
         -15.019001130021197,
-        6.857452581840267,
+        10.515188415851645,
         15.628721265566588,
         24.942704220486917
       ],
@@ -4483,12 +4483,9 @@
         }
       ],
       "instruction": "Нажать: 1 → до4 (C4) · 2 → ре♯4 (D#4) · 3 → ми4 (E4)",
-      "display_label": "ЗАЗОР",
-      "geometry_status": "REJECTED_VALIDATION",
-      "geometry_reasons": [
-        "NONPAD_OR_OTHER_KEY_CLEARANCE",
-        "SKIN_KEY_SURFACE_VIOLATION"
-      ],
+      "display_label": "ГЕОМ ОК",
+      "geometry_status": "PASS_GEOMETRY_ONLY",
+      "geometry_reasons": [],
       "visual_acceptance": "PENDING_USER"
     },
     {
@@ -4720,9 +4717,9 @@
           11.596159740020092
         ],
         "4": [
-          13.537362761107069,
-          15.438212487437184,
-          5.79481139228071
+          11.466598006426068,
+          60.70088489794211,
+          32.87025683865011
         ],
         "5": [
           23.182579179503765,
@@ -4734,7 +4731,7 @@
         -42.23024022439977,
         -9.45342977014841,
         0.6947897969939467,
-        21.566463112938486,
+        10.98207156618123,
         24.999856563206045
       ],
       "wrist_translation_m": [
@@ -4780,10 +4777,9 @@
         }
       ],
       "instruction": "Нажать: 1 → до♯4 (C#4) · 2 → ре4 (D4) · 3 → ми4 (E4)",
-      "display_label": "ЗАЗОР",
+      "display_label": "ДОПУСТИМО",
       "geometry_status": "REJECTED_VALIDATION",
       "geometry_reasons": [
-        "NAIL_KEY_CLEARANCE_Pilot nail 2",
         "NONPAD_OR_OTHER_KEY_CLEARANCE",
         "SKIN_KEY_SURFACE_VIOLATION"
       ],
