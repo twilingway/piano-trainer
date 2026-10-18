@@ -28,3 +28,6 @@ src/render/hands/rendered/catalog.json
 # The vendored ref2game skill, kept as upstream wrote it, and its local game projects.
 .claude/skills/ref2game/
 games/
+
+# Verified hand-atlas snapshots: preserve exporter bytes and manifest hashes.
+tools/hand-atlas/atlas-20261019/*.json

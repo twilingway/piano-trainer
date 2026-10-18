@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "pose_count": 51,
+  "all_reviewed_authored_fields_exact": true,
+  "forbidden_model_fields_absent": true,
+  "input_sha256": {
+    "source": "68ecb84d2122912d97c7ec1e739befdbb8e6f472b0166d4f65ce3da5e6115706",
+    "status": "3525e6cea2b029a9a37c8d44cc9bdc16149ac04ef6253cdc56156417612cf222"
+  },
+  "files_sha256": {
+    "poses.json": "a8c50c5e8aefde05a0a1fc24b42eef5b04f4fe9cbaf61378edb9e9476712a1e9",
+    "metadata.json": "4b68e267c100dbc11f2047368e2c623c016ee5356dbf1ad743671e2ed36db448"
+  }
+}

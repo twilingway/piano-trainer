@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "pose_count": 51,
+  "scope": "Authored right-hand motion intent; no licensed hand model or derived mesh",
+  "units": {
+    "flexion": "degrees",
+    "abduction": "degrees",
+    "length": "metres",
+    "rotation": "3x3 proper rotation matrix"
+  },
+  "finger_numbering": {
+    "1": "thumb",
+    "2": "index",
+    "3": "middle",
+    "4": "ring",
+    "5": "little"
+  },
+  "mask_rule": "bit (finger-1) means pressed; finger numbering 1..5",
+  "coordinate_system": {
+    "origin_world_m": [
+      0.36,
+      0.3,
+      0.74
+    ],
+    "x": "towards higher piano notes",
+    "y": "towards the back of the keys",
+    "z": "up",
+    "wrist_rotation": "Maps the local canonical wrist frame into keyboard axes; no source anatomical frame is included"
+  },
+  "keyboard": {
+    "white_width_m": 0.0235,
+    "white_depth_m": 0.15,
+    "white_top_z_m": 0.0,
+    "black_width_m": 0.0137,
+    "black_start_y_m": 0.055,
+    "black_top_z_m": 0.012,
+    "pressed_white_rigid_drop_m": 0.008,
+    "pressed_black_rigid_drop_m": 0.008,
+    "whites": [
+      {
+        "midi": 48,
+        "x": -0.1645
+      },
+      {
+        "midi": 50,
+        "x": -0.14100000000000001
+      },
+      {
+        "midi": 52,
+        "x": -0.1175
+      },
+      {
+        "midi": 53,
+        "x": -0.094
+      },
+      {
+        "midi": 55,
+        "x": -0.07050000000000001
+      },
+      {
+        "midi": 57,
+        "x": -0.047
+      },
+      {
+        "midi": 59,
+        "x": -0.0235
+      },
+      {
+        "midi": 60,
+        "x": 0.0
+      },
+      {
+        "midi": 62,
+        "x": 0.0235
+      },
+      {
+        "midi": 64,
+        "x": 0.047
+      },
+      {
+        "midi": 65,
+        "x": 0.07050000000000001
+      },
+      {
+        "midi": 67,
+        "x": 0.094
+      },
+      {
+        "midi": 69,
+        "x": 0.1175
+      },
+      {
+        "midi": 71,
+        "x": 0.14100000000000001
+      },
+      {
+        "midi": 72,
+        "x": 0.1645
+      },
+      {
+        "midi": 74,
+        "x": 0.188
+      },
+      {
+        "midi": 76,
+        "x": 0.2115
+      },
+      {
+        "midi": 77,
+        "x": 0.235
+      },
+      {
+        "midi": 79,
+        "x": 0.2585
+      },
+      {
+        "midi": 81,
+        "x": 0.28200000000000003
+      },
+      {
+        "midi": 83,
+        "x": 0.3055
+      },
+      {
+        "midi": 84,
+        "x": 0.329
+      }
+    ],
+    "blacks": [
+      {
+        "midi": 49,
+        "x": -0.15275
+      },
+      {
+        "midi": 51,
+        "x": -0.12925
+      },
+      {
+        "midi": 54,
+        "x": -0.08225
+      },
+      {
+        "midi": 56,
+        "x": -0.05875
+      },
+      {
+        "midi": 58,
+        "x": -0.035250000000000004
+      },
+      {
+        "midi": 61,
+        "x": 0.01175
+      },
+      {
+        "midi": 63,
+        "x": 0.035250000000000004
+      },
+      {
+        "midi": 66,
+        "x": 0.08225
+      },
+      {
+        "midi": 68,
+        "x": 0.10575
+      },
+      {
+        "midi": 70,
+        "x": 0.12925
+      },
+      {
+        "midi": 73,
+        "x": 0.17625
+      },
+      {
+        "midi": 75,
+        "x": 0.19975
+      },
+      {
+        "midi": 78,
+        "x": 0.24675
+      },
+      {
+        "midi": 80,
+        "x": 0.27025
+      },
+      {
+        "midi": 82,
+        "x": 0.29375
+      }
+    ],
+    "exported_center_midi_range_inclusive": [
+      48,
+      84
+    ],
+    "center_scope": "Only centers explicitly present in the authored source JSON; not a mesh export."
+  },
+  "upstream_sha256": {
+    "authored_pose_source_sha256": "68ecb84d2122912d97c7ec1e739befdbb8e6f472b0166d4f65ce3da5e6115706",
+    "saved_status_source_sha256": "3525e6cea2b029a9a37c8d44cc9bdc16149ac04ef6253cdc56156417612cf222",
+    "source_sha256": "996338a29346b4d4bca2d7758d0304a346e833c10d1482b3b15d31164840dc3c",
+    "source_pose_json_sha256": "64c29f7988ab9a87809204cf99c4189bcccfa76e587a333cb83cb1d8637e7197",
+    "source_blend_sha256": "e813f06229608700ad147cc72bfc79702a603f13afdb8ae5cf80b8116606219f"
+  },
+  "references": {
+    "pose_form_article": "https://hub.yamaha.com/music-educators/instruments/piano/piano-pedagogy-even-scales/",
+    "external_model_license": "https://mano.is.tue.mpg.de/license.html"
+  },
+  "visual_contact_recipes": [
+    {
+      "frames": [
+        4,
+        5
+      ],
+      "active_fingers": {
+        "4": 3,
+        "5": 4
+      },
+      "axis": "keyboard Z",
+      "maximum_displacement_m": 0.001,
+      "purpose": "Bounded static pad-contact visual recipe; geometry-dependent offsets are excluded"
+    },
+    {
+      "frames": [
+        45,
+        48
+      ],
+      "axis": "keyboard X",
+      "maximum_displacement_m": 0.002,
+      "purpose": "Bounded static side-contact visual recipe; geometry-dependent offsets are excluded"
+    }
+  ],
+  "status_scope": "Saved status snapshot, not fresh validation and not visual acceptance on a replacement rig",
+  "reconstruction_scope": "Exact saved Blender reconstruction requires the separate local licensed backup; retarget authored angles and wrist placement to an independently licensed rig"
+}
