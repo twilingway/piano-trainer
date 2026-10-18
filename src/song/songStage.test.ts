@@ -23,6 +23,9 @@ describe("a lesson level's stage file", () => {
     ["an empty sign", '{ "sign": "   " }'],
     ["a two-line sign", '{ "sign": "Sample\nsign" }'],
     ["a tab", '{ "sign": "Sample\tsign" }'],
+    ["a line separator", JSON.stringify({ sign: "Sample sign" })],
+    ["a paragraph separator", JSON.stringify({ sign: "Sample sign" })],
+    ["a next-line character", JSON.stringify({ sign: "Sample\u0085sign" })],
     ["an 81-character sign", JSON.stringify({ sign: "я".repeat(81) })]
   ])("refuses %s", (_, text) => {
     expect(parseSongStage(text)).toHaveProperty("error");

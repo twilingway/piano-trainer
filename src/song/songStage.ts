@@ -15,7 +15,8 @@ function parseSign(sign: unknown): { readonly sign: string } | { readonly error:
   if (trimmed === "") return { error: "sign is empty" };
   for (let index = 0; index < trimmed.length; index++) {
     const code = trimmed.charCodeAt(index);
-    if (code < 0x20 || code === 0x7f)
+    // C0 and DEL, the C1 next line, and the Unicode line and paragraph separators.
+    if (code < 0x20 || code === 0x7f || code === 0x85 || code === 0x2028 || code === 0x2029)
       return { error: "sign has a line break or a control character" };
   }
   // What a reader counts as characters: an emoji or an accented letter is one.
