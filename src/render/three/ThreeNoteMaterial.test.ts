@@ -34,7 +34,7 @@ describe("uniformly emissive note volume", () => {
     expect(material.toneMapped).toBe(false);
     const glow = scalar("noteGlow");
     expect(glow(0, 0)).toBe(0.88);
-    expect(glow(1, 0)).toBe(1.5);
+    expect(glow(1, 0)).toBe(2);
     expect(glow(0, -1)).toBeCloseTo(0.86);
     expect(material.fragmentShader).not.toContain("totalEmissiveRadiance");
     expect(material.fragmentShader).toContain("noteGlow(rim, flow)");
@@ -68,7 +68,7 @@ describe("uniformly emissive note volume", () => {
     expect(1 - (1 - center) ** 2).toBeCloseTo(0.106975);
     expect(1 - (1 - center) ** 4).toBeLessThan(0.21);
     expect(alpha(1)).toBeCloseTo(0.94);
-    expect(material.fragmentShader).toContain("float lineWidth = 0.18");
+    expect(material.fragmentShader).toContain("float lineWidth = max(0.18, aa * 0.65)");
     expect(material.depthWrite).toBe(false);
   });
   it("fades at the actual near plane and before a passing volume fills the screen", () => {

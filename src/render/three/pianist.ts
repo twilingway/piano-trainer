@@ -65,7 +65,7 @@ function prepareModel(scene: Object3D, hideArms: boolean): void {
   scene.traverse((node) => {
     if (
       (hideArms && isHiddenArmPart(node.name)) ||
-      /^ridge-finger[1-5]-[12][._]?[LR]$/.test(node.name) ||
+      /^(ridge|nail)-finger[1-5]-[123][._]?[LR]$/.test(node.name) ||
       /^(DEBUG(?:[_-]|$)|GEO-skeleton)/i.test(node.name)
     )
       node.visible = false;
