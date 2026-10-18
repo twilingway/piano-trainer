@@ -8,7 +8,7 @@ import golden from "./golden.json";
 import type { Library } from "./library";
 import { planHand, strikesOf } from "./plan";
 import type { Strike } from "./plan";
-import { STUDIO_REST } from "./rest";
+import { PYTHON_REST, STUDIO_REST } from "./rest";
 
 const LIB = library as unknown as Library;
 const TOL = 1e-6;
@@ -21,7 +21,7 @@ describe("planHand", () => {
       notes: s.notes.map((n) => ({ ...n, finger: n.finger as Finger }))
     })) as Strike[];
     const started = performance.now();
-    const plan = planHand(STUDIO_REST, LIB, g.hand as Hand, strikes);
+    const plan = planHand(PYTHON_REST, LIB, g.hand as Hand, strikes);
     const ms = (performance.now() - started) / strikes.length;
     process.stdout.write(`plan ${g.name}: ${ms.toFixed(1)} ms a strike\n`);
     expect(plan.keys.map((k) => [k.phase, k.strike])).toEqual(

@@ -83,7 +83,8 @@ describe("planChunks", () => {
     );
     expect(strikes).toBe(280);
     expect(firstMs).toBeLessThan(1000);
-  });
+    // The whole song takes seconds under a full parallel run; only the first part has a budget.
+  }, 15000);
 
   it("plans each side with its own anatomy", () => {
     const longer = {

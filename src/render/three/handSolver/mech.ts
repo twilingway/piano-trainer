@@ -103,12 +103,13 @@ export const CHAIN: Readonly<Record<Finger, readonly [number, number, number, nu
   5: [17, 18, 19, 20]
 };
 
-/** The solver's rest of one hand: MCP heads, phalanx lengths, the neutral and index directions. */
+/** The solver's rest of one hand: MCP heads, phalanx lengths, the neutral and thumb directions. */
 export interface Rest {
   readonly mcp: Readonly<Record<Finger, Vec3>>;
   readonly len: Readonly<Record<Finger, Vec3>>;
   readonly neutral: Vec3;
-  readonly idx: Vec3;
+  /** The thumb's own first phalanx at rest, a unit vector: its heading and its dip below the palm. */
+  readonly thumb: Vec3;
 }
 
 export const at = <T>(list: readonly T[], i: number): T => {
@@ -186,10 +187,15 @@ export function handJoints(rest: Rest, ang: Angles, root: Root): Vec3[] {
     }
   }
   const t = ang[1];
-  const pl = rad(t.cmc_palmar);
+  // The CMC turns the thumb from its own rest, not from the index finger's direction.
+  const [ox, oy, oz] = rest.thumb;
+  const flat = Math.hypot(ox, oy);
+  const pl = rad(t.cmc_palmar) + Math.atan2(-oz, flat);
   const tm = rad(t.t_mcp);
   const ti = rad(t.t_ip);
-  const fl = apply(rot("z", rad(t.cmc_radial)), rest.idx);
+  // A flat direction is taken as given, as the Python solver takes the index direction.
+  const scale = oz === 0 ? 1 : 1 / flat;
+  const fl = apply(rot("z", rad(t.cmc_radial)), [ox * scale, oy * scale, 0]);
   const u: Vec3 = [Math.cos(pl) * fl[0], Math.cos(pl) * fl[1], Math.cos(pl) * fl[2] - Math.sin(pl)];
   const w = apply(rot("z", -Math.PI / 2), fl);
   let q = rest.mcp[1];
