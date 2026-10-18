@@ -75,8 +75,8 @@ export function performerMotion(time: number, beats: readonly SongBeat[]): Perfo
   const lift = tap > 0 && tap < 1 ? Math.sin(Math.PI * tap) ** 2 : 0;
   return {
     bodyRoll: 0.75 * RAD * Math.sin(turn - 0.18) * activity,
-    headRoll: 2.5 * RAD * Math.sin(turn) * activity,
-    headYaw: 2 * RAD * Math.sin(turn - 0.35) * activity,
+    headRoll: 0.9 * RAD * Math.sin(turn) * activity,
+    headYaw: 0.6 * RAD * Math.sin(turn - 0.35) * activity,
     leftFootPitch: (upcoming?.downbeat ? 12 : 8) * RAD * lift
   };
 }

@@ -32,17 +32,17 @@ describe("score-driven performer motion", () => {
     expect(performerMotion(1.91, immutable)).toEqual(first);
   });
 
-  it("sways left and right over four beats with a stronger head and quiet torso", () => {
+  it("sways left and right over four beats with gentle continuous head accents and quiet torso", () => {
     const left = performerMotion(0.5, beats);
     const right = performerMotion(1.5, beats);
-    expect(left.headRoll).toBeCloseTo(2.5 * rad, 10);
-    expect(right.headRoll).toBeCloseTo(-2.5 * rad, 10);
+    expect(left.headRoll).toBeCloseTo(0.9 * rad, 10);
+    expect(right.headRoll).toBeCloseTo(-0.9 * rad, 10);
     expect(Math.abs(left.bodyRoll)).toBeLessThan(Math.abs(left.headRoll));
     expect(performerMotion(2.5, beats).headRoll).toBeCloseTo(left.headRoll, 10);
     for (let time = -0.5; time <= 8.5; time += 0.007) {
       const motion = performerMotion(time, beats);
-      expect(Math.abs(motion.headRoll)).toBeLessThanOrEqual(2.5 * rad + 1e-12);
-      expect(Math.abs(motion.headYaw)).toBeLessThanOrEqual(2 * rad + 1e-12);
+      expect(Math.abs(motion.headRoll)).toBeLessThanOrEqual(0.9 * rad + 1e-12);
+      expect(Math.abs(motion.headYaw)).toBeLessThanOrEqual(0.6 * rad + 1e-12);
       expect(Math.abs(motion.bodyRoll)).toBeLessThanOrEqual(0.75 * rad + 1e-12);
       expect(motion.leftFootPitch).toBeGreaterThanOrEqual(0);
       expect(motion.leftFootPitch).toBeLessThanOrEqual(12 * rad + 1e-12);
@@ -92,4 +92,15 @@ describe("score-driven performer motion", () => {
       }
     }
   });
+});
+
+it("keeps the added head sway below four degrees per second on a regular score grid", () => {
+  const h = 0.0001;
+  for (let time = 0.5; time < 8; time += 0.003) {
+    const a = performerMotion(time - h, beats),
+      b = performerMotion(time + h, beats);
+    expect(Math.hypot(b.headRoll - a.headRoll, b.headYaw - a.headYaw) / (2 * h)).toBeLessThan(
+      4 * rad
+    );
+  }
 });

@@ -9,6 +9,7 @@ import {
   CylinderGeometry,
   DoubleSide,
   Group,
+  HemisphereLight,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -81,6 +82,7 @@ export class PerformanceLights {
   private readonly spots: SpotLight[] = [];
   private readonly poolGeometry = new CircleGeometry(1, 64);
   private readonly pools: Mesh<CircleGeometry, ShaderMaterial>[] = [];
+  private readonly ambient = new HemisphereLight(0xffead8, 0x718199, 0.65);
   private readonly fill = new PointLight(0xffead8, 0.55, 0, 0);
   private readonly face = new Vector3();
   private readonly projectedFace = new Vector3();
@@ -166,7 +168,8 @@ export class PerformanceLights {
       this.feet.push(feet);
       this.fixtures.add(head, pole, ...feet);
     }
-    this.group.add(this.fill, this.fixtures, ...this.faceLights);
+    this.ambient.name = "performer-soft-fill";
+    this.group.add(this.fill, this.fixtures, this.ambient, ...this.faceLights);
   }
   setFaceTarget(x: number, y: number, z: number): void {
     this.face.set(x, y, z);
@@ -197,11 +200,12 @@ export class PerformanceLights {
     const time = Number.isFinite(songTime) ? Math.max(0, songTime) : 0;
     const spotFade = performanceSceneTimeline(time).spotFade;
     const outro = spotFade > 0 ? Math.max(0, Math.min(1, fade / spotFade)) : 1;
+    this.ambient.intensity = 0.65 * outro;
     const attack = quintic((time - 12) / 1.5),
       release = quintic((time - 16.8) / 2.2);
     this.fill.intensity = ((0.8 + 0.15 * attack) * (1 - release) + 0.04 * release) * outro;
     this.faceLights.forEach((light, index) => {
-      light.intensity = (index === 0 ? 1 + this.faceCue * 3.2 : 0.5 + this.faceCue * 1.3) * fade;
+      light.intensity = (index === 0 ? 1.8 + this.faceCue * 3.2 : 0.95 + this.faceCue * 1.3) * fade;
       const height = Math.max(80 * unitScale, this.face.y - centre.y);
       const faceScale = Math.min(unitScale, height / 800);
       light.distance = Math.min(650 * unitScale, height * 0.75);

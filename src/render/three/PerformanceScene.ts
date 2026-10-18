@@ -1,3 +1,4 @@
+import { quintic } from "./performanceCameraMath";
 import { performanceOutroTimeline } from "./performanceOutroTimeline";
 import { performanceRoadScale } from "./performanceRoadProjection";
 import { Box3, Color, PerspectiveCamera, Vector3 } from "three";
@@ -154,24 +155,31 @@ export class PerformanceScene {
         .filter((box) => !pitches || pitches.has(box.pitch))
         .map((box) => ({ x: box.x, y: box.black ? box.top : (this.road?.floorY ?? box.top) }));
       const road = this.road && { ...this.road, lanes };
+      const geometry = performanceCameraGeometry(
+        subject,
+        this.bounds,
+        this.keyCentre,
+        this.handSpan * subject.scale.x,
+        this.full,
+        this.boxes,
+        road
+      );
       this.route = new PerformanceCameraPath({
-        ...performanceCameraGeometry(
-          subject,
-          this.bounds,
-          this.keyCentre,
-          this.handSpan * subject.scale.x,
-          this.full,
-          this.boxes,
-          road
-        ),
+        ...geometry,
         duration: this.songDuration,
         aspect: this.camera.aspect
       });
       this.routeAspect = this.camera.aspect;
     }
+    this.full.copy(this.route.geometry.top);
     if (!Number.isFinite(time) || time <= 16) {
       this.camera.fov = 45;
       this.camera.position.copy(this.close).lerp(this.full, frame.rise);
+      const seconds = Number.isFinite(time) ? time : 0;
+      this.camera.position.z =
+        this.close.z + (this.full.z - this.close.z) * quintic((seconds - 10) / 2);
+      this.camera.position.y =
+        this.close.y + (this.full.y - this.close.y) * quintic((seconds - 12) / 4);
       this.target.copy(this.keyCentre).lerp(this.centre, frame.rise);
       this.camera.up.copy(this.topUp);
       this.camera.lookAt(this.target);

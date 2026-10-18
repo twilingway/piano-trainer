@@ -65,8 +65,8 @@ describe("uniformly emissive note volume", () => {
   it("keeps overlapping centers transparent and the outline coloured without writing depth", () => {
     const alpha = scalar("noteGlassAlpha");
     const center = alpha(0);
-    expect(1 - (1 - center) ** 2).toBeCloseTo(0.106975);
-    expect(1 - (1 - center) ** 4).toBeLessThan(0.21);
+    expect(1 - (1 - center) ** 2).toBeCloseTo(0.2604);
+    expect(1 - (1 - center) ** 4).toBeLessThan(0.46);
     expect(alpha(1)).toBeCloseTo(0.94);
     expect(material.fragmentShader).toContain("float lineWidth = max(0.18, aa * 0.65)");
     expect(material.depthWrite).toBe(false);

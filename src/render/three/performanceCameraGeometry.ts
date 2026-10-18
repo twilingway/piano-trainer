@@ -4,6 +4,7 @@ import { performanceKeyboardFlight } from "./performanceKeyboardFlight";
 import { Box3, Matrix4, Mesh, SkinnedMesh, Vector3 } from "three";
 import type { Object3D } from "three";
 import type { CameraBounds, CameraPoint } from "./performanceCameraMath";
+import { point, pointMix, segmentBlocked } from "./performanceCameraMath";
 import type { PerformanceCameraGeometry, PerformanceCameraRoad } from "./performanceCameraPath";
 import type { KeyBox } from "./keyBoxes";
 import { performanceNoteMatrix } from "./performanceNoteMatrix";
@@ -116,7 +117,7 @@ export function performanceCameraGeometry(
         Math.max(12 * unit, handSpan * 0.035)
       )
     : undefined;
-  return {
+  const geometry: PerformanceCameraGeometry = {
     bounds: copyBounds(bounds),
     avatar: copyBounds(avatar),
     face: performanceFaceTarget(subject, copyBounds(avatar)),
@@ -128,4 +129,53 @@ export function performanceCameraGeometry(
     ...(keyboardFlight ? { keyboardFlight } : {}),
     ...(dimensions ? { road: performanceRoadGeometry(dimensions, subject.matrixWorld) } : {})
   };
+  // Keep the reveal on the player's side of tall meshes; the intro clears them before rising.
+  const revealZ = obstacles
+    .filter((box) => box.min.y > keyboard.y + 300 * unit)
+    .reduce((z, box) => Math.max(z, box.max.z + 100 * unit), top.z);
+  return { ...geometry, top: { ...geometry.top, z: revealZ } };
+}
+
+/** Stable centre/gap of the played lanes, independent of their incoming ordering. */
+export function performanceRoadAnchors(lanes: readonly CameraPoint[]): {
+  centre?: CameraPoint;
+  gap?: CameraPoint;
+} {
+  const sorted = [...lanes].sort((a, b) => a.x - b.x),
+    first = sorted[0],
+    last = sorted.at(-1);
+  if (!first || !last) return {};
+  const centre = pointMix(first, last, 0.5);
+  let gap = centre,
+    nearest = Infinity;
+  for (let index = 1; index < sorted.length; index++) {
+    const a = sorted[index - 1],
+      b = sorted[index];
+    if (!a || !b) continue;
+    const middle = pointMix(a, b, 0.5),
+      offset = Math.abs(middle.x - centre.x);
+    if (offset < nearest) {
+      nearest = offset;
+      gap = middle;
+    }
+  }
+  return { centre, gap };
+}
+
+/** Keep top shots on the player side, below a blocking hat rather than crossing over the keys. */
+export function performanceTopPosition(
+  position: CameraPoint,
+  geometry: Pick<PerformanceCameraGeometry, "keyboard" | "handSpan" | "unit" | "obstacles">,
+  span = geometry.handSpan
+): CameraPoint {
+  const { keyboard: key, unit } = geometry;
+  const result = { ...position, z: Math.max(position.z, key.z + 60 * unit) };
+  const tall = geometry.obstacles.filter((box) => box.min.y > key.y + 300 * unit);
+  const probes = [point(key.x, key.y, key.z), point(key.x, key.y + 70 * unit, key.z + 150 * unit)];
+  for (const x of [key.x - span / 2, key.x + span / 2])
+    for (const z of [key.z - 172 * unit, key.z + 150 * unit]) probes.push(point(x, key.y, z));
+  for (const box of tall)
+    if (probes.some((target) => segmentBlocked(result, target, box, 12 * unit)))
+      result.y = Math.min(result.y, Math.max(key.y + 260 * unit, box.min.y - 40 * unit));
+  return result;
 }

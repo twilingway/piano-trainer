@@ -1,3 +1,4 @@
+import { performanceRoadAnchors, performanceTopPosition } from "./performanceCameraGeometry";
 import { cameraOrientation } from "./performanceCameraOrientation";
 import { cameraCurvePoint, cameraCurveVelocity, cameraFlowNodes } from "./performanceCameraCurve";
 import { performanceHeroFlight } from "./performanceHeroFlight";
@@ -99,24 +100,7 @@ export class PerformanceCameraPath {
     const right = point(box.max.x + 150 * unit, key.y + 260 * unit, key.z - 80 * unit);
     const left = point(box.min.x - 150 * unit, key.y + 260 * unit, key.z - 80 * unit);
     const portrait = point(actor.x, face.y + 35 * unit, body.min.z - reach * 1.5);
-    const sorted = [...(g.road?.lanes ?? [])].sort((a, b) => a.x - b.x),
-      first = sorted[0],
-      last = sorted.at(-1);
-    const lane = first && last ? pointMix(first, last, 0.5) : undefined;
-    let gapLane = lane,
-      gapDistance = Infinity;
-    if (lane)
-      for (let index = 1; index < sorted.length; index++) {
-        const a = sorted[index - 1],
-          b = sorted[index];
-        if (!a || !b) continue;
-        const middle = pointMix(a, b, 0.5),
-          offset = Math.abs(middle.x - lane.x);
-        if (offset < gapDistance) {
-          gapDistance = offset;
-          gapLane = middle;
-        }
-      }
+    const { centre: lane, gap: gapLane } = performanceRoadAnchors(g.road?.lanes ?? []);
     // The keyboard remains the stable visible composition anchor even during a rest.
     const roadTarget = point(lane?.x ?? key.x, key.y + 45 * unit, key.z);
     const node = (
@@ -290,12 +274,15 @@ export class PerformanceCameraPath {
     const topDistance =
       (keyboardWidth / (2 * Math.tan((45 * Math.PI) / 360) * Math.max(0.4, g.aspect ?? 1.5))) *
       1.15;
-    const wholeTop = point(
-      lane?.x ?? key.x,
-      key.y + Math.max(850 * unit, topDistance),
-      key.z + 80 * unit
+    const wholeTop = performanceTopPosition(
+      point(lane?.x ?? key.x, key.y + Math.max(850 * unit, topDistance), key.z + 80 * unit),
+      g,
+      keyboardWidth
     );
-    const closeTop = point(key.x + 100 * unit, key.y + 700 * unit, key.z + 100 * unit);
+    const closeTop = performanceTopPosition(
+      point(key.x + 100 * unit, key.y + 700 * unit, key.z + 100 * unit),
+      g
+    );
     nodes.push(
       node(38, portrait, face, 32, "face"),
       node(
