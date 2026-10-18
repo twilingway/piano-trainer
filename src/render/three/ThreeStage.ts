@@ -1,7 +1,5 @@
 import type { BufferGeometry } from "three";
 import {
-  Box3,
-  BufferAttribute,
   Camera,
   ColorManagement,
   DirectionalLight,
@@ -24,7 +22,7 @@ import { keyBoxes } from "./keyBoxes";
 import { PianoCase } from "./PianoCase";
 import type { KeyBox } from "./keyBoxes";
 import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
-import { KIT_DEPTH, KIT_TOP, KIT_WHITE, splitUp, whitePart } from "./pianoKit";
+import { KIT_DEPTH, KIT_TOP, KIT_WHITE, whitePart } from "./pianoKit";
 import type { KitPart, PianoKit } from "./pianoKit";
 import { LiveHands } from "./liveHands";
 import type { HandsSource } from "./liveHands";
@@ -32,7 +30,7 @@ import { projectionMatrix, viewMatrix } from "./threeCamera";
 import { ThreeNoteLights } from "./ThreeNoteLights";
 import { ThreeKeyEmission } from "./ThreeKeyEmission";
 import { KeyboardAppearance } from "./KeyboardAppearance";
-import { blackKeyCap } from "./blackKeyCap";
+import { keyGeometry } from "./keyGeometry";
 import { ThreeRimLights } from "./ThreeRimLights";
 import { ThreeRoadNotes } from "./ThreeRoadNotes";
 import { ThreeRoadTrails } from "./ThreeRoadTrails";
@@ -193,7 +191,8 @@ export class ThreeStage {
     this.road.visible = roadFrame !== undefined;
     this.roadNotes.setViewport(screen.width, screen.height);
     if (!this.nativePianist) this.hands?.update(hands);
-    if (this.performanceEnabled) {
+    const sceneEnabled = this.performanceEnabled || this.freeEnabled;
+    if (sceneEnabled) {
       this.worldStage.prepare(this.keys, this.boxes, roadCamera.near.z);
       this.performance.lights.setStageLayout(this.worldStage.stage);
     }
@@ -259,23 +258,26 @@ export class ThreeStage {
       this.configureCamera(this.roadCamera, roadCamera, screen);
       if (separate) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
     }
-    this.worldStage.setDuration(this.performance.getDuration());
-    this.worldStage.update(
-      this.performanceEnabled,
-      roadFrame?.songTime ?? 0,
-      this.keys,
-      this.boxes,
-      energy,
-      this.performance.camera,
-      roadCamera.near.z,
-      worldEffects,
-      roadFrame
-    );
     const camera = this.performanceEnabled
       ? this.performance.camera
       : this.freeEnabled
         ? this.free.camera
         : this.roadCamera;
+    if (this.freeEnabled && !this.performanceEnabled)
+      this.performance.updateInspection(roadFrame?.songTime ?? 0, this.keys, camera);
+    this.worldStage.setDuration(this.performance.getDuration());
+    this.worldStage.update(
+      sceneEnabled,
+      roadFrame?.songTime ?? 0,
+      this.keys,
+      this.boxes,
+      energy,
+      camera,
+      roadCamera.near.z,
+      worldEffects,
+      roadFrame,
+      this.freeEnabled && !this.performanceEnabled
+    );
     this.beforeRender?.(camera);
     this.renderer.resetState();
     try {
@@ -316,23 +318,34 @@ export class ThreeStage {
   }
 
   get nativeEffectsReady(): boolean {
-    return this.performanceEnabled && this.worldStage.ready;
+    return (this.performanceEnabled || this.freeEnabled) && this.worldStage.ready;
   }
 
   setFreeCamera(on: boolean): void {
+    if (on !== this.freeEnabled) {
+      this.performance.invalidate();
+      this.worldStage.invalidate();
+    }
     this.freeEnabled = on;
+    this.syncSceneLighting();
     this.free.setEnabled(on && !this.performanceEnabled);
   }
 
   setPerformanceScene(on: boolean): void {
     if (on === this.performanceEnabled) return;
-    if (on) this.baseLightingVisible = this.baseLighting.visible;
-    this.baseLighting.visible = on ? false : this.baseLightingVisible;
     this.performance.invalidate();
     this.worldStage.invalidate();
     this.performanceEnabled = on;
-    this.performance.lights.group.visible = on;
+    this.syncSceneLighting();
     this.free.setEnabled(this.freeEnabled && !on);
+  }
+
+  private syncSceneLighting(): void {
+    const on = this.performanceEnabled || this.freeEnabled;
+    if (on && !this.performance.lights.group.visible)
+      this.baseLightingVisible = this.baseLighting.visible;
+    this.baseLighting.visible = on ? false : this.baseLightingVisible;
+    this.performance.lights.group.visible = on;
   }
 
   resetFreeCamera(): void {
@@ -509,40 +522,4 @@ export class ThreeStage {
     this.cabinet.clear();
     this.body.clear();
   }
-}
-
-/**
- * The kit's key sized to the app's key: its width to the slot, millimetres up, 150 mm along to
- * 142; the top faces, group 0, show the key's rect of the picture.
- */
-function keyGeometry(part: BufferGeometry, box: KeyBox): BufferGeometry {
-  const geometry = part.clone();
-  const { min, max } = new Box3().setFromBufferAttribute(
-    geometry.getAttribute("position") as BufferAttribute
-  );
-  const across = box.black ? box.width / (max.x - min.x) : box.width / KIT_WHITE;
-  const position = geometry.getAttribute("position");
-  const uv = new Float32Array(position.count * 2);
-  const { v0, v1 } = box.uv;
-  // The picture is a painted key with its rounded sides drawn in: the model has its own, so the
-  // top takes only the flat middle.
-  const rim = (box.uv.u1 - box.uv.u0) * (box.black ? 0.08 : 0.07);
-  const u0 = box.uv.u0 + rim;
-  const u1 = box.uv.u1 - rim;
-  for (let vertex = 0; vertex < position.count; vertex++) {
-    // Across the key left to right; along it from the back (-z) to the front.
-    const u = (position.getX(vertex) - min.x) / (max.x - min.x);
-    const v = (position.getZ(vertex) - min.z) / (max.z - min.z);
-    uv[vertex * 2] = u0 + u * (u1 - u0);
-    uv[vertex * 2 + 1] = v0 + v * (v1 - v0);
-  }
-  geometry.setAttribute("uv", new BufferAttribute(uv, 2));
-  geometry.scale(across, 1000, KIT_DEPTH);
-  geometry.translate(0, KIT_TOP, 0);
-  if (box.black) return blackKeyCap(geometry);
-  geometry.setAttribute(
-    "color",
-    new BufferAttribute(new Float32Array(position.count * 3).fill(1), 3)
-  );
-  return splitUp(geometry);
 }

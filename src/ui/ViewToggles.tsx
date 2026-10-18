@@ -111,16 +111,16 @@ export function ViewToggles({ prefs, hasScore, onChange, courseScore }: Props) {
       <button
         type="button"
         className="view-toggle"
-        aria-label={t("Дорога")}
+        aria-label={t("Перспектива")}
         aria-pressed={prefs.road}
         disabled={!prefs.lane}
-        title={prefs.road ? t("Обычный вид нот") : t("Дорога: ноты в перспективе")}
+        title={prefs.road ? t("Обычный вид нот") : t("Перспектива: объёмный вид нот")}
         onClick={() => {
           onChange({ road: !prefs.road });
         }}
       >
         <RoadIcon />
-        <span className="view-toggle__label">{t("Дорога")}</span>
+        <span className="view-toggle__label">{t("Перспектива")}</span>
       </button>
       <button
         type="button"

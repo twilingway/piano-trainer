@@ -41,26 +41,29 @@ describe("uniformly emissive note volume", () => {
     expect(material.fragmentShader).not.toContain("vNormal");
     expect(material.fragmentShader).toContain("abs(vPoint.z)");
   });
-  it("gives all twelve box edges the same thin emission, including long-note bottom edges", () => {
-    const edge = scalar("noteEdgeDistance");
-    const radius = 2.2;
-    const bevel = 0.5;
-    const corner = radius * (1 - Math.SQRT1_2);
-    for (const halfLength of [10, 100, 2000]) {
-      // Both caps: two long edges plus two ends each; q values are reflection invariant.
-      expect(edge(-bevel * 0.5, bevel * 0.5, 10, halfLength, radius, bevel)).toBe(0);
-      expect(edge(-bevel * 0.5, bevel * 0.5, 0, halfLength, radius, bevel)).toBe(0);
-      expect(edge(-bevel * 0.5, bevel * 0.5, 10, 0, radius, bevel)).toBe(0);
-      // A whole chamfer is no longer an opaque luminous band.
-      expect(edge(-bevel, 0, 10, halfLength, radius, bevel)).toBeGreaterThan(0.3);
-      expect(edge(0, bevel, 10, halfLength, radius, bevel)).toBeGreaterThan(0.3);
-      // Four vertical corner lines connect the caps through the extrusion's side band.
-      expect(edge(0, 1.8, corner, corner, radius, bevel)).toBeCloseTo(0, 6);
-      // Neither cap center nor a side/end center becomes an opaque luminous band.
-      expect(edge(-10, 0, 10, halfLength, radius, bevel)).toBeGreaterThan(0.75);
-      expect(edge(0, 1.8, 0, halfLength, radius, bevel)).toBeGreaterThan(0.75);
-      expect(edge(0, 1.8, 10, 0, radius, bevel)).toBeGreaterThan(0.75);
+  it("keeps subpixel edges continuous across pixel phases and projection scales", () => {
+    const coverage = scalar("noteEdgeCoverage");
+    // Pixel pairs straddling the line can have equal unsigned distances, while
+    // their signed offset still spans a whole pixel. The latter defines AA.
+    for (const pixelWidth of [0.2, 0.5, 1, 4, 20]) {
+      for (const phase of [-0.5, -0.25, 0, 0.25, 0.5]) {
+        const a = phase * pixelWidth;
+        const b = a + pixelWidth;
+        const signedWidth = Math.abs(b - a);
+        expect(coverage(Math.abs(a), signedWidth)).toBe(1);
+        expect(coverage(3 * pixelWidth + 0.18, signedWidth)).toBe(0);
+      }
     }
+    expect(coverage(0.5, 1)).toBe(1);
+    expect(coverage(0.5, 0)).toBe(0);
+    // Both independent edge families must differentiate before the distance fold.
+    expect(material.fragmentShader).toContain(
+      "noteEdgeCoverage(length(capOffset), length(fwidth(capOffset)))"
+    );
+    expect(material.fragmentShader).toContain(
+      "noteEdgeCoverage(length(cornerOffset), length(fwidth(cornerOffset)))"
+    );
+    expect(material.fragmentShader).not.toContain("fwidth(edgeDistance)");
   });
   it("keeps overlapping centers transparent and the outline coloured without writing depth", () => {
     const alpha = scalar("noteGlassAlpha");

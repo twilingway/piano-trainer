@@ -496,7 +496,7 @@ describe("player settings organization", () => {
     });
     const guides = () =>
       Array.from(host.querySelectorAll("label"))
-        .find((label) => label.textContent.includes("Линии дороги"))
+        .find((label) => label.textContent.includes("Линии перспективы"))
         ?.querySelector<HTMLInputElement>("input");
     expect(guides()?.checked).toBe(false);
     await act(async () => {
@@ -520,7 +520,7 @@ describe("player settings organization", () => {
       setInterfaceLanguage("en");
       await Promise.resolve();
     });
-    expect(host.textContent).toContain("Road guide lines");
+    expect(host.textContent).toContain("Perspective guide lines");
     expect(onMode).not.toHaveBeenCalled();
     expect(onRules).not.toHaveBeenCalled();
   });

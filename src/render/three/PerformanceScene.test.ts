@@ -8,6 +8,7 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
+  PerspectiveCamera,
   Scene,
   SpotLight,
   Vector3
@@ -28,6 +29,43 @@ const key: KeyBox = {
   uv: { u0: 0, u1: 1, v0: 0, v1: 1 }
 };
 describe("performance camera", () => {
+  it("lights inspection at opening and song end without moving either camera or routing notes", () => {
+    const scene = new Scene();
+    const subject = new Group();
+    const geometry = new BoxGeometry(600, 800, 400);
+    const material = new MeshBasicMaterial();
+    subject.add(new Mesh(geometry, material));
+    scene.add(subject);
+    const performance = new PerformanceScene(scene);
+    const manual = new PerspectiveCamera(45, 1.5, 1, 10000);
+    manual.position.set(400, 1000, 2000);
+    manual.lookAt(0, 0, 0);
+    manual.updateMatrixWorld();
+    performance.layout([key]);
+    performance.setNotes({ left: [{ start: 0, duration: 30, pitch: 60 }], right: [] });
+    const manualPosition = manual.position.clone();
+    const manualRotation = manual.quaternion.clone();
+    const automaticPosition = performance.camera.position.clone();
+    const automaticRotation = performance.camera.quaternion.clone();
+    const spots = performance.lights.group.children.filter(
+      (child): child is SpotLight => child instanceof SpotLight
+    );
+    for (const time of [0, 30, 30, 0]) {
+      performance.updateInspection(time, subject, manual);
+      expect(spots.map((spot) => spot.intensity)).toEqual([0.85, 1.05]);
+      expect(manual.position.equals(manualPosition)).toBe(true);
+      expect(manual.quaternion.equals(manualRotation)).toBe(true);
+      expect(performance.camera.position.equals(automaticPosition)).toBe(true);
+      expect(performance.camera.quaternion.equals(automaticRotation)).toBe(true);
+      expect(performance.roadScale).toBe(1);
+    }
+    performance.update(0, 1200, 800, subject);
+    expect(spots.map((spot) => spot.intensity)).toEqual([0, 0]);
+    performance.dispose();
+    geometry.dispose();
+    material.dispose();
+  });
+
   it("restores the same pose after pause and backwards seek", () => {
     const scene = new Scene();
     const subject = new Group();

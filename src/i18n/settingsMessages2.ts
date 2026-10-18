@@ -274,14 +274,14 @@ export const settingsMessages2 = {
   "Показать руки": {
     en: "Show hands"
   },
-  Дорога: {
-    en: "Road"
+  Перспектива: {
+    en: "Perspective"
   },
   "Обычный вид нот": {
     en: "Standard note view"
   },
-  "Дорога: ноты в перспективе": {
-    en: "Road: notes in perspective"
+  "Перспектива: объёмный вид нот": {
+    en: "Perspective: 3D note view"
   },
   "Ноты на стане": {
     en: "Note cards"
