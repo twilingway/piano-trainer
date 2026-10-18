@@ -39,7 +39,6 @@ export class NotePlasma {
     visible: boolean,
     deltaSeconds: number
   ): void {
-    road?.setMistLayer(this.layer.mist);
     const on = road !== undefined && visible;
     this.container.visible = on;
     if (!on) {

@@ -9,6 +9,7 @@ import {
   Matrix4,
   ShaderMaterial
 } from "three";
+import { performanceNoteMatrix } from "./performanceNoteMatrix";
 import { noteSlabHeight } from "../noteDimensions";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import type { WorldRoadNote } from "./roadNoteGeometry";
@@ -110,6 +111,9 @@ void main() {
 
 /** Two noisy exterior shells share one draw call; the note body occludes their far sides. */
 export class ThreeNoteAura {
+  performanceAngle = 0;
+  performanceScale = 1;
+  nearZ = 0;
   readonly group = new Group();
   private readonly geometry = createNoteSlabGeometry();
   private readonly time = { value: 0 };
@@ -221,7 +225,16 @@ export class ThreeNoteAura {
         ((note.color >> 8) & 255) / 255,
         (note.color & 255) / 255
       );
-      this.matrix.makeTranslation(note.x, centreY, centreZ);
+      performanceNoteMatrix(
+        this.matrix,
+        note.x,
+        centreY,
+        centreZ,
+        laneY,
+        this.nearZ,
+        this.performanceAngle,
+        this.performanceScale
+      );
       for (let layer = 0; layer < NOTE_AURA_LAYERS; layer++, used++) {
         this.sizes.setXYZ(used, note.width, height, depth);
         this.projections.setXYZ(

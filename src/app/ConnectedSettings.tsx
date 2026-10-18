@@ -190,6 +190,8 @@ function ConnectedKeyboardSettings() {
       keyboardDim: state.preferences.staff.keyboardDim,
       roadGuides: state.preferences.staff.roadGuides,
       pianist: state.preferences.staff.pianist,
+      performanceScene: state.preferences.staff.performanceScene,
+      freeCamera: state.preferences.staff.freeCamera,
       far: state.preferences.staff.roadFar,
       horizon: state.preferences.staff.roadHorizon,
       camera: state.preferences.staff.camera
@@ -209,6 +211,10 @@ function ConnectedKeyboardSettings() {
   const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
   const onKeyboardDim = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardDim);
   const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
+  const onPerformanceScene = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onPerformanceScene
+  );
+  const onFreeCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onFreeCamera);
   const onPianist = useRuntimeCommand((runtime) => runtime.keyboardSettings.onPianist);
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
   const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
@@ -224,6 +230,10 @@ function ConnectedKeyboardSettings() {
       roadGuides={state.roadGuides}
       {...(PIANIST_AVAILABLE ? { pianist: state.pianist } : {})}
       onPianist={onPianist}
+      performanceScene={state.performanceScene}
+      onPerformanceScene={onPerformanceScene}
+      freeCamera={state.freeCamera}
+      onFreeCamera={onFreeCamera}
       road={{ far: state.far, horizon: state.horizon }}
       camera={state.camera}
       onKeyRange={onKeyRange}

@@ -50,7 +50,11 @@ export interface Strike {
 }
 
 /** A hand's strikes: its fingered notes grouped by onset; notes without a finger take no part. */
-export function strikesOf(notes: readonly FingeredNote[], hand: Hand): Strike[] {
+export function strikesOf(
+  notes: readonly FingeredNote[],
+  hand: Hand,
+  window = STRIKE_WINDOW
+): Strike[] {
   const fingered = notes
     .filter((n): n is FingeredNote & { finger: Finger } => n.finger !== undefined)
     .sort((a, b) => a.start - b.start || a.pitch - b.pitch);
@@ -68,12 +72,15 @@ export function strikesOf(notes: readonly FingeredNote[], hand: Hand): Strike[] 
     group = [];
   };
   for (const n of fingered) {
-    if (group[0] && n.start - group[0].start > STRIKE_WINDOW) flush();
+    if (group[0] && n.start - group[0].start > window) flush();
     group.push(n);
   }
   flush();
   return out;
 }
+
+/** speed follows the observed p99 benchmark; score accelerates transfers to keep onsets. */
+export type PlanTiming = "speed" | "score";
 
 export type Phase = "ready" | "strike" | "depart";
 
@@ -146,7 +153,8 @@ export function* planSteps(
   library: Library,
   hand: Hand,
   strikes: readonly Strike[],
-  plan: HandPlan = { hand, keys: [], poses: [], report: [] }
+  plan: HandPlan = { hand, keys: [], poses: [], report: [] },
+  timing: PlanTiming = "speed"
 ): Generator<number, HandPlan> {
   const { keys, poses, report } = plan;
   let sounding: StrikeNote[] = [];
@@ -196,7 +204,12 @@ export function* planSteps(
       missMm: 0
     };
     const planned: PlannedPose = { ...placed, hover: hoverLift(rest, placed, used) };
-    if (i === 0) keys.push({ t: r4(s.time - READY), phase: "ready", strike: 0 });
+    if (i === 0)
+      keys.push({
+        t: timing === "score" ? s.time - READY : r4(s.time - READY),
+        phase: "ready",
+        strike: 0
+      });
     else {
       const p = at(strikes, i - 1);
       const before = at(poses, i - 1);
@@ -211,10 +224,15 @@ export function* planSteps(
       const release = ends.length > 0 ? Math.max(...ends) : p.time + TAP;
       // The previous strike's key: its onset, or later when it came late.
       const struck = at(keys, keys.length - 1).t;
-      const depart = Math.max(struck + TAP, Math.min(release, ready - Math.max(need, SHIFT)));
+      // Score timing budgets both contact and preparation inside this inter-onset gap.
+      const tap = timing === "score" ? Math.min(TAP, gap / 3) : TAP;
+      const shift = timing === "score" ? Math.min(SHIFT, gap / 3) : SHIFT;
+      const depart = Math.max(struck + tap, Math.min(release, ready - Math.max(need, shift)));
       if (depart < release - 1e-6) at(report, i - 1).flags.push("cut");
       const arrive = depart + need;
-      if (arrive > ready + 1e-6) {
+      if (timing === "score") {
+        if (arrive > ready + 1e-6) rep.flags.push("accelerated");
+      } else if (arrive > ready + 1e-6) {
         rep.flags.push("degraded");
         rep.lateS = r3(Math.max(0, arrive - s.time));
         if (arrive > s.time && need > 0)
@@ -229,11 +247,11 @@ export function* planSteps(
         ready = arrive;
       }
       if (depart > at(keys, keys.length - 1).t + 1e-6)
-        keys.push({ t: r4(depart), phase: "depart", strike: i - 1 });
-      keys.push({ t: r4(ready), phase: "ready", strike: i });
+        keys.push({ t: timing === "score" ? depart : r4(depart), phase: "depart", strike: i - 1 });
+      keys.push({ t: timing === "score" ? ready : r4(ready), phase: "ready", strike: i });
     }
     keys.push({
-      t: r4(Math.max(s.time, at(keys, keys.length - 1).t + 1e-3)),
+      t: timing === "score" ? s.time : r4(Math.max(s.time, at(keys, keys.length - 1).t + 1e-3)),
       phase: "strike",
       strike: i
     });
@@ -251,9 +269,10 @@ export function planHand(
   rest: Rest,
   library: Library,
   hand: Hand,
-  strikes: readonly Strike[]
+  strikes: readonly Strike[],
+  timing: PlanTiming = "speed"
 ): HandPlan {
-  const steps = planSteps(rest, library, hand, strikes);
+  const steps = planSteps(rest, library, hand, strikes, undefined, timing);
   for (;;) {
     const step = steps.next();
     if (step.done) return step.value;

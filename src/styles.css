@@ -4231,3 +4231,24 @@ button.song-card.song-card__open {
     max-height: 24dvh;
   }
 }
+
+.free-camera-legend {
+  position: absolute;
+  z-index: 4;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #ffffff30;
+  border-radius: 8px;
+  background: #071321df;
+  color: #e7f4ff;
+  font-size: 12px;
+  pointer-events: auto;
+}
+.free-camera-legend[hidden] {
+  display: none;
+}

@@ -35,6 +35,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     playing: new Map<number, SongNote>(),
     arrivals: [],
     cardsOn: false,
+    cards: new Container(),
     guides: new Container(),
     beatBars: new Container(),
     lane: new Container(),
@@ -75,6 +76,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
   // Exercise frame wiring with real draw(), substituting only the GPU-backed layers.
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
     ready: true,
+    sceneCamera: { frame: vi.fn(), apply: vi.fn(), active: true },
     parts: { keys: true, notes: true, hands: false },
     app: { screen: { width: 800, height: 600 }, ticker: { deltaMS: 16 } },
     laidOutFor: { width: 800, height: 600 },
@@ -85,8 +87,8 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
     notesLayer: layer,
     keyboard: { draw: keyboardDraw },
     hands: { container: { visible: false } },
-    fx: { draw: effectsDraw },
-    plasma: { draw: vi.fn() },
+    fx: { draw: effectsDraw, container: new Container() },
+    plasma: { draw: vi.fn(), container: new Container() },
     hud: { draw: vi.fn() },
     roadMode,
     roadWanted: roadMode,
@@ -95,6 +97,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
     cameraPrefs: DEFAULT_CAMERA,
     road: {
       drawsNativeRoad: nativeRoad,
+      effects: new Container(),
       setCamera: vi.fn(),
       setNotesPerspective: vi.fn(),
       draw: roadDraw,
@@ -356,7 +359,7 @@ describe("accompaniment fire independent of key colours", () => {
     ["right", true],
     ["left", true]
   ])("keeps accompaniment fire when practising %s (road %s)", (hand, roadMode) => {
-    const { view, keyboardDraw, effectsDraw, roadDraw } = viewHarness(roadMode);
+    const { view, keyboardDraw, effectsDraw, roadDraw } = viewHarness(roadMode, notes, false);
     const own = notes.find((note) => note.hand === hand);
     const accompaniment = notes.find((note) => note.hand !== hand);
     if (!own || !accompaniment) throw new Error("Missing test hand");
@@ -529,4 +532,62 @@ it("keeps native 3D enabled for direct notes and restores perspective without ch
   view.draw(state);
   expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(6);
   expect(state.time).toBe(5);
+});
+
+describe("native effect policy", () => {
+  it("keeps Pixi impacts active beside Three and restores fallback labels", () => {
+    const v = viewHarness(true, notes, true);
+    const frame: FrameState = {
+      time: 0.1,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set([48]),
+      due: [],
+      hands: new Set(),
+      owns: () => true
+    };
+    v.view.draw(frame);
+    expect(v.effectsDraw).toHaveBeenCalledOnce();
+    expect(v.roadDraw).toHaveBeenCalledOnce();
+    const inside = v.view as unknown as {
+      road: { drawsNativeRoad: boolean; sceneCamera?: boolean };
+      plasma: { draw: ReturnType<typeof vi.fn> };
+      fx: { container: Container };
+    };
+    expect(inside.plasma.draw).toHaveBeenCalledOnce();
+    expect(inside.fx.container.renderable).toBe(true);
+    inside.road.sceneCamera = true;
+    v.view.draw(frame);
+    expect(v.layer.cards.renderable).toBe(false);
+    inside.road.sceneCamera = false;
+    inside.road.drawsNativeRoad = false;
+    v.view.draw(frame);
+    expect(v.effectsDraw).toHaveBeenCalledTimes(3);
+    expect(inside.fx.container.renderable).toBe(true);
+    expect(v.layer.cards.renderable).toBe(true);
+  });
+});
+
+it("keeps cards and sprite hands visible after Three fails with performance still requested", () => {
+  const test = viewHarness(true, notes, false);
+  const inside = test.view as unknown as {
+    sceneCamera: { active: boolean };
+    road: { sceneCamera: boolean };
+    hands: { container: { renderable: boolean } };
+  };
+  inside.sceneCamera.active = true;
+  inside.road.sceneCamera = false;
+  test.view.draw({
+    time: 20,
+    lookAhead: 2,
+    statusOf: () => undefined,
+    pressed: new Set(),
+    sounding: new Set(),
+    due: [],
+    hands: new Set(),
+    owns: () => false
+  });
+  expect(test.layer.cards.renderable).toBe(true);
+  expect(inside.hands.container.renderable).toBe(true);
 });

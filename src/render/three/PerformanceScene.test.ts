@@ -1,0 +1,205 @@
+import { ThreeRoadFrame } from "./ThreeRoadFrame";
+import type { PointLight } from "three";
+import { describe, expect, it } from "vitest";
+import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Scene, SpotLight, Vector3 } from "three";
+import { PerformanceScene } from "./PerformanceScene";
+import type { KeyBox } from "./keyBoxes";
+
+const key: KeyBox = {
+  pitch: 60,
+  black: false,
+  x: 480,
+  width: 22,
+  bottom: 0,
+  top: 22,
+  front: 0,
+  back: 142,
+  uv: { u0: 0, u1: 1, v0: 0, v1: 1 }
+};
+describe("performance camera", () => {
+  it("restores the same pose after pause and backwards seek", () => {
+    const scene = new Scene();
+    const subject = new Group();
+    const geometry = new BoxGeometry(600, 800, 400);
+    const material = new MeshBasicMaterial();
+    subject.add(new Mesh(geometry, material));
+    scene.add(subject);
+    const performance = new PerformanceScene(scene);
+    performance.layout([key]);
+    performance.update(25, 1200, 800, subject);
+    const position = performance.camera.position.clone();
+    const rotation = performance.camera.quaternion.clone();
+    performance.update(90, 1200, 800, subject);
+    performance.update(25, 1200, 800, subject);
+    expect(performance.camera.position.distanceTo(position)).toBeLessThan(1e-9);
+    expect(performance.camera.quaternion.angleTo(rotation)).toBeLessThan(1e-6);
+    performance.update(0, 1200, 800, subject);
+    const start = performance.camera.position.clone();
+    expect(start.x).toBe(key.x);
+    performance.update(10, 1200, 800, subject);
+    expect(performance.camera.position.distanceTo(start)).toBe(0);
+    performance.dispose();
+    geometry.dispose();
+    material.dispose();
+  });
+  it("keeps stage spotlights off through twelve seconds and reproduces their fade after seek", () => {
+    const scene = new Scene();
+    const subject = new Group();
+    const performance = new PerformanceScene(scene);
+    const spots = performance.lights.group.children.filter(
+      (child): child is SpotLight => child instanceof SpotLight
+    );
+    performance.update(10, 1200, 800, subject);
+    expect(spots.map((spot) => spot.intensity)).toEqual([0, 0]);
+    performance.update(12, 1200, 800, subject);
+    expect(spots.map((spot) => spot.intensity)).toEqual([0, 0]);
+    performance.update(14, 1200, 800, subject);
+    const half = spots.map((spot) => spot.intensity);
+    expect(half).toEqual([0.425, 0.525]);
+    performance.update(10, 1200, 800, subject);
+    performance.update(14, 1200, 800, subject);
+    expect(spots.map((spot) => spot.intensity)).toEqual(half);
+    performance.dispose();
+  });
+});
+
+it("centres the intro on the opening notes and keeps the hand fill local", () => {
+  const scene = new Scene(),
+    subject = new Group();
+  const performance = new PerformanceScene(scene);
+  const leftKey = { ...key, pitch: 40, x: -330 };
+  performance.layout([leftKey, key]);
+  performance.setNotes({ left: [{ start: 0, duration: 1, pitch: 40 }], right: [] });
+  performance.update(0, 1200, 800, subject);
+  expect(performance.camera.position.x).toBe(-330);
+  const fill = performance.lights.group.children.find(
+    (child) => child.type === "PointLight"
+  ) as PointLight;
+  expect(fill.distance).toBeGreaterThan(0);
+  expect(fill.distance).toBeLessThanOrEqual(260);
+  expect(fill.position.y - key.top).toBeLessThan(100);
+  performance.dispose();
+});
+
+it.each([
+  [1600, 1000],
+  [1689, 1285],
+  [390, 844]
+])("keeps complete palms and the keyboard in the opening %sx%s frame", (width, height) => {
+  const scene = new Scene(),
+    subject = new Group();
+  const performance = new PerformanceScene(scene);
+  performance.layout([key]);
+  performance.update(0, width, height, subject);
+  for (const x of [key.x - key.width * 8, key.x + key.width * 8]) {
+    for (const z of [-142, 180]) {
+      const corner = new Vector3(x, key.top, z).project(performance.camera);
+      expect(Math.abs(corner.x)).toBeLessThan(0.95);
+      expect(Math.abs(corner.y)).toBeLessThan(0.95);
+    }
+  }
+  performance.dispose();
+});
+
+it("restores the unchanged opening after a flight with a different FOV", () => {
+  const performance = new PerformanceScene(new Scene()),
+    subject = new Group();
+  performance.layout([key]);
+  performance.update(0, 1689, 1285, subject);
+  const initial = performance.camera.position.clone(),
+    rotation = performance.camera.quaternion.clone();
+  performance.update(75, 1689, 1285, subject);
+  expect(performance.camera.fov).not.toBe(45);
+  performance.update(0, 1689, 1285, subject);
+  expect(performance.camera.position.distanceTo(initial)).toBeLessThan(1e-9);
+  expect(performance.camera.quaternion.angleTo(rotation)).toBeLessThan(1e-6);
+  expect(performance.camera.fov).toBe(45);
+  performance.dispose();
+});
+
+it("ignores visible-note births/deaths and keeps the keyboard composition continuous", () => {
+  const performance = new PerformanceScene(new Scene()),
+    subject = new Group(),
+    frame = new ThreeRoadFrame();
+  performance.layout([key]);
+  performance.setNotes({ left: [{ start: 0, duration: 154.5, pitch: 60 }], right: [] });
+  performance.setRoad(frame, key.top, 142, 5142);
+  performance.update(50, 3440, 1313, subject);
+  const initial = performance.camera.quaternion.clone(),
+    position = performance.camera.position.clone();
+  for (const [x, count] of [
+    [-500, 1],
+    [700, 1],
+    [0, 0],
+    [50, 1]
+  ] as const) {
+    frame.notes[0] = { x, top: 1700, bottom: 1300, width: 20, alpha: 1, color: 0xff0000 };
+    frame.noteCount = count;
+    performance.setRoad(frame, key.top, 142, 5142);
+    performance.update(50, 3440, 1313, subject);
+    expect(performance.camera.quaternion.angleTo(initial)).toBeLessThan(1e-6);
+    expect(performance.camera.position.distanceTo(position)).toBeLessThan(1e-9);
+  }
+  const normal = new Vector3(0, Math.cos(0.24), Math.sin(0.24)),
+    anchor = new Vector3(key.x, key.top, -142),
+    ray = performance.camera.getWorldDirection(new Vector3());
+  const distance = anchor.clone().sub(performance.camera.position).dot(normal) / ray.dot(normal),
+    visible = performance.camera.position
+      .clone()
+      .addScaledVector(ray, distance)
+      .project(performance.camera);
+  expect(distance).toBeGreaterThan(100);
+  expect(distance).toBeLessThan(1400);
+  expect(Math.abs(visible.x)).toBeLessThan(0.001);
+  expect(Math.abs(visible.y)).toBeLessThan(0.001);
+  performance.dispose();
+});
+it("bounds actual camera angular velocity with changing road frames across the whole melody", () => {
+  const performance = new PerformanceScene(new Scene()),
+    subject = new Group(),
+    frame = new ThreeRoadFrame();
+  performance.layout([key]);
+  performance.setNotes({ left: [{ start: 0, duration: 154.5, pitch: 60 }], right: [] });
+  performance.setRoad(frame, key.top, 142, 5142);
+  performance.update(16, 3440, 1313, subject);
+  const previous = performance.camera.quaternion.clone();
+  let maximum = 0,
+    maximumTime = 0;
+  for (let time = 16 + 1 / 120; time <= 154.5; time += 1 / 120) {
+    frame.noteCount = Math.floor(time * 7) % 2;
+    frame.notes[0] = {
+      x: Math.sin(time * 13) * 600,
+      top: 1700,
+      bottom: 1300,
+      width: 20,
+      alpha: 1,
+      color: 0xff0000
+    };
+    performance.setRoad(frame, key.top, 142, 5142);
+    performance.update(time, 3440, 1313, subject);
+    const velocity = previous.angleTo(performance.camera.quaternion) * 120;
+    if (velocity > maximum) {
+      maximum = velocity;
+      maximumTime = time;
+    }
+    previous.copy(performance.camera.quaternion);
+  }
+  expect(maximum, String(maximumTime)).toBeLessThan(3);
+  performance.dispose();
+});
+
+it("uses the true last note end for light fade without changing session time", () => {
+  const performance = new PerformanceScene(new Scene()),
+    subject = new Group();
+  performance.layout([key]);
+  performance.setNotes({ left: [{ start: 150, duration: 4.5, pitch: 60 }], right: [] });
+  expect(performance.getDuration()).toBe(154.5);
+  performance.update(154.5, 1600, 1000, subject);
+  const spots = performance.lights.group.children.filter(
+    (c): c is SpotLight => c instanceof SpotLight
+  );
+  expect(spots.every((l) => l.intensity === 0)).toBe(true);
+  performance.update(20, 1600, 1000, subject);
+  expect(spots.map((l) => l.intensity)).toEqual([0.85, 1.05]);
+  performance.dispose();
+});

@@ -13,6 +13,7 @@ export class ThreeRoadFrame {
   noteCount = 0;
   beatCount = 0;
   trailAnchorCount = 0;
+  songTime = 0;
   visualTime = 0;
 
   begin(): void {
@@ -70,7 +71,8 @@ export class ThreeRoadFrame {
     duration = 0,
     id = "",
     tailOffset = 0,
-    lane?: NoteLaneProjection
+    lane?: NoteLaneProjection,
+    pitch?: number
   ): void {
     const note = worldRoadNote(
       keyX,
@@ -85,6 +87,7 @@ export class ThreeRoadFrame {
     );
     if (!note) return;
     note.duration = duration;
+    note.pitch = pitch;
     note.lane = lane;
     note.textureOffset = (tailOffset * (camera.roadFarZ - camera.near.z)) / hitY;
     let hash = 2166136261;

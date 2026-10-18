@@ -17,6 +17,8 @@ export function useKeyboardSettings(
   fps: boolean;
   onFps: (show: boolean) => void;
   onPianist: (on: boolean) => void;
+  onFreeCamera: (on: boolean) => void;
+  onPerformanceScene: (on: boolean) => void;
 } {
   return {
     keyRange: view.keyRange,
@@ -43,6 +45,14 @@ export function useKeyboardSettings(
     ...(PIANIST_AVAILABLE ? { pianist: staffPrefs.pianist } : {}),
     onPianist: (pianist) => {
       updateStaffPrefs({ pianist });
+    },
+    performanceScene: staffPrefs.performanceScene,
+    onPerformanceScene: (performanceScene) => {
+      updateStaffPrefs({ performanceScene });
+    },
+    freeCamera: staffPrefs.freeCamera,
+    onFreeCamera: (freeCamera) => {
+      updateStaffPrefs({ freeCamera });
     },
     roadGuides: staffPrefs.roadGuides,
     onRoadGuides: (roadGuides) => {
