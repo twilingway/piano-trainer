@@ -29,6 +29,7 @@ function fixture() {
     keys: new Group(),
     road: new Group(),
     lighting: new Group(),
+    baseLighting: new Group(),
     body: new Group(),
     scene: new Scene(),
     roadCamera: new Camera(),
@@ -48,11 +49,21 @@ function fixture() {
     rimLights: disposable(),
     board: disposable(),
     boxes: [],
-    free: { ...disposable(), invalidate: vi.fn() },
+    free: {
+      ...disposable(),
+      invalidate: vi.fn(),
+      setEnabled: vi.fn(),
+      update: vi.fn(),
+      camera: new Camera()
+    },
     performance: {
       ...disposable(),
       setNotes: vi.fn(),
       setRoad: vi.fn(),
+      update: vi.fn(() => 0.8),
+      updateInspection: vi.fn(),
+      roadScale: 0.75,
+      lights: { group: Object.assign(new Group(), { visible: false }), setStageLayout: vi.fn() },
       invalidate: vi.fn(),
       getDuration: () => 154.5,
       camera: new Camera()
@@ -64,6 +75,8 @@ function fixture() {
       setDuration: vi.fn(),
       setBassNotes: vi.fn(),
       setSign: vi.fn(),
+      prepare: vi.fn(),
+      ready: true,
       update: vi.fn()
     },
     cabinet: { ...disposable(), clear: vi.fn() },
@@ -190,4 +203,58 @@ it("feeds the bass fire the song's notes only when the song's stage asks for it"
   view.stage.setSongStage({ sign: "Sample sign" });
   draw();
   expect(world.setBassNotes).toHaveBeenLastCalledWith(undefined);
+});
+
+it("uses the manual camera for the fully lit world without transforming notes or sampling the route", () => {
+  const view = fixture();
+  const internal = view.stage as unknown as {
+    free: { camera: Camera; update: ReturnType<typeof vi.fn> };
+    performance: {
+      camera: Camera;
+      update: ReturnType<typeof vi.fn>;
+      updateInspection: ReturnType<typeof vi.fn>;
+      lights: { group: Group };
+    };
+    worldStage: { update: ReturnType<typeof vi.fn> };
+    baseLighting: Group;
+    roadNotes: { performanceAngle: number; performanceScale: number };
+  };
+  view.stage.setFreeCamera(true);
+  expect(view.stage.nativeEffectsReady).toBe(true);
+  expect(internal.baseLighting.visible).toBe(false);
+  expect(internal.performance.lights.group.visible).toBe(true);
+  view.draw();
+  expect(internal.free.update).toHaveBeenCalledOnce();
+  expect(internal.performance.update).not.toHaveBeenCalled();
+  expect(internal.performance.updateInspection).toHaveBeenCalledWith(
+    0,
+    expect.any(Group),
+    internal.free.camera
+  );
+  expect(internal.worldStage.update).toHaveBeenLastCalledWith(
+    true,
+    0,
+    expect.any(Group),
+    [],
+    [],
+    internal.free.camera,
+    142,
+    false,
+    undefined,
+    true
+  );
+  expect(internal.roadNotes.performanceAngle).toBe(0);
+  expect(internal.roadNotes.performanceScale).toBe(1);
+  view.stage.setPerformanceScene(true);
+  view.stage.setFreeCamera(false);
+  view.draw();
+  expect(internal.performance.update).toHaveBeenCalledOnce();
+  expect(internal.worldStage.update.mock.calls.at(-1)?.[5]).toBe(internal.performance.camera);
+  expect(internal.worldStage.update.mock.calls.at(-1)?.[9]).toBe(false);
+  view.stage.setPerformanceScene(false);
+  expect(internal.baseLighting.visible).toBe(true);
+  expect(internal.performance.lights.group.visible).toBe(false);
+  expect(view.stage.nativeEffectsReady).toBe(false);
+  view.draw();
+  expect(internal.worldStage.update.mock.calls.at(-1)?.[0]).toBe(false);
 });

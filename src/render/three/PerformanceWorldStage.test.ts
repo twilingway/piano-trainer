@@ -9,7 +9,8 @@ import {
   PerspectiveCamera,
   PointLight,
   Texture,
-  TextureLoader
+  TextureLoader,
+  Vector3
 } from "three";
 import { PerformanceWorldStage } from "./PerformanceWorldStage";
 import type { KeyBox } from "./keyBoxes";
@@ -68,6 +69,41 @@ async function loaded() {
   return result;
 }
 describe("native stage atomic readiness and world effects", () => {
+  it("keeps inspection visible at the start and end with world anchors and the actual camera", async () => {
+    const { stage, subject, camera } = await loaded();
+    stage.setDuration(154.5);
+    camera.position.set(0, 500, 1800);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    stage.update(true, 0, subject, boxes, [source], camera, 142, true, undefined, true);
+    expect(stage.group.visible).toBe(true);
+    expect(stage.group.children[0]?.visible).toBe(true);
+    expect(batch(stage, 1).count).toBe(98);
+    const flame = batch(stage, 2);
+    const centres = flame.geometry.getAttribute("particleCentre");
+    const firstPosition = [centres.getX(0), centres.getY(0), centres.getZ(0)];
+    expect(firstPosition).toEqual([10, 40, -142]);
+    expect(flame.geometry.getAttribute("particleShape").getZ(0)).toBe(60);
+    const right: unknown = flame.material.uniforms.cameraRight?.value;
+    if (!(right instanceof Vector3)) throw new Error("Missing billboard camera basis");
+    const firstRight = right.clone();
+    camera.position.set(1800, 500, 0);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    stage.update(true, 154.5, subject, boxes, [source], camera, 142, true, undefined, true);
+    expect(stage.lightFade).toBe(1);
+    expect(stage.blackout).toBe(0);
+    expect(flame.count).toBe(1);
+    expect(batch(stage, 5).count).toBe(1);
+    expect([centres.getX(0), centres.getY(0), centres.getZ(0)]).toEqual(firstPosition);
+    expect(right.equals(firstRight)).toBe(false);
+    // Inspection never substitutes a presentation clock for the session's atlas time.
+    expect(flame.geometry.getAttribute("particleShape").getZ(0)).toBe(24);
+    stage.update(true, 154.5, subject, boxes, [source], camera, 142);
+    expect(stage.lightFade).toBe(0);
+    expect(stage.blackout).toBe(1);
+  });
+
   it("lights the octave rim for every visible future finger color before any keyboard contact", async () => {
     const { stage, subject, camera } = await loaded();
     const visible = {

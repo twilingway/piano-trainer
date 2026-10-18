@@ -81,6 +81,7 @@ export class PerformanceWorldStage {
   private duration = Infinity;
   private opening = performanceOpeningSeconds(Infinity);
   private fade = 1;
+  private reveal = 1;
   private readonly platform = new PerformancePlatform();
   private readonly flame = new WorldAtlasBatch(FLAME, 512);
   private readonly ringFlame = new WorldAtlasBatch({ ...FLAME, additive: false }, 512);
@@ -217,7 +218,8 @@ export class PerformanceWorldStage {
     camera: Camera,
     nearZ: number,
     emitEffects = true,
-    visible?: Pick<ThreeRoadFrame, "notes" | "noteCount">
+    visible?: Pick<ThreeRoadFrame, "notes" | "noteCount">,
+    inspection = false
   ): void {
     if (!on) {
       this.group.visible = false;
@@ -230,11 +232,14 @@ export class PerformanceWorldStage {
     this.group.visible = true;
     this.platform.group.visible = this.layoutValue !== undefined;
     const outro = performanceOutroTimeline(time, this.duration);
-    this.fade = outro.light;
-    this.curtain.set(outro.blackout);
+    this.fade = inspection ? 1 : outro.light;
+    this.reveal = inspection
+      ? 1
+      : performanceSceneTimeline(time, this.opening).spotFade * this.fade;
+    this.curtain.set(inspection ? 0 : outro.blackout);
     const stage = this.layoutValue;
     if (!stage) return;
-    const reveal = performanceSceneTimeline(time, this.opening).spotFade * this.fade;
+    const reveal = this.reveal;
     const burst = this.bassOnsets.length > 0 ? bassFireStrength(time, this.bassOnsets) * reveal : 0;
     this.sign?.update(time, camera, reveal, burst);
     const batches = [this.flame, this.mist, this.hit, this.glitter, this.ringFlame];
@@ -268,7 +273,7 @@ export class PerformanceWorldStage {
         );
       }
     }
-    const reveal = performanceSceneTimeline(time, this.opening).spotFade * this.fade;
+    const reveal = this.reveal;
     for (let index = 0; index < RING_PUFFS; index++)
       for (let layer = 0; layer < 3; layer++) {
         const angle = (index / RING_PUFFS) * Math.PI * 2 + layer * 0.07;
@@ -331,7 +336,7 @@ export class PerformanceWorldStage {
     const colors = visible
       ? performanceRingField(visible.notes, visible.noteCount)
       : sources.filter((source) => source.sounding);
-    const reveal = performanceSceneTimeline(time, this.opening).spotFade * this.fade;
+    const reveal = this.reveal;
     let lightIndex = 0;
     for (const source of colors) {
       const ring = stageNotePoint(source.pitch, stage);
@@ -373,7 +378,7 @@ export class PerformanceWorldStage {
     }
   }
   private drawHits(time: number, stage: PerformanceStageLayout): void {
-    const reveal = performanceSceneTimeline(time, this.opening).spotFade * this.fade;
+    const reveal = this.reveal;
     for (const hit of this.state.hits) {
       const age = time - hit.time;
       if (age < 0 || age >= HIT.frames / HIT.fps) continue;

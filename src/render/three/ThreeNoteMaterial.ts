@@ -56,16 +56,12 @@ float noteVolumeFade(float clipW, float gap, float width, float projectedWidth) 
 float noteGlow(float rim, float flow) {
   return mix(0.88 + 0.02 * flow, 2.0, rim);
 }
-// A thin line along each chamfer centre leaves the rest of the bevel transparent.
-// The four vertical corner lines have the same width as both rounded cap perimeters.
-float noteEdgeDistance(float footprint, float qy, float qx, float qz, float radius, float bevel) {
-  float radial = max(0.0, -footprint) - bevel * 0.5;
-  float vertical = max(0.0, qy) - bevel * 0.5;
-  float capEdge = sqrt(radial * radial + vertical * vertical);
-  float corner = radius * 0.29289322;
-  float dx = qx - corner;
-  float dz = qz - corner;
-  return min(capEdge, sqrt(dx * dx + dz * dz));
+// Differentiate the signed offsets before length: opposite subpixel samples of
+// an unsigned distance can cancel and leave a dotted, aliased edge.
+float noteEdgeCoverage(float distance, float pixelWidth) {
+  float aa = max(pixelWidth, 0.06);
+  float lineWidth = max(0.18, aa * 0.65);
+  return 1.0 - smoothstep(lineWidth, lineWidth + aa, distance);
 }
 float noteGlassAlpha(float rim) {
   return mix(0.14, 0.94, rim);
@@ -78,10 +74,12 @@ void main() {
   float radius = min(vSize.x * 0.11, vSize.z * 0.45);
   float bevel = min(vSize.x * 0.025, min(radius * 0.45, vSize.y * 0.25));
   float footprint = roundedRect(vPoint.xz, halfSize.xz, radius);
-  float edgeDistance = noteEdgeDistance(footprint, q.y, q.x, q.z, radius, bevel);
-  float aa = max(fwidth(edgeDistance), 0.06);
-  float lineWidth = max(0.18, aa * 0.65);
-  float rim = 1.0 - smoothstep(lineWidth, lineWidth + aa, edgeDistance);
+  vec2 capOffset = vec2(max(0.0, -footprint), max(0.0, q.y)) - bevel * 0.5;
+  vec2 cornerOffset = q.xz - radius * 0.29289322;
+  float rim = max(
+    noteEdgeCoverage(length(capOffset), length(fwidth(capOffset))),
+    noteEdgeCoverage(length(cornerOffset), length(fwidth(cornerOffset)))
+  );
   float across = abs(vPoint.x) / max(vSize.x, 0.001);
   float flow = sin(abs(vPoint.z) * 0.055 + visualTime * 1.8 + sin(across * 6.0));
   vec3 tint = mix(vTint, mix(vTint, vec3(1.0), 0.65), rim) * noteGlow(rim, flow);

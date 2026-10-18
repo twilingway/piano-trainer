@@ -198,15 +198,16 @@ export class PerformanceLights {
     handSpan: number,
     unitScale = 1,
     songTime = 0,
-    openingSeconds = PERFORMANCE_OPENING_SECONDS
+    openingSeconds = PERFORMANCE_OPENING_SECONDS,
+    inspection = false
   ): void {
     this.fill.position.copy(centre).addScaledVector(this.up, handSpan * 0.2);
     this.fill.distance = Math.min(handSpan * 1.1, 260 * unitScale);
     const time = Number.isFinite(songTime) ? Math.max(0, songTime) : 0;
     const spotFade = performanceSceneTimeline(time, openingSeconds).spotFade;
     // The hand reveal is part of the opening and keeps its proportions when that is shorter.
-    const clock = performanceOpeningClock(time, openingSeconds);
-    const outro = spotFade > 0 ? Math.max(0, Math.min(1, fade / spotFade)) : 1;
+    const clock = inspection ? 20 : performanceOpeningClock(time, openingSeconds);
+    const outro = inspection ? 1 : spotFade > 0 ? Math.max(0, Math.min(1, fade / spotFade)) : 1;
     this.ambient.intensity = 0.65 * outro;
     const attack = quintic((clock - 12) / 1.5),
       release = quintic((clock - 16.8) / 2.2);

@@ -2,7 +2,7 @@ import { quintic } from "./performanceCameraMath";
 import { performanceOutroTimeline } from "./performanceOutroTimeline";
 import { performanceRoadScale } from "./performanceRoadProjection";
 import { Box3, Color, PerspectiveCamera, Vector3 } from "three";
-import type { Object3D, Scene } from "three";
+import type { Camera, Object3D, Scene } from "three";
 import { posedSceneBounds } from "./posedSceneBounds";
 import {
   performanceOpeningClock,
@@ -130,6 +130,33 @@ export class PerformanceScene {
   constructor(scene: Scene) {
     scene.add(this.lights.group);
     this.lights.group.visible = false;
+  }
+
+  /** Full stage lighting follows the inspection camera without sampling the automatic route. */
+  updateInspection(time: number, subject: Object3D, camera: Camera): void {
+    if (this.dirty || this.scale !== subject.scale.x) {
+      posedSceneBounds(subject, this.bounds);
+      this.dirty = false;
+      this.scale = subject.scale.x;
+      this.route = undefined;
+    }
+    this.keyCentre.copy(this.localFocus).applyMatrix4(subject.matrixWorld);
+    if (this.bounds.isEmpty())
+      this.bounds.setFromCenterAndSize(this.keyCentre, this.size.set(400, 400, 400));
+    this.bounds.getCenter(this.centre);
+    this.bounds.getSize(this.size);
+    this.lights.setFaceTarget(this.centre.x, this.bounds.max.y, this.centre.z);
+    this.lights.setView(camera, subject.scale.x);
+    this.lights.layout(
+      this.keyCentre,
+      Math.max(100, this.size.length() / 2),
+      1,
+      this.handSpan * subject.scale.x,
+      subject.scale.x,
+      time,
+      this.opening,
+      true
+    );
   }
 
   update(time: number, width: number, height: number, subject: Object3D): number {

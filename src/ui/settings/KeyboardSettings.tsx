@@ -99,8 +99,8 @@ export function KeyboardSettings({
         >
           <option value="classic">{t("Классика")}</option>
           <option value="arcade">{t("Аркада")}</option>
-          <option value="perspective">{t("Перспектива (с дорогой)")}</option>
-          <option value="3d">{t("3D (с дорогой)")}</option>
+          <option value="perspective">{t("Перспектива")}</option>
+          <option value="3d">{t("3D (с перспективой)")}</option>
         </select>
       </label>
       <label className="setting">
@@ -136,7 +136,7 @@ export function KeyboardSettings({
       ) : (
         <>
           <label className="setting">
-            <span>{t("Дорога: горизонт")}</span>
+            <span>{t("Перспектива: горизонт")}</span>
             <span className="setting-control">
               <input
                 type="range"
@@ -152,7 +152,7 @@ export function KeyboardSettings({
             </span>
           </label>
           <label className="setting">
-            <span>{t("Дорога: ширина у горизонта")}</span>
+            <span>{t("Перспектива: ширина у горизонта")}</span>
             <span className="setting-control">
               <input
                 type="range"
@@ -183,7 +183,7 @@ export function KeyboardSettings({
       )}
       {keyStyle === "3d" && (
         <label className="setting">
-          <span>{t("Линии дороги")}</span>
+          <span>{t("Линии перспективы")}</span>
           <input
             type="checkbox"
             checked={roadGuides}

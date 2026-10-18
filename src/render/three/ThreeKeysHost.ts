@@ -276,14 +276,15 @@ export class ThreeKeysHost {
     // three left its own state (clear colour, blending) behind last frame.
     this.resetPixiState();
     const separateRoad = this.freeActive || this.performanceWanted;
-    const worldEffects = this.performanceWanted && this.stage.nativeEffectsReady;
+    const worldEffects = separateRoad && this.stage.nativeEffectsReady;
+    const legacyEffects = !this.freeActive && !worldEffects;
     renderer.render({
       container: separateRoad ? this.placeholder : this.road,
-      ...(this.performanceWanted ? { clearColor: 0x000000 } : {})
+      ...(separateRoad ? { clearColor: 0x000000 } : {})
     });
     try {
-      if (separateRoad) this.roadEffects.draw(renderer, !worldEffects);
-      this.effects.draw(renderer, !worldEffects);
+      if (separateRoad) this.roadEffects.draw(renderer, legacyEffects);
+      this.effects.draw(renderer, legacyEffects);
       this.seatPianist(this.stage, scene);
       const picture = gl.texture.getGlSource(scene.texture.source).texture;
       const frame = this.keyboard.frame;

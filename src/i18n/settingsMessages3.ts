@@ -38,9 +38,9 @@ export const settingsMessages3 = {
   "— карточки вместо полосок.": {
     en: "— cards instead of bars."
   },
-  "Включённые кнопки подсвечены. Руки видны только вместе с клавиатурой, дорога и карточки — только с падающими нотами.":
+  "Включённые кнопки подсвечены. Руки видны только вместе с клавиатурой, перспектива и карточки — только с падающими нотами.":
     {
-      en: "Enabled buttons are highlighted. Hands need the keyboard; the road and cards need falling notes."
+      en: "Enabled buttons are highlighted. Hands need the keyboard; perspective and cards need falling notes."
     },
   "Язык интерфейса": {
     en: "Interface language"

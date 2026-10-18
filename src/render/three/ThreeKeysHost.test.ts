@@ -496,6 +496,61 @@ describe("performance scene input and fallback", () => {
 });
 
 describe("native stage effects handoff", () => {
+  it("restores legacy effects after inspection loses its 3D renderer", async () => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    const mist = view.overlay.addChild(new Container());
+    view.host.setSceneEffects([fire], [mist]);
+    view.host.setFreeCamera(true);
+    await view.host.setEnabled(true);
+    mocks.draw.mockImplementationOnce(() => {
+      expect(fire.renderable).toBe(false);
+      expect(mist.renderable).toBe(false);
+      throw new Error("context lost");
+    });
+    view.tick();
+    expect(view.host.on).toBe(false);
+    expect(view.host.freeCamera).toBe(false);
+    expect(view.road.parent).toBe(view.stage);
+    expect(fire.renderable).toBe(true);
+    expect(mist.renderable).toBe(true);
+    expect(view.renderer.render.mock.calls.at(-1)?.[0].container).toBe(view.stage);
+    view.host.destroy();
+  });
+
+  it("hides screen FX throughout inspection loading and restores the ordinary view on exit", async () => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    const mist = view.overlay.addChild(new Container());
+    view.host.setSceneEffects([fire], [mist]);
+    view.host.setFreeCamera(true);
+    await view.host.setEnabled(true);
+    mocks.draw.mockImplementation(() => {
+      expect(fire.renderable).toBe(false);
+      expect(mist.renderable).toBe(false);
+    });
+    const screenFxDraws = () =>
+      view.renderer.render.mock.calls.filter(
+        ([options]) => options.container === fire || options.container === mist
+      );
+    view.tick();
+    expect(screenFxDraws()).toHaveLength(0);
+    expect(mocks.draw.mock.calls.at(-1)?.[9]).toBe(false);
+    mocks.nativeEffectsReady = true;
+    view.tick();
+    expect(screenFxDraws()).toHaveLength(0);
+    expect(mocks.draw.mock.calls.at(-1)?.[9]).toBe(true);
+    expect(fire.renderable).toBe(true);
+    expect(mist.renderable).toBe(true);
+    mocks.draw.mockReset();
+    view.host.setFreeCamera(false);
+    view.tick();
+    expect(screenFxDraws()).toHaveLength(1);
+    expect(mocks.draw.mock.calls.at(-1)?.[9]).toBe(false);
+    expect(view.host.freeCamera).toBe(false);
+    view.host.destroy();
+  });
+
   it("keeps legacy FX until all atlases are ready and restores them outside performance mode", async () => {
     const view = fixture();
     const fire = view.overlay.addChild(new Container());
