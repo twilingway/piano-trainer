@@ -55,7 +55,7 @@ const css = (color: number, alpha = 1, pale = 0): string => {
 export class PerformanceNeonSign {
   readonly mesh: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly canvas: HTMLCanvasElement;
-  private readonly texture: CanvasTexture;
+  private texture: CanvasTexture;
   private readonly eye = new Vector3();
   private aspect = 1;
   private textValue = "";
@@ -97,8 +97,13 @@ export class PerformanceNeonSign {
     const textWidth = widths.reduce((sum, width) => sum + width, 0);
     // A long text shrinks to the largest canvas rather than being cut.
     const scale = Math.min(1, (MAX_CANVAS - 2 * PAD) / Math.max(1, textWidth));
-    this.canvas.width = Math.ceil(textWidth * scale + 2 * PAD);
-    this.canvas.height = Math.ceil(FONT_PX * 1.3 * scale + 2 * PAD);
+    const width = Math.ceil(textWidth * scale + 2 * PAD),
+      height = Math.ceil(FONT_PX * 1.3 * scale + 2 * PAD);
+    if (width !== this.canvas.width || height !== this.canvas.height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.replaceTexture();
+    }
     this.aspect = this.canvas.height / this.canvas.width;
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     context.font = FONT;
@@ -129,6 +134,15 @@ export class PerformanceNeonSign {
     });
     context.setTransform(1, 0, 0, 1, 0, 0);
     this.texture.needsUpdate = true;
+  }
+
+  /** WebGL2 sizes an uploaded texture's storage once: a canvas of a new size needs a new texture. */
+  private replaceTexture(): void {
+    this.texture.dispose();
+    this.texture = new CanvasTexture(this.canvas);
+    this.texture.colorSpace = SRGBColorSpace;
+    this.mesh.material.map = this.texture;
+    this.mesh.material.needsUpdate = true;
   }
 
   /** The widest the placement allows, never taller than its height limit. */

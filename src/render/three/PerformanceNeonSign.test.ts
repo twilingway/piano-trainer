@@ -119,6 +119,20 @@ describe("neon sign mesh", () => {
     expect(sign.mesh.material.color.r).toBe(1);
     sign.dispose();
   });
+  it("gives a text of another size a new texture and frees the old one", () => {
+    const { context } = recordingContext();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context as never);
+    const sign = new PerformanceNeonSign("Ab");
+    const first = sign.mesh.material.map,
+      disposed = vi.fn();
+    first?.addEventListener("dispose", disposed);
+    sign.setText("Cd");
+    expect(sign.mesh.material.map).toBe(first);
+    sign.setText("Longer sign");
+    expect(sign.mesh.material.map).not.toBe(first);
+    expect(disposed).toHaveBeenCalledTimes(1);
+    sign.dispose();
+  });
   it("disposes its texture, material and geometry", () => {
     const sign = new PerformanceNeonSign("Sample sign");
     const map = sign.mesh.material.map;
