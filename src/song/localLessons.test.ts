@@ -32,3 +32,19 @@ describe("local lesson stage files", () => {
     expect(String(warn.mock.calls[0]?.[0])).toContain("/local-lessons/Sample/2 Second.stage.json");
   });
 });
+
+describe("local lesson voice files", () => {
+  it("attaches a voice file to the level with the same name, mp3 before ogg and wav", () => {
+    const [lesson] = buildLessons(
+      files,
+      {},
+      {
+        "/local-lessons/Sample/1 First.voice.wav": "/first.wav",
+        "/local-lessons/Sample/1 First.voice.mp3": "/first.mp3",
+        "/local-lessons/Other/2 Second.voice.ogg": "/elsewhere.ogg"
+      }
+    );
+    expect(lesson?.levels[0]?.voice).toBe("/first.mp3");
+    expect(lesson?.levels[1]).not.toHaveProperty("voice");
+  });
+});

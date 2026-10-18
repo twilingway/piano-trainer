@@ -6,6 +6,7 @@ import {
   scheduledNoteOff,
   scheduledNoteOn
 } from "./scheduledVoices";
+import { startVoiceTrack, stopVoiceTrack, voiceTrackReady } from "./voiceTrack";
 /** Schedules score events against the session's Performance/Audio anchor. */
 export class SessionAudio {
   private anchor = { performance: 0, audio: 0 };
@@ -19,6 +20,7 @@ export class SessionAudio {
     this.jobs.clear();
     this.scheduled.clear();
     cancelScheduledVoices();
+    stopVoiceTrack();
     this.anchor = { performance: performanceMs, audio: audioTime() };
   }
   start(session: PracticeSession, now: number, offsetMs: number, metronome: () => boolean): void {
@@ -51,6 +53,30 @@ export class SessionAudio {
       });
       this.jobs.add(job);
     };
+    // The voice can only follow a song clock that runs at its own pace; until its file
+    // is loaded it is retried on every pump, and then starts from the current second.
+    const voice = session.song.voice;
+    if (
+      voice !== undefined &&
+      session.options.mode !== "wait" &&
+      session.options.speed === 1 &&
+      voiceTrackReady(voice)
+    ) {
+      const from = Math.max(0, liveTime);
+      schedule(
+        "voice",
+        from,
+        (at) => {
+          startVoiceTrack(voice, at, from);
+        },
+        liveTime > 0
+      );
+      const to = session.options.to;
+      if (to !== undefined)
+        schedule("voice-off", to, (at) => {
+          stopVoiceTrack(at);
+        });
+    }
     for (const note of session.song.notes) {
       if (
         !session.accompanies(note) ||

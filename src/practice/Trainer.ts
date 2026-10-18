@@ -1,5 +1,6 @@
 import { soundAllOff } from "../audio/pianoSound";
 import { SessionAudio } from "../audio/sessionAudio";
+import { loadVoiceTrack } from "../audio/voiceTrack";
 import type { KeyEvent } from "../input/midiInput";
 import type { FallingNotesView } from "../render/FallingNotesView";
 import type { Take, TakeRecorder } from "../recording/take";
@@ -146,6 +147,7 @@ export class Trainer {
     this.silence();
     this.songKey = songKey;
     this.session = new PracticeSession(song, options);
+    if (song.voice) loadVoiceTrack(song.voice);
     this.courses.current?.attach?.(this.session);
     if (position !== undefined) this.session.seek(position, now, { leadIn: false });
     if (previous) this.session.inheritNoteResult(previous);

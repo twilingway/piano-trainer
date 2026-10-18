@@ -68,6 +68,8 @@ export interface Song {
   readonly asWritten?: boolean;
   /** A local lesson level's performance-scene dressing. */
   readonly stage?: SongStage;
+  /** A local lesson level's sung voice: the URL of a recording that starts at song time 0. */
+  readonly voice?: string;
 }
 
 /** Middle C and above go to the right hand when nothing better tells the hands apart. */
