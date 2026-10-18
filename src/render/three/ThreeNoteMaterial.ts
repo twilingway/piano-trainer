@@ -68,7 +68,7 @@ float noteEdgeDistance(float footprint, float qy, float qx, float qz, float radi
   return min(capEdge, sqrt(dx * dx + dz * dz));
 }
 float noteGlassAlpha(float rim) {
-  return mix(0.055, 0.94, rim);
+  return mix(0.14, 0.94, rim);
 }
 void main() {
   float fade = noteVolumeFade(vClipW, vNearGap, vWorldWidth, vProjectedWidth);

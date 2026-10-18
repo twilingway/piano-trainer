@@ -1,3 +1,4 @@
+import { inside, point, segmentBlocked } from "./performanceCameraMath";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 import type { PointLight } from "three";
 import { describe, expect, it } from "vitest";
@@ -202,4 +203,79 @@ it("uses the true last note end for light fade without changing session time", (
   performance.update(20, 1600, 1000, subject);
   expect(spots.map((l) => l.intensity)).toEqual([0.85, 1.05]);
   performance.dispose();
+});
+
+it("preserves the original player-side opening and joins frame16 without a roll or position jump", () => {
+  const scene = new Scene(),
+    subject = new Group(),
+    material = new MeshBasicMaterial();
+  const base = new BoxGeometry(1300, 22, 142),
+    hatGeometry = new BoxGeometry(400, 260, 450);
+  const board = new Mesh(base, material),
+    hat = new Mesh(hatGeometry, material);
+  board.position.set(0, 11, -71);
+  hat.position.set(0, 1000, 125);
+  subject.add(board, hat);
+  scene.add(subject);
+  const performance = new PerformanceScene(scene);
+  performance.layout([{ ...key, x: 0 }]);
+  const box = { min: point(-200, 870, -100), max: point(200, 1130, 350) };
+  let priorRotation = performance.camera.quaternion.clone(),
+    priorPosition = performance.camera.position.clone();
+  for (let time = 0; time <= 22; time += 0.02) {
+    performance.update(time, 1600, 1000, subject);
+    if (time > 0) {
+      expect(
+        priorRotation.angleTo(performance.camera.quaternion) / 0.02,
+        String(time)
+      ).toBeLessThan(3);
+      expect(priorPosition.distanceTo(performance.camera.position), String(time)).toBeLessThan(72);
+    }
+    priorRotation = performance.camera.quaternion.clone();
+    priorPosition = performance.camera.position.clone();
+    if (time <= 16) {
+      expect(inside(performance.camera.position, box, 12), String(time)).toBe(false);
+      expect(performance.camera.getWorldDirection(new Vector3()).z).toBeLessThanOrEqual(0);
+      expect(new Vector3(1, 0, 0).applyQuaternion(performance.camera.quaternion).x).toBeGreaterThan(
+        0
+      );
+      expect(performance.camera.up.toArray()).toEqual([0, 0, -1]);
+      const front = new Vector3(0, 22, 0).project(performance.camera);
+      const rear = new Vector3(0, 22, -100).project(performance.camera);
+      expect(rear.y).toBeGreaterThan(front.y);
+    }
+    if (time <= 10) {
+      const openingHeight = 22 + (360 / (2 * Math.tan(Math.PI / 8))) * 1.1;
+      expect(performance.camera.position.toArray()).toEqual([0, openingHeight, 31]);
+      for (const x of [-176, 176])
+        for (const z of [-142, 180]) {
+          const projected = new Vector3(x, 22, z).project(performance.camera);
+          expect(Math.abs(projected.x)).toBeLessThan(0.95);
+          expect(Math.abs(projected.y)).toBeLessThan(0.95);
+        }
+      for (const target of [point(0, 22, 30), point(0, 92, 180)])
+        expect(segmentBlocked(performance.camera.position, target, box, 0), String(time)).toBe(
+          false
+        );
+    }
+  }
+  for (const time of [84, 86, 88, 90, 92, 94]) {
+    performance.update(time, 1600, 1000, subject);
+    expect(performance.camera.getWorldDirection(new Vector3()).z, String(time)).toBeLessThanOrEqual(
+      0
+    );
+    const front = new Vector3(0, 22, 0).project(performance.camera);
+    const rear = new Vector3(0, 22, -100).project(performance.camera);
+    expect(rear.y, String(time)).toBeGreaterThan(front.y);
+  }
+  performance.update(16 - 0.0001, 1600, 1000, subject);
+  const before = performance.camera.quaternion.clone(),
+    position = performance.camera.position.clone();
+  performance.update(16 + 0.0001, 1600, 1000, subject);
+  expect(before.angleTo(performance.camera.quaternion)).toBeLessThan(0.0001);
+  expect(position.distanceTo(performance.camera.position)).toBeLessThan(0.001);
+  performance.dispose();
+  base.dispose();
+  hatGeometry.dispose();
+  material.dispose();
 });

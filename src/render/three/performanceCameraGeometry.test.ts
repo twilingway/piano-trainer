@@ -1,6 +1,11 @@
+import { point, segmentBlocked } from "./performanceCameraMath";
 import { describe, expect, it } from "vitest";
 import { Matrix4, Vector3 } from "three";
-import { performanceRoadGeometry } from "./performanceCameraGeometry";
+import {
+  performanceRoadGeometry,
+  performanceRoadAnchors,
+  performanceTopPosition
+} from "./performanceCameraGeometry";
 import { performanceNoteMatrix } from "./performanceNoteMatrix";
 describe("FPV road coordinates", () => {
   it("uses the same black and white hit anchors and vertical transformation as note meshes", () => {
@@ -45,4 +50,39 @@ describe("FPV road coordinates", () => {
       expect(crossing.z).toBeCloseTo(actual.z);
     });
   });
+});
+
+it("uses the unchanged played-lane midpoint and nearest central gap without mutating input", () => {
+  const lanes = [
+    point(330, 22, -142),
+    point(-150, 22, -142),
+    point(-330, 22, -142),
+    point(60, 34, -142)
+  ];
+  const before = structuredClone(lanes),
+    anchors = performanceRoadAnchors(lanes);
+  expect(anchors.centre).toEqual(point(0, 22, -142));
+  expect(anchors.gap).toEqual(point(-45, 28, -142));
+  expect(lanes).toEqual(before);
+  expect(performanceRoadAnchors([])).toEqual({});
+});
+it("keeps late top cameras on the player side and under an obstructing hat", () => {
+  const hat = { min: point(-200, 870, -100), max: point(200, 1130, 350) };
+  const geometry = { keyboard: point(0, 22, 30), handSpan: 400, unit: 1, obstacles: [hat] };
+  for (const original of [point(0, 3000, 180), point(0, 950, 110)]) {
+    const top = performanceTopPosition(original, geometry);
+    expect(top.z).toBeGreaterThanOrEqual(geometry.keyboard.z);
+    expect(top.y).toBeLessThan(hat.min.y);
+    expect(top.y).toBeGreaterThan(geometry.keyboard.y + 250);
+    for (const target of [
+      geometry.keyboard,
+      point(0, 92, 180),
+      point(-200, 22, -142),
+      point(200, 22, 180)
+    ])
+      expect(segmentBlocked(top, target, hat, 0)).toBe(false);
+  }
+  expect(performanceTopPosition(point(0, 500, 130), { ...geometry, obstacles: [] })).toEqual(
+    point(0, 500, 130)
+  );
 });

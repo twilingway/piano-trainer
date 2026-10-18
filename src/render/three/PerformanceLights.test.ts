@@ -5,6 +5,7 @@ import {
   BoxGeometry,
   ConeGeometry,
   Group,
+  HemisphereLight,
   Mesh,
   MeshBasicMaterial,
   PointLight,
@@ -46,7 +47,7 @@ describe("performance hand/face lighting cues", () => {
     expect(points[0]?.intensity).toBeCloseTo(0.95);
     lights.layout(centre, 1200, performanceSceneTimeline(19).spotFade, 352, 1, 19);
     expect(points[0]?.intensity).toBeCloseTo(0.04);
-    expect(points.slice(1).map((s) => s.intensity)).toEqual([1, 0.5]);
+    expect(points.slice(1).map((s) => s.intensity)).toEqual([1.8, 0.95]);
     for (const light of points.slice(1)) {
       expect(light.position.distanceTo(centre)).toBeGreaterThan(light.distance);
       expect(light.distance).toBe(650);
@@ -203,8 +204,8 @@ it("brightens the actual face smoothly during approach while keeping hands outsi
     approach = sample(1000),
     close = sample(500);
   expect(approach[1]).toBeGreaterThan(3);
-  expect(close[1]).toBeCloseTo(4.2);
-  expect(far[1]).toBe(1);
+  expect(close[1]).toBeCloseTo(5);
+  expect(far[1]).toBe(1.8);
   expect(close[0]).toBe(0.04);
   for (const light of points.slice(1))
     expect(light.position.distanceTo(keyboard)).toBeGreaterThan(light.distance);
@@ -265,5 +266,20 @@ it("holds a soft hand reveal from13.5 through17 and releases continuously to19",
   expect(sample(18, 0.5)).toBeCloseTo(sample(18) * 0.5);
   expect(sample(154.5, 0)).toBe(0);
   expect(fill.distance).toBeLessThanOrEqual(260);
+  lights.dispose();
+});
+
+it("keeps the costume readable between lighting cues and extinguishes the soft fill in the outro", () => {
+  const lights = new PerformanceLights();
+  const centre = new Vector3(0, 22, 30);
+  const fill = lights.group.getObjectByName("performer-soft-fill");
+  expect(fill).toBeInstanceOf(HemisphereLight);
+  if (!(fill instanceof HemisphereLight)) throw new Error("Missing soft performer fill");
+  for (const time of [0, 5, 19, 45, 90, 140]) {
+    lights.layout(centre, 1200, performanceSceneTimeline(time).spotFade, 352, 1, time);
+    expect(fill.intensity).toBeCloseTo(0.65);
+  }
+  lights.layout(centre, 1200, 0, 352, 1, 154.5);
+  expect(fill.intensity).toBe(0);
   lights.dispose();
 });
