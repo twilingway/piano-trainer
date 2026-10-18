@@ -146,14 +146,18 @@ export class PerformanceNeonSign {
     this.mesh.material.needsUpdate = true;
   }
 
-  /** The widest the placement allows, never taller than its height limit. */
+  /** The widest the placement allows, never taller than its band, centred in it. */
   layout(placement: PerformanceSignPlacement): void {
     const width = Math.min(placement.width, placement.maxHeight / this.aspect),
       height = width * this.aspect;
     this.size.width = width;
     this.size.height = height;
     this.mesh.scale.set(width, height, 1);
-    this.mesh.position.set(placement.base.x, placement.base.y + height / 2, placement.base.z);
+    this.mesh.position.set(
+      placement.base.x,
+      placement.base.y + placement.maxHeight / 2,
+      placement.base.z
+    );
   }
 
   /** `fade` is the stage light's, `flash` a bass burst's; the flicker follows song time, so a seek repeats it. */

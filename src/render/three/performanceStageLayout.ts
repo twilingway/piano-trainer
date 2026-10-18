@@ -1,3 +1,4 @@
+import { performanceShortFraming } from "./performanceShortFraming";
 import type { CameraBounds, CameraPoint } from "./performanceCameraMath";
 export interface PerformanceStageLayout {
   readonly centre: CameraPoint;
@@ -25,27 +26,14 @@ export function performanceStageLayout(bounds: CameraBounds, unit = 1): Performa
   };
 }
 export interface PerformanceSignPlacement {
-  /** The middle of the sign's lower edge. */
+  /** The middle of the lower edge of the band the sign is centred in. */
   readonly base: CameraPoint;
   readonly width: number;
   readonly maxHeight: number;
 }
-/** Behind the pianist's back and above the hat, facing the front cameras (towards -Z). */
-export function performanceSignPlacement(bounds: CameraBounds, unit = 1): PerformanceSignPlacement {
-  const scale = Number.isFinite(unit) && unit > 0 ? unit : 1;
-  const width = Math.min(
-    2600 * scale,
-    Math.max(1300 * scale, (bounds.max.x - bounds.min.x) * 1.35)
-  );
-  return {
-    base: {
-      x: (bounds.min.x + bounds.max.x) / 2,
-      y: bounds.max.y + 150 * scale,
-      z: bounds.max.z + 200 * scale
-    },
-    width,
-    maxHeight: width * 0.4
-  };
+/** A giant backdrop behind the stage, filling the top of the short song's view, facing -Z. */
+export function performanceSignPlacement(bounds: CameraBounds): PerformanceSignPlacement {
+  return performanceShortFraming(bounds).sign;
 }
 /** Nine octave sectors include the two partial ends of the real A0–C8 keyboard. */
 export function stageNotePoint(pitch: number, stage: PerformanceStageLayout) {

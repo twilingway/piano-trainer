@@ -186,9 +186,9 @@ describe("neon sign on the world stage", () => {
     expect(signs(stage)).toHaveLength(1);
     stage.update(true, 30, subject, [box], [], camera(-4000), 142);
     const [sign] = signs(stage);
-    // Above the 900 mm top of the subject, behind its 450 mm back, facing the front.
+    // A backdrop above the 900 mm top of the subject, far behind its 450 mm back.
     expect(sign?.position.y).toBeGreaterThan(900);
-    expect(sign?.position.z).toBeCloseTo(650);
+    expect(sign?.position.z).toBeGreaterThan(1000);
     expect(sign?.visible).toBe(true);
     stage.update(true, 0, subject, [box], [], camera(-4000), 142);
     expect(sign?.visible).toBe(false);

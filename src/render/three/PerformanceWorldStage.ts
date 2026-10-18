@@ -188,7 +188,7 @@ export class PerformanceWorldStage {
       max: { x: this.bounds.max.x, y: this.bounds.max.y, z: this.bounds.max.z }
     };
     this.layoutValue = performanceStageLayout(bounds, unit);
-    this.signPlacement = performanceSignPlacement(bounds, unit);
+    this.signPlacement = performanceSignPlacement(bounds);
     this.sign?.layout(this.signPlacement);
     this.platform.layout(this.layoutValue);
     this.keys.clear();

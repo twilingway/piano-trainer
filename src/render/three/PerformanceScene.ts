@@ -8,8 +8,10 @@ import {
   performanceOpeningClock,
   performanceOpeningHandsSeconds,
   performanceOpeningSeconds,
-  performanceSceneTimeline
+  performanceSceneTimeline,
+  performanceShortSong
 } from "./performanceSceneTimeline";
+import { performanceSignPlacement } from "./performanceStageLayout";
 import type { HandsSource } from "./liveHands";
 import type { KeyBox } from "./keyBoxes";
 import { performanceCameraClipping } from "./performanceCameraClipping";
@@ -43,6 +45,8 @@ export class PerformanceScene {
   private boxes: readonly KeyBox[] = [];
   private notes: HandsSource["notes"] | undefined;
   private songDuration = Infinity;
+  /** A short song's giant sign stands far behind the scene; the far plane must reach its corners. */
+  private readonly signCorners: Vector3[] = [];
   private opening = performanceOpeningSeconds(Infinity);
 
   setNotes(notes: HandsSource["notes"] | undefined): void {
@@ -182,6 +186,15 @@ export class PerformanceScene {
         aspect: this.camera.aspect
       });
       this.routeAspect = this.camera.aspect;
+      this.signCorners.length = 0;
+      if (performanceShortSong(this.songDuration)) {
+        const sign = performanceSignPlacement(this.route.geometry.bounds);
+        for (const side of [-1, 1])
+          for (const height of [0, sign.maxHeight])
+            this.signCorners.push(
+              new Vector3(sign.base.x + (side * sign.width) / 2, sign.base.y + height, sign.base.z)
+            );
+      }
     }
     this.full.copy(this.route.geometry.top);
     if (!Number.isFinite(time) || time <= opening) {
@@ -213,7 +226,10 @@ export class PerformanceScene {
       this.route.geometry.road
     );
     this.camera.near = clip.near;
-    this.camera.far = clip.far;
+    this.camera.far = Math.max(
+      clip.far,
+      ...this.signCorners.map((corner) => corner.distanceTo(this.camera.position) * 1.05)
+    );
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();
     const face = this.route.geometry.face;

@@ -2,7 +2,17 @@ import { inside, point, segmentBlocked } from "./performanceCameraMath";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 import type { PointLight } from "three";
 import { describe, expect, it } from "vitest";
-import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Scene, SpotLight, Vector3 } from "three";
+import {
+  Box3,
+  BoxGeometry,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  Scene,
+  SpotLight,
+  Vector3
+} from "three";
+import { performanceSignPlacement } from "./performanceStageLayout";
 import { PerformanceScene } from "./PerformanceScene";
 import type { KeyBox } from "./keyBoxes";
 
@@ -352,5 +362,27 @@ it("plays a short song's compressed opening into its route no faster than a long
   expect(short.joint).toBeLessThan(0.01);
   base.dispose();
   hatGeometry.dispose();
+  material.dispose();
+});
+
+it("reaches a short song's far backdrop sign with the far plane", () => {
+  const material = new MeshBasicMaterial(),
+    box = new BoxGeometry(1300, 1800, 900),
+    scene = new Scene(),
+    subject = new Group();
+  const mesh = new Mesh(box, material);
+  mesh.position.set(0, 900, 250);
+  subject.add(mesh);
+  scene.add(subject);
+  const performance = new PerformanceScene(scene);
+  performance.layout([{ ...key, x: 0 }]);
+  performance.setNotes({ left: [{ start: 0, duration: 25.7, pitch: 60 }], right: [] });
+  performance.update(15, 1600, 1000, subject);
+  subject.updateMatrixWorld(true);
+  const sign = performanceSignPlacement(new Box3().setFromObject(subject));
+  const far = new Vector3(sign.base.x + sign.width / 2, sign.base.y + sign.maxHeight, sign.base.z);
+  expect(performance.camera.far).toBeGreaterThan(far.distanceTo(performance.camera.position));
+  performance.dispose();
+  box.dispose();
   material.dispose();
 });
