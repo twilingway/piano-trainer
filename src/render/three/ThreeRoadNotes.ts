@@ -8,30 +8,33 @@ import {
   PlaneGeometry,
   Vector2
 } from "three";
+import { performanceNoteMatrix } from "./performanceNoteMatrix";
 import { noteSlabHeight } from "../noteDimensions";
 import { createNoteSlabGeometry, NOTE_SLAB_THICKNESS } from "./noteSlabGeometry";
 import type { WorldRoadNote } from "./roadNoteGeometry";
-import { createNoteBodyMaterial, createNoteSurfaceMaterial } from "./ThreeNoteMaterial";
+import { createNoteBodyMaterial } from "./ThreeNoteMaterial";
+import { createNoteHaloMaterial } from "./noteHaloMaterial";
 
 export const THREE_ROAD_NOTE_CAPACITY = 1024;
 export const THREE_ROAD_NOTE_THICKNESS = NOTE_SLAB_THICKNESS;
 
-/** Three bounded draw calls: real rounded bodies, a glass/neon face and an exterior halo. */
+/** Two bounded batches: a uniformly emissive closed volume and its exterior halo. */
 export class ThreeRoadNotes {
+  performanceAngle = 0;
+  performanceScale = 1;
+  nearZ = 0;
   readonly group = new Group();
   readonly capacity: number;
   private readonly bodyGeometry = createNoteSlabGeometry();
   private readonly planeGeometry = new PlaneGeometry(1, 1);
   private readonly bodyMaterial = createNoteBodyMaterial();
-  private readonly faceMaterial = createNoteSurfaceMaterial(false);
-  private readonly haloMaterial = createNoteSurfaceMaterial(true);
+  private readonly haloMaterial = createNoteHaloMaterial();
   private readonly projections: InstancedBufferAttribute;
   private readonly sizes: InstancedBufferAttribute;
   private readonly alphas: InstancedBufferAttribute;
   private readonly colors: InstancedBufferAttribute;
   private readonly matrices: InstancedBufferAttribute;
   private readonly body: InstancedMesh;
-  private readonly face: InstancedMesh;
   private readonly halo: InstancedMesh;
   private readonly matrix = new Matrix4();
   private readonly color = new Color();
@@ -54,9 +57,8 @@ export class ThreeRoadNotes {
       geometry.setAttribute("noteAlpha", this.alphas);
     }
     this.body = new InstancedMesh(this.bodyGeometry, this.bodyMaterial, this.capacity);
-    this.face = new InstancedMesh(this.planeGeometry, this.faceMaterial, this.capacity);
     this.halo = new InstancedMesh(this.planeGeometry, this.haloMaterial, this.capacity);
-    for (const mesh of [this.body, this.halo, this.face]) {
+    for (const mesh of [this.body, this.halo]) {
       mesh.instanceMatrix = this.matrices;
       mesh.instanceColor = this.colors;
       // Shader dimensions exceed the unit geometry's bounds. Visibility is decided upstream.
@@ -65,7 +67,6 @@ export class ThreeRoadNotes {
       this.group.add(mesh);
     }
     this.halo.renderOrder = 1;
-    this.face.renderOrder = 2;
     this.group.visible = false;
   }
 
@@ -120,11 +121,20 @@ export class ThreeRoadNotes {
         (note.color & 255) / 255
       );
       this.body.setColorAt(used, this.color);
-      this.matrix.makeTranslation(note.x, centreY, centreZ);
+      performanceNoteMatrix(
+        this.matrix,
+        note.x,
+        centreY,
+        centreZ,
+        laneY,
+        this.nearZ,
+        this.performanceAngle,
+        this.performanceScale
+      );
       this.body.setMatrixAt(used, this.matrix);
       used++;
     }
-    this.body.count = this.halo.count = this.face.count = used;
+    this.body.count = this.halo.count = used;
     this.group.visible = used > 0;
     if (used > 0) {
       this.upload(this.sizes, used);
@@ -134,14 +144,14 @@ export class ThreeRoadNotes {
       this.upload(this.matrices, used);
     }
     const time = Number.isFinite(visualTime) ? visualTime : 0;
-    const faceTime = this.faceMaterial.uniforms.visualTime;
+    const bodyTime = this.bodyMaterial.uniforms.visualTime;
     const haloTime = this.haloMaterial.uniforms.visualTime;
-    if (faceTime) faceTime.value = time;
+    if (bodyTime) bodyTime.value = time;
     if (haloTime) haloTime.value = time;
   }
 
   setViewport(width: number, height: number): void {
-    for (const material of [this.faceMaterial, this.haloMaterial]) {
+    for (const material of [this.haloMaterial]) {
       const viewport = material.uniforms.viewport;
       const value: unknown = viewport?.value;
       if (value instanceof Vector2) value.set(Math.max(1, width), Math.max(1, height));
@@ -149,7 +159,7 @@ export class ThreeRoadNotes {
   }
 
   clear(): void {
-    this.body.count = this.halo.count = this.face.count = 0;
+    this.body.count = this.halo.count = 0;
     this.group.visible = false;
   }
 
@@ -159,11 +169,10 @@ export class ThreeRoadNotes {
     this.clear();
     this.group.removeFromParent();
     this.group.clear();
-    for (const mesh of [this.body, this.face, this.halo]) mesh.dispose();
+    for (const mesh of [this.body, this.halo]) mesh.dispose();
     this.bodyGeometry.dispose();
     this.planeGeometry.dispose();
     this.bodyMaterial.dispose();
-    this.faceMaterial.dispose();
     this.haloMaterial.dispose();
   }
 

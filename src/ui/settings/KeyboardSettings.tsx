@@ -24,6 +24,10 @@ interface Props {
   readonly onRoadGuides: (on: boolean) => void;
   /** The local pianist instead of the live hands; absent when there is no local model. */
   readonly pianist?: boolean;
+  readonly freeCamera?: boolean;
+  readonly performanceScene?: boolean;
+  readonly onPerformanceScene?: (on: boolean) => void;
+  readonly onFreeCamera?: (on: boolean) => void;
   readonly onPianist?: (on: boolean) => void;
   readonly road: { readonly far: number; readonly horizon: number };
   readonly onRoad: (road: { far?: number; horizon?: number }) => void;
@@ -50,6 +54,10 @@ export function KeyboardSettings({
   roadGuides,
   onRoadGuides,
   pianist,
+  freeCamera,
+  performanceScene,
+  onPerformanceScene,
+  onFreeCamera,
   onPianist,
   camera,
   onCamera,
@@ -181,6 +189,30 @@ export function KeyboardSettings({
             checked={roadGuides}
             onChange={(event) => {
               onRoadGuides(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && onPerformanceScene && (
+        <label className="setting">
+          <span>{t("Сцена исполнения")}</span>
+          <input
+            type="checkbox"
+            checked={performanceScene ?? false}
+            onChange={(event) => {
+              onPerformanceScene(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && onFreeCamera && (
+        <label className="setting">
+          <span>{t("Свободная камера")}</span>
+          <input
+            type="checkbox"
+            checked={freeCamera ?? false}
+            onChange={(event) => {
+              onFreeCamera(event.target.checked);
             }}
           />
         </label>

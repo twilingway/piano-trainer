@@ -58,6 +58,7 @@ function harness(repository: Partial<typeof browserLibraryRepository> = {}) {
       listMySongs: () => Promise.resolve([]),
       loadFolderHandle: () => Promise.resolve(undefined),
       songFromFileData: () => song,
+      loadLocalPerformance: (loaded) => Promise.resolve(loaded),
       ...repository
     }
   );
@@ -260,5 +261,77 @@ describe("library asynchronous ownership", () => {
     } as File);
     expect(save).not.toHaveBeenCalled();
     expect(store.getState().library.loadError).toBe("В файле нет нот");
+  });
+});
+
+describe("optional saved source performance", () => {
+  const enriched: Song = { ...song, title: "source-attached" };
+  const data = new ArrayBuffer(3);
+  const metadata = { id: "source", fileName: "source.mid", title: "source", addedAt: "2026-10-18" };
+  it("attaches source data for a new file and a stored file", async () => {
+    const attach = vi.fn(() => Promise.resolve(enriched));
+    const { store, controller } = harness({
+      loadLocalPerformance: attach,
+      saveMySong: () => Promise.resolve(metadata),
+      loadMySong: () => Promise.resolve({ fileName: "source.mid", data })
+    });
+    await controller.openFile({
+      name: "source.mid",
+      arrayBuffer: () => Promise.resolve(data)
+    } as File);
+    expect(store.getState().song.sourceSong).toEqual(enriched);
+    await controller.openMySong("source");
+    expect(store.getState().song.sourceSong).toEqual(enriched);
+    expect(attach).toHaveBeenCalledTimes(2);
+    expect(attach).toHaveBeenCalledWith(song, data);
+  });
+  it("attaches source data during IndexedDB restoration", async () => {
+    const attach = vi.fn(() => Promise.resolve(enriched));
+    const { store, controller } = harness({
+      loadLocalPerformance: attach,
+      loadMySong: () => Promise.resolve({ fileName: "source.mid", data })
+    });
+    await controller.restore("my:source");
+    expect(store.getState().song.sourceSong).toEqual(enriched);
+    expect(attach).toHaveBeenCalledWith(song, data);
+  });
+  it("attaches source data for folder selection and folder restoration", async () => {
+    const handle = { name: "chosen" } as FileSystemDirectoryHandle;
+    const file = { name: "source.mid", arrayBuffer: () => Promise.resolve(data) } as File;
+    const attach = vi.fn(() => Promise.resolve(enriched));
+    const { store, controller } = harness({
+      loadLocalPerformance: attach,
+      loadFolderHandle: () => Promise.resolve(handle),
+      folderPermission: () => Promise.resolve("granted"),
+      readFolderSongs: () =>
+        Promise.resolve([
+          {
+            path: "source.mid",
+            title: "source",
+            handle: { getFile: () => Promise.resolve(file) } as FileSystemFileHandle
+          }
+        ])
+    });
+    await controller.restore("dir:source.mid");
+    expect(store.getState().song.sourceSong).toEqual(enriched);
+    await controller.openFolderSong("source.mid");
+    expect(attach).toHaveBeenCalledTimes(2);
+    expect(store.getState().song.sourceSong).toEqual(enriched);
+  });
+  it("does not show an old source after a newer song is selected during attachment", async () => {
+    const pending = deferred<Song>();
+    const attach = vi.fn(() => pending.promise);
+    const { store, controller, chooseB } = harness({
+      loadLocalPerformance: attach,
+      loadMySong: () => Promise.resolve({ fileName: "source.mid", data })
+    });
+    const open = controller.openMySong("source");
+    await vi.waitFor(() => {
+      expect(attach).toHaveBeenCalledTimes(1);
+    });
+    chooseB();
+    pending.resolve(enriched);
+    await open;
+    expect(store.getState().song.sourceSong.title).toBe("B");
   });
 });

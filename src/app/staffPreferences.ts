@@ -38,6 +38,9 @@ export interface StaffPrefs {
   readonly roadGuides: boolean;
   /** The local pianist model at the 3D keys instead of the live hands, when it is there. */
   readonly pianist: boolean;
+  /** Inspection mode persists; the manual orbit pose is transient. */
+  readonly freeCamera: boolean;
+  readonly performanceScene: boolean;
   /** Dim physical keys for a demonstration; study stays bright. */
   readonly keyboardDim: boolean;
   /** Falling notes carry the note written on a small staff. */
@@ -81,6 +84,8 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   road: false,
   roadGuides: false,
   pianist: false,
+  freeCamera: false,
+  performanceScene: false,
   keyboardDim: false,
   noteCards: false,
   noteCardsConfigured: true,
@@ -132,6 +137,8 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     road: boolean("road"),
     roadGuides: boolean("roadGuides"),
     pianist: boolean("pianist"),
+    freeCamera: boolean("freeCamera"),
+    performanceScene: boolean("performanceScene"),
     keyboardDim: boolean("keyboardDim"),
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),

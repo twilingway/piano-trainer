@@ -229,3 +229,56 @@ describe("falling note defaults", () => {
     expect(prefs.staffPrefs).toMatchObject({ keyStyle: "3d", road: true });
   });
 });
+
+describe("inspection camera preference", () => {
+  it.each([undefined, "true", 1, null])("rejects invalid saved value %s", async (freeCamera) => {
+    localStorage.setItem("staff-prefs", JSON.stringify({ keyStyle: "3d", freeCamera }));
+    await mount();
+    expect(prefs.staffPrefs.freeCamera).toBe(false);
+  });
+
+  it("keeps the mode through reload without storing orbit coordinates", async () => {
+    await mount();
+    await act(async () => {
+      prefs.updateStaffPrefs({ freeCamera: true });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs.freeCamera).toBe(true);
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      freeCamera: true
+    });
+  });
+});
+
+describe("performance scene preference", () => {
+  it.each([undefined, "true", 1, null])(
+    "rejects invalid saved value %s",
+    async (performanceScene) => {
+      localStorage.setItem("staff-prefs", JSON.stringify({ performanceScene }));
+      await mount();
+      expect(prefs.staffPrefs.performanceScene).toBe(false);
+    }
+  );
+  it("restores scene mode without overwriting the saved camera", async () => {
+    await mount();
+    const camera = prefs.staffPrefs.camera;
+    await act(async () => {
+      prefs.updateStaffPrefs({ performanceScene: true });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs.performanceScene).toBe(true);
+    expect(prefs.staffPrefs.camera).toEqual(camera);
+  });
+});

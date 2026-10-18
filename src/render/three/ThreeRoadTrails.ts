@@ -10,6 +10,7 @@ import {
   PlaneGeometry,
   ShaderMaterial
 } from "three";
+import { performanceNoteMatrix } from "./performanceNoteMatrix";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import type { WorldRoadNote } from "./roadNoteGeometry";
 import { ROAD_TRAIL_CAPACITY, ROAD_TRAIL_MAX_GAP, RoadTrailSelection } from "./roadTrailGeometry";
@@ -49,6 +50,9 @@ void main() {
 
 /** One bounded draw call for translucent neon ribbons between distinct note bodies. */
 export class ThreeRoadTrails {
+  performanceAngle = 0;
+  performanceScale = 1;
+  nearZ = 0;
   readonly group = new Group();
   private readonly selection = new RoadTrailSelection();
   private readonly geometry = new PlaneGeometry(1, 1);
@@ -131,10 +135,15 @@ export class ThreeRoadTrails {
         (trail.color & 255) / 255
       );
       this.mesh.setColorAt(index, this.color);
-      this.matrix.makeTranslation(
+      performanceNoteMatrix(
+        this.matrix,
         trail.x,
         (trail.lane?.y ?? floorY) + 0.15,
-        -(trail.bottom + (trail.top - trail.bottom) / 2)
+        -(trail.bottom + (trail.top - trail.bottom) / 2),
+        trail.lane?.y ?? floorY,
+        this.nearZ,
+        this.performanceAngle,
+        this.performanceScale
       );
       this.mesh.setMatrixAt(index, this.matrix);
     }

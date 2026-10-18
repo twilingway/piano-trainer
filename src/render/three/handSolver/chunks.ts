@@ -2,7 +2,7 @@ import type { Hand } from "../../../fingering/fingering";
 import type { Library } from "./library";
 import type { Rest } from "./mech";
 import { planSteps, strikesOf } from "./plan";
-import type { FingeredNote, HandPlan, PlanKey } from "./plan";
+import type { FingeredNote, HandPlan, PlanKey, PlanTiming } from "./plan";
 import { trackPose } from "./track";
 import type { TrackPose } from "./track";
 
@@ -17,6 +17,7 @@ export interface PlanChunk {
 }
 
 export type HandNotes = Readonly<Record<Hand, readonly FingeredNote[]>>;
+export type HandRests = Readonly<Record<Hand, Rest>>;
 
 interface Lane {
   readonly hand: Hand;
@@ -34,18 +35,19 @@ interface Lane {
  * hand is done. A hand without fingered notes yields one empty, done part.
  */
 export function* planChunks(
-  rest: Rest,
+  rest: Rest | HandRests,
   library: Library,
   notes: HandNotes,
-  due: () => boolean
+  due: () => boolean,
+  timing: PlanTiming = "speed"
 ): Generator<PlanChunk> {
   const lanes: Lane[] = (["left", "right"] as const).map((hand) => {
-    const strikes = strikesOf(notes[hand], hand);
+    const strikes = strikesOf(notes[hand], hand, timing === "score" ? 1e-7 : undefined);
     const plan: HandPlan = { hand, keys: [], poses: [], report: [] };
     return {
       hand,
       times: strikes.map((s) => s.time),
-      steps: planSteps(rest, library, hand, strikes, plan),
+      steps: planSteps("mcp" in rest ? rest : rest[hand], library, hand, strikes, plan, timing),
       plan,
       next: 0,
       keysSent: 0,

@@ -392,3 +392,19 @@ export function violations(ang: Angles, root: Root): string[] {
   out("roll", root[2], ROLL);
   return bad;
 }
+
+/** Oriented flexion plane, continuous through a straight or slightly extended joint. */
+export function fingerPlane(rest: Rest, ang: Angles, root: Root, f: Finger): Vec3 {
+  const bend = f === 1 ? { 1: { t_mcp: 30 - ang[1].t_mcp } } : { [f]: { pip: 30 - ang[f].pip } };
+  const X = handJoints(rest, addAngles(ang, bend), root),
+    c = CHAIN[f];
+  const a = at(X, c[0]),
+    b = at(X, c[1]),
+    d = at(X, c[2]);
+  const u: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
+    v: Vec3 = [d[0] - b[0], d[1] - b[1], d[2] - b[2]];
+  const n: Vec3 = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  const length = Math.hypot(...n),
+    sign = f === 1 ? 1 : -1;
+  return [(sign * n[0]) / length, (sign * n[1]) / length, (sign * n[2]) / length];
+}

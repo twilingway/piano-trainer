@@ -178,8 +178,18 @@ export function useFallingView({
   useEffect(() => {
     viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
     viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
+    viewRef.current?.setFreeCamera(staffPrefs.freeCamera);
+    viewRef.current?.setPerformanceScene(staffPrefs.performanceScene);
     if (viewRef.current) viewRef.current.hands.pianist = PIANIST_AVAILABLE && staffPrefs.pianist;
-  }, [viewRef, trainerReady, staffPrefs.roadGuides, staffPrefs.keyboardDim, staffPrefs.pianist]);
+  }, [
+    viewRef,
+    trainerReady,
+    staffPrefs.roadGuides,
+    staffPrefs.keyboardDim,
+    staffPrefs.pianist,
+    staffPrefs.freeCamera,
+    staffPrefs.performanceScene
+  ]);
 
   const { lift, scale, x, y } = placement;
   useEffect(() => {

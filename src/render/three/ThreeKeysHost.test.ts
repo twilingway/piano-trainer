@@ -1,7 +1,11 @@
 // @vitest-environment happy-dom
+import { Camera, Group } from "three";
+import type { SourcePerformanceIdentity } from "../../song/sourcePerformance";
 import { Container } from "pixi.js";
 import type { Application } from "pixi.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SongNote } from "../../song/song";
+import type { NativeContactNotes } from "./NativeKeyContacts";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
 import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
@@ -15,16 +19,42 @@ const mocks = vi.hoisted(() => ({
   setKeyboardDim: vi.fn(),
   dispose: vi.fn(),
   loadKit: vi.fn(),
-  loadHand: vi.fn()
+  loadHand: vi.fn(),
+  setFreeCamera: vi.fn(),
+  resetFreeCamera: vi.fn(),
+  freeKeyAt: vi.fn(),
+  nativeEffectsReady: false,
+  handPresent: true,
+  loadPianist: vi.fn(),
+  pianistConstruct: vi.fn(),
+  pianistSample: vi.fn(),
+  pianistTopView: vi.fn(),
+  pianistDispose: vi.fn(),
+  disposeModel: vi.fn(),
+  setNativePianist: vi.fn(),
+  addToKeys: vi.fn(),
+  removeFromKeys: vi.fn(),
+  pose: vi.fn()
 }));
 
 vi.mock("./ThreeStage", () => ({
   ThreeStage: class {
-    hands = {};
+    beforeRender: ((camera: Camera) => void) | undefined;
+    hands = mocks.handPresent ? { setPlayer: vi.fn(), poses: {} } : undefined;
+    setNativePianist = mocks.setNativePianist;
+    addToKeys = mocks.addToKeys;
+    removeFromKeys = mocks.removeFromKeys;
+    get nativeEffectsReady() {
+      return mocks.nativeEffectsReady;
+    }
+    setPerformanceScene = vi.fn();
     draw = mocks.draw;
     clearEnergy = mocks.clearEnergy;
     setKeyboardDim = mocks.setKeyboardDim;
     dispose = mocks.dispose;
+    setFreeCamera = mocks.setFreeCamera;
+    resetFreeCamera = mocks.resetFreeCamera;
+    freeKeyAt = mocks.freeKeyAt;
     constructor(...args: unknown[]) {
       mocks.construct(...args);
     }
@@ -32,6 +62,25 @@ vi.mock("./ThreeStage", () => ({
 }));
 vi.mock("./pianoKit", () => ({ loadPianoKit: mocks.loadKit }));
 vi.mock("./liveHands", () => ({ loadHand: mocks.loadHand }));
+
+vi.mock("./pianist", () => ({
+  loadPianist: mocks.loadPianist,
+  Pianist: class {
+    readonly space = new Group();
+    readonly native: boolean;
+    readonly rig = { pose: mocks.pose, setNativeHandsVisible: vi.fn() };
+    sample = mocks.pianistSample;
+    setTopView = mocks.pianistTopView;
+    poseFallback = mocks.pose;
+    dispose = mocks.pianistDispose;
+    follow = vi.fn();
+    constructor(model: { performance?: unknown }, source?: unknown) {
+      this.native = model.performance !== undefined;
+      mocks.pianistConstruct(model, source);
+    }
+  }
+}));
+vi.mock("./disposePianistModel", () => ({ disposePianistModel: mocks.disposeModel }));
 
 class SharedContext {
   readonly MAX_TEXTURE_IMAGE_UNITS = 34930;
@@ -56,12 +105,23 @@ function fixture() {
   const canvas = document.createElement("canvas");
   const stage = new Container();
   const road = new Container();
-  const keys = { container: new Container(), scene: { texture: { source: {} } } };
+  const keys = {
+    container: new Container(),
+    scene: { texture: { source: {} }, camera: { params: { prefs: { pitch: 25 } } } }
+  };
   const overlay = new Container();
   stage.addChild(road, overlay);
-  const hands = { live: false, container: new Container(), time: 0, songNotes: [] };
+  const hands = {
+    live: false,
+    container: new Container(),
+    time: 0,
+    songNotes: { left: [], right: [] } as NativeContactNotes,
+    pianist: false,
+    songPerformance: undefined as SourcePerformanceIdentity | undefined
+  };
   const renderer = {
     gl,
+    clear: vi.fn(),
     resetState: vi.fn(() => {
       gl.flipY = false;
       gl.premultiply = false;
@@ -83,11 +143,12 @@ function fixture() {
   const restoreRoad = vi.fn(() => {
     expect(gl.bindingsDirty).toBe(false);
   });
+  const keyboard = { frame: undefined as KeyboardLayer["frame"] };
   const host = new ThreeKeysHost(
     app as unknown as Application,
     road,
     keys as unknown as PerspectiveKeyboardLayer,
-    {} as KeyboardLayer,
+    keyboard as KeyboardLayer,
     hands as unknown as HandsLayer,
     restoreRoad
   );
@@ -98,6 +159,7 @@ function fixture() {
     road,
     keys,
     overlay,
+    keyboard,
     hands,
     renderer,
     callbacks,
@@ -123,6 +185,9 @@ function deferred<T>() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.nativeEffectsReady = false;
+  mocks.handPresent = true;
+  mocks.loadPianist.mockReset().mockResolvedValue(undefined);
   mocks.construct.mockReset();
   mocks.draw.mockReset();
   mocks.dispose.mockReset();
@@ -138,89 +203,16 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
-  it("draws neutral mist before Three, keeps coloured effects over it and restores ownership and flags", async () => {
+  it("draws road, Three and HUD without an extra Pixi mist pass", async () => {
     const view = fixture();
-    const mist = new Container(),
-      colour = new Container();
-    view.overlay.position.set(30, -12);
-    mist.position.set(7, 2);
-    view.overlay.addChild(mist, colour);
-    view.host.setMistLayer(mist);
     await view.host.setEnabled(true);
     const order: string[] = [];
     view.renderer.render.mockImplementation((options: { container: Container }) => {
-      order.push(
-        options.container === mist ? "mist" : options.container === view.road ? "road" : "overlay"
-      );
-      if (options.container === view.stage) {
-        expect(mist.renderable).toBe(false);
-        expect(colour.renderable).toBe(true);
-      }
+      order.push(options.container === view.road ? "road" : "overlay");
     });
     mocks.draw.mockImplementation(() => order.push("three"));
     view.tick();
-    expect(order).toEqual(["road", "mist", "three", "overlay"]);
-    const call = view.renderer.render.mock.calls.find(([options]) => options.container === mist);
-    expect(call?.[0]).toMatchObject({ clear: false, transform: { tx: 37, ty: -10 } });
-    expect(mist.visible).toBe(true);
-    expect(mist.renderable).toBe(true);
-    expect(mist.parent).toBe(view.overlay);
-    expect(view.overlay.children).toEqual([mist, colour]);
-    view.host.destroy();
-    expect(mist.destroyed).toBe(false);
-  });
-
-  it("restores neutral mist before same-frame fallback after Three fails", async () => {
-    const view = fixture();
-    const mist = view.overlay.addChild(new Container());
-    view.host.setMistLayer(mist);
-    await view.host.setEnabled(true);
-    mocks.draw.mockImplementation(() => {
-      throw new Error("draw failed");
-    });
-    view.renderer.render.mockImplementation((options: { container: Container }) => {
-      if (options.container === view.stage) expect(mist.renderable).toBe(true);
-    });
-    view.tick();
-    expect(mist.renderable).toBe(true);
-    expect(mist.visible).toBe(true);
-    expect(mist.parent).toBe(view.overlay);
-    expect(view.host.on).toBe(false);
-    view.host.destroy();
-  });
-
-  it("restores mist flags even when the final Pixi overlay throws", async () => {
-    const view = fixture();
-    const mist = view.overlay.addChild(new Container());
-    view.host.setMistLayer(mist);
-    await view.host.setEnabled(true);
-    view.renderer.render.mockImplementation((options: { container: Container }) => {
-      if (options.container === view.stage) throw new Error("overlay failed");
-    });
-    expect(view.tick).toThrow("overlay failed");
-    expect(mist.renderable).toBe(true);
-    expect(mist.visible).toBe(true);
-    expect(mist.parent).toBe(view.overlay);
-    view.host.destroy();
-  });
-
-  it("does not draw hidden, non-renderable or destroyed mist ancestors as a separate pass", async () => {
-    const view = fixture();
-    const mist = view.overlay.addChild(new Container());
-    view.host.setMistLayer(mist);
-    await view.host.setEnabled(true);
-    for (const field of ["visible", "renderable"] as const) {
-      view.overlay[field] = false;
-      view.renderer.render.mockClear();
-      view.tick();
-      expect(view.renderer.render.mock.calls.some(([options]) => options.container === mist)).toBe(
-        false
-      );
-      expect(mist.renderable).toBe(true);
-      view.overlay[field] = true;
-    }
-    mist.destroy();
-    expect(view.tick).not.toThrow();
+    expect(order).toEqual(["road", "three", "overlay"]);
     view.host.destroy();
   });
 
@@ -407,4 +399,411 @@ describe("shared WebGL keyboard recovery", () => {
     await Promise.resolve();
     expect(view.renderer.resetState).not.toHaveBeenCalled();
   });
+});
+
+describe("free inspection host lifecycle", () => {
+  it("activates gestures only for visible native 3D and cleans up on exit and draw failure", async () => {
+    const view = fixture();
+    const changed = vi.fn();
+    view.host.onFreeCamera = changed;
+    view.host.setFreeCamera(true);
+    expect(changed).not.toHaveBeenCalled();
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(view.host.freeCamera).toBe(true);
+    expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(true);
+    expect(view.renderer.render).toHaveBeenCalled();
+    expect(
+      view.renderer.render.mock.calls.some(([options]) => options.container === view.road)
+    ).toBe(false);
+    view.keys.container.visible = false;
+    view.tick();
+    expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
+    view.keys.container.visible = true;
+    view.tick();
+    expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(true);
+    mocks.draw.mockImplementationOnce(() => {
+      throw new Error("context failed");
+    });
+    view.tick();
+    expect(view.host.freeCamera).toBe(false);
+    expect(changed).toHaveBeenLastCalledWith(false);
+    expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
+    view.host.destroy();
+  });
+});
+
+describe("performance scene input and fallback", () => {
+  it.each([
+    { pitch: 60, x: 30, width: 40, y: 80, height: 60 },
+    { pitch: 61, x: 60, width: 20, y: 0, height: 75 }
+  ])(
+    "maps mesh pitch $pitch to its white or black source face and stops after Three failure",
+    async (face) => {
+      const view = fixture();
+      Object.assign(view.keys.scene, {
+        faces: [
+          {
+            key: { pitch: face.pitch, x: face.x, width: face.width },
+            source: { y: face.y, height: face.height }
+          }
+        ]
+      });
+      view.host.setPerformanceScene(true);
+      expect(view.host.sceneCamera).toBe(false);
+      await view.host.setEnabled(true);
+      view.tick();
+      expect(view.host.sceneCamera).toBe(true);
+      mocks.freeKeyAt.mockReturnValue(face.pitch);
+      expect(view.host.freeKeysPointAt(300, 200)).toEqual({
+        x: face.x + face.width / 2,
+        y: face.y + face.height / 2
+      });
+      mocks.draw.mockImplementationOnce(() => {
+        throw new Error("forced Three failure");
+      });
+      view.tick();
+      expect(view.host.performanceScene).toBe(false);
+      expect(view.host.sceneCamera).toBe(false);
+      expect(view.host.freeKeysPointAt(300, 200)).toBeUndefined();
+      expect(view.keys.container.renderable).toBe(true);
+      expect(view.hands.live).toBe(false);
+      view.host.destroy();
+    }
+  );
+});
+
+describe("native stage effects handoff", () => {
+  it("keeps legacy FX until all atlases are ready and restores them outside performance mode", async () => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    view.host.setSceneEffects([fire]);
+    view.host.setPerformanceScene(true);
+    await view.host.setEnabled(true);
+    const renderedFire = () =>
+      view.renderer.render.mock.calls.some(([options]) => options.container === fire);
+    view.tick();
+    expect(renderedFire()).toBe(true);
+    expect(mocks.draw.mock.calls.at(-1)?.[9]).toBe(false);
+    mocks.nativeEffectsReady = true;
+    view.renderer.render.mockClear();
+    mocks.draw.mockImplementation(() => {
+      expect(fire.renderable).toBe(false);
+    });
+    view.tick();
+    expect(renderedFire()).toBe(false);
+    expect(mocks.draw.mock.calls.at(-1)?.[9]).toBe(true);
+    expect(fire.renderable).toBe(true);
+    view.host.setPerformanceScene(false);
+    view.renderer.render.mockClear();
+    view.tick();
+    expect(renderedFire()).toBe(true);
+    expect(mocks.draw.mock.calls.at(-1)?.[9]).toBe(false);
+    view.host.destroy();
+  });
+});
+
+describe("Pixi FX under native hands", () => {
+  it("draws transformed effects before Three, once, restoring their original ownership", async () => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    view.overlay.position.set(30, -12);
+    fire.position.set(7, 2);
+    view.host.setSceneEffects([fire]);
+    await view.host.setEnabled(true);
+    const order: string[] = [];
+    view.renderer.render.mockImplementation((options) => {
+      order.push(
+        options.container === fire ? "fire" : options.container === view.road ? "road" : "hud"
+      );
+      if (options.container === view.stage) expect(fire.renderable).toBe(false);
+    });
+    mocks.draw.mockImplementation(() => {
+      order.push("three");
+      expect(fire.renderable).toBe(false);
+    });
+    view.tick();
+    expect(order).toEqual(["road", "fire", "three", "hud"]);
+    expect(
+      view.renderer.render.mock.calls.find(([options]) => options.container === fire)?.[0]
+    ).toMatchObject({ clear: false, transform: { tx: 37, ty: -10 } });
+    expect(fire.renderable).toBe(true);
+    expect(fire.parent).toBe(view.overlay);
+    view.host.destroy();
+    expect(fire.destroyed).toBe(false);
+  });
+
+  it.each(["three", "hud"])("restores FX flags after a %s failure", async (failure) => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container());
+    view.host.setSceneEffects([fire]);
+    await view.host.setEnabled(true);
+    if (failure === "three")
+      mocks.draw.mockImplementationOnce(() => {
+        throw new Error("draw failed");
+      });
+    else
+      view.renderer.render.mockImplementation((options) => {
+        if (options.container === view.stage) throw new Error("hud failed");
+      });
+    if (failure === "three") expect(view.tick).not.toThrow();
+    else expect(view.tick).toThrow("hud failed");
+    expect(fire.renderable).toBe(true);
+    expect(fire.parent).toBe(view.overlay);
+    view.host.destroy();
+  });
+});
+
+it("skips hidden or destroyed FX without suppressing native Three", async () => {
+  const view = fixture();
+  const fire = view.overlay.addChild(new Container());
+  view.host.setSceneEffects([fire]);
+  await view.host.setEnabled(true);
+  view.overlay.visible = false;
+  view.tick();
+  expect(mocks.draw).toHaveBeenCalledOnce();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === fire)).toBe(
+    false
+  );
+  view.overlay.visible = true;
+  view.renderer.render.mockClear();
+  view.tick();
+  expect(view.renderer.render.mock.calls.some(([options]) => options.container === fire)).toBe(
+    true
+  );
+  expect(fire.renderable).toBe(true);
+  fire.destroy();
+  expect(view.tick).not.toThrow();
+  view.host.destroy();
+});
+
+const sourcePerformance = (id: string): SourcePerformanceIdentity => ({
+  id,
+  midiSha256: "a".repeat(64),
+  sourceSha256: "b".repeat(64),
+  noteCount: 1,
+  timeOriginSeconds: 0
+});
+const settlePianist = async () => {
+  await vi.dynamicImportSettled();
+};
+
+describe("native source pianist handoff", () => {
+  it("sends the fallback pose, source time and actual draw camera to additive gaze wiring", async () => {
+    const view = fixture(),
+      camera = new Camera();
+    view.hands.pianist = true;
+    mocks.loadPianist.mockResolvedValueOnce({ scene: new Group(), clip: undefined });
+    await view.host.setEnabled(true);
+    view.tick();
+    await settlePianist();
+    mocks.draw.mockImplementation(function (this: { beforeRender?: (camera: Camera) => void }) {
+      this.beforeRender?.(camera);
+    });
+    view.hands.time = 68;
+    view.tick();
+    expect(mocks.pose).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ time: 68 }),
+      camera
+    );
+    expect(mocks.pianistSample).not.toHaveBeenCalled();
+    view.host.destroy();
+  });
+
+  it("reloads a trial after source restoration and sends identity/time to the pre-render callback", async () => {
+    const view = fixture();
+    view.hands.pianist = true;
+    mocks.loadPianist.mockResolvedValueOnce({ scene: new Group(), clip: undefined });
+    await view.host.setEnabled(true);
+    view.tick();
+    await settlePianist();
+    view.tick();
+    expect(mocks.loadPianist).toHaveBeenLastCalledWith(undefined);
+    const source = sourcePerformance("restored");
+    view.hands.songPerformance = source;
+    mocks.loadPianist.mockResolvedValueOnce({ scene: new Group(), clip: {}, performance: {} });
+    view.tick();
+    await settlePianist();
+    const beforeDraw: string[] = [];
+    mocks.draw.mockImplementation(function (this: { beforeRender?: (camera: Camera) => void }) {
+      this.beforeRender?.(new Camera());
+      beforeDraw.push("draw");
+    });
+    mocks.pianistSample.mockImplementation(() => beforeDraw.push("sample"));
+    view.hands.time = 103;
+    view.tick();
+    expect(mocks.pianistDispose).toHaveBeenCalledOnce();
+    expect(mocks.removeFromKeys).toHaveBeenCalledOnce();
+    expect(mocks.loadPianist).toHaveBeenLastCalledWith(source);
+    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
+    expect(mocks.pianistSample.mock.calls.at(-1)?.[0]).toMatchObject({
+      time: 103,
+      performance: source
+    });
+    expect(beforeDraw).toEqual(["sample", "draw"]);
+    view.host.destroy();
+  });
+  it("disposes a stale load even when it resolves before the next source-change frame", async () => {
+    const view = fixture(),
+      pending = deferred<{ scene: Group; clip: undefined }>();
+    view.hands.pianist = true;
+    mocks.loadPianist.mockReturnValueOnce(pending.promise);
+    await view.host.setEnabled(true);
+    view.tick();
+    await vi.dynamicImportSettled();
+    view.hands.songPerformance = sourcePerformance("new");
+    const scene = new Group();
+    pending.resolve({ scene, clip: undefined });
+    await settlePianist();
+    expect(mocks.disposeModel).toHaveBeenCalledWith(scene);
+    expect(mocks.pianistConstruct).not.toHaveBeenCalled();
+    view.tick();
+    await settlePianist();
+    expect(mocks.loadPianist).toHaveBeenLastCalledWith(view.hands.songPerformance);
+    view.host.destroy();
+  });
+  it("disposes late loads after destruction and does not retry a missing asset every frame", async () => {
+    const view = fixture();
+    view.hands.pianist = true;
+    await view.host.setEnabled(true);
+    view.tick();
+    await settlePianist();
+    view.tick();
+    view.tick();
+    expect(mocks.loadPianist).toHaveBeenCalledOnce();
+    const pending = deferred<{ scene: Group; clip: undefined }>();
+    view.hands.songPerformance = sourcePerformance("late");
+    mocks.loadPianist.mockReturnValueOnce(pending.promise);
+    view.tick();
+    await vi.dynamicImportSettled();
+    view.host.destroy();
+    const scene = new Group();
+    pending.resolve({ scene, clip: undefined });
+    await settlePianist();
+    expect(mocks.disposeModel).toHaveBeenCalledWith(scene);
+    expect(mocks.pianistConstruct).not.toHaveBeenCalled();
+  });
+});
+
+it("keeps sprite/Studio hands hidden for a complete native model even when the Studio asset failed", async () => {
+  mocks.handPresent = false;
+  const view = fixture();
+  view.hands.pianist = true;
+  view.hands.songPerformance = sourcePerformance("native-no-studio");
+  mocks.loadPianist.mockResolvedValue({ scene: new Group(), clip: {}, performance: {} });
+  await view.host.setEnabled(true);
+  view.tick();
+  await settlePianist();
+  view.tick();
+  expect(view.hands.live).toBe(true);
+  expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
+  view.hands.pianist = false;
+  view.tick();
+  expect(view.hands.live).toBe(false);
+  expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
+  view.host.destroy();
+});
+
+it("drives native keys from physical source contacts and keeps manual presses above them", async () => {
+  const view = fixture();
+  view.hands.pianist = true;
+  view.hands.songPerformance = sourcePerformance("contacts");
+  const sourceFinger = {
+    sourceId: "known",
+    pitch: 60,
+    hand: "right" as const,
+    onset: 1,
+    estimatedContactEnd: 1.1,
+    finger: 3 as const,
+    candidateFinger: 3 as const,
+    origin: "teacher" as const,
+    selectedFrom: "decision" as const
+  };
+  view.hands.songNotes = {
+    left: [],
+    right: [
+      { pitch: 60, start: 1, duration: 5, sourceFinger },
+      {
+        pitch: 60,
+        start: 2,
+        duration: 4,
+        sourceFinger: { ...sourceFinger, onset: 2, estimatedContactEnd: 2.1 }
+      },
+      {
+        pitch: 61,
+        start: 1,
+        duration: 2,
+        sourceFinger: { ...sourceFinger, pitch: 61, finger: null, origin: "unknown" }
+      }
+    ]
+  };
+  const pressed = new Set<number>(),
+    sounding = new Set([60, 61, 62]);
+  view.keyboard.frame = { pressed, sounding, playing: new Map<number, SongNote>(), due: [] };
+  mocks.loadPianist.mockResolvedValue({ scene: new Group(), clip: {}, performance: {} });
+  await view.host.setEnabled(true);
+  view.tick();
+  await settlePianist();
+  const downAt = (time: number, pitch: number): boolean => {
+    view.hands.time = time;
+    view.tick();
+    const down = mocks.draw.mock.calls.at(-1)?.[2] as (pitch: number) => boolean;
+    return down(pitch);
+  };
+  expect(downAt(1, 60)).toBe(true);
+  expect(downAt(1.1, 60)).toBe(false);
+  expect(downAt(2, 60)).toBe(true);
+  expect(downAt(1.5, 60)).toBe(false);
+  expect(downAt(1.5, 61)).toBe(true);
+  expect(downAt(1.5, 62)).toBe(false);
+  pressed.add(60);
+  expect(downAt(1.5, 60)).toBe(true);
+  pressed.clear();
+  expect(downAt(3, 61)).toBe(false);
+  view.host.destroy();
+});
+
+it("reloads a previously unavailable native asset when trusted duration arrives with the same hashes", async () => {
+  const view = fixture();
+  view.hands.pianist = true;
+  view.hands.songPerformance = sourcePerformance("duration-restored");
+  await view.host.setEnabled(true);
+  view.tick();
+  await settlePianist();
+  expect(mocks.loadPianist).toHaveBeenCalledOnce();
+  view.hands.songPerformance = { ...view.hands.songPerformance, durationSeconds: 154.5 };
+  view.tick();
+  await settlePianist();
+  expect(mocks.loadPianist).toHaveBeenCalledTimes(2);
+  expect(mocks.loadPianist).toHaveBeenLastCalledWith(view.hands.songPerformance);
+  view.host.destroy();
+});
+
+it("hides the pianist lower body only in ordinary overhead, preserving perspective, free and performance", async () => {
+  const view = fixture(),
+    camera = { params: { prefs: { pitch: 90 } } };
+  Object.assign(view.keys.scene, { keyboardCamera: camera });
+  view.hands.pianist = true;
+  mocks.loadPianist.mockResolvedValueOnce({ scene: new Group(), clip: {}, performance: {} });
+  await view.host.setEnabled(true);
+  view.tick();
+  await settlePianist();
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(true);
+  camera.params.prefs.pitch = 42;
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(false);
+  camera.params.prefs.pitch = 90;
+  view.host.setFreeCamera(true);
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(false);
+  view.host.setFreeCamera(false);
+  view.host.setPerformanceScene(true);
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(false);
+  view.host.setPerformanceScene(false);
+  view.tick();
+  expect(mocks.pianistTopView).toHaveBeenLastCalledWith(true);
+  view.host.destroy();
 });
