@@ -151,6 +151,8 @@ export class ThreeKeysHost {
     this.clearEnergy();
     this.effects.dispose();
     this.roadEffects.dispose();
+    this.pianist?.dispose();
+    this.pianist = undefined;
     this.stage?.dispose();
     this.stage = undefined;
   }
