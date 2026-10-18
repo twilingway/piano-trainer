@@ -169,7 +169,17 @@ export function pianistHandProfile(scene: Object3D, hand: Hand): PianistHandProf
     lowerLength: frame.head(forearm).distanceTo(origin),
     phalanges,
     radii,
-    rest: { mcp, len, neutral: direction(at(middle.bones, 0)), idx: direction(at(index.bones, 0)) },
+    rest: {
+      mcp,
+      len,
+      neutral: direction(at(middle.bones, 0)),
+      thumb: tuple(
+        Y.clone()
+          .applyQuaternion(frame.turn(at(at(fingers, 0).bones, 0)))
+          .applyMatrix4(toHandFrame)
+          .normalize()
+      )
+    },
     fromHandFrame,
     wristBindTurn: frame.turn(wrist),
     meshes,

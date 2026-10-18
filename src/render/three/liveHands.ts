@@ -22,7 +22,7 @@ import {
 } from "./handSolver/mech";
 import type { Vec3 } from "./handSolver/mech";
 import type { FingeredNote, PlanKey, PlanTiming } from "./handSolver/plan";
-import { STUDIO_FRAME, STUDIO_REST } from "./handSolver/rest";
+import { STUDIO_REST } from "./handSolver/rest";
 import { knownUntil } from "./handSolver/track";
 import type { HandAt, Track, TrackPose } from "./handSolver/track";
 import {
@@ -34,7 +34,6 @@ import {
   solverPoint
 } from "./handPose";
 import { HandSkin } from "./handSkin";
-import { StudioThumbRoll } from "./studioThumbRoll";
 import { KIT_DEPTH } from "./pianoKit";
 import { keyDrive, keyDriveFront, keyFrontDip } from "./handContact";
 import { fitScenePose, sampleSceneTrack } from "./handScenePose";
@@ -122,7 +121,6 @@ export class LiveRig {
   readonly space = new Group();
   private readonly rig: Object3D;
   private readonly frame: BoneFrame;
-  private readonly thumbRoll: StudioThumbRoll;
   private readonly phalanges: Phalanx[] = [];
   private readonly arm: Bone;
   private readonly wrist: Bone;
@@ -167,7 +165,6 @@ export class LiveRig {
           joint: j
         });
       }
-    this.thumbRoll = new StudioThumbRoll(this.frame, this.phalanges);
     this.space.add(scene);
     this.space.visible = false;
     this.skin = new HandSkin(this.space, new Map(this.phalanges.map((p) => [p.bone, p.finger])));
@@ -224,12 +221,9 @@ export class LiveRig {
       p.bone.quaternion.copy(p.rest);
       p.bone.updateMatrixWorld(true);
     }
-    const up = solverPoint(STUDIO_FRAME.F[2]).normalize();
-    const away = inArm(at(X, 1)).sub(inArm(at(X, 5)));
     for (const p of this.phalanges) {
       const chain = CHAIN[p.finger];
       this.frame.aim(p.bone, inArm(at(X, at(chain, p.joint + 1))));
-      if (p.finger === 1) this.thumbRoll.pose(p.bone, up, away);
     }
     aimForearm(this.frame, this.arm, this.wrist, this.wristRest, this.wristOnArm);
     this.skin.update(hand);

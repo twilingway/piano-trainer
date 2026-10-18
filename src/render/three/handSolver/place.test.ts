@@ -6,7 +6,7 @@ import type { Library } from "./library";
 import { FINGERS, LONG, THUMB_KEYS, at, handJoints } from "./mech";
 import type { Angles, Root } from "./mech";
 import { place } from "./place";
-import { STUDIO_REST } from "./rest";
+import { PYTHON_REST } from "./rest";
 
 const LIB = library as unknown as Library;
 /** The port repeats the Python operation for operation: float64 noise only. */
@@ -38,7 +38,7 @@ function angleGap(a: Angles, b: Record<string, Record<string, number>>): number 
 
 describe("handJoints", () => {
   it.each(golden.joints.map((g, i) => [i, g] as const))("matches Python, set %i", (_, g) => {
-    const X = handJoints(STUDIO_REST, toAngles(g.angles), g.root as unknown as Root);
+    const X = handJoints(PYTHON_REST, toAngles(g.angles), g.root as unknown as Root);
     X.forEach((p, i) => {
       const q = at(g.joints, i);
       expect(Math.hypot(p[0] - (q[0] ?? 0), p[1] - (q[1] ?? 0), p[2] - (q[2] ?? 0))).toBeLessThan(
@@ -52,7 +52,7 @@ describe("place", () => {
   it.each(golden.place.map((g) => [g.name, g] as const))("matches Python: %s", (_, g) => {
     const want = g.pose as unknown as GoldenPose;
     const notes = g.notes.map(([f, p]) => [f as Finger, Number(p)] as const);
-    const got = place(STUDIO_REST, LIB, g.hand as Hand, notes);
+    const got = place(PYTHON_REST, LIB, g.hand as Hand, notes);
     expect(got.flags).toEqual(want.flags);
     expect(got.dropped).toEqual(want.dropped);
     expect(got.source).toEqual(want.source);

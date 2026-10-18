@@ -124,6 +124,23 @@ describe("LiveRig", () => {
     expect(wrist.y).toBeGreaterThan(elbow.y);
   });
 
+  it("bends the thumb's phalanges without twisting one against the next", () => {
+    const track = trackOf(RIGHT_LINE);
+    const rig = new LiveRig(skeleton(), "right");
+    const scene = must(rig.space.children[0]);
+    const bones = [2, 3].map((j) => node(scene, `finger1-${String(j)}.R`));
+    const rest = bones.map((bone) => bone.quaternion.clone());
+    for (const t of [0, 0.15, 0.3, 0.45, 0.6, 0.9]) {
+      rig.pose(must(sampleTrack(track, t, STUDIO_REST)));
+      bones.forEach((bone, i) => {
+        // The turn about the bone's own axis (Y), against its parent, beyond the rest's.
+        const q = must(rest[i]).clone().invert().multiply(bone.quaternion);
+        const twist = Math.abs((2 * Math.atan2(q.y, q.w) * 180) / Math.PI);
+        expect(Math.min(twist, 360 - twist)).toBeLessThan(5);
+      });
+    }
+  });
+
   it("hides without a pose", () => {
     const rig = new LiveRig(skeleton(), "right");
     rig.pose(undefined);
