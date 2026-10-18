@@ -24,6 +24,17 @@ const HANDS_SECONDS = 10;
 /** A shorter opening gives most of its time to the rise, which cannot speed up as much. */
 const SHORT_RISE_SHARE = 0.85;
 
+/** Song seconds of the opening's close hands shot, before the rise begins. */
+export function performanceOpeningHandsSeconds(
+  openingSeconds = PERFORMANCE_OPENING_SECONDS
+): number {
+  if (openingSeconds === PERFORMANCE_OPENING_SECONDS) return HANDS_SECONDS;
+  return (
+    openingSeconds -
+    Math.min(PERFORMANCE_OPENING_SECONDS - HANDS_SECONDS, openingSeconds * SHORT_RISE_SHARE)
+  );
+}
+
 /**
  * Song seconds on the full opening's clock: its phases keep their long-song order and shape, the
  * hands shot shrinks most. The clock runs on past the opening at the rise's rate.
@@ -33,11 +44,8 @@ export function performanceOpeningClock(
   openingSeconds = PERFORMANCE_OPENING_SECONDS
 ): number {
   if (openingSeconds === PERFORMANCE_OPENING_SECONDS) return time;
-  const rise = Math.min(
-      PERFORMANCE_OPENING_SECONDS - HANDS_SECONDS,
-      openingSeconds * SHORT_RISE_SHARE
-    ),
-    hands = openingSeconds - rise;
+  const hands = performanceOpeningHandsSeconds(openingSeconds),
+    rise = openingSeconds - hands;
   return time <= hands
     ? time * (HANDS_SECONDS / hands)
     : HANDS_SECONDS + (time - hands) * ((PERFORMANCE_OPENING_SECONDS - HANDS_SECONDS) / rise);

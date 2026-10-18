@@ -82,6 +82,19 @@ it("centres the intro on the opening notes and keeps the hand fill local", () =>
   performance.dispose();
 });
 
+it("centres a short song's intro only on the notes under its sub-second hands shot", () => {
+  const performance = new PerformanceScene(new Scene()),
+    subject = new Group();
+  performance.layout([{ ...key, pitch: 40, x: -330 }, key]);
+  performance.setNotes({
+    left: [{ start: 0, duration: 25, pitch: 40 }],
+    right: [{ start: 2, duration: 1, pitch: 60 }]
+  });
+  performance.update(0, 1200, 800, subject);
+  expect(performance.camera.position.x).toBe(-330);
+  performance.dispose();
+});
+
 it.each([
   [1600, 1000],
   [1689, 1285],

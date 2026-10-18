@@ -5,8 +5,8 @@ import { Box3, Color, PerspectiveCamera, Vector3 } from "three";
 import type { Object3D, Scene } from "three";
 import { posedSceneBounds } from "./posedSceneBounds";
 import {
-  PERFORMANCE_OPENING_SECONDS,
   performanceOpeningClock,
+  performanceOpeningHandsSeconds,
   performanceOpeningSeconds,
   performanceSceneTimeline
 } from "./performanceSceneTimeline";
@@ -72,8 +72,8 @@ export class PerformanceScene {
     );
     if (notes.length === 0) return;
     const first = Math.min(...notes.map((note) => note.start));
-    // The notes under the close hand shot: the first 10 of the full opening's 16 seconds.
-    const hold = 10 * (this.opening / PERFORMANCE_OPENING_SECONDS);
+    // The notes under the close hand shot, which a short opening cuts to under a second.
+    const hold = performanceOpeningHandsSeconds(this.opening);
     const pitches = new Set(
       notes.filter((note) => note.start < first + hold).map((note) => note.pitch)
     );
