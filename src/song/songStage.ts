@@ -2,26 +2,14 @@
 export interface SongStage {
   /** The neon sign behind the pianist. */
   readonly sign?: string;
+  /** Fire bursts around the stage, and a brighter sign, on every bass note. */
+  readonly bassFire?: boolean;
 }
 
 export const SONG_SIGN_MAX_LENGTH = 80;
+const FIELDS = new Set(["sign", "bassFire"]);
 
-/** Strictly `{ "sign"?: string }`; anything else is refused with the reason. */
-export function parseSongStage(
-  text: string
-): { readonly stage: SongStage } | { readonly error: string } {
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    return { error: "not JSON" };
-  }
-  if (typeof value !== "object" || value === null || Array.isArray(value))
-    return { error: "not a JSON object" };
-  const unknown = Object.keys(value).filter((key) => key !== "sign");
-  if (unknown.length > 0) return { error: `unknown field ${unknown.join(", ")}` };
-  if (!("sign" in value)) return { stage: {} };
-  const sign: unknown = value.sign;
+function parseSign(sign: unknown): { readonly sign: string } | { readonly error: string } {
   if (typeof sign !== "string") return { error: "sign is not a string" };
   const trimmed = sign.trim();
   if (trimmed === "") return { error: "sign is empty" };
@@ -36,5 +24,32 @@ export function parseSongStage(
   ).length;
   if (characters > SONG_SIGN_MAX_LENGTH)
     return { error: `sign is longer than ${String(SONG_SIGN_MAX_LENGTH)} characters` };
-  return { stage: { sign: trimmed } };
+  return { sign: trimmed };
+}
+
+/** Strictly `{ "sign"?: string, "bassFire"?: boolean }`; anything else is refused with the reason. */
+export function parseSongStage(
+  text: string
+): { readonly stage: SongStage } | { readonly error: string } {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return { error: "not JSON" };
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return { error: "not a JSON object" };
+  const unknown = Object.keys(value).filter((key) => !FIELDS.has(key));
+  if (unknown.length > 0) return { error: `unknown field ${unknown.join(", ")}` };
+  let stage: SongStage = {};
+  if ("sign" in value) {
+    const sign = parseSign(value.sign);
+    if ("error" in sign) return sign;
+    stage = { ...stage, sign: sign.sign };
+  }
+  if ("bassFire" in value) {
+    if (typeof value.bassFire !== "boolean") return { error: "bassFire is not true or false" };
+    stage = { ...stage, bassFire: value.bassFire };
+  }
+  return { stage };
 }

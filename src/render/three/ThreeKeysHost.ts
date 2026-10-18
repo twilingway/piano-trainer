@@ -300,7 +300,7 @@ export class ThreeKeysHost {
       const native = this.hands?.pianist === true && this.pianist?.native === true;
       if (native) this.nativeContacts.setNotes(this.hands.songNotes);
       const played = hands !== undefined && this.stage.hands !== undefined && !native;
-      this.stage.setStageSign(this.hands?.songStage?.sign);
+      this.stage.setSongStage(this.hands?.songStage);
       this.stage.draw(
         scene,
         picture,

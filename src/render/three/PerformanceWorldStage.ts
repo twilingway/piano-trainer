@@ -11,6 +11,8 @@ import type { KeyBox } from "./keyBoxes";
 import { posedSceneBounds } from "./posedSceneBounds";
 import { PerformancePlatform } from "./PerformancePlatform";
 import { PerformanceNeonSign } from "./PerformanceNeonSign";
+import { bassFireStrength, performanceBassOnsets } from "./performanceBassFire";
+import type { BassOnset } from "./performanceBassFire";
 import {
   performanceSignPlacement,
   performanceStageLayout,
@@ -64,6 +66,13 @@ interface WorldKey {
 }
 const RING_PUFFS = 32;
 const RING_LIGHTS = 8;
+/** Bonfires around the platform edge on a bass burst. */
+const BASS_FIRES = 12;
+const BASS_FIRE_COLOR = 0xff6a1a;
+const BASS_FIRE_CORE = 0xffc04a;
+interface BassNotes {
+  readonly left: readonly { readonly start: number; readonly pitch: number }[];
+}
 
 /** Separate scene ownership keeps decorative particles out of camera collision bounds. */
 export class PerformanceWorldStage {
@@ -95,6 +104,8 @@ export class PerformanceWorldStage {
   private layoutValue: PerformanceStageLayout | undefined;
   private sign: PerformanceNeonSign | undefined;
   private signPlacement: PerformanceSignPlacement | undefined;
+  private bassNotes: BassNotes | undefined;
+  private bassOnsets: readonly BassOnset[] = [];
 
   constructor(scene: Object3D) {
     this.group.add(
@@ -129,6 +140,12 @@ export class PerformanceWorldStage {
       this.group.add(this.sign.mesh);
     }
     if (this.signPlacement) this.sign.layout(this.signPlacement);
+  }
+  /** The song's notes when its stage asks for bass fire; nothing burns without them. */
+  setBassNotes(notes: BassNotes | undefined): void {
+    if (notes === this.bassNotes) return;
+    this.bassNotes = notes;
+    this.bassOnsets = notes ? performanceBassOnsets(notes.left) : [];
   }
   get lightFade(): number {
     return this.fade;
@@ -217,11 +234,9 @@ export class PerformanceWorldStage {
     this.curtain.set(outro.blackout);
     const stage = this.layoutValue;
     if (!stage) return;
-    this.sign?.update(
-      time,
-      camera,
-      performanceSceneTimeline(time, this.opening).spotFade * this.fade
-    );
+    const reveal = performanceSceneTimeline(time, this.opening).spotFade * this.fade;
+    const burst = this.bassOnsets.length > 0 ? bassFireStrength(time, this.bassOnsets) * reveal : 0;
+    this.sign?.update(time, camera, reveal, burst);
     const batches = [this.flame, this.mist, this.hit, this.glitter, this.ringFlame];
     for (const batch of batches) batch.begin(camera);
     for (const light of this.lights) light.intensity = 0;
@@ -230,6 +245,7 @@ export class PerformanceWorldStage {
       this.drawMist(time, stage);
       this.drawHolds(time, sources, stage);
       this.drawRing(time, sources, stage, visible);
+      this.drawBassFire(time, stage, burst);
       this.drawHits(time, stage);
       this.drawSpirals(time, camera, stage);
     } else this.spirals.clear();
@@ -387,6 +403,50 @@ export class PerformanceWorldStage {
           frame
         );
     }
+  }
+  /** A ring of bonfires flaring with the bass; spare ring lights throw its glow on the stage. */
+  private drawBassFire(time: number, stage: PerformanceStageLayout, burst: number): void {
+    if (burst <= 0) return;
+    const unit = stage.unit,
+      height = 0.5 + 0.7 * burst;
+    for (let index = 0; index < BASS_FIRES; index++) {
+      const angle = ((index + 0.5) / BASS_FIRES) * Math.PI * 2;
+      const x = stage.centre.x + Math.sin(angle) * stage.radius * 1.02,
+        z = stage.centre.z - Math.cos(angle) * stage.radius * 1.02;
+      const frame = performanceAtlasFrame(time, FLAME.fps, FLAME.frames, index * 23);
+      this.ringFlame.add(
+        x,
+        stage.top + 30 * unit,
+        z,
+        240 * unit * (0.7 + 0.5 * burst),
+        620 * unit * height,
+        BASS_FIRE_COLOR,
+        0.9 * burst,
+        frame
+      );
+      this.flame.add(
+        x,
+        stage.top + 40 * unit,
+        z,
+        300 * unit,
+        700 * unit * height,
+        BASS_FIRE_CORE,
+        0.7 * burst,
+        frame
+      );
+    }
+    this.lights.forEach((light, index) => {
+      if (light.intensity > 0) return;
+      const angle = (index / RING_LIGHTS) * Math.PI * 2;
+      light.position.set(
+        stage.centre.x + Math.sin(angle) * stage.radius * 0.9,
+        stage.top + 120 * unit,
+        stage.centre.z - Math.cos(angle) * stage.radius * 0.9
+      );
+      light.color.setHex(BASS_FIRE_COLOR);
+      light.distance = 900 * unit;
+      light.intensity = 60_000 * unit ** 2 * burst;
+    });
   }
   private drawSpirals(time: number, camera: Camera, stage: PerformanceStageLayout): void {
     const events: PerformanceNoteSpiralEvent[] = [];

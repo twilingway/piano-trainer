@@ -108,6 +108,17 @@ describe("neon sign mesh", () => {
     expect(sign.mesh.visible).toBe(false);
     sign.dispose();
   });
+  it("flashes brighter with a bass burst and settles back", () => {
+    const sign = new PerformanceNeonSign("Sample sign");
+    sign.layout(placement);
+    sign.update(30, camera(-4000), 1, 1);
+    expect(sign.mesh.material.color.r).toBeGreaterThan(2);
+    sign.update(30, camera(-4000), 1, 0.25);
+    expect(sign.mesh.material.color.r).toBeCloseTo(1.4);
+    sign.update(30, camera(-4000), 1);
+    expect(sign.mesh.material.color.r).toBe(1);
+    sign.dispose();
+  });
   it("disposes its texture, material and geometry", () => {
     const sign = new PerformanceNeonSign("Sample sign");
     const map = sign.mesh.material.map;

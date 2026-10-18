@@ -62,6 +62,8 @@ function fixture() {
       invalidate: vi.fn(),
       clear: vi.fn(),
       setDuration: vi.fn(),
+      setBassNotes: vi.fn(),
+      setSign: vi.fn(),
       update: vi.fn()
     },
     cabinet: { ...disposable(), clear: vi.fn() },
@@ -80,7 +82,7 @@ function fixture() {
   const draw = (delta = 1 / 60, down = false) => {
     stage.draw(scene, {}, () => down, { width: 800, height: 600 }, delta, undefined);
   };
-  return { stage, draw, keys, hinge, hands, renderer, geometryDispose };
+  return { stage, draw, keys, hinge, hands, renderer, geometryDispose, scene };
 }
 
 const pivot = (250 * 142) / 150;
@@ -154,4 +156,38 @@ it("samples pre-render against the configured camera before GPU rendering and by
   view.stage.setNativePianist(false);
   view.draw();
   expect(view.hands.update).toHaveBeenCalledOnce();
+});
+
+it("feeds the bass fire the song's notes only when the song's stage asks for it", () => {
+  const view = fixture();
+  const world = (
+    view.stage as unknown as {
+      worldStage: { setBassNotes: ReturnType<typeof vi.fn>; setSign: ReturnType<typeof vi.fn> };
+    }
+  ).worldStage;
+  const notes = { left: [{ start: 1, duration: 0.5, pitch: 41 }], right: [] };
+  const draw = () => {
+    view.stage.draw(
+      view.scene,
+      {},
+      () => false,
+      { width: 800, height: 600 },
+      1 / 60,
+      undefined,
+      [],
+      1 / 60,
+      undefined,
+      false,
+      notes
+    );
+  };
+  draw();
+  expect(world.setBassNotes).toHaveBeenLastCalledWith(undefined);
+  view.stage.setSongStage({ sign: "Sample sign", bassFire: true });
+  expect(world.setSign).toHaveBeenLastCalledWith("Sample sign");
+  draw();
+  expect(world.setBassNotes).toHaveBeenLastCalledWith(notes);
+  view.stage.setSongStage({ sign: "Sample sign" });
+  draw();
+  expect(world.setBassNotes).toHaveBeenLastCalledWith(undefined);
 });

@@ -7,6 +7,10 @@ describe("a lesson level's stage file", () => {
       stage: { sign: "Sample sign, ура!" }
     });
     expect(parseSongStage("{}")).toEqual({ stage: {} });
+    expect(parseSongStage('{ "sign": "Sample", "bassFire": true }')).toEqual({
+      stage: { sign: "Sample", bassFire: true }
+    });
+    expect(parseSongStage('{ "bassFire": false }')).toEqual({ stage: { bassFire: false } });
   });
   it.each([
     ["not JSON", "{ sign: 1 "],
@@ -15,6 +19,7 @@ describe("a lesson level's stage file", () => {
     ["null", "null"],
     ["an unknown field", '{ "sign": "Sample", "colour": "red" }'],
     ["a number sign", '{ "sign": 7 }'],
+    ["a string bassFire", '{ "bassFire": "yes" }'],
     ["an empty sign", '{ "sign": "   " }'],
     ["a two-line sign", '{ "sign": "Sample\nsign" }'],
     ["a tab", '{ "sign": "Sample\tsign" }'],

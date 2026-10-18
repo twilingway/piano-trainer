@@ -18,6 +18,7 @@ import {
 import { WebGLRenderer } from "three";
 import type { Object3D } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { SongStage } from "../../song/songStage";
 import type { EnergySource } from "../noteEnergy";
 import { keyBoxes } from "./keyBoxes";
 import { PianoCase } from "./PianoCase";
@@ -67,6 +68,7 @@ export class ThreeStage {
   private readonly free: FreeSceneCamera;
   private freeEnabled = false;
   private performanceEnabled = false;
+  private bassFire = false;
   private readonly performance: PerformanceScene;
   private readonly worldStage: PerformanceWorldStage;
   private readonly raycaster = new Raycaster();
@@ -196,6 +198,7 @@ export class ThreeStage {
       this.performance.lights.setStageLayout(this.worldStage.stage);
     }
     this.performance.setNotes(songNotes ?? hands?.notes);
+    this.worldStage.setBassNotes(this.bassFire ? (songNotes ?? hands?.notes) : undefined);
     this.performance.setRoad(roadFrame, roadCamera.near.y, roadCamera.near.z, roadCamera.roadFarZ);
     const angle = this.performanceEnabled
       ? this.performance.update(roadFrame?.songTime ?? 0, screen.width, screen.height, this.keys)
@@ -380,9 +383,10 @@ export class ThreeStage {
     this.worldStage.invalidate();
   }
 
-  /** The song's neon sign in the performance scene; none without text. */
-  setStageSign(text: string | undefined): void {
-    this.worldStage.setSign(text);
+  /** The song's performance-scene dressing: its neon sign and whether the bass sets the stage on fire. */
+  setSongStage(stage: SongStage | undefined): void {
+    this.worldStage.setSign(stage?.sign);
+    this.bassFire = stage?.bassFire === true;
   }
 
   setNativePianist(on: boolean): void {

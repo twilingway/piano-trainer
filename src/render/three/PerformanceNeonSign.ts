@@ -139,14 +139,16 @@ export class PerformanceNeonSign {
     this.mesh.position.set(placement.base.x, placement.base.y + height / 2, placement.base.z);
   }
 
-  /** `fade` is the stage light's; the flicker is song time's, so a seek repeats it. */
-  update(time: number, camera: Camera, fade: number): void {
+  /** `fade` is the stage light's, `flash` a bass burst's; the flicker follows song time, so a seek repeats it. */
+  update(time: number, camera: Camera, fade: number, flash = 0): void {
     this.eye.setFromMatrixPosition(camera.matrixWorld);
     // From behind the plane the text would read mirrored.
     const front = this.eye.z < this.mesh.position.z;
     const seconds = Number.isFinite(time) ? time : 0;
     const flicker = 0.94 + 0.04 * Math.sin(seconds * 7.3) + 0.02 * Math.sin(seconds * 23.9 + 1.3);
     this.mesh.material.opacity = Math.max(0, Math.min(1, fade)) * flicker;
+    // Not tone mapped: a colour above 1 makes the additive glow brighter than the texture.
+    this.mesh.material.color.setScalar(1 + 1.6 * Math.max(0, Math.min(1, flash)));
     this.mesh.visible = front && fade > 0;
   }
 

@@ -33,7 +33,7 @@ const mocks = vi.hoisted(() => ({
   pianistDispose: vi.fn(),
   disposeModel: vi.fn(),
   setNativePianist: vi.fn(),
-  setStageSign: vi.fn(),
+  setSongStage: vi.fn(),
   addToKeys: vi.fn(),
   removeFromKeys: vi.fn(),
   pose: vi.fn()
@@ -44,7 +44,7 @@ vi.mock("./ThreeStage", () => ({
     beforeRender: ((camera: Camera) => void) | undefined;
     hands = mocks.handPresent ? { setPlayer: vi.fn(), poses: {} } : undefined;
     setNativePianist = mocks.setNativePianist;
-    setStageSign = mocks.setStageSign;
+    setSongStage = mocks.setSongStage;
     addToKeys = mocks.addToKeys;
     removeFromKeys = mocks.removeFromKeys;
     get nativeEffectsReady() {
@@ -224,15 +224,15 @@ describe("shared WebGL keyboard recovery", () => {
     const view = fixture();
     await view.host.setEnabled(true);
     view.hands.songStage = { sign: "Sample sign" };
-    mocks.setStageSign.mockClear();
+    mocks.setSongStage.mockClear();
     view.tick();
-    expect(mocks.setStageSign).toHaveBeenLastCalledWith("Sample sign");
-    expect(mocks.setStageSign.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.setSongStage).toHaveBeenLastCalledWith({ sign: "Sample sign" });
+    expect(mocks.setSongStage.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.draw.mock.invocationCallOrder.at(-1) ?? 0
     );
     view.hands.songStage = undefined;
     view.tick();
-    expect(mocks.setStageSign).toHaveBeenLastCalledWith(undefined);
+    expect(mocks.setSongStage).toHaveBeenLastCalledWith(undefined);
     view.host.destroy();
   });
 
