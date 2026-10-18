@@ -45,6 +45,7 @@ export class ThreeKeysHost {
   private pianistIdentity: string | undefined;
   private pianistGeneration = 0;
   private pianistAttempted = false;
+  private pianistNativeOnlyAttempt = false;
   private frameHands: HandsSource | undefined;
   private readonly nativeContacts = new NativeKeyContacts();
   /**
@@ -297,8 +298,8 @@ export class ThreeKeysHost {
           : undefined;
       this.frameHands = hands;
       // Live hands press the keys they play themselves: a repeated note's key comes up between.
-      const native = this.hands?.pianist === true && this.pianist?.native === true;
-      if (native) this.nativeContacts.setNotes(this.hands.songNotes);
+      const native = this.wantsPianist() && this.pianist?.native === true;
+      if (native && this.hands) this.nativeContacts.setNotes(this.hands.songNotes);
       const played = hands !== undefined && this.stage.hands !== undefined && !native;
       this.stage.setSongStage(this.hands?.songStage);
       this.stage.draw(
@@ -342,9 +343,9 @@ export class ThreeKeysHost {
   };
 
   private readonly beforeRender = (camera: Camera): void => {
-    if (!this.hands?.pianist || !this.pianist) return;
+    if (!this.wantsPianist() || !this.pianist) return;
     if (this.pianist.native) this.pianist.sample(this.frameHands, camera);
-    else if (this.stage?.hands)
+    else if (this.hands?.pianist && this.stage?.hands)
       this.pianist.poseFallback(this.stage.hands.poses, this.frameHands, camera);
   };
 
@@ -364,6 +365,13 @@ export class ThreeKeysHost {
       : "none";
   }
 
+  private wantsPianist(): boolean {
+    return (
+      this.hands?.pianist === true ||
+      (this.hands?.container.visible === true && this.hands.songPerformance !== undefined)
+    );
+  }
+
   /** A restored source package supersedes a previously loaded unrelated trial, including pending loads. */
   private seatPianist(stage: ThreeStage, keys: KeysScene): void {
     const source = this.hands?.songPerformance;
@@ -375,13 +383,20 @@ export class ThreeKeysHost {
       this.pianistAttempted = false;
       this.releasePianist();
     }
-    const wanted = this.hands?.pianist === true;
+    const bodyWanted = this.hands?.pianist === true;
+    const wanted = this.wantsPianist();
+    // A hands-only attempt never loads the unrelated trial; enabling the body may try it later.
+    if (bodyWanted && this.pianistNativeOnlyAttempt && !this.pianistLoading && !this.pianist) {
+      this.pianistAttempted = false;
+      this.pianistNativeOnlyAttempt = false;
+    }
     if (wanted && !this.pianist && !this.pianistLoading && !this.pianistAttempted) {
       this.pianistLoading = this.pianistAttempted = true;
+      this.pianistNativeOnlyAttempt = !bodyWanted;
       const generation = this.pianistGeneration;
       void import("./pianist")
         .then(async ({ Pianist, loadPianist }) => {
-          const model = await loadPianist(source);
+          const model = bodyWanted ? await loadPianist(source) : await loadPianist(source, true);
           if (!model) return;
           if (
             this.destroyed ||
@@ -413,8 +428,9 @@ export class ThreeKeysHost {
     stage.hands?.setPlayer(undefined);
     pianist?.rig?.setNativeHandsVisible(false);
     if (!pianist) return;
-    pianist.space.visible = wanted;
-    if (!wanted) return;
+    const visible = wanted && (bodyWanted || pianist.native);
+    pianist.space.visible = visible;
+    if (!visible) return;
     if (this.pianistStage !== stage) {
       stage.addToKeys(pianist.space);
       this.pianistStage = stage;
@@ -423,6 +439,7 @@ export class ThreeKeysHost {
     pianist.setTopView(
       !this.freeActive && !this.performanceWanted && camera.params.prefs.pitch === 90
     );
+    pianist.setBodyVisible(bodyWanted);
     pianist.follow(keys);
   }
 

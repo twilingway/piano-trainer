@@ -94,6 +94,33 @@ function nativeModel() {
 afterEach(() => vi.restoreAllMocks());
 
 describe("native original-skeleton pianist", () => {
+  it("keeps runtime face overlays hidden while sampling hands without the body", async () => {
+    const { PianistFace } = await import("./PianistFace");
+    const model = nativeModel(),
+      blink = new Mesh();
+    blink.name = "PianistBlink_1";
+    blink.visible = false;
+    vi.spyOn(PianistFace, "create").mockImplementation(() => {
+      model.scene.add(blink);
+      return {
+        update: () => {
+          blink.visible = true;
+        },
+        dispose: () => undefined
+      } as unknown as NonNullable<ReturnType<typeof PianistFace.create>>;
+    });
+    const pianist = new Pianist(model, source),
+      hands = { time: 5, performance: source, notes: { left: [], right: [] } };
+    pianist.setBodyVisible(false);
+    pianist.sample(hands, new Camera());
+    expect(blink.visible).toBe(false);
+    expect(model.bone.position.x).toBeCloseTo(2);
+    pianist.setBodyVisible(true);
+    pianist.sample(hands, new Camera());
+    expect(blink.visible).toBe(true);
+    pianist.dispose();
+  });
+
   it("samples session time deterministically without a replacement rig or an extra bench", async () => {
     const { PianistRig } = await import("./pianistRig");
     const createRig = vi.spyOn(PianistRig, "create");
@@ -194,6 +221,9 @@ describe("native original-skeleton pianist", () => {
     loadNative.mockRejectedValueOnce(Error("bad local asset"));
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     expect(await loadPianist(source)).toBeUndefined();
+    expect(localUrl).toHaveBeenCalledTimes(2);
+    loadNative.mockResolvedValueOnce(undefined);
+    expect(await loadPianist(source, true)).toBeUndefined();
     expect(localUrl).toHaveBeenCalledTimes(2);
   });
 });
@@ -302,7 +332,22 @@ it("hides only the lower body overhead and restores the original skin for other 
   pianist.setTopView(true);
   expect(body.geometry).toBe(overhead);
   const dispose = vi.spyOn(overhead, "dispose");
+  pianist.setBodyVisible(false);
+  const handsOnly = body.geometry;
+  expect(handsOnly).not.toBe(overhead);
+  expect(Array.from(handsOnly.index?.array ?? [])).toEqual([3, 4, 5]);
+  expect(shoe.visible).toBe(false);
+  expect(trousers.visible).toBe(false);
+  pianist.setTopView(false);
+  expect(body.geometry).toBe(handsOnly);
+  pianist.setBodyVisible(true);
+  expect(body.geometry).toBe(geometry);
+  expect(shoe.visible).toBe(true);
+  pianist.setTopView(true);
+  expect(body.geometry).toBe(overhead);
+  const disposeHands = vi.spyOn(handsOnly, "dispose");
   pianist.dispose();
   expect(body.geometry).toBe(geometry);
   expect(dispose).toHaveBeenCalledOnce();
+  expect(disposeHands).toHaveBeenCalledOnce();
 });

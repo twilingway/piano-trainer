@@ -161,7 +161,7 @@ export class RoadLayer {
     this.glass.begin();
   }
 
-  setKeyboard(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry): void {
+  setKeyboard(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, dockKeyboard = false): void {
     this.keyboardTopY = geometry.keyboardTop;
     this.keyHeights.clear();
     const blackHeight = this.three?.on ? BLACK_NOTE_FLOOR : 36;
@@ -178,7 +178,8 @@ export class RoadLayer {
           this.notesPerspective,
           this.cameraHeight,
           this.shape.horizon,
-          this.app?.screen.height ?? this.cameraHeight
+          this.app?.screen.height ?? this.cameraHeight,
+          dockKeyboard ? geometry.keyboardTop + geometry.keyboardHeight : undefined
         );
         this.keyboardCamera = cameras.keyboard;
         this.camera = cameras.notes;
