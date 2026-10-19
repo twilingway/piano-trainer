@@ -7,9 +7,12 @@
 
 ## Где лежит
 
-`blender/labs/mano-reference-20261018/hand-texture-20261019/`. В git попадают только `*.py`, промпты
-Codex `codex-*.md` и журнал `README-RU.md` (исключения в `blender/.gitignore`). Рендеры, виды от
-Codex, запечённые карты и `.blend` остаются локальными; повторный прогон создаёт их заново.
+`blender/labs/mano-reference-20261018/hand-texture-20261019/`. В git попадают `*.py`, промпты Codex
+`codex-*.md`, журнал `README-RU.md` и то, что заново бесплатно не получить: картинки Codex
+(`generated/`, `generated-spread/`, выровненные `generated*-aligned/`, правки `generated-fix/`,
+`generated-seam/`), развёртка `arm-uv.json` и карта `bake/albedo-4096.png`; PNG — через Git LFS.
+Проверочная сцена с упакованной текстурой — `blender/scenes/hand-skin.blend`. Рендеры, листы
+сравнения и рабочие `.blend` остаются локальными, их создают скрипты.
 
 Зависимости вне git: `../smplh_data.py` (загрузчик SMPL-H из соседней лаборатории) и модель
 `../source/mano_v1_2/models/SMPLH_male.pkl`, которую по лицензии нельзя класть в репозиторий. Нужны
