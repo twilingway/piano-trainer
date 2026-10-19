@@ -2,13 +2,15 @@
 
 Seam: the side line between the back (face normal +Y in the zero pose: back of the hand and
 forearm) and the front (palm side), along the fingers, the hand edges and the forearm, plus
-the open elbow cut. Two main islands, unwrapped by minimum stretch and packed.
+the open elbow cut. Two main islands, unwrapped by minimum stretch and packed. Known defect:
+minimum stretch folds the finger webs onto themselves (9 face pairs 6-13 mm apart share
+texels: a foreign-skin wedge in the web); the overlap count is printed.
 Output: arm-uv.json (SMPL-H face id -> three UV corners, corner order of model 'f'),
 uv-layout.png, uv-check-<view>.png (UV grid seen from the dorsal and palmar cameras),
 flat-arm-uv.blend.
 """
 from pathlib import Path
-import json
+import json, os
 import bpy, bmesh
 from mathutils import Vector, Matrix
 
@@ -52,13 +54,65 @@ for e in bm.edges:
 bm.to_mesh(mesh)
 bm.free()
 
-bpy.ops.object.mode_set(mode='EDIT')
-bpy.ops.mesh.select_all(action='SELECT')
+def overlapping_faces(bm):
+    """Faces whose UV triangles overlap another face's (shared edges and corners do not count)."""
+    layer = bm.loops.layers.uv.active
+    tris = [[l[layer].uv.copy() for l in f.loops] for f in bm.faces]
+    boxes = [(min(p.x for p in t), min(p.y for p in t), max(p.x for p in t), max(p.y for p in t)) for t in tris]
+    order = sorted(range(len(tris)), key=lambda i: boxes[i][0])
+    eps = 1e-6
+    def separated(a, b):
+        for poly in (a, b):
+            for i in range(3):
+                p, q = poly[i], poly[(i+1) % 3]
+                nx, ny = q.y-p.y, p.x-q.x
+                pa = [nx*v.x+ny*v.y for v in a]
+                pb = [nx*v.x+ny*v.y for v in b]
+                if max(pa) <= min(pb)+eps*abs(nx+ny+1) or max(pb) <= min(pa)+eps*abs(nx+ny+1):
+                    return True
+        return False
+    hit = set()
+    for k, i in enumerate(order):
+        for j in order[k+1:]:
+            if boxes[j][0] >= boxes[i][2]:
+                break
+            if boxes[j][1] >= boxes[i][3] or boxes[i][1] >= boxes[j][3]:
+                continue
+            if set(v.index for v in bm.faces[i].verts) & set(v.index for v in bm.faces[j].verts):
+                continue  # neighbours touch along an edge or a corner
+            if not separated(tris[i], tris[j]):
+                hit.update((i, j))
+    return [bm.faces[i] for i in sorted(hit)]
+
+
+# Env UV_METHOD: MINIMUM_STRETCH (the accepted layout; folds the webs), ANGLE_BASED, CONFORMAL
+# (both fold too). UV_CUT_OVERLAPS=1 cuts folded faces into their own islands: no overlaps, but
+# the tiny islands showed as triangular patches in the webs (2026-10-19), so it is off.
+METHOD = os.environ.get('UV_METHOD', 'MINIMUM_STRETCH')
+CUT = os.environ.get('UV_CUT_OVERLAPS') == '1'
 methods = [i.identifier for i in bpy.ops.uv.unwrap.get_rna_type().properties['method'].enum_items]
-bpy.ops.uv.unwrap(method='MINIMUM_STRETCH' if 'MINIMUM_STRETCH' in methods else 'ANGLE_BASED', margin=.02)
-bpy.ops.uv.select_all(action='SELECT')
-bpy.ops.uv.pack_islands(margin=.02)
-bpy.ops.object.mode_set(mode='OBJECT')
+for attempt in range(6):
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.unwrap(method=METHOD if METHOD in methods else 'ANGLE_BASED', margin=.02)
+    bpy.ops.uv.select_all(action='SELECT')
+    bpy.ops.uv.pack_islands(margin=.02)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.faces.ensure_lookup_table()
+    folded = overlapping_faces(bm)
+    print('UV attempt', attempt, 'overlapping faces', len(folded))
+    if not folded or not CUT:
+        bm.free()
+        break
+    for f in folded:  # cut each folded face out
+        for e in f.edges:
+            if not e.seam:
+                e.seam = True
+                seams += 1
+    bm.to_mesh(mesh)
+    bm.free()
 
 uv = mesh.uv_layers['skin'].data
 result = {}

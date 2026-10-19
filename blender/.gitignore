@@ -12,4 +12,5 @@
 !labs/mano-reference-20261018/hand-texture-20261019/
 !labs/mano-reference-20261018/hand-texture-20261019/*.py
 !labs/mano-reference-20261018/hand-texture-20261019/*.md
+!labs/mano-reference-20261018/hand-texture-20261019/retouch-targets.json
 labs/mano-reference-20261018/hand-texture-20261019/diag_uv_weights.py

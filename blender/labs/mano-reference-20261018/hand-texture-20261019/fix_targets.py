@@ -38,5 +38,11 @@ web = (j['rindex0']+j['rmiddle0'])/2+np.array([-.012, .006, 0])
 targets['fix-index-middle-web'] = {  # web between index and middle, from the back
     'focus': web.tolist(),
     'direction': (np.array([-.35, 1., 0])/np.linalg.norm([-.35, 1., 0])).tolist()}
+# Web between middle and ring, 2 cm out along the fingers, from the back tilted 45° to either
+# side: the finger sides facing each other (user's screenshot of a patch there).
+web = (j['rmiddle0']+j['rring0'])/2+np.array([-.02, .004, 0])
+for side, z in (('thumb', .6), ('little', -.6)):
+    d = np.array([-.3, .75, z])
+    targets[f'fix-middle-ring-web-{side}'] = {'focus': web.tolist(), 'direction': (d/np.linalg.norm(d)).tolist()}
 (HERE/'fix-targets.json').write_text(json.dumps(targets, indent=1)+'\n', encoding='utf-8')
 print('FIX TARGETS', list(targets))

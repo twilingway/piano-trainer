@@ -22,17 +22,21 @@ SPREAD = ("views-spread", "generated-spread-aligned", "subdiv-spread.npz")
 # Touch-ups: a close-up render of the current texture, edited by Codex inside an edit mask
 # (render_fix_view.py); projected back with top priority inside that mask only.
 FIX = ("views-fix", "generated-fix", "subdiv-hand.npz")
-FIX_WEIGHT = 100.0
+FIX_WEIGHT = 1000.0  # spot close-ups outrank the wide seam views where both edited a texel
 FIX_FADE_PX = 40.0  # edit-mask feather in close-up pixels (0.06 mm each)
 # Seam pass: wide views (13 cm frame, seam_targets.py), Codex repainted the seam masks
 # (seam_mask.py, seam_edits.py); same top priority, feather in 0.13 mm pixels.
 SEAM = ("views-seam", "generated-seam", "subdiv-hand.npz")
 SEAM_FADE_PX = 12.0
+SEAM_WEIGHT = 100.0
 TOUCH = (FIX, SEAM)
 SPECS = {
     "dorsal": FLAT, "palmar": FLAT, "thumb-side": FLAT, "little-side": FLAT, "fingertips": FLAT,
     "dorsal-thumb": SPREAD, "dorsal-little": SPREAD, "palmar-thumb": SPREAD, "palmar-little": SPREAD,
     "fix-thumb-nail": FIX,
+    **{f"fix-{f}-nail": FIX for f in ("index", "middle", "ring", "little")},  # nail_edits.py masks
+    # Seam masks of seam_edits.py (EDIT_DIR=views-fix) on spot close-ups the user pointed at.
+    "fix-index-thumb-side": FIX, "fix-middle-ring-web-thumb": FIX, "fix-middle-ring-web-little": FIX,
     **{f"seam-{v}": SEAM for v in ("dorsal", "palmar", "dorsal-thumb", "dorsal-little", "palmar-thumb",
                                    "palmar-little", "thumb-dorsal", "thumb-palmar")},
 }
@@ -42,6 +46,9 @@ COLORS = {  # BGR, for the dominant-view map
     "little-side": (40, 200, 230), "fingertips": (200, 60, 200),
     "dorsal-thumb": (40, 40, 140), "dorsal-little": (120, 120, 255), "palmar-thumb": (30, 120, 30),
     "palmar-little": (150, 255, 150), "fix-thumb-nail": (255, 255, 0),
+    **{f"fix-{f}-nail": (0, 255 - 40 * i, 255) for i, f in enumerate(("index", "middle", "ring", "little"))},
+    "fix-index-thumb-side": (255, 0, 255), "fix-middle-ring-web-thumb": (200, 0, 120),
+    "fix-middle-ring-web-little": (120, 0, 200),
     **{v: (255, 255, 200 - 25 * i) for i, v in enumerate(s for s in SPECS if s.startswith("seam-"))},
 }
 # MASK_ONLY=1: weights from the render masks alone (coverage check before any generation).
@@ -336,7 +343,7 @@ def main():
         if SPECS[view] is SPREAD:
             w = w * PATCH_WEIGHT
         if SPECS[view] in TOUCH:
-            w = w * FIX_WEIGHT
+            w = w * (FIX_WEIGHT if SPECS[view] is FIX else SEAM_WEIGHT)
         cols[view], weights[view] = col.astype(np.float32), w.astype(np.float32)
         # Detail of a view fades out at grazing angles: there one view pixel smears over
         # millimetres of surface (the thumb nail's free edge, drawn at the dorsal outline,

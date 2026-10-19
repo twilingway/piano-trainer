@@ -4,7 +4,8 @@ Flat light, so the picture is the current albedo; 6 cm frame, 1024 px. Output in
 fix-thumb-nail.png, fix-thumb-nail-mask.png (silhouette) and cameras.json in the same format
 as views/, so bake_views.py can project the edited picture back.
 Env FIX_SET=targets: the spot close-ups of fix-targets.json; FIX_SET=seams: the wide seam views
-of seam-targets.json (seam_targets.py), 13 cm frame, into views-seam/.
+of seam-targets.json (seam_targets.py), 13 cm frame, into views-seam/. FIX_ONLY=a,b renders a
+subset of the targets.
 """
 from pathlib import Path
 import json, os
@@ -21,8 +22,9 @@ hand = bpy.data.objects['flat-hand']
 verts = [hand.matrix_world @ v.co for v in hand.data.vertices]
 if os.environ.get('FIX_SET') in ('targets', 'seams'):
     targets = json.loads((HERE/f"{'seam' if SEAMS else 'fix'}-targets.json").read_text(encoding='utf-8'))
+    only = os.environ.get('FIX_ONLY', '').split(',')  # optional subset of the targets
     shots = {name: (Vector(t['focus']), Vector(t['direction']), Vector((0, 0, 1)))
-             for name, t in targets.items()}
+             for name, t in targets.items() if only == [''] or name in only}
 else:
     lo = Vector([min(v[i] for v in verts) for i in range(3)])
     hi = Vector([max(v[i] for v in verts) for i in range(3)])
