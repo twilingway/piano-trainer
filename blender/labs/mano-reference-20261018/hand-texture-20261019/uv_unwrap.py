@@ -86,8 +86,9 @@ def overlapping_faces(bm):
 
 
 # Env UV_METHOD: MINIMUM_STRETCH (the accepted layout; folds the webs), ANGLE_BASED, CONFORMAL
-# (both fold too). UV_CUT_OVERLAPS=1 cuts folded faces into their own islands: no overlaps, but
-# the tiny islands showed as triangular patches in the webs (2026-10-19), so it is off.
+# (both fold too). UV_CUT_OVERLAPS=1 cuts folded faces into their own islands: no overlaps.
+# The accepted arm-uv.json is made with it since bake_views.py blends over the surface in 3D
+# (2026-10-19); with the old UV-space blend the tiny islands showed as triangular patches.
 METHOD = os.environ.get('UV_METHOD', 'MINIMUM_STRETCH')
 CUT = os.environ.get('UV_CUT_OVERLAPS') == '1'
 methods = [i.identifier for i in bpy.ops.uv.unwrap.get_rna_type().properties['method'].enum_items]

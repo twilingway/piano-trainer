@@ -7,9 +7,12 @@
 
 ## Где лежит
 
-`blender/labs/mano-reference-20261018/hand-texture-20261019/`. В git попадают только `*.py`, промпты
-Codex `codex-*.md` и журнал `README-RU.md` (исключения в `blender/.gitignore`). Рендеры, виды от
-Codex, запечённые карты и `.blend` остаются локальными; повторный прогон создаёт их заново.
+`blender/labs/mano-reference-20261018/hand-texture-20261019/`. В git попадают `*.py`, промпты Codex
+`codex-*.md`, журнал `README-RU.md` и то, что заново бесплатно не получить: картинки Codex
+(`generated/`, `generated-spread/`, выровненные `generated*-aligned/`, правки `generated-fix/`,
+`generated-seam/`), развёртка `arm-uv.json` и карта `bake/albedo-4096.png`; PNG — через Git LFS.
+Проверочная сцена с упакованной текстурой — `blender/scenes/hand-skin.blend`. Рендеры, листы
+сравнения и рабочие `.blend` остаются локальными, их создают скрипты.
 
 Зависимости вне git: `../smplh_data.py` (загрузчик SMPL-H из соседней лаборатории) и модель
 `../source/mano_v1_2/models/SMPLH_male.pkl`, которую по лицензии нельзя класть в репозиторий. Нужны
@@ -18,23 +21,24 @@ Blender 5.2, остальные через `python -I` с `numpy` и `opencv-pyt
 
 ## Скрипты по порядку
 
-| Шаг | Скрипт                                           | Запуск     | Что делает                                                                                        |
-| --- | ------------------------------------------------ | ---------- | ------------------------------------------------------------------------------------------------- |
-| 1   | `export_flat_hand.py`                            | python     | Нулевая поза SMPL-H → `flat-hand.obj`, `flat-arm.obj`; `HAND_POSE=spread` даёт раздвинутые пальцы |
-| 2   | `render_views.py`                                | Blender -b | 5 ортовидов кисти (+ 4 косых для spread), маски, `cameras.json`                                   |
-| 3   | `uv_unwrap.py`                                   | Blender -b | UV до локтя: шов по линии тыл/ладонь, 2 острова → `arm-uv.json`                                   |
-| 4   | `codex-hand-prompt.md`, `codex-spread-prompt.md` | Codex      | Рисунок кожи по каждому виду → `generated*/`                                                      |
-| 5   | `align_views.py`                                 | python     | Подгонка рисунков Codex к силуэту рендера (аффинно + по контуру)                                  |
-| 6   | `export_subdiv.py`                               | Blender -b | Поверхность с subsurf 2 и UV → `subdiv-*.npz`                                                     |
-| 7   | `bake_views.py`                                  | python     | Проекция видов, смешивание, выравнивание тона через шов UV → `bake/albedo-4096.png`               |
-| 8   | `check_bake.py`                                  | Blender -b | Проверочные рендеры `bake/check-*.png` и сцена `hand-textured.blend`                              |
+| Шаг | Скрипт                                           | Запуск     | Что делает                                                                                         |
+| --- | ------------------------------------------------ | ---------- | -------------------------------------------------------------------------------------------------- |
+| 1   | `export_flat_hand.py`                            | python     | Нулевая поза SMPL-H → `flat-hand.obj`, `flat-arm.obj`; `HAND_POSE=spread` даёт раздвинутые пальцы  |
+| 2   | `render_views.py`                                | Blender -b | 5 ортовидов кисти (+ 4 косых для spread), маски, `cameras.json`                                    |
+| 3   | `uv_unwrap.py`                                   | Blender -b | UV до локтя: шов по линии тыл/ладонь, `UV_CUT_OVERLAPS=1` вырезает сложенные грани → `arm-uv.json` |
+| 4   | `codex-hand-prompt.md`, `codex-spread-prompt.md` | Codex      | Рисунок кожи по каждому виду → `generated*/`                                                       |
+| 5   | `align_views.py`                                 | python     | Подгонка рисунков Codex к силуэту рендера (аффинно + по контуру)                                   |
+| 6   | `export_subdiv.py`                               | Blender -b | Поверхность с subsurf 2 и UV → `subdiv-*.npz`                                                      |
+| 7   | `bake_views.py`                                  | python     | Проекция видов, смешивание по поверхности в 3D → `bake/albedo-4096.png`                            |
+| 8   | `check_bake.py`                                  | Blender -b | Проверочные рендеры `bake/check-*.png` и сцена `hand-textured.blend`                               |
 
 Точечные правки делает Codex: `fix_targets.py` задаёт камеры крупных планов, `render_fix_view.py`
 рендерит текущую текстуру с маской правки. Codex перерисовывает её по образцу
 `codex-fix-nail-prompt.md`, а `bake_views.py` проецирует результат с приоритетом внутри маски. Маски
-ногтей четырёх пальцев строит `nail_edits.py` (промпт `codex-fix-nails-prompt.md`). Маски швов на
-крупных планах строит `seam_edits.py` с `EDIT_DIR=views-fix` (промпт `codex-fix-webs-prompt.md`).
-Точечные правки весят больше широких видов швов.
+ногтей четырёх пальцев строит `NAIL_SET=top nail_edits.py` на кадрах строго сверху (промпт
+`codex-fix-nails-top-prompt.md`): свободный край ложится на контур кончика. Маски швов на крупных
+планах строит `seam_edits.py` с `EDIT_DIR=views-fix` (промпт `codex-fix-webs-prompt.md`). Точечные
+правки весят больше широких видов швов.
 
 Чистка швов одним заходом Codex: `seam_targets.py` задаёт восемь широких видов пальцев и большого
 пальца, `FIX_SET=seams render_fix_view.py` рендерит их в `views-seam/`. `seam_mask.py` строит
@@ -52,7 +56,9 @@ UV-маску швов: смены лучшего вида из карты `DUMP
 `retouch-targets.json` на тон окружающей кожи, взятый по 3D-соседям. Запускать после каждого
 `bake_views.py`, до `check_bake.py`.
 
-Известный дефект: развёртка minimum stretch складывает перепонки, и 9 пар граней делят одни тексели.
-Проверку и экспериментальное разрезание (`UV_CUT_OVERLAPS=1`) делает `uv_unwrap.py`.
+Смешивание в `bake_views.py` идёт по поверхности руки, а не в UV: тексели раскладываются в
+воксельные сетки по направлению нормали, поэтому размытие переходит через швы UV и не смешивает
+встречные бока пальцев. Так стало возможно разрезать сложенные в перепонках грани (minimum stretch
+складывает их, и чужая кожа давала светлый клин) на мелкие острова без пятен на их границах.
 
 Параметры, результаты замеров и текущее состояние ведутся в `README-RU.md` рядом со скриптами.

@@ -17,10 +17,13 @@ from smplh_data import load_smplh, evaluate_smplh
 
 NAIL_FROM_DIP = .011  # metres
 TILT = .4  # camera direction = back of the hand + TILT × finger direction
+TOP_BACK = .008  # top-down nail close-ups: frame centre this far before the fingertip
 
 model = load_smplh(HERE.parent/'source/mano_v1_2/models/SMPLH_male.pkl')
 _, joints, _ = evaluate_smplh(model, np.zeros(156))
 names = model['joint_names']
+verts = np.array([[float(x) for x in line.split()[1:]]
+                  for line in (HERE/'flat-hand.obj').read_text(encoding='utf-8').splitlines() if line.startswith('v ')])
 targets = {}
 for finger, smplh in (('index', 'rindex'), ('middle', 'rmiddle'), ('ring', 'rring'), ('little', 'rpinky')):
     pip, dip = joints[names.index(smplh+'1')], joints[names.index(smplh+'2')]
@@ -29,6 +32,18 @@ for finger, smplh in (('index', 'rindex'), ('middle', 'rmiddle'), ('ring', 'rrin
     targets[f'fix-{finger}-nail'] = {'focus': (dip+along*NAIL_FROM_DIP).tolist(),
                                      'direction': (eye/np.linalg.norm(eye)).tolist(),
                                      'finger': along.tolist()}
+    # Straight down on the last phalanx, framed on the nail: in the tilted close-up the tip
+    # outline was the front of the fingertip, so a nail drawn up to it stopped 3-4 mm short
+    # of the tip on the model (user, 2026-10-19: the free edge should reach the tip).
+    focus = dip+along*NAIL_FROM_DIP
+    off = verts-focus
+    s = off@along
+    r = np.linalg.norm(off-np.outer(s, along), axis=1)
+    tip = s[r < .012].max()
+    down = np.array([0., 1., 0.])-along[1]*along
+    targets[f'fix-{finger}-nail-top'] = {'focus': (focus+along*(tip-TOP_BACK)).tolist(),
+                                         'direction': (down/np.linalg.norm(down)).tolist(),
+                                         'finger': along.tolist(), 'tip_ahead_m': TOP_BACK}
 j = {name: joints[names.index(name)] for name in names}
 mid = (j['rindex0']+j['rindex1'])/2
 targets['fix-index-thumb-side'] = {  # radial side of the index, seen from the thumb, a bit below

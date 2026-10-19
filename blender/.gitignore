@@ -5,8 +5,10 @@
 !scenes/
 !scenes/**
 *.blend1
-# Hand skin texture pipeline: scripts, Codex prompts and the lab journal only; its data
-# (renders, generated views, bakes, .blend) stays local. See docs/HAND_SKIN_TEXTURE.md.
+# Hand skin texture pipeline: scripts, Codex prompts, the lab journal, and what cannot be
+# made again for free: the Codex pictures (raw, aligned, touch-ups), the UV and the baked map
+# (PNGs through Git LFS). Renders, sheets and .blend stay local; the scene is in
+# scenes/hand-skin.blend. See docs/HAND_SKIN_TEXTURE.md.
 !labs/
 !labs/mano-reference-20261018/
 !labs/mano-reference-20261018/hand-texture-20261019/
@@ -14,3 +16,23 @@
 !labs/mano-reference-20261018/hand-texture-20261019/*.md
 !labs/mano-reference-20261018/hand-texture-20261019/retouch-targets.json
 labs/mano-reference-20261018/hand-texture-20261019/diag_uv_weights.py
+!labs/mano-reference-20261018/hand-texture-20261019/arm-uv.json
+!labs/mano-reference-20261018/hand-texture-20261019/bake/
+!labs/mano-reference-20261018/hand-texture-20261019/bake/albedo-4096.png
+!labs/mano-reference-20261018/hand-texture-20261019/generated/
+!labs/mano-reference-20261018/hand-texture-20261019/generated/*.png
+labs/mano-reference-20261018/hand-texture-20261019/generated/sheet.png
+!labs/mano-reference-20261018/hand-texture-20261019/generated-spread/
+!labs/mano-reference-20261018/hand-texture-20261019/generated-spread/*.png
+!labs/mano-reference-20261018/hand-texture-20261019/generated-fix/
+!labs/mano-reference-20261018/hand-texture-20261019/generated-fix/fix-*.png
+!labs/mano-reference-20261018/hand-texture-20261019/generated-seam/
+!labs/mano-reference-20261018/hand-texture-20261019/generated-seam/seam-*.png
+!labs/mano-reference-20261018/hand-texture-20261019/generated-aligned/
+!labs/mano-reference-20261018/hand-texture-20261019/generated-aligned/*
+labs/mano-reference-20261018/hand-texture-20261019/generated-aligned/*-overlay.png
+labs/mano-reference-20261018/hand-texture-20261019/generated-aligned/*sheet.png
+!labs/mano-reference-20261018/hand-texture-20261019/generated-spread-aligned/
+!labs/mano-reference-20261018/hand-texture-20261019/generated-spread-aligned/*
+labs/mano-reference-20261018/hand-texture-20261019/generated-spread-aligned/*-overlay.png
+labs/mano-reference-20261018/hand-texture-20261019/generated-spread-aligned/*sheet.png

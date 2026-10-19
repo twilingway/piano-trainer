@@ -3,7 +3,8 @@
 Inputs: subdiv-hand.npz (export_subdiv.py), views/cameras.json, generated-aligned/<view>.png.
 Per texel: 3D point and normal on the subdivided surface; per view: orthographic projection,
 visibility against the view's depth buffer, weight = cos(normal, view)^POWER times a fade
-near the silhouette edge. Colours are blended in linear light.
+near the silhouette edge. Colours are blended in linear light; every blur of the blend runs
+over the surface in 3D (Surface), so it ignores the UV layout.
 Output: bake/albedo-4096.png (UV islands padded), bake/weights-<view>.png,
 bake/dominant-view.png (which view wins each texel), bake/coverage.png.
 """
@@ -34,7 +35,9 @@ SPECS = {
     "dorsal": FLAT, "palmar": FLAT, "thumb-side": FLAT, "little-side": FLAT, "fingertips": FLAT,
     "dorsal-thumb": SPREAD, "dorsal-little": SPREAD, "palmar-thumb": SPREAD, "palmar-little": SPREAD,
     "fix-thumb-nail": FIX,
-    **{f"fix-{f}-nail": FIX for f in ("index", "middle", "ring", "little")},  # nail_edits.py masks
+    # nail_edits.py NAIL_SET=top masks: straight-down close-ups, the free edge on the tip outline
+    # (the tilted fix-<finger>-nail ones left 3-4 mm of skin before the nail).
+    **{f"fix-{f}-nail-top": FIX for f in ("index", "middle", "ring", "little")},
     # Seam masks of seam_edits.py (EDIT_DIR=views-fix) on spot close-ups the user pointed at.
     "fix-index-thumb-side": FIX, "fix-middle-ring-web-thumb": FIX, "fix-middle-ring-web-little": FIX,
     **{f"seam-{v}": SEAM for v in ("dorsal", "palmar", "dorsal-thumb", "dorsal-little", "palmar-thumb",
@@ -46,7 +49,7 @@ COLORS = {  # BGR, for the dominant-view map
     "little-side": (40, 200, 230), "fingertips": (200, 60, 200),
     "dorsal-thumb": (40, 40, 140), "dorsal-little": (120, 120, 255), "palmar-thumb": (30, 120, 30),
     "palmar-little": (150, 255, 150), "fix-thumb-nail": (255, 255, 0),
-    **{f"fix-{f}-nail": (0, 255 - 40 * i, 255) for i, f in enumerate(("index", "middle", "ring", "little"))},
+    **{f"fix-{f}-nail-top": (0, 255 - 40 * i, 255) for i, f in enumerate(("index", "middle", "ring", "little"))},
     "fix-index-thumb-side": (255, 0, 255), "fix-middle-ring-web-thumb": (200, 0, 120),
     "fix-middle-ring-web-little": (120, 0, 200),
     **{v: (255, 255, 200 - 25 * i) for i, v in enumerate(s for s in SPECS if s.startswith("seam-"))},
@@ -66,18 +69,22 @@ PATCH_WEIGHT = float(os.environ.get("PATCH_WEIGHT", 0.1))
 OCCLUSION_FADE_PX = 16.0
 DEPTH_JUMP = 0.004  # metres between neighbouring view pixels
 CONF_FULL = 0.02
-# Two-band blend, sigmas in texels of a 1024 map (scaled with TEX): band split, low-band and
-# high-band hand-over widths between views.
-SPLIT_SIGMA, LOW_T_SIGMA, HIGH_T_SIGMA = 6.0, 10.0, 1.5
+# Every blur of the blend runs over the hand surface in 3D (class Surface), not in UV: a UV
+# blur stops at island borders (tone steps along the dorsal/palmar seam) and reaches skin that
+# is only near in the packed layout (patches on small islands). Widths in millimetres of skin;
+# the UV blend they replace used texels of a 1024 map, 0.46 mm each.
+VOXEL_MM = float(os.environ.get("VOXEL_MM", 1.0))
+# Two-band blend: band split, low-band and high-band hand-over widths between views.
+SPLIT_MM, LOW_T_MM, HIGH_T_MM = 2.8, 4.6, 0.7
 GRAZE_LO, GRAZE_HI = 0.3, 0.6  # cos range over which a view's fine detail fades in
 SIDE_PRIORITY = float(os.environ.get("SIDE_PRIORITY", 0.35))  # selection only, not blending
-SELECT_SIGMA = float(os.environ.get("SELECT_SIGMA", 12.0))
-ZONE_FADE = 3.0  # texels of a 1024 map: how far inside its zone edge a view starts to fade  # smoothing of the weights that pick each texel's best view
-# UV seam levelling: every blur above runs in UV space and cannot cross an island border, so
-# the dorsal/palmar seam on the finger sides kept a hard tone step along mesh edges. Border
-# texels are paired across the seam in 3D (within SEAM_MATCH metres), each side moves halfway
-# to the other's tone (blur SEAM_SIGMA), and the shift fades out over SEAM_RANGE texels.
-SEAM_LEVEL = os.environ.get("SEAM_LEVEL", "1") == "1"
+SELECT_MM = float(os.environ.get("SELECT_MM", 5.6))  # smoothing of the weights that pick each texel's best view
+ZONE_MM = 2.0  # a view fades in over about twice this inside its zone edge
+FILL_MM, FILL_WIDE_MM, CONF_FADE_MM = 5.6, 22.0, 1.9  # holes and thin coverage
+# UV seam levelling (the fix before the surface blend, off by default now): border texels
+# are paired across the seam in 3D (within SEAM_MATCH metres), each side moves halfway to the
+# other's tone (blur SEAM_SIGMA), and the shift fades out over SEAM_RANGE texels.
+SEAM_LEVEL = os.environ.get("SEAM_LEVEL", "0") == "1"
 SEAM_MATCH = 0.0015
 SEAM_SIGMA, SEAM_RANGE = 4.0, 40.0  # texels of a 1024 map
 EDGE_FADE_PX = 10.0  # silhouette fade in view pixels (edge colour is the least reliable)
@@ -271,6 +278,86 @@ def texel_geometry(npz, cache={}):
     return cache[npz]
 
 
+def blur3(grid, sigma_vox):
+    """Separable Gaussian over the three axes of a (X, Y, Z, C) grid, zero outside."""
+    kern = cv2.getGaussianKernel(2 * int(np.ceil(3 * sigma_vox)) + 1, sigma_vox).astype(np.float32)
+    one = np.ones((1, 1), np.float32)
+    for axis in range(3):
+        g = np.ascontiguousarray(np.moveaxis(grid, axis, 0))
+        flat = cv2.sepFilter2D(g.reshape(g.shape[0], -1, g.shape[-1]), -1, one, kern,
+                               borderType=cv2.BORDER_CONSTANT)
+        grid = np.moveaxis(flat.reshape(g.shape), 0, axis)
+    return grid
+
+
+class Surface:
+    """Gaussian blur over the hand surface in 3D (flat pose).
+
+    Texels are splatted (trilinear) into voxel grids, one per normal direction; a texel
+    splats into and reads from the directions of its own normal, so skin facing away (the
+    side of the next finger, the other wall of a web) does not mix, while UV seams and the
+    gaps between UV islands do not exist here.
+    """
+
+    DIRS = np.array([[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], np.float32)
+    CORNERS = [(dx, dy, dz) for dx in (0, 1) for dy in (0, 1) for dz in (0, 1)]
+
+    def __init__(self, p, n):
+        g = (p - p.min(0)) / (VOXEL_MM / 1000)
+        self.i0 = np.floor(g).astype(np.int64)
+        self.f = (g - self.i0).astype(np.float32)
+        b = np.clip(n.astype(np.float32) @ self.DIRS.T, 0, None) ** 2
+        self.bins = (b / b.sum(1, keepdims=True)).astype(np.float32)
+        self.n = len(p)
+        self._area = {}
+
+    def _corners(self, ix, lo, shape):
+        c, f = self.i0[ix] - lo, self.f[ix]
+        idx = np.stack([((c[:, 0] + dx) * shape[1] + c[:, 1] + dy) * shape[2] + c[:, 2] + dz
+                        for dx, dy, dz in self.CORNERS], 1)
+        w = np.stack([(f[:, 0] if dx else 1 - f[:, 0]) * (f[:, 1] if dy else 1 - f[:, 1])
+                      * (f[:, 2] if dz else 1 - f[:, 2]) for dx, dy, dz in self.CORNERS], 1)
+        return idx, w
+
+    def sums(self, values, sigma_mm, src, dst):
+        """Blurred sums of values (N×C, C ≤ 4) splatted from texels src, read at texels dst."""
+        si, di = np.nonzero(src)[0], np.nonzero(dst)[0]
+        out = np.zeros((len(di), values.shape[1]), np.float32)
+        if not len(si) or not len(di):
+            return out
+        s = sigma_mm / VOXEL_MM
+        reach = int(np.ceil(3 * s)) + 1
+        lo = np.minimum(self.i0[si].min(0), self.i0[di].min(0)) - reach
+        shape = np.maximum(self.i0[si].max(0), self.i0[di].max(0)) + reach + 2 - lo
+        size = int(np.prod(shape))
+        sidx, sw = self._corners(si, lo, shape)
+        didx, dw = self._corners(di, lo, shape)
+        vals = values[si]
+        for k in range(len(self.DIRS)):
+            bs, bd = self.bins[si, k], self.bins[di, k]
+            us, ud = bs > 1e-3, bd > 1e-3
+            if not us.any() or not ud.any():
+                continue
+            grid = np.stack([np.bincount(sidx[us].ravel(), minlength=size,
+                                         weights=(sw[us] * (vals[us, c] * bs[us])[:, None]).ravel())
+                             for c in range(values.shape[1])], -1).astype(np.float32)
+            grid = blur3(grid.reshape(*shape, -1), s).reshape(size, -1)
+            out[ud] += bd[ud, None] * np.einsum("nj,njc->nc", dw[ud], grid[didx[ud]])
+        return out
+
+    def area(self, sigma_mm):
+        """Blurred surface area (sums of ones) at every texel, the normaliser of a plain blur."""
+        if sigma_mm not in self._area:
+            every = np.ones(self.n, bool)
+            self._area[sigma_mm] = np.maximum(
+                self.sums(np.ones((self.n, 1), np.float32), sigma_mm, every, every)[:, 0], 1e-9)
+        return self._area[sigma_mm]
+
+    def blur(self, values, sigma_mm, src, dst):
+        """Plain blur: blurred values over blurred area (values are 0 off src), at dst."""
+        return self.sums(values, sigma_mm, src, dst) / self.area(sigma_mm)[dst][:, None]
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     inside = texel_geometry(FLAT[2])[0]
@@ -381,80 +468,93 @@ def main():
     # Two-band blend. Each view splits into low (tone) and high (pores, creases, nail outline)
     # frequencies. Every texel has one best view; the low band hands over between views across
     # a wide blur of that choice (no hard seams), the high band across a narrow one (details
-    # from one view only: averaging them doubled the thumb nail).
-    unit = TEX / 1024
-    split, low_t, high_t = SPLIT_SIGMA * unit, LOW_T_SIGMA * unit, HIGH_T_SIGMA * unit
-    # The best view comes from weights smoothed over SELECT_SIGMA, so whole features (a nail,
+    # from one view only: averaging them doubled the thumb nail). All blurs over the surface.
+    _, p_flat, n_flat, _ = texel_geometry(FLAT[2])
+    surf = Surface(p_flat, n_flat)
+    every = np.ones(count, bool)
+    # The best view comes from weights smoothed over SELECT_MM, so whole features (a nail,
     # about 12 mm) come from one view: a per-texel choice switched views across the thumb
     # nail and showed two nails drawn at different places.
-    best_img = np.full((TEX, TEX), -1, np.int16)
-    best_score = np.zeros((TEX, TEX), np.float32)
+    best = np.full(count, -1, np.int16)
+    best_score = np.zeros(count, np.float32)
     for vi, view in enumerate(VIEWS):
         if view not in active:
             continue
-        wimg = np.zeros((TEX, TEX), np.float32)
-        wimg[inside] = weights[view]
-        score = cv2.GaussianBlur(wimg, (0, 0), SELECT_SIGMA * unit) * (wimg > 0.002)
+        w = weights[view]
+        hard = w > 0.002
+        score = np.zeros(count, np.float32)
+        score[hard] = surf.blur(w[:, None], SELECT_MM, w > 0, hard)[:, 0]
         if view not in MAIN and SPECS[view] not in TOUCH:  # views disagree on nails: dorsal/palmar decide
             score *= SIDE_PRIORITY
         better = score > best_score
-        best_img[better], best_score[better] = vi, score[better]
+        best[better], best_score[better] = vi, score[better]
     if os.environ.get("DUMP_BEST") == "1":  # debug: best-view map as an albedo-shaped image
         pal = np.array([COLORS[v] for v in VIEWS] + [(0, 0, 0)], np.uint8)
+        best_img = np.full((TEX, TEX), -1, np.int16)
+        best_img[inside] = best
         cv2.imwrite(os.path.join(OUT, "best-view-4096.png"), pal[best_img])
-    acc_l = np.zeros((TEX, TEX, 3), np.float32)
-    acc_a = np.zeros((TEX, TEX), np.float32)
-    acc_h = np.zeros((TEX, TEX, 3), np.float32)
-    acc_b = np.zeros((TEX, TEX), np.float32)
+    acc_l = np.zeros((count, 3), np.float32)
+    acc_a = np.zeros(count, np.float32)
+    acc_h = np.zeros((count, 3), np.float32)
+    acc_b = np.zeros(count, np.float32)
     for vi, view in enumerate(VIEWS):
         if view not in active:
             continue
-        # A view's own zone fades to zero INSIDE its edge (erode, then blur), so leaving it is
-        # gradual: a hard zone edge follows triangles and showed as polygonal seams.
-        hard = np.zeros((TEX, TEX), np.uint8)
-        hard[inside] = weights[view] > 0.002
-        k = int(2 * ZONE_FADE * unit) | 1
-        valid = cv2.GaussianBlur(cv2.erode(hard, np.ones((k, k), np.uint8)).astype(np.float32),
-                                 (0, 0), ZONE_FADE * unit) * hard
-        col = np.zeros((TEX, TEX, 3), np.float32)
-        col[inside] = cols[view]
-        low = cv2.GaussianBlur(col * valid[..., None], (0, 0), split)
-        low /= np.maximum(cv2.GaussianBlur(valid, (0, 0), split), 1e-6)[..., None]
-        onehot = (best_img == vi).astype(np.float32)
-        a = cv2.GaussianBlur(onehot, (0, 0), low_t) * valid
-        graze = np.zeros((TEX, TEX), np.float32)
-        graze[inside] = grazes[view]
-        b = cv2.GaussianBlur(onehot, (0, 0), high_t) * valid * graze
-        acc_l += low * a[..., None]
-        acc_a += a
-        acc_h += (col - low) * b[..., None]
-        acc_b += b
-        del low, col
-    known = inside & (acc_a > 1e-4)
+        hard = weights[view] > 0.002
+        if not hard.any():
+            continue
+        # A view's own zone fades to zero INSIDE its edge (the blurred zone is 0.5 at the
+        # edge), so leaving it is gradual: a hard zone edge showed as polygonal seams.
+        cover = surf.blur(hard[:, None].astype(np.float32), ZONE_MM, hard, hard)[:, 0]
+        z = np.clip((cover - 0.5) / 0.45, 0, 1)
+        valid = np.zeros(count, np.float32)
+        valid[hard] = z * z * (3 - 2 * z)
+        col = cols[view][hard]
+        vh = valid[hard]
+        s = surf.sums(np.concatenate([cols[view] * valid[:, None], valid[:, None]], 1), SPLIT_MM, hard, hard)
+        low = s[:, :3] / np.maximum(s[:, 3:], 1e-9)
+        onehot = (best == vi).astype(np.float32)[:, None]
+        a = surf.blur(onehot, LOW_T_MM, best == vi, hard)[:, 0] * vh
+        b = surf.blur(onehot, HIGH_T_MM, best == vi, hard)[:, 0] * vh * grazes[view][hard]
+        acc_l[hard] += low * a[:, None]
+        acc_a[hard] += a
+        acc_h[hard] += (col - low) * b[:, None]
+        acc_b[hard] += b
+        print(view, "blended")
+    known = acc_a > 1e-4
     # Detail is divided by at least 1: a view that holds a texel only with a sliver of weight
     # (just outside the best view's zone) adds faint detail, not its full detail.
-    lin_tex = acc_l / np.maximum(acc_a, 1e-6)[..., None] + acc_h / np.maximum(acc_b, 1.0)[..., None]
-    lin_tex = np.where(known[..., None], np.clip(lin_tex, 0, 1), 0).astype(np.float32)
+    lin = acc_l / np.maximum(acc_a, 1e-6)[:, None] + acc_h / np.maximum(acc_b, 1.0)[:, None]
+    lin = np.where(known[:, None], np.clip(lin, 0, 1), 0).astype(np.float32)
     del acc_l, acc_h
-    print("texels with no view", int(inside.sum() - known.sum()))
+    print("texels with no view", int(count - known.sum()))
     for limit in (0.05, 0.2):
         print(f"texels whose best view weight < {limit}:", int((best_w < limit).sum()))
 
-    # Holes inside the hand (between fingers, under the thumb) from neighbours, and a soft
-    # hand-over to a blur of the neighbours wherever the views are thin.
-    unit = TEX / 1024
-    conf = np.zeros((TEX, TEX), np.float32)
-    conf[inside] = np.clip(wsum / CONF_FULL, 0, 1)
-    smooth_num = cv2.GaussianBlur(lin_tex * conf[..., None], (0, 0), 12 * unit)
-    smooth_den = cv2.GaussianBlur(conf, (0, 0), 12 * unit)
-    smooth = smooth_num / np.maximum(smooth_den, 1e-6)[..., None]
-    smooth = np.where((smooth_den > 0.02)[..., None], smooth,
-                      pull_push_fill(lin_tex, known))
-    conf = cv2.GaussianBlur(conf, (0, 0), 4 * unit) * conf  # also fade in from hole borders
-    lin_tex = np.where(known[..., None], lin_tex, smooth)
-    lin_tex = lin_tex * conf[..., None] + smooth * (1 - conf[..., None])
-    lin_tex = np.where(inside[..., None], lin_tex, 0)
-    print("texels with confidence < 0.5:", int((conf[inside] < 0.5).sum()))
+    # Holes inside the hand (between fingers, under the thumb) from surface neighbours, and a
+    # soft hand-over to a blur of the neighbours wherever the views are thin.
+    conf = np.clip(wsum / CONF_FULL, 0, 1).astype(np.float32)
+    smooth = np.zeros((count, 3), np.float32)
+    todo = every
+    for sigma in (FILL_MM, FILL_WIDE_MM):
+        s = surf.sums(np.concatenate([lin * conf[:, None], conf[:, None]], 1), sigma, conf > 0, todo)
+        reached = s[:, 3] / surf.area(sigma)[todo] > 0.02
+        ix = np.nonzero(todo)[0]
+        smooth[ix[reached]] = s[reached, :3] / s[reached, 3:]
+        todo = todo.copy()
+        todo[ix[reached]] = False
+    lin_tex = np.zeros((TEX, TEX, 3), np.float32)
+    if todo.any():  # beyond both blurs: pull-push in UV
+        lin_tex[inside] = lin
+        known_img = np.zeros((TEX, TEX), bool)
+        known_img[inside] = known
+        smooth[todo] = pull_push_fill(lin_tex, known_img)[inside][todo]
+    print("texels filled by pull-push", int(todo.sum()))
+    conf = surf.blur(conf[:, None], CONF_FADE_MM, conf > 0, every)[:, 0] * conf  # also fade in from hole borders
+    lin = np.where(known[:, None], lin, smooth)
+    lin = lin * conf[:, None] + smooth * (1 - conf[:, None])
+    lin_tex[inside] = lin
+    print("texels with confidence < 0.5:", int((conf < 0.5).sum()))
     if SEAM_LEVEL:
         lin_tex = seam_level(lin_tex, inside, texel_geometry(FLAT[2])[1])
     lin_tex = pad_islands(lin_tex, inside, iterations=max(4, TEX // 256))
