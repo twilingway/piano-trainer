@@ -5,3 +5,11 @@
 !scenes/
 !scenes/**
 *.blend1
+# Hand skin texture pipeline: scripts, Codex prompts and the lab journal only; its data
+# (renders, generated views, bakes, .blend) stays local. See docs/HAND_SKIN_TEXTURE.md.
+!labs/
+!labs/mano-reference-20261018/
+!labs/mano-reference-20261018/hand-texture-20261019/
+!labs/mano-reference-20261018/hand-texture-20261019/*.py
+!labs/mano-reference-20261018/hand-texture-20261019/*.md
+labs/mano-reference-20261018/hand-texture-20261019/diag_uv_weights.py
