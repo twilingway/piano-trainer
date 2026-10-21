@@ -16,12 +16,13 @@ export function pointerMetadata(event: KeyPointer): KeyPointer {
 
 export function playViewKeyPointer(
   event: FederatedPointerEvent,
-  point: { readonly x: number; readonly y: number } | undefined,
+  point: { readonly x: number; readonly y: number; readonly pitch?: number } | undefined,
   keyboard: KeyboardLayer | undefined,
   computer: ComputerKeyboardLayer | undefined
 ): void {
   const layer = computer ?? keyboard;
-  const pitch = point && layer?.pitchAt(point.x, point.y);
+  const pitch =
+    point && ((!computer ? point.pitch : undefined) ?? layer?.pitchAt(point.x, point.y));
   if (computer) {
     if (pitch !== undefined) computer.pressWithMouse(pitch);
   } else if (pitch !== undefined) keyboard?.pressPointer(pitch, pointerMetadata(event));

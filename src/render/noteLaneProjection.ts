@@ -8,6 +8,7 @@ export interface NoteLaneProjection {
   readonly offsetY: number;
   readonly width: number;
   readonly height: number;
+  readonly depth?: number;
 }
 
 /** A layout-only affine correction joins raised black-note lanes to their physical key backs. */
@@ -16,16 +17,17 @@ export function createNoteLaneProjection(
   keyboard: WorldCamera,
   y: number,
   viewportWidth: number,
-  viewportHeight: number
+  viewportHeight: number,
+  depth?: number
 ): NoteLaneProjection {
   const width = Math.max(1, viewportWidth),
     height = Math.max(1, viewportHeight);
-  const from = notes.project(0, y, notes.near.z);
-  const to = keyboard.project(0, y, keyboard.near.z);
+  const from = notes.project(0, y, depth ?? notes.near.z);
+  const to = keyboard.project(0, y, depth ?? keyboard.near.z);
   const scaleX = from.scale > 0 && to.scale > 0 ? to.scale / from.scale : 1;
   const offsetX = (2 * to.x) / width - 1 - scaleX * ((2 * from.x) / width - 1);
   const offsetY = (-2 * (to.y - from.y)) / height;
-  return { y, scaleX, offsetX, offsetY, width, height };
+  return { y, scaleX, offsetX, offsetY, width, height, ...(depth === undefined ? {} : { depth }) };
 }
 
 export function projectNoteLane(point: Projected, lane?: NoteLaneProjection): Projected {

@@ -82,7 +82,7 @@ export class NotePlasma {
       Math.max(80, road.hitLineY),
       delta,
       road.drawsNativeRoad,
-      road.keysOffsetX
+      road.mistOffsetX
     );
   }
 

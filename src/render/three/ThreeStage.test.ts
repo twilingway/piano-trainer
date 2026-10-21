@@ -1,5 +1,4 @@
-import { Camera, Group, Scene } from "three";
-import type { Mesh } from "three";
+import { BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import type { KeyPress } from "./liveHands";
@@ -84,7 +83,8 @@ function fixture() {
     white: { ...disposable(), map: disposable() },
     black: { ...disposable(), bumpMap: disposable() },
     case: disposable(),
-    felt: disposable()
+    felt: disposable(),
+    keyboard: disposable()
   });
   const scene = {
     version: 1,
@@ -98,41 +98,41 @@ function fixture() {
   return { stage, draw, keys, hinge, hands, renderer, geometryDispose, scene };
 }
 
-const pivot = (250 * 142) / 150;
-
 describe("ThreeStage physical key contact", () => {
   it.each([0, 1 / 120, 1 / 60])("applies onset contact in the same frame at delta %s", (delta) => {
     const view = fixture();
     // The contact arrives from LiveHands.update during this frame, not the preceding frame.
     view.hands.update.mockImplementation(() => view.keys.set(60, { drop: 8, along: 90 }));
     view.draw(delta);
-    expect(Math.sin(view.hinge.rotation.x) * (pivot - 90)).toBeCloseTo(8, 12);
+    expect(view.hinge.position.y).toBe(-8);
+    expect(view.hinge.rotation.x).toBe(0);
   });
 
   it("restores the same contact after a seek regardless of previous angle or frame duration", () => {
     const view = fixture();
     for (const [previous, delta, drop, along] of [
-      [0.15, 1 / 120, 2, 30],
+      [-8, 1 / 120, 2, 30],
       [0, 0, 8, 110],
       [0.03, 1 / 60, 2, 30]
     ] as const) {
-      view.hinge.rotation.x = previous;
+      view.hinge.position.y = previous;
       view.keys.set(60, { drop: drop, along: along });
       view.draw(delta);
-      expect(Math.sin(view.hinge.rotation.x) * (pivot - along)).toBeCloseTo(drop, 12);
+      expect(view.hinge.position.y).toBe(-drop);
+      expect(view.hinge.rotation.x).toBe(0);
     }
   });
 
   it("keeps ordinary input and release smoothing, and honors a deeper manual press", () => {
     const view = fixture();
     view.draw(1 / 60, true);
-    expect(view.hinge.rotation.x).toBeCloseTo(Math.asin(9 / pivot) / 2, 12);
+    expect(view.hinge.position.y).toBe(-4);
     view.keys.set(60, { drop: 1, along: 0 });
     view.draw(0, true);
-    expect(view.hinge.rotation.x).toBeCloseTo(Math.asin(9 / pivot), 12);
+    expect(view.hinge.position.y).toBe(-8);
     view.keys.clear();
     view.draw(1 / 60);
-    expect(view.hinge.rotation.x).toBeCloseTo(Math.asin(9 / pivot) / 2, 12);
+    expect(view.hinge.position.y).toBe(-4);
   });
 
   it("terminates its hand planner and frees stage resources exactly once", () => {
@@ -169,6 +169,105 @@ it("samples pre-render against the configured camera before GPU rendering and by
   view.stage.setNativePianist(false);
   view.draw();
   expect(view.hands.update).toHaveBeenCalledOnce();
+});
+
+it("supplies the performer the physical keyboard camera and restores full-body mode in scene cameras", () => {
+  const view = fixture();
+  const before = vi.fn();
+  view.stage.beforeRender = before;
+  Object.assign(view.scene, { keyboardCamera: { ...view.scene.camera } });
+  const internal = view.stage as unknown as {
+    keyboardCamera: Camera;
+    free: { camera: Camera };
+    performance: { camera: Camera };
+  };
+  view.draw();
+  expect(before).toHaveBeenLastCalledWith(internal.keyboardCamera, true);
+  view.stage.setFreeCamera(true);
+  view.draw();
+  expect(before).toHaveBeenLastCalledWith(internal.free.camera, false);
+  view.stage.setPerformanceScene(true);
+  view.draw();
+  expect(before).toHaveBeenLastCalledWith(internal.performance.camera, false);
+  view.stage.setPerformanceScene(false);
+  view.stage.setFreeCamera(false);
+  view.draw();
+  expect(before).toHaveBeenLastCalledWith(internal.keyboardCamera, true);
+});
+
+it.each([false, true])("resets shared Three state after screen FX (failure: %s)", (failure) => {
+  const view = fixture();
+  const order: string[] = [];
+  view.renderer.resetState.mockImplementation(() => order.push("reset"));
+  view.renderer.render.mockImplementation(() => order.push("render"));
+  const effects = () => {
+    order.push("fx");
+    if (failure) throw new Error("FX failed");
+  };
+  const draw = () => {
+    view.stage.draw(
+      view.scene,
+      {},
+      () => false,
+      { width: 800, height: 600 },
+      0,
+      undefined,
+      [],
+      0,
+      undefined,
+      false,
+      undefined,
+      effects
+    );
+  };
+  if (failure) expect(draw).toThrow("FX failed");
+  else draw();
+  expect(order).toEqual(
+    failure ? ["reset", "fx", "reset", "reset"] : ["reset", "fx", "reset", "render", "reset"]
+  );
+  expect(view.renderer.setViewport).toHaveBeenCalledTimes(2);
+});
+
+it("keeps free-camera case and native glow in one physical depth pass without screen FX", () => {
+  const view = fixture();
+  const internal = view.stage as unknown as { scene: Scene; keys: Group; body: Group };
+  const board = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+  const glow = new Mesh(
+    new BoxGeometry(),
+    new MeshStandardMaterial({ transparent: true, depthTest: true, depthWrite: false })
+  );
+  internal.body.add(board);
+  internal.keys.add(internal.body);
+  internal.scene.add(internal.keys, glow);
+  const effects = vi.fn();
+  view.stage.setFreeCamera(true);
+  view.renderer.render.mockImplementation(() => {
+    expect(board.visible).toBe(true);
+    expect(board.material.colorWrite).toBe(true);
+    expect(glow.visible).toBe(true);
+    expect(glow.material).toMatchObject({ depthTest: true, depthWrite: false });
+  });
+  view.stage.draw(
+    view.scene,
+    {},
+    () => false,
+    { width: 800, height: 600 },
+    0,
+    undefined,
+    [],
+    0,
+    undefined,
+    true,
+    undefined,
+    effects
+  );
+  expect(effects).not.toHaveBeenCalled();
+  expect(view.renderer.render).toHaveBeenCalledOnce();
+  expect(view.renderer.clearDepth).toHaveBeenCalledOnce();
+  board.geometry.dispose();
+  board.material.dispose();
+  glow.geometry.dispose();
+  glow.material.dispose();
 });
 
 it("feeds the bass fire the song's notes only when the song's stage asks for it", () => {

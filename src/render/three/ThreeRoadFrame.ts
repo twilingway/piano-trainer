@@ -51,8 +51,8 @@ export class ThreeRoadFrame {
       alpha: 0
     };
     anchor.x = x;
-    anchor.top = anchor.bottom = camera.near.z;
-    anchor.width = width / 2;
+    anchor.top = anchor.bottom = lane?.depth ?? camera.near.z;
+    anchor.width = width * (camera.params.sourceUnits ?? 0.5);
     anchor.color = color;
     anchor.alpha = alpha;
     anchor.lane = lane;
@@ -83,13 +83,14 @@ export class ThreeRoadFrame {
       alpha,
       hitY,
       camera,
-      this.notes[this.noteCount]
+      this.notes[this.noteCount],
+      lane
     );
     if (!note) return;
     note.duration = duration;
     note.pitch = pitch;
     note.lane = lane;
-    note.textureOffset = (tailOffset * (camera.roadFarZ - camera.near.z)) / hitY;
+    note.textureOffset = (tailOffset * (camera.roadFarZ - (lane?.depth ?? camera.near.z))) / hitY;
     let hash = 2166136261;
     for (let index = 0; index < id.length; index++)
       hash = Math.imul(hash ^ id.charCodeAt(index), 16777619);
@@ -118,15 +119,16 @@ export class ThreeRoadFrame {
       alpha: number
     ) => void
   ): void {
-    const span = camera.roadFarZ - camera.near.z;
     for (let index = 0; index < this.noteCount; index++) {
       const note = this.notes[index];
       if (!note) continue;
+      const contact = note.lane?.depth ?? camera.near.z;
+      const span = camera.roadFarZ - contact;
       draw(
-        note.x * 2 + camera.params.width / 2,
-        hitY * (1 - (note.top - camera.near.z) / span),
-        hitY * (1 - (note.bottom - camera.near.z) / span),
-        note.width * 2,
+        note.x / (camera.params.sourceUnits ?? 0.5) + camera.params.width / 2,
+        hitY * (1 - (note.top - contact) / span),
+        hitY * (1 - (note.bottom - contact) / span),
+        note.width / (camera.params.sourceUnits ?? 0.5),
         note.color,
         note.alpha
       );

@@ -20,11 +20,19 @@ import type { Geometry } from "./viewGeometry";
 import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeometry";
 import type { Projected, RoadProjection } from "./perspective";
 import { handSurface } from "./handProjection";
-import { nativeViewCameras } from "./nativeViewCameras";
+import { nativeNoteCameras, nativeViewCameras } from "./nativeViewCameras";
+import { nativeRoadCameraLayout } from "./nativeRoadCameraLayout";
+import { metricCameraForKeys } from "./metricKeyboardCamera";
 import { RoadSparks } from "./RoadSparks";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
 import type { NoteLaneProjection } from "./noteLaneProjection";
-import { FREE_BLACK_LANE, freeRoadKeyPoint, roadNotePlace } from "./roadScenePoints";
+import {
+  FREE_BLACK_LANE,
+  drawRoadCorners,
+  freeRoadKeyPoint,
+  roadKeyHeights,
+  roadNotePlace
+} from "./roadScenePoints";
 import { DEFAULT_ROAD_SHAPE, roadLayoutCamera, type RoadShape } from "./roadLayoutCamera";
 import type { HandsGeometry, HandsLayer } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
@@ -57,6 +65,7 @@ export class RoadLayer {
   private readonly keys = new PerspectiveKeyboardLayer();
   private readonly legacyKeys: PerspectiveMesh;
   private perspective = false;
+  private computerKeyboard = false;
   private shape: RoadShape = DEFAULT_ROAD_SHAPE;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
   private camera: WorldCamera | undefined;
@@ -64,7 +73,7 @@ export class RoadLayer {
   private keyboardTop = false;
   private notesPerspective = true;
   private cameraHeight = 1;
-  private readonly keyHeights = new Map<number, number>();
+  private keyHeights = new Map<number, number>();
   private blackLane: NoteLaneProjection | undefined;
   /** The lane laid on the floor, and a blurred copy over it for the glow. */
   private readonly road: PerspectiveMesh;
@@ -162,15 +171,20 @@ export class RoadLayer {
   }
 
   setKeyboard(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, dockKeyboard = false): void {
+    this.computerKeyboard = keys.size === 1 && keys.has(0);
     this.keyboardTopY = geometry.keyboardTop;
-    this.keyHeights.clear();
-    const blackHeight = this.three?.on ? BLACK_NOTE_FLOOR : 36;
-    for (const key of keys.values())
-      this.keyHeights.set(key.x + key.width / 2, key.black ? blackHeight : WHITE_NOTE_FLOOR);
+    this.keyHeights = roadKeyHeights(keys, this.three?.on === true);
     this.blackLane = undefined;
     if (this.perspective) {
       this.keysShift = new Matrix().translate(0, -geometry.keyboardTop);
       if (this.three?.on && this.camera) {
+        if (!this.computerKeyboard)
+          this.camera = metricCameraForKeys(
+            this.camera,
+            keys,
+            this.cameraHeight,
+            this.shape.horizon
+          );
         const cameras = nativeViewCameras(
           this.camera,
           geometry.keyboardHeight,
@@ -179,16 +193,11 @@ export class RoadLayer {
           this.cameraHeight,
           this.shape.horizon,
           this.app?.screen.height ?? this.cameraHeight,
-          dockKeyboard ? geometry.keyboardTop + geometry.keyboardHeight : undefined
+          dockKeyboard ? geometry.keyboardTop + geometry.keyboardHeight : undefined,
+          this.computerKeyboard ? { x: 0, y: 0 } : this.keys.container.position
         );
         this.keyboardCamera = cameras.keyboard;
-        this.camera = cameras.notes;
-        this.blackLane = cameras.blackLane;
-        this.projection = this.camera.road;
-        this.hitY = this.projection.at(this.viewWidth / 2, 1).y;
-        this.horizonY = this.projection.at(this.viewWidth / 2, 0).y;
-        this.fog.position.set(0, this.horizonY);
-        this.fog.height = Math.max(1, (this.hitY - this.horizonY) * FOG_REACH);
+        Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
       } else this.keyboardCamera = this.camera;
       this.keys.layout(keys, geometry, this.keysTexture, this.three?.on === true);
       if (this.camera) this.setPan(this.pan, true);
@@ -231,8 +240,8 @@ export class RoadLayer {
     return this.three?.on && this.noteLaneY(keyX) === BLACK_NOTE_FLOOR ? this.blackLane : undefined;
   }
 
-  get keysOffsetX(): number {
-    return this.keys.container.position.x;
+  get mistOffsetX(): number {
+    return this.three?.on && !this.computerKeyboard ? 0 : this.keys.container.position.x;
   }
 
   get scenePan(): number {
@@ -446,24 +455,7 @@ export class RoadLayer {
     if (!projection) return;
     this.staff.draw(projection, pan);
 
-    const left = -pan;
-    const right = this.size.width - pan;
-    const farLeft = projection.at(left, 0);
-    const farRight = projection.at(right, 0);
-    const nearLeft = projection.at(left, 1);
-    const nearRight = projection.at(right, 1);
-    for (const mesh of [this.road, this.glow]) {
-      mesh.setCorners(
-        farLeft.x,
-        farLeft.y,
-        farRight.x,
-        farRight.y,
-        nearRight.x,
-        nearRight.y,
-        nearLeft.x,
-        nearLeft.y
-      );
-    }
+    drawRoadCorners([this.road, this.glow], projection, -pan, this.size.width - pan);
   }
 
   /** How clear a point of the flat lane is through the fog: 0 at the horizon, 1 out of it. */
@@ -479,9 +471,8 @@ export class RoadLayer {
 
   /** Where a point of the flat scene lands in perspective, and how much it shrinks there. */
   place(x: number, y: number): Projected | undefined {
-    const projection = this.projection;
-    if (!projection || this.size.height <= 0) return undefined;
-    return projection.at(x - this.pan, Math.max(0, Math.min(1, y / this.size.height)));
+    if (this.size.height <= 0) return undefined;
+    return this.projection?.at(x - this.pan, Math.max(0, Math.min(1, y / this.size.height)));
   }
 
   /** Whole hands are a separate overlay, never cut into individual key materials. */
@@ -496,25 +487,34 @@ export class RoadLayer {
   }
 
   /** The point of the flat keyboard under a point of the laid keys on screen; undefined off them. */
-  /** The keys moved off the hit line by the player; the road and its notes stay. */
+  /** Native notes and hit FX follow the placed key backs; legacy views retain detached keys. */
   setKeysOffset(offset: PointData): void {
+    const changed = this.keys.container.x !== offset.x || this.keys.container.y !== offset.y;
     this.keys.container.position.copyFrom(offset);
     this.legacyKeys.position.copyFrom(offset);
+    if (changed && this.three?.on && !this.computerKeyboard && this.keyboardCamera) {
+      const cameras = nativeNoteCameras(
+        this.keyboardCamera,
+        this.notesPerspective,
+        this.cameraHeight,
+        this.shape.horizon,
+        this.app?.screen.height ?? this.cameraHeight,
+        offset
+      );
+      Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
+      this.setPan(this.pan, true);
+    }
   }
 
-  keysPointAt(x: number, y: number): { x: number; y: number } | undefined {
-    if (this.sceneCamera) return freeRoadKeyPoint(this.three, x, y, this.keyboardTopY);
+  keysPointAt(x: number, y: number): { x: number; y: number; pitch?: number } | undefined {
+    if (this.three?.on && (!this.computerKeyboard || this.three.sceneCamera))
+      return freeRoadKeyPoint(this.three, x, y, this.keyboardTopY);
     x -= this.keys.container.x;
     y -= this.keys.container.y;
     if (this.perspective) return this.keys.container.visible ? this.keys.pointAt(x, y) : undefined;
     return this.legacyKeys.visible
       ? legacyKeyboardPoint(x, y, this.pan, this.hitY, this.size.height)
       : undefined;
-  }
-
-  /** Where a point on the flat hit line lands on screen. */
-  private project(x: number): number {
-    return this.notePlace(x, this.size.height)?.x ?? x - this.pan;
   }
 
   /**
@@ -546,7 +546,7 @@ export class RoadLayer {
     this.nativeRoad.visualTime = this.clock;
     const strikes = flatStrikes.map((strike) => ({
       ...strike,
-      x: this.project(strike.x),
+      x: this.notePlace(strike.x, this.size.height)?.x ?? strike.x - this.pan,
       screenY: this.notePlace(strike.x, this.size.height)?.y ?? this.hitY
     }));
     this.drawHorizon();

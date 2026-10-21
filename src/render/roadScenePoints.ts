@@ -1,9 +1,35 @@
 import type { Projected, RoadProjection } from "./perspective";
-import { BLACK_NOTE_FLOOR } from "./noteDimensions";
+import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
+import type { KeyRect } from "./keyboardLayout";
+import type { PerspectiveMesh } from "pixi.js";
+import { KEYBOARD_BLACK_BACK } from "./keyboardMetrics";
 import { projectNoteLane } from "./noteLaneProjection";
 import type { NoteLaneProjection } from "./noteLaneProjection";
 import type { WorldCamera } from "./worldCamera";
 import type { ThreeKeysHost } from "./three/ThreeKeysHost";
+
+export function drawRoadCorners(
+  meshes: readonly PerspectiveMesh[],
+  projection: RoadProjection,
+  left: number,
+  right: number
+): void {
+  const farLeft = projection.at(left, 0);
+  const farRight = projection.at(right, 0);
+  const nearLeft = projection.at(left, 1);
+  const nearRight = projection.at(right, 1);
+  for (const mesh of meshes)
+    mesh.setCorners(
+      farLeft.x,
+      farLeft.y,
+      farRight.x,
+      farRight.y,
+      nearRight.x,
+      nearRight.y,
+      nearLeft.x,
+      nearLeft.y
+    );
+}
 
 /** Physical black lanes need no correction in the inspection camera. */
 export const FREE_BLACK_LANE: NoteLaneProjection = {
@@ -12,8 +38,19 @@ export const FREE_BLACK_LANE: NoteLaneProjection = {
   offsetX: 0,
   offsetY: 0,
   width: 1,
-  height: 1
+  height: 1,
+  depth: KEYBOARD_BLACK_BACK
 };
+
+export function roadKeyHeights(
+  keys: ReadonlyMap<number, KeyRect>,
+  native: boolean
+): Map<number, number> {
+  const black = native ? BLACK_NOTE_FLOOR : 36;
+  return new Map(
+    [...keys.values()].map((key) => [key.x + key.width / 2, key.black ? black : WHITE_NOTE_FLOOR])
+  );
+}
 
 export function roadNotePlace(
   camera: WorldCamera | undefined,
@@ -37,8 +74,8 @@ export function roadNotePlace(
   return projectNoteLane(
     camera.project(
       camera.sourceX(keyX - pan + offset),
-      (keyHeight ?? near.y) + lift / 2,
-      near.z + (1 - progress) * (camera.roadFarZ - near.z)
+      (keyHeight ?? near.y) + lift * (camera.params.sourceUnits ?? 0.5),
+      (lane?.depth ?? near.z) + (1 - progress) * (camera.roadFarZ - (lane?.depth ?? near.z))
     ),
     lane
   );
@@ -49,7 +86,7 @@ export function freeRoadKeyPoint(
   x: number,
   y: number,
   keyboardTop: number
-): { x: number; y: number } | undefined {
+): { x: number; y: number; pitch?: number } | undefined {
   const point = three?.freeKeysPointAt(x, y);
-  return point && { x: point.x, y: point.y + keyboardTop };
+  return point && { ...point, y: point.y + keyboardTop };
 }

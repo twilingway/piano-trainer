@@ -30,8 +30,8 @@ import { RoadLayer, type RoadShape } from "./RoadLayer";
 import { drawViewKeys } from "./drawViewKeys";
 import { drawViewEffects, drawViewHud, viewStrikes } from "./viewEffects";
 import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
-import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry } from "./viewGeometry";
-import type { Geometry, KeysPlacement, ViewParts } from "./viewGeometry";
+import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry, viewLayoutChanged } from "./viewGeometry";
+import type { Geometry, KeysPlacement, ViewLayout, ViewParts } from "./viewGeometry";
 import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 
 export type { FallingNoteNames } from "./bakeLabels";
@@ -90,7 +90,7 @@ export class FallingNotesView {
   /** The range follows the song, so the road may show more keys around it; a fixed range stays. */
   private rangeFitsSong = false;
   private rangeFitsViewport = false;
-  private laidOutFor = { width: 0, height: 0 };
+  private laidOutFor: ViewLayout = { width: 0, height: 0 };
   private readonly relayout = () => (this.laidOutFor = { width: 0, height: 0 });
   private hudTop = 0;
   /** Where the player dragged the keys: lifted off the bottom, larger or smaller. */
@@ -424,7 +424,7 @@ export class FallingNotesView {
     const state = this.computer?.frame(frame) ?? frame;
     this.sceneCamera.frame(frame.hintTime ?? frame.time);
     const { width, height } = this.app.screen;
-    if (width !== this.laidOutFor.width || height !== this.laidOutFor.height) {
+    if (viewLayoutChanged(this.app.screen, this.laidOutFor, this.hands.live)) {
       this.layout(width, height);
     }
     const geometry = this.geometry(height);
@@ -520,7 +520,7 @@ export class FallingNotesView {
       this.total,
       this.whiteWidth,
       this.app.ticker.deltaMS / 1000,
-      this.roadMode && this.road?.drawsNativeRoad && this.road.keyboardOverhead
+      this.roadMode && this.road?.drawsNativeRoad
     );
     this.panSnap = false;
     this.pan = pan;
@@ -567,7 +567,7 @@ export class FallingNotesView {
   }
 
   private layout(width: number, height: number): void {
-    this.laidOutFor = { width, height };
+    this.laidOutFor = { width, height, liveHands: this.hands.live };
     // The computer keys fill the width; the piano's range may be wider and scroll.
     const total = this.computer ? computerWidth(width, this.placement.scale) : this.fitPiano(width);
     this.total = total;

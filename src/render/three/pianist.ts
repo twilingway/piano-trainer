@@ -256,9 +256,15 @@ export class Pianist {
   }
 
   /** `white` is any white key: its pitch, centre and width in the keys' group. */
-  layout(white: { readonly pitch: number; readonly x: number; readonly width: number }): void {
+  layout(white: {
+    readonly pitch: number;
+    readonly x: number;
+    readonly width: number;
+    readonly metric?: boolean;
+  }): void {
     const c4 = white.x - whitePosition(white.pitch) * white.width;
     this.space.scale.set(white.width / LAB_WHITE_M, 1000, KIT_DEPTH);
+    if (white.metric) this.space.scale.setScalar(1000);
     // The white keys' top sits at 22 in the keys' group, their front edge at 0.
     this.space.position.set(c4, 22, 0);
   }

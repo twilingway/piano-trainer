@@ -4,8 +4,54 @@ import { nativeViewCameras } from "./nativeViewCameras";
 import { roadLayoutCamera } from "./roadLayoutCamera";
 import { projectionMatrix, viewMatrix } from "./three/threeCamera";
 import { CAMERA_PRESETS } from "./worldCamera";
+import { metricKeyboardCamera } from "./metricKeyboardCamera";
+import { layoutKeyboard } from "./keyboardLayout";
+import { projectNoteLane } from "./noteLaneProjection";
 
 describe("overhead keyboard bottom docking", () => {
+  it("lands both note lanes on the placed metric key backs rather than leaving a 130px band", () => {
+    for (const [width, height] of [
+      [1365, 768],
+      [390, 844]
+    ] as const)
+      for (const prefs of Object.values(CAMERA_PRESETS))
+        for (const perspective of [false, true])
+          for (const top of [false, true]) {
+            const keys = layoutKeyboard(2288, 21, 108);
+            const base = metricKeyboardCamera(width, 2288, height, prefs, 0.1, keys.values());
+            const offset = { x: 31, y: 130 };
+            const { keyboard, notes, blackLane } = nativeViewCameras(
+              base,
+              150,
+              top,
+              perspective,
+              height,
+              0.1,
+              height,
+              height - 8,
+              offset
+            );
+            const view = viewMatrix(keyboard.params);
+            const projection = projectionMatrix(keyboard.params, width, height, offset);
+            for (const [y, z, lane] of [
+              [22, 150, undefined],
+              [34, 149.8008, blackLane]
+            ] as const) {
+              const scale = prefs.scale;
+              const key = new Vector3(-75 * scale, y * scale, -z * scale)
+                .applyMatrix4(view)
+                .applyMatrix4(projection);
+              const note = projectNoteLane(notes.project(-75, y, z), lane);
+              expect(note.x).toBeCloseTo(((key.x + 1) * width) / 2, 7);
+              expect(note.y).toBeCloseTo(((1 - key.y) * height) / 2, 7);
+            }
+            expect(notes.road.at(width / 2, 1).y).toBeCloseTo(
+              keyboard.project(0, 22, 150).y + offset.y,
+              7
+            );
+          }
+  });
+
   it("docks both overhead modes without hands, preserving height, offsets and note contact", () => {
     for (const [width, height] of [
       [320, 568],

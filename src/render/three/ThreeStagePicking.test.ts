@@ -33,6 +33,7 @@ function setup(performance: boolean) {
     performanceEnabled: performance,
     free: { camera: performance ? unused : camera },
     performance: { camera: performance ? camera : unused },
+    pickCamera: camera,
     pointer: new Vector2(),
     raycaster: new Raycaster(),
     occluders: [],
@@ -63,10 +64,10 @@ describe("effective scene camera mesh picking", () => {
       test.dispose();
     }
   );
-  it("does not pick through a scene camera after returning to the normal view", () => {
+  it("picks the physical keyboard in the normal camera after leaving the scene camera", () => {
     const test = setup(true);
     Object.assign(test.stage, { performanceEnabled: false, freeEnabled: false });
-    expect(test.pick(new Vector3(0.65, 0.15, 0.8))).toBeUndefined();
+    expect(test.pick(new Vector3(0.65, 0.15, 0.8))).toBe(60);
     test.dispose();
   });
 });

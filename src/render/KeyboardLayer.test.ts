@@ -76,10 +76,11 @@ describe("keyboard finger labels", () => {
         for (const key of keys.values()) {
           const digit = run.digits.get(key.pitch);
           if (!digit) throw new Error("Expected a key digit");
-          const depth = key.black ? 85 : 142;
+          const depth = key.black ? 94.0242 : 150;
           const sourceHeight = key.black ? size.blackHeight : size.keyboardHeight;
           const horizontalUvShare = key.black ? 0.84 : 0.86;
-          const worldWidth = digit.width / (2 * horizontalUvShare);
+          const worldWidth =
+            (digit.width * (key.black ? 13.31152 : 22.5)) / (key.width * horizontalUvShare);
           const worldHeight = (digit.height * depth) / sourceHeight;
           expect(worldHeight / worldWidth).toBeCloseTo(1);
           expect(digit.visible).toBe(true);

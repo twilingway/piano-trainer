@@ -1,5 +1,5 @@
 import { Container, Texture, UPDATE_PRIORITY } from "pixi.js";
-import type { Camera } from "three";
+import { Vector2, type Camera } from "three";
 import type { HandsSource } from "./liveHands";
 import type { Application, WebGLRenderer } from "pixi.js";
 import type { HandsLayer } from "../HandsLayer";
@@ -13,13 +13,10 @@ import { SharedTextureBindings } from "./SharedTextureBindings";
 import { SceneEffectsPass } from "./SceneEffectsPass";
 import { NativeKeyContacts } from "./NativeKeyContacts";
 import { disposePianistModel } from "./disposePianistModel";
+import { metricC4X, metricKeyX } from "../keyboardMetrics";
+import { Keyboard88PerformerHost } from "./Keyboard88PerformerHost";
 
-/**
- * Puts the three.js keys between the road and everything over it. While on, the app's own render
- * leaves the ticker and each frame is drawn in passes on one WebGL context: the road and neutral mist,
- * the keys, then the rest of the stage. Until three has loaded, or if it cannot, the perspective keys
- * stay as they are.
- */
+/** Composes Three/Pixi passes on one context, retaining perspective fallback while loading. */
 export class ThreeKeysHost {
   private stage: ThreeStage | undefined;
   private loading: Promise<void> | undefined;
@@ -38,7 +35,6 @@ export class ThreeKeysHost {
   private energy: readonly EnergySource[] = [];
   private roadFrame: ThreeRoadFrame | undefined;
   private energyDeltaSeconds: number | undefined;
-  /** The local pianist behind the keys, once asked for and loaded. */
   private pianist: Pianist | undefined;
   private pianistLoading = false;
   private pianistStage: ThreeStage | undefined;
@@ -48,17 +44,14 @@ export class ThreeKeysHost {
   private pianistNativeOnlyAttempt = false;
   private frameHands: HandsSource | undefined;
   private readonly nativeContacts = new NativeKeyContacts();
-  /**
-   * Holds the road's place on the stage while the road is drawn on its own: a container on the
-   * stage cannot be drawn alone, its parent's visibility decides its children's.
-   */
+  private readonly publicPerformer = new Keyboard88PerformerHost();
+  /** Reserves the road's stage position while it is rendered separately. */
   private readonly placeholder = new Container();
   private readonly effects = new SceneEffectsPass();
   private readonly roadEffects = new SceneEffectsPass();
 
   constructor(
     private readonly app: Application,
-    /** The road's container: drawn first, on its own. */
     private readonly road: Container,
     private readonly keys: PerspectiveKeyboardLayer,
     private readonly keyboard: KeyboardLayer,
@@ -86,7 +79,6 @@ export class ThreeKeysHost {
     return loaded;
   }
 
-  /** Whether three draws the keys now, rather than the perspective layer. */
   get on(): boolean {
     return this.active;
   }
@@ -100,7 +92,6 @@ export class ThreeKeysHost {
     );
   }
 
-  /** The same snapshot that feeds the road's plasma and local burning. */
   setEnergy(sources: readonly EnergySource[], deltaSeconds?: number): void {
     this.energy = sources;
     this.energyDeltaSeconds = deltaSeconds;
@@ -143,14 +134,31 @@ export class ThreeKeysHost {
     this.stage?.resetFreeCamera();
   }
 
-  freeKeysPointAt(x: number, y: number): { x: number; y: number } | undefined {
+  freeKeysPointAt(x: number, y: number): { x: number; y: number; pitch?: number } | undefined {
     const scene = this.keys.scene;
-    if (!this.sceneCamera || !scene) return undefined;
-    const pitch = this.stage?.freeKeyAt(x, y, this.app.screen.width, this.app.screen.height);
-    const face = scene.faces.find(({ key }) => key.pitch === pitch);
-    return (
-      face && { x: face.key.x + face.key.width / 2, y: face.source.y + face.source.height / 2 }
+    if (!this.active || !scene) return undefined;
+    const surface = scene.faces[0]?.key.pitch === 0 ? new Vector2() : undefined;
+    const pitch = this.stage?.freeKeyAt(
+      x,
+      y,
+      this.app.screen.width,
+      this.app.screen.height,
+      surface
     );
+    if (pitch === 0 && surface)
+      return { x: surface.x * scene.texture.width, y: surface.y * scene.texture.height };
+    const face = scene.faces.find(({ key }) => key.pitch === pitch);
+    if (face)
+      return { x: face.key.x + face.key.width / 2, y: face.source.y + face.source.height / 2 };
+    if (pitch === undefined || scene.camera.params.keyboardDepth === undefined) return undefined;
+    const c4 = metricC4X(
+      scene.faces.map(({ key }) => key),
+      scene.camera.sourceX
+    );
+    const source =
+      (c4 + metricKeyX(pitch)) / (scene.camera.params.sourceUnits ?? 0.5) +
+      scene.camera.params.width / 2;
+    return { x: source, y: 1, pitch };
   }
 
   private syncFreeCamera(layered = this.active): void {
@@ -175,6 +183,7 @@ export class ThreeKeysHost {
     this.clearEnergy();
     this.pianistGeneration++;
     this.releasePianist();
+    this.publicPerformer.dispose();
     this.effects.dispose();
     this.roadEffects.dispose();
     this.stage?.dispose();
@@ -204,24 +213,26 @@ export class ThreeKeysHost {
   private async create(): Promise<void> {
     const renderer = this.app.renderer;
     const gl = (renderer as Partial<WebGLRenderer>).gl;
-    // three needs WebGL 2; anything else keeps the perspective keys.
     if (typeof WebGL2RenderingContext === "undefined" || !(gl instanceof WebGL2RenderingContext))
       return;
     this.sharedBindings ??= new SharedTextureBindings(gl);
     try {
-      const [{ ThreeStage }, { loadPianoKit }, { loadHand }] = await Promise.all([
+      const [{ ThreeStage }, { loadKeyboard88 }, { loadHand }] = await Promise.all([
         import("./ThreeStage"),
-        import("./pianoKit"),
+        import("./keyboard88"),
         import("./liveHands")
       ]);
       const [kit, hand] = await Promise.all([
-        loadPianoKit(),
+        loadKeyboard88(),
         loadHand().catch((error: unknown) => {
           console.warn("3D hands unavailable, keeping the sprite hands", error);
           return undefined;
         })
       ]);
-      if (this.destroyed) return;
+      if (this.destroyed) {
+        kit.dispose();
+        return;
+      }
       // Three creates empty 3D textures in its constructor: Pixi's upload flags must be off.
       this.resetPixiState();
       try {
@@ -229,6 +240,9 @@ export class ThreeKeysHost {
         this.stage.beforeRender = this.beforeRender;
         this.stage.setKeyboardDim(this.keyboardDim);
         this.stage.setPerformanceScene(this.performanceWanted);
+      } catch (error) {
+        kit.dispose();
+        throw error;
       } finally {
         // Construction also changes GL bindings, even if 3D was disabled while loading.
         this.resetPixiState();
@@ -248,13 +262,14 @@ export class ThreeKeysHost {
     this.syncFreeCamera();
     if (this.hands) this.hands.live = on && this.stage?.hands !== undefined;
     const { ticker } = this.app;
-    // The ticker calls the app's render with the app as `this`, as Pixi itself added it.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const render = this.app.render;
     if (on) {
       ticker.remove(render, this.app);
       ticker.add(this.frame, undefined, UPDATE_PRIORITY.LOW);
     } else {
+      this.publicPerformer.clear();
+      this.stage?.setNativePianist(false);
       ticker.remove(this.frame);
       ticker.add(render, this.app, UPDATE_PRIORITY.LOW);
       this.layer(false);
@@ -284,7 +299,7 @@ export class ThreeKeysHost {
     });
     try {
       if (separateRoad) this.roadEffects.draw(renderer, legacyEffects);
-      this.effects.draw(renderer, legacyEffects);
+      this.effects.draw(renderer, legacyEffects && separateRoad);
       this.seatPianist(this.stage, scene);
       const picture = gl.texture.getGlSource(scene.texture.source).texture;
       const frame = this.keyboard.frame;
@@ -299,7 +314,8 @@ export class ThreeKeysHost {
           : undefined;
       this.frameHands = hands;
       // Live hands press the keys they play themselves: a repeated note's key comes up between.
-      const native = this.wantsPianist() && this.pianist?.native === true;
+      const native =
+        this.publicPerformer.ready || (this.wantsPianist() && this.pianist?.native === true);
       if (native && this.hands) this.nativeContacts.setNotes(this.hands.songNotes);
       const played = hands !== undefined && this.stage.hands !== undefined && !native;
       this.stage.setSongStage(this.hands?.songStage);
@@ -318,7 +334,8 @@ export class ThreeKeysHost {
         this.energyDeltaSeconds,
         this.roadFrame,
         worldEffects,
-        this.hands?.songNotes
+        this.hands?.songNotes,
+        separateRoad ? undefined : this.drawRoadEffects
       );
     } catch (error) {
       this.effects.restore();
@@ -343,7 +360,19 @@ export class ThreeKeysHost {
     }
   };
 
-  private readonly beforeRender = (camera: Camera): void => {
+  private readonly drawRoadEffects = (): void => {
+    this.resetPixiState();
+    this.effects.restore();
+    this.effects.draw(this.app.renderer);
+  };
+
+  private readonly beforeRender = (camera: Camera, separateCameras = false): void => {
+    if (this.pianistIdentity === "public" && !this.hands?.container.visible && this.stage?.hands)
+      this.stage.hands.group.visible = false;
+    if (this.publicPerformer.ready) {
+      this.publicPerformer.pose(this.frameHands, separateCameras);
+      return;
+    }
     if (!this.wantsPianist() || !this.pianist) return;
     if (this.pianist.native) this.pianist.sample(this.frameHands, camera);
     else if (this.hands?.pianist && this.stage?.hands)
@@ -376,6 +405,20 @@ export class ThreeKeysHost {
   /** A restored source package supersedes a previously loaded unrelated trial, including pending loads. */
   private seatPianist(stage: ThreeStage, keys: KeysScene): void {
     const source = this.hands?.songPerformance;
+    if (this.hands?.renderedStyle && !(import.meta.env.DEV && source)) {
+      if (this.pianistIdentity !== "public") {
+        this.pianistGeneration++;
+        this.pianistLoading = this.pianistAttempted = false;
+        this.releasePianist();
+        this.pianistIdentity = "public";
+      }
+      this.publicPerformer.sync(stage, keys, this.hands);
+      stage.setNativePianist(this.publicPerformer.ready);
+      this.hands.live = this.active && (stage.hands !== undefined || this.publicPerformer.ready);
+      stage.hands?.setPlayer(undefined);
+      return;
+    }
+    this.publicPerformer.clear();
     const identity = this.sourceIdentity();
     if (identity !== this.pianistIdentity) {
       this.pianistIdentity = identity;

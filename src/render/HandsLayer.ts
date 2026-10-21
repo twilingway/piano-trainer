@@ -58,6 +58,7 @@ export class HandsLayer {
   private readonly markerTexture = bakeMarker();
   private readonly poses = new Map<Hand, HandPose>();
   private notes: Record<Hand, SongNote[]> = { left: [], right: [] };
+  private readonly songListeners = new Set<(notes: HandsLayer["songNotes"]) => void>();
   private disposed = false;
   private beats: readonly SongBeat[] = [];
   songPerformance: SourcePerformanceIdentity | undefined;
@@ -137,6 +138,10 @@ export class HandsLayer {
   /** The local pianist sits behind the 3D view's keys, the live hands playing in front of it. */
   pianist = false;
 
+  get renderedStyle(): boolean {
+    return this.style === "rendered";
+  }
+
   /** The song time of the last frame drawn, for the 3D view's live hands. */
   time = 0;
 
@@ -156,6 +161,11 @@ export class HandsLayer {
     return this.notes;
   }
 
+  subscribeSong(listener: (notes: HandsLayer["songNotes"]) => void): () => void {
+    this.songListeners.add(listener);
+    return () => this.songListeners.delete(listener);
+  }
+
   get songBeats(): readonly SongBeat[] {
     return this.beats;
   }
@@ -168,6 +178,7 @@ export class HandsLayer {
       left: song.notes.filter((note) => note.hand === "left"),
       right: song.notes.filter((note) => note.hand === "right")
     };
+    for (const listener of this.songListeners) listener(this.notes);
     this.reset();
   }
 
@@ -294,6 +305,7 @@ export class HandsLayer {
 
   destroy(): void {
     this.disposed = true;
+    this.songListeners.clear();
     // The baked drawn poses are this layer's own; the renders belong to the Assets cache.
     for (const [definition, texture] of this.textures) {
       if (!this.renders.includes(definition)) texture.destroy(true);

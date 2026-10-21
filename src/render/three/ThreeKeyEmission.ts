@@ -26,6 +26,12 @@ interface DisplayEmission {
 export class ThreeKeyEmission {
   private readonly keys = new Map<number, KeyEmission>();
   private readonly retained = new Map<number, DisplayEmission>();
+  private readonly ownedTemplates = new Set<MeshStandardMaterial>();
+
+  /** Painted top templates share baked textures but own their shader hook and material object. */
+  ownTemplate(material: MeshStandardMaterial): void {
+    this.ownedTemplates.add(material);
+  }
 
   /** Only numeric display state survives a rebuild; previous materials are released at once. */
   beginLayout(): void {
@@ -54,10 +60,14 @@ export class ThreeKeyEmission {
     body: MeshStandardMaterial
   ): [MeshStandardMaterial, MeshStandardMaterial] {
     const materials: [MeshStandardMaterial, MeshStandardMaterial] = [top.clone(), body.clone()];
-    for (const material of materials) {
+    for (const [index, material] of materials.entries()) {
+      const template = index === 0 ? top : body;
+      const decorate = template.onBeforeCompile.bind(template);
+      const program = template.customProgramCacheKey();
       material.emissive.setRGB(0, 0, 0);
       material.emissiveIntensity = 0;
-      material.onBeforeCompile = (shader) => {
+      material.onBeforeCompile = (shader, renderer) => {
+        decorate(shader, renderer);
         shader.fragmentShader = shader.fragmentShader.replace(
           "#include <emissivemap_fragment>",
           `#include <emissivemap_fragment>
@@ -65,7 +75,7 @@ export class ThreeKeyEmission {
            totalEmissiveRadiance *= 0.85 + keyRim * 0.8;`
         );
       };
-      material.customProgramCacheKey = () => "three-key-neon-v1";
+      material.customProgramCacheKey = () => `three-key-neon-v1:${program}`;
     }
     const key: KeyEmission = {
       materials,
@@ -175,5 +185,7 @@ export class ThreeKeyEmission {
   private releaseMaterials(): void {
     for (const key of this.keys.values()) for (const material of key.materials) material.dispose();
     this.keys.clear();
+    for (const material of this.ownedTemplates) material.dispose();
+    this.ownedTemplates.clear();
   }
 }

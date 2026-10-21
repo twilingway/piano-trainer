@@ -9,7 +9,7 @@ import type { NoteNameStyle } from "../song/musicxml";
 import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
-import { PIANIST_AVAILABLE } from "../render/three/pianistModel";
+import { pianistAvailable } from "../render/three/pianistAvailability";
 import type { StaffPrefs } from "./useStaffPrefs";
 import { useI18n } from "./useI18n";
 
@@ -180,13 +180,17 @@ export function useFallingView({
     viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
     viewRef.current?.setFreeCamera(staffPrefs.freeCamera);
     viewRef.current?.setPerformanceScene(staffPrefs.performanceScene);
-    if (viewRef.current) viewRef.current.hands.pianist = PIANIST_AVAILABLE && staffPrefs.pianist;
+    if (viewRef.current)
+      viewRef.current.hands.pianist =
+        pianistAvailable(staffPrefs.keyStyle, staffPrefs.handStyle) && staffPrefs.pianist;
   }, [
     viewRef,
     trainerReady,
     staffPrefs.roadGuides,
     staffPrefs.keyboardDim,
     staffPrefs.pianist,
+    staffPrefs.keyStyle,
+    staffPrefs.handStyle,
     staffPrefs.freeCamera,
     staffPrefs.performanceScene
   ]);

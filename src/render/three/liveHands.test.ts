@@ -17,6 +17,29 @@ import type { Planner } from "./liveHands";
 
 const LIB = library as unknown as Library;
 
+it("uses parallel8mm contacts and uniform metric hand scale on keyboard88", () => {
+  const planner: Planner = (notes, deliver, context) => {
+    for (const chunk of planChunks(context?.rest ?? STUDIO_REST, LIB, notes, () => false))
+      deliver(chunk);
+    return () => undefined;
+  };
+  const hands = new LiveHands(skeleton(), planner);
+  hands.layout({ pitch: 60, x: 0, width: 23.5, metric: true });
+  for (const rig of hands.group.children)
+    expect(rig.scale.toArray().map(Math.abs)).toEqual([1000, 1000, 1000]);
+  hands.setPlayer({
+    rest: { left: STUDIO_REST, right: STUDIO_REST },
+    pose: () => undefined,
+    contact: () => ({ height: -20, along: 100 })
+  });
+  hands.update({ time: 0.4, notes: { left: [], right: RIGHT_LINE } });
+  expect(hands.keys.size).toBeGreaterThan(0);
+  expect([...hands.keys.values()].every((press) => press.drop === 8 && press.along === 100)).toBe(
+    true
+  );
+  hands.dispose();
+});
+
 interface GltfNode {
   readonly name: string;
   readonly children?: readonly number[];

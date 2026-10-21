@@ -260,6 +260,7 @@ export interface HandPlayer {
 
 /** Both hands share one streamed plan, song time and key-contact calculation. */
 export class LiveHands {
+  private metric = false;
   readonly group = new Group();
   private readonly rigs: readonly LiveRig[];
   private lanes: Record<Hand, Lane> = { left: emptyLane(), right: emptyLane() };
@@ -294,9 +295,18 @@ export class LiveHands {
     this.keys.clear();
   }
 
-  layout(white: { readonly pitch: number; readonly x: number; readonly width: number }): void {
+  layout(white: {
+    readonly pitch: number;
+    readonly x: number;
+    readonly width: number;
+    readonly metric?: boolean;
+  }): void {
+    this.metric = white.metric === true;
     const c4 = white.x - whitePosition(white.pitch) * white.width;
-    for (const rig of this.rigs) rig.layout(c4, white.width);
+    for (const rig of this.rigs) {
+      rig.layout(c4, white.width);
+      if (white.metric) rig.space.scale.set(Math.sign(rig.space.scale.x) * 1000, 1000, 1000);
+    }
   }
 
   readonly keys = new Map<number, KeyPress>();
@@ -434,6 +444,12 @@ export class LiveHands {
         depth = contact ? (isBlack(pitch) ? BLACK_TOP : 0) - contact.height : 0;
       }
       if (!contact || depth <= 0) continue;
+      if (this.metric) {
+        const previous = this.keys.get(pitch);
+        const drop = Math.min(8, depth);
+        if (!previous || drop > previous.drop) this.keys.set(pitch, { drop, along: contact.along });
+        continue;
+      }
       const frontDip = Math.min(keyFrontDip(depth, contact.along), KEY_DIP);
       const previous = this.keys.get(pitch);
       if (!previous || frontDip > keyDriveFront(previous.drop, previous.along))

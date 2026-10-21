@@ -48,7 +48,7 @@ function contactMap(): DataTexture {
   return texture;
 }
 
-/** Static piano appearance, independent of cameras, note materials and all animation clocks. */
+/** Static illumination and contacts; keyboard88's baked material maps stay owned by the asset. */
 export class KeyboardAppearance {
   readonly group = new Group();
   private readonly grain = studyIvoryMap();

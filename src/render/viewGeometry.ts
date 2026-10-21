@@ -40,6 +40,25 @@ export interface Geometry {
   readonly feltHeight: number;
 }
 
+export interface ViewLayout {
+  readonly width: number;
+  readonly height: number;
+  readonly liveHands?: boolean;
+}
+
+/** Async native-hand readiness changes the source hit row even without a resize. */
+export function viewLayoutChanged(
+  current: ViewLayout,
+  previous: ViewLayout,
+  liveHands: boolean
+): boolean {
+  return (
+    current.width !== previous.width ||
+    current.height !== previous.height ||
+    (previous.liveHands !== undefined && liveHands !== previous.liveHands)
+  );
+}
+
 /** The player's placement of the keys: a lift off the bottom and a size against the usual. */
 export interface KeysPlacement {
   /** As a share of the view's height. */

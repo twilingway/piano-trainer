@@ -1,5 +1,6 @@
 import type { Hand } from "../../fingering/fingering";
 import type { SongNote } from "../../song/song";
+import { KEYBOARD88_REPEAT_GAP_SECONDS } from "./keyboard88Motion";
 
 type Note = Pick<SongNote, "pitch" | "start" | "duration" | "sourceFinger">;
 export type NativeContactNotes = Readonly<Record<Hand, readonly Note[]>>;
@@ -42,9 +43,19 @@ export class NativeKeyContacts {
       let count = 0;
       for (const window of windows) {
         const previous = windows[count - 1];
-        if (previous && window.start <= previous.end)
+        if (previous && window.start <= previous.end && window.end <= previous.end) continue;
+        // A key cannot be struck again while down: a following repeat lifts it first.
+        if (previous && window.start > previous.start)
+          previous.end = Math.min(
+            previous.end,
+            window.start -
+              Math.min(KEYBOARD88_REPEAT_GAP_SECONDS, (window.start - previous.start) / 2)
+          );
+        else if (previous && window.start <= previous.end) {
           previous.end = Math.max(previous.end, window.end);
-        else windows[count++] = window;
+          continue;
+        }
+        windows[count++] = window;
       }
       windows.length = count;
     }

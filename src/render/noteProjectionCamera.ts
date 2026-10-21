@@ -55,6 +55,12 @@ export function noteProjectionCamera(
     originY,
     fit,
     prefs,
+    ...(keyboard.params.sourceUnits === undefined
+      ? {}
+      : { sourceUnits: keyboard.params.sourceUnits }),
+    ...(keyboard.params.keyboardDepth === undefined
+      ? {}
+      : { keyboardDepth: keyboard.params.keyboardDepth }),
     ...(direct ? { orthographicScale: pixels } : {})
   };
   const project: WorldCamera["project"] = (x, y, z) => {
@@ -66,7 +72,7 @@ export function noteProjectionCamera(
     return {
       x: origin.x + x * scale * zoom,
       y: originY - (vertical * ca + depthZ * sa) * zoom,
-      scale: (zoom * scale) / 2
+      scale: zoom * scale * (keyboard.params.sourceUnits ?? 0.5)
     };
   };
   const depthOffset = prefs.height * fit * sa + prefs.distance * fit * ca;

@@ -1,4 +1,3 @@
-import type { BufferGeometry } from "three";
 import {
   Camera,
   ColorManagement,
@@ -11,7 +10,8 @@ import {
   MeshStandardMaterial,
   Scene,
   Raycaster,
-  Vector2
+  Vector2,
+  Vector3
 } from "three";
 import { WebGLRenderer } from "three";
 import type { Object3D } from "three";
@@ -19,18 +19,19 @@ import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import type { SongStage } from "../../song/songStage";
 import type { EnergySource } from "../noteEnergy";
 import { keyBoxes } from "./keyBoxes";
+import { computerKeyboardSlabGeometry, keyboardSceneBoxes } from "./computerKeyboardSlab";
 import { PianoCase } from "./PianoCase";
 import type { KeyBox } from "./keyBoxes";
 import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
-import { KIT_DEPTH, KIT_TOP, KIT_WHITE, whitePart } from "./pianoKit";
-import type { KitPart, PianoKit } from "./pianoKit";
+import type { Keyboard88 } from "./keyboard88";
+import { KEYBOARD_DIP, metricKeyX } from "../keyboardMetrics";
 import { LiveHands } from "./liveHands";
 import type { HandsSource } from "./liveHands";
 import { projectionMatrix, viewMatrix } from "./threeCamera";
 import { ThreeNoteLights } from "./ThreeNoteLights";
 import { ThreeKeyEmission } from "./ThreeKeyEmission";
 import { KeyboardAppearance } from "./KeyboardAppearance";
-import { keyGeometry } from "./keyGeometry";
+import { keyboard88Geometry, paintedKeyboardTop } from "./keyboard88Geometry";
 import { ThreeRimLights } from "./ThreeRimLights";
 import { ThreeRoadNotes } from "./ThreeRoadNotes";
 import { ThreeRoadTrails } from "./ThreeRoadTrails";
@@ -42,15 +43,11 @@ import type { WorldCamera } from "../worldCamera";
 import { PerformanceWorldStage } from "./PerformanceWorldStage";
 import { PerformanceScene } from "./PerformanceScene";
 import { FreeSceneCamera } from "./FreeSceneCamera";
+import { invalidateKeyboardCasePasses } from "./keyboardCasePasses";
 
 // Pixi's colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
 
-/** The keys turn about a pivot this far behind the white front, units: a grand's balance rail,
- * 250 mm, so a key sinks nearly level wherever a finger presses it. */
-const PIVOT = (250 * 142) / 150;
-/** How far a held key turns: its front edge sinks about 9 units. */
-const DIP = Math.asin(9 / PIVOT);
 /** How fast a key follows the finger, per second. */
 const DIP_RATE = 30;
 
@@ -85,6 +82,8 @@ export class ThreeStage {
   private readonly noteAura = new ThreeNoteAura();
   private readonly roadGuides = new ThreeRoadGuides();
   private boxes: readonly KeyBox[] = [];
+  /** The song's range only: the road and its guides stay as wide as the song, not all 88 keys. */
+  private roadBoxes: readonly KeyBox[] = [];
   private readonly noteLights = new ThreeNoteLights();
   private readonly keyEmission = new ThreeKeyEmission();
   private readonly appearance: KeyboardAppearance;
@@ -103,23 +102,26 @@ export class ThreeStage {
   private readonly felt = new MeshStandardMaterial({ color: 0x951f2c, roughness: 0.95 });
   /** The case around the keys: rails, cheeks and the back panel. */
   private readonly body = new Group();
-  private readonly cabinet = new PianoCase(this.case);
+  private readonly cabinet: PianoCase;
+  private pickCamera: Camera | undefined;
   /** The live hands, once their model has loaded; without it the sprite hands stay. */
   readonly hands: LiveHands | undefined;
   private hinged: Hinged[] = [];
   private version = -1;
   private disposed = false;
   private nativePianist = false;
+  private sign: string | undefined;
   /** Pose the character after this frame's camera setup and before any scene render pass. */
-  beforeRender: ((camera: Camera) => void) | undefined;
+  beforeRender: ((camera: Camera, separateCameras: boolean) => void) | undefined;
 
   constructor(
     canvas: HTMLCanvasElement,
     private readonly context: WebGL2RenderingContext,
-    private readonly kit: PianoKit,
+    private readonly keyboard: Keyboard88,
     hand: Object3D | undefined
   ) {
     this.free = new FreeSceneCamera(canvas);
+    this.cabinet = new PianoCase(keyboard);
     this.performance = new PerformanceScene(this.scene);
     this.worldStage = new PerformanceWorldStage(this.scene);
     this.hands = hand && new LiveHands(hand);
@@ -155,10 +157,7 @@ export class ThreeStage {
     this.keys.add(this.body, this.appearance.group);
     this.lighting.add(this.noteLights.group, this.rimLights.group);
     this.occluders.push(this.body);
-    if (this.hands) {
-      this.keys.add(this.hands.group);
-      this.occluders.push(this.hands.group);
-    }
+    if (this.hands) this.keys.add(this.hands.group);
   }
 
   /** Draws the keys over whatever is in the frame now, keeping it: the road under them. */
@@ -173,7 +172,8 @@ export class ThreeStage {
     energyDeltaSeconds = deltaSeconds,
     roadFrame?: ThreeRoadFrame,
     worldEffects = false,
-    songNotes?: HandsSource["notes"]
+    songNotes?: HandsSource["notes"],
+    roadEffects?: () => void
   ): void {
     if (keys.version !== this.version) this.build(keys);
     this.picture.sourceTexture = picture;
@@ -183,7 +183,9 @@ export class ThreeStage {
     const scale = params.prefs.scale;
     this.keys.scale.setScalar(scale);
     this.keys.position.x =
-      this.freeEnabled || this.performanceEnabled ? 0 : (-keys.pan / 2) * scale;
+      this.freeEnabled || this.performanceEnabled
+        ? 0
+        : -keys.pan * (params.sourceUnits ?? 0.5) * scale;
     this.road.scale.copy(this.keys.scale);
     this.road.position.copy(this.keys.position);
     this.lighting.scale.copy(this.keys.scale);
@@ -228,7 +230,7 @@ export class ThreeStage {
         roadFrame.trailAnchorCount
       );
       if (roadFrame.guides && !this.performanceEnabled)
-        this.roadGuides.update(this.boxes, roadCamera, roadFrame.beats, roadFrame.beatCount);
+        this.roadGuides.update(this.roadBoxes, roadCamera, roadFrame.beats, roadFrame.beatCount);
       else this.roadGuides.clear();
       this.roadNotes.update(
         roadFrame.notes,
@@ -242,12 +244,9 @@ export class ThreeStage {
     this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
       const press = this.nativePianist ? undefined : this.hands?.keys.get(pitch);
-      // A finger's key turns until its top under the tip has sunk as deep as the tip.
-      const pressed = press
-        ? Math.asin(Math.min(1, press.drop / Math.max(1, PIVOT - press.along)))
-        : 0;
-      const target = Math.max(down(pitch) ? DIP : 0, pressed);
-      hinge.rotation.x = press ? target : hinge.rotation.x + (target - hinge.rotation.x) * step;
+      const pressed = press ? Math.max(0, Math.min(KEYBOARD_DIP, press.drop)) : 0;
+      const target = -Math.max(down(pitch) ? KEYBOARD_DIP : 0, pressed);
+      hinge.position.y = press ? target : hinge.position.y + (target - hinge.position.y) * step;
     }
     const detached = keys.offset.x !== 0 || keys.offset.y !== 0;
     const separate =
@@ -263,6 +262,7 @@ export class ThreeStage {
       : this.freeEnabled
         ? this.free.camera
         : this.roadCamera;
+    this.pickCamera = separate ? this.keyboardCamera : camera;
     if (this.freeEnabled && !this.performanceEnabled)
       this.performance.updateInspection(roadFrame?.songTime ?? 0, this.keys, camera);
     this.worldStage.setDuration(this.performance.getDuration());
@@ -278,7 +278,7 @@ export class ThreeStage {
       roadFrame,
       this.freeEnabled && !this.performanceEnabled
     );
-    this.beforeRender?.(camera);
+    this.beforeRender?.(this.pickCamera, separate);
     this.renderer.resetState();
     try {
       this.renderer.setViewport(
@@ -295,7 +295,25 @@ export class ThreeStage {
         this.keys,
         camera,
         this.keyboardCamera,
-        separate
+        separate,
+        // Free and performance cameras see one world: plain depth, no road-over-case passes.
+        this.freeEnabled || this.performanceEnabled ? undefined : this.body,
+        !this.freeEnabled && !this.performanceEnabled && roadEffects
+          ? () => {
+              try {
+                roadEffects();
+              } finally {
+                // Pixi changed the shared GL state; Three must rebind before the depth-only pass.
+                this.renderer.resetState();
+                this.renderer.setViewport(
+                  0,
+                  0,
+                  this.context.drawingBufferWidth,
+                  this.context.drawingBufferHeight
+                );
+              }
+            }
+          : undefined
       );
     } finally {
       // Return GL defaults even if a pass failed; the host can draw its Pixi fallback safely.
@@ -354,15 +372,29 @@ export class ThreeStage {
     this.worldStage.invalidate();
   }
 
-  /** Actual mesh hits share the effective scene camera and the current key hinge transforms. */
-  freeKeyAt(x: number, y: number, width: number, height: number): number | undefined {
-    if (!this.freeEnabled && !this.performanceEnabled) return undefined;
+  /** Actual mesh hits share the effective camera and the keys' current parallel travel. */
+  freeKeyAt(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    surface?: Vector2
+  ): number | undefined {
     this.pointer.set((2 * x) / Math.max(1, width) - 1, 1 - (2 * y) / Math.max(1, height));
     this.scene.updateMatrixWorld(true);
-    this.raycaster.setFromCamera(
-      this.pointer,
-      this.performanceEnabled ? this.performance.camera : this.free.camera
-    );
+    const camera = this.performanceEnabled
+      ? this.performance.camera
+      : this.freeEnabled
+        ? this.free.camera
+        : (this.pickCamera ?? this.roadCamera);
+    // The shared Pixi projection uses a generic Camera, so unproject its actual matrices.
+    camera.updateMatrixWorld();
+    const origin = new Vector3(this.pointer.x, this.pointer.y, -1).unproject(camera);
+    const direction = new Vector3(this.pointer.x, this.pointer.y, 1)
+      .unproject(camera)
+      .sub(origin)
+      .normalize();
+    this.raycaster.set(origin, direction);
     const hits = this.raycaster.intersectObjects(
       [...this.hinged.map(({ mesh }) => mesh), ...this.occluders],
       true
@@ -375,22 +407,22 @@ export class ThreeStage {
       }
       return true;
     });
+    if (hit?.uv) surface?.copy(hit.uv);
     return hit && this.hinged.find(({ mesh }) => mesh === hit.object)?.pitch;
   }
 
   /** Something of the host's that rides with the keys: the local pianist. */
   addToKeys(object: Object3D): void {
+    invalidateKeyboardCasePasses(this.scene);
     this.keys.add(object);
-    this.occluders.push(object);
     this.free.invalidate();
     this.performance.invalidate();
     this.worldStage.invalidate();
   }
 
   removeFromKeys(object: Object3D): void {
+    invalidateKeyboardCasePasses(this.scene);
     object.removeFromParent();
-    const index = this.occluders.indexOf(object);
-    if (index >= 0) this.occluders.splice(index, 1);
     this.free.invalidate();
     this.performance.invalidate();
     this.worldStage.invalidate();
@@ -398,6 +430,10 @@ export class ThreeStage {
 
   /** The song's performance-scene dressing: its neon sign and whether the bass sets the stage on fire. */
   setSongStage(stage: SongStage | undefined): void {
+    if (stage?.sign !== this.sign) {
+      this.sign = stage?.sign;
+      invalidateKeyboardCasePasses(this.scene);
+    }
     this.worldStage.setSign(stage?.sign);
     this.bassFire = stage?.bassFire === true;
   }
@@ -440,37 +476,40 @@ export class ThreeStage {
     this.black.bumpMap?.dispose();
     for (const material of [this.top, this.white, this.black, this.case, this.felt])
       material.dispose();
+    this.keyboard.dispose();
     this.renderer.dispose();
   }
 
   private build(keys: KeysScene): void {
+    invalidateKeyboardCasePasses(this.scene);
     this.free.invalidate();
     this.clear(true);
     this.version = keys.version;
-    const boxes = keyBoxes(keys);
+    const boxes = keyboardSceneBoxes(keys);
     this.boxes = boxes;
+    this.roadBoxes = keyBoxes(keys);
     this.performance.layout(boxes);
     this.appearance.layout(boxes);
     this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera);
     this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
-    const black = new Set(boxes.filter((box) => box.black).map((box) => box.pitch));
     for (const box of boxes) {
-      const part = box.black
-        ? "black"
-        : whitePart(black.has(box.pitch - 1), black.has(box.pitch + 1));
-      const geometry = keyGeometry(this.part(part), box);
-      geometry.computeBoundingBox();
-      const bottom = geometry.boundingBox?.min.y ?? 0;
+      const key = this.keyboard.keys.get(box.pitch);
+      if (!key && box.pitch !== 0) throw new Error(`keyboard88 has no key ${String(box.pitch)}`);
+      const geometry = key
+        ? keyboard88Geometry(key.geometry, box)
+        : computerKeyboardSlabGeometry(box);
+      const painted = key
+        ? paintedKeyboardTop(key.materials[0], this.picture, box.black, box.uv.u1 > box.uv.u0)
+        : this.top;
       const materials = this.keyEmission.create(
         box.pitch,
-        this.top,
-        box.black ? this.black : this.white
+        painted,
+        key?.materials[1] ?? this.white
       );
+      if (key) this.keyEmission.ownTemplate(painted);
       const mesh = new Mesh(geometry, materials);
-      // The hinge sits at the pivot behind the key, level with its bottom; the key hangs forward.
-      mesh.position.set(0, -bottom, PIVOT);
+      mesh.position.set(box.x, 22, 0);
       const hinge = new Group();
-      hinge.position.set(box.x, bottom, -PIVOT);
       hinge.add(mesh);
       this.keys.add(hinge);
       this.hinged.push({ pitch: box.pitch, hinge, mesh });
@@ -479,35 +518,13 @@ export class ThreeStage {
     this.keyEmission.endLayout();
   }
 
-  /** Rails and back panel across the range, a cheek at each end. */
+  /** The full case keeps the Blender scene's proportions when the camera changes range. */
   private buildBody(boxes: readonly KeyBox[]): void {
-    const whites = boxes.filter((box) => !box.black);
-    if (whites.length === 0) return;
-    const left = Math.min(...whites.map((box) => box.x - box.width / 2));
-    const right = Math.max(...whites.map((box) => box.x + box.width / 2));
-    const across = (whites[0]?.width ?? 0) / KIT_WHITE;
-    if (whites[0]) this.hands?.layout(whites[0]);
-    const add = (
-      geometry: BufferGeometry,
-      material: MeshStandardMaterial,
-      x: number,
-      sx: number
-    ) => {
-      const mesh = new Mesh(geometry, material);
-      mesh.position.set(x, KIT_TOP, 0);
-      mesh.scale.set(sx, 1000, KIT_DEPTH);
-      this.body.add(mesh);
-    };
-    const centre = (left + right) / 2;
-    add(this.part("felt"), this.felt, centre, right - left);
-    this.cabinet.layout(left, right, across);
+    const white = boxes.find((box) => !box.black);
+    if (!white || white.pitch === 0) return;
+    this.hands?.layout(white);
+    this.cabinet.layout(white.x - metricKeyX(white.pitch));
     this.body.add(this.cabinet.group);
-  }
-
-  private part(name: KitPart): BufferGeometry {
-    const geometry = this.kit.get(name);
-    if (!geometry) throw new Error(`piano kit has no part "${name}"`);
-    return geometry;
   }
 
   private clear(preserveEnergy = false): void {
