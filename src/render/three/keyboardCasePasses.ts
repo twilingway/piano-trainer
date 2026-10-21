@@ -74,7 +74,8 @@ class KeyboardCasePasses {
   draw(
     renderer: Pick<WebGLRenderer, "render" | "clearDepth">,
     roadCamera: Camera,
-    keyboardCamera: Camera
+    keyboardCamera: Camera,
+    roadEffects?: () => void
   ): void {
     for (const part of this.parts) part.visible = part.object.visible;
     for (const finish of this.finishes) finish.colorWrite = finish.material.colorWrite;
@@ -90,6 +91,8 @@ class KeyboardCasePasses {
       this.keys.visible = false;
       renderer.clearDepth();
       renderer.render(this.scene, roadCamera);
+      // Screen-space hit FX cover the case colour, while the next depth pass still hides hands.
+      roadEffects?.();
       this.road.visible = false;
       this.keys.visible = keysVisible;
       this.phase("case", true);
@@ -117,7 +120,7 @@ export function invalidateKeyboardCasePasses(scene: Scene): void {
   passes.delete(scene);
 }
 
-/** Background case, road, case depth, keys/hands: all eight scene meshes stay intact. */
+/** Case colour, road/FX, case depth, keys/hands use independent projection depth buffers. */
 export function drawKeyboardCasePasses(
   renderer: Pick<WebGLRenderer, "render" | "clearDepth">,
   scene: Scene,
@@ -125,12 +128,13 @@ export function drawKeyboardCasePasses(
   keys: Object3D,
   body: Object3D,
   roadCamera: Camera,
-  keyboardCamera: Camera
+  keyboardCamera: Camera,
+  roadEffects?: () => void
 ): void {
   let compositor = passes.get(scene);
   if (!compositor) {
     compositor = new KeyboardCasePasses(scene, road, keys, body);
     passes.set(scene, compositor);
   }
-  compositor.draw(renderer, roadCamera, keyboardCamera);
+  compositor.draw(renderer, roadCamera, keyboardCamera, roadEffects);
 }

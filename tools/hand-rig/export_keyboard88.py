@@ -26,6 +26,8 @@ from keyboard88_gltf import Glb, png_rgb, solid_png
 
 ROOT = Path(__file__).resolve().parents[2]
 CASE = ["slip.001", "board.001", "felt.001", "table.001", "cheek-left", "cheek-right", "panel-left", "panel-right"]
+WHITE_TOP = 0.74
+CASE_TOP = WHITE_TOP - 0.002
 
 
 def xyz(value):
@@ -77,7 +79,33 @@ def bake(obj, kind, size):
     return result
 
 
-def prepare_mesh(obj):
+def world_bounds(obj):
+    evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    points = [evaluated.matrix_world @ vertex.co for vertex in evaluated.data.vertices]
+    return ([min(point[i] for point in points) for i in range(3)],
+            [max(point[i] for point in points) for i in range(3)])
+
+
+def case_clip_planes():
+    left = world_bounds(bpy.data.objects["cheek-left"])[0][0]
+    right = world_bounds(bpy.data.objects["cheek-right"])[1][0]
+    back = world_bounds(bpy.data.objects["board.001"])[1][1]
+    # Normals point into the discarded half-space; dimensions come from evaluated source parts.
+    # The board and cheeks stop below the white tops so notes and effects land on the keys.
+    return {"table.001": [(0, left, -1), (0, right, 1), (1, back, 1)],
+            "board.001": [(2, CASE_TOP, 1)],
+            "cheek-left": [(2, CASE_TOP, 1)], "cheek-right": [(2, CASE_TOP, 1)],
+            "panel-left": [(1, back, 1)], "panel-right": [(1, back, 1)]}
+
+
+def lower_felt():
+    # The felt strip rests on the key backs 7 mm above the white tops; it drops whole under CASE_TOP.
+    felt = bpy.data.objects["felt.001"]
+    felt.location.z -= world_bounds(felt)[1][2] - CASE_TOP
+    bpy.context.view_layer.update()
+
+
+def prepare_mesh(obj, planes):
     bpy.ops.object.select_all(action="DESELECT")
     evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
     mesh = bpy.data.meshes.new_from_object(evaluated)
@@ -86,6 +114,16 @@ def prepare_mesh(obj):
     mesh.transform(linear)
     edit_mesh = bmesh.new()
     edit_mesh.from_mesh(mesh)
+    for axis, limit, direction in planes:
+        point, normal = [0.0] * 3, [0.0] * 3
+        point[axis], normal[axis] = limit, direction
+        bmesh.ops.bisect_plane(edit_mesh, geom=list(edit_mesh.verts) + list(edit_mesh.edges) + list(edit_mesh.faces),
+                               dist=1e-7, plane_co=point, plane_no=normal, clear_outer=True)
+        # Close each cut before the next plane, retaining a solid table/panel, not an open shell.
+        boundary = [edge for edge in edit_mesh.edges if edge.is_boundary]
+        bmesh.ops.holes_fill(edit_mesh, edges=boundary, sides=0)
+    if planes:
+        bmesh.ops.recalc_face_normals(edit_mesh, faces=list(edit_mesh.faces))
     bmesh.ops.triangulate(edit_mesh, faces=[face for face in edit_mesh.faces if len(face.verts) > 4])
     edit_mesh.to_mesh(mesh)
     edit_mesh.free()
@@ -147,7 +185,7 @@ def run(args):
         obj = bpy.data.objects[name]
         obj.animation_data_clear()
         if name.startswith("key-"):
-            obj.location.z = 0.74
+            obj.location.z = WHITE_TOP
             if any(abs(value - 1) > 1e-6 for value in obj.scale):
                 raise ValueError("Keys must have unit source scale")
     scene = bpy.context.scene
@@ -161,6 +199,8 @@ def run(args):
     scene.render.bake.margin = 8
     scene.render.bake.use_clear = True
     bpy.context.view_layer.update()
+    lower_felt()
+    clip_planes = case_clip_planes()
     glb, meshes, constants, rows, maps = Glb(), {}, {}, [], []
     bake_dir = ROOT / ".scratch/keyboard88-bake"
     bake_dir.mkdir(parents=True, exist_ok=True)
@@ -176,10 +216,12 @@ def run(args):
         midi = int(name[4:]) if key else None
         black = key and midi % 12 in (1, 3, 6, 8, 10)
         origin = tuple(obj.matrix_world.translation)
+        planes = tuple((axis, limit - origin[axis], direction)
+                       for axis, limit, direction in clip_planes.get(name, []))
         shape = obj.data.name
-        cache = (shape, tuple(round(v, 9) for row in obj.matrix_world.to_3x3() for v in row))
+        cache = (shape, tuple(round(v, 9) for row in obj.matrix_world.to_3x3() for v in row), planes)
         if cache not in meshes:
-            mesh = prepare_mesh(obj)
+            mesh = prepare_mesh(obj, planes)
             material = mesh.materials[0]
             shader = next(n for n in material.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
             roughness = float(shader.inputs["Roughness"].default_value)
@@ -211,7 +253,7 @@ def run(args):
     report = {"sourceCopy": str(source.relative_to(ROOT)), "sourceSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
               "output": str(output.relative_to(ROOT)), "bytes": output.stat().st_size,
               "sha256": hashlib.sha256(output.read_bytes()).hexdigest(), "keys": 88, "caseObjects": CASE,
-              "uniqueMeshes": len(meshes), "maps": maps, "nodes": rows,
+              "uniqueMeshes": len(meshes), "caseClipPlanes": clip_planes, "maps": maps, "nodes": rows,
               "vertices": sum(a["count"] for a in glb.data["accessors"] if a["type"] == "VEC3") // 2,
               "triangles": sum(a["count"] for a in glb.data["accessors"] if a["type"] == "SCALAR") // 3}
     Path(args.report).write_text(json.dumps(report, indent=2) + "\n", encoding="utf8")

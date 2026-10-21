@@ -122,8 +122,30 @@ describe("published keyboard88 binary contract", () => {
     expect(partBounds("key-61").max[1]).toBeCloseTo(0.752, 6);
     expect(partBounds("panel-left").min[1]).toBeCloseTo(0, 6);
     const all = asset.nodes.map((node) => partBounds(node.name));
-    expect(Math.min(...all.map((bounds) => bounds.min[0] ?? 0))).toBeCloseTo(-0.28625, 5);
-    expect(Math.max(...all.map((bounds) => bounds.max[0] ?? 0))).toBeCloseTo(1.12375, 5);
+    expect(Math.min(...all.map((bounds) => bounds.min[0] ?? 0))).toBeCloseTo(-0.22725, 5);
+    expect(Math.max(...all.map((bounds) => bounds.max[0] ?? 0))).toBeCloseTo(1.06475, 5);
+  });
+
+  it("clips the table to the cheeks and the table/panels to the board back", () => {
+    const table = partBounds("table.001");
+    expect(table.min[0]).toBeCloseTo(partBounds("cheek-left").min[0] ?? 0, 6);
+    expect(table.max[0]).toBeCloseTo(partBounds("cheek-right").max[0] ?? 0, 6);
+    // Blender's back +Y is glTF -Z; the rest of the source case is preserved.
+    const back = partBounds("board.001").min[2] ?? 0;
+    expect(back).toBeCloseTo(-0.485, 6);
+    for (const name of ["table.001", "panel-left", "panel-right"]) {
+      const bounds = partBounds(name);
+      expect(bounds.min[2]).toBeCloseTo(back, 6);
+      expect(bounds.max[2]).toBeCloseTo(-0.19, 6);
+    }
+    expect(partBounds("panel-right").min[1]).toBeCloseTo(0, 6);
+    expect(partBounds("cheek-left").min[2]).toBeCloseTo(-0.5, 6);
+  });
+
+  it("keeps the board, felt and cheeks under the white tops so the road lands on the keys", () => {
+    for (const name of ["board.001", "felt.001", "cheek-left", "cheek-right"])
+      expect(partBounds(name).max[1]).toBeCloseTo(0.738, 6);
+    expect(partBounds("board.001").min[1]).toBeCloseTo(0.694, 6);
   });
 
   it("keeps baked UVs and maps separate from ordered painted top/body primitives", () => {

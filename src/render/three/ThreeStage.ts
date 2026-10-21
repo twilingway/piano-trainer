@@ -172,7 +172,8 @@ export class ThreeStage {
     energyDeltaSeconds = deltaSeconds,
     roadFrame?: ThreeRoadFrame,
     worldEffects = false,
-    songNotes?: HandsSource["notes"]
+    songNotes?: HandsSource["notes"],
+    roadEffects?: () => void
   ): void {
     if (keys.version !== this.version) this.build(keys);
     this.picture.sourceTexture = picture;
@@ -296,7 +297,23 @@ export class ThreeStage {
         this.keyboardCamera,
         separate,
         // Free and performance cameras see one world: plain depth, no road-over-case passes.
-        this.freeEnabled || this.performanceEnabled ? undefined : this.body
+        this.freeEnabled || this.performanceEnabled ? undefined : this.body,
+        !this.freeEnabled && !this.performanceEnabled && roadEffects
+          ? () => {
+              try {
+                roadEffects();
+              } finally {
+                // Pixi changed the shared GL state; Three must rebind before the depth-only pass.
+                this.renderer.resetState();
+                this.renderer.setViewport(
+                  0,
+                  0,
+                  this.context.drawingBufferWidth,
+                  this.context.drawingBufferHeight
+                );
+              }
+            }
+          : undefined
       );
     } finally {
       // Return GL defaults even if a pass failed; the host can draw its Pixi fallback safely.

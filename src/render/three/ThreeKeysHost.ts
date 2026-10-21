@@ -308,7 +308,7 @@ export class ThreeKeysHost {
     });
     try {
       if (separateRoad) this.roadEffects.draw(renderer, legacyEffects);
-      this.effects.draw(renderer, legacyEffects);
+      this.effects.draw(renderer, legacyEffects && separateRoad);
       this.seatPianist(this.stage, scene);
       const picture = gl.texture.getGlSource(scene.texture.source).texture;
       const frame = this.keyboard.frame;
@@ -342,7 +342,8 @@ export class ThreeKeysHost {
         this.energyDeltaSeconds,
         this.roadFrame,
         worldEffects,
-        this.hands?.songNotes
+        this.hands?.songNotes,
+        separateRoad ? undefined : this.drawRoadEffects
       );
     } catch (error) {
       this.effects.restore();
@@ -365,6 +366,12 @@ export class ThreeKeysHost {
       this.effects.restore();
       this.roadEffects.restore();
     }
+  };
+
+  private readonly drawRoadEffects = (): void => {
+    this.resetPixiState();
+    this.effects.restore();
+    this.effects.draw(this.app.renderer);
   };
 
   private readonly beforeRender = (camera: Camera): void => {

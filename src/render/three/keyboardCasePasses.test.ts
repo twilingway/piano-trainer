@@ -34,8 +34,17 @@ function fixture() {
       });
     })
   };
-  const draw = () => {
-    drawKeyboardCasePasses(renderer, scene, road, keys, body, roadCamera, keyboardCamera);
+  const draw = (roadEffects?: () => void) => {
+    drawKeyboardCasePasses(
+      renderer,
+      scene,
+      road,
+      keys,
+      body,
+      roadCamera,
+      keyboardCamera,
+      roadEffects
+    );
   };
   return {
     scene,
@@ -56,6 +65,37 @@ function fixture() {
 }
 
 describe("case and road composition", () => {
+  it("draws screen FX after case colour and road, before case depth and hands", () => {
+    const v = fixture();
+    const order: string[] = [];
+    v.renderer.render.mockImplementation((_scene, camera) => {
+      if (v.rail.visible) order.push(v.rail.material.colorWrite ? "case" : "case depth");
+      else order.push(camera === v.roadCamera ? "road" : "keys/hands");
+    });
+    v.draw(() => {
+      order.push("fire/glow");
+      expect(v.key.visible).toBe(false);
+      expect(v.hand.visible).toBe(false);
+    });
+    expect(order).toEqual(["case", "road", "fire/glow", "case depth", "keys/hands"]);
+  });
+
+  it("restores visibility and material flags when the screen FX callback fails", () => {
+    const v = fixture();
+    expect(() => {
+      v.draw(() => {
+        throw new Error("Pixi FX failed");
+      });
+    }).toThrow("Pixi FX failed");
+    expect(v.rail.material.colorWrite).toBe(true);
+    expect(
+      [v.rail, v.note, v.key, v.hand, v.floor, v.body, v.road, v.keys].every(
+        (object) => object.visible
+      )
+    ).toBe(true);
+    expect(v.renderer.render).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps the complete case behind the contact, then restores physical case depth for hands", () => {
     const v = fixture();
     v.draw();

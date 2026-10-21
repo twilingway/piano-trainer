@@ -10,7 +10,8 @@ export function drawSceneCameraPasses(
   roadCamera: Camera,
   keyboardCamera: Camera,
   separate: boolean,
-  body?: Object3D
+  body?: Object3D,
+  roadEffects?: () => void
 ): void {
   if (body && body.children.length > 0) {
     drawKeyboardCasePasses(
@@ -20,10 +21,12 @@ export function drawSceneCameraPasses(
       keys,
       body,
       roadCamera,
-      separate ? keyboardCamera : roadCamera
+      separate ? keyboardCamera : roadCamera,
+      roadEffects
     );
     return;
   }
+  roadEffects?.();
   if (!separate) {
     renderer.render(scene, roadCamera);
     return;

@@ -1,5 +1,4 @@
-import { Camera, Group, Scene } from "three";
-import type { Mesh } from "three";
+import { BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import type { KeyPress } from "./liveHands";
@@ -170,6 +169,81 @@ it("samples pre-render against the configured camera before GPU rendering and by
   view.stage.setNativePianist(false);
   view.draw();
   expect(view.hands.update).toHaveBeenCalledOnce();
+});
+
+it.each([false, true])("resets shared Three state after screen FX (failure: %s)", (failure) => {
+  const view = fixture();
+  const order: string[] = [];
+  view.renderer.resetState.mockImplementation(() => order.push("reset"));
+  view.renderer.render.mockImplementation(() => order.push("render"));
+  const effects = () => {
+    order.push("fx");
+    if (failure) throw new Error("FX failed");
+  };
+  const draw = () => {
+    view.stage.draw(
+      view.scene,
+      {},
+      () => false,
+      { width: 800, height: 600 },
+      0,
+      undefined,
+      [],
+      0,
+      undefined,
+      false,
+      undefined,
+      effects
+    );
+  };
+  if (failure) expect(draw).toThrow("FX failed");
+  else draw();
+  expect(order).toEqual(
+    failure ? ["reset", "fx", "reset", "reset"] : ["reset", "fx", "reset", "render", "reset"]
+  );
+  expect(view.renderer.setViewport).toHaveBeenCalledTimes(2);
+});
+
+it("keeps free-camera case and native glow in one physical depth pass without screen FX", () => {
+  const view = fixture();
+  const internal = view.stage as unknown as { scene: Scene; keys: Group; body: Group };
+  const board = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+  const glow = new Mesh(
+    new BoxGeometry(),
+    new MeshStandardMaterial({ transparent: true, depthTest: true, depthWrite: false })
+  );
+  internal.body.add(board);
+  internal.keys.add(internal.body);
+  internal.scene.add(internal.keys, glow);
+  const effects = vi.fn();
+  view.stage.setFreeCamera(true);
+  view.renderer.render.mockImplementation(() => {
+    expect(board.visible).toBe(true);
+    expect(board.material.colorWrite).toBe(true);
+    expect(glow.visible).toBe(true);
+    expect(glow.material).toMatchObject({ depthTest: true, depthWrite: false });
+  });
+  view.stage.draw(
+    view.scene,
+    {},
+    () => false,
+    { width: 800, height: 600 },
+    0,
+    undefined,
+    [],
+    0,
+    undefined,
+    true,
+    undefined,
+    effects
+  );
+  expect(effects).not.toHaveBeenCalled();
+  expect(view.renderer.render).toHaveBeenCalledOnce();
+  expect(view.renderer.clearDepth).toHaveBeenCalledOnce();
+  board.geometry.dispose();
+  board.material.dispose();
+  glow.geometry.dispose();
+  glow.material.dispose();
 });
 
 it("feeds the bass fire the song's notes only when the song's stage asks for it", () => {

@@ -52,7 +52,10 @@ vi.mock("./ThreeStage", () => ({
       return mocks.nativeEffectsReady;
     }
     setPerformanceScene = vi.fn();
-    draw = mocks.draw;
+    draw(...args: unknown[]): void {
+      mocks.draw.apply(this, args);
+      (args[11] as (() => void) | undefined)?.();
+    }
     clearEnergy = mocks.clearEnergy;
     setKeyboardDim = mocks.setKeyboardDim;
     dispose = mocks.dispose;
@@ -614,7 +617,7 @@ describe("native stage effects handoff", () => {
 });
 
 describe("Pixi FX under native hands", () => {
-  it("draws transformed effects before Three, once, restoring their original ownership", async () => {
+  it("draws transformed FX through the road/case callback, once, before HUD", async () => {
     const view = fixture();
     const fire = view.overlay.addChild(new Container());
     view.overlay.position.set(30, -12);
@@ -626,14 +629,16 @@ describe("Pixi FX under native hands", () => {
       order.push(
         options.container === fire ? "fire" : options.container === view.road ? "road" : "hud"
       );
+      if (options.container === fire) expect(view.gl.bindingsDirty).toBe(false);
       if (options.container === view.stage) expect(fire.renderable).toBe(false);
     });
     mocks.draw.mockImplementation(() => {
       order.push("three");
       expect(fire.renderable).toBe(false);
+      view.gl.bindingsDirty = true;
     });
     view.tick();
-    expect(order).toEqual(["road", "fire", "three", "hud"]);
+    expect(order).toEqual(["road", "three", "fire", "hud"]);
     expect(
       view.renderer.render.mock.calls.find(([options]) => options.container === fire)?.[0]
     ).toMatchObject({ clear: false, transform: { tx: 37, ty: -10 } });
@@ -643,7 +648,7 @@ describe("Pixi FX under native hands", () => {
     expect(fire.destroyed).toBe(false);
   });
 
-  it.each(["three", "hud"])("restores FX flags after a %s failure", async (failure) => {
+  it.each(["three", "fx", "hud"])("restores FX flags after a %s failure", async (failure) => {
     const view = fixture();
     const fire = view.overlay.addChild(new Container());
     view.host.setSceneEffects([fire]);
@@ -654,9 +659,10 @@ describe("Pixi FX under native hands", () => {
       });
     else
       view.renderer.render.mockImplementation((options) => {
-        if (options.container === view.stage) throw new Error("hud failed");
+        if (options.container === (failure === "fx" ? fire : view.stage))
+          throw new Error(`${failure} failed`);
       });
-    if (failure === "three") expect(view.tick).not.toThrow();
+    if (failure !== "hud") expect(view.tick).not.toThrow();
     else expect(view.tick).toThrow("hud failed");
     expect(fire.renderable).toBe(true);
     expect(fire.parent).toBe(view.overlay);
