@@ -79,7 +79,7 @@ describe("native source key contacts", () => {
       [2.29, true],
       [2.31, false]
     ] as const)
-      expect(contacts.down(64, time), `t=${time}`).toBe(down);
+      expect(contacts.down(64, time), `t=${String(time)}`).toBe(down);
   });
   it("merges nested overlapping holds but not gaps and reuses immutable arrays without rebuilding", () => {
     const contacts = new NativeKeyContacts();
