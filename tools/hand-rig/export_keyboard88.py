@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CASE = ["slip.001", "board.001", "felt.001", "table.001", "cheek-left", "cheek-right", "panel-left", "panel-right"]
 WHITE_TOP = 0.74
 CASE_TOP = WHITE_TOP - 0.002
+CASE_BACK_MARGIN = 0.005
 
 
 def xyz(value):
@@ -89,12 +90,14 @@ def world_bounds(obj):
 def case_clip_planes():
     left = world_bounds(bpy.data.objects["cheek-left"])[0][0]
     right = world_bounds(bpy.data.objects["cheek-right"])[1][0]
-    back = world_bounds(bpy.data.objects["board.001"])[1][1]
+    back = world_bounds(bpy.data.objects["key-60"])[1][1] + CASE_BACK_MARGIN
     # Normals point into the discarded half-space; dimensions come from evaluated source parts.
-    # The board and cheeks stop below the white tops so notes and effects land on the keys.
+    # The case ends as a thin panel behind the keys and below the white tops, so notes and
+    # effects land on the keys instead of a dark band.
     return {"table.001": [(0, left, -1), (0, right, 1), (1, back, 1)],
-            "board.001": [(2, CASE_TOP, 1)],
-            "cheek-left": [(2, CASE_TOP, 1)], "cheek-right": [(2, CASE_TOP, 1)],
+            "board.001": [(1, back, 1), (2, CASE_TOP, 1)],
+            "cheek-left": [(1, back, 1), (2, CASE_TOP, 1)],
+            "cheek-right": [(1, back, 1), (2, CASE_TOP, 1)],
             "panel-left": [(1, back, 1)], "panel-right": [(1, back, 1)]}
 
 
