@@ -92,7 +92,7 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 - `.opencode/agents/` and `opencode.json` — opencode's agents and the Qwen providers (LM Studio on
   `192.168.1.227:1234`, and the remote endpoint).
 - `.claude/hooks/context-budget.py`, registered in `.claude/settings.json` on `UserPromptSubmit` —
-  once the last request ran with more than 250k tokens of context, it warns the user and asks Claude
+  once the last request ran with more than 300k tokens of context, it warns the user and asks Claude
   to checkpoint the subtask and propose a fresh session. It never blocks. The same script is
   installed globally (`~/.claude/hooks/`) and steps aside when the project has its own copy.
 
