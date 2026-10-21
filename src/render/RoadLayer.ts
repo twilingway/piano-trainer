@@ -21,10 +21,17 @@ import { legacyKeyboardPoint, legacyRoadProjection } from "./legacyKeyboardGeome
 import type { Projected, RoadProjection } from "./perspective";
 import { handSurface } from "./handProjection";
 import { nativeViewCameras } from "./nativeViewCameras";
+import { metricCameraForKeys } from "./metricKeyboardCamera";
 import { RoadSparks } from "./RoadSparks";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
 import type { NoteLaneProjection } from "./noteLaneProjection";
-import { FREE_BLACK_LANE, freeRoadKeyPoint, roadNotePlace } from "./roadScenePoints";
+import {
+  FREE_BLACK_LANE,
+  drawRoadCorners,
+  freeRoadKeyPoint,
+  roadKeyHeights,
+  roadNotePlace
+} from "./roadScenePoints";
 import { DEFAULT_ROAD_SHAPE, roadLayoutCamera, type RoadShape } from "./roadLayoutCamera";
 import type { HandsGeometry, HandsLayer } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
@@ -57,6 +64,7 @@ export class RoadLayer {
   private readonly keys = new PerspectiveKeyboardLayer();
   private readonly legacyKeys: PerspectiveMesh;
   private perspective = false;
+  private computerKeyboard = false;
   private shape: RoadShape = DEFAULT_ROAD_SHAPE;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
   private camera: WorldCamera | undefined;
@@ -64,7 +72,7 @@ export class RoadLayer {
   private keyboardTop = false;
   private notesPerspective = true;
   private cameraHeight = 1;
-  private readonly keyHeights = new Map<number, number>();
+  private keyHeights = new Map<number, number>();
   private blackLane: NoteLaneProjection | undefined;
   /** The lane laid on the floor, and a blurred copy over it for the glow. */
   private readonly road: PerspectiveMesh;
@@ -162,15 +170,20 @@ export class RoadLayer {
   }
 
   setKeyboard(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, dockKeyboard = false): void {
+    this.computerKeyboard = keys.size === 1 && keys.has(0);
     this.keyboardTopY = geometry.keyboardTop;
-    this.keyHeights.clear();
-    const blackHeight = this.three?.on ? BLACK_NOTE_FLOOR : 36;
-    for (const key of keys.values())
-      this.keyHeights.set(key.x + key.width / 2, key.black ? blackHeight : WHITE_NOTE_FLOOR);
+    this.keyHeights = roadKeyHeights(keys, this.three?.on === true);
     this.blackLane = undefined;
     if (this.perspective) {
       this.keysShift = new Matrix().translate(0, -geometry.keyboardTop);
       if (this.three?.on && this.camera) {
+        if (!this.computerKeyboard)
+          this.camera = metricCameraForKeys(
+            this.camera,
+            keys,
+            this.cameraHeight,
+            this.shape.horizon
+          );
         const cameras = nativeViewCameras(
           this.camera,
           geometry.keyboardHeight,
@@ -446,24 +459,7 @@ export class RoadLayer {
     if (!projection) return;
     this.staff.draw(projection, pan);
 
-    const left = -pan;
-    const right = this.size.width - pan;
-    const farLeft = projection.at(left, 0);
-    const farRight = projection.at(right, 0);
-    const nearLeft = projection.at(left, 1);
-    const nearRight = projection.at(right, 1);
-    for (const mesh of [this.road, this.glow]) {
-      mesh.setCorners(
-        farLeft.x,
-        farLeft.y,
-        farRight.x,
-        farRight.y,
-        nearRight.x,
-        nearRight.y,
-        nearLeft.x,
-        nearLeft.y
-      );
-    }
+    drawRoadCorners([this.road, this.glow], projection, -pan, this.size.width - pan);
   }
 
   /** How clear a point of the flat lane is through the fog: 0 at the horizon, 1 out of it. */
@@ -479,9 +475,8 @@ export class RoadLayer {
 
   /** Where a point of the flat scene lands in perspective, and how much it shrinks there. */
   place(x: number, y: number): Projected | undefined {
-    const projection = this.projection;
-    if (!projection || this.size.height <= 0) return undefined;
-    return projection.at(x - this.pan, Math.max(0, Math.min(1, y / this.size.height)));
+    if (this.size.height <= 0) return undefined;
+    return this.projection?.at(x - this.pan, Math.max(0, Math.min(1, y / this.size.height)));
   }
 
   /** Whole hands are a separate overlay, never cut into individual key materials. */
@@ -502,8 +497,9 @@ export class RoadLayer {
     this.legacyKeys.position.copyFrom(offset);
   }
 
-  keysPointAt(x: number, y: number): { x: number; y: number } | undefined {
-    if (this.sceneCamera) return freeRoadKeyPoint(this.three, x, y, this.keyboardTopY);
+  keysPointAt(x: number, y: number): { x: number; y: number; pitch?: number } | undefined {
+    if (this.three?.on && (!this.computerKeyboard || this.three.sceneCamera))
+      return freeRoadKeyPoint(this.three, x, y, this.keyboardTopY);
     x -= this.keys.container.x;
     y -= this.keys.container.y;
     if (this.perspective) return this.keys.container.visible ? this.keys.pointAt(x, y) : undefined;

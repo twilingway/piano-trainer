@@ -84,7 +84,8 @@ function fixture() {
     white: { ...disposable(), map: disposable() },
     black: { ...disposable(), bumpMap: disposable() },
     case: disposable(),
-    felt: disposable()
+    felt: disposable(),
+    keyboard: disposable()
   });
   const scene = {
     version: 1,
@@ -98,41 +99,41 @@ function fixture() {
   return { stage, draw, keys, hinge, hands, renderer, geometryDispose, scene };
 }
 
-const pivot = (250 * 142) / 150;
-
 describe("ThreeStage physical key contact", () => {
   it.each([0, 1 / 120, 1 / 60])("applies onset contact in the same frame at delta %s", (delta) => {
     const view = fixture();
     // The contact arrives from LiveHands.update during this frame, not the preceding frame.
     view.hands.update.mockImplementation(() => view.keys.set(60, { drop: 8, along: 90 }));
     view.draw(delta);
-    expect(Math.sin(view.hinge.rotation.x) * (pivot - 90)).toBeCloseTo(8, 12);
+    expect(view.hinge.position.y).toBe(-8);
+    expect(view.hinge.rotation.x).toBe(0);
   });
 
   it("restores the same contact after a seek regardless of previous angle or frame duration", () => {
     const view = fixture();
     for (const [previous, delta, drop, along] of [
-      [0.15, 1 / 120, 2, 30],
+      [-8, 1 / 120, 2, 30],
       [0, 0, 8, 110],
       [0.03, 1 / 60, 2, 30]
     ] as const) {
-      view.hinge.rotation.x = previous;
+      view.hinge.position.y = previous;
       view.keys.set(60, { drop: drop, along: along });
       view.draw(delta);
-      expect(Math.sin(view.hinge.rotation.x) * (pivot - along)).toBeCloseTo(drop, 12);
+      expect(view.hinge.position.y).toBe(-drop);
+      expect(view.hinge.rotation.x).toBe(0);
     }
   });
 
   it("keeps ordinary input and release smoothing, and honors a deeper manual press", () => {
     const view = fixture();
     view.draw(1 / 60, true);
-    expect(view.hinge.rotation.x).toBeCloseTo(Math.asin(9 / pivot) / 2, 12);
+    expect(view.hinge.position.y).toBe(-4);
     view.keys.set(60, { drop: 1, along: 0 });
     view.draw(0, true);
-    expect(view.hinge.rotation.x).toBeCloseTo(Math.asin(9 / pivot), 12);
+    expect(view.hinge.position.y).toBe(-8);
     view.keys.clear();
     view.draw(1 / 60);
-    expect(view.hinge.rotation.x).toBeCloseTo(Math.asin(9 / pivot) / 2, 12);
+    expect(view.hinge.position.y).toBe(-4);
   });
 
   it("terminates its hand planner and frees stage resources exactly once", () => {

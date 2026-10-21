@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Camera, Group } from "three";
+import { Camera, Group, type Vector2 } from "three";
 import type { SourcePerformanceIdentity } from "../../song/sourcePerformance";
 import type { SongStage } from "../../song/songStage";
 import { Container } from "pixi.js";
@@ -64,7 +64,7 @@ vi.mock("./ThreeStage", () => ({
     }
   }
 }));
-vi.mock("./pianoKit", () => ({ loadPianoKit: mocks.loadKit }));
+vi.mock("./keyboard88", () => ({ loadKeyboard88: mocks.loadKit }));
 vi.mock("./liveHands", () => ({ loadHand: mocks.loadHand }));
 
 vi.mock("./pianist", () => ({
@@ -197,7 +197,7 @@ beforeEach(() => {
   mocks.construct.mockReset();
   mocks.draw.mockReset();
   mocks.dispose.mockReset();
-  mocks.loadKit.mockReset().mockResolvedValue(new Map());
+  mocks.loadKit.mockReset().mockResolvedValue({ keys: new Map(), dispose: vi.fn() });
   mocks.loadHand.mockReset().mockResolvedValue({});
   vi.stubGlobal("WebGL2RenderingContext", SharedContext);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -330,7 +330,7 @@ describe("shared WebGL keyboard recovery", () => {
   });
 
   it("leaves 2D rendering usable when disabled while the model is loading", async () => {
-    const kit = deferred<Map<string, unknown>>();
+    const kit = deferred<{ keys: Map<string, unknown>; dispose: ReturnType<typeof vi.fn> }>();
     mocks.loadKit.mockReturnValue(kit.promise);
     const view = fixture();
     const loading = view.host.setEnabled(true);
@@ -338,7 +338,7 @@ describe("shared WebGL keyboard recovery", () => {
     mocks.construct.mockImplementation(() => {
       view.gl.bindingsDirty = true;
     });
-    kit.resolve(new Map());
+    kit.resolve({ keys: new Map(), dispose: vi.fn() });
     await loading;
     expect(view.host.on).toBe(false);
     expect(view.gl.bindingsDirty).toBe(false);
@@ -347,13 +347,13 @@ describe("shared WebGL keyboard recovery", () => {
   });
 
   it("never initializes a renderer after the view is destroyed during loading", async () => {
-    const kit = deferred<Map<string, unknown>>();
+    const kit = deferred<{ keys: Map<string, unknown>; dispose: ReturnType<typeof vi.fn> }>();
     mocks.loadKit.mockReturnValue(kit.promise);
     const view = fixture();
     const loading = view.host.setEnabled(true);
     view.host.destroy();
     const appCalls = view.renderer.resetState.mock.calls.length;
-    kit.resolve(new Map());
+    kit.resolve({ keys: new Map(), dispose: vi.fn() });
     await loading;
     await view.host.setEnabled(true);
     expect(mocks.construct).not.toHaveBeenCalled();
@@ -456,6 +456,39 @@ describe("free inspection host lifecycle", () => {
 });
 
 describe("performance scene input and fallback", () => {
+  it("maps a computer plate raycast UV to the actual letter position", async () => {
+    const view = fixture();
+    Object.assign(view.keys.scene, {
+      faces: [{ key: { pitch: 0, black: false, x: 0, width: 800 }, source: { y: 0, height: 120 } }],
+      texture: { width: 800, height: 120 }
+    });
+    await view.host.setEnabled(true);
+    mocks.freeKeyAt.mockImplementation(
+      (_x: number, _y: number, _width: number, _height: number, surface?: Vector2) => {
+        if (!surface) throw new Error("Missing plate surface target");
+        surface.set(0.25, 0.75);
+        return 0;
+      }
+    );
+    expect(view.host.freeKeysPointAt(300, 200)).toEqual({ x: 200, y: 90 });
+    view.host.destroy();
+  });
+
+  it("returns an explicit physical pitch for a visible key outside the song's painted range", async () => {
+    const view = fixture();
+    Object.assign(view.keys.scene, {
+      faces: [{ key: { pitch: 60, black: false, x: 0, width: 47 }, source: { y: 60, height: 40 } }],
+      camera: {
+        params: { width: 800, sourceUnits: 0.5, keyboardDepth: 150 },
+        sourceX: (x: number) => (x - 400) / 2
+      }
+    });
+    await view.host.setEnabled(true);
+    view.tick();
+    mocks.freeKeyAt.mockReturnValue(48);
+    expect(view.host.freeKeysPointAt(300, 200)).toEqual({ x: -305.5, y: 1, pitch: 48 });
+    view.host.destroy();
+  });
   it.each([
     { pitch: 60, x: 30, width: 40, y: 80, height: 60 },
     { pitch: 61, x: 60, width: 20, y: 0, height: 75 }

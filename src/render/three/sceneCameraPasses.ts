@@ -1,4 +1,5 @@
 import type { Camera, Object3D, Scene, WebGLRenderer } from "three";
+import { drawKeyboardCasePasses } from "./keyboardCasePasses";
 
 /** Depth belongs to one projection; colour and physical lights are shared by both passes. */
 export function drawSceneCameraPasses(
@@ -8,8 +9,21 @@ export function drawSceneCameraPasses(
   keys: Object3D,
   roadCamera: Camera,
   keyboardCamera: Camera,
-  separate: boolean
+  separate: boolean,
+  body?: Object3D
 ): void {
+  if (body && body.children.length > 0) {
+    drawKeyboardCasePasses(
+      renderer,
+      scene,
+      road,
+      keys,
+      body,
+      roadCamera,
+      separate ? keyboardCamera : roadCamera
+    );
+    return;
+  }
   if (!separate) {
     renderer.render(scene, roadCamera);
     return;

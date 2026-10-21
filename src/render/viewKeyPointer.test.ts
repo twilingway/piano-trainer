@@ -4,7 +4,7 @@ import type { FederatedPointerEvent } from "pixi.js";
 import { FallingNotesView } from "./FallingNotesView";
 import { KeyboardLayer } from "./KeyboardLayer";
 import { PointerKeys } from "./pointerKeys";
-import { releaseViewKeyPointer } from "./viewKeyPointer";
+import { playViewKeyPointer, releaseViewKeyPointer } from "./viewKeyPointer";
 import type { KeyEvent } from "../input/midiInput";
 
 function harness(roadMode: boolean) {
@@ -38,6 +38,17 @@ function harness(roadMode: boolean) {
 }
 
 describe("flat and projected pointer routes", () => {
+  it("plays a physical piano key outside the painted song range without a sprite lookup", () => {
+    const run = harness(true);
+    playViewKeyPointer(
+      run.event(1, 0, 100),
+      { x: -1000, y: 20, pitch: 21 },
+      run.keyboard,
+      undefined
+    );
+    expect(run.pitchAt).not.toHaveBeenCalled();
+    expect(run.emit).toHaveBeenCalledWith(expect.objectContaining({ pitch: 21 }));
+  });
   it.each([false, true])("retains independent fingers and native timestamps, road=%s", (road) => {
     const run = harness(road);
     run.view.keysPointer(run.event(1, 0, 100));

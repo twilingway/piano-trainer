@@ -29,7 +29,8 @@ export function worldRoadNote(
   alpha: number,
   hitY: number,
   camera: WorldCamera,
-  target?: WorldRoadNote
+  target?: WorldRoadNote,
+  lane?: NoteLaneProjection
 ): WorldRoadNote | undefined {
   if (
     !Number.isFinite(keyX) ||
@@ -46,15 +47,16 @@ export function worldRoadNote(
     !Number.isFinite(camera.roadFarZ)
   )
     return undefined;
-  const span = camera.roadFarZ - camera.near.z;
+  const contact = lane?.depth ?? camera.near.z;
+  const span = camera.roadFarZ - contact;
   if (!Number.isFinite(span) || span <= 0) return undefined;
   const clippedTop = Math.max(0, Math.min(hitY, top));
   const clippedBottom = Math.max(0, Math.min(hitY, bottom));
-  const worldWidth = width / 2;
+  const worldWidth = width * (camera.params.sourceUnits ?? 0.5);
   const x = camera.sourceX(keyX);
   if (clippedBottom <= clippedTop || worldWidth <= 0 || !Number.isFinite(x)) return undefined;
-  const far = camera.near.z + (1 - clippedTop / hitY) * span;
-  const near = camera.near.z + (1 - clippedBottom / hitY) * span;
+  const far = contact + (1 - clippedTop / hitY) * span;
+  const near = contact + (1 - clippedBottom / hitY) * span;
   if (far <= near) return undefined;
   const note = target ?? { x: 0, top: 0, bottom: 0, width: 0, color: 0, alpha: 0 };
   note.x = x;

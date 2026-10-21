@@ -7,6 +7,7 @@ import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
 import { CAMERA_PRESETS, PANEL_EDGE, worldCamera } from "./worldCamera";
 import { noteProjectionCamera } from "./noteProjectionCamera";
 import { createNoteLaneProjection } from "./noteLaneProjection";
+import { computerGeometry } from "./computerKeyboardLayout";
 
 function fixture() {
   const frame = new ThreeRoadFrame();
@@ -121,19 +122,59 @@ describe("raised native note shell wiring", () => {
 });
 
 describe("inspection key input", () => {
+  it("keeps the native computer plate full-sized and picks its individual painted keys", () => {
+    const freeKeysPointAt = vi.fn();
+    const pointAt = vi.fn(() => ({ x: 125, y: 45 }));
+    const layout = vi.fn();
+    const state = {
+      camera: worldCamera(800, 600),
+      cameraHeight: 600,
+      viewWidth: 800,
+      shape: { horizon: 0.1 },
+      notesPerspective: true,
+      perspective: true,
+      keyboardTop: false,
+      pan: 0,
+      three: { on: true, sceneCamera: false, freeKeysPointAt },
+      fog: new Container(),
+      keys: { container: new Container(), layout, pointAt },
+      keysTexture: Texture.EMPTY,
+      staff: { setKeys: vi.fn(), draw: vi.fn() },
+      setPan: vi.fn()
+    };
+    const layer = Object.assign(
+      Object.create(RoadLayer.prototype) as object,
+      state
+    ) as unknown as RoadLayer;
+    const geometry = computerGeometry(600, 800, { notes: true, keys: true, hands: false });
+    layer.setKeyboard(new Map([[0, { pitch: 0, black: false, x: 0, width: 800 }]]), geometry);
+    const camera = (layer as unknown as { camera: typeof state.camera }).camera;
+    expect(camera.params.keyboardDepth).toBeUndefined();
+    expect(camera.params.sourceUnits).toBeUndefined();
+    expect(layout).toHaveBeenCalled();
+    expect(layer.keysPointAt(200, 250)).toEqual({ x: 125, y: 45 });
+    expect(pointAt).toHaveBeenCalledWith(200, 250);
+    expect(freeKeysPointAt).not.toHaveBeenCalled();
+    state.three.sceneCamera = true;
+    freeKeysPointAt.mockReturnValue({ x: 300, y: 80 });
+    expect(layer.keysPointAt(200, 250)).toEqual({ x: 300, y: 80 + geometry.keyboardTop });
+    expect(pointAt).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     { x: 80, y: 20 },
-    { x: 90, y: 125 }
+    { x: 90, y: 125 },
+    { x: -500, y: 1, pitch: 21 }
   ])("adds the keyboard top once for white and black source hits", (point) => {
     const state = {
-      three: { sceneCamera: true, freeKeysPointAt: vi.fn(() => point) },
+      three: { on: true, sceneCamera: false, freeKeysPointAt: vi.fn(() => point) },
       keyboardTopY: 400
     };
     const layer = Object.assign(
       Object.create(RoadLayer.prototype) as object,
       state
     ) as unknown as RoadLayer;
-    expect(layer.keysPointAt(200, 250)).toEqual({ x: point.x, y: point.y + 400 });
+    expect(layer.keysPointAt(200, 250)).toEqual({ ...point, y: point.y + 400 });
     state.three.freeKeysPointAt.mockReturnValue(undefined as unknown as typeof point);
     expect(layer.keysPointAt(200, 250)).toBeUndefined();
   });

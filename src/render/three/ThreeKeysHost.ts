@@ -1,5 +1,5 @@
 import { Container, Texture, UPDATE_PRIORITY } from "pixi.js";
-import type { Camera } from "three";
+import { Vector2, type Camera } from "three";
 import type { HandsSource } from "./liveHands";
 import type { Application, WebGLRenderer } from "pixi.js";
 import type { HandsLayer } from "../HandsLayer";
@@ -13,6 +13,7 @@ import { SharedTextureBindings } from "./SharedTextureBindings";
 import { SceneEffectsPass } from "./SceneEffectsPass";
 import { NativeKeyContacts } from "./NativeKeyContacts";
 import { disposePianistModel } from "./disposePianistModel";
+import { metricC4X, metricKeyX } from "../keyboardMetrics";
 
 /**
  * Puts the three.js keys between the road and everything over it. While on, the app's own render
@@ -143,14 +144,31 @@ export class ThreeKeysHost {
     this.stage?.resetFreeCamera();
   }
 
-  freeKeysPointAt(x: number, y: number): { x: number; y: number } | undefined {
+  freeKeysPointAt(x: number, y: number): { x: number; y: number; pitch?: number } | undefined {
     const scene = this.keys.scene;
-    if (!this.sceneCamera || !scene) return undefined;
-    const pitch = this.stage?.freeKeyAt(x, y, this.app.screen.width, this.app.screen.height);
-    const face = scene.faces.find(({ key }) => key.pitch === pitch);
-    return (
-      face && { x: face.key.x + face.key.width / 2, y: face.source.y + face.source.height / 2 }
+    if (!this.active || !scene) return undefined;
+    const surface = scene.faces[0]?.key.pitch === 0 ? new Vector2() : undefined;
+    const pitch = this.stage?.freeKeyAt(
+      x,
+      y,
+      this.app.screen.width,
+      this.app.screen.height,
+      surface
     );
+    if (pitch === 0 && surface)
+      return { x: surface.x * scene.texture.width, y: surface.y * scene.texture.height };
+    const face = scene.faces.find(({ key }) => key.pitch === pitch);
+    if (face)
+      return { x: face.key.x + face.key.width / 2, y: face.source.y + face.source.height / 2 };
+    if (pitch === undefined || scene.camera.params.keyboardDepth === undefined) return undefined;
+    const c4 = metricC4X(
+      scene.faces.map(({ key }) => key),
+      scene.camera.sourceX
+    );
+    const source =
+      (c4 + metricKeyX(pitch)) / (scene.camera.params.sourceUnits ?? 0.5) +
+      scene.camera.params.width / 2;
+    return { x: source, y: 1, pitch };
   }
 
   private syncFreeCamera(layered = this.active): void {
@@ -209,19 +227,22 @@ export class ThreeKeysHost {
       return;
     this.sharedBindings ??= new SharedTextureBindings(gl);
     try {
-      const [{ ThreeStage }, { loadPianoKit }, { loadHand }] = await Promise.all([
+      const [{ ThreeStage }, { loadKeyboard88 }, { loadHand }] = await Promise.all([
         import("./ThreeStage"),
-        import("./pianoKit"),
+        import("./keyboard88"),
         import("./liveHands")
       ]);
       const [kit, hand] = await Promise.all([
-        loadPianoKit(),
+        loadKeyboard88(),
         loadHand().catch((error: unknown) => {
           console.warn("3D hands unavailable, keeping the sprite hands", error);
           return undefined;
         })
       ]);
-      if (this.destroyed) return;
+      if (this.destroyed) {
+        kit.dispose();
+        return;
+      }
       // Three creates empty 3D textures in its constructor: Pixi's upload flags must be off.
       this.resetPixiState();
       try {
@@ -229,6 +250,9 @@ export class ThreeKeysHost {
         this.stage.beforeRender = this.beforeRender;
         this.stage.setKeyboardDim(this.keyboardDim);
         this.stage.setPerformanceScene(this.performanceWanted);
+      } catch (error) {
+        kit.dispose();
+        throw error;
       } finally {
         // Construction also changes GL bindings, even if 3D was disabled while loading.
         this.resetPixiState();

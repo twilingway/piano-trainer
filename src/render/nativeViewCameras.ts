@@ -3,6 +3,7 @@ import { mixedKeyboardCamera } from "./mixedKeyboardCamera";
 import { noteProjectionCamera } from "./noteProjectionCamera";
 import { createNoteLaneProjection } from "./noteLaneProjection";
 import { BLACK_NOTE_FLOOR } from "./noteDimensions";
+import { KEYBOARD_BLACK_BACK } from "./keyboardMetrics";
 
 /** Derive note-only projection after the independent piano camera has its final layout. */
 export function nativeViewCameras(
@@ -29,7 +30,8 @@ export function nativeViewCameras(
     keyboard,
     BLACK_NOTE_FLOOR,
     base.params.width,
-    viewportHeight
+    viewportHeight,
+    base.params.keyboardDepth === undefined ? undefined : KEYBOARD_BLACK_BACK
   );
   return { keyboard, notes, blackLane };
 }

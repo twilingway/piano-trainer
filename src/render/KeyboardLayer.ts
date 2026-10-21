@@ -431,13 +431,13 @@ export class KeyboardLayer {
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
       }
       if (this.modelFaces) {
-        // Undo the atlas-to-model stretch: keyGeometry uses 2 source pixels per world unit
-        // across the key, then crops 8%/7% from each side of its UVs.
+        // Compensate the painted atlas for the metric cap and the cropped side bevels.
         const oldHeight = hint.height;
-        const depth = key.black ? 85 : 142;
+        const depth = key.black ? 94.0242 : 150;
         const sourceHeight = key.black ? blackHeight : keyboardHeight;
         const usableWidth = key.black ? 0.84 : 0.86;
-        hint.scale.y *= sourceHeight / (2 * depth * usableWidth);
+        const units = key.black ? 13.31152 / key.width : 22.5 / key.width;
+        hint.scale.y *= (sourceHeight * units) / (depth * usableWidth);
         if (stickers) hint.y += hint.height - oldHeight;
       }
     }

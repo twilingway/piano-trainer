@@ -42,6 +42,13 @@ describe("isHiddenArmPart", () => {
 });
 
 describe("Pianist", () => {
+  it("uses the same uniform metric scale as keyboard88 without changing the DEV loader", () => {
+    const pianist = new Pianist({ scene: new Group(), clip: undefined });
+    pianist.layout({ pitch: 64, x: 47, width: 23.5, metric: true });
+    expect(pianist.space.scale.toArray()).toEqual([1000, 1000, 1000]);
+    expect(pianist.space.position.toArray()).toEqual([0, 22, 0]);
+    pianist.dispose();
+  });
   it("sits still in the clip's first frame", () => {
     const scene = new Group();
     const node = new Object3D();

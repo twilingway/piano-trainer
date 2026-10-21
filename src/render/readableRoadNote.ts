@@ -18,7 +18,8 @@ export function readableRoadTop(
   // Sustained notes must consume to zero; a minimum would pin their burning tail in place.
   if (duration >= READABLE_ROAD_DURATION_LIMIT) return top;
   const { prefs, focal, originY, fit, orthographicScale } = camera.params;
-  const span = camera.roadFarZ - camera.near.z;
+  const contact = lane?.depth ?? camera.near.z;
+  const span = camera.roadFarZ - contact;
   if (
     !Number.isFinite(keyX) ||
     !Number.isFinite(top) ||
@@ -48,11 +49,11 @@ export function readableRoadTop(
   const nearBottom = Math.min(hitY, bottom);
   if (nearBottom <= top) return top;
   const x = camera.sourceX(keyX);
-  // Source pixels are twice world units; the actual upper face is one thickness above the road.
+  // The upper face is one physical slab thickness above the contact lane.
   const floorY = lane?.y ?? camera.near.y;
-  const y = floorY + noteSlabHeight(width / 2, floorY);
-  const zBottom = camera.near.z + (1 - nearBottom / hitY) * span;
-  const zTop = camera.near.z + (1 - top / hitY) * span;
+  const y = floorY + noteSlabHeight(width * (camera.params.sourceUnits ?? 0.5), floorY);
+  const zBottom = contact + (1 - nearBottom / hitY) * span;
+  const zTop = contact + (1 - top / hitY) * span;
   const lower = camera.project(x, y, zBottom);
   const upper = camera.project(x, y, zTop);
   if (
@@ -86,7 +87,7 @@ export function readableRoadTop(
   const yy = y * prefs.scale - prefs.height * fit;
   const zz = (yy * (ca + q * sa)) / denominator;
   const solvedZ = (zz - prefs.distance * fit) / prefs.scale;
-  const solvedTop = hitY * (1 - (solvedZ - camera.near.z) / span);
+  const solvedTop = hitY * (1 - (solvedZ - contact) / span);
   if (!Number.isFinite(solvedTop) || solvedZ <= zBottom) return fallback;
   return Math.max(0, Math.min(top, solvedTop));
 }

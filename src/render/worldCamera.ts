@@ -68,6 +68,10 @@ export interface CameraParams {
   readonly orthographicScaleY?: number;
   /** Off-axis horizontal centre; absent for the ordinary road camera. */
   readonly originX?: number;
+  /** Metric world units per source pixel; legacy projections use one half. */
+  readonly sourceUnits?: number;
+  /** Physical white-key depth; absent for the legacy 142-unit keyboard. */
+  readonly keyboardDepth?: number;
 }
 /** Actual unpanned key bounds in world units; pan retains its source-pixel units. */
 export interface OverheadFit {
@@ -112,16 +116,19 @@ export function worldCamera(
   prefs: CameraPrefs = DEFAULT_CAMERA,
   near: RoadNear = KEYS_BACK,
   horizonShare?: number,
-  overheadFit?: OverheadFit
+  overheadFit?: OverheadFit,
+  sourceUnits = 0.5,
+  keyboardDepth?: number
 ): WorldCamera {
   const fit = Math.max(1, height / 375);
   const defaultAngle = rad(DEFAULT_CAMERA.pitch);
   const frontDepth =
     DEFAULT_CAMERA.distance * fit * Math.cos(defaultAngle) +
     (DEFAULT_CAMERA.height * fit - 22) * Math.sin(defaultAngle);
-  const focal =
-    (frontDepth * 2 * Math.tan(rad(DEFAULT_CAMERA.fov) / 2)) / Math.tan(rad(prefs.fov) / 2);
-  const defaultFocal = frontDepth * 2;
+  let focal =
+    ((frontDepth * 2 * Math.tan(rad(DEFAULT_CAMERA.fov) / 2)) / Math.tan(rad(prefs.fov) / 2)) *
+    (0.5 / sourceUnits);
+  const defaultFocal = frontDepth * 2 * (0.5 / sourceUnits);
   const defaultBottomDepth =
     DEFAULT_CAMERA.distance * fit * Math.cos(defaultAngle) +
     DEFAULT_CAMERA.height * fit * Math.sin(defaultAngle);
@@ -134,6 +141,23 @@ export function worldCamera(
   const angle = rad(prefs.pitch),
     ca = prefs.pitch === 90 ? 0 : Math.cos(angle),
     sa = prefs.pitch === 90 ? 1 : Math.sin(angle);
+  if (keyboardDepth !== undefined && prefs.pitch !== 90 && overheadFit && width > 24) {
+    const extent = Math.max(
+      Math.abs(overheadFit.left - overheadFit.pan * sourceUnits),
+      Math.abs(overheadFit.right - overheadFit.pan * sourceUnits)
+    );
+    // The front is the widest projected piano row; fit the song there, not by scaling the mesh.
+    const frontHeight = sa < 0 ? 0 : 34;
+    const depth = (prefs.height * fit - frontHeight * prefs.scale) * sa + prefs.distance * fit * ca;
+    if (extent > 0 && depth > 1) {
+      const zoom = Math.min(1, ((width / 2 - 12) * depth) / (extent * prefs.scale * focal));
+      const yy = near.y * prefs.scale - prefs.height * fit;
+      const zz = near.z * prefs.scale + prefs.distance * fit;
+      const before = ((yy * ca + zz * sa) * focal) / (-yy * sa + zz * ca);
+      focal *= zoom;
+      originY -= before * (1 - zoom);
+    }
+  }
   const initialOrthoScale =
     prefs.pitch === 90 ? focal / Math.max(1, prefs.height * fit - 22 * prefs.scale) : undefined;
   let fitScale = 1;
@@ -145,7 +169,10 @@ export function worldCamera(
         width * 0.25,
         Math.max(0, Number.isFinite(requestedMargin) ? (requestedMargin ?? 12) : 12)
       );
-      const extent = Math.max(Math.abs(left - pan / 2), Math.abs(right - pan / 2));
+      const extent = Math.max(
+        Math.abs(left - pan * sourceUnits),
+        Math.abs(right - pan * sourceUnits)
+      );
       const projectedExtent = extent * prefs.scale * initialOrthoScale;
       if (projectedExtent > 0) fitScale = Math.min(1, (width / 2 - margin) / projectedExtent);
     }
@@ -164,10 +191,10 @@ export function worldCamera(
     return {
       x: width / 2 + x * prefs.scale * scale,
       y: originY - (yy * ca + zz * sa) * scale + prefs.targetY,
-      scale: (scale * prefs.scale) / 2
+      scale: scale * prefs.scale * sourceUnits
     };
   };
-  const sourceX = (x: number) => (x - width / 2) / 2;
+  const sourceX = (x: number) => (x - width / 2) * sourceUnits;
   const projectAtProgress = (
     x: number,
     y: number,
@@ -220,7 +247,15 @@ export function worldCamera(
     progressAt: (depth) => depth,
     depthAt: (progress) => progress
   };
-  const params: CameraParams = { width, focal, originY, fit, prefs };
+  const params: CameraParams = {
+    width,
+    focal,
+    originY,
+    fit,
+    prefs,
+    ...(sourceUnits === 0.5 ? {} : { sourceUnits }),
+    ...(keyboardDepth === undefined ? {} : { keyboardDepth })
+  };
   const projectionParams =
     orthographicScale === undefined ? params : { ...params, orthographicScale };
   return { params: projectionParams, project, projectAtProgress, sourceX, roadFarZ, road, near };
@@ -264,19 +299,21 @@ export function keySurface(
   sourceWidth = black ? 26 : 44,
   blackTop = 36
 ) {
-  const half = sourceWidth / 4;
+  const metric = camera.params.keyboardDepth !== undefined;
+  const half = metric ? (black ? 13.31152 : 22.5) / 2 : sourceWidth / 4;
   const y = black ? blackTop : 22;
-  const frontZ = black ? 57 : 0;
+  const frontZ = black ? (metric ? 55.7766 : 57) : 0;
+  const back = metric ? (black ? 149.8008 : 150) : 142;
   const bottomY = black ? 22 : 0;
   const top: readonly [Projected, Projected, Projected, Projected] = [
-    camera.project(centre - half, y, 142),
-    camera.project(centre + half, y, 142),
+    camera.project(centre - half, y, back),
+    camera.project(centre + half, y, back),
     camera.project(centre + half, y, frontZ),
     camera.project(centre - half, y, frontZ)
   ];
   const leftBottom = camera.project(centre - half, bottomY, frontZ);
   const rightBottom = camera.project(centre + half, bottomY, frontZ);
   const front = [top[3], top[2], rightBottom, leftBottom];
-  const side = [top[1], camera.project(centre + half, bottomY, 142), rightBottom, top[2]];
+  const side = [top[1], camera.project(centre + half, bottomY, back), rightBottom, top[2]];
   return { top, front, side, outline: convexHull([...top, ...front, ...(black ? side : [])]) };
 }

@@ -118,6 +118,24 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
   return { view, keyboardDraw, effectsDraw, roadDraw, sprites, flatDraw, notesDraw, layer };
 }
 
+it("keeps the selected 3D renderer when entering and leaving word mode", () => {
+  const { view } = viewHarness(true);
+  const setKeyStyle = vi.fn(() => Promise.resolve());
+  const keyboard = { container: new Container(), releaseMouse: vi.fn() };
+  Object.assign(view, {
+    keyStyle: "3d",
+    keyboard,
+    hands: { container: { visible: false }, reset: vi.fn() },
+    road: { setKeyStyle, setCamera: vi.fn() }
+  });
+  view.setComputerKeys({ tokens: [], language: "en" });
+  expect(setKeyStyle).not.toHaveBeenCalled();
+  expect(keyboard.container.visible).toBe(false);
+  view.setComputerKeys(undefined);
+  expect(setKeyStyle).not.toHaveBeenCalled();
+  expect(keyboard.container.visible).toBe(true);
+});
+
 describe("accompaniment fire independent of key colours", () => {
   it("keeps a struck hold and its label bright until its duration is consumed", () => {
     const note: SongNote = {
@@ -432,7 +450,7 @@ describe("listening", () => {
 });
 
 describe("keyboard initial centring", () => {
-  function panHarness(roadMode: boolean, pitch = 60) {
+  function panHarness(roadMode: boolean, pitch = 60, native = false) {
     const setPan = vi.fn();
     const keysRoot = new Container();
     const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
@@ -448,7 +466,7 @@ describe("keyboard initial centring", () => {
       keysRoot,
       hands: { container: new Container() },
       roadMode,
-      road: { setPan, setKeysOffset: vi.fn() }
+      road: { setPan, setKeysOffset: vi.fn(), drawsNativeRoad: native }
     }) as unknown as FallingNotesView;
     const frame: FrameState = {
       time: 0,
@@ -484,9 +502,57 @@ describe("keyboard initial centring", () => {
     scroll();
     expect(setPan).toHaveBeenLastCalledWith(0);
   });
+
+  it("keeps the fitted native song range centred even for its extreme upcoming key", () => {
+    const { scroll, setPan } = panHarness(true, 21, true);
+    scroll();
+    expect(setPan).toHaveBeenLastCalledWith(184);
+  });
 });
 
 describe("native hands layout", () => {
+  it.each([false, true])("rebuilds the road before drawing when live hands become %s", (live) => {
+    const { view, notesDraw } = viewHarness(true);
+    const state = {
+      live: !live,
+      sourceHitY: live ? 400 : 520,
+      roadHitY: live ? 400 : 520
+    };
+    const layout = vi.fn(() => {
+      state.roadHitY = state.sourceHitY;
+      Object.assign(view, { laidOutFor: { width: 800, height: 600, liveHands: state.live } });
+    });
+    Object.assign(view, {
+      hands: { live: state.live, container: { visible: false } },
+      laidOutFor: { width: 800, height: 600, liveHands: state.live },
+      geometry: () => ({ hitY: state.sourceHitY, whiteWidth: 40 }),
+      layout
+    });
+    const frame: FrameState = {
+      time: 0,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: notes,
+      waitingFor: notes,
+      hands: new Set(["right"]),
+      owns: () => true
+    };
+    view.draw(frame);
+    expect(layout).not.toHaveBeenCalled();
+    state.live = live;
+    state.sourceHitY = live ? 520 : 400;
+    Object.assign(view.hands, { live });
+    notesDraw.mockImplementation((_frame, _keys, geometry) => {
+      expect(geometry.hitY).toBe(state.roadHitY);
+    });
+    view.draw(frame);
+    expect(layout).toHaveBeenCalledOnce();
+    view.draw(frame);
+    expect(layout).toHaveBeenCalledOnce();
+  });
+
   it("keeps keyboard geometry and offset clamp stable when live hands are enabled", () => {
     interface LayoutHarness {
       geometry(height: number): unknown;

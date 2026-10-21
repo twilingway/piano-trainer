@@ -11,7 +11,8 @@ export function mixedKeyboardCamera(road: WorldCamera, keyboardHeight: number): 
   const across = road.project(1, road.near.y, road.near.z);
   const scale = road.params.prefs.scale;
   const scaleX = (across.x - origin.x) / scale;
-  const scaleY = keyboardHeight / (142 * scale);
+  const depth = road.params.keyboardDepth ?? 142;
+  const scaleY = keyboardHeight / (depth * scale);
   if (origin.scale <= 0 || !Number.isFinite(scaleX) || scaleX <= 0 || !Number.isFinite(scaleY))
     return road;
   const prefs = {
@@ -20,7 +21,7 @@ export function mixedKeyboardCamera(road: WorldCamera, keyboardHeight: number): 
     height: Math.max(1000, road.params.prefs.height)
   };
   const originY =
-    origin.y + (142 * scale + prefs.distance * road.params.fit) * scaleY - prefs.targetY;
+    origin.y + (depth * scale + prefs.distance * road.params.fit) * scaleY - prefs.targetY;
   const params: CameraParams = {
     ...road.params,
     prefs,
@@ -31,8 +32,8 @@ export function mixedKeyboardCamera(road: WorldCamera, keyboardHeight: number): 
   };
   const project: WorldCamera["project"] = (x, _y, z) => ({
     x: origin.x + x * scale * scaleX,
-    y: origin.y + (142 - z) * scale * scaleY,
-    scale: (scale * scaleX) / 2
+    y: origin.y + (depth - z) * scale * scaleY,
+    scale: scale * scaleX * (road.params.sourceUnits ?? 0.5)
   });
   return {
     params,
