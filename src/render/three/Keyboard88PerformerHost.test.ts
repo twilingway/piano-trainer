@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   setSong: vi.fn(),
   setVisibility: vi.fn(),
   dispose: vi.fn(),
+  pose: vi.fn(),
   fail: vi.fn(),
   failed: false
 }));
@@ -50,7 +51,7 @@ vi.mock("./Keyboard88Performer", () => ({
     setVisibility = mocks.setVisibility;
     dispose = mocks.dispose;
     follow = vi.fn();
-    pose = vi.fn();
+    pose = mocks.pose;
     setSeparateCameras = vi.fn();
   }
 }));
@@ -73,7 +74,7 @@ function fixture() {
   const sync = () => {
     host.sync(stage as unknown as ThreeStage, {} as KeysScene, hands as unknown as HandsLayer);
   };
-  return { host, hands, listeners, sync };
+  return { host, hands, listeners, stage, sync };
 }
 
 async function settle() {
@@ -112,6 +113,17 @@ describe("public performer lifetime", () => {
     f.host.clear();
     expect(mocks.dispose).toHaveBeenCalledOnce();
     expect(f.listeners.size).toBe(0);
+  });
+
+  it("seats the body before the stage first measures its floor", async () => {
+    const f = fixture();
+    f.sync();
+    await settle();
+    f.sync();
+    const posed = mocks.pose.mock.invocationCallOrder[0] ?? Infinity;
+    const added = f.stage.addToKeys.mock.invocationCallOrder[0] ?? -Infinity;
+    expect(posed).toBeLessThan(added);
+    f.host.dispose();
   });
 
   it("adopts a pending asset while hidden and reuses it on re-enable", async () => {

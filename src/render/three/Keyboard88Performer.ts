@@ -11,6 +11,10 @@ import type { HandsSource } from "./liveHands";
 import type { Keyboard88PerformerAsset } from "./keyboard88Loader";
 import { bindKeyboard88Visibility } from "./keyboard88Visibility";
 import { bindKeyboard88RoadBody } from "./keyboard88RoadBody";
+import { PianistBench } from "./pianistBench";
+
+/** The atlas scene's `bench.001` the poses were solved on, in the GLB's Y-up metres. */
+const KEYBOARD88_BENCH = { x: 0.21, top: 0.362, front: 0.01, width: 0.56, depth: 0.32, floor: 0 };
 
 /** The public performer only draws a numerical song-time pose; it never drives the song or keys. */
 export class Keyboard88Performer {
@@ -25,12 +29,14 @@ export class Keyboard88Performer {
   private readonly bones: Bone[];
   private readonly visibility;
   private readonly roadBody;
+  private readonly bench = new PianistBench(KEYBOARD88_BENCH);
+  private separate = false;
   private disposed = false;
   private layoutVersion = -1;
   private readonly visibleParts = { body: false, hands: false };
 
   constructor(readonly asset: Keyboard88PerformerAsset) {
-    this.space.add(asset.scene);
+    this.space.add(asset.scene, this.bench.group);
     this.sample = createKeyboard88Sample(asset.atlas);
     this.composeOptions = { rightPins: this.sample.right, leftPins: this.sample.left };
     this.index = indexKeyboard88Atlas(asset.atlas);
@@ -69,13 +75,16 @@ export class Keyboard88Performer {
   }
 
   setSeparateCameras(separate: boolean): void {
+    this.separate = separate;
     this.roadBody.setSeparateCameras(separate);
+    this.bench.group.visible = this.visibleParts.body && !separate;
   }
 
   setVisibility(body: boolean, hands: boolean): void {
     this.visibleParts.body = body;
     this.visibleParts.hands = hands;
     this.visibility.setVisibility(this.visibleParts);
+    this.bench.group.visible = body && !this.separate;
     this.space.visible = body || hands;
   }
 
@@ -137,6 +146,7 @@ export class Keyboard88Performer {
     this.disposed = true;
     this.visibility.dispose();
     this.roadBody.dispose();
+    this.bench.dispose();
     this.space.removeFromParent();
     this.asset.dispose();
   }

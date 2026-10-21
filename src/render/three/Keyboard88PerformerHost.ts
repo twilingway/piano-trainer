@@ -42,6 +42,8 @@ export class Keyboard88PerformerHost {
         try {
           this.performer = new Keyboard88Performer(asset);
           this.performer.setSong(this.notes);
+          // Seat the bind pose before the stage first measures its floor from these bounds.
+          this.performer.pose(undefined);
           this.performer.setVisibility(false, false);
         } catch (error) {
           this.performer?.dispose();
