@@ -55,6 +55,32 @@ describe("native source key contacts", () => {
     expect(contacts.down(61, 3.4)).toBe(true);
     expect(contacts.down(62, 3.4)).toBe(true);
   });
+  it("lifts the key between back-to-back and overlapping repeats of one pitch", () => {
+    const contacts = new NativeKeyContacts();
+    contacts.setNotes({
+      left: [],
+      right: [
+        { pitch: 64, start: 1, duration: 0.5 },
+        { pitch: 64, start: 1.5, duration: 0.5 },
+        { pitch: 64, start: 2, duration: 0.13 },
+        { pitch: 64, start: 2.1, duration: 0.2 }
+      ]
+    });
+    for (const [time, down] of [
+      [1.36, true],
+      [1.38, false],
+      [1.5, true],
+      [1.86, true],
+      [1.88, false],
+      [2, true],
+      [2.04, true],
+      [2.06, false],
+      [2.1, true],
+      [2.29, true],
+      [2.31, false]
+    ] as const)
+      expect(contacts.down(64, time), `t=${time}`).toBe(down);
+  });
   it("merges nested overlapping holds but not gaps and reuses immutable arrays without rebuilding", () => {
     const contacts = new NativeKeyContacts();
     const notes: NativeContactNotes = {
