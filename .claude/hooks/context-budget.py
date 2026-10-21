@@ -14,7 +14,7 @@ import json
 import os
 import sys
 
-THRESHOLD = 250_000
+THRESHOLD = 300_000
 TAIL_BYTES = 4 * 1024 * 1024
 
 
