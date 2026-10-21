@@ -65,6 +65,26 @@ function fixture() {
 }
 
 describe("case and road composition", () => {
+  it("draws the nested public performer only in the final keyboard-camera pass", () => {
+    const v = fixture();
+    const performer = new Group();
+    const skin = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+    performer.add(skin);
+    v.keys.add(performer);
+    const draws: { visible: boolean; camera: Camera }[] = [];
+    v.renderer.render.mockImplementation((_scene, camera) => {
+      draws.push({ visible: skin.visible && performer.visible && v.keys.visible, camera });
+    });
+    v.draw();
+    expect(draws).toEqual([
+      { visible: false, camera: v.keyboardCamera },
+      { visible: false, camera: v.roadCamera },
+      { visible: false, camera: v.keyboardCamera },
+      { visible: true, camera: v.keyboardCamera }
+    ]);
+    expect(skin.visible).toBe(true);
+  });
+
   it("draws screen FX after case colour and road, before case depth and hands", () => {
     const v = fixture();
     const order: string[] = [];

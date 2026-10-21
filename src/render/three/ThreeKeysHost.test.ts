@@ -1013,8 +1013,10 @@ describe("public keyboard88 ownership", () => {
     const view = fixture();
     view.hands.renderedStyle = true;
     view.hands.time = 7.5;
-    mocks.draw.mockImplementation(function (this: { beforeRender?: (camera: Camera) => void }) {
-      this.beforeRender?.(new Camera());
+    mocks.draw.mockImplementation(function (this: {
+      beforeRender?: (camera: Camera, separateCameras: boolean) => void;
+    }) {
+      this.beforeRender?.(new Camera(), true);
     });
     await view.host.setEnabled(true);
     view.tick();
@@ -1024,7 +1026,7 @@ describe("public keyboard88 ownership", () => {
     mocks.publicReady = true;
     view.tick();
     expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
-    expect(mocks.publicPose).toHaveBeenLastCalledWith(expect.objectContaining({ time: 7.5 }));
+    expect(mocks.publicPose).toHaveBeenLastCalledWith(expect.objectContaining({ time: 7.5 }), true);
     await view.host.setEnabled(false);
     expect(mocks.publicClear).toHaveBeenCalled();
     expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);

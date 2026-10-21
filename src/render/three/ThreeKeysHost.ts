@@ -366,11 +366,11 @@ export class ThreeKeysHost {
     this.effects.draw(this.app.renderer);
   };
 
-  private readonly beforeRender = (camera: Camera): void => {
+  private readonly beforeRender = (camera: Camera, separateCameras = false): void => {
     if (this.pianistIdentity === "public" && !this.hands?.container.visible && this.stage?.hands)
       this.stage.hands.group.visible = false;
     if (this.publicPerformer.ready) {
-      this.publicPerformer.pose(this.frameHands);
+      this.publicPerformer.pose(this.frameHands, separateCameras);
       return;
     }
     if (!this.wantsPianist() || !this.pianist) return;

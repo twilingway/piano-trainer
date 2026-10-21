@@ -9,6 +9,7 @@ import { Keyboard88Mirror } from "./keyboard88Mirror";
 import type { HandsSource } from "./liveHands";
 import type { Keyboard88PerformerAsset } from "./keyboard88Loader";
 import { bindKeyboard88Visibility } from "./keyboard88Visibility";
+import { bindKeyboard88RoadBody } from "./keyboard88RoadBody";
 
 /** The public performer only draws a numerical song-time pose; it never drives the song or keys. */
 export class Keyboard88Performer {
@@ -20,6 +21,7 @@ export class Keyboard88Performer {
   private readonly rotations;
   private readonly bones: Bone[];
   private readonly visibility;
+  private readonly roadBody;
   private disposed = false;
   private layoutVersion = -1;
 
@@ -57,6 +59,11 @@ export class Keyboard88Performer {
       return bone;
     });
     this.visibility = bindKeyboard88Visibility(asset.scene, asset.manifest.masks);
+    this.roadBody = bindKeyboard88RoadBody(asset.scene);
+  }
+
+  setSeparateCameras(separate: boolean): void {
+    this.roadBody.setSeparateCameras(separate);
   }
 
   setVisibility(body: boolean, hands: boolean): void {
@@ -106,6 +113,7 @@ export class Keyboard88Performer {
     if (this.disposed) return;
     this.disposed = true;
     this.visibility.dispose();
+    this.roadBody.dispose();
     this.space.removeFromParent();
     this.asset.dispose();
   }

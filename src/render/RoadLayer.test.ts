@@ -8,6 +8,9 @@ import { CAMERA_PRESETS, PANEL_EDGE, worldCamera } from "./worldCamera";
 import { noteProjectionCamera } from "./noteProjectionCamera";
 import { createNoteLaneProjection } from "./noteLaneProjection";
 import { computerGeometry } from "./computerKeyboardLayout";
+import { metricKeyboardCamera } from "./metricKeyboardCamera";
+import { layoutKeyboard } from "./keyboardLayout";
+import { nativeViewCameras } from "./nativeViewCameras";
 
 function fixture() {
   const frame = new ThreeRoadFrame();
@@ -90,6 +93,64 @@ describe("road decorative time", () => {
 });
 
 describe("raised native note shell wiring", () => {
+  it.each([
+    [true, false, 0],
+    [true, true, 100],
+    [false, false, 100]
+  ] as const)(
+    "applies only the remaining mist shift, native=%s computer=%s",
+    (on, computerKeyboard, expected) => {
+      const container = new Container();
+      container.x = 100;
+      const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+        three: { on },
+        computerKeyboard,
+        keys: { container }
+      }) as unknown as RoadLayer;
+      expect(road.mistOffsetX).toBe(expected);
+    }
+  );
+
+  it("moves native notes, the hit row and smoke anchors with placement without accumulating offsets", () => {
+    const width = 1365,
+      height = 768;
+    const keys = layoutKeyboard(2288, 21, 108);
+    const base = metricKeyboardCamera(width, 2288, height, CAMERA_PRESETS.top, 0.1, keys.values());
+    const cameras = nativeViewCameras(base, 150, false, true, height, 0.1, height, height - 8);
+    const state = {
+      camera: cameras.notes,
+      keyboardCamera: cameras.keyboard,
+      cameraHeight: height,
+      blackLane: cameras.blackLane,
+      projection: cameras.notes.road,
+      viewWidth: width,
+      shape: { horizon: 0.1 },
+      notesPerspective: true,
+      size: { width: 2288, height: 500 },
+      keyHeights: new Map<number, number>(),
+      pan: 0,
+      three: { on: true, drawsRoad: true },
+      keys: { container: new Container() },
+      legacyKeys: new Container(),
+      fog: new Container(),
+      setPan: vi.fn()
+    };
+    const road = Object.assign(
+      Object.create(RoadLayer.prototype) as object,
+      state
+    ) as unknown as RoadLayer;
+    const before = road.notePlace(width / 2, 500);
+    if (!before) throw new Error("Missing initial contact");
+    for (const y of [130, 130, -25, 0]) {
+      road.setKeysOffset({ x: 31, y });
+      const contact = road.notePlace(width / 2, 500);
+      expect(contact?.y).toBeCloseTo(before.y + y, 8);
+      expect(contact?.x).toBeCloseTo(before.x + 31, 8);
+      expect(road.hitLineY).toBeCloseTo(before.y + y, 8);
+    }
+    expect(state.setPan).toHaveBeenCalledTimes(3);
+  });
+
   it.each(["direct", "perspective"] as const)(
     "keeps black labels, body and consumed anchors on one lane in %s",
     (projection) => {

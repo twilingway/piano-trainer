@@ -112,7 +112,7 @@ export class ThreeStage {
   private nativePianist = false;
   private sign: string | undefined;
   /** Pose the character after this frame's camera setup and before any scene render pass. */
-  beforeRender: ((camera: Camera) => void) | undefined;
+  beforeRender: ((camera: Camera, separateCameras: boolean) => void) | undefined;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -278,7 +278,7 @@ export class ThreeStage {
       roadFrame,
       this.freeEnabled && !this.performanceEnabled
     );
-    this.beforeRender?.(camera);
+    this.beforeRender?.(this.pickCamera, separate);
     this.renderer.resetState();
     try {
       this.renderer.setViewport(

@@ -171,6 +171,30 @@ it("samples pre-render against the configured camera before GPU rendering and by
   expect(view.hands.update).toHaveBeenCalledOnce();
 });
 
+it("supplies the performer the physical keyboard camera and restores full-body mode in scene cameras", () => {
+  const view = fixture();
+  const before = vi.fn();
+  view.stage.beforeRender = before;
+  Object.assign(view.scene, { keyboardCamera: { ...view.scene.camera } });
+  const internal = view.stage as unknown as {
+    keyboardCamera: Camera;
+    free: { camera: Camera };
+    performance: { camera: Camera };
+  };
+  view.draw();
+  expect(before).toHaveBeenLastCalledWith(internal.keyboardCamera, true);
+  view.stage.setFreeCamera(true);
+  view.draw();
+  expect(before).toHaveBeenLastCalledWith(internal.free.camera, false);
+  view.stage.setPerformanceScene(true);
+  view.draw();
+  expect(before).toHaveBeenLastCalledWith(internal.performance.camera, false);
+  view.stage.setPerformanceScene(false);
+  view.stage.setFreeCamera(false);
+  view.draw();
+  expect(before).toHaveBeenLastCalledWith(internal.keyboardCamera, true);
+});
+
 it.each([false, true])("resets shared Three state after screen FX (failure: %s)", (failure) => {
   const view = fixture();
   const order: string[] = [];

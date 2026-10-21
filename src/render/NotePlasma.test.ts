@@ -72,7 +72,7 @@ function setup() {
   const road = {
     hitLineY: 400,
     drawsNativeRoad: false,
-    keysOffsetX: 0,
+    mistOffsetX: 0,
     notePlace: vi.fn((x: number, y: number) => ({ x: x + 10, y: y - 20, scale: 0.5 })),
     setEnergy: vi.fn<RoadLayer["setEnergy"]>(),
     clearEnergy: vi.fn()
@@ -95,6 +95,24 @@ function lastDraw() {
 beforeEach(() => vi.clearAllMocks());
 
 describe("NotePlasma renderer integration", () => {
+  it.each([false, true])("applies mist placement once with native road=%s", (native) => {
+    const view = setup();
+    view.road.drawsNativeRoad = native;
+    view.road.mistOffsetX = native ? 0 : 100;
+    view.road.notePlace.mockImplementation((x, y) => ({
+      x: x + 10 + (native ? 100 : 0),
+      y: y - 20,
+      scale: 0.5
+    }));
+    view.draw();
+    const call = spies.draw.mock.calls.at(-1);
+    expect(call?.[6]).toBe(native ? 0 : 100);
+    expect(call?.[0][0]?.x).toBeCloseTo(
+      (keys.values().next().value?.width ?? 0) / 2 + 10 + (native ? 100 : 0)
+    );
+    view.effect.destroy();
+  });
+
   it("keeps native energy and legacy plasma until the scene pass owns effect readiness", () => {
     const view = setup();
     view.road.drawsNativeRoad = true;

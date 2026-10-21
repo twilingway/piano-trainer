@@ -51,8 +51,10 @@ export class Keyboard88PerformerHost {
     this.performer.follow(keys);
   }
 
-  pose(source: HandsSource | undefined): void {
-    if (this.ready) this.performer?.pose(source);
+  pose(source: HandsSource | undefined, separateCameras: boolean): void {
+    if (!this.ready) return;
+    this.performer?.setSeparateCameras(separateCameras);
+    this.performer?.pose(source);
   }
 
   clear(): void {
