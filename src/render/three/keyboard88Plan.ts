@@ -10,10 +10,14 @@ import type {
   Keyboard88RequestedNote,
   Keyboard88Selection
 } from "./keyboard88Atlas";
-import { createKeyboard88HandSample, sampleKeyboard88Hand } from "./keyboard88Sample";
-
-export const KEYBOARD88_TRANSITION_SECONDS = 0.08;
-const EVENT_TIME_EPSILON = 0.001;
+import { createKeyboard88HandSample, sampleKeyboard88HandLayer } from "./keyboard88Sample";
+import { createKeyboard88FingerPlans, keyboard88FingerNumber } from "./keyboard88Fingers";
+import type { Keyboard88FingerPlan } from "./keyboard88Fingers";
+import {
+  KEYBOARD88_EVENT_TIME_EPSILON as EVENT_TIME_EPSILON,
+  KEYBOARD88_HAND_APPROACH_SECONDS,
+  KEYBOARD88_HAND_RELEASE_SECONDS
+} from "./keyboard88Motion";
 
 export interface Keyboard88Note extends Keyboard88RequestedNote {
   readonly start: number;
@@ -33,6 +37,7 @@ export interface Keyboard88Transition {
   readonly fromRotations: Float32Array;
   readonly fromRoot: Float32Array;
   readonly fromFrameId: number;
+  readonly targetRotations: Float32Array;
   readonly selection: Keyboard88Selection;
 }
 
@@ -40,6 +45,8 @@ export interface Keyboard88HandPlan {
   readonly initial: Keyboard88Selection;
   readonly events: readonly Keyboard88PlanEvent[];
   readonly transitions: readonly Keyboard88Transition[];
+  readonly fingers: readonly Keyboard88FingerPlan[];
+  readonly pinCapacity: number;
 }
 
 export interface Keyboard88Plan {
@@ -126,7 +133,12 @@ function handPlan(
   const events = handEvents(index, notes, hand);
   const initial = selectKeyboard88Rest(index, events[0]?.selection.assignment, hand);
   const transitions: Keyboard88Transition[] = [];
-  const plan = { initial, events, transitions };
+  const plan = {
+    initial,
+    events,
+    transitions,
+    ...createKeyboard88FingerPlans(index.atlas, events)
+  };
   const source = createKeyboard88HandSample(index.atlas);
   events.forEach((event, i) => {
     let previousIndex = i - 1;
@@ -138,30 +150,44 @@ function handPlan(
     }
     const previous = events[previousIndex],
       next = events[i + 1];
+    if (event.kind === "release" && event.held.length) return;
     const start =
       event.kind === "onset"
         ? Math.max(
-            previous?.time ?? event.time - KEYBOARD88_TRANSITION_SECONDS,
-            event.time - KEYBOARD88_TRANSITION_SECONDS
+            previous?.time ?? event.time - KEYBOARD88_HAND_APPROACH_SECONDS,
+            event.time - KEYBOARD88_HAND_APPROACH_SECONDS
           )
         : event.time;
-    let end = event.kind === "onset" ? event.time : event.time + KEYBOARD88_TRANSITION_SECONDS;
+    const end = event.kind === "onset" ? event.time : event.time + KEYBOARD88_HAND_RELEASE_SECONDS;
     if (event.kind === "release" && next) {
       const boundary =
         next.kind === "onset"
-          ? Math.max(event.time, next.time - KEYBOARD88_TRANSITION_SECONDS)
+          ? Math.max(event.time, next.time - KEYBOARD88_HAND_APPROACH_SECONDS)
           : next.time;
-      end = Math.min(end, boundary);
-      // A touching onset supersedes release: never insert an artificial mask0 endpoint.
-      if (end <= start) return;
+      // Only rest when the entire move finishes before the next preparation starts.
+      if (end > boundary) return;
     }
-    sampleKeyboard88Hand(index.atlas, plan, start, source);
+    sampleKeyboard88HandLayer(index.atlas, plan, start, source);
+    const rest = selectKeyboard88Rest(index, event.selection.assignment, hand);
+    const size = index.atlas.boneNames.length * 4;
+    const targetRotations = index.atlas.rotations.slice(
+      event.selection.frameIndex * size,
+      (event.selection.frameIndex + 1) * size
+    );
+    index.atlas.boneNames.forEach((name, bone) => {
+      if (!keyboard88FingerNumber(name)) return;
+      for (let j = 0; j < 4; j++) {
+        targetRotations[bone * 4 + j] =
+          index.atlas.rotations[rest.frameIndex * size + bone * 4 + j] ?? 0;
+      }
+    });
     transitions.push({
       start,
       end,
       fromRotations: source.rotations.slice(),
       fromRoot: source.root.slice(),
       fromFrameId: source.frameId,
+      targetRotations,
       selection: event.selection
     });
   });

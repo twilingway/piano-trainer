@@ -17,7 +17,8 @@ export class Keyboard88Performer {
   readonly space = new Group();
   private notes: HandsSource["notes"] | undefined;
   private plan: Keyboard88Plan | undefined;
-  private readonly sample;
+  private sample;
+  private readonly composeOptions;
   private readonly index;
   private readonly mirror;
   private readonly rotations;
@@ -31,8 +32,9 @@ export class Keyboard88Performer {
   constructor(readonly asset: Keyboard88PerformerAsset) {
     this.space.add(asset.scene);
     this.sample = createKeyboard88Sample(asset.atlas);
+    this.composeOptions = { rightPins: this.sample.right, leftPins: this.sample.left };
     this.index = indexKeyboard88Atlas(asset.atlas);
-    this.mirror = new Keyboard88Mirror(asset.rig);
+    this.mirror = new Keyboard88Mirror(asset.rig, asset.atlas);
     this.rotations = new Float32Array(asset.atlas.boneNames.length * 4);
     const found = new Map<string, Bone>();
     const materials = new Set<Material>();
@@ -111,12 +113,20 @@ export class Keyboard88Performer {
       },
       this.index
     );
+    this.sample = createKeyboard88Sample(this.asset.atlas, this.plan);
+    this.composeOptions.rightPins = this.sample.right;
+    this.composeOptions.leftPins = this.sample.left;
   }
 
   pose(source: HandsSource | undefined): void {
     if (this.disposed || !this.plan) return;
     sampleKeyboard88Plan(this.asset.atlas, this.plan, source?.time ?? 0, this.sample);
-    this.mirror.compose(this.sample.right.rotations, this.sample.left.rotations, this.rotations);
+    this.mirror.compose(
+      this.sample.right.rotations,
+      this.sample.left.rotations,
+      this.rotations,
+      this.composeOptions
+    );
     for (let i = 0; i < this.bones.length; i++)
       this.bones[i]?.quaternion.fromArray(this.rotations, i * 4);
     this.asset.scene.updateMatrixWorld(true);

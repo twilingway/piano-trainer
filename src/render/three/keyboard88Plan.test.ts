@@ -5,6 +5,7 @@ import { generatedKeyboard88Atlas, legacyKeyboard88Selection } from "./keyboard8
 import { createKeyboard88Plan } from "./keyboard88Plan";
 import type { Keyboard88Note } from "./keyboard88Plan";
 import { createKeyboard88HandSample, sampleKeyboard88Hand } from "./keyboard88Sample";
+import { keyboard88MinJerk } from "./keyboard88Motion";
 
 const assignment = [60, 62, 64, 65, 67] as const;
 const atlas: Keyboard88Atlas = {
@@ -85,11 +86,11 @@ describe("keyboard88 immutable chronological plan", () => {
     expect(
       value.right.transitions.find((transition) => transition.end === 1)?.selection.pressedMask
     ).toBe(4);
-    expect(value.right.transitions.find((transition) => transition.end === 1)?.start).toBe(0.92);
+    expect(value.right.transitions.find((transition) => transition.end === 1)?.start).toBe(0.5);
   });
 
   it.each([0, -1e-10, 1e-10, -0.0009, 0.0009])(
-    "prepares touching legato throughout all 80ms with release offset %s",
+    "prepares touching legato continuously throughout the whole gap with release offset %s",
     (releaseOffset) => {
       const moving: Keyboard88Atlas = {
         ...atlas,
@@ -110,14 +111,20 @@ describe("keyboard88 immutable chronological plan", () => {
         left: []
       });
       const transition = value.right.transitions.find((item) => item.end === 0.25);
-      expect(transition?.start).toBeCloseTo(0.17);
+      expect(transition?.start).toBeCloseTo(0);
       expect(transition?.selection.pressedMask).toBe(4);
       const sample = createKeyboard88HandSample(moving);
-      for (let millisecond = 0; millisecond <= 80; millisecond++) {
-        sampleKeyboard88Hand(moving, value.right, 0.17 + millisecond / 1000, sample);
-        expect(sample.alpha).toBeCloseTo(millisecond / 80);
+      let previousAngle = 0.4;
+      for (let millisecond = 0; millisecond <= 250; millisecond++) {
+        sampleKeyboard88Hand(moving, value.right, millisecond / 1000, sample);
+        const alpha = keyboard88MinJerk(millisecond / 250);
+        expect(sample.alpha).toBeCloseTo(alpha);
         expect(sample.frameId).toBe(310);
-        expect(sample.rotations[2]).toBeCloseTo(Math.sin((0.4 + (0.4 * millisecond) / 80) / 2));
+        const angle = 2 * Math.atan2(sample.rotations[2] ?? 0, sample.rotations[3] ?? 1);
+        expect(angle).toBeCloseTo(0.4 + 0.4 * alpha);
+        // max s'(u)=1.875: every 1ms step is bounded over the entire interval.
+        expect(Math.abs(angle - previousAngle)).toBeLessThanOrEqual((0.4 * 1.875) / 250 + 1e-6);
+        previousAngle = angle;
       }
     }
   );

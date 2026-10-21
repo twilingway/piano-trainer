@@ -3,6 +3,24 @@ import { Keyboard88Bones, keyboard88At as at } from "./keyboard88Bones.ts";
 import type { Keyboard88Rig } from "./keyboard88Bones";
 import { Keyboard88ArmIk, armVector, armRotation } from "./keyboard88ArmIk.ts";
 import type { Keyboard88ArmPose, Keyboard88ArmTarget } from "./keyboard88ArmIk";
+import type { Keyboard88Atlas } from "./keyboard88Atlas";
+import { KEYBOARD88_PIN_MAX_SHIFT_METRES } from "./keyboard88Motion";
+
+interface Keyboard88Pins {
+  readonly pins: readonly {
+    readonly finger: number;
+    readonly frameIndex: number;
+    readonly weight: number;
+  }[];
+  readonly pinCount: number;
+}
+
+interface Keyboard88ComposeOptions {
+  readonly torso?: boolean;
+  readonly correction?: boolean;
+  readonly rightPins?: Keyboard88Pins;
+  readonly leftPins?: Keyboard88Pins;
+}
 
 export const KEYBOARD88_MIRROR_X = 0.219;
 export const KEYBOARD88_ARM_SHIFT = 0.018;
@@ -37,6 +55,9 @@ export class Keyboard88Mirror {
   private readonly arms: readonly (readonly number[])[];
   private readonly ik = new Keyboard88ArmIk();
   private readonly point = new Vector3();
+  private readonly pinShift = new Vector3();
+  private readonly tips: readonly (readonly number[])[];
+  private readonly pinnedTips: Float64Array;
   private readonly pose: Keyboard88ArmPose = {
     shoulder: armVector(),
     elbow: armVector(),
@@ -51,8 +72,11 @@ export class Keyboard88Mirror {
   ];
   /** Bit 0: right, bit 1: left. Reset on each composition, including random-access seeks. */
   unreachableMask = 0;
+  /** Bit 0: right, bit 1: left. Counts are local to this composition, never seek history. */
+  pinClampMask = 0;
+  pinClampCount = 0;
 
-  constructor(rig: Keyboard88Rig) {
+  constructor(rig: Keyboard88Rig, atlas?: Keyboard88Atlas) {
     this.rig = rig;
     this.skeleton = new Keyboard88Bones(rig);
     this.source = new Keyboard88Bones(rig);
@@ -74,6 +98,13 @@ export class Keyboard88Mirror {
     this.rootRotation = new Quaternion().setFromRotationMatrix(
       new Matrix4().fromArray(rig.rootMatrix)
     );
+    this.tips = ["r", "l"].map((side) =>
+      ["thumb", "index", "middle", "ring", "pinky"].map((finger) =>
+        rig.boneNames.indexOf(`m_avg_${side}${finger}2`)
+      )
+    );
+    this.pinnedTips = new Float64Array((atlas?.frames.length ?? 0) * 30);
+    if (atlas) this.cachePins(atlas);
   }
 
   private isArm(index: number): boolean {
@@ -111,13 +142,17 @@ export class Keyboard88Mirror {
     right: ArrayLike<number>,
     leftSource: ArrayLike<number>,
     output: Float32Array,
-    options?: { readonly torso?: boolean; readonly correction?: boolean }
+    options?: Keyboard88ComposeOptions
   ): boolean {
+    this.pinClampMask = 0;
+    this.pinClampCount = 0;
     const left = this.mirror(leftSource);
     this.source.set(right);
     this.captureTarget(this.source, 0, 0);
+    this.pinTarget(this.source, 0, options?.rightPins);
     this.skeleton.set(left);
     this.captureTarget(this.skeleton, 1, options?.correction === false ? 0 : KEYBOARD88_ARM_SHIFT);
+    this.pinTarget(this.skeleton, 1, options?.leftPins);
     for (let i = 0; i < output.length; i++) output[i] = at(right, i);
     for (let i = 0; i < this.left.length; i++) {
       const index = at(this.left, i);
@@ -144,6 +179,55 @@ export class Keyboard88Mirror {
     }
     this.skeleton.write(output);
     return this.unreachableMask === 0;
+  }
+
+  /** Cache all recorded tips once; the render loop only reads packed coordinates and runs FK. */
+  private cachePins(atlas: Keyboard88Atlas): void {
+    const stride = this.mirrored.length;
+    for (let frame = 0; frame < atlas.frames.length; frame++) {
+      for (let side = 0; side < 2; side++) {
+        if (side === 0) this.source.set(atlas.rotations, frame * stride);
+        else
+          this.source.set(
+            this.mirror(atlas.rotations.subarray(frame * stride, (frame + 1) * stride))
+          );
+        for (let finger = 0; finger < 5; finger++) {
+          this.source.tail(at(at(this.tips, side), finger), this.point);
+          const offset = (frame * 10 + side * 5 + finger) * 3;
+          this.pinnedTips[offset] = this.point.x + (side ? KEYBOARD88_ARM_SHIFT : 0);
+          this.pinnedTips[offset + 1] = this.point.y;
+          this.pinnedTips[offset + 2] = this.point.z;
+        }
+      }
+    }
+  }
+
+  private pinTarget(bones: Keyboard88Bones, side: number, sample?: Keyboard88Pins): void {
+    if (!sample?.pinCount) return;
+    this.pinShift.set(0, 0, 0);
+    let total = 0;
+    for (let i = 0; i < sample.pinCount; i++) {
+      const pin = at(sample.pins, i);
+      if (pin.weight <= 0) continue;
+      const offset = (pin.frameIndex * 10 + side * 5 + pin.finger - 1) * 3;
+      bones.tail(at(at(this.tips, side), pin.finger - 1), this.point);
+      this.pinShift.x +=
+        (at(this.pinnedTips, offset) - this.point.x - (side ? KEYBOARD88_ARM_SHIFT : 0)) *
+        pin.weight;
+      this.pinShift.y += (at(this.pinnedTips, offset + 1) - this.point.y) * pin.weight;
+      this.pinShift.z += (at(this.pinnedTips, offset + 2) - this.point.z) * pin.weight;
+      total += pin.weight;
+    }
+    this.pinShift.divideScalar(Math.max(1, total));
+    if (this.pinShift.length() > KEYBOARD88_PIN_MAX_SHIFT_METRES) {
+      this.pinShift.setLength(KEYBOARD88_PIN_MAX_SHIFT_METRES);
+      this.pinClampMask |= 1 << side;
+      this.pinClampCount++;
+    }
+    const target = at(this.targets, side).position;
+    target.x += this.pinShift.x;
+    target.y += this.pinShift.y;
+    target.z += this.pinShift.z;
   }
 
   private readRotation(
