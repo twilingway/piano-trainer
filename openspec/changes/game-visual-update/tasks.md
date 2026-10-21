@@ -1,8 +1,8 @@
 # Tasks
 
 Решения Q1–Q5 утверждены пользователем в брифе этапа 2a; открытых material decisions нет. В этом
-запуске выполняется только chunk 2a. Chunk 2b описан полностью и не реализуется. Labs READ-ONLY,
-Blender только на копии в .scratch/, background 5.2 CPU два потока. Длинные Blender-команды — через
+запуске выполняется chunk 2b; этап 2a принят пользователем в браузере. Labs READ-ONLY, Blender
+только на копии в .scratch/, background 5.2 CPU два потока. Длинные Blender-команды — через
 ops_run.py с name gvu-<step>, русским purpose и kind blender. Нет GUI/MCP, GPU, browser/dev server,
 commits/push. Все production-модули ≤500 строк.
 
@@ -34,6 +34,8 @@ commits/push. Все production-модули ≤500 строк.
 - [x] 1.7 По второму замечанию срезать верх board и щёк, опустить felt до Z=0.738 м, ниже белых
       клавиш, чтобы ноты не уходили за доску. Проверка: keyboard88Asset.test.ts на верх
       board/felt/щёк, два CPU-экспорта с одинаковым SHA.
+- [x] 1.8 По третьему замечанию срезать весь корпус сзади до Y=0.455 м (тонкая панель 5 мм за
+      клавишами). Проверка: keyboard88Asset.test.ts на задний край, два экспорта с одинаковым SHA.
 - [ ] 1.7 Перенести экранные огонь/свечение после корпуса и дороги, до рук, сохранив native depth
       свободной камеры. Тесты порядка проходов и восстановления состояния добавляются рядом с
       реализацией; Vitest/build запускает lead из-за известного spawn EPERM sandbox. Проверка
@@ -41,15 +43,15 @@ commits/push. Все production-модули ≤500 строк.
 
 ## 2. Chunk 2b — тело, кожа и вращения
 
-- [ ] 2.1 Зафиксировать актуальные копии сцены/index/C4/audit/UV/albedo с size/mtime/SHA и версиями.
+- [x] 2.1 Зафиксировать актуальные копии сцены/index/C4/audit/UV/albedo с size/mtime/SHA и версиями.
       Экспортировать все 1215 IDs308–1522 независимо от RED/YELLOW/unknown. Проверка:
       tools/hand-rig/verify_keyboard88.py --all-frames сверяет ID sets/52 bone order/provenance;
       описать команды и фактические файлы в docs/KEYBOARD88_ASSETS.md.
-- [ ] 2.2 Добавить export_keyboard88_performer.py: один skinned SMPL-H base6890 mesh, rest
-      weights/52 bones, пять fitted nails rigid distal; необязательно rest subdivision1 с
-      interpolated weights. Правая UV по source IDs, lossless WebP; доказать left/right
-      correspondence или применить matched flat left skin и сообщить. Проверка: GLB≤15MiB,
-      skin≈2.3MiB, decoded PNG/WebP pixels равны, нет personal/local-models данных.
+- [x] 2.2 Добавить export_keyboard88_performer.py: один skinned SMPL-H base6890 mesh, rest
+      weights/52 bones, ногти только в текстуре без отдельных meshes/bindings; необязательно rest
+      subdivision1 с interpolated weights. Правая UV по source IDs, lossless WebP; доказать
+      left/right correspondence или применить matched flat left skin и сообщить. Проверка:
+      GLB≤15MiB, skin≈2.3MiB, decoded PNG/WebP pixels равны, нет personal/local-models данных.
 - [ ] 2.3 Экспортировать локальные rotations 52 bones всех1215 кадров и root только при изменении,
       assignment/pressed/audit index. Проверка: pose+index суммарно≤2MiB; three.js-skinned fingertip
       anchors против Blender armature heads/tails max≤0.5мм **на всех кадрах**, до torso mixing; не
@@ -83,9 +85,9 @@ commits/push. Все production-модули ≤500 строк.
       local-models оставить нетронутым. Проверка: pnpm exec vitest run --pool=threads
       src/render/three/keyboard88Loader.test.ts; missing/corrupt/version/stale/pending/dispose; pnpm
       build и asset allowlist.
-- [ ] 4.2 Добавить manifest body/hand/nail masks и native view adapter, подключить pure plan/time;
-      body off/hands off/переключение вида не сбрасывают session/preferences. Проверка: pnpm exec
-      vitest run --pool=threads src/render/three/keyboard88Visibility.test.ts
+- [ ] 4.2 Добавить manifest body/hand masks и пустой nail mask, native view adapter, подключить pure
+      plan/time; body off/hands off/переключение вида не сбрасывают session/preferences. Проверка:
+      pnpm exec vitest run --pool=threads src/render/three/keyboard88Visibility.test.ts
       src/render/three/liveHandsScene.test.ts src/render/three/sceneCameraPasses.test.ts; одно тело,
       одна пара, без gaze/head/foot motion и изменения local-models path.
 - [ ] 4.3 Выполнить видимую browser/Blender приёмку после2b: белые/чёрные idle/press/release,
@@ -103,3 +105,17 @@ commits/push. Все production-модули ≤500 строк.
 успешной production сборки у lead; браузерная приёмка в этом запуске не выполнялась. Отчёт и полный
 список файлов: `.scratch/stage2a-report.md`, команды экспорта и контракт:
 `docs/KEYBOARD88_ASSETS.md`.
+
+Состояние 2b: экспорт, mirror, selector/plan/sample, loader/visibility и native integration
+реализованы. Два финальных экспорта идентичны; assets/budgets/lossless/1215 bone comparisons прошли
+(`python -B tools/hand-rig/verify_keyboard88.py --all-frames`). Max Three-skinned anchor
+error0.000674мм. Обе руки текстурированы по доказанной полной топологической биекции; отдельных
+ногтей нет. Mirror/torso residual велик на крайних позах и явно приведён в
+docs/KEYBOARD88_ASSETS.md.
+
+Задачи с командами Vitest оставлены открытыми до запуска у lead: в этом sandbox Vitest/build
+останавливаются при загрузке Vite config на `[plugin externalize-deps] Error: spawn EPERM`.
+Независимый Node/assert прогон 19 pure сценариев и реальный GLTFLoader parse/visibility прошли; это
+не официальный Vitest и не визуальная приёмка. Read-only reviewer проверил реализацию; исправлены
+production availability тела и hands-off при public fallback, повторное ревью без блокеров. Browser
+gate4.3 и общий gate4.4 остаются открытыми. Коммитов/push/сервера/браузера нет.

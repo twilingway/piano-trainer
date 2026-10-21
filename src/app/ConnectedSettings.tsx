@@ -19,7 +19,7 @@ import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 import { useAppSelector } from "./storeHooks";
 import { useI18n } from "./useI18n";
-import { PIANIST_AVAILABLE } from "../render/three/pianistModel";
+import { pianistAvailable } from "../render/three/pianistAvailability";
 import { usePlayChoice } from "./usePlayChoice";
 import { useTrainerSelector, type TrainerSnapshotSource } from "./trainerSnapshots";
 
@@ -228,7 +228,7 @@ function ConnectedKeyboardSettings() {
       keyboardDim={state.keyboardDim}
       onKeyboardDim={onKeyboardDim}
       roadGuides={state.roadGuides}
-      {...(PIANIST_AVAILABLE ? { pianist: state.pianist } : {})}
+      {...(pianistAvailable(state.keyStyle, state.handStyle) ? { pianist: state.pianist } : {})}
       onPianist={onPianist}
       performanceScene={state.performanceScene}
       onPerformanceScene={onPerformanceScene}

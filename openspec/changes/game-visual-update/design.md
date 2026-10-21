@@ -129,8 +129,10 @@ painted tops и стабильные top/body groups позволяют накл
 до UV/triangulation; простой clamp деформировал бы фаски. Нижний край панелей остаётся на полу.
 Вторым замечанием верх `board.001` срезается плоскостью Z=0.738 м (на 2 мм ниже белых клавиш, было
 0.768), щёки — той же плоскостью (было 0.774), а `felt.001` (0.740…0.747) целиком опускается под ту
-же высоту: иначе доска на 28 мм выше клавиш закрывала концы нот и огонь у линии удара. Остальные
-части сохраняют форму. Лаборатория и `.scratch/atlas.blend` не перезаписываются.
+же высоту: иначе доска на 28 мм выше клавиш закрывала концы нот и огонь у линии удара. Третьим
+замечанием весь корпус сзади срезается плоскостью Y=0.455 м, в 5 мм за задним краем клавиш: верх
+доски глубиной 34 мм оставался тёмной полосой между нотами и клавишами. Остальные части сохраняют
+форму. Лаборатория и `.scratch/atlas.blend` не перезаписываются.
 
 Blender: X вдоль клавиш, Y от игрока, Z вверх, метры; C4 front/top=(.36,.30,.74). Преобразование в
 игровую Y-up систему:
@@ -177,10 +179,10 @@ renderer. `piano-kit.glb` сохраняется лишь при другом п
 
 `export_keyboard88_performer.py` строит один GLB из **base 6890 vertices SMPL-H skin**, 52 костей с
 rest transforms/weights. Допускается один subdivision в rest pose с интерполированными skin weights,
-если GLB остаётся ≤15 MiB; subdivision на кадр отсутствует. Пять fitted nails экспортируются как
-пять meshes в rest pose, жёстко привязанных к distal finger bones. Не переносить 1215 fitted nail
-shape keys. Корректирующие формы, subdivision 2 и GN PAD/SIDE из инвентаря описывают источник, но в
-runtime не воспроизводятся.
+если GLB остаётся ≤15 MiB; subdivision на кадр отсутствует. Ногти используются **только нарисованные
+в текстуре руки**. Пять `Pilot nail 1–5` — вспомогательные объекты для постановки в Blender: не
+экспортировать их геометрию, shape keys и привязки; в игре нет отдельных nail meshes. Корректирующие
+формы, subdivision 2 и GN PAD/SIDE из инвентаря описывают источник, но в runtime не воспроизводятся.
 
 Все 1215 **записанных** кадров 308–1522 экспортировать из Blender armature, не из устаревших
 candidate JSON. Данные: локальные quaternions 52 костей, плюс root transform только если меняется;
@@ -200,8 +202,11 @@ B. Одного небольшого пакета достаточно: не н�
 WebP**, ориентир 2318576 B (≈2.21 MiB; бюджет около 2.3 MiB); сверить decoded pixels с PNG.
 Исследовать реальную SMPL-H left/right vertex или face correspondence и доказать её по IDs/
 topology; при наличии зеркалить правую hand texture на левую. Если соответствия нет — matched flat
-skin material слева с явным отчётом, без угадывания UV. Остальное тело сохраняет подходящие
-нейтральные материалы. Личные local pianist GLB/face maps не копируются.
+skin material слева с явным отчётом, без угадывания UV. Источник: лаборатория
+`hand-texture-20261019/`, `README-RU.md`, `bake/albedo-4096.png`, `arm-uv.json` с исходными SMPL-H
+face IDs; `flat-hand` вырезан из того же тела. UV относятся ко всей правой руке до локтя, а не
+только кисти. Остальное тело получает простой материал, похожий на одежду; качественный материал
+лица будет отдельной работой. Личные local pianist GLB/face maps не копируются.
 
 ### 3. Изолированный mirror и общий торс — 2b
 
@@ -233,9 +238,10 @@ transform. Усреднение торса может менять contact от�
 
 `keyboard88Atlas.ts`, `keyboard88Plan.ts`, `keyboard88Sample.ts` — небольшие pure TS модули без
 Three/DOM/React/fetch/timers. Shell загружает, view применяет численные состояния. Вход — штатные
-immutable notes hand/MIDI/finger/start/end и song time из `PracticeSession`. План группирует
-одинаковые timestamps, release до onset, стабильный порядок hand/MIDI/finger/ note ID. Held notes по
-note ID/счётчику сохраняются при перекрытиях.
+immutable notes hand/MIDI/finger/start/end и song time из `PracticeSession`. Адаптер штатных
+`FingeredNote` без ID использует стабильный ordinal исходного массива как ID; end=start+duration.
+План группирует одинаковые timestamps, release до onset, стабильный порядок hand/MIDI/finger/ note
+ID. Held notes по note ID/счётчику сохраняются при перекрытиях.
 
 При exact mismatch, растяжке, crossing, неполном finger set, чёрной клавише вне families или нотах
 вне покрытия **всегда выбрать ближайший кадр**, не скрывать/останавливать руку. Ранжирование
@@ -262,14 +268,17 @@ MIDI-разность, при равенстве меньший finger number. �
 `max(previous event time, onset - .080)` секунд. Root при изменении интерполируется согласованно.
 Самплер random-access, принимает только plan/time, без delta clock.
 
-Когда ничего не удерживается, release возвращает к **mask 0 того же assignment/позиции**.
-Техническая конкретизация допущения Q3: release-переход начинается в release time, длится до 80 мс и
-обрезается началом подготовки следующего onset; при совпадении границ target onset имеет приоритет.
-Нулевая длительность означает целевой endpoint без деления на ноль. До первого event — mask0
-выбранной первой позиции; пустая песня — стабильный rest кадр с минимальным ID. Два касающихся
-release/onset сохраняются в плане отдельными событиями; выдуманная музыкальная пауза не вставляется.
-Промежуточные slerp-позы не объявляются collision-safe или точными удержаниями Blender.
-Pause/seek/speed/повтор одного времени дают тот же результат.
+Когда ничего не удерживается, release возвращает к **mask 0 того же assignment/позиции**. У 10 из 55
+записанных assignment (mixedA/thumbblack каждой октавы) mask0 отсутствует. Для них действует общая
+политика nearest: среди записанных mask0 минимизировать L1 по всем пяти MIDI предыдущего assignment,
+затем меньший frame ID; новые source poses не синтезировать. Техническая конкретизация допущения Q3:
+release-переход начинается в release time, длится до 80 мс и обрезается началом подготовки
+следующего onset; при совпадении границ target onset имеет приоритет. Нулевая длительность означает
+целевой endpoint без деления на ноль. До первого event — mask0 выбранной первой позиции; пустая
+песня — стабильный rest кадр с минимальным ID. Два касающихся release/onset сохраняются в плане
+отдельными событиями; выдуманная музыкальная пауза не вставляется. Промежуточные slerp-позы не
+объявляются collision-safe или точными удержаниями Blender. Pause/seek/speed/повтор одного времени
+дают тот же результат.
 
 ### 6. Ленивый public loader и интеграция — 2b
 
@@ -281,10 +290,11 @@ Public loader включается только для native 3D + выбран�
 только свои ресурсы, shared maps — однократно. Настройки/localStorage не сбрасывать.
 
 Body off оставляет hands-only той же модели; hands off скрывает выбранные руки и сохраняет
-preference. Manifest masks по исходным IDs разделяют body/hand/nails без двойной геометрии и
-regex-угадывания. Public path не зависит от DEV, performance ID или source MIDI SHA. **DEV-only
-`local-models/` path остаётся нетронутым**, его существующие режимы не подменяются автоматически
-наличием public файла. При public atlas выбран один владелец рук.
+preference. Manifest masks по исходным IDs разделяют body/hand без двойной геометрии; nail mask
+пуст, отдельных ногтей нет. Разделение выполняется без regex-угадывания. Public path не зависит от
+DEV, performance ID или source MIDI SHA. **DEV-only `local-models/` path остаётся нетронутым**, его
+существующие режимы не подменяются автоматически наличием public файла. При public atlas выбран один
+владелец рук.
 
 ## Risks / Trade-offs
 
@@ -316,10 +326,13 @@ additive motion не накладывать на новый public sampler. Су
 
 2a: обновлённые specs validate → keyboard export → metric adapter и unit tests → проверки. 2b:
 freeze обновлённого источника → body/skin + rotations/bone fidelity → mirror residual →
-selector/sampler → loader/visibility → browser/network acceptance. Результат 2a остаётся
-незакоммиченным в текущем worktree, body/poses/runtime loader не реализуются. При ошибке 3D
-сохраняется штатный fallback «Перспектива»; hand.glb нужен для loading/failure. Не удалять piano-kit
-до проверки остальных потребителей. Выпуск/merge/archive не входят в 2a.
+selector/sampler → loader/visibility → browser/network acceptance. Результат 2a остаётся принятым
+пользователем и закоммиченным в ветке. Реализация 2b остаётся незакоммиченной по брифу; численные
+результаты и существенный contact residual описаны в `docs/KEYBOARD88_ASSETS.md`. В стандартном
+Three LBS используются четыре крупнейших нормализованных веса: max discarded mass0.5617%,
+mean0.00318%; это измеренное приближение поверхности. При ошибке 3D сохраняется штатный fallback
+«Перспектива»; hand.glb нужен для loading/failure. Не удалять piano-kit до проверки остальных
+потребителей. Выпуск/merge/archive не входят в это поручение.
 
 ## Validation
 

@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 
-import { PIANIST_AVAILABLE } from "../render/three/pianistModel";
+import { pianistAvailable } from "../render/three/pianistAvailability";
 import type { KeyboardSettings } from "../ui/settings/KeyboardSettings";
 import type { useFallingView } from "./useFallingView";
 import type { StaffPrefs } from "./useStaffPrefs";
@@ -42,7 +42,9 @@ export function useKeyboardSettings(
     onKeyboardDim: (keyboardDim) => {
       updateStaffPrefs({ keyboardDim });
     },
-    ...(PIANIST_AVAILABLE ? { pianist: staffPrefs.pianist } : {}),
+    ...(pianistAvailable(staffPrefs.keyStyle, staffPrefs.handStyle)
+      ? { pianist: staffPrefs.pianist }
+      : {}),
     onPianist: (pianist) => {
       updateStaffPrefs({ pianist });
     },

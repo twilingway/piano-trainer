@@ -37,13 +37,21 @@ const mocks = vi.hoisted(() => ({
   setSongStage: vi.fn(),
   addToKeys: vi.fn(),
   removeFromKeys: vi.fn(),
-  pose: vi.fn()
+  pose: vi.fn(),
+  publicReady: false,
+  publicSync: vi.fn(),
+  publicPose: vi.fn(),
+  publicClear: vi.fn(),
+  publicDispose: vi.fn(),
+  handGroup: { visible: true }
 }));
 
 vi.mock("./ThreeStage", () => ({
   ThreeStage: class {
     beforeRender: ((camera: Camera) => void) | undefined;
-    hands = mocks.handPresent ? { setPlayer: vi.fn(), poses: {} } : undefined;
+    hands = mocks.handPresent
+      ? { setPlayer: vi.fn(), poses: {}, group: mocks.handGroup }
+      : undefined;
     setNativePianist = mocks.setNativePianist;
     setSongStage = mocks.setSongStage;
     addToKeys = mocks.addToKeys;
@@ -69,6 +77,17 @@ vi.mock("./ThreeStage", () => ({
 }));
 vi.mock("./keyboard88", () => ({ loadKeyboard88: mocks.loadKit }));
 vi.mock("./liveHands", () => ({ loadHand: mocks.loadHand }));
+vi.mock("./Keyboard88PerformerHost", () => ({
+  Keyboard88PerformerHost: class {
+    get ready() {
+      return mocks.publicReady;
+    }
+    sync = mocks.publicSync;
+    pose = mocks.publicPose;
+    clear = mocks.publicClear;
+    dispose = mocks.publicDispose;
+  }
+}));
 
 vi.mock("./pianist", () => ({
   loadPianist: mocks.loadPianist,
@@ -125,6 +144,7 @@ function fixture() {
     time: 0,
     songNotes: { left: [], right: [] } as NativeContactNotes,
     pianist: false,
+    renderedStyle: false,
     songPerformance: undefined as SourcePerformanceIdentity | undefined,
     songStage: undefined as SongStage | undefined
   };
@@ -196,6 +216,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.nativeEffectsReady = false;
   mocks.handPresent = true;
+  mocks.publicReady = false;
+  mocks.handGroup.visible = true;
   mocks.loadPianist.mockReset().mockResolvedValue(undefined);
   mocks.construct.mockReset();
   mocks.draw.mockReset();
@@ -984,4 +1006,45 @@ it("hides the pianist lower body only in ordinary overhead, preserving perspecti
   view.tick();
   expect(mocks.pianistTopView).toHaveBeenLastCalledWith(true);
   view.host.destroy();
+});
+
+describe("public keyboard88 ownership", () => {
+  it("keeps fallback while pending and hands the current song time to the ready public owner", async () => {
+    const view = fixture();
+    view.hands.renderedStyle = true;
+    view.hands.time = 7.5;
+    mocks.draw.mockImplementation(function (this: { beforeRender?: (camera: Camera) => void }) {
+      this.beforeRender?.(new Camera());
+    });
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(mocks.publicSync).toHaveBeenCalledOnce();
+    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
+    expect(mocks.loadPianist).not.toHaveBeenCalled();
+    mocks.publicReady = true;
+    view.tick();
+    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
+    expect(mocks.publicPose).toHaveBeenLastCalledWith(expect.objectContaining({ time: 7.5 }));
+    await view.host.setEnabled(false);
+    expect(mocks.publicClear).toHaveBeenCalled();
+    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
+    view.host.destroy();
+  });
+
+  it("hides fallback hands when only the public body is wanted during loading or failure", async () => {
+    const view = fixture();
+    view.hands.renderedStyle = true;
+    view.hands.pianist = true;
+    view.hands.container.visible = false;
+    mocks.draw.mockImplementation(function (this: { beforeRender?: (camera: Camera) => void }) {
+      // LiveHands.update runs before this callback in the real stage.
+      mocks.handGroup.visible = true;
+      this.beforeRender?.(new Camera());
+    });
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(mocks.handGroup.visible).toBe(false);
+    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
+    view.host.destroy();
+  });
 });
