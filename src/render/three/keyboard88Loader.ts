@@ -339,12 +339,16 @@ export class Keyboard88PerformerLoader {
   error: unknown;
   private generation = 0;
   private controller: AbortController | undefined;
+  private source = DEFAULT_URL;
 
   constructor(private readonly dependencies?: Partial<Keyboard88LoaderDependencies>) {}
 
   async load(manifestUrl?: string): Promise<Keyboard88Performer | undefined> {
     if (this.state === "disposed") return undefined;
+    const source = manifestUrl ?? DEFAULT_URL;
+    if (source === this.source && this.state !== "idle") return this.asset;
     this.cancel();
+    this.source = source;
     const generation = this.generation;
     const controller = new AbortController();
     this.controller = controller;
@@ -373,13 +377,21 @@ export class Keyboard88PerformerLoader {
 
   cancel(): void {
     if (this.state === "disposed") return;
+    const failed = this.state === "failed";
     this.generation++;
     this.controller?.abort();
     this.controller = undefined;
     this.asset?.dispose();
     this.asset = undefined;
-    this.error = undefined;
-    this.state = "idle";
+    if (!failed) this.error = undefined;
+    this.state = failed ? "failed" : "idle";
+  }
+
+  fail(error: unknown): void {
+    if (this.state === "disposed") return;
+    this.cancel();
+    this.error = error;
+    this.state = "failed";
   }
 
   dispose(): void {

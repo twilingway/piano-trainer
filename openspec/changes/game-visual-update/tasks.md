@@ -60,6 +60,18 @@ commits/push. Все production-модули ≤500 строк.
 
 ## 3. Chunk 2b — mirror, selector и sampler
 
+- [x] 3.4 По решению 2026-10-21 добавить pure two-bone IK обеих рук после torso mix, tests
+      position/orientation/pole/lengths/fingers/unreachable; повторить residual всех1215 и
+      offset607, обновить таблицу и отчёт недостижимости. Проверки исполнителя:
+      lint/typecheck/prettier/spec:validate; Vitest запускает lead.
+- [x] 3.5 Исправить legato distinct event ≥1мс, индексировать selector с legacy equivalence и
+      timing; вынести plan из render; sticky failure и reuse assets across songs/toggles покрыть
+      тестами.
+
+Исправления 3.4–3.5: residual CLI и Node/assert equivalence/legato прошли; unit-тесты написаны,
+официальные Vitest/build запускает lead по брифу. Общая визуальная и unit-приёмка change остаётся в
+открытых пунктах ниже; она не заменяется численным PASS.
+
 - [ ] 3.1 Изолировать left mirror right key=100-left key относительно D3(.2190), body plane(.2100).
       Применить +18мм X только левому arm chain без stretch и изменения wrist/fingers; общий
       pelvis/spine/neck/head slerp-average, collar→fingers каждой стороны свои. Проверка: все

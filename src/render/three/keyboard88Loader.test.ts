@@ -187,6 +187,29 @@ describe("keyboard88 public loader", () => {
     expect(loader.state).toBe("failed");
     expect(loader.asset).toBeUndefined();
     expect(f.parseModel).not.toHaveBeenCalled();
+    loader.cancel();
+    expect(await loader.load()).toBeUndefined();
+    expect(f.fetcher).toHaveBeenCalledOnce();
+    expect(loader.state).toBe("failed");
+    expect(await loader.load("/another/keyboard88-performer.json")).toBeDefined();
+    expect(f.fetcher).toHaveBeenCalledTimes(6);
+    loader.dispose();
+  });
+
+  it("retains construction failures until the asset URL changes", async () => {
+    const f = fixture();
+    const loader = new Keyboard88PerformerLoader(f.dependencies);
+    const loaded = await loader.load();
+    expect(loaded).toBeDefined();
+    const disposeSkeleton = vi.spyOn(f.skeleton, "dispose");
+    const error = new Error("invalid performer binding");
+    loader.fail(error);
+    expect(loader.state).toBe("failed");
+    expect(loader.error).toBe(error);
+    expect(loader.asset).toBeUndefined();
+    expect(disposeSkeleton).toHaveBeenCalledOnce();
+    expect(await loader.load()).toBeUndefined();
+    expect(f.fetcher).toHaveBeenCalledTimes(5);
     loader.dispose();
   });
 

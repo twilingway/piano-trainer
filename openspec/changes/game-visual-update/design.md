@@ -235,6 +235,16 @@ face IDs; `flat-hand` вырезан из того же тела. UV относ�
 
 ### 3. Изолированный mirror и общий торс — 2b
 
+Уточнение пользователя 2026-10-21: после неизменённого смешивания торса обе руки восстанавливаются
+аналитическим two-bone IK. `keyboard88ArmIk.ts` — чистая численная геометрия без Three scene
+objects; `keyboard88Mirror.ts` снимает собственные мировые wrist targets и направления локтей до
+смешивания, слева добавляет +18 мм X, затем передаёт смешанное плечо/предплечье решателю. Collar
+остаётся от смешанного торса. Решатель сохраняет длины и мировую ориентацию запястья, пальцы не
+изменяет; внешняя недостижимость даёт полное разгибание вдоль цели и отдельный счётчик. Scratch и
+выходы выделяются при создании. Проверка повторяет 1215 кадров и offset+607: physical left key-top
+max≤35 мм; правая сравнивается с собственным baseline (его исходный max89.382 мм не исправляется
+IK).
+
 Замер lead `.scratch/pelvis-x.json`, `.scratch/pelvis_x.py`: pelvis **x=.2100 м** во всех 1215
 кадрах. Key-N = MIDI N. C3=.1955, D3=.2190, C4=.3600 м; white step=.0235 м. Клавиатура зеркально
 симметрична относительно каждой D и G#. Ближайшая ось — D3 MIDI50: 9 мм справа от pelvis; G#2 — 73
@@ -255,9 +265,9 @@ pelvis/whole body. Mirror/arm correction — отдельный заменяем
 мм за заранее доказанный left residual.
 
 Pelvis/spine/neck/head берут hemisphere-corrected slerp-average right frame и mirrored left frame с
-alpha=.5; collar→fingers каждой стороны — собственный frame. Root сохраняет общий исходный
-transform. Усреднение торса может менять contact относительно одиночного right frame; это принятое
-производное состояние, его residual также измеряется, а не называется исходной Blender-поверхностью.
+alpha=.5; collar и fingers каждой стороны — собственный frame; Shoulder/Elbow/Wrist корректируются
+IK к собственной мировой кисти. Root сохраняет общий исходный transform. Недостижимость не
+устраняется растяжкой; отчёт отдельно считает clamp и physical/outside residual.
 
 ### 4. Чистый ближайший selector — 2b
 
@@ -265,7 +275,7 @@ transform. Усреднение торса может менять contact от�
 Three/DOM/React/fetch/timers. Shell загружает, view применяет численные состояния. Вход — штатные
 immutable notes hand/MIDI/finger/start/end и song time из `PracticeSession`. Адаптер штатных
 `FingeredNote` без ID использует стабильный ordinal исходного массива как ID; end=start+duration.
-План группирует одинаковые timestamps, release до onset, стабильный порядок hand/MIDI/finger/ note
+План группирует timestamps ближе 1 мс, release до onset, стабильный порядок hand/MIDI/finger/ note
 ID. Held notes по note ID/счётчику сохраняются при перекрытиях.
 
 При exact mismatch, растяжке, crossing, неполном finger set, чёрной клавише вне families или нотах
@@ -290,8 +300,9 @@ MIDI-разность, при равенстве меньший finger number. �
 
 **Допущение lead Q3, принятое для реализации:** slerp local bone rotations между последовательно
 выбранными кадрами. Press достигает целевого состояния **точно в onset**; начало движения
-`max(previous event time, onset - .080)` секунд. Root при изменении интерполируется согласованно.
-Самплер random-access, принимает только plan/time, без delta clock.
+`max(previous DISTINCT event time, onset - .080)` секунд; release той же границы с допуском <1 мс не
+сокращает подготовку legato до нуля. Root при изменении интерполируется согласованно. Самплер
+random-access, принимает только plan/time, без delta clock.
 
 Когда ничего не удерживается, release возвращает к **mask 0 того же assignment/позиции**. У 10 из 55
 записанных assignment (mixedA/thumbblack каждой октавы) mask0 отсутствует. Для них действует общая
@@ -313,6 +324,24 @@ Public loader включается только для native 3D + выбран�
 `hand.glb`; никогда не показывать две пары. На готовность выбирать актуальное song time, не
 проигрывать накопленные переходы. Generation/abort защищают от stale song loads, dispose освобождает
 только свои ресурсы, shared maps — однократно. Настройки/localStorage не сбрасывать.
+
+Жизнь body/skin/poses не зависит от песни или hands toggle: host сохраняет asset и pending загрузку
+до существующего teardown/dispose. Ошибка конструктора переводит loader в sticky failed до смены
+asset source, исключая цикл повторных загрузок. `HandsLayer.setSong` уведомляет host и вызывает
+`Performer.setSong`: новый план строится один раз вне beforeRender, готовность pending asset
+использует текущую песню. Индекс создаётся один раз на asset: pressed MIDI set и finger-mask
+buckets, кэш музыкальных кандидатов без предыдущего assignment. Равные кандидаты сохраняются, чтобы
+tie по previous assignment и меньшему frame ID был идентичен прежнему полному перебору. Ключ кэша
+содержит MIDI и explicit finger каждой ноты; audit не участвует. Кадр только sample/compose/write
+через индексные циклы и заранее выделенные буферы, без построения плана.
+
+Benchmark обеих рук на публичных1215 кадрах: 500 нот/руку 114.215→9.447 мс, 2000 нот/руку
+343.579→34.340 мс (median7, max39.144 мс, индекс заранее на asset). Первый холодный запуск с
+индексом/JIT52.037 мс происходит вне frame loop. Node/assert: 9028 legacy-equivalence выборов и 405
+samples legato PASS; официальные unit tests запускает lead из-за sandbox spawn EPERM. После IK
+physical left key-top mean10.010/p95 22.758/max31.468 мм в обеих строках torso mix. Недостижимость:
+одинаковые IDs right65/left52, offset607 right2/left2; physical pressed left0. Подробные остаточные
+ошибки, правая исходная неточность и clamp — в `docs/KEYBOARD88_ASSETS.md`.
 
 Body off оставляет hands-only той же модели; hands off скрывает выбранные руки и сохраняет
 preference. Manifest masks по исходным IDs разделяют body/hand без двойной геометрии; nail mask

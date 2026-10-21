@@ -13,6 +13,7 @@ import type {
 import { createKeyboard88HandSample, sampleKeyboard88Hand } from "./keyboard88Sample";
 
 export const KEYBOARD88_TRANSITION_SECONDS = 0.08;
+const EVENT_TIME_EPSILON = 0.001;
 
 export interface Keyboard88Note extends Keyboard88RequestedNote {
   readonly start: number;
@@ -86,10 +87,24 @@ function handEvents(
   const held = new Map<number, Keyboard88Note>();
   const events: Keyboard88PlanEvent[] = [];
   let previous = undefined as Keyboard88Selection | undefined;
+  const boundaries: { time: number; origin: number; release: number[]; onset: number[] }[] = [];
   for (const [time, group] of [...groups].sort(([a], [b]) => a - b)) {
+    const previous = boundaries.at(-1);
+    if (previous && time - previous.origin < EVENT_TIME_EPSILON) {
+      // Use the onset timestamp for a touching boundary, retaining release-before-onset ordering.
+      if (!previous.onset.length && group.onset.length) previous.time = time;
+      previous.release.push(...group.release);
+      previous.onset.push(...group.onset);
+    } else boundaries.push({ time, origin: time, ...group });
+  }
+  for (const group of boundaries) {
+    const time = group.time;
     for (const kind of ["release", "onset"] as const) {
-      if (!group[kind].length) continue;
-      for (const id of group[kind]) {
+      // An interval collapsed into one boundary is already over, so it cannot become held.
+      const ids =
+        kind === "onset" ? group.onset.filter((id) => !group.release.includes(id)) : group.release;
+      if (!ids.length) continue;
+      for (const id of ids) {
         const note = notes[id];
         if (kind === "release") held.delete(id);
         else if (note) held.set(id, note);
@@ -114,7 +129,14 @@ function handPlan(
   const plan = { initial, events, transitions };
   const source = createKeyboard88HandSample(index.atlas);
   events.forEach((event, i) => {
-    const previous = events[i - 1],
+    let previousIndex = i - 1;
+    while (
+      previousIndex >= 0 &&
+      event.time - (events[previousIndex]?.time ?? -Infinity) < EVENT_TIME_EPSILON
+    ) {
+      previousIndex--;
+    }
+    const previous = events[previousIndex],
       next = events[i + 1];
     const start =
       event.kind === "onset"
@@ -149,9 +171,9 @@ function handPlan(
 /** Built once in chronological order, so seeking never depends on previously drawn frames. */
 export function createKeyboard88Plan(
   atlas: Keyboard88Atlas,
-  notes: Readonly<Record<Keyboard88Hand, readonly Keyboard88Note[]>>
+  notes: Readonly<Record<Keyboard88Hand, readonly Keyboard88Note[]>>,
+  index: Keyboard88Index = indexKeyboard88Atlas(atlas)
 ): Keyboard88Plan {
-  const index = indexKeyboard88Atlas(atlas);
   return {
     right: handPlan(index, notes.right, "right"),
     left: handPlan(index, notes.left, "left")

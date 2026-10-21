@@ -33,7 +33,12 @@ const buckets = new Map(
     {
       reflected: { physical: [] as number[], outside: [] as number[] },
       keyTop: { physical: [] as number[], outside: [] as number[] },
-      unreachable: 0
+      unreachable: 0,
+      unreachableRight: 0,
+      unreachableLeft: 0,
+      unreachablePhysicalLeft: 0,
+      reachableRightDisplacement: [] as number[],
+      rightKeyTop: [] as number[]
     }
   ])
 );
@@ -90,6 +95,29 @@ for (const [i, frame] of index.frames.entries()) {
     assert.ok(bucket);
     const right = mode === "different" ? rotations.subarray(other * 208, (other + 1) * 208) : pose;
     if (!mirror.compose(right, pose, output, options[mode])) bucket.unreachable++;
+    if (mirror.unreachableMask & 1) bucket.unreachableRight++;
+    if (mirror.unreachableMask & 2) {
+      bucket.unreachableLeft++;
+      if (
+        frame.assignment.some(
+          (midi, finger) =>
+            frame.pressedMask & (1 << finger) && 100 - midi >= 21 && 100 - midi <= 108
+        )
+      )
+        bucket.unreachablePhysicalLeft++;
+    }
+    if (mode === "mixed" || mode === "different") {
+      const rightIndex = mode === "different" ? other : i;
+      const rightFrame = at(index.frames, rightIndex);
+      for (let finger = 0; finger < 5; finger++) {
+        if (!(rightFrame.pressedMask & (1 << finger))) continue;
+        readReference(rightIndex, finger, desired);
+        mirror.skeleton.tail(at(RIGHT_TIPS, finger), tip);
+        if (!(mirror.unreachableMask & 1))
+          bucket.reachableRightDisplacement.push(tip.distanceTo(desired) * 1000);
+        bucket.rightKeyTop.push(keyDistance(tip, at(rightFrame.assignment, finger)));
+      }
+    }
     for (let finger = 0; finger < 5; finger++) {
       if (!(frame.pressedMask & (1 << finger))) continue;
       readReference(i, finger, desired);
@@ -137,6 +165,11 @@ const report = {
         name,
         {
           unreachable: bucket.unreachable,
+          unreachableRight: bucket.unreachableRight,
+          unreachableLeft: bucket.unreachableLeft,
+          unreachablePhysicalLeft: bucket.unreachablePhysicalLeft,
+          reachableRightDisplacement: stats(bucket.reachableRightDisplacement),
+          rightKeyTop: stats(bucket.rightKeyTop),
           reflectedTarget: {
             all: stats([...bucket.reflected.physical, ...bucket.reflected.outside]),
             physical: stats(bucket.reflected.physical),
@@ -158,6 +191,14 @@ assert.ok(
   `Skinned bone anchors ${String(report.skinning.maxMm)} mm > .5 mm`
 );
 assert.ok(report.armature.maxMm <= 0.5);
+for (const phase of ["mixed", "different"] as const) {
+  const result = report.mirror.phases[phase];
+  assert.ok(result);
+  assert.equal(result.keyTop.physical.count, 2060);
+  assert.ok(result.keyTop.physical.maxMm <= 35, `${phase}: left key-top >35mm`);
+  assert.equal(result.unreachablePhysicalLeft, 0);
+  assert.ok(result.reachableRightDisplacement.maxMm < 0.01);
+}
 console.log(
   `KEYBOARD88_BONES_PASS ${String(report.frames)} frames / ${String(errors.length)} anchors; skinned max ${report.skinning.maxMm.toFixed(6)} mm; FK max ${report.armature.maxMm.toFixed(6)} mm`
 );

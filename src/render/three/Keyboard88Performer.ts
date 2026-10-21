@@ -3,6 +3,7 @@ import type { Material, Texture } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import { KEYBOARD_C4, KEYBOARD_METRES, metricC4X } from "../keyboardMetrics";
 import { createKeyboard88Plan } from "./keyboard88Plan";
+import { indexKeyboard88Atlas } from "./keyboard88Atlas";
 import type { Keyboard88Plan } from "./keyboard88Plan";
 import { createKeyboard88Sample, sampleKeyboard88Plan } from "./keyboard88Sample";
 import { Keyboard88Mirror } from "./keyboard88Mirror";
@@ -17,6 +18,7 @@ export class Keyboard88Performer {
   private notes: HandsSource["notes"] | undefined;
   private plan: Keyboard88Plan | undefined;
   private readonly sample;
+  private readonly index;
   private readonly mirror;
   private readonly rotations;
   private readonly bones: Bone[];
@@ -24,10 +26,12 @@ export class Keyboard88Performer {
   private readonly roadBody;
   private disposed = false;
   private layoutVersion = -1;
+  private readonly visibleParts = { body: false, hands: false };
 
   constructor(readonly asset: Keyboard88PerformerAsset) {
     this.space.add(asset.scene);
     this.sample = createKeyboard88Sample(asset.atlas);
+    this.index = indexKeyboard88Atlas(asset.atlas);
     this.mirror = new Keyboard88Mirror(asset.rig);
     this.rotations = new Float32Array(asset.atlas.boneNames.length * 4);
     const found = new Map<string, Bone>();
@@ -67,7 +71,9 @@ export class Keyboard88Performer {
   }
 
   setVisibility(body: boolean, hands: boolean): void {
-    this.visibility.setVisibility({ body, hands });
+    this.visibleParts.body = body;
+    this.visibleParts.hands = hands;
+    this.visibility.setVisibility(this.visibleParts);
     this.space.visible = body || hands;
   }
 
@@ -86,26 +92,33 @@ export class Keyboard88Performer {
     );
   }
 
-  pose(source: HandsSource | undefined): void {
-    if (this.disposed) return;
-    if (this.notes !== source?.notes || !this.plan) {
-      this.notes = source?.notes;
-      const convert = (hand: "left" | "right") =>
-        (source?.notes[hand] ?? []).map((note, id) => ({
-          id,
-          midi: note.pitch,
-          finger: note.finger,
-          start: note.start,
-          duration: note.duration
-        }));
-      this.plan = createKeyboard88Plan(this.asset.atlas, {
+  setSong(notes: HandsSource["notes"] | undefined): void {
+    if (this.disposed || (this.notes === notes && this.plan)) return;
+    this.notes = notes;
+    const convert = (hand: "left" | "right") =>
+      (notes?.[hand] ?? []).map((note, id) => ({
+        id,
+        midi: note.pitch,
+        finger: note.finger,
+        start: note.start,
+        duration: note.duration
+      }));
+    this.plan = createKeyboard88Plan(
+      this.asset.atlas,
+      {
         left: convert("left"),
         right: convert("right")
-      });
-    }
+      },
+      this.index
+    );
+  }
+
+  pose(source: HandsSource | undefined): void {
+    if (this.disposed || !this.plan) return;
     sampleKeyboard88Plan(this.asset.atlas, this.plan, source?.time ?? 0, this.sample);
     this.mirror.compose(this.sample.right.rotations, this.sample.left.rotations, this.rotations);
-    for (const [i, bone] of this.bones.entries()) bone.quaternion.fromArray(this.rotations, i * 4);
+    for (let i = 0; i < this.bones.length; i++)
+      this.bones[i]?.quaternion.fromArray(this.rotations, i * 4);
     this.asset.scene.updateMatrixWorld(true);
   }
 

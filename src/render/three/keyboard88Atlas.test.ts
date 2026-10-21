@@ -5,7 +5,13 @@ import {
   selectKeyboard88Rest,
   validateKeyboard88Atlas
 } from "./keyboard88Atlas";
-import type { Keyboard88Atlas, Keyboard88Frame } from "./keyboard88Atlas";
+import type {
+  Keyboard88Assignment,
+  Keyboard88Atlas,
+  Keyboard88Frame,
+  Keyboard88RequestedNote
+} from "./keyboard88Atlas";
+import { generatedKeyboard88Atlas, legacyKeyboard88Selection } from "./keyboard88Atlas.testSupport";
 
 const a = [60, 62, 64, 65, 67] as const;
 const b = [62, 64, 65, 67, 69] as const;
@@ -21,6 +27,28 @@ function index(frames: readonly Keyboard88Frame[]) {
 }
 
 describe("keyboard88 pure index and nearest selector", () => {
+  it("preserves exhaustive ranking with cached MIDI sets, missing fingers and previous ties", () => {
+    const data = indexKeyboard88Atlas(generatedKeyboard88Atlas());
+    for (const hand of ["right", "left"] as const) {
+      let previous: Keyboard88Assignment | undefined;
+      for (let i = 0; i < 400; i++) {
+        const notes: Keyboard88RequestedNote[] = Array.from({ length: 1 + (i % 3) }, (_, j) => ({
+          id: `${String(i)}:${String(j)}`,
+          midi: 20 + ((i * 13 + j * 7) % 90),
+          finger: i % 4 ? 1 + ((i + j) % 5) : undefined
+        }));
+        const selected = selectKeyboard88Frame(data, notes, hand, previous);
+        expect(selected).toEqual(legacyKeyboard88Selection(data, notes, hand, previous));
+        // Reusing a musical request must resolve IDs and chronological ties afresh.
+        const repeated = notes.map((note) => ({ ...note, id: `new:${String(note.id)}` }));
+        expect(selectKeyboard88Frame(data, repeated, hand, selected.assignment)).toEqual(
+          legacyKeyboard88Selection(data, repeated, hand, selected.assignment)
+        );
+        previous = selected.assignment;
+      }
+    }
+  });
+
   it("validates buffer lengths, finite unit quaternions, assignments, masks and IDs", () => {
     const good = atlas([{ id: 308, assignment: a, pressedMask: 0 }]);
     expect(() => {

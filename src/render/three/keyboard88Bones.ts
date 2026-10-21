@@ -51,8 +51,8 @@ export class Keyboard88Bones {
   }
 
   set(rotations: ArrayLike<number>, offset = 0): void {
-    for (const [i, bone] of this.bones.entries())
-      bone.quaternion.fromArray(rotations, offset + i * 4);
+    for (let i = 0; i < this.bones.length; i++)
+      keyboard88At(this.bones, i).quaternion.fromArray(rotations, offset + i * 4);
     this.update();
   }
 
@@ -71,6 +71,7 @@ export class Keyboard88Bones {
   }
 
   write(target: Float32Array): void {
-    for (const [i, bone] of this.bones.entries()) bone.quaternion.toArray(target, i * 4);
+    for (let i = 0; i < this.bones.length; i++)
+      keyboard88At(this.bones, i).quaternion.toArray(target, i * 4);
   }
 }

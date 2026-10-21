@@ -11,6 +11,10 @@ export class Keyboard88PerformerHost {
   private performer: Keyboard88Performer | undefined;
   private stage: ThreeStage | undefined;
   private notes: HandsSource["notes"] | undefined;
+  private hands: HandsLayer | undefined;
+  private unsubscribeSong: (() => void) | undefined;
+  private manifestUrl: string | undefined;
+  private sourceChanged = false;
   private wanted = false;
   private generation = 0;
 
@@ -19,24 +23,30 @@ export class Keyboard88PerformerHost {
   }
 
   sync(stage: ThreeStage, keys: KeysScene, hands: HandsLayer): void {
+    if (this.hands !== hands) {
+      this.unsubscribeSong?.();
+      this.hands = hands;
+      this.unsubscribeSong = hands.subscribeSong(this.setSong);
+      this.setSong(hands.songNotes);
+    }
     this.wanted = hands.pianist || hands.container.visible;
     if (!this.wanted) {
-      this.clear();
+      this.performer?.setVisibility(false, false);
       return;
     }
-    if (this.notes !== hands.songNotes) {
-      this.clear();
-      this.wanted = true;
-      this.notes = hands.songNotes;
-    }
-    if (this.loader.state === "idle") {
+    if (this.loader.state === "idle" || this.sourceChanged) {
+      this.sourceChanged = false;
       const generation = this.generation;
-      void this.loader.load().then((asset) => {
-        if (!asset || !this.wanted || generation !== this.generation) return;
+      void this.loader.load(this.manifestUrl).then((asset) => {
+        if (!asset || generation !== this.generation) return;
         try {
           this.performer = new Keyboard88Performer(asset);
+          this.performer.setSong(this.notes);
+          this.performer.setVisibility(false, false);
         } catch (error) {
-          this.loader.cancel();
+          this.performer?.dispose();
+          this.performer = undefined;
+          this.loader.fail(error);
           console.warn("keyboard88 performer unavailable", error);
         }
       });
@@ -51,6 +61,18 @@ export class Keyboard88PerformerHost {
     this.performer.follow(keys);
   }
 
+  private readonly setSong = (notes: HandsSource["notes"]): void => {
+    this.notes = notes;
+    this.performer?.setSong(notes);
+  };
+
+  setAssetSource(manifestUrl?: string): void {
+    if (manifestUrl === this.manifestUrl) return;
+    this.clear();
+    this.manifestUrl = manifestUrl;
+    this.sourceChanged = true;
+  }
+
   pose(source: HandsSource | undefined, separateCameras: boolean): void {
     if (!this.ready) return;
     this.performer?.setSeparateCameras(separateCameras);
@@ -58,7 +80,6 @@ export class Keyboard88PerformerHost {
   }
 
   clear(): void {
-    if (!this.wanted && !this.performer && this.loader.state === "idle") return;
     this.generation++;
     this.wanted = false;
     if (this.performer) {
@@ -68,6 +89,9 @@ export class Keyboard88PerformerHost {
     this.performer = undefined;
     this.stage = undefined;
     this.notes = undefined;
+    this.unsubscribeSong?.();
+    this.unsubscribeSong = undefined;
+    this.hands = undefined;
     this.loader.cancel();
   }
 
