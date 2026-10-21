@@ -133,11 +133,12 @@ function handPlan(
   const events = handEvents(index, notes, hand);
   const initial = selectKeyboard88Rest(index, events[0]?.selection.assignment, hand);
   const transitions: Keyboard88Transition[] = [];
-  const plan = {
+  const plan: Keyboard88HandPlan = {
     initial,
     events,
     transitions,
-    ...createKeyboard88FingerPlans(index.atlas, events)
+    fingers: [],
+    pinCapacity: 0
   };
   const source = createKeyboard88HandSample(index.atlas);
   events.forEach((event, i) => {
@@ -191,7 +192,7 @@ function handPlan(
       selection: event.selection
     });
   });
-  return plan;
+  return { ...plan, ...createKeyboard88FingerPlans(index.atlas, events, transitions) };
 }
 
 /** Built once in chronological order, so seeking never depends on previously drawn frames. */

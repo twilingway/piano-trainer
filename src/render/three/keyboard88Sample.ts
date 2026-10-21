@@ -2,11 +2,7 @@ import type { Keyboard88Atlas } from "./keyboard88Atlas";
 import type { Keyboard88HandPlan, Keyboard88Plan } from "./keyboard88Plan";
 import { slerpKeyboard88Rotations, slerpKeyboard88Quaternion } from "./keyboard88Quaternion";
 import { keyboard88PressWeight } from "./keyboard88Fingers";
-import {
-  KEYBOARD88_PIN_PRESS_SECONDS,
-  KEYBOARD88_PIN_RELEASE_SECONDS,
-  keyboard88MinJerk
-} from "./keyboard88Motion";
+import { KEYBOARD88_PIN_PRESS_SECONDS, keyboard88MinJerk } from "./keyboard88Motion";
 
 export interface Keyboard88Pin {
   finger: number;
@@ -152,7 +148,10 @@ export function sampleKeyboard88Hand(
           pin.frameIndex = envelope.frameIndex;
           pin.weight = Math.min(
             keyboard88MinJerk((songTime - envelope.onset) / KEYBOARD88_PIN_PRESS_SECONDS),
-            keyboard88MinJerk((envelope.release - songTime) / KEYBOARD88_PIN_RELEASE_SECONDS)
+            keyboard88MinJerk(
+              (envelope.pinReleaseEnd - songTime) /
+                (envelope.pinReleaseEnd - envelope.pinReleaseStart)
+            )
           );
         }
       }

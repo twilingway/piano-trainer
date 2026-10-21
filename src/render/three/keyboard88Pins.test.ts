@@ -6,8 +6,160 @@ import { keyboard88PinFixture, measureKeyboard88Pins } from "./keyboard88Pins.te
 import { Keyboard88Mirror } from "./keyboard88Mirror";
 import { createKeyboard88Plan } from "./keyboard88Plan";
 import { createKeyboard88Sample, sampleKeyboard88Plan } from "./keyboard88Sample";
+import { keyboard88MinJerk } from "./keyboard88Motion";
+
+function scalePlan(atlas: Parameters<typeof createKeyboard88Plan>[0], releaseOffset = 0) {
+  const fingers = [1, 2, 3, 1, 2, 3, 4, 5];
+  return createKeyboard88Plan(atlas, {
+    right: [60, 62, 64, 65, 67, 69, 71, 72].map((midi, i) => ({
+      id: midi,
+      midi,
+      finger: at(fingers, i),
+      start: 1 + i * 0.25,
+      duration: 0.25 + (i === 2 ? releaseOffset : 0)
+    })),
+    left: []
+  });
+}
 
 describe("keyboard88 held fingertips on the real atlas", () => {
+  it.each([
+    { offset: -0.0005, start: 1.5, end: 1.7495 },
+    { offset: 0, start: 1.5, end: 1.75 },
+    { offset: 0.05, start: 1.5, end: 1.75 },
+    { offset: 0.051, start: 1.761, end: 1.801 },
+    // The early release becomes the previous distinct event: the preparation window is too short.
+    { offset: -0.02, start: 1.69, end: 1.73 }
+  ])(
+    "uses the legato fade or usual fallback at release offset $offset",
+    ({ offset, start, end }) => {
+      const fixture = keyboard88PinFixture();
+      try {
+        const plan = scalePlan(fixture.atlas, offset);
+        for (const time of [1.625, 1.71, 1.74, 1.76, 1.781]) {
+          if (time >= 1.75 + offset) continue;
+          const sample = sampleKeyboard88Plan(fixture.atlas, plan, time).right;
+          const pin = sample.pins.find((pin, i) => i < sample.pinCount && pin.finger === 3);
+          expect(pin?.weight).toBeCloseTo(keyboard88MinJerk((end - time) / (end - start)), 10);
+        }
+      } finally {
+        fixture.dispose();
+      }
+    }
+  );
+
+  it("keeps the C4-C5 thumb-under wrist peak within 1.5x the unpinned transition", () => {
+    const fixture = keyboard88PinFixture();
+    try {
+      const { atlas, mirror, rig, output } = fixture;
+      const plan = scalePlan(atlas);
+      const sample = createKeyboard88Sample(atlas, plan);
+      const options = { rightPins: sample.right, leftPins: sample.left };
+      const wrist = rig.boneNames.indexOf("m_avg_R_Wrist");
+      const previous = new Vector3(),
+        point = new Vector3();
+      const peaks: number[] = [];
+      expect(
+        plan.right.events.find((event) => event.time === 1.5 && event.kind === "onset")?.selection
+          .assignment
+      ).not.toEqual(
+        plan.right.events.find((event) => event.time === 1.75 && event.kind === "onset")?.selection
+          .assignment
+      );
+      for (const pinned of [false, true]) {
+        let peak = 0;
+        for (let ms = 1500; ms <= 1750; ms++) {
+          sampleKeyboard88Plan(atlas, plan, ms / 1000, sample);
+          mirror.compose(
+            sample.right.rotations,
+            sample.left.rotations,
+            output,
+            pinned ? options : undefined
+          );
+          mirror.skeleton.head(wrist, point);
+          if (ms > 1500) peak = Math.max(peak, point.distanceTo(previous) * 1_000_000);
+          previous.copy(point);
+          if (pinned && ms >= 1540 && ms < 1750) {
+            expect(sample.right.pins[0]?.weight).toBeCloseTo(
+              1 - keyboard88MinJerk((ms - 1500) / 250),
+              10
+            );
+          }
+        }
+        peaks.push(peak);
+      }
+      expect(at(peaks, 0)).toBeGreaterThan(500);
+      expect(at(peaks, 1)).toBeLessThanOrEqual(1.5 * at(peaks, 0));
+    } finally {
+      fixture.dispose();
+    }
+  });
+
+  it("keeps a same-position legato held tip pinned within 1mm until its usual fade", () => {
+    const fixture = keyboard88PinFixture();
+    try {
+      const { atlas, mirror, output, fk } = fixture;
+      const plan = scalePlan(atlas);
+      const sample = createKeyboard88Sample(atlas, plan);
+      const options = { rightPins: sample.right, leftPins: sample.left };
+      const first = plan.right.events[0]?.selection;
+      const next = plan.right.events.find((event) => event.time === 1.25 && event.kind === "onset");
+      if (!first || !next) throw new Error("Missing same-position scale events");
+      expect(first.assignment).toEqual(next.selection.assignment);
+      fk.set(atlas.rotations, first.frameIndex * output.length);
+      const target = fk.tail(at(RIGHT_TIPS, 0));
+      const point = new Vector3();
+      let maxMm = 0;
+      for (let ms = 1040; ms <= 1210; ms++) {
+        sampleKeyboard88Plan(atlas, plan, ms / 1000, sample);
+        expect(sample.right.pins[0]?.weight).toBeCloseTo(1);
+        mirror.compose(sample.right.rotations, sample.left.rotations, output, options);
+        maxMm = Math.max(
+          maxMm,
+          mirror.skeleton.tail(at(RIGHT_TIPS, 0), point).distanceTo(target) * 1000
+        );
+      }
+      expect(maxMm).toBeLessThanOrEqual(1);
+      sampleKeyboard88Plan(atlas, plan, 1.23, sample);
+      expect(sample.right.pins[0]?.weight).toBeCloseTo(0.5);
+    } finally {
+      fixture.dispose();
+    }
+  });
+
+  it("reproduces the thumb-under fade, composed wrist and buffers after arbitrary seeks", () => {
+    const fixture = keyboard88PinFixture();
+    try {
+      const { atlas, mirror, output } = fixture;
+      const plan = scalePlan(atlas);
+      const sample = createKeyboard88Sample(atlas, plan);
+      const options = { rightPins: sample.right, leftPins: sample.left };
+      const wrist = fixture.rig.boneNames.indexOf("m_avg_R_Wrist");
+      const pins = sample.right.pins,
+        rotations = sample.right.rotations;
+      for (const time of [1.625, 1.501, 1.74, 1.75, 1.54]) {
+        const expected = sampleKeyboard88Plan(atlas, plan, time);
+        mirror.compose(expected.right.rotations, expected.left.rotations, output, {
+          rightPins: expected.right,
+          leftPins: expected.left
+        });
+        const expectedOutput = output.slice();
+        const expectedWrist = mirror.skeleton.head(wrist);
+        for (const seek of [3, 0, 1.8, 1.5, time]) {
+          sampleKeyboard88Plan(atlas, plan, seek, sample);
+          mirror.compose(sample.right.rotations, sample.left.rotations, output, options);
+        }
+        expect(sample).toEqual(expected);
+        expect(output).toEqual(expectedOutput);
+        expect(mirror.skeleton.head(wrist)).toEqual(expectedWrist);
+        expect(sample.right.pins).toBe(pins);
+        expect(sample.right.rotations).toBe(rotations);
+      }
+    } finally {
+      fixture.dispose();
+    }
+  });
+
   it.each(["right", "left"] as const)(
     "keeps the wrist continuous when a new pin joins a held note with nonzero miss (%s)",
     (hand) => {

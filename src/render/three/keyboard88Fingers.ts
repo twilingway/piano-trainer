@@ -1,8 +1,9 @@
 import type { Keyboard88Atlas } from "./keyboard88Atlas";
-import type { Keyboard88PlanEvent } from "./keyboard88Plan";
+import type { Keyboard88PlanEvent, Keyboard88Transition } from "./keyboard88Plan";
 import {
   KEYBOARD88_FINGER_PRESS_SECONDS,
   KEYBOARD88_FINGER_RELEASE_SECONDS,
+  KEYBOARD88_PIN_RELEASE_SECONDS,
   KEYBOARD88_REPEAT_GAP_SECONDS,
   KEYBOARD88_REPEAT_SCALE_SECONDS,
   keyboard88MinJerk
@@ -16,6 +17,8 @@ export interface Keyboard88Envelope {
   readonly midi: number;
   readonly pressSeconds: number;
   readonly releaseSeconds: number;
+  readonly pinReleaseStart: number;
+  readonly pinReleaseEnd: number;
 }
 
 type MutableEnvelope = { -readonly [K in keyof Keyboard88Envelope]: Keyboard88Envelope[K] };
@@ -67,6 +70,40 @@ function prepareRepeats(envelopes: MutableEnvelope[]): void {
   }
 }
 
+/** Share the actual hand preparation window, keeping the decision out of frame sampling. */
+function preparePinReleases(
+  envelopes: MutableEnvelope[],
+  events: readonly Keyboard88PlanEvent[],
+  transitions: readonly Keyboard88Transition[]
+): void {
+  const onsets = events.filter((event) => event.kind === "onset");
+  const moves = new Map(transitions.map((transition) => [transition.selection, transition]));
+  let nextIndex = 0;
+  for (const envelope of envelopes) {
+    // Repeat preparation may shorten the visual release, but not the legato eligibility.
+    const musicalRelease = envelope.pinReleaseEnd;
+    envelope.pinReleaseStart = envelope.release - KEYBOARD88_PIN_RELEASE_SECONDS;
+    envelope.pinReleaseEnd = envelope.release;
+    while (nextIndex < onsets.length && (onsets[nextIndex]?.time ?? Infinity) <= envelope.onset)
+      nextIndex++;
+    const next = onsets[nextIndex];
+    const move = next && moves.get(next.selection);
+    const own = onsets[nextIndex - 1];
+    if (
+      !next ||
+      !move ||
+      !own ||
+      musicalRelease > next.time + 0.05 ||
+      own.selection.assignment.every((midi, i) => midi === next.selection.assignment[i])
+    )
+      continue;
+    const end = Math.min(envelope.release, next.time);
+    if (end - move.start < KEYBOARD88_PIN_RELEASE_SECONDS) continue;
+    envelope.pinReleaseStart = move.start;
+    envelope.pinReleaseEnd = end;
+  }
+}
+
 export interface Keyboard88FingerSpan {
   readonly start: number;
   readonly envelopes: readonly Keyboard88Envelope[];
@@ -87,7 +124,8 @@ export function keyboard88FingerNumber(name: string): number {
 /** Sweep once at song setup; frame sampling only searches spans and their active overlaps. */
 export function createKeyboard88FingerPlans(
   atlas: Keyboard88Atlas,
-  events: readonly Keyboard88PlanEvent[]
+  events: readonly Keyboard88PlanEvent[],
+  transitions: readonly Keyboard88Transition[]
 ): { fingers: Keyboard88FingerPlan[]; pinCapacity: number } {
   const envelopes: MutableEnvelope[] = [];
   let previousHeld = new Set<object>();
@@ -104,13 +142,16 @@ export function createKeyboard88FingerPlans(
           finger,
           midi: note.midi,
           pressSeconds: KEYBOARD88_FINGER_PRESS_SECONDS,
-          releaseSeconds: KEYBOARD88_FINGER_RELEASE_SECONDS
+          releaseSeconds: KEYBOARD88_FINGER_RELEASE_SECONDS,
+          pinReleaseStart: note.start + note.duration - KEYBOARD88_PIN_RELEASE_SECONDS,
+          pinReleaseEnd: note.start + note.duration
         });
       });
     }
     previousHeld = new Set(event.held);
   }
   prepareRepeats(envelopes);
+  preparePinReleases(envelopes, events, transitions);
   const fingers = FINGER_NAMES.map((_, i) => {
     const changes = new Map<number, { add: Keyboard88Envelope[]; remove: Keyboard88Envelope[] }>();
     for (const envelope of envelopes) {
