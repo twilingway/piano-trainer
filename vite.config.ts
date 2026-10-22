@@ -18,7 +18,7 @@ function localizedSiteMetadata(): Plugin {
       const pathname = context.originalUrl ?? context.path;
       return renderSiteMetadataHtml(html, siteLocaleFromPath(pathname) ?? "en", pathname);
     },
-    closeBundle() {
+    writeBundle() {
       if (!outputDirectory) return;
       const html = readFileSync(resolve(outputDirectory, "index.html"), "utf8");
       for (const locale of ["ru", "en"] as const) {
