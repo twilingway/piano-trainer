@@ -4,11 +4,14 @@ FROM node:22-alpine AS build
 LABEL com.twiling.app=piano-trainer
 
 WORKDIR /app
+ENV NODE_USE_ENV_PROXY=1
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY index.html vite.config.ts tsconfig.json ./
 COPY src ./src
+COPY tools/hand-rig/poses/studio-rest.json ./tools/hand-rig/poses/
+COPY tools/hand-rig/poses/library/seven-nation-army.json ./tools/hand-rig/poses/library/
 COPY public ./public
 # Optional server-managed scores stay outside Git and are bundled by Vite.
 RUN if [ -d public/production-lessons ]; then mv public/production-lessons ./local-lessons; fi

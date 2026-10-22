@@ -8,6 +8,16 @@ dist
 coverage
 local-lessons
 tools
+!tools
+tools/*
+!tools/hand-rig
+tools/hand-rig/*
+!tools/hand-rig/poses
+tools/hand-rig/poses/*
+!tools/hand-rig/poses/studio-rest.json
+!tools/hand-rig/poses/library
+tools/hand-rig/poses/library/*
+!tools/hand-rig/poses/library/seven-nation-army.json
 *.log
 .env*
 !.env.example
