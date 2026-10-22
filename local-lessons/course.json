@@ -1,0 +1,242 @@
+{
+  "lessonTitles": {
+    "1": "Урок 1. Вводный",
+    "2": "Урок 2. Октавы"
+  },
+  "lessons": [
+    {
+      "id": "course-lesson-01",
+      "number": 1,
+      "title": "Урок 1. Вводный",
+      "goal": "Ориентироваться на клавиатуре, освоить координацию и разучить четыре фразы Hallelujah",
+      "reviewed": true,
+      "stages": ["right", "left", "both"],
+      "phrases": [
+        {
+          "id": "coord",
+          "title": "Координация",
+          "version": "1",
+          "musicXml": ".course/lesson-01/coord.musicxml"
+        },
+        {
+          "id": "melody-01",
+          "title": "Мелодия — фраза 1",
+          "version": "1",
+          "musicXml": ".course/lesson-01/melody-01.musicxml"
+        },
+        {
+          "id": "melody-02",
+          "title": "Мелодия — фраза 2",
+          "version": "1",
+          "musicXml": ".course/lesson-01/melody-02.musicxml"
+        },
+        {
+          "id": "melody-03",
+          "title": "Мелодия — фраза 3",
+          "version": "1",
+          "musicXml": ".course/lesson-01/melody-03.musicxml"
+        },
+        {
+          "id": "melody-04",
+          "title": "Мелодия — фраза 4",
+          "version": "1",
+          "musicXml": ".course/lesson-01/melody-04.musicxml"
+        },
+        {
+          "id": "whole",
+          "title": "Мелодия целиком",
+          "version": "1",
+          "musicXml": ".course/lesson-01/whole.musicxml"
+        }
+      ],
+      "tasks": [
+        {
+          "phraseId": "coord",
+          "stage": "both"
+        },
+        {
+          "phraseId": "melody-01",
+          "stage": "right"
+        },
+        {
+          "phraseId": "melody-02",
+          "stage": "right"
+        },
+        {
+          "phraseId": "melody-03",
+          "stage": "right"
+        },
+        {
+          "phraseId": "melody-04",
+          "stage": "right"
+        },
+        {
+          "phraseId": "melody-01",
+          "stage": "left"
+        },
+        {
+          "phraseId": "melody-02",
+          "stage": "left"
+        },
+        {
+          "phraseId": "melody-03",
+          "stage": "left"
+        },
+        {
+          "phraseId": "melody-04",
+          "stage": "left"
+        },
+        {
+          "phraseId": "melody-01",
+          "stage": "both"
+        },
+        {
+          "phraseId": "melody-02",
+          "stage": "both"
+        },
+        {
+          "phraseId": "melody-03",
+          "stage": "both"
+        },
+        {
+          "phraseId": "melody-04",
+          "stage": "both"
+        },
+        {
+          "phraseId": "whole",
+          "stage": "both"
+        }
+      ],
+      "finalTask": {
+        "stage": "both",
+        "phraseId": "whole"
+      }
+    },
+    {
+      "id": "course-lesson-02",
+      "number": 2,
+      "title": "Урок 2. Октавы",
+      "goal": "Освоить октавы левой рукой, вступление и четыре фразы припева Let It Be",
+      "reviewed": true,
+      "stages": ["right", "left", "both"],
+      "phrases": [
+        {
+          "id": "octaves-even",
+          "title": "Октавы — ровно",
+          "version": "1",
+          "musicXml": ".course/lesson-02/octaves-even.musicxml"
+        },
+        {
+          "id": "octaves-rhythm",
+          "title": "Октавы — в ритме",
+          "version": "1",
+          "musicXml": ".course/lesson-02/octaves-rhythm.musicxml"
+        },
+        {
+          "id": "melody-01",
+          "title": "Мелодия — фраза 1",
+          "version": "1",
+          "musicXml": ".course/lesson-02/melody-01.musicxml"
+        },
+        {
+          "id": "melody-02",
+          "title": "Мелодия — фраза 2",
+          "version": "1",
+          "musicXml": ".course/lesson-02/melody-02.musicxml"
+        },
+        {
+          "id": "melody-03",
+          "title": "Мелодия — фраза 3",
+          "version": "1",
+          "musicXml": ".course/lesson-02/melody-03.musicxml"
+        },
+        {
+          "id": "melody-04",
+          "title": "Мелодия — фраза 4",
+          "version": "1",
+          "musicXml": ".course/lesson-02/melody-04.musicxml"
+        },
+        {
+          "id": "whole",
+          "title": "Мелодия целиком",
+          "version": "1",
+          "musicXml": ".course/lesson-02/whole.musicxml"
+        }
+      ],
+      "tasks": [
+        {
+          "stage": "both",
+          "phraseId": "octaves-even"
+        },
+        {
+          "stage": "both",
+          "phraseId": "octaves-rhythm"
+        },
+        {
+          "stage": "right",
+          "phraseId": "melody-01"
+        },
+        {
+          "stage": "right",
+          "phraseId": "melody-02"
+        },
+        {
+          "stage": "right",
+          "phraseId": "melody-03"
+        },
+        {
+          "stage": "right",
+          "phraseId": "melody-04"
+        },
+        {
+          "stage": "right",
+          "phraseId": "whole"
+        },
+        {
+          "stage": "left",
+          "phraseId": "melody-01"
+        },
+        {
+          "stage": "left",
+          "phraseId": "melody-02"
+        },
+        {
+          "stage": "left",
+          "phraseId": "melody-03"
+        },
+        {
+          "stage": "left",
+          "phraseId": "melody-04"
+        },
+        {
+          "stage": "left",
+          "phraseId": "whole"
+        },
+        {
+          "stage": "both",
+          "phraseId": "melody-01"
+        },
+        {
+          "stage": "both",
+          "phraseId": "melody-02"
+        },
+        {
+          "stage": "both",
+          "phraseId": "melody-03"
+        },
+        {
+          "stage": "both",
+          "phraseId": "melody-04"
+        },
+        {
+          "stage": "both",
+          "phraseId": "whole"
+        }
+      ],
+      "finalTask": {
+        "stage": "both",
+        "phraseId": "whole"
+      }
+    }
+  ]
+}
