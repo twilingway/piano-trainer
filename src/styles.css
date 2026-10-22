@@ -4252,3 +4252,24 @@ button.song-card.song-card__open {
 .free-camera-legend[hidden] {
   display: none;
 }
+
+/* Keep preparation visible even when the calibration controls are scrolled down. */
+.calibration-countdown {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 20;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  padding: 1.5rem 2rem;
+  max-width: calc(100vw - 2rem);
+  border: 2px solid var(--accent, #00d9f5);
+  border-radius: 1rem;
+  background: #041c2a;
+  color: #fff;
+  box-shadow: 0 0 3rem #000a;
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+}

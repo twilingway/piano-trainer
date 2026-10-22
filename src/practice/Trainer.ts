@@ -1,4 +1,5 @@
 import { soundAllOff } from "../audio/pianoSound";
+import type { SessionMelodyOutput } from "../audio/sessionAudio";
 import { SessionAudio } from "../audio/sessionAudio";
 import { loadVoiceTrack } from "../audio/voiceTrack";
 import type { KeyEvent } from "../input/midiInput";
@@ -198,6 +199,14 @@ export class Trainer {
     this.graded = [];
     if (resume) this.setPlaying(true);
     this.publish();
+  }
+
+  /** Changes automatic-note routing without moving the song or restarting a take. */
+  setMelodyOutput(output: SessionMelodyOutput): void {
+    const now = performance.now();
+    this.audio.configure(output, now);
+    if (this.playing && this.session)
+      this.audio.start(this.session, now, this.timing.audioOffsetMs, () => this.metronome);
   }
 
   setPlaying(playing: boolean): void {

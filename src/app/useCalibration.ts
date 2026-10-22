@@ -23,19 +23,23 @@ export function useCalibration(options: CalibrationOptions) {
     optionsRef.current = options;
   }, [options]);
   const active = useRef<CalibrationSession | null>(null);
+  const readyAt = useRef(0);
   const audio = useRef({ audioOffsetMs: 0, audioOutputId: "default" });
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [progress, setProgress] = useState<CalibrationProgress | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
   const cancel = useCallback(() => {
     for (const timer of timers.current) clearTimeout(timer);
     timers.current = [];
     active.current = null;
     setRunning(false);
+    setCountdown(null);
   }, []);
   useEffect(
     () => () => {
       for (const timer of timers.current) clearTimeout(timer);
+      active.current = null;
     },
     []
   );
@@ -43,11 +47,20 @@ export function useCalibration(options: CalibrationOptions) {
     cancel();
     const current = optionsRef.current;
     audio.current = { audioOffsetMs: current.audioOffsetMs, audioOutputId: current.audioOutputId };
-    const startMs = performance.now() + Math.max(300, current.audioOffsetMs + 150);
+    readyAt.current = performance.now() + 3000;
+    const startMs = readyAt.current + Math.max(300, current.audioOffsetMs + 150);
     const session = new CalibrationSession(startMs);
     active.current = session;
     setProgress(session.snapshot());
     setRunning(true);
+    setCountdown(3);
+    for (let second = 1; second <= 3; second++) {
+      timers.current.push(
+        setTimeout(() => {
+          if (active.current === session) setCountdown(second === 3 ? null : 3 - second);
+        }, second * 1000)
+      );
+    }
     for (let beat = 0; beat < CALIBRATION_WARMUP + CALIBRATION_SAMPLES; beat++) {
       const timestamp = startMs + beat * CALIBRATION_PERIOD_MS;
       timers.current.push(
@@ -78,6 +91,8 @@ export function useCalibration(options: CalibrationOptions) {
     (pitch: number, timestampMs: number): boolean => {
       const session = active.current;
       if (!session) return false;
+      // Ignore preparation taps even if their timestamps round to the first beat.
+      if (performance.now() < readyAt.current || timestampMs < readyAt.current) return true;
       if (session.capture(pitch, timestampMs)) {
         const next = session.snapshot();
         setProgress(next);
@@ -91,5 +106,5 @@ export function useCalibration(options: CalibrationOptions) {
     },
     [cancel]
   );
-  return { start, cancel, capture, progress, running };
+  return { start, cancel, capture, progress, running, countdown };
 }

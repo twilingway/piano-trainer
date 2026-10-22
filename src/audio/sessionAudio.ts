@@ -1,4 +1,5 @@
-﻿import type { PracticeSession } from "../practice/session";
+import type { MelodyMidiOutput } from "../input/melodyMidiOutput";
+import type { PracticeSession } from "../practice/session";
 import { audioTime, cancelScheduledSound, scheduleSound } from "./pianoSound";
 import {
   cancelScheduledVoices,
@@ -7,8 +8,20 @@ import {
   scheduledNoteOn
 } from "./scheduledVoices";
 import { startVoiceTrack, stopVoiceTrack, voiceTrackReady } from "./voiceTrack";
+export interface SessionMelodyOutput {
+  readonly browser: boolean;
+  readonly midi?: MelodyMidiOutput | undefined;
+}
+
 /** Schedules score events against the session's Performance/Audio anchor. */
 export class SessionAudio {
+  private output: SessionMelodyOutput = { browser: true };
+
+  configure(output: SessionMelodyOutput, now: number): void {
+    this.reset(now);
+    this.output = output;
+  }
+
   private anchor = { performance: 0, audio: 0 };
   private readonly scheduled = new Set<string>();
   private readonly jobs = new Set<number>();
@@ -20,6 +33,7 @@ export class SessionAudio {
     this.jobs.clear();
     this.scheduled.clear();
     cancelScheduledVoices();
+    this.output.midi?.reset();
     stopVoiceTrack();
     this.anchor = { performance: performanceMs, audio: audioTime() };
   }
@@ -40,12 +54,15 @@ export class SessionAudio {
       id: string,
       songTime: number,
       action: (audioSeconds: number) => void,
-      restored = false
+      restored = false,
+      midiAction?: (timestamp: number) => void
     ) => {
       if (this.scheduled.has(id) || songTime > end || songTime < liveTime - 0.1) return;
       const timestamp = session.performanceTimeAt(songTime) ?? (restored ? now : undefined);
       if (timestamp === undefined) return;
       this.scheduled.add(id);
+      midiAction?.(Math.max(now, timestamp - offsetMs));
+      if (midiAction && !this.output.browser) return;
       const at = this.anchor.audio + (timestamp - this.anchor.performance - offsetMs) / 1000;
       const job = scheduleSound(Math.max(audioTime(), at), (time) => {
         this.jobs.delete(job);
@@ -100,13 +117,20 @@ export class SessionAudio {
             );
           else scheduledNoteOn(note.pitch, note.velocity, at, note.id);
         },
-        restore
+        restore,
+        (at) => {
+          this.output.midi?.noteOn(note.pitch, note.velocity ?? 100, at, note.id);
+        }
       );
       schedule(
         `off:${note.id}`,
         Math.min(note.start + note.duration, session.options.to ?? Infinity),
         (at) => {
           scheduledNoteOff(note.pitch, at, note.id);
+        },
+        false,
+        (at) => {
+          this.output.midi?.noteOff(note.pitch, at, note.id);
         }
       );
     }

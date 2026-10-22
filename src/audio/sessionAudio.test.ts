@@ -294,3 +294,69 @@ describe("a lesson's voice track", () => {
     expect(sound.voiceStart).not.toHaveBeenCalled();
   });
 });
+
+describe("melody output routing", () => {
+  const midiOutput = () => ({
+    noteOn: vi.fn(),
+    noteOff: vi.fn(),
+    reset: vi.fn(),
+    isEcho: () => false
+  });
+  it.each([false, true])("routes score notes to MIDI with browser=%s", (browser) => {
+    const midi = midiOutput();
+    const audio = new SessionAudio();
+    audio.configure({ browser, midi }, 1000);
+    const run = session([note("auto", 0), note("player", 0, "right")]);
+    audio.schedule(run, 2800, 100, false);
+    flushQueued();
+    expect(midi.noteOn).toHaveBeenCalledExactlyOnceWith(48, 90, 2900, "auto");
+    expect(midi.noteOff).toHaveBeenCalledExactlyOnceWith(48, 3100, "auto");
+    expect(sound.noteOn).toHaveBeenCalledTimes(browser ? 1 : 0);
+    expect(sound.noteOff).toHaveBeenCalledTimes(browser ? 1 : 0);
+    audio.reset(2850);
+    expect(midi.reset).toHaveBeenCalledOnce();
+  });
+
+  it("keeps metronome and voice in the browser without a connected MIDI sink", () => {
+    const audio = new SessionAudio();
+    audio.configure({ browser: false }, 1000);
+    audio.schedule(
+      session([note("auto", 0)], "tempo", undefined, { voice: "v.mp3" }),
+      2800,
+      0,
+      true
+    );
+    flushQueued();
+    expect(sound.noteOn).not.toHaveBeenCalled();
+    expect(sound.click).toHaveBeenCalled();
+    expect(sound.voiceStart).toHaveBeenCalled();
+  });
+
+  it("restores a MIDI sustain and resets the previous route", () => {
+    const midi = midiOutput();
+    const audio = new SessionAudio();
+    audio.configure({ browser: false, midi }, 1000);
+    const run = session([{ ...note("held", 0), duration: 2 }]);
+    run.tick(4000);
+    run.pauseClock(4000);
+    run.resumeClock(5000);
+    audio.reset(5000);
+    audio.schedule(run, 5000, 0, false);
+    expect(midi.noteOn).toHaveBeenCalledWith(48, 90, 5000, "held");
+    audio.schedule(run, 5800, 0, false);
+    expect(midi.noteOff).toHaveBeenCalledWith(48, 6000, "held");
+    audio.configure({ browser: true }, 5800);
+    expect(midi.reset).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not send MIDI past the waiting chord", () => {
+    const midi = midiOutput();
+    const audio = new SessionAudio();
+    audio.configure({ browser: false, midi }, 1000);
+    const run = session([note("player", 0, "right"), note("same", 0), note("after", 0.1)], "wait");
+    audio.schedule(run, 2900, 0, false);
+    audio.schedule(run, 8000, 0, false);
+    expect(midi.noteOn).toHaveBeenCalledExactlyOnceWith(48, 90, 3000, "same");
+    expect(midi.noteOff).not.toHaveBeenCalled();
+  });
+});

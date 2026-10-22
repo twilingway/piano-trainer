@@ -13,7 +13,10 @@ import { useMidiOutput } from "./useMidiOutput";
 let root: Root;
 let latest: MidiOutputControls | undefined;
 let isEcho: ((event: KeyEvent) => boolean) | undefined;
-const trainer: Pick<Trainer, "onLights"> = { onLights: undefined };
+const trainer: Pick<Trainer, "onLights" | "setMelodyOutput"> = {
+  onLights: undefined,
+  setMelodyOutput: vi.fn()
+};
 const trainerRef = { current: trainer as Trainer };
 let grant: () => void;
 const piano = {
@@ -40,6 +43,7 @@ async function settle() {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   piano.send.mockClear();
+  vi.mocked(trainer.setMelodyOutput).mockClear();
   trainer.onLights = undefined;
   localStorage.clear();
   saveMidiOutput({ id: "a", name: "Digital Piano" });
@@ -135,5 +139,77 @@ describe("useMidiOutput", () => {
       await Promise.resolve();
     });
     expect(trainer.onLights).toBeUndefined();
+  });
+});
+
+describe("automatic melody through the selected output", () => {
+  it("switches browser/MIDI/both without changing the hint output", async () => {
+    await act(async () => {
+      root.render(withTestStore(<Harness />));
+      await Promise.resolve();
+    });
+    grant();
+    await settle();
+    expect(vi.mocked(trainer.setMelodyOutput).mock.lastCall?.[0].browser).toBe(true);
+    act(() => latest?.onMelody({ mode: "midi", channel: 1 }));
+    const route = vi.mocked(trainer.setMelodyOutput).mock.lastCall?.[0];
+    expect(route?.browser).toBe(false);
+    expect(route?.midi).toBeDefined();
+    route?.midi?.noteOn(48, 90, performance.now(), "a");
+    expect(piano.send).toHaveBeenLastCalledWith([0x90, 48, 90], undefined);
+    expect(isEcho?.({ type: "down", pitch: 48, velocity: 90, channel: 1, source: "midi" })).toBe(
+      true
+    );
+    act(() => latest?.onMelody({ mode: "both", channel: 1 }));
+    expect(piano.send).toHaveBeenLastCalledWith([0x80, 48, 0], undefined);
+    expect(vi.mocked(trainer.setMelodyOutput).mock.lastCall?.[0].browser).toBe(true);
+    expect(vi.mocked(trainer.setMelodyOutput).mock.lastCall?.[0].midi).toBeDefined();
+    expect(latest?.selectedId).toBe("a");
+    expect(isEcho?.({ type: "up", pitch: 48, velocity: 0, channel: 1, source: "midi" })).toBe(true);
+  });
+
+  it("keeps MIDI mode silent without a port and prevents collisions with lights", async () => {
+    await act(async () => {
+      root.render(withTestStore(<Harness />));
+      await Promise.resolve();
+    });
+    grant();
+    await settle();
+    act(() => {
+      latest?.onMelody({ mode: "midi", channel: 3 });
+      latest?.onLights({ enabled: true, channel: 3, velocity: 64 });
+    });
+    expect(vi.mocked(trainer.setMelodyOutput).mock.lastCall?.[0]).toEqual({
+      browser: false,
+      midi: undefined
+    });
+    trainer.onLights?.([60]);
+    expect(piano.send).toHaveBeenLastCalledWith([0x92, 60, 64], undefined);
+    act(() => latest?.onSelect(""));
+    expect(vi.mocked(trainer.setMelodyOutput).mock.lastCall?.[0]).toEqual({
+      browser: false,
+      midi: undefined
+    });
+  });
+
+  it("cancels queued MIDI attacks on pagehide", async () => {
+    await act(async () => {
+      root.render(withTestStore(<Harness />));
+      await Promise.resolve();
+    });
+    grant();
+    await settle();
+    act(() => latest?.onMelody({ mode: "midi", channel: 1 }));
+    const route = vi.mocked(trainer.setMelodyOutput).mock.lastCall?.[0];
+    vi.useFakeTimers();
+    try {
+      route?.midi?.noteOn(48, 90, performance.now() + 200, "a");
+      window.dispatchEvent(new Event("pagehide"));
+      piano.send.mockClear();
+      vi.advanceTimersByTime(500);
+      expect(piano.send).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

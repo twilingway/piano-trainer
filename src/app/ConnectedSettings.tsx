@@ -336,6 +336,7 @@ function ConnectedMidiSettings() {
   const range = useAppSelector((state) => state.preferences.deviceRange);
   const choice = useAppSelector((state) => state.preferences.midiOutput);
   const lights = useAppSelector((state) => state.preferences.keyLights);
+  const melody = useAppSelector((state) => state.preferences.melodyOutput);
   const state = useRuntimeSelector(
     (runtime) => ({
       devices: runtime.input.devices,
@@ -361,6 +362,9 @@ function ConnectedMidiSettings() {
   const onLights = useRuntimeCommand(
     (runtime) => (next: typeof lights) => runtime.input.settings.output?.onLights(next)
   );
+  const onMelody = useRuntimeCommand(
+    (runtime) => (next: typeof melody) => runtime.input.settings.output?.onMelody(next)
+  );
   return (
     <MidiSettings
       devices={state.devices}
@@ -377,9 +381,11 @@ function ConnectedMidiSettings() {
               connected: state.connected,
               selectedId: state.selectedId,
               lights,
+              melody,
               onSelect,
               onTest,
-              onLights
+              onLights,
+              onMelody
             }
           : undefined
       }
@@ -397,6 +403,7 @@ function ConnectedSynchronizationSettings() {
       profile: runtime.timing.settingsProps.profile,
       progress: runtime.timing.settingsProps.progress,
       running: runtime.timing.settingsProps.running,
+      countdown: runtime.timing.settingsProps.countdown,
       locked: runtime.timing.settingsProps.locked,
       canCalibrate: runtime.timing.settingsProps.canCalibrate,
       tapAvailable: runtime.timing.settingsProps.onTap !== undefined

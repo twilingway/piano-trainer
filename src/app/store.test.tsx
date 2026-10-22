@@ -21,6 +21,20 @@ afterEach(() => {
 });
 
 describe("application preferences", () => {
+  it("defaults melody playback to the browser and saves its route and channel", () => {
+    const store = createAppStore();
+    expect(store.getState().preferences.melodyOutput).toEqual({ mode: "browser", channel: 1 });
+    store.dispatch(preferencesActions.melodyOutputChanged({ mode: "both", channel: 8 }));
+    expect(createAppStore().getState().preferences.melodyOutput).toEqual({
+      mode: "both",
+      channel: 8
+    });
+    localStorage.setItem("melody-output-v1", JSON.stringify({ mode: "other", channel: 18 }));
+    expect(createAppStore().getState().preferences.melodyOutput).toEqual({
+      mode: "browser",
+      channel: 1
+    });
+  });
   it("starts with the metronome off and preserves a later saved opt-in", () => {
     const fresh = createAppStore();
     expect(fresh.getState().preferences.player.metronome).toBe(false);

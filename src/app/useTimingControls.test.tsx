@@ -106,7 +106,7 @@ describe("stable trainer timing wiring", () => {
     });
     expect(ui.props?.running).toBe(true);
     for (let index = 0; index < 28; index++) {
-      now = 1300 + index * 600;
+      now = 4300 + index * 600;
       act(() => {
         if (index % 2 === 0) {
           const event = new KeyboardEvent("keydown", { code: "Space", key: " ", cancelable: true });

@@ -10,6 +10,8 @@ RUN pnpm install --frozen-lockfile
 COPY index.html vite.config.ts tsconfig.json ./
 COPY src ./src
 COPY public ./public
+# Optional server-managed scores stay outside Git and are bundled by Vite.
+RUN if [ -d public/production-lessons ]; then mv public/production-lessons ./local-lessons; fi
 ARG GIT_SHA
 ARG GIT_PR
 RUN test -n "$GIT_SHA" && VITE_GIT_SHA="$GIT_SHA" VITE_GIT_PR="$GIT_PR" pnpm build && printf '%s\n' "$GIT_SHA" > dist/version.txt

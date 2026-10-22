@@ -6,6 +6,7 @@ import { DEFAULT_KEY_LIGHTS } from "../input/keyLights";
 import type { KeyBinding, KeyboardPrefs, KeyboardPreset } from "../input/keyboardLayouts";
 import { DEFAULT_KEYBOARD_PREFS } from "../input/keyboardLayouts";
 import type { OutputChoice } from "../input/midiOutput";
+import { DEFAULT_MELODY_OUTPUT, type MelodyOutputSettings } from "../input/melodyOutput";
 import type { GamePreferences } from "./gamePreferences";
 import { DEFAULT_GAME_PREFERENCES } from "./gamePreferences";
 import type { PlayerPrefs } from "./playerPrefs";
@@ -44,6 +45,7 @@ export interface PreferencesState {
   deviceRange: DeviceRange;
   midiOutput: OutputChoice | null;
   keyLights: KeyLightSettings;
+  melodyOutput: MelodyOutputSettings;
   fullscreen: boolean;
   timing: TimingPreferences;
 }
@@ -59,6 +61,7 @@ const initialState: PreferencesState = {
   deviceRange: DEFAULT_DEVICE_RANGE,
   midiOutput: null,
   keyLights: DEFAULT_KEY_LIGHTS,
+  melodyOutput: DEFAULT_MELODY_OUTPUT,
   fullscreen: true,
   timing: defaultTimingPreferences()
 };
@@ -196,6 +199,9 @@ const preferencesSlice = createSlice({
     },
     keyLightsChanged(state, action: PayloadAction<KeyLightSettings>) {
       state.keyLights = action.payload;
+    },
+    melodyOutputChanged(state, action: PayloadAction<MelodyOutputSettings>) {
+      state.melodyOutput = action.payload;
     },
     fullscreenChanged(state, action: PayloadAction<boolean>) {
       state.fullscreen = action.payload;
