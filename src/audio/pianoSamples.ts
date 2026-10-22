@@ -19,33 +19,52 @@ const buffers = new Map<PianoLayer, Tone.ToneAudioBuffers>();
 const loaded = new Set<PianoLayer>();
 const listeners = new Set<(layer: PianoLayer) => void>();
 let firstLayer: Promise<void> | undefined;
+const loading = new Map<PianoLayer, Promise<void>>();
 
-/** Settles once the layer is in, or once a file of it fails: then it never counts as loaded. */
+/** A failed layer is never ready and can be fetched again on the next gesture. */
 function loadLayer(layer: PianoLayer): Promise<void> {
-  return new Promise((resolve) => {
+  if (loaded.has(layer)) return Promise.resolve();
+  const pending = loading.get(layer);
+  if (pending) return pending;
+  buffers.get(layer)?.dispose();
+  const request = new Promise<void>((resolve, reject) => {
+    let settled = false;
     buffers.set(
       layer,
       new Tone.ToneAudioBuffers({
         urls: Object.fromEntries(SAMPLE_PITCHES.map((pitch) => [pitch, fileName(pitch, layer)])),
         baseUrl: BASE_URL,
         onload: () => {
+          if (settled) return;
+          settled = true;
           loaded.add(layer);
           for (const listener of listeners) listener(layer);
           resolve();
         },
         onerror: () => {
-          resolve();
+          if (settled) return;
+          settled = true;
+          reject(new Error("Piano samples could not be loaded"));
         }
       })
     );
   });
+  const tracked = request.finally(() => loading.delete(layer));
+  loading.set(layer, tracked);
+  return tracked;
 }
 
-/** Loads the middle layer, then the others in the background; resolves when the first settles. */
+/** Loads the middle layer, then the others; errors reject and leave the first layer retryable. */
 export function loadPianoSamples(): Promise<void> {
-  firstLayer ??= loadLayer(FIRST_PIANO_LAYER).then(() => {
-    for (const { layer } of PIANO_LAYERS) if (layer !== FIRST_PIANO_LAYER) void loadLayer(layer);
-  });
+  firstLayer ??= loadLayer(FIRST_PIANO_LAYER)
+    .catch((error: unknown) => {
+      firstLayer = undefined;
+      throw error;
+    })
+    .finally(() => {
+      for (const { layer } of PIANO_LAYERS)
+        if (layer !== FIRST_PIANO_LAYER) void loadLayer(layer).catch(() => undefined);
+    });
   return firstLayer;
 }
 

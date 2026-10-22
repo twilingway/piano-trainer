@@ -1,3 +1,7 @@
+import type { SongNote } from "../song/song";
+import type { FrameState } from "./frameState";
+import type { KeyRect } from "./keyboardLayout";
+
 /** A stretch of the keyboard, in the full keyboard's pixels. */
 export interface Span {
   readonly left: number;
@@ -51,4 +55,57 @@ export function easePan(
 ): number {
   if (smoothing <= 0) return target;
   return pan + (target - pan) * (1 - Math.exp(-deltaSeconds / smoothing));
+}
+
+/** Preserve the player's scroll relative to the keyboard centre when its viewport changes. */
+export function panAfterResize(
+  pan: number,
+  previous: { readonly width: number; readonly total: number },
+  next: { readonly width: number; readonly total: number }
+): number {
+  const overflow = next.total - next.width;
+  if (overflow <= 0) return overflow / 2;
+  const reframed = pan + (overflow - previous.total + previous.width) / 2;
+  return Math.max(0, Math.min(overflow, reframed));
+}
+
+/** The first upcoming owned keys, bounded so a long score does not allocate per frame. */
+export function upcomingSpans(
+  state: FrameState,
+  notes: readonly SongNote[],
+  keys: ReadonlyMap<number, KeyRect>
+): Span[] {
+  const until = state.time + state.lookAhead * 0.6;
+  const spans: Span[] = [];
+  for (const note of notes) {
+    if (note.start >= until) break;
+    if (note.start + note.duration <= state.time) continue;
+    if (state.hands.size > 0 && !state.owns(note)) continue;
+    const key = keys.get(note.pitch);
+    if (key) spans.push({ left: key.x, right: key.x + key.width });
+    if (spans.length >= 24) break;
+  }
+  return spans;
+}
+
+/** Follow upcoming owned keys, snapping a new song and settling sub-pixel movement. */
+export function followKeyboardPan(
+  state: FrameState,
+  notes: readonly SongNote[],
+  keys: ReadonlyMap<number, KeyRect>,
+  current: number,
+  snap: boolean,
+  width: number,
+  total: number,
+  margin: number,
+  deltaSeconds: number,
+  fitOverhead = false
+): number {
+  if (fitOverhead) return (total - width) / 2;
+  if (total <= width) return Math.min(0, (total - width) / 2);
+  const spans = upcomingSpans(state, notes, keys);
+  const target = panToShow(snap ? (total - width) / 2 : current, spans, width, total, margin);
+  const pan = snap ? target : easePan(current, target, deltaSeconds, 0.35);
+  // The ease never quite arrives: settle once it is within half a pixel.
+  return Math.abs(target - pan) < 0.5 ? target : pan;
 }

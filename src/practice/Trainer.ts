@@ -1,70 +1,42 @@
 import { soundAllOff } from "../audio/pianoSound";
+import type { SessionMelodyOutput } from "../audio/sessionAudio";
 import { SessionAudio } from "../audio/sessionAudio";
+import { loadVoiceTrack } from "../audio/voiceTrack";
 import type { KeyEvent } from "../input/midiInput";
 import type { FallingNotesView } from "../render/FallingNotesView";
-import { TakeRecorder } from "../recording/take";
-import type { Take } from "../recording/take";
-import { quartersAt } from "../song/song";
+import type { Take, TakeRecorder } from "../recording/take";
 import type { Song, SongNote } from "../song/song";
 import { ComboCounter } from "./combo";
 import type { ComboBoard, GradedStrike } from "./combo";
-import { keyLightPitches } from "./keyLights";
+import { RunCompletionTracker } from "./runCompletion";
+import type { RunCompletion } from "./runCompletion";
 import { PracticeSession } from "./session";
-import type { NoteStatus, PracticeEvent, PracticeOptions, PracticeStats } from "./session";
+import type { PracticeEvent, PracticeOptions } from "./session";
 import type { TimingConfig } from "./timingConfig";
+import { maximumInputCompensation } from "./timingConfig";
 import { SongTimeline } from "./timing";
-import { timingPolicy } from "./timingPolicy";
-import type { TimingPolicy } from "./timingPolicy";
-
-export interface TrainerSnapshot {
-  readonly playing: boolean;
-  readonly waiting: boolean;
-  readonly finished: boolean;
-  readonly time: number;
-  readonly timingPolicy: TimingPolicy;
-  /** Beat of the last note that has started; what the staff cursor follows. */
-  readonly beat: number;
-  readonly stats: PracticeStats;
-  readonly diagnostic?: InputDiagnostic;
-  readonly noteStatuses?: Readonly<Record<string, NoteStatus | undefined>>;
-}
+import { beatAt } from "./sessionBeats";
+export { beatAt } from "./sessionBeats";
+import { ReadingAttackGate, type TrainerReadingPolicy } from "./readingPolicy";
+import type { CourseKeyContext, CourseKind, CoursePolicies, KeyTimes } from "./trainerCourse";
+import { createTrainerRecorder, finishTrainerTake } from "./trainerRecording";
+import {
+  drawTrainerMirror,
+  trainerQuarters,
+  drawGuidedTrainerScene,
+  trainerGrade
+} from "./trainerView";
+import { TrainerCoursePolicies } from "./trainerCoursePolicies";
+import { processPianoInput } from "./trainerPianoInput";
+import { TrainerInputHolds } from "./trainerInputHolds";
+import * as snapshots from "./trainerSnapshot";
+import type { InputDiagnostic, TrainerSnapshot } from "./trainerSnapshot";
+export type { InputDiagnostic, TrainerSnapshot } from "./trainerSnapshot";
 
 export type TrainerTiming = TimingConfig;
-export interface InputDiagnostic {
-  readonly source: string;
-  readonly deviceId: string;
-  readonly pitch: number;
-  readonly velocity: number;
-  readonly raw: number;
-  readonly corrected: number;
-  readonly offset: number;
-  readonly expired: boolean;
-}
 
-const NOTHING: ReadonlySet<number> = new Set();
-
-/** Two seconds fill the lane: at 114 BPM a quarter spans about 79 px of a 300 px lane. */
-const LOOK_AHEAD_S = 2;
+/** React snapshots are slower than the shared animation clock. */
 const SNAPSHOT_INTERVAL_MS = 150;
-
-/** Beat of the latest note that has started by `time`; notes are sorted by start. */
-export function beatAt(song: Song, time: number): number {
-  let low = 0;
-  let high = song.notes.length - 1;
-  let found = 0;
-  while (low <= high) {
-    const middle = (low + high) >> 1;
-    const note = song.notes[middle];
-    if (!note) break;
-    if (note.start <= time) {
-      found = note.startBeat;
-      low = middle + 1;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return found;
-}
 
 /**
  * Glue between the pure session, the picture, the sound and the keys. Owns
@@ -74,6 +46,8 @@ export class Trainer {
   onSnapshot: ((snapshot: TrainerSnapshot) => void) | undefined;
   /** A take has ended: the song finished, or the run was restarted, moved or reloaded. */
   onTake: ((take: Take) => void) | undefined;
+  /** Natural end only, emitted before a loop restarts or a take is delivered. */
+  onRunFinished: ((result: RunCompletion) => void) | undefined;
   /** The keys to light on the player's instrument, every frame; none once the run stops. */
   onLights: ((pitches: readonly number[]) => void) | undefined;
   metronome = false;
@@ -81,6 +55,17 @@ export class Trainer {
   stopOnError = false;
   canStart = true;
   onInput: ((event: KeyEvent) => boolean) | undefined;
+  private readonly courses: TrainerCoursePolicies;
+  private readonly inputHolds = new TrainerInputHolds();
+  private readonly readingGate = new ReadingAttackGate();
+
+  /** One course at a time; null removes it only when the active course is of this kind. */
+  configureCourse<K extends CourseKind>(kind: K, policy: CoursePolicies[K] | null): void {
+    this.courses.configure(kind, policy);
+  }
+  cancelInput(resetAll = false): void {
+    this.courses.cancelInput(resetAll);
+  }
   private timing: TrainerTiming = {
     inputOffsets: {},
     manualInputOffsetMs: 0,
@@ -99,6 +84,7 @@ export class Trainer {
 
   private session: PracticeSession | undefined;
   private songKey = "";
+  private readonly run = new RunCompletionTracker();
   /** The run of good notes and the accuracy, started over with each run. */
   private readonly combo = new ComboCounter();
   /** Strikes graded since the last frame was drawn. */
@@ -106,6 +92,7 @@ export class Trainer {
   /** The song's notes' keys by note id: a missed note is shown on its key. */
   private pitchOf = new Map<string, number>();
   private playing = false;
+  private effectEpoch = 0;
   private recorder: TakeRecorder | undefined;
   /** Colours for the notes on this trainer's view, and a second view drawn in step with it. */
   private comparison:
@@ -127,6 +114,12 @@ export class Trainer {
 
   constructor(view: FallingNotesView) {
     this.view = view;
+    this.courses = new TrainerCoursePolicies(
+      this.inputHolds,
+      this.pressed,
+      () => this.onLights,
+      () => this.session
+    );
     view.onTick((deltaMs) => {
       this.frame(deltaMs);
     });
@@ -137,8 +130,12 @@ export class Trainer {
     song: Song,
     options: PracticeOptions,
     songKey: string,
-    { preservePosition = false }: { preservePosition?: boolean } = {}
+    {
+      preservePosition = false,
+      runContext
+    }: { preservePosition?: boolean; runContext?: string } = {}
   ): void {
+    this.cancelInput();
     const now = performance.now();
     const previous = preservePosition ? this.session : undefined;
     const resume = previous !== undefined && this.playing;
@@ -146,11 +143,15 @@ export class Trainer {
     // Resolve between-frame progress with the old clock and speed before replacing either.
     previous?.pauseClock(now);
     const position = previous?.time;
+    this.run.load(song, options, songKey, runContext, previous !== undefined);
     this.finishTake();
     this.silence();
     this.songKey = songKey;
     this.session = new PracticeSession(song, options);
+    if (song.voice) loadVoiceTrack(song.voice);
+    this.courses.current?.attach?.(this.session);
     if (position !== undefined) this.session.seek(position, now, { leadIn: false });
+    if (previous) this.session.inheritNoteResult(previous);
     this.timing = this.nextTiming;
     this.session.startClock(now);
     this.session.pauseClock(now);
@@ -158,6 +159,7 @@ export class Trainer {
     this.combo.reset();
     this.graded = [];
     this.playing = false;
+    this.effectEpoch++;
     this.view.setSong(song);
     this.lastBeat = -1;
     if (resume) this.setPlaying(true);
@@ -171,13 +173,26 @@ export class Trainer {
 
   /** Restarts the run from song time `from`, keeping play or pause as it was. */
   seek(from: number): void {
+    this.move(from, false);
+  }
+
+  /** Starts a fresh eligible run, unlike moving the playback position. */
+  restart(from = 0): void {
+    this.move(from, true);
+  }
+
+  private move(from: number, restart: boolean): void {
+    this.cancelInput();
     this.resumePending = false;
     if (!this.session) return;
+    if (restart) this.run.restart();
+    else this.run.seek();
     const resume = this.playing;
     this.finishTake();
     this.silence();
     this.playing = false;
     const now = performance.now();
+    this.effectEpoch++;
     this.session.seek(from, now);
     this.session.pauseClock(now);
     this.combo.reset();
@@ -186,133 +201,137 @@ export class Trainer {
     this.publish();
   }
 
+  /** Changes automatic-note routing without moving the song or restarting a take. */
+  setMelodyOutput(output: SessionMelodyOutput): void {
+    const now = performance.now();
+    this.audio.configure(output, now);
+    if (this.playing && this.session)
+      this.audio.start(this.session, now, this.timing.audioOffsetMs, () => this.metronome);
+  }
+
   setPlaying(playing: boolean): void {
+    const course = this.courses.current;
     this.resumePending = false;
     const session = this.session;
     const wasPlaying = this.playing;
-    this.playing = playing && this.canStart && session?.finished !== true;
+    this.playing =
+      playing && this.canStart && (session?.finished !== true || course?.playsAfterFinish === true);
     if (this.playing && !wasPlaying && !this.recorder) this.timing = this.nextTiming;
     if (session)
       session.setInputGrace(
-        Math.max(
-          0,
-          ...Object.values(this.timing.inputOffsets).map(
-            (offset) => offset + this.timing.manualInputOffsetMs
-          ),
-          this.timing.manualInputOffsetMs
-        )
+        course?.inputCompensationMs?.() ?? maximumInputCompensation(this.timing)
       );
     if (!this.playing) this.silence();
     const now = performance.now();
     if (session && this.playing && !wasPlaying) {
+      this.run.begin(session.startedFrom);
       session.resumeClock(now);
+      if (course?.start && !course.start(session, now, this.inputHolds.snapshot())) {
+        this.playing = false;
+        session.pauseClock(now);
+        this.publish();
+        return;
+      }
       this.audio.start(session, now, this.timing.audioOffsetMs, () => this.metronome);
     }
     if (session && !this.playing && wasPlaying) this.apply(session.pauseClock(now));
     if (this.playing && !wasPlaying && session) {
       if (this.recorder) {
         this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 1);
-      } else if (session.options.hands.size > 0) {
+      } else if (session.options.hands.size > 0 && !course?.ownsInput) {
         // A listen-through has no player: nothing to record.
-        this.recorder = new TakeRecorder({
-          songKey: this.songKey,
-          mode: session.options.mode,
-          speed: session.options.speed,
-          hands: [...session.options.hands],
-          ...(session.options.playable ? { playable: session.options.playable } : {}),
-          ...(session.options.parts ? { parts: [...session.options.parts] } : {}),
-          from: session.startedFrom,
-          timing: {
-            rulesVersion: 2,
-            difficulty: session.options.difficulty ?? "normal",
-            learningWindow:
-              session.options.mode === "tempo" && session.options.learningWindow === true,
-            ...this.timing
-          }
-        });
+        this.recorder = createTrainerRecorder(session, this.songKey, this.timing);
         this.takeTimeline.reset(now, 0, 1);
       }
     }
     if (!this.playing && wasPlaying)
       this.takeTimeline.anchor(now, this.takeTimeline.at(now) ?? 0, 0);
+    if (session && course) this.apply(course.step(session, this.playing, now));
     this.publish();
   }
 
   key(event: KeyEvent): void {
-    if (this.onInput?.(event)) return;
-    if (
-      this.allowedDeviceId &&
-      event.deviceId !== this.allowedDeviceId &&
-      !(this.allowedDeviceId === "keyboard" && event.source !== "midi")
-    )
-      return;
+    this.inputHolds.record(event, performance.now());
+    const course = this.courses.current;
+    if (course) course.key(event, this.keyContext());
+    else this.ordinaryKey(event, null);
+  }
+
+  private keyContext(): CourseKeyContext {
+    return {
+      session: this.session,
+      playing: () => this.playing,
+      timing: this.timing,
+      pressed: this.pressed,
+      gate: this.readingGate,
+      intercept: (event) => this.onInput?.(event) === true,
+      admits: (event) => this.admits(event),
+      times: (event) => this.keyTimes(event),
+      ordinary: (event, reading) => {
+        this.ordinaryKey(event, reading);
+      },
+      apply: (events) => {
+        this.apply(events);
+      },
+      publish: () => {
+        this.publish();
+      }
+    };
+  }
+
+  private admits(event: KeyEvent): boolean {
+    return (
+      !this.allowedDeviceId ||
+      event.deviceId === this.allowedDeviceId ||
+      (this.allowedDeviceId === "keyboard" && event.source !== "midi")
+    );
+  }
+
+  private keyTimes(event: KeyEvent): KeyTimes | undefined {
     const received = performance.now();
     const raw = event.timestamp ?? received;
-    if (!Number.isFinite(raw)) return;
+    if (!Number.isFinite(raw)) return undefined;
     const offset =
       (this.timing.inputOffsets[event.deviceId ?? event.source ?? "pointer"] ?? 0) +
       this.timing.manualInputOffsetMs;
-    const corrected = raw - offset;
+    return { raw, corrected: raw - offset, received };
+  }
+
+  private ordinaryKey(event: KeyEvent, reading: TrainerReadingPolicy | null): void {
+    if (this.onInput?.(event)) return;
+    if (!this.admits(event)) return;
+    const times = this.keyTimes(event);
+    if (!times) return;
+    const { raw, corrected, received } = times;
+    const fresh = this.readingGate.accept(event);
     if (event.type === "down") this.pressed.add(event.pitch);
     else this.pressed.delete(event.pitch);
-    const session = this.session;
-    if (session && this.playing) this.apply(session.tick(received));
-    const eventTime =
-      session?.songTimeAt(corrected) ?? (event.type === "up" ? session?.time : undefined);
-    this.diagnostic = {
-      source: event.source ?? "pointer",
-      deviceId: event.deviceId ?? "pointer",
-      pitch: event.pitch,
-      velocity: event.velocity,
+    processPianoInput(event, {
+      session: this.session,
+      reading,
+      playing: () => this.playing,
+      fresh,
       raw,
       corrected,
-      offset,
-      expired: eventTime === undefined || received - raw > 250
-    };
-    if (eventTime === undefined || received - raw > 250) {
-      this.publish();
-      return;
-    }
-    if (this.recorder && session) {
-      const inputTiming = {
-        rawTimestampMs: raw,
-        correctedTimestampMs: corrected,
-        inputOffsetMs: offset,
-        source: event.source ?? "pointer"
-      };
-      // Releases are kept even while paused: a key held over the pause still ends somewhere.
-      if (event.type === "down") {
-        this.recorder.noteOn(
-          event.pitch,
-          event.velocity,
-          eventTime,
-          this.realTime(corrected),
-          event.deviceId,
-          inputTiming
-        );
-      } else {
-        this.recorder.noteOff(
-          event.pitch,
-          eventTime,
-          this.realTime(corrected),
-          event.deviceId,
-          inputTiming
-        );
+      received,
+      recorder: () => this.recorder,
+      realTime: this.realTime(corrected),
+      apply: (events) => {
+        this.apply(events);
+      },
+      diagnose: (diagnostic) => {
+        this.diagnostic = diagnostic;
+      },
+      publish: () => {
+        this.publish();
       }
-    }
-    if (event.type === "down" && session) {
-      this.apply(
-        session.pressKeyAt(event.pitch, corrected, received, event.deviceId ?? event.source)
-      );
-      this.publish();
-    }
-    if (event.type === "up" && session)
-      session.releaseKeyAt(event.pitch, corrected, event.deviceId ?? event.source);
+    });
   }
 
   configureTiming(timing: TrainerTiming): void {
     this.nextTiming = timing;
   }
+
   configureControls(controls: {
     loop: boolean;
     stopOnError: boolean;
@@ -340,16 +359,21 @@ export class Trainer {
     if (this.canStart && this.resumePending && this.resumeWhenReady) this.setPlaying(true);
   }
   activateOverdrive(): void {
+    if (this.courses.current?.overdrive === false) return;
     if (this.playing) this.session?.activateOverdrive(performance.now());
     this.publish();
   }
 
   destroy(): void {
+    this.run.restart();
     this.setPlaying(false);
     this.finishTake();
     this.onSnapshot = undefined;
     this.onTake = undefined;
+    this.onRunFinished = undefined;
     this.onInput = undefined;
+    this.courses.clear();
+    this.readingGate.clear();
   }
 
   /**
@@ -362,12 +386,11 @@ export class Trainer {
 
   /** Where the song is now, in quarter notes, between notes too: what a view follows smoothly. */
   quarters(): number {
-    return this.session
-      ? quartersAt(
-          this.session.song,
-          this.session.time - (this.timing.visualOffsetMs / 1000) * this.session.options.speed
-        )
-      : 0;
+    return trainerQuarters(
+      this.session,
+      this.timing.visualOffsetMs,
+      this.courses.current?.smoothClock === true
+    );
   }
 
   /** Only the text mode needs note statuses in the throttled React snapshot. */
@@ -376,6 +399,7 @@ export class Trainer {
   }
 
   pedal(down: boolean, timestamp = performance.now(), deviceId = ""): void {
+    if (this.courses.current?.ownsInput) return;
     if (this.recorder && this.session) {
       if (performance.now() - timestamp > 250) return;
       const corrected =
@@ -393,68 +417,46 @@ export class Trainer {
   /** Ends the take in progress, if anything was played, and hands it over. */
   private finishTake(): void {
     const recorder = this.recorder;
-    const session = this.session;
     this.recorder = undefined;
-    if (!recorder || !session || recorder.isEmpty) return;
-    const take = recorder.finish(
-      session.time,
-      this.realTime(),
-      `${String(Date.now())}-${String(Math.round(Math.random() * 1e6))}`,
-      new Date().toISOString()
-    );
-    this.onTake?.(take);
+    if (recorder && this.session && !recorder.isEmpty)
+      this.onTake?.(finishTrainerTake(recorder, this.session, this.realTime()));
   }
 
   private frame(deltaMs: number): void {
+    const course = this.courses.current;
     const session = this.session;
     if (!session) return;
-    if (this.playing) {
-      const now = performance.now();
-      this.apply(session.tick(now));
-    }
-    this.onLights?.(keyLightPitches(session, this.playing && !this.performanceMode));
-    this.view.draw({
-      time: session.time - (this.timing.visualOffsetMs / 1000) * session.options.speed,
-      hintTime: session.time,
-      hintSpeed: session.options.speed,
-      hintNotes: session.keyHints(),
-      lookAhead: LOOK_AHEAD_S,
-      statusOf: (id) => session.statusOf(id),
-      pressed: this.pressed,
-      sounding: this.sounding,
-      due: this.playing || session.time < 0 ? session.nextDue() : [],
-      owedNoteId: session.owedNote()?.id,
-      waitingFor: session.waiting ? session.nextDue() : [],
-      hands: session.options.hands,
-      owns: session.owns,
-      hints: !this.performanceMode,
-      colorOf: this.comparison?.colorOf,
-      board: this.board ?? this.combo.board(),
-      graded: this.graded
-    });
+    const now = performance.now();
+    if (this.playing) this.apply(session.tick(now));
+    if (course) this.apply(course.step(session, this.playing, now));
+    drawGuidedTrainerScene(
+      this.view,
+      session,
+      {
+        playing: this.playing,
+        effectEpoch: this.effectEpoch,
+        performance: this.performanceMode,
+        visualOffsetMs: this.timing.visualOffsetMs,
+        course,
+        pressed: this.pressed,
+        sounding: this.sounding,
+        colorOf: this.comparison?.colorOf,
+        board: this.board ?? this.combo.board(),
+        graded: this.graded,
+        onLights: this.onLights
+      },
+      now
+    );
     // The view has shown them: next frame grades only its own strikes.
     this.graded = [];
-    const mirror = this.comparison?.mirror;
-    mirror?.view.draw({
-      time: session.time,
-      hintTime: session.time,
-      hintSpeed: session.options.speed,
-      hintNotes: [],
-      lookAhead: LOOK_AHEAD_S,
-      statusOf: () => undefined,
-      pressed: NOTHING,
-      sounding: NOTHING,
-      due: [],
-      hands: session.options.hands,
-      owns: session.owns,
-      colorOf: mirror.colorOf
-    });
+    drawTrainerMirror(this.comparison?.mirror, session);
     this.sinceSnapshot += deltaMs;
     const beat = beatAt(session.song, session.time);
     if (this.sinceSnapshot >= SNAPSHOT_INTERVAL_MS || beat !== this.lastBeat) this.publish();
   }
 
   private apply(events: readonly PracticeEvent[]): void {
+    const course = this.courses.current;
     for (const event of events) {
       switch (event.type) {
         case "autoNoteOn":
@@ -466,27 +468,26 @@ export class Trainer {
         case "beat":
           break;
         case "finished":
+          if (course && !course.gradesRun) break;
+          {
+            const result = this.run.finish(this.session?.stats().noteResult);
+            if (result) this.onRunFinished?.(result);
+          }
           this.finishTake();
           this.playing = false;
           this.silence();
           if (this.loop && this.canStart && this.session) {
-            this.seek(this.session.options.from ?? 0);
+            this.restart(this.session.options.from ?? 0);
             this.setPlaying(true);
           }
           break;
         case "hit":
         case "miss":
         case "wrong": {
-          const grade = this.combo.record(event);
-          const pitch = event.type === "wrong" ? event.pitch : this.pitchOf.get(event.noteId);
-          if (grade && pitch !== undefined)
-            this.graded.push({
-              grade,
-              pitch,
-              ...(event.type === "hit"
-                ? { offsetMs: event.offset * 1000, assisted: event.assisted }
-                : {})
-            });
+          if (course && !course.gradesRun) break;
+          if (event.type === "hit") this.run.hit();
+          const grade = trainerGrade(event, this.combo, this.pitchOf);
+          if (grade) this.graded.push(grade);
           if (event.type !== "hit" && this.stopOnError) this.setPlaying(false);
           break;
         }
@@ -495,6 +496,7 @@ export class Trainer {
   }
 
   private silence(): void {
+    this.cancelInput();
     if (this.session) this.apply(this.session.stopAuto());
     this.sounding.clear();
     this.onLights?.([]);
@@ -506,28 +508,16 @@ export class Trainer {
     const session = this.session;
     if (!session) return;
     this.sinceSnapshot = 0;
-    this.lastBeat = beatAt(session.song, session.time);
-    const stats = session.stats();
-    const game = stats.game;
-    this.board = game
-      ? { combo: game.combo, best: game.maxCombo, accuracy: (game.accuracy ?? 100) / 100 }
-      : undefined;
-    this.onSnapshot?.({
-      playing: this.playing,
-      waiting: session.waiting,
-      finished: session.finished,
-      time: session.time,
-      beat: this.lastBeat,
-      timingPolicy: timingPolicy(session.options),
-      stats,
-      ...(this.textNoteIds.length > 0
-        ? {
-            noteStatuses: Object.fromEntries(
-              this.textNoteIds.map((id) => [id, session.statusOf(id)])
-            )
-          }
-        : {}),
-      ...(this.diagnostic ? { diagnostic: this.diagnostic } : {})
-    });
+    const state = snapshots.trainerSnapshot(
+      session,
+      this.playing,
+      beatAt(session.song, session.time),
+      this.textNoteIds,
+      this.diagnostic,
+      this.courses.current
+    );
+    this.lastBeat = state.snapshot.beat;
+    this.board = state.board;
+    this.onSnapshot?.(state.snapshot);
   }
 }

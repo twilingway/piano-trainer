@@ -6,7 +6,6 @@ import type { Language, Layout } from "../wordTyping/types";
 import { GameSettings } from "../ui/GameSettings";
 import { ResultDialog } from "../ui/ResultDialog";
 import { TimingSettings } from "../ui/TimingSettings";
-import { ViewToggles } from "../ui/ViewToggles";
 import { WordTypingSettings } from "../ui/WordTypingSettings";
 import { ComputerKeyboardSettings } from "../ui/settings/ComputerKeyboardSettings";
 import { KeyboardSettings } from "../ui/settings/KeyboardSettings";
@@ -20,6 +19,7 @@ import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 import { useAppSelector } from "./storeHooks";
 import { useI18n } from "./useI18n";
+import { pianistAvailable } from "../render/three/pianistAvailability";
 import { usePlayChoice } from "./usePlayChoice";
 import { useTrainerSelector, type TrainerSnapshotSource } from "./trainerSnapshots";
 
@@ -179,16 +179,19 @@ function ConnectedStaffSettings() {
   return <StaffSettings prefs={prefs} hasScore={hasScore} onChange={onChange} />;
 }
 export function ConnectedSettingsToggles() {
-  const prefs = useAppSelector((state) => state.preferences.staff);
-  const hasScore = useRuntimeSelector((runtime) => Boolean(runtime.score.staffXml));
-  const onChange = useRuntimeCommand((runtime) => runtime.updateStaffPrefs);
-  return <ViewToggles prefs={prefs} hasScore={hasScore} onChange={onChange} />;
+  return useRuntimeSelector((runtime) => runtime.toggles);
 }
 function ConnectedKeyboardSettings() {
   const state = useAppSelector(
     (state) => ({
       keyStyle: state.preferences.staff.keyStyle,
+      notesPerspective: state.preferences.staff.road,
       handStyle: state.preferences.staff.handStyle,
+      keyboardDim: state.preferences.staff.keyboardDim,
+      roadGuides: state.preferences.staff.roadGuides,
+      pianist: state.preferences.staff.pianist,
+      performanceScene: state.preferences.staff.performanceScene,
+      freeCamera: state.preferences.staff.freeCamera,
       far: state.preferences.staff.roadFar,
       horizon: state.preferences.staff.roadHorizon,
       camera: state.preferences.staff.camera
@@ -202,20 +205,42 @@ function ConnectedKeyboardSettings() {
   const onKeyRange = useRuntimeCommand((runtime) => runtime.view.setKeyRange);
   const onShowLabels = useRuntimeCommand((runtime) => runtime.view.setShowLabels);
   const onKeyStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyStyle);
+  const onNotesPerspective = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onNotesPerspective
+  );
   const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
+  const onKeyboardDim = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardDim);
+  const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
+  const onPerformanceScene = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onPerformanceScene
+  );
+  const onFreeCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onFreeCamera);
+  const onPianist = useRuntimeCommand((runtime) => runtime.keyboardSettings.onPianist);
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
   const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
   return (
     <KeyboardSettings
       {...view}
       keyStyle={state.keyStyle}
+      notesPerspective={state.notesPerspective}
+      onNotesPerspective={onNotesPerspective}
       handStyle={state.handStyle}
+      keyboardDim={state.keyboardDim}
+      onKeyboardDim={onKeyboardDim}
+      roadGuides={state.roadGuides}
+      {...(pianistAvailable(state.keyStyle, state.handStyle) ? { pianist: state.pianist } : {})}
+      onPianist={onPianist}
+      performanceScene={state.performanceScene}
+      onPerformanceScene={onPerformanceScene}
+      freeCamera={state.freeCamera}
+      onFreeCamera={onFreeCamera}
       road={{ far: state.far, horizon: state.horizon }}
       camera={state.camera}
       onKeyRange={onKeyRange}
       onShowLabels={onShowLabels}
       onKeyStyle={onKeyStyle}
       onHandStyle={onHandStyle}
+      onRoadGuides={onRoadGuides}
       onRoad={onRoad}
       onCamera={onCamera}
       toggles={<ConnectedSettingsToggles />}
@@ -311,6 +336,7 @@ function ConnectedMidiSettings() {
   const range = useAppSelector((state) => state.preferences.deviceRange);
   const choice = useAppSelector((state) => state.preferences.midiOutput);
   const lights = useAppSelector((state) => state.preferences.keyLights);
+  const melody = useAppSelector((state) => state.preferences.melodyOutput);
   const state = useRuntimeSelector(
     (runtime) => ({
       devices: runtime.input.devices,
@@ -336,6 +362,9 @@ function ConnectedMidiSettings() {
   const onLights = useRuntimeCommand(
     (runtime) => (next: typeof lights) => runtime.input.settings.output?.onLights(next)
   );
+  const onMelody = useRuntimeCommand(
+    (runtime) => (next: typeof melody) => runtime.input.settings.output?.onMelody(next)
+  );
   return (
     <MidiSettings
       devices={state.devices}
@@ -352,9 +381,11 @@ function ConnectedMidiSettings() {
               connected: state.connected,
               selectedId: state.selectedId,
               lights,
+              melody,
               onSelect,
               onTest,
-              onLights
+              onLights,
+              onMelody
             }
           : undefined
       }
@@ -372,8 +403,10 @@ function ConnectedSynchronizationSettings() {
       profile: runtime.timing.settingsProps.profile,
       progress: runtime.timing.settingsProps.progress,
       running: runtime.timing.settingsProps.running,
+      countdown: runtime.timing.settingsProps.countdown,
       locked: runtime.timing.settingsProps.locked,
-      canCalibrate: runtime.timing.settingsProps.canCalibrate
+      canCalibrate: runtime.timing.settingsProps.canCalibrate,
+      tapAvailable: runtime.timing.settingsProps.onTap !== undefined
     }),
     shallowEqual
   );
@@ -381,6 +414,9 @@ function ConnectedSynchronizationSettings() {
   const onOffsets = useRuntimeCommand((runtime) => runtime.timing.settingsProps.onOffsets);
   const onStart = useRuntimeCommand((runtime) => runtime.timing.settingsProps.onStart);
   const onCancel = useRuntimeCommand((runtime) => runtime.timing.settingsProps.onCancel);
+  const onTap = useRuntimeCommand((runtime) => (atMs: number) => {
+    runtime.timing.settingsProps.onTap?.(atMs);
+  });
   const { profile, ...props } = state;
   return (
     <ConnectedTimingSettings
@@ -391,6 +427,7 @@ function ConnectedSynchronizationSettings() {
       onOffsets={onOffsets}
       onStart={onStart}
       onCancel={onCancel}
+      {...(state.tapAvailable ? { onTap } : {})}
     />
   );
 }

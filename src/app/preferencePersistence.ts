@@ -1,16 +1,18 @@
 import { createListenerMiddleware, type ListenerMiddlewareInstance } from "@reduxjs/toolkit";
 import { parseDeviceRange } from "../input/deviceRange";
 import { DEFAULT_KEY_LIGHTS } from "../input/keyLights";
+import { parseMelodyOutput } from "../input/melodyOutput";
 import { parseKeyboardPrefs } from "../input/keyboardLayouts";
 import { normalizeGamePreferences } from "./gamePreferences";
 import { getInterfaceLanguage } from "./interfaceLanguage";
-import { normalizePlayerPrefs } from "./playerPrefs";
+import { normalizePlayerPrefs, type PlayerPrefs } from "./playerPrefs";
 import type { PreferencesState } from "./preferencesSlice";
 import { persistenceErrorChanged, type PersistenceState } from "./persistenceSlice";
 import { DEFAULT_SCREEN_LAYOUTS, normalizeLayout } from "./screenLayout";
 import { normalizeStaffPrefs } from "./staffPreferences";
 import { loadTimingPreferences } from "./timingPreferences";
 import { normalizeWordTypingPrefs } from "./wordTypingPreferences";
+import { activeViewFraming, hydrateViewProfiles } from "./viewProfiles";
 
 export type PreferenceStorage = Pick<Storage, "getItem" | "setItem">;
 export interface PreferenceRoot {
@@ -24,9 +26,11 @@ export const PREFERENCE_KEYS = {
   word: "word-typing-prefs-v1",
   game: "game-options-v1",
   layouts: "screen-layout",
+  viewProfiles: "piano-view-profiles-v1",
   deviceRange: "device-range-v1",
   midiOutput: "midi-output-v1",
   keyLights: "key-lights-v1",
+  melodyOutput: "melody-output-v1",
   fullscreen: "fullscreen-preferred",
   timing: "piano-trainer:timing-v1"
 } satisfies Record<keyof PreferencesState, string>;
@@ -70,6 +74,13 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
     }
   };
   const layouts = record(json(PREFERENCE_KEYS.layouts));
+  const rawStaff = json(PREFERENCE_KEYS.staff);
+  const viewProfiles = hydrateViewProfiles(
+    json(PREFERENCE_KEYS.viewProfiles),
+    rawStaff,
+    layouts.piano
+  );
+  const framing = activeViewFraming(viewProfiles);
   const lights = record(json(PREFERENCE_KEYS.keyLights));
   const output = record(json(PREFERENCE_KEYS.midiOutput));
   const mobile =
@@ -77,15 +88,26 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
     window.matchMedia("(max-width: 640px), (pointer: coarse) and (max-height: 640px)").matches;
   const preferences: PreferencesState = {
     player: normalizePlayerPrefs(json(PREFERENCE_KEYS.player)),
-    staff: normalizeStaffPrefs(json(PREFERENCE_KEYS.staff), mobile),
+    staff: {
+      ...normalizeStaffPrefs(rawStaff, mobile),
+      camera: framing.camera,
+      roadFar: framing.roadFar,
+      roadHorizon: framing.roadHorizon,
+      keyStyle: viewProfiles.active.keyboardStyle,
+      road: viewProfiles.active.notesProjection === "perspective",
+      keyboardOrientation: viewProfiles.active.keyboardOrientation
+    },
     keyboard: parseKeyboardPrefs(json(PREFERENCE_KEYS.keyboard)),
     word: normalizeWordTypingPrefs(json(PREFERENCE_KEYS.word), getInterfaceLanguage()),
     game: normalizeGamePreferences(json(PREFERENCE_KEYS.game)),
     layouts: {
-      piano: normalizeLayout(layouts.piano, DEFAULT_SCREEN_LAYOUTS.piano),
+      ...layouts,
+      piano: framing.layout,
       typing: normalizeLayout(layouts.typing, DEFAULT_SCREEN_LAYOUTS.typing)
     },
+    viewProfiles,
     deviceRange: parseDeviceRange(json(PREFERENCE_KEYS.deviceRange)),
+    melodyOutput: parseMelodyOutput(json(PREFERENCE_KEYS.melodyOutput)),
     midiOutput:
       typeof output.id === "string" && typeof output.name === "string"
         ? { id: output.id, name: output.name }
@@ -108,10 +130,22 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
 export function createPersistenceListener<State extends PreferenceRoot = PreferenceRoot>() {
   return createListenerMiddleware<State>();
 }
+
+function latestPlayerPrefs(storage: PreferenceStorage, fallback: PlayerPrefs): PlayerPrefs {
+  try {
+    const raw = storage.getItem(PREFERENCE_KEYS.player);
+    return raw === null ? fallback : normalizePlayerPrefs(JSON.parse(raw) as unknown);
+  } catch {
+    // Retain in-memory preferences when the saved record cannot be read.
+    return fallback;
+  }
+}
+
 export function registerPreferencePersistence<State extends PreferenceRoot>(
   listener: ListenerMiddlewareInstance<State>,
   storage: PreferenceStorage = browserPreferenceStorage()
 ) {
+  let pendingPlayerChanges: Partial<PlayerPrefs> = {};
   return listener.startListening({
     predicate: (_action, current, previous) => current.preferences !== previous.preferences,
     effect: (_action, api) => {
@@ -124,8 +158,28 @@ export function registerPreferencePersistence<State extends PreferenceRoot>(
           field === "fullscreen" ? String(previous[field]) : JSON.stringify(previous[field]);
         if (value === old) continue;
         const key = PREFERENCE_KEYS[field];
+        if (field === "player") {
+          const changes = Object.fromEntries(
+            (Object.keys(current.player) as (keyof PlayerPrefs)[])
+              .filter(
+                (key) =>
+                  JSON.stringify(current.player[key]) !== JSON.stringify(previous.player[key])
+              )
+              .map((key) => [key, current.player[key]])
+          ) as Partial<PlayerPrefs>;
+          pendingPlayerChanges = { ...pendingPlayerChanges, ...changes };
+        }
         try {
-          storage.setItem(key, value);
+          storage.setItem(
+            key,
+            field === "player"
+              ? JSON.stringify({
+                  ...latestPlayerPrefs(storage, current.player),
+                  ...pendingPlayerChanges
+                })
+              : value
+          );
+          if (field === "player") pendingPlayerChanges = {};
           api.dispatch(persistenceErrorChanged({ key: persistenceKey(key, "write"), error: null }));
         } catch {
           api.dispatch(

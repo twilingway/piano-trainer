@@ -2,6 +2,7 @@ import { strFromU8, unzipSync } from "fflate";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import { handByPitch, sortNotes } from "./song";
+import { NOTE_NAME_VERSE_PREFIX } from "./noteNameMarker";
 import type { Song, SongBeat, SongNote } from "./song";
 
 const DEFAULT_TEMPO_BPM = 120;
@@ -317,6 +318,11 @@ export function musicXmlWithLineBreaks(xml: string, perLine: number): string {
     const measures = Array.from(part.querySelectorAll(":scope > measure"));
     const pickup = measures[0]?.getAttribute("implicit") === "yes" ? 1 : 0;
     measures.forEach((measure, index) => {
+      // The chosen grouping replaces source layout, including page-based system breaks.
+      measure.querySelectorAll(":scope > print").forEach((print) => {
+        print.removeAttribute("new-system");
+        print.removeAttribute("new-page");
+      });
       const counted = index - pickup;
       if (counted <= 0 || counted % perLine !== 0) return;
       const print = document.createElement("print");
@@ -337,28 +343,63 @@ const NAMES: Readonly<Record<NoteNameStyle, Readonly<Record<string, string>>>> =
 const ACCIDENTALS: Readonly<Record<string, string>> = { "-2": "𝄫", "-1": "♭", "1": "♯", "2": "𝄪" };
 
 /**
- * The score with every note's name written under it as a lyric, spelled as
- * the score spells it (B flat stays B flat). Chord notes stack their names.
+ * Marked lyrics reserve horizontal space while the staff adapter places them locally.
+ * Names retain the written spelling; simultaneous notes on a staff stack.
  */
 export function musicXmlWithNoteNames(xml: string, style: NoteNameStyle): string {
   const document = new DOMParser().parseFromString(xml, "application/xml");
-  let stack = 0;
-  for (const note of Array.from(document.querySelectorAll("note"))) {
-    const pitch = note.querySelector(":scope > pitch");
-    if (!pitch) continue;
-    stack = note.querySelector(":scope > chord") ? stack + 1 : 1;
-    const step = pitch.querySelector(":scope > step")?.textContent.trim() ?? "";
-    const alter = pitch.querySelector(":scope > alter")?.textContent.trim() ?? "0";
-    const name = `${NAMES[style][step] ?? step}${ACCIDENTALS[alter] ?? ""}`;
-    const lyric = document.createElement("lyric");
-    lyric.setAttribute("number", String(stack));
-    lyric.setAttribute("placement", "below");
-    const syllabic = document.createElement("syllabic");
-    syllabic.textContent = "single";
-    const text = document.createElement("text");
-    text.textContent = name;
-    lyric.append(syllabic, text);
-    note.appendChild(lyric);
+  for (const part of Array.from(document.querySelectorAll("part"))) {
+    let divisions = 1;
+    for (const measure of Array.from(part.querySelectorAll(":scope > measure"))) {
+      let position = 0;
+      let chordStart = 0;
+      let onsetIndex = 0;
+      const groups = new Map<string, Element[]>();
+      for (const element of Array.from(measure.children)) {
+        if (element.tagName === "attributes") {
+          divisions = childNumber(element, "divisions") ?? divisions;
+          continue;
+        }
+        const duration = (childNumber(element, "duration") ?? 0) / divisions;
+        if (element.tagName === "backup") position -= duration;
+        if (element.tagName === "forward") position += duration;
+        if (element.tagName !== "note") continue;
+        const chord = element.querySelector(":scope > chord") !== null;
+        const grace = element.querySelector(":scope > grace") !== null;
+        if (!chord) {
+          onsetIndex++;
+          chordStart = position;
+          if (!grace) position += duration;
+        }
+        const pitch = element.querySelector(":scope > pitch");
+        if (!pitch) continue;
+        const staff = childText(element, "staff") ?? "1";
+        const key = `${chordStart.toFixed(9)}:${staff}${grace ? `:grace${String(onsetIndex)}` : ""}`;
+        let group = groups.get(key);
+        if (!group) {
+          group = [];
+          groups.set(key, group);
+        }
+        group.push(element);
+      }
+      for (const group of groups.values()) {
+        group.forEach((note, index) => {
+          const pitch = note.querySelector(":scope > pitch");
+          if (!pitch) return;
+          const step = childText(pitch, "step") ?? "";
+          const alter = childText(pitch, "alter") ?? "0";
+          const lyric = document.createElement("lyric");
+          lyric.setAttribute("number", `${NOTE_NAME_VERSE_PREFIX}${String(index + 1)}`);
+          lyric.setAttribute("placement", "below");
+          const syllabic = document.createElement("syllabic");
+          syllabic.textContent = "single";
+          const text = document.createElement("text");
+          text.textContent = `${NAMES[style][step] ?? step}${ACCIDENTALS[alter] ?? ""}`;
+          lyric.append(syllabic, text);
+          note.appendChild(lyric);
+        });
+      }
+    }
   }
   return new XMLSerializer().serializeToString(document);
 }

@@ -4,6 +4,16 @@ import { LibraryDialog } from "../ui/LibraryDialog";
 import { ConnectedPlayerSettings, ConnectedResultDialog } from "./ConnectedSettings";
 import { downloadLesson } from "./lessonExport";
 import { LESSONS } from "./lessons";
+import { PREVIOUS_COURSE_LESSONS } from "./courseCatalog";
+import { ConnectedCourseCards } from "./ConnectedCourse";
+import { ConnectedReadingCard } from "./ConnectedReading";
+import { ConnectedBassReadingCard } from "./ConnectedBassReading";
+import { ConnectedTwoHandCard } from "./ConnectedTwoHand";
+import { ConnectedHeldBassCard } from "./ConnectedHeldBass";
+import { ConnectedIndependentRhythmCard } from "./ConnectedIndependentRhythm";
+import { ConnectedRhythmCard } from "./ConnectedRhythm";
+import { ConnectedIntervalCard } from "./ConnectedIntervals";
+import { phraseCompleted, nextSelection } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 
@@ -16,7 +26,10 @@ export function ConnectedPlayerWindows() {
     listening,
     comparing,
     source,
-    canReview
+    canReview,
+    courseActive,
+    courseProgress,
+    readingActive
   } = useRuntimeSelector(
     (runtime) => ({
       libraryOpen: runtime.libraryOpen,
@@ -26,7 +39,10 @@ export function ConnectedPlayerWindows() {
       listening: runtime.listening,
       comparing: runtime.comparing,
       source: runtime.trainer.snapshotSource,
-      canReview: runtime.takes.canReview
+      canReview: runtime.takes.canReview,
+      courseActive: runtime.course.active,
+      courseProgress: runtime.course.saved.progress,
+      readingActive: runtime.practiceActive
     }),
     shallowEqual
   );
@@ -36,6 +52,17 @@ export function ConnectedPlayerWindows() {
   const endEditing = useRuntimeCommand((runtime) => runtime.computerKeyboard.endEditing);
   const startOver = useRuntimeCommand((runtime) => runtime.startOver);
   const showReview = useRuntimeCommand((runtime) => runtime.takes.showReview);
+  const openCourse = useRuntimeCommand((runtime) => runtime.course.controller.open);
+  const nextCourse =
+    courseActive &&
+    phraseCompleted(
+      courseActive.lesson,
+      courseActive.selection.stage,
+      courseActive.phrase,
+      courseProgress
+    )
+      ? nextSelection(courseActive.lesson, courseActive.selection)
+      : null;
   return (
     <>
       {libraryOpen && (
@@ -54,12 +81,21 @@ export function ConnectedPlayerWindows() {
       />
       <ConnectedResultDialog
         source={source}
-        open={finished && !listening && !comparing && !resultClosed}
+        open={!readingActive && finished && !listening && !comparing && !resultClosed}
         canReview={canReview}
+        course={courseActive !== null}
         onClose={() => {
           setResultClosed(true);
         }}
         onAgain={startOver}
+        {...(nextCourse
+          ? {
+              onNext: () => {
+                setResultClosed(true);
+                openCourse(nextCourse);
+              }
+            }
+          : {})}
         onReview={() => {
           showReview();
           setResultClosed(true);
@@ -90,7 +126,20 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
     <LibraryDialog
       open
       onClose={onClose}
-      lessons={LESSONS}
+      lessons={LESSONS.filter((lesson) => !PREVIOUS_COURSE_LESSONS.includes(lesson))}
+      previousLessons={PREVIOUS_COURSE_LESSONS}
+      course={
+        <>
+          <ConnectedReadingCard onChoose={onClose} />
+          <ConnectedBassReadingCard onChoose={onClose} />
+          <ConnectedTwoHandCard onChoose={onClose} />
+          <ConnectedHeldBassCard onChoose={onClose} />
+          <ConnectedIndependentRhythmCard onChoose={onClose} />
+          <ConnectedIntervalCard onChoose={onClose} />
+          <ConnectedRhythmCard onChoose={onClose} />
+          <ConnectedCourseCards onChoose={onClose} />
+        </>
+      }
       current={lesson}
       currentSource={source}
       onLesson={(exerciseId, levelId) => {

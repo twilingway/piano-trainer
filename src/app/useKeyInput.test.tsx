@@ -1,7 +1,7 @@
 import { Provider } from "react-redux";
 import { createAppStore, type AppStore } from "./store";
 // @vitest-environment happy-dom
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
@@ -22,23 +22,56 @@ vi.mock("../input/midiInput", () => ({
   listenToMidi: vi.fn()
 }));
 
-const trainer = { key: vi.fn(), pedal: vi.fn(), activateOverdrive: vi.fn() };
+const trainer = {
+  key: vi.fn<Trainer["key"]>(),
+  pedal: vi.fn(),
+  activateOverdrive: vi.fn(),
+  cancelInput: vi.fn()
+};
 const trainerRef = { current: trainer as unknown as Trainer };
 const bindings = presetBindings("extended_range");
 let root: Root;
 let store: AppStore | undefined;
 let host: HTMLDivElement;
+let input: ReturnType<typeof useKeyInput>;
 
-function Harness({ options }: { options: KeyboardInputOptions }) {
-  useKeyInput(trainerRef, options);
+function Harness({
+  options,
+  pianoBlocked = false,
+  observeAllInputs = false
+}: {
+  options: KeyboardInputOptions;
+  pianoBlocked?: boolean;
+  observeAllInputs?: boolean;
+}) {
+  const value = useKeyInput(
+    trainerRef,
+    options,
+    undefined,
+    false,
+    pianoBlocked,
+    false,
+    observeAllInputs
+  );
+  useEffect(() => {
+    input = value;
+  });
   return null;
 }
-async function mount(options: KeyboardInputOptions = { bindings }) {
+async function mount(
+  options: KeyboardInputOptions = { bindings },
+  pianoBlocked = false,
+  observeAllInputs = false
+) {
   await act(async () => {
     store ??= createAppStore();
     root.render(
       <Provider store={store}>
-        <Harness options={options} />
+        <Harness
+          options={options}
+          pianoBlocked={pianoBlocked}
+          observeAllInputs={observeAllInputs}
+        />
       </Provider>
     );
     await Promise.resolve();
@@ -71,6 +104,83 @@ afterEach(async () => {
 });
 
 describe("computer keyboard sound and trainer sustain", () => {
+  it("forwards nonselected MIDI owners only when the course observes every physical input", async () => {
+    let onMidi: ((event: MidiEvent, deviceId: string) => void) | undefined;
+    vi.mocked(midiSupported).mockReturnValue(true);
+    vi.mocked(listenToMidi).mockImplementation((listener) => {
+      onMidi = listener;
+      return Promise.resolve(() => undefined);
+    });
+    await mount();
+    act(() => {
+      input.setMidiDeviceId("selected");
+    });
+    const down: MidiEvent = {
+      type: "down",
+      pitch: 60,
+      velocity: 90,
+      source: "midi",
+      deviceId: "other"
+    };
+    onMidi?.(down, "other");
+    expect(trainer.key).not.toHaveBeenCalled();
+    await mount({ bindings }, false, true);
+    onMidi?.(down, "other");
+    expect(trainer.key).toHaveBeenLastCalledWith(down);
+    onMidi?.({ type: "up", pitch: 60, velocity: 0, source: "midi", deviceId: "other" }, "other");
+    expect(trainer.key).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: "up", deviceId: "other" })
+    );
+  });
+
+  it("cancels a pair before blur-generated releases and when the view hides", async () => {
+    await mount();
+    await key("KeyG");
+    trainer.key.mockClear();
+    act(() => {
+      window.dispatchEvent(new Event("blur"));
+    });
+    expect(trainer.cancelInput.mock.invocationCallOrder[0]).toBeLessThan(
+      trainer.key.mock.invocationCallOrder[0] ?? Infinity
+    );
+    expect(trainer.key).toHaveBeenCalledWith(expect.objectContaining({ type: "up", pitch: 60 }));
+    trainer.cancelInput.mockClear();
+    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(trainer.cancelInput).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+  it("blocks piano attacks and sound while retaining MIDI releases during ear choices", async () => {
+    let onMidi: ((event: MidiEvent, deviceId: string) => void) | undefined;
+    vi.mocked(midiSupported).mockReturnValue(true);
+    vi.mocked(listenToMidi).mockImplementation((listener) => {
+      onMidi = listener;
+      return Promise.resolve(() => undefined);
+    });
+    await mount({ bindings }, true);
+    await key("KeyG");
+    await key("KeyG", "keyup");
+    expect(soundNoteOn).not.toHaveBeenCalled();
+    expect(soundNoteOff).not.toHaveBeenCalled();
+    expect(trainer.key.mock.calls.every(([event]) => event.type === "up")).toBe(true);
+    trainer.key.mockClear();
+    onMidi?.({ type: "down", pitch: 60, velocity: 90, source: "midi", deviceId: "piano" }, "piano");
+    onMidi?.(
+      { type: "pedal", down: true, timestamp: 0, source: "midi", deviceId: "piano" },
+      "piano"
+    );
+    expect(trainer.key).not.toHaveBeenCalled();
+    expect(trainer.pedal).not.toHaveBeenCalled();
+    onMidi?.({ type: "up", pitch: 60, velocity: 0, source: "midi", deviceId: "piano" }, "piano");
+    expect(trainer.key).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ type: "up", pitch: 60 })
+    );
+    await mount({ bindings }, false);
+    await key("KeyG");
+    expect(soundNoteOn).toHaveBeenCalledExactlyOnceWith(60);
+  });
   it("sends physical release to the trainer while deferring sound release until pedal up", async () => {
     await mount();
     await key("Space");

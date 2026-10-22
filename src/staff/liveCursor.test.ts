@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { spotAt } from "./liveCursor";
+import { entryBeatAt, spotAt } from "./liveCursor";
 
 // Two notes on the first line, then the next line starts at beat 2.
 const SPOTS = [
@@ -8,6 +8,25 @@ const SPOTS = [
   { beat: 1, x: 200, line: 0 },
   { beat: 2, x: 60, line: 120 }
 ];
+
+describe("entryBeatAt", () => {
+  const entries = [0, 0.25, 2.5, 3, 4].map((beat) => ({ beat, x: beat * 50, line: 0 }));
+  it("changes highlights at the exact onset, including fractional and tied entries", () => {
+    expect(entryBeatAt(entries, 0.249)).toBe(0);
+    expect(entryBeatAt(entries, 0.25)).toBe(0.25);
+    expect(entryBeatAt(entries, 2.999)).toBe(2.5);
+    expect(entryBeatAt(entries, 3)).toBe(3);
+    expect(entryBeatAt(entries, 3.8)).toBe(3);
+    expect(entryBeatAt(entries, 4)).toBe(4);
+    expect(entryBeatAt(entries, 1)).toBe(0.25);
+  });
+  it("handles the lead-in, the end and an unavailable score", () => {
+    expect(entryBeatAt(entries, -2)).toBe(0);
+    expect(entryBeatAt(entries, 8)).toBe(4);
+    expect(entryBeatAt([], 0)).toBeUndefined();
+    expect(entryBeatAt(entries, NaN)).toBeUndefined();
+  });
+});
 
 describe("spotAt", () => {
   it("glides between the notes of a line with the beat", () => {

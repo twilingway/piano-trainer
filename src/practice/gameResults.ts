@@ -1,4 +1,5 @@
 import { comboMultiplier, GAME_RULES, holdTicks, STREAK_BONUSES } from "./gameRules";
+import type { NoteResultSnapshot } from "./noteResult";
 
 export type GameRank = "S+" | "S" | "A+" | "A" | "B" | "C" | "D" | "F";
 
@@ -18,6 +19,17 @@ export function starsForAccuracy(accuracy: number | null): number | null {
   if (accuracy > 75) return 3;
   if (accuracy > 50) return 2;
   if (accuracy > 25) return 1;
+  return 0;
+}
+
+/** Piano achievements use the same unrounded result as course credit. */
+export function starsForNoteResult(result: NoteResultSnapshot): number | null {
+  const percent = result.percent;
+  if (result.expectedNotes <= 0 || percent === null || !Number.isFinite(percent)) return null;
+  if (percent < 0 || percent > 100) return null;
+  if (percent >= 75) return 3;
+  if (percent >= 50) return 2;
+  if (percent >= 25) return 1;
   return 0;
 }
 

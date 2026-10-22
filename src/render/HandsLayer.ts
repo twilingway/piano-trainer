@@ -1,7 +1,9 @@
 import { Assets, Container, PerspectiveMesh, Sprite, Texture } from "pixi.js";
 
 import type { Finger, Hand } from "../fingering/fingering";
-import type { Song, SongNote } from "../song/song";
+import type { Song, SongNote, SongBeat } from "../song/song";
+import type { SourcePerformanceIdentity } from "../song/sourcePerformance";
+import type { SongStage } from "../song/songStage";
 import { FINGER_COLOR } from "./fingerColors";
 import { HAND_RENDERS, handPoseSet } from "./handRenderCatalog";
 import type { HandStyle } from "./handRenderCatalog";
@@ -56,7 +58,12 @@ export class HandsLayer {
   private readonly markerTexture = bakeMarker();
   private readonly poses = new Map<Hand, HandPose>();
   private notes: Record<Hand, SongNote[]> = { left: [], right: [] };
+  private readonly songListeners = new Set<(notes: HandsLayer["songNotes"]) => void>();
   private disposed = false;
+  private beats: readonly SongBeat[] = [];
+  songPerformance: SourcePerformanceIdentity | undefined;
+  /** The song's performance-scene dressing; the 3D view reads it with the notes. */
+  songStage: SongStage | undefined;
 
   constructor() {
     const markersRoot = new Container({ eventMode: "none" });
@@ -128,6 +135,13 @@ export class HandsLayer {
     );
   }
 
+  /** The local pianist sits behind the 3D view's keys, the live hands playing in front of it. */
+  pianist = false;
+
+  get renderedStyle(): boolean {
+    return this.style === "rendered";
+  }
+
   /** The song time of the last frame drawn, for the 3D view's live hands. */
   time = 0;
 
@@ -147,11 +161,24 @@ export class HandsLayer {
     return this.notes;
   }
 
+  subscribeSong(listener: (notes: HandsLayer["songNotes"]) => void): () => void {
+    this.songListeners.add(listener);
+    return () => this.songListeners.delete(listener);
+  }
+
+  get songBeats(): readonly SongBeat[] {
+    return this.beats;
+  }
+
   setSong(song: Song): void {
+    this.beats = song.beats;
+    this.songPerformance = song.sourcePerformance;
+    this.songStage = song.stage;
     this.notes = {
       left: song.notes.filter((note) => note.hand === "left"),
       right: song.notes.filter((note) => note.hand === "right")
     };
+    for (const listener of this.songListeners) listener(this.notes);
     this.reset();
   }
 
@@ -278,6 +305,7 @@ export class HandsLayer {
 
   destroy(): void {
     this.disposed = true;
+    this.songListeners.clear();
     // The baked drawn poses are this layer's own; the renders belong to the Assets cache.
     for (const [definition, texture] of this.textures) {
       if (!this.renders.includes(definition)) texture.destroy(true);

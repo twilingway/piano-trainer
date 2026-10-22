@@ -14,6 +14,7 @@ export interface TimingSettingsProps {
   profile?: TimingProfile;
   progress: CalibrationProgress | null;
   running: boolean;
+  countdown?: number | null;
   locked?: boolean;
   canCalibrate?: boolean;
   diagnostic?: {
@@ -37,6 +38,7 @@ export interface TimingSettingsProps {
   ) => void;
   onStart: () => void;
   onCancel: () => void;
+  onTap?: (timestampMs: number) => void;
 }
 const QUALITY = {
   excellent: "отличная",
@@ -151,7 +153,7 @@ export function TimingSettings(props: TimingSettingsProps) {
       )}
       <p>
         {t(
-          "Нажимайте до первой октавы (C4) в такт метроному: 4 удара на разминку, затем 24 замера. В замер входят ваша реакция и задержка звука, а не только MIDI-устройство."
+          "После отсчёта 3–2–1 нажимайте до первой октавы (C4) под каждый щелчок: 4 нажатия на разминку не учитываются, следующие 24 измеряют задержку. 24/24 — все 24 нажатия записаны. Результат включает вашу реакцию и задержку звука."
         )}
       </p>
       {running ? (
@@ -167,14 +169,43 @@ export function TimingSettings(props: TimingSettingsProps) {
           {t("Калибровать C4")}
         </button>
       )}
-      {progress && (
+      {running && props.countdown != null && (
+        <p role="status" aria-live="assertive" className="calibration-countdown">
+          {t("Приготовьтесь: {seconds}", { seconds: formatNumber(props.countdown) })}
+        </p>
+      )}
+      {progress && props.countdown == null && (
         <p aria-live="polite">
-          {t("Разминка {warmup}/4 · Измерения {measured}/24", {
+          {t("Разминка: {warmup}/4 нажатия · Замер: {measured}/24 нажатия", {
             warmup: formatNumber(progress.warmup),
             measured: formatNumber(progress.measured)
           })}
           {progress.complete ? t(" · Готово") : !running ? t(" · Не завершено — повторите") : ""}
         </p>
+      )}
+      {running && props.onTap && (
+        <>
+          <p>{t("Для калибровки нажимайте пробел или «Ударить» под метроном.")}</p>
+          <button
+            type="button"
+            className="game-button"
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              props.onTap?.(event.timeStamp);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== " " && event.key !== "Enter") return;
+              event.preventDefault();
+              if (!event.repeat) props.onTap?.(event.timeStamp);
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+            }}
+          >
+            {t("Ударить")}
+          </button>
+        </>
       )}
       {locked && <p>{t("Во время рейтинговой игры настройки заблокированы.")}</p>}
       {props.canCalibrate === false && (

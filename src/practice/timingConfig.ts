@@ -4,3 +4,11 @@ export interface TimingConfig {
   readonly audioOffsetMs: number;
   readonly visualOffsetMs: number;
 }
+
+export function maximumInputCompensation(timing: TimingConfig): number {
+  return Math.max(
+    0,
+    timing.manualInputOffsetMs,
+    ...Object.values(timing.inputOffsets).map((offset) => offset + timing.manualInputOffsetMs)
+  );
+}

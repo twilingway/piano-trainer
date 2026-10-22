@@ -10,6 +10,7 @@ import {
   transposeMusicXml
 } from "./musicxml";
 import { withFingering } from "./song";
+import { NOTE_NAME_VERSE_PREFIX, noteNameStack } from "./noteNameMarker";
 
 /*
  * Two staves, 4/4 at quarter = 60: the right hand plays C4 (finger 1), D4, then
@@ -112,18 +113,29 @@ describe("songFromMusicXml", () => {
     expect(breaksOf(musicXmlWithLineBreaks(measures(10, true), 4))).toEqual([5, 9]);
     expect(breaksOf(musicXmlWithLineBreaks(measures(8, false), 2))).toEqual([2, 4, 6]);
   });
+
+  it("replaces old system and page breaks without changing musical events", () => {
+    const source = SCORE.replace(
+      '<measure number="2">',
+      '<measure number="2"><print new-system="yes" new-page="yes"><system-layout/></print>'
+    );
+    const regrouped = musicXmlWithLineBreaks(source, 8);
+    const document = new DOMParser().parseFromString(regrouped, "application/xml");
+    expect(document.querySelectorAll("print[new-system], print[new-page]")).toHaveLength(0);
+    expect(document.querySelector("print > system-layout")).not.toBeNull();
+    expect(songFromMusicXml(regrouped, "again").notes).toEqual(
+      songFromMusicXml(source, "again").notes
+    );
+  });
 });
 
 describe("musicXmlWithNoteNames", () => {
-  const lyricsOf = (xml: string) =>
+  const namesOf = (xml: string) =>
     Array.from(
-      new DOMParser().parseFromString(xml, "application/xml").querySelectorAll("note")
-    ).map((note) =>
-      Array.from(note.querySelectorAll("lyric")).map(
-        (lyric) =>
-          `${lyric.getAttribute("number") ?? ""}:${lyric.querySelector("text")?.textContent ?? ""}`
-      )
-    );
+      new DOMParser().parseFromString(xml, "application/xml").querySelectorAll("lyric")
+    ).filter((lyric) => noteNameStack(lyric.getAttribute("number") ?? "") !== undefined);
+  const wordsOf = (xml: string) =>
+    namesOf(xml).map((lyric) => lyric.querySelector("text")?.textContent);
 
   it("names every note under it in solfège or letters, keeping the score's spelling", () => {
     const xml = `<score-partwise><part id="P1"><measure number="1">
@@ -132,13 +144,75 @@ describe("musicXmlWithNoteNames", () => {
       <note><chord/><pitch><step>F</step><alter>1</alter><octave>4</octave></pitch><duration>1</duration></note>
       <note><rest/><duration>1</duration></note>
     </measure></part></score-partwise>`;
-    expect(lyricsOf(musicXmlWithNoteNames(xml, "ru"))).toEqual([
-      ["1:си♭"],
-      ["1:до"],
-      ["2:фа♯"],
-      []
+    expect(wordsOf(musicXmlWithNoteNames(xml, "ru"))).toEqual(["си♭", "до", "фа♯"]);
+    expect(wordsOf(musicXmlWithNoteNames(xml, "en"))).toEqual(["B♭", "C", "F♯"]);
+    const names = namesOf(musicXmlWithNoteNames(xml, "en"));
+    expect(names.every((lyric) => lyric.getAttribute("placement") === "below")).toBe(true);
+    expect(names.map((lyric) => noteNameStack(lyric.getAttribute("number") ?? ""))).toEqual([
+      1, 1, 2
     ]);
-    expect(lyricsOf(musicXmlWithNoteNames(xml, "en"))).toEqual([["1:B♭"], ["1:C"], ["2:F♯"], []]);
+  });
+
+  it("preserves all note XML, original lyrics, playback timing, hands and source indices", () => {
+    const xml = SCORE.replace(
+      "<duration>2</duration><staff>1</staff>",
+      '<duration>2</duration><staff>1</staff><lyric number="1"><text>Source words</text></lyric>'
+    );
+    const output = musicXmlWithNoteNames(xml, "ru");
+    const noteXml = (source: string) => {
+      const doc = new DOMParser().parseFromString(source, "application/xml");
+      doc.querySelectorAll(`lyric[number^="${NOTE_NAME_VERSE_PREFIX}"]`).forEach((lyric) => {
+        lyric.remove();
+      });
+      return Array.from(doc.querySelectorAll("note")).map((note) =>
+        new XMLSerializer().serializeToString(note)
+      );
+    };
+    expect(noteXml(output)).toEqual(noteXml(xml));
+    const parsed = new DOMParser().parseFromString(output, "application/xml");
+    expect(parsed.querySelectorAll('lyric[number="1"]')).toHaveLength(1);
+    expect(parsed.querySelector("lyric > text")?.textContent).toBe("Source words");
+    const before = songFromMusicXml(xml, "test");
+    const after = songFromMusicXml(output, "test");
+    expect(after.notes).toEqual(before.notes);
+    expect(after.beats).toEqual(before.beats);
+    expect(after.duration).toBe(before.duration);
+  });
+
+  it("stacks simultaneous voices per staff without changing the measure's note order", () => {
+    const xml = `<score-partwise><part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions><staves>2</staves></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><voice>1</voice><staff>1</staff></note>
+      <note><chord/><pitch><step>E</step><octave>3</octave></pitch><duration>1</duration><voice>1</voice><staff>2</staff></note>
+      <backup><duration>1</duration></backup>
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><voice>2</voice><staff>1</staff></note>
+      <forward><duration>1</duration></forward>
+      <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><staff>1</staff></note>
+    </measure></part></score-partwise>`;
+    const output = musicXmlWithNoteNames(xml, "en");
+    const names = namesOf(output);
+    expect(names.map((lyric) => noteNameStack(lyric.getAttribute("number") ?? ""))).toEqual([
+      1, 1, 2, 1
+    ]);
+    expect(wordsOf(output)).toEqual(["C", "E", "G", "F"]);
+    const parsed = new DOMParser().parseFromString(output, "application/xml");
+    const notes = Array.from(parsed.querySelectorAll("note"));
+    expect(notes[1]?.previousElementSibling).toBe(notes[0]);
+    expect(songFromMusicXml(output, "test").notes).toEqual(songFromMusicXml(xml, "test").notes);
+  });
+
+  it("emits names such as F and ми as lyrics without tempo or dynamics", () => {
+    for (const [step, style, name] of [
+      ["F", "en", "F"],
+      ["E", "ru", "ми"]
+    ] as const) {
+      const xml = `<score-partwise><part id="P1"><measure><note><pitch><step>${step}</step><octave>4</octave></pitch><duration>1</duration></note></measure></part></score-partwise>`;
+      const output = musicXmlWithNoteNames(xml, style);
+      const parsed = new DOMParser().parseFromString(output, "application/xml");
+      expect(wordsOf(output)).toEqual([name]);
+      expect(parsed.querySelector("sound, dynamics, metronome")).toBeNull();
+      expect(parsed.querySelector("words, direction")).toBeNull();
+    }
   });
 });
 

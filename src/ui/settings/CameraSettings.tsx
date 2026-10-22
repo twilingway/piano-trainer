@@ -24,7 +24,7 @@ const CONTROLS: readonly {
   { key: "fov", label: "Угол обзора", min: 25, max: 85, step: 1, suffix: "°" },
   { key: "height", label: "Высота камеры", min: 25, max: 1000, step: 5, suffix: "" },
   { key: "distance", label: "Дистанция камеры", min: 120, max: 1200, step: 10, suffix: "" },
-  { key: "pitch", label: "Наклон камеры", min: -5, max: 85, step: 1, suffix: "°" },
+  { key: "pitch", label: "Наклон камеры", min: -5, max: 90, step: 1, suffix: "°" },
   {
     key: "targetY",
     label: "Камера: сдвиг по вертикали",
@@ -41,8 +41,8 @@ export function CameraSettings({ camera, onChange }: Props) {
   const { t } = useI18n();
   return (
     <>
-      <div className="setting" role="group" aria-label={t("Ракурс")}>
-        <span>{t("Ракурс")}</span>
+      <div className="setting" role="group" aria-label={t("Ракурс пианино")}>
+        <span>{t("Ракурс пианино")}</span>
         <span className="setting-control">
           {PRESETS.map(({ key, label }) => (
             <button

@@ -74,6 +74,8 @@ vi.mock("tone", () => ({
 import { type PianoLayer, pianoLayer } from "./pianoLayers";
 import {
   cancelScheduledVoices,
+  disposeScheduledVoice,
+  onScheduledVoicesCancelled,
   scheduledClick,
   scheduledNoteOff,
   scheduledNoteOn
@@ -123,8 +125,29 @@ describe("owned scheduled voices", () => {
 
   it("stays silent before any layer has loaded", () => {
     tone.loaded = new Set<PianoLayer>();
-    scheduledNoteOn(60, 90, 15);
+    expect(scheduledNoteOn(60, 90, 15)).toBe(false);
     expect(tone.sources).toHaveLength(0);
+  });
+
+  it("cancels only an owner's future voice and leaves another owner sounding", () => {
+    expect(scheduledNoteOn(60, 90, 20, "preview")).toBe(true);
+    scheduledNoteOn(60, 90, 21, "practice");
+    disposeScheduledVoice("preview");
+    disposeScheduledVoice("preview");
+    expect(tone.sources[0]?.dispose).toHaveBeenCalledTimes(1);
+    expect(tone.sources[1]?.dispose).not.toHaveBeenCalled();
+    tone.sources[0]?.onended();
+    expect(tone.sources[0]?.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("notifies global cancellation subscribers and lets them unsubscribe", () => {
+    const listener = vi.fn();
+    const unsubscribe = onScheduledVoicesCancelled(listener);
+    cancelScheduledVoices();
+    expect(listener).toHaveBeenCalledOnce();
+    unsubscribe();
+    cancelScheduledVoices();
+    expect(listener).toHaveBeenCalledOnce();
   });
 
   it("disposes already created future notes and clicks, and cancels their cleanup jobs", () => {

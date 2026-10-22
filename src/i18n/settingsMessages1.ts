@@ -30,6 +30,8 @@ export const settingsMessages1 = {
   "Сбросить камеру": {
     en: "Reset camera"
   },
+  "Приглушить клавиатуру": { en: "Dim keyboard" },
+  "Ракурс пианино": { en: "Piano view" },
   Ракурс: {
     en: "View"
   },
@@ -134,26 +136,31 @@ export const settingsMessages1 = {
   Аркада: {
     en: "Arcade"
   },
-  "Перспектива (с дорогой)": {
-    en: "Perspective (with road)"
-  },
-  "3D (с дорогой)": {
-    en: "3D (with road)"
+  "3D (с перспективой)": {
+    en: "3D (with perspective)"
   },
   "Вид рук": {
     en: "Hands"
   },
+  "Проекция нот": { en: "Note projection" },
+  Прямо: { en: "Straight" },
+  "В перспективе": { en: "In perspective" },
+  "Клавиатура сверху": { en: "Top-down keyboard" },
+  "Линии перспективы": {
+    en: "Perspective guide lines"
+  },
+  "Мой пианист (проба)": { en: "My pianist (preview)" },
   Рисованные: {
     en: "Drawn"
   },
   "3D": {
     en: "3D"
   },
-  "Дорога: горизонт": {
-    en: "Road: horizon"
+  "Перспектива: горизонт": {
+    en: "Perspective: horizon"
   },
-  "Дорога: ширина у горизонта": {
-    en: "Road: width at horizon"
+  "Перспектива: ширина у горизонта": {
+    en: "Perspective: width at horizon"
   },
   "Названия нот на клавишах": {
     en: "Note names on keys"

@@ -27,10 +27,10 @@ const HIT: AtlasEffect = {
   cols: 4,
   frames: 12,
   fps: 24,
-  opacity: 0.7,
+  opacity: 0.8,
   // The effect's origin sits 50 of 384 below the middle of its frame.
   anchorY: 0.5 + 50 / 384,
-  perKeyWidth: 7.2,
+  perKeyWidth: 8.6,
   pool: 24
 };
 /** Glitter, wisps and haze whirling up off a sounding key (src/fx/piano-glitter.json). */
@@ -41,7 +41,7 @@ const GLITTER: AtlasEffect = {
   cols: 6,
   frames: 24,
   fps: 24,
-  opacity: 0.35,
+  opacity: 0.16,
   startFrame: 2,
   // The emitter sits 200 of 512 below the middle of its frame.
   anchorY: 0.5 + 200 / 512,
@@ -49,7 +49,7 @@ const GLITTER: AtlasEffect = {
   pool: 160
 };
 /** A held key sends up a new puff of glitter this often, so the column never breaks. */
-const GLITTER_EVERY_S = 0.08;
+const GLITTER_EVERY_S = 0.2;
 /** The hold's light and glitter wait this long after the strike, so the burst is seen first. */
 const HOLD_AFTER_S = 0.04;
 /** The light on a sounding key: its size in key widths, and how it breathes. */
@@ -107,7 +107,7 @@ class AtlasPlayer {
     if (!item) {
       const sprite = new Sprite(first);
       sprite.anchor.set(0.5, this.effect.anchorY);
-      sprite.blendMode = "add";
+      sprite.blendMode = "normal";
       this.container.addChild(sprite);
       item = { sprite, age: 0 };
       this.playing.push(item);
@@ -240,7 +240,7 @@ export class FxLayer {
       const core = new Sprite(this.haloTexture);
       for (const sprite of [glow, core]) {
         sprite.anchor.set(0.5);
-        sprite.blendMode = "add";
+        sprite.blendMode = "normal";
         this.halos.addChild(sprite);
       }
       light = { glow, core };
@@ -249,12 +249,12 @@ export class FxLayer {
     const breath = 1 + HALO_PULSE * Math.sin(this.clock * Math.PI * 2 * HALO_PULSE_HZ);
     const size = (key.width * HALO_PER_WIDTH * breath) / this.haloTexture.width;
     light.glow.tint = key.color;
-    light.glow.alpha = 0.5;
+    light.glow.alpha = 0.42;
     light.glow.scale.set(size);
     light.glow.position.set(key.x, hitY);
-    // A white-hot middle, a third of the glow.
-    light.core.tint = 0xffffff;
-    light.core.alpha = 0.65;
+    // The hot core keeps the note hue instead of introducing a white flash.
+    light.core.tint = key.color;
+    light.core.alpha = 0.6;
     light.core.scale.set(size * 0.34);
     light.core.position.set(key.x, hitY);
   }

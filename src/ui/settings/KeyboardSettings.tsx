@@ -14,8 +14,21 @@ interface Props {
   readonly onShowLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
+  readonly notesPerspective: boolean;
+  readonly onNotesPerspective: (on: boolean) => void;
   readonly handStyle: HandStyle;
   readonly onHandStyle: (style: HandStyle) => void;
+  readonly keyboardDim: boolean;
+  readonly onKeyboardDim: (dim: boolean) => void;
+  readonly roadGuides: boolean;
+  readonly onRoadGuides: (on: boolean) => void;
+  /** The local pianist instead of the live hands; absent when there is no local model. */
+  readonly pianist?: boolean;
+  readonly freeCamera?: boolean;
+  readonly performanceScene?: boolean;
+  readonly onPerformanceScene?: (on: boolean) => void;
+  readonly onFreeCamera?: (on: boolean) => void;
+  readonly onPianist?: (on: boolean) => void;
   readonly road: { readonly far: number; readonly horizon: number };
   readonly onRoad: (road: { far?: number; horizon?: number }) => void;
   readonly camera: CameraPrefs;
@@ -32,8 +45,20 @@ export function KeyboardSettings({
   onShowLabels,
   keyStyle,
   onKeyStyle,
+  notesPerspective,
+  onNotesPerspective,
   handStyle,
   onHandStyle,
+  keyboardDim,
+  onKeyboardDim,
+  roadGuides,
+  onRoadGuides,
+  pianist,
+  freeCamera,
+  performanceScene,
+  onPerformanceScene,
+  onFreeCamera,
+  onPianist,
   camera,
   onCamera,
   road,
@@ -74,8 +99,22 @@ export function KeyboardSettings({
         >
           <option value="classic">{t("Классика")}</option>
           <option value="arcade">{t("Аркада")}</option>
-          <option value="perspective">{t("Перспектива (с дорогой)")}</option>
-          <option value="3d">{t("3D (с дорогой)")}</option>
+          <option value="perspective">{t("Перспектива")}</option>
+          <option value="3d">{t("3D (с перспективой)")}</option>
+        </select>
+      </label>
+      <label className="setting">
+        <span>{t("Проекция нот")}</span>
+        <select
+          className="game-select"
+          aria-label={t("Проекция нот")}
+          value={notesPerspective ? "perspective" : "direct"}
+          onChange={(event) => {
+            onNotesPerspective(event.target.value === "perspective");
+          }}
+        >
+          <option value="direct">{t("Прямо")}</option>
+          <option value="perspective">{t("В перспективе")}</option>
         </select>
       </label>
       <label className="setting">
@@ -97,7 +136,7 @@ export function KeyboardSettings({
       ) : (
         <>
           <label className="setting">
-            <span>{t("Дорога: горизонт")}</span>
+            <span>{t("Перспектива: горизонт")}</span>
             <span className="setting-control">
               <input
                 type="range"
@@ -113,7 +152,7 @@ export function KeyboardSettings({
             </span>
           </label>
           <label className="setting">
-            <span>{t("Дорога: ширина у горизонта")}</span>
+            <span>{t("Перспектива: ширина у горизонта")}</span>
             <span className="setting-control">
               <input
                 type="range"
@@ -129,6 +168,66 @@ export function KeyboardSettings({
             </span>
           </label>
         </>
+      )}
+      {keyStyle === "3d" && (
+        <label className="setting">
+          <span>{t("Приглушить клавиатуру")}</span>
+          <input
+            type="checkbox"
+            checked={keyboardDim}
+            onChange={(event) => {
+              onKeyboardDim(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && (
+        <label className="setting">
+          <span>{t("Линии перспективы")}</span>
+          <input
+            type="checkbox"
+            checked={roadGuides}
+            onChange={(event) => {
+              onRoadGuides(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && onPerformanceScene && (
+        <label className="setting">
+          <span>{t("Сцена исполнения")}</span>
+          <input
+            type="checkbox"
+            checked={performanceScene ?? false}
+            onChange={(event) => {
+              onPerformanceScene(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && onFreeCamera && (
+        <label className="setting">
+          <span>{t("Свободная камера")}</span>
+          <input
+            type="checkbox"
+            checked={freeCamera ?? false}
+            onChange={(event) => {
+              onFreeCamera(event.target.checked);
+            }}
+          />
+        </label>
+      )}
+      {keyStyle === "3d" && pianist !== undefined && onPianist && (
+        <label className="setting">
+          <span>{t("Мой пианист (проба)")}</span>
+          <input
+            type="checkbox"
+            checked={pianist}
+            onChange={(event) => {
+              onPianist(event.target.checked);
+            }}
+          />
+        </label>
       )}
       <label className="setting">
         <span>{t("Названия нот на клавишах")}</span>

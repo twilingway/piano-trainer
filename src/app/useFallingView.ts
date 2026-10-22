@@ -9,6 +9,7 @@ import type { NoteNameStyle } from "../song/musicxml";
 import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
+import { pianistAvailable } from "../render/three/pianistAvailability";
 import type { StaffPrefs } from "./useStaffPrefs";
 import { useI18n } from "./useI18n";
 
@@ -147,6 +148,9 @@ export function useFallingView({
     viewRef.current?.setKeyStyle(staffPrefs.keyStyle);
     viewRef.current?.hands.setStyle(staffPrefs.handStyle);
     viewRef.current?.setCamera(staffPrefs.camera);
+    viewRef.current?.setKeyboardTop(
+      staffPrefs.keyStyle === "3d" && staffPrefs.keyboardOrientation === "top"
+    );
     viewRef.current?.setRoadShape({ far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon });
   }, [
     viewRef,
@@ -162,6 +166,7 @@ export function useFallingView({
     staffPrefs.keyStyle,
     staffPrefs.handStyle,
     staffPrefs.camera,
+    staffPrefs.keyboardOrientation,
     staffPrefs.roadFar,
     staffPrefs.roadHorizon
   ]);
@@ -169,6 +174,26 @@ export function useFallingView({
   useEffect(() => {
     viewRef.current?.setComputerKeys(computerKeys);
   }, [viewRef, trainerReady, computerKeys]);
+
+  useEffect(() => {
+    viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
+    viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
+    viewRef.current?.setFreeCamera(staffPrefs.freeCamera);
+    viewRef.current?.setPerformanceScene(staffPrefs.performanceScene);
+    if (viewRef.current)
+      viewRef.current.hands.pianist =
+        pianistAvailable(staffPrefs.keyStyle, staffPrefs.handStyle) && staffPrefs.pianist;
+  }, [
+    viewRef,
+    trainerReady,
+    staffPrefs.roadGuides,
+    staffPrefs.keyboardDim,
+    staffPrefs.pianist,
+    staffPrefs.keyStyle,
+    staffPrefs.handStyle,
+    staffPrefs.freeCamera,
+    staffPrefs.performanceScene
+  ]);
 
   const { lift, scale, x, y } = placement;
   useEffect(() => {

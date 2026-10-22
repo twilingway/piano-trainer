@@ -38,6 +38,11 @@ export class SongTimeline {
     if (!segment || segment.speed === 0) return undefined;
     return segment.performanceMs + ((songSeconds - segment.songSeconds) / segment.speed) * 1000;
   }
+
+  /** Copies prevent consumers of historical receipts from rewriting the musical clock. */
+  snapshot(): readonly ClockSegment[] {
+    return this.segments.map((segment) => ({ ...segment }));
+  }
 }
 
 export function correctedInputTime(

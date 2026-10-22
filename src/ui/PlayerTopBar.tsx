@@ -1,5 +1,5 @@
 import { useI18n } from "../app/useI18n";
-import { useRef, type ReactNode } from "react";
+import { useRef, useSyncExternalStore, type ReactNode } from "react";
 
 import type { Scoreboard } from "../practice/scoreboard";
 import { ROLE_TITLE } from "../song/midiParts";
@@ -20,6 +20,7 @@ export type PracticeModeChoice = "wait" | "tempo";
 export type HandsChoice = "right" | "left" | "both" | "listen";
 
 interface Props {
+  readonly fixedPractice?: boolean;
   readonly title: string;
   readonly playing: boolean;
   readonly soundLoading: boolean;
@@ -40,6 +41,8 @@ interface Props {
   readonly game?: ReactNode;
   /** The mode's own settings by the hands, such as the word mode's «Текст ▾». */
   readonly practice?: ReactNode;
+  /** Course phrase navigation shares the bar and the compact menu, with one mounted instance. */
+  readonly course?: ReactNode;
   /** The applied timing, a chip by the scoreboard. */
   readonly timing?: ReactNode;
   readonly language?: ReactNode;
@@ -71,13 +74,14 @@ export function PlayerTopBar(props: Props) {
   const { t, formatNumber } = useI18n();
   const board = props.board ?? { clock: "0:00" };
   const controls = useRef<HTMLDetailsElement>(null);
+  const compact = useSyncExternalStore(subscribeCompact, compactSnapshot, () => false);
   const handTitle = t(
     props.parts?.role
       ? ROLE_TITLE[props.parts.role]
       : (HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки")
   );
   return (
-    <header className="topbar">
+    <header className={`topbar${props.course ? " topbar--course" : ""}`}>
       <details className="compact-controls" ref={controls}>
         <summary className="icon-button" aria-label={t("Управление")} title={t("Управление")}>
           <GearIcon />
@@ -101,13 +105,16 @@ export function PlayerTopBar(props: Props) {
             <br />
             {props.midi ? `MIDI: ${props.midi}` : t("MIDI не подключено")}
           </p>
-          <CompactPracticeChoices
-            hands={props.hands}
-            mode={props.mode}
-            onHands={props.onHands}
-            onMode={props.onMode}
-            parts={props.parts}
-          />
+          {compact && props.course}
+          {!props.fixedPractice && (
+            <CompactPracticeChoices
+              hands={props.hands}
+              mode={props.mode}
+              onHands={props.onHands}
+              onMode={props.onMode}
+              parts={props.parts}
+            />
+          )}
           {props.difficulty && <CompactDifficulty {...props.difficulty} />}
           {props.menuExtra}
           <div className="compact-controls__view-head">
@@ -206,6 +213,7 @@ export function PlayerTopBar(props: Props) {
             type="button"
             role="radio"
             aria-checked={props.mode === value}
+            disabled={props.fixedPractice}
             onClick={() => {
               props.onMode(value);
             }}
@@ -215,6 +223,7 @@ export function PlayerTopBar(props: Props) {
         ))}
       </div>
       <select
+        disabled={props.fixedPractice}
         className="game-select topbar-hands"
         aria-label={t("Руки")}
         value={choiceValue(props.hands, props.parts)}
@@ -228,6 +237,7 @@ export function PlayerTopBar(props: Props) {
         <option value="listen">{t("Только слушать")}</option>
         <PartOptions parts={props.parts} />
       </select>
+      {!compact && props.course}
       {props.difficulty && (
         <select
           className="game-select topbar-difficulty"
@@ -250,6 +260,7 @@ export function PlayerTopBar(props: Props) {
       <label className="topbar-speed" title={t("Скорость")}>
         <span className="digits">{formatNumber(Math.round(props.speed * 100))}%</span>
         <input
+          disabled={props.fixedPractice}
           type="range"
           aria-label={t("Скорость")}
           min={0.01}
@@ -310,6 +321,18 @@ export function PlayerTopBar(props: Props) {
       </button>
     </header>
   );
+}
+
+const COMPACT_MEDIA = "(height <= 500px), (width <= 640px)";
+function compactSnapshot(): boolean {
+  return window.matchMedia(COMPACT_MEDIA).matches;
+}
+function subscribeCompact(notify: () => void): () => void {
+  const media = window.matchMedia(COMPACT_MEDIA);
+  media.addEventListener("change", notify);
+  return () => {
+    media.removeEventListener("change", notify);
+  };
 }
 
 /** What a difficulty plays, for its tooltip and the phone's caption. */

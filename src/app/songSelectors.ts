@@ -6,6 +6,7 @@ import { fifthsForKey, type Key } from "../song/keySignature";
 import { writtenNotes } from "../song/midiScore";
 import { songFromMusicXml, transposeMusicXml } from "../song/musicxml";
 import { withFingering, type Song } from "../song/song";
+import { hasSourcePerformance } from "../song/sourcePerformance";
 import type { PreferencesState } from "./preferencesSlice";
 import type { SongState } from "./songSlice";
 
@@ -24,7 +25,8 @@ export function transposeSong(song: Song, semitones: number, sourceKey: Key | un
   const xml =
     song.musicXml &&
     transposeMusicXml(song.musicXml, semitones, sourceKey ? fifthsForKey(sourceKey) : 0);
-  if (xml && song.source === "musicxml") return { ...songFromMusicXml(xml, title), title };
+  if (xml && song.source === "musicxml")
+    return { ...songFromMusicXml(xml, title), title, ...(song.stage ? { stage: song.stage } : {}) };
   return {
     ...song,
     title,
@@ -39,11 +41,11 @@ export const selectSourceSong = (state: SongRoot) => state.song.sourceSong;
 export const selectSourceKey = createSelector([selectSourceSong], detectKey);
 const selectArranged = createSelector(
   [selectSourceSong, (state: SongRoot) => state.song.simplified],
-  (song, simplified) => (simplified ? simplifiedSong(song) : song)
+  (song, simplified) => (simplified && !hasSourcePerformance(song) ? simplifiedSong(song) : song)
 );
 const selectWritten = createSelector(
   [selectArranged, (state: SongRoot) => state.preferences.player.notesAsWritten],
-  (song, asWritten) => (asWritten ? writtenNotes(song) : song)
+  (song, asWritten) => (asWritten && !hasSourcePerformance(song) ? writtenNotes(song) : song)
 );
 export const selectBaseSong = createSelector(
   [

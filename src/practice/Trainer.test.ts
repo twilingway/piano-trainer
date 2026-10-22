@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FallingNotesView } from "../render/FallingNotesView";
 import type { Song } from "../song/song";
 import type { Take } from "../recording/take";
@@ -7,6 +7,7 @@ import { Trainer, type TrainerSnapshot } from "./Trainer";
 vi.mock("../audio/pianoSound", () => ({ soundAllOff: vi.fn() }));
 vi.mock("../audio/sessionAudio", () => ({
   SessionAudio: class {
+    configure = vi.fn();
     start = vi.fn();
     reset = vi.fn();
     schedule = vi.fn();
@@ -65,6 +66,44 @@ function harness(song = SONG) {
 function down(trainer: Trainer, timestamp: number, pitch = 60, deviceId = "piano") {
   trainer.key({ type: "down", pitch, velocity: 90, timestamp, source: "midi", deviceId });
 }
+describe("Trainer seek playback intent", () => {
+  it.each(["before first play", "paused", "finished"] as const)(
+    "keeps a seek stopped when %s until Play is requested",
+    (state) => {
+      const run = harness();
+      if (state !== "before first play") {
+        run.trainer.setPlaying(true);
+        run.frame(state === "finished" ? 5500 : 3500, 200);
+        if (state === "paused") run.trainer.setPlaying(false);
+      }
+      expect(run.latest()?.playing).toBe(false);
+      run.trainer.seek(1);
+      const soughtTime = run.latest()?.time;
+      expect(run.latest()?.playing).toBe(false);
+      expect(run.latest()?.finished).toBe(false);
+      run.frame(6000, 200);
+      expect(run.latest()?.time).toBe(soughtTime);
+      expect(run.latest()?.playing).toBe(false);
+      run.trainer.setPlaying(true);
+      run.frame(6200, 200);
+      expect(run.latest()?.playing).toBe(true);
+      expect(run.latest()?.time).toBeCloseTo((soughtTime ?? 0) + 0.2);
+    }
+  );
+
+  it("continues the same playback after a seek made while playing", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(3500);
+    run.trainer.seek(1);
+    const soughtTime = run.latest()?.time;
+    expect(run.latest()?.playing).toBe(true);
+    run.frame(3700, 200);
+    expect(run.latest()?.playing).toBe(true);
+    expect(run.latest()?.time).toBeCloseTo((soughtTime ?? 0) + 0.2);
+  });
+});
+
 describe("Trainer input timestamps", () => {
   it("publishes the applied policy rather than a stored learning preference", () => {
     const run = harness();
@@ -553,5 +592,27 @@ describe("Trainer key lights", () => {
     run.trainer.setPlaying(true);
     run.frame(2800);
     expect(run.last()).toEqual([]);
+  });
+});
+
+describe("Trainer melody routing", () => {
+  it("preserves position, score results and the current take when changing outputs", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(3000);
+    down(run.trainer, 3000);
+    run.frame(3300, 300);
+    const position = run.latest()?.time;
+    const result = run.latest()?.stats.hits;
+    run.trainer.setMelodyOutput({ browser: false });
+    run.trainer.setMelodyOutput({ browser: true });
+    expect(run.takes).toHaveLength(0);
+    run.frame(3600, 300);
+    expect(run.latest()?.playing).toBe(true);
+    expect(run.latest()?.time).toBeCloseTo((position ?? 0) + 0.3);
+    expect(run.latest()?.stats.hits).toEqual(result);
+    run.trainer.setPlaying(false);
+    run.trainer.restart();
+    expect(run.takes).toHaveLength(1);
   });
 });

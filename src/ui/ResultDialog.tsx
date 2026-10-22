@@ -1,5 +1,7 @@
 import { useI18n } from "../app/useI18n";
 import type { PracticeStats } from "../practice/session";
+import { COURSE_PASS_PERCENT } from "../course/model";
+import { starsForNoteResult } from "../practice/gameResults";
 import { GameDialog } from "./GameDialog";
 
 const NOTE_NAMES = [
@@ -29,10 +31,21 @@ interface Props {
   readonly onClose: () => void;
   readonly onAgain: () => void;
   readonly onReview: () => void;
+  readonly onNext?: () => void;
+  readonly course?: boolean;
 }
 
 /** The end of a run: the accuracy, the notes that went wrong most, and what next. */
-export function ResultDialog({ open, stats, canReview, onClose, onAgain, onReview }: Props) {
+export function ResultDialog({
+  open,
+  stats,
+  canReview,
+  onClose,
+  onAgain,
+  onReview,
+  onNext,
+  course = false
+}: Props) {
   const { t, formatNumber } = useI18n();
   const milliseconds = (value: number | null): string =>
     value === null
@@ -41,45 +54,96 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain, onRevie
   if (!open) return null;
   const played = stats ? stats.hits + stats.misses : 0;
   const game = stats?.game;
-  const accuracy = game ? game.accuracy : stats && played > 0 ? (stats.hits / played) * 100 : null;
+  const result = stats?.noteResult;
+  const stars = result ? starsForNoteResult(result) : (game?.stars ?? null);
+  const accuracy = result
+    ? result.percent
+    : game
+      ? game.accuracy
+      : stats && played > 0
+        ? (stats.hits / played) * 100
+        : null;
   return (
     <GameDialog open={open} title={t("Готово")} className="result" onClose={onClose}>
-      {game && game.stars !== null ? (
+      {stars !== null ? (
         <p
           className="result-stars"
           role="img"
-          aria-label={t("Звёзды: {stars} из 3", { stars: String(game.stars) })}
-          title={t("1 звезда: точность выше 25%; 2: выше 50%; 3: выше 75%")}
+          aria-label={t("Звёзды: {stars} из 3", { stars: String(stars) })}
+          title={
+            result
+              ? t("1 звезда: результат от 25%; 2: от 50%; 3: от 75%")
+              : t("1 звезда: точность выше 25%; 2: выше 50%; 3: выше 75%")
+          }
         >
-          <span aria-hidden="true">{"★".repeat(game.stars)}</span>
+          <span aria-hidden="true">{"★".repeat(stars)}</span>
           <span className="result-stars-empty" aria-hidden="true">
-            {"☆".repeat(3 - game.stars)}
+            {"☆".repeat(3 - stars)}
           </span>
         </p>
       ) : null}
+      {result && stars !== null && (
+        <p className="result-caption">{t("Звёзды за попадания и удержание")}</p>
+      )}
       <div className="result-summary">
         {game && game.expectedNotes > 0 ? (
           <p className="result-points digits">
             {t("Очки")} {formatNumber(game.score)}
           </p>
         ) : (
-          <p>{game ? t("Нет нот для оценки") : t("Тренировка · без рейтинга")}</p>
+          <p>
+            {game && !result?.expectedNotes
+              ? t("Нет нот для оценки")
+              : t("Тренировка · без рейтинга")}
+          </p>
         )}
-      </div>
-      <div className="result-details">
         <p className="result-score digits">
           {accuracy === null
             ? t("Нет нот для оценки")
             : `${formatNumber(accuracy, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
         </p>
         <p className="result-caption">
-          {game ? t("взвешенная точность") : t("Тренировка · без рейтинга времени")}
+          {result
+            ? t("Попадания — 30%, удержание — 70%")
+            : game
+              ? t("взвешенная точность")
+              : t("Тренировка · без рейтинга времени")}
         </p>
+        {result?.percent != null && (
+          <>
+            <p>
+              {t("За попадания: {percent}% из 30%", {
+                percent: formatNumber(result.hitPercent, { maximumFractionDigits: 1 })
+              })}
+            </p>
+            <p>
+              {t("За удержание: {percent}% из 70%", {
+                percent: formatNumber(result.holdPercent, { maximumFractionDigits: 1 })
+              })}
+            </p>
+            {course && (
+              <p>
+                {result.percent >= COURSE_PASS_PERCENT
+                  ? t("Порог 75% достигнут")
+                  : t("Для зачёта нужно не меньше 75%. Удерживайте клавиши до конца нот.")}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+      <div className="result-details">
         {game && game.expectedNotes > 0 && (
           <div className="game-result-details">
+            {result && game.accuracy !== null && (
+              <p>
+                {t("Точность попадания: {percent}%", {
+                  percent: formatNumber(game.accuracy, { maximumFractionDigits: 1 })
+                })}
+              </p>
+            )}
             <p>
-              {t("Очки")} <strong>{formatNumber(game.score)}</strong> {t("· Ранг")}{" "}
-              <strong>{game.rank}</strong>
+              {t("Очки")} <strong>{formatNumber(game.score)}</strong>{" "}
+              {result ? t("· Ранг по времени") : t("· Ранг")} <strong>{game.rank}</strong>
             </p>
             <p>
               {t("Максимум:")} {formatNumber(game.targetScore)}{" "}
@@ -174,6 +238,11 @@ export function ResultDialog({ open, stats, canReview, onClose, onAgain, onRevie
         )}
       </div>
       <div className="result-actions">
+        {onNext && (
+          <button type="button" className="game-button game-button--play" onClick={onNext}>
+            {t("Следующее задание")}
+          </button>
+        )}
         <button type="button" className="game-button game-button--play" onClick={onAgain}>
           {t("Ещё раз")}
         </button>

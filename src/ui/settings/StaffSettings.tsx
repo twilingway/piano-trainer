@@ -22,6 +22,9 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
   }
   return (
     <div className="settings-list">
+      <p className="setting-hint">
+        {t("Эти настройки применяются к нотному стану и пианинным табам.")}
+      </p>
       <div className="setting">
         <span>{t("Масштаб")}</span>
         <span className="setting-control">

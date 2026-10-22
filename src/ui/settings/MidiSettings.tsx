@@ -7,6 +7,7 @@ import { pitchLabel } from "../../input/keyboardLayouts";
 import type { MidiDevice } from "../../input/midiInput";
 import type { KeyLightSettings } from "../../input/keyLights";
 import type { OutputChoice } from "../../input/midiOutput";
+import type { MelodyOutputSettings } from "../../input/melodyOutput";
 
 /** The player's keyboard and capturing it from their lowest and highest keys. */
 export interface DeviceRangeControls {
@@ -30,6 +31,8 @@ export interface MidiOutputControls {
   readonly onTest: () => void;
   readonly lights: KeyLightSettings;
   readonly onLights: (settings: KeyLightSettings) => void;
+  readonly melody: MelodyOutputSettings;
+  readonly onMelody: (settings: MelodyOutputSettings) => void;
 }
 
 const LIGHT_CHANNELS = Array.from({ length: 16 }, (_, index) => index + 1);
@@ -191,6 +194,59 @@ export function MidiSettings({
               {t("Проверить")}
             </button>
           </div>
+          <label className="setting">
+            <span>{t("Звук мелодии")}</span>
+            <select
+              className="game-select"
+              aria-label={t("Звук мелодии")}
+              value={output.melody.mode}
+              onChange={(event) => {
+                const mode = event.target.value;
+                if (mode === "browser" || mode === "midi" || mode === "both")
+                  output.onMelody({ ...output.melody, mode });
+              }}
+            >
+              <option value="browser">{t("На этом устройстве")}</option>
+              <option value="midi">{t("На MIDI-пианино")}</option>
+              <option value="both">{t("На обоих устройствах")}</option>
+            </select>
+          </label>
+          <p className="setting-hint">
+            {t("Метроном, голосовые подсказки и ручные нажатия звучат на этом устройстве.")}
+          </p>
+          {output.melody.mode !== "browser" && (
+            <>
+              <label className="setting">
+                <span>{t("Канал мелодии")}</span>
+                <select
+                  className="game-select"
+                  aria-label={t("Канал мелодии")}
+                  value={output.melody.channel}
+                  onChange={(event) => {
+                    output.onMelody({ ...output.melody, channel: Number(event.target.value) });
+                  }}
+                >
+                  {LIGHT_CHANNELS.map((channel) => (
+                    <option key={channel} value={channel}>
+                      {channel}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {!output.connected && (
+                <p className="setting-hint">
+                  {t("Выберите подключённый выход MIDI, чтобы мелодия звучала на пианино.")}
+                </p>
+              )}
+              {output.lights.enabled && output.lights.channel === output.melody.channel && (
+                <p className="setting-hint">
+                  {t(
+                    "У мелодии и подсветки один канал. Выберите разные каналы, чтобы ноты не мешали друг другу."
+                  )}
+                </p>
+              )}
+            </>
+          )}
           <label className="setting">
             <span>{t("Подсветка клавиш")}</span>
             <input

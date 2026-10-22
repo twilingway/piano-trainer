@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import { soundNoteOff, soundNoteOn, startSoundOnFirstGesture } from "../audio/pianoSound";
@@ -18,8 +18,23 @@ export function useKeyInput(
   trainerRef: RefObject<Trainer | null>,
   keyboardOptions: KeyboardInputOptions,
   intercept?: (event: KeyEvent) => boolean,
-  trainerReady = false
+  trainerReady = false,
+  pianoBlocked = false,
+  rhythm = false,
+  observeAllInputs = false
 ) {
+  const observeAllRef = useRef(observeAllInputs);
+  useLayoutEffect(() => {
+    observeAllRef.current = observeAllInputs;
+  }, [observeAllInputs]);
+  const rhythmRef = useRef(rhythm);
+  useLayoutEffect(() => {
+    rhythmRef.current = rhythm;
+  }, [rhythm]);
+  const blockedRef = useRef(pianoBlocked);
+  useLayoutEffect(() => {
+    blockedRef.current = pianoBlocked;
+  }, [pianoBlocked]);
   const interceptRef = useRef(intercept);
   useEffect(() => {
     interceptRef.current = intercept;
@@ -45,21 +60,36 @@ export function useKeyInput(
     const stopWarmUp = startSoundOnFirstGesture();
     let stopMidi: (() => void) | undefined;
     let disposed = false;
+    let previousInputs = new Set<string>();
+    const midiDevicesChanged = (next: MidiDevice[]) => {
+      const inputs = new Set(next.map((device) => device.id));
+      if ([...previousInputs].some((id) => !inputs.has(id))) trainerRef.current?.cancelInput(true);
+      previousInputs = inputs;
+      setDevices(next);
+    };
     if (midiSupported()) {
       // A pedal sends "down" over and over while it moves: only the press itself is Overdrive.
       const pedalDown = new Map<string, boolean>();
       const onMidiKey = (event: MidiEvent, deviceId: string) => {
+        if (blockedRef.current && event.type !== "up") return;
         const chosen = midiDeviceRef.current;
-        if (chosen !== "all" && chosen !== deviceId) return;
+        if (
+          event.type !== "up" &&
+          chosen !== "all" &&
+          chosen !== deviceId &&
+          !(observeAllRef.current && event.type === "down")
+        )
+          return;
         // Our own key lights coming back through MIDI Thru are not the player's keys.
         if (event.type !== "pedal" && isEcho(event)) return;
         if (event.type === "pedal") {
+          if (rhythmRef.current) return;
           if (event.down && !pedalDown.get(deviceId)) trainerRef.current?.activateOverdrive();
           pedalDown.set(deviceId, event.down);
           trainerRef.current?.pedal(event.down, event.timestamp, event.deviceId);
         } else onKey(event);
       };
-      listenToMidi(onMidiKey, setDevices).then(
+      listenToMidi(onMidiKey, midiDevicesChanged).then(
         (stop) => {
           if (disposed) stop();
           else stopMidi = stop;
@@ -81,6 +111,10 @@ export function useKeyInput(
     const deferred = new Set<number>();
     return listenToComputerKeyboard(
       (event) => {
+        if (blockedRef.current) {
+          if (event.type === "up") trainerRef.current?.key(event);
+          return;
+        }
         if (event.type === "pedal") {
           if (event.down && !sustain) trainerRef.current?.activateOverdrive();
           sustain = event.down;
@@ -100,6 +134,7 @@ export function useKeyInput(
       },
       {
         ...keyboardOptions,
+        onCancelInput: () => trainerRef.current?.cancelInput(),
         owedNoteId: () => trainerRef.current?.nextDueNoteId(),
         onOverdrive: () => {
           trainerRef.current?.activateOverdrive();
@@ -109,8 +144,23 @@ export function useKeyInput(
   }, [trainerRef, keyboardOptions]);
 
   useEffect(() => {
+    const cancel = () => trainerRef.current?.cancelInput(true);
+    const hidden = () => {
+      if (document.hidden) cancel();
+    };
+    window.addEventListener("blur", cancel);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      cancel();
+      window.removeEventListener("blur", cancel);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [trainerRef]);
+
+  useEffect(() => {
+    if (midiDeviceRef.current !== midiDeviceId) trainerRef.current?.cancelInput(true);
     midiDeviceRef.current = midiDeviceId;
-  }, [midiDeviceId]);
+  }, [midiDeviceId, trainerRef]);
 
   const midiName = devices.length > 0 ? (devices[0]?.name ?? "MIDI") : undefined;
 

@@ -12,6 +12,20 @@ import { useComputerKeyboard } from "./useComputerKeyboard";
 import { usePlayerLibrary } from "./usePlayerLibrary";
 import { useShortcuts } from "./useShortcuts";
 import { useSong } from "./useSong";
+import { useCourse } from "./useCourse";
+import { useReadingCourse, useReadingTrainer } from "./useReadingCourse";
+import { useRhythmCourse } from "./useRhythmCourse";
+import { useTwoHandCourse, useTwoHandTrainer } from "./useTwoHandCourse";
+import { useHeldBassCourse, useHeldBassTrainer } from "./useHeldBassCourse";
+import {
+  useIndependentRhythmCourse,
+  useIndependentRhythmTrainer
+} from "./useIndependentRhythmCourse";
+import { useRhythmTrainer } from "./useRhythmTrainer";
+import { useIntervalCourse } from "./useIntervalCourse";
+import { useIntervalAudioTrainer } from "./useIntervalAudio";
+import { readingDisplayProfile } from "./readingProfile";
+import { DEFAULT_SCREEN_LAYOUT } from "./screenLayout";
 import { useSound } from "./useSound";
 import { useScreenLayout } from "./useScreenLayout";
 import { useStaffPrefs } from "./useStaffPrefs";
@@ -41,51 +55,155 @@ export function usePlayerRuntime() {
   const startFromRef = useRef<number | null>(null);
   const { sound, ensureSound } = useSound();
   const current = useSong(startFromRef);
-  const { song, songKey } = current;
-  const word = useWordTyping(song, songKey, libraryOpen || settingsOpen);
+  const course = useCourse(current.showSong);
+  const reading = useReadingCourse();
+  const intervals = useIntervalCourse();
+  const rhythm = useRhythmCourse();
+  const twoHand = useTwoHandCourse();
+  const heldBass = useHeldBassCourse();
+  const independentRhythm = useIndependentRhythmCourse();
+  const practiceActive =
+    reading.active ||
+    intervals.active ||
+    rhythm.active ||
+    twoHand.active ||
+    heldBass.active ||
+    independentRhythm.active;
+  const ear = intervals.active && intervals.mode === "hear-and-choose";
+  const practiceExercise =
+    independentRhythm.scene ??
+    heldBass.scene ??
+    twoHand.exercise ??
+    rhythm.exercise ??
+    intervals.exercise ??
+    reading.exercise;
+  const song = practiceExercise?.song ?? current.song;
+  const songKey = practiceExercise?.id ?? current.songKey;
+  const word = useWordTyping(song, songKey, libraryOpen || settingsOpen, practiceActive);
   const device = useDeviceRange();
   const { playable } = device;
-  const game = useGameOptions(word.practiceKey, word.practiceSong.duration, word.enabled, playable);
+  const game = useGameOptions(
+    word.practiceKey,
+    word.practiceSong.duration,
+    word.enabled,
+    playable,
+    practiceActive || course.active !== null
+  );
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const screen = useScreenLayout(word.enabled ? "typing" : "piano");
+  const workspaceLayout = practiceActive ? DEFAULT_SCREEN_LAYOUT : screen.layout;
   const displayPrefs = useMemo(
     () =>
-      game.performance
-        ? {
-            ...staffPrefs,
-            fingers: false,
-            hands: false,
-            labels: false,
-            noteNames: "off" as const,
-            chords: false
-          }
-        : staffPrefs,
-    [game.performance, staffPrefs]
+      practiceActive
+        ? { ...readingDisplayProfile(staffPrefs), visible: !ear, keys: !ear }
+        : game.performance
+          ? {
+              ...staffPrefs,
+              visible: course.active
+                ? course.saved.view === "staff" || course.saved.view === "both"
+                : staffPrefs.visible,
+              fingers: false,
+              hands: false,
+              labels: false,
+              noteNames: "off" as const,
+              chords: false
+            }
+          : course.active
+            ? {
+                ...staffPrefs,
+                visible: course.saved.view === "staff" || course.saved.view === "both"
+              }
+            : staffPrefs,
+    [practiceActive, ear, game.performance, staffPrefs, course.active, course.saved.view]
   );
   const score = useStaffScore(song, current.baseSong, displayPrefs);
   const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
     withNames: score.withNames,
     fixedLines: score.fixedLines,
     measuresPerLine: staffPrefs.measuresPerLine,
-    autoReview: staffPrefs.autoReview
+    autoReview: !practiceActive && staffPrefs.autoReview
   });
   const trainer = useTrainer({
     song: word.practiceSong,
-    sourceSong: current.sourceSong,
+    sourceSong: practiceExercise?.song ?? current.sourceSong,
+    reading: reading.active || intervals.active || twoHand.active || heldBass.active,
+    readingHand: twoHand.active || heldBass.active ? "both" : reading.isBass ? "left" : "right",
+    rhythm: rhythm.active,
+    independentRhythm: independentRhythm.active,
+    pianoBlocked: ear || rhythm.active,
     songKey: word.practiceKey,
     wordTyping: word.enabled,
     startFromRef,
     ensureSound,
     onNoteClick: current.cycleFinger,
-    onTake: takes.recordTake,
+    onTake: practiceActive ? () => undefined : takes.recordTake,
+    onRunFinished: independentRhythm.active
+      ? () => undefined
+      : heldBass.active
+        ? heldBass.finish
+        : twoHand.active
+          ? twoHand.finish
+          : rhythm.active
+            ? () => undefined
+            : intervals.active
+              ? intervals.publish
+              : reading.active
+                ? reading.finish
+                : course.controller.finish,
+    course: practiceActive ? undefined : course.practice,
     compareSong: takes.compareSong,
     lastTake: takes.lastTake,
     replayCount: takes.replayCount,
-    comparing: takes.comparing,
+    comparing: !practiceActive && takes.comparing,
     onReplay: takes.replay,
     gameOptions: game.options,
-    ranked: game.ranked
+    ranked: !practiceActive && game.ranked
   });
+  useReadingTrainer(
+    intervals.active ? intervals : reading,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro
+  );
+  useTwoHandTrainer(
+    twoHand,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen || settingsOpen || twoHand.intro || heldBass.intro || independentRhythm.intro
+  );
+  useHeldBassTrainer(
+    heldBass,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro
+  );
+  useIntervalAudioTrainer(
+    intervals.audio,
+    intervals.session,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro,
+    intervals.publish
+  );
+  const workspacePrefs =
+    !practiceActive && course.active && takes.comparing
+      ? { ...displayPrefs, visible: true }
+      : displayPrefs;
   const snapshot = useTrainerSelector(
     trainer.snapshotSource,
     selectTrainerStatus,
@@ -95,11 +213,24 @@ export function usePlayerRuntime() {
   const computerKeyboard = useComputerKeyboard();
   const input = useKeyInput(
     trainer.trainerRef,
-    word.enabled ? word.keyboardOptions : computerKeyboard.options,
-    device.intercept,
-    trainer.trainerReady
+    ear || rhythm.active
+      ? { ...computerKeyboard.options, blocked: true }
+      : word.enabled
+        ? word.keyboardOptions
+        : computerKeyboard.options,
+    rhythm.active || independentRhythm.active ? undefined : device.intercept,
+    trainer.trainerReady,
+    ear,
+    rhythm.active || independentRhythm.active,
+    independentRhythm.active
   );
-  const fit = useRangeFit(song.notes, trainer.playerHands, playable, current, !word.enabled);
+  const fit = useRangeFit(
+    song.notes,
+    trainer.playerHands,
+    playable,
+    current,
+    !word.enabled && !practiceActive
+  );
   const timing = useTimingControls({
     trainerRef: trainer.trainerRef,
     ensureSound,
@@ -107,18 +238,53 @@ export function usePlayerRuntime() {
     deviceId: input.midiDeviceId,
     trainerReady: trainer.trainerReady,
     snapshotSource: trainer.snapshotSource,
+    localInput:
+      (rhythm.active && rhythm.source !== "midi") ||
+      (independentRhythm.active && independentRhythm.source !== "midi"),
     locked: game.ranked && snapshot.playing
   });
   useGameRuntime(trainer.trainerRef, trainer.trainerReady, {
-    loop: game.range.loop,
-    ranked: game.ranked,
-    stopOnError: game.stopOnError,
+    loop: !practiceActive && game.range.loop,
+    ranked: !practiceActive && game.ranked,
+    stopOnError: !practiceActive && game.stopOnError,
     rankedReady: timing.rankedReady,
-    performance: game.performance,
-    canStart: !word.enabled || (!word.pending && !word.error),
+    performance: !practiceActive && game.performance,
+    canStart:
+      !ear &&
+      !twoHand.intro &&
+      !heldBass.intro &&
+      !independentRhythm.intro &&
+      !reading.intro &&
+      (!word.enabled || (!word.pending && !word.error)),
     resumeWhenReady: word.enabled,
     deviceId: timing.profile?.deviceId ?? ""
   });
+  useRhythmTrainer(
+    rhythm,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro,
+    input.devices,
+    input.midiDeviceId
+  );
+  useIndependentRhythmTrainer(
+    independentRhythm,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    libraryOpen ||
+      settingsOpen ||
+      reading.intro ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro,
+    input.devices,
+    input.midiDeviceId
+  );
   const view = useFallingView({
     hostRef: trainer.hostRef,
     hasScore: Boolean(score.staffXml),
@@ -126,18 +292,18 @@ export function usePlayerRuntime() {
     trainerRef: trainer.trainerRef,
     trainerReady: trainer.trainerReady,
     song: word.practiceSong,
-    baseSong: word.enabled ? word.practiceSong : current.baseSong,
-    staffPrefs: displayPrefs,
+    baseSong: practiceActive || word.enabled ? word.practiceSong : current.baseSong,
+    staffPrefs: workspacePrefs,
     updateStaffPrefs,
     fallingNames: score.nameStyle,
-    comparing: takes.comparing,
+    comparing: !practiceActive && takes.comparing,
     lastTake: takes.lastTake,
     computerKeys: word.keyboard,
     placement: {
-      lift: screen.layout.keysLift,
-      scale: screen.layout.keysScale,
-      x: screen.layout.keysX,
-      y: screen.layout.keysY
+      lift: workspaceLayout.keysLift,
+      scale: workspaceLayout.keysScale,
+      x: workspaceLayout.keysX,
+      y: workspaceLayout.keysY
     }
   });
   const library = usePlayerLibrary({
@@ -154,24 +320,49 @@ export function usePlayerRuntime() {
 
   const play = () => {
     setResultClosed(false);
-    void trainer.togglePlay();
+    if (independentRhythm.active) {
+      if (snapshot.playing) independentRhythm.cancel();
+      else void independentRhythm.onStart();
+    } else if (heldBass.active && heldBass.snapshot?.completed) {
+      void heldBass.playAgain(ensureSound);
+    } else if (twoHand.active && twoHand.snapshot?.completed) {
+      void twoHand.playAgain(ensureSound);
+    } else if (rhythm.active) {
+      if (snapshot.playing) rhythm.cancel();
+      else void rhythm.onStart();
+    } else if (ear) intervals.audio.togglePause();
+    else void trainer.togglePlay();
   };
   const startOver = () => {
     setResultClosed(false);
-    trainer.restart();
+    if (independentRhythm.active) independentRhythm.onRepeat();
+    else if (heldBass.active) heldBass.newSeries();
+    else if (twoHand.active) twoHand.newSeries();
+    else if (rhythm.active) void rhythm.onRepeat();
+    else if (intervals.active) intervals.newSeries();
+    else if (reading.active) reading.newSeries();
+    else trainer.restart();
   };
   useShortcuts({
     play,
-    blocked: word.enabled
-      ? libraryOpen || settingsOpen || word.pending || Boolean(word.error)
-      : computerKeyboard.editing
+    blocked:
+      rhythm.active ||
+      independentRhythm.active ||
+      (word.enabled
+        ? libraryOpen || settingsOpen || word.pending || Boolean(word.error)
+        : computerKeyboard.editing)
   });
 
-  const toggles = (
+  const toggles = !practiceActive && (
     <ViewToggles
       prefs={staffPrefs}
       hasScore={Boolean(score.staffXml)}
       onChange={updateStaffPrefs}
+      courseScore={
+        course.active && !takes.comparing
+          ? { view: course.saved.view, onView: course.setView }
+          : undefined
+      }
     />
   );
   const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs, toggles);
@@ -201,11 +392,24 @@ export function usePlayerRuntime() {
   );
 
   const chooseGame = (enabled: boolean) => {
+    if (practiceActive) reading.exit();
     computerKeyboard.endEditing();
     startFromRef.current = null;
     word.update({ enabled });
   };
-  const timingStatus = <PracticeTimingStatus policy={snapshot.timingPolicy} ranked={game.ranked} />;
+  const timingStatus = independentRhythm.active ? (
+    <span
+      className="practice-timing-status"
+      role="status"
+      title={t(
+        "Каждая нота проверяется отдельно в окне ±150 мс. Разрыв совместных атак показывается отдельно, без дополнительного порога 200 мс."
+      )}
+    >
+      {t("Два ритма · ±150 мс")}
+    </span>
+  ) : (
+    <PracticeTimingStatus policy={snapshot.timingPolicy} ranked={game.ranked} />
+  );
   const modeSwitch = (
     <GameModeSwitch wordTyping={word.enabled} locked={playing} onChange={chooseGame}>
       {word.enabled && wordSettings}
@@ -214,7 +418,14 @@ export function usePlayerRuntime() {
   );
 
   return {
-    displayPrefs,
+    independentRhythm,
+    heldBass,
+    twoHand,
+    reading,
+    rhythm,
+    intervals,
+    practiceActive,
+    displayPrefs: workspacePrefs,
     sound,
     t,
     fullscreen,
@@ -225,13 +436,14 @@ export function usePlayerRuntime() {
     resultClosed,
     setResultClosed,
     current,
+    course,
     song,
     word,
     device,
     game,
     staffPrefs,
     updateStaffPrefs,
-    screen,
+    screen: { ...screen, layout: workspaceLayout },
     score,
     takes,
     trainer,
@@ -243,10 +455,10 @@ export function usePlayerRuntime() {
     view,
     library,
     listening,
-    review,
+    review: practiceActive ? null : review,
     lastTake,
-    comparing,
-    playing,
+    comparing: !practiceActive && comparing,
+    playing: ear ? !intervals.audio.paused : playing,
     play,
     startOver,
     toggles,

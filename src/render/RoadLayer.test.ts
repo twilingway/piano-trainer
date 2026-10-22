@@ -1,0 +1,256 @@
+// @vitest-environment happy-dom
+import { Container, Matrix, Texture } from "pixi.js";
+import { describe, expect, it, vi } from "vitest";
+import { RoadLayer } from "./RoadLayer";
+import type { EnergySource } from "./noteEnergy";
+import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
+import { CAMERA_PRESETS, PANEL_EDGE, worldCamera } from "./worldCamera";
+import { noteProjectionCamera } from "./noteProjectionCamera";
+import { createNoteLaneProjection } from "./noteLaneProjection";
+import { computerGeometry } from "./computerKeyboardLayout";
+import { metricKeyboardCamera } from "./metricKeyboardCamera";
+import { layoutKeyboard } from "./keyboardLayout";
+import { nativeViewCameras } from "./nativeViewCameras";
+
+function fixture() {
+  const frame = new ThreeRoadFrame();
+  frame.add(400, 100, 300, 44, 0x20df90, 1, 400, worldCamera(800, 600, undefined, PANEL_EDGE));
+  const three = {
+    drawsRoad: true,
+    setEnergy: vi.fn(),
+    setRoadFrame: vi.fn(),
+    clearEnergy: vi.fn()
+  };
+  // Exercise real timing and snapshot wiring without constructing GPU resources.
+  const internals = Object.assign(Object.create(RoadLayer.prototype) as object, {
+    size: { width: 800, height: 400 },
+    nativeRoad: frame,
+    three,
+    road: { renderable: true },
+    fog: new Container(),
+    horizon: new Container(),
+    arrivals: { container: new Container(), draw: vi.fn() },
+    effects: new Container(),
+    glows: { renderable: true },
+    staff: { container: new Container() },
+    renderer: { render: vi.fn() },
+    keysTexture: Texture.EMPTY,
+    keysShift: new Matrix(),
+    glass: { end: vi.fn() },
+    sparks: { draw: vi.fn() },
+    clock: 10,
+    plasmaClock: 2,
+    drawHorizon: vi.fn(),
+    moveSparks: vi.fn()
+  });
+  const layer = internals as unknown as RoadLayer;
+  const lane = new Container();
+  const keys = new Container();
+  return {
+    layer,
+    internals,
+    frame,
+    three,
+    draw: (delta: number) => {
+      layer.draw(lane, keys, [], [], delta);
+    }
+  };
+}
+
+describe("road decorative time", () => {
+  it("keeps shader boiling alive on paused energy while the note geometry and flame time stay fixed", () => {
+    const { layer, internals, frame, three, draw } = fixture();
+    const sources: readonly EnergySource[] = [
+      { id: "held", pitch: 60, color: 0x20df90, strength: 1, progress: 1, sounding: true }
+    ];
+    const geometry = structuredClone(frame.notes);
+    layer.endNotes();
+    expect(three.setRoadFrame).toHaveBeenCalledWith(frame);
+
+    layer.setEnergy(sources, 0);
+    draw(0.016);
+    expect(frame.visualTime).toBeCloseTo(10.016);
+    layer.setEnergy(sources, 0);
+    draw(0.016);
+    expect(frame.visualTime).toBeCloseTo(10.032);
+    expect(internals.plasmaClock).toBe(2);
+    expect(three.setEnergy).toHaveBeenLastCalledWith(sources, 0);
+    expect(frame.notes).toEqual(geometry);
+    expect(frame.noteCount).toBe(1);
+  });
+
+  it("advances energy only by its supplied delta, independently of shader time", () => {
+    const { layer, internals, frame, draw } = fixture();
+    layer.setEnergy([], 0.016);
+    draw(0.032);
+    expect(frame.visualTime).toBeCloseTo(10.032);
+    expect(internals.plasmaClock).toBeCloseTo(2.016);
+    layer.setEnergy([], 0);
+    draw(0);
+    expect(frame.visualTime).toBeCloseTo(10.032);
+    expect(internals.plasmaClock).toBeCloseTo(2.016);
+  });
+});
+
+describe("raised native note shell wiring", () => {
+  it.each([
+    [true, false, 0],
+    [true, true, 100],
+    [false, false, 100]
+  ] as const)(
+    "applies only the remaining mist shift, native=%s computer=%s",
+    (on, computerKeyboard, expected) => {
+      const container = new Container();
+      container.x = 100;
+      const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+        three: { on },
+        computerKeyboard,
+        keys: { container }
+      }) as unknown as RoadLayer;
+      expect(road.mistOffsetX).toBe(expected);
+    }
+  );
+
+  it("moves native notes, the hit row and smoke anchors with placement without accumulating offsets", () => {
+    const width = 1365,
+      height = 768;
+    const keys = layoutKeyboard(2288, 21, 108);
+    const base = metricKeyboardCamera(width, 2288, height, CAMERA_PRESETS.top, 0.1, keys.values());
+    const cameras = nativeViewCameras(base, 150, false, true, height, 0.1, height, height - 8);
+    const state = {
+      camera: cameras.notes,
+      keyboardCamera: cameras.keyboard,
+      cameraHeight: height,
+      blackLane: cameras.blackLane,
+      projection: cameras.notes.road,
+      viewWidth: width,
+      shape: { horizon: 0.1 },
+      notesPerspective: true,
+      size: { width: 2288, height: 500 },
+      keyHeights: new Map<number, number>(),
+      pan: 0,
+      three: { on: true, drawsRoad: true },
+      keys: { container: new Container() },
+      legacyKeys: new Container(),
+      fog: new Container(),
+      setPan: vi.fn()
+    };
+    const road = Object.assign(
+      Object.create(RoadLayer.prototype) as object,
+      state
+    ) as unknown as RoadLayer;
+    const before = road.notePlace(width / 2, 500);
+    if (!before) throw new Error("Missing initial contact");
+    for (const y of [130, 130, -25, 0]) {
+      road.setKeysOffset({ x: 31, y });
+      const contact = road.notePlace(width / 2, 500);
+      expect(contact?.y).toBeCloseTo(before.y + y, 8);
+      expect(contact?.x).toBeCloseTo(before.x + 31, 8);
+      expect(road.hitLineY).toBeCloseTo(before.y + y, 8);
+    }
+    expect(state.setPan).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["direct", "perspective"] as const)(
+    "keeps black labels, body and consumed anchors on one lane in %s",
+    (projection) => {
+      const keyboard = worldCamera(800, 600, CAMERA_PRESETS.top);
+      const camera = noteProjectionCamera(keyboard, projection, 600);
+      const lane = createNoteLaneProjection(camera, keyboard, 34, 800, 800);
+      const frame = new ThreeRoadFrame();
+      const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+        camera,
+        blackLane: lane,
+        keyHeights: new Map([[400, 34]]),
+        projection: camera.road,
+        size: { width: 800, height: 400 },
+        pan: 32,
+        three: { on: true, drawsRoad: true },
+        nativeRoad: frame
+      }) as unknown as RoadLayer;
+      const contact = road.notePlace(400, 400);
+      const key = keyboard.project(keyboard.sourceX(400 - 32), 34, 142);
+      expect(contact?.x).toBeCloseTo(key.x, 9);
+      expect(contact?.y).toBeCloseTo(key.y, 9);
+      expect(road.noteLaneY(400)).toBe(34);
+      road.drawHold(400, 100, 300, 26, 0xffcf32, 1, 2, "black");
+      road.addTrailAnchor(400, 26, 0xffcf32, 1);
+      expect(frame.notes[0]?.lane).toBe(lane);
+      expect(frame.trailAnchors[0]?.lane).toBe(lane);
+      expect(frame.notes[0]?.bottom).toBeGreaterThan(camera.near.z);
+    }
+  );
+});
+
+describe("inspection key input", () => {
+  it("keeps the native computer plate full-sized and picks its individual painted keys", () => {
+    const freeKeysPointAt = vi.fn();
+    const pointAt = vi.fn(() => ({ x: 125, y: 45 }));
+    const layout = vi.fn();
+    const state = {
+      camera: worldCamera(800, 600),
+      cameraHeight: 600,
+      viewWidth: 800,
+      shape: { horizon: 0.1 },
+      notesPerspective: true,
+      perspective: true,
+      keyboardTop: false,
+      pan: 0,
+      three: { on: true, sceneCamera: false, freeKeysPointAt },
+      fog: new Container(),
+      keys: { container: new Container(), layout, pointAt },
+      keysTexture: Texture.EMPTY,
+      staff: { setKeys: vi.fn(), draw: vi.fn() },
+      setPan: vi.fn()
+    };
+    const layer = Object.assign(
+      Object.create(RoadLayer.prototype) as object,
+      state
+    ) as unknown as RoadLayer;
+    const geometry = computerGeometry(600, 800, { notes: true, keys: true, hands: false });
+    layer.setKeyboard(new Map([[0, { pitch: 0, black: false, x: 0, width: 800 }]]), geometry);
+    const camera = (layer as unknown as { camera: typeof state.camera }).camera;
+    expect(camera.params.keyboardDepth).toBeUndefined();
+    expect(camera.params.sourceUnits).toBeUndefined();
+    expect(layout).toHaveBeenCalled();
+    expect(layer.keysPointAt(200, 250)).toEqual({ x: 125, y: 45 });
+    expect(pointAt).toHaveBeenCalledWith(200, 250);
+    expect(freeKeysPointAt).not.toHaveBeenCalled();
+    state.three.sceneCamera = true;
+    freeKeysPointAt.mockReturnValue({ x: 300, y: 80 });
+    expect(layer.keysPointAt(200, 250)).toEqual({ x: 300, y: 80 + geometry.keyboardTop });
+    expect(pointAt).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { x: 80, y: 20 },
+    { x: 90, y: 125 },
+    { x: -500, y: 1, pitch: 21 }
+  ])("adds the keyboard top once for white and black source hits", (point) => {
+    const state = {
+      three: { on: true, sceneCamera: false, freeKeysPointAt: vi.fn(() => point) },
+      keyboardTopY: 400
+    };
+    const layer = Object.assign(
+      Object.create(RoadLayer.prototype) as object,
+      state
+    ) as unknown as RoadLayer;
+    expect(layer.keysPointAt(200, 250)).toEqual({ ...point, y: point.y + 400 });
+    state.three.freeKeysPointAt.mockReturnValue(undefined as unknown as typeof point);
+    expect(layer.keysPointAt(200, 250)).toBeUndefined();
+  });
+
+  it("keeps horizon, mist and sparks active in native 3D and fallback", () => {
+    const v = fixture();
+    v.draw(0.016);
+    expect(v.internals.fog.renderable).toBe(true);
+    expect(v.internals.arrivals.container.renderable).toBe(true);
+    expect(v.internals.effects.renderable).toBe(true);
+    expect(v.internals.drawHorizon).toHaveBeenCalledOnce();
+    expect(v.internals.sparks.draw).toHaveBeenCalledOnce();
+    v.three.drawsRoad = false;
+    v.draw(0.016);
+    expect(v.internals.drawHorizon).toHaveBeenCalledTimes(2);
+    expect(v.internals.sparks.draw).toHaveBeenCalledTimes(2);
+  });
+});

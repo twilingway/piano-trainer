@@ -25,6 +25,70 @@ afterEach(() => {
 });
 
 describe("selected song persistence", () => {
+  it("restores the full arrangement with the same library song after a reload", () => {
+    const store = createAppStore();
+    store.dispatch(
+      songActions.songOpened({ song: fixture, lesson: null, librarySource: "my:saved" })
+    );
+    store.dispatch(songActions.simplifiedChanged(false));
+    expect(JSON.parse(localStorage.getItem("player-prefs") ?? "null")).toMatchObject({
+      librarySource: "my:saved",
+      simplified: false
+    });
+    const write = vi.spyOn(localStorage, "setItem");
+    const restored = createAppStore();
+    expect(restored.getState().song.simplified).toBe(false);
+    expect(write).not.toHaveBeenCalled();
+    restored.dispatch(
+      songActions.songOpened({ song: fixture, lesson: null, librarySource: "my:saved" })
+    );
+    expect(restored.getState().song.simplified).toBe(false);
+    expect(selectBaseSong(restored.getState()).simplified).not.toBe(true);
+    restored.dispatch(songActions.simplifiedChanged(true));
+    const simplified = createAppStore();
+    simplified.dispatch(
+      songActions.songOpened({ song: fixture, lesson: null, librarySource: "my:saved" })
+    );
+    expect(simplified.getState().song.simplified).toBe(true);
+  });
+
+  it("resets and saves the arrangement when another library song or a lesson opens", () => {
+    const store = createAppStore();
+    store.dispatch(
+      songActions.songOpened({ song: fixture, lesson: null, librarySource: "my:first" })
+    );
+    store.dispatch(songActions.simplifiedChanged(false));
+    store.dispatch(
+      songActions.songOpened({ song: fixture, lesson: null, librarySource: "my:second" })
+    );
+    expect(store.getState().song.simplified).toBe(true);
+    expect(store.getState().preferences.player.simplified).toBe(true);
+    store.dispatch(songActions.simplifiedChanged(false));
+    store.dispatch(
+      songActions.songOpened({ song: fixture, lesson: FIRST_LESSON, librarySource: null })
+    );
+    expect(store.getState().song.simplified).toBe(true);
+    expect(JSON.parse(localStorage.getItem("player-prefs") ?? "null")).toMatchObject({
+      librarySource: null,
+      lesson: FIRST_LESSON,
+      simplified: true
+    });
+    expect(createAppStore().getState().song.simplified).toBe(true);
+  });
+
+  it.each([undefined, "false", null, 0])(
+    "uses the original simplified default for missing or invalid saved values: %s",
+    (simplified) => {
+      localStorage.setItem(
+        "player-prefs",
+        JSON.stringify({ librarySource: "my:legacy", simplified })
+      );
+      const write = vi.spyOn(localStorage, "setItem");
+      expect(createAppStore().getState().song.simplified).toBe(true);
+      expect(write).not.toHaveBeenCalled();
+    }
+  );
+
   it("preserves the preferred library source while bootstrapping a lesson, without writing defaults", () => {
     localStorage.setItem(
       "player-prefs",

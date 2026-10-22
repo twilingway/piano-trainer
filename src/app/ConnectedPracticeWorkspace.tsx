@@ -6,11 +6,20 @@ import {
   ConnectedWorkspace
 } from "./ConnectedPlayback";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
+import { ConnectedPianoTabs } from "./ConnectedCourse";
+import { ConnectedReadingPractice } from "./ConnectedReading";
+import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
+import { ConnectedTwoHandPractice } from "./ConnectedTwoHand";
+import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
+import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
+import { ConnectedRhythmPractice } from "./ConnectedRhythm";
+import { ConnectedIntervalPractice } from "./ConnectedIntervals";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPracticeWorkspace() {
   const {
     displayPrefs,
+    timelineSong,
     listening,
     comparing,
     playing,
@@ -33,10 +42,16 @@ export function ConnectedPracticeWorkspace() {
     trainerTrainerRef,
     trainerHostRef,
     snapshotWaiting,
-    viewMirrorHostRef
+    viewMirrorHostRef,
+    courseTabs,
+    courseTopView,
+    practiceActive,
+    reading,
+    rhythm
   } = useRuntimeSelector(
     (runtime) => ({
       displayPrefs: runtime.displayPrefs,
+      timelineSong: runtime.word.practiceSong,
       listening: runtime.listening,
       comparing: runtime.comparing,
       playing: runtime.playing,
@@ -59,7 +74,24 @@ export function ConnectedPracticeWorkspace() {
       trainerTrainerRef: runtime.trainer.trainerRef,
       trainerHostRef: runtime.trainer.hostRef,
       snapshotWaiting: runtime.snapshot.waiting,
-      viewMirrorHostRef: runtime.view.mirrorHostRef
+      viewMirrorHostRef: runtime.view.mirrorHostRef,
+      rhythm: runtime.rhythm,
+      reading: runtime.independentRhythm.active
+        ? runtime.independentRhythm
+        : runtime.heldBass.active
+          ? runtime.heldBass
+          : runtime.twoHand.active
+            ? runtime.twoHand
+            : runtime.intervals.active
+              ? runtime.intervals
+              : runtime.reading,
+      courseTabs:
+        !runtime.practiceActive &&
+        runtime.course.active !== null &&
+        (runtime.course.saved.view === "tabs" || runtime.course.saved.view === "both") &&
+        !runtime.comparing,
+      courseTopView: runtime.course.saved.topView,
+      practiceActive: runtime.practiceActive
     }),
     shallowEqual
   );
@@ -70,7 +102,17 @@ export function ConnectedPracticeWorkspace() {
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   return (
     <>
+      <ConnectedReadingPractice />
+      <ConnectedBassReadingPractice />
+      <ConnectedTwoHandPractice />
+      <ConnectedHeldBassPractice />
+      <ConnectedIndependentRhythmPractice />
+      <ConnectedIntervalPractice />
+      <ConnectedRhythmPractice />
       <ConnectedWorkspace
+        timelineSong={timelineSong}
+        scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
+        scoreFirst={courseTopView}
         source={trainerSnapshotSource}
         wordBoard={
           wordEnabled && !comparing ? (
@@ -96,30 +138,43 @@ export function ConnectedPracticeWorkspace() {
           ) : undefined
         }
         gameBoard={
-          <ConnectedGameBoard
-            source={trainerSnapshotSource}
-            mode={trainerMode}
-            playing={playing}
-            onOverdrive={() => {
-              trainerTrainerRef.current?.activateOverdrive();
-            }}
-          />
+          !reading.active &&
+          !rhythm.active && (
+            <ConnectedGameBoard
+              source={trainerSnapshotSource}
+              mode={trainerMode}
+              playing={playing}
+              onOverdrive={() => {
+                trainerTrainerRef.current?.activateOverdrive();
+              }}
+            />
+          )
         }
-        staffXml={scoreStaffXml}
+        staffXml={
+          rhythm.active
+            ? rhythm.exercise?.musicXml
+            : reading.active
+              ? reading.prompt?.musicXml
+              : scoreStaffXml
+        }
+        staffPresentation={rhythm.active ? rhythm.presentation : reading.presentation}
+        staffRetry={rhythm.active ? rhythm.retry : reading.retry}
+        readingBeat={reading.prompt?.beat}
+        course={practiceActive}
         prefs={displayPrefs}
         layout={screenLayout}
         onLayout={screenUpdateLayout}
         onResetLayout={screenResetLayout}
         layoutMoved={screenMoved}
-        editing={screenEditing}
+        editing={!reading.active && !rhythm.active && screenEditing}
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}
         fixedLines={scoreFixedLines}
         liveBeat={trainerLiveBeat}
         onSeek={trainerSeekToBeat}
-        reviewMarks={takesReviewMarks}
-        transcription={takesTranscription}
+        reviewMarks={reading.active ? undefined : takesReviewMarks}
+        transcription={reading.active ? undefined : takesTranscription}
         takeStaff={takesTakeStaff}
         splitDirection={takesSplitDirection}
         comparing={comparing}

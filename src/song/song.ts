@@ -1,6 +1,10 @@
 import { assignFingering } from "../fingering/fingering";
 import type { Finger, Hand, TransitionKind } from "../fingering/fingering";
 import type { SongPart } from "./midiParts";
+import { hasSourcePerformance, withoutSourcePerformance } from "./sourcePerformance";
+import type { SourcePerformanceIdentity } from "./sourcePerformance";
+import type { SongStage } from "./songStage";
+import type { SourceFinger } from "./sourceFingering";
 
 export interface SongNote {
   readonly id: string;
@@ -20,7 +24,8 @@ export interface SongNote {
   readonly scoreFinger?: Finger;
   readonly finger?: Finger;
   readonly transition?: TransitionKind;
-  /** How hard the note is struck, MIDI 1-127; a recorded take has it, a score does not. */
+  readonly sourceFinger?: SourceFinger;
+  /** How hard the note is struck, MIDI 1-127; MIDI files and recorded takes carry it. */
   readonly velocity?: number;
 }
 
@@ -43,6 +48,7 @@ export interface SongMeasure {
 }
 
 export interface Song {
+  readonly sourcePerformance?: SourcePerformanceIdentity;
   readonly title: string;
   readonly source: "midi" | "musicxml";
   readonly notes: readonly SongNote[];
@@ -60,6 +66,10 @@ export interface Song {
   readonly simplified?: boolean;
   /** A MIDI song's notes as its written score has them rather than as the file plays them. */
   readonly asWritten?: boolean;
+  /** A local lesson level's performance-scene dressing. */
+  readonly stage?: SongStage;
+  /** A local lesson level's sung voice: the URL of a recording that starts at song time 0. */
+  readonly voice?: string;
 }
 
 /** Middle C and above go to the right hand when nothing better tells the hands apart. */
@@ -78,6 +88,18 @@ export function sortNotes<T extends { start: number; pitch: number }>(notes: T[]
  * rest. `overrides` are the player's corrections and win over both.
  */
 export function withFingering(song: Song, overrides?: ReadonlyMap<string, Finger>): Song {
+  if (song.sourcePerformance) {
+    if (!hasSourcePerformance(song))
+      return withFingering(withoutSourcePerformance(song), overrides);
+    return {
+      ...song,
+      notes: song.notes.map((note) => {
+        const { finger: _finger, transition: _transition, ...rest } = note;
+        const finger = overrides?.get(note.id) ?? note.sourceFinger?.finger;
+        return finger == null ? rest : { ...rest, finger };
+      })
+    };
+  }
   const fingered = new Map<string, { finger: Finger; transition?: TransitionKind }>();
   for (const hand of ["right", "left"] as const) {
     const notes = song.notes.filter((note) => note.hand === hand);

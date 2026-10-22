@@ -33,3 +33,9 @@ games/
 # Playwright installed by the vendored ref2game setup.sh inside the skill.
 .claude/skills/ref2game/scripts/node_modules/
 .agents/skills/ref2game/scripts/node_modules/
+
+# Personal 3D models (the pianist with the user's face): loaded by the dev server when present, never committed.
+local-models/
+
+# Optional server-managed lesson bundle, uploaded separately over SSH.
+/public/production-lessons/

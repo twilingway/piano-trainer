@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CAMERA, worldCamera } from "../worldCamera";
+import { CAMERA_PRESETS, DEFAULT_CAMERA, worldCamera } from "../worldCamera";
 import type { CameraPrefs } from "../worldCamera";
 import { projectionMatrix, viewMatrix } from "./threeCamera";
 
@@ -12,6 +12,7 @@ const VIEWS: readonly (readonly [number, number, number])[] = [
 ];
 const PREFS: readonly CameraPrefs[] = [
   DEFAULT_CAMERA,
+  CAMERA_PRESETS.top,
   { fov: 25, height: 25, distance: 120, pitch: -5, targetY: -250, scale: 0.55 },
   { fov: 85, height: 420, distance: 1200, pitch: 60, targetY: 250, scale: 1.6 },
   { ...DEFAULT_CAMERA, pitch: 40, fov: 30, targetY: 80 }

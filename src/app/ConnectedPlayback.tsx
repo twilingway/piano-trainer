@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import type { Song } from "../song/song";
+import { secondsAt } from "../song/song";
 import { GameBoard } from "../ui/GameBoard";
 import { PlayerTopBar, CompactSongPosition, SongScoreboard } from "../ui/PlayerTopBar";
 import { SongProgress } from "../ui/SongProgress";
@@ -16,6 +17,7 @@ interface SourceProps {
 const selectTime = (snapshot: TrainerSnapshot | null) => snapshot?.time ?? 0;
 const selectBeat = (snapshot: TrainerSnapshot | null) => snapshot?.beat ?? 0;
 const selectGame = (snapshot: TrainerSnapshot | null) => snapshot?.stats.game;
+const selectNoteResult = (snapshot: TrainerSnapshot | null) => snapshot?.stats.noteResult;
 const selectWord = (snapshot: TrainerSnapshot | null) => ({
   time: snapshot?.time ?? -2,
   statuses: snapshot?.noteStatuses
@@ -83,7 +85,10 @@ export function ConnectedSongProgress({
   return (
     <SongProgress
       progress={progress}
+      time={time}
+      duration={song.duration}
       ticks={ticks}
+      timeAtShare={(share) => secondsAt(song, share * totalQuarters)}
       onSeek={(share) => {
         onSeek(share * totalQuarters);
       }}
@@ -102,9 +107,10 @@ export function ConnectedWorkspace({
 export function ConnectedGameBoard({
   source,
   ...props
-}: SourceProps & Omit<ComponentProps<typeof GameBoard>, "game">) {
+}: SourceProps & Omit<ComponentProps<typeof GameBoard>, "game" | "noteResult">) {
   const game = useTrainerSelector(source, selectGame);
-  return <GameBoard {...props} game={game} />;
+  const noteResult = useTrainerSelector(source, selectNoteResult);
+  return <GameBoard {...props} game={game} noteResult={noteResult} />;
 }
 
 export function ConnectedWordBoard({

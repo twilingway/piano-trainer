@@ -19,6 +19,12 @@ plays in tempo, plays the other hand, records every take and compares it with th
   later". Keys are flat and a later catalog silently overrides an earlier one, so a Russian key must
   be unique across catalogs: if the same word means different things in two places, reword one.
   Write both languages the way a person would say it — short, plain, no bureaucratic phrasing.
+- **UTF-8 for files and publishing.** Write text files, PR descriptions and issue bodies as UTF-8
+  (without BOM unless a format requires it). On Windows, do not pipe Cyrillic text from PowerShell
+  into Python or other native programs through the default console encoding: characters can become
+  literal question marks before the file is written. Use a direct UTF-8 file write or an ASCII-safe
+  byte transfer, pass multiline GitHub text with `--body-file`, and read the published body back to
+  verify that it matches the local UTF-8 text. A successful CLI exit does not verify encoding.
 - pnpm, never npm. Linter and formatter are ESLint + Prettier, not Biome.
 - **Pure core, thin shell.** `src/fingering`, `src/song`, `src/practice/session.ts` and
   `src/recording` (except `history.ts`, which touches `localStorage`) are pure TypeScript: no React,
@@ -39,6 +45,12 @@ plays in tempo, plays the other hand, records every take and compares it with th
   baking.
 - `local-lessons/` is git-ignored on purpose: scores there may not be published (the repository is
   public). Never add its files to a commit, and never copy their music into `src/`.
+- Local video lesson analysis for Codex, Claude Code and Qwen follows
+  [video-lesson-analysis](.agents/skills/video-lesson-analysis/SKILL.md) and
+  [docs/VIDEO_LESSON_PIPELINE.md](docs/VIDEO_LESSON_PIPELINE.md). Preserve source folders and name
+  lessons after their directories. Record teacher finger observations separately from written and
+  computed fingering. Analysis stays in `local-lessons/.analysis/`; reviewed course scores go only
+  in `local-lessons/.course/`.
 
 ## Code layout
 
@@ -76,39 +88,57 @@ existing one.
 
 ## Local preview
 
-- Агент не запускает и не перезапускает dev-, preview- или другие HTTP-серверы без явного разрешения
-  пользователя. Это правило действует и для основной папки, и для worktree; задача на реализацию или
-  браузерную проверку сама по себе не разрешает запуск сервера.
-- Использовать уже работающий dev-стенд на `http://localhost:5190/`, проверив, что он обслуживает
-  основную папку на ветке `dev`. Если стенд недоступен, не создавать замену на другом порту:
-  выполнить доступные проверки без сервера и сообщить, что браузерная проверка ожидает запуска.
-- Для каждого сервера, запущенного агентом с разрешения пользователя, записывать PID, порт и рабочую
-  папку. После завершения, отмены или остановки задачи агент сам останавливает все свои серверы и их
-  процессы запуска, включая сервер основной папки на 5190, и проверяет, что их порты освобождены.
-  Оставлять свой сервер работающим можно только по явной просьбе пользователя. Dev-стенд, запущенный
-  самим пользователем, сохраняется; чужие и неопознанные процессы не останавливать.
+- Порты. `http://localhost:5190/` — стенд пользователя: основная папка
+  `E:\MySource\ReactJS\piano-trainer` на ветке `dev`. Его запускает и останавливает только
+  пользователь; агенты не трогают ни этот сервер, ни ветку основной папки.
+- Стенд задачи. Агент (Claude, Codex, opencode) может поднять стенд своей задачи без отдельного
+  разрешения — только из своего worktree, на ветке задачи, на порту из диапазона `5191–5199`:
+  `pnpm dev --port <порт> --strictPort`. Порт задаётся в задаче или брифе исполнителя; если не задан
+  — первый свободный, проверенный перед запуском. `--strictPort` обязателен: без него Vite молча
+  переезжает на соседний порт и занимает чужой.
+- Стенд ветки по запросу. На просьбу пользователя «подними стенд ветки X» агент берёт существующий
+  worktree этой ветки или создаёт новый в `E:\MySource\ReactJS\pt-agents\<имя>`, ставит зависимости
+  (`pnpm install --frozen-lockfile`) и поднимает его на свободном порту из `5191–5199`. В отчёте —
+  адрес, ветка, папка.
+- Web MIDI работает на любом `http://localhost:<порт>`, но не на LAN-адресе. localStorage у каждого
+  порта свой: уроки, настройки и история записей стенда задачи на `5190` не видны, и наоборот.
+- Для каждого своего сервера агент записывает PID, порт, папку и ветку. После завершения, отмены или
+  остановки задачи он останавливает свои серверы и их процессы запуска и проверяет, что порты
+  освобождены. Оставлять сервер работающим можно только по явной просьбе пользователя. Чужие и
+  неопознанные процессы не останавливать, не завершать все `node.exe` подряд.
 - Не запускать серверы в отделённых фоновых процессах (`Start-Process`, `start`, `nohup` и аналоги),
   которые переживают терминал или сессию агента. Использовать управляемую сессию инструмента и
   завершать её перед итоговым отчётом. Закрытие VS Code само по себе не считается очисткой:
-  проверять завершение своих процессов и освобождение портов. Не завершать все `node.exe` подряд.
+  проверять завершение своих процессов и освобождение портов.
 - В VS Code для проекта отключены сохранение и восстановление терминалов:
   `terminal.integrated.enablePersistentSessions: false` и
   `terminal.integrated.persistentSessionReviveProcess: "never"` в `.vscode/settings.json`. Эти
   настройки не управляют отделёнными процессами агентов и не заменяют их явное завершение.
-- Единый адрес просмотра для пользователя: `http://localhost:5190/`. Сервер должен обслуживать
-  основную рабочую папку `E:\MySource\ReactJS\piano-trainer`.
-- После завершения задачи в отдельной ветке или worktree открыть PR этой ветки в `dev`. После того
-  как пользователь его вольёт, подтянуть `dev` в основную рабочую папку (`git pull --ff-only`) и
-  проверить результат на этом сервере. Не вливать ветки в `dev` локально и не пушить `dev`; не
-  подменять просмотр другим портом.
-- Пользователь запускает `pnpm dev` из основной рабочей папки на ветке `dev` и смотрит результат по
-  адресу `http://localhost:5190/`.
+
+### Worktrees
+
+- Одна задача — один worktree на своей ветке, вне папки проекта:
+  `E:\MySource\ReactJS\pt-agents\<задача>`. Две сессии (или Claude и Codex) в одной рабочей папке
+  переключают ветки друг другу; основная папка остаётся пользователю на `dev`.
+- Не создавать worktree внутри папки проекта (`.worktrees/` и подобные): каждый несёт свой
+  `node_modules`, и VS Code следит за ними и индексирует их. `.claude/worktrees/` создаёт сам
+  харнесс Claude (изолированные субагенты); эти папки исключены из watcher, поиска и git-скана в
+  `.vscode/settings.json`.
+- Worktree влитой или брошенной задачи удалять (`git worktree remove <путь>`), когда в нём нет
+  незакоммиченных и незапушенных изменений.
+
+### Путь к просмотру
+
+- После завершения задачи открыть PR её ветки в `dev`. После того как пользователь его вольёт,
+  подтянуть `dev` в основную рабочую папку (`git pull --ff-only`), если пользователь об этом
+  попросил, и проверить результат на `5190`. Не вливать ветки в `dev` локально и не пушить `dev`.
+- Пока PR задачи не влит, результат показывается на стенде задачи (`5191–5199`) с явным указанием
+  ветки и адреса. Итоговая проверка — на `5190` после слияния.
 - Перед отчётом проверить, что сервер отдаёт актуальные файлы. Если горячее обновление сохраняет
   старое состояние урока, явно сообщить о необходимости перезагрузки страницы.
-- PR в `dev` — путь задачи к просмотру, PR из `dev` в `main` — к релизу; пока PR задачи не влит,
-  показывать результат можно только из её ветки, предупредив пользователя. Интеграция должна
-  сохранять чужие изменения; если она заблокирована, сообщить конкретную причину, не утверждая, что
-  правки уже видны.
+- PR в `dev` — путь задачи к просмотру, PR из `dev` в `main` — к релизу. Интеграция должна сохранять
+  чужие изменения; если она заблокирована, сообщить конкретную причину, не утверждая, что правки уже
+  видны.
 
 ## Delegation
 

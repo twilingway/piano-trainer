@@ -1,0 +1,4945 @@
+{
+ "song": "seven-nation-army",
+ "units": {
+  "x": "white keys from the anchor key's centre",
+  "depth": "cm from the white front edge",
+  "yaw": "deg on the key plane, + = fingers to the treble"
+ },
+ "entries": [
+  {
+   "id": "L:3@28:visible",
+   "hand": "left",
+   "anchorPitch": 28,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.163,
+    "knuckleDepthCm": -6.66,
+    "wristDx": 1.606,
+    "wristDepthCm": -13.14,
+    "yawDeg": -31.2
+   },
+   "count": 13,
+   "placementFrom": 13,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -15.0,
+      "rel": 1.054
+     },
+     "3": {
+      "abd": 6.9,
+      "rel": 1.709
+     },
+     "4": {
+      "abd": 0.0,
+      "rel": 1.221
+     },
+     "5": {
+      "abd": 3.0,
+      "rel": 0.0
+     }
+    },
+    "thumb": {
+     "cmc_radial": 21.9,
+     "cmc_palmar": 12.3,
+     "t_mcp": 24.6,
+     "t_ip": 9.3
+    },
+    "from": 11
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0018",
+     "onset-0019",
+     "onset-0021",
+     "onset-0024",
+     "onset-0026",
+     "onset-0028",
+     "onset-0029",
+     "onset-0031",
+     "onset-0032",
+     "onset-0034",
+     "onset-0036",
+     "onset-0039",
+     "onset-0041"
+    ]
+   }
+  },
+  {
+   "id": "L:1@35:pressing",
+   "hand": "left",
+   "anchorPitch": 35,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": -4.199,
+    "knuckleDepthCm": -4.02,
+    "wristDx": -2.419,
+    "wristDepthCm": -12.02,
+    "yawDeg": -22.9
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 6.4,
+      "rel": 0.917
+     },
+     "3": {
+      "abd": 5.6,
+      "rel": 1.425
+     },
+     "4": {
+      "abd": -21.7,
+      "rel": 1.085
+     },
+     "5": {
+      "abd": -39.8,
+      "rel": 0.574
+     }
+    },
+    "thumb": {
+     "cmc_radial": 46.2,
+     "cmc_palmar": 37.2,
+     "t_mcp": 6.4,
+     "t_ip": 0.6
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0045"
+    ]
+   }
+  },
+  {
+   "id": "L:5@35,1@47:pressing",
+   "hand": "left",
+   "anchorPitch": 35,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 1,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 2.2,
+    "knuckleDepthCm": -1.83,
+    "wristDx": 3.296,
+    "wristDepthCm": -9.81,
+    "yawDeg": -12.9
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 15.6,
+      "rel": 0.453
+     },
+     "3": {
+      "abd": 10.7,
+      "rel": 1.513
+     },
+     "4": {
+      "abd": -8.0,
+      "rel": 1.284
+     },
+     "5": {
+      "abd": -27.7,
+      "rel": 0.75
+     }
+    },
+    "thumb": {
+     "cmc_radial": 41.0,
+     "cmc_palmar": 21.8,
+     "t_mcp": -1.2,
+     "t_ip": 2.9
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0199"
+    ]
+   }
+  },
+  {
+   "id": "L:5@35:visible",
+   "hand": "left",
+   "anchorPitch": 35,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.007,
+    "knuckleDepthCm": -4.26,
+    "wristDx": 1.844,
+    "wristDepthCm": -11.92,
+    "yawDeg": -12.1
+   },
+   "count": 7,
+   "placementFrom": 5,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -3.8,
+      "rel": 0.892
+     },
+     "3": {
+      "abd": 0.6,
+      "rel": 1.285
+     },
+     "4": {
+      "abd": -11.0,
+      "rel": 1.046
+     },
+     "5": {
+      "abd": -1.9,
+      "rel": 0.762
+     }
+    },
+    "thumb": {
+     "cmc_radial": 32.5,
+     "cmc_palmar": -8.3,
+     "t_mcp": 23.7,
+     "t_ip": 14.4
+    },
+    "from": 7
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0060",
+     "onset-0080",
+     "onset-0096",
+     "onset-0119",
+     "onset-0140",
+     "onset-0174",
+     "onset-0177"
+    ]
+   }
+  },
+  {
+   "id": "L:3@36:visible",
+   "hand": "left",
+   "anchorPitch": 36,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.427,
+    "knuckleDepthCm": -4.7,
+    "wristDx": 0.728,
+    "wristDepthCm": -12.37,
+    "yawDeg": -15.3
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -7.7,
+      "rel": 0.915
+     },
+     "3": {
+      "abd": 2.3,
+      "rel": 1.354
+     },
+     "4": {
+      "abd": -5.8,
+      "rel": 1.072
+     },
+     "5": {
+      "abd": 0.2,
+      "rel": 0.658
+     }
+    },
+    "thumb": {
+     "cmc_radial": 28.9,
+     "cmc_palmar": -12.5,
+     "t_mcp": 30.8,
+     "t_ip": 9.5
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0077"
+    ]
+   }
+  },
+  {
+   "id": "L:4@36:visible",
+   "hand": "left",
+   "anchorPitch": 36,
+   "pressed": [
+    {
+     "finger": 4,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.078,
+    "knuckleDepthCm": -4.38,
+    "wristDx": 1.071,
+    "wristDepthCm": -11.72,
+    "yawDeg": -15.2
+   },
+   "count": 8,
+   "placementFrom": 4,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -6.5,
+      "rel": 0.932
+     },
+     "3": {
+      "abd": 1.6,
+      "rel": 1.379
+     },
+     "4": {
+      "abd": -5.6,
+      "rel": 1.076
+     },
+     "5": {
+      "abd": -1.65,
+      "rel": 0.61
+     }
+    },
+    "thumb": {
+     "cmc_radial": 29.5,
+     "cmc_palmar": -13.9,
+     "t_mcp": 27.5,
+     "t_ip": 16.2
+    },
+    "from": 8
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0057",
+     "onset-0079",
+     "onset-0093",
+     "onset-0113",
+     "onset-0118",
+     "onset-0136",
+     "onset-0163",
+     "onset-0171"
+    ]
+   }
+  },
+  {
+   "id": "L:5@36,1@48:pressing",
+   "hand": "left",
+   "anchorPitch": 36,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 1,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 2.348,
+    "knuckleDepthCm": -1.75,
+    "wristDx": 3.507,
+    "wristDepthCm": -9.92,
+    "yawDeg": -13.5
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.6,
+      "rel": 0.277
+     },
+     "3": {
+      "abd": 3.2,
+      "rel": 1.693
+     },
+     "4": {
+      "abd": -14.9,
+      "rel": 1.334
+     },
+     "5": {
+      "abd": -36.6,
+      "rel": 0.697
+     }
+    },
+    "thumb": {
+     "cmc_radial": 38.0,
+     "cmc_palmar": 20.5,
+     "t_mcp": 3.6,
+     "t_ip": 2.6
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0192"
+    ]
+   }
+  },
+  {
+   "id": "L:3@38:visible",
+   "hand": "left",
+   "anchorPitch": 38,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.938,
+    "knuckleDepthCm": -3.96,
+    "wristDx": 0.292,
+    "wristDepthCm": -11.155,
+    "yawDeg": -18.05
+   },
+   "count": 9,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -9.5,
+      "rel": 0.869
+     },
+     "3": {
+      "abd": 7.7,
+      "rel": 1.441
+     },
+     "4": {
+      "abd": -0.9,
+      "rel": 1.086
+     },
+     "5": {
+      "abd": 4.7,
+      "rel": 0.599
+     }
+    },
+    "thumb": {
+     "cmc_radial": 31.5,
+     "cmc_palmar": -15.0,
+     "t_mcp": 28.5,
+     "t_ip": 17.4
+    },
+    "from": 9
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0056",
+     "onset-0074",
+     "onset-0078",
+     "onset-0092",
+     "onset-0111",
+     "onset-0116",
+     "onset-0135",
+     "onset-0160",
+     "onset-0167"
+    ]
+   }
+  },
+  {
+   "id": "L:5@38,1@50:pressing",
+   "hand": "left",
+   "anchorPitch": 38,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 1,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 2.431,
+    "knuckleDepthCm": -1.89,
+    "wristDx": 3.51,
+    "wristDepthCm": -9.875,
+    "yawDeg": -12.85
+   },
+   "count": 2,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.75,
+      "rel": 1.137
+     },
+     "3": {
+      "abd": 6.45,
+      "rel": 1.327
+     },
+     "4": {
+      "abd": -9.75,
+      "rel": 0.644
+     },
+     "5": {
+      "abd": -29.15,
+      "rel": 0.892
+     }
+    },
+    "thumb": {
+     "cmc_radial": 40.9,
+     "cmc_palmar": 16.5,
+     "t_mcp": 6.9,
+     "t_ip": 5.8
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0190",
+     "onset-0212"
+    ]
+   }
+  },
+  {
+   "id": "L:2@40:visible",
+   "hand": "left",
+   "anchorPitch": 40,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -2.162,
+    "knuckleDepthCm": -3.8,
+    "wristDx": -1.101,
+    "wristDepthCm": -11.29,
+    "yawDeg": -13.2
+   },
+   "count": 17,
+   "placementFrom": 13,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 9.1,
+      "rel": 1.116
+     },
+     "3": {
+      "abd": 13.8,
+      "rel": 1.221
+     },
+     "4": {
+      "abd": 0.5,
+      "rel": 1.085
+     },
+     "5": {
+      "abd": -0.0,
+      "rel": 0.659
+     }
+    },
+    "thumb": {
+     "cmc_radial": 27.6,
+     "cmc_palmar": -11.7,
+     "t_mcp": 21.2,
+     "t_ip": 15.5
+    },
+    "from": 17
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0049",
+     "onset-0053",
+     "onset-0055",
+     "onset-0065",
+     "onset-0069",
+     "onset-0072",
+     "onset-0085",
+     "onset-0089",
+     "onset-0091",
+     "onset-0101",
+     "onset-0106",
+     "onset-0110",
+     "onset-0123",
+     "onset-0133",
+     "onset-0144",
+     "onset-0149",
+     "onset-0156"
+    ]
+   }
+  },
+  {
+   "id": "L:5@40,1@52:pressing",
+   "hand": "left",
+   "anchorPitch": 40,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 1,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 2.482,
+    "knuckleDepthCm": -2.21,
+    "wristDx": 3.614,
+    "wristDepthCm": -10.135,
+    "yawDeg": -13.1
+   },
+   "count": 6,
+   "placementFrom": 6,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 16.0,
+      "rel": 1.378
+     },
+     "3": {
+      "abd": 7.3,
+      "rel": 1.726
+     },
+     "4": {
+      "abd": -10.4,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": -27.4,
+      "rel": 0.896
+     }
+    },
+    "thumb": {
+     "cmc_radial": 41.5,
+     "cmc_palmar": 13.8,
+     "t_mcp": 8.7,
+     "t_ip": 4.3
+    },
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0180",
+     "onset-0184",
+     "onset-0188",
+     "onset-0205",
+     "onset-0206",
+     "onset-0210"
+    ]
+   }
+  },
+  {
+   "id": "L:1@43:pressing",
+   "hand": "left",
+   "anchorPitch": 43,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": -3.836,
+    "knuckleDepthCm": -3.14,
+    "wristDx": -2.701,
+    "wristDepthCm": -10.82,
+    "yawDeg": -14.0
+   },
+   "count": 6,
+   "placementFrom": 5,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 4.3,
+      "rel": 0.899
+     },
+     "3": {
+      "abd": 14.75,
+      "rel": 1.268
+     },
+     "4": {
+      "abd": -15.6,
+      "rel": 1.095
+     },
+     "5": {
+      "abd": -37.35,
+      "rel": 0.752
+     }
+    },
+    "thumb": {
+     "cmc_radial": 39.0,
+     "cmc_palmar": 43.6,
+     "t_mcp": 10.2,
+     "t_ip": 11.8
+    },
+    "from": 6
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0054",
+     "onset-0071",
+     "onset-0090",
+     "onset-0108",
+     "onset-0130",
+     "onset-0152"
+    ]
+   }
+  },
+  {
+   "id": "L:5@43,1@55:pressing",
+   "hand": "left",
+   "anchorPitch": 43,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 1,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 2.482,
+    "knuckleDepthCm": -1.77,
+    "wristDx": 3.483,
+    "wristDepthCm": -9.9,
+    "yawDeg": -11.3
+   },
+   "count": 2,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 14.15,
+      "rel": 0.95
+     },
+     "3": {
+      "abd": 5.75,
+      "rel": 1.917
+     },
+     "4": {
+      "abd": -12.2,
+      "rel": 0.642
+     },
+     "5": {
+      "abd": -34.95,
+      "rel": 0.491
+     }
+    },
+    "thumb": {
+     "cmc_radial": 42.2,
+     "cmc_palmar": 15.4,
+     "t_mcp": 6.7,
+     "t_ip": 7.8
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0186",
+     "onset-0208"
+    ]
+   }
+  },
+  {
+   "id": "L:1@47:pressing",
+   "hand": "left",
+   "anchorPitch": 47,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": -4.481,
+    "knuckleDepthCm": -2.795,
+    "wristDx": -3.241,
+    "wristDepthCm": -10.505,
+    "yawDeg": -15.85
+   },
+   "count": 2,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.5,
+      "rel": 1.024
+     },
+     "3": {
+      "abd": 9.55,
+      "rel": 1.256
+     },
+     "4": {
+      "abd": -4.15,
+      "rel": 1.209
+     },
+     "5": {
+      "abd": -19.85,
+      "rel": 0.512
+     }
+    },
+    "thumb": {
+     "cmc_radial": 38.2,
+     "cmc_palmar": 19.1,
+     "t_mcp": 2.3,
+     "t_ip": 1.3
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0176",
+     "onset-0178"
+    ]
+   }
+  },
+  {
+   "id": "R:2@35:tucked",
+   "hand": "right",
+   "anchorPitch": 35,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "tucked",
+   "placement": {
+    "knuckleDx": 2.207,
+    "knuckleDepthCm": 1.34,
+    "wristDx": 4.489,
+    "wristDepthCm": -4.71,
+    "yawDeg": -48.5
+   },
+   "count": 3,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 12.6,
+      "rel": 0.859
+     },
+     "3": {
+      "abd": -0.5,
+      "rel": 1.263
+     },
+     "4": {
+      "abd": -11.0,
+      "rel": 1.038
+     },
+     "5": {
+      "abd": -38.4,
+      "rel": 0.798
+     }
+    },
+    "thumb": null,
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0007",
+     "onset-0016",
+     "onset-0030"
+    ]
+   }
+  },
+  {
+   "id": "R:1@36:pressing",
+   "hand": "right",
+   "anchorPitch": 36,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 2.154,
+    "knuckleDepthCm": 2.6,
+    "wristDx": 4.126,
+    "wristDepthCm": -4.24,
+    "yawDeg": -39.0
+   },
+   "count": 6,
+   "placementFrom": 5,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 16.95,
+      "rel": 0.936
+     },
+     "3": {
+      "abd": 0.5,
+      "rel": 1.243
+     },
+     "4": {
+      "abd": -6.6,
+      "rel": 1.067
+     },
+     "5": {
+      "abd": -41.65,
+      "rel": 0.747
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.6,
+     "cmc_palmar": 42.0,
+     "t_mcp": 15.7,
+     "t_ip": 11.4
+    },
+    "from": 6
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0006",
+     "onset-0013",
+     "onset-0015",
+     "onset-0027",
+     "onset-0042",
+     "onset-0044"
+    ]
+   }
+  },
+  {
+   "id": "R:2@38:tucked",
+   "hand": "right",
+   "anchorPitch": 38,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "tucked",
+   "placement": {
+    "knuckleDx": 1.559,
+    "knuckleDepthCm": 1.3,
+    "wristDx": 3.534,
+    "wristDepthCm": -4.85,
+    "yawDeg": -44.0
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -10.0,
+      "rel": 0.924
+     },
+     "3": {
+      "abd": -10.6,
+      "rel": 1.311
+     },
+     "4": {
+      "abd": -11.1,
+      "rel": 1.034
+     },
+     "5": {
+      "abd": -21.3,
+      "rel": 0.731
+     }
+    },
+    "thumb": null,
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0005"
+    ]
+   }
+  },
+  {
+   "id": "R:2@38:visible",
+   "hand": "right",
+   "anchorPitch": 38,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.607,
+    "knuckleDepthCm": 1.755,
+    "wristDx": 3.585,
+    "wristDepthCm": -5.14,
+    "yawDeg": -41.15
+   },
+   "count": 5,
+   "placementFrom": 4,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.6,
+      "rel": 0.938
+     },
+     "3": {
+      "abd": 1.6,
+      "rel": 1.247
+     },
+     "4": {
+      "abd": -5.9,
+      "rel": 1.073
+     },
+     "5": {
+      "abd": -28.9,
+      "rel": 0.747
+     }
+    },
+    "thumb": {
+     "cmc_radial": 24.2,
+     "cmc_palmar": 30.6,
+     "t_mcp": 21.9,
+     "t_ip": 16.8
+    },
+    "from": 5
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0012",
+     "onset-0014",
+     "onset-0025",
+     "onset-0040",
+     "onset-0043"
+    ]
+   }
+  },
+  {
+   "id": "R:3@40:tucked",
+   "hand": "right",
+   "anchorPitch": 40,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "tucked",
+   "placement": {
+    "knuckleDx": 1.464,
+    "knuckleDepthCm": -0.96,
+    "wristDx": 3.614,
+    "wristDepthCm": -7.075,
+    "yawDeg": -48.1
+   },
+   "count": 12,
+   "placementFrom": 12,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 0.8,
+      "rel": 0.821
+     },
+     "3": {
+      "abd": -8.45,
+      "rel": 1.278
+     },
+     "4": {
+      "abd": -10.5,
+      "rel": 1.089
+     },
+     "5": {
+      "abd": -20.9,
+      "rel": 0.806
+     }
+    },
+    "thumb": null,
+    "from": 12
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0001",
+     "onset-0002",
+     "onset-0004",
+     "onset-0008",
+     "onset-0009",
+     "onset-0011",
+     "onset-0017",
+     "onset-0020",
+     "onset-0023",
+     "onset-0033",
+     "onset-0035",
+     "onset-0038"
+    ]
+   }
+  },
+  {
+   "id": "R:5@43:tucked",
+   "hand": "right",
+   "anchorPitch": 43,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "tucked",
+   "placement": {
+    "knuckleDx": -0.767,
+    "knuckleDepthCm": -1.815,
+    "wristDx": 1.258,
+    "wristDepthCm": -7.785,
+    "yawDeg": -45.25
+   },
+   "count": 4,
+   "placementFrom": 4,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -2.4,
+      "rel": 0.802
+     },
+     "3": {
+      "abd": -16.8,
+      "rel": 1.228
+     },
+     "4": {
+      "abd": -16.1,
+      "rel": 1.116
+     },
+     "5": {
+      "abd": -41.5,
+      "rel": 0.837
+     }
+    },
+    "thumb": null,
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0003",
+     "onset-0010",
+     "onset-0022",
+     "onset-0037"
+    ]
+   }
+  },
+  {
+   "id": "R:1@55,2@59,5@64:pressing",
+   "hand": "right",
+   "anchorPitch": 55,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 4,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 9,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.638,
+    "knuckleDepthCm": 0.19,
+    "wristDx": 3.817,
+    "wristDepthCm": -7.93,
+    "yawDeg": -8.6
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 8.6,
+      "rel": 0.88
+     },
+     "3": {
+      "abd": 0.8,
+      "rel": 1.26
+     },
+     "4": {
+      "abd": -5.2,
+      "rel": 1.085
+     },
+     "5": {
+      "abd": -17.7,
+      "rel": 0.775
+     }
+    },
+    "thumb": {
+     "cmc_radial": 29.1,
+     "cmc_palmar": 27.5,
+     "t_mcp": 9.4,
+     "t_ip": 13.0
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0088"
+    ]
+   }
+  },
+  {
+   "id": "R:1@55,2@60,4@64:pressing",
+   "hand": "right",
+   "anchorPitch": 55,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 5,
+     "black": false
+    },
+    {
+     "finger": 4,
+     "semitones": 9,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.404,
+    "knuckleDepthCm": -0.07,
+    "wristDx": 4.255,
+    "wristDepthCm": -8.57,
+    "yawDeg": -3.1
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 6.0,
+      "rel": 0.857
+     },
+     "3": {
+      "abd": -2.0,
+      "rel": 1.289
+     },
+     "4": {
+      "abd": -7.5,
+      "rel": 1.1
+     },
+     "5": {
+      "abd": -18.2,
+      "rel": 0.755
+     }
+    },
+    "thumb": {
+     "cmc_radial": 51.5,
+     "cmc_palmar": 32.7,
+     "t_mcp": 14.7,
+     "t_ip": 8.1
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0076"
+    ]
+   }
+  },
+  {
+   "id": "R:1@59,2@62,4@64:pressing",
+   "hand": "right",
+   "anchorPitch": 59,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 3,
+     "black": false
+    },
+    {
+     "finger": 4,
+     "semitones": 5,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.289,
+    "knuckleDepthCm": -1.19,
+    "wristDx": 3.444,
+    "wristDepthCm": -9.11,
+    "yawDeg": -7.9
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 5.5,
+      "rel": 0.914
+     },
+     "3": {
+      "abd": 1.3,
+      "rel": 1.283
+     },
+     "4": {
+      "abd": 0.9,
+      "rel": 1.084
+     },
+     "5": {
+      "abd": -2.3,
+      "rel": 0.719
+     }
+    },
+    "thumb": {
+     "cmc_radial": 35.7,
+     "cmc_palmar": 44.4,
+     "t_mcp": 18.0,
+     "t_ip": 21.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0073"
+    ]
+   }
+  },
+  {
+   "id": "R:1@59,3@63:pressing",
+   "hand": "right",
+   "anchorPitch": 59,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 4,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.122,
+    "knuckleDepthCm": 0.24,
+    "wristDx": 3.296,
+    "wristDepthCm": -8.03,
+    "yawDeg": -8.1
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 9.0,
+      "rel": 0.849
+     },
+     "3": {
+      "abd": -6.4,
+      "rel": 1.222
+     },
+     "4": {
+      "abd": -6.8,
+      "rel": 1.14
+     },
+     "5": {
+      "abd": -12.2,
+      "rel": 0.789
+     }
+    },
+    "thumb": {
+     "cmc_radial": 31.1,
+     "cmc_palmar": 44.7,
+     "t_mcp": 38.6,
+     "t_ip": 8.9
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0095"
+    ]
+   }
+  },
+  {
+   "id": "R:1@59,3@64:pressing",
+   "hand": "right",
+   "anchorPitch": 59,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 5,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.744,
+    "knuckleDepthCm": -0.66,
+    "wristDx": 3.752,
+    "wristDepthCm": -8.81,
+    "yawDeg": -6.5
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0052"
+    ]
+   }
+  },
+  {
+   "id": "R:1@59,4@64:pressing",
+   "hand": "right",
+   "anchorPitch": 59,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 4,
+     "semitones": 5,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.362,
+    "knuckleDepthCm": -1.165,
+    "wristDx": 3.364,
+    "wristDepthCm": -8.805,
+    "yawDeg": -4.8
+   },
+   "count": 4,
+   "placementFrom": 4,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -2.3,
+      "rel": 0.898
+     },
+     "3": {
+      "abd": -8.9,
+      "rel": 1.222
+     },
+     "4": {
+      "abd": -6.0,
+      "rel": 1.142
+     },
+     "5": {
+      "abd": -5.1,
+      "rel": 0.774
+     }
+    },
+    "thumb": {
+     "cmc_radial": 30.1,
+     "cmc_palmar": 43.3,
+     "t_mcp": 14.7,
+     "t_ip": 15.0
+    },
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0068",
+     "onset-0097",
+     "onset-0098",
+     "onset-0099"
+    ]
+   }
+  },
+  {
+   "id": "R:2@59,4@64:visible",
+   "hand": "right",
+   "anchorPitch": 59,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 4,
+     "semitones": 5,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.861,
+    "knuckleDepthCm": -2.78,
+    "wristDx": 1.861,
+    "wristDepthCm": -10.39,
+    "yawDeg": -5.65
+   },
+   "count": 2,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 8.2,
+      "rel": 1.254
+     },
+     "3": {
+      "abd": -5.05,
+      "rel": 1.372
+     },
+     "4": {
+      "abd": -11.5,
+      "rel": 0.973
+     },
+     "5": {
+      "abd": -24.5,
+      "rel": 0.403
+     }
+    },
+    "thumb": {
+     "cmc_radial": 26.5,
+     "cmc_palmar": -3.9,
+     "t_mcp": 16.6,
+     "t_ip": -3.5
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0082",
+     "onset-0083"
+    ]
+   }
+  },
+  {
+   "id": "R:2@59,5@64:visible",
+   "hand": "right",
+   "anchorPitch": 59,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 5,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.737,
+    "knuckleDepthCm": 0.73,
+    "wristDx": 2.246,
+    "wristDepthCm": -8.03,
+    "yawDeg": -12.9
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0087"
+    ]
+   }
+  },
+  {
+   "id": "R:2@62:visible",
+   "hand": "right",
+   "anchorPitch": 62,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.974,
+    "knuckleDepthCm": -1.07,
+    "wristDx": 2.727,
+    "wristDepthCm": -8.72,
+    "yawDeg": -18.3
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -7.2,
+      "rel": 0.927
+     },
+     "3": {
+      "abd": -0.8,
+      "rel": 1.212
+     },
+     "4": {
+      "abd": 4.6,
+      "rel": 1.097
+     },
+     "5": {
+      "abd": 11.4,
+      "rel": 0.763
+     }
+    },
+    "thumb": {
+     "cmc_radial": 15.3,
+     "cmc_palmar": 18.3,
+     "t_mcp": 30.2,
+     "t_ip": 25.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0063"
+    ]
+   }
+  },
+  {
+   "id": "R:1@63,2@67,3@71,5@75:pressing",
+   "hand": "right",
+   "anchorPitch": 63,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 2,
+     "semitones": 4,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 8,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.337,
+    "knuckleDepthCm": 5.36,
+    "wristDx": 3.877,
+    "wristDepthCm": -2.1,
+    "yawDeg": 2.2
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0141"
+    ]
+   }
+  },
+  {
+   "id": "R:1@63,2@67,5@75:pressing",
+   "hand": "right",
+   "anchorPitch": 63,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 2,
+     "semitones": 4,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.306,
+    "knuckleDepthCm": 5.54,
+    "wristDx": 3.949,
+    "wristDepthCm": -1.95,
+    "yawDeg": 0.6
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0142"
+    ]
+   }
+  },
+  {
+   "id": "R:1@63,3@71,5@75:pressing",
+   "hand": "right",
+   "anchorPitch": 63,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 3,
+     "semitones": 8,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 5.052,
+    "knuckleDepthCm": 6.72,
+    "wristDx": 4.171,
+    "wristDepthCm": -2.24,
+    "yawDeg": 8.4
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 7.1,
+      "rel": 0.96
+     },
+     "3": {
+      "abd": -3.4,
+      "rel": 1.394
+     },
+     "4": {
+      "abd": -5.4,
+      "rel": 1.176
+     },
+     "5": {
+      "abd": -33.6,
+      "rel": 0.47
+     }
+    },
+    "thumb": {
+     "cmc_radial": 50.1,
+     "cmc_palmar": 26.7,
+     "t_mcp": 10.8,
+     "t_ip": -12.3
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0120"
+    ]
+   }
+  },
+  {
+   "id": "R:2@63,4@67:visible",
+   "hand": "right",
+   "anchorPitch": 63,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 4,
+     "semitones": 4,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 2.046,
+    "knuckleDepthCm": -1.03,
+    "wristDx": 2.006,
+    "wristDepthCm": -9.4,
+    "yawDeg": -4.8
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0102"
+    ]
+   }
+  },
+  {
+   "id": "R:2@63:visible",
+   "hand": "right",
+   "anchorPitch": 63,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": true
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.413,
+    "knuckleDepthCm": -0.04,
+    "wristDx": 1.569,
+    "wristDepthCm": -7.86,
+    "yawDeg": -8.5
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 0.7,
+      "rel": 0.722
+     },
+     "3": {
+      "abd": 4.2,
+      "rel": 1.237
+     },
+     "4": {
+      "abd": 2.9,
+      "rel": 1.223
+     },
+     "5": {
+      "abd": 0.8,
+      "rel": 0.817
+     }
+    },
+    "thumb": {
+     "cmc_radial": 25.2,
+     "cmc_palmar": -9.6,
+     "t_mcp": 26.5,
+     "t_ip": 14.3
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0058"
+    ]
+   }
+  },
+  {
+   "id": "R:3@63,4@64:visible",
+   "hand": "right",
+   "anchorPitch": 63,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 4,
+     "semitones": 1,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 0.719,
+    "knuckleDepthCm": 0.25,
+    "wristDx": 0.685,
+    "wristDepthCm": -7.54,
+    "yawDeg": -4.1
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -2.2,
+      "rel": 0.835
+     },
+     "3": {
+      "abd": -12.6,
+      "rel": 1.229
+     },
+     "4": {
+      "abd": -7.9,
+      "rel": 1.15
+     },
+     "5": {
+      "abd": -8.1,
+      "rel": 0.786
+     }
+    },
+    "thumb": {
+     "cmc_radial": 41.0,
+     "cmc_palmar": 28.9,
+     "t_mcp": 28.6,
+     "t_ip": 14.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0070"
+    ]
+   }
+  },
+  {
+   "id": "R:3@63:visible",
+   "hand": "right",
+   "anchorPitch": 63,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": true
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 0.844,
+    "knuckleDepthCm": -0.37,
+    "wristDx": 1.218,
+    "wristDepthCm": -7.95,
+    "yawDeg": -11.4
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 7.7,
+      "rel": 0.857
+     },
+     "3": {
+      "abd": -1.1,
+      "rel": 0.92
+     },
+     "4": {
+      "abd": 1.3,
+      "rel": 1.323
+     },
+     "5": {
+      "abd": 5.8,
+      "rel": 0.9
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.3,
+     "cmc_palmar": -0.5,
+     "t_mcp": 30.8,
+     "t_ip": 16.8
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0100"
+    ]
+   }
+  },
+  {
+   "id": "R:1@64,2@67,3@71,5@76:pressing",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 3,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 7,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.168,
+    "knuckleDepthCm": -0.64,
+    "wristDx": 3.828,
+    "wristDepthCm": -7.84,
+    "yawDeg": 0.1
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0143"
+    ]
+   }
+  },
+  {
+   "id": "R:1@64,2@67,4@72,5@76:pressing",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 3,
+     "black": false
+    },
+    {
+     "finger": 4,
+     "semitones": 8,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.236,
+    "knuckleDepthCm": -0.91,
+    "wristDx": 4.152,
+    "wristDepthCm": -8.96,
+    "yawDeg": -3.9
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0134"
+    ]
+   }
+  },
+  {
+   "id": "R:1@64,2@67,5@76:pressing",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 3,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.493,
+    "knuckleDepthCm": -1.04,
+    "wristDx": 4.136,
+    "wristDepthCm": -9.49,
+    "yawDeg": 0.0
+   },
+   "count": 3,
+   "placementFrom": 3,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 27.9,
+      "rel": 1.915
+     },
+     "3": {
+      "abd": 1.0,
+      "rel": 0.87
+     },
+     "4": {
+      "abd": -10.3,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": -39.6,
+      "rel": 1.216
+     }
+    },
+    "thumb": {
+     "cmc_radial": 33.0,
+     "cmc_palmar": 22.3,
+     "t_mcp": 3.6,
+     "t_ip": 2.2
+    },
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0137",
+     "onset-0138",
+     "onset-0139"
+    ]
+   }
+  },
+  {
+   "id": "R:1@64,2@70,5@76:pressing",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 6,
+     "black": true
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.911,
+    "knuckleDepthCm": 0.63,
+    "wristDx": 4.314,
+    "wristDepthCm": -7.62,
+    "yawDeg": 4.3
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.4,
+      "rel": 0.854
+     },
+     "3": {
+      "abd": 3.8,
+      "rel": 1.004
+     },
+     "4": {
+      "abd": -4.6,
+      "rel": 1.165
+     },
+     "5": {
+      "abd": -7.1,
+      "rel": 0.976
+     }
+    },
+    "thumb": {
+     "cmc_radial": 49.8,
+     "cmc_palmar": 17.5,
+     "t_mcp": 12.7,
+     "t_ip": 10.9
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0105"
+    ]
+   }
+  },
+  {
+   "id": "R:1@64,3@71:pressing",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 7,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.941,
+    "knuckleDepthCm": -2.32,
+    "wristDx": 3.273,
+    "wristDepthCm": -10.14,
+    "yawDeg": 5.9
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 10.5,
+      "rel": 0.854
+     },
+     "3": {
+      "abd": -6.4,
+      "rel": 1.315
+     },
+     "4": {
+      "abd": -7.5,
+      "rel": 1.117
+     },
+     "5": {
+      "abd": -39.4,
+      "rel": 0.714
+     }
+    },
+    "thumb": {
+     "cmc_radial": 44.9,
+     "cmc_palmar": 34.9,
+     "t_mcp": 10.8,
+     "t_ip": 12.1
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0103"
+    ]
+   }
+  },
+  {
+   "id": "R:1@64,5@76:pressing",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.492,
+    "knuckleDepthCm": -0.755,
+    "wristDx": 3.998,
+    "wristDepthCm": -9.0,
+    "yawDeg": 3.35
+   },
+   "count": 3,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 24.8,
+      "rel": 0.0
+     },
+     "3": {
+      "abd": 0.9,
+      "rel": 0.903
+     },
+     "4": {
+      "abd": -10.1,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": -45.0,
+      "rel": 3.064
+     }
+    },
+    "thumb": {
+     "cmc_radial": 40.1,
+     "cmc_palmar": 30.9,
+     "t_mcp": 3.9,
+     "t_ip": 10.4
+    },
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0121",
+     "onset-0122",
+     "onset-0204"
+    ]
+   }
+  },
+  {
+   "id": "R:1@64:pressing",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.547,
+    "knuckleDepthCm": -0.75,
+    "wristDx": 4.115,
+    "wristDepthCm": -8.58,
+    "yawDeg": 2.2
+   },
+   "count": 2,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 8.1,
+      "rel": 1.466
+     },
+     "3": {
+      "abd": 0.7,
+      "rel": 0.88
+     },
+     "4": {
+      "abd": -13.4,
+      "rel": 0.756
+     },
+     "5": {
+      "abd": -34.0,
+      "rel": 0.899
+     }
+    },
+    "thumb": {
+     "cmc_radial": -1.4,
+     "cmc_palmar": 27.0,
+     "t_mcp": 24.8,
+     "t_ip": 13.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0086",
+     "onset-0145"
+    ]
+   }
+  },
+  {
+   "id": "R:3@64:visible",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.287,
+    "knuckleDepthCm": -3.4,
+    "wristDx": 1.555,
+    "wristDepthCm": -11.205,
+    "yawDeg": -11.25
+   },
+   "count": 4,
+   "placementFrom": 4,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 11.6,
+      "rel": 0.868
+     },
+     "3": {
+      "abd": 8.4,
+      "rel": 1.37
+     },
+     "4": {
+      "abd": 9.2,
+      "rel": 1.084
+     },
+     "5": {
+      "abd": 5.4,
+      "rel": 0.694
+     }
+    },
+    "thumb": {
+     "cmc_radial": 27.4,
+     "cmc_palmar": -12.5,
+     "t_mcp": 23.3,
+     "t_ip": 11.5
+    },
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0046",
+     "onset-0047",
+     "onset-0048",
+     "onset-0051"
+    ]
+   }
+  },
+  {
+   "id": "R:4@64:visible",
+   "hand": "right",
+   "anchorPitch": 64,
+   "pressed": [
+    {
+     "finger": 4,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 0.564,
+    "knuckleDepthCm": -1.98,
+    "wristDx": 0.963,
+    "wristDepthCm": -9.45,
+    "yawDeg": -10.1
+   },
+   "count": 8,
+   "placementFrom": 7,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 3.3,
+      "rel": 0.909
+     },
+     "3": {
+      "abd": -3.3,
+      "rel": 1.26
+     },
+     "4": {
+      "abd": 0.9,
+      "rel": 1.099
+     },
+     "5": {
+      "abd": 5.7,
+      "rel": 0.729
+     }
+    },
+    "thumb": {
+     "cmc_radial": 22.7,
+     "cmc_palmar": 21.2,
+     "t_mcp": 29.5,
+     "t_ip": 12.2
+    },
+    "from": 7
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0059",
+     "onset-0061",
+     "onset-0062",
+     "onset-0064",
+     "onset-0066",
+     "onset-0067",
+     "onset-0075",
+     "onset-0081"
+    ]
+   }
+  },
+  {
+   "id": "R:1@66,4@75:pressing",
+   "hand": "right",
+   "anchorPitch": 66,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 4,
+     "semitones": 9,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.175,
+    "knuckleDepthCm": 5.41,
+    "wristDx": 3.424,
+    "wristDepthCm": -2.75,
+    "yawDeg": 7.1
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 23.6,
+      "rel": 0.929
+     },
+     "3": {
+      "abd": -13.2,
+      "rel": 1.328
+     },
+     "4": {
+      "abd": -12.9,
+      "rel": 1.113
+     },
+     "5": {
+      "abd": -45.0,
+      "rel": 0.63
+     }
+    },
+    "thumb": {
+     "cmc_radial": 45.7,
+     "cmc_palmar": 26.8,
+     "t_mcp": 12.1,
+     "t_ip": -8.6
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0132"
+    ]
+   }
+  },
+  {
+   "id": "R:1@67,2@71,3@76:pressing",
+   "hand": "right",
+   "anchorPitch": 67,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 4,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 9,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.264,
+    "knuckleDepthCm": -3.08,
+    "wristDx": 3.708,
+    "wristDepthCm": -11.02,
+    "yawDeg": 3.7
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0129"
+    ]
+   }
+  },
+  {
+   "id": "R:1@67,2@71,4@75,5@76:pressing",
+   "hand": "right",
+   "anchorPitch": 67,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 4,
+     "black": false
+    },
+    {
+     "finger": 4,
+     "semitones": 8,
+     "black": true
+    },
+    {
+     "finger": 5,
+     "semitones": 9,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.092,
+    "knuckleDepthCm": 0.46,
+    "wristDx": 3.516,
+    "wristDepthCm": -8.0,
+    "yawDeg": 4.6
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 11.2,
+      "rel": 0.908
+     },
+     "3": {
+      "abd": -5.9,
+      "rel": 1.242
+     },
+     "4": {
+      "abd": -6.5,
+      "rel": 1.069
+     },
+     "5": {
+      "abd": -9.8,
+      "rel": 0.781
+     }
+    },
+    "thumb": {
+     "cmc_radial": 51.6,
+     "cmc_palmar": 41.3,
+     "t_mcp": 17.8,
+     "t_ip": 10.3
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0109"
+    ]
+   }
+  },
+  {
+   "id": "R:1@67,2@71,5@76:pressing",
+   "hand": "right",
+   "anchorPitch": 67,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 4,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 9,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.993,
+    "knuckleDepthCm": -0.565,
+    "wristDx": 3.295,
+    "wristDepthCm": -8.915,
+    "yawDeg": 4.7
+   },
+   "count": 4,
+   "placementFrom": 4,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 8.05,
+      "rel": 0.912
+     },
+     "3": {
+      "abd": -0.35,
+      "rel": 1.28
+     },
+     "4": {
+      "abd": -5.5,
+      "rel": 1.079
+     },
+     "5": {
+      "abd": -23.2,
+      "rel": 0.739
+     }
+    },
+    "thumb": {
+     "cmc_radial": 51.3,
+     "cmc_palmar": 39.6,
+     "t_mcp": 19.1,
+     "t_ip": 12.4
+    },
+    "from": 4
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0104",
+     "onset-0107",
+     "onset-0114",
+     "onset-0117"
+    ]
+   }
+  },
+  {
+   "id": "R:1@67,2@72,5@78:pressing",
+   "hand": "right",
+   "anchorPitch": 67,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 5,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 11,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.704,
+    "knuckleDepthCm": 2.44,
+    "wristDx": 4.556,
+    "wristDepthCm": -5.87,
+    "yawDeg": -2.3
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 0.1,
+      "rel": 1.567
+     },
+     "3": {
+      "abd": -5.0,
+      "rel": 1.349
+     },
+     "4": {
+      "abd": -3.7,
+      "rel": 0.421
+     },
+     "5": {
+      "abd": -22.1,
+      "rel": 0.664
+     }
+    },
+    "thumb": {
+     "cmc_radial": 45.8,
+     "cmc_palmar": 27.6,
+     "t_mcp": 10.7,
+     "t_ip": 9.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0115"
+    ]
+   }
+  },
+  {
+   "id": "R:1@67,4@75:pressing",
+   "hand": "right",
+   "anchorPitch": 67,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 4,
+     "semitones": 8,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.183,
+    "knuckleDepthCm": 1.04,
+    "wristDx": 3.752,
+    "wristDepthCm": -7.59,
+    "yawDeg": 1.5
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 14.8,
+      "rel": 0.986
+     },
+     "3": {
+      "abd": 1.8,
+      "rel": 1.345
+     },
+     "4": {
+      "abd": -7.9,
+      "rel": 0.932
+     },
+     "5": {
+      "abd": -29.5,
+      "rel": 0.737
+     }
+    },
+    "thumb": {
+     "cmc_radial": 50.1,
+     "cmc_palmar": 36.6,
+     "t_mcp": 18.3,
+     "t_ip": 9.3
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0112"
+    ]
+   }
+  },
+  {
+   "id": "R:1@67:pressing",
+   "hand": "right",
+   "anchorPitch": 67,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.188,
+    "knuckleDepthCm": -3.14,
+    "wristDx": 3.06,
+    "wristDepthCm": -9.51,
+    "yawDeg": -1.8
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0148"
+    ]
+   }
+  },
+  {
+   "id": "R:5@67:visible",
+   "hand": "right",
+   "anchorPitch": 67,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.877,
+    "knuckleDepthCm": -3.88,
+    "wristDx": -0.424,
+    "wristDepthCm": -11.74,
+    "yawDeg": -13.8
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0050"
+    ]
+   }
+  },
+  {
+   "id": "R:1@71,4@81:pressing",
+   "hand": "right",
+   "anchorPitch": 71,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 4,
+     "semitones": 10,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.633,
+    "knuckleDepthCm": -1.68,
+    "wristDx": 3.898,
+    "wristDepthCm": -9.98,
+    "yawDeg": 6.85
+   },
+   "count": 2,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 26.15,
+      "rel": 1.009
+     },
+     "3": {
+      "abd": -1.1,
+      "rel": 0.845
+     },
+     "4": {
+      "abd": -14.85,
+      "rel": 1.284
+     },
+     "5": {
+      "abd": -44.05,
+      "rel": 0.861
+     }
+    },
+    "thumb": {
+     "cmc_radial": 48.0,
+     "cmc_palmar": 28.4,
+     "t_mcp": 7.7,
+     "t_ip": 6.4
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0126",
+     "onset-0127"
+    ]
+   }
+  },
+  {
+   "id": "R:1@71,5@83:pressing",
+   "hand": "right",
+   "anchorPitch": 71,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.654,
+    "knuckleDepthCm": -1.4,
+    "wristDx": 3.767,
+    "wristDepthCm": -9.43,
+    "yawDeg": 10.4
+   },
+   "count": 2,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 26.45,
+      "rel": 0.687
+     },
+     "3": {
+      "abd": 5.0,
+      "rel": 0.934
+     },
+     "4": {
+      "abd": -7.5,
+      "rel": 0.463
+     },
+     "5": {
+      "abd": -45.0,
+      "rel": 1.915
+     }
+    },
+    "thumb": {
+     "cmc_radial": 47.2,
+     "cmc_palmar": 34.9,
+     "t_mcp": 5.2,
+     "t_ip": 6.8
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0124",
+     "onset-0125"
+    ]
+   }
+  },
+  {
+   "id": "R:1@71:pressing",
+   "hand": "right",
+   "anchorPitch": 71,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.878,
+    "knuckleDepthCm": -2.2,
+    "wristDx": 2.897,
+    "wristDepthCm": -9.72,
+    "yawDeg": 12.7
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -1.4,
+      "rel": 0.929
+     },
+     "3": {
+      "abd": -16.8,
+      "rel": 1.256
+     },
+     "4": {
+      "abd": -18.0,
+      "rel": 1.068
+     },
+     "5": {
+      "abd": -17.1,
+      "rel": 0.746
+     }
+    },
+    "thumb": {
+     "cmc_radial": 50.9,
+     "cmc_palmar": 44.4,
+     "t_mcp": 14.3,
+     "t_ip": 7.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0153"
+    ]
+   }
+  },
+  {
+   "id": "R:2@71:visible",
+   "hand": "right",
+   "anchorPitch": 71,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.618,
+    "knuckleDepthCm": -5.42,
+    "wristDx": 1.517,
+    "wristDepthCm": -11.53,
+    "yawDeg": -3.7
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 5.7,
+      "rel": 2.137
+     },
+     "3": {
+      "abd": -7.5,
+      "rel": 1.863
+     },
+     "4": {
+      "abd": -14.1,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": -20.2,
+      "rel": 0.0
+     }
+    },
+    "thumb": {
+     "cmc_radial": 9.7,
+     "cmc_palmar": -15.0,
+     "t_mcp": 1.3,
+     "t_ip": -12.4
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0150"
+    ]
+   }
+  },
+  {
+   "id": "R:3@71:visible",
+   "hand": "right",
+   "anchorPitch": 71,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 0.842,
+    "knuckleDepthCm": -1.93,
+    "wristDx": 0.752,
+    "wristDepthCm": -10.29,
+    "yawDeg": -3.6
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 24.6,
+      "rel": 0.036
+     },
+     "3": {
+      "abd": 7.1,
+      "rel": 1.993
+     },
+     "4": {
+      "abd": -3.8,
+      "rel": 0.0
+     },
+     "5": {
+      "abd": -16.6,
+      "rel": 1.971
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.4,
+     "cmc_palmar": -15.0,
+     "t_mcp": 11.1,
+     "t_ip": 0.8
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0146"
+    ]
+   }
+  },
+  {
+   "id": "R:1@74,3@82,5@86:pressing",
+   "hand": "right",
+   "anchorPitch": 74,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 8,
+     "black": true
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.862,
+    "knuckleDepthCm": -1.05,
+    "wristDx": 4.311,
+    "wristDepthCm": -9.36,
+    "yawDeg": 4.3
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 20.5,
+      "rel": 0.921
+     },
+     "3": {
+      "abd": -5.8,
+      "rel": 1.256
+     },
+     "4": {
+      "abd": -14.3,
+      "rel": 1.105
+     },
+     "5": {
+      "abd": -45.0,
+      "rel": 0.718
+     }
+    },
+    "thumb": {
+     "cmc_radial": 45.2,
+     "cmc_palmar": 27.7,
+     "t_mcp": 4.1,
+     "t_ip": 4.8
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0181"
+    ]
+   }
+  },
+  {
+   "id": "R:2@74:visible",
+   "hand": "right",
+   "anchorPitch": 74,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.407,
+    "knuckleDepthCm": -2.25,
+    "wristDx": 0.861,
+    "wristDepthCm": -10.71,
+    "yawDeg": 2.6
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 10.7,
+      "rel": 0.912
+     },
+     "3": {
+      "abd": 4.2,
+      "rel": 1.314
+     },
+     "4": {
+      "abd": 0.2,
+      "rel": 1.087
+     },
+     "5": {
+      "abd": -14.4,
+      "rel": 0.687
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.6,
+     "cmc_palmar": 0.7,
+     "t_mcp": 14.1,
+     "t_ip": -1.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0213"
+    ]
+   }
+  },
+  {
+   "id": "R:1@75,2@78,3@83,5@87:pressing",
+   "hand": "right",
+   "anchorPitch": 75,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 2,
+     "semitones": 3,
+     "black": true
+    },
+    {
+     "finger": 3,
+     "semitones": 8,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.538,
+    "knuckleDepthCm": 5.17,
+    "wristDx": 4.348,
+    "wristDepthCm": -3.22,
+    "yawDeg": -2.1
+   },
+   "count": 2,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 30.0,
+      "rel": 0.614
+     },
+     "3": {
+      "abd": -3.0,
+      "rel": 1.461
+     },
+     "4": {
+      "abd": -10.4,
+      "rel": 1.321
+     },
+     "5": {
+      "abd": -34.5,
+      "rel": 0.604
+     }
+    },
+    "thumb": {
+     "cmc_radial": 24.2,
+     "cmc_palmar": 9.8,
+     "t_mcp": 2.2,
+     "t_ip": -8.6
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0175",
+     "onset-0202"
+    ]
+   }
+  },
+  {
+   "id": "R:1@75,3@83,5@87:pressing",
+   "hand": "right",
+   "anchorPitch": 75,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 3,
+     "semitones": 8,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.416,
+    "knuckleDepthCm": 5.74,
+    "wristDx": 3.81,
+    "wristDepthCm": -2.03,
+    "yawDeg": 5.2
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 11.7,
+      "rel": 1.116
+     },
+     "3": {
+      "abd": -18.9,
+      "rel": 1.418
+     },
+     "4": {
+      "abd": -21.6,
+      "rel": 1.07
+     },
+     "5": {
+      "abd": -40.4,
+      "rel": 0.396
+     }
+    },
+    "thumb": {
+     "cmc_radial": 29.8,
+     "cmc_palmar": 24.6,
+     "t_mcp": 3.9,
+     "t_ip": -2.8
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0194"
+    ]
+   }
+  },
+  {
+   "id": "R:1@75:pressing",
+   "hand": "right",
+   "anchorPitch": 75,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": true
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.653,
+    "knuckleDepthCm": 4.72,
+    "wristDx": 4.163,
+    "wristDepthCm": -3.47,
+    "yawDeg": 3.0
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 29.4,
+      "rel": 1.152
+     },
+     "3": {
+      "abd": -1.8,
+      "rel": 1.509
+     },
+     "4": {
+      "abd": -7.5,
+      "rel": 1.078
+     },
+     "5": {
+      "abd": -25.7,
+      "rel": 0.261
+     }
+    },
+    "thumb": {
+     "cmc_radial": 29.2,
+     "cmc_palmar": 18.6,
+     "t_mcp": 1.6,
+     "t_ip": -7.9
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0201"
+    ]
+   }
+  },
+  {
+   "id": "R:1@76,2@79,3@83,5@88:pressing",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 3,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 7,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.567,
+    "knuckleDepthCm": -2.29,
+    "wristDx": 4.19,
+    "wristDepthCm": -10.04,
+    "yawDeg": 1.7
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0185"
+    ]
+   }
+  },
+  {
+   "id": "R:1@76,2@82,4@85,5@88:pressing",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 6,
+     "black": true
+    },
+    {
+     "finger": 4,
+     "semitones": 9,
+     "black": true
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.916,
+    "knuckleDepthCm": 0.82,
+    "wristDx": 4.579,
+    "wristDepthCm": -7.87,
+    "yawDeg": 0.6
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 4.7,
+      "rel": 0.921
+     },
+     "3": {
+      "abd": -0.9,
+      "rel": 1.302
+     },
+     "4": {
+      "abd": -4.5,
+      "rel": 1.078
+     },
+     "5": {
+      "abd": -45.0,
+      "rel": 0.7
+     }
+    },
+    "thumb": {
+     "cmc_radial": 52.9,
+     "cmc_palmar": 34.9,
+     "t_mcp": 8.1,
+     "t_ip": 1.3
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0191"
+    ]
+   }
+  },
+  {
+   "id": "R:1@76,2@83,5@88:pressing",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 2,
+     "semitones": 7,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.889,
+    "knuckleDepthCm": -0.74,
+    "wristDx": 4.41,
+    "wristDepthCm": -9.135,
+    "yawDeg": 3.0
+   },
+   "count": 2,
+   "placementFrom": 2,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 7.9,
+      "rel": 0.935
+     },
+     "3": {
+      "abd": -4.4,
+      "rel": 1.273
+     },
+     "4": {
+      "abd": -6.6,
+      "rel": 1.071
+     },
+     "5": {
+      "abd": -34.1,
+      "rel": 0.72
+     }
+    },
+    "thumb": {
+     "cmc_radial": 44.3,
+     "cmc_palmar": 27.5,
+     "t_mcp": 5.5,
+     "t_ip": 4.5
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0179",
+     "onset-0187"
+    ]
+   }
+  },
+  {
+   "id": "R:1@76,3@83,5@88:pressing",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 3,
+     "semitones": 7,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.269,
+    "knuckleDepthCm": -1.19,
+    "wristDx": 3.964,
+    "wristDepthCm": -7.82,
+    "yawDeg": 0.9
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 13.8,
+      "rel": 1.605
+     },
+     "3": {
+      "abd": -0.3,
+      "rel": 1.118
+     },
+     "4": {
+      "abd": -2.9,
+      "rel": 0.764
+     },
+     "5": {
+      "abd": -17.9,
+      "rel": 0.513
+     }
+    },
+    "thumb": {
+     "cmc_radial": 27.8,
+     "cmc_palmar": 21.1,
+     "t_mcp": 2.9,
+     "t_ip": 11.2
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0203"
+    ]
+   }
+  },
+  {
+   "id": "R:1@76,5@88:pressing",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 12,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.64,
+    "knuckleDepthCm": -2.38,
+    "wristDx": 3.881,
+    "wristDepthCm": -10.57,
+    "yawDeg": 7.6
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 15.5,
+      "rel": 0.723
+     },
+     "3": {
+      "abd": -4.6,
+      "rel": 1.366
+     },
+     "4": {
+      "abd": -8.1,
+      "rel": 1.029
+     },
+     "5": {
+      "abd": -39.4,
+      "rel": 0.882
+     }
+    },
+    "thumb": {
+     "cmc_radial": 44.6,
+     "cmc_palmar": 24.5,
+     "t_mcp": 3.1,
+     "t_ip": 6.2
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0182"
+    ]
+   }
+  },
+  {
+   "id": "R:1@76:pressing",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 3.498,
+    "knuckleDepthCm": -2.65,
+    "wristDx": 2.629,
+    "wristDepthCm": -10.35,
+    "yawDeg": 10.8
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 5.6,
+      "rel": 0.854
+     },
+     "3": {
+      "abd": -10.6,
+      "rel": 1.251
+     },
+     "4": {
+      "abd": -10.1,
+      "rel": 1.118
+     },
+     "5": {
+      "abd": -7.2,
+      "rel": 0.776
+     }
+    },
+    "thumb": {
+     "cmc_radial": 40.6,
+     "cmc_palmar": 45.0,
+     "t_mcp": 13.5,
+     "t_ip": 13.5
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0157"
+    ]
+   }
+  },
+  {
+   "id": "R:2@76:visible",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.316,
+    "knuckleDepthCm": -3.84,
+    "wristDx": 0.676,
+    "wristDepthCm": -12.31,
+    "yawDeg": 5.0
+   },
+   "count": 3,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 14.2,
+      "rel": 1.066
+     },
+     "3": {
+      "abd": 12.9,
+      "rel": 1.397
+     },
+     "4": {
+      "abd": 10.9,
+      "rel": 1.048
+     },
+     "5": {
+      "abd": 4.3,
+      "rel": 0.507
+     }
+    },
+    "thumb": {
+     "cmc_radial": 25.6,
+     "cmc_palmar": 15.5,
+     "t_mcp": 18.1,
+     "t_ip": 1.5
+    },
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0154",
+     "onset-0207",
+     "onset-0211"
+    ]
+   }
+  },
+  {
+   "id": "R:3@76:visible",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.227,
+    "knuckleDepthCm": -3.38,
+    "wristDx": -0.732,
+    "wristDepthCm": -10.51,
+    "yawDeg": 5.3
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 17.7,
+      "rel": 0.997
+     },
+     "3": {
+      "abd": 3.8,
+      "rel": 1.601
+     },
+     "4": {
+      "abd": 2.6,
+      "rel": 1.023
+     },
+     "5": {
+      "abd": 1.2,
+      "rel": 0.379
+     }
+    },
+    "thumb": {
+     "cmc_radial": 20.4,
+     "cmc_palmar": -15.0,
+     "t_mcp": 18.2,
+     "t_ip": -2.1
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0151"
+    ]
+   }
+  },
+  {
+   "id": "R:5@76:visible",
+   "hand": "right",
+   "anchorPitch": 76,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -1.704,
+    "knuckleDepthCm": -2.52,
+    "wristDx": -1.888,
+    "wristDepthCm": -10.14,
+    "yawDeg": -0.3
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": -0.7,
+      "rel": 1.192
+     },
+     "3": {
+      "abd": -10.7,
+      "rel": 1.386
+     },
+     "4": {
+      "abd": -12.9,
+      "rel": 0.811
+     },
+     "5": {
+      "abd": -19.8,
+      "rel": 0.611
+     }
+    },
+    "thumb": {
+     "cmc_radial": 32.7,
+     "cmc_palmar": -2.9,
+     "t_mcp": 33.2,
+     "t_ip": -2.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0147"
+    ]
+   }
+  },
+  {
+   "id": "R:2@78,5@87:visible",
+   "hand": "right",
+   "anchorPitch": 78,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": true
+    },
+    {
+     "finger": 5,
+     "semitones": 9,
+     "black": true
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 2.889,
+    "knuckleDepthCm": 4.2,
+    "wristDx": 2.541,
+    "wristDepthCm": -3.87,
+    "yawDeg": 1.1
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 17.2,
+      "rel": 1.079
+     },
+     "3": {
+      "abd": -10.4,
+      "rel": 1.604
+     },
+     "4": {
+      "abd": -13.5,
+      "rel": 1.191
+     },
+     "5": {
+      "abd": -30.9,
+      "rel": 0.127
+     }
+    },
+    "thumb": {
+     "cmc_radial": 38.7,
+     "cmc_palmar": -13.5,
+     "t_mcp": 8.3,
+     "t_ip": -10.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0198"
+    ]
+   }
+  },
+  {
+   "id": "R:1@79:pressing",
+   "hand": "right",
+   "anchorPitch": 79,
+   "pressed": [
+    {
+     "finger": 1,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "pressing",
+   "placement": {
+    "knuckleDx": 4.134,
+    "knuckleDepthCm": -1.445,
+    "wristDx": 3.401,
+    "wristDepthCm": -9.595,
+    "yawDeg": 8.2
+   },
+   "count": 2,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 14.25,
+      "rel": 0.927
+     },
+     "3": {
+      "abd": -9.55,
+      "rel": 1.244
+     },
+     "4": {
+      "abd": -12.2,
+      "rel": 1.066
+     },
+     "5": {
+      "abd": -12.45,
+      "rel": 0.764
+     }
+    },
+    "thumb": {
+     "cmc_radial": 46.5,
+     "cmc_palmar": 42.9,
+     "t_mcp": 13.9,
+     "t_ip": 15.6
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0161",
+     "onset-0166"
+    ]
+   }
+  },
+  {
+   "id": "R:2@79,5@88:visible",
+   "hand": "right",
+   "anchorPitch": 79,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 9,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 2.522,
+    "knuckleDepthCm": -3.3,
+    "wristDx": 2.148,
+    "wristDepthCm": -10.69,
+    "yawDeg": 1.8
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 11.0,
+      "rel": 1.285
+     },
+     "3": {
+      "abd": -8.3,
+      "rel": 1.231
+     },
+     "4": {
+      "abd": -10.7,
+      "rel": 0.898
+     },
+     "5": {
+      "abd": -21.8,
+      "rel": 0.586
+     }
+    },
+    "thumb": {
+     "cmc_radial": 44.8,
+     "cmc_palmar": -15.0,
+     "t_mcp": 11.7,
+     "t_ip": 5.2
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0196"
+    ]
+   }
+  },
+  {
+   "id": "R:2@79:visible",
+   "hand": "right",
+   "anchorPitch": 79,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 2.051,
+    "knuckleDepthCm": 0.895,
+    "wristDx": 1.492,
+    "wristDepthCm": -6.68,
+    "yawDeg": 4.9
+   },
+   "count": 2,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 16.7,
+      "rel": 1.125
+     },
+     "3": {
+      "abd": -1.4,
+      "rel": 1.502
+     },
+     "4": {
+      "abd": -4.85,
+      "rel": 1.373
+     },
+     "5": {
+      "abd": -18.05,
+      "rel": 0.0
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.8,
+     "cmc_palmar": -7.3,
+     "t_mcp": 13.2,
+     "t_ip": -7.6
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0158",
+     "onset-0195"
+    ]
+   }
+  },
+  {
+   "id": "R:5@79:visible",
+   "hand": "right",
+   "anchorPitch": 79,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.915,
+    "knuckleDepthCm": -4.21,
+    "wristDx": -1.158,
+    "wristDepthCm": -12.46,
+    "yawDeg": -1.3
+   },
+   "count": 2,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 16.35,
+      "rel": 1.136
+     },
+     "3": {
+      "abd": 0.2,
+      "rel": 0.619
+     },
+     "4": {
+      "abd": -7.05,
+      "rel": 1.28
+     },
+     "5": {
+      "abd": -22.15,
+      "rel": 0.966
+     }
+    },
+    "thumb": {
+     "cmc_radial": 32.0,
+     "cmc_palmar": 11.2,
+     "t_mcp": 19.4,
+     "t_ip": 6.4
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0131",
+     "onset-0209"
+    ]
+   }
+  },
+  {
+   "id": "R:2@83:visible",
+   "hand": "right",
+   "anchorPitch": 83,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 2.67,
+    "knuckleDepthCm": -1.9,
+    "wristDx": 1.944,
+    "wristDepthCm": -10.63,
+    "yawDeg": 4.2
+   },
+   "count": 3,
+   "placementFrom": 3,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 20.7,
+      "rel": 1.02
+     },
+     "3": {
+      "abd": 4.9,
+      "rel": 1.154
+     },
+     "4": {
+      "abd": -0.9,
+      "rel": 1.109
+     },
+     "5": {
+      "abd": -0.2,
+      "rel": 0.741
+     }
+    },
+    "thumb": {
+     "cmc_radial": 26.4,
+     "cmc_palmar": 13.2,
+     "t_mcp": 24.2,
+     "t_ip": -8.7
+    },
+    "from": 3
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0162",
+     "onset-0165",
+     "onset-0170"
+    ]
+   }
+  },
+  {
+   "id": "R:3@83:visible",
+   "hand": "right",
+   "anchorPitch": 83,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 0.451,
+    "knuckleDepthCm": 0.61,
+    "wristDx": 0.007,
+    "wristDepthCm": -7.975,
+    "yawDeg": 2.2
+   },
+   "count": 2,
+   "placementFrom": 2,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 17.85,
+      "rel": 1.235
+     },
+     "3": {
+      "abd": -0.55,
+      "rel": 1.541
+     },
+     "4": {
+      "abd": -4.85,
+      "rel": 1.172
+     },
+     "5": {
+      "abd": -15.0,
+      "rel": 0.052
+     }
+    },
+    "thumb": {
+     "cmc_radial": 31.1,
+     "cmc_palmar": -7.3,
+     "t_mcp": 15.2,
+     "t_ip": -9.1
+    },
+    "from": 2
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0159",
+     "onset-0200"
+    ]
+   }
+  },
+  {
+   "id": "R:3@84:visible",
+   "hand": "right",
+   "anchorPitch": 84,
+   "pressed": [
+    {
+     "finger": 3,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 0.923,
+    "knuckleDepthCm": -4.52,
+    "wristDx": 1.063,
+    "wristDepthCm": -11.26,
+    "yawDeg": -8.6
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 20.4,
+      "rel": 0.0
+     },
+     "3": {
+      "abd": -2.1,
+      "rel": 3.165
+     },
+     "4": {
+      "abd": -6.9,
+      "rel": 0.835
+     },
+     "5": {
+      "abd": -15.1,
+      "rel": 0.0
+     }
+    },
+    "thumb": {
+     "cmc_radial": 25.7,
+     "cmc_palmar": -15.0,
+     "t_mcp": 16.7,
+     "t_ip": -10.5
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0173"
+    ]
+   }
+  },
+  {
+   "id": "R:4@85:visible",
+   "hand": "right",
+   "anchorPitch": 85,
+   "pressed": [
+    {
+     "finger": 4,
+     "semitones": 0,
+     "black": true
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.477,
+    "knuckleDepthCm": 0.02,
+    "wristDx": -1.005,
+    "wristDepthCm": -8.73,
+    "yawDeg": 3.7
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 5.2,
+      "rel": 0.915
+     },
+     "3": {
+      "abd": -3.2,
+      "rel": 1.258
+     },
+     "4": {
+      "abd": -4.0,
+      "rel": 1.09
+     },
+     "5": {
+      "abd": -29.6,
+      "rel": 0.737
+     }
+    },
+    "thumb": {
+     "cmc_radial": 52.0,
+     "cmc_palmar": 11.5,
+     "t_mcp": 15.3,
+     "t_ip": 6.2
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0189"
+    ]
+   }
+  },
+  {
+   "id": "R:4@87:visible",
+   "hand": "right",
+   "anchorPitch": 87,
+   "pressed": [
+    {
+     "finger": 4,
+     "semitones": 0,
+     "black": true
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 0.93,
+    "knuckleDepthCm": 0.42,
+    "wristDx": 0.965,
+    "wristDepthCm": -7.95,
+    "yawDeg": -3.7
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 9.3,
+      "rel": 0.851
+     },
+     "3": {
+      "abd": 2.0,
+      "rel": 0.533
+     },
+     "4": {
+      "abd": -11.1,
+      "rel": 1.489
+     },
+     "5": {
+      "abd": -1.6,
+      "rel": 1.127
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.0,
+     "cmc_palmar": 23.8,
+     "t_mcp": 19.4,
+     "t_ip": -8.7
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0169"
+    ]
+   }
+  },
+  {
+   "id": "R:2@88,5@95:visible",
+   "hand": "right",
+   "anchorPitch": 88,
+   "pressed": [
+    {
+     "finger": 2,
+     "semitones": 0,
+     "black": false
+    },
+    {
+     "finger": 5,
+     "semitones": 7,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": 1.625,
+    "knuckleDepthCm": -3.4,
+    "wristDx": 1.077,
+    "wristDepthCm": -12.28,
+    "yawDeg": 5.1
+   },
+   "count": 2,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 18.3,
+      "rel": 1.146
+     },
+     "3": {
+      "abd": -2.3,
+      "rel": 1.133
+     },
+     "4": {
+      "abd": -9.7,
+      "rel": 0.98
+     },
+     "5": {
+      "abd": -18.7,
+      "rel": 0.741
+     }
+    },
+    "thumb": {
+     "cmc_radial": 34.4,
+     "cmc_palmar": 13.4,
+     "t_mcp": 19.0,
+     "t_ip": -4.2
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0183",
+     "onset-0197"
+    ]
+   }
+  },
+  {
+   "id": "R:4@88:visible",
+   "hand": "right",
+   "anchorPitch": 88,
+   "pressed": [
+    {
+     "finger": 4,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.268,
+    "knuckleDepthCm": -4.53,
+    "wristDx": -0.371,
+    "wristDepthCm": -12.0,
+    "yawDeg": -3.8
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": true,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0172"
+    ]
+   }
+  },
+  {
+   "id": "R:5@88:visible",
+   "hand": "right",
+   "anchorPitch": 88,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": false
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -0.566,
+    "knuckleDepthCm": -3.71,
+    "wristDx": -1.043,
+    "wristDepthCm": -11.98,
+    "yawDeg": 4.0
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": {
+    "fingers": {
+     "2": {
+      "abd": 0.6,
+      "rel": 1.137
+     },
+     "3": {
+      "abd": -6.0,
+      "rel": 1.077
+     },
+     "4": {
+      "abd": -12.2,
+      "rel": 0.983
+     },
+     "5": {
+      "abd": -17.8,
+      "rel": 0.804
+     }
+    },
+    "thumb": {
+     "cmc_radial": 17.4,
+     "cmc_palmar": 19.5,
+     "t_mcp": 16.3,
+     "t_ip": -5.2
+    },
+    "from": 1
+   },
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0164"
+    ]
+   }
+  },
+  {
+   "id": "R:5@90:visible",
+   "hand": "right",
+   "anchorPitch": 90,
+   "pressed": [
+    {
+     "finger": 5,
+     "semitones": 0,
+     "black": true
+    }
+   ],
+   "thumb": "visible",
+   "placement": {
+    "knuckleDx": -1.105,
+    "knuckleDepthCm": 1.12,
+    "wristDx": -1.405,
+    "wristDepthCm": -6.44,
+    "yawDeg": 3.0
+   },
+   "count": 1,
+   "placementFrom": 1,
+   "offKeyOnly": false,
+   "shape": null,
+   "source": {
+    "song": "seven-nation-army",
+    "onsets": [
+     "onset-0168"
+    ]
+   }
+  }
+ ]
+}

@@ -14,6 +14,7 @@ import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
 import { bakeKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
+import { PointerKeys, type KeyPointer } from "./pointerKeys";
 
 const HAND_HINT: Readonly<Record<Hand, number>> = {
   right: FINGER_COLOR[3],
@@ -122,6 +123,7 @@ export interface KeysFrame {
   /** Notes crossing the hit line right now, by pitch. */
   readonly playing: ReadonlyMap<number, SongNote>;
   readonly hints?: boolean;
+  readonly neutralKeys?: boolean;
 }
 
 /**
@@ -146,6 +148,8 @@ export class KeyboardLayer {
   private painted: PaintedFaces | undefined;
   /** The style the painted faces are of. */
   private style: Exclude<KeyStyle, "perspective" | "3d"> = "classic";
+  /** The model supplies its own bevels; its texture contains only paint and labels. */
+  private modelFaces = false;
   /** The rail under the keys, for a style that has one. */
   private railTexture: Texture | undefined;
   private readonly rail = new Sprite();
@@ -154,15 +158,16 @@ export class KeyboardLayer {
   private readonly lightOf = new Map<number, Texture>();
   private lightTextures = new Map<string, Texture>();
   /** The key the mouse holds down, if any. */
-  private mouseKey: number | undefined;
+  private readonly pointers: PointerKeys;
   /** The front bevel's height on screen, white and black: the finger digit stands above it. */
   private bevel = { white: 3, black: 3 };
 
   constructor(
     private readonly renderer: Renderer,
     private readonly digitTextures: ReadonlyMap<Finger, Texture>,
-    private readonly onKeyPointer: (event: KeyEvent) => void
+    onKeyPointer: (event: KeyEvent) => void
   ) {
+    this.pointers = new PointerKeys(onKeyPointer);
     this.container.addChild(this.keyboard, this.rail, this.felt, this.stickers, this.hints);
     this.rail.eventMode = "none";
     this.rail.visible = false;
@@ -172,24 +177,7 @@ export class KeyboardLayer {
       const sprite = new NineSliceSprite({ texture: Texture.WHITE, ...NO_SLICE });
       sprite.eventMode = "static";
       sprite.cursor = "pointer";
-      sprite.on("pointerdown", () => {
-        this.pressWithMouse(pitch);
-      });
-      // Dragging across the keys with the button held plays each one: a glissando.
-      sprite.on("pointerover", (event) => {
-        if (
-          this.mouseKey !== undefined &&
-          (event.buttons & 1) === 1 &&
-          document.elementFromPoint(event.clientX, event.clientY) === this.renderer.canvas
-        )
-          this.pressWithMouse(pitch);
-      });
-      sprite.on("pointerup", () => {
-        this.releaseMouse();
-      });
-      sprite.on("pointerupoutside", () => {
-        this.releaseMouse();
-      });
+      // The stage owns gestures for both flat and projected keys, without duplicate delivery.
       this.keySprites.set(pitch, sprite);
       const digit = new Sprite();
       digit.anchor.set(0.5, 1);
@@ -222,6 +210,7 @@ export class KeyboardLayer {
    * were. The faces take effect on the next layout. Assets caches every load.
    */
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
+    this.modelFaces = style === "3d";
     const paintedStyle = style === "perspective" || style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
@@ -267,8 +256,14 @@ export class KeyboardLayer {
     // A sticker keeps off a painted key's rounded sides and its front bevel.
     const painted = this.painted;
     const { white: WHITE_SLICE, black: BLACK_SLICE } = KEY_STYLES[this.style];
-    const whiteBevel = painted ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width : 3;
-    const blackBevel = painted ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width : 3;
+    const whiteBevel =
+      painted && !this.modelFaces
+        ? (WHITE_SLICE.bottomHeight * whiteWidth) / painted.white.width
+        : 3;
+    const blackBevel =
+      painted && !this.modelFaces
+        ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width
+        : 3;
     this.bevel = { white: whiteBevel, black: blackBevel };
     // Nine-slice border bands include broad flat areas, especially on arcade keys.
     // Only reserve the narrow visible rim, rather than shrinking to their centre slice.
@@ -367,7 +362,7 @@ export class KeyboardLayer {
       // A key with a fingered note is its finger's colour whoever plays it; the press and
       // the program's own colours are for keys without one.
       const color =
-        shown?.finger !== undefined
+        !frame.neutralKeys && shown?.finger !== undefined
           ? FINGER_COLOR[shown.finger]
           : pressed
             ? PRESSED_COLOR
@@ -378,27 +373,41 @@ export class KeyboardLayer {
                 : undefined;
       const key = keys.get(pitch);
       // Held by the player or sounded by the program, a painted key sinks.
-      if (key && this.keyTextures) {
+      if (key && this.keyTextures && !this.modelFaces) {
         const face = this.faceOf(key.black, false, this.painted !== undefined && sounding);
         if (sprite.texture !== face) sprite.texture = face;
       }
-      sprite.tint = 0xffffff;
+      sprite.tint = this.modelFaces ? (key?.black ? 0x1a1816 : 0xf8f4e8) : 0xffffff;
       const light = this.keyFronts.get(pitch);
       if (light) {
         light.visible = key !== undefined && color !== undefined;
         if (light.visible && key && color !== undefined) {
           const strength = sounding ? LIGHT_SOUNDING : LIGHT_WAITING;
           light.tint = sounding ? color : towardWhite(color, Math.max(0, hintStrength - 0.75) * 2);
-          light.texture = this.lightOf.get(pitch) ?? Texture.EMPTY;
-          light.blendMode = key.black ? "add" : "normal";
+          light.texture = this.modelFaces
+            ? Texture.WHITE
+            : (this.lightOf.get(pitch) ?? Texture.EMPTY);
+          light.blendMode = !this.modelFaces && key.black ? "add" : "normal";
           light.alpha =
             (key.black ? strength.black : strength.white) * (sounding ? 1 : hintStrength);
-          light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
+          if (this.modelFaces) {
+            light.position.set(key.x, keyboardTop);
+            light.width = key.width;
+            light.height = key.black ? blackHeight : keyboardHeight;
+            light.alpha *= 0.8;
+          } else {
+            light.scale.set(1);
+            light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
+          }
         }
       }
       const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
-      hint.visible = key !== undefined && shown?.finger !== undefined && frame.hints !== false;
+      hint.visible =
+        !frame.neutralKeys &&
+        key !== undefined &&
+        shown?.finger !== undefined &&
+        frame.hints !== false;
       hint.alpha = sounding ? 1 : hintStrength;
       if (!key || shown?.finger === undefined) continue;
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
@@ -420,6 +429,16 @@ export class KeyboardLayer {
         hint.scale.set(Math.min(1, (key.width * 0.9) / 40, DIGIT_MAX_PX / 40));
         // The sticker fills the bottom of the key; the finger sits at the top of its free part.
         hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
+      }
+      if (this.modelFaces) {
+        // Compensate the painted atlas for the metric cap and the cropped side bevels.
+        const oldHeight = hint.height;
+        const depth = key.black ? 94.0242 : 150;
+        const sourceHeight = key.black ? blackHeight : keyboardHeight;
+        const usableWidth = key.black ? 0.84 : 0.86;
+        const units = key.black ? 13.31152 / key.width : 22.5 / key.width;
+        hint.scale.y *= (sourceHeight * units) / (depth * usableWidth);
+        if (stickers) hint.y += hint.height - oldHeight;
       }
     }
   }
@@ -447,7 +466,7 @@ export class KeyboardLayer {
   private placeKey(sprite: NineSliceSprite, x: number, y: number, width: number, height: number) {
     sprite.x = x;
     sprite.y = y;
-    if (!this.painted) {
+    if (!this.painted || this.modelFaces) {
       sprite.scale.set(1);
       sprite.setSize(width, height);
       return;
@@ -470,9 +489,13 @@ export class KeyboardLayer {
       this.keyTextures = this.painted;
       for (const [pitch, sprite] of this.keySprites) {
         const isBlack = isBlackKey(pitch);
-        sprite.texture = isBlack ? this.painted.black : this.painted.white;
+        sprite.texture = this.modelFaces
+          ? Texture.WHITE
+          : isBlack
+            ? this.painted.black
+            : this.painted.white;
         const slices = KEY_STYLES[this.style];
-        Object.assign(sprite, isBlack ? slices.black : slices.white);
+        Object.assign(sprite, this.modelFaces ? NO_SLICE : isBlack ? slices.black : slices.white);
       }
       return;
     }
@@ -483,7 +506,12 @@ export class KeyboardLayer {
       { width: black?.width ?? 6, height: blackHeight }
     );
     for (const [pitch, sprite] of this.keySprites) {
-      sprite.texture = isBlackKey(pitch) ? this.keyTextures.black : this.keyTextures.white;
+      sprite.texture = this.modelFaces
+        ? Texture.WHITE
+        : isBlackKey(pitch)
+          ? this.keyTextures.black
+          : this.keyTextures.white;
+      Object.assign(sprite, NO_SLICE);
     }
     if (old) {
       for (const texture of [old.white, old.black, old.blackLit]) texture.destroy(true);
@@ -543,15 +571,18 @@ export class KeyboardLayer {
   }
 
   pressWithMouse(pitch: number): void {
-    if (this.mouseKey === pitch) return;
-    this.releaseMouse();
-    this.mouseKey = pitch;
-    this.onKeyPointer({ type: "down", pitch, velocity: 90 });
+    this.pressPointer(pitch, { pointerId: -1, pointerType: "mouse" });
   }
 
   releaseMouse(): void {
-    if (this.mouseKey === undefined) return;
-    this.onKeyPointer({ type: "up", pitch: this.mouseKey, velocity: 0 });
-    this.mouseKey = undefined;
+    this.pointers.clear();
+  }
+
+  pressPointer(pitch: number, pointer: KeyPointer): void {
+    this.pointers.press(pitch, pointer);
+  }
+
+  releasePointer(pointer: KeyPointer): void {
+    this.pointers.release(pointer);
   }
 }

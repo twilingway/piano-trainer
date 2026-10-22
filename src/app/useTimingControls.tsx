@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { audioTime, cancelScheduledSound, scheduleSound, soundClick } from "../audio/pianoSound";
 import type { KeyEvent, MidiDevice } from "../input/midiInput";
+import { isTypingTarget } from "../input/computerKeyboard";
 import type { ConnectionType } from "../practice/calibration";
 import type { Trainer } from "../practice/Trainer";
 import { ConnectedTimingSettings } from "./ConnectedSettings";
@@ -26,6 +27,7 @@ interface Options {
   trainerReady: boolean;
   snapshotSource: TrainerSnapshotSource;
   locked?: boolean;
+  localInput?: boolean;
 }
 export function useTimingControls({
   trainerRef,
@@ -34,7 +36,8 @@ export function useTimingControls({
   deviceId,
   trainerReady,
   snapshotSource,
-  locked = false
+  locked = false,
+  localInput = false
 }: Options) {
   const { t } = useI18n();
   const [preferences, setPreferences] = usePreferenceState(
@@ -44,7 +47,7 @@ export function useTimingControls({
   const selected =
     devices.find((device) => device.id === deviceId) ??
     (deviceId === "all" && devices.length === 1 ? devices[0] : undefined);
-  const local = devices.length === 0;
+  const local = localInput || devices.length === 0;
   const chosenId = useMemo(() => (local ? "keyboard" : (selected?.id ?? "")), [local, selected]);
   const chosenName = local
     ? "Компьютерная клавиатура / экран"
@@ -73,7 +76,8 @@ export function useTimingControls({
     start: startCalibration,
     capture,
     progress,
-    running
+    running,
+    countdown
   } = useCalibration({
     audioOffsetMs: preferences.audioOffsetMs,
     audioOutputId: preferences.audioOutputId,
@@ -129,6 +133,29 @@ export function useTimingControls({
     },
     [running, local, chosenId, capture]
   );
+  // The rhythm course blocks ordinary piano bindings; calibration owns this separate tap.
+  useEffect(() => {
+    if (!localInput || !running) return;
+    const down = (event: KeyboardEvent) => {
+      if (
+        event.code !== "Space" ||
+        event.repeat ||
+        event.defaultPrevented ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        isTypingTarget(event.target) ||
+        (event.target instanceof Element && event.target.closest("button"))
+      )
+        return;
+      event.preventDefault();
+      capture(60, event.timeStamp);
+    };
+    window.addEventListener("keydown", down);
+    return () => {
+      window.removeEventListener("keydown", down);
+    };
+  }, [localInput, running, capture]);
   useLayoutEffect(() => {
     const trainer = trainerRef.current;
     if (!trainer) return;
@@ -174,6 +201,13 @@ export function useTimingControls({
     if (!locked && !running) setPreferences((current) => ({ ...current, ...values }));
   };
   const settingsProps = {
+    ...(localInput
+      ? {
+          onTap: (atMs: number) => {
+            capture(60, atMs);
+          }
+        }
+      : {}),
     preferences,
     deviceId: chosenId,
     deviceName: local || !selected ? t(chosenName) : chosenName,
@@ -181,6 +215,7 @@ export function useTimingControls({
     ...(profile ? { profile } : {}),
     progress,
     running,
+    countdown,
     locked,
     canCalibrate: !!chosenId,
     onTransport,

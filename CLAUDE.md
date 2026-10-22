@@ -22,6 +22,10 @@ Full gate before declaring work complete — format, lint, typecheck, unit tests
 pnpm check
 ```
 
+The quick gate while working, `pnpm check:changed`: prettier and eslint only on the files changed
+against `origin/dev` (with caches), incremental tsc, `vitest --changed`, no build. It does not
+replace `pnpm check` before a pull request.
+
 Narrower checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm format`. One test
 file or case:
 
@@ -64,16 +68,21 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 
 ## Agent tooling
 
-- Жизненный цикл серверов определяется разделом `Local preview` в `AGENTS.md`: не запускать
-  отделённые фоновые серверы; перед итоговым отчётом завершать все серверы, запущенные агентом, и их
-  процессы запуска, затем проверять освобождение портов. Это относится и к 5190; сохранить свой
-  сервер можно только по явной просьбе пользователя. Пользовательский dev-стенд не трогать.
+- Серверы и worktree — раздел `Local preview` в `AGENTS.md`: `5190` — стенд пользователя (основная
+  папка на `dev`), его не трогать; стенд задачи — из своего worktree в `pt-agents/`, на порту
+  `5191–5199` с `--strictPort`; не запускать отделённые фоновые серверы; перед итоговым отчётом
+  завершать все свои серверы и их процессы запуска, затем проверять освобождение портов. Сохранить
+  свой сервер можно только по явной просьбе пользователя.
 - `.claude/skills/react-frontend` — React 19 + Vite conventions here, and the vendored Vercel rule
   sets in `.agents/skills/` (`react-best-practices`, `composition-patterns`,
   `web-interface-guidelines`).
 - `.claude/skills/codex-worker` — which agent gets which task (Codex CLI, the Codex plugin, local
   Qwen through opencode), how a delegated diff is isolated in a worktree, measured and accepted.
 - `.claude/skills/codex-visual` — Codex as an independent UI/UX consultant and image generator.
+- [`.claude/skills/video-lesson-analysis`](.claude/skills/video-lesson-analysis/SKILL.md) — единый
+  разбор локальных видеоуроков, приложенных документов, фраз и аппликатуры. Использует канонический
+  skill в `.agents/skills/` и [pipeline](docs/VIDEO_LESSON_PIPELINE.md); результаты остаются
+  локальными.
 - `.claude/skills/ref2game` (Codex: `.agents/skills/ref2game`) — vendored upstream skill: a
   reference image becomes a playable 2D slice on its own WebGL2 engine, not inside this app. Game
   projects go to the git-ignored `games/<name>`; only accepted assets move into `src`. Not for 3D.
@@ -83,7 +92,7 @@ change is done. The procedure is `.agents/skills/openspec-workflow/SKILL.md`.
 - `.opencode/agents/` and `opencode.json` — opencode's agents and the Qwen providers (LM Studio on
   `192.168.1.227:1234`, and the remote endpoint).
 - `.claude/hooks/context-budget.py`, registered in `.claude/settings.json` on `UserPromptSubmit` —
-  once the last request ran with more than 250k tokens of context, it warns the user and asks Claude
+  once the last request ran with more than 300k tokens of context, it warns the user and asks Claude
   to checkpoint the subtask and propose a fresh session. It never blocks. The same script is
   installed globally (`~/.claude/hooks/`) and steps aside when the project has its own copy.
 

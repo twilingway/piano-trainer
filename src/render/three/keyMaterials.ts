@@ -33,7 +33,7 @@ function hash(x: number, y: number): number {
 }
 
 /** Ivory with faint grain lines running along the key (across `u`, constant along `v`). */
-function ivoryGrain(): DataTexture {
+function ivoryGrain(neutral = false): DataTexture {
   const width = 256;
   const lines = (x: number) => {
     const t = (2 * Math.PI * x) / width;
@@ -41,8 +41,8 @@ function ivoryGrain(): DataTexture {
     return 0.5 + 0.22 * Math.sin(t * 7 + 1.3) + 0.16 * Math.sin(t * 23 + 0.4) + 0.12 * hash(x, 0);
   };
   // The ramp of piano_kit.py's ivory, from its dark grain to its light body.
-  const dark = [0xe3, 0xd2, 0xb3] as const;
-  const light = [0xf0, 0xe6, 0xcf] as const;
+  const dark = neutral ? ([0xe0, 0xe1, 0xe2] as const) : ([0xe3, 0xd2, 0xb3] as const);
+  const light = neutral ? ([0xf5, 0xf6, 0xf7] as const) : ([0xf0, 0xe6, 0xcf] as const);
   return texture(width, 4, (x) => {
     const f = Math.min(1, Math.max(0, lines(x)));
     return [0, 1, 2].map((c) => (dark[c] ?? 0) + f * ((light[c] ?? 0) - (dark[c] ?? 0))) as [
@@ -51,6 +51,13 @@ function ivoryGrain(): DataTexture {
       number
     ];
   });
+}
+
+/** The study finish shares the ivory grain while keeping the white keys nearly neutral. */
+export function studyIvoryMap(): DataTexture {
+  const map = ivoryGrain(true);
+  map.repeat.set(60, 1);
+  return map;
 }
 
 /** Fine velvety grain: a height for the black keys' bump. */

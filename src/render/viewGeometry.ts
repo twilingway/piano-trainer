@@ -1,5 +1,11 @@
 import { isBlackKey } from "../fingering/fingering";
-import { HIGHEST_PITCH, LOWEST_PITCH, whiteKeysBetween, widenRange } from "./keyboardLayout";
+import {
+  HIGHEST_PITCH,
+  LOWEST_PITCH,
+  layoutKeyboard,
+  whiteKeysBetween,
+  widenRange
+} from "./keyboardLayout";
 
 /*
  * The keyboard's height follows its key width, like a real key, long and
@@ -32,6 +38,25 @@ export interface Geometry {
   /** Where notes meet the keys: the top of the felt over them, or the view's bottom without keys. */
   readonly hitY: number;
   readonly feltHeight: number;
+}
+
+export interface ViewLayout {
+  readonly width: number;
+  readonly height: number;
+  readonly liveHands?: boolean;
+}
+
+/** Async native-hand readiness changes the source hit row even without a resize. */
+export function viewLayoutChanged(
+  current: ViewLayout,
+  previous: ViewLayout,
+  liveHands: boolean
+): boolean {
+  return (
+    current.width !== previous.width ||
+    current.height !== previous.height ||
+    (previous.liveHands !== undefined && liveHands !== previous.liveHands)
+  );
 }
 
 /** The player's placement of the keys: a lift off the bottom and a size against the usual. */
@@ -130,4 +155,17 @@ export function fitRange(
   }
   [low, high] = widenRange(low, high, Math.ceil(width / keyWidth));
   return { low, high, total: whiteKeysBetween(low, high) * keyWidth };
+}
+
+/** Fit and lay out piano keys in one pure pass for the view. */
+export function fitPianoKeys(
+  width: number,
+  range: { readonly low: number; readonly high: number },
+  song: boolean,
+  viewport: boolean,
+  compact: boolean
+) {
+  const { low, high, total } = fitRange(width, range.low, range.high, song, compact, viewport);
+  const keys = layoutKeyboard(total, low, high);
+  return { keys, total, whiteWidth: [...keys.values()].find((key) => !key.black)?.width ?? 0 };
 }

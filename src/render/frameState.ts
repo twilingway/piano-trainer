@@ -4,6 +4,10 @@ import type { NoteStatus } from "../practice/session";
 import type { SongNote } from "../song/song";
 
 export interface FrameState {
+  /** Whether playback is running; waiting still animates decorative energy. */
+  readonly playing?: boolean;
+  /** Changes on explicit seeks and restarts, including short forward seeks. */
+  readonly effectEpoch?: number;
   /** Song seconds at the hit line. */
   readonly time: number;
   /** Song seconds between the top of the lane and the hit line. */
@@ -28,6 +32,7 @@ export interface FrameState {
   /** Whether the player plays a note: in their hands and on their keyboard. */
   readonly owns: (note: SongNote) => boolean;
   readonly hints?: boolean;
+  readonly neutralKeys?: boolean;
   /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
   /** The combo and accuracy board; none on a view that only mirrors another. */

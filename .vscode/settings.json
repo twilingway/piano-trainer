@@ -1,4 +1,13 @@
 {
   "terminal.integrated.enablePersistentSessions": false,
-  "terminal.integrated.persistentSessionReviveProcess": "never"
+  "terminal.integrated.persistentSessionReviveProcess": "never",
+  "files.watcherExclude": {
+    "**/.claude/worktrees/**": true,
+    "**/.worktrees/**": true
+  },
+  "search.exclude": {
+    "**/.claude/worktrees": true,
+    "**/.worktrees": true
+  },
+  "git.repositoryScanIgnoredFolders": ["node_modules", ".claude/worktrees", ".worktrees"]
 }

@@ -27,6 +27,16 @@ function scene(pan: number, prefs = DEFAULT_CAMERA): KeysScene {
 }
 
 describe("3D key boxes", () => {
+  it("uses actual native black-key height while preserving the legacy geometry contract", () => {
+    const legacy = scene(0);
+    const native = { ...legacy, native: true };
+    expect(keyBoxes(native).find((box) => box.black)?.top).toBe(34);
+    expect(keyBoxes(legacy).find((box) => box.black)?.top).toBe(36);
+    const box = keyBoxes(native).find((box) => box.black);
+    if (!box) throw new Error("missing black key");
+    const expected = native.camera.project(box.x - box.width / 2, box.top, box.back);
+    expect(keySurface(native.camera, box.x, true, box.width * 2, 34).top[0]).toEqual(expected);
+  });
   it.each([
     [0, DEFAULT_CAMERA],
     [160, DEFAULT_CAMERA],
@@ -74,10 +84,22 @@ describe("3D key boxes", () => {
     const boxes = keyBoxes(scene(0));
     const c4 = boxes.find((box) => box.pitch === 60);
     const cSharp = boxes.find((box) => box.pitch === 61);
-    expect(c4?.uv.v0).toBeCloseTo(0.6);
+    expect(c4?.uv.v0).toBe(0);
     expect(c4?.uv.v1).toBeCloseTo(1);
     expect(cSharp?.uv.v0).toBe(0);
     expect(cSharp?.uv.v1).toBeCloseTo(0.6);
     expect(c4 && c4.uv.u1 > c4.uv.u0).toBe(true);
+  });
+
+  it("uses the full white-key depth without sampling extra texture padding", () => {
+    const original = scene(0);
+    const padded = { ...original, texture: { width: 1600, height: 140 } as Texture };
+    const boxes = keyBoxes(padded);
+    const white = boxes.find((box) => box.pitch === 60);
+    const black = boxes.find((box) => box.pitch === 61);
+    expect(white?.uv.v0).toBe(0);
+    expect(white?.uv.v1).toBeCloseTo(100 / 140);
+    expect(black?.uv.v0).toBe(0);
+    expect(black?.uv.v1).toBeCloseTo(60 / 140);
   });
 });

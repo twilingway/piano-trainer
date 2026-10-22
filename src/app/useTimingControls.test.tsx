@@ -38,11 +38,13 @@ const ensureSound = () => Promise.resolve();
 function Harness({
   ready,
   show = false,
-  connected = devices
+  connected = devices,
+  localInput = false
 }: {
   ready: boolean;
   show?: boolean;
   connected?: readonly MidiDevice[];
+  localInput?: boolean;
 }) {
   const timing = useTimingControls({
     trainerRef: ref,
@@ -50,6 +52,7 @@ function Harness({
     snapshotSource: source,
     devices: connected,
     deviceId: "piano",
+    localInput,
     ensureSound
   });
   return show ? timing.settings : null;
@@ -66,6 +69,8 @@ beforeEach(() => {
   root = createRoot(host);
 });
 afterEach(async () => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
   await act(async () => {
     await Promise.resolve();
     root.unmount();
@@ -73,13 +78,13 @@ afterEach(async () => {
   host.remove();
   vi.unstubAllGlobals();
 });
-async function mount(ready: boolean, show = false, connected = devices) {
+async function mount(ready: boolean, show = false, connected = devices, localInput = false) {
   await act(async () => {
     await Promise.resolve();
     root.render(
       withTestStore(
         <StrictMode>
-          <Harness ready={ready} show={show} connected={connected} />
+          <Harness ready={ready} show={show} connected={connected} localInput={localInput} />
         </StrictMode>,
         store
       )
@@ -88,6 +93,35 @@ async function mount(ready: boolean, show = false, connected = devices) {
 }
 
 describe("stable trainer timing wiring", () => {
+  it("calibrates local rhythm by Space and pointer taps even with MIDI attached", async () => {
+    vi.useFakeTimers();
+    let now = 1000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    ref.current = fake as unknown as Trainer;
+    await mount(true, true, devices, true);
+    expect(ui.props?.deviceId).toBe("keyboard");
+    await act(async () => {
+      ui.props?.onStart();
+      await Promise.resolve();
+    });
+    expect(ui.props?.running).toBe(true);
+    for (let index = 0; index < 28; index++) {
+      now = 4300 + index * 600;
+      act(() => {
+        if (index % 2 === 0) {
+          const event = new KeyboardEvent("keydown", { code: "Space", key: " ", cancelable: true });
+          Object.defineProperty(event, "timeStamp", { value: now });
+          window.dispatchEvent(event);
+        } else ui.props?.onTap?.(now);
+      });
+    }
+    expect(
+      store.getState().preferences.timing.profiles[JSON.stringify(["keyboard", "local"])]
+    ).toMatchObject({ complete: true, inputOffsetMs: 0 });
+    expect(ui.props?.running).toBe(false);
+    expect(store.getState().reading.history).toHaveLength(0);
+    expect(store.getState().reading.rhythm.history).toHaveLength(0);
+  });
   it("applies timing once after async trainer readiness and does not reconfigure on shell updates", async () => {
     await mount(false);
     expect(fake.configureTiming).not.toHaveBeenCalled();

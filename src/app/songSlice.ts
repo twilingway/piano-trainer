@@ -45,7 +45,11 @@ const slice = createSlice({
         librarySource: action.payload.librarySource,
         transpose: 0,
         octave: 0,
-        simplified: true,
+        simplified:
+          action.payload.librarySource !== null &&
+          action.payload.librarySource === state.librarySource
+            ? state.simplified
+            : true,
         revision: state.revision + 1
       };
     },

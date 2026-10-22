@@ -1,12 +1,16 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
+  "Приготовьтесь: {seconds}": { en: "Get ready: {seconds}" },
+  "Эти настройки применяются к нотному стану и пианинным табам.": {
+    en: "These settings apply to the score and piano tabs."
+  },
   "Поправка: {offset} мс · Разброс: {jitter} мс · Стабильность: {quality} · Образцы: {samples}/24":
     {
       en: "Offset: {offset} ms · Jitter: {jitter} ms · Stability: {quality} · Samples: {samples}/24"
     },
-  "Разминка {warmup}/4 · Измерения {measured}/24": {
-    en: "Warm-up {warmup}/4 · Measurements {measured}/24"
+  "Разминка: {warmup}/4 нажатия · Замер: {measured}/24 нажатия": {
+    en: "Warm-up: {warmup}/4 taps · Measurement: {measured}/24 taps"
   },
   "Падающие ноты полосками": {
     en: "Falling notes as bars"
@@ -35,9 +39,9 @@ export const settingsMessages3 = {
   "— карточки вместо полосок.": {
     en: "— cards instead of bars."
   },
-  "Включённые кнопки подсвечены. Руки видны только вместе с клавиатурой, дорога и карточки — только с падающими нотами.":
+  "Включённые кнопки подсвечены. Руки видны только вместе с клавиатурой, перспектива и карточки — только с падающими нотами.":
     {
-      en: "Enabled buttons are highlighted. Hands need the keyboard; the road and cards need falling notes."
+      en: "Enabled buttons are highlighted. Hands need the keyboard; perspective and cards need falling notes."
     },
   "Язык интерфейса": {
     en: "Interface language"
@@ -335,5 +339,19 @@ export const settingsMessages3 = {
   },
   "На канале 1 обычно играет само пианино: такие нажатия не засчитаются.": {
     en: "Most pianos play on channel 1 themselves: presses there will not count."
+  },
+  "Звук мелодии": { en: "Melody sound" },
+  "На этом устройстве": { en: "On this device" },
+  "На MIDI-пианино": { en: "On MIDI piano" },
+  "На обоих устройствах": { en: "On both devices" },
+  "Канал мелодии": { en: "Melody channel" },
+  "Метроном, голосовые подсказки и ручные нажатия звучат на этом устройстве.": {
+    en: "The metronome, spoken hints and manually played notes sound on this device."
+  },
+  "Выберите подключённый выход MIDI, чтобы мелодия звучала на пианино.": {
+    en: "Select a connected MIDI output to play the melody on the piano."
+  },
+  "У мелодии и подсветки один канал. Выберите разные каналы, чтобы ноты не мешали друг другу.": {
+    en: "The melody and key lights share a channel. Choose separate channels to avoid note conflicts."
   }
 } satisfies Messages;

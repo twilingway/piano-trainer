@@ -6,6 +6,7 @@ import { DEFAULT_KEY_LIGHTS } from "../input/keyLights";
 import type { KeyBinding, KeyboardPrefs, KeyboardPreset } from "../input/keyboardLayouts";
 import { DEFAULT_KEYBOARD_PREFS } from "../input/keyboardLayouts";
 import type { OutputChoice } from "../input/midiOutput";
+import { DEFAULT_MELODY_OUTPUT, type MelodyOutputSettings } from "../input/melodyOutput";
 import type { GamePreferences } from "./gamePreferences";
 import { DEFAULT_GAME_PREFERENCES } from "./gamePreferences";
 import type { PlayerPrefs } from "./playerPrefs";
@@ -16,6 +17,17 @@ import { DEFAULT_SCREEN_LAYOUTS, normalizeLayout } from "./screenLayout";
 import type { LayoutMode, ScreenLayout, ScreenLayouts } from "./screenLayout";
 import type { TimingPreferences } from "./timingPreferences";
 import { defaultTimingPreferences } from "./timingPreferences";
+import {
+  activeViewFraming,
+  DEFAULT_VIEW_FRAMING,
+  editViewCamera,
+  hydrateViewProfiles,
+  saveViewFraming,
+  selectViewProfile,
+  type ViewAxes,
+  type ViewFraming,
+  type ViewProfiles
+} from "./viewProfiles";
 import {
   normalizeWordTypingPrefs,
   updateWordTypingPrefs,
@@ -29,9 +41,11 @@ export interface PreferencesState {
   word: WordTypingPrefs;
   game: GamePreferences;
   layouts: ScreenLayouts;
+  viewProfiles: ViewProfiles;
   deviceRange: DeviceRange;
   midiOutput: OutputChoice | null;
   keyLights: KeyLightSettings;
+  melodyOutput: MelodyOutputSettings;
   fullscreen: boolean;
   timing: TimingPreferences;
 }
@@ -43,12 +57,42 @@ const initialState: PreferencesState = {
   word: normalizeWordTypingPrefs(null, "ru"),
   game: DEFAULT_GAME_PREFERENCES,
   layouts: DEFAULT_SCREEN_LAYOUTS,
+  viewProfiles: hydrateViewProfiles(null, DEFAULT_STAFF_PREFS, DEFAULT_SCREEN_LAYOUTS.piano),
   deviceRange: DEFAULT_DEVICE_RANGE,
   midiOutput: null,
   keyLights: DEFAULT_KEY_LIGHTS,
+  melodyOutput: DEFAULT_MELODY_OUTPUT,
   fullscreen: true,
   timing: defaultTimingPreferences()
 };
+
+const currentFraming = (state: PreferencesState): ViewFraming => ({
+  camera: state.staff.camera,
+  roadFar: state.staff.roadFar,
+  roadHorizon: state.staff.roadHorizon,
+  layout: state.layouts.piano
+});
+function restoreFraming(state: PreferencesState, framing: ViewFraming) {
+  state.staff = {
+    ...state.staff,
+    camera: framing.camera,
+    roadFar: framing.roadFar,
+    roadHorizon: framing.roadHorizon,
+    keyStyle: state.viewProfiles.active.keyboardStyle,
+    road: state.viewProfiles.active.notesProjection === "perspective",
+    keyboardOrientation: state.viewProfiles.active.keyboardOrientation
+  };
+  state.layouts = { ...state.layouts, piano: framing.layout };
+}
+function selectProfile(state: PreferencesState, selection: Partial<ViewAxes>) {
+  const next = selectViewProfile(state.viewProfiles, currentFraming(state), selection);
+  state.viewProfiles = next.profiles;
+  restoreFraming(state, next.framing);
+}
+function saveFraming(state: PreferencesState) {
+  state.viewProfiles = saveViewFraming(state.viewProfiles, currentFraming(state));
+  restoreFraming(state, activeViewFraming(state.viewProfiles));
+}
 
 // Every store replaces defaults with validated preloaded preferences before consumers mount.
 const preferencesSlice = createSlice({
@@ -60,13 +104,48 @@ const preferencesSlice = createSlice({
     },
     staffChanged(state, action: PayloadAction<Partial<StaffPrefs>>) {
       const change = action.payload;
+      if (
+        change.keyStyle !== undefined ||
+        change.road !== undefined ||
+        change.keyboardOrientation !== undefined
+      )
+        selectProfile(state, {
+          ...(change.keyStyle === undefined ? {} : { keyboardStyle: change.keyStyle }),
+          ...(change.road === undefined
+            ? {}
+            : { notesProjection: change.road ? "perspective" : "direct" }),
+          ...(change.keyboardOrientation === undefined
+            ? {}
+            : { keyboardOrientation: change.keyboardOrientation })
+        });
+      const previousCamera = state.staff.camera;
       state.staff = {
         ...state.staff,
         ...change,
+        keyStyle: state.viewProfiles.active.keyboardStyle,
+        road: state.viewProfiles.active.notesProjection === "perspective",
+        keyboardOrientation: state.viewProfiles.active.keyboardOrientation,
         ...(change.noteCards === undefined ? {} : { noteCardsConfigured: true })
       };
       if (change.road !== undefined && !state.staff.noteCardsConfigured)
         state.staff.noteCards = !change.road;
+      if (change.camera !== undefined) {
+        const edited = editViewCamera(
+          state.viewProfiles,
+          { ...currentFraming(state), camera: previousCamera },
+          change.camera
+        );
+        state.viewProfiles = edited.profiles;
+        restoreFraming(state, edited.framing);
+      } else if (change.roadFar !== undefined || change.roadHorizon !== undefined)
+        saveFraming(state);
+    },
+    viewProfileSelected(state, action: PayloadAction<Partial<ViewAxes>>) {
+      selectProfile(state, action.payload);
+    },
+    viewFramingReset(state) {
+      state.viewProfiles = saveViewFraming(state.viewProfiles, DEFAULT_VIEW_FRAMING);
+      restoreFraming(state, DEFAULT_VIEW_FRAMING);
     },
     keyboardChanged(state, action: PayloadAction<KeyboardPrefs>) {
       state.keyboard = action.payload;
@@ -106,9 +185,11 @@ const preferencesSlice = createSlice({
         { ...state.layouts[mode], ...change },
         DEFAULT_SCREEN_LAYOUTS[mode]
       );
+      if (mode === "piano") saveFraming(state);
     },
     layoutReset(state, action: PayloadAction<LayoutMode>) {
       state.layouts[action.payload] = DEFAULT_SCREEN_LAYOUTS[action.payload];
+      if (action.payload === "piano") saveFraming(state);
     },
     deviceRangeChanged(state, action: PayloadAction<DeviceRange>) {
       state.deviceRange = action.payload;
@@ -118,6 +199,9 @@ const preferencesSlice = createSlice({
     },
     keyLightsChanged(state, action: PayloadAction<KeyLightSettings>) {
       state.keyLights = action.payload;
+    },
+    melodyOutputChanged(state, action: PayloadAction<MelodyOutputSettings>) {
+      state.melodyOutput = action.payload;
     },
     fullscreenChanged(state, action: PayloadAction<boolean>) {
       state.fullscreen = action.payload;

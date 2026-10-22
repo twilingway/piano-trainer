@@ -28,3 +28,10 @@ src/render/hands/rendered/catalog.json
 # The vendored ref2game skill, kept as upstream wrote it, and its local game projects.
 .claude/skills/ref2game/
 games/
+
+# Verified hand-atlas snapshots: preserve exporter bytes and manifest hashes.
+tools/hand-atlas/atlas-20261019/*.json
+
+# Canonical keyboard88 export bytes: index hashes are part of the verified manifest.
+public/models/keyboard88-atlas.json
+public/models/keyboard88-performer.json

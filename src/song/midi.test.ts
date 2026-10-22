@@ -27,6 +27,28 @@ const chords = [0, 2].map((start) => [[55, 59, 62], start, 2] as const);
 const bass = [[[43], 0, 4]] as const;
 
 describe("songFromMidi", () => {
+  it("preserves different strike strengths for simultaneous bass and melody notes", () => {
+    const midi = new Midi();
+    const track = midi.addTrack();
+    for (const [pitch, velocity] of [
+      [40, 28],
+      [64, 104],
+      [67, 127]
+    ] as const) {
+      track.addNote({ midi: pitch, time: 0, duration: 1, velocity: velocity / 127 });
+    }
+    const data = midi.toArray();
+    const song = songFromMidi(
+      data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer,
+      "Dynamics"
+    );
+    expect(song.notes.map((note) => [note.pitch, note.velocity])).toEqual([
+      [40, 28],
+      [64, 104],
+      [67, 127]
+    ]);
+  });
+
   it("gives a melody that lies below the chords to the right hand", () => {
     const song = songFromMidi(midiFile([chords, melody, bass]), "Pirates");
     const handOf = (pitch: number, start: number) =>

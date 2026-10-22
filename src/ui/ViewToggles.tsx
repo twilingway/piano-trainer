@@ -5,6 +5,7 @@ import {
   HandIcon,
   KeyboardIcon,
   NoteCardIcon,
+  PianoTabsIcon,
   RoadIcon,
   StaffIcon
 } from "./icons";
@@ -14,22 +15,54 @@ interface Props {
   /** The song has a score to show on the staff. */
   readonly hasScore: boolean;
   readonly onChange: (change: Partial<StaffPrefs>) => void;
+  readonly courseScore?:
+    | {
+        readonly view: "tabs" | "staff" | "both" | "hidden";
+        readonly onView: (view: "tabs" | "staff" | "both" | "hidden") => void;
+      }
+    | undefined;
 }
 
 /** What the game shows: the staff, the falling notes, the keys, the hands and their looks. */
-export function ViewToggles({ prefs, hasScore, onChange }: Props) {
+export function ViewToggles({ prefs, hasScore, onChange, courseScore }: Props) {
   const { t } = useI18n();
+  const tabsVisible = courseScore?.view === "tabs" || courseScore?.view === "both";
+  const staffVisible = courseScore
+    ? courseScore.view === "staff" || courseScore.view === "both"
+    : prefs.visible;
   return (
     <>
+      {courseScore && (
+        <button
+          type="button"
+          className="view-toggle"
+          aria-label={t("Пианинные табы")}
+          aria-pressed={tabsVisible}
+          title={tabsVisible ? t("Скрыть табы") : t("Показать табы")}
+          disabled={!hasScore}
+          onClick={() => {
+            courseScore.onView(
+              tabsVisible ? (staffVisible ? "staff" : "hidden") : staffVisible ? "both" : "tabs"
+            );
+          }}
+        >
+          <PianoTabsIcon />
+          <span className="view-toggle__label">{t("Пианинные табы")}</span>
+        </button>
+      )}
       <button
         type="button"
         className="view-toggle"
         aria-label={t("Нотный стан")}
-        aria-pressed={prefs.visible}
-        title={prefs.visible ? t("Скрыть нотный стан") : t("Показать нотный стан")}
+        aria-pressed={staffVisible}
+        title={staffVisible ? t("Скрыть нотный стан") : t("Показать нотный стан")}
         disabled={!hasScore}
         onClick={() => {
-          onChange({ visible: !prefs.visible });
+          if (courseScore)
+            courseScore.onView(
+              staffVisible ? (tabsVisible ? "tabs" : "hidden") : tabsVisible ? "both" : "staff"
+            );
+          else onChange({ visible: !prefs.visible });
         }}
       >
         <StaffIcon />
@@ -78,16 +111,16 @@ export function ViewToggles({ prefs, hasScore, onChange }: Props) {
       <button
         type="button"
         className="view-toggle"
-        aria-label={t("Дорога")}
+        aria-label={t("Перспектива")}
         aria-pressed={prefs.road}
         disabled={!prefs.lane}
-        title={prefs.road ? t("Обычный вид нот") : t("Дорога: ноты в перспективе")}
+        title={prefs.road ? t("Обычный вид нот") : t("Перспектива: объёмный вид нот")}
         onClick={() => {
           onChange({ road: !prefs.road });
         }}
       >
         <RoadIcon />
-        <span className="view-toggle__label">{t("Дорога")}</span>
+        <span className="view-toggle__label">{t("Перспектива")}</span>
       </button>
       <button
         type="button"

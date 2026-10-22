@@ -9,6 +9,8 @@ import { useTrainer } from "./useTrainer";
 import { createAppStore, type AppStore } from "./store";
 import { withTestStore } from "./storeTestSupport";
 import { preferencesActions } from "./preferencesSlice";
+import { practiceActions } from "./practiceSlice";
+import { courseActions } from "./courseSlice";
 let store: AppStore;
 import { useI18n } from "./useI18n";
 import { setInterfaceLanguage } from "./interfaceLanguage";
@@ -85,15 +87,27 @@ interface Replay {
   count: number;
 }
 function Harness({
+  reading = false,
+  readingHand = "right",
+  rhythm = false,
+  independentRhythm = false,
+  gameOptions,
   ranked = false,
   selectedSong = song,
   sourceSong = selectedSong,
-  replay
+  replay,
+  course
 }: {
+  reading?: boolean;
+  readingHand?: "left" | "right" | "both";
+  rhythm?: boolean;
+  independentRhythm?: boolean;
+  gameOptions?: Parameters<typeof useTrainer>[0]["gameOptions"];
   ranked?: boolean;
   selectedSong?: Song;
   sourceSong?: Song;
   replay?: Replay | undefined;
+  course?: Parameters<typeof useTrainer>[0]["course"];
 }) {
   renders++;
   const { locale } = useI18n();
@@ -102,6 +116,12 @@ function Harness({
     sourceSong,
     songKey: selectedSong.title,
     ranked,
+    reading,
+    readingHand,
+    rhythm,
+    independentRhythm,
+    ...(gameOptions ? { gameOptions } : {}),
+    course,
     startFromRef,
     ensureSound,
     ...handlers,
@@ -146,7 +166,8 @@ async function mount(
   ranked = false,
   selectedSong = song,
   sourceSong = selectedSong,
-  replay?: Replay
+  replay?: Replay,
+  course?: Parameters<typeof useTrainer>[0]["course"]
 ) {
   await act(async () => {
     root.render(
@@ -157,6 +178,7 @@ async function mount(
             selectedSong={selectedSong}
             sourceSong={sourceSong}
             replay={replay}
+            course={course}
           />
         </StrictMode>,
         store
@@ -166,7 +188,610 @@ async function mount(
   });
 }
 
+describe("seek playback intent", () => {
+  it.each([
+    { playing: false, finished: false },
+    { playing: true, finished: false },
+    { playing: false, finished: true }
+  ])("seeks without starting audio or changing playback: %j", async (state) => {
+    const sound = vi.fn(() => Promise.resolve());
+    ensureSound = sound;
+    await mount();
+    const trainer = active();
+    trainer.onSnapshot?.(snapshot(state));
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      value.seekToBeat(4);
+      await Promise.resolve();
+    });
+    expect(startFromRef.current).toBe(2);
+    expect(trainer.seek).toHaveBeenCalledExactlyOnceWith(2);
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    expect(sound).not.toHaveBeenCalled();
+  });
+});
+
 describe("trainer runtime isolation", () => {
+  it("keeps independent rhythms in fixed tempo with both hands and restores ordinary preferences", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "wait",
+        handChoice: "left",
+        speed: 0.5,
+        metronome: false,
+        accompaniment: true
+      })
+    );
+    const saved = store.getState().preferences.player;
+    startFromRef.current = 2;
+    await act(async () => {
+      root.render(withTestStore(<Harness independentRhythm />, store));
+      await Promise.resolve();
+    });
+    expect(value.mode).toBe("tempo");
+    expect(value.handChoice).toBe("both");
+    expect(value.speed).toBe(1);
+    expect(value.metronome).toBe(true);
+    expect(value.playChoice.parts).toBeUndefined();
+    expect(active().seek).not.toHaveBeenCalled();
+    expect(active().load.mock.lastCall?.[1]).toEqual({
+      mode: "tempo",
+      hands: new Set(["left", "right"]),
+      speed: 1,
+      accompaniment: false,
+      noteResult: false,
+      learningWindow: false,
+      countInBeats: 4
+    });
+    act(() => {
+      value.setMode("wait");
+      value.setHandChoice("right");
+      value.setSpeed(0.8);
+      value.setMetronome(false);
+    });
+    expect(store.getState().preferences.player).toEqual(saved);
+    await mount();
+    expect(value.mode).toBe("wait");
+    expect(value.handChoice).toBe("left");
+    expect(value.speed).toBe(0.5);
+    expect(value.metronome).toBe(false);
+  });
+
+  it("routes the bass reading profile to the left without changing ordinary two-hand preferences", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "tempo",
+        handChoice: "both",
+        speed: 0.5,
+        accompaniment: true
+      })
+    );
+    const saved = store.getState().preferences.player;
+    const bassSong: Song = {
+      ...song,
+      title: "bass",
+      notes: [
+        {
+          id: "bass-note",
+          pitch: 48,
+          hand: "left",
+          start: 0,
+          startBeat: 0,
+          duration: 0.5
+        }
+      ]
+    };
+    await act(async () => {
+      root.render(
+        withTestStore(
+          <Harness
+            reading
+            readingHand="left"
+            selectedSong={bassSong}
+            gameOptions={{ playable: { low: 60, high: 72 } }}
+          />,
+          store
+        )
+      );
+      await Promise.resolve();
+    });
+    expect(value.handChoice).toBe("left");
+    expect(value.playerHands).toEqual(new Set(["left"]));
+    expect(active().load.mock.lastCall?.[1]).toEqual({
+      mode: "wait",
+      hands: new Set(["left"]),
+      speed: 1,
+      accompaniment: false,
+      noteResult: false
+    });
+    expect(store.getState().preferences.player).toEqual(saved);
+    await act(async () => {
+      root.render(withTestStore(<Harness />, store));
+      await Promise.resolve();
+    });
+    expect(value.handChoice).toBe("both");
+    expect(value.playerHands).toEqual(new Set(["right", "left"]));
+    expect(store.getState().preferences.player).toEqual(saved);
+  });
+
+  it("uses both player parts for the fixed pair profile without changing saved preferences", async () => {
+    const saved = store.getState().preferences.player;
+    await act(async () => {
+      root.render(withTestStore(<Harness reading readingHand="both" />, store));
+      await Promise.resolve();
+    });
+    expect(value.handChoice).toBe("both");
+    expect(value.playerHands).toEqual(new Set(["left", "right"]));
+    expect(active().load.mock.lastCall?.[1]).toEqual({
+      mode: "wait",
+      hands: new Set(["left", "right"]),
+      speed: 1,
+      accompaniment: false,
+      noteResult: false
+    });
+    expect(store.getState().preferences.player).toEqual(saved);
+  });
+
+  it("uses the fixed rhythm profile without changing saved ordinary preferences or seeking", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "wait",
+        handChoice: "left",
+        speed: 0.5,
+        metronome: false,
+        accompaniment: true
+      })
+    );
+    startFromRef.current = 2;
+    await act(async () => {
+      root.render(withTestStore(<Harness rhythm />, store));
+      await Promise.resolve();
+    });
+    expect(active().load).toHaveBeenLastCalledWith(
+      song,
+      expect.objectContaining({
+        mode: "tempo",
+        speed: 1,
+        hands: new Set(["right"]),
+        accompaniment: false,
+        noteResult: false,
+        countInBeats: 4
+      }),
+      song.title,
+      expect.anything()
+    );
+    expect(active().seek).not.toHaveBeenCalled();
+    expect(value.metronome).toBe(true);
+    act(() => {
+      value.setMode("wait");
+      value.setSpeed(0.7);
+      value.setMetronome(false);
+    });
+    expect(store.getState().preferences.player).toMatchObject({
+      mode: "wait",
+      handChoice: "left",
+      speed: 0.5,
+      metronome: false,
+      accompaniment: true
+    });
+    await mount();
+    expect(value.mode).toBe("wait");
+    expect(value.speed).toBe(0.5);
+    expect(value.metronome).toBe(false);
+  });
+  it("keeps one reading music session when ordinary game options change", async () => {
+    await act(async () => {
+      root.render(withTestStore(<Harness reading gameOptions={{ difficulty: "normal" }} />, store));
+      await Promise.resolve();
+    });
+    const trainer = active();
+    trainer.load.mockClear();
+    await act(async () => {
+      root.render(
+        withTestStore(
+          <Harness
+            reading
+            gameOptions={{ difficulty: "hard", learningWindow: true, from: 1, to: 2 }}
+          />,
+          store
+        )
+      );
+      await Promise.resolve();
+    });
+    expect(active()).toBe(trainer);
+    expect(trainer.load).not.toHaveBeenCalled();
+  });
+  it("starts reading at zero after ordinary seek and restores saved player rules", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "tempo",
+        handChoice: "left",
+        speed: 0.5,
+        accompaniment: true,
+        metronome: true
+      })
+    );
+    await mount();
+    await act(async () => {
+      value.seekToBeat(4);
+      await Promise.resolve();
+    });
+    expect(startFromRef.current).toBe(2);
+    active().seek.mockClear();
+    const readingSong = { ...song, title: "reading" };
+    await act(async () => {
+      root.render(withTestStore(<Harness reading selectedSong={readingSong} />, store));
+      await Promise.resolve();
+    });
+    expect(active().seek).not.toHaveBeenCalled();
+    expect(active().load).toHaveBeenLastCalledWith(
+      readingSong,
+      expect.objectContaining({
+        mode: "wait",
+        hands: new Set(["right"]),
+        speed: 1,
+        accompaniment: false,
+        noteResult: false
+      }),
+      "reading",
+      expect.anything()
+    );
+    expect(value.metronome).toBe(false);
+    await act(async () => {
+      value.setMode("wait");
+      value.setHandChoice("right");
+      value.setSpeed(1);
+      value.setMetronome(false);
+      await Promise.resolve();
+    });
+    expect(store.getState().preferences.player).toMatchObject({
+      mode: "tempo",
+      handChoice: "left",
+      speed: 0.5,
+      accompaniment: true,
+      metronome: true
+    });
+    await act(async () => {
+      root.render(withTestStore(<Harness />, store));
+      await Promise.resolve();
+    });
+    expect(value.mode).toBe("tempo");
+    expect(value.handChoice).toBe("left");
+    expect(value.speed).toBe(0.5);
+    expect(value.metronome).toBe(true);
+  });
+  const course = {
+    stage: "right" as const,
+    context: "task-a",
+    accompaniment: false,
+    onStage: vi.fn(),
+    onAccompaniment: vi.fn()
+  };
+
+  it("keeps explicit course listening after finish and restart without changing ordinary preferences", async () => {
+    store.dispatch(preferencesActions.playerChanged({ handChoice: "left" }));
+    await mount(false, song, song, undefined, course);
+    const trainer = active();
+    trainer.onSnapshot?.(snapshot({ time: 1, beat: 2 }));
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      value.setHandChoice("listen");
+      await Promise.resolve();
+    });
+    expect(value.handChoice).toBe("listen");
+    expect(value.playerHands).toEqual(new Set());
+    expect(trainer.setPlaying).toHaveBeenCalledWith(true);
+    expect(trainer.load).toHaveBeenLastCalledWith(
+      song,
+      expect.objectContaining({ hands: new Set() }),
+      song.title,
+      { preservePosition: true, runContext: course.context }
+    );
+    expect(trainer.seek).not.toHaveBeenCalled();
+    expect(store.getState().course.listenOnly).toBe(true);
+    expect(store.getState().preferences.player.handChoice).toBe("left");
+    trainer.load.mockClear();
+    await act(async () => {
+      trainer.onSnapshot?.(snapshot({ finished: true, time: song.duration }));
+      await Promise.resolve();
+    });
+    expect(value.listening).toBe(true);
+    expect(trainer.load).not.toHaveBeenCalled();
+    trainer.setPlaying.mockClear();
+    startFromRef.current = 2;
+    await act(async () => {
+      value.restart();
+      await Promise.resolve();
+    });
+    expect(startFromRef.current).toBeNull();
+    expect(value.handChoice).toBe("listen");
+    expect(trainer.load).toHaveBeenLastCalledWith(
+      song,
+      expect.objectContaining({ mode: "tempo", hands: new Set() }),
+      song.title,
+      { runContext: course.context }
+    );
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+  });
+
+  it("keeps explicit listening but pauses the next phrase and the same score's next stage", async () => {
+    await mount(false, song, song, undefined, course);
+    await act(async () => {
+      value.setHandChoice("listen");
+      await Promise.resolve();
+    });
+    const nextSong = { ...song, title: "next phrase" },
+      trainer = active();
+    trainer.setPlaying.mockClear();
+    await mount(false, nextSong, nextSong, undefined, { ...course, context: "task-b" });
+    expect(value.handChoice).toBe("listen");
+    expect(trainer.load).toHaveBeenLastCalledWith(
+      nextSong,
+      expect.objectContaining({ hands: new Set() }),
+      nextSong.title,
+      { preservePosition: false, runContext: "task-b" }
+    );
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    await mount(false, nextSong, nextSong, undefined, {
+      ...course,
+      stage: "both",
+      context: "task-c"
+    });
+    expect(value.handChoice).toBe("listen");
+    expect(trainer.load).toHaveBeenLastCalledWith(
+      nextSong,
+      expect.objectContaining({ hands: new Set() }),
+      nextSong.title,
+      { preservePosition: false, runContext: "task-c" }
+    );
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+  });
+
+  it("restores explicit listening paused and lets Stop pause without changing the choice", async () => {
+    store.dispatch(courseActions.listenOnlyChanged(true));
+    store = createAppStore();
+    await mount(false, song, song, undefined, course);
+    const trainer = active();
+    expect(value.handChoice).toBe("listen");
+    expect(value.playerHands.size).toBe(0);
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    await act(async () => value.toggleListening());
+    expect(trainer.setPlaying).toHaveBeenLastCalledWith(false);
+    expect(store.getState().course.listenOnly).toBe(true);
+    expect(value.handChoice).toBe("listen");
+  });
+
+  it.each(["right", "left", "both"] as const)(
+    "leaves course listening on explicit %s without overwriting ordinary preferences",
+    async (stage) => {
+      const onStage = vi.fn();
+      store.dispatch(preferencesActions.playerChanged({ handChoice: "left" }));
+      store.dispatch(courseActions.listenOnlyChanged(true));
+      await mount(false, song, song, undefined, { ...course, onStage });
+      await act(async () => {
+        value.setHandChoice(stage);
+        await Promise.resolve();
+      });
+      expect(store.getState().course.listenOnly).toBe(false);
+      expect(onStage).toHaveBeenCalledWith(stage);
+      await mount(false, song, song, undefined, {
+        ...course,
+        stage,
+        context: `task-${stage}`,
+        onStage
+      });
+      expect(value.handChoice).toBe(stage);
+      expect(value.playerHands.size).toBe(stage === "both" ? 2 : 1);
+      expect(store.getState().preferences.player.handChoice).toBe("left");
+    }
+  );
+
+  it("returns temporary listening to practice when another stage uses the same score", async () => {
+    await mount(false, song, song, undefined, course);
+    await act(async () => value.toggleListening());
+    active().setPlaying.mockClear();
+    await mount(false, song, song, undefined, { ...course, stage: "both", context: "task-b" });
+    expect(value.listening).toBe(false);
+    expect(value.handChoice).toBe("both");
+    expect(active().setPlaying).not.toHaveBeenCalled();
+    await mount(false, song, song, undefined, course);
+    expect(value.listening).toBe(false);
+    expect(value.handChoice).toBe("right");
+    expect(active().setPlaying).not.toHaveBeenCalled();
+  });
+
+  it("does not revive temporary listening when returning to a cached ordinary song", async () => {
+    await mount();
+    await act(async () => value.toggleListening());
+    const nextSong = { ...song, title: "other song" },
+      trainer = active();
+    trainer.setPlaying.mockClear();
+    await mount(false, nextSong);
+    await mount();
+    expect(value.listening).toBe(false);
+    expect(value.handChoice).toBe("right");
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [false, false],
+    [true, false],
+    [false, true],
+    [true, true]
+  ])(
+    "discards a stale listen request while sound loads (course: %s, return before resolve: %s)",
+    async (inCourse, returnBeforeResolve) => {
+      let resolveSound: () => void = () => {
+        throw new Error("Sound was not requested");
+      };
+      ensureSound = () =>
+        new Promise<void>((resolve) => {
+          resolveSound = resolve;
+        });
+      await mount(false, song, song, undefined, inCourse ? course : undefined);
+      const request = value.toggleListening();
+      const nextSong = inCourse ? song : { ...song, title: "other song" };
+      await mount(
+        false,
+        nextSong,
+        nextSong,
+        undefined,
+        inCourse ? { ...course, context: "task-b" } : undefined
+      );
+      const trainer = active();
+      trainer.setPlaying.mockClear();
+      if (returnBeforeResolve) {
+        await mount(false, song, song, undefined, inCourse ? course : undefined);
+      }
+      await act(async () => {
+        resolveSound();
+        await request;
+      });
+      if (!returnBeforeResolve) {
+        await mount(false, song, song, undefined, inCourse ? course : undefined);
+      }
+      expect(value.listening).toBe(false);
+      expect(value.handChoice).toBe("right");
+      expect(trainer.setPlaying).not.toHaveBeenCalled();
+    }
+  );
+
+  it("keeps a pending listen request when only speed changes", async () => {
+    let resolveSound: () => void = () => {
+      throw new Error("Sound was not requested");
+    };
+    ensureSound = () =>
+      new Promise<void>((resolve) => {
+        resolveSound = resolve;
+      });
+    await mount(false, song, song, undefined, course);
+    const request = value.toggleListening();
+    await act(async () => {
+      value.setSpeed(0.5);
+      await Promise.resolve();
+    });
+    const trainer = active();
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      resolveSound();
+      await request;
+    });
+    expect(value.listening).toBe(true);
+    expect(trainer.load).toHaveBeenLastCalledWith(
+      song,
+      expect.objectContaining({ mode: "tempo", hands: new Set(), speed: 0.5 }),
+      song.title,
+      { preservePosition: true, runContext: course.context }
+    );
+    expect(trainer.setPlaying).toHaveBeenLastCalledWith(true);
+  });
+
+  it("can enable explicit listening after a completed temporary listen-through", async () => {
+    await mount(false, song, song, undefined, course);
+    await act(async () => value.toggleListening());
+    const trainer = active();
+    await act(async () => {
+      trainer.onSnapshot?.(snapshot({ finished: true, time: song.duration }));
+      await Promise.resolve();
+    });
+    expect(value.listening).toBe(false);
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      value.setHandChoice("listen");
+      await Promise.resolve();
+    });
+    expect(value.handChoice).toBe("listen");
+    expect(trainer.setPlaying).toHaveBeenCalledWith(true);
+  });
+
+  it("does not leak the saved course choice into an ordinary song", async () => {
+    store.dispatch(courseActions.listenOnlyChanged(true));
+    await mount();
+    expect(value.listening).toBe(false);
+    expect(value.handChoice).toBe("right");
+    expect(value.playerHands).toEqual(new Set(["right"]));
+    expect(active().setPlaying).not.toHaveBeenCalled();
+  });
+  it("leaves a newly chosen phrase paused after listening to the previous phrase", async () => {
+    const course = {
+      stage: "right" as const,
+      context: "task-a",
+      accompaniment: false,
+      onStage: vi.fn(),
+      onAccompaniment: vi.fn()
+    };
+    await mount(false, song, song, undefined, course);
+    await act(async () => {
+      await value.toggleListening();
+    });
+    expect(value.listening).toBe(true);
+    expect(value.handChoice).toBe("listen");
+    const nextSong = { ...song, title: "next phrase" };
+    active().setPlaying.mockClear();
+    await mount(false, nextSong, nextSong, undefined, { ...course, context: "task-b" });
+    expect(value.listening).toBe(false);
+    expect(value.handChoice).toBe("right");
+    expect(active().load).toHaveBeenLastCalledWith(
+      nextSong,
+      expect.objectContaining({ hands: new Set(["right"]) }),
+      nextSong.title,
+      { preservePosition: false, runContext: "task-b" }
+    );
+    expect(active().setPlaying).not.toHaveBeenCalled();
+  });
+  it("uses course hands and accompaniment without changing ordinary preferences", async () => {
+    const onStage = vi.fn();
+    const onAccompaniment = vi.fn();
+    store.dispatch(preferencesActions.playerChanged({ handChoice: "left", accompaniment: true }));
+    store.dispatch(practiceActions.partRoleChosen("melody"));
+    const course = {
+      stage: "right" as const,
+      context: "synthetic-task",
+      accompaniment: false,
+      onStage,
+      onAccompaniment
+    };
+    await mount(false, song, song, undefined, course);
+    expect(active().load).toHaveBeenLastCalledWith(
+      song,
+      expect.objectContaining({ hands: new Set(["right"]), accompaniment: false }),
+      song.title,
+      { preservePosition: false, runContext: "synthetic-task" }
+    );
+    await act(async () => {
+      value.setHandChoice("both");
+      value.playChoice.parts?.onAccompaniment(true);
+      await Promise.resolve();
+    });
+    expect(onStage).toHaveBeenCalledWith("both");
+    expect(onAccompaniment).toHaveBeenCalledWith(true);
+    expect(store.getState().preferences.player).toMatchObject({
+      handChoice: "left",
+      accompaniment: true
+    });
+    expect(store.getState().practice.partRole).toBe("melody");
+  });
+  it("does not reload practice when the course display changes without changing its task", async () => {
+    const course = {
+      stage: "right" as const,
+      context: "synthetic-task",
+      accompaniment: false,
+      onStage: vi.fn(),
+      onAccompaniment: vi.fn()
+    };
+    await mount(false, song, song, undefined, course);
+    const trainer = active();
+    trainer.load.mockClear();
+    await mount(false, song, song, undefined, { ...course });
+    expect(trainer.load).not.toHaveBeenCalled();
+    await mount();
+    expect(trainer.load).toHaveBeenLastCalledWith(
+      song,
+      expect.objectContaining({ hands: new Set(["right"]), accompaniment: true }),
+      song.title,
+      { preservePosition: true }
+    );
+  });
   it("keeps a paused listen-through paused when its speed changes", async () => {
     await mount();
     await act(async () => {
@@ -409,6 +1034,54 @@ describe("trainer runtime isolation", () => {
     expect(active().setPlaying).toHaveBeenLastCalledWith(true);
   });
 
+  it("pauses a playing terminal horizon without reloading the scene", async () => {
+    await act(async () => {
+      root.render(withTestStore(<Harness reading readingHand="both" />, store));
+      await Promise.resolve();
+    });
+    const trainer = active(),
+      loads = trainer.load.mock.calls.length;
+    act(() => {
+      trainer.onSnapshot?.(snapshot({ playing: true, finished: true, time: song.duration }));
+    });
+    await act(async () => {
+      await value.togglePlay();
+    });
+    expect(trainer.load).toHaveBeenCalledTimes(loads);
+    expect(trainer.setPlaying).toHaveBeenLastCalledWith(false);
+  });
+
+  it("ignores pending Play after the selected fragment changes", async () => {
+    let resolveSound: () => void = () => undefined;
+    ensureSound = () =>
+      new Promise<void>((resolve) => {
+        resolveSound = resolve;
+      });
+    await act(async () => {
+      root.render(withTestStore(<Harness reading readingHand="both" />, store));
+      await Promise.resolve();
+    });
+    const pending = value.togglePlay();
+    await act(async () => {
+      root.render(
+        withTestStore(
+          <Harness reading readingHand="both" selectedSong={{ ...song, title: "next fragment" }} />,
+          store
+        )
+      );
+      await Promise.resolve();
+    });
+    const trainer = active(),
+      loads = trainer.load.mock.calls.length;
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      resolveSound();
+      await pending;
+    });
+    expect(trainer.load).toHaveBeenCalledTimes(loads);
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+  });
+
   it("guards ranked hand changes with the latest snapshot and seeks using the same trainer", async () => {
     await mount(true);
     const initial = value.handChoice;
@@ -430,6 +1103,6 @@ describe("trainer runtime isolation", () => {
     });
     expect(startFromRef.current).toBe(2);
     expect(active().seek).toHaveBeenLastCalledWith(2);
-    expect(active().setPlaying).toHaveBeenLastCalledWith(true);
+    expect(active().setPlaying).not.toHaveBeenCalled();
   });
 });

@@ -84,9 +84,9 @@ export const settingsMessages2 = {
     {
       en: "Calibrate again: the reading is incomplete or unstable, or the audio output or delay has changed."
     },
-  "Нажимайте до первой октавы (C4) в такт метроному: 4 удара на разминку, затем 24 замера. В замер входят ваша реакция и задержка звука, а не только MIDI-устройство.":
+  "После отсчёта 3–2–1 нажимайте до первой октавы (C4) под каждый щелчок: 4 нажатия на разминку не учитываются, следующие 24 измеряют задержку. 24/24 — все 24 нажатия записаны. Результат включает вашу реакцию и задержку звука.":
     {
-      en: "Press middle C (C4) in time with the metronome: 4 warm-up beats, then 24 measurements. The result includes your reaction and audio delay, not just the MIDI device."
+      en: "After the 3–2–1 countdown, press middle C (C4) with each click: 4 warm-up taps do not count, then 24 taps measure the delay. 24/24 means all 24 taps were recorded. The result includes your reaction and audio delay."
     },
   "Отменить калибровку": {
     en: "Cancel calibration"
@@ -189,9 +189,9 @@ export const settingsMessages2 = {
     {
       en: "20 Perfect or Great hits in a row start Flow. Every scored note, even Good and OK, adds energy. The total depends on the length of the selected part: enough for two Overdrives in a piece under 30 seconds, three in a longer one. Misses and rests add no energy. Overdrive costs 50 energy and doubles the multiplier for 10 seconds, so a very short exercise may allow fewer activations. Holding long notes earns bonus points."
     },
-  "Точность считается только по моменту нажатия. Звёзды сравнивают ваши очки с идеальной игрой без Overdrive. В режиме «Ждать ноту» рейтинга нет.":
+  "В пианино звёзды даются за общий результат: 30% за попадания и 70% за удержание. От 25% — одна звезда, от 50% — две, от 75% — три. Точность попадания и ранг времени считаются отдельно. В печати слов звёзды зависят от точности.":
     {
-      en: "Accuracy only looks at when you press the keys. Stars compare your score with a perfect run without Overdrive. “Wait for note” has no ranking."
+      en: "Piano stars use the overall result: 30% for hits and 70% for holding. At least 25% earns one star, 50% two, and 75% three. Hit timing accuracy and timing rank are separate. Word typing stars depend on accuracy."
     },
   "Язык текста": {
     en: "Text language"
@@ -274,14 +274,14 @@ export const settingsMessages2 = {
   "Показать руки": {
     en: "Show hands"
   },
-  Дорога: {
-    en: "Road"
+  Перспектива: {
+    en: "Perspective"
   },
   "Обычный вид нот": {
     en: "Standard note view"
   },
-  "Дорога: ноты в перспективе": {
-    en: "Road: notes in perspective"
+  "Перспектива: объёмный вид нот": {
+    en: "Perspective: 3D note view"
   },
   "Ноты на стане": {
     en: "Note cards"
