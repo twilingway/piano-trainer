@@ -338,5 +338,19 @@ export const settingsMessages3 = {
   },
   "На канале 1 обычно играет само пианино: такие нажатия не засчитаются.": {
     en: "Most pianos play on channel 1 themselves: presses there will not count."
+  },
+  "Звук мелодии": { en: "Melody sound" },
+  "На этом устройстве": { en: "On this device" },
+  "На MIDI-пианино": { en: "On MIDI piano" },
+  "На обоих устройствах": { en: "On both devices" },
+  "Канал мелодии": { en: "Melody channel" },
+  "Метроном, голосовые подсказки и ручные нажатия звучат на этом устройстве.": {
+    en: "The metronome, spoken hints and manually played notes sound on this device."
+  },
+  "Выберите подключённый выход MIDI, чтобы мелодия звучала на пианино.": {
+    en: "Select a connected MIDI output to play the melody on the piano."
+  },
+  "У мелодии и подсветки один канал. Выберите разные каналы, чтобы ноты не мешали друг другу.": {
+    en: "The melody and key lights share a channel. Choose separate channels to avoid note conflicts."
   }
 } satisfies Messages;

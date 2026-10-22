@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FallingNotesView } from "../render/FallingNotesView";
 import type { Song } from "../song/song";
 import type { Take } from "../recording/take";
@@ -7,6 +7,7 @@ import { Trainer, type TrainerSnapshot } from "./Trainer";
 vi.mock("../audio/pianoSound", () => ({ soundAllOff: vi.fn() }));
 vi.mock("../audio/sessionAudio", () => ({
   SessionAudio: class {
+    configure = vi.fn();
     start = vi.fn();
     reset = vi.fn();
     schedule = vi.fn();
@@ -591,5 +592,27 @@ describe("Trainer key lights", () => {
     run.trainer.setPlaying(true);
     run.frame(2800);
     expect(run.last()).toEqual([]);
+  });
+});
+
+describe("Trainer melody routing", () => {
+  it("preserves position, score results and the current take when changing outputs", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(3000);
+    down(run.trainer, 3000);
+    run.frame(3300, 300);
+    const position = run.latest()?.time;
+    const result = run.latest()?.stats.hits;
+    run.trainer.setMelodyOutput({ browser: false });
+    run.trainer.setMelodyOutput({ browser: true });
+    expect(run.takes).toHaveLength(0);
+    run.frame(3600, 300);
+    expect(run.latest()?.playing).toBe(true);
+    expect(run.latest()?.time).toBeCloseTo((position ?? 0) + 0.3);
+    expect(run.latest()?.stats.hits).toEqual(result);
+    run.trainer.setPlaying(false);
+    run.trainer.restart();
+    expect(run.takes).toHaveLength(1);
   });
 });

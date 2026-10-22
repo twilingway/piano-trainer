@@ -109,6 +109,7 @@ describe("MidiSettings output", () => {
   const onSelect = vi.fn();
   const onTest = vi.fn();
   const onLights = vi.fn();
+  const onMelody = vi.fn();
   const piano = { id: "a", name: "Digital Piano" };
   const output = (rest: Partial<MidiOutputControls>): MidiOutputControls => ({
     devices: [],
@@ -119,6 +120,8 @@ describe("MidiSettings output", () => {
     onTest,
     lights: { enabled: false, channel: 3, velocity: 64 },
     onLights,
+    melody: { mode: "browser", channel: 1 },
+    onMelody,
     ...rest
   });
   function outputSelect() {
@@ -126,6 +129,49 @@ describe("MidiSettings output", () => {
     if (!element) throw new Error("Missing output selector");
     return element;
   }
+
+  it("offers all melody routes and preserves the chosen MIDI channel", async () => {
+    await render({}, output({ melody: { mode: "browser", channel: 7 } }));
+    const select = host.querySelector<HTMLSelectElement>("select[aria-label='Звук мелодии']");
+    if (!select) throw new Error("Missing melody route selector");
+    expect([...select.options].map((option) => option.textContent)).toEqual([
+      "На этом устройстве",
+      "На MIDI-пианино",
+      "На обоих устройствах"
+    ]);
+    expect(host.querySelector("select[aria-label='Канал мелодии']")).toBeNull();
+    await act(async () => {
+      await Promise.resolve();
+      select.value = "both";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onMelody).toHaveBeenCalledWith({ mode: "both", channel: 7 });
+    expect(host.textContent).toContain("Метроном, голосовые подсказки и ручные нажатия");
+  });
+
+  it("sets the melody channel and explains disconnected and conflicting outputs", async () => {
+    await render(
+      {},
+      output({
+        melody: { mode: "midi", channel: 3 },
+        lights: { enabled: true, channel: 3, velocity: 64 }
+      })
+    );
+    expect(host.textContent).toContain("Выберите подключённый выход MIDI");
+    expect(host.textContent).toContain("У мелодии и подсветки один канал.");
+    const select = host.querySelector<HTMLSelectElement>("select[aria-label='Канал мелодии']");
+    if (!select) throw new Error("Missing melody channel selector");
+    expect(select.options).toHaveLength(16);
+    await act(async () => {
+      await Promise.resolve();
+      select.value = "4";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onMelody).toHaveBeenCalledWith({ mode: "midi", channel: 4 });
+    await render({}, output({ connected: true, melody: { mode: "both", channel: 4 } }));
+    expect(host.textContent).not.toContain("Выберите подключённый выход MIDI");
+    expect(host.textContent).not.toContain("У мелодии и подсветки один канал.");
+  });
 
   it("is hidden without Web MIDI", async () => {
     await render();

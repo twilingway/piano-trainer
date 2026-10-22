@@ -1,6 +1,7 @@
 import { createListenerMiddleware, type ListenerMiddlewareInstance } from "@reduxjs/toolkit";
 import { parseDeviceRange } from "../input/deviceRange";
 import { DEFAULT_KEY_LIGHTS } from "../input/keyLights";
+import { parseMelodyOutput } from "../input/melodyOutput";
 import { parseKeyboardPrefs } from "../input/keyboardLayouts";
 import { normalizeGamePreferences } from "./gamePreferences";
 import { getInterfaceLanguage } from "./interfaceLanguage";
@@ -29,6 +30,7 @@ export const PREFERENCE_KEYS = {
   deviceRange: "device-range-v1",
   midiOutput: "midi-output-v1",
   keyLights: "key-lights-v1",
+  melodyOutput: "melody-output-v1",
   fullscreen: "fullscreen-preferred",
   timing: "piano-trainer:timing-v1"
 } satisfies Record<keyof PreferencesState, string>;
@@ -105,6 +107,7 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
     },
     viewProfiles,
     deviceRange: parseDeviceRange(json(PREFERENCE_KEYS.deviceRange)),
+    melodyOutput: parseMelodyOutput(json(PREFERENCE_KEYS.melodyOutput)),
     midiOutput:
       typeof output.id === "string" && typeof output.name === "string"
         ? { id: output.id, name: output.name }

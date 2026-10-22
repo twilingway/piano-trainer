@@ -3,6 +3,8 @@ import type { RefObject } from "react";
 
 import { midiSupported } from "../input/midiInput";
 import type { KeyEvent } from "../input/midiInput";
+import { createMelodyMidiOutput } from "../input/melodyMidiOutput";
+import type { MelodyMidiOutput } from "../input/melodyMidiOutput";
 import { openMidiOutput } from "../input/midiOutput";
 import type { MidiOutputControl, OutputState } from "../input/midiOutput";
 import { createKeyLights } from "../input/keyLights";
@@ -21,6 +23,10 @@ export function useMidiOutput(
   trainerRef: RefObject<Trainer | null>,
   trainerReady: boolean
 ): { controls: MidiOutputControls | undefined; isEcho: (event: KeyEvent) => boolean } {
+  const melody = useAppSelector((state) => state.preferences.melodyOutput);
+  const melodyRef = useRef<MelodyMidiOutput | undefined>(undefined);
+  const retiredRef = useRef<{ output: MelodyMidiOutput; until: number }[]>([]);
+  const portIdRef = useRef<string | undefined>(undefined);
   const choice = useAppSelector((state) => state.preferences.midiOutput);
   const dispatch = useAppDispatch();
   const [state, setState] = useState<OutputState>({ devices: [] });
@@ -43,6 +49,7 @@ export function useMidiOutput(
       // The port left behind got a panic: the lights start over on the new one.
       if (next.current?.id !== portId) lights.forget();
       portId = next.current?.id;
+      portIdRef.current = portId;
       setState(next);
     };
     openMidiOutput(choiceRef.current, onState, abort.signal).then(
@@ -60,6 +67,7 @@ export function useMidiOutput(
     );
     return () => {
       abort.abort();
+      melodyRef.current?.reset();
       controlRef.current?.dispose();
       controlRef.current = null;
       lights.forget();
@@ -69,6 +77,7 @@ export function useMidiOutput(
 
   useEffect(() => {
     choiceRef.current = choice;
+    melodyRef.current?.reset();
     controlRef.current?.select(choice);
   }, [choice]);
 
@@ -89,7 +98,42 @@ export function useMidiOutput(
     };
   }, [trainerRef, trainerReady, lightSettings.enabled]);
 
-  const isEcho = useCallback((event: KeyEvent) => lightsRef.current?.isEcho(event) ?? false, []);
+  const portId = state.current?.id;
+  const conflict = lightSettings.enabled && lightSettings.channel === melody.channel;
+  useEffect(() => {
+    const trainer = trainerRef.current;
+    if (!trainerReady || !trainer) return;
+    const midi =
+      melody.mode !== "browser" && portId !== undefined && !conflict
+        ? createMelodyMidiOutput((message) => {
+            if (portIdRef.current === portId) controlRef.current?.send(message);
+          }, melody.channel)
+        : undefined;
+    melodyRef.current = midi;
+    trainer.setMelodyOutput({ browser: melody.mode !== "midi", midi });
+    const stop = () => midi?.reset();
+    window.addEventListener("pagehide", stop);
+    return () => {
+      window.removeEventListener("pagehide", stop);
+      midi?.reset();
+      if (midi) {
+        const now = performance.now();
+        retiredRef.current = retiredRef.current.filter((entry) => entry.until >= now);
+        retiredRef.current.push({ output: midi, until: now + 100 });
+      }
+      if (melodyRef.current === midi) melodyRef.current = undefined;
+    };
+  }, [trainerRef, trainerReady, portId, melody.mode, melody.channel, conflict]);
+
+  const isEcho = useCallback(
+    (event: KeyEvent) =>
+      (lightsRef.current?.isEcho(event) ?? false) ||
+      (melodyRef.current?.isEcho(event) ?? false) ||
+      retiredRef.current.some(
+        (entry) => performance.now() <= entry.until && entry.output.isEcho(event)
+      ),
+    []
+  );
 
   if (!midiSupported()) return { controls: undefined, isEcho };
   return {
@@ -106,10 +150,15 @@ export function useMidiOutput(
         const next = device ? { id: device.id, name: device.name } : null;
         choiceRef.current = next;
         dispatch(preferencesActions.midiOutputChanged(next));
+        melodyRef.current?.reset();
         controlRef.current?.select(next);
       },
       onTest: () => {
         controlRef.current?.test();
+      },
+      melody,
+      onMelody: (next) => {
+        dispatch(preferencesActions.melodyOutputChanged(next));
       },
       lights: lightSettings,
       onLights: (next: KeyLightSettings) => {
