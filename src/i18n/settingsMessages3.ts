@@ -1,6 +1,7 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
+  "Приготовьтесь: {seconds}": { en: "Get ready: {seconds}" },
   "Эти настройки применяются к нотному стану и пианинным табам.": {
     en: "These settings apply to the score and piano tabs."
   },
@@ -8,8 +9,8 @@ export const settingsMessages3 = {
     {
       en: "Offset: {offset} ms · Jitter: {jitter} ms · Stability: {quality} · Samples: {samples}/24"
     },
-  "Разминка {warmup}/4 · Измерения {measured}/24": {
-    en: "Warm-up {warmup}/4 · Measurements {measured}/24"
+  "Разминка: {warmup}/4 нажатия · Замер: {measured}/24 нажатия": {
+    en: "Warm-up: {warmup}/4 taps · Measurement: {measured}/24 taps"
   },
   "Падающие ноты полосками": {
     en: "Falling notes as bars"

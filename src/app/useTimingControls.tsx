@@ -76,7 +76,8 @@ export function useTimingControls({
     start: startCalibration,
     capture,
     progress,
-    running
+    running,
+    countdown
   } = useCalibration({
     audioOffsetMs: preferences.audioOffsetMs,
     audioOutputId: preferences.audioOutputId,
@@ -214,6 +215,7 @@ export function useTimingControls({
     ...(profile ? { profile } : {}),
     progress,
     running,
+    countdown,
     locked,
     canCalibrate: !!chosenId,
     onTransport,

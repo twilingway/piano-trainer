@@ -84,9 +84,9 @@ export const settingsMessages2 = {
     {
       en: "Calibrate again: the reading is incomplete or unstable, or the audio output or delay has changed."
     },
-  "Нажимайте до первой октавы (C4) в такт метроному: 4 удара на разминку, затем 24 замера. В замер входят ваша реакция и задержка звука, а не только MIDI-устройство.":
+  "После отсчёта 3–2–1 нажимайте до первой октавы (C4) под каждый щелчок: 4 нажатия на разминку не учитываются, следующие 24 измеряют задержку. 24/24 — все 24 нажатия записаны. Результат включает вашу реакцию и задержку звука.":
     {
-      en: "Press middle C (C4) in time with the metronome: 4 warm-up beats, then 24 measurements. The result includes your reaction and audio delay, not just the MIDI device."
+      en: "After the 3–2–1 countdown, press middle C (C4) with each click: 4 warm-up taps do not count, then 24 taps measure the delay. 24/24 means all 24 taps were recorded. The result includes your reaction and audio delay."
     },
   "Отменить калибровку": {
     en: "Cancel calibration"

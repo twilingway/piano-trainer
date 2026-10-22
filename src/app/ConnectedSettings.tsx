@@ -403,6 +403,7 @@ function ConnectedSynchronizationSettings() {
       profile: runtime.timing.settingsProps.profile,
       progress: runtime.timing.settingsProps.progress,
       running: runtime.timing.settingsProps.running,
+      countdown: runtime.timing.settingsProps.countdown,
       locked: runtime.timing.settingsProps.locked,
       canCalibrate: runtime.timing.settingsProps.canCalibrate,
       tapAvailable: runtime.timing.settingsProps.onTap !== undefined

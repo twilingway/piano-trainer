@@ -243,7 +243,7 @@ describe("rhythm preparation and ownership", () => {
       await Promise.resolve();
     });
     for (let index = 0; index < 28; index++) {
-      const timestamp = 1300 + index * 600;
+      const timestamp = 4300 + index * 600;
       if (index % 2 === 0) space("keydown", timestamp);
       else {
         const tapButton = Array.from(host.querySelectorAll("button")).find(
