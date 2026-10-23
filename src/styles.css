@@ -1499,13 +1499,6 @@ select:disabled {
   flex-shrink: 0;
 }
 
-.topbar-audio-toggle__beat {
-  width: 20px;
-  font-size: 22px;
-  line-height: 1;
-  text-align: center;
-}
-
 .topbar-speed input {
   width: 90px;
   accent-color: var(--accent);

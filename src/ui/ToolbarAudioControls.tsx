@@ -1,7 +1,7 @@
 import { useI18n } from "../app/useI18n";
 import type { PartsChoice } from "./CompactPracticeChoices";
 import type { HandsChoice } from "./PlayerTopBar";
-import { ListenIcon } from "./icons";
+import { ListenIcon, MetronomeIcon } from "./icons";
 
 interface Props {
   readonly hands: HandsChoice;
@@ -44,9 +44,7 @@ export function ToolbarAudioControls({ hands, parts, metronome, disabled }: Prop
             metronome.onChange(!metronome.enabled);
           }}
         >
-          <span className="topbar-audio-toggle__beat" aria-hidden="true">
-            ♩
-          </span>
+          <MetronomeIcon />
           <span className="topbar-audio-toggle__label">{t("Метроном")}</span>
         </button>
       )}
