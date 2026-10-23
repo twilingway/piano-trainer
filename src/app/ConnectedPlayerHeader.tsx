@@ -39,6 +39,7 @@ export function ConnectedPlayerHeader() {
     trainerSnapshotSource,
     trainerMode,
     trainerSpeed,
+    trainerMetronome,
     inputMidiName,
     courseActive,
     comparing,
@@ -71,6 +72,7 @@ export function ConnectedPlayerHeader() {
       trainerSnapshotSource: runtime.trainer.snapshotSource,
       trainerMode: runtime.trainer.mode,
       trainerSpeed: runtime.trainer.speed,
+      trainerMetronome: runtime.trainer.metronome,
       inputMidiName: runtime.input.midiName,
       courseActive: runtime.course.active,
       comparing: runtime.comparing,
@@ -97,6 +99,7 @@ export function ConnectedPlayerHeader() {
   const screenToggleEditing = useRuntimeCommand((runtime) => runtime.screen.toggleEditing);
   const trainerSetMode = useRuntimeCommand((runtime) => runtime.trainer.setMode);
   const trainerSetSpeed = useRuntimeCommand((runtime) => runtime.trainer.setSpeed);
+  const trainerSetMetronome = useRuntimeCommand((runtime) => runtime.trainer.setMetronome);
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   const computerKeyboard_endEditing = useRuntimeCommand(
     (runtime) => runtime.computerKeyboard.endEditing
@@ -133,6 +136,7 @@ export function ConnectedPlayerHeader() {
           mode={trainerMode}
           {...playChoice}
           speed={trainerSpeed}
+          metronome={{ enabled: trainerMetronome, onChange: trainerSetMetronome }}
           fixedPractice={practiceActive}
           difficulty={hasArrangement ? { simplified, onSimplified } : undefined}
           midi={inputMidiName}

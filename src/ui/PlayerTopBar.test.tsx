@@ -59,6 +59,44 @@ afterEach(() => {
 });
 
 describe("PlayerTopBar difficulty", () => {
+  it("toggles accompaniment and metronome directly from the desktop bar", () => {
+    const onAccompaniment = vi.fn();
+    const onMetronome = vi.fn();
+    render({
+      parts: { roles: [], role: null, onRole: noop, accompaniment: true, onAccompaniment },
+      metronome: { enabled: false, onChange: onMetronome }
+    });
+    const buttons = host.querySelectorAll<HTMLButtonElement>(".topbar-audio-toggle");
+    expect(Array.from(buttons, (button) => button.getAttribute("aria-label"))).toEqual([
+      "Автоаккомпанемент",
+      "Метроном"
+    ]);
+    expect(buttons[0]?.getAttribute("aria-pressed")).toBe("true");
+    expect(buttons[1]?.getAttribute("aria-pressed")).toBe("false");
+    act(() => {
+      buttons[0]?.click();
+      buttons[1]?.click();
+    });
+    expect(onAccompaniment).toHaveBeenCalledExactlyOnceWith(false);
+    expect(onMetronome).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
+  it("keeps fixed practice controls locked and hides accompaniment while listening", () => {
+    const onMetronome = vi.fn();
+    render({
+      hands: "listen",
+      fixedPractice: true,
+      parts: { roles: [], role: null, onRole: noop, accompaniment: true, onAccompaniment: noop },
+      metronome: { enabled: true, onChange: onMetronome }
+    });
+    const buttons = host.querySelectorAll<HTMLButtonElement>(".topbar-audio-toggle");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]?.getAttribute("aria-label")).toBe("Метроном");
+    expect(buttons[0]?.disabled).toBe(true);
+    act(() => buttons[0]?.click());
+    expect(onMetronome).not.toHaveBeenCalled();
+  });
+
   it("keeps one phrase selector in the toolbar or compact menu across viewport changes", () => {
     let compact = false;
     let notify: (() => void) | undefined;

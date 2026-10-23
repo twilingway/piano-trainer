@@ -21,6 +21,9 @@ export const settingsMessages3 = {
   "Подсказки к виду": {
     en: "View help"
   },
+  "— ноты по буквам и пальцам для каждой руки.": {
+    en: "— note letters and fingering for each hand."
+  },
   "— партитура над игрой.": {
     en: "— the score above the game."
   },

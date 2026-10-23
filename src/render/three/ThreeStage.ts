@@ -415,7 +415,7 @@ export class ThreeStage {
   addToKeys(object: Object3D): void {
     invalidateKeyboardCasePasses(this.scene);
     this.keys.add(object);
-    this.free.invalidate();
+    this.free.invalidate(false);
     this.performance.invalidate();
     this.worldStage.invalidate();
   }
@@ -423,7 +423,7 @@ export class ThreeStage {
   removeFromKeys(object: Object3D): void {
     invalidateKeyboardCasePasses(this.scene);
     object.removeFromParent();
-    this.free.invalidate();
+    this.free.invalidate(false);
     this.performance.invalidate();
     this.worldStage.invalidate();
   }
@@ -482,7 +482,7 @@ export class ThreeStage {
 
   private build(keys: KeysScene): void {
     invalidateKeyboardCasePasses(this.scene);
-    this.free.invalidate();
+    this.free.invalidate(false);
     this.clear(true);
     this.version = keys.version;
     const boxes = keyboardSceneBoxes(keys);
