@@ -83,8 +83,8 @@ export function RoadIcon() {
 export function MetronomeIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M7 4h6l4 17H3L7 4ZM5 18h10" />
-      <path d="M10 16 20 2" strokeWidth="2.2" />
+      <path d="M9 4h6l4 17H5L9 4ZM7 18h10" />
+      <path d="M12 16 20 2" strokeWidth="2.2" />
       <path d="m15 4 4 3-2 3-4-3z" className="filled" />
     </svg>
   );
