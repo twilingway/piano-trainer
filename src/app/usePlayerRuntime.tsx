@@ -1,3 +1,5 @@
+import { usePlayCountdown } from "./usePlayCountdown";
+import { useAppSelector } from "./storeHooks";
 import { useMemo, useRef, useState } from "react";
 import { useGameRuntime } from "./useGameRuntime";
 import { useI18n } from "./useI18n";
@@ -9,6 +11,7 @@ import { useFullscreen } from "./useFullscreen";
 import { useKeyInput } from "./useKeyInput";
 import { useKeyboardSettings } from "./useKeyboardSettings";
 import { useComputerKeyboard } from "./useComputerKeyboard";
+import { useFreeCameraInput } from "./useFreeCameraInput";
 import { usePlayerLibrary } from "./usePlayerLibrary";
 import { useShortcuts } from "./useShortcuts";
 import { useSong } from "./useSong";
@@ -53,7 +56,7 @@ export function usePlayerRuntime() {
    * Kept across reloads (listen, speed, hand, mode), cleared by "Сначала" and a new song.
    */
   const startFromRef = useRef<number | null>(null);
-  const { sound, ensureSound } = useSound();
+  const { sound, ensureSound, ensureIntervalSound } = useSound();
   const current = useSong(startFromRef);
   const course = useCourse(current.showSong);
   const reading = useReadingCourse();
@@ -209,18 +212,48 @@ export function usePlayerRuntime() {
     selectTrainerStatus,
     sameTrainerStatus
   );
+  const countdownSeconds = useAppSelector((state) => state.preferences.player.countdownSeconds);
+  const countdown = usePlayCountdown({
+    seconds: countdownSeconds,
+    playing: ear ? !intervals.audio.paused : snapshot.playing,
+    finished: snapshot.finished,
+    song: word.practiceSong,
+    context: JSON.stringify([
+      word.practiceKey,
+      trainer.mode,
+      trainer.handChoice,
+      trainer.speed,
+      ear,
+      takes.comparing
+    ]),
+    blocked: libraryOpen || settingsOpen || (word.enabled && (word.pending || Boolean(word.error))),
+    prepare: ensureIntervalSound,
+    onToggle: playNow
+  });
   useWordTypingInterfaceLanguage(word, snapshot.playing);
   const computerKeyboard = useComputerKeyboard();
+  const cameraInput = useFreeCameraInput(
+    workspacePrefs,
+    computerKeyboard.options,
+    libraryOpen ||
+      settingsOpen ||
+      computerKeyboard.editing ||
+      word.enabled ||
+      ear ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro
+  );
   const input = useKeyInput(
     trainer.trainerRef,
     ear || rhythm.active
-      ? { ...computerKeyboard.options, blocked: true }
+      ? { ...cameraInput.keyboard, blocked: true }
       : word.enabled
         ? word.keyboardOptions
-        : computerKeyboard.options,
+        : cameraInput.keyboard,
     rhythm.active || independentRhythm.active ? undefined : device.intercept,
     trainer.trainerReady,
-    ear,
+    ear || countdown.active,
     rhythm.active || independentRhythm.active,
     independentRhythm.active,
     snapshot.playing
@@ -295,6 +328,7 @@ export function usePlayerRuntime() {
     song: word.practiceSong,
     baseSong: practiceActive || word.enabled ? word.practiceSong : current.baseSong,
     staffPrefs: workspacePrefs,
+    cameraInputBlocked: !cameraInput.enabled,
     updateStaffPrefs,
     fallingNames: score.nameStyle,
     comparing: !practiceActive && takes.comparing,
@@ -313,13 +347,12 @@ export function usePlayerRuntime() {
     openLesson: current.openLesson
   });
 
-  const { listening } = trainer;
   const { review, lastTake, comparing } = takes;
 
   // The shell: one bar, the song's progress, windows for the library and the settings.
   const playing = snapshot.playing;
 
-  const play = () => {
+  function playNow() {
     setResultClosed(false);
     if (independentRhythm.active) {
       if (snapshot.playing) independentRhythm.cancel();
@@ -333,8 +366,10 @@ export function usePlayerRuntime() {
       else void rhythm.onStart();
     } else if (ear) intervals.audio.togglePause();
     else void trainer.togglePlay();
-  };
+  }
+  const play = countdown.toggle;
   const startOver = () => {
+    countdown.resetNewRun();
     setResultClosed(false);
     if (independentRhythm.active) independentRhythm.onRepeat();
     else if (heldBass.active) heldBass.newSeries();
@@ -366,7 +401,7 @@ export function usePlayerRuntime() {
       }
     />
   );
-  const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs, toggles);
+  const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs);
 
   const chooseWordPart = (part: Part) => {
     startFromRef.current = null;
@@ -447,7 +482,14 @@ export function usePlayerRuntime() {
     screen: { ...screen, layout: workspaceLayout },
     score,
     takes,
-    trainer,
+    trainer: {
+      ...trainer,
+      seekToBeat: (beat: number) => {
+        countdown.cancel();
+        trainer.seekToBeat(beat);
+      }
+    },
+    countdown: countdown.countdown,
     snapshot,
     computerKeyboard,
     input,
@@ -455,7 +497,7 @@ export function usePlayerRuntime() {
     timing,
     view,
     library,
-    listening,
+    listening: trainer.listening,
     review: practiceActive ? null : review,
     lastTake,
     comparing: !practiceActive && comparing,

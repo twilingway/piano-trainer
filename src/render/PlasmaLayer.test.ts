@@ -58,6 +58,30 @@ function firstVisible(layer: PlasmaLayer, group: number): Sprite {
 afterEach(() => vi.restoreAllMocks());
 
 describe("PlasmaLayer", () => {
+  it("keeps ember geometry finite through long playback and pool reuse", async () => {
+    mockAssets();
+    const layer = new PlasmaLayer();
+    await layer.load();
+    const keys = [anchor];
+    let finiteGeometry = true;
+    let validWidths = true;
+    // Axis flattening must describe this frame, never compound across a particle's lifetime.
+    for (let frame = 0; frame < 6000; frame++) {
+      layer.draw(keys, [source], [source], 600, 1 / 144);
+      for (const ember of visible(layer, 0)) {
+        ember.updateGeometry();
+        finiteGeometry &&= ember.geometry.positions.every(Number.isFinite);
+        validWidths &&= ember.width > 0 && ember.width <= 34 * 0.8;
+      }
+    }
+    expect(finiteGeometry).toBe(true);
+    expect(validWidths).toBe(true);
+    for (const ember of visible(layer, 0)) {
+      expect(Math.abs(ember.scale.x)).toBeGreaterThanOrEqual(0.2);
+      expect(Math.abs(ember.scale.x)).toBeLessThanOrEqual(1);
+    }
+    layer.destroy();
+  });
   it("exposes only the owned neutral mist group without moving coloured effects", () => {
     const layer = new PlasmaLayer();
     expect(layer.mist).toBe(layer.container.children[1]);
@@ -753,4 +777,37 @@ describe("PlasmaLayer", () => {
     expect(pending.container.destroyed).toBe(true);
     expect(destroySource).not.toHaveBeenCalled();
   });
+});
+
+it.each(
+  Array.from({ length: 8 }, (_, mask) => ({
+    burning: (mask & 1) !== 0,
+    presses: (mask & 2) !== 0,
+    musicalNotes: (mask & 4) !== 0
+  }))
+)("independently renders flame and musical particles for %j", async (options) => {
+  mockAssets();
+  const layer = new PlasmaLayer();
+  await layer.load();
+  layer.draw([anchor], [source], [source], 600, 0.05, false, 0, options);
+  expect(layer.container.children[0]?.visible).toBe(options.musicalNotes);
+  for (const index of [1, 2, 3])
+    expect(layer.container.children[index]?.visible).toBe(options.burning);
+  expect(visible(layer, 0).length > 0).toBe(options.musicalNotes);
+  layer.destroy();
+});
+
+it("consumes hidden musical attacks without accumulating a particle salvo", async () => {
+  mockAssets();
+  const layer = new PlasmaLayer();
+  await layer.load();
+  const off = { burning: true, presses: true, musicalNotes: false };
+  for (let index = 0; index < 100; index++)
+    layer.draw([anchor], [source], [source], 600, 0.05, false, 0, off);
+  expect(visible(layer, 0)).toHaveLength(0);
+  layer.draw([anchor], [source], [source], 600, 0, false, 0, { ...off, musicalNotes: true });
+  expect(visible(layer, 0)).toHaveLength(0);
+  layer.draw([anchor], [source], [source], 600, 0.016, false, 0, { ...off, musicalNotes: true });
+  expect(visible(layer, 0).length).toBeLessThanOrEqual(1);
+  layer.destroy();
 });

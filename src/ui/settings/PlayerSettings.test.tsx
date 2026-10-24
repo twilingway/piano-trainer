@@ -1,3 +1,7 @@
+import { ViewToggles } from "../ViewToggles";
+import { TimingSettings } from "../TimingSettings";
+import { defaultTimingPreferences } from "../../app/timingPreferences";
+import { SettingsDiagnostics } from "./SettingsDiagnostics";
 import { Provider } from "react-redux";
 import { createAppStore, type AppStore } from "../../app/store";
 import { PlaySettings } from "./PlaySettings";
@@ -31,11 +35,22 @@ const onRules = vi.fn();
 const onRange = vi.fn();
 const onTranspose = vi.fn();
 const onDevice = vi.fn();
+const onMidiOutput = vi.fn();
+const onMelodyOutput = vi.fn();
+const onMidiTest = vi.fn();
+const onOffsets = vi.fn();
+const onCalibrate = vi.fn();
 const onResetLayout = vi.fn();
 const onToggleEditing = vi.fn();
 const noop = () => undefined;
 
-function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
+function Harness({
+  wordTyping = false,
+  melodyMode = "midi"
+}: {
+  wordTyping?: boolean;
+  melodyMode?: "browser" | "midi";
+}) {
   const computerKeyboard = useComputerKeyboard();
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   return (
@@ -43,10 +58,20 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
       open
       onClose={noop}
       wordTyping={wordTyping}
+      diagnostics={
+        <SettingsDiagnostics
+          fps={staffPrefs.fps}
+          onFps={(fps) => {
+            updateStaffPrefs({ fps });
+          }}
+        />
+      }
       play={
         <PlaySettings
           {...{
             wordTyping,
+            countdownSeconds: 3,
+            onCountdownSeconds: noop,
             metronome: false,
             onMetronome: noop,
             listening: false,
@@ -107,18 +132,20 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
           }
           keyboard={
             <KeyboardSettings
+              freeRoadLayout={{ height: 2, distance: 0, width: 4, shape: "line" }}
+              onFreeRoadLayout={() => undefined}
               {...{
                 keyRange: "song",
                 onKeyRange: noop,
                 showLabels: false,
                 onShowLabels: noop,
-                fps: staffPrefs.fps,
-                onFps: (fps: boolean) => {
-                  updateStaffPrefs({ fps });
-                },
                 keyStyle: staffPrefs.keyStyle,
                 onKeyStyle: (keyStyle) => {
                   updateStaffPrefs({ keyStyle });
+                },
+                fallingNoteStyle: staffPrefs.fallingNoteStyle,
+                onFallingNoteStyle: (fallingNoteStyle) => {
+                  updateStaffPrefs({ fallingNoteStyle });
                 },
                 notesPerspective: staffPrefs.road,
                 onNotesPerspective: (road) => {
@@ -129,6 +156,8 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
                 onFlatNoteBurning: noop,
                 flatPressEffects: staffPrefs.flatPressEffects,
                 onFlatPressEffects: noop,
+                noteParticles: true,
+                onNoteParticles: noop,
                 keyboardDim: staffPrefs.keyboardDim,
                 onKeyboardDim: (keyboardDim) => {
                   updateStaffPrefs({ keyboardDim });
@@ -143,15 +172,16 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
                 road: { far: 0.3, horizon: 0.3 },
                 onRoad: noop,
                 camera: DEFAULT_CAMERA,
-                onCamera: noop,
-                toggles: <span>Переключатели вида</span>
+                onCamera: noop
               }}
             />
           }
-          fps={staffPrefs.fps}
-          onFps={(fps) => {
-            updateStaffPrefs({ fps });
-          }}
+          toggles={
+            <>
+              <span>Переключатели вида</span>
+              <ViewToggles prefs={staffPrefs} hasScore onChange={updateStaffPrefs} />
+            </>
+          }
           editing={false}
           onToggleEditing={onToggleEditing}
           onResetLayout={onResetLayout}
@@ -171,6 +201,18 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
             deviceId: "all",
             onDevice,
             midiError: null,
+            output: {
+              devices: [{ id: "piano", name: "USB Piano" }],
+              choice: { id: "piano", name: "USB Piano" },
+              connected: true,
+              selectedId: "piano",
+              onSelect: onMidiOutput,
+              onTest: onMidiTest,
+              lights: { enabled: false, channel: 1, velocity: 50 },
+              onLights: noop,
+              melody: { mode: melodyMode, channel: 1 },
+              onMelody: onMelodyOutput
+            },
             keyboard: {
               range: { preset: "88" },
               onRange: noop,
@@ -181,16 +223,29 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
           }}
         />
       }
-      synchronization={<p>Калибровка задержки</p>}
+      synchronization={
+        <TimingSettings
+          preferences={defaultTimingPreferences()}
+          deviceId="piano"
+          deviceName="USB Piano"
+          transport="usb"
+          progress={null}
+          running={false}
+          onTransport={noop}
+          onOffsets={onOffsets}
+          onStart={onCalibrate}
+          onCancel={noop}
+        />
+      }
     />
   );
 }
-async function render(wordTyping = false) {
+async function render(wordTyping = false, melodyMode: "browser" | "midi" = "midi") {
   await act(async () => {
     await Promise.resolve();
     root.render(
       <Provider store={store}>
-        <Harness wordTyping={wordTyping} />
+        <Harness wordTyping={wordTyping} melodyMode={melodyMode} />
       </Provider>
     );
   });
@@ -226,13 +281,14 @@ afterEach(async () => {
     root.unmount();
   });
   host.remove();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
 describe("player settings organization", () => {
   it("switches the open interface to English while preserving tab and preferences", async () => {
     await render();
-    await section("Вид");
+    await section("О программе");
     const fps = Array.from(host.querySelectorAll("label"))
       .find((label) => label.textContent.includes("Показывать FPS"))
       ?.querySelector<HTMLInputElement>("input");
@@ -258,7 +314,7 @@ describe("player settings organization", () => {
     expect(document.documentElement.lang).toBe("en");
     await section("Song");
     expect(select("Key signature").options[0]?.textContent).toContain("C major");
-    await section("View");
+    await section("About");
     expect(host.textContent).toContain("Show FPS");
     expect(
       Array.from(host.querySelectorAll("label"))
@@ -272,7 +328,7 @@ describe("player settings organization", () => {
     expect(onTranspose).not.toHaveBeenCalled();
   });
 
-  it("orders the seven sections and groups game and visual controls", async () => {
+  it("orders the eight sections and groups game and visual controls", async () => {
     await render();
     expect(Array.from(host.querySelectorAll("[role=tab]"), (tab) => tab.textContent)).toEqual([
       "Игра",
@@ -281,6 +337,7 @@ describe("player settings organization", () => {
       "Ввод с ПК",
       "Пианино",
       "Синхронизация",
+      "Помощь",
       "О программе"
     ]);
     expect(host.textContent).toContain("Режим и темп");
@@ -288,7 +345,10 @@ describe("player settings organization", () => {
     expect(host.querySelector(".practice-range")).not.toBeNull();
     await section("Вид");
     expect(host.textContent).toContain("Нотная запись");
-    expect(host.textContent).toContain("Клавиатура и отображение");
+    expect(host.textContent).toContain("Анимация и эффекты");
+    expect(host.querySelector("[role=tabpanel] .settings-group")?.getAttribute("aria-label")).toBe(
+      "Что показывать"
+    );
     expect(select("Клавиши")).toBeDefined();
     const reset = Array.from(host.querySelectorAll("button")).find(
       (button) => button.textContent === "Сбросить расположение"
@@ -308,7 +368,7 @@ describe("player settings organization", () => {
     });
     expect(onToggleEditing).toHaveBeenCalledOnce();
     await section("Синхронизация");
-    expect(host.querySelector("[role=tabpanel]")?.textContent).toContain("Калибровка задержки");
+    expect(host.querySelector("[role=tabpanel]")?.textContent).toContain("Калибровать C4");
   });
 
   it("keeps original handlers for game rules, range, song and MIDI controls", async () => {
@@ -362,6 +422,9 @@ describe("player settings organization", () => {
     await section("Вид");
     expect(host.textContent).toContain("клавиатура сама подстраивается");
     expect(host.querySelector("select[aria-label='Клавиши']")).toBeNull();
+    expect(host.textContent).toContain("Переключатели вида");
+    expect(host.textContent).not.toContain("Показывать FPS");
+    await section("О программе");
     const fpsControls = Array.from(host.querySelectorAll("label")).filter((label) =>
       label.textContent.includes("Показывать FPS")
     );
@@ -379,9 +442,11 @@ describe("player settings organization", () => {
     await section("Пианино");
     expect(host.querySelector("[role=tabpanel]")?.textContent).toContain("USB Piano");
     await section("Синхронизация");
-    expect(host.querySelector("[role=tabpanel]")?.textContent).toContain("Калибровка задержки");
+    expect(host.querySelector("[role=tabpanel]")?.textContent).toContain("Калибровать C4");
     await render(false);
     await section("Вид");
+    expect(host.textContent).not.toContain("Показывать FPS");
+    await section("О программе");
     const pianoFps = Array.from(host.querySelectorAll("label")).filter((label) =>
       label.textContent.includes("Показывать FPS")
     );
@@ -394,6 +459,13 @@ describe("player settings organization", () => {
   it("offers the hand look next to the key look, 3D by default", async () => {
     await render(false);
     await section("Вид");
+    expect(select("Вид рук").disabled).toBe(true);
+    await act(async () => {
+      await Promise.resolve();
+      const keys = select("Вид клавиш");
+      keys.value = "classic";
+      keys.dispatchEvent(new Event("change", { bubbles: true }));
+    });
     const hands = select("Вид рук");
     expect(hands.value).toBe("rendered");
     await act(async () => {
@@ -411,7 +483,7 @@ describe("player settings organization", () => {
     await render(false);
     await section("Вид");
     const keys = select("Вид клавиш");
-    expect(Array.from(keys.options, (option) => option.value)).toContain("3d");
+    expect(Array.from(keys.options, (option) => option.value)).toEqual(["classic", "arcade", "3d"]);
     expect(keys.value).toBe("3d");
     expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
     await act(async () => {
@@ -436,18 +508,6 @@ describe("player settings organization", () => {
       projection.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
-    expect(host.querySelector<HTMLInputElement>("input[aria-label='Наклон камеры']")?.max).toBe(
-      "90"
-    );
-    expect(
-      Array.from(host.querySelectorAll("button")).some((button) => button.textContent === "Сверху")
-    ).toBe(true);
-    await act(async () => {
-      await Promise.resolve();
-      const legacyStyle = select("Вид клавиш");
-      legacyStyle.value = "perspective";
-      legacyStyle.dispatchEvent(new Event("change", { bubbles: true }));
-    });
     expect(host.querySelector<HTMLInputElement>("input[aria-label='Наклон камеры']")?.max).toBe(
       "90"
     );
@@ -535,4 +595,205 @@ describe("player settings organization", () => {
     expect(onMode).not.toHaveBeenCalled();
     expect(onRules).not.toHaveBeenCalled();
   });
+});
+
+it.each(["ru", "en"] as const)(
+  "navigates from Help to exact controls without changing preferences in %s",
+  async (language) => {
+    setInterfaceLanguage(language);
+    await render();
+    const before = JSON.stringify(store.getState().preferences);
+    const scroll = vi.fn();
+    vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(scroll);
+    for (const target of [
+      "key-style",
+      "notes-projection",
+      "falling-note-style",
+      "note-color",
+      "played-note-color",
+      "note-burning",
+      "note-flash",
+      "note-particles",
+      "fps",
+      "play-mode",
+      "play-countdown",
+      "piano-range",
+      "midi-output",
+      "melody-output",
+      "melody-channel",
+      "connection-type",
+      "audio-offset",
+      "calibration"
+    ] as const) {
+      await section(language === "ru" ? "Помощь" : "Help");
+      expect(host.querySelectorAll(".settings-help__guide button")).toHaveLength(7);
+      if (language === "en")
+        expect(host.querySelector("[role=tabpanel]")?.textContent).not.toMatch(/[А-Яа-яЁё]/);
+      const link = host.querySelector<HTMLButtonElement>(`button[data-help-target="${target}"]`);
+      expect(link).not.toBeNull();
+      const detail = link?.closest("details");
+      if (detail) detail.open = true;
+      await act(async () => {
+        link?.click();
+        await Promise.resolve();
+      });
+      const control = host.querySelector<HTMLElement>(`[data-setting-target="${target}"]`);
+      expect(control).not.toBeNull();
+      expect(document.activeElement).toBe(control);
+      expect(control?.getAttribute("data-setting-highlight")).toBe("true");
+      expect(scroll).toHaveBeenLastCalledWith({ block: "center", behavior: "auto" });
+      expect(JSON.stringify(store.getState().preferences)).toBe(before);
+    }
+    expect(onMode).not.toHaveBeenCalled();
+    expect(onRules).not.toHaveBeenCalled();
+    expect(onTranspose).not.toHaveBeenCalled();
+    expect(onDevice).not.toHaveBeenCalled();
+    expect(onMidiOutput).not.toHaveBeenCalled();
+    expect(onMelodyOutput).not.toHaveBeenCalled();
+    expect(onMidiTest).not.toHaveBeenCalled();
+    expect(onOffsets).not.toHaveBeenCalled();
+    expect(onCalibrate).not.toHaveBeenCalled();
+  }
+);
+
+it.each(["ru", "en"] as const)(
+  "targets the unavailable key style and the working projection in typing mode in %s",
+  async (language) => {
+    setInterfaceLanguage(language);
+    await render(true);
+    const before = JSON.stringify(store.getState().preferences);
+    for (const target of ["key-style", "shared-notes-projection"] as const) {
+      await section(language === "ru" ? "Помощь" : "Help");
+      const link = host.querySelector<HTMLButtonElement>(`[data-help-target="${target}"]`);
+      const details = link?.closest("details");
+      if (details) details.open = true;
+      await act(async () => {
+        link?.click();
+        await Promise.resolve();
+      });
+      const destination = host.querySelector<HTMLElement>(`[data-setting-target="${target}"]`);
+      expect(destination).not.toBeNull();
+      expect(document.activeElement).toBe(destination);
+      expect(destination?.getAttribute("data-setting-highlight")).toBe("true");
+      expect(destination).not.toBe(host.querySelector("[role=tabpanel]"));
+      if (target === "key-style") {
+        expect(destination?.getAttribute("aria-disabled")).toBe("true");
+        expect(destination?.textContent).toContain(
+          language === "ru" ? "клавиатура сама подстраивается" : "keyboard fits the selected part"
+        );
+      } else {
+        expect(destination?.tagName).toBe("BUTTON");
+        expect(destination?.getAttribute("aria-pressed")).toBe("false");
+      }
+      expect(JSON.stringify(store.getState().preferences)).toBe(before);
+    }
+    expect(onMode).not.toHaveBeenCalled();
+  }
+);
+
+it.each(["ru", "en"] as const)(
+  "targets the explained unavailable MIDI channel in browser-only mode in %s",
+  async (language) => {
+    setInterfaceLanguage(language);
+    await render(false, "browser");
+    const before = JSON.stringify(store.getState().preferences);
+    await section(language === "ru" ? "Помощь" : "Help");
+    const link = host.querySelector<HTMLButtonElement>("[data-help-target=melody-channel]");
+    const details = link?.closest("details");
+    if (details) details.open = true;
+    await act(async () => {
+      link?.click();
+      await Promise.resolve();
+    });
+    const destination = host.querySelector<HTMLElement>("[data-setting-target=melody-channel]");
+    expect(destination).not.toBeNull();
+    expect(document.activeElement).toBe(destination);
+    expect(destination?.getAttribute("aria-disabled")).toBe("true");
+    expect(destination?.getAttribute("data-setting-highlight")).toBe("true");
+    expect(destination?.textContent).toContain(
+      language === "ru" ? "Канал MIDI недоступен" : "MIDI channel is unavailable"
+    );
+    expect(
+      host.querySelector<HTMLSelectElement>("[data-setting-target=melody-output]")?.value
+    ).toBe("browser");
+    expect(host.querySelector("select[data-setting-target=melody-channel]")).toBeNull();
+    expect(JSON.stringify(store.getState().preferences)).toBe(before);
+    expect(onMelodyOutput).not.toHaveBeenCalled();
+    expect(onMidiOutput).not.toHaveBeenCalled();
+    expect(onMidiTest).not.toHaveBeenCalled();
+  }
+);
+
+it.each(["ru", "en"] as const)(
+  "focuses unavailable and enabled horizon controls from Help in %s",
+  async (language) => {
+    setInterfaceLanguage(language);
+    await render();
+    const help = language === "ru" ? "Помощь" : "Help";
+    const view = language === "ru" ? "Вид" : "View";
+    const before = JSON.stringify(store.getState().preferences);
+    for (const target of ["road-horizon", "road-width"]) {
+      await section(help);
+      const link = host.querySelector<HTMLButtonElement>(`[data-help-target="${target}"]`);
+      const details = link?.closest("details");
+      if (details) details.open = true;
+      await act(async () => {
+        link?.click();
+        await Promise.resolve();
+      });
+      const control = host.querySelector<HTMLInputElement>(`[data-setting-target="${target}"]`);
+      expect(control?.disabled).toBe(true);
+      expect(document.activeElement).toBe(control?.closest("label"));
+      expect(JSON.stringify(store.getState().preferences)).toBe(before);
+    }
+    await section(view);
+    await act(async () => {
+      const projection = host.querySelector<HTMLSelectElement>(
+        '[data-setting-target="notes-projection"]'
+      );
+      if (!projection) throw new Error("Expected projection selector");
+      projection.value = "perspective";
+      projection.dispatchEvent(new Event("change", { bubbles: true }));
+      await Promise.resolve();
+    });
+    const enabled = JSON.stringify(store.getState().preferences);
+    for (const target of ["road-horizon", "road-width"]) {
+      await section(help);
+      const link = host.querySelector<HTMLButtonElement>(`[data-help-target="${target}"]`);
+      const details = link?.closest("details");
+      if (details) details.open = true;
+      await act(async () => {
+        link?.click();
+        await Promise.resolve();
+      });
+      const control = host.querySelector<HTMLInputElement>(`[data-setting-target="${target}"]`);
+      expect(control?.disabled).toBe(false);
+      expect(document.activeElement).toBe(control);
+      expect(JSON.stringify(store.getState().preferences)).toBe(enabled);
+    }
+  }
+);
+it("explains the 3D appearance destination while flat keys remain selected", async () => {
+  await render();
+  await section("Вид");
+  await act(async () => {
+    const keys = select("Вид клавиш");
+    keys.value = "classic";
+    keys.dispatchEvent(new Event("change", { bubbles: true }));
+    await Promise.resolve();
+  });
+  const before = JSON.stringify(store.getState().preferences);
+  await section("Помощь");
+  const link = host.querySelector<HTMLButtonElement>('[data-help-target="falling-note-style"]');
+  const details = link?.closest("details");
+  if (details) details.open = true;
+  await act(async () => {
+    link?.click();
+    await Promise.resolve();
+  });
+  const target = host.querySelector<HTMLElement>('[data-setting-target="falling-note-style"]');
+  expect(document.activeElement).toBe(target);
+  expect(target?.textContent).toContain("Оформление объёмных нот выбирается в виде клавиш «3D».");
+  expect(select("Вид клавиш").value).toBe("classic");
+  expect(JSON.stringify(store.getState().preferences)).toBe(before);
 });

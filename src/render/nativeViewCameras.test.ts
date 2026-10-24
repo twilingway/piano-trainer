@@ -1,3 +1,4 @@
+import { roadWidthX } from "./roadWidthWarp";
 import { Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { nativeViewCameras } from "./nativeViewCameras";
@@ -20,7 +21,7 @@ describe("overhead keyboard bottom docking", () => {
             const keys = layoutKeyboard(2288, 21, 108);
             const base = metricKeyboardCamera(width, 2288, height, prefs, 0.1, keys.values());
             const offset = { x: 31, y: 130 };
-            const { keyboard, notes, blackLane } = nativeViewCameras(
+            const { keyboard, notes, blackLane, whiteLane } = nativeViewCameras(
               base,
               150,
               top,
@@ -34,8 +35,8 @@ describe("overhead keyboard bottom docking", () => {
             const view = viewMatrix(keyboard.params);
             const projection = projectionMatrix(keyboard.params, width, height, offset);
             for (const [y, z, lane] of [
-              [22, 150, undefined],
-              [34, 149.8008, blackLane]
+              [22, 149.1938, whiteLane],
+              [34, 145.8, blackLane]
             ] as const) {
               const scale = prefs.scale;
               const key = new Vector3(-75 * scale, y * scale, -z * scale)
@@ -102,11 +103,98 @@ describe("overhead keyboard bottom docking", () => {
         }
   });
 
-  it("keeps perspective cameras and hand-visible framing unchanged", () => {
+  it("fits perspective depth while preserving the camera pose and overhead contact", () => {
     const base = roadLayoutCamera(1280, 2288, 700, CAMERA_PRESETS.player, true, 0.1);
     const player = nativeViewCameras(base, 150, false, true, 700, 0.1, 700, 692);
-    expect(player.keyboard).toBe(base);
+    expect(player.keyboard.params.prefs).toBe(base.params.prefs);
+    expect(player.keyboard.project(0, 22, 0).y - player.keyboard.project(0, 22, 142).y).toBeCloseTo(
+      150,
+      7
+    );
     const hands = nativeViewCameras(base, 150, true, true, 700, 0.1, 700);
     expect(hands.keyboard.project(0, 22, 142).y).toBeCloseTo(base.project(0, 22, 142).y, 8);
   });
+});
+
+it.each([0.1, 0.5, 0.9])(
+  "uses horizon width %s on metric 3D without changing the keyboard",
+  (far) => {
+    const keys = layoutKeyboard(2288, 21, 108);
+    for (const [width, height] of [
+      [320, 568],
+      [390, 844],
+      [667, 375],
+      [1366, 768]
+    ] as const) {
+      for (const preset of Object.values(CAMERA_PRESETS)) {
+        const base = metricKeyboardCamera(width, 2288, height, preset, 0.1, keys.values());
+        const { notes, keyboard } = nativeViewCameras(
+          base,
+          150,
+          false,
+          true,
+          height,
+          0.1,
+          height,
+          undefined,
+          { x: 0, y: 0 },
+          far
+        );
+        expect(keyboard.params.prefs).toBe(base.params.prefs);
+        const nearLeft = notes.project(-100, notes.near.y, notes.near.z);
+        const farLeft = notes.project(-100, notes.near.y, notes.roadFarZ);
+        const farRight = notes.project(100, notes.near.y, notes.roadFarZ);
+        expect(nearLeft.y).toBeCloseTo(base.project(-100, base.near.y, base.near.z).y, 7);
+        const canonicalWidth =
+          base.project(100, notes.near.y, notes.near.z).x -
+          base.project(-100, notes.near.y, notes.near.z).x;
+        expect((farRight.x - farLeft.x) / canonicalWidth).toBeCloseTo(far, 6);
+        const world = new Vector3(
+          notes.roadWidth ? roadWidthX(notes.roadWidth, -100, notes.roadFarZ) : -100,
+          notes.near.y,
+          -notes.roadFarZ
+        )
+          .multiplyScalar(notes.params.prefs.scale)
+          .applyMatrix4(viewMatrix(notes.params))
+          .applyMatrix4(projectionMatrix(notes.params, width, height));
+        expect(((world.x + 1) * width) / 2).toBeCloseTo(farLeft.x, 6);
+        expect(((1 - world.y) * height) / 2).toBeCloseTo(farLeft.y, 6);
+        expect(world.z).toBeLessThan(1);
+      }
+    }
+  }
+);
+
+it("keeps the full white front in the viewport for player framing at every height", () => {
+  const keys = layoutKeyboard(2288, 48, 84);
+  for (const [width, height] of [
+    [1366, 768],
+    [390, 844],
+    [667, 375]
+  ] as const) {
+    const base = metricKeyboardCamera(
+      width,
+      2288,
+      height,
+      CAMERA_PRESETS.player,
+      0.1,
+      keys.values()
+    );
+    for (const desired of [60, 120, 240]) {
+      const bottom = height - 16;
+      const { keyboard, notes } = nativeViewCameras(
+        base,
+        desired,
+        false,
+        true,
+        height,
+        0.1,
+        height,
+        bottom
+      );
+      expect(keyboard.project(0, 22, 0).y).toBeCloseTo(bottom, 7);
+      expect(keyboard.project(0, 22, 150).y).toBeCloseTo(bottom - desired, 7);
+      expect(notes.project(0, 22, 150).y).toBeCloseTo(bottom - desired, 7);
+    }
+  }
 });

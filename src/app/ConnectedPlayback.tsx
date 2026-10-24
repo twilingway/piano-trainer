@@ -1,4 +1,6 @@
-import type { ComponentProps } from "react";
+import { useWorldScorePoster } from "./useWorldScorePoster";
+import type { FallingNotesView } from "../render/FallingNotesView";
+import type { ComponentProps, RefObject } from "react";
 import type { Song } from "../song/song";
 import { secondsAt } from "../song/song";
 import { GameBoard } from "../ui/GameBoard";
@@ -98,10 +100,31 @@ export function ConnectedSongProgress({
 
 export function ConnectedWorkspace({
   source,
+  worldScoreViewRef,
+  worldScoreViewReady = false,
   ...props
-}: SourceProps & Omit<ComponentProps<typeof Workspace>, "beat">) {
+}: SourceProps &
+  Omit<ComponentProps<typeof Workspace>, "beat" | "worldScore"> & {
+    readonly worldScoreViewRef?: RefObject<FallingNotesView | null>;
+    readonly worldScoreViewReady?: boolean;
+  }) {
   const beat = useTrainerSelector(source, selectBeat);
-  return <Workspace {...props} beat={beat} />;
+  const enabled =
+    props.prefs.freeCamera &&
+    props.prefs.keyStyle === "3d" &&
+    !props.wordBoard &&
+    (props.prefs.keys || props.prefs.lane) &&
+    !props.prefs.performanceScene &&
+    props.prefs.visible &&
+    Boolean(props.staffXml) &&
+    !props.comparing;
+  const worldScore = useWorldScorePoster(
+    worldScoreViewRef,
+    worldScoreViewReady,
+    enabled,
+    props.liveBeat
+  );
+  return <Workspace {...props} beat={beat} worldScore={worldScore} />;
 }
 
 export function ConnectedGameBoard({

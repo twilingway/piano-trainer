@@ -3,7 +3,7 @@ import type { Texture } from "../flatThree";
 import { describe, expect, it } from "vitest";
 import type { EnergySource } from "../noteEnergy";
 import { layoutKeyboard } from "../keyboardLayout";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { DEFAULT_CAMERA, PANEL_EDGE, worldCamera } from "../worldCamera";
 import { keyBoxes } from "./keyBoxes";
 import { projectionMatrix, viewMatrix } from "./threeCamera";

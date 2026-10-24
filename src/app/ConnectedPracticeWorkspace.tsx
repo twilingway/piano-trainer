@@ -41,8 +41,12 @@ export function ConnectedPracticeWorkspace() {
     trainerMode,
     trainerTrainerRef,
     trainerHostRef,
+    worldScoreViewRef,
+    worldScoreViewReady,
     snapshotWaiting,
     viewMirrorHostRef,
+    viewHandStatus,
+    countdown,
     courseTabs,
     courseTopView,
     practiceActive,
@@ -73,8 +77,12 @@ export function ConnectedPracticeWorkspace() {
       trainerMode: runtime.trainer.mode,
       trainerTrainerRef: runtime.trainer.trainerRef,
       trainerHostRef: runtime.trainer.hostRef,
+      worldScoreViewRef: runtime.trainer.viewRef,
+      worldScoreViewReady: runtime.trainer.trainerReady,
       snapshotWaiting: runtime.snapshot.waiting,
       viewMirrorHostRef: runtime.view.mirrorHostRef,
+      viewHandStatus: runtime.view.handStatus,
+      countdown: runtime.countdown,
       rhythm: runtime.rhythm,
       reading: runtime.independentRhythm.active
         ? runtime.independentRhythm
@@ -110,6 +118,8 @@ export function ConnectedPracticeWorkspace() {
       <ConnectedIntervalPractice />
       <ConnectedRhythmPractice />
       <ConnectedWorkspace
+        worldScoreViewRef={worldScoreViewRef}
+        worldScoreViewReady={worldScoreViewReady}
         timelineSong={timelineSong}
         scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
         scoreFirst={courseTopView}
@@ -181,6 +191,8 @@ export function ConnectedPracticeWorkspace() {
         waiting={snapshotWaiting}
         hostRef={trainerHostRef}
         mirrorHostRef={viewMirrorHostRef}
+        handStatus={viewHandStatus}
+        countdown={countdown}
       />
     </>
   );

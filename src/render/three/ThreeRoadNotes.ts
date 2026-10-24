@@ -1,3 +1,4 @@
+import { createFilledNoteBodyMaterial } from "./FilledNoteMaterial";
 import {
   Color,
   DynamicDrawUsage,
@@ -29,6 +30,9 @@ export class ThreeRoadNotes {
   private readonly planeGeometry = new PlaneGeometry(1, 1);
   private readonly bodyMaterial = createNoteBodyMaterial();
   private readonly haloMaterial = createNoteHaloMaterial();
+  private readonly filledMaterial = createFilledNoteBodyMaterial();
+  private readonly filledHalo = createNoteHaloMaterial(true);
+  private readonly contacts: InstancedBufferAttribute;
   private readonly projections: InstancedBufferAttribute;
   private readonly sizes: InstancedBufferAttribute;
   private readonly alphas: InstancedBufferAttribute;
@@ -44,16 +48,25 @@ export class ThreeRoadNotes {
     this.capacity = Number.isFinite(capacity)
       ? Math.max(1, Math.min(THREE_ROAD_NOTE_CAPACITY, Math.floor(capacity)))
       : THREE_ROAD_NOTE_CAPACITY;
-    this.projections = new InstancedBufferAttribute(new Float32Array(this.capacity * 3), 3);
+    this.contacts = new InstancedBufferAttribute(new Float32Array(this.capacity * 4), 4);
+    this.projections = new InstancedBufferAttribute(new Float32Array(this.capacity * 4), 4);
     this.sizes = new InstancedBufferAttribute(new Float32Array(this.capacity * 3), 3);
     this.alphas = new InstancedBufferAttribute(new Float32Array(this.capacity), 1);
     this.colors = new InstancedBufferAttribute(new Float32Array(this.capacity * 3), 3);
     this.matrices = new InstancedBufferAttribute(new Float32Array(this.capacity * 16), 16);
-    for (const attribute of [this.sizes, this.projections, this.alphas, this.colors, this.matrices])
+    for (const attribute of [
+      this.sizes,
+      this.contacts,
+      this.projections,
+      this.alphas,
+      this.colors,
+      this.matrices
+    ])
       attribute.setUsage(DynamicDrawUsage);
     for (const geometry of [this.bodyGeometry, this.planeGeometry]) {
       geometry.setAttribute("noteSize", this.sizes);
       geometry.setAttribute("noteProjection", this.projections);
+      geometry.setAttribute("noteContact", this.contacts);
       geometry.setAttribute("noteAlpha", this.alphas);
     }
     this.body = new InstancedMesh(this.bodyGeometry, this.bodyMaterial, this.capacity);
@@ -68,6 +81,15 @@ export class ThreeRoadNotes {
     }
     this.halo.renderOrder = 1;
     this.group.visible = false;
+  }
+
+  /** Opaque bloom is drawn before solid faces; glass retains its original transparent passes. */
+  setStyle(style: "filled" | "glass"): void {
+    if (this.disposed) return;
+    const filled = style === "filled";
+    this.body.material = filled ? this.filledMaterial : this.bodyMaterial;
+    this.halo.material = filled ? this.filledHalo : this.haloMaterial;
+    this.halo.renderOrder = filled ? -1 : 1;
   }
 
   update(
@@ -108,11 +130,19 @@ export class ThreeRoadNotes {
       if (!Number.isFinite(depth) || !Number.isFinite(centreY) || !Number.isFinite(centreZ))
         continue;
       this.sizes.setXYZ(used, note.width, height, depth);
-      this.projections.setXYZ(
+      this.projections.setXYZW(
         used,
         note.lane?.scaleX ?? 1,
         note.lane?.offsetX ?? 0,
-        note.lane?.offsetY ?? 0
+        note.lane?.offsetY ?? 0,
+        -centreZ
+      );
+      this.contacts.setXYZW(
+        used,
+        laneY,
+        note.lane?.depth ?? this.nearZ,
+        note.lane?.freeFar?.x ?? 0,
+        note.lane?.freeFar?.y ?? 0
       );
       this.alphas.setX(used, Math.min(1, note.alpha));
       this.color.setRGB(
@@ -139,6 +169,7 @@ export class ThreeRoadNotes {
     if (used > 0) {
       this.upload(this.sizes, used);
       this.upload(this.projections, used);
+      this.upload(this.contacts, used);
       this.upload(this.alphas, used);
       this.upload(this.colors, used);
       this.upload(this.matrices, used);
@@ -151,7 +182,7 @@ export class ThreeRoadNotes {
   }
 
   setViewport(width: number, height: number): void {
-    for (const material of [this.haloMaterial]) {
+    for (const material of [this.haloMaterial, this.filledHalo]) {
       const viewport = material.uniforms.viewport;
       const value: unknown = viewport?.value;
       if (value instanceof Vector2) value.set(Math.max(1, width), Math.max(1, height));
@@ -174,6 +205,8 @@ export class ThreeRoadNotes {
     this.planeGeometry.dispose();
     this.bodyMaterial.dispose();
     this.haloMaterial.dispose();
+    this.filledMaterial.dispose();
+    this.filledHalo.dispose();
   }
 
   private upload(attribute: InstancedBufferAttribute, used: number): void {

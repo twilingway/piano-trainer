@@ -1,5 +1,7 @@
+import { SettingsPanel } from "../SettingsPanel";
+import { HelpSettings } from "./HelpSettings";
 // @vitest-environment happy-dom
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { setInterfaceLanguage } from "../../app/interfaceLanguage";
@@ -9,6 +11,10 @@ import {
   type InstrumentProfileControls
 } from "./InstrumentProfileSettings";
 import { GRACE_BP300, type PianoProfile } from "../../input/instrumentProfiles";
+
+vi.mock("../GameDialog", () => ({
+  GameDialog: ({ children }: { children: ReactNode }) => <section>{children}</section>
+}));
 
 const profile: PianoProfile = {
   id: "piano",
@@ -320,3 +326,56 @@ it("keeps imported voice IDs with spaces valid in aria-activedescendant", () => 
   key("Enter");
   expect(controls.onInstrument).not.toHaveBeenCalled();
 });
+
+it.each(["ru", "en"] as const)(
+  "focuses the exact piano profile and voice controls from Help in %s without sending MIDI",
+  (language) => {
+    setInterfaceLanguage(language);
+    act(() => {
+      root.render(
+        <SettingsPanel
+          open
+          onClose={() => undefined}
+          tabs={[
+            {
+              id: "help",
+              title: "Help",
+              render: (navigate) => (
+                <HelpSettings
+                  wordTyping={false}
+                  onNavigate={(target) => {
+                    navigate("midi", target);
+                  }}
+                />
+              )
+            },
+            {
+              id: "midi",
+              title: "Piano",
+              content: <InstrumentProfileSettings controls={controls} preview={preview} />
+            }
+          ]}
+        />
+      );
+    });
+    for (const target of ["instrument-profile", "instrument-voice"] as const) {
+      act(() => {
+        host.querySelector<HTMLButtonElement>("[role=tab]")?.click();
+      });
+      const link = host.querySelector<HTMLButtonElement>(`[data-help-target="${target}"]`);
+      const details = link?.closest("details");
+      if (details) details.open = true;
+      act(() => {
+        link?.click();
+      });
+      const control = host.querySelector<HTMLElement>(`[data-setting-target="${target}"]`);
+      expect(control).not.toBeNull();
+      expect(document.activeElement).toBe(control);
+      expect(control?.getAttribute("data-setting-highlight")).toBe("true");
+      expect(host.querySelector("[role=listbox]")).toBeNull();
+    }
+    expect(controls.onProfile).not.toHaveBeenCalled();
+    expect(controls.onInstrument).not.toHaveBeenCalled();
+    expect(preview.onPlay).not.toHaveBeenCalled();
+  }
+);

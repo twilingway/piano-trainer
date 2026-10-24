@@ -1,17 +1,10 @@
 ﻿import { Container, NineSliceSprite, Texture } from "./flatThree";
-import {
-  bakeNoteMaterial,
-  NOTE_BLOOM_MARGIN,
-  NOTE_FACE_HEIGHT,
-  NOTE_FACE_WIDTH
-} from "./bakeNoteMaterial";
+import { bakeNoteMaterial, bakeNotePlate, NOTE_BLOOM_MARGIN } from "./bakeNoteMaterial";
 
 /** The lane's backdrop: a raised note's plate cuts it out of the notes below. */
 const PLATE_COLOR = 0x020c18;
 /** Layers of a raised (black-key) note sit above every layer of a flat one. */
 const RAISED_Z = 4;
-/** The dark gap a raised note's plate leaves around its glass, in pixels. */
-const PLATE_RIM_PX = 2;
 
 interface NoteBlock {
   fill: NineSliceSprite;
@@ -33,18 +26,19 @@ export class FlatNoteBlocks {
   private used = 0;
 
   constructor() {
-    const material = bakeNoteMaterial((width, height) => {
+    const createCanvas = (width: number, height: number) => {
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
       return canvas;
-    });
+    };
+    const material = bakeNoteMaterial(createCanvas);
     this.textures = {
       fill: Texture.from(material.face),
       emission: Texture.from(material.emission),
       bloom: Texture.from(material.bloom),
       bevel: Texture.from(material.bevel),
-      plate: Texture.from(bakePlate())
+      plate: Texture.from(bakeNotePlate(createCanvas))
     };
     this.container.eventMode = "none";
   }
@@ -100,19 +94,7 @@ export class FlatNoteBlocks {
     this.placeFace(item.fill, x, top, width, height, scale, tint, alpha);
     this.placeFace(item.emission, x, top, width, height, scale, tint, alpha);
     this.placeFace(item.bevel, x, top, width, height, scale, 0xffffff, alpha);
-    if (raised) {
-      const rim = PLATE_RIM_PX * 2;
-      this.placeFace(
-        item.plate,
-        x,
-        top - PLATE_RIM_PX,
-        width + rim,
-        height + rim,
-        scale,
-        PLATE_COLOR,
-        1
-      );
-    }
+    if (raised) this.placeFace(item.plate, x, top, width, height, scale, PLATE_COLOR, 1);
     // A short note still emits a halo of the same radius as its key's other notes.
     const bloomScale = Math.min(1, width / 64);
     const margin = NOTE_BLOOM_MARGIN * bloomScale;
@@ -162,18 +144,4 @@ export class FlatNoteBlocks {
     this.container.destroy({ children: true });
     for (const texture of Object.values(this.textures)) texture.destroy(true);
   }
-}
-
-function bakePlate(): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = NOTE_FACE_WIDTH;
-  canvas.height = NOTE_FACE_HEIGHT;
-  const context = canvas.getContext("2d");
-  if (context) {
-    context.fillStyle = "#fff";
-    context.beginPath();
-    context.roundRect(0, 0, NOTE_FACE_WIDTH, NOTE_FACE_HEIGHT, 10);
-    context.fill();
-  }
-  return canvas;
 }

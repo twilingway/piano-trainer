@@ -117,6 +117,7 @@ export function PianoTabs({
   const style = {
     "--tabs-zoom": zoom,
     "--tabs-notes": prefs.noteColor,
+    "--tabs-played-notes": prefs.playedNoteColor,
     "--tabs-score": prefs.scoreColor,
     "--tabs-origin": `${String(geometry?.svgOffsetX ?? 0)}px`
   } as CSSProperties;

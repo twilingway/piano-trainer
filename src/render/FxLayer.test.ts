@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FxLayer } from "./FxLayer";
 
 function effectGroup(fx: FxLayer, index: number): Container {
-  const group = fx.container.children[index];
+  const group = index === 2 ? fx.hitContainer : fx.container.children[index];
   if (!group) throw new Error(`Expected effect group ${String(index)}`);
   return group;
 }
@@ -76,8 +76,19 @@ it.each([
   const key = { pitch: 60, x: 100, width: 40, color: 0x00d9ff };
   fx.draw([key], [key], 400, 0.05);
   expect(effectGroup(fx, 0).children.some((sprite) => sprite.visible)).toBe(true);
-  fx.draw([key], [key], 400, 0.05, options);
+  fx.draw([key], [key], 400, 0.05, { ...options, musicalNotes: true });
   expect(effectGroup(fx, 0).children.some((sprite) => sprite.visible)).toBe(options.burning);
   expect(effectGroup(fx, 1).children.some((sprite) => sprite.visible)).toBe(options.presses);
   expect(effectGroup(fx, 2).children.some((sprite) => sprite.visible)).toBe(options.presses);
+});
+
+it("keeps the strike overlay outside the early held-fire group", async () => {
+  const atlas = new Texture({ source: new TextureSource({ width: 1024, height: 1024 }) });
+  vi.spyOn(Assets, "load").mockResolvedValue(atlas);
+  const fx = new FxLayer();
+  await fx.load();
+  fx.draw([{ pitch: 60, x: 100, y: 350, width: 40, color: 0x00df50 }], [], 400, 0.016);
+  expect(fx.container.children).not.toContain(fx.hitContainer);
+  expect(fx.hitContainer.children).toHaveLength(1);
+  expect(fx.hitContainer.children[0]?.position).toMatchObject({ x: 100, y: 350 });
 });

@@ -1,3 +1,4 @@
+import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "./flatEffectSettings";
 import { Assets, Container, Rectangle, Sprite, Texture } from "./flatThree";
 import { emberAt, emberRateForHold, emberSizeForDuration } from "./emberMotion";
 import type { EmberPosition } from "./emberMotion";
@@ -195,11 +196,17 @@ export class PlasmaLayer {
     height: number,
     deltaSeconds: number,
     clipMist = false,
-    mistOffsetX = 0
+    mistOffsetX = 0,
+    options: FlatEffectOptions = ALL_FLAT_EFFECTS
   ): void {
     if (this.disposed) return;
     const delta = Number.isFinite(deltaSeconds) ? Math.min(0.05, Math.max(0, deltaSeconds)) : 0;
     this.clock += delta;
+    this.rimContainer.visible = options.burning;
+    this.haloContainer.visible = options.burning;
+    this.flameContainer.visible = options.burning;
+    this.emberContainer.visible = options.musicalNotes;
+    if (!options.musicalNotes) for (const ember of this.embers) ember.sprite.visible = false;
     this.anchors.clear();
     for (const anchor of anchors) this.anchors.set(anchor.pitch, anchor);
     if (clipMist) this.mistMask ??= new MistBoundsMask(this.rimContainer);
@@ -223,10 +230,11 @@ export class PlasmaLayer {
         if (!attack.sounding || this.attacked.has(attack.id)) continue;
         this.attacked.add(attack.id);
         const anchor = this.anchors.get(attack.pitch);
-        if (anchor) this.emit(anchor, attack.color, 2, emberSizeForDuration(attack.duration));
+        if (anchor && options.musicalNotes)
+          this.emit(anchor, attack.color, 2, emberSizeForDuration(attack.duration));
       }
     }
-    this.drawFlames(delta, height);
+    this.drawFlames(delta, height, options.musicalNotes);
     this.drawEmbers(height, delta);
   }
 
@@ -326,7 +334,7 @@ export class PlasmaLayer {
     }
   }
 
-  private drawFlames(delta: number, height: number): void {
+  private drawFlames(delta: number, height: number, musicalNotes: boolean): void {
     for (let index = 0; index < this.flames.length; index++) {
       const flame = this.flames[index];
       if (!flame) continue;
@@ -347,7 +355,7 @@ export class PlasmaLayer {
         flame.emitCredit += emberRateForHold(flame.heldAge) * delta;
         const count = Math.min(4, Math.floor(flame.emitCredit));
         if (count > 0) {
-          this.emit(anchor, flame.emitColor, count, flame.durationScale);
+          if (musicalNotes) this.emit(anchor, flame.emitColor, count, flame.durationScale);
           flame.emitCredit = Math.min(1, flame.emitCredit - count);
         }
       }
@@ -415,10 +423,12 @@ export class PlasmaLayer {
       );
       // The baked glow has a small luminous core; enlarge its transparent footprint accordingly.
       const size = Math.min(34, Math.max(12, ember.size * point.scale * 14.4));
+      // Axis squash is absolute: retained scale must not inflate local vertices on each reuse.
+      ember.sprite.scale.set(1);
       ember.sprite.width = size * 0.8;
       ember.sprite.height = size;
       ember.sprite.rotation = point.rotation;
-      ember.sprite.scale.x = Math.abs(ember.sprite.scale.x) * point.axisScale;
+      ember.sprite.scale.x = point.axisScale;
       ember.sprite.alpha = Math.min(1, point.alpha * 1.15);
     }
   }

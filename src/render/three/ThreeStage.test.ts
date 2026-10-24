@@ -1,16 +1,14 @@
 import { Texture, BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
-import type { KeyPress } from "./liveHands";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { ThreeStage } from "./ThreeStage";
+import { ThreeRoadFrame } from "./ThreeRoadFrame";
 
 /** Exercise the actual frame method with GPU rendering isolated, including its contact ordering. */
 function fixture() {
-  const keys = new Map<number, KeyPress>();
   const hinge = new Group();
   const geometryDispose = vi.fn();
   const mesh = { geometry: { dispose: geometryDispose } } as unknown as Mesh;
-  const hands = { group: new Group(), keys, update: vi.fn(), suspend: vi.fn(), dispose: vi.fn() };
   const renderer = {
     domElement: { width: 1600, height: 1200 },
     resetState: vi.fn(),
@@ -24,6 +22,7 @@ function fixture() {
   const picture = new Texture();
   const stage = Object.create(ThreeStage.prototype) as ThreeStage;
   Object.assign(stage, {
+    scorePoster: { draw: vi.fn(), dispose: vi.fn(), setSource: vi.fn() },
     version: 1,
     disposed: false,
     picture,
@@ -36,14 +35,13 @@ function fixture() {
     roadCamera: new Camera(),
     keyboardCamera: new Camera(),
     hinged: [{ pitch: 60, hinge, mesh }],
-    hands,
     renderer,
 
     configureCamera: vi.fn(),
-    roadNotes: { ...disposable(), setViewport: vi.fn() },
+    roadNotes: { ...disposable(), setViewport: vi.fn(), setStyle: vi.fn() },
     roadTrails: disposable(),
     noteAura: disposable(),
-    roadGuides: disposable(),
+    roadGuides: { ...disposable(), clear: vi.fn(), update: vi.fn() },
     noteLights: layer(),
     keyEmission: layer(),
     appearance: disposable(),
@@ -54,6 +52,7 @@ function fixture() {
       ...disposable(),
       invalidate: vi.fn(),
       setEnabled: vi.fn(),
+      setRoadBounds: vi.fn(),
       update: vi.fn(),
       camera: new Camera()
     },
@@ -97,51 +96,91 @@ function fixture() {
   const draw = (delta = 1 / 60, down = false) => {
     stage.draw(scene, picture, () => down, { width: 800, height: 600 }, delta, undefined);
   };
-  return { stage, picture, draw, keys, hinge, hands, renderer, geometryDispose, scene };
+  return { stage, picture, draw, hinge, renderer, geometryDispose, scene };
 }
 
 describe("ThreeStage physical key contact", () => {
-  it.each([0, 1 / 120, 1 / 60])("applies onset contact in the same frame at delta %s", (delta) => {
-    const view = fixture();
-    // The contact arrives from LiveHands.update during this frame, not the preceding frame.
-    view.hands.update.mockImplementation(() => view.keys.set(60, { drop: 8, along: 90 }));
-    view.draw(delta);
-    expect(view.hinge.position.y).toBe(-8);
-    expect(view.hinge.rotation.x).toBe(0);
-  });
-
-  it("restores the same contact after a seek regardless of previous angle or frame duration", () => {
-    const view = fixture();
-    for (const [previous, delta, drop, along] of [
-      [-8, 1 / 120, 2, 30],
-      [0, 0, 8, 110],
-      [0.03, 1 / 60, 2, 30]
-    ] as const) {
-      view.hinge.position.y = previous;
-      view.keys.set(60, { drop: drop, along: along });
-      view.draw(delta);
-      expect(view.hinge.position.y).toBe(-drop);
-      expect(view.hinge.rotation.x).toBe(0);
+  it.each([false, true])(
+    "honors burning in flat and full 3D views after note updates, native=%s",
+    (nativeKeyboard) => {
+      const view = fixture();
+      const aura = { group: new Group(), update: vi.fn() };
+      const trails = { group: new Group(), update: vi.fn() };
+      aura.update.mockImplementation(() => {
+        aura.group.visible = true;
+      });
+      trails.update.mockImplementation(() => {
+        trails.group.visible = true;
+      });
+      const notes = { setViewport: vi.fn(), update: vi.fn(), setStyle: vi.fn() };
+      const keys = new Group();
+      Object.assign(view.stage, {
+        noteAura: aura,
+        roadTrails: trails,
+        roadNotes: notes,
+        roadGuides: { clear: vi.fn() },
+        keys
+      });
+      Object.assign(view.scene, { faces: [], texture: { width: 800, height: 200 } });
+      const frame = new ThreeRoadFrame();
+      frame.burning = false;
+      frame.noteStyle = "glass";
+      view.stage.draw(
+        view.scene,
+        view.picture,
+        () => false,
+        { width: 800, height: 600 },
+        0,
+        undefined,
+        [],
+        0,
+        frame,
+        false,
+        undefined,
+        undefined,
+        nativeKeyboard,
+        { burning: frame.burning, presses: true, musicalNotes: true }
+      );
+      expect(keys.visible).toBe(nativeKeyboard);
+      expect(aura.group.visible).toBe(false);
+      expect(trails.group.visible).toBe(false);
+      expect(notes.update).toHaveBeenCalledOnce();
+      frame.burning = true;
+      view.stage.draw(
+        view.scene,
+        view.picture,
+        () => false,
+        { width: 800, height: 600 },
+        0,
+        undefined,
+        [],
+        0,
+        frame,
+        false,
+        undefined,
+        undefined,
+        nativeKeyboard,
+        { burning: frame.burning, presses: true, musicalNotes: true }
+      );
+      expect(aura.group.visible).toBe(true);
+      expect(trails.group.visible).toBe(true);
     }
-  });
-
-  it("keeps ordinary input and release smoothing, and honors a deeper manual press", () => {
+  );
+  it("uses the native contact input and preserves press/release smoothing", () => {
     const view = fixture();
     view.draw(1 / 60, true);
     expect(view.hinge.position.y).toBe(-4);
-    view.keys.set(60, { drop: 1, along: 0 });
-    view.draw(0, true);
-    expect(view.hinge.position.y).toBe(-8);
-    view.keys.clear();
+    view.draw(1 / 60, true);
+    expect(view.hinge.position.y).toBe(-6);
     view.draw(1 / 60);
-    expect(view.hinge.position.y).toBe(-4);
+    expect(view.hinge.position.y).toBe(-3);
+    expect(view.hinge.rotation.x).toBe(0);
   });
 
-  it("terminates its hand planner and frees stage resources exactly once", () => {
+  it("frees stage resources exactly once without a legacy hand planner", () => {
     const view = fixture();
     view.stage.dispose();
     view.stage.dispose();
-    expect(view.hands.dispose).toHaveBeenCalledOnce();
     expect(view.renderer.dispose).not.toHaveBeenCalled();
     expect(view.geometryDispose).toHaveBeenCalledOnce();
   });
@@ -160,17 +199,10 @@ it("samples pre-render against the configured camera before GPU rendering and by
     order.push("pose");
   };
   view.renderer.render.mockImplementation(() => order.push("render"));
-  view.stage.setNativePianist(true);
-  view.stage.setNativePianist(true);
-  view.keys.set(60, { drop: 8, along: 90 });
   view.draw(0);
-  expect(view.hands.suspend).toHaveBeenCalledOnce();
-  expect(view.hands.update).not.toHaveBeenCalled();
   expect(view.hinge.rotation.x).toBe(0);
   expect(order).toEqual(["camera", "pose", "render"]);
-  view.stage.setNativePianist(false);
-  view.draw();
-  expect(view.hands.update).toHaveBeenCalledOnce();
+  expect("hands" in view.stage).toBe(false);
 });
 
 it("supplies the performer the physical keyboard camera and restores full-body mode in scene cameras", () => {
@@ -342,7 +374,8 @@ it("uses the manual camera for the fully lit world without transforming notes or
     142,
     false,
     undefined,
-    true
+    true,
+    { burning: true, presses: true, musicalNotes: true }
   );
   expect(internal.roadNotes.performanceAngle).toBe(0);
   expect(internal.roadNotes.performanceScale).toBe(1);
@@ -364,4 +397,160 @@ it("uses logical viewport dimensions with the application's HiDPI renderer", () 
   const view = fixture();
   view.draw();
   expect(view.renderer.setViewport).toHaveBeenCalledWith(0, 0, 800, 600);
+});
+
+it.each(Array.from({ length: 8 }, (_, mask) => mask))(
+  "forwards independent effects into the free-camera world without visible falling notes (%s)",
+  (mask) => {
+    const view = fixture();
+    const effects = { burning: !!(mask & 1), presses: !!(mask & 2), musicalNotes: !!(mask & 4) };
+    view.stage.setFreeCamera(true);
+    view.stage.draw(
+      view.scene,
+      view.picture,
+      () => false,
+      { width: 800, height: 600 },
+      0,
+      undefined,
+      [],
+      0,
+      undefined,
+      true,
+      undefined,
+      undefined,
+      true,
+      effects
+    );
+    const internal = view.stage as unknown as { worldStage: { update: ReturnType<typeof vi.fn> } };
+    expect(internal.worldStage.update.mock.lastCall?.[10]).toEqual(effects);
+  }
+);
+
+it.each(["free", "performance"] as const)(
+  "advances the %s world from shared song time while note bodies remain hidden",
+  (mode) => {
+    const view = fixture();
+    const internal = view.stage as unknown as {
+      road: Group;
+      performance: {
+        update: ReturnType<typeof vi.fn>;
+        updateInspection: ReturnType<typeof vi.fn>;
+      };
+      worldStage: { update: ReturnType<typeof vi.fn> };
+    };
+    if (mode === "free") view.stage.setFreeCamera(true);
+    else view.stage.setPerformanceScene(true);
+    for (const time of [12, 13.5]) {
+      view.stage.draw(
+        view.scene,
+        view.picture,
+        () => false,
+        { width: 800, height: 600 },
+        1 / 60,
+        undefined,
+        [],
+        1 / 60,
+        undefined,
+        true,
+        undefined,
+        undefined,
+        true,
+        { burning: true, presses: true, musicalNotes: true },
+        time
+      );
+      expect(internal.road.visible).toBe(false);
+      expect(internal.worldStage.update.mock.lastCall?.[1]).toBe(time);
+      expect(internal.worldStage.update.mock.lastCall?.[8]).toBeUndefined();
+      const update =
+        mode === "free" ? internal.performance.updateInspection : internal.performance.update;
+      expect(update.mock.lastCall?.[0]).toBe(time);
+    }
+  }
+);
+
+it("feeds logical road-key anchors to world effects on a cold scene with hidden native keys", () => {
+  const view = fixture();
+  Object.assign(view.stage, { freeEnabled: true, roadBoxes: [], roadVersion: -1, boxes: [] });
+  Object.assign(view.scene, {
+    faces: [{ key: { pitch: 60, black: false, x: 100, width: 44 }, source: { y: 0, height: 200 } }],
+    texture: { width: 800, height: 200 },
+    native: true,
+    camera: { ...view.scene.camera, sourceX: (x: number) => x / 2 }
+  });
+  const inside = view.stage as unknown as {
+    keys: Group;
+    worldStage: { prepare: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  };
+  view.stage.draw(
+    view.scene,
+    view.picture,
+    () => false,
+    { width: 800, height: 600 },
+    0.016,
+    undefined,
+    [{ id: "hit", pitch: 60, color: 0x00df50, strength: 1, progress: 1, sounding: true }],
+    0.016,
+    undefined,
+    true,
+    undefined,
+    undefined,
+    false
+  );
+  expect(inside.keys.visible).toBe(false);
+  const logical = inside.worldStage.prepare.mock.lastCall?.[1] as unknown;
+  expect(logical).toMatchObject([{ pitch: 60, x: 61, width: 22 }]);
+  expect(inside.worldStage.update.mock.lastCall?.[3]).toBe(logical);
+  expect(inside.keys.children).toHaveLength(0);
+});
+
+it.each(["filled", "flat", "glass"] as const)(
+  "uses only the selected %s body without the old molten shell over solid notes",
+  (style) => {
+    const view = fixture();
+    const aura = { group: new Group(), update: vi.fn() };
+    const trails = { group: new Group(), update: vi.fn() };
+    const native = { group: new Group(), setStyle: vi.fn(), setViewport: vi.fn(), update: vi.fn() };
+    const flat = { group: new Group(), update: vi.fn(), clear: vi.fn() };
+    Object.assign(view.stage, {
+      noteAura: aura,
+      roadTrails: trails,
+      roadNotes: native,
+      flatRoadNotes: flat,
+      roadGuides: { clear: vi.fn() }
+    });
+    const frame = new ThreeRoadFrame();
+    frame.noteStyle = style;
+    frame.flatMaterial = style === "flat";
+    view.stage.draw(
+      view.scene,
+      view.picture,
+      () => false,
+      { width: 800, height: 600 },
+      0,
+      undefined,
+      [],
+      0,
+      frame
+    );
+    expect(aura.group.visible).toBe(style === "glass");
+    expect(trails.group.visible).toBe(true);
+    if (style === "flat") {
+      expect(flat.update).toHaveBeenCalledOnce();
+      expect(native.group.visible).toBe(false);
+      expect(native.update).not.toHaveBeenCalled();
+    } else {
+      expect(native.setStyle).toHaveBeenCalledExactlyOnceWith(style);
+      expect(native.update).toHaveBeenCalledOnce();
+      expect(flat.clear).toHaveBeenCalledOnce();
+    }
+    expect(frame.songTime).toBe(0);
+  }
+);
+
+it("passes the workspace score source to its structural world poster", () => {
+  const { stage } = fixture();
+  stage.setWorldScoreSource(undefined);
+  const poster = (stage as unknown as { scorePoster: { setSource: ReturnType<typeof vi.fn> } })
+    .scorePoster;
+  expect(poster.setSource).toHaveBeenCalledWith(undefined);
 });

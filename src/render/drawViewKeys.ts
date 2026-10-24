@@ -5,7 +5,9 @@ import type { HandsLayer } from "./HandsLayer";
 import type { KeyRect } from "./keyboardLayout";
 import type { RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
+import { NativeKeyContacts } from "./three/NativeKeyContacts";
 
+const contactsByHands = new WeakMap<HandsLayer, NativeKeyContacts>();
 const NO_SOUNDING_KEYS: ReadonlySet<number> = new Set();
 
 /** The frame's key colours and hand poses read the same session snapshot. */
@@ -21,10 +23,18 @@ export function drawViewKeys(
   pan: number,
   deltaSeconds: number
 ): void {
+  let contacts = contactsByHands.get(hands);
+  if (!contacts) contactsByHands.set(hands, (contacts = new NativeKeyContacts()));
+  contacts.setNotes(hands.songNotes);
+  const sounding = state.hands.size === 0 ? state.sounding : NO_SOUNDING_KEYS;
+  const physicalDown = new Set(state.pressed);
+  for (const pitch of sounding)
+    if (!contacts.has(pitch) || contacts.down(pitch, state.time)) physicalDown.add(pitch);
   layer?.draw(
     {
       pressed: state.pressed,
-      sounding: state.hands.size === 0 ? state.sounding : NO_SOUNDING_KEYS,
+      sounding,
+      physicalDown,
       due: state.due,
       hintTime: state.hintTime ?? state.time,
       hintSpeed: state.hintSpeed ?? 1,

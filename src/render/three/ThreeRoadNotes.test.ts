@@ -208,3 +208,49 @@ describe("instanced world road notes", () => {
     notes.dispose();
   });
 });
+
+it("keeps real rounded volume and restores the exact legacy glass material after filled style", () => {
+  const view = new ThreeRoadNotes(4);
+  const [body, halo] = meshes(view);
+  if (
+    !body ||
+    !halo ||
+    !(body.material instanceof ShaderMaterial) ||
+    !(halo.material instanceof ShaderMaterial)
+  )
+    throw new Error("Expected two note batches");
+  const geometry = body.geometry;
+  const glass = body.material;
+  const glassShader = glass.fragmentShader;
+  const glassHalo = halo.material;
+  view.setStyle("filled");
+  const solid = body.material;
+  expect(solid.transparent).toBe(false);
+  expect(solid.depthWrite).toBe(true);
+  expect(halo.material.transparent).toBe(false);
+  expect(halo.material.depthWrite).toBe(false);
+  expect(halo.renderOrder).toBeLessThan(body.renderOrder);
+  expect(body.geometry).toBe(geometry);
+  view.update([note(), note({ x: 1, top: 180, bottom: 142, color: 0xff0000 })], 22, 3);
+  expect(body.count).toBe(2);
+  const normals = geometry.getAttribute("normal");
+  for (const axis of [0, 1, 2]) {
+    const values = Array.from({ length: normals.count }, (_, index) =>
+      normals.getComponent(index, axis)
+    );
+    expect(Math.max(...values)).toBeGreaterThan(0.99);
+    expect(Math.min(...values)).toBeLessThan(-0.99);
+  }
+  const sizes = body.geometry.getAttribute("noteSize");
+  expect(sizes.getY(0)).toBeGreaterThan(0);
+  expect(sizes.getZ(0)).toBeGreaterThan(0);
+  expect(body.instanceMatrix.array.every(Number.isFinite)).toBe(true);
+  view.setStyle("glass");
+  expect(body.material).toBe(glass);
+  expect(body.material.fragmentShader).toBe(glassShader);
+  expect(halo.material).toBe(glassHalo);
+  expect(halo.renderOrder).toBe(1);
+  view.setStyle("filled");
+  expect(body.material).toBe(solid);
+  view.dispose();
+});

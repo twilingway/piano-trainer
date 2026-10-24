@@ -1,3 +1,5 @@
+import { preferencesActions } from "./preferencesSlice";
+import { useAppDispatch } from "./storeHooks";
 import { shallowEqual } from "react-redux";
 import type { ComponentProps } from "react";
 import type { TrainerSnapshot } from "../practice/Trainer";
@@ -8,11 +10,13 @@ import { ResultDialog } from "../ui/ResultDialog";
 import { TimingSettings } from "../ui/TimingSettings";
 import { WordTypingSettings } from "../ui/WordTypingSettings";
 import { ComputerKeyboardSettings } from "../ui/settings/ComputerKeyboardSettings";
-import { KeyboardSettings } from "../ui/settings/KeyboardSettings";
+import { ConnectedKeyboardSettings } from "./ConnectedKeyboardSettings";
 import { MidiSettings } from "../ui/settings/MidiSettings";
 import { ConnectedInstrumentProfileSettings } from "./ConnectedInstrumentProfileSettings";
 import { PlaySettings } from "../ui/settings/PlaySettings";
 import { PlayerSettings } from "../ui/settings/PlayerSettings";
+import { SettingsDiagnostics } from "../ui/settings/SettingsDiagnostics";
+import { SettingsGroup } from "../ui/settings/SettingsGroup";
 import { SettingsView } from "../ui/settings/SettingsView";
 import { SongSettings } from "../ui/settings/SongSettings";
 import { StaffSettings } from "../ui/settings/StaffSettings";
@@ -20,7 +24,6 @@ import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 import { useAppSelector } from "./storeHooks";
 import { useI18n } from "./useI18n";
-import { pianistAvailable } from "../render/three/pianistAvailability";
 import { usePlayChoice } from "./usePlayChoice";
 import { useTrainerSelector, type TrainerSnapshotSource } from "./trainerSnapshots";
 
@@ -33,10 +36,17 @@ const NO_DEVICES: readonly MidiDevice[] = [];
 
 export function ConnectedPlayerSettings(props: { open: boolean; onClose: () => void }) {
   const wordTyping = useAppSelector((state) => state.preferences.word.enabled);
+  const freeCamera = useAppSelector(
+    (state) =>
+      state.preferences.staff.keyStyle === "3d" &&
+      state.preferences.staff.freeCamera &&
+      !state.preferences.staff.performanceScene
+  );
   return (
     <PlayerSettings
       {...props}
       wordTyping={wordTyping}
+      freeCamera={freeCamera && !wordTyping}
       play={<ConnectedPlaySettings />}
       rules={<ConnectedRulesSettings />}
       song={<ConnectedSongSettings />}
@@ -44,10 +54,13 @@ export function ConnectedPlayerSettings(props: { open: boolean; onClose: () => v
       computer={<ConnectedComputerSettings />}
       midi={<ConnectedMidiSettings />}
       synchronization={<ConnectedSynchronizationSettings />}
+      diagnostics={<ConnectedDiagnostics />}
     />
   );
 }
 function ConnectedPlaySettings() {
+  const dispatch = useAppDispatch();
+  const countdownSeconds = useAppSelector((state) => state.preferences.player.countdownSeconds);
   const state = useRuntimeSelector(
     (runtime) => ({
       source: runtime.trainer.snapshotSource,
@@ -73,6 +86,10 @@ function ConnectedPlaySettings() {
   return (
     <PlaySettings
       wordTyping={wordTyping}
+      countdownSeconds={countdownSeconds}
+      onCountdownSeconds={(seconds) => {
+        dispatch(preferencesActions.playerChanged({ countdownSeconds: seconds }));
+      }}
       metronome={state.metronome}
       onMetronome={onMetronome}
       listening={state.listening}
@@ -151,13 +168,16 @@ function ConnectedSongSettings() {
     />
   );
 }
-function ConnectedViewSettings() {
-  const wordTyping = useAppSelector((state) => state.preferences.word.enabled);
+function ConnectedDiagnostics() {
   const fps = useAppSelector((state) => state.preferences.staff.fps);
-  const editing = useRuntimeSelector((runtime) => runtime.screen.editing);
   const onFps = useRuntimeCommand((runtime) => (fps: boolean) => {
     runtime.updateStaffPrefs({ fps });
   });
+  return <SettingsDiagnostics fps={fps} onFps={onFps} />;
+}
+function ConnectedViewSettings() {
+  const wordTyping = useAppSelector((state) => state.preferences.word.enabled);
+  const editing = useRuntimeSelector((runtime) => runtime.screen.editing);
   const onToggleEditing = useRuntimeCommand((runtime) => runtime.screen.toggleEditing);
   const onResetLayout = useRuntimeCommand((runtime) => runtime.screen.resetLayout);
   return (
@@ -165,8 +185,7 @@ function ConnectedViewSettings() {
       wordTyping={wordTyping}
       staff={<ConnectedStaffSettings />}
       keyboard={<ConnectedKeyboardSettings />}
-      fps={fps}
-      onFps={onFps}
+      toggles={<ConnectedSettingsToggles />}
       editing={editing}
       onToggleEditing={onToggleEditing}
       onResetLayout={onResetLayout}
@@ -181,84 +200,6 @@ function ConnectedStaffSettings() {
 }
 export function ConnectedSettingsToggles() {
   return useRuntimeSelector((runtime) => runtime.toggles);
-}
-function ConnectedKeyboardSettings() {
-  const state = useAppSelector(
-    (state) => ({
-      keyStyle: state.preferences.staff.keyStyle,
-      notesPerspective: state.preferences.staff.road,
-      handStyle: state.preferences.staff.handStyle,
-      flatNoteBurning: state.preferences.staff.flatNoteBurning,
-      flatPressEffects: state.preferences.staff.flatPressEffects,
-      keyboardDim: state.preferences.staff.keyboardDim,
-      roadGuides: state.preferences.staff.roadGuides,
-      pianist: state.preferences.staff.pianist,
-      performanceScene: state.preferences.staff.performanceScene,
-      freeCamera: state.preferences.staff.freeCamera,
-      far: state.preferences.staff.roadFar,
-      horizon: state.preferences.staff.roadHorizon,
-      camera: state.preferences.staff.camera
-    }),
-    shallowEqual
-  );
-  const view = useRuntimeSelector(
-    (runtime) => ({ keyRange: runtime.view.keyRange, showLabels: runtime.view.showLabels }),
-    shallowEqual
-  );
-  const onKeyRange = useRuntimeCommand((runtime) => runtime.view.setKeyRange);
-  const onShowLabels = useRuntimeCommand((runtime) => runtime.view.setShowLabels);
-  const onKeyStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyStyle);
-  const onNotesPerspective = useRuntimeCommand(
-    (runtime) => runtime.keyboardSettings.onNotesPerspective
-  );
-  const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
-  const onFlatNoteBurning = useRuntimeCommand(
-    (runtime) => runtime.keyboardSettings.onFlatNoteBurning
-  );
-  const onFlatPressEffects = useRuntimeCommand(
-    (runtime) => runtime.keyboardSettings.onFlatPressEffects
-  );
-  const onKeyboardDim = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardDim);
-  const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
-  const onPerformanceScene = useRuntimeCommand(
-    (runtime) => runtime.keyboardSettings.onPerformanceScene
-  );
-  const onFreeCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onFreeCamera);
-  const onPianist = useRuntimeCommand((runtime) => runtime.keyboardSettings.onPianist);
-  const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
-  const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
-  return (
-    <KeyboardSettings
-      {...view}
-      keyStyle={state.keyStyle}
-      notesPerspective={state.notesPerspective}
-      onNotesPerspective={onNotesPerspective}
-      handStyle={state.handStyle}
-      flatNoteBurning={state.flatNoteBurning}
-      onFlatNoteBurning={onFlatNoteBurning}
-      flatPressEffects={state.flatPressEffects}
-      onFlatPressEffects={onFlatPressEffects}
-      keyboardDim={state.keyboardDim}
-      onKeyboardDim={onKeyboardDim}
-      roadGuides={state.roadGuides}
-      {...(pianistAvailable(state.keyStyle, state.handStyle) ? { pianist: state.pianist } : {})}
-      onPianist={onPianist}
-      performanceScene={state.performanceScene}
-      onPerformanceScene={onPerformanceScene}
-      freeCamera={state.freeCamera}
-      onFreeCamera={onFreeCamera}
-      road={{ far: state.far, horizon: state.horizon }}
-      camera={state.camera}
-      onKeyRange={onKeyRange}
-      onShowLabels={onShowLabels}
-      onKeyStyle={onKeyStyle}
-      onHandStyle={onHandStyle}
-      onRoadGuides={onRoadGuides}
-      onRoad={onRoad}
-      onCamera={onCamera}
-      toggles={<ConnectedSettingsToggles />}
-    />
-  );
 }
 function ConnectedComputerSettings() {
   const wordTyping = useAppSelector((state) => state.preferences.word.enabled);
@@ -346,6 +287,7 @@ function ConnectedKeyboardAssignments() {
   );
 }
 function ConnectedMidiSettings() {
+  const { t } = useI18n();
   const range = useAppSelector((state) => state.preferences.deviceRange);
   const choice = useAppSelector((state) => state.preferences.midiOutput);
   const lights = useAppSelector((state) => state.preferences.keyLights);
@@ -406,7 +348,9 @@ function ConnectedMidiSettings() {
             : undefined
         }
       />
-      <ConnectedInstrumentProfileSettings />
+      <SettingsGroup title={t("Профиль и тембр пианино")}>
+        <ConnectedInstrumentProfileSettings />
+      </SettingsGroup>
     </>
   );
 }

@@ -1,4 +1,5 @@
-﻿import type { Container } from "./flatThree";
+import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "./flatEffectSettings";
+import type { Container } from "./flatThree";
 import type { SongNote } from "../song/song";
 import { noteColor } from "./computerKeys";
 import type { FrameState } from "./frameState";
@@ -37,10 +38,11 @@ export class NotePlasma {
     geometry: Geometry,
     road: RoadLayer | undefined,
     visible: boolean,
-    deltaSeconds: number
+    deltaSeconds: number,
+    options: FlatEffectOptions = ALL_FLAT_EFFECTS
   ): void {
     const on = road !== undefined && visible;
-    this.container.visible = on;
+    this.container.visible = on && (options.burning || options.musicalNotes);
     if (!on) {
       this.clear();
       road?.clearEnergy();
@@ -82,7 +84,8 @@ export class NotePlasma {
       Math.max(80, road.hitLineY),
       delta,
       road.drawsNativeRoad,
-      road.mistOffsetX
+      road.mistOffsetX,
+      options
     );
   }
 

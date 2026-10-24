@@ -1,3 +1,4 @@
+import { roadWidthUniforms } from "./roadWidthUniforms";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import { AdditiveBlending, ShaderMaterial, Vector2 } from "three";
 
@@ -29,13 +30,12 @@ float haloMargin(float width, float screenShort) {
   return min(max(width * 1.0, 4.0), max(2.0, screenShort * 0.18));
 }
 void main() {
-  mat4 projectNote = projectionMatrix * modelViewMatrix * instanceMatrix;
   vec3 halfSize = noteSize * 0.5;
-  vec4 c0 = projectNoteLane(projectNote * vec4(-halfSize.x, halfSize.y, -halfSize.z, 1.0));
-  vec4 c1 = projectNoteLane(projectNote * vec4(halfSize.x, halfSize.y, -halfSize.z, 1.0));
-  vec4 c2 = projectNoteLane(projectNote * vec4(halfSize.x, -halfSize.y, halfSize.z, 1.0));
-  vec4 c3 = projectNoteLane(projectNote * vec4(-halfSize.x, -halfSize.y, halfSize.z, 1.0));
-  vec4 centre = projectNoteLane(projectNote * vec4(0.0, 0.0, 0.0, 1.0));
+  vec4 c0 = projectNoteLane(projectRoadPoint(vec4(-halfSize.x, halfSize.y, -halfSize.z, 1.0)));
+  vec4 c1 = projectNoteLane(projectRoadPoint(vec4(halfSize.x, halfSize.y, -halfSize.z, 1.0)));
+  vec4 c2 = projectNoteLane(projectRoadPoint(vec4(halfSize.x, -halfSize.y, halfSize.z, 1.0)));
+  vec4 c3 = projectNoteLane(projectRoadPoint(vec4(-halfSize.x, -halfSize.y, halfSize.z, 1.0)));
+  vec4 centre = projectNoteLane(projectRoadPoint(vec4(0.0, 0.0, 0.0, 1.0)));
   float worldWidth = length((modelViewMatrix * instanceMatrix * vec4(noteSize.x, 0.0, 0.0, 0.0)).xyz);
   float depthScale = abs(projectionMatrix[2][2] + projectionMatrix[2][3]);
   float nearFade = min(min(haloNearFade(c0.z, c0.w, worldWidth, depthScale), haloNearFade(c1.z, c1.w, worldWidth, depthScale)),
@@ -95,6 +95,9 @@ void main() {
     cross2(vQ2 - vQ1, vPoint - vQ1) * orientation >= 0.0 &&
     cross2(vQ3 - vQ2, vPoint - vQ2) * orientation >= 0.0 &&
     cross2(vQ0 - vQ3, vPoint - vQ3) * orientation >= 0.0;
+  #ifdef FILLED_NOTE_HALO
+    if (inside) discard;
+  #endif
   float radius = inside ? vRadius * 0.4 : vRadius;
   float glow = exp(-distance * distance / (2.0 * radius * radius));
   float alpha = min(0.8, glow * vAlpha * 0.8);
@@ -104,15 +107,17 @@ void main() {
 `;
 
 /** An isotropic screen-space aura around the actual projected note, including both end caps. */
-export function createNoteHaloMaterial(): ShaderMaterial {
+export function createNoteHaloMaterial(exteriorOnly = false): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
+      ...roadWidthUniforms,
       viewport: { value: new Vector2(1, 1) },
       visualTime: { value: 0 }
     },
+    defines: exteriorOnly ? { FILLED_NOTE_HALO: 1 } : {},
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
-    transparent: true,
+    transparent: !exteriorOnly,
     blending: AdditiveBlending,
     depthTest: true,
     depthWrite: false
