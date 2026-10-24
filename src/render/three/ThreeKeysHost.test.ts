@@ -2,8 +2,8 @@
 import { Camera, Group, type Vector2 } from "three";
 import type { SourcePerformanceIdentity } from "../../song/sourcePerformance";
 import type { SongStage } from "../../song/songStage";
-import { Container } from "pixi.js";
-import type { Application } from "pixi.js";
+import { Container } from "../flatThree";
+import type { Application } from "../flatThree";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SongNote } from "../../song/song";
 import type { NativeContactNotes } from "./NativeKeyContacts";
@@ -109,32 +109,13 @@ vi.mock("./pianist", () => ({
 }));
 vi.mock("./disposePianistModel", () => ({ disposePianistModel: mocks.disposeModel }));
 
-class SharedContext {
-  readonly MAX_TEXTURE_IMAGE_UNITS = 34930;
-  readonly TEXTURE0 = 33984;
-  readonly TEXTURE_2D = 3553;
-  readonly textures = new Map<number, WebGLTexture | null>();
-  currentUnit = this.TEXTURE0;
-  getParameter = vi.fn(() => 4);
-  activeTexture(unit: number): void {
-    this.currentUnit = unit;
-  }
-  bindTexture(_target: number, texture: WebGLTexture | null): void {
-    this.textures.set(this.currentUnit, texture);
-  }
-  flipY = true;
-  premultiply = true;
-  bindingsDirty = false;
-}
-
 function fixture() {
-  const gl = new SharedContext();
   const canvas = document.createElement("canvas");
   const stage = new Container();
   const road = new Container();
   const keys = {
     container: new Container(),
-    scene: { texture: { source: {} }, camera: { params: { prefs: { pitch: 25 } } } }
+    scene: { texture: { nativeTexture: {} }, camera: { params: { prefs: { pitch: 25 } } } }
   };
   const overlay = new Container();
   stage.addChild(road, overlay);
@@ -149,16 +130,9 @@ function fixture() {
     songStage: undefined as SongStage | undefined
   };
   const renderer = {
-    gl,
-    clear: vi.fn(),
-    resetState: vi.fn(() => {
-      gl.flipY = false;
-      gl.premultiply = false;
-      gl.bindingsDirty = false;
-    }),
+    threeRenderer: { dispose: vi.fn() },
     render:
-      vi.fn<(options: { container: Container; clear?: boolean; transform?: unknown }) => void>(),
-    texture: { getGlSource: vi.fn(() => ({ texture: {} })) }
+      vi.fn<(options: { container: Container; clear?: boolean; transform?: unknown }) => void>()
   };
   const callbacks = new Set<() => void>();
   const render = vi.fn();
@@ -169,9 +143,7 @@ function fixture() {
     remove: vi.fn((callback: () => void) => callbacks.delete(callback))
   };
   const app = { renderer, ticker, stage, canvas, render, screen: { width: 800, height: 600 } };
-  const restoreRoad = vi.fn(() => {
-    expect(gl.bindingsDirty).toBe(false);
-  });
+  const restoreRoad = vi.fn();
   const keyboard = { frame: undefined as KeyboardLayer["frame"] };
   const host = new ThreeKeysHost(
     app as unknown as Application,
@@ -182,7 +154,6 @@ function fixture() {
     restoreRoad
   );
   return {
-    gl,
     canvas,
     stage,
     road,
@@ -224,7 +195,6 @@ beforeEach(() => {
   mocks.dispose.mockReset();
   mocks.loadKit.mockReset().mockResolvedValue({ keys: new Map(), dispose: vi.fn() });
   mocks.loadHand.mockReset().mockResolvedValue({});
-  vi.stubGlobal("WebGL2RenderingContext", SharedContext);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
 });
 
@@ -234,7 +204,7 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
-  it("draws road, Three and HUD without an extra Pixi mist pass", async () => {
+  it("draws flat road, native scene and HUD in order", async () => {
     const view = fixture();
     await view.host.setEnabled(true);
     const order: string[] = [];
@@ -325,29 +295,23 @@ describe("shared WebGL keyboard recovery", () => {
     expect(mocks.dispose).toHaveBeenCalledOnce();
   });
 
-  it("clears Pixi upload flags before Three initializes and invalidates its changed bindings", async () => {
+  it("reuses the application's renderer and ordinary texture without allocating a context", async () => {
     const view = fixture();
-    mocks.construct.mockImplementation(() => {
-      expect(view.gl.flipY).toBe(false);
-      expect(view.gl.premultiply).toBe(false);
-      view.gl.bindingsDirty = true;
-    });
     await view.host.setEnabled(true);
-    expect(mocks.construct).toHaveBeenCalledOnce();
-    expect(view.gl.bindingsDirty).toBe(false);
-    expect(view.host.on).toBe(true);
+    expect(mocks.construct.mock.calls[0]?.[0]).toBe(view.renderer.threeRenderer);
+    view.tick();
+    expect(mocks.draw.mock.calls[0]?.[1]).toBe(view.keys.scene.texture.nativeTexture);
     view.host.destroy();
+    expect(view.renderer.threeRenderer.dispose).not.toHaveBeenCalled();
   });
 
-  it("restores Pixi state even when the Three constructor fails", async () => {
+  it("keeps the flat scene usable when the native stage constructor fails", async () => {
     const view = fixture();
     mocks.construct.mockImplementation(() => {
-      view.gl.bindingsDirty = true;
       throw new Error("renderer initialization failed");
     });
     await view.host.setEnabled(true);
     expect(view.host.on).toBe(false);
-    expect(view.gl.bindingsDirty).toBe(false);
     expect(view.keys.container.renderable).toBe(true);
     expect(view.road.parent).toBe(view.stage);
     expect(view.callbacks).toEqual(new Set([view.render]));
@@ -360,13 +324,9 @@ describe("shared WebGL keyboard recovery", () => {
     const view = fixture();
     const loading = view.host.setEnabled(true);
     await view.host.setEnabled(false);
-    mocks.construct.mockImplementation(() => {
-      view.gl.bindingsDirty = true;
-    });
     kit.resolve({ keys: new Map(), dispose: vi.fn() });
     await loading;
     expect(view.host.on).toBe(false);
-    expect(view.gl.bindingsDirty).toBe(false);
     expect(view.callbacks).toEqual(new Set([view.render]));
     view.host.destroy();
   });
@@ -377,12 +337,10 @@ describe("shared WebGL keyboard recovery", () => {
     const view = fixture();
     const loading = view.host.setEnabled(true);
     view.host.destroy();
-    const appCalls = view.renderer.resetState.mock.calls.length;
     kit.resolve({ keys: new Map(), dispose: vi.fn() });
     await loading;
     await view.host.setEnabled(true);
     expect(mocks.construct).not.toHaveBeenCalled();
-    expect(view.renderer.resetState).toHaveBeenCalledTimes(appCalls);
     expect(view.host.on).toBe(false);
   });
 
@@ -396,11 +354,10 @@ describe("shared WebGL keyboard recovery", () => {
       expect(view.road.parent).toBeNull();
       expect(view.hands.live).toBe(true);
       const fail = () => {
-        view.gl.bindingsDirty = true;
         throw new Error("3D frame failed");
       };
       if (failure === "draw") mocks.draw.mockImplementation(fail);
-      else view.renderer.texture.getGlSource.mockImplementation(fail);
+      else Object.defineProperty(view.keys.scene.texture, "nativeTexture", { get: fail });
       view.renderer.render.mockClear();
       expect(() => {
         view.tick();
@@ -413,7 +370,6 @@ describe("shared WebGL keyboard recovery", () => {
       expect(view.keys.container.renderable).toBe(true);
       expect(view.stage.children).toEqual([view.road, view.overlay]);
       expect(view.hands.live).toBe(false);
-      expect(view.gl.bindingsDirty).toBe(false);
       expect(view.renderer.render).toHaveBeenLastCalledWith({ container: view.stage });
       expect(view.callbacks).toEqual(new Set([view.render]));
       expect(mocks.dispose).toHaveBeenCalledOnce();
@@ -424,27 +380,18 @@ describe("shared WebGL keyboard recovery", () => {
     }
   );
 
-  it("prepares restored contexts before Three reinitializes and resets Pixi afterwards", async () => {
+  it("preserves the stage and renderer across native context restoration", async () => {
     const view = fixture();
     await view.host.setEnabled(true);
-    const threeRestored = vi.fn(() => {
-      expect(view.gl.flipY).toBe(false);
-      expect(view.gl.premultiply).toBe(false);
-      view.gl.bindingsDirty = true;
-    });
-    view.canvas.addEventListener("webglcontextrestored", threeRestored);
-    view.gl.flipY = true;
-    view.gl.premultiply = true;
+    view.host.setFreeCamera(true);
+    view.tick();
+    const creations = mocks.construct.mock.calls.length;
     view.canvas.dispatchEvent(new Event("webglcontextrestored"));
-    expect(threeRestored).toHaveBeenCalledOnce();
-    await Promise.resolve();
-    expect(view.gl.bindingsDirty).toBe(false);
-    view.canvas.removeEventListener("webglcontextrestored", threeRestored);
+    view.tick();
+    expect(view.host.freeCamera).toBe(true);
+    expect(mocks.construct).toHaveBeenCalledTimes(creations);
+    expect(mocks.dispose).not.toHaveBeenCalled();
     view.host.destroy();
-    view.renderer.resetState.mockClear();
-    view.canvas.dispatchEvent(new Event("webglcontextrestored"));
-    await Promise.resolve();
-    expect(view.renderer.resetState).not.toHaveBeenCalled();
   });
 });
 
@@ -638,7 +585,7 @@ describe("native stage effects handoff", () => {
   });
 });
 
-describe("Pixi FX under native hands", () => {
+describe("Flat effects under native hands", () => {
   it("draws transformed FX through the road/case callback, once, before HUD", async () => {
     const view = fixture();
     const fire = view.overlay.addChild(new Container());
@@ -651,13 +598,11 @@ describe("Pixi FX under native hands", () => {
       order.push(
         options.container === fire ? "fire" : options.container === view.road ? "road" : "hud"
       );
-      if (options.container === fire) expect(view.gl.bindingsDirty).toBe(false);
       if (options.container === view.stage) expect(fire.renderable).toBe(false);
     });
     mocks.draw.mockImplementation(() => {
       order.push("three");
       expect(fire.renderable).toBe(false);
-      view.gl.bindingsDirty = true;
     });
     view.tick();
     expect(order).toEqual(["road", "three", "fire", "hud"]);

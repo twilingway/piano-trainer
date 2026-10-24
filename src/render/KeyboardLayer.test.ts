@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { NineSliceSprite, Sprite, Texture, TextureSource } from "pixi.js";
-import { describe, expect, it } from "vitest";
+import { NineSliceSprite, Sprite, Texture, TextureSource } from "./flatThree";
+import { describe, expect, it, vi } from "vitest";
 import type { SongNote } from "../song/song";
 import type { Finger } from "../fingering/fingering";
 import { KeyboardLayer } from "./KeyboardLayer";
@@ -112,4 +112,33 @@ describe("keyboard finger labels", () => {
     run.layer.draw(run.frame, keys, geometry(180), true);
     expect([...run.digits.values()].every((digit) => digit.visible)).toBe(true);
   });
+});
+
+it("frees owned keyboard paint once while preserving shared asset faces and digits", () => {
+  const texture = () => new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+  const baked = { white: texture(), black: texture(), blackLit: texture() };
+  const sharedFace = texture();
+  const sharedDigit = texture();
+  const light = texture();
+  const sticker = texture();
+  const owned = [...Object.values(baked), light, sticker];
+  const disposals = owned.map((item) => vi.spyOn(item, "destroy"));
+  const release = vi.fn();
+  const layer = Object.assign(Object.create(KeyboardLayer.prototype) as object, {
+    disposed: false,
+    paintGeneration: 0,
+    bakedTextures: baked,
+    painted: { white: sharedFace, black: sharedFace, blackLit: sharedFace },
+    keyTextures: baked,
+    digitTextures: new Map([[1, sharedDigit]]),
+    lightTextures: new Map([["key", light]]),
+    stickerSprites: new Map([[60, new Sprite(sticker)]]),
+    pointers: { clear: release }
+  }) as unknown as KeyboardLayer;
+  layer.destroy();
+  layer.destroy();
+  for (const disposal of disposals) expect(disposal).toHaveBeenCalledOnce();
+  expect(sharedFace.destroyed).toBe(false);
+  expect(sharedDigit.destroyed).toBe(false);
+  expect(release).toHaveBeenCalledOnce();
 });

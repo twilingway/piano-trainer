@@ -1,7 +1,7 @@
 import type { Projected, RoadProjection } from "./perspective";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
 import type { KeyRect } from "./keyboardLayout";
-import type { PerspectiveMesh } from "pixi.js";
+import type { PerspectiveMesh } from "./flatThree";
 import { KEYBOARD_BLACK_BACK } from "./keyboardMetrics";
 import { projectNoteLane } from "./noteLaneProjection";
 import type { NoteLaneProjection } from "./noteLaneProjection";

@@ -1,6 +1,6 @@
 ﻿// @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
-import type { FederatedPointerEvent } from "pixi.js";
+import type { FederatedPointerEvent } from "./flatThree";
 import { FallingNotesView } from "./FallingNotesView";
 import { KeyboardLayer } from "./KeyboardLayer";
 import { PointerKeys } from "./pointerKeys";

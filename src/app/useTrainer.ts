@@ -2,7 +2,6 @@ import { practiceActions } from "./practiceSlice";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 
-import { soundNoteOff, soundNoteOn } from "../audio/pianoSound";
 import type { Hand } from "../fingering/fingering";
 import type { PracticeMode, PracticeOptions } from "../practice/session";
 import { Trainer } from "../practice/Trainer";
@@ -21,6 +20,8 @@ import { useAppDispatch, useAppSelector } from "./storeHooks";
 import type { HandChoice } from "./playerPrefs";
 import { createTrainerSnapshotSource } from "./trainerSnapshots";
 import { courseActions } from "./courseSlice";
+import { useGraphicsAvailability } from "./useGraphicsAvailability";
+import { forwardViewPointer } from "./viewPointerInput";
 
 const HANDS: Readonly<Record<HandChoice, readonly Hand[]>> = {
   right: ["right"],
@@ -105,6 +106,11 @@ export function useTrainer({
 }: Options) {
   const hostRef = useRef<HTMLDivElement>(null);
   const trainerRef = useRef<Trainer | null>(null);
+  const graphics = useGraphicsAvailability(trainerRef);
+  const graphicsGeneration = graphics.generation;
+  const graphicsFail = graphics.fail;
+  const graphicsAttach = graphics.attach;
+  const graphicsAvailable = graphics.available;
   const loadedRef = useRef<{
     trainer: Trainer;
     sourceSong: Song;
@@ -230,49 +236,44 @@ export function useTrainer({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    const detachGraphics = graphicsAttach(host);
     const view = new FallingNotesView();
     view.onNoteClick = (noteId) => {
       noteClickRef.current(noteId);
     };
-    view.onKeyPointer = (event) => {
-      if (pianoBlockedRef.current && event.type === "down") return;
-      // A clicked key has no voice of its own, unlike the piano.
-      if (!pianoBlockedRef.current) {
-        if (event.type === "down") soundNoteOn(event.pitch);
-        else soundNoteOff(event.pitch);
-      }
-      trainerRef.current?.key({
-        ...event,
-        timestamp: event.timestamp ?? performance.now(),
-        source: "pointer",
-        deviceId: "pointer"
-      });
-    };
+    view.onKeyPointer = forwardViewPointer(trainerRef, pianoBlockedRef);
     view.onInputCancel = (resetAll) => trainerRef.current?.cancelInput(resetAll);
     let disposed = false;
-    const mounted = view.mount(host).then(() => {
-      if (disposed) return;
-      viewRef.current = view;
-      const trainer = new Trainer(view);
-      trainer.onTake = (take) => {
-        takeHandlerRef.current(take);
-      };
-      trainer.onRunFinished = (result) => {
-        finishHandlerRef.current?.(result);
-      };
-      trainer.onSnapshot = (next) => {
-        snapshotSource.publish(next);
-        // A temporary listen-through hands the song back for practice.
-        if (next.finished && !loadedRef.current?.listenOnly) {
-          if (loadedRef.current?.listening) loadedRef.current = null;
-          setListeningSource(null);
-        }
-      };
-      trainerRef.current = trainer;
-      setTrainerReady(true);
-    });
+    const mounted = view
+      .mount(host)
+      .then(() => {
+        if (disposed) return;
+        viewRef.current = view;
+        const trainer = new Trainer(view);
+        trainer.setGraphicsAvailable(graphicsAvailable());
+        trainer.onTake = (take) => {
+          takeHandlerRef.current(take);
+        };
+        trainer.onRunFinished = (result) => {
+          finishHandlerRef.current?.(result);
+        };
+        trainer.onSnapshot = (next) => {
+          snapshotSource.publish(next);
+          // A temporary listen-through hands the song back for practice.
+          if (next.finished && !loadedRef.current?.listenOnly) {
+            if (loadedRef.current?.listening) loadedRef.current = null;
+            setListeningSource(null);
+          }
+        };
+        trainerRef.current = trainer;
+        setTrainerReady(true);
+      })
+      .catch((error: unknown) => {
+        if (!disposed) graphicsFail(error);
+      });
     return () => {
       disposed = true;
+      detachGraphics();
       assignmentRef.current.generation++;
       trainerRef.current?.destroy();
       trainerRef.current = null;
@@ -283,7 +284,7 @@ export function useTrainer({
         view.destroy();
       });
     };
-  }, [snapshotSource]);
+  }, [snapshotSource, graphicsGeneration, graphicsFail, graphicsAttach, graphicsAvailable]);
 
   useEffect(() => {
     // The view and the trainer outlive renders; they always call the latest handlers.
@@ -445,6 +446,7 @@ export function useTrainer({
   };
 
   const togglePlay = async () => {
+    if (graphics.blocked()) return;
     const generation = assignmentRef.current.generation,
       trainer = trainerRef.current;
     await ensureSound();
@@ -455,6 +457,7 @@ export function useTrainer({
   };
 
   const toggleListening = async () => {
+    if (graphics.blocked()) return;
     if (reading || rhythm || independentRhythm) return;
     if (ranked) return;
     if (listenOnly) {
@@ -497,6 +500,7 @@ export function useTrainer({
     viewRef,
     trainerReady,
     snapshotSource,
+    graphics,
     mode,
     setMode,
     handChoice,

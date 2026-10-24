@@ -282,3 +282,47 @@ describe("performance scene preference", () => {
     expect(prefs.staffPrefs.camera).toEqual(camera);
   });
 });
+
+describe("flat keyboard effect preferences", () => {
+  it("keeps old appearance by default and rejects malformed stored toggles", async () => {
+    localStorage.setItem(
+      "staff-prefs",
+      JSON.stringify({ flatNoteBurning: "false", flatPressEffects: 0 })
+    );
+    await mount();
+    expect(prefs.staffPrefs.flatNoteBurning).toBe(true);
+    expect(prefs.staffPrefs.flatPressEffects).toBe(true);
+  });
+
+  it("persists independent toggles across style changes and reloads", async () => {
+    await mount();
+    await act(async () => {
+      prefs.updateStaffPrefs({
+        keyStyle: "classic",
+        flatNoteBurning: false,
+        flatPressEffects: true
+      });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      prefs.updateStaffPrefs({ keyStyle: "arcade", flatPressEffects: false });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs.flatNoteBurning).toBe(false);
+    expect(prefs.staffPrefs.flatPressEffects).toBe(false);
+    await act(async () => {
+      prefs.updateStaffPrefs({ flatNoteBurning: true });
+      await Promise.resolve();
+    });
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      flatNoteBurning: true,
+      flatPressEffects: false
+    });
+  });
+});

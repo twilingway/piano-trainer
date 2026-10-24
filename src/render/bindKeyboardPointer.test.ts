@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { Container } from "pixi.js";
-import type { FederatedPointerEvent } from "pixi.js";
+import { Container } from "./flatThree";
+import type { FederatedPointerEvent } from "./flatThree";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { bindKeyboardPointer } from "./bindKeyboardPointer";

@@ -1,5 +1,5 @@
-import { Graphics, Texture } from "pixi.js";
-import type { Renderer } from "pixi.js";
+import { Graphics, Texture } from "./flatThree";
+import type { Renderer } from "./flatThree";
 
 /** A soft round dot: bright middle, fading edge. */
 export function bakeSpark(renderer: Renderer): Texture {

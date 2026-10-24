@@ -1,6 +1,8 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
+  "Горение нот": { en: "Note flames" },
+  "Эффекты нажатия": { en: "Key press effects" },
   "Приготовьтесь: {seconds}": { en: "Get ready: {seconds}" },
   "Эти настройки применяются к нотному стану и пианинным табам.": {
     en: "These settings apply to the score and piano tabs."

@@ -111,7 +111,7 @@ describe("translated player interface", () => {
     );
     expect(hud).toContain('aria-label="Game score"');
     expect(hud).toContain("12,345");
-    expect(hud).toContain("75.0%");
+    expect(hud).toContain("75.0\u00a0%");
     expect(hud).not.toMatch(/[А-Яа-яЁё]/);
     const timing = renderToStaticMarkup(<PracticeTimingStatus policy="learning" ranked={false} />);
     expect(timing).toContain("Learning mode · +300 ms");

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Container, Texture } from "pixi.js";
+import { Container, Texture } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { PerspectiveKeyboardLayer } from "./PerspectiveKeyboardLayer";
 import { layoutKeyboard } from "./keyboardLayout";

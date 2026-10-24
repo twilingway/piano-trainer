@@ -1,4 +1,4 @@
-import { Assets, Container, Rectangle, Sprite, Texture } from "pixi.js";
+import { Assets, Container, Rectangle, Sprite, Texture } from "./flatThree";
 import { emberAt, emberRateForHold, emberSizeForDuration } from "./emberMotion";
 import type { EmberPosition } from "./emberMotion";
 import { MistBoundsMask } from "./MistBoundsMask";
@@ -175,9 +175,9 @@ export class PlasmaLayer {
 
   private async loadAssets(): Promise<void> {
     const [flame, mist, ember] = await Promise.allSettled([
-      Assets.load<Texture>(FLAME_URL),
-      Assets.load<Texture>(MIST_URL),
-      Assets.load<Texture>(EMBER_URL)
+      Assets.load(FLAME_URL),
+      Assets.load(MIST_URL),
+      Assets.load(EMBER_URL)
     ]);
     if (this.disposed) return;
     if (flame.status === "fulfilled") {

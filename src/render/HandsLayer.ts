@@ -1,4 +1,4 @@
-import { Assets, Container, PerspectiveMesh, Sprite, Texture } from "pixi.js";
+import { Assets, Container, PerspectiveMesh, Sprite, Texture } from "./flatThree";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import type { Song, SongNote, SongBeat } from "../song/song";
@@ -94,7 +94,7 @@ export class HandsLayer {
     await Promise.all(
       HAND_SPRITES.map(async (definition) => {
         try {
-          const original = await Assets.load<Texture>(definition.url);
+          const original = await Assets.load(definition.url);
           if (!this.disposed) {
             this.textures.set(definition, fadeWrist(original));
           }
@@ -124,7 +124,7 @@ export class HandsLayer {
       HAND_RENDERS.map(async (definition) => {
         try {
           // The wrist fade is baked into the renders.
-          const texture = await Assets.load<Texture>(definition.url);
+          const texture = await Assets.load(definition.url);
           if (this.disposed) return;
           this.textures.set(definition, texture);
           this.renders.push(definition);

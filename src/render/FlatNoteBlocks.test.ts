@@ -1,9 +1,29 @@
 // @vitest-environment happy-dom
-import { Texture } from "pixi.js";
-import type { NineSliceSprite } from "pixi.js";
+import { Texture } from "./flatThree";
+import type { NineSliceSprite } from "./flatThree";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FlatNoteBlocks } from "./FlatNoteBlocks";
+
+/** Measure rendered vertices: width/height already include scale in the public sprite API. */
+function drawnBounds(sprite: NineSliceSprite) {
+  sprite.updateGeometry();
+  let left = Infinity;
+  let right = -Infinity;
+  let top = Infinity;
+  let bottom = -Infinity;
+  const positions = sprite.geometry.positions;
+  for (let index = 0; index < positions.length; index += 2) {
+    const x = positions[index];
+    const y = positions[index + 1];
+    if (x === undefined || y === undefined) throw new Error("Expected a complete note vertex");
+    left = Math.min(left, sprite.x + x * sprite.scale.x);
+    right = Math.max(right, sprite.x + x * sprite.scale.x);
+    top = Math.min(top, sprite.y + y * sprite.scale.y);
+    bottom = Math.max(bottom, sprite.y + y * sprite.scale.y);
+  }
+  return { left, top, width: right - left, height: bottom - top };
+}
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -26,10 +46,11 @@ describe("flat neon blocks", () => {
     blocks.begin();
     blocks.draw(100, 30, width, height, 0x00ccff, 0.7);
     const fill = blocks.container.children[0] as NineSliceSprite;
-    expect(fill.width * fill.scale.x).toBeCloseTo(width);
-    expect(fill.height * fill.scale.y).toBeCloseTo(height);
-    expect(fill.x + width / 2).toBe(100);
-    expect(fill.y).toBe(30);
+    const bounds = drawnBounds(fill);
+    expect(bounds.width).toBeCloseTo(width);
+    expect(bounds.height).toBeCloseTo(height);
+    expect(bounds.left + width / 2).toBeCloseTo(100);
+    expect(bounds.top).toBe(30);
     expect(fill.tint).toBe(0x00ccff);
     expect(fill.alpha).toBe(0.7);
   });
@@ -56,13 +77,13 @@ describe("flat neon blocks", () => {
     blocks.begin();
     blocks.draw(100, 30, 36, 150, 0x00ccff, 1);
     const bloom = blocks.container.children.find((child) => child.zIndex === 0) as NineSliceSprite;
-    const longWidth = bloom.width * bloom.scale.x;
+    const longWidth = drawnBounds(bloom).width;
     const longX = bloom.x;
     blocks.begin();
     blocks.draw(100, 30, 36, 4, 0x00ccff, 1);
     blocks.draw(138, 30, 36, 80, 0xff780a, 1);
     blocks.end();
-    expect(bloom.width * bloom.scale.x).toBeCloseTo(longWidth);
+    expect(drawnBounds(bloom).width).toBeCloseTo(longWidth);
     expect(bloom.x).toBeCloseTo(longX);
     blocks.container.sortChildren();
     const layers = blocks.container.children.map((child) => child.zIndex);
@@ -87,7 +108,8 @@ describe("flat neon blocks", () => {
     expect(plate?.visible).toBe(true);
     expect(plate?.blendMode).toBe("normal");
     expect(plate?.alpha).toBe(1);
-    expect((plate?.width ?? 0) * (plate?.scale.x ?? 0)).toBeGreaterThan(22);
+    if (!plate) throw new Error("Expected a raised note plate");
+    expect(drawnBounds(plate).width).toBeGreaterThan(22);
     expect(white[4]?.visible).toBe(false);
   });
 });

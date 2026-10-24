@@ -12,6 +12,7 @@ import { useFallingView } from "./useFallingView";
 vi.mock("../render/FallingNotesView", () => ({ FallingNotesView: vi.fn() }));
 
 const view = {
+  flatEffects: { set: vi.fn() },
   setLocale: vi.fn(),
   setFpsVisible: vi.fn(),
   setShowLabels: vi.fn(),
@@ -143,6 +144,29 @@ it("switches inspection independently without restarting playback or changing le
     await Promise.resolve();
   });
   expect(view.setFreeCamera).toHaveBeenLastCalledWith(true);
+  expect(view.setKeyStyle).not.toHaveBeenCalled();
+  expect(view.setCamera).not.toHaveBeenCalled();
+  expect(trainer.load).not.toHaveBeenCalled();
+  expect(trainer.seek).not.toHaveBeenCalled();
+  expect(trainer.setPlaying).not.toHaveBeenCalled();
+});
+
+it("changes flat effect preferences without reconfiguring the camera or playback", async () => {
+  await act(async () => {
+    root.render(<Harness prefs={DEFAULT_STAFF_PREFS} />);
+    await Promise.resolve();
+  });
+  expect(view.flatEffects.set).toHaveBeenLastCalledWith(true, true);
+  vi.clearAllMocks();
+  await act(async () => {
+    root.render(
+      <Harness
+        prefs={{ ...DEFAULT_STAFF_PREFS, flatNoteBurning: false, flatPressEffects: false }}
+      />
+    );
+    await Promise.resolve();
+  });
+  expect(view.flatEffects.set).toHaveBeenCalledExactlyOnceWith(false, false);
   expect(view.setKeyStyle).not.toHaveBeenCalled();
   expect(view.setCamera).not.toHaveBeenCalled();
   expect(trainer.load).not.toHaveBeenCalled();

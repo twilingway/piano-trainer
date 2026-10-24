@@ -1,4 +1,4 @@
-﻿import { Assets, Container, Mesh, MeshGeometry, Texture } from "pixi.js";
+﻿import { Assets, Container, Mesh, MeshGeometry, Texture } from "./flatThree";
 import {
   bakeNoteMaterial,
   NOTE_BLOOM_MARGIN,
@@ -89,19 +89,19 @@ export class RoadGlassLayer {
 
   async load(): Promise<void> {
     try {
-      const texture = await Assets.load<Texture>(GLASS);
+      const texture = await Assets.load(GLASS);
       if (!this.disposed) this.texture = texture;
     } catch (error) {
       console.warn("Road glass did not load; keeping baked light and plain side walls", error);
     }
     try {
-      const atlas = await Assets.load<Texture>(FIRE);
+      const atlas = await Assets.load(FIRE);
       if (!this.disposed) this.fireAtlas = atlas;
     } catch (error) {
       console.warn("Road hold fire did not load; keeping steady glass", error);
     }
     try {
-      const atlas = await Assets.load<Texture>(PLASMA);
+      const atlas = await Assets.load(PLASMA);
       if (!this.disposed) this.plasmaAtlas = atlas;
     } catch (error) {
       console.warn("Plasma surface unavailable; keeping existing note materials", error);
