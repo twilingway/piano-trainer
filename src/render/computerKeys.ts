@@ -4,7 +4,6 @@ import { inputTokenId } from "../wordTyping/inputTokens";
 import { columnKey, keyColumn } from "../wordTyping/keyboardRows";
 import { laneSong } from "../wordTyping/laneSong";
 import type { GeneratedToken, Language, Modifier } from "../wordTyping/types";
-import type { Texture } from "pixi.js";
 import type { FrameState } from "./FallingNotesView";
 import { TYPING_FINGER_COLOR } from "./fingerColors";
 import { PIANO_LOOK } from "./noteLook";
@@ -28,7 +27,7 @@ const MODIFIER_ORDER: Readonly<Record<Modifier, number>> = { none: 0, shift: 1, 
  * The word mode's keys for the falling-notes view: each computer key is a column, and the
  * trainer's frames, which speak in real pitches, are told in columns. It draws nothing.
  */
-export class ComputerKeys {
+export class ComputerKeys<Badge = unknown> {
   /** The inputs on each key, by column: the plain one first, then Shift, then Alt. */
   readonly byColumn: ReadonlyMap<number, readonly GeneratedToken[]>;
   private readonly byNote: ReadonlyMap<string, GeneratedToken>;
@@ -59,7 +58,7 @@ export class ComputerKeys {
   constructor(
     tokens: readonly GeneratedToken[],
     readonly language: Language,
-    private readonly letter?: (text: string) => Texture,
+    private readonly letter?: (text: string) => Badge,
     private readonly wordPitch?: WordPitch
   ) {
     this.byNote = new Map(tokens.map((token) => [token.noteId, token]));
@@ -79,7 +78,7 @@ export class ComputerKeys {
   }
 
   /** The lane's look: the touch-typing palette; cards and names show the note itself. */
-  readonly look: NoteLook = {
+  readonly look: NoteLook<Badge> = {
     written: (note) => this.realNotes.get(note.id) ?? note,
     color: (note) => this.colorOf(note) ?? PIANO_LOOK.color(note),
     // The letter to press, not the finger: the colour already tells the finger.

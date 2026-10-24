@@ -1,5 +1,5 @@
-import { Container, Graphics, Text } from "pixi.js";
-import type { Renderer, Texture } from "pixi.js";
+import { Container, Graphics, Text } from "./flatThree";
+import type { Renderer, Texture } from "./flatThree";
 
 import { isBlackKey } from "../fingering/fingering";
 import { LOWEST_PITCH } from "./keyboardLayout";

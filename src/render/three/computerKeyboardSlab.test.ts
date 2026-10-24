@@ -1,4 +1,4 @@
-import type { Texture } from "pixi.js";
+import type { Texture } from "../flatThree";
 import { describe, expect, it } from "vitest";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import { worldCamera } from "../worldCamera";

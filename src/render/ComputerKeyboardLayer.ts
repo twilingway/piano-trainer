@@ -1,5 +1,5 @@
-import { Container, NineSliceSprite, Sprite, Text, Texture } from "pixi.js";
-import type { Renderer } from "pixi.js";
+import { Container, NineSliceSprite, Sprite, Text, Texture } from "./flatThree";
+import type { Renderer } from "./flatThree";
 
 import { wordTokenId } from "../input/computerKeyboard";
 import { pitchLabel } from "../input/keyboardLayouts";

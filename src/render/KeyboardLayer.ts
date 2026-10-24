@@ -1,5 +1,5 @@
-import { Assets, Container, NineSliceSprite, Sprite, Texture } from "pixi.js";
-import type { Renderer } from "pixi.js";
+import { Assets, Container, NineSliceSprite, Sprite, Texture } from "./flatThree";
+import type { Renderer } from "./flatThree";
 
 import { isBlackKey } from "../fingering/fingering";
 import type { Finger, Hand } from "../fingering/fingering";
@@ -11,7 +11,7 @@ import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
 import { KEY_LIGHT_PAD, bakeKeyLight, keyShape, shapeId } from "./keyLightShapes";
 import type { KeyRect } from "./keyboardLayout";
 import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
-import { bakeKeyTextures } from "./keyTextures";
+import { bakeKeyTextures, destroyKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
 import { PointerKeys, type KeyPointer } from "./pointerKeys";
@@ -144,8 +144,11 @@ export class KeyboardLayer {
   private readonly keyFronts = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private keyTextures: KeyTextures | undefined;
+  private bakedTextures: KeyTextures | undefined;
   /** The painted key faces once loaded; kept for good, never re-baked. */
   private painted: PaintedFaces | undefined;
+  private disposed = false;
+  private paintGeneration = 0;
   /** The style the painted faces are of. */
   private style: Exclude<KeyStyle, "perspective" | "3d"> = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
@@ -210,15 +213,15 @@ export class KeyboardLayer {
    * were. The faces take effect on the next layout. Assets caches every load.
    */
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
+    const generation = ++this.paintGeneration;
     this.modelFaces = style === "3d";
     const paintedStyle = style === "perspective" || style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
       const names = Object.keys(set.faces) as FaceName[];
-      const textures = await Promise.all(
-        names.map((name) => Assets.load<Texture>(set.faces[name]))
-      );
-      const rail = set.rail ? await Assets.load<Texture>(set.rail) : undefined;
+      const textures = await Promise.all(names.map((name) => Assets.load(set.faces[name])));
+      const rail = set.rail ? await Assets.load(set.rail) : undefined;
+      if (this.disposed || generation !== this.paintGeneration) return;
       // Every name has its texture: Promise.all keeps the order of `names`.
       this.painted = Object.fromEntries(
         names.map((name, index) => [name, textures[index]])
@@ -486,6 +489,8 @@ export class KeyboardLayer {
     blackHeight: number
   ): void {
     if (this.painted) {
+      destroyKeyTextures(this.bakedTextures);
+      this.bakedTextures = undefined;
       this.keyTextures = this.painted;
       for (const [pitch, sprite] of this.keySprites) {
         const isBlack = isBlackKey(pitch);
@@ -499,7 +504,7 @@ export class KeyboardLayer {
       }
       return;
     }
-    const old = this.keyTextures;
+    destroyKeyTextures(this.bakedTextures);
     this.keyTextures = bakeKeyTextures(
       this.renderer,
       { width: (white?.width ?? 10) - 1, height: keyboardHeight },
@@ -513,9 +518,18 @@ export class KeyboardLayer {
           : this.keyTextures.white;
       Object.assign(sprite, NO_SLICE);
     }
-    if (old) {
-      for (const texture of [old.white, old.black, old.blackLit]) texture.destroy(true);
-    }
+    this.bakedTextures = this.keyTextures;
+  }
+
+  /** Release only generated textures; cached painted assets and digits have separate owners. */
+  destroy(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.paintGeneration++;
+    this.releaseMouse();
+    destroyKeyTextures(this.bakedTextures);
+    for (const texture of this.lightTextures.values()) texture.destroy(true);
+    for (const sprite of this.stickerSprites.values()) sprite.texture.destroy(true);
   }
 
   /** Bakes a light for every key's shape; the last layout's lights are freed. */

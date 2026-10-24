@@ -1,9 +1,10 @@
-import { Application, Container, Texture, type FederatedPointerEvent } from "pixi.js";
+import { Application, Container, Texture, type FederatedPointerEvent } from "./flatThree";
 
 import type { Finger } from "../fingering/fingering";
 import type { Locale } from "../i18n/locales";
 import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
+import { destroyViewContainers, initializeViewApplication } from "./viewApplication";
 import { publishOverlayLayout } from "./viewOverlayLayout";
 import { bakeDigits, bakeNames } from "./bakeLabels";
 import { bindKeyboardPointer } from "./bindKeyboardPointer";
@@ -25,10 +26,10 @@ import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
 import type { KeyRect } from "./keyboardLayout";
 import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
-import { roadApproach } from "./roadApproach";
+import { FlatEffectSettings } from "./flatEffectSettings";
 import { RoadLayer, type RoadShape } from "./RoadLayer";
 import { drawViewKeys } from "./drawViewKeys";
-import { drawViewEffects, drawViewHud, viewStrikes } from "./viewEffects";
+import { drawViewEffects, drawViewHud, viewStrikes, roadFrameState } from "./viewEffects";
 import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
 import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry, viewLayoutChanged } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewLayout, ViewParts } from "./viewGeometry";
@@ -42,7 +43,7 @@ export type { FrameState } from "./frameState";
  * finger that plays it. Everything is a tinted sprite; the finger digits and
  * the key stickers are drawn once into textures.
  *
- * This class owns the Pixi application, the stage order, the layout and the
+ * This class owns the Three application, the stage order, the layout and the
  * scroll along the keyboard; the notes, the keys, the hands and the road are
  * layers of their own that it lays out and draws every frame.
  */
@@ -59,11 +60,12 @@ export class FallingNotesView {
   private keyboard: KeyboardLayer | undefined;
   /** The word mode's computer keys, standing in for the piano's while `computer` is set. */
   private computerKeyboard: ComputerKeyboardLayer | undefined;
-  private computer: ComputerKeys | undefined;
+  private computer: ComputerKeys<Texture> | undefined;
   private road: RoadLayer | undefined;
   private roadMode = false;
   /** Whole hands over the keys; the app sets their look directly. */
   readonly hands = new HandsLayer();
+  readonly flatEffects = new FlatEffectSettings();
   /** The combo board and the strikes' grades, over everything. */
   private readonly hud = new HudLayer();
   /** Bursts, light and glitter on the keys at the hit line. */
@@ -106,6 +108,7 @@ export class FallingNotesView {
   private pan = 0;
   private panLayout = { width: 0, total: 0 };
   private ready = false;
+  private destroyed = false;
   private resizeObserver: ResizeObserver | undefined;
   private fpsMeter: FpsMeter | undefined;
   private fpsVisible = false;
@@ -128,21 +131,13 @@ export class FallingNotesView {
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
 
   async mount(host: HTMLElement): Promise<void> {
-    await this.app.init({
-      resizeTo: host,
-      background: 0x020c18,
-      antialias: true,
-      // Draw at the screen's pixel density, or text is blurred on scaled displays.
-      resolution: window.devicePixelRatio,
-      autoDensity: true
-    });
+    await initializeViewApplication(this.app, host);
+    if (this.isDestroyed()) return;
     host.appendChild(this.app.canvas);
     this.freeLegend = new FreeCameraLegend(host, () => this.road?.resetFreeCamera(), this.locale);
     this.fpsMeter = new FpsMeter(host, this.app.ticker, this.locale, this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
-    this.resizeObserver = new ResizeObserver(() => {
-      this.app.queueResize();
-    });
+    this.resizeObserver = new ResizeObserver(this.app.queueResize.bind(this.app));
     this.resizeObserver.observe(host);
     const renderer = this.app.renderer;
     this.digitTextures = bakeDigits(renderer);
@@ -181,9 +176,10 @@ export class FallingNotesView {
     this.road.effects.visible = false;
     this.keysRoot.addChild(keyboard.container, computerKeyboard.container);
     this.syncKeyboards();
-    // Pixi draws a Text the first time it is shown: wait for the web fonts, or the board is set
+    // Text is baked when it is first shown: wait for the web fonts, or the board is set
     // in a fallback face. Offline they never come, and the fallback is fine.
     await loadViewFonts();
+    if (this.isDestroyed()) return;
     this.app.stage.addChild(
       this.road.container,
       notes.root,
@@ -196,6 +192,7 @@ export class FallingNotesView {
       this.hud.container
     );
     await Promise.all([loadViewAssets(this.fx, notes, this.road, this.hands), this.plasma.load()]);
+    if (this.isDestroyed()) return;
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
     const stage = this.app.stage;
     stage.eventMode = "static";
@@ -207,7 +204,7 @@ export class FallingNotesView {
       viewKeyRelease(this)
     );
     await keyboard.loadPaintedFaces(this.keyStyle);
-    this.ready = true;
+    this.ready = !this.destroyed;
   }
 
   /** Note names on the falling notes, over the finger; undefined hides them. */
@@ -430,23 +427,21 @@ export class FallingNotesView {
     const geometry = this.geometry(height);
     this.scroll(state, width);
     const road = this.roadMode ? this.road : undefined;
-    const noteState = road
-      ? {
-          ...state,
-          lookAhead: roadApproach(
-            state.lookAhead,
-            !this.computer && this.keyStyle === "3d" && road.drawsNativeRoad,
-            this.roadWanted ? 25 : 90
-          )
-        }
-      : state;
+    const effects = this.flatEffects.forStyle(this.keyStyle);
+    if (this.road) this.road.effects.renderable = effects.presses;
+    const noteState = roadFrameState(
+      state,
+      road,
+      !this.computer && this.keyStyle === "3d",
+      this.roadWanted
+    );
     this.plasma.draw(
       noteState,
       this.songNotes,
       this.keys,
       geometry,
       this.road,
-      this.roadMode && this.parts.keys && !this.computer,
+      this.roadMode && this.parts.keys && !this.computer && effects.burning,
       this.app.ticker.deltaMS / 1000
     );
     this.notesLayer.draw(noteState, this.keys, geometry, road);
@@ -470,7 +465,7 @@ export class FallingNotesView {
       road.draw(
         this.notesLayer.root,
         this.keysRoot,
-        strikes,
+        effects.presses ? strikes : [],
         this.notesLayer.arrivals,
         this.app.ticker.deltaMS / 1000
       );
@@ -490,9 +485,10 @@ export class FallingNotesView {
       this.pan,
       geometry.hitY,
       this.wasSounding,
-      this.app.ticker.deltaMS / 1000
+      this.app.ticker.deltaMS / 1000,
+      effects
     );
-    // React's GameBoard owns the score panels; Pixi only draws transient strike grades.
+    // React's GameBoard owns the score panels; Three only draws transient strike grades.
     drawViewHud(
       this.hud,
       state,
@@ -538,21 +534,24 @@ export class FallingNotesView {
     if (this.roadMode) this.road?.setPan(pan);
   }
 
+  private isDestroyed = (): boolean => this.destroyed;
+
   destroy(): void {
+    if (this.isDestroyed()) return;
+    this.destroyed = true;
     this.unbindKeyboardPointer?.();
     this.fpsMeter?.destroy();
     this.freeLegend?.destroy();
     this.ready = false;
     this.resizeObserver?.disconnect();
-    // Off the stage in the road view, so the stage's own destroy would miss them.
-    if (this.roadMode) {
-      this.notesLayer?.root.destroy({ children: true });
-      this.keysRoot.destroy({ children: true });
-    }
     this.road?.destroy();
+    this.keyboard?.destroy();
     this.computerKeyboard?.destroy();
     this.hands.destroy();
     this.notesLayer?.destroy();
+    destroyViewContainers([this.keysRoot, this.notesLayer?.root, this.notesLayer?.cards]);
+    destroyViewContainers([this.hands.container, this.hud.container, this.fx.container]);
+    destroyViewContainers([this.plasma.container]);
     for (const baked of [this.digitTextures, this.badgeTextures, this.nameTextures])
       for (const texture of baked.values()) texture.destroy(true);
     this.app.destroy({ removeView: true }, { children: true });

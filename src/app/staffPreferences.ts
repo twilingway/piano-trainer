@@ -43,6 +43,9 @@ export interface StaffPrefs {
   readonly performanceScene: boolean;
   /** Dim physical keys for a demonstration; study stays bright. */
   readonly keyboardDim: boolean;
+  /** Classic and arcade effects; native 3D remains independent. */
+  readonly flatNoteBurning: boolean;
+  readonly flatPressEffects: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
   readonly noteCardsConfigured: boolean;
@@ -87,6 +90,8 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   freeCamera: false,
   performanceScene: false,
   keyboardDim: false,
+  flatNoteBurning: true,
+  flatPressEffects: true,
   noteCards: false,
   noteCardsConfigured: true,
   labels: false,
@@ -140,6 +145,8 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     freeCamera: boolean("freeCamera"),
     performanceScene: boolean("performanceScene"),
     keyboardDim: boolean("keyboardDim"),
+    flatNoteBurning: boolean("flatNoteBurning"),
+    flatPressEffects: boolean("flatPressEffects"),
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),
     labels: boolean("labels"),

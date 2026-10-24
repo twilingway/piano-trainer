@@ -1,5 +1,5 @@
 import { Group, SpotLight, Vector3 } from "three";
-import type { Texture } from "pixi.js";
+import type { Texture } from "../flatThree";
 import { describe, expect, it } from "vitest";
 import type { EnergySource } from "../noteEnergy";
 import { layoutKeyboard } from "../keyboardLayout";

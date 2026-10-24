@@ -2,10 +2,9 @@ import {
   Camera,
   ColorManagement,
   DirectionalLight,
-  ExternalTexture,
+  Texture,
   Group,
   HemisphereLight,
-  LinearSRGBColorSpace,
   Mesh,
   MeshStandardMaterial,
   Scene,
@@ -13,7 +12,7 @@ import {
   Vector2,
   Vector3
 } from "three";
-import { WebGLRenderer } from "three";
+import type { WebGLRenderer } from "three";
 import type { Object3D } from "three";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import type { SongStage } from "../../song/songStage";
@@ -45,7 +44,7 @@ import { PerformanceScene } from "./PerformanceScene";
 import { FreeSceneCamera } from "./FreeSceneCamera";
 import { invalidateKeyboardCasePasses } from "./keyboardCasePasses";
 
-// Pixi's colours and the keys' texture are display values: keep three in the same space.
+// Baked colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
 
 /** How fast a key follows the finger, per second. */
@@ -57,9 +56,8 @@ interface Hinged {
   readonly mesh: Mesh;
 }
 
-/** The keyboard drawn by three.js into Pixi's own WebGL context, on Pixi's camera. */
+/** The keyboard drawn by three.js using the shared Three renderer. */
 export class ThreeStage {
-  private readonly renderer: WebGLRenderer;
   private readonly free: FreeSceneCamera;
   private freeEnabled = false;
   private performanceEnabled = false;
@@ -88,8 +86,8 @@ export class ThreeStage {
   private readonly keyEmission = new ThreeKeyEmission();
   private readonly appearance: KeyboardAppearance;
   private readonly rimLights = new ThreeRimLights();
-  /** Pixi's picture of the flat keys: colours, lights and stickers for the top faces. */
-  private readonly picture = new ExternalTexture();
+  /** The baked picture of the flat keys: colours, lights and stickers for the top faces. */
+  private picture = new Texture();
   /** The painted keys tinted ivory, as the kit is: their colours and stickers stay readable. */
   private readonly top = new MeshStandardMaterial({
     map: this.picture,
@@ -115,19 +113,15 @@ export class ThreeStage {
   beforeRender: ((camera: Camera, separateCameras: boolean) => void) | undefined;
 
   constructor(
-    canvas: HTMLCanvasElement,
-    private readonly context: WebGL2RenderingContext,
+    private readonly renderer: WebGLRenderer,
     private readonly keyboard: Keyboard88,
     hand: Object3D | undefined
   ) {
-    this.free = new FreeSceneCamera(canvas);
+    this.free = new FreeSceneCamera(renderer.domElement);
     this.cabinet = new PianoCase(keyboard);
     this.performance = new PerformanceScene(this.scene);
     this.worldStage = new PerformanceWorldStage(this.scene);
     this.hands = hand && new LiveHands(hand);
-    this.renderer = new WebGLRenderer({ canvas, context });
-    this.renderer.autoClear = false;
-    this.renderer.outputColorSpace = LinearSRGBColorSpace;
     this.roadCamera.matrixAutoUpdate = false;
     this.keyboardCamera.matrixAutoUpdate = false;
     this.top.vertexColors = true;
@@ -163,7 +157,7 @@ export class ThreeStage {
   /** Draws the keys over whatever is in the frame now, keeping it: the road under them. */
   draw(
     keys: KeysScene,
-    picture: WebGLTexture,
+    picture: Texture,
     down: (pitch: number) => boolean,
     screen: { readonly width: number; readonly height: number },
     deltaSeconds: number,
@@ -175,8 +169,10 @@ export class ThreeStage {
     songNotes?: HandsSource["notes"],
     roadEffects?: () => void
   ): void {
-    if (keys.version !== this.version) this.build(keys);
-    this.picture.sourceTexture = picture;
+    const changedTexture = this.picture !== picture;
+    this.picture = picture;
+    this.top.map = picture;
+    if (keys.version !== this.version || changedTexture) this.build(keys);
     const roadCamera = keys.roadCamera ?? keys.camera;
     const keyboardCamera = keys.keyboardCamera ?? roadCamera;
     const { params } = roadCamera;
@@ -281,12 +277,7 @@ export class ThreeStage {
     this.beforeRender?.(this.pickCamera, separate);
     this.renderer.resetState();
     try {
-      this.renderer.setViewport(
-        0,
-        0,
-        this.context.drawingBufferWidth,
-        this.context.drawingBufferHeight
-      );
+      this.renderer.setViewport(0, 0, screen.width, screen.height);
       this.renderer.clearDepth();
       drawSceneCameraPasses(
         this.renderer,
@@ -303,20 +294,15 @@ export class ThreeStage {
               try {
                 roadEffects();
               } finally {
-                // Pixi changed the shared GL state; Three must rebind before the depth-only pass.
+                // The flat pass changes camera state; rebind before the depth-only pass.
                 this.renderer.resetState();
-                this.renderer.setViewport(
-                  0,
-                  0,
-                  this.context.drawingBufferWidth,
-                  this.context.drawingBufferHeight
-                );
+                this.renderer.setViewport(0, 0, screen.width, screen.height);
               }
             }
           : undefined
       );
     } finally {
-      // Return GL defaults even if a pass failed; the host can draw its Pixi fallback safely.
+      // Return GL defaults even if a pass failed; the host can draw the flat scene safely.
       this.renderer.resetState();
     }
   }
@@ -387,7 +373,7 @@ export class ThreeStage {
       : this.freeEnabled
         ? this.free.camera
         : (this.pickCamera ?? this.roadCamera);
-    // The shared Pixi projection uses a generic Camera, so unproject its actual matrices.
+    // The shared screen projection uses a generic Camera, so unproject its actual matrices.
     camera.updateMatrixWorld();
     const origin = new Vector3(this.pointer.x, this.pointer.y, -1).unproject(camera);
     const direction = new Vector3(this.pointer.x, this.pointer.y, 1)
@@ -477,7 +463,6 @@ export class ThreeStage {
     for (const material of [this.top, this.white, this.black, this.case, this.felt])
       material.dispose();
     this.keyboard.dispose();
-    this.renderer.dispose();
   }
 
   private build(keys: KeysScene): void {

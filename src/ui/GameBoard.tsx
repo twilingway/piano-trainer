@@ -18,7 +18,7 @@ export function GameBoard({ game, noteResult, mode, playing, onOverdrive }: Prop
   const resultText =
     result == null
       ? "—"
-      : `${formatNumber(result, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+      : `${formatNumber(result, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}\u00a0%`;
   if (mode === "wait") {
     return (
       // A computer's bar says this in its timing chip; the plaque stays for the compact bar.
@@ -26,6 +26,7 @@ export function GameBoard({ game, noteResult, mode, playing, onOverdrive }: Prop
         className={`game-score-board game-score-board--message game-score-board--practice${noteResult ? " game-score-board--note-result" : ""}`}
       >
         <span className="game-practice-label">{t("Тренировка · без рейтинга времени")}</span>
+        {noteResult && "\u00a0"}
         {noteResult && (
           <span className="game-accuracy" title={t("Попадания — 30%, удержание — 70%")}>
             {resultText}

@@ -1,3 +1,5 @@
+import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "./flatEffectSettings";
+import { roadApproach } from "./roadApproach";
 import type { HudLayer } from "./HudLayer";
 import type { SongNote } from "../song/song";
 import { noteColor } from "./computerKeys";
@@ -36,7 +38,8 @@ export function drawViewEffects(
   pan: number,
   hitY: number,
   wasSounding: Set<number>,
-  deltaSeconds: number
+  deltaSeconds: number,
+  effects: FlatEffectOptions = ALL_FLAT_EFFECTS
 ): void {
   const hitLineY = road ? road.hitLineY : hitY;
   const fxKey = (pitch: number): FxKey | undefined => {
@@ -72,7 +75,7 @@ export function drawViewEffects(
     const key = own || state.sounding.has(pitch) ? fxKey(pitch) : undefined;
     if (key) sounding.push(key);
   }
-  fx.draw(struck, sounding, hitLineY, deltaSeconds);
+  fx.draw(struck, sounding, hitLineY, deltaSeconds, effects);
 }
 
 /** Transient grades keep their screen HUD ownership in every camera mode. */
@@ -98,4 +101,23 @@ export function drawViewHud(
     hitLineY,
     deltaSeconds
   );
+}
+
+/** The native road previews a longer approach without advancing the shared song clock. */
+export function roadFrameState(
+  state: FrameState,
+  road: RoadLayer | undefined,
+  nativeKeys: boolean,
+  roadWanted: boolean
+): FrameState {
+  return road
+    ? {
+        ...state,
+        lookAhead: roadApproach(
+          state.lookAhead,
+          nativeKeys && road.drawsNativeRoad,
+          roadWanted ? 25 : 90
+        )
+      }
+    : state;
 }

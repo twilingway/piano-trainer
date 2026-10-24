@@ -1,4 +1,4 @@
-import { Container, PerspectiveMesh, Rectangle, Texture } from "pixi.js";
+import { Container, PerspectiveMesh, Rectangle, Texture } from "./flatThree";
 import type { KeyRect } from "./keyboardLayout";
 import type { Geometry } from "./viewGeometry";
 import { quadPoint } from "./perspective";

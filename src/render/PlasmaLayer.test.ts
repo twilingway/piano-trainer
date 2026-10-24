@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { Assets, Texture, TextureSource } from "pixi.js";
-import type { Container, Sprite } from "pixi.js";
+import { Assets, Texture, TextureSource } from "./flatThree";
+import type { Sprite } from "./flatThree";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlasmaLayer } from "./PlasmaLayer";
 import type { PlasmaAnchor } from "./PlasmaLayer";
@@ -40,7 +40,9 @@ function mockAssets(failures: readonly string[] = []): Texture {
 }
 
 function sprites(layer: PlasmaLayer, group: number): Sprite[] {
-  return (layer.container.children[group] as Container).children as Sprite[];
+  const container = layer.container.children[group];
+  if (!container) throw new Error(`Expected plasma group ${String(group)}`);
+  return container.children as Sprite[];
 }
 
 function visible(layer: PlasmaLayer, group: number): Sprite[] {

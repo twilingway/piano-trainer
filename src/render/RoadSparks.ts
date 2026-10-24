@@ -1,4 +1,4 @@
-import { Container, Sprite, type Renderer, type Texture } from "pixi.js";
+import { Container, Sprite, type Renderer, type Texture } from "./flatThree";
 import { bakeSpark } from "./roadTextures";
 import type { Strike } from "./RoadLayer";
 

@@ -1,4 +1,4 @@
-﻿import type { Container, FederatedPointerEvent } from "pixi.js";
+﻿import type { Container, FederatedPointerEvent } from "./flatThree";
 import type { KeyPointer } from "./pointerKeys";
 
 /** Only pointers started on this canvas may play; each owns its independent gesture. */

@@ -38,6 +38,14 @@ export function useKeyboardSettings(
       updateStaffPrefs({ road });
     },
     handStyle: staffPrefs.handStyle,
+    flatNoteBurning: staffPrefs.flatNoteBurning,
+    onFlatNoteBurning: (flatNoteBurning) => {
+      updateStaffPrefs({ flatNoteBurning });
+    },
+    flatPressEffects: staffPrefs.flatPressEffects,
+    onFlatPressEffects: (flatPressEffects) => {
+      updateStaffPrefs({ flatPressEffects });
+    },
     keyboardDim: staffPrefs.keyboardDim,
     onKeyboardDim: (keyboardDim) => {
       updateStaffPrefs({ keyboardDim });

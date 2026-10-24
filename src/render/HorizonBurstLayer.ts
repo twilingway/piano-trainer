@@ -1,4 +1,4 @@
-import { Assets, Container, Rectangle, Sprite, Texture } from "pixi.js";
+import { Assets, Container, Rectangle, Sprite, Texture } from "./flatThree";
 import { arrivalFrame } from "./noteArrival";
 import type { RoadProjection } from "./perspective";
 import type { Arrival } from "./RoadLayer";
@@ -25,7 +25,7 @@ export class HorizonBurstLayer {
 
   async load(): Promise<void> {
     try {
-      const atlas = await Assets.load<Texture>(ATLAS);
+      const atlas = await Assets.load(ATLAS);
       this.frames = Array.from(
         { length: FRAMES },
         (_, index) =>

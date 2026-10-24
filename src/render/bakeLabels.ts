@@ -1,5 +1,5 @@
-import { Text } from "pixi.js";
-import type { Renderer, Texture } from "pixi.js";
+import { Text } from "./flatThree";
+import type { Renderer, Texture } from "./flatThree";
 
 import type { Finger } from "../fingering/fingering";
 

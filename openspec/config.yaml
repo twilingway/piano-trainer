@@ -4,11 +4,11 @@ context: |
   Product: a browser piano trainer in the spirit of Synthesia. A digital piano
   connects over USB MIDI; falling notes carry the finger that plays them, the
   score scrolls above, and every take is recorded and compared with the score.
-  Stack: strict TypeScript, pnpm, React 19/Vite, PixiJS for the falling notes and
-  keyboard, OpenSheetMusicDisplay for the staff, Tone.js for sound, Vitest,
+  Stack: strict TypeScript, pnpm, React 19/Vite, Three.js for the falling notes,
+  keyboard and effects, OpenSheetMusicDisplay for the staff, Tone.js for sound, Vitest,
   ESLint, and Prettier.
   Boundaries: fingering, song, practice session, and recording logic are pure
-  TypeScript, independent of React, Pixi, OSMD, timers, and audio. The practice
+  TypeScript, independent of React, Three.js, OSMD, timers, and audio. The practice
   session owns song time; every view reads it.
   Scores: MusicXML is the source for staves, measures, and written fingering;
   staff features are string-to-string passes over the XML. A MIDI file's staff

@@ -1,9 +1,15 @@
 // @vitest-environment happy-dom
-import { Assets, Texture, TextureSource } from "pixi.js";
-import type { Container, Sprite } from "pixi.js";
+import { Assets, Texture, TextureSource } from "./flatThree";
+import type { Container, Sprite } from "./flatThree";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FxLayer } from "./FxLayer";
+
+function effectGroup(fx: FxLayer, index: number): Container {
+  const group = fx.container.children[index];
+  if (!group) throw new Error(`Expected effect group ${String(index)}`);
+  return group;
+}
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -11,12 +17,12 @@ describe("burning after the strike", () => {
   it("starts enlarged fire within 50 ms and skips the atlas buildup frames", async () => {
     const atlas = new Texture({ source: new TextureSource({ width: 1024, height: 1024 }) });
     // Assets.load's last overload returns a bundle, though the layer loads individual textures.
-    vi.spyOn(Assets, "load").mockResolvedValue(atlas as unknown as Record<string, unknown>);
+    vi.spyOn(Assets, "load").mockResolvedValue(atlas);
     vi.spyOn(Math, "random").mockReturnValue(0.5);
     const fx = new FxLayer();
     await fx.load();
     const key = { pitch: 60, x: 100, width: 40, color: 0x00d9ff };
-    const glitter = fx.container.children[0] as Container;
+    const glitter = effectGroup(fx, 0);
     fx.draw([key], [key], 400, 0.016);
     expect(glitter.children).toHaveLength(0);
     fx.draw([], [key], 400, 0.016);
@@ -39,13 +45,13 @@ describe("note-coloured light without additive clipping", () => {
     "keeps burst, halo and hot core in the note hue %s",
     async (color) => {
       const atlas = new Texture({ source: new TextureSource({ width: 1024, height: 1024 }) });
-      vi.spyOn(Assets, "load").mockResolvedValue(atlas as unknown as Record<string, unknown>);
+      vi.spyOn(Assets, "load").mockResolvedValue(atlas);
       const fx = new FxLayer();
       await fx.load();
       const key = { pitch: 60, x: 100, width: 40, color };
       fx.draw([key], [key], 400, 0.05);
-      const halos = fx.container.children[1] as Container;
-      const hit = fx.container.children[2] as Container;
+      const halos = effectGroup(fx, 1);
+      const hit = effectGroup(fx, 2);
       for (const sprite of [...halos.children, ...hit.children] as Sprite[]) {
         expect(sprite.visible).toBe(true);
         expect(sprite.tint).toBe(color);
@@ -55,4 +61,23 @@ describe("note-coloured light without additive clipping", () => {
       expect(hit.children).toHaveLength(1);
     }
   );
+});
+
+it.each([
+  { burning: true, presses: true },
+  { burning: false, presses: true },
+  { burning: true, presses: false },
+  { burning: false, presses: false }
+])("independently disables ongoing fire and press effects: %j", async (options) => {
+  const atlas = new Texture({ source: new TextureSource({ width: 1024, height: 1024 }) });
+  vi.spyOn(Assets, "load").mockResolvedValue(atlas);
+  const fx = new FxLayer();
+  await fx.load();
+  const key = { pitch: 60, x: 100, width: 40, color: 0x00d9ff };
+  fx.draw([key], [key], 400, 0.05);
+  expect(effectGroup(fx, 0).children.some((sprite) => sprite.visible)).toBe(true);
+  fx.draw([key], [key], 400, 0.05, options);
+  expect(effectGroup(fx, 0).children.some((sprite) => sprite.visible)).toBe(options.burning);
+  expect(effectGroup(fx, 1).children.some((sprite) => sprite.visible)).toBe(options.presses);
+  expect(effectGroup(fx, 2).children.some((sprite) => sprite.visible)).toBe(options.presses);
 });

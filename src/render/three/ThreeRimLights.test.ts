@@ -1,6 +1,6 @@
 import { Group, RectAreaLight, Vector3 } from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
-import type { Texture } from "pixi.js";
+import type { Texture } from "../flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { layoutKeyboard } from "../keyboardLayout";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";

@@ -18,6 +18,10 @@ interface Props {
   readonly onNotesPerspective: (on: boolean) => void;
   readonly handStyle: HandStyle;
   readonly onHandStyle: (style: HandStyle) => void;
+  readonly flatNoteBurning: boolean;
+  readonly onFlatNoteBurning: (on: boolean) => void;
+  readonly flatPressEffects: boolean;
+  readonly onFlatPressEffects: (on: boolean) => void;
   readonly keyboardDim: boolean;
   readonly onKeyboardDim: (dim: boolean) => void;
   readonly roadGuides: boolean;
@@ -49,6 +53,10 @@ export function KeyboardSettings({
   onNotesPerspective,
   handStyle,
   onHandStyle,
+  flatNoteBurning,
+  onFlatNoteBurning,
+  flatPressEffects,
+  onFlatPressEffects,
   keyboardDim,
   onKeyboardDim,
   roadGuides,
@@ -131,6 +139,30 @@ export function KeyboardSettings({
           <option value="rendered">{t("3D")}</option>
         </select>
       </label>
+      {(keyStyle === "classic" || keyStyle === "arcade") && (
+        <>
+          <label className="setting">
+            <span>{t("Горение нот")}</span>
+            <input
+              type="checkbox"
+              checked={flatNoteBurning}
+              onChange={(event) => {
+                onFlatNoteBurning(event.target.checked);
+              }}
+            />
+          </label>
+          <label className="setting">
+            <span>{t("Эффекты нажатия")}</span>
+            <input
+              type="checkbox"
+              checked={flatPressEffects}
+              onChange={(event) => {
+                onFlatPressEffects(event.target.checked);
+              }}
+            />
+          </label>
+        </>
+      )}
       {keyStyle === "perspective" || keyStyle === "3d" ? (
         <CameraSettings camera={camera} onChange={onCamera} />
       ) : (

@@ -93,6 +93,7 @@ export class Trainer {
   /** The song's notes' keys by note id: a missed note is shown on its key. */
   private pitchOf = new Map<string, number>();
   private playing = false;
+  private graphicsAvailable = true;
   private effectEpoch = 0;
   private recorder: TakeRecorder | undefined;
   /** Colours for the notes on this trainer's view, and a second view drawn in step with it. */
@@ -210,13 +211,24 @@ export class Trainer {
       this.audio.start(this.session, now, this.timing.audioOffsetMs, () => this.metronome);
   }
 
+  setGraphicsAvailable(available: boolean): void {
+    this.graphicsAvailable = available;
+    if (!available) {
+      this.setPlaying(false);
+      this.cancelInput(true);
+    }
+  }
+
   setPlaying(playing: boolean): void {
     const course = this.courses.current;
     this.resumePending = false;
     const session = this.session;
     const wasPlaying = this.playing;
     this.playing =
-      playing && this.canStart && (session?.finished !== true || course?.playsAfterFinish === true);
+      playing &&
+      this.graphicsAvailable &&
+      this.canStart &&
+      (session?.finished !== true || course?.playsAfterFinish === true);
     if (this.playing && !wasPlaying) this.onBeforePlay?.();
     if (this.playing && !wasPlaying && !this.recorder) this.timing = this.nextTiming;
     if (session)

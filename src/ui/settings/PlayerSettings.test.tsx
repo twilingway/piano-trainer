@@ -125,6 +125,10 @@ function Harness({ wordTyping = false }: { wordTyping?: boolean }) {
                   updateStaffPrefs({ road });
                 },
                 handStyle: staffPrefs.handStyle,
+                flatNoteBurning: staffPrefs.flatNoteBurning,
+                onFlatNoteBurning: noop,
+                flatPressEffects: staffPrefs.flatPressEffects,
+                onFlatPressEffects: noop,
                 keyboardDim: staffPrefs.keyboardDim,
                 onKeyboardDim: (keyboardDim) => {
                   updateStaffPrefs({ keyboardDim });

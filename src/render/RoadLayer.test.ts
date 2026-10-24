@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Container, Matrix, Texture } from "pixi.js";
+import { Container, Matrix, Texture } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { RoadLayer } from "./RoadLayer";
 import type { EnergySource } from "./noteEnergy";

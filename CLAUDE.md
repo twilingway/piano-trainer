@@ -48,15 +48,15 @@ src/practice    PracticeSession (pure: song time, wait/tempo modes, seek, metron
                 Trainer (the frame loop that joins session, view, sound, keys and recording)
 src/recording   takes (TakeRecorder), comparison with the score, transcription into MusicXML,
                 playback as a song, MIDI export, history in localStorage
-src/render      Pixi view: falling notes, keyboard, key stickers; keyboard layout (pure)
+src/render      Three.js view: flat/world layers, notes, keys, effects; keyboard layout (pure)
 src/staff       OSMD staff: cursor by beats, marks, zoom, line layout, live scrolling
 src/audio       Tone.js sampler (Salamander samples from tonejs.github.io) and metronome click
 src/input       Web MIDI (keys and the sustain pedal) and the computer keyboard
 local-lessons   allowlisted course manifest and scores; all other local materials ignored
 ```
 
-`App.tsx` composes all of it. The trainer and its Pixi view are created once and live outside React;
-React sends commands and reads throttled snapshots.
+`App.tsx` composes all of it. The trainer and its Three.js view are created once and live outside
+React; React sends commands and reads throttled snapshots.
 
 ## Spec-driven workflow
 

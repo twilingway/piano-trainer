@@ -1,5 +1,5 @@
-import { Container, FillGradient, Graphics } from "pixi.js";
-import type { Renderer, Texture } from "pixi.js";
+import { Container, FillGradient, Graphics } from "./flatThree";
+import type { Renderer, Texture } from "./flatThree";
 
 /**
  * Key faces drawn once per keyboard size, like a real piano's: cream white
@@ -100,4 +100,11 @@ export function bakeKeyTextures(
     black: bake(renderer, blackFace(bw, Math.max(black.height, 2), false)),
     blackLit: bake(renderer, blackFace(bw, Math.max(black.height, 2), true))
   };
+}
+
+/** Only generated fallback faces are passed here; shared asset textures have another owner. */
+export function destroyKeyTextures(textures: KeyTextures | undefined): void {
+  if (textures)
+    for (const texture of [textures.white, textures.black, textures.blackLit])
+      texture.destroy(true);
 }

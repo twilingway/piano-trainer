@@ -1,6 +1,6 @@
-﻿// @vitest-environment happy-dom
+import { FlatEffectSettings } from "./flatEffectSettings"; // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
-import { Container, Sprite, Texture, TextureSource, TilingSprite } from "pixi.js";
+import { Container, Sprite, Texture, TextureSource, TilingSprite } from "./flatThree";
 
 import type { Hand } from "../fingering/fingering";
 import type { SongNote } from "../song/song";
@@ -76,6 +76,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
   // Exercise frame wiring with real draw(), substituting only the GPU-backed layers.
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
     ready: true,
+    flatEffects: new FlatEffectSettings(),
     sceneCamera: { frame: vi.fn(), apply: vi.fn(), active: true },
     parts: { keys: true, notes: true, hands: false },
     app: { screen: { width: 800, height: 600 }, ticker: { deltaMS: 16 } },
@@ -601,7 +602,7 @@ it("keeps native 3D enabled for direct notes and restores perspective without ch
 });
 
 describe("native effect policy", () => {
-  it("keeps Pixi impacts active beside Three and restores fallback labels", () => {
+  it("keeps flat impacts active beside native Three and restores fallback labels", () => {
     const v = viewHarness(true, notes, true);
     const frame: FrameState = {
       time: 0.1,
@@ -657,3 +658,35 @@ it("keeps cards and sprite hands visible after Three fails with performance stil
   expect(test.layer.cards.renderable).toBe(true);
   expect(inside.hands.container.renderable).toBe(true);
 });
+
+it.each(["classic", "arcade", "perspective", "3d"] as const)(
+  "scopes flat effect preferences to classic/arcade while retaining %s native behavior",
+  (keyStyle) => {
+    const test = viewHarness(true, notes, keyStyle === "3d");
+    Object.assign(test.view, { keyStyle });
+    test.view.flatEffects.set(false, false);
+    const frame: FrameState = {
+      time: 0.1,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set([48, 72]),
+      sounding: new Set([48, 72]),
+      due: [],
+      hands: new Set(),
+      owns: () => true
+    };
+    test.view.draw(frame);
+    const unchanged = keyStyle === "perspective" || keyStyle === "3d";
+    expect(test.effectsDraw.mock.calls[0]?.[4]).toEqual({ burning: unchanged, presses: unchanged });
+    expect(test.roadDraw.mock.calls[0]?.[2]).toHaveLength(unchanged ? 2 : 0);
+    const internal = test.view as unknown as {
+      plasma: { draw: ReturnType<typeof vi.fn> };
+      road: { effects: Container };
+    };
+    expect(internal.road.effects.renderable).toBe(unchanged);
+    expect(internal.plasma.draw.mock.calls[0]?.[5]).toBe(unchanged);
+    expect(test.keyboardDraw).toHaveBeenCalledOnce();
+    expect(frame.sounding.size).toBe(2);
+    expect(frame.pressed.size).toBe(2);
+  }
+);
