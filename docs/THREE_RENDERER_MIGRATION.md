@@ -1,7 +1,7 @@
 # Перенос игрового отображения на Three.js
 
-Изменение: `openspec/changes/three-only-renderer`. Пианино, режим печати и все игровые слои
-переходят на один Three.js renderer. React, OSMD и Tone.js сохраняются.
+Изменение: `openspec/changes/archive/2026-10-24-three-only-renderer`. Пианино, режим печати и все
+игровые слои переходят на один Three.js renderer. React, OSMD и Tone.js сохраняются.
 
 ## Границы переноса
 
