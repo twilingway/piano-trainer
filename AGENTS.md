@@ -155,6 +155,16 @@ existing one.
   playable 2D slice on its own WebGL2 engine. Game projects go to the git-ignored `games/<name>`;
   only accepted assets move into `src`.
 
+## Game development skills
+
+- Four vendored skills are available in `.agents/skills/`: `performance-optimization`,
+  `threejs-materials-lighting`, `create-game-assets`, and `shader-programming`. Use only the skill
+  relevant to the current task.
+- Source revision, license and project-specific usage are recorded in
+  [.agents/skills/GAMEDEV_SKILLS.md](.agents/skills/GAMEDEV_SKILLS.md).
+- Adapt examples to the existing renderer and `PracticeSession` clock. Keep musical timing,
+  pure-core boundaries, localization and the existing asset workflow defined by this project.
+
 ## Verification
 
 Before declaring a change complete, run the narrowest relevant checks and then:
