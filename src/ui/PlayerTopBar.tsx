@@ -15,12 +15,14 @@ import type { PartsChoice } from "./CompactPracticeChoices";
 import { FullscreenIcon, GearIcon, LibraryIcon, PauseIcon, PlayIcon, RestartIcon } from "./icons";
 import { BarPopover } from "./BarPopover";
 import { ViewHelp } from "./ViewHelp";
+import { ToolbarAudioControls } from "./ToolbarAudioControls";
 
 export type PracticeModeChoice = "wait" | "tempo";
 export type HandsChoice = "right" | "left" | "both" | "listen";
 
 interface Props {
   readonly fixedPractice?: boolean;
+  readonly metronome?: { readonly enabled: boolean; readonly onChange: (on: boolean) => void };
   readonly title: string;
   readonly playing: boolean;
   readonly soundLoading: boolean;
@@ -237,6 +239,14 @@ export function PlayerTopBar(props: Props) {
         <option value="listen">{t("Только слушать")}</option>
         <PartOptions parts={props.parts} />
       </select>
+      {!compact && (
+        <ToolbarAudioControls
+          hands={props.hands}
+          parts={props.parts}
+          metronome={props.metronome}
+          disabled={props.fixedPractice}
+        />
+      )}
       {!compact && props.course}
       {props.difficulty && (
         <select

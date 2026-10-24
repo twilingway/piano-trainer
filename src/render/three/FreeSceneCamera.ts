@@ -9,6 +9,7 @@ export class FreeSceneCamera {
   private readonly controls: OrbitControls;
   private enabled = false;
   private needsReset = true;
+  private needsBounds = true;
   private touchAction = "";
   private readonly bounds = new Box3();
   private readonly centre = new Vector3();
@@ -64,8 +65,9 @@ export class FreeSceneCamera {
     this.canvas.removeEventListener("pointercancel", this.cancelGesture);
   }
 
-  invalidate(): void {
-    this.needsReset = true;
+  invalidate(resetPose = true): void {
+    this.needsBounds = true;
+    this.needsReset ||= resetPose;
   }
 
   update(width: number, height: number, subject: Object3D): void {
@@ -74,13 +76,13 @@ export class FreeSceneCamera {
       this.camera.aspect = aspect;
       this.camera.updateProjectionMatrix();
     }
-    if (this.needsReset) this.reset(subject);
+    if (this.needsBounds) this.reset(subject, this.needsReset);
     this.controls.update();
     this.updateClip();
     this.camera.updateMatrixWorld();
   }
 
-  reset(subject: Object3D): void {
+  reset(subject: Object3D, resetPose = true): void {
     // SkinnedMesh.updateMatrixWorld refreshes bindMatrixInverse under the piano's large scale.
     subject.updateWorldMatrix(true, false);
     subject.updateMatrixWorld(true);
@@ -113,17 +115,25 @@ export class FreeSceneCamera {
       Math.tan((this.camera.fov * Math.PI) / 360) * Math.min(1, this.camera.aspect)
     );
     const distance = (radius / Math.sin(halfFov)) * 1.12;
-    this.camera.position
-      .copy(this.centre)
-      .addScaledVector(new Vector3(0.4, 0.55, 1).normalize(), distance);
-    this.controls.target.copy(this.centre);
-    this.controls.minDistance = Math.max(1, radius * 0.05);
-    this.controls.maxDistance = distance * 20;
+    if (resetPose) {
+      this.camera.position
+        .copy(this.centre)
+        .addScaledVector(new Vector3(0.4, 0.55, 1).normalize(), distance);
+      this.controls.target.copy(this.centre);
+    }
+    const currentDistance = this.controls.getDistance();
+    this.controls.minDistance = resetPose
+      ? Math.max(1, radius * 0.05)
+      : Math.min(Math.max(1, radius * 0.05), currentDistance);
+    this.controls.maxDistance = resetPose
+      ? distance * 20
+      : Math.max(distance * 20, currentDistance);
 
     this.controls.update();
     this.updateClip();
     this.camera.updateMatrixWorld();
     this.needsReset = false;
+    this.needsBounds = false;
   }
 
   private updateClip(): void {

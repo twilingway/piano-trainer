@@ -115,6 +115,49 @@ describe("inspection camera gestures", () => {
     v.dispose();
   });
 
+  it("preserves orbit, pan and zoom through layout and bounds updates until an explicit reset", () => {
+    const v = setup();
+    const initial = v.view.camera.position.clone();
+    v.down();
+    v.move();
+    v.up();
+    v.down(1, true);
+    v.move(360, 270);
+    v.up();
+    v.canvas.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, cancelable: true }));
+    const position = v.view.camera.position.clone();
+    const rotation = v.view.camera.quaternion.clone();
+    expect(position.distanceTo(initial)).toBeGreaterThan(1);
+    const geometry = (v.subject.children[0] as Mesh).geometry;
+    const bounds = vi.spyOn(geometry, "computeBoundingBox");
+    v.subject.add(new Mesh(new BoxGeometry(700, 900, 500)));
+    v.view.invalidate(false);
+    v.view.setEnabled(false);
+    v.view.setEnabled(true);
+    v.view.update(1200, 500, v.subject);
+    expect(bounds).toHaveBeenCalledOnce();
+    expect(v.view.camera.position.distanceTo(position)).toBeLessThan(0.00001);
+    expect(v.view.camera.quaternion.angleTo(rotation)).toBeLessThan(0.00001);
+    v.view.invalidate();
+    v.view.update(1200, 500, v.subject);
+    expect(v.view.camera.position.distanceTo(position)).toBeGreaterThan(1);
+    v.dispose();
+  });
+
+  it.each([-100, 100])("preserves extreme zoom %s when bounds shrink or grow", (deltaY) => {
+    const v = setup();
+    for (let n = 0; n < 220; n++)
+      v.canvas.dispatchEvent(new WheelEvent("wheel", { deltaY, cancelable: true }));
+    const position = v.view.camera.position.clone();
+    for (const scale of [0.01, 100]) {
+      v.subject.scale.setScalar(scale);
+      v.view.invalidate(false);
+      v.view.update(1600, 400, v.subject);
+      expect(v.view.camera.position.distanceTo(position)).toBeLessThan(0.00001);
+    }
+    v.dispose();
+  });
+
   it.each(["blur", "pointercancel"])(
     "cancels %s and rebinds cleanly; exit and dispose release gestures",
     (kind) => {

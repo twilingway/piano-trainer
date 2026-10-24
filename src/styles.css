@@ -1218,7 +1218,8 @@ body {
   color: var(--muted);
 }
 
-.view-toggle[aria-pressed="true"] {
+.view-toggle[aria-pressed="true"],
+.topbar-audio-toggle[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--text);
@@ -1492,6 +1493,10 @@ select:disabled {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+.topbar-audio-toggle {
+  flex-shrink: 0;
 }
 
 .topbar-speed input {
@@ -2918,6 +2923,14 @@ button.song-card.song-card__open {
 
 /* Keep desktop window controls readable without spending a second row on labels. */
 @media (640px < width <= 1800px) and (height > 500px) {
+  .topbar-audio-toggle {
+    justify-content: center;
+    width: 36px;
+    padding: 0;
+  }
+  .topbar-audio-toggle__label {
+    display: none;
+  }
   .topbar-library__label,
   .topbar-restart__label,
   .play-button__label {
