@@ -80,23 +80,6 @@ describe("Three road visual snapshot", () => {
     expect((consumed?.top ?? 0) + (consumed?.textureOffset ?? 0)).toBeCloseTo(worldAt(580));
   });
 
-  it("replays the same visual bodies immediately for a renderer failure without advancing time", () => {
-    const frame = new ThreeRoadFrame();
-    frame.add(740, 50, 600, 44, 0xc528f5, 0.8, 600, camera);
-    frame.visualTime = 12;
-    const restored: number[][] = [];
-    frame.replay(600, camera, (...body) => {
-      restored.push(body);
-    });
-    expect(restored).toHaveLength(1);
-    expect(restored[0]?.[0]).toBeCloseTo(740);
-    expect(restored[0]?.[1]).toBeCloseTo(50);
-    expect(restored[0]?.[2]).toBeCloseTo(600);
-    expect(restored[0]?.slice(3)).toEqual([44, 0xc528f5, 0.8]);
-    expect(frame.visualTime).toBe(12);
-    expect(frame.noteCount).toBe(1);
-  });
-
   it("keeps simultaneous voices separate and carries measures in the same depth space", () => {
     const frame = new ThreeRoadFrame();
     frame.add(720, 0, 600, 44, 0xc528f5, 1, 600, camera);

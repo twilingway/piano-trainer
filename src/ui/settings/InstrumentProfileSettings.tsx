@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../app/useI18n";
-import type { PianoInstrument, PianoProfile } from "../../input/instrumentProfiles";
+import type { PianoProfile } from "../../input/instrumentProfiles";
+import { InstrumentChooser } from "./InstrumentChooser";
 import example from "../../input/pianoInstrumentsExample.json";
 
 export interface InstrumentProfileControls {
@@ -61,13 +62,6 @@ export function InstrumentProfileSettings({ controls, preview }: Props) {
   const { profile, onImport } = controls;
   const stop = preview.onStop;
   useEffect(() => stop, [stop]);
-  const groups = new Map<string, PianoInstrument[]>();
-  for (const instrument of profile?.instruments ?? []) {
-    const group = instrument.group ?? "";
-    const items = groups.get(group) ?? [];
-    items.push(instrument);
-    groups.set(group, items);
-  }
   return (
     <section className="settings-list" aria-label={t("Профили и тембры пианино")}>
       <label className="setting">
@@ -75,6 +69,7 @@ export function InstrumentProfileSettings({ controls, preview }: Props) {
         <select
           className="game-select"
           aria-label={t("Профиль пианино")}
+          data-setting-target="instrument-profile"
           value={controls.profileId ?? ""}
           onChange={(event) => {
             controls.onProfile(event.target.value || null);
@@ -95,37 +90,15 @@ export function InstrumentProfileSettings({ controls, preview }: Props) {
           onName={controls.onName}
         />
       )}
-      <label className="setting">
+      <div className="setting">
         <span>{t("Тембр MIDI-пианино")}</span>
-        <select
-          className="game-select"
-          aria-label={t("Тембр MIDI-пианино")}
-          value={controls.instrumentId ?? ""}
-          disabled={!profile}
-          onChange={(event) => {
-            controls.onInstrument(event.target.value || null);
-          }}
-        >
-          <option value="">{t("Не менять тембр")}</option>
-          {[...groups].map(([group, instruments]) => (
-            <optgroup key={group} label={group || t("Другие тембры")}>
-              {instruments.map((instrument) => (
-                <option
-                  key={instrument.id}
-                  value={instrument.id}
-                  disabled={instrument.program === null}
-                >
-                  {instrument.panelNumber === undefined
-                    ? ""
-                    : `VOI${String(instrument.panelNumber).padStart(3, "0")} · `}
-                  {instrument.name}
-                  {instrument.program === null ? t(" — нет MIDI-команды") : ""}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </label>
+        <InstrumentChooser
+          key={profile?.id ?? "none"}
+          profile={profile}
+          value={controls.instrumentId}
+          onChange={controls.onInstrument}
+        />
+      </div>
       {profile ? (
         <p className="setting-hint">
           {t("Тембров в профиле: {count}", { count: formatNumber(profile.instruments.length) })}

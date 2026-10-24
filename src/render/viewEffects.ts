@@ -104,20 +104,6 @@ export function drawViewHud(
 }
 
 /** The native road previews a longer approach without advancing the shared song clock. */
-export function roadFrameState(
-  state: FrameState,
-  road: RoadLayer | undefined,
-  nativeKeys: boolean,
-  roadWanted: boolean
-): FrameState {
-  return road
-    ? {
-        ...state,
-        lookAhead: roadApproach(
-          state.lookAhead,
-          nativeKeys && road.drawsNativeRoad,
-          roadWanted ? 25 : 90
-        )
-      }
-    : state;
+export function roadFrameState(state: FrameState, perspective: boolean): FrameState {
+  return { ...state, lookAhead: roadApproach(perspective) };
 }

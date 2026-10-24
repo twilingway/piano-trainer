@@ -10,6 +10,7 @@ export const settingsMessages2 = {
   "По строкам": {
     en: "Multiple lines"
   },
+  "Цвет сыгранной ноты": { en: "Played note color" },
   "Цвет нот": {
     en: "Note color"
   },

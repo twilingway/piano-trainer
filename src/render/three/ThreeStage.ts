@@ -14,7 +14,7 @@ import {
 } from "three";
 import type { WebGLRenderer } from "three";
 import type { Object3D } from "three";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import type { SongStage } from "../../song/songStage";
 import type { EnergySource } from "../noteEnergy";
 import { keyBoxes } from "./keyBoxes";
@@ -82,6 +82,7 @@ export class ThreeStage {
   private boxes: readonly KeyBox[] = [];
   /** The song's range only: the road and its guides stay as wide as the song, not all 88 keys. */
   private roadBoxes: readonly KeyBox[] = [];
+  private roadVersion = -1;
   private readonly noteLights = new ThreeNoteLights();
   private readonly keyEmission = new ThreeKeyEmission();
   private readonly appearance: KeyboardAppearance;
@@ -167,12 +168,19 @@ export class ThreeStage {
     roadFrame?: ThreeRoadFrame,
     worldEffects = false,
     songNotes?: HandsSource["notes"],
-    roadEffects?: () => void
+    roadEffects?: () => void,
+    nativeKeyboard = true
   ): void {
+    this.keys.visible = nativeKeyboard;
+    this.lighting.visible = nativeKeyboard;
     const changedTexture = this.picture !== picture;
     this.picture = picture;
     this.top.map = picture;
-    if (keys.version !== this.version || changedTexture) this.build(keys);
+    if (nativeKeyboard && (keys.version !== this.version || changedTexture)) this.build(keys);
+    else if (!nativeKeyboard && keys.version !== this.roadVersion) {
+      this.roadBoxes = keyBoxes(keys);
+      this.roadVersion = keys.version;
+    }
     const roadCamera = keys.roadCamera ?? keys.camera;
     const keyboardCamera = keys.keyboardCamera ?? roadCamera;
     const { params } = roadCamera;
@@ -188,7 +196,7 @@ export class ThreeStage {
     this.lighting.position.copy(this.keys.position);
     this.road.visible = roadFrame !== undefined;
     this.roadNotes.setViewport(screen.width, screen.height);
-    if (!this.nativePianist) this.hands?.update(hands);
+    if (!this.nativePianist) this.hands?.update(nativeKeyboard ? hands : undefined);
     const sceneEnabled = this.performanceEnabled || this.freeEnabled;
     if (sceneEnabled) {
       this.worldStage.prepare(this.keys, this.boxes, roadCamera.near.z);
@@ -210,6 +218,8 @@ export class ThreeStage {
         this.performanceEnabled ? this.performance.roadScale : 1;
     this.roadNotes.nearZ = this.roadTrails.nearZ = this.noteAura.nearZ = roadCamera.near.z;
     if (roadFrame) {
+      this.noteAura.group.visible = this.roadTrails.group.visible =
+        nativeKeyboard || roadFrame.burning;
       this.noteAura.update(
         roadFrame.notes,
         roadCamera.near.y,
@@ -288,7 +298,11 @@ export class ThreeStage {
         this.keyboardCamera,
         separate,
         // Free and performance cameras see one world: plain depth, no road-over-case passes.
-        this.freeEnabled || this.performanceEnabled ? undefined : this.body,
+        this.freeEnabled || this.performanceEnabled
+          ? undefined
+          : nativeKeyboard
+            ? this.body
+            : undefined,
         !this.freeEnabled && !this.performanceEnabled && roadEffects
           ? () => {
               try {

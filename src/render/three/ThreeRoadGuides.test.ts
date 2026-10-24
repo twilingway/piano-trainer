@@ -2,7 +2,7 @@ import { BufferAttribute, LineBasicMaterial, LineSegments, Vector3 } from "three
 import type { Texture } from "../flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { layoutKeyboard } from "../keyboardLayout";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { CAMERA_PRESETS, PANEL_EDGE, worldCamera } from "../worldCamera";
 import { keyBoxes } from "./keyBoxes";
 import { projectionMatrix, viewMatrix } from "./threeCamera";

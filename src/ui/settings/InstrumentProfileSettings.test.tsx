@@ -1,5 +1,7 @@
+import { SettingsPanel } from "../SettingsPanel";
+import { HelpSettings } from "./HelpSettings";
 // @vitest-environment happy-dom
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { setInterfaceLanguage } from "../../app/interfaceLanguage";
@@ -9,6 +11,10 @@ import {
   type InstrumentProfileControls
 } from "./InstrumentProfileSettings";
 import { GRACE_BP300, type PianoProfile } from "../../input/instrumentProfiles";
+
+vi.mock("../GameDialog", () => ({
+  GameDialog: ({ children }: { children: ReactNode }) => <section>{children}</section>
+}));
 
 const profile: PianoProfile = {
   id: "piano",
@@ -66,23 +72,49 @@ function button(text: string) {
   return element;
 }
 
-it("shows the named grouped catalog and leaves unknown MIDI mappings visible but disabled", () => {
+function chooser() {
+  const element = host.querySelector<HTMLButtonElement>("[role=combobox]");
+  if (!element) throw new Error("Missing instrument chooser");
+  return element;
+}
+function openChooser() {
+  act(() => {
+    chooser().click();
+  });
+}
+function options() {
+  return [...document.querySelectorAll<HTMLElement>("[role=option]")];
+}
+function key(value: string) {
+  act(() => {
+    chooser().dispatchEvent(
+      new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true })
+    );
+  });
+}
+
+it("shows the named grouped catalog and keeps unknown MIDI mappings disabled", () => {
   render();
   expect(select("Профиль пианино").selectedOptions[0]?.textContent).toBe("My Piano");
-  const instruments = select("Тембр MIDI-пианино");
-  expect(instruments.value).toBe("");
-  expect(instruments.querySelector("optgroup")?.label).toBe("Pipe");
-  expect(instruments.options[1]?.textContent).toBe("VOI075 · Pan Flute");
-  expect(instruments.options[2]?.disabled).toBe(true);
-  expect(instruments.options[2]?.textContent).toContain("нет MIDI-команды");
+  expect(chooser().textContent).toContain("Не менять тембр");
+  openChooser();
+  expect(document.querySelector("[role=group]")?.getAttribute("aria-label")).toBe("Pipe");
+  expect(options()[1]?.textContent).toBe("VOI075 · Pan Flute");
+  expect(options()[2]?.getAttribute("aria-disabled")).toBe("true");
+  expect(options()[2]?.textContent).toContain("нет MIDI-команды");
   act(() => {
-    instruments.value = "pan";
-    instruments.dispatchEvent(new Event("change", { bubbles: true }));
+    options()[2]?.click();
   });
-  expect(controls.onInstrument).toHaveBeenCalledWith("pan");
+  expect(controls.onInstrument).not.toHaveBeenCalled();
+  act(() => {
+    options()[1]?.click();
+  });
+  expect(controls.onInstrument).toHaveBeenCalledExactlyOnceWith("pan");
+  expect(document.querySelector("[role=listbox]")).toBeNull();
+  expect(document.activeElement).toBe(chooser());
 });
 
-it("enables all 238 captured Grace voices including Hu Ensemble", () => {
+it("enables all captured Grace voices and chooses Hu Ensemble explicitly", () => {
   controls = {
     ...controls,
     profiles: [GRACE_BP300],
@@ -90,17 +122,87 @@ it("enables all 238 captured Grace voices including Hu Ensemble", () => {
     profileId: GRACE_BP300.id
   };
   render();
-  const instruments = select("Тембр MIDI-пианино");
-  expect(instruments.options).toHaveLength(239);
-  expect([...instruments.options].every((option) => !option.disabled)).toBe(true);
+  openChooser();
+  expect(options()).toHaveLength(239);
+  expect(options().every((option) => option.getAttribute("aria-disabled") !== "true")).toBe(true);
+  const hu = options().find((option) => option.textContent.includes("Hu Ensemble"));
   act(() => {
-    instruments.value = "voice-237";
-    instruments.dispatchEvent(new Event("change", { bubbles: true }));
+    hu?.click();
   });
-  expect(controls.onInstrument).toHaveBeenCalledWith("voice-237");
-  expect(host.textContent).not.toContain("нет MIDI-команды");
+  expect(controls.onInstrument).toHaveBeenCalledExactlyOnceWith("voice-237");
 });
 
+it("reopens on the selected voice after navigation and scrolls it into view each time", () => {
+  const scroll = vi.fn();
+  const previous = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+  HTMLElement.prototype.scrollIntoView = scroll;
+  try {
+    controls = {
+      ...controls,
+      profiles: [GRACE_BP300],
+      profile: GRACE_BP300,
+      profileId: GRACE_BP300.id,
+      instrumentId: "voice-233"
+    };
+    render();
+    openChooser();
+    const selected = document.querySelector<HTMLElement>("[role=option][aria-selected=true]");
+    expect(selected?.textContent).toContain("VOI233");
+    expect(chooser().getAttribute("aria-activedescendant")).toBe(selected?.id);
+    expect(scroll.mock.instances.at(-1)).toBe(selected);
+    key("ArrowUp");
+    expect(chooser().getAttribute("aria-activedescendant")).not.toBe(selected?.id);
+    expect(controls.onInstrument).not.toHaveBeenCalled();
+    key("Escape");
+    expect(document.querySelector("[role=listbox]")).toBeNull();
+    openChooser();
+    expect(chooser().getAttribute("aria-activedescendant")).toBe(selected?.id);
+    expect(scroll.mock.instances.at(-1)).toBe(
+      document.querySelector("[role=option][aria-selected=true]")
+    );
+    expect(scroll.mock.calls.length).toBeGreaterThanOrEqual(3);
+    key("Enter");
+    expect(controls.onInstrument).not.toHaveBeenCalled();
+  } finally {
+    if (previous) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", previous);
+  }
+});
+
+it("skips disabled voices, commits only on Enter and supports Home, End and no change", () => {
+  render();
+  key("ArrowDown");
+  key("End");
+  expect(chooser().getAttribute("aria-activedescendant")).toBe(options()[1]?.id);
+  expect(controls.onInstrument).not.toHaveBeenCalled();
+  key("Enter");
+  expect(controls.onInstrument).toHaveBeenCalledExactlyOnceWith("pan");
+  controls = { ...controls, instrumentId: "pan" };
+  render();
+  openChooser();
+  key("Home");
+  key("Enter");
+  expect(controls.onInstrument).toHaveBeenLastCalledWith(null);
+});
+
+it("closes on outside pointer, Tab and focus leaving without selecting", () => {
+  render();
+  openChooser();
+  act(() => {
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+  });
+  expect(document.querySelector("[role=listbox]")).toBeNull();
+  openChooser();
+  key("Tab");
+  expect(document.querySelector("[role=listbox]")).toBeNull();
+  openChooser();
+  act(() => {
+    chooser().dispatchEvent(
+      new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body })
+    );
+  });
+  expect(document.querySelector("[role=listbox]")).toBeNull();
+  expect(controls.onInstrument).not.toHaveBeenCalled();
+});
 it("shows why preview is unavailable, starts it when allowed and keeps Stop enabled", () => {
   preview = { ...preview, reason: "Connect a MIDI output" };
   render();
@@ -142,7 +244,7 @@ it("allows no piano profile while keeping import and its example available", () 
   preview = { ...preview, available: true };
   render();
   expect(select("Профиль пианино").value).toBe("");
-  expect(select("Тембр MIDI-пианино").disabled).toBe(true);
+  expect(chooser().disabled).toBe(true);
   expect(host.querySelector("input[type=text]")).toBeNull();
   expect(host.textContent).not.toContain("Тембров в профиле:");
   expect(button("Прослушать тембр").disabled).toBe(true);
@@ -201,3 +303,79 @@ it("commits a renamed piano on blur rather than on each keystroke", () => {
   });
   expect(controls.onName).toHaveBeenCalledExactlyOnceWith("My Grace");
 });
+
+it("keeps imported voice IDs with spaces valid in aria-activedescendant", () => {
+  const spacedProfile = {
+    ...profile,
+    instruments: [{ id: "grand piano", name: "Grand", program: 0 }]
+  };
+  controls = {
+    ...controls,
+    profiles: [spacedProfile],
+    profile: spacedProfile,
+    instrumentId: "grand piano"
+  };
+  render();
+  openChooser();
+  const activeId = chooser().getAttribute("aria-activedescendant");
+  expect(activeId).not.toMatch(/\s/);
+  expect(activeId).toContain("grand%20piano");
+  expect(document.getElementById(activeId ?? "")?.getAttribute("aria-selected")).toBe("true");
+  key("Home");
+  key("ArrowDown");
+  key("Enter");
+  expect(controls.onInstrument).not.toHaveBeenCalled();
+});
+
+it.each(["ru", "en"] as const)(
+  "focuses the exact piano profile and voice controls from Help in %s without sending MIDI",
+  (language) => {
+    setInterfaceLanguage(language);
+    act(() => {
+      root.render(
+        <SettingsPanel
+          open
+          onClose={() => undefined}
+          tabs={[
+            {
+              id: "help",
+              title: "Help",
+              render: (navigate) => (
+                <HelpSettings
+                  wordTyping={false}
+                  onNavigate={(target) => {
+                    navigate("midi", target);
+                  }}
+                />
+              )
+            },
+            {
+              id: "midi",
+              title: "Piano",
+              content: <InstrumentProfileSettings controls={controls} preview={preview} />
+            }
+          ]}
+        />
+      );
+    });
+    for (const target of ["instrument-profile", "instrument-voice"] as const) {
+      act(() => {
+        host.querySelector<HTMLButtonElement>("[role=tab]")?.click();
+      });
+      const link = host.querySelector<HTMLButtonElement>(`[data-help-target="${target}"]`);
+      const details = link?.closest("details");
+      if (details) details.open = true;
+      act(() => {
+        link?.click();
+      });
+      const control = host.querySelector<HTMLElement>(`[data-setting-target="${target}"]`);
+      expect(control).not.toBeNull();
+      expect(document.activeElement).toBe(control);
+      expect(control?.getAttribute("data-setting-highlight")).toBe("true");
+      expect(host.querySelector("[role=listbox]")).toBeNull();
+    }
+    expect(controls.onProfile).not.toHaveBeenCalled();
+    expect(controls.onInstrument).not.toHaveBeenCalled();
+    expect(preview.onPlay).not.toHaveBeenCalled();
+  }
+);

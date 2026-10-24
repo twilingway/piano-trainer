@@ -164,3 +164,59 @@ describe("settings section navigation", () => {
     expectSelected(0);
   });
 });
+
+it.each(["disabled", "missing"] as const)(
+  "focuses and highlights a safe destination for a %s MIDI target without changing its value",
+  async (condition) => {
+    const changed = vi.fn();
+    const sections: readonly SettingsTab[] = [
+      {
+        id: "help",
+        title: "Help",
+        render: (navigate) => (
+          <button
+            type="button"
+            data-help-target="midi-output"
+            onClick={() => {
+              navigate("midi", "midi-output");
+            }}
+          >
+            MIDI output
+          </button>
+        )
+      },
+      {
+        id: "midi",
+        title: "Piano",
+        content: (
+          <section className="settings-group">
+            <label>
+              MIDI output
+              {condition === "disabled" && (
+                <select data-setting-target="midi-output" value="piano" disabled onChange={changed}>
+                  <option value="piano">Piano</option>
+                </select>
+              )}
+            </label>
+          </section>
+        )
+      }
+    ];
+    await render(sections);
+    const help = host.querySelector<HTMLButtonElement>("[data-help-target]");
+    await act(async () => {
+      help?.click();
+      await Promise.resolve();
+    });
+    const destination =
+      condition === "disabled"
+        ? host.querySelector("[role=tabpanel] label")
+        : host.querySelector("[role=tabpanel]");
+    expect(document.activeElement).toBe(destination);
+    expect(destination?.getAttribute("data-setting-highlight")).toBe("true");
+    expect(host.querySelector<HTMLSelectElement>("[data-setting-target]")?.value).toBe(
+      condition === "disabled" ? "piano" : undefined
+    );
+    expect(changed).not.toHaveBeenCalled();
+  }
+);

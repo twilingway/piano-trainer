@@ -1,6 +1,6 @@
 import { Bone, Group, LinearSRGBColorSpace, Mesh } from "three";
 import type { Material, Texture } from "three";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { KEYBOARD_C4, KEYBOARD_METRES, metricC4X } from "../keyboardMetrics";
 import { createKeyboard88Plan } from "./keyboard88Plan";
 import { indexKeyboard88Atlas } from "./keyboard88Atlas";

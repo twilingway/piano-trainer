@@ -1,3 +1,4 @@
+import { SettingsGroup } from "./settings/SettingsGroup";
 import { useI18n } from "../app/useI18n";
 import type { CalibrationProgress, ConnectionType } from "../practice/calibration";
 import {
@@ -66,155 +67,169 @@ export function TimingSettings(props: TimingSettingsProps) {
   ] as const;
   return (
     <section className="settings-section" aria-label={t("Точность и калибровка")}>
-      <h3>{t("Точность и калибровка")}</h3>
-      <p>
-        <small>{t("Поправки действуют со следующего исполнения — нажмите «Сначала».")}</small>
-      </p>
-      <p>
-        {t("Устройство:")} {props.deviceName || props.deviceId || t("Компьютерная клавиатура")}
-      </p>
-      <label>
-        {t("Подключение")}{" "}
-        <select
-          value={props.transport}
-          disabled={disabled}
-          onChange={(event) => {
-            props.onTransport(event.target.value as ConnectionType);
-          }}
-        >
-          <option value="usb">USB MIDI</option>
-          <option value="ble">Bluetooth MIDI</option>
-          <option value="local">{t("Клавиатура / экран")}</option>
-        </select>
-      </label>
-      {offsets.map(([key, label, hint]) => (
-        <label key={key} title={t(hint)}>
-          {t("{label}, мс", { label: t(label) })}{" "}
-          <input
-            type="number"
-            min={-1000}
-            max={1000}
-            step={1}
-            value={preferences[key]}
-            disabled={disabled}
-            onChange={(event) => {
-              const value = event.target.valueAsNumber;
-              if (Number.isFinite(value))
-                props.onOffsets({ [key]: Math.max(-1000, Math.min(1000, value)) });
-            }}
-          />
-          <small>{t(hint)}</small>
-        </label>
-      ))}
-      <label>
-        {t("Название аудиовыхода")}{" "}
-        <input
-          value={preferences.audioOutputId}
-          disabled={disabled}
-          onChange={(event) => {
-            props.onOffsets({ audioOutputId: event.target.value });
-          }}
-        />
-      </label>
-      <p>
-        <small>
-          {t(
-            "Например, «наушники» или «Bluetooth-колонка». Это только подпись профиля: звук в браузере она не переключает."
+      <SettingsGroup title={t("Подключение и поправки")}>
+        <div className="settings-list">
+          <p>
+            <small>{t("Поправки действуют со следующего исполнения — нажмите «Сначала».")}</small>
+          </p>
+          <p>
+            {t("Устройство:")} {props.deviceName || props.deviceId || t("Компьютерная клавиатура")}
+          </p>
+          <label>
+            {t("Подключение")}{" "}
+            <select
+              data-setting-target="connection-type"
+              value={props.transport}
+              disabled={disabled}
+              onChange={(event) => {
+                props.onTransport(event.target.value as ConnectionType);
+              }}
+            >
+              <option value="usb">USB MIDI</option>
+              <option value="ble">Bluetooth MIDI</option>
+              <option value="local">{t("Клавиатура / экран")}</option>
+            </select>
+          </label>
+          {offsets.map(([key, label, hint]) => (
+            <label key={key} title={t(hint)}>
+              {t("{label}, мс", { label: t(label) })}{" "}
+              <input
+                type="number"
+                min={-1000}
+                max={1000}
+                step={1}
+                data-setting-target={key === "audioOffsetMs" ? "audio-offset" : undefined}
+                value={preferences[key]}
+                disabled={disabled}
+                onChange={(event) => {
+                  const value = event.target.valueAsNumber;
+                  if (Number.isFinite(value))
+                    props.onOffsets({ [key]: Math.max(-1000, Math.min(1000, value)) });
+                }}
+              />
+              <small>{t(hint)}</small>
+            </label>
+          ))}
+          <label>
+            {t("Название аудиовыхода")}{" "}
+            <input
+              value={preferences.audioOutputId}
+              disabled={disabled}
+              onChange={(event) => {
+                props.onOffsets({ audioOutputId: event.target.value });
+              }}
+            />
+          </label>
+          <p>
+            <small>
+              {t(
+                "Например, «наушники» или «Bluetooth-колонка». Это только подпись профиля: звук в браузере она не переключает."
+              )}
+            </small>
+          </p>
+        </div>
+      </SettingsGroup>
+      <SettingsGroup title={t("Калибровка")}>
+        <div className="settings-list">
+          {profile ? (
+            <p>
+              {t(
+                "Поправка: {offset} мс · Разброс: {jitter} мс · Стабильность: {quality} · Образцы: {samples}/24",
+                {
+                  offset: formatNumber(profile.inputOffsetMs, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
+                  }),
+                  jitter: formatNumber(profile.jitterMs, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
+                  }),
+                  quality: t(QUALITY[profile.quality]),
+                  samples: formatNumber(profile.calibrationSamples.length)
+                }
+              )}
+            </p>
+          ) : (
+            <p>{t("Это подключение ещё не калибровали, поправка ввода — 0 мс.")}</p>
           )}
-        </small>
-      </p>
-      {profile ? (
-        <p>
-          {t(
-            "Поправка: {offset} мс · Разброс: {jitter} мс · Стабильность: {quality} · Образцы: {samples}/24",
-            {
-              offset: formatNumber(profile.inputOffsetMs, {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1
-              }),
-              jitter: formatNumber(profile.jitterMs, {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1
-              }),
-              quality: t(QUALITY[profile.quality]),
-              samples: formatNumber(profile.calibrationSamples.length)
-            }
+          {profile && !current && (
+            <p role="status">
+              {t(
+                "Откалибруйте заново: замер неполный или нестабильный, либо сменился аудиовыход или задержка звука."
+              )}
+            </p>
           )}
-        </p>
-      ) : (
-        <p>{t("Это подключение ещё не калибровали, поправка ввода — 0 мс.")}</p>
-      )}
-      {profile && !current && (
-        <p role="status">
-          {t(
-            "Откалибруйте заново: замер неполный или нестабильный, либо сменился аудиовыход или задержка звука."
+          <p>
+            {t(
+              "После отсчёта 3–2–1 нажимайте до первой октавы (C4) под каждый щелчок: 4 нажатия на разминку не учитываются, следующие 24 измеряют задержку. 24/24 — все 24 нажатия записаны. Результат включает вашу реакцию и задержку звука."
+            )}
+          </p>
+          {running ? (
+            <button type="button" onClick={props.onCancel}>
+              {t("Отменить калибровку")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={locked || props.canCalibrate === false}
+              data-setting-target="calibration"
+              onClick={props.onStart}
+            >
+              {t("Калибровать C4")}
+            </button>
           )}
-        </p>
-      )}
-      <p>
-        {t(
-          "После отсчёта 3–2–1 нажимайте до первой октавы (C4) под каждый щелчок: 4 нажатия на разминку не учитываются, следующие 24 измеряют задержку. 24/24 — все 24 нажатия записаны. Результат включает вашу реакцию и задержку звука."
-        )}
-      </p>
-      {running ? (
-        <button type="button" onClick={props.onCancel}>
-          {t("Отменить калибровку")}
-        </button>
-      ) : (
-        <button
-          type="button"
-          disabled={locked || props.canCalibrate === false}
-          onClick={props.onStart}
-        >
-          {t("Калибровать C4")}
-        </button>
-      )}
-      {running && props.countdown != null && (
-        <p role="status" aria-live="assertive" className="calibration-countdown">
-          {t("Приготовьтесь: {seconds}", { seconds: formatNumber(props.countdown) })}
-        </p>
-      )}
-      {progress && props.countdown == null && (
-        <p aria-live="polite">
-          {t("Разминка: {warmup}/4 нажатия · Замер: {measured}/24 нажатия", {
-            warmup: formatNumber(progress.warmup),
-            measured: formatNumber(progress.measured)
-          })}
-          {progress.complete ? t(" · Готово") : !running ? t(" · Не завершено — повторите") : ""}
-        </p>
-      )}
-      {running && props.onTap && (
-        <>
-          <p>{t("Для калибровки нажимайте пробел или «Ударить» под метроном.")}</p>
-          <button
-            type="button"
-            className="game-button"
-            onPointerDown={(event) => {
-              if (event.button !== 0) return;
-              event.preventDefault();
-              props.onTap?.(event.timeStamp);
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== " " && event.key !== "Enter") return;
-              event.preventDefault();
-              if (!event.repeat) props.onTap?.(event.timeStamp);
-            }}
-            onClick={(event) => {
-              event.preventDefault();
-            }}
-          >
-            {t("Ударить")}
-          </button>
-        </>
-      )}
-      {locked && <p>{t("Во время рейтинговой игры настройки заблокированы.")}</p>}
-      {props.canCalibrate === false && (
-        <p>
-          {t(
-            "Выберите одно MIDI-устройство в разделе «Пианино» — тогда его можно откалибровать и играть на рейтинг."
+          {running && props.countdown != null && (
+            <p role="status" aria-live="assertive" className="calibration-countdown">
+              {t("Приготовьтесь: {seconds}", { seconds: formatNumber(props.countdown) })}
+            </p>
           )}
-        </p>
-      )}
+          {progress && props.countdown == null && (
+            <p aria-live="polite">
+              {t("Разминка: {warmup}/4 нажатия · Замер: {measured}/24 нажатия", {
+                warmup: formatNumber(progress.warmup),
+                measured: formatNumber(progress.measured)
+              })}
+              {progress.complete
+                ? t(" · Готово")
+                : !running
+                  ? t(" · Не завершено — повторите")
+                  : ""}
+            </p>
+          )}
+          {running && props.onTap && (
+            <>
+              <p>{t("Для калибровки нажимайте пробел или «Ударить» под метроном.")}</p>
+              <button
+                type="button"
+                className="game-button"
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  event.preventDefault();
+                  props.onTap?.(event.timeStamp);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== " " && event.key !== "Enter") return;
+                  event.preventDefault();
+                  if (!event.repeat) props.onTap?.(event.timeStamp);
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                }}
+              >
+                {t("Ударить")}
+              </button>
+            </>
+          )}
+          {locked && <p>{t("Во время рейтинговой игры настройки заблокированы.")}</p>}
+          {props.canCalibrate === false && (
+            <p>
+              {t(
+                "Выберите одно MIDI-устройство в разделе «Пианино» — тогда его можно откалибровать и играть на рейтинг."
+              )}
+            </p>
+          )}
+        </div>
+      </SettingsGroup>
       {props.diagnostic && (
         <details>
           <summary>{t("Диагностика ввода")}</summary>

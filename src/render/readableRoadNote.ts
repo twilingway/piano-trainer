@@ -1,8 +1,9 @@
 import type { WorldCamera } from "./worldCamera";
 import { noteSlabHeight } from "./noteDimensions";
 import type { NoteLaneProjection } from "./noteLaneProjection";
+import { READABLE_NOTE_DURATION_LIMIT, readableNoteFaceHeight } from "./noteReadability";
 
-export const READABLE_ROAD_DURATION_LIMIT = 0.6;
+export const READABLE_ROAD_DURATION_LIMIT = READABLE_NOTE_DURATION_LIMIT;
 
 /** Extends only a note's far tail so its top face can carry a readable finger digit. */
 export function readableRoadTop(
@@ -66,10 +67,7 @@ export function readableRoadTop(
   )
     return top;
   const visibleScale = lower.scale * (lane?.scaleX ?? 1);
-  const minimum =
-    orthographicScale === undefined
-      ? Math.max(24, Math.min(64, width * visibleScale * 0.8))
-      : Math.max(18, Math.min(30, width * visibleScale * 0.8));
+  const minimum = readableNoteFaceHeight(width * visibleScale, orthographicScale === undefined);
   if (lower.y - upper.y >= minimum) return top;
 
   const fallback = Math.max(0, Math.min(top, nearBottom - 4));

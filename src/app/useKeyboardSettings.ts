@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps } from "react";
 
 import { pianistAvailable } from "../render/three/pianistAvailability";
 import type { KeyboardSettings } from "../ui/settings/KeyboardSettings";
@@ -11,8 +11,7 @@ type FallingView = ReturnType<typeof useFallingView>;
 export function useKeyboardSettings(
   view: Pick<FallingView, "keyRange" | "setKeyRange" | "showLabels" | "setShowLabels">,
   staffPrefs: StaffPrefs,
-  updateStaffPrefs: (change: Partial<StaffPrefs>) => void,
-  toggles: ReactNode
+  updateStaffPrefs: (change: Partial<StaffPrefs>) => void
 ): ComponentProps<typeof KeyboardSettings> & {
   fps: boolean;
   onFps: (show: boolean) => void;
@@ -81,7 +80,6 @@ export function useKeyboardSettings(
     camera: staffPrefs.camera,
     onCamera: (camera) => {
       updateStaffPrefs({ camera });
-    },
-    toggles
+    }
   };
 }

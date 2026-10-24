@@ -4,7 +4,7 @@ import type { HandsSource } from "./liveHands";
 import type { Application } from "../flatThree";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
-import type { KeysScene, PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
+import type { KeysScene, NativeKeyboardScene } from "../NativeKeyboardScene";
 import type { EnergySource } from "../noteEnergy";
 import type { Pianist } from "./pianist";
 import type { ThreeStage } from "./ThreeStage";
@@ -15,11 +15,12 @@ import { disposePianistModel } from "./disposePianistModel";
 import { metricC4X, metricKeyX } from "../keyboardMetrics";
 import { Keyboard88PerformerHost } from "./Keyboard88PerformerHost";
 
-/** Composes native and flat Three passes on one renderer, retaining perspective fallback while loading. */
+/** Composes one native road with either native or flat keys on the shared renderer. */
 export class ThreeKeysHost {
   private stage: ThreeStage | undefined;
   private loading: Promise<void> | undefined;
   private wanted = false;
+  private roadWanted = false;
   private keyboardDim = false;
   private active = false;
   private freeWanted = false;
@@ -51,32 +52,35 @@ export class ThreeKeysHost {
   constructor(
     private readonly app: Application,
     private readonly road: Container,
-    private readonly keys: PerspectiveKeyboardLayer,
+    private readonly keys: NativeKeyboardScene,
     private readonly keyboard: KeyboardLayer,
-    private readonly hands: HandsLayer | undefined,
-    private readonly restoreRoad?: () => void
+    private readonly hands: HandsLayer | undefined
   ) {}
 
   /** Settles once the keys are drawn by three, or once it is clear that they cannot be. */
-  setEnabled(on: boolean): Promise<void> {
+  setEnabled(on: boolean, road = on): Promise<void> {
     if (this.destroyed) return Promise.resolve();
     this.wanted = on;
-    const loaded = on ? this.load() : Promise.resolve();
+    this.roadWanted = road;
+    const loaded = on || road ? this.load() : Promise.resolve();
     this.sync();
     return loaded;
   }
 
   get on(): boolean {
-    return this.active;
+    return this.active && this.wanted;
+  }
+
+  /** The native road is independent of keyboard visibility and keyboard style. */
+  setRoadEnabled(on: boolean): Promise<void> {
+    this.roadWanted = on;
+    const loaded = on ? this.load() : Promise.resolve();
+    this.sync();
+    return loaded;
   }
 
   get drawsRoad(): boolean {
-    return (
-      this.active &&
-      this.road.visible &&
-      this.keys.container.visible &&
-      this.keys.scene !== undefined
-    );
+    return this.active && this.roadWanted && this.road.visible && this.keys.scene !== undefined;
   }
 
   setEnergy(sources: readonly EnergySource[], deltaSeconds?: number): void {
@@ -149,7 +153,13 @@ export class ThreeKeysHost {
   }
 
   private syncFreeCamera(layered = this.active): void {
-    const on = this.freeWanted && !this.performanceWanted && this.active && layered;
+    const on =
+      this.freeWanted &&
+      !this.performanceWanted &&
+      this.active &&
+      this.wanted &&
+      this.keys.container.visible &&
+      layered;
     if (on === this.freeActive) return;
     this.freeActive = on;
     this.stage?.setFreeCamera(on);
@@ -164,6 +174,7 @@ export class ThreeKeysHost {
 
   destroy(): void {
     if (this.destroyed) return;
+    this.roadWanted = false;
     void this.setEnabled(false);
     this.destroyed = true;
     this.clearEnergy();
@@ -210,7 +221,7 @@ export class ThreeKeysHost {
         throw error;
       }
     } catch (error) {
-      console.warn("3D keys unavailable, keeping the perspective keys", error);
+      console.warn("3D keys unavailable, native scene unavailable", error);
     } finally {
       this.loading = undefined;
       if (!this.destroyed) this.sync();
@@ -218,11 +229,11 @@ export class ThreeKeysHost {
   }
 
   private sync(): void {
-    const on = this.wanted && this.stage !== undefined;
+    const on = (this.wanted || this.roadWanted) && this.stage !== undefined;
     if (on === this.active) return;
     this.active = on;
     this.syncFreeCamera();
-    if (this.hands) this.hands.live = on && this.stage?.hands !== undefined;
+    if (this.hands) this.hands.live = on && this.wanted && this.stage?.hands !== undefined;
     const { ticker } = this.app;
     const render = this.app.render;
     if (on) {
@@ -241,7 +252,9 @@ export class ThreeKeysHost {
     const { renderer, stage } = this.app;
     const scene = this.keys.scene;
     const layered =
-      this.stage !== undefined && this.road.visible && this.keys.container.visible && scene;
+      this.stage !== undefined &&
+      scene &&
+      (this.road.visible || (this.wanted && this.keys.container.visible));
     this.layer(Boolean(layered));
     this.syncFreeCamera(Boolean(layered));
     if (!layered || !this.stage) {
@@ -252,17 +265,18 @@ export class ThreeKeysHost {
     const worldEffects = separateRoad && this.stage.nativeEffectsReady;
     const legacyEffects = !this.freeActive && !worldEffects;
     renderer.render({
-      container: separateRoad ? this.placeholder : this.road,
+      container: separateRoad || !this.road.visible ? this.placeholder : this.road,
       ...(separateRoad ? { clearColor: 0x000000 } : {})
     });
     try {
       if (separateRoad) this.roadEffects.draw(renderer, legacyEffects);
       this.effects.draw(renderer, legacyEffects && separateRoad);
-      this.seatPianist(this.stage, scene);
+      if (this.wanted) this.seatPianist(this.stage, scene);
+      else if (this.hands) this.hands.live = false;
       const picture = scene.texture.nativeTexture;
       const frame = this.keyboard.frame;
       const hands =
-        this.hands && (this.hands.container.visible || this.hands.pianist)
+        this.wanted && this.hands && (this.hands.container.visible || this.hands.pianist)
           ? {
               time: this.hands.time,
               notes: this.hands.songNotes,
@@ -290,20 +304,21 @@ export class ThreeKeysHost {
         hands,
         this.energy,
         this.energyDeltaSeconds,
-        this.roadFrame,
+        this.drawsRoad ? this.roadFrame : undefined,
         worldEffects,
         this.hands?.songNotes,
-        separateRoad ? undefined : this.drawRoadEffects
+        separateRoad ? undefined : this.drawRoadEffects,
+        this.wanted && this.keys.container.visible
       );
     } catch (error) {
       this.effects.restore();
       this.roadEffects.restore();
-      console.warn("3D keys failed, keeping the perspective keys", error);
+      console.warn("3D keys failed, native scene unavailable", error);
       // Restore the road, keys, sprite hands and normal ticker before drawing this frame again.
+      this.roadWanted = false;
       void this.setEnabled(false);
       this.stage.dispose();
       this.stage = undefined;
-      this.restoreRoad?.();
       renderer.render({ container: stage });
       return;
     }

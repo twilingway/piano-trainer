@@ -1,35 +1,11 @@
 import type { Projected, RoadProjection } from "./perspective";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
 import type { KeyRect } from "./keyboardLayout";
-import type { PerspectiveMesh } from "./flatThree";
 import { KEYBOARD_BLACK_BACK } from "./keyboardMetrics";
 import { projectNoteLane } from "./noteLaneProjection";
 import type { NoteLaneProjection } from "./noteLaneProjection";
 import type { WorldCamera } from "./worldCamera";
 import type { ThreeKeysHost } from "./three/ThreeKeysHost";
-
-export function drawRoadCorners(
-  meshes: readonly PerspectiveMesh[],
-  projection: RoadProjection,
-  left: number,
-  right: number
-): void {
-  const farLeft = projection.at(left, 0);
-  const farRight = projection.at(right, 0);
-  const nearLeft = projection.at(left, 1);
-  const nearRight = projection.at(right, 1);
-  for (const mesh of meshes)
-    mesh.setCorners(
-      farLeft.x,
-      farLeft.y,
-      farRight.x,
-      farRight.y,
-      nearRight.x,
-      nearRight.y,
-      nearLeft.x,
-      nearLeft.y
-    );
-}
 
 /** Physical black lanes need no correction in the inspection camera. */
 export const FREE_BLACK_LANE: NoteLaneProjection = {

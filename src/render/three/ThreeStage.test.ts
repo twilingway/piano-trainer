@@ -1,8 +1,9 @@
 import { Texture, BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import type { KeyPress } from "./liveHands";
 import { ThreeStage } from "./ThreeStage";
+import { ThreeRoadFrame } from "./ThreeRoadFrame";
 
 /** Exercise the actual frame method with GPU rendering isolated, including its contact ordering. */
 function fixture() {
@@ -101,6 +102,63 @@ function fixture() {
 }
 
 describe("ThreeStage physical key contact", () => {
+  it.each([false, true])(
+    "honors flat burning without changing full 3D effects, native=%s",
+    (nativeKeyboard) => {
+      const view = fixture();
+      const aura = { group: new Group(), update: vi.fn() };
+      const trails = { group: new Group(), update: vi.fn() };
+      const notes = { setViewport: vi.fn(), update: vi.fn() };
+      const keys = new Group();
+      Object.assign(view.stage, {
+        noteAura: aura,
+        roadTrails: trails,
+        roadNotes: notes,
+        roadGuides: { clear: vi.fn() },
+        keys
+      });
+      Object.assign(view.scene, { faces: [], texture: { width: 800, height: 200 } });
+      const frame = new ThreeRoadFrame();
+      frame.burning = false;
+      view.stage.draw(
+        view.scene,
+        view.picture,
+        () => false,
+        { width: 800, height: 600 },
+        0,
+        undefined,
+        [],
+        0,
+        frame,
+        false,
+        undefined,
+        undefined,
+        nativeKeyboard
+      );
+      expect(keys.visible).toBe(nativeKeyboard);
+      expect(aura.group.visible).toBe(nativeKeyboard);
+      expect(trails.group.visible).toBe(nativeKeyboard);
+      expect(notes.update).toHaveBeenCalledOnce();
+      frame.burning = true;
+      view.stage.draw(
+        view.scene,
+        view.picture,
+        () => false,
+        { width: 800, height: 600 },
+        0,
+        undefined,
+        [],
+        0,
+        frame,
+        false,
+        undefined,
+        undefined,
+        nativeKeyboard
+      );
+      expect(aura.group.visible).toBe(true);
+      expect(trails.group.visible).toBe(true);
+    }
+  );
   it.each([0, 1 / 120, 1 / 60])("applies onset contact in the same frame at delta %s", (delta) => {
     const view = fixture();
     // The contact arrives from LiveHands.update during this frame, not the preceding frame.

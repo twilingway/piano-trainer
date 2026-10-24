@@ -1,4 +1,4 @@
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import type { HandsLayer } from "../HandsLayer";
 import type { ThreeStage } from "./ThreeStage";
 import type { HandsSource } from "./liveHands";

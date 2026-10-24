@@ -6,7 +6,7 @@ export interface FlatEffectOptions {
 }
 export const ALL_FLAT_EFFECTS: FlatEffectOptions = { burning: true, presses: true };
 
-/** Flat preferences never change the accepted native or legacy perspective effects. */
+/** Flat preferences never change the accepted full 3D effects. */
 export class FlatEffectSettings {
   private options: FlatEffectOptions = ALL_FLAT_EFFECTS;
   set(burning: boolean, presses: boolean): void {

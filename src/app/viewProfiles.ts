@@ -1,7 +1,7 @@
-import { DEFAULT_CAMERA, normalizeCamera, type CameraPrefs } from "../render/worldCamera";
+import { CAMERA_PRESETS, normalizeCamera, type CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_SCREEN_LAYOUT, normalizeLayout, type ScreenLayout } from "./screenLayout";
 
-export type KeyboardStyle = "classic" | "arcade" | "perspective" | "3d";
+export type KeyboardStyle = "classic" | "arcade" | "3d";
 export type NotesProjection = "direct" | "perspective";
 export type KeyboardOrientation = "follow" | "top";
 export interface ViewAxes {
@@ -25,12 +25,12 @@ export interface ViewProfiles {
   readonly orientationByPair: Record<string, unknown>;
 }
 export const DEFAULT_VIEW_FRAMING: ViewFraming = {
-  camera: DEFAULT_CAMERA,
+  camera: CAMERA_PRESETS.top,
   roadFar: 0.1,
   roadHorizon: 0.1,
   layout: DEFAULT_SCREEN_LAYOUT
 };
-const STYLES: readonly KeyboardStyle[] = ["classic", "arcade", "perspective", "3d"];
+const STYLES: readonly KeyboardStyle[] = ["classic", "arcade", "3d"];
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -40,9 +40,12 @@ const projection = (value: unknown, fallback: NotesProjection): NotesProjection 
 const orientation = (value: unknown): KeyboardOrientation => (value === "top" ? "top" : "follow");
 export function normalizeViewAxes(value: unknown, fallback?: ViewAxes): ViewAxes {
   const raw = record(value);
-  const keyboardStyle = STYLES.includes(raw.keyboardStyle as KeyboardStyle)
-    ? (raw.keyboardStyle as KeyboardStyle)
-    : (fallback?.keyboardStyle ?? "3d");
+  const keyboardStyle =
+    raw.keyboardStyle === "perspective"
+      ? "3d"
+      : STYLES.includes(raw.keyboardStyle as KeyboardStyle)
+        ? (raw.keyboardStyle as KeyboardStyle)
+        : (fallback?.keyboardStyle ?? "3d");
   return {
     keyboardStyle,
     notesProjection: projection(raw.notesProjection, fallback?.notesProjection ?? "direct"),
@@ -102,12 +105,28 @@ export function hydrateViewProfiles(
     keyboardOrientation:
       staff.keyboardOrientation ?? (staff.keyboardTopView === true ? "top" : "follow")
   });
-  const migratedSeed = normalizeViewFraming({ ...staff, layout: legacyLayout });
+  const migratedSeed = normalizeViewFraming({
+    ...staff,
+    ...(staff.camera === undefined ? {} : { camera: normalizeCamera(staff.camera) }),
+    layout: legacyLayout
+  });
   const legacySeed =
     raw.version === 1 ? normalizeViewFraming(raw.legacySeed, migratedSeed) : migratedSeed;
-  const active = normalizeViewAxes(raw.version === 1 ? raw.active : legacyAxes, legacyAxes);
+  const oldActive =
+    raw.version === 1
+      ? record(raw.active)
+      : {
+          keyboardStyle: staff.keyStyle,
+          notesProjection: legacyAxes.notesProjection,
+          keyboardOrientation: legacyAxes.keyboardOrientation
+        };
+  const active = normalizeViewAxes(oldActive, legacyAxes);
   const entries = { ...record(raw.entries) };
   const key = viewProfileKey(active);
+  if (oldActive.keyboardStyle === "perspective" && entries[key] === undefined) {
+    const oldKey = `perspective:${active.notesProjection}:${orientation(oldActive.keyboardOrientation)}`;
+    if (entries[oldKey] !== undefined) entries[key] = entries[oldKey];
+  }
   entries[key] = normalizeViewFraming(entries[key], legacySeed);
   return {
     version: 1,

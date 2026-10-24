@@ -36,6 +36,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     arrivals: [],
     cardsOn: false,
     cards: new Container(),
+    root: new Container(),
     guides: new Container(),
     beatBars: new Container(),
     lane: new Container(),
@@ -79,7 +80,8 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
     flatEffects: new FlatEffectSettings(),
     sceneCamera: { frame: vi.fn(), apply: vi.fn(), active: true },
     parts: { keys: true, notes: true, hands: false },
-    app: { screen: { width: 800, height: 600 }, ticker: { deltaMS: 16 } },
+    app: { stage: new Container(), screen: { width: 800, height: 600 }, ticker: { deltaMS: 16 } },
+    keysRoot: new Container(),
     laidOutFor: { width: 800, height: 600 },
     geometry: () => ({ hitY: 400, whiteWidth: 40 }),
     scroll: vi.fn(),
@@ -94,13 +96,14 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
     roadMode,
     roadWanted: roadMode,
     directCameraPrefs: CAMERA_PRESETS.top,
-    keyStyle: "perspective",
+    keyStyle: "classic",
     cameraPrefs: DEFAULT_CAMERA,
     road: {
       drawsNativeRoad: nativeRoad,
       effects: new Container(),
       setCamera: vi.fn(),
       setNotesPerspective: vi.fn(),
+      setFlatBurning: vi.fn(),
       draw: roadDraw,
       hitLineY: 400,
       notePlace: (x: number, y: number) => ({ x, y, scale: 1 }),
@@ -194,12 +197,12 @@ describe("accompaniment fire independent of key colours", () => {
     };
     view.draw({ ...frame, time: 3 });
     expect(sprites[0]?.body.visible).toBe(false);
-    for (const time of [4.1, 6, 8, 10, 12]) {
+    for (const time of [6.1, 8, 10, 12]) {
       view.draw({ ...frame, time });
       const body = sprites[0]?.body;
       expect(body?.visible).toBe(true);
-      expect((body?.y ?? NaN) + (body?.height ?? NaN)).toBeCloseTo((time - 4) * 50);
-      if (cards) expect(sprites[0]?.frame.y).toBeCloseTo((time - 4) * 50);
+      expect((body?.y ?? NaN) + (body?.height ?? NaN)).toBeCloseTo((time - 6) * (400 / 6));
+      if (cards) expect(sprites[0]?.frame.y).toBeCloseTo((time - 6) * (400 / 6));
     }
     expect(frame.time).toBe(0);
     expect(frame.lookAhead).toBe(2);
@@ -249,9 +252,48 @@ describe("accompaniment fire independent of key colours", () => {
       hands: new Set(["right"]),
       owns: (note) => note.hand === "right"
     });
-    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(roadMode ? 8 : 2);
+    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(roadMode ? 6 : 2.22);
     expect(notesDraw.mock.calls[0]?.[0].time).toBe(0.1);
   });
+  it.each(["classic", "arcade", "3d"] as const)(
+    "preserves flat keys through native loading and restores them after failure, style=%s",
+    (keyStyle) => {
+      const { view, layer } = viewHarness(true);
+      const stage = new Container();
+      const keysRoot = new Container();
+      stage.addChild(layer.root, keysRoot);
+      const internals = view as unknown as {
+        app: { stage: Container };
+        road: { drawsNativeRoad: boolean; drawsNativeKeyboard: boolean };
+      };
+      internals.app.stage = stage;
+      Object.assign(view, { keysRoot, keyStyle });
+      const frame: FrameState = {
+        time: 1,
+        lookAhead: 2,
+        statusOf: () => undefined,
+        pressed: new Set(),
+        sounding: new Set(),
+        due: [],
+        hands: new Set(),
+        owns: () => false
+      };
+      internals.road.drawsNativeRoad = false;
+      view.draw(frame);
+      expect(keysRoot.parent).toBe(stage);
+      expect(layer.root.renderable).toBe(true);
+      internals.road.drawsNativeRoad = true;
+      internals.road.drawsNativeKeyboard = keyStyle === "3d";
+      view.draw(frame);
+      expect(keysRoot.parent).toBe(keyStyle === "3d" ? null : stage);
+      expect(layer.root.renderable).toBe(false);
+      internals.road.drawsNativeRoad = false;
+      internals.road.drawsNativeKeyboard = false;
+      view.draw(frame);
+      expect(keysRoot.parent).toBe(stage);
+      expect(layer.root.renderable).toBe(true);
+    }
+  );
   it("switches overhead and perspective flight independently without changing musical time", () => {
     const { view, notesDraw } = viewHarness(true);
     Object.assign(view, { keyStyle: "3d", layout: vi.fn() });
@@ -296,7 +338,7 @@ describe("accompaniment fire independent of key colours", () => {
       hands: new Set(),
       owns: () => false
     });
-    expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(roadMode ? 8 : 2);
+    expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(roadMode ? 6 : 2.22);
     expect(notesDraw.mock.lastCall?.[0].time).toBe(-0.5);
   });
   it.each([CAMERA_PRESETS.top, CAMERA_PRESETS.player])(
@@ -314,7 +356,7 @@ describe("accompaniment fire independent of key colours", () => {
         hands: new Set(),
         owns: () => false
       });
-      expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(8);
+      expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(6);
       expect(notesDraw.mock.lastCall?.[0].time).toBe(-0.5);
     }
   );
@@ -451,7 +493,7 @@ describe("listening", () => {
 });
 
 describe("keyboard initial centring", () => {
-  function panHarness(roadMode: boolean, pitch = 60, native = false) {
+  function panHarness(roadMode: boolean, pitch = 60, native = false, nativeKeys = false) {
     const setPan = vi.fn();
     const keysRoot = new Container();
     const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
@@ -467,7 +509,12 @@ describe("keyboard initial centring", () => {
       keysRoot,
       hands: { container: new Container() },
       roadMode,
-      road: { setPan, setKeysOffset: vi.fn(), drawsNativeRoad: native }
+      road: {
+        setPan,
+        setKeysOffset: vi.fn(),
+        drawsNativeRoad: native,
+        drawsNativeKeyboard: nativeKeys
+      }
     }) as unknown as FallingNotesView;
     const frame: FrameState = {
       time: 0,
@@ -503,6 +550,16 @@ describe("keyboard initial centring", () => {
     scroll();
     expect(setPan).toHaveBeenLastCalledWith(0);
   });
+
+  it.each([21, 108])(
+    "updates native keyboard pan with notes hidden for extreme pitch %s",
+    (pitch) => {
+      const { scroll, setPan, keysRoot } = panHarness(false, pitch, false, true);
+      scroll();
+      expect(setPan).toHaveBeenLastCalledWith(pitch === 21 ? 0 : 368);
+      expect(keysRoot.x).toBe(0);
+    }
+  );
 
   it("keeps the fitted native song range centred even for its extreme upcoming key", () => {
     const { scroll, setPan } = panHarness(true, 21, true);
@@ -659,7 +716,7 @@ it("keeps cards and sprite hands visible after Three fails with performance stil
   expect(inside.hands.container.renderable).toBe(true);
 });
 
-it.each(["classic", "arcade", "perspective", "3d"] as const)(
+it.each(["classic", "arcade", "3d"] as const)(
   "scopes flat effect preferences to classic/arcade while retaining %s native behavior",
   (keyStyle) => {
     const test = viewHarness(true, notes, keyStyle === "3d");
@@ -676,7 +733,7 @@ it.each(["classic", "arcade", "perspective", "3d"] as const)(
       owns: () => true
     };
     test.view.draw(frame);
-    const unchanged = keyStyle === "perspective" || keyStyle === "3d";
+    const unchanged = keyStyle === "3d";
     expect(test.effectsDraw.mock.calls[0]?.[4]).toEqual({ burning: unchanged, presses: unchanged });
     expect(test.roadDraw.mock.calls[0]?.[2]).toHaveLength(unchanged ? 2 : 0);
     const internal = test.view as unknown as {

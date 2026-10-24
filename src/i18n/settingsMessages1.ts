@@ -136,9 +136,6 @@ export const settingsMessages1 = {
   Аркада: {
     en: "Arcade"
   },
-  "3D (с перспективой)": {
-    en: "3D (with perspective)"
-  },
   "Вид рук": {
     en: "Hands"
   },

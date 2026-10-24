@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HandsLayer } from "../HandsLayer";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import type { ThreeStage } from "./ThreeStage";
 import type { HandsSource } from "./liveHands";
 

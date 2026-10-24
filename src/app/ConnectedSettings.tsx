@@ -13,6 +13,8 @@ import { MidiSettings } from "../ui/settings/MidiSettings";
 import { ConnectedInstrumentProfileSettings } from "./ConnectedInstrumentProfileSettings";
 import { PlaySettings } from "../ui/settings/PlaySettings";
 import { PlayerSettings } from "../ui/settings/PlayerSettings";
+import { SettingsDiagnostics } from "../ui/settings/SettingsDiagnostics";
+import { SettingsGroup } from "../ui/settings/SettingsGroup";
 import { SettingsView } from "../ui/settings/SettingsView";
 import { SongSettings } from "../ui/settings/SongSettings";
 import { StaffSettings } from "../ui/settings/StaffSettings";
@@ -44,6 +46,7 @@ export function ConnectedPlayerSettings(props: { open: boolean; onClose: () => v
       computer={<ConnectedComputerSettings />}
       midi={<ConnectedMidiSettings />}
       synchronization={<ConnectedSynchronizationSettings />}
+      diagnostics={<ConnectedDiagnostics />}
     />
   );
 }
@@ -151,13 +154,16 @@ function ConnectedSongSettings() {
     />
   );
 }
-function ConnectedViewSettings() {
-  const wordTyping = useAppSelector((state) => state.preferences.word.enabled);
+function ConnectedDiagnostics() {
   const fps = useAppSelector((state) => state.preferences.staff.fps);
-  const editing = useRuntimeSelector((runtime) => runtime.screen.editing);
   const onFps = useRuntimeCommand((runtime) => (fps: boolean) => {
     runtime.updateStaffPrefs({ fps });
   });
+  return <SettingsDiagnostics fps={fps} onFps={onFps} />;
+}
+function ConnectedViewSettings() {
+  const wordTyping = useAppSelector((state) => state.preferences.word.enabled);
+  const editing = useRuntimeSelector((runtime) => runtime.screen.editing);
   const onToggleEditing = useRuntimeCommand((runtime) => runtime.screen.toggleEditing);
   const onResetLayout = useRuntimeCommand((runtime) => runtime.screen.resetLayout);
   return (
@@ -165,8 +171,7 @@ function ConnectedViewSettings() {
       wordTyping={wordTyping}
       staff={<ConnectedStaffSettings />}
       keyboard={<ConnectedKeyboardSettings />}
-      fps={fps}
-      onFps={onFps}
+      toggles={<ConnectedSettingsToggles />}
       editing={editing}
       onToggleEditing={onToggleEditing}
       onResetLayout={onResetLayout}
@@ -256,7 +261,6 @@ function ConnectedKeyboardSettings() {
       onRoadGuides={onRoadGuides}
       onRoad={onRoad}
       onCamera={onCamera}
-      toggles={<ConnectedSettingsToggles />}
     />
   );
 }
@@ -346,6 +350,7 @@ function ConnectedKeyboardAssignments() {
   );
 }
 function ConnectedMidiSettings() {
+  const { t } = useI18n();
   const range = useAppSelector((state) => state.preferences.deviceRange);
   const choice = useAppSelector((state) => state.preferences.midiOutput);
   const lights = useAppSelector((state) => state.preferences.keyLights);
@@ -406,7 +411,9 @@ function ConnectedMidiSettings() {
             : undefined
         }
       />
-      <ConnectedInstrumentProfileSettings />
+      <SettingsGroup title={t("Профиль и тембр пианино")}>
+        <ConnectedInstrumentProfileSettings />
+      </SettingsGroup>
     </>
   );
 }

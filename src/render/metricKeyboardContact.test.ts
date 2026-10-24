@@ -148,13 +148,8 @@ describe("metric note and key contact", () => {
       const expected = keyboard.project(x, 34, 149.8008);
       expect(actual.x).toBeCloseTo(expected.x, 9);
       expect(actual.y).toBeCloseTo(expected.y, 9);
-      const replay: number[][] = [];
-      frame.replay(600, notes, (...body) => {
-        replay.push(body);
-      });
-      expect(replay[0]?.[0]).toBeCloseTo(source, 9);
-      expect(replay[0]?.[2]).toBeCloseTo(600, 9);
-      expect(replay[0]?.[3]).toBeCloseTo(key.width, 9);
+      expect(note?.x).toBeCloseTo(notes.sourceX(source), 9);
+      expect(note?.width).toBeCloseTo(key.width * (notes.params.sourceUnits ?? 0.5), 9);
     }
   );
 });

@@ -366,7 +366,7 @@ export function usePlayerRuntime() {
       }
     />
   );
-  const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs, toggles);
+  const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs);
 
   const chooseWordPart = (part: Part) => {
     startFromRef.current = null;

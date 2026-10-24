@@ -1,5 +1,5 @@
 import { useI18n } from "../../app/useI18n";
-import { CAMERA_PRESETS, DEFAULT_CAMERA } from "../../render/worldCamera";
+import { CAMERA_PRESETS } from "../../render/worldCamera";
 import type { CameraPrefs } from "../../render/worldCamera";
 
 interface Props {
@@ -84,7 +84,7 @@ export function CameraSettings({ camera, onChange }: Props) {
         className="game-button"
         type="button"
         onClick={() => {
-          onChange(DEFAULT_CAMERA);
+          onChange(CAMERA_PRESETS.top);
         }}
       >
         {t("Сбросить камеру")}

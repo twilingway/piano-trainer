@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Container, Matrix, Texture } from "./flatThree";
+import { Container, Graphics, Matrix, Texture } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { RoadLayer } from "./RoadLayer";
 import type { EnergySource } from "./noteEnergy";
@@ -25,23 +25,17 @@ function fixture() {
   const internals = Object.assign(Object.create(RoadLayer.prototype) as object, {
     size: { width: 800, height: 400 },
     nativeRoad: frame,
+    style: "3d",
     three,
-    road: { renderable: true },
     fog: new Container(),
-    horizon: new Container(),
+    horizon: new Graphics(),
     arrivals: { container: new Container(), draw: vi.fn() },
     effects: new Container(),
-    glows: { renderable: true },
-    staff: { container: new Container() },
     renderer: { render: vi.fn() },
     keysTexture: Texture.EMPTY,
     keysShift: new Matrix(),
-    glass: { end: vi.fn() },
     sparks: { draw: vi.fn() },
-    clock: 10,
-    plasmaClock: 2,
-    drawHorizon: vi.fn(),
-    moveSparks: vi.fn()
+    clock: 10
   });
   const layer = internals as unknown as RoadLayer;
   const lane = new Container();
@@ -59,7 +53,7 @@ function fixture() {
 
 describe("road decorative time", () => {
   it("keeps shader boiling alive on paused energy while the note geometry and flame time stay fixed", () => {
-    const { layer, internals, frame, three, draw } = fixture();
+    const { layer, frame, three, draw } = fixture();
     const sources: readonly EnergySource[] = [
       { id: "held", pitch: 60, color: 0x20df90, strength: 1, progress: 1, sounding: true }
     ];
@@ -73,22 +67,21 @@ describe("road decorative time", () => {
     layer.setEnergy(sources, 0);
     draw(0.016);
     expect(frame.visualTime).toBeCloseTo(10.032);
-    expect(internals.plasmaClock).toBe(2);
     expect(three.setEnergy).toHaveBeenLastCalledWith(sources, 0);
     expect(frame.notes).toEqual(geometry);
     expect(frame.noteCount).toBe(1);
   });
 
   it("advances energy only by its supplied delta, independently of shader time", () => {
-    const { layer, internals, frame, draw } = fixture();
+    const { layer, three, frame, draw } = fixture();
     layer.setEnergy([], 0.016);
     draw(0.032);
     expect(frame.visualTime).toBeCloseTo(10.032);
-    expect(internals.plasmaClock).toBeCloseTo(2.016);
+    expect(three.setEnergy).toHaveBeenLastCalledWith([], 0.016);
     layer.setEnergy([], 0);
     draw(0);
     expect(frame.visualTime).toBeCloseTo(10.032);
-    expect(internals.plasmaClock).toBeCloseTo(2.016);
+    expect(three.setEnergy).toHaveBeenLastCalledWith([], 0);
   });
 });
 
@@ -104,6 +97,7 @@ describe("raised native note shell wiring", () => {
       container.x = 100;
       const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
         three: { on },
+        style: on ? "3d" : "classic",
         computerKeyboard,
         keys: { container }
       }) as unknown as RoadLayer;
@@ -131,7 +125,6 @@ describe("raised native note shell wiring", () => {
       pan: 0,
       three: { on: true, drawsRoad: true },
       keys: { container: new Container() },
-      legacyKeys: new Container(),
       fog: new Container(),
       setPan: vi.fn()
     };
@@ -183,7 +176,7 @@ describe("raised native note shell wiring", () => {
 });
 
 describe("inspection key input", () => {
-  it("keeps the native computer plate full-sized and picks its individual painted keys", () => {
+  it("keeps typing keys flat while the same native road draws their notes", () => {
     const freeKeysPointAt = vi.fn();
     const pointAt = vi.fn(() => ({ x: 125, y: 45 }));
     const layout = vi.fn();
@@ -193,14 +186,13 @@ describe("inspection key input", () => {
       viewWidth: 800,
       shape: { horizon: 0.1 },
       notesPerspective: true,
-      perspective: true,
+      style: "3d",
       keyboardTop: false,
       pan: 0,
-      three: { on: true, sceneCamera: false, freeKeysPointAt },
+      three: { on: true, sceneCamera: false, freeKeysPointAt, setEnabled: vi.fn() },
       fog: new Container(),
       keys: { container: new Container(), layout, pointAt },
       keysTexture: Texture.EMPTY,
-      staff: { setKeys: vi.fn(), draw: vi.fn() },
       setPan: vi.fn()
     };
     const layer = Object.assign(
@@ -211,15 +203,15 @@ describe("inspection key input", () => {
     layer.setKeyboard(new Map([[0, { pitch: 0, black: false, x: 0, width: 800 }]]), geometry);
     const camera = (layer as unknown as { camera: typeof state.camera }).camera;
     expect(camera.params.keyboardDepth).toBeUndefined();
-    expect(camera.params.sourceUnits).toBeUndefined();
+    expect(camera.params.sourceUnits ?? 0.5).toBe(0.5);
     expect(layout).toHaveBeenCalled();
-    expect(layer.keysPointAt(200, 250)).toEqual({ x: 125, y: 45 });
-    expect(pointAt).toHaveBeenCalledWith(200, 250);
+    expect(layer.keysPointAt(200, 250)).toEqual({ x: 200, y: 250 });
+    expect(pointAt).not.toHaveBeenCalled();
     expect(freeKeysPointAt).not.toHaveBeenCalled();
     state.three.sceneCamera = true;
     freeKeysPointAt.mockReturnValue({ x: 300, y: 80 });
-    expect(layer.keysPointAt(200, 250)).toEqual({ x: 300, y: 80 + geometry.keyboardTop });
-    expect(pointAt).toHaveBeenCalledTimes(1);
+    expect(layer.keysPointAt(200, 250)).toEqual({ x: 200, y: 250 });
+    expect(freeKeysPointAt).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -229,6 +221,7 @@ describe("inspection key input", () => {
   ])("adds the keyboard top once for white and black source hits", (point) => {
     const state = {
       three: { on: true, sceneCamera: false, freeKeysPointAt: vi.fn(() => point) },
+      style: "3d",
       keyboardTopY: 400
     };
     const layer = Object.assign(
@@ -246,11 +239,9 @@ describe("inspection key input", () => {
     expect(v.internals.fog.renderable).toBe(true);
     expect(v.internals.arrivals.container.renderable).toBe(true);
     expect(v.internals.effects.renderable).toBe(true);
-    expect(v.internals.drawHorizon).toHaveBeenCalledOnce();
     expect(v.internals.sparks.draw).toHaveBeenCalledOnce();
     v.three.drawsRoad = false;
     v.draw(0.016);
-    expect(v.internals.drawHorizon).toHaveBeenCalledTimes(2);
     expect(v.internals.sparks.draw).toHaveBeenCalledTimes(2);
   });
 });

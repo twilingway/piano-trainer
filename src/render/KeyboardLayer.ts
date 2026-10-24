@@ -41,8 +41,8 @@ const FELT_EDGE = 0x00e5ff;
  * Two styles: "classic" (src/render/keys) and "arcade" (src/render/keys-arcade),
  * thicker pseudo-3D keys over a lacquered rail.
  */
-/** "perspective" and "3d" lay the keys under the road; "3d" draws them with three.js. */
-export type KeyStyle = "classic" | "arcade" | "perspective" | "3d";
+/** Keyboard appearance is independent of the notes' projection. */
+export type KeyStyle = "classic" | "arcade" | "3d";
 
 type FaceName =
   | "white"
@@ -69,7 +69,7 @@ interface StyleSet {
   readonly rail?: string;
 }
 
-const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "perspective" | "3d">, StyleSet>> = {
+const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "3d">, StyleSet>> = {
   classic: {
     faces: {
       white: new URL("./keys/white.webp", import.meta.url).href,
@@ -150,7 +150,7 @@ export class KeyboardLayer {
   private disposed = false;
   private paintGeneration = 0;
   /** The style the painted faces are of. */
-  private style: Exclude<KeyStyle, "perspective" | "3d"> = "classic";
+  private style: Exclude<KeyStyle, "3d"> = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
   private modelFaces = false;
   /** The rail under the keys, for a style that has one. */
@@ -215,7 +215,7 @@ export class KeyboardLayer {
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
     const generation = ++this.paintGeneration;
     this.modelFaces = style === "3d";
-    const paintedStyle = style === "perspective" || style === "3d" ? "classic" : style;
+    const paintedStyle = style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
       const names = Object.keys(set.faces) as FaceName[];
@@ -400,6 +400,9 @@ export class KeyboardLayer {
             light.alpha *= 0.8;
           } else {
             light.scale.set(1);
+            // Native paint uses explicit unpadded dimensions on these same sprites.
+            light.width = light.texture.width;
+            light.height = light.texture.height;
             light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
           }
         }

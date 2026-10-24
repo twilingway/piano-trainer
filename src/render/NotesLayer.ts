@@ -15,8 +15,8 @@ import type { ScorePlacement } from "../song/scorePlacement";
 import { PIANO_LOOK } from "./noteLook";
 import type { NoteLook } from "./noteLook";
 import { fitNoteLabel, noteLabelInset } from "./noteLabelLayout";
-import { GLASS_LIFT_SHARE } from "./RoadGlassLayer";
 import { noteSlabHeight } from "./noteDimensions";
+import { NOTE_WIDTH_SHARE, flatNoteMinimumHeight } from "./noteReadability";
 import type { KeyRect } from "./keyboardLayout";
 import {
   CARD_FACE_OFFSET,
@@ -47,7 +47,7 @@ const TAIL_SHARE = 0.28;
 /** On the road a note trails a glass lane this share of its key wide. */
 const TRAIL_SHARE = 0.86;
 /** Glass hold bars extend a little beyond their corresponding key. */
-const ROAD_HOLD_WIDTH_SHARE = 1.08;
+const ROAD_HOLD_WIDTH_SHARE = NOTE_WIDTH_SHARE;
 /*
  * The cards' neon, baked by Arcadia Effector (src/fx/card-neon.json): a
  * breathing, flickering tube with a halo round the card, 16 frames of 108×128
@@ -322,8 +322,8 @@ export class NotesLayer {
         state.time,
         state.lookAhead,
         hitY,
-        NOTE_GAP_PX,
-        4
+        0,
+        flatNoteMinimumHeight(key?.width ?? 0, note.duration)
       );
       if (onScreen && this.repeated.has(note.id) && bounds.top > 0) {
         const centre = key.x + key.width / 2;
@@ -409,7 +409,7 @@ export class NotesLayer {
         this.flatBlocks.draw(
           keyCentre,
           bodyBounds.top,
-          key.width * 0.84,
+          key.width * NOTE_WIDTH_SHARE,
           visibleHeight,
           body.tint,
           body.alpha,
@@ -437,13 +437,12 @@ export class NotesLayer {
 
       const lift = road?.drawsNativeRoad
         ? 2 * noteSlabHeight((key.width * ROAD_HOLD_WIDTH_SHARE) / 2, road.noteLaneY(keyCentre))
-        : key.width * ROAD_HOLD_WIDTH_SHARE * GLASS_LIFT_SHARE;
+        : 0;
       const labelSpot = !flat ? road?.notePlace(keyCentre, bounds.bottom, 0, lift) : undefined;
       const labelTopSpot = !flat ? road?.notePlace(keyCentre, bounds.top, 0, lift) : undefined;
       const labelBottom = labelSpot?.y ?? bodyBounds.bottom;
       const labelTop = labelTopSpot?.y ?? bodyBounds.top;
-      const labelWidth =
-        key.width * (flat ? 0.84 : ROAD_HOLD_WIDTH_SHARE) * (labelSpot?.scale ?? 1);
+      const labelWidth = key.width * NOTE_WIDTH_SHARE * (labelSpot?.scale ?? 1);
       const labelHeight = Math.max(0, labelBottom - labelTop);
       const inset = noteLabelInset(labelWidth, labelHeight);
       const labelX = labelSpot?.x ?? keyCentre - (road?.scenePan ?? 0);

@@ -25,7 +25,7 @@ it("shares the score area while keeping the trainer host and supplied song clock
       root.render(
         <Workspace
           staffXml="<score-partwise/>"
-          prefs={{ ...DEFAULT_STAFF_PREFS, visible: staff, keyStyle: "perspective", road: true }}
+          prefs={{ ...DEFAULT_STAFF_PREFS, visible: staff, keyStyle: "3d", road: true }}
           fixedLines={false}
           beat={2}
           liveBeat={() => 2.5}

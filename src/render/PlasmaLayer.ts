@@ -415,10 +415,12 @@ export class PlasmaLayer {
       );
       // The baked glow has a small luminous core; enlarge its transparent footprint accordingly.
       const size = Math.min(34, Math.max(12, ember.size * point.scale * 14.4));
+      // Axis squash is absolute: retained scale must not inflate local vertices on each reuse.
+      ember.sprite.scale.set(1);
       ember.sprite.width = size * 0.8;
       ember.sprite.height = size;
       ember.sprite.rotation = point.rotation;
-      ember.sprite.scale.x = Math.abs(ember.sprite.scale.x) * point.axisScale;
+      ember.sprite.scale.x = point.axisScale;
       ember.sprite.alpha = Math.min(1, point.alpha * 1.15);
     }
   }

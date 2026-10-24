@@ -9,7 +9,7 @@ import type { SongNote } from "../../song/song";
 import type { NativeContactNotes } from "./NativeKeyContacts";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
-import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
+import type { NativeKeyboardScene } from "../NativeKeyboardScene";
 import { ThreeKeysHost } from "./ThreeKeysHost";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 
@@ -143,15 +143,13 @@ function fixture() {
     remove: vi.fn((callback: () => void) => callbacks.delete(callback))
   };
   const app = { renderer, ticker, stage, canvas, render, screen: { width: 800, height: 600 } };
-  const restoreRoad = vi.fn();
   const keyboard = { frame: undefined as KeyboardLayer["frame"] };
   const host = new ThreeKeysHost(
     app as unknown as Application,
     road,
-    keys as unknown as PerspectiveKeyboardLayer,
+    keys as unknown as NativeKeyboardScene,
     keyboard as KeyboardLayer,
-    hands as unknown as HandsLayer,
-    restoreRoad
+    hands as unknown as HandsLayer
   );
   return {
     canvas,
@@ -166,7 +164,6 @@ function fixture() {
     render,
     ticker,
     host,
-    restoreRoad,
     tick: () => {
       [...callbacks].forEach((callback) => {
         callback();
@@ -243,7 +240,39 @@ describe("shared WebGL keyboard recovery", () => {
     view.tick();
     expect(mocks.draw.mock.calls[0]?.[8]).toBe(frame);
     view.keys.container.visible = false;
+    expect(view.host.drawsRoad).toBe(true);
+    view.road.visible = false;
     expect(view.host.drawsRoad).toBe(false);
+    view.host.destroy();
+  });
+
+  it("draws the shared road with flat keys and hidden keyboard metadata", async () => {
+    const view = fixture();
+    const frame = new ThreeRoadFrame();
+    view.host.setRoadFrame(frame);
+    view.keys.container.visible = false;
+    await view.host.setEnabled(false, true);
+    view.tick();
+    expect(view.host.on).toBe(false);
+    expect(view.host.drawsRoad).toBe(true);
+    expect(mocks.draw.mock.lastCall?.[8]).toBe(frame);
+    expect(mocks.draw.mock.lastCall?.[12]).toBe(false);
+    expect(view.hands.live).toBe(false);
+    expect(view.overlay.parent).toBe(view.stage);
+    view.host.destroy();
+    expect(view.callbacks.has(view.render)).toBe(true);
+  });
+
+  it("keeps native keys when notes are hidden and omits the stale road snapshot", async () => {
+    const view = fixture();
+    view.host.setRoadFrame(new ThreeRoadFrame());
+    await view.host.setEnabled(true);
+    view.road.visible = false;
+    view.tick();
+    expect(view.host.on).toBe(true);
+    expect(view.host.drawsRoad).toBe(false);
+    expect(mocks.draw.mock.lastCall?.[8]).toBeUndefined();
+    expect(mocks.draw.mock.lastCall?.[12]).toBe(true);
     view.host.destroy();
   });
 
@@ -363,10 +392,6 @@ describe("shared WebGL keyboard recovery", () => {
         view.tick();
       }).not.toThrow();
       expect(view.host.on).toBe(false);
-      expect(view.restoreRoad).toHaveBeenCalledOnce();
-      expect(view.restoreRoad.mock.invocationCallOrder[0]).toBeLessThan(
-        view.renderer.render.mock.invocationCallOrder.at(-1) ?? 0
-      );
       expect(view.keys.container.renderable).toBe(true);
       expect(view.stage.children).toEqual([view.road, view.overlay]);
       expect(view.hands.live).toBe(false);

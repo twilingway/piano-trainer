@@ -253,3 +253,45 @@ it("applies camera edits and clears top atomically while retaining layout and ro
   app.store.dispatch(actions.staffChanged({ keyboardOrientation: "top" }));
   expect(activeViewFraming(app.prefs().viewProfiles)).toEqual(before);
 });
+
+it("hydrates the initial top camera without writing over existing preferences", () => {
+  const app = harness({ [PREFERENCE_KEYS.staff]: { hands: true, labels: true } });
+  expect(app.prefs().staff).toMatchObject({
+    keyStyle: "3d",
+    keyboardOrientation: "follow",
+    camera: CAMERA_PRESETS.top,
+    hands: true,
+    labels: true
+  });
+  expect(app.prefs().viewProfiles.legacySeed.camera).toEqual(CAMERA_PRESETS.top);
+  expect(app.storage.setItem).not.toHaveBeenCalled();
+});
+
+it("keeps migrated v1 framing through a persisted edit and reload", () => {
+  const camera = { ...CAMERA_PRESETS.hands, scale: 1.2 };
+  const entry = { ...DEFAULT_VIEW_FRAMING, camera };
+  const app = harness({
+    [PREFERENCE_KEYS.staff]: { keyStyle: "perspective", hands: true },
+    [PREFERENCE_KEYS.viewProfiles]: {
+      version: 1,
+      active: {
+        keyboardStyle: "perspective",
+        notesProjection: "perspective",
+        keyboardOrientation: "follow"
+      },
+      legacySeed: DEFAULT_VIEW_FRAMING,
+      entries: { "perspective:perspective:follow": entry }
+    }
+  });
+  expect(app.prefs().staff).toMatchObject({ keyStyle: "3d", road: true, camera, hands: true });
+  app.store.dispatch(actions.staffChanged({ roadGuides: true }));
+  const reloaded = loadPreferences(app.storage).preferences;
+  expect(reloaded.staff).toMatchObject({
+    keyStyle: "3d",
+    road: true,
+    camera,
+    hands: true,
+    roadGuides: true
+  });
+  expect(reloaded.viewProfiles.entries["perspective:perspective:follow"]).toEqual(entry);
+});

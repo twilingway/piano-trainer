@@ -7,6 +7,7 @@ import { KeyboardLayer } from "./KeyboardLayer";
 import type { KeysFrame } from "./KeyboardLayer";
 import type { KeyRect } from "./keyboardLayout";
 import type { Geometry } from "./viewGeometry";
+import { KEY_LIGHT_PAD, keyShape } from "./keyLightShapes";
 
 const keys: ReadonlyMap<number, KeyRect> = new Map([
   [60, { pitch: 60, black: false, x: 0, width: 40 }],
@@ -112,6 +113,71 @@ describe("keyboard finger labels", () => {
     run.layer.draw(run.frame, keys, geometry(180), true);
     expect([...run.digits.values()].every((digit) => digit.visible)).toBe(true);
   });
+});
+
+describe("flat key light geometry after leaving 3D", () => {
+  it.each(["classic", "arcade"] as const)(
+    "restores padded masks on white and black %s keys through resize",
+    (style) => {
+      const run = harness(true);
+      const lights = new Map([...keys.keys()].map((pitch) => [pitch, new Sprite()]));
+      const textures = new Map<number, Texture>();
+      Object.assign(run.layer, { keyFronts: lights, lightOf: textures, style });
+      // Native painting explicitly sizes the same sprites to the unpadded key rectangles.
+      run.layer.draw(run.frame, keys, geometry(180), false);
+      expect(lights.get(60)?.width).toBe(40);
+      Object.assign(run.layer, { modelFaces: false });
+      for (const height of [180, 110, 320]) {
+        const size = geometry(height);
+        for (const pitch of keys.keys()) {
+          const shape = keyShape(pitch, keys, size.keyboardHeight - 2, size.blackHeight);
+          if (!shape) throw new Error("Expected light shape");
+          textures.set(
+            pitch,
+            new Texture({
+              source: new TextureSource({
+                width: shape.width + KEY_LIGHT_PAD * 2,
+                height: shape.height + KEY_LIGHT_PAD * 2
+              })
+            })
+          );
+        }
+        for (const pressed of [false, true]) {
+          run.layer.draw(
+            { ...run.frame, pressed: pressed ? run.frame.pressed : new Set(), due: notes },
+            keys,
+            size,
+            false
+          );
+          for (const key of keys.values()) {
+            const light = lights.get(key.pitch);
+            const mask = textures.get(key.pitch);
+            const digit = run.digits.get(key.pitch);
+            if (!light || !mask || !digit) throw new Error("Expected key feedback");
+            expect(light.visible).toBe(true);
+            expect(light.width).toBe(mask.width);
+            expect(light.height).toBe(mask.height);
+            // Baked padding and both notch shoulders map back to unchanged key-face coordinates.
+            const xAt = (textureX: number) => light.x + (textureX * light.width) / mask.width;
+            const yAt = (textureY: number) => light.y + (textureY * light.height) / mask.height;
+            expect(xAt(KEY_LIGHT_PAD)).toBeCloseTo(key.x);
+            expect(xAt(KEY_LIGHT_PAD + key.width)).toBeCloseTo(key.x + key.width);
+            expect(yAt(KEY_LIGHT_PAD)).toBeCloseTo(size.keyboardTop);
+            expect(yAt(KEY_LIGHT_PAD + size.blackHeight)).toBeCloseTo(
+              size.keyboardTop + size.blackHeight
+            );
+            expect(digit.x).toBe(key.x + key.width / 2);
+            expect(digit.y - digit.height).toBeGreaterThanOrEqual(
+              size.keyboardTop + (key.black ? 0 : size.blackHeight)
+            );
+            expect(digit.y).toBeLessThan(
+              size.keyboardTop + (key.black ? size.blackHeight : size.keyboardHeight)
+            );
+          }
+        }
+      }
+    }
+  );
 });
 
 it("frees owned keyboard paint once while preserving shared asset faces and digits", () => {

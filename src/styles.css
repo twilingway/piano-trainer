@@ -299,6 +299,7 @@
   font-size: calc(13px * var(--tabs-zoom));
 }
 .piano-tabs__note[data-current="true"] {
+  color: var(--tabs-played-notes);
   text-shadow: 0 0 8px currentColor;
 }
 .piano-tabs__sustain {
@@ -4305,4 +4306,131 @@ button.song-card.song-card__open {
   font-weight: 700;
   text-align: center;
   pointer-events: none;
+}
+
+/* Settings sections share visible boundaries on desktop and narrow screens. */
+.settings-content .settings-group {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.settings-content .settings-group + .settings-group {
+  margin-top: 18px;
+}
+.settings-content .settings-group .settings-group {
+  padding: 12px;
+  background: transparent;
+}
+.settings-content .settings-group__title {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.settings-content .settings-list > .settings-group:last-child {
+  margin-bottom: 0;
+}
+.settings-help__guide {
+  display: grid;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.settings-help__guide li {
+  min-width: 0;
+}
+.settings-help__guide p,
+.settings-help__faq p {
+  margin: 8px 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.settings-help__faq {
+  display: grid;
+  gap: 14px;
+}
+.settings-help__faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.5;
+}
+@media (max-width: 480px) {
+  .settings-content .settings-group {
+    padding: 12px;
+  }
+  .settings-content .settings-group .settings-group {
+    padding: 10px;
+  }
+  .settings-help__guide .game-button {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+.settings-help__targets {
+  margin-top: 12px;
+}
+.settings-content [data-setting-highlight="true"] {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.settings-content :is(input, select, button, summary):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.instrument-chooser__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+.instrument-chooser__trigger > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.instrument-chooser__list {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px #0008;
+}
+.instrument-chooser__group {
+  padding: 8px 10px 4px;
+  font-weight: 700;
+}
+.instrument-chooser__option {
+  padding: 7px 10px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.instrument-chooser__option.is-active {
+  background: var(--accent);
+  color: #101722;
+}
+.instrument-chooser__option[aria-selected="true"] {
+  font-weight: 700;
+}
+.instrument-chooser__option[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Flex-column groups already have a gap; avoid adding block margins twice. */
+.settings-content .settings-list > .settings-group,
+.settings-content .settings-list > .settings-group + .settings-group {
+  margin: 0;
 }

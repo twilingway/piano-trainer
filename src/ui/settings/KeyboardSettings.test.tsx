@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setInterfaceLanguage } from "../../app/interfaceLanguage";
-import { DEFAULT_CAMERA } from "../../render/worldCamera";
+import { CAMERA_PRESETS, DEFAULT_CAMERA } from "../../render/worldCamera";
 import { KeyboardSettings } from "./KeyboardSettings";
 
 let host: HTMLDivElement;
@@ -33,8 +33,7 @@ const base: ComponentProps<typeof KeyboardSettings> = {
   road: { far: 0.3, horizon: 0.3 },
   onRoad: noop,
   camera: DEFAULT_CAMERA,
-  onCamera: noop,
-  toggles: null
+  onCamera: noop
 };
 
 function pianistBox(): HTMLInputElement | undefined {
@@ -83,7 +82,7 @@ describe("KeyboardSettings: the local pianist", () => {
   it("has no pianist choice outside the 3D keys", () => {
     act(() => {
       root.render(
-        <KeyboardSettings {...base} keyStyle="perspective" pianist={true} onPianist={noop} />
+        <KeyboardSettings {...base} keyStyle="classic" pianist={true} onPianist={noop} />
       );
     });
     expect(pianistBox()).toBeUndefined();
@@ -151,16 +150,13 @@ describe("flat keyboard effects", () => {
     }
   );
 
-  it.each(["perspective", "3d"] as const)(
-    "does not offer flat effect settings in %s",
-    (keyStyle) => {
-      act(() => {
-        root.render(<KeyboardSettings {...base} keyStyle={keyStyle} />);
-      });
-      expect(host.textContent).not.toContain("Горение нот");
-      expect(host.textContent).not.toContain("Эффекты нажатия");
-    }
-  );
+  it.each(["3d"] as const)("does not offer flat effect settings in %s", (keyStyle) => {
+    act(() => {
+      root.render(<KeyboardSettings {...base} keyStyle={keyStyle} />);
+    });
+    expect(host.textContent).not.toContain("Горение нот");
+    expect(host.textContent).not.toContain("Эффекты нажатия");
+  });
 
   it("translates both controls into English", () => {
     setInterfaceLanguage("en");
@@ -170,4 +166,42 @@ describe("flat keyboard effects", () => {
     expect(host.textContent).toContain("Note flames");
     expect(host.textContent).toContain("Key press effects");
   });
+});
+
+it.each(["ru", "en"] as const)(
+  "offers exactly three keyboard styles in %s with independent note projection",
+  (language) => {
+    setInterfaceLanguage(language);
+    act(() => {
+      root.render(<KeyboardSettings {...base} />);
+    });
+    const selects = host.querySelectorAll("select");
+    const style = selects[1];
+    const projection = selects[2];
+    if (!style || !projection) throw new Error("Expected style and projection selects");
+    expect(Array.from(style.options, (option) => option.value)).toEqual([
+      "classic",
+      "arcade",
+      "3d"
+    ]);
+    expect(style.options[2]?.textContent).toBe("3D");
+    expect(Array.from(projection.options, (option) => option.value)).toEqual([
+      "direct",
+      "perspective"
+    ]);
+  }
+);
+
+it("resets the camera to the initial full top preset", () => {
+  const onCamera = vi.fn();
+  act(() => {
+    root.render(<KeyboardSettings {...base} onCamera={onCamera} />);
+  });
+  const reset = [...host.querySelectorAll("button")].find(
+    (button) => button.textContent === "Сбросить камеру"
+  );
+  act(() => {
+    reset?.click();
+  });
+  expect(onCamera).toHaveBeenCalledExactlyOnceWith(CAMERA_PRESETS.top);
 });

@@ -64,7 +64,9 @@ describe("staff colour priorities", () => {
     } as unknown as OpenSheetMusicDisplay;
     paintMarks(new Map([["0:60", [group, path]]]), new Map([["0:60", "#69d88b"]]));
     const painted = highlightUnderCursor(osmd, []);
-    expect(path.style.fill).toBe("#e63946");
+    expect(path.style.fill).toBe("#00df50");
+    highlightUnderCursor(osmd, painted, "#aa55ff");
+    expect(path.style.fill).toBe("#aa55ff");
     osmd.cursor.GNotesUnderCursor = () => [];
     highlightUnderCursor(osmd, painted);
     expect(path.style.fill).toBe("#69d88b");

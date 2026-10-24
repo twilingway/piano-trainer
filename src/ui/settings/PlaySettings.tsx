@@ -50,6 +50,7 @@ export function PlaySettings({
         <select
           className="game-select"
           aria-label={t("Режим")}
+          data-setting-target="play-mode"
           value={mode}
           onChange={(event) => {
             onMode(event.target.value as PracticeMode);

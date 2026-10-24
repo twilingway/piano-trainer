@@ -81,11 +81,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const staffShown = Boolean(props.staffXml) && prefs.visible;
   const dualScore = Boolean(props.scoreBoard) && staffShown;
   const overlay =
-    !dualScore &&
-    (prefs.keyStyle === "perspective" || prefs.keyStyle === "3d") &&
-    prefs.road &&
-    prefs.lane &&
-    !props.comparing;
+    !dualScore && prefs.keyStyle === "3d" && prefs.road && prefs.lane && !props.comparing;
   const share = props.layout.staffShare ?? DEFAULT_STAFF_SHARE;
   // Two staves in a column share what one would take.
   const staffShare =
@@ -105,6 +101,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           beat={props.readingBeat ?? props.beat}
           zoom={prefs.zoom}
           noteColor={prefs.noteColor}
+          playedNoteColor={prefs.playedNoteColor}
           scoreColor={prefs.scoreColor}
           singleLine={prefs.singleLine}
           follow={prefs.follow}
@@ -129,6 +126,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             beat={props.beat}
             zoom={prefs.zoom}
             noteColor={prefs.noteColor}
+            playedNoteColor={prefs.playedNoteColor}
             scoreColor={prefs.scoreColor}
             singleLine={prefs.singleLine}
             follow={prefs.follow}

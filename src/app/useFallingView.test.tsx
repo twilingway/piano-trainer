@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Trainer } from "../practice/Trainer";
 import type { FallingNotesView } from "../render/FallingNotesView";
+import { CAMERA_PRESETS } from "../render/worldCamera";
 import { USUAL_PLACEMENT } from "../render/viewGeometry";
 import type { Song } from "../song/song";
 import { DEFAULT_STAFF_PREFS, type StaffPrefs } from "./staffPreferences";
@@ -172,4 +173,15 @@ it("changes flat effect preferences without reconfiguring the camera or playback
   expect(trainer.load).not.toHaveBeenCalled();
   expect(trainer.seek).not.toHaveBeenCalled();
   expect(trainer.setPlaying).not.toHaveBeenCalled();
+});
+
+it("applies the full initial top camera with follow orientation and hidden hands", async () => {
+  await act(async () => {
+    root.render(<Harness prefs={DEFAULT_STAFF_PREFS} />);
+    await Promise.resolve();
+  });
+  expect(view.setCamera).toHaveBeenCalledWith(CAMERA_PRESETS.top);
+  expect(view.setKeyboardTop).toHaveBeenCalledWith(false);
+  expect(view.setKeyStyle).toHaveBeenCalledWith("3d");
+  expect(view.setParts).toHaveBeenCalledWith({ notes: true, keys: true, hands: false });
 });
