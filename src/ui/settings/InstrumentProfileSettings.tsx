@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../app/useI18n";
 import type { PianoInstrument, PianoProfile } from "../../input/instrumentProfiles";
-import example from "../../../public/examples/piano-instruments.json";
+import example from "../../input/pianoInstrumentsExample.json";
 
 export interface InstrumentProfileControls {
   readonly profiles: readonly PianoProfile[];

@@ -7,6 +7,7 @@ import { withTestStore } from "./storeTestSupport";
 import { setInterfaceLanguage } from "./interfaceLanguage";
 import { useInstrumentProfiles } from "./useInstrumentProfiles";
 import example from "../../public/examples/piano-instruments.json";
+import inlineExample from "../input/pianoInstrumentsExample.json";
 import { parsePianoProfile } from "../input/instrumentProfiles";
 
 let root: Root;
@@ -42,6 +43,7 @@ afterEach(() => {
 });
 
 it("imports the shipped example as a separate profile and persists its name and selection", async () => {
+  expect(inlineExample).toEqual(example);
   expect(parsePianoProfile(JSON.stringify(example)).ok).toBe(true);
   expect(controls.profile?.name).toBe("Grace BP-300");
   await act(async () => controls.onImport(file(JSON.stringify(example))));

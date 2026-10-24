@@ -67,8 +67,8 @@ Change принимает только 0–127.
 
 ## Проверка реализации 24 октября 2026
 
-- `pnpm check`: 3227 тестов прошли, 10 пропущены; 23 проверки React Compiler и production build
-  прошли. `pnpm spec:validate`: 68 объектов прошли.
+- `pnpm check`: 3281 тест прошёл, 10 пропущены; 23 проверки React Compiler и production build
+  прошли. `pnpm spec:validate`: 69 объектов прошли.
 - Независимое review проверило parser, сохранение, Auto, конфликты каналов и lifecycle preview.
   Preview отпускается синхронно перед запуском аудио урока; переименование не отправляет Program
   Change повторно. Таймеры и MIDI-эхо покрыты тестами.
