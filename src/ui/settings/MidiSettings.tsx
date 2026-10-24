@@ -8,6 +8,8 @@ import type { MidiDevice } from "../../input/midiInput";
 import type { KeyLightSettings } from "../../input/keyLights";
 import type { OutputChoice } from "../../input/midiOutput";
 import type { MelodyOutputSettings } from "../../input/melodyOutput";
+import { AUTO_OUTPUT_ID } from "../../input/midiOutput";
+import type { MidiInstrumentPreviewControls } from "../../app/useMidiInstruments";
 
 /** The player's keyboard and capturing it from their lowest and highest keys. */
 export interface DeviceRangeControls {
@@ -33,6 +35,8 @@ export interface MidiOutputControls {
   readonly onLights: (settings: KeyLightSettings) => void;
   readonly melody: MelodyOutputSettings;
   readonly onMelody: (settings: MelodyOutputSettings) => void;
+  readonly resolvedName?: string | undefined;
+  readonly preview?: MidiInstrumentPreviewControls | undefined;
 }
 
 const LIGHT_CHANNELS = Array.from({ length: 16 }, (_, index) => index + 1);
@@ -170,19 +174,29 @@ export function MidiSettings({
                 output.onSelect(event.target.value);
               }}
             >
+              <option value={AUTO_OUTPUT_ID}>
+                {output.selectedId === AUTO_OUTPUT_ID && output.resolvedName
+                  ? t("Автоматически: {name}", { name: output.resolvedName })
+                  : t("Автоматически")}
+              </option>
               <option value="">{t("Нет")}</option>
               {output.devices.map((device) => (
                 <option key={device.id} value={device.id}>
                   {device.name}
                 </option>
               ))}
-              {output.choice && !output.connected && (
+              {output.choice && output.choice.id !== AUTO_OUTPUT_ID && !output.connected && (
                 <option value={output.choice.id}>
                   {t("{name} — нет связи", { name: output.choice.name })}
                 </option>
               )}
             </select>
           </label>
+          {output.selectedId === AUTO_OUTPUT_ID && !output.connected && (
+            <p className="setting-hint">
+              {t("Для автоматического выбора подключите одно пианино или выберите выход вручную.")}
+            </p>
+          )}
           <div className="setting">
             <span className="setting-hint">{t("Подсветит C4 на секунду.")}</span>
             <button

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "name": "Example Piano",
+  "midiOutputName": "Piano MIDI Device",
+  "instruments": [
+    { "id": "piano", "name": "Grand Piano", "group": "Piano", "program": 0 },
+    { "id": "pan-flute", "name": "Pan Flute", "group": "Pipe", "program": 75 },
+    {
+      "id": "additional-voice",
+      "name": "Additional voice",
+      "panelNumber": 176,
+      "program": null
+    }
+  ]
+}

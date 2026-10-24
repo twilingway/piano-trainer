@@ -44,6 +44,7 @@ const SNAPSHOT_INTERVAL_MS = 150;
  */
 export class Trainer {
   onSnapshot: ((snapshot: TrainerSnapshot) => void) | undefined;
+  onBeforePlay: (() => void) | undefined;
   /** A take has ended: the song finished, or the run was restarted, moved or reloaded. */
   onTake: ((take: Take) => void) | undefined;
   /** Natural end only, emitted before a loop restarts or a take is delivered. */
@@ -228,6 +229,7 @@ export class Trainer {
       this.graphicsAvailable &&
       this.canStart &&
       (session?.finished !== true || course?.playsAfterFinish === true);
+    if (this.playing && !wasPlaying) this.onBeforePlay?.();
     if (this.playing && !wasPlaying && !this.recorder) this.timing = this.nextTiming;
     if (session)
       session.setInputGrace(

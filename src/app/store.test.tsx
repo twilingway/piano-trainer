@@ -21,17 +21,17 @@ afterEach(() => {
 });
 
 describe("application preferences", () => {
-  it("defaults melody playback to the browser and saves its route and channel", () => {
+  it("defaults melody playback to both devices and preserves an explicit browser route", () => {
     const store = createAppStore();
-    expect(store.getState().preferences.melodyOutput).toEqual({ mode: "browser", channel: 1 });
-    store.dispatch(preferencesActions.melodyOutputChanged({ mode: "both", channel: 8 }));
+    expect(store.getState().preferences.melodyOutput).toEqual({ mode: "both", channel: 1 });
+    store.dispatch(preferencesActions.melodyOutputChanged({ mode: "browser", channel: 8 }));
     expect(createAppStore().getState().preferences.melodyOutput).toEqual({
-      mode: "both",
+      mode: "browser",
       channel: 8
     });
     localStorage.setItem("melody-output-v1", JSON.stringify({ mode: "other", channel: 18 }));
     expect(createAppStore().getState().preferences.melodyOutput).toEqual({
-      mode: "browser",
+      mode: "both",
       channel: 1
     });
   });
@@ -152,7 +152,7 @@ describe("application preferences", () => {
     expect(state.preferences.staff).toMatchObject({
       keys: true,
       zoom: 1,
-      keyStyle: "arcade",
+      keyStyle: "3d",
       camera: { fov: 43 }
     });
     expect(state.preferences.player).toMatchObject({

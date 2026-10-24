@@ -3,6 +3,7 @@ import type { FallingNotesView } from "../render/FallingNotesView";
 import type { Song } from "../song/song";
 import type { Take } from "../recording/take";
 import { Trainer, type TrainerSnapshot } from "./Trainer";
+import type { SessionAudio } from "../audio/sessionAudio";
 
 vi.mock("../audio/pianoSound", () => ({ soundAllOff: vi.fn() }));
 vi.mock("../audio/sessionAudio", () => ({
@@ -66,6 +67,22 @@ function harness(song = SONG) {
 function down(trainer: Trainer, timestamp: number, pitch = 60, deviceId = "piano") {
   trainer.key({ type: "down", pitch, velocity: 90, timestamp, source: "midi", deviceId });
 }
+
+it("stops an instrument preview synchronously before starting song audio", () => {
+  const run = harness();
+  const order: string[] = [];
+  run.trainer.onBeforePlay = () => order.push("preview-note-off");
+  // Observe the actual Trainer instance's audio shell without replacing playback control.
+  const audio = (run.trainer as unknown as { audio: SessionAudio }).audio;
+  vi.spyOn(audio, "start").mockImplementation(() => {
+    order.push("song-note-on");
+  });
+  run.trainer.setPlaying(true);
+  expect(order).toEqual(["preview-note-off", "song-note-on"]);
+  run.trainer.setPlaying(true);
+  expect(order).toEqual(["preview-note-off", "song-note-on"]);
+  run.trainer.destroy();
+});
 describe("Trainer seek playback intent", () => {
   it("pauses on graphics loss, rejects hidden starts, and restores without auto-resume", () => {
     const run = harness();

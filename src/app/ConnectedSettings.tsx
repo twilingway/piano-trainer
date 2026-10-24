@@ -10,6 +10,7 @@ import { WordTypingSettings } from "../ui/WordTypingSettings";
 import { ComputerKeyboardSettings } from "../ui/settings/ComputerKeyboardSettings";
 import { KeyboardSettings } from "../ui/settings/KeyboardSettings";
 import { MidiSettings } from "../ui/settings/MidiSettings";
+import { ConnectedInstrumentProfileSettings } from "./ConnectedInstrumentProfileSettings";
 import { PlaySettings } from "../ui/settings/PlaySettings";
 import { PlayerSettings } from "../ui/settings/PlayerSettings";
 import { SettingsView } from "../ui/settings/SettingsView";
@@ -359,7 +360,8 @@ function ConnectedMidiSettings() {
       hasOutput: runtime.input.settings.output !== undefined,
       outputDevices: runtime.input.settings.output?.devices ?? NO_DEVICES,
       connected: runtime.input.settings.output?.connected ?? false,
-      selectedId: runtime.input.settings.output?.selectedId ?? ""
+      selectedId: runtime.input.settings.output?.selectedId ?? "",
+      resolvedName: runtime.input.settings.output?.resolvedName
     }),
     shallowEqual
   );
@@ -378,30 +380,34 @@ function ConnectedMidiSettings() {
     (runtime) => (next: typeof melody) => runtime.input.settings.output?.onMelody(next)
   );
   return (
-    <MidiSettings
-      devices={state.devices}
-      deviceId={state.deviceId}
-      midiError={state.midiError}
-      locked={state.locked}
-      onDevice={onDevice}
-      keyboard={{ range, capture: state.capture, onRange, onCapture, onCancelCapture }}
-      output={
-        state.hasOutput
-          ? {
-              devices: state.outputDevices,
-              choice,
-              connected: state.connected,
-              selectedId: state.selectedId,
-              lights,
-              melody,
-              onSelect,
-              onTest,
-              onLights,
-              onMelody
-            }
-          : undefined
-      }
-    />
+    <>
+      <MidiSettings
+        devices={state.devices}
+        deviceId={state.deviceId}
+        midiError={state.midiError}
+        locked={state.locked}
+        onDevice={onDevice}
+        keyboard={{ range, capture: state.capture, onRange, onCapture, onCancelCapture }}
+        output={
+          state.hasOutput
+            ? {
+                devices: state.outputDevices,
+                choice,
+                connected: state.connected,
+                selectedId: state.selectedId,
+                resolvedName: state.resolvedName,
+                lights,
+                melody,
+                onSelect,
+                onTest,
+                onLights,
+                onMelody
+              }
+            : undefined
+        }
+      />
+      <ConnectedInstrumentProfileSettings />
+    </>
   );
 }
 function ConnectedSynchronizationSettings() {
