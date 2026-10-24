@@ -163,7 +163,10 @@ describe("automatic melody through the selected output", () => {
         })
       );
     });
-    expect(piano.send).toHaveBeenCalledExactlyOnceWith([0xc0, 75], undefined);
+    expect(piano.send.mock.calls).toEqual([
+      [[0xb0, 0, 0], undefined],
+      [[0xc0, 75], undefined]
+    ]);
     expect(trainer.setMelodyOutput).toHaveBeenCalledTimes(routingCalls);
     act(() => latest?.preview?.onPlay());
     expect(latest?.preview?.playing).toBe(true);
