@@ -443,7 +443,7 @@ export class FallingNotesView {
       this.keys,
       geometry,
       this.road,
-      this.roadMode && this.parts.keys && !this.computer && effects.burning,
+      (this.roadMode || !this.parts.notes) && this.parts.keys && !this.computer && effects.burning,
       this.app.ticker.deltaMS / 1000
     );
     this.notesLayer.draw(noteState, this.keys, geometry, road);

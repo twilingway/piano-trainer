@@ -747,3 +747,35 @@ it.each(["classic", "arcade", "3d"] as const)(
     expect(frame.pressed.size).toBe(2);
   }
 );
+
+it.each(["classic", "arcade", "3d"] as const)(
+  "keeps existing burning independent of hidden notes in %s",
+  (keyStyle) => {
+    const test = viewHarness(false, notes, keyStyle === "3d");
+    Object.assign(test.view, { keyStyle, parts: { keys: true, notes: false, hands: false } });
+    const inside = test.view as unknown as {
+      parts: { keys: boolean; notes: boolean; hands: boolean };
+      plasma: { draw: ReturnType<typeof vi.fn> };
+    };
+    const frame: FrameState = {
+      time: 0.1,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set([48]),
+      sounding: new Set([48]),
+      due: [],
+      hands: new Set(),
+      owns: () => true
+    };
+    test.view.draw(frame);
+    expect(inside.plasma.draw.mock.lastCall?.[5]).toBe(true);
+    expect(test.layer.playing.has(48)).toBe(true);
+    test.view.flatEffects.set(false, true);
+    test.view.draw(frame);
+    expect(inside.plasma.draw.mock.lastCall?.[5]).toBe(keyStyle === "3d");
+    inside.parts.keys = false;
+    test.view.draw(frame);
+    expect(inside.plasma.draw.mock.lastCall?.[5]).toBe(false);
+    expect(frame.time).toBe(0.1);
+  }
+);
