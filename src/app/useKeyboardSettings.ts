@@ -13,6 +13,7 @@ export function useKeyboardSettings(
   staffPrefs: StaffPrefs,
   updateStaffPrefs: (change: Partial<StaffPrefs>) => void
 ): ComponentProps<typeof KeyboardSettings> & {
+  onNoteProjection: NonNullable<ComponentProps<typeof KeyboardSettings>["onNoteProjection"]>;
   fps: boolean;
   onFps: (show: boolean) => void;
   onPianist: (on: boolean) => void;
@@ -34,6 +35,10 @@ export function useKeyboardSettings(
       updateStaffPrefs({ keyStyle });
     },
     fallingNoteStyle: staffPrefs.fallingNoteStyle,
+    noteProjection: staffPrefs.noteProjection,
+    onNoteProjection: (noteProjection) => {
+      updateStaffPrefs({ noteProjection });
+    },
     onFallingNoteStyle: (fallingNoteStyle) => {
       updateStaffPrefs({ fallingNoteStyle });
     },

@@ -1,4 +1,4 @@
-import type { FallingNoteStyle } from "./fallingNoteStyle";
+import { ViewNoteSettings } from "./ViewNoteSettings";
 import { HandStatusSignal, type HandModelStatus } from "./handStatusSignal";
 import { Application, Container, Texture, type FederatedPointerEvent } from "./flatThree";
 
@@ -64,7 +64,7 @@ export class FallingNotesView {
   private computer: ComputerKeys<Texture> | undefined;
   private road: RoadLayer | undefined;
   private roadMode = false;
-  private fallingNoteStyle: FallingNoteStyle = "filled";
+  private readonly noteSettings = new ViewNoteSettings(() => this.road);
   /** Whole hands over the keys; the app sets their look directly. */
   readonly hands = new HandsLayer();
   readonly flatEffects = new FlatEffectSettings();
@@ -172,7 +172,7 @@ export class FallingNotesView {
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
     this.road.setSceneEffects([this.plasma.container, this.road.effects, this.fx.container]);
     this.road.setCamera(this.cameraPrefs);
-    this.road.setFallingNoteStyle(this.fallingNoteStyle);
+    this.noteSettings.apply();
     this.sceneCamera.apply();
     this.road.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
@@ -317,10 +317,8 @@ export class FallingNotesView {
     this.road?.setRoadGuides(on);
   }
 
-  setFallingNoteStyle(style: FallingNoteStyle): void {
-    this.fallingNoteStyle = style;
-    this.road?.setFallingNoteStyle(style);
-  }
+  setNoteProjection = this.noteSettings.setProjection;
+  setFallingNoteStyle = this.noteSettings.setStyle;
 
   setFreeRoadLayout = this.sceneCamera.setRoadLayout;
 

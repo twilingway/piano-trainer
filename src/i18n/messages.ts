@@ -1,4 +1,5 @@
 import { settingsHelpMessages } from "./settingsHelpMessages";
+import { projectionMessages } from "./projectionMessages";
 import { performanceMessages } from "./performanceMessages";
 import { instrumentMessages } from "./instrumentMessages";
 import { graphicsMessages } from "./graphicsMessages";
@@ -22,6 +23,7 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...projectionMessages,
   ...settingsHelpMessages,
   ...instrumentMessages,
   ...graphicsMessages,

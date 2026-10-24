@@ -48,6 +48,38 @@ afterEach(async () => {
 });
 
 describe("key sticker preference", () => {
+  it("restores versioned projection parameters without changing the keyboard or old road", async () => {
+    localStorage.setItem(
+      "staff-prefs",
+      JSON.stringify({
+        keyStyle: "3d",
+        roadFar: 0.4,
+        noteProjection: {
+          version: 1,
+          mode: "stylizedProjection",
+          horizonRadius: 3.25,
+          debugMapping: true
+        }
+      })
+    );
+    await mount();
+    expect(prefs.staffPrefs.noteProjection).toEqual(
+      expect.objectContaining({
+        version: 1,
+        mode: "stylizedProjection",
+        horizonRadius: 3.25,
+        debugMapping: true
+      })
+    );
+    expect(prefs.staffPrefs.keyStyle).toBe("3d");
+    expect(prefs.staffPrefs.roadFar).toBe(0.4);
+    expect(
+      normalizeStaffPrefs({ noteProjection: { horizonRadius: Number.NaN } }).noteProjection
+        .horizonRadius
+    ).toBe(2);
+    expect(normalizeStaffPrefs({}).noteProjection.mode).toBe("legacy");
+  });
+
   it.each([false, true])("starts without stickers when mobile is %s", async (mobile) => {
     vi.spyOn(window, "matchMedia").mockReturnValue({ matches: mobile } as MediaQueryList);
     await mount();

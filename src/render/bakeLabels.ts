@@ -11,6 +11,10 @@ const FALLING_NAMES: Readonly<Record<FallingNoteNames, readonly string[]>> = {
   en: ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
 };
 
+export function fallingNoteName(style: FallingNoteNames, pitch: number): string {
+  return FALLING_NAMES[style][((pitch % 12) + 12) % 12] ?? "";
+}
+
 /** The key a note name is baked under: its style and the pitch's class. */
 export function nameKey(style: FallingNoteNames, pitch: number): string {
   return `${style}:${String(pitch % 12)}`;
