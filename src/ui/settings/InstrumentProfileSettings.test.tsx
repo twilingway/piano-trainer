@@ -8,7 +8,7 @@ import {
   type InstrumentPreviewControls,
   type InstrumentProfileControls
 } from "./InstrumentProfileSettings";
-import type { PianoProfile } from "../../input/instrumentProfiles";
+import { GRACE_BP300, type PianoProfile } from "../../input/instrumentProfiles";
 
 const profile: PianoProfile = {
   id: "piano",
@@ -80,6 +80,25 @@ it("shows the named grouped catalog and leaves unknown MIDI mappings visible but
     instruments.dispatchEvent(new Event("change", { bubbles: true }));
   });
   expect(controls.onInstrument).toHaveBeenCalledWith("pan");
+});
+
+it("enables all 238 captured Grace voices including Hu Ensemble", () => {
+  controls = {
+    ...controls,
+    profiles: [GRACE_BP300],
+    profile: GRACE_BP300,
+    profileId: GRACE_BP300.id
+  };
+  render();
+  const instruments = select("Тембр MIDI-пианино");
+  expect(instruments.options).toHaveLength(239);
+  expect([...instruments.options].every((option) => !option.disabled)).toBe(true);
+  act(() => {
+    instruments.value = "voice-237";
+    instruments.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(controls.onInstrument).toHaveBeenCalledWith("voice-237");
+  expect(host.textContent).not.toContain("нет MIDI-команды");
 });
 
 it("shows why preview is unavailable, starts it when allowed and keeps Stop enabled", () => {

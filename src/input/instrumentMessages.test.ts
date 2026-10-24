@@ -1,10 +1,25 @@
 import { describe, expect, it } from "vitest";
-import type { PianoInstrument } from "./instrumentProfiles";
+import { GRACE_BP300, type PianoInstrument } from "./instrumentProfiles";
 import { instrumentMessages } from "./instrumentMessages";
 
 const panFlute: PianoInstrument = { id: "flute", name: "Pan Flute", program: 75 };
 
 describe("instrument MIDI messages", () => {
+  it("selects extended Grace voices and resets the bank when returning to the base piano", () => {
+    const messages = [128, 237, 0].flatMap((index) => {
+      const instrument = GRACE_BP300.instruments[index];
+      if (!instrument) throw new Error(`Missing Grace instrument ${String(index)}`);
+      return instrumentMessages(instrument, 1);
+    });
+    expect(messages).toEqual([
+      [0xb0, 0, 8],
+      [0xc0, 0],
+      [0xb0, 0, 100],
+      [0xc0, 48],
+      [0xb0, 0, 0],
+      [0xc0, 0]
+    ]);
+  });
   it("sends the program on the selected 1-based melody channel without a guessed bank", () => {
     expect(instrumentMessages(panFlute, 1)).toEqual([[0xc0, 75]]);
     expect(instrumentMessages(panFlute, 16)).toEqual([[0xcf, 75]]);
