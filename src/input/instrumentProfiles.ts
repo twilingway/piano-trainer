@@ -129,15 +129,13 @@ export function parsePianoProfile(text: string): PianoProfileImportResult {
   }
 }
 
-/** Facts transcribed from the owner's BP-300 manual, pages 15–16; photos stay local. */
+/** Manual names with bank/program mappings captured from the owner's BP-300 over USB MIDI. */
 export const GRACE_BP300: PianoProfile = {
   id: "grace-bp-300",
   name: "Grace BP-300",
   midiOutputName: "Piano MIDI Device",
   instruments: graceVoices.map((voice) => ({
     ...voice,
-    id: `voice-${String(voice.panelNumber).padStart(3, "0")}`,
-    // Only the base GM bank is mapped. Extended voices have no documented bank commands.
-    program: voice.panelNumber < 128 ? voice.panelNumber : null
+    id: `voice-${String(voice.panelNumber).padStart(3, "0")}`
   }))
 };

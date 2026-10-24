@@ -149,12 +149,37 @@ describe("Grace BP-300 manual catalogue", () => {
     expect(GRACE_BP300.instruments[75]).toMatchObject({ name: "Pan Flute", program: 75 });
     expect(GRACE_BP300.instruments[139]?.name).toBe("Marimba 2");
     expect(GRACE_BP300.instruments[140]?.name).toBe("Marimba 2");
-    expect(GRACE_BP300.instruments[176]).toMatchObject({ name: "Pan Flute 2", program: null });
+    expect(GRACE_BP300.instruments[176]).toMatchObject({
+      name: "Pan Flute 2",
+      bankMSB: 1,
+      program: 75
+    });
     expect(GRACE_BP300.instruments[237]?.name).toBe("Hu Ensemble");
     for (const item of GRACE_BP300.instruments) {
-      expect(item.program).toBe((item.panelNumber ?? 128) < 128 ? item.panelNumber : null);
-      expect(item).not.toHaveProperty("bankMSB");
+      expect(Number.isInteger(item.program)).toBe(true);
+      expect(item.program).toBeGreaterThanOrEqual(0);
+      expect(item.program).toBeLessThan(128);
+      expect(Number.isInteger(item.bankMSB)).toBe(true);
+      expect(item.bankMSB).toBeGreaterThanOrEqual(0);
+      expect(item.bankMSB).toBeLessThan(128);
       expect(item).not.toHaveProperty("bankLSB");
+      if ((item.panelNumber ?? 128) < 128) {
+        expect(item.program).toBe(item.panelNumber);
+        expect(item.bankMSB).toBe(0);
+      }
     }
+  });
+
+  it.each([
+    [128, 8, 0],
+    [129, 16, 0],
+    [138, 8, 11],
+    [139, 8, 12],
+    [140, 8, 12],
+    [141, 8, 13],
+    [176, 1, 75],
+    [237, 100, 48]
+  ])("keeps the captured bank/program for panel %i", (panelNumber, bankMSB, program) => {
+    expect(GRACE_BP300.instruments[panelNumber]).toMatchObject({ panelNumber, bankMSB, program });
   });
 });

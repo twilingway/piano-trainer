@@ -2,1191 +2,1667 @@
   {
     "panelNumber": 0,
     "name": "Acoustic Grand Piano",
-    "group": "PIANO"
+    "group": "PIANO",
+    "bankMSB": 0,
+    "program": 0
   },
   {
     "panelNumber": 1,
     "name": "Bright Acoustic Piano",
-    "group": "PIANO"
+    "group": "PIANO",
+    "bankMSB": 0,
+    "program": 1
   },
   {
     "panelNumber": 2,
     "name": "Electric Grand Piano",
-    "group": "PIANO"
+    "group": "PIANO",
+    "bankMSB": 0,
+    "program": 2
   },
   {
     "panelNumber": 3,
     "name": "Honky-tonk Piano",
-    "group": "PIANO"
+    "group": "PIANO",
+    "bankMSB": 0,
+    "program": 3
   },
   {
     "panelNumber": 4,
     "name": "Rhodes Piano",
-    "group": "PIANO"
+    "group": "PIANO",
+    "bankMSB": 0,
+    "program": 4
   },
   {
     "panelNumber": 5,
     "name": "Chorused Piano",
-    "group": "PIANO"
+    "group": "PIANO",
+    "bankMSB": 0,
+    "program": 5
   },
   {
     "panelNumber": 6,
     "name": "Harpsichord",
-    "group": "PIANO"
+    "group": "PIANO",
+    "bankMSB": 0,
+    "program": 6
   },
   {
     "panelNumber": 7,
     "name": "Clavichord",
-    "group": "PIANO"
+    "group": "PIANO",
+    "bankMSB": 0,
+    "program": 7
   },
   {
     "panelNumber": 8,
     "name": "Celesta",
-    "group": "CHROMATIC PERCUSSION"
+    "group": "CHROMATIC PERCUSSION",
+    "bankMSB": 0,
+    "program": 8
   },
   {
     "panelNumber": 9,
     "name": "Glockenspiel",
-    "group": "CHROMATIC PERCUSSION"
+    "group": "CHROMATIC PERCUSSION",
+    "bankMSB": 0,
+    "program": 9
   },
   {
     "panelNumber": 10,
     "name": "Music Box",
-    "group": "CHROMATIC PERCUSSION"
+    "group": "CHROMATIC PERCUSSION",
+    "bankMSB": 0,
+    "program": 10
   },
   {
     "panelNumber": 11,
     "name": "Vibraphone",
-    "group": "CHROMATIC PERCUSSION"
+    "group": "CHROMATIC PERCUSSION",
+    "bankMSB": 0,
+    "program": 11
   },
   {
     "panelNumber": 12,
     "name": "Marimba",
-    "group": "CHROMATIC PERCUSSION"
+    "group": "CHROMATIC PERCUSSION",
+    "bankMSB": 0,
+    "program": 12
   },
   {
     "panelNumber": 13,
     "name": "Xylophone",
-    "group": "CHROMATIC PERCUSSION"
+    "group": "CHROMATIC PERCUSSION",
+    "bankMSB": 0,
+    "program": 13
   },
   {
     "panelNumber": 14,
     "name": "Tubular Bells",
-    "group": "CHROMATIC PERCUSSION"
+    "group": "CHROMATIC PERCUSSION",
+    "bankMSB": 0,
+    "program": 14
   },
   {
     "panelNumber": 15,
     "name": "Dulcimer",
-    "group": "CHROMATIC PERCUSSION"
+    "group": "CHROMATIC PERCUSSION",
+    "bankMSB": 0,
+    "program": 15
   },
   {
     "panelNumber": 16,
     "name": "Hammond Organ",
-    "group": "ORGAN"
+    "group": "ORGAN",
+    "bankMSB": 0,
+    "program": 16
   },
   {
     "panelNumber": 17,
     "name": "Percussive Organ",
-    "group": "ORGAN"
+    "group": "ORGAN",
+    "bankMSB": 0,
+    "program": 17
   },
   {
     "panelNumber": 18,
     "name": "Rock Organ",
-    "group": "ORGAN"
+    "group": "ORGAN",
+    "bankMSB": 0,
+    "program": 18
   },
   {
     "panelNumber": 19,
     "name": "Church Organ",
-    "group": "ORGAN"
+    "group": "ORGAN",
+    "bankMSB": 0,
+    "program": 19
   },
   {
     "panelNumber": 20,
     "name": "Reed Organ",
-    "group": "ORGAN"
+    "group": "ORGAN",
+    "bankMSB": 0,
+    "program": 20
   },
   {
     "panelNumber": 21,
     "name": "Accordion",
-    "group": "ORGAN"
+    "group": "ORGAN",
+    "bankMSB": 0,
+    "program": 21
   },
   {
     "panelNumber": 22,
     "name": "Harmonica",
-    "group": "ORGAN"
+    "group": "ORGAN",
+    "bankMSB": 0,
+    "program": 22
   },
   {
     "panelNumber": 23,
     "name": "Tango Accordion",
-    "group": "ORGAN"
+    "group": "ORGAN",
+    "bankMSB": 0,
+    "program": 23
   },
   {
     "panelNumber": 24,
     "name": "Acoustic Guitar (nylon)",
-    "group": "GUITAR"
+    "group": "GUITAR",
+    "bankMSB": 0,
+    "program": 24
   },
   {
     "panelNumber": 25,
     "name": "Acoustic Guitar (steel)",
-    "group": "GUITAR"
+    "group": "GUITAR",
+    "bankMSB": 0,
+    "program": 25
   },
   {
     "panelNumber": 26,
     "name": "Electric Guitar (jazz)",
-    "group": "GUITAR"
+    "group": "GUITAR",
+    "bankMSB": 0,
+    "program": 26
   },
   {
     "panelNumber": 27,
     "name": "Electric Guitar (clean)",
-    "group": "GUITAR"
+    "group": "GUITAR",
+    "bankMSB": 0,
+    "program": 27
   },
   {
     "panelNumber": 28,
     "name": "Electric Guitar (muted)",
-    "group": "GUITAR"
+    "group": "GUITAR",
+    "bankMSB": 0,
+    "program": 28
   },
   {
     "panelNumber": 29,
     "name": "Overdriven Guitar",
-    "group": "GUITAR"
+    "group": "GUITAR",
+    "bankMSB": 0,
+    "program": 29
   },
   {
     "panelNumber": 30,
     "name": "Distortion Guitar",
-    "group": "GUITAR"
+    "group": "GUITAR",
+    "bankMSB": 0,
+    "program": 30
   },
   {
     "panelNumber": 31,
     "name": "Guitar Harmonics",
-    "group": "GUITAR"
+    "group": "GUITAR",
+    "bankMSB": 0,
+    "program": 31
   },
   {
     "panelNumber": 32,
     "name": "Acoustic Bass",
-    "group": "BASS"
+    "group": "BASS",
+    "bankMSB": 0,
+    "program": 32
   },
   {
     "panelNumber": 33,
     "name": "Electric Bass(finger)",
-    "group": "BASS"
+    "group": "BASS",
+    "bankMSB": 0,
+    "program": 33
   },
   {
     "panelNumber": 34,
     "name": "Electric Bass (pick)",
-    "group": "BASS"
+    "group": "BASS",
+    "bankMSB": 0,
+    "program": 34
   },
   {
     "panelNumber": 35,
     "name": "Fretless Bass",
-    "group": "BASS"
+    "group": "BASS",
+    "bankMSB": 0,
+    "program": 35
   },
   {
     "panelNumber": 36,
     "name": "Slap Bass 1",
-    "group": "BASS"
+    "group": "BASS",
+    "bankMSB": 0,
+    "program": 36
   },
   {
     "panelNumber": 37,
     "name": "Slap Bass 2",
-    "group": "BASS"
+    "group": "BASS",
+    "bankMSB": 0,
+    "program": 37
   },
   {
     "panelNumber": 38,
     "name": "Synth Bass 1",
-    "group": "BASS"
+    "group": "BASS",
+    "bankMSB": 0,
+    "program": 38
   },
   {
     "panelNumber": 39,
     "name": "Synth Bass 2",
-    "group": "BASS"
+    "group": "BASS",
+    "bankMSB": 0,
+    "program": 39
   },
   {
     "panelNumber": 40,
     "name": "Violin",
-    "group": "SOLO STRINGS"
+    "group": "SOLO STRINGS",
+    "bankMSB": 0,
+    "program": 40
   },
   {
     "panelNumber": 41,
     "name": "Viola",
-    "group": "SOLO STRINGS"
+    "group": "SOLO STRINGS",
+    "bankMSB": 0,
+    "program": 41
   },
   {
     "panelNumber": 42,
     "name": "Cello",
-    "group": "SOLO STRINGS"
+    "group": "SOLO STRINGS",
+    "bankMSB": 0,
+    "program": 42
   },
   {
     "panelNumber": 43,
     "name": "Contrabass",
-    "group": "SOLO STRINGS"
+    "group": "SOLO STRINGS",
+    "bankMSB": 0,
+    "program": 43
   },
   {
     "panelNumber": 44,
     "name": "Tremolo Strings",
-    "group": "SOLO STRINGS"
+    "group": "SOLO STRINGS",
+    "bankMSB": 0,
+    "program": 44
   },
   {
     "panelNumber": 45,
     "name": "Pizzicato Strings",
-    "group": "SOLO STRINGS"
+    "group": "SOLO STRINGS",
+    "bankMSB": 0,
+    "program": 45
   },
   {
     "panelNumber": 46,
     "name": "Orchestral Harp",
-    "group": "SOLO STRINGS"
+    "group": "SOLO STRINGS",
+    "bankMSB": 0,
+    "program": 46
   },
   {
     "panelNumber": 47,
     "name": "Timpani",
-    "group": "SOLO STRINGS"
+    "group": "SOLO STRINGS",
+    "bankMSB": 0,
+    "program": 47
   },
   {
     "panelNumber": 48,
     "name": "String Ensemble 1",
-    "group": "STRING ENSEMBLE"
+    "group": "STRING ENSEMBLE",
+    "bankMSB": 0,
+    "program": 48
   },
   {
     "panelNumber": 49,
     "name": "String Ensemble 2",
-    "group": "STRING ENSEMBLE"
+    "group": "STRING ENSEMBLE",
+    "bankMSB": 0,
+    "program": 49
   },
   {
     "panelNumber": 50,
     "name": "Synth Strings 1",
-    "group": "STRING ENSEMBLE"
+    "group": "STRING ENSEMBLE",
+    "bankMSB": 0,
+    "program": 50
   },
   {
     "panelNumber": 51,
     "name": "Synth Strings 2",
-    "group": "STRING ENSEMBLE"
+    "group": "STRING ENSEMBLE",
+    "bankMSB": 0,
+    "program": 51
   },
   {
     "panelNumber": 52,
     "name": "Choir Aahs",
-    "group": "STRING ENSEMBLE"
+    "group": "STRING ENSEMBLE",
+    "bankMSB": 0,
+    "program": 52
   },
   {
     "panelNumber": 53,
     "name": "Voice Oohs",
-    "group": "STRING ENSEMBLE"
+    "group": "STRING ENSEMBLE",
+    "bankMSB": 0,
+    "program": 53
   },
   {
     "panelNumber": 54,
     "name": "Synth Voice",
-    "group": "STRING ENSEMBLE"
+    "group": "STRING ENSEMBLE",
+    "bankMSB": 0,
+    "program": 54
   },
   {
     "panelNumber": 55,
     "name": "Orchestra Hit",
-    "group": "STRING ENSEMBLE"
+    "group": "STRING ENSEMBLE",
+    "bankMSB": 0,
+    "program": 55
   },
   {
     "panelNumber": 56,
     "name": "Trumpet",
-    "group": "BRASS"
+    "group": "BRASS",
+    "bankMSB": 0,
+    "program": 56
   },
   {
     "panelNumber": 57,
     "name": "Trombone",
-    "group": "BRASS"
+    "group": "BRASS",
+    "bankMSB": 0,
+    "program": 57
   },
   {
     "panelNumber": 58,
     "name": "Tuba",
-    "group": "BRASS"
+    "group": "BRASS",
+    "bankMSB": 0,
+    "program": 58
   },
   {
     "panelNumber": 59,
     "name": "Muted Trumpet",
-    "group": "BRASS"
+    "group": "BRASS",
+    "bankMSB": 0,
+    "program": 59
   },
   {
     "panelNumber": 60,
     "name": "French Horn",
-    "group": "BRASS"
+    "group": "BRASS",
+    "bankMSB": 0,
+    "program": 60
   },
   {
     "panelNumber": 61,
     "name": "Brass Section",
-    "group": "BRASS"
+    "group": "BRASS",
+    "bankMSB": 0,
+    "program": 61
   },
   {
     "panelNumber": 62,
     "name": "Synth Brass 1",
-    "group": "BRASS"
+    "group": "BRASS",
+    "bankMSB": 0,
+    "program": 62
   },
   {
     "panelNumber": 63,
     "name": "Synth Brass 2",
-    "group": "BRASS"
+    "group": "BRASS",
+    "bankMSB": 0,
+    "program": 63
   },
   {
     "panelNumber": 64,
     "name": "Soprano Sax",
-    "group": "REED"
+    "group": "REED",
+    "bankMSB": 0,
+    "program": 64
   },
   {
     "panelNumber": 65,
     "name": "Alto Sax",
-    "group": "REED"
+    "group": "REED",
+    "bankMSB": 0,
+    "program": 65
   },
   {
     "panelNumber": 66,
     "name": "Tenor Sax",
-    "group": "REED"
+    "group": "REED",
+    "bankMSB": 0,
+    "program": 66
   },
   {
     "panelNumber": 67,
     "name": "Baritone Sax",
-    "group": "REED"
+    "group": "REED",
+    "bankMSB": 0,
+    "program": 67
   },
   {
     "panelNumber": 68,
     "name": "Oboe",
-    "group": "REED"
+    "group": "REED",
+    "bankMSB": 0,
+    "program": 68
   },
   {
     "panelNumber": 69,
     "name": "English Horn",
-    "group": "REED"
+    "group": "REED",
+    "bankMSB": 0,
+    "program": 69
   },
   {
     "panelNumber": 70,
     "name": "Bassoon",
-    "group": "REED"
+    "group": "REED",
+    "bankMSB": 0,
+    "program": 70
   },
   {
     "panelNumber": 71,
     "name": "Clarinet",
-    "group": "REED"
+    "group": "REED",
+    "bankMSB": 0,
+    "program": 71
   },
   {
     "panelNumber": 72,
     "name": "Piccolo",
-    "group": "PIPE"
+    "group": "PIPE",
+    "bankMSB": 0,
+    "program": 72
   },
   {
     "panelNumber": 73,
     "name": "Flute",
-    "group": "PIPE"
+    "group": "PIPE",
+    "bankMSB": 0,
+    "program": 73
   },
   {
     "panelNumber": 74,
     "name": "Recorder",
-    "group": "PIPE"
+    "group": "PIPE",
+    "bankMSB": 0,
+    "program": 74
   },
   {
     "panelNumber": 75,
     "name": "Pan Flute",
-    "group": "PIPE"
+    "group": "PIPE",
+    "bankMSB": 0,
+    "program": 75
   },
   {
     "panelNumber": 76,
     "name": "Bottle Blow",
-    "group": "PIPE"
+    "group": "PIPE",
+    "bankMSB": 0,
+    "program": 76
   },
   {
     "panelNumber": 77,
     "name": "Shakuhachi",
-    "group": "PIPE"
+    "group": "PIPE",
+    "bankMSB": 0,
+    "program": 77
   },
   {
     "panelNumber": 78,
     "name": "Whistle",
-    "group": "PIPE"
+    "group": "PIPE",
+    "bankMSB": 0,
+    "program": 78
   },
   {
     "panelNumber": 79,
     "name": "Ocarina",
-    "group": "PIPE"
+    "group": "PIPE",
+    "bankMSB": 0,
+    "program": 79
   },
   {
     "panelNumber": 80,
     "name": "Lead 1 (square)",
-    "group": "SYNTH LEAD"
+    "group": "SYNTH LEAD",
+    "bankMSB": 0,
+    "program": 80
   },
   {
     "panelNumber": 81,
     "name": "Lead 2 (sawtooth)",
-    "group": "SYNTH LEAD"
+    "group": "SYNTH LEAD",
+    "bankMSB": 0,
+    "program": 81
   },
   {
     "panelNumber": 82,
     "name": "Lead 3 (calliope lead)",
-    "group": "SYNTH LEAD"
+    "group": "SYNTH LEAD",
+    "bankMSB": 0,
+    "program": 82
   },
   {
     "panelNumber": 83,
     "name": "Lead 4 (chiff lead)",
-    "group": "SYNTH LEAD"
+    "group": "SYNTH LEAD",
+    "bankMSB": 0,
+    "program": 83
   },
   {
     "panelNumber": 84,
     "name": "Lead 5 (charang)",
-    "group": "SYNTH LEAD"
+    "group": "SYNTH LEAD",
+    "bankMSB": 0,
+    "program": 84
   },
   {
     "panelNumber": 85,
     "name": "Lead 6 (voice)",
-    "group": "SYNTH LEAD"
+    "group": "SYNTH LEAD",
+    "bankMSB": 0,
+    "program": 85
   },
   {
     "panelNumber": 86,
     "name": "Lead 7 (fifths)",
-    "group": "SYNTH LEAD"
+    "group": "SYNTH LEAD",
+    "bankMSB": 0,
+    "program": 86
   },
   {
     "panelNumber": 87,
     "name": "Lead 8 (bass & lead)",
-    "group": "SYNTH LEAD"
+    "group": "SYNTH LEAD",
+    "bankMSB": 0,
+    "program": 87
   },
   {
     "panelNumber": 88,
     "name": "Pad 1 (new age)",
-    "group": "SYNTH PAD"
+    "group": "SYNTH PAD",
+    "bankMSB": 0,
+    "program": 88
   },
   {
     "panelNumber": 89,
     "name": "Pad 2 (warm)",
-    "group": "SYNTH PAD"
+    "group": "SYNTH PAD",
+    "bankMSB": 0,
+    "program": 89
   },
   {
     "panelNumber": 90,
     "name": "Pad 3 (polysynth)",
-    "group": "SYNTH PAD"
+    "group": "SYNTH PAD",
+    "bankMSB": 0,
+    "program": 90
   },
   {
     "panelNumber": 91,
     "name": "Pad 4 (choir)",
-    "group": "SYNTH PAD"
+    "group": "SYNTH PAD",
+    "bankMSB": 0,
+    "program": 91
   },
   {
     "panelNumber": 92,
     "name": "Pad 5 (bowed)",
-    "group": "SYNTH PAD"
+    "group": "SYNTH PAD",
+    "bankMSB": 0,
+    "program": 92
   },
   {
     "panelNumber": 93,
     "name": "Pad 6 (metallic)",
-    "group": "SYNTH PAD"
+    "group": "SYNTH PAD",
+    "bankMSB": 0,
+    "program": 93
   },
   {
     "panelNumber": 94,
     "name": "Pad 7 (halo)",
-    "group": "SYNTH PAD"
+    "group": "SYNTH PAD",
+    "bankMSB": 0,
+    "program": 94
   },
   {
     "panelNumber": 95,
     "name": "Pad 8 (sweep)",
-    "group": "SYNTH PAD"
+    "group": "SYNTH PAD",
+    "bankMSB": 0,
+    "program": 95
   },
   {
     "panelNumber": 96,
     "name": "FX 1 (rain)",
-    "group": "SYNTH EFFECTS"
+    "group": "SYNTH EFFECTS",
+    "bankMSB": 0,
+    "program": 96
   },
   {
     "panelNumber": 97,
     "name": "FX 2 (soundtrack)",
-    "group": "SYNTH EFFECTS"
+    "group": "SYNTH EFFECTS",
+    "bankMSB": 0,
+    "program": 97
   },
   {
     "panelNumber": 98,
     "name": "FX 3 (crystal)",
-    "group": "SYNTH EFFECTS"
+    "group": "SYNTH EFFECTS",
+    "bankMSB": 0,
+    "program": 98
   },
   {
     "panelNumber": 99,
     "name": "FX 4 (atmosphere)",
-    "group": "SYNTH EFFECTS"
+    "group": "SYNTH EFFECTS",
+    "bankMSB": 0,
+    "program": 99
   },
   {
     "panelNumber": 100,
     "name": "FX 5 (brightness)",
-    "group": "SYNTH EFFECTS"
+    "group": "SYNTH EFFECTS",
+    "bankMSB": 0,
+    "program": 100
   },
   {
     "panelNumber": 101,
     "name": "FX 6 (goblins)",
-    "group": "SYNTH EFFECTS"
+    "group": "SYNTH EFFECTS",
+    "bankMSB": 0,
+    "program": 101
   },
   {
     "panelNumber": 102,
     "name": "FX 7 (echoes)",
-    "group": "SYNTH EFFECTS"
+    "group": "SYNTH EFFECTS",
+    "bankMSB": 0,
+    "program": 102
   },
   {
     "panelNumber": 103,
     "name": "FX 8 (sci-fi)",
-    "group": "SYNTH EFFECTS"
+    "group": "SYNTH EFFECTS",
+    "bankMSB": 0,
+    "program": 103
   },
   {
     "panelNumber": 104,
     "name": "Sitar",
-    "group": "ETHNIC"
+    "group": "ETHNIC",
+    "bankMSB": 0,
+    "program": 104
   },
   {
     "panelNumber": 105,
     "name": "Banjo",
-    "group": "ETHNIC"
+    "group": "ETHNIC",
+    "bankMSB": 0,
+    "program": 105
   },
   {
     "panelNumber": 106,
     "name": "Shamisen",
-    "group": "ETHNIC"
+    "group": "ETHNIC",
+    "bankMSB": 0,
+    "program": 106
   },
   {
     "panelNumber": 107,
     "name": "Koto",
-    "group": "ETHNIC"
+    "group": "ETHNIC",
+    "bankMSB": 0,
+    "program": 107
   },
   {
     "panelNumber": 108,
     "name": "Kalimba",
-    "group": "ETHNIC"
+    "group": "ETHNIC",
+    "bankMSB": 0,
+    "program": 108
   },
   {
     "panelNumber": 109,
     "name": "Bagpipe",
-    "group": "ETHNIC"
+    "group": "ETHNIC",
+    "bankMSB": 0,
+    "program": 109
   },
   {
     "panelNumber": 110,
     "name": "Fiddle",
-    "group": "ETHNIC"
+    "group": "ETHNIC",
+    "bankMSB": 0,
+    "program": 110
   },
   {
     "panelNumber": 111,
     "name": "Shanai",
-    "group": "ETHNIC"
+    "group": "ETHNIC",
+    "bankMSB": 0,
+    "program": 111
   },
   {
     "panelNumber": 112,
     "name": "Tinkle Bell",
-    "group": "PERCUSSIVE"
+    "group": "PERCUSSIVE",
+    "bankMSB": 0,
+    "program": 112
   },
   {
     "panelNumber": 113,
     "name": "Agogo",
-    "group": "PERCUSSIVE"
+    "group": "PERCUSSIVE",
+    "bankMSB": 0,
+    "program": 113
   },
   {
     "panelNumber": 114,
     "name": "Steel Drums",
-    "group": "PERCUSSIVE"
+    "group": "PERCUSSIVE",
+    "bankMSB": 0,
+    "program": 114
   },
   {
     "panelNumber": 115,
     "name": "Woodblock",
-    "group": "PERCUSSIVE"
+    "group": "PERCUSSIVE",
+    "bankMSB": 0,
+    "program": 115
   },
   {
     "panelNumber": 116,
     "name": "Taiko Drum",
-    "group": "PERCUSSIVE"
+    "group": "PERCUSSIVE",
+    "bankMSB": 0,
+    "program": 116
   },
   {
     "panelNumber": 117,
     "name": "Melodic Tom",
-    "group": "PERCUSSIVE"
+    "group": "PERCUSSIVE",
+    "bankMSB": 0,
+    "program": 117
   },
   {
     "panelNumber": 118,
     "name": "Synth Drum",
-    "group": "PERCUSSIVE"
+    "group": "PERCUSSIVE",
+    "bankMSB": 0,
+    "program": 118
   },
   {
     "panelNumber": 119,
     "name": "Reverse Cymbal",
-    "group": "PERCUSSIVE"
+    "group": "PERCUSSIVE",
+    "bankMSB": 0,
+    "program": 119
   },
   {
     "panelNumber": 120,
     "name": "Guitar Fret Noise",
-    "group": "SOUND EFFECTS"
+    "group": "SOUND EFFECTS",
+    "bankMSB": 0,
+    "program": 120
   },
   {
     "panelNumber": 121,
     "name": "Breath Noise",
-    "group": "SOUND EFFECTS"
+    "group": "SOUND EFFECTS",
+    "bankMSB": 0,
+    "program": 121
   },
   {
     "panelNumber": 122,
     "name": "Seashore",
-    "group": "SOUND EFFECTS"
+    "group": "SOUND EFFECTS",
+    "bankMSB": 0,
+    "program": 122
   },
   {
     "panelNumber": 123,
     "name": "Bird Tweet",
-    "group": "SOUND EFFECTS"
+    "group": "SOUND EFFECTS",
+    "bankMSB": 0,
+    "program": 123
   },
   {
     "panelNumber": 124,
     "name": "Telephone Ring",
-    "group": "SOUND EFFECTS"
+    "group": "SOUND EFFECTS",
+    "bankMSB": 0,
+    "program": 124
   },
   {
     "panelNumber": 125,
     "name": "Helicopter",
-    "group": "SOUND EFFECTS"
+    "group": "SOUND EFFECTS",
+    "bankMSB": 0,
+    "program": 125
   },
   {
     "panelNumber": 126,
     "name": "Applause",
-    "group": "SOUND EFFECTS"
+    "group": "SOUND EFFECTS",
+    "bankMSB": 0,
+    "program": 126
   },
   {
     "panelNumber": 127,
     "name": "Gunshot",
-    "group": "SOUND EFFECTS"
+    "group": "SOUND EFFECTS",
+    "bankMSB": 0,
+    "program": 127
   },
   {
     "panelNumber": 128,
     "name": "Piano w",
-    "group": "PIANO 2"
+    "group": "PIANO 2",
+    "bankMSB": 8,
+    "program": 0
   },
   {
     "panelNumber": 129,
     "name": "Piano d",
-    "group": "PIANO 2"
+    "group": "PIANO 2",
+    "bankMSB": 16,
+    "program": 0
   },
   {
     "panelNumber": 130,
     "name": "Honky Tonk W",
-    "group": "PIANO 2"
+    "group": "PIANO 2",
+    "bankMSB": 1,
+    "program": 3
   },
   {
     "panelNumber": 131,
     "name": "Detuned EP",
-    "group": "PIANO 2"
+    "group": "PIANO 2",
+    "bankMSB": 8,
+    "program": 4
   },
   {
     "panelNumber": 132,
     "name": "60's E.Piano",
-    "group": "PIANO 2"
+    "group": "PIANO 2",
+    "bankMSB": 24,
+    "program": 4
   },
   {
     "panelNumber": 133,
     "name": "Harpsichord 2",
-    "group": "PIANO 2"
+    "group": "PIANO 2",
+    "bankMSB": 1,
+    "program": 6
   },
   {
     "panelNumber": 134,
     "name": "Clavichord 2",
-    "group": "PIANO 2"
+    "group": "PIANO 2",
+    "bankMSB": 1,
+    "program": 7
   },
   {
     "panelNumber": 135,
     "name": "Celesta 2",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 8
   },
   {
     "panelNumber": 136,
     "name": "Glocknspiel 2",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 9
   },
   {
     "panelNumber": 137,
     "name": "Music Box 2",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 10
   },
   {
     "panelNumber": 138,
     "name": "Vibraphone 2",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 11
   },
   {
     "panelNumber": 139,
     "name": "Marimba 2",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 12
   },
   {
     "panelNumber": 140,
     "name": "Marimba 2",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 12
   },
   {
     "panelNumber": 141,
     "name": "Xylophone 2",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 13
   },
   {
     "panelNumber": 142,
     "name": "Tubular-bell 2",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 14
   },
   {
     "panelNumber": 143,
     "name": "Detuned Organ",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 8,
+    "program": 16
   },
   {
     "panelNumber": 144,
     "name": "60's Organ",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 16,
+    "program": 16
   },
   {
     "panelNumber": 145,
     "name": "Bandoneon",
-    "group": "Organ 2"
+    "group": "Organ 2",
+    "bankMSB": 1,
+    "program": 23
   },
   {
     "panelNumber": 146,
     "name": "Ukulele",
-    "group": "Guitar"
+    "group": "Guitar",
+    "bankMSB": 8,
+    "program": 24
   },
   {
     "panelNumber": 147,
     "name": "Mandolin",
-    "group": "Guitar"
+    "group": "Guitar",
+    "bankMSB": 16,
+    "program": 25
   },
   {
     "panelNumber": 148,
     "name": "Hawaiian Gt",
-    "group": "Guitar"
+    "group": "Guitar",
+    "bankMSB": 8,
+    "program": 26
   },
   {
     "panelNumber": 149,
     "name": "Chorus Gt",
-    "group": "Guitar"
+    "group": "Guitar",
+    "bankMSB": 8,
+    "program": 27
   },
   {
     "panelNumber": 150,
     "name": "Funk Gt",
-    "group": "Guitar"
+    "group": "Guitar",
+    "bankMSB": 8,
+    "program": 28
   },
   {
     "panelNumber": 151,
     "name": "Feedback Gt",
-    "group": "Guitar"
+    "group": "Guitar",
+    "bankMSB": 8,
+    "program": 30
   },
   {
     "panelNumber": 152,
     "name": "Synth 1",
-    "group": "Synth"
+    "group": "Synth",
+    "bankMSB": 1,
+    "program": 32
   },
   {
     "panelNumber": 153,
     "name": "Synth 2",
-    "group": "Synth"
+    "group": "Synth",
+    "bankMSB": 2,
+    "program": 32
   },
   {
     "panelNumber": 154,
     "name": "Synth 3",
-    "group": "Synth"
+    "group": "Synth",
+    "bankMSB": 1,
+    "program": 34
   },
   {
     "panelNumber": 155,
     "name": "Synth 4",
-    "group": "Synth"
+    "group": "Synth",
+    "bankMSB": 2,
+    "program": 34
   },
   {
     "panelNumber": 156,
     "name": "Synth 5",
-    "group": "Synth"
+    "group": "Synth",
+    "bankMSB": 1,
+    "program": 35
   },
   {
     "panelNumber": 157,
     "name": "Synth 6",
-    "group": "Synth"
+    "group": "Synth",
+    "bankMSB": 2,
+    "program": 35
   },
   {
     "panelNumber": 158,
     "name": "Synth 7",
-    "group": "Synth"
+    "group": "Synth",
+    "bankMSB": 3,
+    "program": 35
   },
   {
     "panelNumber": 159,
     "name": "Violin 2",
-    "group": "Strings 2"
+    "group": "Strings 2",
+    "bankMSB": 1,
+    "program": 40
   },
   {
     "panelNumber": 160,
     "name": "Cello 2",
-    "group": "Strings 2"
+    "group": "Strings 2",
+    "bankMSB": 1,
+    "program": 42
   },
   {
     "panelNumber": 161,
     "name": "Harp 2",
-    "group": "Strings 2"
+    "group": "Strings 2",
+    "bankMSB": 1,
+    "program": 46
   },
   {
     "panelNumber": 162,
     "name": "Strings",
-    "group": "Strings 2"
+    "group": "Strings 2",
+    "bankMSB": 8,
+    "program": 48
   },
   {
     "panelNumber": 163,
     "name": "Choir Aahs2",
-    "group": "Ensemble 2"
+    "group": "Ensemble 2",
+    "bankMSB": 1,
+    "program": 52
   },
   {
     "panelNumber": 164,
     "name": "Voice doo 2",
-    "group": "Ensemble 2"
+    "group": "Ensemble 2",
+    "bankMSB": 1,
+    "program": 53
   },
   {
     "panelNumber": 165,
     "name": "Trumpet 2",
-    "group": "Brass 2"
+    "group": "Brass 2",
+    "bankMSB": 1,
+    "program": 56
   },
   {
     "panelNumber": 166,
     "name": "Trombone 2",
-    "group": "Brass 2"
+    "group": "Brass 2",
+    "bankMSB": 1,
+    "program": 57
   },
   {
     "panelNumber": 167,
     "name": "Mute Trumpet 2",
-    "group": "Brass 2"
+    "group": "Brass 2",
+    "bankMSB": 1,
+    "program": 59
   },
   {
     "panelNumber": 168,
     "name": "French Horn 2",
-    "group": "Brass 2"
+    "group": "Brass 2",
+    "bankMSB": 1,
+    "program": 60
   },
   {
     "panelNumber": 169,
     "name": "Brass 2",
-    "group": "Brass 2"
+    "group": "Brass 2",
+    "bankMSB": 1,
+    "program": 61
   },
   {
     "panelNumber": 170,
     "name": "Soprano Sax 2",
-    "group": "Reed 2"
+    "group": "Reed 2",
+    "bankMSB": 1,
+    "program": 64
   },
   {
     "panelNumber": 171,
     "name": "Oboe 2",
-    "group": "Reed 2"
+    "group": "Reed 2",
+    "bankMSB": 1,
+    "program": 68
   },
   {
     "panelNumber": 172,
     "name": "English Horn",
-    "group": "Reed 2"
+    "group": "Reed 2",
+    "bankMSB": 1,
+    "program": 69
   },
   {
     "panelNumber": 173,
     "name": "Clarinet 2",
-    "group": "Reed 2"
+    "group": "Reed 2",
+    "bankMSB": 1,
+    "program": 71
   },
   {
     "panelNumber": 174,
     "name": "Piccolo 2",
-    "group": "Blowpipe 2"
+    "group": "Blowpipe 2",
+    "bankMSB": 1,
+    "program": 72
   },
   {
     "panelNumber": 175,
     "name": "Flute 2",
-    "group": "Blowpipe 2"
+    "group": "Blowpipe 2",
+    "bankMSB": 1,
+    "program": 73
   },
   {
     "panelNumber": 176,
     "name": "Pan Flute 2",
-    "group": "Blowpipe 2"
+    "group": "Blowpipe 2",
+    "bankMSB": 1,
+    "program": 75
   },
   {
     "panelNumber": 177,
     "name": "Shakuhachi 2",
-    "group": "Blowpipe 2"
+    "group": "Blowpipe 2",
+    "bankMSB": 1,
+    "program": 77
   },
   {
     "panelNumber": 178,
     "name": "Square 2",
-    "group": "Lead 2"
+    "group": "Lead 2",
+    "bankMSB": 1,
+    "program": 80
   },
   {
     "panelNumber": 179,
     "name": "Sine Wave",
-    "group": "Lead 2"
+    "group": "Lead 2",
+    "bankMSB": 8,
+    "program": 80
   },
   {
     "panelNumber": 180,
     "name": "Vox Lead",
-    "group": "Lead 2"
+    "group": "Lead 2",
+    "bankMSB": 8,
+    "program": 85
   },
   {
     "panelNumber": 181,
     "name": "Space Voice",
-    "group": "FX 2"
+    "group": "FX 2",
+    "bankMSB": 8,
+    "program": 91
   },
   {
     "panelNumber": 182,
     "name": "Syn Mallet",
-    "group": "FX 2"
+    "group": "FX 2",
+    "bankMSB": 1,
+    "program": 98
   },
   {
     "panelNumber": 183,
     "name": "Echo Bell",
-    "group": "FX 2"
+    "group": "FX 2",
+    "bankMSB": 1,
+    "program": 102
   },
   {
     "panelNumber": 184,
     "name": "Echo Pan",
-    "group": "FX 2"
+    "group": "FX 2",
+    "bankMSB": 2,
+    "program": 102
   },
   {
     "panelNumber": 185,
     "name": "Sitar 2",
-    "group": "Ethnic 2"
+    "group": "Ethnic 2",
+    "bankMSB": 1,
+    "program": 104
   },
   {
     "panelNumber": 186,
     "name": "Castanets",
-    "group": "Percussion 2"
+    "group": "Percussion 2",
+    "bankMSB": 8,
+    "program": 115
   },
   {
     "panelNumber": 187,
     "name": "Concert BD",
-    "group": "Percussion 2"
+    "group": "Percussion 2",
+    "bankMSB": 8,
+    "program": 116
   },
   {
     "panelNumber": 188,
     "name": "808 Tom",
-    "group": "Percussion 2"
+    "group": "Percussion 2",
+    "bankMSB": 8,
+    "program": 118
   },
   {
     "panelNumber": 189,
     "name": "Electric Percussion",
-    "group": "Percussion 2"
+    "group": "Percussion 2",
+    "bankMSB": 9,
+    "program": 118
   },
   {
     "panelNumber": 190,
     "name": "Gt.CutNoise",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 1,
+    "program": 120
   },
   {
     "panelNumber": 191,
     "name": "String Slap",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 2,
+    "program": 120
   },
   {
     "panelNumber": 192,
     "name": "Fl.KeyClick",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 1,
+    "program": 121
   },
   {
     "panelNumber": 193,
     "name": "Thunder",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 2,
+    "program": 122
   },
   {
     "panelNumber": 194,
     "name": "Wind",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 3,
+    "program": 122
   },
   {
     "panelNumber": 195,
     "name": "Stream",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 4,
+    "program": 122
   },
   {
     "panelNumber": 196,
     "name": "Bubble",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 5,
+    "program": 122
   },
   {
     "panelNumber": 197,
     "name": "Dog",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 1,
+    "program": 123
   },
   {
     "panelNumber": 198,
     "name": "Creaking",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 2,
+    "program": 124
   },
   {
     "panelNumber": 199,
     "name": "Door",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 3,
+    "program": 124
   },
   {
     "panelNumber": 200,
     "name": "Burst Noise",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 9,
+    "program": 125
   },
   {
     "panelNumber": 201,
     "name": "Laughing",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 1,
+    "program": 126
   },
   {
     "panelNumber": 202,
     "name": "Screaming",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 2,
+    "program": 126
   },
   {
     "panelNumber": 203,
     "name": "Heart Beat",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 4,
+    "program": 126
   },
   {
     "panelNumber": 204,
     "name": "Footsteps",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 5,
+    "program": 126
   },
   {
     "panelNumber": 205,
     "name": "Explosion",
-    "group": "Sound Effect 2"
+    "group": "Sound Effect 2",
+    "bankMSB": 3,
+    "program": 127
   },
   {
     "panelNumber": 206,
     "name": "Luo",
-    "group": "Percussion Instrument"
+    "group": "Percussion Instrument",
+    "bankMSB": 100,
+    "program": 8
   },
   {
     "panelNumber": 207,
     "name": "Pai Gu",
-    "group": "Percussion Instrument"
+    "group": "Percussion Instrument",
+    "bankMSB": 100,
+    "program": 12
   },
   {
     "panelNumber": 208,
     "name": "Qin",
-    "group": "Percussion Instrument"
+    "group": "Percussion Instrument",
+    "bankMSB": 100,
+    "program": 13
   },
   {
     "panelNumber": 209,
     "name": "Bian Zhong",
-    "group": "Percussion Instrument"
+    "group": "Percussion Instrument",
+    "bankMSB": 100,
+    "program": 14
   },
   {
     "panelNumber": 210,
     "name": "Yang Qin",
-    "group": "Percussion Instrument"
+    "group": "Percussion Instrument",
+    "bankMSB": 100,
+    "program": 15
   },
   {
     "panelNumber": 211,
     "name": "Liu Qin",
-    "group": "Ethnic Stringed Instrument"
+    "group": "Ethnic Stringed Instrument",
+    "bankMSB": 100,
+    "program": 24
   },
   {
     "panelNumber": 212,
     "name": "Pi Pa",
-    "group": "Ethnic Stringed Instrument"
+    "group": "Ethnic Stringed Instrument",
+    "bankMSB": 100,
+    "program": 25
   },
   {
     "panelNumber": 213,
     "name": "Zhong Ruan",
-    "group": "Ethnic Stringed Instrument"
+    "group": "Ethnic Stringed Instrument",
+    "bankMSB": 100,
+    "program": 26
   },
   {
     "panelNumber": 214,
     "name": "Da Ruan",
-    "group": "Ethnic Stringed Instrument"
+    "group": "Ethnic Stringed Instrument",
+    "bankMSB": 100,
+    "program": 27
   },
   {
     "panelNumber": 215,
     "name": "Yue Qin",
-    "group": "Ethnic Stringed Instrument"
+    "group": "Ethnic Stringed Instrument",
+    "bankMSB": 100,
+    "program": 28
   },
   {
     "panelNumber": 216,
     "name": "San Xian",
-    "group": "Ethnic Stringed Instrument"
+    "group": "Ethnic Stringed Instrument",
+    "bankMSB": 100,
+    "program": 106
   },
   {
     "panelNumber": 217,
     "name": "Gu Zheng",
-    "group": "Ethnic Stringed Instrument"
+    "group": "Ethnic Stringed Instrument",
+    "bankMSB": 100,
+    "program": 107
   },
   {
     "panelNumber": 218,
     "name": "Gu Qin",
-    "group": "Ethnic Stringed Instrument"
+    "group": "Ethnic Stringed Instrument",
+    "bankMSB": 101,
+    "program": 107
   },
   {
     "panelNumber": 219,
     "name": "Sheng",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 21
   },
   {
     "panelNumber": 220,
     "name": "Na Zi",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 64
   },
   {
     "panelNumber": 221,
     "name": "Bi Li",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 68
   },
   {
     "panelNumber": 222,
     "name": "Guan Zi",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 69
   },
   {
     "panelNumber": 223,
     "name": "Ba Wu",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 71
   },
   {
     "panelNumber": 224,
     "name": "Di Zi",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 72
   },
   {
     "panelNumber": 225,
     "name": "Hu Lu Si",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 74
   },
   {
     "panelNumber": 226,
     "name": "Pai Xiao",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 75
   },
   {
     "panelNumber": 227,
     "name": "South Xiao",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 76
   },
   {
     "panelNumber": 228,
     "name": "Xiao",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 77
   },
   {
     "panelNumber": 229,
     "name": "Kou Di",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 78
   },
   {
     "panelNumber": 230,
     "name": "Xun",
-    "group": "Ethnic Wind Instrument"
+    "group": "Ethnic Wind Instrument",
+    "bankMSB": 100,
+    "program": 79
   },
   {
     "panelNumber": 231,
     "name": "Gao Hu",
-    "group": "National Bow Stringed Instrument"
+    "group": "National Bow Stringed Instrument",
+    "bankMSB": 100,
+    "program": 40
   },
   {
     "panelNumber": 232,
     "name": "Er Hu",
-    "group": "National Bow Stringed Instrument"
+    "group": "National Bow Stringed Instrument",
+    "bankMSB": 100,
+    "program": 41
   },
   {
     "panelNumber": 233,
     "name": "Zhong Hu",
-    "group": "National Bow Stringed Instrument"
+    "group": "National Bow Stringed Instrument",
+    "bankMSB": 100,
+    "program": 42
   },
   {
     "panelNumber": 234,
     "name": "Ma Tou Qin",
-    "group": "National Bow Stringed Instrument"
+    "group": "National Bow Stringed Instrument",
+    "bankMSB": 101,
+    "program": 42
   },
   {
     "panelNumber": 235,
     "name": "Ban Hu",
-    "group": "National Bow Stringed Instrument"
+    "group": "National Bow Stringed Instrument",
+    "bankMSB": 100,
+    "program": 80
   },
   {
     "panelNumber": 236,
     "name": "Jing Hu",
-    "group": "National Bow Stringed Instrument"
+    "group": "National Bow Stringed Instrument",
+    "bankMSB": 100,
+    "program": 81
   },
   {
     "panelNumber": 237,
     "name": "Hu Ensemble",
-    "group": "National Bow Stringed Instrument"
+    "group": "National Bow Stringed Instrument",
+    "bankMSB": 100,
+    "program": 48
   }
 ]

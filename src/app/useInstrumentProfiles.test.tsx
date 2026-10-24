@@ -86,13 +86,13 @@ it("retains both copies when the same profile is imported twice", async () => {
   expect(controls.profiles.some((profile) => profile.id === first)).toBe(true);
 });
 
-it("renames the built-in profile locally and refuses unmapped or nonexistent instruments", () => {
+it("renames the built-in profile, accepts extended voices and refuses nonexistent instruments", () => {
   act(() => {
     controls.onName("My Grace");
     controls.onInstrument("voice-176");
   });
   expect(controls.profile?.name).toBe("My Grace");
-  expect(controls.instrumentId).toBeNull();
+  expect(controls.instrumentId).toBe("voice-176");
   act(() => {
     controls.onInstrument("voice-075");
   });
