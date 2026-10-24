@@ -1,7 +1,7 @@
-import { Container, Texture, UPDATE_PRIORITY } from "pixi.js";
+import { Container, UPDATE_PRIORITY } from "../flatThree";
 import { Vector2, type Camera } from "three";
 import type { HandsSource } from "./liveHands";
-import type { Application, WebGLRenderer } from "pixi.js";
+import type { Application } from "../flatThree";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
 import type { KeysScene, PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
@@ -9,14 +9,13 @@ import type { EnergySource } from "../noteEnergy";
 import type { Pianist } from "./pianist";
 import type { ThreeStage } from "./ThreeStage";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
-import { SharedTextureBindings } from "./SharedTextureBindings";
-import { SceneEffectsPass } from "./SceneEffectsPass";
+import { FlatSceneLayers } from "./FlatSceneLayers";
 import { NativeKeyContacts } from "./NativeKeyContacts";
 import { disposePianistModel } from "./disposePianistModel";
 import { metricC4X, metricKeyX } from "../keyboardMetrics";
 import { Keyboard88PerformerHost } from "./Keyboard88PerformerHost";
 
-/** Composes Three/Pixi passes on one context, retaining perspective fallback while loading. */
+/** Composes native and flat Three passes on one renderer, retaining perspective fallback while loading. */
 export class ThreeKeysHost {
   private stage: ThreeStage | undefined;
   private loading: Promise<void> | undefined;
@@ -30,7 +29,6 @@ export class ThreeKeysHost {
   }
   private freeActive = false;
   onFreeCamera: ((on: boolean) => void) | undefined;
-  private sharedBindings: SharedTextureBindings | undefined;
   private destroyed = false;
   private energy: readonly EnergySource[] = [];
   private roadFrame: ThreeRoadFrame | undefined;
@@ -47,8 +45,8 @@ export class ThreeKeysHost {
   private readonly publicPerformer = new Keyboard88PerformerHost();
   /** Reserves the road's stage position while it is rendered separately. */
   private readonly placeholder = new Container();
-  private readonly effects = new SceneEffectsPass();
-  private readonly roadEffects = new SceneEffectsPass();
+  private readonly effects = new FlatSceneLayers();
+  private readonly roadEffects = new FlatSceneLayers();
 
   constructor(
     private readonly app: Application,
@@ -57,18 +55,7 @@ export class ThreeKeysHost {
     private readonly keyboard: KeyboardLayer,
     private readonly hands: HandsLayer | undefined,
     private readonly restoreRoad?: () => void
-  ) {
-    // Registered before Three's listener: restored contexts also inherit Pixi's upload state.
-    app.canvas.addEventListener("webglcontextrestored", this.contextRestored);
-  }
-
-  private readonly contextRestored = (): void => {
-    this.resetPixiState();
-    // Three rebuilds its renderer later in this event; invalidate Pixi's caches afterwards.
-    queueMicrotask(() => {
-      if (!this.destroyed) this.resetPixiState();
-    });
-  };
+  ) {}
 
   /** Settles once the keys are drawn by three, or once it is clear that they cannot be. */
   setEnabled(on: boolean): Promise<void> {
@@ -179,7 +166,6 @@ export class ThreeKeysHost {
     if (this.destroyed) return;
     void this.setEnabled(false);
     this.destroyed = true;
-    this.app.canvas.removeEventListener("webglcontextrestored", this.contextRestored);
     this.clearEnergy();
     this.pianistGeneration++;
     this.releasePianist();
@@ -190,20 +176,6 @@ export class ThreeKeysHost {
     this.stage = undefined;
   }
 
-  private resetPixiState(): void {
-    const renderer = this.app.renderer as WebGLRenderer;
-    if (this.sharedBindings) {
-      let empty: WebGLTexture | null = null;
-      try {
-        empty = renderer.texture.getGlSource(Texture.EMPTY.source).texture;
-      } catch {
-        /* Keep the fallback usable even when a texture upload failed. */
-      }
-      this.sharedBindings.release(empty);
-    }
-    renderer.resetState();
-  }
-
   private load(): Promise<void> {
     if (this.stage) return Promise.resolve();
     this.loading ??= this.create();
@@ -211,11 +183,6 @@ export class ThreeKeysHost {
   }
 
   private async create(): Promise<void> {
-    const renderer = this.app.renderer;
-    const gl = (renderer as Partial<WebGLRenderer>).gl;
-    if (typeof WebGL2RenderingContext === "undefined" || !(gl instanceof WebGL2RenderingContext))
-      return;
-    this.sharedBindings ??= new SharedTextureBindings(gl);
     try {
       const [{ ThreeStage }, { loadKeyboard88 }, { loadHand }] = await Promise.all([
         import("./ThreeStage"),
@@ -233,19 +200,14 @@ export class ThreeKeysHost {
         kit.dispose();
         return;
       }
-      // Three creates empty 3D textures in its constructor: Pixi's upload flags must be off.
-      this.resetPixiState();
       try {
-        this.stage = new ThreeStage(this.app.canvas, gl, kit, hand);
+        this.stage = new ThreeStage(this.app.renderer.threeRenderer, kit, hand);
         this.stage.beforeRender = this.beforeRender;
         this.stage.setKeyboardDim(this.keyboardDim);
         this.stage.setPerformanceScene(this.performanceWanted);
       } catch (error) {
         kit.dispose();
         throw error;
-      } finally {
-        // Construction also changes GL bindings, even if 3D was disabled while loading.
-        this.resetPixiState();
       }
     } catch (error) {
       console.warn("3D keys unavailable, keeping the perspective keys", error);
@@ -262,7 +224,6 @@ export class ThreeKeysHost {
     this.syncFreeCamera();
     if (this.hands) this.hands.live = on && this.stage?.hands !== undefined;
     const { ticker } = this.app;
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     const render = this.app.render;
     if (on) {
       ticker.remove(render, this.app);
@@ -287,9 +248,6 @@ export class ThreeKeysHost {
       renderer.render({ container: stage });
       return;
     }
-    const gl = renderer as WebGLRenderer;
-    // three left its own state (clear colour, blending) behind last frame.
-    this.resetPixiState();
     const separateRoad = this.freeActive || this.performanceWanted;
     const worldEffects = separateRoad && this.stage.nativeEffectsReady;
     const legacyEffects = !this.freeActive && !worldEffects;
@@ -301,7 +259,7 @@ export class ThreeKeysHost {
       if (separateRoad) this.roadEffects.draw(renderer, legacyEffects);
       this.effects.draw(renderer, legacyEffects && separateRoad);
       this.seatPianist(this.stage, scene);
-      const picture = gl.texture.getGlSource(scene.texture.source).texture;
+      const picture = scene.texture.nativeTexture;
       const frame = this.keyboard.frame;
       const hands =
         this.hands && (this.hands.container.visible || this.hands.pianist)
@@ -345,14 +303,11 @@ export class ThreeKeysHost {
       void this.setEnabled(false);
       this.stage.dispose();
       this.stage = undefined;
-      this.resetPixiState();
       this.restoreRoad?.();
-      this.resetPixiState();
       renderer.render({ container: stage });
       return;
     }
     try {
-      this.resetPixiState();
       renderer.render({ container: stage, clear: false });
     } finally {
       this.effects.restore();
@@ -361,7 +316,6 @@ export class ThreeKeysHost {
   };
 
   private readonly drawRoadEffects = (): void => {
-    this.resetPixiState();
     this.effects.restore();
     this.effects.draw(this.app.renderer);
   };
@@ -487,7 +441,7 @@ export class ThreeKeysHost {
     pianist.follow(keys);
   }
 
-  /** The road off the stage, drawn first, and three's keys in the Pixi keys' place; or back. */
+  /** The road off the stage, drawn first, and native keys in the flat keys' place; or back. */
   private layer(on: boolean): void {
     const stage = this.app.stage;
     const from = on ? this.road : this.placeholder;

@@ -1,4 +1,4 @@
-﻿import { Container, NineSliceSprite, Texture } from "pixi.js";
+﻿import { Container, NineSliceSprite, Texture } from "./flatThree";
 import {
   bakeNoteMaterial,
   NOTE_BLOOM_MARGIN,

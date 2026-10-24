@@ -187,6 +187,8 @@ function ConnectedKeyboardSettings() {
       keyStyle: state.preferences.staff.keyStyle,
       notesPerspective: state.preferences.staff.road,
       handStyle: state.preferences.staff.handStyle,
+      flatNoteBurning: state.preferences.staff.flatNoteBurning,
+      flatPressEffects: state.preferences.staff.flatPressEffects,
       keyboardDim: state.preferences.staff.keyboardDim,
       roadGuides: state.preferences.staff.roadGuides,
       pianist: state.preferences.staff.pianist,
@@ -209,6 +211,12 @@ function ConnectedKeyboardSettings() {
     (runtime) => runtime.keyboardSettings.onNotesPerspective
   );
   const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
+  const onFlatNoteBurning = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onFlatNoteBurning
+  );
+  const onFlatPressEffects = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onFlatPressEffects
+  );
   const onKeyboardDim = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardDim);
   const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
   const onPerformanceScene = useRuntimeCommand(
@@ -225,6 +233,10 @@ function ConnectedKeyboardSettings() {
       notesPerspective={state.notesPerspective}
       onNotesPerspective={onNotesPerspective}
       handStyle={state.handStyle}
+      flatNoteBurning={state.flatNoteBurning}
+      onFlatNoteBurning={onFlatNoteBurning}
+      flatPressEffects={state.flatPressEffects}
+      onFlatPressEffects={onFlatPressEffects}
       keyboardDim={state.keyboardDim}
       onKeyboardDim={onKeyboardDim}
       roadGuides={state.roadGuides}

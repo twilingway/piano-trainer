@@ -89,6 +89,10 @@ export function useFallingView({
   const { locale } = useI18n();
   const localeRef = useRef(locale);
   const comparisonRef = useRef<FallingNotesView | null>(null);
+  const flatEffectsRef = useRef({
+    burning: staffPrefs.flatNoteBurning,
+    presses: staffPrefs.flatPressEffects
+  });
   useEffect(() => {
     localeRef.current = locale;
     viewRef.current?.setLocale(locale);
@@ -195,6 +199,15 @@ export function useFallingView({
     staffPrefs.performanceScene
   ]);
 
+  useEffect(() => {
+    flatEffectsRef.current = {
+      burning: staffPrefs.flatNoteBurning,
+      presses: staffPrefs.flatPressEffects
+    };
+    viewRef.current?.flatEffects.set(staffPrefs.flatNoteBurning, staffPrefs.flatPressEffects);
+    comparisonRef.current?.flatEffects.set(staffPrefs.flatNoteBurning, staffPrefs.flatPressEffects);
+  }, [viewRef, trainerReady, staffPrefs.flatNoteBurning, staffPrefs.flatPressEffects]);
+
   const { lift, scale, x, y } = placement;
   useEffect(() => {
     viewRef.current?.setKeysPlacement({ lift, scale, x, y });
@@ -228,6 +241,7 @@ export function useFallingView({
     const mounted = mirror.mount(host).then(() => {
       if (disposed) return;
       mirror.setLocale(localeRef.current);
+      mirror.flatEffects.set(flatEffectsRef.current.burning, flatEffectsRef.current.presses);
       mirror.setSong(song);
       mirror.setShowLabels(showLabels);
       mirror.setFpsVisible(staffPrefs.fps);

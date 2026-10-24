@@ -6,8 +6,8 @@ import {
   PerspectiveMesh,
   RenderTexture,
   Sprite
-} from "pixi.js";
-import type { Application, PointData, Renderer } from "pixi.js";
+} from "./flatThree";
+import type { Application, PointData, Renderer } from "./flatThree";
 import { bakeFog, drawRoadHorizon } from "./roadTextures";
 import { StaffRoadLayer } from "./StaffRoadLayer";
 import { RoadGlassLayer } from "./RoadGlassLayer";

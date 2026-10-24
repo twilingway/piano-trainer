@@ -67,6 +67,27 @@ function down(trainer: Trainer, timestamp: number, pitch = 60, deviceId = "piano
   trainer.key({ type: "down", pitch, velocity: 90, timestamp, source: "midi", deviceId });
 }
 describe("Trainer seek playback intent", () => {
+  it("pauses on graphics loss, rejects hidden starts, and restores without auto-resume", () => {
+    const run = harness();
+    run.trainer.setPlaying(true);
+    run.frame(1400);
+    run.trainer.setGraphicsAvailable(false);
+    const paused = run.latest()?.time;
+    expect(run.latest()?.playing).toBe(false);
+    run.trainer.setPlaying(true);
+    run.frame(1900);
+    expect(run.latest()?.playing).toBe(false);
+    expect(run.latest()?.time).toBe(paused);
+    run.trainer.setGraphicsAvailable(true);
+    run.frame(2100);
+    expect(run.latest()?.playing).toBe(false);
+    expect(run.latest()?.time).toBe(paused);
+    run.trainer.setPlaying(true);
+    run.frame(2300, 200);
+    expect(run.latest()?.playing).toBe(true);
+    expect(run.latest()?.time).toBeGreaterThan(paused ?? 0);
+  });
+
   it.each(["before first play", "paused", "finished"] as const)(
     "keeps a seek stopped when %s until Play is requested",
     (state) => {

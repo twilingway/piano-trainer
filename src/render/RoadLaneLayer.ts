@@ -1,4 +1,4 @@
-import { Container, Sprite, Texture } from "pixi.js";
+import { Container, Sprite, Texture } from "./flatThree";
 import type { RoadProjection } from "./perspective";
 
 /** Direct screen-space edges avoid the affine UV bends of a textured perspective mesh. */

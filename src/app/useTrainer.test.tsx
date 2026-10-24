@@ -20,10 +20,13 @@ const mocks = vi.hoisted(() => ({
     onSnapshot?: (snapshot: TrainerSnapshot) => void;
     load: ReturnType<typeof vi.fn>;
     setPlaying: ReturnType<typeof vi.fn>;
+    setGraphicsAvailable: ReturnType<typeof vi.fn>;
+    cancelInput: ReturnType<typeof vi.fn>;
     seek: ReturnType<typeof vi.fn>;
     destroyed: boolean;
   }[],
-  views: [] as { destroyed: boolean }[]
+  views: [] as { destroyed: boolean }[],
+  mount: vi.fn<() => Promise<void>>()
 }));
 vi.mock("../audio/pianoSound", () => ({ soundNoteOn: vi.fn(), soundNoteOff: vi.fn() }));
 vi.mock("../render/FallingNotesView", () => ({
@@ -33,7 +36,7 @@ vi.mock("../render/FallingNotesView", () => ({
       mocks.views.push(this);
     }
     mount() {
-      return Promise.resolve();
+      return mocks.mount();
     }
     destroy() {
       this.destroyed = true;
@@ -46,6 +49,8 @@ vi.mock("../practice/Trainer", () => ({
     destroyed = false;
     load = vi.fn(() => this.onSnapshot?.(snapshot()));
     setPlaying = vi.fn();
+    setGraphicsAvailable = vi.fn();
+    cancelInput = vi.fn();
     seek = vi.fn();
     observeTextNotes = vi.fn();
     constructor() {
@@ -147,6 +152,7 @@ beforeEach(() => {
   store = createAppStore();
   mocks.trainers.length = 0;
   mocks.views.length = 0;
+  mocks.mount.mockReset().mockResolvedValue(undefined);
   renders = 0;
   ensureSound = () => Promise.resolve();
   startFromRef.current = null;
@@ -1104,5 +1110,52 @@ describe("trainer runtime isolation", () => {
     expect(startFromRef.current).toBe(2);
     expect(active().seek).toHaveBeenLastCalledWith(2);
     expect(active().setPlaying).not.toHaveBeenCalled();
+  });
+});
+
+describe("graphics availability while the view mounts", () => {
+  it("passes a pending context loss to the new trainer and restores without autoplay", async () => {
+    let finishMount: (() => void) | undefined;
+    mocks.mount.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishMount = resolve;
+      })
+    );
+    const sound = vi.fn(() => Promise.resolve());
+    ensureSound = sound;
+    await mount();
+    expect(mocks.trainers).toHaveLength(0);
+    expect(value.trainerReady).toBe(false);
+    const graphicsHost = host.querySelector("[data-locale]");
+    if (!graphicsHost) throw new Error("Expected the mounted graphics host");
+    const canvas = graphicsHost.appendChild(document.createElement("canvas"));
+    const lost = new Event("webglcontextlost", { cancelable: true });
+    await act(async () => {
+      canvas.dispatchEvent(lost);
+      await Promise.resolve();
+    });
+    expect(lost.defaultPrevented).toBe(true);
+    expect(value.graphics.failure).toBe("lost");
+    expect(value.graphics.available()).toBe(false);
+    await act(async () => {
+      if (!finishMount) throw new Error("Expected a pending view mount");
+      finishMount();
+      await Promise.resolve();
+    });
+    const trainer = active();
+    expect(value.trainerReady).toBe(true);
+    expect(trainer.setGraphicsAvailable).toHaveBeenCalledExactlyOnceWith(false);
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      canvas.dispatchEvent(new Event("webglcontextrestored"));
+      await Promise.resolve();
+    });
+    expect(trainer.setGraphicsAvailable.mock.calls).toEqual([[false], [true]]);
+    expect(value.graphics.available()).toBe(true);
+    expect(value.graphics.failure).toBeNull();
+    expect(value.graphics.open).toBe(false);
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    expect(sound).not.toHaveBeenCalled();
+    expect(mocks.trainers.filter((entry) => !entry.destroyed)).toHaveLength(1);
   });
 });

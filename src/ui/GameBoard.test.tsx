@@ -41,6 +41,8 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   freeCamera: false,
   performanceScene: false,
   keyboardDim: false,
+  flatNoteBurning: true,
+  flatPressEffects: true,
   noteCards: false,
   noteCardsConfigured: false,
   labels: true,
@@ -76,8 +78,8 @@ describe("game score presentation", () => {
           onOverdrive={vi.fn()}
         />
       );
-      expect(markup).toContain("30,0%");
-      expect(markup).not.toContain("100,0%");
+      expect(markup).toContain("30,0\u00a0%");
+      expect(markup).not.toContain("100,0\u00a0%");
       expect(markup).toContain("Попадания — 30%, удержание — 70%");
     }
   });
@@ -261,7 +263,7 @@ describe("game score presentation", () => {
     );
     expect(markup).toContain('class="game-combo__value">0</strong>');
     expect(markup).toContain(
-      `${new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(game.accuracy ?? 0)}%`
+      `${new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(game.accuracy ?? 0)}\u00a0%`
     );
     expect(markup).not.toContain("data-grade");
     expect(markup).toContain('data-broken="true"');

@@ -1,5 +1,5 @@
 import { BufferAttribute, LineBasicMaterial, LineSegments, Vector3 } from "three";
-import type { Texture } from "pixi.js";
+import type { Texture } from "../flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { layoutKeyboard } from "../keyboardLayout";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";

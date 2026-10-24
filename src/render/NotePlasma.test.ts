@@ -16,7 +16,7 @@ const spies = vi.hoisted(() => ({
 }));
 
 vi.mock("./PlasmaLayer", async () => {
-  const { Container } = await import("pixi.js");
+  const { Container } = await import("./flatThree");
   return {
     PlasmaLayer: class {
       readonly container = new Container();

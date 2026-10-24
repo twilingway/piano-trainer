@@ -1,5 +1,5 @@
-import { Matrix, RendererType } from "pixi.js";
-import type { Container, Renderer, WebGLRenderer } from "pixi.js";
+import { Matrix } from "../flatThree";
+import type { Container, Renderer } from "../flatThree";
 
 interface Layer {
   readonly container: Container;
@@ -7,8 +7,8 @@ interface Layer {
   savedRenderable: boolean | undefined;
 }
 
-/** Existing Pixi FX go behind opaque Three hands; ownership and visibility stay with the view. */
-export class SceneEffectsPass {
+/** Flat Three effects go behind opaque Three hands; ownership and visibility stay with the view. */
+export class FlatSceneLayers {
   private layers: Layer[] = [];
 
   setLayers(containers: readonly Container[]): void {
@@ -25,10 +25,6 @@ export class SceneEffectsPass {
       if (!isVisible(layer.container)) continue;
       layer.container.getGlobalTransform(layer.transform);
       if (render) {
-        // Pixi v8 resetState caches transparent clearColor without setting GL's value.
-        // Match that cache after Three, before alpha-mask filters clear intermediate targets.
-        if ((renderer.type & RendererType.WEBGL) !== 0)
-          (renderer as WebGLRenderer).gl.clearColor(0, 0, 0, 0);
         renderer.render({ container: layer.container, clear: false, transform: layer.transform });
       }
       layer.savedRenderable = layer.container.renderable;

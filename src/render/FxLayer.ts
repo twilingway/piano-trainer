@@ -1,4 +1,5 @@
-import { Assets, Container, Rectangle, Sprite, Texture } from "pixi.js";
+import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "./flatEffectSettings";
+import { Assets, Container, Rectangle, Sprite, Texture } from "./flatThree";
 
 /** An atlas baked by Arcadia Effector (src/fx), with the numbers the editor exported. */
 interface AtlasEffect {
@@ -74,7 +75,7 @@ class AtlasPlayer {
   async load(): Promise<void> {
     const effect = this.effect;
     try {
-      const atlas = await Assets.load<Texture>(effect.url);
+      const atlas = await Assets.load(effect.url);
       this.frames = Array.from(
         { length: effect.frames },
         (_, index) =>
@@ -191,10 +192,14 @@ export class FxLayer {
     struck: readonly FxKey[],
     sounding: readonly FxKey[],
     hitY: number,
-    deltaSeconds: number
+    deltaSeconds: number,
+    options: FlatEffectOptions = ALL_FLAT_EFFECTS
   ): void {
     this.clock += deltaSeconds;
-    for (const key of struck) this.hit.play(key.x, key.y ?? hitY, key.width, key.color);
+    if (!options.presses) this.hit.clear();
+    if (!options.burning) this.glitter.clear();
+    for (const key of options.presses ? struck : [])
+      this.hit.play(key.x, key.y ?? hitY, key.width, key.color);
     const stillSounding = new Set<number>();
     for (const key of sounding) {
       const heldFor = (this.held.get(key.pitch) ?? 0) + deltaSeconds;
@@ -202,7 +207,8 @@ export class FxLayer {
       if (heldFor < HOLD_AFTER_S) continue;
       stillSounding.add(key.pitch);
       const due = (this.puffs.get(key.pitch) ?? 0) - deltaSeconds;
-      if (due <= 0) this.glitter.play(key.x, key.y ?? hitY, key.width, key.color, true);
+      if (options.burning && due <= 0)
+        this.glitter.play(key.x, key.y ?? hitY, key.width, key.color, true);
       this.puffs.set(key.pitch, due <= 0 ? due + GLITTER_EVERY_S : due);
       this.light(key, key.y ?? hitY);
     }
@@ -214,7 +220,7 @@ export class FxLayer {
       if (!soundingNow.has(pitch)) this.held.delete(pitch);
     }
     for (const [pitch, light] of this.lights) {
-      const on = stillSounding.has(pitch);
+      const on = options.presses && stillSounding.has(pitch);
       light.glow.visible = on;
       light.core.visible = on;
     }

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { Assets, Texture } from "pixi.js";
-import type { Mesh } from "pixi.js";
+import { Assets, Texture } from "./flatThree";
+import type { Mesh } from "./flatThree";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GLASS_LIFT_SHARE, RoadGlassLayer } from "./RoadGlassLayer";
 

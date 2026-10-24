@@ -1,5 +1,5 @@
-import { Assets, Container, Rectangle, Sprite, Texture, TilingSprite } from "pixi.js";
-import type { Renderer } from "pixi.js";
+import { Assets, Container, Rectangle, Sprite, Texture, TilingSprite } from "./flatThree";
+import type { Renderer } from "./flatThree";
 
 import type { Finger, Hand } from "../fingering/fingering";
 import type { NoteStatus } from "../practice/session";
@@ -530,7 +530,7 @@ export class NotesLayer {
   /** Loads the cards' neon loop; a failure leaves them their still glow. */
   async loadNeon(): Promise<void> {
     try {
-      const atlas = await Assets.load<Texture>(CARD_NEON);
+      const atlas = await Assets.load(CARD_NEON);
       const { width, height, cols, count } = CARD_NEON_FRAME;
       this.neonFrames = Array.from(
         { length: count },

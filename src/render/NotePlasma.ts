@@ -1,4 +1,4 @@
-﻿import type { Container } from "pixi.js";
+﻿import type { Container } from "./flatThree";
 import type { SongNote } from "../song/song";
 import { noteColor } from "./computerKeys";
 import type { FrameState } from "./frameState";

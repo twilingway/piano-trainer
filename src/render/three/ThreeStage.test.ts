@@ -1,4 +1,4 @@
-import { BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Scene } from "three";
+import { Texture, BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
 import type { KeysScene } from "../PerspectiveKeyboardLayer";
 import type { KeyPress } from "./liveHands";
@@ -12,6 +12,7 @@ function fixture() {
   const mesh = { geometry: { dispose: geometryDispose } } as unknown as Mesh;
   const hands = { group: new Group(), keys, update: vi.fn(), suspend: vi.fn(), dispose: vi.fn() };
   const renderer = {
+    domElement: { width: 1600, height: 1200 },
     resetState: vi.fn(),
     setViewport: vi.fn(),
     clearDepth: vi.fn(),
@@ -20,11 +21,12 @@ function fixture() {
   };
   const disposable = () => ({ dispose: vi.fn() });
   const layer = () => ({ ...disposable(), update: vi.fn() });
+  const picture = new Texture();
   const stage = Object.create(ThreeStage.prototype) as ThreeStage;
   Object.assign(stage, {
     version: 1,
     disposed: false,
-    picture: {},
+    picture,
     keys: new Group(),
     road: new Group(),
     lighting: new Group(),
@@ -36,7 +38,7 @@ function fixture() {
     hinged: [{ pitch: 60, hinge, mesh }],
     hands,
     renderer,
-    context: { drawingBufferWidth: 800, drawingBufferHeight: 600 },
+
     configureCamera: vi.fn(),
     roadNotes: { ...disposable(), setViewport: vi.fn() },
     roadTrails: disposable(),
@@ -93,9 +95,9 @@ function fixture() {
     camera: { params: { prefs: { scale: 1 } }, near: { y: 22, z: 142 }, roadFarZ: 5142 }
   } as unknown as KeysScene;
   const draw = (delta = 1 / 60, down = false) => {
-    stage.draw(scene, {}, () => down, { width: 800, height: 600 }, delta, undefined);
+    stage.draw(scene, picture, () => down, { width: 800, height: 600 }, delta, undefined);
   };
-  return { stage, draw, keys, hinge, hands, renderer, geometryDispose, scene };
+  return { stage, picture, draw, keys, hinge, hands, renderer, geometryDispose, scene };
 }
 
 describe("ThreeStage physical key contact", () => {
@@ -140,7 +142,7 @@ describe("ThreeStage physical key contact", () => {
     view.stage.dispose();
     view.stage.dispose();
     expect(view.hands.dispose).toHaveBeenCalledOnce();
-    expect(view.renderer.dispose).toHaveBeenCalledOnce();
+    expect(view.renderer.dispose).not.toHaveBeenCalled();
     expect(view.geometryDispose).toHaveBeenCalledOnce();
   });
 });
@@ -207,7 +209,7 @@ it.each([false, true])("resets shared Three state after screen FX (failure: %s)"
   const draw = () => {
     view.stage.draw(
       view.scene,
-      {},
+      view.picture,
       () => false,
       { width: 800, height: 600 },
       0,
@@ -249,7 +251,7 @@ it("keeps free-camera case and native glow in one physical depth pass without sc
   });
   view.stage.draw(
     view.scene,
-    {},
+    view.picture,
     () => false,
     { width: 800, height: 600 },
     0,
@@ -281,7 +283,7 @@ it("feeds the bass fire the song's notes only when the song's stage asks for it"
   const draw = () => {
     view.stage.draw(
       view.scene,
-      {},
+      view.picture,
       () => false,
       { width: 800, height: 600 },
       1 / 60,
@@ -356,4 +358,10 @@ it("uses the manual camera for the fully lit world without transforming notes or
   expect(view.stage.nativeEffectsReady).toBe(false);
   view.draw();
   expect(internal.worldStage.update.mock.calls.at(-1)?.[0]).toBe(false);
+});
+
+it("uses logical viewport dimensions with the application's HiDPI renderer", () => {
+  const view = fixture();
+  view.draw();
+  expect(view.renderer.setViewport).toHaveBeenCalledWith(0, 0, 800, 600);
 });

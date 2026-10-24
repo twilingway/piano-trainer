@@ -1,4 +1,4 @@
-import { Container } from "pixi.js";
+import { Container } from "./flatThree";
 import type { RoadProjection } from "./perspective";
 import { RoadLaneLayer } from "./RoadLaneLayer";
 import { staffLineTargets, extendedStaffTargets } from "./staffLineTargets";

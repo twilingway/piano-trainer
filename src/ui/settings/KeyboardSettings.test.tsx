@@ -22,6 +22,10 @@ const base: ComponentProps<typeof KeyboardSettings> = {
   onNotesPerspective: noop,
   handStyle: "rendered",
   onHandStyle: noop,
+  flatNoteBurning: true,
+  onFlatNoteBurning: noop,
+  flatPressEffects: true,
+  onFlatPressEffects: noop,
   keyboardDim: false,
   onKeyboardDim: noop,
   roadGuides: false,
@@ -105,5 +109,65 @@ describe("free camera setting", () => {
       );
     });
     expect(host.textContent).not.toContain("Свободная камера");
+  });
+});
+
+describe("flat keyboard effects", () => {
+  it.each(["classic", "arcade"] as const)(
+    "toggles fire and press effects independently in %s",
+    (keyStyle) => {
+      const onBurning = vi.fn();
+      const onPresses = vi.fn();
+      act(() => {
+        root.render(
+          <KeyboardSettings
+            {...base}
+            keyStyle={keyStyle}
+            onFlatNoteBurning={onBurning}
+            onFlatPressEffects={onPresses}
+          />
+        );
+      });
+      const box = (text: string) => {
+        const input = [...host.querySelectorAll("label")]
+          .find((label) => label.textContent === text)
+          ?.querySelector("input");
+        if (!input) throw new Error("Expected the effect checkbox");
+        return input;
+      };
+      const burning = box("Горение нот");
+      const presses = box("Эффекты нажатия");
+      expect(burning.checked).toBe(true);
+      expect(presses.checked).toBe(true);
+      act(() => {
+        burning.click();
+      });
+      expect(onBurning).toHaveBeenCalledExactlyOnceWith(false);
+      expect(onPresses).not.toHaveBeenCalled();
+      act(() => {
+        presses.click();
+      });
+      expect(onPresses).toHaveBeenCalledExactlyOnceWith(false);
+    }
+  );
+
+  it.each(["perspective", "3d"] as const)(
+    "does not offer flat effect settings in %s",
+    (keyStyle) => {
+      act(() => {
+        root.render(<KeyboardSettings {...base} keyStyle={keyStyle} />);
+      });
+      expect(host.textContent).not.toContain("Горение нот");
+      expect(host.textContent).not.toContain("Эффекты нажатия");
+    }
+  );
+
+  it("translates both controls into English", () => {
+    setInterfaceLanguage("en");
+    act(() => {
+      root.render(<KeyboardSettings {...base} keyStyle="arcade" />);
+    });
+    expect(host.textContent).toContain("Note flames");
+    expect(host.textContent).toContain("Key press effects");
   });
 });

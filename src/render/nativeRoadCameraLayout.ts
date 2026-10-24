@@ -1,4 +1,4 @@
-import type { Sprite } from "pixi.js";
+import type { Sprite } from "./flatThree";
 import type { nativeNoteCameras } from "./nativeViewCameras";
 
 /** Keep the shell's contact row, projection and horizon fog on the same native camera. */
