@@ -4306,3 +4306,49 @@ button.song-card.song-card__open {
   text-align: center;
   pointer-events: none;
 }
+
+.instrument-chooser__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+.instrument-chooser__trigger > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.instrument-chooser__list {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px #0008;
+}
+.instrument-chooser__group {
+  padding: 8px 10px 4px;
+  font-weight: 700;
+}
+.instrument-chooser__option {
+  padding: 7px 10px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.instrument-chooser__option.is-active {
+  background: var(--accent);
+  color: #101722;
+}
+.instrument-chooser__option[aria-selected="true"] {
+  font-weight: 700;
+}
+.instrument-chooser__option[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
