@@ -13,8 +13,10 @@ COPY src ./src
 COPY tools/hand-rig/poses/studio-rest.json ./tools/hand-rig/poses/
 COPY tools/hand-rig/poses/library/seven-nation-army.json ./tools/hand-rig/poses/library/
 COPY public ./public
-# Optional server-managed scores stay outside Git and are bundled by Vite.
+# Optional server-managed additions are loaded before the versioned scores.
 RUN if [ -d public/production-lessons ]; then mv public/production-lessons ./local-lessons; fi
+# Docker merges directories and overwrites matching files with the versioned copy.
+COPY local-lessons ./local-lessons
 ARG GIT_SHA
 ARG GIT_PR
 RUN test -n "$GIT_SHA" && VITE_GIT_SHA="$GIT_SHA" VITE_GIT_PR="$GIT_PR" pnpm build && printf '%s\n' "$GIT_SHA" > dist/version.txt

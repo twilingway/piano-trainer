@@ -52,7 +52,7 @@ src/render      Pixi view: falling notes, keyboard, key stickers; keyboard layou
 src/staff       OSMD staff: cursor by beats, marks, zoom, line layout, live scrolling
 src/audio       Tone.js sampler (Salamander samples from tonejs.github.io) and metronome click
 src/input       Web MIDI (keys and the sustain pedal) and the computer keyboard
-local-lessons   git-ignored MusicXML lessons: one folder a lesson, one file a level
+local-lessons   allowlisted course manifest and scores; all other local materials ignored
 ```
 
 `App.tsx` composes all of it. The trainer and its Pixi view are created once and live outside React;

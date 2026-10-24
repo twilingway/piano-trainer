@@ -6,7 +6,69 @@
 node_modules
 dist
 coverage
-local-lessons
+# Exact lesson allowlist; macOS decomposes some Cyrillic names (NFD).
+local-lessons/*
+!local-lessons/.course
+local-lessons/.course/*
+!local-lessons/.course/lesson-01
+local-lessons/.course/lesson-01/*
+!local-lessons/.course/lesson-02
+local-lessons/.course/lesson-02/*
+!local-lessons/01 Hallelujah (урок 1)
+local-lessons/01 Hallelujah (урок 1)/*
+!local-lessons/02 Let It Be — припев (урок 2)
+local-lessons/02 Let It Be — припев (урок 2)/*
+!local-lessons/03 Let It Be — куплет (урок 3)
+local-lessons/03 Let It Be — куплет (урок 3)/*
+!local-lessons/04 Кукушка (урок 4)
+local-lessons/04 Кукушка (урок 4)/*
+!local-lessons/05 Song From A Secret Garden — часть A (урок 5)
+local-lessons/05 Song From A Secret Garden — часть A (урок 5)/*
+!local-lessons/06 Song From A Secret Garden — часть B (урок 6)
+local-lessons/06 Song From A Secret Garden — часть B (урок 6)/*
+!local-lessons/07 The Final Countdown (урок 7)
+local-lessons/07 The Final Countdown (урок 7)/*
+!local-lessons/08 Одинокий пастух (урок 8)
+!local-lessons/08 Одинокий пастух (урок 8)
+local-lessons/08 Одинокий пастух (урок 8)/*
+local-lessons/08 Одинокий пастух (урок 8)/*
+!local-lessons/09 The Scientist (урок 9)
+local-lessons/09 The Scientist (урок 9)/*
+!local-lessons/10 Astronomia (урок 10)
+local-lessons/10 Astronomia (урок 10)/*
+!local-lessons/.course/lesson-01/coord.musicxml
+!local-lessons/.course/lesson-01/melody-01.musicxml
+!local-lessons/.course/lesson-01/melody-02.musicxml
+!local-lessons/.course/lesson-01/melody-03.musicxml
+!local-lessons/.course/lesson-01/melody-04.musicxml
+!local-lessons/.course/lesson-01/whole.musicxml
+!local-lessons/.course/lesson-02/melody-01.musicxml
+!local-lessons/.course/lesson-02/melody-02.musicxml
+!local-lessons/.course/lesson-02/melody-03.musicxml
+!local-lessons/.course/lesson-02/melody-04.musicxml
+!local-lessons/.course/lesson-02/octaves-even.musicxml
+!local-lessons/.course/lesson-02/octaves-rhythm.musicxml
+!local-lessons/.course/lesson-02/whole.musicxml
+!local-lessons/01 Hallelujah (урок 1)/1 Ноты и табы.musicxml
+!local-lessons/02 Let It Be — припев (урок 2)/1 Ноты — припев.musicxml
+!local-lessons/02 Let It Be — припев (урок 2)/2 Табы — вступление и припев.musicxml
+!local-lessons/03 Let It Be — куплет (урок 3)/1 Ноты — полная версия.musicxml
+!local-lessons/03 Let It Be — куплет (урок 3)/2 Табы — куплет.musicxml
+!local-lessons/04 Кукушка (урок 4)/1 Ноты и табы.musicxml
+!local-lessons/05 Song From A Secret Garden — часть A (урок 5)/1 Ноты.musicxml
+!local-lessons/05 Song From A Secret Garden — часть A (урок 5)/2 Табы.musicxml
+!local-lessons/06 Song From A Secret Garden — часть B (урок 6)/1 Ноты.musicxml
+!local-lessons/06 Song From A Secret Garden — часть B (урок 6)/2 Табы.musicxml
+!local-lessons/07 The Final Countdown (урок 7)/1 Ноты и табы.musicxml
+!local-lessons/08 Одинокий пастух (урок 8)/1 Ноты — полная версия.musicxml
+!local-lessons/08 Одинокий пастух (урок 8)/1 Ноты — полная версия.musicxml
+!local-lessons/08 Одинокий пастух (урок 8)/2 Табы — часть A.musicxml
+!local-lessons/08 Одинокий пастух (урок 8)/2 Табы — часть A.musicxml
+!local-lessons/09 The Scientist (урок 9)/1 Ноты — полная версия.musicxml
+!local-lessons/09 The Scientist (урок 9)/2 Табы — припев.musicxml
+!local-lessons/10 Astronomia (урок 10)/1 Ноты — полная версия.musicxml
+!local-lessons/10 Astronomia (урок 10)/2 Табы — фрагмент.musicxml
+!local-lessons/course.json
 tools
 !tools
 tools/*
