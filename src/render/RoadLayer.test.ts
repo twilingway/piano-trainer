@@ -1,3 +1,4 @@
+import { DEFAULT_FREE_DIRECT_FIELD } from "./freeRoadLayout";
 // @vitest-environment happy-dom
 import { Container, Graphics, Matrix, Texture } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
@@ -26,15 +27,20 @@ function fixture() {
     size: { width: 800, height: 400 },
     nativeRoad: frame,
     style: "3d",
+    fallingNoteStyle: "filled",
     three,
     fog: new Container(),
     horizon: new Graphics(),
     arrivals: { container: new Container(), draw: vi.fn() },
+    rail: { container: new Container(), draw: vi.fn() },
+    keys: { container: new Container() },
+    container: new Container(),
+    viewWidth: 800,
+    hitY: 400,
     effects: new Container(),
     renderer: { render: vi.fn() },
     keysTexture: Texture.EMPTY,
     keysShift: new Matrix(),
-    sparks: { draw: vi.fn() },
     clock: 10
   });
   const layer = internals as unknown as RoadLayer;
@@ -46,7 +52,7 @@ function fixture() {
     frame,
     three,
     draw: (delta: number) => {
-      layer.draw(lane, keys, [], [], delta);
+      layer.draw(lane, keys, [], delta);
     }
   };
 }
@@ -183,6 +189,7 @@ describe("inspection key input", () => {
     const state = {
       camera: worldCamera(800, 600),
       cameraHeight: 600,
+      size: { width: 800, height: 600 },
       viewWidth: 800,
       shape: { horizon: 0.1 },
       notesPerspective: true,
@@ -233,15 +240,128 @@ describe("inspection key input", () => {
     expect(layer.keysPointAt(200, 250)).toBeUndefined();
   });
 
-  it("keeps horizon, mist and sparks active in native 3D and fallback", () => {
+  it("keeps horizon and mist without the obsolete bubble layer in native 3D and fallback", () => {
     const v = fixture();
     v.draw(0.016);
     expect(v.internals.fog.renderable).toBe(true);
     expect(v.internals.arrivals.container.renderable).toBe(true);
     expect(v.internals.effects.renderable).toBe(true);
-    expect(v.internals.sparks.draw).toHaveBeenCalledOnce();
+    expect("sparks" in v.internals).toBe(false);
     v.three.drawsRoad = false;
     v.draw(0.016);
-    expect(v.internals.sparks.draw).toHaveBeenCalledTimes(2);
+    expect(v.internals.arrivals.container.renderable).toBe(true);
   });
+});
+
+it.each(["classic", "arcade", "3d"] as const)(
+  "selects projected flat skin only for piano style %s",
+  (style) => {
+    const view = fixture();
+    Object.assign(view.internals, { style, computerKeyboard: false });
+    view.layer.beginNotes();
+    expect(view.frame.flatMaterial).toBe(style !== "3d");
+    Object.assign(view.internals, { computerKeyboard: true });
+    view.layer.beginNotes();
+    expect(view.frame.flatMaterial).toBe(false);
+  }
+);
+
+it.each([
+  ["3d", true, true, false, true],
+  ["3d", true, true, true, false],
+  ["3d", false, true, false, false],
+  ["3d", true, false, false, false],
+  ["classic", true, true, false, false],
+  ["arcade", true, true, false, false]
+] as const)(
+  "keeps native rail in the pre-key pass for %s, keys=%s notes=%s scene=%s",
+  (style, keys, notes, scene, expected) => {
+    const view = fixture();
+    Object.assign(view.internals, { style });
+    Object.assign(view.three, { sceneCamera: scene });
+    view.internals.keys.container.visible = keys;
+    view.internals.container.visible = notes;
+    view.draw(0.125);
+    expect(view.internals.rail.draw).toHaveBeenCalledExactlyOnceWith(10.125, 800, 400, expected);
+  }
+);
+
+it("routes the rail through the road's existing pre-key effect layers", () => {
+  const view = fixture();
+  const setSceneEffects = vi.fn();
+  Object.assign(view.three, { setSceneEffects });
+  const fire = new Container();
+  view.layer.setSceneEffects([fire]);
+  expect(setSceneEffects).toHaveBeenCalledExactlyOnceWith(
+    [fire],
+    [view.internals.horizon, view.internals.arrivals.container, view.internals.rail.container]
+  );
+});
+
+it.each(["filled", "flat", "glass"] as const)(
+  "applies 3D note style %s without changing flat keyboards or typing",
+  (noteStyle) => {
+    const view = fixture();
+    view.layer.setFallingNoteStyle(noteStyle);
+    view.layer.beginNotes();
+    expect(view.frame.noteStyle).toBe(noteStyle);
+    expect(view.frame.flatMaterial).toBe(noteStyle === "flat");
+    Object.assign(view.internals, { style: "classic" });
+    view.layer.beginNotes();
+    expect(view.frame.noteStyle).toBe("flat");
+    Object.assign(view.internals, { style: "arcade" });
+    view.layer.beginNotes();
+    expect(view.frame.noteStyle).toBe("flat");
+    Object.assign(view.internals, { style: "3d" });
+    view.layer.beginNotes();
+    expect(view.frame.noteStyle).toBe(noteStyle);
+    Object.assign(view.internals, { computerKeyboard: true });
+    view.layer.beginNotes();
+    expect(view.frame.noteStyle).toBe("glass");
+    expect(view.frame.flatMaterial).toBe(false);
+  }
+);
+
+it("routes every native note style, trail and CPU origin through the rear contact anchor", () => {
+  const { layer, internals, frame, three } = fixture();
+  const keys = layoutKeyboard(800, 60, 72);
+  const base = metricKeyboardCamera(800, 800, 600, CAMERA_PRESETS.top, 0.1, keys.values());
+  const cameras = nativeViewCameras(base, 150, true, true, 600, 0.1, 600);
+  Object.assign(internals, {
+    camera: cameras.notes,
+    keyboardCamera: cameras.keyboard,
+    blackLane: cameras.blackLane,
+    whiteLane: cameras.whiteLane,
+    contactKeys: keys,
+    freeRoadLayout: DEFAULT_FREE_DIRECT_FIELD,
+    pan: 0,
+    projection: cameras.notes.road,
+    keyHeights: new Map(
+      [...keys.values()].map((key) => [key.x + key.width / 2, key.black ? 34 : 22])
+    )
+  });
+  (layer as unknown as { refreshContactLanes(): void }).refreshContactLanes();
+  const c = keys.get(60);
+  if (!c) throw new Error("Missing C4");
+  const x = c.x + c.width / 2;
+  for (const style of ["filled", "glass", "flat"] as const) {
+    Object.assign(internals, { fallingNoteStyle: style });
+    layer.beginNotes();
+    layer.drawHold(x, 100, 400, c.width, 0xffffff, 1, 1, "c4", 0, 60);
+    layer.addTrailAnchor(x, c.width, 0xffffff, 1);
+    expect(frame.notes[0]?.x).toBeCloseTo(cameras.notes.sourceX(x) - 3.575);
+    expect(frame.trailAnchors[0]?.x).toBeCloseTo(frame.notes[0]?.x ?? NaN);
+    const expected = cameras.keyboard.project(cameras.keyboard.sourceX(x) - 3.575, 22, 149.1938);
+    expect(layer.notePlace(x, 400)?.x).toBeCloseTo(expected.x);
+  }
+  Object.assign(three, { freeCamera: true });
+  layer.beginNotes();
+  layer.drawHold(x, 100, 400, c.width, 0xffffff, 1);
+  expect(frame.notes[0]?.x).toBeCloseTo(cameras.notes.sourceX(x) - 3.575);
+  expect(frame.notes[0]?.lane?.scaleX).toBe(1);
+  Object.assign(three, { freeCamera: false });
+  Object.assign(internals, { style: "arcade" });
+  layer.beginNotes();
+  layer.drawHold(x, 100, 400, c.width, 0xffffff, 1);
+  expect(frame.notes[0]?.x).toBeCloseTo(cameras.notes.sourceX(x));
 });

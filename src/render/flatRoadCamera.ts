@@ -10,7 +10,9 @@ export function flatRoadCamera(
   perspective: boolean,
   horizon: number,
   offset = { x: 0, y: 0 },
-  viewportHeight = height
+  viewportHeight = height,
+  horizonWidth?: number,
+  sourceWidth = width
 ) {
   const base = worldCamera(
     width,
@@ -37,6 +39,15 @@ export function flatRoadCamera(
   };
   return {
     keyboard,
-    ...nativeNoteCameras(keyboard, perspective, height, horizon, viewportHeight, offset)
+    ...nativeNoteCameras(
+      keyboard,
+      perspective,
+      height,
+      horizon,
+      viewportHeight,
+      offset,
+      horizonWidth,
+      sourceWidth
+    )
   };
 }

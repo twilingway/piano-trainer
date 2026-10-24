@@ -17,6 +17,7 @@ export function useKeyboardSettings(
   onFps: (show: boolean) => void;
   onPianist: (on: boolean) => void;
   onFreeCamera: (on: boolean) => void;
+  onFreeCameraWasd: (on: boolean) => void;
   onPerformanceScene: (on: boolean) => void;
 } {
   return {
@@ -32,7 +33,16 @@ export function useKeyboardSettings(
     onKeyStyle: (keyStyle) => {
       updateStaffPrefs({ keyStyle });
     },
+    fallingNoteStyle: staffPrefs.fallingNoteStyle,
+    onFallingNoteStyle: (fallingNoteStyle) => {
+      updateStaffPrefs({ fallingNoteStyle });
+    },
     notesPerspective: staffPrefs.road,
+    freeRoadLayout: staffPrefs.road ? staffPrefs.freePerspectiveField : staffPrefs.freeDirectField,
+    onFreeRoadLayout: (change) => {
+      const key = staffPrefs.road ? "freePerspectiveField" : "freeDirectField";
+      updateStaffPrefs({ [key]: { ...staffPrefs[key], ...change } });
+    },
     onNotesPerspective: (road) => {
       updateStaffPrefs({ road });
     },
@@ -45,13 +55,15 @@ export function useKeyboardSettings(
     onFlatPressEffects: (flatPressEffects) => {
       updateStaffPrefs({ flatPressEffects });
     },
+    noteParticles: staffPrefs.noteParticles,
+    onNoteParticles: (noteParticles) => {
+      updateStaffPrefs({ noteParticles });
+    },
     keyboardDim: staffPrefs.keyboardDim,
     onKeyboardDim: (keyboardDim) => {
       updateStaffPrefs({ keyboardDim });
     },
-    ...(pianistAvailable(staffPrefs.keyStyle, staffPrefs.handStyle)
-      ? { pianist: staffPrefs.pianist }
-      : {}),
+    ...(pianistAvailable(staffPrefs.keyStyle) ? { pianist: staffPrefs.pianist } : {}),
     onPianist: (pianist) => {
       updateStaffPrefs({ pianist });
     },
@@ -60,6 +72,10 @@ export function useKeyboardSettings(
       updateStaffPrefs({ performanceScene });
     },
     freeCamera: staffPrefs.freeCamera,
+    freeCameraWasd: staffPrefs.freeCameraWasd,
+    onFreeCameraWasd: (freeCameraWasd) => {
+      updateStaffPrefs({ freeCameraWasd });
+    },
     onFreeCamera: (freeCamera) => {
       updateStaffPrefs({ freeCamera });
     },

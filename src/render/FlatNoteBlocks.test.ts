@@ -109,7 +109,18 @@ describe("flat neon blocks", () => {
     expect(plate?.blendMode).toBe("normal");
     expect(plate?.alpha).toBe(1);
     if (!plate) throw new Error("Expected a raised note plate");
-    expect(drawnBounds(plate).width).toBeGreaterThan(22);
+    expect(drawnBounds(plate).width).toBeCloseTo(22);
     expect(white[4]?.visible).toBe(false);
   });
+});
+
+it("keeps the raised backing inside the same rounded face bounds instead of a black outer rim", () => {
+  vi.spyOn(Texture, "from").mockReturnValue(Texture.WHITE);
+  const blocks = new FlatNoteBlocks();
+  blocks.begin();
+  blocks.draw(100, 30, 22, 30, 0x00df50, 1, true);
+  const fill = blocks.container.children[0] as NineSliceSprite;
+  const plate = blocks.container.children[4] as NineSliceSprite;
+  expect(drawnBounds(plate)).toEqual(drawnBounds(fill));
+  blocks.destroy();
 });

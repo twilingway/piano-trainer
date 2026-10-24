@@ -49,14 +49,15 @@ export function readableRoadTop(
 
   const nearBottom = Math.min(hitY, bottom);
   if (nearBottom <= top) return top;
-  const x = camera.sourceX(keyX);
+  const x = camera.sourceX(keyX) + (lane?.worldOffsetX ?? 0);
   // The upper face is one physical slab thickness above the contact lane.
   const floorY = lane?.y ?? camera.near.y;
   const y = floorY + noteSlabHeight(width * (camera.params.sourceUnits ?? 0.5), floorY);
   const zBottom = contact + (1 - nearBottom / hitY) * span;
   const zTop = contact + (1 - top / hitY) * span;
-  const lower = camera.project(x, y, zBottom);
-  const upper = camera.project(x, y, zTop);
+  const project = camera.projectRoad ?? camera.project;
+  const lower = project(x, y, zBottom, contact);
+  const upper = project(x, y, zTop, contact);
   if (
     !Number.isFinite(x) ||
     !Number.isFinite(lower.y) ||

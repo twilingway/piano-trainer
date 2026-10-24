@@ -24,6 +24,7 @@ export function ConnectedPlayerHeader() {
     settingsOpen,
     song,
     playing,
+    countdown,
     fullscreenActive,
     currentLesson,
     hasArrangement,
@@ -57,6 +58,7 @@ export function ConnectedPlayerHeader() {
       settingsOpen: runtime.settingsOpen,
       song: runtime.song,
       playing: runtime.playing,
+      countdown: runtime.countdown,
       fullscreenActive: runtime.fullscreen.active,
       currentLesson: runtime.current.lesson,
       hasArrangement: !runtime.practiceActive && runtime.current.arrangement !== undefined,
@@ -132,6 +134,7 @@ export function ConnectedPlayerHeader() {
                           : lessonDisplayTitle(song.title, currentLesson, t)
           }
           playing={playing}
+          countdownActive={countdown != null}
           soundLoading={sound === "loading" || (wordEnabled && (wordPending || Boolean(wordError)))}
           mode={trainerMode}
           {...playChoice}

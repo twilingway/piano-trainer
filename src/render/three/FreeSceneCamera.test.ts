@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import {
+  Box3,
   Bone,
   BoxGeometry,
   Float32BufferAttribute,
@@ -70,6 +71,48 @@ function setup() {
 afterEach(() => vi.restoreAllMocks());
 
 describe("inspection camera gestures", () => {
+  it("flies along the full view direction with frame delta, preserving orientation and stopping on release", () => {
+    const v = setup();
+    v.view.setMovement(true);
+    const direction = v.view.camera.getWorldDirection(new Vector3());
+    const before = v.view.camera.position.clone();
+    const rotation = v.view.camera.quaternion.clone();
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW", cancelable: true }));
+    v.view.update(800, 600, v.subject, 0.02);
+    const step = v.view.camera.position.clone().sub(before);
+    expect(step.length()).toBeGreaterThan(1);
+    expect(step.clone().normalize().distanceTo(direction)).toBeLessThan(0.00001);
+    expect(v.view.camera.quaternion.angleTo(rotation)).toBeLessThan(0.00001);
+    window.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+    const stopped = v.view.camera.position.clone();
+    v.view.update(800, 600, v.subject, 0.02);
+    expect(v.view.camera.position.distanceTo(stopped)).toBeLessThan(0.00001);
+    v.dispose();
+  });
+
+  it("normalizes diagonals, caps background delta and clears movement on reset or mode exit", () => {
+    const v = setup();
+    v.view.setMovement(true);
+    const before = v.view.camera.position.clone();
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+    v.view.update(800, 600, v.subject, 0.05);
+    const single = v.view.camera.position.distanceTo(before);
+    const diagonal = v.view.camera.position.clone();
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyD" }));
+    v.view.update(800, 600, v.subject, 10);
+    expect(v.view.camera.position.distanceTo(diagonal)).toBeCloseTo(single, 5);
+    v.view.invalidate();
+    v.view.update(800, 600, v.subject, 0.05);
+    const reset = v.view.camera.position.clone();
+    v.view.update(800, 600, v.subject, 0.05);
+    expect(v.view.camera.position.distanceTo(reset)).toBeLessThan(0.00001);
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+    v.view.setEnabled(false);
+    v.view.setEnabled(true);
+    v.view.update(800, 600, v.subject, 0.05);
+    expect(v.view.camera.position.distanceTo(reset)).toBeLessThan(0.00001);
+    v.dispose();
+  });
   it("orbits on MMB; Shift+MMB pans without rotating; LMB stays piano input", () => {
     const v = setup();
     const initial = v.view.camera.position.clone();
@@ -240,5 +283,21 @@ it("keeps submillimetre depth detail and fits far to orbit distance without resc
     expect(Math.abs(point.project(camera).z)).toBeLessThan(1);
   }
   expect(bounds).not.toHaveBeenCalled();
+  v.dispose();
+});
+
+it("includes the structural score only on reset and never moves an existing pose when a tile becomes ready", () => {
+  const v = setup();
+  const position = v.view.camera.position.clone();
+  v.view.setScoreBounds(new Box3(new Vector3(-750, 2200, -260), new Vector3(750, 2600, -260)));
+  v.view.update(800, 600, v.subject);
+  expect(v.view.camera.position.distanceTo(position)).toBeLessThan(1e-6);
+  v.view.reset(v.subject);
+  for (const x of [-750, 750])
+    for (const y of [2200, 2600]) {
+      const point = new Vector3(x, y, -260).project(v.view.camera);
+      expect(Math.abs(point.x)).toBeLessThan(1);
+      expect(Math.abs(point.y)).toBeLessThan(1);
+    }
   v.dispose();
 });

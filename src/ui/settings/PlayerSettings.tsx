@@ -9,6 +9,7 @@ interface Props {
   readonly open: boolean;
   readonly onClose: () => void;
   readonly wordTyping: boolean;
+  readonly freeCamera?: boolean;
   readonly play: ReactNode;
   readonly rules: ReactNode;
   readonly song: ReactNode;
@@ -54,6 +55,7 @@ export function PlayerSettings(props: Props) {
           render: (navigate) => (
             <HelpSettings
               wordTyping={props.wordTyping}
+              freeCamera={props.freeCamera ?? false}
               onNavigate={(target) => {
                 navigate(SETTINGS_TARGETS[target].tab, target);
               }}

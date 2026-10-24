@@ -19,13 +19,19 @@ const base: ComponentProps<typeof KeyboardSettings> = {
   keyStyle: "3d",
   onKeyStyle: noop,
   notesPerspective: true,
+  freeRoadLayout: { height: 2, distance: 0, width: 4, shape: "line" },
+  onFreeRoadLayout: noop,
   onNotesPerspective: noop,
+  fallingNoteStyle: "filled",
+  onFallingNoteStyle: noop,
   handStyle: "rendered",
   onHandStyle: noop,
   flatNoteBurning: true,
   onFlatNoteBurning: noop,
   flatPressEffects: true,
   onFlatPressEffects: noop,
+  noteParticles: true,
+  onNoteParticles: noop,
   keyboardDim: false,
   onKeyboardDim: noop,
   roadGuides: false,
@@ -90,6 +96,77 @@ describe("KeyboardSettings: the local pianist", () => {
 });
 
 describe("free camera setting", () => {
+  it("replaces screen percentages with world controls only in free 3D and restores the saved framing", () => {
+    const changed = vi.fn();
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          freeCamera
+          freeRoadLayout={{ height: 2, distance: 4, width: 6, shape: "convex" }}
+          onFreeRoadLayout={changed}
+        />
+      );
+    });
+    expect(host.querySelector('[data-setting-target="road-horizon"]')).toBeNull();
+    expect(host.querySelector('[data-setting-target="road-width"]')).toBeNull();
+    expect(
+      host.querySelector<HTMLInputElement>('[data-setting-target="free-source-height"]')?.value
+    ).toBe("2");
+    expect(
+      host.querySelector<HTMLInputElement>('[data-setting-target="free-source-distance"]')?.value
+    ).toBe("4");
+    expect(
+      host.querySelector<HTMLSelectElement>('[data-setting-target="free-source-shape"]')?.value
+    ).toBe("convex");
+    act(() => {
+      root.render(<KeyboardSettings {...base} freeCamera={false} />);
+    });
+    expect(host.querySelector('[data-setting-target="free-source-height"]')).toBeNull();
+    expect(
+      host.querySelector<HTMLInputElement>('[data-setting-target="road-horizon"]')?.value
+    ).toBe(String(base.road.horizon));
+    expect(host.querySelector<HTMLInputElement>('[data-setting-target="road-width"]')?.value).toBe(
+      String(base.road.far)
+    );
+    expect(changed).not.toHaveBeenCalled();
+  });
+  it.each(["ru", "en"] as const)("offers WASD only in the 3D free camera in %s", (language) => {
+    setInterfaceLanguage(language);
+    const change = vi.fn();
+    act(() => {
+      root.render(
+        <KeyboardSettings {...base} freeCamera freeCameraWasd onFreeCameraWasd={change} />
+      );
+    });
+    const box = host.querySelector<HTMLInputElement>(
+      '[data-setting-target="free-camera-wasd"] input'
+    );
+    expect(box?.checked).toBe(true);
+    expect(box?.closest("label")?.textContent).toBe(
+      language === "ru" ? "Передвижение WASD" : "Move with WASD"
+    );
+    act(() => box?.click());
+    expect(change).toHaveBeenCalledWith(false);
+    act(() => {
+      root.render(
+        <KeyboardSettings {...base} freeCamera={false} freeCameraWasd onFreeCameraWasd={change} />
+      );
+    });
+    expect(host.querySelector('[data-setting-target="free-camera-wasd"]')).toBeNull();
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          keyStyle="arcade"
+          freeCamera
+          freeCameraWasd
+          onFreeCameraWasd={change}
+        />
+      );
+    });
+    expect(host.querySelector('[data-setting-target="free-camera-wasd"]')).toBeNull();
+  });
   it("shows and changes the 3D toggle, hiding it in other styles", () => {
     const changed = vi.fn();
     act(() => {
@@ -111,60 +188,87 @@ describe("free camera setting", () => {
   });
 });
 
-describe("flat keyboard effects", () => {
-  it.each(["classic", "arcade"] as const)(
-    "toggles fire and press effects independently in %s",
+describe("independent keyboard effects", () => {
+  it.each(["classic", "arcade", "3d"] as const)(
+    "offers all three independent effects in %s",
     (keyStyle) => {
-      const onBurning = vi.fn();
-      const onPresses = vi.fn();
+      const burning = vi.fn();
+      const flash = vi.fn();
+      const particles = vi.fn();
       act(() => {
         root.render(
           <KeyboardSettings
             {...base}
             keyStyle={keyStyle}
-            onFlatNoteBurning={onBurning}
-            onFlatPressEffects={onPresses}
+            onFlatNoteBurning={burning}
+            onFlatPressEffects={flash}
+            onNoteParticles={particles}
           />
         );
       });
-      const box = (text: string) => {
-        const input = [...host.querySelectorAll("label")]
-          .find((label) => label.textContent === text)
+      const control = (name: string) => {
+        const box = [...host.querySelectorAll("label")]
+          .find((label) => label.textContent === name)
           ?.querySelector("input");
-        if (!input) throw new Error("Expected the effect checkbox");
-        return input;
+        if (!box) throw new Error("Expected effect control");
+        return box;
       };
-      const burning = box("Горение нот");
-      const presses = box("Эффекты нажатия");
-      expect(burning.checked).toBe(true);
-      expect(presses.checked).toBe(true);
+      expect(host.textContent).toContain("Анимация и эффекты");
       act(() => {
-        burning.click();
+        control("Летящие нотки").click();
       });
-      expect(onBurning).toHaveBeenCalledExactlyOnceWith(false);
-      expect(onPresses).not.toHaveBeenCalled();
+      expect(particles).toHaveBeenCalledExactlyOnceWith(false);
+      expect(burning).not.toHaveBeenCalled();
+      expect(flash).not.toHaveBeenCalled();
       act(() => {
-        presses.click();
+        control("Горение").click();
       });
-      expect(onPresses).toHaveBeenCalledExactlyOnceWith(false);
+      expect(burning).toHaveBeenCalledExactlyOnceWith(false);
+      act(() => {
+        control("Вспышка при нажатии").click();
+      });
+      expect(flash).toHaveBeenCalledExactlyOnceWith(false);
+      expect(host.querySelector('[data-setting-target="note-particles"]')).toBe(
+        control("Летящие нотки")
+      );
     }
   );
 
-  it.each(["3d"] as const)("does not offer flat effect settings in %s", (keyStyle) => {
-    act(() => {
-      root.render(<KeyboardSettings {...base} keyStyle={keyStyle} />);
-    });
-    expect(host.textContent).not.toContain("Горение нот");
-    expect(host.textContent).not.toContain("Эффекты нажатия");
-  });
-
-  it("translates both controls into English", () => {
+  it("translates the effects into English", () => {
     setInterfaceLanguage("en");
     act(() => {
-      root.render(<KeyboardSettings {...base} keyStyle="arcade" />);
+      root.render(<KeyboardSettings {...base} />);
     });
-    expect(host.textContent).toContain("Note flames");
-    expect(host.textContent).toContain("Key press effects");
+    expect(host.textContent).toContain("Animation and effects");
+    expect(host.textContent).toContain("Flames");
+    expect(host.textContent).toContain("Key press flash");
+    expect(host.textContent).toContain("Floating notes");
+  });
+
+  it("shows only the new 3D hands without rewriting the flat hand preference", () => {
+    const changed = vi.fn();
+    act(() => {
+      root.render(
+        <KeyboardSettings {...base} keyStyle="3d" handStyle="drawn" onHandStyle={changed} />
+      );
+    });
+    const select = host.querySelector<HTMLSelectElement>('select[aria-label="Вид рук"]');
+    expect(select?.value).toBe("rendered");
+    expect(select?.disabled).toBe(true);
+    expect(select?.options.length).toBe(1);
+    expect(changed).not.toHaveBeenCalled();
+    act(() => {
+      root.render(
+        <KeyboardSettings {...base} keyStyle="classic" handStyle="drawn" onHandStyle={changed} />
+      );
+    });
+    expect(host.querySelector<HTMLSelectElement>('select[aria-label="Вид рук"]')?.value).toBe(
+      "drawn"
+    );
+    expect(
+      host.querySelector<HTMLSelectElement>('select[aria-label="Вид рук"]')?.options.length
+    ).toBe(2);
+    expect(changed).not.toHaveBeenCalled();
   });
 });
 
@@ -205,3 +309,96 @@ it("resets the camera to the initial full top preset", () => {
   });
   expect(onCamera).toHaveBeenCalledExactlyOnceWith(CAMERA_PRESETS.top);
 });
+
+it.each(["classic", "arcade", "3d"] as const)(
+  "offers saved horizon controls in %s only while perspective is enabled",
+  (keyStyle) => {
+    const change = vi.fn();
+    act(() => {
+      root.render(
+        <KeyboardSettings {...base} keyStyle={keyStyle} notesPerspective={false} onRoad={change} />
+      );
+    });
+    const horizon = () =>
+      host.querySelector<HTMLInputElement>('[data-setting-target="road-horizon"]');
+    const far = () => host.querySelector<HTMLInputElement>('[data-setting-target="road-width"]');
+    expect(horizon()?.disabled).toBe(true);
+    expect(far()?.disabled).toBe(true);
+    expect(horizon()?.value).toBe(String(base.road.horizon));
+    expect(host.textContent).toContain(
+      "Горизонт и ширина у горизонта доступны в перспективной проекции."
+    );
+    act(() => {
+      root.render(
+        <KeyboardSettings {...base} keyStyle={keyStyle} notesPerspective={true} onRoad={change} />
+      );
+    });
+    expect(horizon()?.disabled).toBe(false);
+    expect(far()?.disabled).toBe(false);
+    expect(horizon()?.min).toBe("0");
+    expect(horizon()?.max).toBe("0.6");
+    expect(far()?.min).toBe("-1");
+    expect(far()?.max).toBe("0.9");
+    const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+    const slider = horizon();
+    if (!slider || !nativeValue?.set) throw new Error("Expected horizon control");
+    act(() => {
+      nativeValue.set?.call(slider, "0");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(change).toHaveBeenCalledWith({ horizon: 0 });
+    const width = far();
+    if (!width) throw new Error("Expected width control");
+    act(() => {
+      nativeValue.set?.call(width, "-1");
+      width.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(change).toHaveBeenCalledWith({ far: -1 });
+    expect(width.step).toBe("0.01");
+  }
+);
+it.each(["filled", "flat", "glass"] as const)(
+  "selects %s 3D notes without changing the keyboard style",
+  (fallingNoteStyle) => {
+    const change = vi.fn();
+    const keyChange = vi.fn();
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          fallingNoteStyle={fallingNoteStyle}
+          onFallingNoteStyle={change}
+          onKeyStyle={keyChange}
+        />
+      );
+    });
+    const style = host.querySelector<HTMLSelectElement>(
+      '[data-setting-target="falling-note-style"]'
+    );
+    expect(style?.value).toBe(fallingNoteStyle);
+    expect([...(style?.options ?? [])].map((option) => option.value)).toEqual([
+      "filled",
+      "flat",
+      "glass"
+    ]);
+    act(() => {
+      if (style) {
+        style.value = "flat";
+        style.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+    expect(change).toHaveBeenCalledWith("flat");
+    expect(keyChange).not.toHaveBeenCalled();
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          keyStyle="classic"
+          fallingNoteStyle={fallingNoteStyle}
+          onFallingNoteStyle={change}
+        />
+      );
+    });
+    expect(host.querySelector('select[aria-label="Оформление нот"]')).toBeNull();
+  }
+);

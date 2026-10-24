@@ -1,6 +1,9 @@
 import type { Messages } from "./locales";
 
 export const graphicsMessages = {
+  "Не удалось показать нотный стан в 3D. Оставили обычный вид.": {
+    en: "Could not show the score in 3D. The regular score is still available."
+  },
   "Графика не поддерживается": { en: "Graphics are not supported" },
   "Графика недоступна": { en: "Graphics are unavailable" },
   "Графическое соединение прервано": { en: "Graphics connection lost" },

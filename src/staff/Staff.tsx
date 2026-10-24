@@ -1,3 +1,6 @@
+import { worldScoreSnapshot } from "./publishWorldScore";
+import type { StaffWorldSource } from "./staffWorldSnapshot";
+import neonCursorUrl from "../fx/neon-cursor.webp?url";
 import {
   lineBoxes,
   scrollTarget,
@@ -36,6 +39,7 @@ import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 export { markKey } from "./staffNoteIndex";
 
 interface StaffProps {
+  readonly worldScoreSource?: StaffWorldSource | undefined;
   readonly timeline?:
     | {
         readonly timeAtBeat: (beat: number) => number;
@@ -108,6 +112,7 @@ function moveCursor(osmd: OpenSheetMusicDisplay, beat: number): void {
  */
 export function Staff({
   timeline,
+  worldScoreSource,
   musicXml,
   beat,
   zoom,
@@ -232,6 +237,7 @@ export function Staff({
     }
     paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
+    worldScoreSource?.publish(worldScoreSnapshot(host, beatXRef.current, linesRef.current));
     // A new render draws new noteheads and puts the cursor back at the start.
     paintedRef.current = [];
     osmd.cursor.reset();
@@ -332,10 +338,12 @@ export function Staff({
       osmd.clear();
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
       page.replaceChildren();
+      worldScoreSource?.publish(undefined);
       if (shareGeometry) publishGeometry(null);
     };
   }, [
     shownXml,
+    worldScoreSource,
     singleLine,
     breaksFromScore,
     fingers,
@@ -384,7 +392,10 @@ export function Staff({
   useEffect(() => {
     marksRef.current = marks;
     paintMarks(noteIndexRef.current.heads, marks);
-  }, [marks]);
+    const host = hostRef.current;
+    if (host)
+      worldScoreSource?.publish(worldScoreSnapshot(host, beatXRef.current, linesRef.current));
+  }, [marks, worldScoreSource]);
 
   // Read the shared beat every frame; single-line cursors stay exactly at the viewport midpoint.
   useEffect(() => {
@@ -448,7 +459,7 @@ export function Staff({
         beatNow,
         latest.current.course && osmd
           ? courseCursor(beatXRef.current.length, unitInPixels * osmd.Zoom)
-          : undefined
+          : { centered: following === true && latest.current.singleLine }
       );
       frame = requestAnimationFrame(step);
     };
@@ -534,7 +545,11 @@ export function Staff({
       }}
     >
       <div className="staff-page" ref={pageRef} />
-      <div className="staff-cursor" ref={cursorLineRef} />
+      <div
+        className="staff-cursor"
+        ref={cursorLineRef}
+        style={{ backgroundImage: `url("${neonCursorUrl}")` }}
+      />
     </div>
   );
 }

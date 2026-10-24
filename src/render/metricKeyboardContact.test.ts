@@ -10,6 +10,7 @@ import { holdBounds } from "./holdBounds";
 import { ThreeRoadNotes } from "./three/ThreeRoadNotes";
 import { projectionMatrix, viewMatrix } from "./three/threeCamera";
 import { metricC4X, metricKeyX } from "./keyboardMetrics";
+import { nativeKeyContactLanes, nativeKeyContactOffsetX } from "./nativeKeyContactAnchors";
 import { FREE_BLACK_LANE } from "./roadScenePoints";
 
 const PRESETS = Object.entries(CAMERA_PRESETS);
@@ -24,7 +25,7 @@ describe("metric note and key contact", () => {
     for (const overhead of [false, true])
       for (const perspective of [false, true]) {
         const base = metricKeyboardCamera(width, sourceWidth, height, prefs, 0.1, keys.values());
-        const { notes, keyboard, blackLane } = nativeViewCameras(
+        const { notes, keyboard, blackLane, whiteLane } = nativeViewCameras(
           base,
           150,
           overhead,
@@ -35,11 +36,13 @@ describe("metric note and key contact", () => {
           height - 8
         );
         const c4 = metricC4X(keys.values(), keyboard.sourceX);
+        const lanes = nativeKeyContactLanes(keys, blackLane, whiteLane);
+        const freeLanes = nativeKeyContactLanes(keys, FREE_BLACK_LANE);
         const bounds = holdBounds(0, 0.5, 0, 6, 500);
         const frame = new ThreeRoadFrame();
         const batch = new ThreeRoadNotes();
         for (const key of keys.values()) {
-          const lane = key.black ? blackLane : undefined;
+          const lane = lanes.get(key.x + key.width / 2);
           frame.begin();
           frame.add(
             key.x + key.width / 2,
@@ -75,9 +78,12 @@ describe("metric note and key contact", () => {
             lane
           );
           const expected = keyboard.project(
-            c4 + metricKeyX(key.pitch) - pan * (keyboard.params.sourceUnits ?? 0.5),
+            c4 +
+              metricKeyX(key.pitch) +
+              nativeKeyContactOffsetX(key.pitch) -
+              pan * (keyboard.params.sourceUnits ?? 0.5),
             key.black ? 34 : 22,
-            key.black ? 149.8008 : 150
+            key.black ? 145.8 : 149.1938
           );
           expect(Math.abs(actual.x - expected.x)).toBeLessThan(0.01);
           expect(Math.abs(actual.y - expected.y)).toBeLessThan(0.01);
@@ -88,11 +94,11 @@ describe("metric note and key contact", () => {
           free.lookAt(0, 22, -150);
           free.updateMatrixWorld();
           const physical = new Vector3(
-            c4 + metricKeyX(key.pitch),
+            c4 + metricKeyX(key.pitch) + nativeKeyContactOffsetX(key.pitch),
             key.black ? 34 : 22,
-            -(key.black ? 149.8008 : 150)
+            -(key.black ? 145.8 : 149.1938)
           );
-          const freeLane = key.black ? FREE_BLACK_LANE : undefined;
+          const freeLane = freeLanes.get(key.x + key.width / 2);
           frame.begin();
           frame.add(
             key.x + key.width / 2,
@@ -123,7 +129,7 @@ describe("metric note and key contact", () => {
   });
 
   it.each([false, true])(
-    "puts black notes on the exported149.8008mm key back, overhead=%s",
+    "puts black notes on the exported horizontal black top at145.8mm, overhead=%s",
     (overhead) => {
       const keys = layoutKeyboard(1320, 48, 84);
       const base = metricKeyboardCamera(800, 1320, 640, CAMERA_PRESETS.player, 0.1, keys.values());
@@ -143,9 +149,9 @@ describe("metric note and key contact", () => {
       const frame = new ThreeRoadFrame();
       frame.add(source, 50, 600, key.width, 0x00ffaa, 1, 600, notes, 1, "black", 0, blackLane, 61);
       const note = frame.notes[0];
-      expect(note?.bottom).toBe(149.8008);
-      const actual = projectNoteLane(notes.project(x, 34, 149.8008), blackLane);
-      const expected = keyboard.project(x, 34, 149.8008);
+      expect(note?.bottom).toBe(145.8);
+      const actual = projectNoteLane(notes.project(x, 34, 145.8), blackLane);
+      const expected = keyboard.project(x, 34, 145.8);
       expect(actual.x).toBeCloseTo(expected.x, 9);
       expect(actual.y).toBeCloseTo(expected.y, 9);
       expect(note?.x).toBeCloseTo(notes.sourceX(source), 9);

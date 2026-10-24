@@ -1,3 +1,4 @@
+import type { RoadWidthWarp } from "./roadWidthWarp";
 import type { Projected, RoadProjection } from "./perspective";
 import { depthAtScreenProgress } from "./perspective";
 
@@ -54,6 +55,9 @@ export function normalizeCamera(value: unknown): CameraPrefs {
 }
 /** The numbers `project` is built from, for a renderer that has to see the same scene. */
 export interface CameraParams {
+  /** Standard keyboard-only longitudinal fit; free and performance cameras do not use it. */
+  readonly keyboardDepthScale?: number;
+  readonly keyboardDepthAnchor?: number;
   readonly width: number;
   /** Pixels per world unit at depth 1. */
   readonly focal: number;
@@ -90,6 +94,8 @@ export const KEYS_BACK: RoadNear = { y: 22, z: 142 };
 export const PANEL_EDGE: RoadNear = { y: 50, z: (151.5 * 142) / 150 };
 
 export interface WorldCamera {
+  readonly roadWidth?: RoadWidthWarp;
+  readonly projectRoad?: (x: number, y: number, z: number, contactZ: number) => Projected;
   readonly params: CameraParams;
   readonly project: (x: number, y: number, z: number) => Projected;
   readonly road: RoadProjection;

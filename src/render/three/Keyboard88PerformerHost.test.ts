@@ -163,3 +163,28 @@ describe("public performer lifetime", () => {
     warning.mockRestore();
   });
 });
+
+it("reports loading, ready, hidden and model-binding failure without another model", async () => {
+  vi.clearAllMocks();
+  mocks.failed = false;
+  const good = fixture();
+  expect(good.host.status).toBe("idle");
+  good.sync();
+  expect(good.host.status).toBe("loading");
+  await settle();
+  good.sync();
+  expect(good.host.status).toBe("ready");
+  good.hands.container.visible = false;
+  good.sync();
+  expect(good.host.status).toBe("idle");
+  good.host.dispose();
+
+  mocks.failed = true;
+  const failed = fixture();
+  failed.sync();
+  await settle();
+  expect(failed.host.status).toBe("error");
+  expect(failed.host.ready).toBe(false);
+  failed.host.dispose();
+  mocks.failed = false;
+});

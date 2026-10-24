@@ -778,3 +778,36 @@ describe("PlasmaLayer", () => {
     expect(destroySource).not.toHaveBeenCalled();
   });
 });
+
+it.each(
+  Array.from({ length: 8 }, (_, mask) => ({
+    burning: (mask & 1) !== 0,
+    presses: (mask & 2) !== 0,
+    musicalNotes: (mask & 4) !== 0
+  }))
+)("independently renders flame and musical particles for %j", async (options) => {
+  mockAssets();
+  const layer = new PlasmaLayer();
+  await layer.load();
+  layer.draw([anchor], [source], [source], 600, 0.05, false, 0, options);
+  expect(layer.container.children[0]?.visible).toBe(options.musicalNotes);
+  for (const index of [1, 2, 3])
+    expect(layer.container.children[index]?.visible).toBe(options.burning);
+  expect(visible(layer, 0).length > 0).toBe(options.musicalNotes);
+  layer.destroy();
+});
+
+it("consumes hidden musical attacks without accumulating a particle salvo", async () => {
+  mockAssets();
+  const layer = new PlasmaLayer();
+  await layer.load();
+  const off = { burning: true, presses: true, musicalNotes: false };
+  for (let index = 0; index < 100; index++)
+    layer.draw([anchor], [source], [source], 600, 0.05, false, 0, off);
+  expect(visible(layer, 0)).toHaveLength(0);
+  layer.draw([anchor], [source], [source], 600, 0, false, 0, { ...off, musicalNotes: true });
+  expect(visible(layer, 0)).toHaveLength(0);
+  layer.draw([anchor], [source], [source], 600, 0.016, false, 0, { ...off, musicalNotes: true });
+  expect(visible(layer, 0).length).toBeLessThanOrEqual(1);
+  layer.destroy();
+});

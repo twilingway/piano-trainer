@@ -1,6 +1,53 @@
 import type { Messages } from "./locales";
 
 export const settingsHelpMessages = {
+  "Оформление нот": { en: "Note appearance" },
+  "Объёмные с заливкой": { en: "Filled 3D notes" },
+  "Как в аркаде": { en: "Arcade style" },
+  Прозрачные: { en: "Transparent" },
+  "Оформление объёмных нот выбирается в виде клавиш «3D».": {
+    en: "Choose the 3D keyboard view to change 3D note appearance."
+  },
+  "Горизонт и ширина у горизонта доступны в перспективной проекции.": {
+    en: "Horizon and horizon width are available in perspective projection."
+  },
+  "Где выбрать оформление нот и настроить горизонт?": {
+    en: "Where can I choose note appearance and adjust the horizon?"
+  },
+  "В «Вид / Падающие ноты» для 3D выбираются объёмные ноты с заливкой, оформление как в аркаде или прозрачные ноты. Горизонт и ширина у горизонта настраиваются во всех видах при перспективной проекции. Горизонт 0% начинает дорогу от верхней границы её области. Выбор сохраняется и не меняет темп песни.":
+    {
+      en: "In View / Falling notes, choose filled 3D notes, Arcade styling or transparent notes for 3D. Horizon and horizon width can be adjusted in every keyboard view with perspective projection. A 0% horizon starts the road at the top of its area. Your choices are saved and do not change song tempo."
+    },
+  "Отсчёт перед игрой, с": { en: "Count-in before play, s" },
+  "От 0 до 10 секунд только перед началом игры. После паузы — сразу. 0 — без отсчёта.": {
+    en: "0 to 10 seconds only before starting a game. Resume immediately after a pause. 0 disables the count-in."
+  },
+  "Отменить отсчёт": { en: "Cancel count-in" },
+  Приготовьтесь: { en: "Get ready" },
+  "Готовим звук…": { en: "Preparing sound…" },
+  "Как успеть поставить руки перед началом?": {
+    en: "How can I get my hands ready before starting?"
+  },
+  "В «Игра / Режим и темп» задайте отсчёт перед игрой от 0 до 10 секунд. По умолчанию — 3 секунды только перед первым запуском песни или после «Сначала». После паузы игра продолжается сразу. Кнопка игры или Ctrl+Пробел отменяет подготовку.":
+    {
+      en: "In Play / Mode and tempo, set a count-in from 0 to 10 seconds. The default is 3 seconds, only before the first start or after Restart. Resume immediately after a pause. The play button or Ctrl+Space cancels preparation."
+    },
+  "Анимация и эффекты": { en: "Animation and effects" },
+  Горение: { en: "Flames" },
+  "Вспышка при нажатии": { en: "Key press flash" },
+  "Летящие нотки": { en: "Floating notes" },
+  "Эффекты над клавишами работают и при скрытых падающих нотах.": {
+    en: "Effects above the keys also work when falling notes are hidden."
+  },
+  "Как оставить эффекты без падающих нот?": { en: "How can I keep effects without falling notes?" },
+  "В «Вид / Анимация и эффекты» отдельно включаются горение, вспышка при нажатии и летящие нотки. Они работают над клавишами в классике, аркаде и 3D, даже если падающие ноты скрыты. Скрытые клавиши не мешают эффектам на линии попадания.":
+    {
+      en: "In View / Animation and effects, control flames, key press flashes and floating notes separately. They work above the keys in Classic, Arcade and 3D, even when falling notes are hidden. Effects stay on the hit line when the keyboard is hidden."
+    },
+  "Загружаем 3D-руки…": { en: "Loading 3D hands…" },
+  "3D-руки не загрузились. Можно продолжать играть.": {
+    en: "3D hands could not load. You can keep playing."
+  },
   "Канал MIDI недоступен: мелодия звучит только на этом устройстве. Он применяется при выводе мелодии на MIDI-пианино.":
     {
       en: "The MIDI channel is unavailable while the melody plays only on this device. It applies when sending the melody to a MIDI piano."

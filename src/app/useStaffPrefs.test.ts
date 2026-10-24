@@ -233,6 +233,86 @@ describe("falling note defaults", () => {
 });
 
 describe("inspection camera preference", () => {
+  it("keeps distinct direct and perspective source layouts across reload and preserves screen framing", async () => {
+    await mount();
+    expect(prefs.staffPrefs.freeDirectField).toEqual({
+      height: 2,
+      distance: 0,
+      width: 4,
+      shape: "line"
+    });
+    expect(prefs.staffPrefs.freePerspectiveField).toEqual({
+      height: 2,
+      distance: 4,
+      width: 6,
+      shape: "line"
+    });
+    await act(async () => {
+      prefs.updateStaffPrefs({
+        freeDirectField: { height: 3, distance: 1, width: 8, shape: "convex" },
+        freePerspectiveField: { height: 4, distance: 7, width: 12, shape: "concave" },
+        roadFar: -0.4,
+        roadHorizon: 0.2
+      });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({
+      freeDirectField: { height: 3, distance: 1, width: 8, shape: "convex" },
+      freePerspectiveField: { height: 4, distance: 7, width: 12, shape: "concave" },
+      roadFar: -0.4,
+      roadHorizon: 0.2
+    });
+  });
+  it("normalizes malformed source profiles independently", () => {
+    const normalized = normalizeStaffPrefs({
+      freeDirectField: { height: -1, distance: 100, width: 0, shape: "sphere" },
+      freePerspectiveField: { height: NaN }
+    });
+    expect(normalized.freeDirectField).toEqual({
+      height: 0.25,
+      distance: 20,
+      width: 0.25,
+      shape: "line"
+    });
+    expect(normalized.freePerspectiveField).toEqual({
+      height: 2,
+      distance: 4,
+      width: 6,
+      shape: "line"
+    });
+  });
+  it.each([-1, -0.5, 0, 0.1, 0.9])(
+    "preserves signed far width %s through reload",
+    async (roadFar) => {
+      localStorage.setItem("staff-prefs", JSON.stringify({ roadFar }));
+      await mount();
+      expect(prefs.staffPrefs.roadFar).toBe(roadFar);
+      expect(normalizeStaffPrefs({ roadFar: -2 }).roadFar).toBe(-1);
+      expect(normalizeStaffPrefs({ roadFar: 2 }).roadFar).toBe(0.9);
+    }
+  );
+  it("defaults WASD off, rejects invalid flags and persists its opt-in independently", async () => {
+    expect(normalizeStaffPrefs({ freeCameraWasd: "true" }).freeCameraWasd).toBe(false);
+    await mount();
+    expect(prefs.staffPrefs.freeCameraWasd).toBe(false);
+    await act(async () => {
+      prefs.updateStaffPrefs({ freeCameraWasd: true, freeCamera: false });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({ freeCameraWasd: true, freeCamera: false });
+  });
   it.each([undefined, "true", 1, null])("rejects invalid saved value %s", async (freeCamera) => {
     localStorage.setItem("staff-prefs", JSON.stringify({ keyStyle: "3d", freeCamera }));
     await mount();
@@ -289,11 +369,12 @@ describe("flat keyboard effect preferences", () => {
   it("keeps old appearance by default and rejects malformed stored toggles", async () => {
     localStorage.setItem(
       "staff-prefs",
-      JSON.stringify({ flatNoteBurning: "false", flatPressEffects: 0 })
+      JSON.stringify({ flatNoteBurning: "false", flatPressEffects: 0, noteParticles: "false" })
     );
     await mount();
     expect(prefs.staffPrefs.flatNoteBurning).toBe(true);
     expect(prefs.staffPrefs.flatPressEffects).toBe(true);
+    expect(prefs.staffPrefs.noteParticles).toBe(true);
   });
 
   it("persists independent toggles across style changes and reloads", async () => {
@@ -302,7 +383,8 @@ describe("flat keyboard effect preferences", () => {
       prefs.updateStaffPrefs({
         keyStyle: "classic",
         flatNoteBurning: false,
-        flatPressEffects: true
+        flatPressEffects: true,
+        noteParticles: false
       });
       await Promise.resolve();
     });
@@ -318,13 +400,15 @@ describe("flat keyboard effect preferences", () => {
     await mount();
     expect(prefs.staffPrefs.flatNoteBurning).toBe(false);
     expect(prefs.staffPrefs.flatPressEffects).toBe(false);
+    expect(prefs.staffPrefs.noteParticles).toBe(false);
     await act(async () => {
       prefs.updateStaffPrefs({ flatNoteBurning: true });
       await Promise.resolve();
     });
     expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
       flatNoteBurning: true,
-      flatPressEffects: false
+      flatPressEffects: false,
+      noteParticles: false
     });
   });
 });
@@ -431,4 +515,40 @@ describe("notation color preferences", () => {
     await mount();
     expect(prefs.staffPrefs).toMatchObject({ noteColor: "#62d9ff", playedNoteColor: "#abcdef" });
   });
+});
+
+it.each([undefined, "unknown", 42, null])(
+  "defaults malformed note appearance %s to filled",
+  (fallingNoteStyle) => {
+    expect(normalizeStaffPrefs({ fallingNoteStyle, roadHorizon: 0.4 })).toMatchObject({
+      fallingNoteStyle: "filled",
+      roadHorizon: 0.4
+    });
+  }
+);
+it.each(["filled", "flat", "glass"] as const)(
+  "preserves saved %s note appearance",
+  (fallingNoteStyle) => {
+    expect(normalizeStaffPrefs({ fallingNoteStyle })).toMatchObject({ fallingNoteStyle });
+  }
+);
+it("retains the 3D note choice while using flat keys and after reload", async () => {
+  await mount();
+  await act(async () => {
+    prefs.updateStaffPrefs({ fallingNoteStyle: "glass", keyStyle: "classic" });
+    await Promise.resolve();
+  });
+  await act(async () => {
+    root.unmount();
+    await Promise.resolve();
+  });
+  root = createRoot(host);
+  await mount();
+  expect(prefs.staffPrefs.fallingNoteStyle).toBe("glass");
+  expect(prefs.staffPrefs.keyStyle).toBe("classic");
+  await act(async () => {
+    prefs.updateStaffPrefs({ keyStyle: "3d" });
+    await Promise.resolve();
+  });
+  expect(prefs.staffPrefs.fallingNoteStyle).toBe("glass");
 });

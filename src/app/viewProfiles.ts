@@ -79,7 +79,7 @@ export function normalizeViewFraming(
   const layoutRecord = record(raw.layout);
   return {
     camera: normalizeCamera(mergedCamera),
-    roadFar: number(raw.roadFar, 0.1, 0.9, fallback.roadFar),
+    roadFar: number(raw.roadFar, -1, 0.9, fallback.roadFar),
     roadHorizon: number(raw.roadHorizon, 0, 0.6, fallback.roadHorizon),
     layout:
       raw.layout &&

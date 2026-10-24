@@ -9,7 +9,7 @@ import { nameKey } from "./bakeLabels";
 import { FlatNoteBlocks } from "./FlatNoteBlocks";
 import type { FallingNoteNames } from "./bakeLabels";
 import { flatHoldBounds, holdBounds } from "./holdBounds";
-import { repeatedNoteEnds, repeatGap } from "./noteSeparation";
+import { nextSamePitchStarts, separateRepeatTail } from "./noteSeparation";
 import { scorePlacements } from "../song/scorePlacement";
 import type { ScorePlacement } from "../song/scorePlacement";
 import { PIANO_LOOK } from "./noteLook";
@@ -121,7 +121,7 @@ export class NotesLayer {
   private beats: readonly SongBeat[] = [];
   private laneWidth = 0;
   private notes: NoteSprite[] = [];
-  private repeated: ReadonlySet<string> = new Set();
+  private nextStarts: ReadonlyMap<string, number> = new Map();
   private readonly cardFrame: Texture;
   /** The left hand's frame, with a second ring. */
   private readonly cardFrameLeft: Texture;
@@ -175,7 +175,7 @@ export class NotesLayer {
     this.look = look;
     this.trailAnchors = new RoadTrailAnchors(song.notes);
     this.beats = song.beats;
-    this.repeated = repeatedNoteEnds(song.notes);
+    this.nextStarts = nextSamePitchStarts(song.notes);
     const written = song.notes.map(look.written);
     const placements = scorePlacements({ ...song, notes: written });
     for (const sprite of this.notes) {
@@ -325,15 +325,6 @@ export class NotesLayer {
         0,
         flatNoteMinimumHeight(key?.width ?? 0, note.duration)
       );
-      if (onScreen && this.repeated.has(note.id) && bounds.top > 0) {
-        const centre = key.x + key.width / 2;
-        const spot = road?.notePlace(centre, bounds.top);
-        const next = road?.notePlace(centre, bounds.top + 1);
-        const slope = spot && next ? next.y - spot.y : 1;
-        const gap = repeatGap(bounds.bottom - bounds.top, key.width, slope, spot?.scale ?? 1);
-        bounds.top += gap;
-        bodyBounds.top += Math.min(gap, Math.max(0, bodyBounds.bottom - bodyBounds.top) * 0.25);
-      }
       if (onScreen && road) {
         bounds.top = road.fitHoldTop(
           key.x + key.width / 2,
@@ -342,6 +333,16 @@ export class NotesLayer {
           key.width * ROAD_HOLD_WIDTH_SHARE,
           note.duration
         );
+      }
+      const following = this.nextStarts.get(note.id);
+      if (onScreen && following !== undefined) {
+        const head = hitY - (following - state.time) * pixelsPerSecond;
+        const centre = key.x + key.width / 2;
+        const spot = road?.notePlace(centre, head);
+        const next = road?.notePlace(centre, head + 1);
+        const slope = spot && next ? next.y - spot.y : 1;
+        bounds.top = separateRepeatTail(bounds.top, bounds.bottom, head, slope);
+        bodyBounds.top = separateRepeatTail(bodyBounds.top, bodyBounds.bottom, head);
       }
       const visibleHeight = Math.max(0, bodyBounds.bottom - bodyBounds.top);
       body.visible = onScreen && visibleHeight > 0;

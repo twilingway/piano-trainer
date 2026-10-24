@@ -1,3 +1,4 @@
+import { STAFF_VERTICAL_SPACE } from "./staffSpacing";
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 
 /** Apply the viewport scale while keeping the user's preference unchanged. */
@@ -17,7 +18,10 @@ export function fitCompactStaff(
   const limit = Number.parseFloat(style.maxHeight);
   const scrollbar = host.offsetHeight - host.clientHeight;
   const lineHeight = first.bottom - first.top;
-  const room = Math.max(0, limit - 4 - scrollbar - 2);
+  const room = Math.max(
+    0,
+    limit - STAFF_VERTICAL_SPACE.top - STAFF_VERTICAL_SPACE.bottom - scrollbar - 2
+  );
   if (Number.isFinite(limit) && lineHeight > room && room > 0) {
     osmd.Zoom *= room / lineHeight;
     osmd.render();

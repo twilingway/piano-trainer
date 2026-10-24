@@ -1,3 +1,10 @@
+import type { FallingNoteStyle } from "../render/fallingNoteStyle";
+import {
+  DEFAULT_FREE_DIRECT_FIELD,
+  DEFAULT_FREE_PERSPECTIVE_FIELD,
+  normalizeFreeRoadLayout,
+  type FreeRoadLayout
+} from "../render/freeRoadLayout";
 import { DEFAULT_PLAYED_NOTE_COLOR } from "../staff/notationColors";
 import type { HandStyle } from "../render/handRenderCatalog";
 import type { KeyStyle } from "../render/KeyboardLayer";
@@ -38,16 +45,21 @@ export interface StaffPrefs {
   readonly road: boolean;
   /** Optional lane guides on the 3D road. */
   readonly roadGuides: boolean;
+  readonly fallingNoteStyle: FallingNoteStyle;
   /** The local pianist model at the 3D keys instead of the live hands, when it is there. */
   readonly pianist: boolean;
   /** Inspection mode persists; the manual orbit pose is transient. */
   readonly freeCamera: boolean;
+  readonly freeCameraWasd: boolean;
+  readonly freeDirectField: FreeRoadLayout;
+  readonly freePerspectiveField: FreeRoadLayout;
   readonly performanceScene: boolean;
   /** Dim physical keys for a demonstration; study stays bright. */
   readonly keyboardDim: boolean;
-  /** Classic and arcade effects; native 3D remains independent. */
+  /** Independent visual effects in every keyboard view. */
   readonly flatNoteBurning: boolean;
   readonly flatPressEffects: boolean;
+  readonly noteParticles: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
   readonly noteCardsConfigured: boolean;
@@ -63,7 +75,7 @@ export interface StaffPrefs {
   readonly keyboardOrientation: KeyboardOrientation;
   /** The take's review opens by itself at the end of a run. */
   readonly autoReview: boolean;
-  /** The road's width at the horizon, as a share of its width at the keys. */
+  /** Positive: key-width share; negative: screen-width share in the standard view. */
   readonly roadFar: number;
   readonly camera: CameraPrefs;
   /** The road's horizon, as a share of the way from the top down to the keys. */
@@ -89,12 +101,17 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   handStyle: "rendered",
   road: false,
   roadGuides: false,
+  fallingNoteStyle: "filled",
   pianist: false,
   freeCamera: false,
+  freeCameraWasd: false,
+  freeDirectField: DEFAULT_FREE_DIRECT_FIELD,
+  freePerspectiveField: DEFAULT_FREE_PERSPECTIVE_FIELD,
   performanceScene: false,
   keyboardDim: false,
   flatNoteBurning: true,
   flatPressEffects: true,
+  noteParticles: true,
   noteCards: false,
   noteCardsConfigured: true,
   labels: false,
@@ -145,12 +162,20 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     handStyle: choice("handStyle", ["drawn", "rendered"]),
     road: boolean("road"),
     roadGuides: boolean("roadGuides"),
+    fallingNoteStyle: choice("fallingNoteStyle", ["filled", "flat", "glass"]),
     pianist: boolean("pianist"),
     freeCamera: boolean("freeCamera"),
+    freeCameraWasd: boolean("freeCameraWasd"),
+    freeDirectField: normalizeFreeRoadLayout(raw.freeDirectField, DEFAULT_FREE_DIRECT_FIELD),
+    freePerspectiveField: normalizeFreeRoadLayout(
+      raw.freePerspectiveField,
+      DEFAULT_FREE_PERSPECTIVE_FIELD
+    ),
     performanceScene: boolean("performanceScene"),
     keyboardDim: boolean("keyboardDim"),
     flatNoteBurning: boolean("flatNoteBurning"),
     flatPressEffects: boolean("flatPressEffects"),
+    noteParticles: boolean("noteParticles"),
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),
     labels: boolean("labels"),
@@ -161,7 +186,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
       raw.keyStyle === "3d" && raw.keyboardOrientation === "top" ? "top" : "follow",
     autoReview: boolean("autoReview"),
     camera: raw.camera === undefined ? CAMERA_PRESETS.top : normalizeCamera(raw.camera),
-    roadFar: number("roadFar", 0.1, 0.9),
+    roadFar: number("roadFar", -1, 0.9),
     roadHorizon: number("roadHorizon", 0, 0.6)
   };
 }

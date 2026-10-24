@@ -1,7 +1,7 @@
 import type { Projected, RoadProjection } from "./perspective";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
 import type { KeyRect } from "./keyboardLayout";
-import { KEYBOARD_BLACK_BACK } from "./keyboardMetrics";
+import { NATIVE_BLACK_CONTACT_BACK } from "./nativeKeyContactAnchors";
 import { projectNoteLane } from "./noteLaneProjection";
 import type { NoteLaneProjection } from "./noteLaneProjection";
 import type { WorldCamera } from "./worldCamera";
@@ -15,7 +15,7 @@ export const FREE_BLACK_LANE: NoteLaneProjection = {
   offsetY: 0,
   width: 1,
   height: 1,
-  depth: KEYBOARD_BLACK_BACK
+  depth: NATIVE_BLACK_CONTACT_BACK
 };
 
 export function roadKeyHeights(
@@ -48,10 +48,11 @@ export function roadNotePlace(
   }
   const { near } = camera;
   return projectNoteLane(
-    camera.project(
-      camera.sourceX(keyX - pan + offset),
+    (camera.projectRoad ?? camera.project)(
+      camera.sourceX(keyX - pan + offset) + (lane?.worldOffsetX ?? 0),
       (keyHeight ?? near.y) + lift * (camera.params.sourceUnits ?? 0.5),
-      (lane?.depth ?? near.z) + (1 - progress) * (camera.roadFarZ - (lane?.depth ?? near.z))
+      (lane?.depth ?? near.z) + (1 - progress) * (camera.roadFarZ - (lane?.depth ?? near.z)),
+      lane?.depth ?? near.z
     ),
     lane
   );

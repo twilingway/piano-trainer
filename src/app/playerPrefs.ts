@@ -10,6 +10,7 @@ export interface PlayerPrefs {
   readonly handChoice: HandChoice;
   readonly speed: number;
   readonly metronome: boolean;
+  readonly countdownSeconds: number;
   /** The program plays what the player does not; off, only the player's notes sound. */
   readonly accompaniment: boolean;
   /** A MIDI song's notes as its staff writes them rather than as the file plays them. */
@@ -29,12 +30,19 @@ export const DEFAULT_PLAYER_PREFS: PlayerPrefs = {
   handChoice: "right",
   speed: 0.75,
   metronome: false,
+  countdownSeconds: 3,
   accompaniment: true,
   notesAsWritten: true,
   simplified: true,
   lesson: null,
   librarySource: null
 };
+
+export function normalizeCountdownSeconds(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(10, Math.round(value)))
+    : 3;
+}
 
 export function normalizePlayerPrefs(value: unknown): PlayerPrefs {
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -54,6 +62,7 @@ export function normalizePlayerPrefs(value: unknown): PlayerPrefs {
         ? Math.max(0.01, Math.min(1, raw.speed))
         : DEFAULT_PLAYER_PREFS.speed,
     metronome: bool("metronome"),
+    countdownSeconds: normalizeCountdownSeconds(raw.countdownSeconds),
     accompaniment: bool("accompaniment"),
     notesAsWritten: bool("notesAsWritten"),
     simplified: bool("simplified"),

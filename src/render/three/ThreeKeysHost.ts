@@ -1,3 +1,4 @@
+import type { StaffWorldSource } from "../../staff/staffWorldSnapshot";
 import { Container, UPDATE_PRIORITY } from "../flatThree";
 import { Vector2, type Camera } from "three";
 import type { HandsSource } from "./liveHands";
@@ -6,6 +7,7 @@ import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
 import type { KeysScene, NativeKeyboardScene } from "../NativeKeyboardScene";
 import type { EnergySource } from "../noteEnergy";
+import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "../flatEffectSettings";
 import type { Pianist } from "./pianist";
 import type { ThreeStage } from "./ThreeStage";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
@@ -19,6 +21,7 @@ import { Keyboard88PerformerHost } from "./Keyboard88PerformerHost";
 export class ThreeKeysHost {
   private stage: ThreeStage | undefined;
   private loading: Promise<void> | undefined;
+  private loadFailed = false;
   private wanted = false;
   private roadWanted = false;
   private keyboardDim = false;
@@ -26,13 +29,16 @@ export class ThreeKeysHost {
   private freeWanted = false;
   private performanceWanted = false;
   get performanceScene(): boolean {
-    return this.performanceWanted && this.drawsRoad;
+    return this.performanceWanted && this.sceneVisible;
   }
   private freeActive = false;
   onFreeCamera: ((on: boolean) => void) | undefined;
   private destroyed = false;
   private energy: readonly EnergySource[] = [];
+  private effectOptions: FlatEffectOptions = ALL_FLAT_EFFECTS;
   private roadFrame: ThreeRoadFrame | undefined;
+  private songTime: number | undefined;
+  private worldScore: StaffWorldSource | undefined;
   private energyDeltaSeconds: number | undefined;
   private pianist: Pianist | undefined;
   private pianistLoading = false;
@@ -61,10 +67,28 @@ export class ThreeKeysHost {
   setEnabled(on: boolean, road = on): Promise<void> {
     if (this.destroyed) return Promise.resolve();
     this.wanted = on;
+    if (this.hands) this.hands.live = on;
     this.roadWanted = road;
     const loaded = on || road ? this.load() : Promise.resolve();
     this.sync();
     return loaded;
+  }
+
+  get handStatus(): "idle" | "loading" | "ready" | "error" {
+    if (!this.wanted || !this.hands || (!this.hands.container.visible && !this.hands.pianist))
+      return "idle";
+    if (!this.stage) return this.loadFailed ? "error" : "loading";
+    if (
+      this.pianistIdentity !== "public" &&
+      import.meta.env.DEV &&
+      (this.hands.songPerformance || this.hands.pianist)
+    )
+      return this.pianist?.native
+        ? "ready"
+        : this.pianistAttempted && !this.pianistLoading
+          ? "error"
+          : "loading";
+    return this.publicPerformer.status;
   }
 
   get on(): boolean {
@@ -88,6 +112,19 @@ export class ThreeKeysHost {
     this.energyDeltaSeconds = deltaSeconds;
   }
 
+  setEffects(options: FlatEffectOptions): void {
+    this.effectOptions = options;
+  }
+
+  setWorldScoreSource(source: StaffWorldSource | undefined): void {
+    this.worldScore = source;
+    this.stage?.setWorldScoreSource(source);
+  }
+
+  setSongTime(time: number): void {
+    this.songTime = time;
+  }
+
   setRoadFrame(frame: ThreeRoadFrame): void {
     this.roadFrame = frame;
   }
@@ -107,6 +144,12 @@ export class ThreeKeysHost {
     this.syncFreeCamera();
   }
 
+  private movementWanted = false;
+  setFreeCameraMovement(on: boolean): void {
+    this.movementWanted = on;
+    this.stage?.setFreeCameraMovement(on);
+  }
+
   setPerformanceScene(on: boolean): void {
     this.performanceWanted = on;
     this.stage?.setPerformanceScene(on);
@@ -118,7 +161,13 @@ export class ThreeKeysHost {
   }
 
   get sceneCamera(): boolean {
-    return this.drawsRoad && (this.freeActive || this.performanceWanted);
+    return this.sceneVisible && (this.freeActive || this.performanceWanted);
+  }
+
+  private get sceneVisible(): boolean {
+    return (
+      this.drawsRoad || (this.on && this.keys.container.visible && this.keys.scene !== undefined)
+    );
   }
 
   resetFreeCamera(): void {
@@ -194,33 +243,30 @@ export class ThreeKeysHost {
   }
 
   private async create(): Promise<void> {
+    this.loadFailed = false;
     try {
-      const [{ ThreeStage }, { loadKeyboard88 }, { loadHand }] = await Promise.all([
+      const [{ ThreeStage }, { loadKeyboard88 }] = await Promise.all([
         import("./ThreeStage"),
-        import("./keyboard88"),
-        import("./liveHands")
+        import("./keyboard88")
       ]);
-      const [kit, hand] = await Promise.all([
-        loadKeyboard88(),
-        loadHand().catch((error: unknown) => {
-          console.warn("3D hands unavailable, keeping the sprite hands", error);
-          return undefined;
-        })
-      ]);
+      const kit = await loadKeyboard88();
       if (this.destroyed) {
         kit.dispose();
         return;
       }
       try {
-        this.stage = new ThreeStage(this.app.renderer.threeRenderer, kit, hand);
+        this.stage = new ThreeStage(this.app.renderer.threeRenderer, kit);
         this.stage.beforeRender = this.beforeRender;
         this.stage.setKeyboardDim(this.keyboardDim);
+        if (this.worldScore) this.stage.setWorldScoreSource(this.worldScore);
+        this.stage.setFreeCameraMovement(this.movementWanted);
         this.stage.setPerformanceScene(this.performanceWanted);
       } catch (error) {
         kit.dispose();
         throw error;
       }
     } catch (error) {
+      this.loadFailed = true;
       console.warn("3D keys unavailable, native scene unavailable", error);
     } finally {
       this.loading = undefined;
@@ -230,10 +276,10 @@ export class ThreeKeysHost {
 
   private sync(): void {
     const on = (this.wanted || this.roadWanted) && this.stage !== undefined;
+    if (this.hands) this.hands.live = this.wanted;
     if (on === this.active) return;
     this.active = on;
     this.syncFreeCamera();
-    if (this.hands) this.hands.live = on && this.wanted && this.stage?.hands !== undefined;
     const { ticker } = this.app;
     const render = this.app.render;
     if (on) {
@@ -241,7 +287,6 @@ export class ThreeKeysHost {
       ticker.add(this.frame, undefined, UPDATE_PRIORITY.LOW);
     } else {
       this.publicPerformer.clear();
-      this.stage?.setNativePianist(false);
       ticker.remove(this.frame);
       ticker.add(render, this.app, UPDATE_PRIORITY.LOW);
       this.layer(false);
@@ -285,20 +330,18 @@ export class ThreeKeysHost {
             }
           : undefined;
       this.frameHands = hands;
-      // Live hands press the keys they play themselves: a repeated note's key comes up between.
-      const native =
-        this.publicPerformer.ready || (this.wantsPianist() && this.pianist?.native === true);
-      if (native && this.hands) this.nativeContacts.setNotes(this.hands.songNotes);
-      const played = hands !== undefined && this.stage.hands !== undefined && !native;
+      // Physical contacts do not depend on whether hands are shown or loaded.
+      this.nativeContacts.setNotes(this.hands?.songNotes);
+      const contactTime = this.hands?.time ?? this.songTime ?? frame?.hintTime ?? 0;
       this.stage.setSongStage(this.hands?.songStage);
       this.stage.draw(
         scene,
         picture,
         (pitch) =>
           frame?.pressed.has(pitch) === true ||
-          (native
-            ? this.nativeContacts.down(pitch, hands?.time ?? 0)
-            : frame !== undefined && !played && frame.sounding.has(pitch)),
+          (frame?.physicalDown?.has(pitch) ??
+            (frame?.sounding.has(pitch) === true &&
+              (!this.nativeContacts.has(pitch) || this.nativeContacts.down(pitch, contactTime)))),
         this.app.screen,
         this.app.ticker.deltaMS / 1000,
         hands,
@@ -308,7 +351,9 @@ export class ThreeKeysHost {
         worldEffects,
         this.hands?.songNotes,
         separateRoad ? undefined : this.drawRoadEffects,
-        this.wanted && this.keys.container.visible
+        this.wanted && this.keys.container.visible,
+        this.effectOptions,
+        this.songTime ?? this.roadFrame?.songTime ?? hands?.time ?? 0
       );
     } catch (error) {
       this.effects.restore();
@@ -336,16 +381,12 @@ export class ThreeKeysHost {
   };
 
   private readonly beforeRender = (camera: Camera, separateCameras = false): void => {
-    if (this.pianistIdentity === "public" && !this.hands?.container.visible && this.stage?.hands)
-      this.stage.hands.group.visible = false;
     if (this.publicPerformer.ready) {
       this.publicPerformer.pose(this.frameHands, separateCameras);
       return;
     }
     if (!this.wantsPianist() || !this.pianist) return;
     if (this.pianist.native) this.pianist.sample(this.frameHands, camera);
-    else if (this.hands?.pianist && this.stage?.hands)
-      this.pianist.poseFallback(this.stage.hands.poses, this.frameHands, camera);
   };
 
   private releasePianist(): void {
@@ -374,7 +415,7 @@ export class ThreeKeysHost {
   /** A restored source package supersedes a previously loaded unrelated trial, including pending loads. */
   private seatPianist(stage: ThreeStage, keys: KeysScene): void {
     const source = this.hands?.songPerformance;
-    if (this.hands?.renderedStyle && !(import.meta.env.DEV && source)) {
+    if (this.hands && !(import.meta.env.DEV && (source || this.hands.pianist))) {
       if (this.pianistIdentity !== "public") {
         this.pianistGeneration++;
         this.pianistLoading = this.pianistAttempted = false;
@@ -382,9 +423,7 @@ export class ThreeKeysHost {
         this.pianistIdentity = "public";
       }
       this.publicPerformer.sync(stage, keys, this.hands);
-      stage.setNativePianist(this.publicPerformer.ready);
-      this.hands.live = this.active && (stage.hands !== undefined || this.publicPerformer.ready);
-      stage.hands?.setPlayer(undefined);
+      this.hands.live = this.wanted;
       return;
     }
     this.publicPerformer.clear();
@@ -434,11 +473,7 @@ export class ThreeKeysHost {
         });
     }
     const pianist = this.pianist;
-    stage.setNativePianist(wanted && pianist?.native === true);
-    if (this.hands)
-      this.hands.live =
-        this.active && (stage.hands !== undefined || (wanted && pianist?.native === true));
-    stage.hands?.setPlayer(undefined);
+    if (this.hands) this.hands.live = this.wanted;
     pianist?.rig?.setNativeHandsVisible(false);
     if (!pianist) return;
     const visible = wanted && (bodyWanted || pianist.native);

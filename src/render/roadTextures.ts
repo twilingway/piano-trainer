@@ -1,16 +1,4 @@
-import { Graphics, Texture } from "./flatThree";
-import type { Renderer } from "./flatThree";
-
-/** A soft round dot: bright middle, fading edge. */
-export function bakeSpark(renderer: Renderer): Texture {
-  const dot = new Graphics();
-  for (let ring = 6; ring >= 1; ring--) {
-    dot.circle(8, 8, ring * 1.3).fill({ color: 0xffffff, alpha: 0.25 });
-  }
-  const texture = renderer.generateTexture({ target: dot, resolution: 2 });
-  dot.destroy();
-  return texture;
-}
+import { type Graphics, Texture } from "./flatThree";
 
 /** A vertical fade, opaque at the top: the fog, tinted the background's colour. */
 export function bakeFog(): Texture {

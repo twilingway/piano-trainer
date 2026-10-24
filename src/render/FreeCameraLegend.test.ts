@@ -20,7 +20,7 @@ describe("free camera legend", () => {
     expect(element?.textContent).toContain("MMB — orbit");
     expect(element?.textContent).toContain("Shift + MMB — pan");
     expect(element?.textContent).toContain("Wheel — zoom");
-    expect(host.querySelector("button")?.textContent).toBe("Reset camera");
+    expect(host.querySelector("button")?.textContent).toBe("Return to the piano");
     legend.setVisible(false);
     expect(element?.hidden).toBe(true);
     legend.destroy();

@@ -98,3 +98,11 @@ describe("Three road visual snapshot", () => {
     expect(frame.visualTime).toBe(0);
   });
 });
+
+it("preserves source-pixel units for the shared baked perspective skin", () => {
+  const camera = worldCamera(1440, 900, undefined, PANEL_EDGE);
+  const frame = new ThreeRoadFrame();
+  frame.add(720, 100, 600, 44, 0x00df50, 1, 600, camera);
+  expect(frame.notes[0]?.materialUnitX).toBe(camera.params.sourceUnits ?? 0.5);
+  expect(frame.notes[0]?.materialUnitZ).toBeCloseTo((camera.roadFarZ - camera.near.z) / 600);
+});

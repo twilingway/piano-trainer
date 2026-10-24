@@ -1,3 +1,4 @@
+import { normalizeCountdownSeconds } from "../../app/playerPrefs";
 import { useI18n } from "../../app/useI18n";
 import type { PracticeMode, PracticeStats } from "../../practice/session";
 import { choiceValue, chooseValue, PartOptions } from "../CompactPracticeChoices";
@@ -6,6 +7,8 @@ import type { HandsChoice } from "../PlayerTopBar";
 
 interface Props {
   readonly wordTyping?: boolean;
+  readonly countdownSeconds: number;
+  readonly onCountdownSeconds: (seconds: number) => void;
   readonly metronome: boolean;
   readonly onMetronome: (on: boolean) => void;
   readonly listening: boolean;
@@ -25,6 +28,8 @@ interface Props {
 
 /** The play tab: the metronome, a listen-through and the counts of the run. */
 export function PlaySettings({
+  countdownSeconds,
+  onCountdownSeconds,
   metronome,
   onMetronome,
   listening,
@@ -60,6 +65,24 @@ export function PlaySettings({
           <option value="tempo">{t("В темпе")}</option>
         </select>
       </label>
+      <label className="setting">
+        <span>{t("Отсчёт перед игрой, с")}</span>
+        <input
+          type="number"
+          min={0}
+          max={10}
+          step={1}
+          value={countdownSeconds}
+          aria-label={t("Отсчёт перед игрой, с")}
+          data-setting-target="play-countdown"
+          onChange={(event) => {
+            onCountdownSeconds(normalizeCountdownSeconds(event.target.valueAsNumber));
+          }}
+        />
+      </label>
+      <p className="setting-hint">
+        {t("От 0 до 10 секунд только перед началом игры. После паузы — сразу. 0 — без отсчёта.")}
+      </p>
       {!wordTyping && (
         <label className="setting">
           <span>{t("Руки")}</span>

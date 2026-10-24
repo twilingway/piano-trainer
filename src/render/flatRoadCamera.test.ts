@@ -16,7 +16,16 @@ describe("shared road on flat keyboards", () => {
         [1280, 720, 540]
       ] as const) {
         const offset = { x: 17, y: -23 };
-        const { notes, blackLane } = flatRoadCamera(width, height, hitY, perspective, 0.1, offset);
+        const { notes, blackLane } = flatRoadCamera(
+          width,
+          height,
+          hitY,
+          perspective,
+          0.1,
+          offset,
+          height,
+          0.2
+        );
         for (const x of [22, width / 2, width - 22]) {
           for (const floor of [WHITE_NOTE_FLOOR, BLACK_NOTE_FLOOR]) {
             const lane = floor === BLACK_NOTE_FLOOR ? blackLane : undefined;
@@ -44,4 +53,24 @@ describe("shared road on flat keyboards", () => {
       }
     }
   );
+});
+
+it.each([0.1, 0.2, 0.9])("honors horizon width %s without moving flat-key contact", (far) => {
+  for (const [width, height, hitY] of [
+    [320, 568, 360],
+    [390, 844, 680],
+    [667, 375, 220],
+    [1366, 768, 500]
+  ] as const) {
+    const { notes } = flatRoadCamera(width, height, hitY, true, 0.1, { x: 0, y: 0 }, height, far);
+    const nearLeft = notes.project(notes.sourceX(0), WHITE_NOTE_FLOOR, notes.near.z);
+    const nearRight = notes.project(notes.sourceX(width), WHITE_NOTE_FLOOR, notes.near.z);
+    const farLeft = notes.project(notes.sourceX(0), WHITE_NOTE_FLOOR, notes.roadFarZ);
+    const farRight = notes.project(notes.sourceX(width), WHITE_NOTE_FLOOR, notes.roadFarZ);
+    expect(nearLeft.x).toBeCloseTo(0, 7);
+    expect(nearRight.x).toBeCloseTo(width, 7);
+    expect(nearLeft.y).toBeCloseTo(hitY, 7);
+    expect(farLeft.y).toBeCloseTo(hitY * 0.1, 7);
+    expect((farRight.x - farLeft.x) / (nearRight.x - nearLeft.x)).toBeCloseTo(far, 7);
+  }
 });

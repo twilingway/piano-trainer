@@ -1,4 +1,14 @@
-import { BufferAttribute, LineBasicMaterial, LineSegments, Vector3 } from "three";
+import { freeRoadLanes, freeRoadPoint, DEFAULT_FREE_PERSPECTIVE_FIELD } from "../freeRoadLayout";
+import { roadWidthCamera } from "../roadWidthWarp";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  LineBasicMaterial,
+  LineSegments,
+  Vector3,
+  Points,
+  PointsMaterial
+} from "three";
 import type { Texture } from "../flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { layoutKeyboard } from "../keyboardLayout";
@@ -49,7 +59,7 @@ describe("native road guides", () => {
         const boxes = keyBoxes(keys);
         const guides = new ThreeRoadGuides();
         guides.update(boxes, camera, [camera.near.z, camera.roadFarZ]);
-        expect(guides.group.children).toHaveLength(3);
+        expect(guides.group.children).toHaveLength(4);
         expect(
           line(guides, 0).geometry.drawRange.count + line(guides, 1).geometry.drawRange.count
         ).toBe(boxes.length * 2);
@@ -98,7 +108,7 @@ describe("native road guides", () => {
     const beatBuffer = positions(line(guides, 2)).array;
     expect(laneBuffer.length).toBe(89 * 6);
     expect(blackBuffer.length).toBe(89 * 6);
-    expect(beatBuffer.length).toBe(ROAD_BEAT_GUIDE_LIMIT * 6);
+    expect(beatBuffer.length).toBe(ROAD_BEAT_GUIDE_LIMIT * 6 * 88);
     const near = keys.camera.near.z,
       far = keys.camera.roadFarZ;
     guides.update(boxes, keys.camera, [near, far], 1);
@@ -185,3 +195,115 @@ describe("native road guides", () => {
     guides.dispose();
   });
 });
+
+it("puts direct inspection guides on the same two-metre board at each physical lane", () => {
+  const keys = scene();
+  const camera = roadWidthCamera(
+    keys.camera,
+    0.9,
+    1280,
+    [
+      { y: 22, z: 149.1938 },
+      { y: 34, z: 145.8 }
+    ],
+    false
+  );
+  const guides = new ThreeRoadGuides();
+  guides.update(keyBoxes(keys), camera, [camera.roadFarZ], 1, true);
+  for (const [index, y, z] of [
+    [0, 22, 149.1938],
+    [1, 34, 145.8]
+  ] as const) {
+    const data = positions(line(guides, index));
+    expect(data.getY(0)).toBeCloseTo(y + 2000, 3);
+    expect(data.getY(1)).toBeCloseTo(y, 3);
+    expect(data.getZ(0)).toBeCloseTo(-z + 0.025, 3);
+    expect(data.getZ(1)).toBeCloseTo(-z + 0.025, 3);
+  }
+  guides.dispose();
+});
+
+it("connects beat segments across every selected curved source instead of drawing a straight shortcut", () => {
+  const keys = scene(60, 64),
+    boxes = keyBoxes(keys),
+    camera = keys.camera;
+  const routes = freeRoadLanes(
+    boxes.map((box) => ({
+      pitch: box.pitch,
+      width: box.width,
+      near: { x: box.x, y: box.top, z: -box.back }
+    })),
+    { ...DEFAULT_FREE_PERSPECTIVE_FIELD, shape: "concave" }
+  );
+  const guides = new ThreeRoadGuides();
+  guides.update(boxes, camera, [(camera.near.z + camera.roadFarZ) / 2], 1, false, routes);
+  const beat = line(guides, 2),
+    data = positions(beat);
+  expect(beat.geometry.drawRange.count).toBe((routes.length - 1) * 2);
+  for (let index = 0; index < routes.length - 1; index++) {
+    const route = routes[index];
+    if (!route) throw new Error("Missing selected lane");
+    const point = freeRoadPoint(route, 0.5, 0, 0.025);
+    expect(data.getX(index * 2)).toBeCloseTo(point.x, 3);
+    expect(data.getY(index * 2)).toBeCloseTo(point.y, 3);
+    expect(data.getZ(index * 2)).toBeCloseTo(point.z, 3);
+  }
+  guides.dispose();
+});
+
+it.each(["line", "convex", "concave"] as const)(
+  "keeps all 88 fixed %s source markers stable when paused and frees them once",
+  (shape) => {
+    const keys = scene(),
+      boxes = keyBoxes(keys),
+      camera = keys.camera;
+    const routes = freeRoadLanes(
+      boxes.map((box) => ({
+        pitch: box.pitch,
+        width: box.width,
+        near: { x: box.x, y: box.top, z: -box.back }
+      })),
+      { ...DEFAULT_FREE_PERSPECTIVE_FIELD, shape }
+    );
+    const guides = new ThreeRoadGuides();
+    guides.update(boxes, camera, [], 0, false, routes);
+    const markers = guides.group.children[3];
+    if (!(markers instanceof Points) || !(markers.material instanceof PointsMaterial))
+      throw new Error("Expected fixed source points");
+    const rawGeometry: unknown = markers.geometry;
+    if (!(rawGeometry instanceof BufferGeometry)) throw new Error("Expected point geometry");
+    const geometry = rawGeometry;
+    const data: unknown = geometry.getAttribute("position");
+    if (!(data instanceof BufferAttribute))
+      throw new Error("Expected reusable fixed-source buffer");
+    expect(geometry.drawRange.count).toBe(88);
+    expect(markers.material.size).toBe(2);
+    expect(markers.material.sizeAttenuation).toBe(false);
+    for (let index = 0; index < routes.length; index++) {
+      const far = routes[index]?.far;
+      expect(data.getX(index)).toBeCloseTo(far?.x ?? NaN, 3);
+      expect(data.getY(index)).toBeCloseTo(far?.y ?? NaN, 3);
+      expect(data.getZ(index)).toBeCloseTo(far?.z ?? NaN, 3);
+    }
+    const version = data.version,
+      buffer = data.array;
+    for (let frame = 0; frame < 300; frame++) guides.update(boxes, camera, [], 0, false, routes);
+    expect(data.array).toBe(buffer);
+    expect(data.version).toBe(version);
+    guides.clear();
+    expect(markers.visible).toBe(false);
+    expect(geometry.drawRange.count).toBe(0);
+    guides.update(boxes, camera, [], 0, false, routes);
+    expect(markers.visible).toBe(true);
+    expect(data.version).toBe(version);
+    guides.update(boxes, camera, []);
+    expect(markers.visible).toBe(false);
+    expect(geometry.drawRange.count).toBe(0);
+    const geometryDispose = vi.spyOn(geometry, "dispose"),
+      materialDispose = vi.spyOn(markers.material, "dispose");
+    guides.dispose();
+    guides.dispose();
+    expect(geometryDispose).toHaveBeenCalledTimes(1);
+    expect(materialDispose).toHaveBeenCalledTimes(1);
+  }
+);

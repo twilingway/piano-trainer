@@ -1,3 +1,12 @@
+import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
+import { metricKeyboardCamera } from "./metricKeyboardCamera";
+import { nativeNoteCameras } from "./nativeViewCameras";
+import { nativeKeyContactLanes } from "./nativeKeyContactAnchors";
+import { roadKeyHeights } from "./roadScenePoints";
+import { DEFAULT_FREE_PERSPECTIVE_FIELD, freeRoadPoint } from "./freeRoadLayout";
+import type { Geometry } from "./viewGeometry";
+import { nextSamePitchStarts } from "./noteSeparation";
+import { HandStatusSignal } from "./handStatusSignal";
 import { FlatEffectSettings } from "./flatEffectSettings"; // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
 import { Container, Sprite, Texture, TextureSource, TilingSprite } from "./flatThree";
@@ -41,7 +50,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     beatBars: new Container(),
     lane: new Container(),
     flatBlocks: { begin: vi.fn(), draw: flatDraw, end: vi.fn() },
-    repeated: new Set<string>(),
+    nextStarts: nextSamePitchStarts(songNotes),
     beats: [],
     neonFrames: [],
     cardGlow: Texture.WHITE,
@@ -77,6 +86,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
   // Exercise frame wiring with real draw(), substituting only the GPU-backed layers.
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
     ready: true,
+    handStatus: new HandStatusSignal(),
     flatEffects: new FlatEffectSettings(),
     sceneCamera: { frame: vi.fn(), apply: vi.fn(), active: true },
     parts: { keys: true, notes: true, hands: false },
@@ -90,7 +100,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
     notesLayer: layer,
     keyboard: { draw: keyboardDraw },
     hands: { container: { visible: false } },
-    fx: { draw: effectsDraw, container: new Container() },
+    fx: { draw: effectsDraw, container: new Container(), hitContainer: new Container() },
     plasma: { draw: vi.fn(), container: new Container() },
     hud: { draw: vi.fn() },
     roadMode,
@@ -104,6 +114,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
       setCamera: vi.fn(),
       setNotesPerspective: vi.fn(),
       setFlatBurning: vi.fn(),
+      setAnimationEffects: vi.fn(),
       draw: roadDraw,
       hitLineY: 400,
       notePlace: (x: number, y: number) => ({ x, y, scale: 1 }),
@@ -444,7 +455,7 @@ describe("accompaniment fire independent of key colours", () => {
     expect(effectsDraw.mock.calls[0]?.[1].map((key: { pitch: number }) => key.pitch)).toEqual([
       48, 72
     ]);
-    if (roadMode) expect(roadDraw.mock.calls[0]?.[2]).toHaveLength(2);
+    if (roadMode) expect(roadDraw).toHaveBeenCalledOnce();
     view.draw({ ...frame, graded: [] });
     expect(effectsDraw.mock.calls[1]?.[0]).toHaveLength(0);
     expect(effectsDraw.mock.calls[1]?.[1]).toHaveLength(2);
@@ -733,15 +744,24 @@ it.each(["classic", "arcade", "3d"] as const)(
       owns: () => true
     };
     test.view.draw(frame);
-    const unchanged = keyStyle === "3d";
-    expect(test.effectsDraw.mock.calls[0]?.[4]).toEqual({ burning: unchanged, presses: unchanged });
-    expect(test.roadDraw.mock.calls[0]?.[2]).toHaveLength(unchanged ? 2 : 0);
+    const unchanged = false;
+    expect(test.effectsDraw.mock.calls[0]?.[4]).toEqual({
+      burning: unchanged,
+      presses: unchanged,
+      musicalNotes: true
+    });
+    expect(test.roadDraw).toHaveBeenCalledOnce();
     const internal = test.view as unknown as {
       plasma: { draw: ReturnType<typeof vi.fn> };
       road: { effects: Container };
     };
-    expect(internal.road.effects.renderable).toBe(unchanged);
-    expect(internal.plasma.draw.mock.calls[0]?.[5]).toBe(unchanged);
+    expect(internal.road.effects.renderable).toBe(true);
+    expect(internal.plasma.draw.mock.calls[0]?.[5]).toBe(true);
+    expect(internal.plasma.draw.mock.calls[0]?.[7]).toEqual({
+      burning: false,
+      presses: false,
+      musicalNotes: true
+    });
     expect(test.keyboardDraw).toHaveBeenCalledOnce();
     expect(frame.sounding.size).toBe(2);
     expect(frame.pressed.size).toBe(2);
@@ -772,10 +792,270 @@ it.each(["classic", "arcade", "3d"] as const)(
     expect(test.layer.playing.has(48)).toBe(true);
     test.view.flatEffects.set(false, true);
     test.view.draw(frame);
-    expect(inside.plasma.draw.mock.lastCall?.[5]).toBe(keyStyle === "3d");
+    expect(inside.plasma.draw.mock.lastCall?.[5]).toBe(true);
+    expect(inside.plasma.draw.mock.lastCall?.[7]).toMatchObject({ burning: false });
     inside.parts.keys = false;
     test.view.draw(frame);
     expect(inside.plasma.draw.mock.lastCall?.[5]).toBe(false);
+    expect(test.effectsDraw.mock.lastCall?.[4]).toEqual({
+      burning: false,
+      presses: false,
+      musicalNotes: false
+    });
     expect(frame.time).toBe(0.1);
   }
 );
+
+it("projects hidden-note native strike flashes with the actual keyboard camera", () => {
+  const test = viewHarness(false);
+  Object.assign(test.view, { keyStyle: "3d", parts: { keys: true, notes: false, hands: false } });
+  const internal = test.view as unknown as {
+    road: {
+      drawsNativeKeyboard: boolean;
+      notePlace: ReturnType<typeof vi.fn>;
+      hitLineY: number;
+      sceneCamera?: boolean;
+    };
+    fx: { hitContainer: Container };
+  };
+  internal.road.drawsNativeKeyboard = true;
+  internal.road.hitLineY = 350;
+  internal.road.notePlace = vi.fn(() => ({ x: 123, y: 321, scale: 0.5 }));
+  const frame: FrameState = {
+    time: 0.1,
+    lookAhead: 2,
+    statusOf: () => undefined,
+    pressed: new Set(),
+    sounding: new Set([48]),
+    due: [],
+    hands: new Set(),
+    owns: () => false
+  };
+  test.view.draw(frame);
+  expect(test.effectsDraw.mock.lastCall?.[0][0]).toMatchObject({
+    pitch: 48,
+    x: 123,
+    y: 321,
+    width: 20
+  });
+  expect(internal.fx.hitContainer.renderable).toBe(true);
+  internal.road.sceneCamera = true;
+  test.view.draw(frame);
+  expect(internal.fx.hitContainer.renderable).toBe(false);
+});
+
+it("masks world animation preferences only when the entire play zone is hidden", () => {
+  const test = viewHarness(true);
+  const inside = test.view as unknown as {
+    parts: { keys: boolean; notes: boolean; hands: boolean };
+    road: { setAnimationEffects: ReturnType<typeof vi.fn> };
+  };
+  inside.parts.keys = false;
+  inside.parts.notes = false;
+  test.view.draw({
+    time: 1,
+    lookAhead: 2,
+    statusOf: () => undefined,
+    pressed: new Set(),
+    sounding: new Set(),
+    due: [],
+    hands: new Set(),
+    owns: () => false
+  });
+  expect(inside.road.setAnimationEffects).toHaveBeenLastCalledWith({
+    burning: false,
+    presses: false,
+    musicalNotes: false
+  });
+  expect(test.view.flatEffects.current()).toEqual({
+    burning: true,
+    presses: true,
+    musicalNotes: true
+  });
+});
+
+it.each([
+  ["classic", false],
+  ["classic", true],
+  ["arcade", false],
+  ["arcade", true],
+  ["3d", false],
+  ["3d", true]
+] as const)(
+  "keeps hit-line animations when keys are hidden in %s, perspective=%s",
+  (keyStyle, roadMode) => {
+    const test = viewHarness(roadMode, notes, roadMode || keyStyle === "3d");
+    Object.assign(test.view, { keyStyle, parts: { keys: false, notes: true, hands: false } });
+    const inside = test.view as unknown as {
+      road: { setAnimationEffects: ReturnType<typeof vi.fn> };
+      plasma: { draw: ReturnType<typeof vi.fn> };
+    };
+    const frame: FrameState = {
+      time: 0.1,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set([48]),
+      due: [],
+      hands: new Set(),
+      owns: () => false
+    };
+    test.view.draw(frame);
+    const enabled = { burning: true, presses: true, musicalNotes: true };
+    expect(inside.road.setAnimationEffects).toHaveBeenLastCalledWith(enabled);
+    expect(inside.plasma.draw.mock.lastCall?.[5]).toBe(true);
+    expect(inside.plasma.draw.mock.lastCall?.[7]).toEqual(enabled);
+    expect(test.effectsDraw.mock.lastCall?.[0]).toHaveLength(1);
+    expect(test.effectsDraw.mock.lastCall?.[4]).toEqual(enabled);
+    test.view.flatEffects.set(false, true, false);
+    test.view.draw(frame);
+    expect(inside.road.setAnimationEffects).toHaveBeenLastCalledWith({
+      burning: false,
+      presses: true,
+      musicalNotes: false
+    });
+    expect(test.effectsDraw.mock.lastCall?.[4]).toEqual({
+      burning: false,
+      presses: true,
+      musicalNotes: false
+    });
+    expect(frame.time).toBe(0.1);
+  }
+);
+
+it.each([false, true])(
+  "separates rapid same-pitch attacks after readability expansion, road=%s",
+  (roadMode) => {
+    const repeated: SongNote[] = Array.from({ length: 3 }, (_, index) => ({
+      id: `repeat-${String(index)}`,
+      pitch: 60,
+      hand: "right",
+      finger: 2,
+      start: index * 0.06,
+      startBeat: index * 0.12,
+      duration: 0.02
+    }));
+    const test = viewHarness(roadMode, repeated);
+    const inside = test.view as unknown as {
+      road: {
+        fitHoldTop: (x: number, top: number, bottom: number) => number;
+        drawHold: ReturnType<typeof vi.fn>;
+      };
+    };
+    Object.assign(test.layer, { repeated: new Set(["repeat-0", "repeat-1"]) });
+    inside.road.fitHoldTop = (_x, top, bottom) => Math.min(top, bottom - 48);
+    const time = -0.2;
+    const lookAhead = 2.22;
+    test.view.draw({
+      time,
+      lookAhead,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(),
+      owns: () => false
+    });
+    const bars = roadMode
+      ? inside.road.drawHold.mock.calls.map((args) => ({
+          top: Number(args[1]),
+          bottom: Number(args[2])
+        }))
+      : test.flatDraw.mock.calls.map((args) => ({ top: args[1], bottom: args[1] + args[3] }));
+    expect(bars).toHaveLength(3);
+    for (let index = 0; index < bars.length - 1; index++) {
+      const current = bars[index];
+      const next = bars[index + 1];
+      if (!current || !next) throw new Error("Missing repeated attack");
+      const expectedGap = Math.min(3, (current.bottom - next.bottom) * 0.3);
+      expect(current.top - next.bottom).toBeGreaterThanOrEqual(expectedGap - 0.001);
+      expect(current.bottom).toBeGreaterThan(current.top);
+    }
+    for (let index = 0; index < bars.length; index++)
+      expect(bars[index]?.bottom).toBeCloseTo(
+        400 - (((repeated[index]?.start ?? 0) - time) * 400) / (roadMode ? 6 : 2.22)
+      );
+  }
+);
+
+describe("native scene note birth without a hidden screen burst", () => {
+  it.each(["filled", "flat", "glass"] as const)(
+    "keeps first birth visible at its own source in %s while standard view keeps its fade",
+    (style) => {
+      const songNotes: SongNote[] = [60, 72].map((pitch) => ({
+        id: String(pitch),
+        pitch,
+        hand: "right",
+        start: 10,
+        startBeat: 0,
+        duration: 0.5
+      }));
+      const { layer } = notesHarness(songNotes),
+        keys = layoutKeyboard(1280, 60, 72);
+      const base = metricKeyboardCamera(1280, 1280, 720, CAMERA_PRESETS.top, 0.1, keys.values());
+      const camera = nativeNoteCameras(base, true, 720, 0.1, 720, { x: 0, y: 0 }, 0.1, 1280).notes;
+      const nativeRoad = new ThreeRoadFrame();
+      const host = {
+        drawsRoad: true,
+        on: true,
+        freeCamera: true,
+        performanceScene: false,
+        setRoadFrame: vi.fn()
+      };
+      const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+        style: "3d",
+        fallingNoteStyle: style,
+        notesPerspective: true,
+        computerKeyboard: false,
+        contactKeys: keys,
+        contactLanes: nativeKeyContactLanes(keys, undefined),
+        camera,
+        projection: camera.road,
+        size: { width: 1280, height: 400 },
+        pan: 0,
+        keyHeights: roadKeyHeights(keys, true),
+        nativeRoad,
+        freeRoadLayout: DEFAULT_FREE_PERSPECTIVE_FIELD,
+        three: host,
+        arrivals: { ready: true }
+      }) as unknown as RoadLayer;
+      const geometry = { hitY: 400, whiteWidth: 40 } as Geometry;
+      const state = {
+        time: 4.000001,
+        lookAhead: 6,
+        hands: new Set<Hand>(),
+        owns: () => true,
+        statusOf: () => undefined
+      };
+      for (const mode of ["free", "performance"] as const) {
+        host.freeCamera = mode === "free";
+        host.performanceScene = mode === "performance";
+        expect(road.arrivalEffectsReady).toBe(false);
+        layer.draw(state, keys, geometry, road);
+        expect(nativeRoad.noteCount).toBe(2);
+        expect(nativeRoad.noteStyle).toBe(style);
+        for (const note of nativeRoad.notes.slice(0, nativeRoad.noteCount)) {
+          const route = nativeRoad.freeLanes.find((lane) => lane.pitch === note.pitch);
+          if (!route || !note.lane) throw new Error("Missing physical source lane");
+          expect(note.lane.freeFar).toBe(route.far);
+          expect(note.alpha).toBe(1);
+          const contact = note.lane.depth;
+          if (contact === undefined) throw new Error("Missing contact depth");
+          const progress = (note.bottom - contact) / (camera.roadFarZ - contact);
+          const head = freeRoadPoint(route, progress);
+          expect(
+            Math.hypot(head.x - route.far.x, head.y - route.far.y, head.z - route.far.z)
+          ).toBeLessThan(0.01);
+        }
+      }
+      host.freeCamera = false;
+      host.performanceScene = false;
+      expect(road.arrivalEffectsReady).toBe(true);
+      layer.draw(state, keys, geometry, road);
+      expect(nativeRoad.noteCount).toBe(0);
+      layer.draw({ ...state, time: 4.26 }, keys, geometry, road);
+      expect(nativeRoad.noteCount).toBe(2);
+      expect(nativeRoad.notes[0]?.alpha).toBeCloseTo(0.5, 8);
+    }
+  );
+});

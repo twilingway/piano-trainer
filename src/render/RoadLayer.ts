@@ -1,3 +1,10 @@
+import { FreeRoadRoutes } from "./freeRoadRoutes";
+export type { StaffWorldSource } from "../staff/staffWorldSnapshot";
+import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
+import type { FallingNoteStyle } from "./fallingNoteStyle";
+import { DEFAULT_FREE_DIRECT_FIELD, type FreeRoadLayout } from "./freeRoadLayout";
+import { NeonRailLayer } from "./NeonRailLayer";
+import type { FlatEffectOptions } from "./flatEffectSettings";
 import { Container, Graphics, Matrix, RenderTexture, Sprite } from "./flatThree";
 import type { Application, PointData, Renderer } from "./flatThree";
 import { bakeFog, drawRoadHorizon } from "./roadTextures";
@@ -12,8 +19,8 @@ import { nativeNoteCameras, nativeViewCameras } from "./nativeViewCameras";
 import { nativeRoadCameraLayout } from "./nativeRoadCameraLayout";
 import { flatRoadCamera } from "./flatRoadCamera";
 import { metricCameraForKeys } from "./metricKeyboardCamera";
-import { RoadSparks } from "./RoadSparks";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
+import { nativeKeyContactLanes } from "./nativeKeyContactAnchors";
 import type { NoteLaneProjection } from "./noteLaneProjection";
 import {
   FREE_BLACK_LANE,
@@ -28,7 +35,7 @@ import { ThreeKeysHost } from "./three/ThreeKeysHost";
 import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
 import { readableRoadTop } from "./readableRoadNote";
 import type { EnergySource } from "./noteEnergy";
-import type { Strike, Arrival } from "./roadTypes";
+import type { Arrival } from "./roadTypes";
 export type { Strike, Arrival } from "./roadTypes";
 export { DEFAULT_ROAD_SHAPE, type RoadShape } from "./roadLayoutCamera";
 
@@ -39,6 +46,11 @@ export class RoadLayer {
   private readonly keysTexture = RenderTexture.create({ width: 1, height: 1 });
   private readonly keys = new NativeKeyboardScene();
   private style: KeyStyle = "classic";
+  private fallingNoteStyle: FallingNoteStyle = "filled";
+  private freeRoadLayout: FreeRoadLayout = DEFAULT_FREE_DIRECT_FIELD;
+  setFreeRoadLayout(layout: FreeRoadLayout): void {
+    this.freeRoadLayout = layout;
+  }
   private computerKeyboard = false;
   private shape: RoadShape = DEFAULT_ROAD_SHAPE;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
@@ -49,10 +61,14 @@ export class RoadLayer {
   private cameraHeight = 1;
   private keyHeights = new Map<number, number>();
   private blackLane: NoteLaneProjection | undefined;
+  private whiteLane: NoteLaneProjection | undefined;
+  private contactKeys: ReadonlyMap<number, KeyRect> | undefined;
+  private contactLanes: ReadonlyMap<number, NoteLaneProjection> | undefined;
+  private physicalContactLanes: ReadonlyMap<number, NoteLaneProjection> | undefined;
   private readonly horizon = new Graphics();
   private readonly arrivals = new HorizonBurstLayer();
+  private readonly rail = new NeonRailLayer();
   private readonly fog = new Sprite(bakeFog());
-  private readonly sparks: RoadSparks;
   private size = { width: 0, height: 0 };
   private keysShift = new Matrix();
   private projection: RoadProjection | undefined;
@@ -63,6 +79,7 @@ export class RoadLayer {
   private keyboardTopY = 0;
   private clock = 0;
   private readonly nativeRoad = new ThreeRoadFrame();
+  private freeRoutes: FreeRoadRoutes | undefined;
   private readonly three: ThreeKeysHost | undefined;
 
   constructor(
@@ -73,10 +90,8 @@ export class RoadLayer {
   ) {
     this.horizon.blendMode = "add";
     this.fog.tint = 0x020c18;
-    this.container.addChild(this.fog, this.horizon, this.arrivals.container);
+    this.container.addChild(this.fog, this.horizon, this.arrivals.container, this.rail.container);
     this.container.eventMode = this.effects.eventMode = "none";
-    this.sparks = new RoadSparks(renderer);
-    this.effects.addChild(this.sparks.container);
     this.three =
       app && keyboard
         ? new ThreeKeysHost(app, this.container, this.keys, keyboard, hands)
@@ -95,6 +110,20 @@ export class RoadLayer {
   }
   beginNotes(): void {
     this.nativeRoad.begin();
+    this.nativeRoad.direct = !this.notesPerspective;
+    if (this.contactKeys && this.camera && !this.computerKeyboard) {
+      this.freeRoutes ??= new FreeRoadRoutes();
+      this.freeRoutes.update(this.contactKeys, this.camera, this.freeRoadLayout);
+      this.nativeRoad.freeLayout = this.freeRoadLayout;
+      this.nativeRoad.freeLanes = this.freeRoutes.lanes;
+      this.physicalContactLanes = this.freeRoutes.contacts;
+    }
+    this.nativeRoad.noteStyle = this.computerKeyboard
+      ? "glass"
+      : this.style === "3d"
+        ? this.fallingNoteStyle
+        : "flat";
+    this.nativeRoad.flatMaterial = this.nativeRoad.noteStyle === "flat";
   }
   endNotes(): void {
     this.three?.setRoadFrame(this.nativeRoad);
@@ -117,7 +146,9 @@ export class RoadLayer {
         this.shape.horizon,
         this.app?.screen.height ?? this.cameraHeight,
         dockKeyboard ? geometry.keyboardTop + geometry.keyboardHeight : undefined,
-        this.keys.container.position
+        this.keys.container.position,
+        this.shape.far,
+        this.size.width
       );
       this.keyboardCamera = cameras.keyboard;
       Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
@@ -129,11 +160,15 @@ export class RoadLayer {
         this.notesPerspective,
         this.shape.horizon,
         this.keys.container.position,
-        this.app?.screen.height ?? this.cameraHeight
+        this.app?.screen.height ?? this.cameraHeight,
+        this.shape.far,
+        this.size.width
       );
       this.keyboardCamera = cameras.keyboard;
       Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
     }
+    this.contactKeys = keys;
+    this.refreshContactLanes();
     this.keys.layout(keys, geometry, this.keysTexture, true);
     this.setPan(this.pan, true);
   }
@@ -157,7 +192,18 @@ export class RoadLayer {
   noteLaneY(keyX: number): number {
     return this.keyHeights.get(keyX) ?? WHITE_NOTE_FLOOR;
   }
+  private refreshContactLanes(): void {
+    if (!this.contactKeys) return;
+    this.contactLanes = nativeKeyContactLanes(this.contactKeys, this.blackLane, this.whiteLane);
+    this.physicalContactLanes = nativeKeyContactLanes(this.contactKeys, FREE_BLACK_LANE);
+  }
   private noteLane(keyX: number): NoteLaneProjection | undefined {
+    if (this.nativeKeyboard && this.contactLanes)
+      return (
+        this.freeCamera || this.three?.performanceScene
+          ? this.physicalContactLanes
+          : this.contactLanes
+      )?.get(keyX);
     if (this.freeCamera || this.three?.performanceScene)
       return this.noteLaneY(keyX) === BLACK_NOTE_FLOOR ? FREE_BLACK_LANE : undefined;
     return this.noteLaneY(keyX) === BLACK_NOTE_FLOOR ? this.blackLane : undefined;
@@ -206,10 +252,10 @@ export class RoadLayer {
     return true;
   }
   get arrivalEffectsReady(): boolean {
-    return this.arrivals.ready;
+    return this.arrivals.ready && !this.freeCamera && !this.three?.performanceScene;
   }
   async loadArrivalEffects(): Promise<void> {
-    await this.arrivals.load();
+    await Promise.all([this.arrivals.load(), this.rail.load()]);
   }
   layout(width: number, height: number, bottom: number, viewWidth: number, handRoom = 0): void {
     this.container.visible = width >= 1 && viewWidth >= 1 && height >= 1 && bottom >= height;
@@ -238,6 +284,9 @@ export class RoadLayer {
     this.fog.width = viewWidth;
     this.fog.height = Math.max(1, (this.hitY - this.horizonY) * 0.5);
   }
+  setFallingNoteStyle(style: FallingNoteStyle): void {
+    this.fallingNoteStyle = style;
+  }
   setKeyStyle(style: KeyStyle): Promise<void> {
     this.style = style;
     return (
@@ -252,12 +301,27 @@ export class RoadLayer {
     return this.three?.on === true && this.keys.container.visible;
   }
   setSceneEffects(layers: readonly Container[]): void {
-    this.three?.setSceneEffects(layers, [this.horizon, this.arrivals.container]);
+    this.three?.setSceneEffects(layers, [
+      this.horizon,
+      this.arrivals.container,
+      this.rail.container
+    ]);
   }
+  setWorldScoreSource = (source: StaffWorldSource | undefined): void =>
+    this.three?.setWorldScoreSource(source);
+
   setFreeCamera(on: boolean, changed: (on: boolean) => void): void {
     if (!this.three) return;
     this.three.onFreeCamera = changed;
     this.three.setFreeCamera(on);
+  }
+  get handStatus(): "idle" | "loading" | "ready" | "error" {
+    return this.three?.handStatus ?? "idle";
+  }
+  setAnimationEffects(options: FlatEffectOptions): void {
+    this.nativeRoad.burning = options.burning;
+    this.effects.renderable = options.presses;
+    this.three?.setEffects(options);
   }
   get freeCamera(): boolean {
     return this.three?.freeCamera === true;
@@ -266,16 +330,15 @@ export class RoadLayer {
     return this.three?.sceneCamera === true;
   }
   resetFreeCamera = (): void => this.three?.resetFreeCamera();
+  setFreeCameraMovement = (on: boolean): void => this.three?.setFreeCameraMovement(on);
   setPerformanceScene = (on: boolean): void => this.three?.setPerformanceScene(on);
   setSongTime = (time: number): void => {
     this.nativeRoad.songTime = time;
+    this.three?.setSongTime(time);
   };
   setKeyboardDim = (on: boolean): void => this.three?.setKeyboardDim(on);
   setRoadGuides(on: boolean): void {
     this.nativeRoad.guides = on;
-  }
-  setFlatBurning(on: boolean): void {
-    this.nativeRoad.burning = this.nativeKeyboard || on;
   }
   fitHoldTop(x: number, top: number, bottom: number, width: number, duration = 0): number {
     return this.drawsNativeRoad && this.camera
@@ -310,6 +373,8 @@ export class RoadLayer {
   setPan(pan: number, force = false): void {
     if (!force && pan === this.pan) return;
     this.pan = pan;
+    if (this.camera?.roadWidth)
+      this.camera.roadWidth.pan = pan * (this.camera.params.sourceUnits ?? 0.5);
     if (this.camera) this.keys.draw(this.camera, pan, this.keyboardCamera);
   }
   clarity(y: number): number {
@@ -339,9 +404,12 @@ export class RoadLayer {
       this.cameraHeight,
       this.shape.horizon,
       this.app?.screen.height ?? this.cameraHeight,
-      offset
+      offset,
+      this.shape.far,
+      this.size.width
     );
     Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
+    this.refreshContactLanes();
     this.setPan(this.pan, true);
   }
   keysPointAt(x: number, y: number): { x: number; y: number; pitch?: number } | undefined {
@@ -352,7 +420,6 @@ export class RoadLayer {
   draw(
     _lane: Container,
     keys: Container,
-    flatStrikes: readonly Strike[],
     arrivals: readonly Arrival[],
     deltaSeconds: number
   ): void {
@@ -366,23 +433,26 @@ export class RoadLayer {
       });
     this.clock += deltaSeconds;
     this.nativeRoad.visualTime = this.clock;
-    const strikes = flatStrikes.map((strike) => ({
-      ...strike,
-      x: this.notePlace(strike.x, this.size.height)?.x ?? strike.x - this.pan,
-      screenY: this.notePlace(strike.x, this.size.height)?.y ?? this.hitY
-    }));
+    this.rail.draw(
+      this.clock,
+      this.viewWidth,
+      this.hitY,
+      this.nativeKeyboard &&
+        this.keys.container.visible &&
+        this.container.visible &&
+        !this.sceneCamera
+    );
     this.horizon.clear();
     if ((!this.drawsNativeRoad || this.nativeRoad.guides) && this.projection)
       drawRoadHorizon(this.horizon, this.horizonY, this.viewWidth);
     if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
-    this.sparks.draw(strikes, deltaSeconds);
   }
   destroy(): void {
     this.three?.destroy();
     this.arrivals.destroy();
+    this.rail.destroy();
     this.keys.destroy();
     this.container.destroy({ children: true });
-    this.sparks.destroy();
     this.effects.destroy({ children: true });
     this.keysTexture.destroy(true);
   }

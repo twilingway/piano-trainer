@@ -51,6 +51,35 @@ const GUIDE = [
 ] as const;
 const FAQ = [
   {
+    targets: [
+      "free-source-height",
+      "free-source-distance",
+      "free-source-width",
+      "free-source-shape"
+    ],
+    question: "Как настроить горизонт в свободной камере?",
+    answer:
+      "Горизонт — линия или дуга точек появления нот, их источников. В «Вид / Падающие ноты» настройте его высоту, дальность, ширину и форму в метрах мира. Прямая и перспективная проекции сохраняют свои настройки отдельно. Высота — нижняя точка над белыми клавишами, дальность — от задней линии клавиш. У выпуклой дуги середина выше, у вогнутой — края. Вращение камеры меняет ракурс, а не ширину. Каждая клавиша диапазона, включая чёрные, имеет постоянный источник: повторные ноты идут из него же."
+  },
+  {
+    targets: ["falling-note-style", "road-horizon", "road-width", "notes-projection"],
+    question: "Где выбрать оформление нот и настроить горизонт?",
+    answer:
+      "В «Вид / Падающие ноты» для 3D выбираются объёмные ноты с заливкой, оформление как в аркаде или прозрачные ноты. Горизонт и ширина у горизонта настраиваются во всех видах при перспективной проекции. Горизонт 0% начинает дорогу от верхней границы её области. Выбор сохраняется и не меняет темп песни."
+  },
+  {
+    targets: ["play-countdown"],
+    question: "Как успеть поставить руки перед началом?",
+    answer:
+      "В «Игра / Режим и темп» задайте отсчёт перед игрой от 0 до 10 секунд. По умолчанию — 3 секунды только перед первым запуском песни или после «Сначала». После паузы игра продолжается сразу. Кнопка игры или Ctrl+Пробел отменяет подготовку."
+  },
+  {
+    targets: ["note-burning", "note-flash", "note-particles"],
+    question: "Как оставить эффекты без падающих нот?",
+    answer:
+      "В «Вид / Анимация и эффекты» отдельно включаются горение, вспышка при нажатии и летящие нотки. Они работают над клавишами в классике, аркаде и 3D, даже если падающие ноты скрыты. Скрытые клавиши не мешают эффектам на линии попадания."
+  },
+  {
     targets: ["midi-output", "instrument-profile", "instrument-voice"],
     question: "Почему USB MIDI не передаёт звук пианино?",
     answer:
@@ -96,9 +125,11 @@ const FAQ = [
 
 export function HelpSettings({
   wordTyping,
+  freeCamera = false,
   onNavigate
 }: {
   readonly wordTyping: boolean;
+  readonly freeCamera?: boolean;
   readonly onNavigate: (target: SettingTarget) => void;
 }) {
   const { t } = useI18n();
@@ -132,10 +163,25 @@ export function HelpSettings({
       </SettingsGroup>
       <SettingsGroup title={t("Частые вопросы")}>
         <div className="settings-help__faq">
-          {FAQ.map((item) => (
+          {FAQ.filter(
+            (item) =>
+              (!wordTyping ||
+                !["note-burning", "falling-note-style", "free-source-height"].includes(
+                  item.targets[0]
+                )) &&
+              (item.targets[0] !== "free-source-height" || freeCamera) &&
+              (item.targets[0] !== "falling-note-style" || !freeCamera)
+          ).map((item) => (
             <details key={item.question}>
               <summary>{t(item.question)}</summary>
               <p>{t(item.answer)}</p>
+              {item.targets[0] === "falling-note-style" && (
+                <p>
+                  {t(
+                    "Отрицательные значения задают ширину дальнего края относительно экрана основного вида; свободная камера меняет его ракурс."
+                  )}
+                </p>
+              )}
               <div className="setting-control settings-help__targets">
                 {item.targets.map((target) => (
                   <button

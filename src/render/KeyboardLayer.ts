@@ -113,6 +113,8 @@ const DIGIT_BARE_PX = 44;
 
 /** What the keys show in a frame: what is held, sounded and owed, and what crosses the hit line. */
 export interface KeysFrame {
+  /** Physical key travel, independent of sustained sound and hint colours. */
+  readonly physicalDown?: ReadonlySet<number>;
   readonly pressed: ReadonlySet<number>;
   readonly sounding: ReadonlySet<number>;
   readonly due: readonly SongNote[];
@@ -357,11 +359,8 @@ export class KeyboardLayer {
       );
       const pressed = frame.pressed.has(pitch);
       const sounding = pressed || frame.sounding.has(pitch);
-      const shown = keyHintNote(
-        hintStrength > 0 ? due : undefined,
-        frame.playing.get(pitch),
-        sounding
-      );
+      const noteHint = hintStrength > 0 ? due : undefined;
+      const shown = keyHintNote(noteHint, frame.playing.get(pitch), sounding);
       // A key with a fingered note is its finger's colour whoever plays it; the press and
       // the program's own colours are for keys without one.
       const color =
@@ -375,9 +374,10 @@ export class KeyboardLayer {
                 ? HAND_HINT[shown.hand]
                 : undefined;
       const key = keys.get(pitch);
-      // Held by the player or sounded by the program, a painted key sinks.
+      // Key travel follows physical contacts; sustained sound keeps its own colour.
       if (key && this.keyTextures && !this.modelFaces) {
-        const face = this.faceOf(key.black, false, this.painted !== undefined && sounding);
+        const down = frame.physicalDown?.has(pitch) ?? sounding;
+        const face = this.faceOf(key.black, false, this.painted !== undefined && down);
         if (sprite.texture !== face) sprite.texture = face;
       }
       sprite.tint = this.modelFaces ? (key?.black ? 0x1a1816 : 0xf8f4e8) : 0xffffff;

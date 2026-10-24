@@ -1,3 +1,6 @@
+import type { FallingNoteStyle } from "../../render/fallingNoteStyle";
+import type { FreeRoadLayout } from "../../render/freeRoadLayout";
+import { FreeRoadSettings } from "./FreeRoadSettings";
 import { useI18n } from "../../app/useI18n";
 import { CameraSettings } from "./CameraSettings";
 import type { CameraPrefs } from "../../render/worldCamera";
@@ -14,7 +17,11 @@ interface Props {
   readonly onShowLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
+  readonly fallingNoteStyle: FallingNoteStyle;
+  readonly onFallingNoteStyle: (style: FallingNoteStyle) => void;
   readonly notesPerspective: boolean;
+  readonly freeRoadLayout: FreeRoadLayout;
+  readonly onFreeRoadLayout: (change: Partial<FreeRoadLayout>) => void;
   readonly onNotesPerspective: (on: boolean) => void;
   readonly handStyle: HandStyle;
   readonly onHandStyle: (style: HandStyle) => void;
@@ -22,6 +29,8 @@ interface Props {
   readonly onFlatNoteBurning: (on: boolean) => void;
   readonly flatPressEffects: boolean;
   readonly onFlatPressEffects: (on: boolean) => void;
+  readonly noteParticles: boolean;
+  readonly onNoteParticles: (on: boolean) => void;
   readonly keyboardDim: boolean;
   readonly onKeyboardDim: (dim: boolean) => void;
   readonly roadGuides: boolean;
@@ -29,6 +38,8 @@ interface Props {
   /** The local pianist instead of the live hands; absent when there is no local model. */
   readonly pianist?: boolean;
   readonly freeCamera?: boolean;
+  readonly freeCameraWasd?: boolean;
+  readonly onFreeCameraWasd?: (on: boolean) => void;
   readonly performanceScene?: boolean;
   readonly onPerformanceScene?: (on: boolean) => void;
   readonly onFreeCamera?: (on: boolean) => void;
@@ -47,7 +58,11 @@ export function KeyboardSettings({
   onShowLabels,
   keyStyle,
   onKeyStyle,
+  fallingNoteStyle,
+  onFallingNoteStyle,
   notesPerspective,
+  freeRoadLayout,
+  onFreeRoadLayout,
   onNotesPerspective,
   handStyle,
   onHandStyle,
@@ -55,12 +70,16 @@ export function KeyboardSettings({
   onFlatNoteBurning,
   flatPressEffects,
   onFlatPressEffects,
+  noteParticles,
+  onNoteParticles,
   keyboardDim,
   onKeyboardDim,
   roadGuides,
   onRoadGuides,
   pianist,
   freeCamera,
+  freeCameraWasd,
+  onFreeCameraWasd,
   performanceScene,
   onPerformanceScene,
   onFreeCamera,
@@ -134,7 +153,7 @@ export function KeyboardSettings({
           </label>
         </div>
       </SettingsGroup>
-      <SettingsGroup title={t("Падающие ноты и эффекты")}>
+      <SettingsGroup title={t("Падающие ноты")}>
         <div className="settings-list">
           <label className="setting">
             <span>{t("Проекция нот")}</span>
@@ -151,28 +170,84 @@ export function KeyboardSettings({
               <option value="perspective">{t("В перспективе")}</option>
             </select>
           </label>
-          {(keyStyle === "classic" || keyStyle === "arcade") && (
+          {keyStyle === "3d" ? (
+            <label className="setting">
+              <span>{t("Оформление нот")}</span>
+              <select
+                className="game-select"
+                aria-label={t("Оформление нот")}
+                data-setting-target="falling-note-style"
+                value={fallingNoteStyle}
+                onChange={(event) => {
+                  onFallingNoteStyle(event.target.value as FallingNoteStyle);
+                }}
+              >
+                <option value="filled">{t("Объёмные с заливкой")}</option>
+                <option value="flat">{t("Как в аркаде")}</option>
+                <option value="glass">{t("Прозрачные")}</option>
+              </select>
+            </label>
+          ) : (
+            <p
+              className="settings-group setting-hint"
+              data-setting-target="falling-note-style"
+              tabIndex={-1}
+            >
+              {t("Оформление объёмных нот выбирается в виде клавиш «3D».")}
+            </p>
+          )}
+          {keyStyle === "3d" && freeCamera && !performanceScene ? (
+            <FreeRoadSettings value={freeRoadLayout} onChange={onFreeRoadLayout} />
+          ) : (
             <>
               <label className="setting">
-                <span>{t("Горение нот")}</span>
-                <input
-                  type="checkbox"
-                  checked={flatNoteBurning}
-                  onChange={(event) => {
-                    onFlatNoteBurning(event.target.checked);
-                  }}
-                />
+                <span>{t("Перспектива: горизонт")}</span>
+                <span className="setting-control">
+                  <input
+                    type="range"
+                    min={0}
+                    max={0.6}
+                    step={0.01}
+                    value={road.horizon}
+                    disabled={!notesPerspective}
+                    aria-label={t("Перспектива: горизонт")}
+                    data-setting-target="road-horizon"
+                    onChange={(event) => {
+                      onRoad({ horizon: Number(event.target.value) });
+                    }}
+                  />
+                  <span className="digits">{Math.round(road.horizon * 100)}%</span>
+                </span>
               </label>
               <label className="setting">
-                <span>{t("Эффекты нажатия")}</span>
-                <input
-                  type="checkbox"
-                  checked={flatPressEffects}
-                  onChange={(event) => {
-                    onFlatPressEffects(event.target.checked);
-                  }}
-                />
+                <span>{t("Перспектива: ширина у горизонта")}</span>
+                <span className="setting-control">
+                  <input
+                    type="range"
+                    min={-1}
+                    max={0.9}
+                    step={0.01}
+                    value={road.far}
+                    disabled={!notesPerspective}
+                    aria-label={t("Перспектива: ширина у горизонта")}
+                    data-setting-target="road-width"
+                    onChange={(event) => {
+                      onRoad({ far: Number(event.target.value) });
+                    }}
+                  />
+                  <span className="digits">{Math.round(road.far * 100)}%</span>
+                </span>
               </label>
+              {!notesPerspective && (
+                <p className="setting-hint">
+                  {t("Горизонт и ширина у горизонта доступны в перспективной проекции.")}
+                </p>
+              )}
+              <p className="setting-hint">
+                {t(
+                  "Отрицательные значения задают ширину дальнего края относительно экрана основного вида; свободная камера меняет его ракурс."
+                )}
+              </p>
             </>
           )}
           {keyStyle === "3d" && (
@@ -189,19 +264,60 @@ export function KeyboardSettings({
           )}
         </div>
       </SettingsGroup>
+      <SettingsGroup title={t("Анимация и эффекты")}>
+        <p className="setting-hint">
+          {t("Эффекты над клавишами работают и при скрытых падающих нотах.")}
+        </p>
+        <div className="settings-list">
+          <label className="setting">
+            <span>{t("Горение")}</span>
+            <input
+              type="checkbox"
+              data-setting-target="note-burning"
+              checked={flatNoteBurning}
+              onChange={(event) => {
+                onFlatNoteBurning(event.target.checked);
+              }}
+            />
+          </label>
+          <label className="setting">
+            <span>{t("Вспышка при нажатии")}</span>
+            <input
+              type="checkbox"
+              data-setting-target="note-flash"
+              checked={flatPressEffects}
+              onChange={(event) => {
+                onFlatPressEffects(event.target.checked);
+              }}
+            />
+          </label>
+          <label className="setting">
+            <span>{t("Летящие нотки")}</span>
+            <input
+              type="checkbox"
+              data-setting-target="note-particles"
+              checked={noteParticles}
+              onChange={(event) => {
+                onNoteParticles(event.target.checked);
+              }}
+            />
+          </label>
+        </div>
+      </SettingsGroup>
       <SettingsGroup title={t("Руки и сцена")}>
         <div className="settings-list">
           <label className="setting">
             <span>{t("Вид рук")}</span>
             <select
               className="game-select"
-              value={handStyle}
+              value={keyStyle === "3d" ? "rendered" : handStyle}
+              disabled={keyStyle === "3d"}
               aria-label={t("Вид рук")}
               onChange={(event) => {
                 onHandStyle(event.target.value as HandStyle);
               }}
             >
-              <option value="drawn">{t("Рисованные")}</option>
+              {keyStyle !== "3d" && <option value="drawn">{t("Рисованные")}</option>}
               <option value="rendered">{t("3D")}</option>
             </select>
           </label>
@@ -233,44 +349,7 @@ export function KeyboardSettings({
       </SettingsGroup>
       <SettingsGroup title={t("Камера")}>
         <div className="settings-list">
-          {keyStyle === "3d" ? (
-            <CameraSettings camera={camera} onChange={onCamera} />
-          ) : (
-            <>
-              <label className="setting">
-                <span>{t("Перспектива: горизонт")}</span>
-                <span className="setting-control">
-                  <input
-                    type="range"
-                    min={0}
-                    max={0.6}
-                    step={0.01}
-                    value={road.horizon}
-                    onChange={(event) => {
-                      onRoad({ horizon: Number(event.target.value) });
-                    }}
-                  />
-                  <span className="digits">{Math.round(road.horizon * 100)}%</span>
-                </span>
-              </label>
-              <label className="setting">
-                <span>{t("Перспектива: ширина у горизонта")}</span>
-                <span className="setting-control">
-                  <input
-                    type="range"
-                    min={0.1}
-                    max={0.9}
-                    step={0.01}
-                    value={road.far}
-                    onChange={(event) => {
-                      onRoad({ far: Number(event.target.value) });
-                    }}
-                  />
-                  <span className="digits">{Math.round(road.far * 100)}%</span>
-                </span>
-              </label>
-            </>
-          )}
+          {keyStyle === "3d" && <CameraSettings camera={camera} onChange={onCamera} />}
           {keyStyle === "3d" && onFreeCamera && (
             <label className="setting">
               <span>{t("Свободная камера")}</span>
@@ -282,6 +361,25 @@ export function KeyboardSettings({
                 }}
               />
             </label>
+          )}
+          {keyStyle === "3d" && freeCamera && !performanceScene && onFreeCameraWasd && (
+            <label className="setting" data-setting-target="free-camera-wasd">
+              <span>{t("Передвижение WASD")}</span>
+              <input
+                type="checkbox"
+                checked={freeCameraWasd ?? false}
+                onChange={(event) => {
+                  onFreeCameraWasd(event.target.checked);
+                }}
+              />
+            </label>
+          )}
+          {keyStyle === "3d" && freeCamera && !performanceScene && onFreeCameraWasd && (
+            <p className="setting-hint">
+              {t(
+                "WASD передвигает камеру вместо игры на клавишах. В меню и полях ввода передвижение отключено."
+              )}
+            </p>
           )}
         </div>
       </SettingsGroup>

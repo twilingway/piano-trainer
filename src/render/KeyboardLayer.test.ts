@@ -208,3 +208,29 @@ it("frees owned keyboard paint once while preserving shared asset faces and digi
   expect(sharedDigit.destroyed).toBe(false);
   expect(release).toHaveBeenCalledOnce();
 });
+
+it("lifts painted white and black faces during physical gaps while retaining sound colours", () => {
+  const run = harness(false);
+  const white = new Texture({ source: new TextureSource({ width: 40, height: 40 }) });
+  const black = new Texture({ source: new TextureSource({ width: 40, height: 40 }) });
+  const whitePressed = new Texture({ source: new TextureSource({ width: 40, height: 40 }) });
+  const blackPressed = new Texture({ source: new TextureSource({ width: 40, height: 40 }) });
+  const faceOf = vi.fn((isBlack: boolean, _lit: boolean, down: boolean) =>
+    isBlack ? (down ? blackPressed : black) : down ? whitePressed : white
+  );
+  Object.assign(run.layer, { painted: {}, keyTextures: {}, faceOf });
+  const frame = {
+    ...run.frame,
+    pressed: new Set<number>(),
+    sounding: new Set([60, 61]),
+    physicalDown: new Set([60, 61])
+  };
+  run.layer.draw(frame, keys, geometry(180), false);
+  const sprites = (run.layer as unknown as { keySprites: Map<number, Sprite> }).keySprites;
+  expect(sprites.get(60)?.texture).toBe(whitePressed);
+  expect(sprites.get(61)?.texture).toBe(blackPressed);
+  run.layer.draw({ ...frame, physicalDown: new Set() }, keys, geometry(180), false);
+  expect(sprites.get(60)?.texture).toBe(white);
+  expect(sprites.get(61)?.texture).toBe(black);
+  expect(frame.sounding).toEqual(new Set([60, 61]));
+});

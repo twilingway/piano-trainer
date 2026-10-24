@@ -43,7 +43,6 @@ export class NativeKeyContacts {
       let count = 0;
       for (const window of windows) {
         const previous = windows[count - 1];
-        if (previous && window.start <= previous.end && window.end <= previous.end) continue;
         // A key cannot be struck again while down: a following repeat lifts it first.
         if (previous && window.start > previous.start)
           previous.end = Math.min(
@@ -60,6 +59,10 @@ export class NativeKeyContacts {
       windows.length = count;
     }
     return true;
+  }
+
+  has(pitch: number): boolean {
+    return this.byPitch.has(pitch);
   }
 
   down(pitch: number, time: number): boolean {

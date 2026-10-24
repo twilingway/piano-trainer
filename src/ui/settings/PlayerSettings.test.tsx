@@ -70,6 +70,8 @@ function Harness({
         <PlaySettings
           {...{
             wordTyping,
+            countdownSeconds: 3,
+            onCountdownSeconds: noop,
             metronome: false,
             onMetronome: noop,
             listening: false,
@@ -130,6 +132,8 @@ function Harness({
           }
           keyboard={
             <KeyboardSettings
+              freeRoadLayout={{ height: 2, distance: 0, width: 4, shape: "line" }}
+              onFreeRoadLayout={() => undefined}
               {...{
                 keyRange: "song",
                 onKeyRange: noop,
@@ -138,6 +142,10 @@ function Harness({
                 keyStyle: staffPrefs.keyStyle,
                 onKeyStyle: (keyStyle) => {
                   updateStaffPrefs({ keyStyle });
+                },
+                fallingNoteStyle: staffPrefs.fallingNoteStyle,
+                onFallingNoteStyle: (fallingNoteStyle) => {
+                  updateStaffPrefs({ fallingNoteStyle });
                 },
                 notesPerspective: staffPrefs.road,
                 onNotesPerspective: (road) => {
@@ -148,6 +156,8 @@ function Harness({
                 onFlatNoteBurning: noop,
                 flatPressEffects: staffPrefs.flatPressEffects,
                 onFlatPressEffects: noop,
+                noteParticles: true,
+                onNoteParticles: noop,
                 keyboardDim: staffPrefs.keyboardDim,
                 onKeyboardDim: (keyboardDim) => {
                   updateStaffPrefs({ keyboardDim });
@@ -335,7 +345,7 @@ describe("player settings organization", () => {
     expect(host.querySelector(".practice-range")).not.toBeNull();
     await section("Вид");
     expect(host.textContent).toContain("Нотная запись");
-    expect(host.textContent).toContain("Падающие ноты и эффекты");
+    expect(host.textContent).toContain("Анимация и эффекты");
     expect(host.querySelector("[role=tabpanel] .settings-group")?.getAttribute("aria-label")).toBe(
       "Что показывать"
     );
@@ -449,6 +459,13 @@ describe("player settings organization", () => {
   it("offers the hand look next to the key look, 3D by default", async () => {
     await render(false);
     await section("Вид");
+    expect(select("Вид рук").disabled).toBe(true);
+    await act(async () => {
+      await Promise.resolve();
+      const keys = select("Вид клавиш");
+      keys.value = "classic";
+      keys.dispatchEvent(new Event("change", { bubbles: true }));
+    });
     const hands = select("Вид рук");
     expect(hands.value).toBe("rendered");
     await act(async () => {
@@ -591,10 +608,15 @@ it.each(["ru", "en"] as const)(
     for (const target of [
       "key-style",
       "notes-projection",
+      "falling-note-style",
       "note-color",
       "played-note-color",
+      "note-burning",
+      "note-flash",
+      "note-particles",
       "fps",
       "play-mode",
+      "play-countdown",
       "piano-range",
       "midi-output",
       "melody-output",
@@ -701,3 +723,77 @@ it.each(["ru", "en"] as const)(
     expect(onMidiTest).not.toHaveBeenCalled();
   }
 );
+
+it.each(["ru", "en"] as const)(
+  "focuses unavailable and enabled horizon controls from Help in %s",
+  async (language) => {
+    setInterfaceLanguage(language);
+    await render();
+    const help = language === "ru" ? "Помощь" : "Help";
+    const view = language === "ru" ? "Вид" : "View";
+    const before = JSON.stringify(store.getState().preferences);
+    for (const target of ["road-horizon", "road-width"]) {
+      await section(help);
+      const link = host.querySelector<HTMLButtonElement>(`[data-help-target="${target}"]`);
+      const details = link?.closest("details");
+      if (details) details.open = true;
+      await act(async () => {
+        link?.click();
+        await Promise.resolve();
+      });
+      const control = host.querySelector<HTMLInputElement>(`[data-setting-target="${target}"]`);
+      expect(control?.disabled).toBe(true);
+      expect(document.activeElement).toBe(control?.closest("label"));
+      expect(JSON.stringify(store.getState().preferences)).toBe(before);
+    }
+    await section(view);
+    await act(async () => {
+      const projection = host.querySelector<HTMLSelectElement>(
+        '[data-setting-target="notes-projection"]'
+      );
+      if (!projection) throw new Error("Expected projection selector");
+      projection.value = "perspective";
+      projection.dispatchEvent(new Event("change", { bubbles: true }));
+      await Promise.resolve();
+    });
+    const enabled = JSON.stringify(store.getState().preferences);
+    for (const target of ["road-horizon", "road-width"]) {
+      await section(help);
+      const link = host.querySelector<HTMLButtonElement>(`[data-help-target="${target}"]`);
+      const details = link?.closest("details");
+      if (details) details.open = true;
+      await act(async () => {
+        link?.click();
+        await Promise.resolve();
+      });
+      const control = host.querySelector<HTMLInputElement>(`[data-setting-target="${target}"]`);
+      expect(control?.disabled).toBe(false);
+      expect(document.activeElement).toBe(control);
+      expect(JSON.stringify(store.getState().preferences)).toBe(enabled);
+    }
+  }
+);
+it("explains the 3D appearance destination while flat keys remain selected", async () => {
+  await render();
+  await section("Вид");
+  await act(async () => {
+    const keys = select("Вид клавиш");
+    keys.value = "classic";
+    keys.dispatchEvent(new Event("change", { bubbles: true }));
+    await Promise.resolve();
+  });
+  const before = JSON.stringify(store.getState().preferences);
+  await section("Помощь");
+  const link = host.querySelector<HTMLButtonElement>('[data-help-target="falling-note-style"]');
+  const details = link?.closest("details");
+  if (details) details.open = true;
+  await act(async () => {
+    link?.click();
+    await Promise.resolve();
+  });
+  const target = host.querySelector<HTMLElement>('[data-setting-target="falling-note-style"]');
+  expect(document.activeElement).toBe(target);
+  expect(target?.textContent).toContain("Оформление объёмных нот выбирается в виде клавиш «3D».");
+  expect(select("Вид клавиш").value).toBe("classic");
+  expect(JSON.stringify(store.getState().preferences)).toBe(before);
+});
