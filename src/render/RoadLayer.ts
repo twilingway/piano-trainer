@@ -1,4 +1,5 @@
 import { FreeRoadRoutes } from "./freeRoadRoutes";
+import type { ProjectionParameters } from "./stylizedProjection";
 export type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import type { FallingNoteStyle } from "./fallingNoteStyle";
@@ -41,6 +42,12 @@ export { DEFAULT_ROAD_SHAPE, type RoadShape } from "./roadLayoutCamera";
 
 /** One native road; the selected keyboard retains its own drawing and pointer geometry. */
 export class RoadLayer {
+  setLegacyLabels(labels: readonly { renderable: boolean }[]): void {
+    this.nativeRoad.legacyLabels = labels;
+  }
+  setNoteProjection(value: ProjectionParameters): void {
+    this.nativeRoad.noteProjection = value;
+  }
   readonly container = new Container();
   readonly effects = new Container();
   private readonly keysTexture = RenderTexture.create({ width: 1, height: 1 });
@@ -231,7 +238,9 @@ export class RoadLayer {
     duration = 0,
     id = "",
     tailOffset = 0,
-    pitch?: number
+    pitch?: number,
+    finger?: number,
+    label?: string
   ): boolean {
     if (!this.drawsNativeRoad || !this.camera) return false;
     this.nativeRoad.add(
@@ -247,7 +256,9 @@ export class RoadLayer {
       id,
       tailOffset,
       this.noteLane(keyX),
-      pitch
+      pitch,
+      finger,
+      label
     );
     return true;
   }

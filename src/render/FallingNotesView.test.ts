@@ -70,6 +70,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     },
     notes: sprites
   }) as unknown as NotesLayer;
+  Object.assign(layer, { overlayLabels: [layer.root, layer.cards] });
   return { layer, sprites, flatDraw };
 }
 
@@ -121,6 +122,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
       noteLaneY: () => 22,
       beatY: (y: number) => y,
       beginNotes: vi.fn(),
+      setLegacyLabels: vi.fn(),
       endNotes: vi.fn(),
       drawHold: vi.fn(() => false),
       fitHoldTop: (_x: number, top: number) => top,

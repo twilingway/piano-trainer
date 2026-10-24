@@ -1,4 +1,7 @@
 import { StageWorldScore } from "./StageWorldScore";
+import { StylizedProjectionLayer } from "./StylizedProjectionLayer";
+import { pickKeyboardKey } from "./pickKeyboardKey";
+import { configureStageCamera } from "./configureStageCamera";
 import { buildKeyboardMesh } from "./buildKeyboardMesh";
 import type { StaffWorldSource } from "../../staff/staffWorldSnapshot";
 import { prepareRoadProjection, prepareFreeRoadBounds } from "./roadFrameProjection";
@@ -14,8 +17,7 @@ import {
   MeshStandardMaterial,
   Scene,
   Raycaster,
-  Vector2,
-  Vector3
+  Vector2
 } from "three";
 import type { WebGLRenderer, Mesh } from "three";
 import type { Object3D } from "three";
@@ -31,7 +33,6 @@ import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
 import type { Keyboard88 } from "./keyboard88";
 import { KEYBOARD_DIP, metricKeyX } from "../keyboardMetrics";
 import type { HandsSource } from "./liveHands";
-import { projectionMatrix, setCameraProjectionKind, viewMatrix } from "./threeCamera";
 import { ThreeNoteLights } from "./ThreeNoteLights";
 import { ThreeKeyEmission } from "./ThreeKeyEmission";
 import { KeyboardAppearance } from "./KeyboardAppearance";
@@ -42,7 +43,6 @@ import { ThreeNoteAura } from "./ThreeNoteAura";
 import { ThreeRoadGuides } from "./ThreeRoadGuides";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { drawSceneCameraPasses } from "./sceneCameraPasses";
-import type { WorldCamera } from "../worldCamera";
 import { PerformanceWorldStage } from "./PerformanceWorldStage";
 import { PerformanceScene } from "./PerformanceScene";
 import { FreeSceneCamera } from "./FreeSceneCamera";
@@ -53,6 +53,7 @@ ColorManagement.enabled = false;
 
 /** How fast a key follows the finger, per second. */
 const DIP_RATE = 30;
+const NO_EFFECTS: FlatEffectOptions = { burning: false, presses: false, musicalNotes: false };
 
 interface Hinged {
   readonly pitch: number;
@@ -112,6 +113,7 @@ export class ThreeStage {
   private version = -1;
   private disposed = false;
   private readonly scorePoster: StageWorldScore;
+  private projection: StylizedProjectionLayer | undefined;
   private sign: string | undefined;
   /** Pose the character after this frame's camera setup and before any scene render pass. */
   beforeRender: ((camera: Camera, separateCameras: boolean) => void) | undefined;
@@ -273,6 +275,19 @@ export class ThreeStage {
         ? this.free.camera
         : this.roadCamera;
     this.pickCamera = separate ? this.keyboardCamera : camera;
+    this.beforeRender?.(this.pickCamera, separate);
+    if (roadFrame?.noteProjection.mode === "stylizedProjection")
+      this.projection ??= new StylizedProjectionLayer();
+    const projected =
+      this.projection?.prepare(
+        roadFrame,
+        this.boxes,
+        this.hinged,
+        this.pickCamera,
+        screen,
+        roadCamera,
+        nativeKeyboard && !this.performanceEnabled
+      ) ?? false;
     if (this.freeEnabled && !this.performanceEnabled)
       this.performance.updateInspection(songTime, this.keys, camera);
     this.worldStage.setDuration(this.performance.getDuration());
@@ -287,7 +302,7 @@ export class ThreeStage {
       worldEffects,
       roadFrame,
       this.freeEnabled && !this.performanceEnabled,
-      effects
+      this.projectionGeometryOnly ? NO_EFFECTS : effects
     );
     prepareRoadProjection(
       this.roadGuides,
@@ -296,11 +311,12 @@ export class ThreeStage {
       roadFrame,
       this.performanceEnabled ? "performance" : inspecting ? "free" : "standard"
     );
-    this.beforeRender?.(this.pickCamera, separate);
+    if (projected) this.road.visible = false;
     this.renderer.resetState();
     try {
       this.renderer.setViewport(0, 0, screen.width, screen.height);
       this.renderer.clearDepth();
+      this.projection?.drawBackground(this.renderer);
       drawSceneCameraPasses(
         this.renderer,
         this.scene,
@@ -310,15 +326,16 @@ export class ThreeStage {
         this.keyboardCamera,
         separate,
         // Free and performance cameras see one world: plain depth, no road-over-case passes.
-        this.freeEnabled || this.performanceEnabled
+        (this.freeEnabled && !projected) || this.performanceEnabled
           ? undefined
           : nativeKeyboard
             ? this.body
             : undefined,
-        !this.freeEnabled && !this.performanceEnabled && roadEffects
+        this.projection?.requested || (!this.freeEnabled && !this.performanceEnabled && roadEffects)
           ? () => {
               try {
-                roadEffects();
+                this.projection?.draw(this.renderer);
+                if (!this.freeEnabled && !this.performanceEnabled) roadEffects?.();
               } finally {
                 // The flat pass changes camera state; rebind before the depth-only pass.
                 this.renderer.resetState();
@@ -333,20 +350,11 @@ export class ThreeStage {
     }
   }
 
-  private configureCamera(
-    camera: Camera,
-    world: WorldCamera,
-    screen: { readonly width: number; readonly height: number },
-    offset?: { readonly x: number; readonly y: number }
-  ): void {
-    setCameraProjectionKind(camera, world.params);
-    camera.matrix.copy(viewMatrix(world.params)).invert();
-    camera.matrixWorldNeedsUpdate = true;
-    camera.projectionMatrix.copy(
-      projectionMatrix(world.params, screen.width, screen.height, offset)
-    );
-    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+  private readonly configureCamera = configureStageCamera;
+  get projectionGeometryOnly(): boolean {
+    return this.projection?.geometryOnly ?? false;
   }
+  suspendProjection = (): void => this.projection?.suspend();
 
   get nativeEffectsReady(): boolean {
     return (this.performanceEnabled || this.freeEnabled) && this.worldStage.ready;
@@ -397,35 +405,24 @@ export class ThreeStage {
     height: number,
     surface?: Vector2
   ): number | undefined {
-    this.pointer.set((2 * x) / Math.max(1, width) - 1, 1 - (2 * y) / Math.max(1, height));
-    this.scene.updateMatrixWorld(true);
     const camera = this.performanceEnabled
       ? this.performance.camera
       : this.freeEnabled
         ? this.free.camera
         : (this.pickCamera ?? this.roadCamera);
-    // The shared screen projection uses a generic Camera, so unproject its actual matrices.
-    camera.updateMatrixWorld();
-    const origin = new Vector3(this.pointer.x, this.pointer.y, -1).unproject(camera);
-    const direction = new Vector3(this.pointer.x, this.pointer.y, 1)
-      .unproject(camera)
-      .sub(origin)
-      .normalize();
-    this.raycaster.set(origin, direction);
-    const hits = this.raycaster.intersectObjects(
-      [...this.hinged.map(({ mesh }) => mesh), ...this.occluders],
-      true
+    return pickKeyboardKey(
+      this.raycaster,
+      this.pointer,
+      this.scene,
+      this.hinged,
+      this.occluders,
+      camera,
+      x,
+      y,
+      width,
+      height,
+      surface
     );
-    const hit = hits.find(({ object }) => {
-      let part: Object3D | null = object;
-      while (part) {
-        if (!part.visible) return false;
-        part = part.parent;
-      }
-      return true;
-    });
-    if (hit?.uv) surface?.copy(hit.uv);
-    return hit && this.hinged.find(({ mesh }) => mesh === hit.object)?.pitch;
   }
 
   /** Something of the host's that rides with the keys: the local pianist. */
@@ -475,6 +472,7 @@ export class ThreeStage {
     this.beforeRender = undefined;
     this.free.dispose();
     this.scorePoster.dispose();
+    this.projection?.dispose();
     this.performance.dispose();
     this.worldStage.dispose();
     this.clear();

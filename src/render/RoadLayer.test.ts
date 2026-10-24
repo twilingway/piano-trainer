@@ -347,7 +347,9 @@ it("routes every native note style, trail and CPU origin through the rear contac
   for (const style of ["filled", "glass", "flat"] as const) {
     Object.assign(internals, { fallingNoteStyle: style });
     layer.beginNotes();
-    layer.drawHold(x, 100, 400, c.width, 0xffffff, 1, 1, "c4", 0, 60);
+    layer.drawHold(x, 100, 400, c.width, 0xffffff, 1, 1, "c4", 0, 60, 3, "до");
+    expect(frame.notes[0]?.finger).toBe(3);
+    expect(frame.notes[0]?.label).toBe("до");
     layer.addTrailAnchor(x, c.width, 0xffffff, 1);
     expect(frame.notes[0]?.x).toBeCloseTo(cameras.notes.sourceX(x) - 3.575);
     expect(frame.trailAnchors[0]?.x).toBeCloseTo(frame.notes[0]?.x ?? NaN);
@@ -357,6 +359,8 @@ it("routes every native note style, trail and CPU origin through the rear contac
   Object.assign(three, { freeCamera: true });
   layer.beginNotes();
   layer.drawHold(x, 100, 400, c.width, 0xffffff, 1);
+  expect(frame.notes[0]?.label).toBeUndefined();
+  expect(frame.notes[0]?.finger).toBeUndefined();
   expect(frame.notes[0]?.x).toBeCloseTo(cameras.notes.sourceX(x) - 3.575);
   expect(frame.notes[0]?.lane?.scaleX).toBe(1);
   Object.assign(three, { freeCamera: false });

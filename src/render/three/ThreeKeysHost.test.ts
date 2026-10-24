@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   construct: vi.fn(),
   draw: vi.fn(),
   clearEnergy: vi.fn(),
+  suspendProjection: vi.fn(),
   setKeyboardDim: vi.fn(),
   dispose: vi.fn(),
   loadKit: vi.fn(),
@@ -25,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   resetFreeCamera: vi.fn(),
   freeKeyAt: vi.fn(),
   nativeEffectsReady: false,
+  projectionGeometryOnly: false,
   handPresent: true,
   loadPianist: vi.fn(),
   pianistConstruct: vi.fn(),
@@ -55,12 +57,16 @@ vi.mock("./ThreeStage", () => ({
     get nativeEffectsReady() {
       return mocks.nativeEffectsReady;
     }
+    get projectionGeometryOnly() {
+      return mocks.projectionGeometryOnly;
+    }
     setPerformanceScene = vi.fn();
     draw(...args: unknown[]): void {
       mocks.draw.apply(this, args);
       (args[11] as (() => void) | undefined)?.();
     }
     clearEnergy = mocks.clearEnergy;
+    suspendProjection = mocks.suspendProjection;
     setKeyboardDim = mocks.setKeyboardDim;
     dispose = mocks.dispose;
     setFreeCamera = mocks.setFreeCamera;
@@ -182,6 +188,7 @@ function deferred<T>() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.nativeEffectsReady = false;
+  mocks.projectionGeometryOnly = false;
   mocks.handPresent = true;
   mocks.publicReady = false;
   mocks.publicStatus = "loading";
@@ -201,6 +208,34 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
+  it("keeps flat effects hidden through the final HUD pass in active geometry-only projection", async () => {
+    const view = fixture();
+    const fire = view.overlay.addChild(new Container()),
+      mist = view.overlay.addChild(new Container());
+    view.host.setSceneEffects([fire], [mist]);
+    await view.host.setEnabled(true);
+    mocks.projectionGeometryOnly = true;
+    view.renderer.render.mockImplementation(({ container }) => {
+      expect(container).not.toBe(fire);
+      expect(container).not.toBe(mist);
+      if (container === view.stage) {
+        expect(fire.renderable).toBe(false);
+        expect(mist.renderable).toBe(false);
+      }
+    });
+    view.tick();
+    expect(fire.renderable).toBe(true);
+    expect(mist.renderable).toBe(true);
+    view.host.destroy();
+  });
+  it("releases screen projection ownership when native rendering stops", async () => {
+    const view = fixture();
+    await view.host.setEnabled(true);
+    mocks.suspendProjection.mockClear();
+    await view.host.setEnabled(false, false);
+    expect(mocks.suspendProjection).toHaveBeenCalledOnce();
+    view.host.destroy();
+  });
   it("draws flat road, native scene and HUD in order", async () => {
     const view = fixture();
     await view.host.setEnabled(true);

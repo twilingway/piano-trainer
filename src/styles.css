@@ -4662,3 +4662,41 @@ button.song-card.song-card__open {
 .staff path.vf-stem {
   stroke-width: 1.2;
 }
+
+.projection-settings {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+.projection-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.projection-presets .game-button {
+  min-width: 0;
+  white-space: normal;
+}
+.projection-number-control {
+  min-width: 0;
+  max-width: 100%;
+}
+.projection-number-control input[type="range"] {
+  width: 100px;
+  min-width: 40px;
+  flex: 1;
+}
+.projection-number-control input[type="number"] {
+  width: 78px;
+  min-width: 0;
+  padding: 5px;
+}
+@media (max-width: 500px) {
+  .projection-setting {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .projection-number-control {
+    width: 100%;
+  }
+}

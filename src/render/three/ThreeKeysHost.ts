@@ -286,6 +286,7 @@ export class ThreeKeysHost {
       ticker.remove(render, this.app);
       ticker.add(this.frame, undefined, UPDATE_PRIORITY.LOW);
     } else {
+      this.stage?.suspendProjection();
       this.publicPerformer.clear();
       ticker.remove(this.frame);
       ticker.add(render, this.app, UPDATE_PRIORITY.LOW);
@@ -308,13 +309,15 @@ export class ThreeKeysHost {
     }
     const separateRoad = this.freeActive || this.performanceWanted;
     const worldEffects = separateRoad && this.stage.nativeEffectsReady;
-    const legacyEffects = !this.freeActive && !worldEffects;
+    const geometryOnly =
+      this.wanted && !this.performanceWanted && this.stage.projectionGeometryOnly;
+    const legacyEffects = !this.freeActive && !worldEffects && !geometryOnly;
     renderer.render({
-      container: separateRoad || !this.road.visible ? this.placeholder : this.road,
+      container: separateRoad || geometryOnly || !this.road.visible ? this.placeholder : this.road,
       ...(separateRoad ? { clearColor: 0x000000 } : {})
     });
     try {
-      if (separateRoad) this.roadEffects.draw(renderer, legacyEffects);
+      if (separateRoad || geometryOnly) this.roadEffects.draw(renderer, legacyEffects);
       this.effects.draw(renderer, legacyEffects && separateRoad);
       if (this.wanted) this.seatPianist(this.stage, scene);
       else if (this.hands) this.hands.live = false;
@@ -377,7 +380,7 @@ export class ThreeKeysHost {
 
   private readonly drawRoadEffects = (): void => {
     this.effects.restore();
-    this.effects.draw(this.app.renderer);
+    this.effects.draw(this.app.renderer, !this.stage?.projectionGeometryOnly);
   };
 
   private readonly beforeRender = (camera: Camera, separateCameras = false): void => {

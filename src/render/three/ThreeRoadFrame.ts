@@ -1,4 +1,5 @@
 import type { FreeRoadLayout, FreeRoadLane } from "../freeRoadLayout";
+import { DEFAULT_PROJECTION_PARAMETERS, type ProjectionParameters } from "../stylizedProjection";
 import type { FallingNoteStyle } from "../fallingNoteStyle";
 import type { NoteLaneProjection } from "../noteLaneProjection";
 import type { WorldCamera } from "../worldCamera";
@@ -8,6 +9,8 @@ import { ROAD_TRAIL_ANCHOR_CAPACITY } from "./roadTrailGeometry";
 
 /** Reusable visual snapshot; all positions come from the existing score-time layout. */
 export class ThreeRoadFrame {
+  noteProjection: ProjectionParameters = DEFAULT_PROJECTION_PARAMETERS;
+  legacyLabels: readonly { renderable: boolean }[] = [];
   readonly notes: WorldRoadNote[] = [];
   readonly beats: number[] = [];
   readonly trailAnchors: WorldRoadNote[] = [];
@@ -81,7 +84,9 @@ export class ThreeRoadFrame {
     id = "",
     tailOffset = 0,
     lane?: NoteLaneProjection,
-    pitch?: number
+    pitch?: number,
+    finger?: number,
+    label?: string
   ): void {
     const note = worldRoadNote(
       keyX,
@@ -100,6 +105,8 @@ export class ThreeRoadFrame {
     note.materialUnitZ = (camera.roadFarZ - (lane?.depth ?? camera.near.z)) / hitY;
     note.duration = duration;
     note.pitch = pitch;
+    note.finger = finger;
+    note.label = label;
     note.lane = lane;
     note.textureOffset = (tailOffset * (camera.roadFarZ - (lane?.depth ?? camera.near.z))) / hitY;
     let hash = 2166136261;

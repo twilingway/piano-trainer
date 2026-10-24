@@ -5,7 +5,8 @@ import type { Finger, Hand } from "../fingering/fingering";
 import type { NoteStatus } from "../practice/session";
 import { quartersAt } from "../song/song";
 import type { Song, SongBeat, SongNote } from "../song/song";
-import { nameKey } from "./bakeLabels";
+import { fallingNoteName, nameKey } from "./bakeLabels";
+import { cardFaceTexture } from "./cardFaceTexture";
 import { FlatNoteBlocks } from "./FlatNoteBlocks";
 import type { FallingNoteNames } from "./bakeLabels";
 import { flatHoldBounds, holdBounds } from "./holdBounds";
@@ -24,7 +25,6 @@ import {
   CARD_HEIGHT,
   CARD_WIDTH,
   TRAIL_TILE,
-  bakeCardFace,
   bakeCardFrame,
   bakeCardGlow,
   bakeTrailTile
@@ -110,6 +110,7 @@ export class NotesLayer {
    * where the notes are, on the road they stand upright where the notes land.
    */
   readonly cards = new Container({ sortableChildren: true });
+  private readonly overlayLabels = [this.root, this.cards];
   /** All notes crossing the hit line, including accompaniment, by pitch. */
   readonly playing = new Map<number, SongNote>();
   /** Notes coming over the road's horizon in the last frame drawn, with their flash. */
@@ -274,6 +275,7 @@ export class NotesLayer {
     road: RoadLayer | undefined
   ): void {
     const { hitY } = geometry;
+    road?.setLegacyLabels(this.overlayLabels);
     const pixelsPerSecond = hitY / state.lookAhead;
     const cards = this.cardsOn;
     road?.beginNotes();
@@ -430,7 +432,11 @@ export class NotesLayer {
             note.duration,
             note.id,
             bounds.top - (hitY - (note.start + note.duration - state.time) * pixelsPerSecond),
-            note.pitch
+            note.pitch,
+            state.hints !== false ? note.finger : undefined,
+            this.noteNames
+              ? fallingNoteName(this.noteNames, this.look.written(note).pitch)
+              : undefined
           )
         )
           body.visible = false;
@@ -570,13 +576,6 @@ export class NotesLayer {
     hand: Hand,
     placement?: ScorePlacement
   ): Texture {
-    const key = `${String(pitch)}:${glyph.kind}:${String(glyph.dotted)}:${hand}:${placement?.clef ?? ""}:${String(placement?.position)}:${placement?.accidental ?? ""}`;
-    let texture = this.cardFaces.get(key);
-    if (!texture) {
-      const clef = placement?.clef ?? (hand === "left" ? "bass" : "treble");
-      texture = bakeCardFace(this.renderer, pitch, glyph, clef, placement);
-      this.cardFaces.set(key, texture);
-    }
-    return texture;
+    return cardFaceTexture(this.renderer, this.cardFaces, pitch, glyph, hand, placement);
   }
 }
