@@ -9,6 +9,8 @@ import type { MidiOutputControls } from "../ui/settings/MidiSettings";
 import { saveKeyLights } from "./keyLightPreferences";
 import { saveMidiOutput } from "./midiOutputPreferences";
 import { useMidiOutput } from "./useMidiOutput";
+import { createAppStore } from "./store";
+import { preferencesActions } from "./preferencesSlice";
 
 let root: Root;
 let latest: MidiOutputControls | undefined;
@@ -143,6 +145,34 @@ describe("useMidiOutput", () => {
 });
 
 describe("automatic melody through the selected output", () => {
+  it("applies the selected timbre without reconfiguring song audio and stops preview before Play", async () => {
+    const store = createAppStore();
+    await act(async () => {
+      root.render(withTestStore(<Harness />, store));
+      await Promise.resolve();
+    });
+    grant();
+    await settle();
+    const routingCalls = vi.mocked(trainer.setMelodyOutput).mock.calls.length;
+    piano.send.mockClear();
+    act(() => {
+      store.dispatch(
+        preferencesActions.instrumentProfilesChanged({
+          ...store.getState().preferences.instrumentProfiles,
+          instrumentId: "voice-075"
+        })
+      );
+    });
+    expect(piano.send).toHaveBeenCalledExactlyOnceWith([0xc0, 75], undefined);
+    expect(trainer.setMelodyOutput).toHaveBeenCalledTimes(routingCalls);
+    act(() => latest?.preview?.onPlay());
+    expect(latest?.preview?.playing).toBe(true);
+    act(() => (trainer as Trainer).onBeforePlay?.());
+    expect(latest?.preview?.playing).toBe(false);
+    expect(piano.send).toHaveBeenLastCalledWith([0x80, 60, 0], undefined);
+    expect(trainer.setMelodyOutput).toHaveBeenCalledTimes(routingCalls);
+  });
+
   it("switches browser/MIDI/both without changing the hint output", async () => {
     await act(async () => {
       root.render(withTestStore(<Harness />));

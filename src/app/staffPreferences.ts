@@ -92,7 +92,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   labels: false,
   fps: false,
   keyRange: "song",
-  keyStyle: "arcade",
+  keyStyle: "3d",
   keyboardOrientation: "follow",
   autoReview: false,
   camera: DEFAULT_CAMERA,

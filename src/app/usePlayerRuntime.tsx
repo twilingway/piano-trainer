@@ -222,7 +222,8 @@ export function usePlayerRuntime() {
     trainer.trainerReady,
     ear,
     rhythm.active || independentRhythm.active,
-    independentRhythm.active
+    independentRhythm.active,
+    snapshot.playing
   );
   const fit = useRangeFit(
     song.notes,

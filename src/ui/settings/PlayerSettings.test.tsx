@@ -408,6 +408,13 @@ describe("player settings organization", () => {
     await section("Вид");
     const keys = select("Вид клавиш");
     expect(Array.from(keys.options, (option) => option.value)).toContain("3d");
+    expect(keys.value).toBe("3d");
+    expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
+    await act(async () => {
+      await Promise.resolve();
+      keys.value = "arcade";
+      keys.dispatchEvent(new Event("change", { bubbles: true }));
+    });
     expect(host.querySelector("input[aria-label='Угол обзора']")).toBeNull();
     await act(async () => {
       await Promise.resolve();

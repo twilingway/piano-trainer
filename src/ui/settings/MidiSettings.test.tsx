@@ -6,6 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MidiSettings } from "./MidiSettings";
 import type { MidiOutputControls } from "./MidiSettings";
+import { AUTO_OUTPUT_CHOICE, AUTO_OUTPUT_ID } from "../../input/midiOutput";
 
 let host: HTMLDivElement;
 let root: Root;
@@ -182,6 +183,7 @@ describe("MidiSettings output", () => {
     await render({}, output({ devices: [piano], choice: piano, connected: true, selectedId: "a" }));
     const select = outputSelect();
     expect([...select.options].map((option) => option.textContent)).toEqual([
+      "Автоматически",
       "Нет",
       "Digital Piano"
     ]);
@@ -204,7 +206,30 @@ describe("MidiSettings output", () => {
 
   it("has nothing to test without outputs", async () => {
     await render({}, output({}));
-    expect([...outputSelect().options].map((option) => option.textContent)).toEqual(["Нет"]);
+    expect([...outputSelect().options].map((option) => option.textContent)).toEqual([
+      "Автоматически",
+      "Нет"
+    ]);
+    expect(button("Проверить").disabled).toBe(true);
+  });
+
+  it("identifies an automatically resolved output and explains an unresolved automatic choice", async () => {
+    await render(
+      {},
+      output({
+        choice: AUTO_OUTPUT_CHOICE,
+        selectedId: AUTO_OUTPUT_ID,
+        connected: true,
+        devices: [piano],
+        resolvedName: piano.name
+      })
+    );
+    expect(outputSelect().selectedOptions[0]?.textContent).toBe("Автоматически: Digital Piano");
+    expect(button("Проверить").disabled).toBe(false);
+    expect(host.textContent).not.toContain("Для автоматического выбора подключите одно пианино");
+    await render({}, output({ choice: AUTO_OUTPUT_CHOICE, selectedId: AUTO_OUTPUT_ID }));
+    expect(outputSelect().selectedOptions[0]?.textContent).toBe("Автоматически");
+    expect(host.textContent).toContain("Для автоматического выбора подключите одно пианино");
     expect(button("Проверить").disabled).toBe(true);
   });
 

@@ -42,7 +42,7 @@ export function normalizeViewAxes(value: unknown, fallback?: ViewAxes): ViewAxes
   const raw = record(value);
   const keyboardStyle = STYLES.includes(raw.keyboardStyle as KeyboardStyle)
     ? (raw.keyboardStyle as KeyboardStyle)
-    : (fallback?.keyboardStyle ?? "arcade");
+    : (fallback?.keyboardStyle ?? "3d");
   return {
     keyboardStyle,
     notesProjection: projection(raw.notesProjection, fallback?.notesProjection ?? "direct"),

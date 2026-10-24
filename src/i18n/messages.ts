@@ -1,4 +1,5 @@
 import { performanceMessages } from "./performanceMessages";
+import { instrumentMessages } from "./instrumentMessages";
 import type { Messages } from "./locales";
 import { freeCameraMessages } from "./freeCameraMessages";
 import { appMessages } from "./appMessages";
@@ -19,6 +20,7 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...instrumentMessages,
   ...appMessages,
   ...performanceMessages,
   ...freeCameraMessages,

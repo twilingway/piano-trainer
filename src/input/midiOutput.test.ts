@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
-import { findOutput, openMidiOutput, panicMessages } from "./midiOutput";
+import { AUTO_OUTPUT_CHOICE, findOutput, openMidiOutput, panicMessages } from "./midiOutput";
 import type { OutputState } from "./midiOutput";
 
 interface FakeOutput {
@@ -30,6 +30,21 @@ function fakeAccess(...outputs: FakeOutput[]) {
 
 const PANIC = panicMessages().map((message) => [message, undefined]);
 
+it("does not send a cancelled preview release to a newly selected device", async () => {
+  const oldPiano = fakeOutput("old");
+  const newPiano = fakeOutput("new");
+  fakeAccess(oldPiano, newPiano);
+  const control = await openMidiOutput({ id: "old", name: "old" }, () => undefined);
+  control.send([0x90, 60, 60], "old");
+  control.select({ id: "new", name: "new" });
+  newPiano.send.mockClear();
+  control.send([0x80, 60, 0], "old");
+  expect(newPiano.send).not.toHaveBeenCalled();
+  control.send([0xc0, 75], "new");
+  expect(newPiano.send).toHaveBeenCalledExactlyOnceWith([0xc0, 75], undefined);
+  control.dispose();
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -40,6 +55,17 @@ describe("findOutput", () => {
     { id: "a", name: "Piano" },
     { id: "b", name: "loopMIDI Port" }
   ];
+  it("selects an unambiguous profile output instead of an unrelated interface", () => {
+    const piano = { id: "piano", name: "Piano MIDI Device" };
+    const bridge = { id: "bridge", name: "MiniFuse 2 MIDI Out" };
+    expect(findOutput([bridge, piano], AUTO_OUTPUT_CHOICE, piano.name)).toEqual(piano);
+    expect(findOutput([bridge, piano], AUTO_OUTPUT_CHOICE)).toBeUndefined();
+    expect(findOutput([piano], AUTO_OUTPUT_CHOICE)).toEqual(piano);
+    expect(
+      findOutput([piano, { ...piano, id: "second" }], AUTO_OUTPUT_CHOICE, piano.name)
+    ).toBeUndefined();
+    expect(findOutput([piano], null, piano.name)).toBeUndefined();
+  });
   it("prefers the id, then the name", () => {
     expect(findOutput(devices, { id: "b", name: "Piano" })?.id).toBe("b");
     expect(findOutput(devices, { id: "gone", name: "Piano" })?.id).toBe("a");
