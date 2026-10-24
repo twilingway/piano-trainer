@@ -28,8 +28,14 @@ export class ProjectionDebug {
     this.mesh.visible = parameters.debugMapping || !layout.valid;
     if (!this.mesh.visible) return;
     const scale = Math.min(1, 2048 / Math.max(width, height));
-    this.canvas.width = Math.ceil(width * scale);
-    this.canvas.height = Math.ceil(height * scale);
+    const pixelWidth = Math.ceil(width * scale),
+      pixelHeight = Math.ceil(height * scale);
+    if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight) {
+      // WebGL2 canvas textures use immutable storage; resize requires a fresh GPU allocation.
+      this.texture.dispose();
+    }
+    this.canvas.width = pixelWidth;
+    this.canvas.height = pixelHeight;
     const ctx = this.canvas.getContext("2d");
     if (!ctx) return;
     ctx.scale(scale, scale);
