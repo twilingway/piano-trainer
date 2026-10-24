@@ -1,5 +1,5 @@
 import { useI18n } from "../app/useI18n";
-import { useId, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 
 import { GameDialog } from "./GameDialog";
@@ -9,7 +9,10 @@ export type SettingsTab = {
   readonly title: string;
 } & (
   | { readonly content: ReactNode; readonly render?: never }
-  | { readonly content?: never; readonly render: () => ReactNode }
+  | {
+      readonly content?: never;
+      readonly render: (navigate: (id: string, target?: string) => void) => ReactNode;
+    }
 );
 
 interface Props {
@@ -24,6 +27,48 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
   const id = useId();
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const [active, setActive] = useState(tabs[0]?.id ?? "");
+  const panel = useRef<HTMLDivElement>(null);
+  const processedNavigation = useRef(0);
+  const [navigation, setNavigation] = useState<{ target: string | undefined; version: number }>({
+    target: undefined,
+    version: 0
+  });
+  const navigate = (id: string, target?: string) => {
+    setActive(id);
+    setNavigation((previous) => ({ target, version: previous.version + 1 }));
+  };
+  useLayoutEffect(() => {
+    if (processedNavigation.current === navigation.version) return;
+    processedNavigation.current = navigation.version;
+    const target = navigation.target;
+    if (!target) return;
+    const element = panel.current?.querySelector<HTMLElement>(`[data-setting-target="${target}"]`);
+    const control = element?.matches("input,select,button")
+      ? element
+      : element?.querySelector<HTMLElement>("input:not([type=hidden]),select,button,[tabindex]");
+    const available = control && !control.matches(":disabled,[aria-disabled=true]");
+    const destination = available
+      ? control
+      : (element?.closest<HTMLElement>("label,.settings-group") ?? panel.current);
+    if (!destination) return;
+    const previousTabIndex = destination.getAttribute("tabindex");
+    if (!available) destination.setAttribute("tabindex", "-1");
+    destination.scrollIntoView({ block: "center", behavior: "auto" });
+    destination.focus({ preventScroll: true });
+    destination.setAttribute("data-setting-highlight", "true");
+    const clear = () => {
+      destination.removeAttribute("data-setting-highlight");
+      if (!available) {
+        if (previousTabIndex === null) destination.removeAttribute("tabindex");
+        else destination.setAttribute("tabindex", previousTabIndex);
+      }
+    };
+    const timeout = window.setTimeout(clear, 1800);
+    return () => {
+      window.clearTimeout(timeout);
+      clear();
+    };
+  }, [active, navigation, open]);
   const shown = tabs.find((tab) => tab.id === active) ?? tabs[0];
   const handleKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     let next: number;
@@ -110,13 +155,14 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
             </select>
           </label>
           <div
+            ref={panel}
             id={`${id}-panel`}
             className="settings-content tab-panel"
             role="tabpanel"
             aria-labelledby={shown ? `${id}-tab-${shown.id}` : undefined}
             tabIndex={0}
           >
-            {shown?.render ? shown.render() : shown?.content}
+            {shown?.render ? shown.render(navigate) : shown?.content}
           </div>
         </div>
       ) : null}

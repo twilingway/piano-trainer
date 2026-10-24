@@ -1,8 +1,11 @@
 import type { RoadLayer } from "./RoadLayer";
+import { DEFAULT_FREE_DIRECT_FIELD, type FreeRoadLayout } from "./freeRoadLayout";
 
 /** Transient view switches never rewrite the player's stored camera pose. */
 export class ViewSceneCamera {
   private free = false;
+  private movement = false;
+  private layout: FreeRoadLayout = DEFAULT_FREE_DIRECT_FIELD;
   performance = false;
   constructor(
     private readonly road: () => RoadLayer | undefined,
@@ -18,6 +21,14 @@ export class ViewSceneCamera {
     this.performance = on;
     this.apply();
   };
+  setMovement = (on: boolean): void => {
+    this.movement = on;
+    this.apply();
+  };
+  setRoadLayout = (layout: FreeRoadLayout): void => {
+    this.layout = layout;
+    this.road()?.setFreeRoadLayout(layout);
+  };
 
   get active(): boolean {
     return this.performance && this.enabled();
@@ -32,7 +43,9 @@ export class ViewSceneCamera {
   apply = (): void => {
     const road = this.road(),
       enabled = this.enabled();
+    road?.setFreeRoadLayout(this.layout);
     road?.setPerformanceScene(this.performance && enabled);
     road?.setFreeCamera(this.free && !this.performance && enabled, this.changed);
+    road?.setFreeCameraMovement(this.movement && this.free && !this.performance && enabled);
   };
 }

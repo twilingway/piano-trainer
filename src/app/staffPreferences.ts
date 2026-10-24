@@ -1,6 +1,14 @@
+import type { FallingNoteStyle } from "../render/fallingNoteStyle";
+import {
+  DEFAULT_FREE_DIRECT_FIELD,
+  DEFAULT_FREE_PERSPECTIVE_FIELD,
+  normalizeFreeRoadLayout,
+  type FreeRoadLayout
+} from "../render/freeRoadLayout";
+import { DEFAULT_PLAYED_NOTE_COLOR } from "../staff/notationColors";
 import type { HandStyle } from "../render/handRenderCatalog";
 import type { KeyStyle } from "../render/KeyboardLayer";
-import { DEFAULT_CAMERA, normalizeCamera } from "../render/worldCamera";
+import { CAMERA_PRESETS, normalizeCamera } from "../render/worldCamera";
 import type { CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_ROAD_SHAPE } from "../render/RoadLayer";
 import type { NoteNameStyle } from "../song/musicxml";
@@ -10,6 +18,7 @@ import type { KeyboardOrientation } from "./viewProfiles";
 export interface StaffPrefs {
   readonly zoom: number;
   readonly noteColor: string;
+  readonly playedNoteColor: string;
   readonly scoreColor: string;
   readonly singleLine: boolean;
   readonly follow: boolean;
@@ -36,16 +45,21 @@ export interface StaffPrefs {
   readonly road: boolean;
   /** Optional lane guides on the 3D road. */
   readonly roadGuides: boolean;
+  readonly fallingNoteStyle: FallingNoteStyle;
   /** The local pianist model at the 3D keys instead of the live hands, when it is there. */
   readonly pianist: boolean;
   /** Inspection mode persists; the manual orbit pose is transient. */
   readonly freeCamera: boolean;
+  readonly freeCameraWasd: boolean;
+  readonly freeDirectField: FreeRoadLayout;
+  readonly freePerspectiveField: FreeRoadLayout;
   readonly performanceScene: boolean;
   /** Dim physical keys for a demonstration; study stays bright. */
   readonly keyboardDim: boolean;
-  /** Classic and arcade effects; native 3D remains independent. */
+  /** Independent visual effects in every keyboard view. */
   readonly flatNoteBurning: boolean;
   readonly flatPressEffects: boolean;
+  readonly noteParticles: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
   readonly noteCardsConfigured: boolean;
@@ -61,7 +75,7 @@ export interface StaffPrefs {
   readonly keyboardOrientation: KeyboardOrientation;
   /** The take's review opens by itself at the end of a run. */
   readonly autoReview: boolean;
-  /** The road's width at the horizon, as a share of its width at the keys. */
+  /** Positive: key-width share; negative: screen-width share in the standard view. */
   readonly roadFar: number;
   readonly camera: CameraPrefs;
   /** The road's horizon, as a share of the way from the top down to the keys. */
@@ -70,7 +84,8 @@ export interface StaffPrefs {
 
 export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   zoom: 1,
-  noteColor: "#62d9ff",
+  noteColor: "#ffffff",
+  playedNoteColor: DEFAULT_PLAYED_NOTE_COLOR,
   scoreColor: "#ffffff",
   singleLine: true,
   follow: true,
@@ -86,12 +101,17 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   handStyle: "rendered",
   road: false,
   roadGuides: false,
+  fallingNoteStyle: "filled",
   pianist: false,
   freeCamera: false,
+  freeCameraWasd: false,
+  freeDirectField: DEFAULT_FREE_DIRECT_FIELD,
+  freePerspectiveField: DEFAULT_FREE_PERSPECTIVE_FIELD,
   performanceScene: false,
   keyboardDim: false,
   flatNoteBurning: true,
   flatPressEffects: true,
+  noteParticles: true,
   noteCards: false,
   noteCardsConfigured: true,
   labels: false,
@@ -100,7 +120,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   keyStyle: "3d",
   keyboardOrientation: "follow",
   autoReview: false,
-  camera: DEFAULT_CAMERA,
+  camera: CAMERA_PRESETS.top,
   roadFar: DEFAULT_ROAD_SHAPE.far,
   roadHorizon: DEFAULT_ROAD_SHAPE.horizon
 };
@@ -116,7 +136,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
       ? Math.max(low, Math.min(high, v))
       : defaults[key];
   };
-  const color = (key: "noteColor" | "scoreColor") =>
+  const color = (key: "noteColor" | "playedNoteColor" | "scoreColor") =>
     typeof raw[key] === "string" && /^#[\da-f]{6}$/i.test(raw[key]) ? raw[key] : defaults[key];
   const choice = <K extends keyof StaffPrefs>(
     key: K,
@@ -126,6 +146,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
   return {
     zoom: number("zoom", 0.5, 2),
     noteColor: color("noteColor"),
+    playedNoteColor: color("playedNoteColor"),
     scoreColor: color("scoreColor"),
     singleLine: boolean("singleLine"),
     follow: boolean("follow"),
@@ -141,23 +162,31 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     handStyle: choice("handStyle", ["drawn", "rendered"]),
     road: boolean("road"),
     roadGuides: boolean("roadGuides"),
+    fallingNoteStyle: choice("fallingNoteStyle", ["filled", "flat", "glass"]),
     pianist: boolean("pianist"),
     freeCamera: boolean("freeCamera"),
+    freeCameraWasd: boolean("freeCameraWasd"),
+    freeDirectField: normalizeFreeRoadLayout(raw.freeDirectField, DEFAULT_FREE_DIRECT_FIELD),
+    freePerspectiveField: normalizeFreeRoadLayout(
+      raw.freePerspectiveField,
+      DEFAULT_FREE_PERSPECTIVE_FIELD
+    ),
     performanceScene: boolean("performanceScene"),
     keyboardDim: boolean("keyboardDim"),
     flatNoteBurning: boolean("flatNoteBurning"),
     flatPressEffects: boolean("flatPressEffects"),
+    noteParticles: boolean("noteParticles"),
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),
     labels: boolean("labels"),
     fps: boolean("fps"),
     keyRange: choice("keyRange", ["song", "3oct", "4oct", "88", "61", "49", "25"]),
-    keyStyle: choice("keyStyle", ["classic", "arcade", "perspective", "3d"]),
+    keyStyle: choice("keyStyle", ["classic", "arcade", "3d"]),
     keyboardOrientation:
       raw.keyStyle === "3d" && raw.keyboardOrientation === "top" ? "top" : "follow",
     autoReview: boolean("autoReview"),
-    camera: normalizeCamera(raw.camera),
-    roadFar: number("roadFar", 0.1, 0.9),
+    camera: raw.camera === undefined ? CAMERA_PRESETS.top : normalizeCamera(raw.camera),
+    roadFar: number("roadFar", -1, 0.9),
     roadHorizon: number("roadHorizon", 0, 0.6)
   };
 }

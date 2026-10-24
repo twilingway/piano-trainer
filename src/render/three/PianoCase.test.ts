@@ -65,4 +65,34 @@ describe("original keyboard88 housing", () => {
     for (const part of v.source.children) (part as Mesh).geometry.dispose();
     v.material.dispose();
   });
+
+  it("shortens only the front shelf and supports while fixing the rear, key-bed and shared source", () => {
+    const v = setup();
+    for (const part of v.source.children) {
+      if (!["table.001", "panel-left", "panel-right"].includes(part.name)) continue;
+      (part as Mesh).geometry = new BoxGeometry(1.29, 0.03, 0.265);
+      part.position.z = -0.0225;
+    }
+    v.cabinet.layout(0);
+    v.cabinet.group.updateMatrixWorld(true);
+    for (const name of ["table.001", "panel-left", "panel-right"]) {
+      const clone = v.cabinet.group.getObjectByName(name);
+      const original = v.source.getObjectByName(name);
+      if (!clone || !original) throw new Error("missing case piece");
+      const compact = new Box3().setFromObject(clone);
+      const source = new Box3().setFromObject(original);
+      expect(compact.min.z).toBeCloseTo(-155, 4);
+      expect(compact.max.z).toBeCloseTo(34, 4);
+      expect(compact.max.x - compact.min.x).toBeCloseTo((source.max.x - source.min.x) * 1000, 4);
+      expect(compact.max.y - compact.min.y).toBeCloseTo((source.max.y - source.min.y) * 1000, 4);
+      expect(original.scale.toArray()).toEqual([1, 1, 1]);
+      expect(original.position.z).toBe(-0.0225);
+      expect(source.max.z).toBeCloseTo(0.11, 6);
+      expect((clone as Mesh).geometry).toBe((original as Mesh).geometry);
+    }
+    expect(v.cabinet.group.getObjectByName("slip.001")?.scale.toArray()).toEqual([1, 1, 1]);
+    v.cabinet.dispose();
+    for (const part of v.source.children) (part as Mesh).geometry.dispose();
+    v.material.dispose();
+  });
 });

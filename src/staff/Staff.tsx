@@ -1,3 +1,6 @@
+import { worldScoreSnapshot } from "./publishWorldScore";
+import type { StaffWorldSource } from "./staffWorldSnapshot";
+import neonCursorUrl from "../fx/neon-cursor.webp?url";
 import {
   lineBoxes,
   scrollTarget,
@@ -18,6 +21,7 @@ import { setStaffTempoLayout } from "./staffTempoLayout";
 import { usePublishReaderGeometry, useReaderFrameBeat } from "./readerGeometry";
 import { readStaffGeometry } from "./staffReaderGeometry";
 import { sharedReaderSpacing } from "./sharedReaderSpacing";
+import { DEFAULT_PLAYED_NOTE_COLOR } from "./notationColors";
 import {
   highlightUnderCursor,
   paintMarks,
@@ -35,6 +39,7 @@ import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 export { markKey } from "./staffNoteIndex";
 
 interface StaffProps {
+  readonly worldScoreSource?: StaffWorldSource | undefined;
   readonly timeline?:
     | {
         readonly timeAtBeat: (beat: number) => number;
@@ -48,6 +53,7 @@ interface StaffProps {
   /** 1 = OSMD's own size. */
   readonly zoom: number;
   readonly noteColor: string;
+  readonly playedNoteColor?: string;
   readonly scoreColor: string;
   /** One endless line that scrolls sideways, or systems wrapped to the width like a printed page. */
   readonly singleLine: boolean;
@@ -106,10 +112,12 @@ function moveCursor(osmd: OpenSheetMusicDisplay, beat: number): void {
  */
 export function Staff({
   timeline,
+  worldScoreSource,
   musicXml,
   beat,
   zoom,
   noteColor,
+  playedNoteColor = DEFAULT_PLAYED_NOTE_COLOR,
   scoreColor,
   singleLine,
   follow,
@@ -143,7 +151,7 @@ export function Staff({
   const baseSpacingRef = useRef(1);
   const paintedRef = useRef<SVGElement[]>([]);
   // Read by the loader and the zoom effect, which must land the cursor where the song is.
-  const latest = useRef({ beat, zoom, follow, singleLine, maxShare, course });
+  const latest = useRef({ beat, zoom, follow, singleLine, maxShare, course, playedNoteColor });
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
   const noteIndexRef = useRef<NoteIndex>({
@@ -159,12 +167,17 @@ export function Staff({
   const marksRef = useRef(marks);
 
   useEffect(() => {
-    latest.current = { beat, zoom, follow, singleLine, maxShare, course };
+    latest.current = { beat, zoom, follow, singleLine, maxShare, course, playedNoteColor };
   });
 
   const showBeat = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     moveCursor(osmd, liveBeatRef.current?.() ?? latest.current.beat);
-    if (!latest.current.course) paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
+    if (!latest.current.course)
+      paintedRef.current = highlightUnderCursor(
+        osmd,
+        paintedRef.current,
+        latest.current.playedNoteColor
+      );
     // A single line with a live position scrolls every frame on its own and needs no steering.
     const live = latest.current.singleLine;
     if (latest.current.follow) {
@@ -224,6 +237,7 @@ export function Staff({
     }
     paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
+    worldScoreSource?.publish(worldScoreSnapshot(host, beatXRef.current, linesRef.current));
     // A new render draws new noteheads and puts the cursor back at the start.
     paintedRef.current = [];
     osmd.cursor.reset();
@@ -324,10 +338,12 @@ export function Staff({
       osmd.clear();
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
       page.replaceChildren();
+      worldScoreSource?.publish(undefined);
       if (shareGeometry) publishGeometry(null);
     };
   }, [
     shownXml,
+    worldScoreSource,
     singleLine,
     breaksFromScore,
     fingers,
@@ -376,13 +392,17 @@ export function Staff({
   useEffect(() => {
     marksRef.current = marks;
     paintMarks(noteIndexRef.current.heads, marks);
-  }, [marks]);
+    const host = hostRef.current;
+    if (host)
+      worldScoreSource?.publish(worldScoreSnapshot(host, beatXRef.current, linesRef.current));
+  }, [marks, worldScoreSource]);
 
   // Read the shared beat every frame; single-line cursors stay exactly at the viewport midpoint.
   useEffect(() => {
     let frame = 0;
     let paintedBeat: number | undefined;
     let paintedMap: readonly BeatSpot[] | undefined;
+    let paintedColor: string | undefined;
     const reader = hostRef.current;
     const controller = reader ? createStaffFollow(reader) : undefined;
     const step = (timestamp: number) => {
@@ -393,12 +413,22 @@ export function Staff({
       );
       const osmd = osmdRef.current;
       const entryBeat = entryBeatAt(beatXRef.current, beatNow);
-      if (osmd && (entryBeat !== paintedBeat || paintedMap !== beatXRef.current)) {
+      if (
+        osmd &&
+        (entryBeat !== paintedBeat ||
+          paintedMap !== beatXRef.current ||
+          paintedColor !== latest.current.playedNoteColor)
+      ) {
         moveCursor(osmd, beatNow);
         if (!latest.current.course)
-          paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
+          paintedRef.current = highlightUnderCursor(
+            osmd,
+            paintedRef.current,
+            latest.current.playedNoteColor
+          );
         paintedBeat = entryBeat;
         paintedMap = beatXRef.current;
+        paintedColor = latest.current.playedNoteColor;
       }
       const following = controller?.frame(
         beatNow,
@@ -429,7 +459,7 @@ export function Staff({
         beatNow,
         latest.current.course && osmd
           ? courseCursor(beatXRef.current.length, unitInPixels * osmd.Zoom)
-          : undefined
+          : { centered: following === true && latest.current.singleLine }
       );
       frame = requestAnimationFrame(step);
     };
@@ -515,7 +545,11 @@ export function Staff({
       }}
     >
       <div className="staff-page" ref={pageRef} />
-      <div className="staff-cursor" ref={cursorLineRef} />
+      <div
+        className="staff-cursor"
+        ref={cursorLineRef}
+        style={{ backgroundImage: `url("${neonCursorUrl}")` }}
+      />
     </div>
   );
 }

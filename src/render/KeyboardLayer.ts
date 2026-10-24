@@ -41,8 +41,8 @@ const FELT_EDGE = 0x00e5ff;
  * Two styles: "classic" (src/render/keys) and "arcade" (src/render/keys-arcade),
  * thicker pseudo-3D keys over a lacquered rail.
  */
-/** "perspective" and "3d" lay the keys under the road; "3d" draws them with three.js. */
-export type KeyStyle = "classic" | "arcade" | "perspective" | "3d";
+/** Keyboard appearance is independent of the notes' projection. */
+export type KeyStyle = "classic" | "arcade" | "3d";
 
 type FaceName =
   | "white"
@@ -69,7 +69,7 @@ interface StyleSet {
   readonly rail?: string;
 }
 
-const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "perspective" | "3d">, StyleSet>> = {
+const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "3d">, StyleSet>> = {
   classic: {
     faces: {
       white: new URL("./keys/white.webp", import.meta.url).href,
@@ -113,6 +113,8 @@ const DIGIT_BARE_PX = 44;
 
 /** What the keys show in a frame: what is held, sounded and owed, and what crosses the hit line. */
 export interface KeysFrame {
+  /** Physical key travel, independent of sustained sound and hint colours. */
+  readonly physicalDown?: ReadonlySet<number>;
   readonly pressed: ReadonlySet<number>;
   readonly sounding: ReadonlySet<number>;
   readonly due: readonly SongNote[];
@@ -150,7 +152,7 @@ export class KeyboardLayer {
   private disposed = false;
   private paintGeneration = 0;
   /** The style the painted faces are of. */
-  private style: Exclude<KeyStyle, "perspective" | "3d"> = "classic";
+  private style: Exclude<KeyStyle, "3d"> = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
   private modelFaces = false;
   /** The rail under the keys, for a style that has one. */
@@ -215,7 +217,7 @@ export class KeyboardLayer {
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
     const generation = ++this.paintGeneration;
     this.modelFaces = style === "3d";
-    const paintedStyle = style === "perspective" || style === "3d" ? "classic" : style;
+    const paintedStyle = style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
       const names = Object.keys(set.faces) as FaceName[];
@@ -357,11 +359,8 @@ export class KeyboardLayer {
       );
       const pressed = frame.pressed.has(pitch);
       const sounding = pressed || frame.sounding.has(pitch);
-      const shown = keyHintNote(
-        hintStrength > 0 ? due : undefined,
-        frame.playing.get(pitch),
-        sounding
-      );
+      const noteHint = hintStrength > 0 ? due : undefined;
+      const shown = keyHintNote(noteHint, frame.playing.get(pitch), sounding);
       // A key with a fingered note is its finger's colour whoever plays it; the press and
       // the program's own colours are for keys without one.
       const color =
@@ -375,9 +374,10 @@ export class KeyboardLayer {
                 ? HAND_HINT[shown.hand]
                 : undefined;
       const key = keys.get(pitch);
-      // Held by the player or sounded by the program, a painted key sinks.
+      // Key travel follows physical contacts; sustained sound keeps its own colour.
       if (key && this.keyTextures && !this.modelFaces) {
-        const face = this.faceOf(key.black, false, this.painted !== undefined && sounding);
+        const down = frame.physicalDown?.has(pitch) ?? sounding;
+        const face = this.faceOf(key.black, false, this.painted !== undefined && down);
         if (sprite.texture !== face) sprite.texture = face;
       }
       sprite.tint = this.modelFaces ? (key?.black ? 0x1a1816 : 0xf8f4e8) : 0xffffff;
@@ -400,6 +400,9 @@ export class KeyboardLayer {
             light.alpha *= 0.8;
           } else {
             light.scale.set(1);
+            // Native paint uses explicit unpadded dimensions on these same sprites.
+            light.width = light.texture.width;
+            light.height = light.texture.height;
             light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
           }
         }

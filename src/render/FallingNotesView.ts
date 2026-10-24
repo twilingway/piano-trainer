@@ -1,3 +1,5 @@
+import type { FallingNoteStyle } from "./fallingNoteStyle";
+import { HandStatusSignal, type HandModelStatus } from "./handStatusSignal";
 import { Application, Container, Texture, type FederatedPointerEvent } from "./flatThree";
 
 import type { Finger } from "../fingering/fingering";
@@ -6,12 +8,11 @@ import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
 import { destroyViewContainers, initializeViewApplication } from "./viewApplication";
 import { publishOverlayLayout } from "./viewOverlayLayout";
-import { bakeDigits, bakeNames } from "./bakeLabels";
+import { bakeDigits, bakeNames, type FallingNoteNames } from "./bakeLabels";
 import { bindKeyboardPointer } from "./bindKeyboardPointer";
 import { ComputerKeyboardLayer, type KeysLayer } from "./ComputerKeyboardLayer";
 import { computerGeometry, computerWidth, layoutComputerKeys } from "./computerKeyboardLayout";
 import { ComputerKeys, type ComputerKeyboard } from "./computerKeys";
-import type { FallingNoteNames } from "./bakeLabels";
 import { HandsLayer } from "./HandsLayer";
 import { NotePlasma } from "./NotePlasma";
 import { FxLayer } from "./FxLayer";
@@ -22,14 +23,14 @@ import { loadViewAssets, loadViewFonts } from "./viewAssets";
 import type { FrameState } from "./frameState";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer, type KeyStyle } from "./KeyboardLayer";
-import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
-import type { KeyRect } from "./keyboardLayout";
+import { HIGHEST_PITCH, LOWEST_PITCH, type KeyRect } from "./keyboardLayout";
 import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
 import { FlatEffectSettings } from "./flatEffectSettings";
-import { RoadLayer, type RoadShape } from "./RoadLayer";
+import { RoadLayer, type RoadShape, type StaffWorldSource } from "./RoadLayer";
 import { drawViewKeys } from "./drawViewKeys";
-import { drawViewEffects, drawViewHud, viewStrikes, roadFrameState } from "./viewEffects";
+import { drawNativeRoadFrame, syncNativeKeyLayer } from "./viewRoadComposition";
+import { drawViewEffects, drawViewHud, roadFrameState } from "./viewEffects";
 import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
 import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry, viewLayoutChanged } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewLayout, ViewParts } from "./viewGeometry";
@@ -63,16 +64,19 @@ export class FallingNotesView {
   private computer: ComputerKeys<Texture> | undefined;
   private road: RoadLayer | undefined;
   private roadMode = false;
+  private fallingNoteStyle: FallingNoteStyle = "filled";
   /** Whole hands over the keys; the app sets their look directly. */
   readonly hands = new HandsLayer();
   readonly flatEffects = new FlatEffectSettings();
   /** The combo board and the strikes' grades, over everything. */
   private readonly hud = new HudLayer();
   /** Bursts, light and glitter on the keys at the hit line. */
+  onHandStatus: ((status: HandModelStatus) => void) | undefined;
+  private readonly handStatus = new HandStatusSignal();
   private readonly fx = new FxLayer();
   private readonly plasma = new NotePlasma();
   /** Keys the program was sounding last frame: a key that starts to sound bursts too. */
-  private readonly wasSounding = new Set<number>();
+  private readonly wasSounding = new Set<string>();
   private digitTextures = new Map<Finger, Texture>();
   private badgeTextures = new Map<Finger, Texture>();
   private nameTextures = new Map<string, Texture>();
@@ -168,6 +172,7 @@ export class FallingNotesView {
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
     this.road.setSceneEffects([this.plasma.container, this.road.effects, this.fx.container]);
     this.road.setCamera(this.cameraPrefs);
+    this.road.setFallingNoteStyle(this.fallingNoteStyle);
     this.sceneCamera.apply();
     this.road.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
@@ -188,6 +193,7 @@ export class FallingNotesView {
       this.plasma.container,
       this.road.effects,
       this.fx.container,
+      this.fx.hitContainer,
       this.hands.container,
       this.hud.container
     );
@@ -297,9 +303,12 @@ export class FallingNotesView {
       this.laidOutFor = { width: 0, height: 0 };
   }
 
+  setWorldScoreSource = (source?: StaffWorldSource): void => this.road?.setWorldScoreSource(source);
+
   setPerformanceScene = this.sceneCamera.setPerformance;
 
   setFreeCamera = this.sceneCamera.setFree;
+  setFreeCameraMovement = this.sceneCamera.setMovement;
 
   setKeyboardDim = (on: boolean): void => this.road?.setKeyboardDim(on);
 
@@ -307,6 +316,13 @@ export class FallingNotesView {
     this.roadGuides = on;
     this.road?.setRoadGuides(on);
   }
+
+  setFallingNoteStyle(style: FallingNoteStyle): void {
+    this.fallingNoteStyle = style;
+    this.road?.setFallingNoteStyle(style);
+  }
+
+  setFreeRoadLayout = this.sceneCamera.setRoadLayout;
 
   setRoadShape(shape: RoadShape): void {
     this.road?.setShape(shape);
@@ -334,26 +350,29 @@ export class FallingNotesView {
   /** Puts the road on or off: on when asked for and the notes show, with or without the keys. */
   private syncRoad(): void {
     const on = (this.roadWanted || (this.keyStyle === "3d" && !this.computer)) && this.parts.notes;
-    if (!this.road || !this.notesLayer || on === this.roadMode) return;
+    if (!this.road || !this.notesLayer) return;
+    const changed = on !== this.roadMode;
     this.roadMode = on;
-    this.keyboard?.showFelt(!on);
-    this.computerKeyboard?.showFelt(!on);
-    this.road.container.visible = on;
-    this.road.effects.visible = on;
-    if (on) this.app.stage.removeChild(this.notesLayer.root, this.keysRoot);
-    else {
-      this.app.stage.addChildAt(this.notesLayer.root, 1);
-      this.app.stage.addChildAt(this.keysRoot, 3);
+    if (changed) {
+      this.keyboard?.showFelt(!on);
+      this.computerKeyboard?.showFelt(!on);
+      this.road.container.visible = on;
+      this.road.effects.visible = on;
     }
-    this.laidOutFor = { width: 0, height: 0 };
+    const stage = this.app.stage;
+    // Native notes and the selected keyboard retain independent stage ownership.
+    if (this.notesLayer.root.parent !== stage) stage.addChildAt(this.notesLayer.root, 1);
+    syncNativeKeyLayer(stage, this.keysRoot, this.road.drawsNativeKeyboard);
+    if (changed) this.laidOutFor = { width: 0, height: 0 };
   }
 
   /** Physical/legacy keys and the flat key fallback share the stage's pointer gesture. */
   private keysPointer(event: FederatedPointerEvent): void {
     if (!this.parts.keys || (this.computer && event.target !== this.app.stage)) return;
-    const point = this.roadMode
-      ? this.road?.keysPointAt(event.global.x, event.global.y)
-      : { x: event.global.x + this.pan - this.offset.x, y: event.global.y - this.offset.y };
+    const point =
+      this.roadMode || this.road?.drawsNativeKeyboard
+        ? this.road?.keysPointAt(event.global.x, event.global.y)
+        : { x: event.global.x + this.pan - this.offset.x, y: event.global.y - this.offset.y };
     const computer = this.computer ? this.computerKeyboard : undefined;
     playViewKeyPointer(event, point, this.keyboard, computer);
   }
@@ -425,24 +444,25 @@ export class FallingNotesView {
       this.layout(width, height);
     }
     const geometry = this.geometry(height);
+    const delta = this.app.ticker.deltaMS / 1000;
+    syncNativeKeyLayer(this.app.stage, this.keysRoot, this.road?.drawsNativeKeyboard === true);
     this.scroll(state, width);
     const road = this.roadMode ? this.road : undefined;
-    const effects = this.flatEffects.forStyle(this.keyStyle);
-    if (this.road) this.road.effects.renderable = effects.presses;
-    const noteState = roadFrameState(
-      state,
-      road,
-      !this.computer && this.keyStyle === "3d",
-      this.roadWanted
-    );
+    this.handStatus.update(this.road?.handStatus ?? "idle", this.onHandStatus);
+    const effects = this.flatEffects.current(this.parts.keys || this.parts.notes);
+    this.road?.setAnimationEffects(effects);
+    const effectRoad = road ?? (this.road?.drawsNativeKeyboard ? this.road : undefined);
+    const noteState = roadFrameState(state, this.roadWanted);
+    this.notesLayer.root.renderable = !road?.drawsNativeRoad;
     this.plasma.draw(
       noteState,
       this.songNotes,
       this.keys,
       geometry,
       this.road,
-      this.roadMode && this.parts.keys && !this.computer && effects.burning,
-      this.app.ticker.deltaMS / 1000
+      (this.parts.keys || this.parts.notes) && !this.computer,
+      delta,
+      effects
     );
     this.notesLayer.draw(noteState, this.keys, geometry, road);
     // Notes crossing the hit line right now: their finger is shown on the key too.
@@ -457,21 +477,13 @@ export class FallingNotesView {
       playing,
       road,
       this.pan,
-      this.app.ticker.deltaMS / 1000
+      delta
     );
     // The road takes a picture of the keys; whole hands stay in their own projected overlay.
-    if (road) {
-      const strikes = viewStrikes(playing, state, this.keys, this.computer);
-      road.draw(
-        this.notesLayer.root,
-        this.keysRoot,
-        effects.presses ? strikes : [],
-        this.notesLayer.arrivals,
-        this.app.ticker.deltaMS / 1000
-      );
-    }
+    if (road || (this.keyStyle === "3d" && !this.computer))
+      drawNativeRoadFrame(this.road, this.notesLayer, this.keysRoot, delta);
     // Native objects keep drawing; only screen-projected decorations leave inspection view.
-    const inspect = road?.sceneCamera === true;
+    const inspect = effectRoad?.sceneCamera === true;
     this.notesLayer.cards.renderable = !inspect;
     this.hands.container.renderable = !inspect;
     const hitLineY = road ? road.hitLineY : geometry.hitY;
@@ -481,24 +493,16 @@ export class FallingNotesView {
       playing,
       this.keys,
       this.computer,
-      road,
+      effectRoad,
       this.pan,
       geometry.hitY,
       this.wasSounding,
-      this.app.ticker.deltaMS / 1000,
+      delta,
       effects
     );
+    this.fx.hitContainer.renderable = !effectRoad?.sceneCamera;
     // React's GameBoard owns the score panels; Three only draws transient strike grades.
-    drawViewHud(
-      this.hud,
-      state,
-      this.keys,
-      road,
-      this.pan,
-      geometry.hitY,
-      hitLineY,
-      this.app.ticker.deltaMS / 1000
-    );
+    drawViewHud(this.hud, state, this.keys, road, this.pan, geometry.hitY, hitLineY, delta);
   }
 
   /**
@@ -528,10 +532,11 @@ export class FallingNotesView {
     }
     // The keys may be moved off the hit line, the hands with them; the notes stay on it.
     this.offset = { x: this.placement.x, y: Math.min(this.placement.y, this.keysFloor) };
-    this.keysRoot.position.set(flat + this.offset.x, this.offset.y);
+    const keysPan = this.road?.drawsNativeKeyboard ? 0 : -pan;
+    this.keysRoot.position.set(keysPan + this.offset.x, this.offset.y);
     this.hands.container.position.copyFrom(this.offset);
     this.road?.setKeysOffset(this.offset);
-    if (this.roadMode) this.road?.setPan(pan);
+    if (this.roadMode || this.road?.drawsNativeKeyboard) this.road?.setPan(pan);
   }
 
   private isDestroyed = (): boolean => this.destroyed;
@@ -551,7 +556,7 @@ export class FallingNotesView {
     this.notesLayer?.destroy();
     destroyViewContainers([this.keysRoot, this.notesLayer?.root, this.notesLayer?.cards]);
     destroyViewContainers([this.hands.container, this.hud.container, this.fx.container]);
-    destroyViewContainers([this.plasma.container]);
+    destroyViewContainers([this.plasma.container, this.fx.hitContainer]);
     for (const baked of [this.digitTextures, this.badgeTextures, this.nameTextures])
       for (const texture of baked.values()) texture.destroy(true);
     this.app.destroy({ removeView: true }, { children: true });

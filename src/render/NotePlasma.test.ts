@@ -222,3 +222,34 @@ describe("NotePlasma renderer integration", () => {
     expect(rendered.height).toBe(400);
   });
 });
+
+it("retains energy and consumes attacks while both screen animations are disabled", () => {
+  const view = setup();
+  const options = { burning: false, presses: true, musicalNotes: false };
+  view.effect.draw(
+    frame(),
+    [note],
+    keys,
+    geometry,
+    view.road as unknown as RoadLayer,
+    true,
+    0.016,
+    options
+  );
+  expect(view.effect.container.visible).toBe(false);
+  expect(view.road.setEnergy).toHaveBeenCalled();
+  expect(lastDraw().attacks).toHaveLength(1);
+  view.effect.draw(
+    frame(),
+    [note],
+    keys,
+    geometry,
+    view.road as unknown as RoadLayer,
+    true,
+    0.016,
+    { ...options, musicalNotes: true }
+  );
+  expect(view.effect.container.visible).toBe(true);
+  expect(lastDraw().attacks).toHaveLength(0);
+  view.effect.destroy();
+});

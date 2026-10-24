@@ -7,25 +7,7 @@ import type { ComputerKeys } from "./computerKeys";
 import type { FrameState } from "./frameState";
 import type { FxKey, FxLayer } from "./FxLayer";
 import type { KeyRect } from "./keyboardLayout";
-import type { RoadLayer, Strike } from "./RoadLayer";
-
-/** Sounding notes light the road at their key centers, including the program's accompaniment. */
-export function viewStrikes(
-  playing: ReadonlyMap<number, SongNote>,
-  state: FrameState,
-  keys: ReadonlyMap<number, KeyRect>,
-  computer: ComputerKeys | undefined
-): Strike[] {
-  const strikes: Strike[] = [];
-  for (const [pitch, note] of playing) {
-    const key = keys.get(pitch);
-    // The player's own notes while held, and the program's while it sounds them.
-    const own = state.owns(note) && state.pressed.has(pitch);
-    if (!key || !(own || state.sounding.has(pitch))) continue;
-    strikes.push({ pitch, x: key.x + key.width / 2, color: noteColor(note, computer) });
-  }
-  return strikes;
-}
+import type { RoadLayer } from "./RoadLayer";
 
 /** Drive the existing strike flashes and held-key fire from the shared frame snapshot. */
 export function drawViewEffects(
@@ -37,7 +19,7 @@ export function drawViewEffects(
   road: RoadLayer | undefined,
   pan: number,
   hitY: number,
-  wasSounding: Set<number>,
+  wasSounding: Set<string>,
   deltaSeconds: number,
   effects: FlatEffectOptions = ALL_FLAT_EFFECTS
 ): void {
@@ -62,12 +44,17 @@ export function drawViewEffects(
     if (key) struck.push(key);
   }
   // The program's own notes, for the hand the player leaves to it, flash as they sound.
-  for (const pitch of state.sounding) {
-    const key = wasSounding.has(pitch) ? undefined : fxKey(pitch);
-    if (key) struck.push(key);
+  if (state.playing !== false) {
+    const active = new Set<string>();
+    for (const pitch of state.sounding) {
+      const id = playing.get(pitch)?.id ?? `pitch:${String(pitch)}`;
+      const key = wasSounding.has(id) ? undefined : fxKey(pitch);
+      if (key) struck.push(key);
+      active.add(id);
+    }
+    wasSounding.clear();
+    for (const id of active) wasSounding.add(id);
   }
-  wasSounding.clear();
-  for (const pitch of state.sounding) wasSounding.add(pitch);
   // A note burns away on its key while it sounds: the player's held notes and the program's.
   const sounding: FxKey[] = [];
   for (const [pitch, note] of playing) {
@@ -75,7 +62,7 @@ export function drawViewEffects(
     const key = own || state.sounding.has(pitch) ? fxKey(pitch) : undefined;
     if (key) sounding.push(key);
   }
-  fx.draw(struck, sounding, hitLineY, deltaSeconds, effects);
+  fx.draw(struck, sounding, hitLineY, state.playing === false ? 0 : deltaSeconds, effects);
 }
 
 /** Transient grades keep their screen HUD ownership in every camera mode. */
@@ -104,20 +91,6 @@ export function drawViewHud(
 }
 
 /** The native road previews a longer approach without advancing the shared song clock. */
-export function roadFrameState(
-  state: FrameState,
-  road: RoadLayer | undefined,
-  nativeKeys: boolean,
-  roadWanted: boolean
-): FrameState {
-  return road
-    ? {
-        ...state,
-        lookAhead: roadApproach(
-          state.lookAhead,
-          nativeKeys && road.drawsNativeRoad,
-          roadWanted ? 25 : 90
-        )
-      }
-    : state;
+export function roadFrameState(state: FrameState, perspective: boolean): FrameState {
+  return { ...state, lookAhead: roadApproach(perspective) };
 }

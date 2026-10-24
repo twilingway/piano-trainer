@@ -165,10 +165,6 @@
   flex: 0 0 auto;
   min-width: 0;
 }
-.workspace-main--overlay > .course-score-slot {
-  position: absolute;
-  inset: 0 0 auto;
-}
 .piano-tabs {
   --tabs-scale: 1;
 
@@ -299,6 +295,7 @@
   font-size: calc(13px * var(--tabs-zoom));
 }
 .piano-tabs__note[data-current="true"] {
+  color: var(--tabs-played-notes);
   text-shadow: 0 0 8px currentColor;
 }
 .piano-tabs__sustain {
@@ -867,18 +864,6 @@ body {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-}
-
-/* The road fills the scene; the transparent score floats over its sky and effects. */
-.workspace-main--overlay > .staves {
-  position: absolute;
-  z-index: 2;
-  inset: 0 0 auto;
-  pointer-events: none;
-}
-
-.workspace-main--overlay .staff {
-  pointer-events: auto;
 }
 
 /* Both readers use their content height, capped at half the workspace above the lane. */
@@ -2821,10 +2806,6 @@ button.song-card.song-card__open {
   position: static;
   transform: none;
 }
-.workspace-main--overlay .game-score-dock {
-  order: 1;
-  z-index: 3;
-}
 /* A message alone takes no row: it hangs in the corner over the lane. */
 .game-score-dock:has(> .game-score-board--message) {
   position: relative;
@@ -3252,11 +3233,6 @@ button.song-card.song-card__open {
     margin-right: var(--mobile-bar-width);
   }
 
-  .workspace-main--overlay > .course-score-slot {
-    right: var(--mobile-bar-width);
-    margin-right: 0;
-  }
-
   .workspace-main:has(> .staves)::before {
     position: absolute;
     z-index: 2;
@@ -3268,9 +3244,9 @@ button.song-card.song-card__open {
   }
 
   .workspace-main:has(> .lanes:not(.lanes--hidden)) > .staves {
-    position: absolute;
+    position: relative;
     z-index: 2;
-    inset: var(--mobile-score-top) var(--mobile-bar-width) auto var(--mobile-rail-width);
+    margin: var(--mobile-score-top) var(--mobile-bar-width) 0 var(--mobile-rail-width);
     max-height: min(34cqh, 150px);
     padding: 0;
     border-bottom: 1px solid var(--border);
@@ -4307,6 +4283,81 @@ button.song-card.song-card__open {
   pointer-events: none;
 }
 
+/* Settings sections share visible boundaries on desktop and narrow screens. */
+.settings-content .settings-group {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.settings-content .settings-group + .settings-group {
+  margin-top: 18px;
+}
+.settings-content .settings-group .settings-group {
+  padding: 12px;
+  background: transparent;
+}
+.settings-content .settings-group__title {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.settings-content .settings-list > .settings-group:last-child {
+  margin-bottom: 0;
+}
+.settings-help__guide {
+  display: grid;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.settings-help__guide li {
+  min-width: 0;
+}
+.settings-help__guide p,
+.settings-help__faq p {
+  margin: 8px 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.settings-help__faq {
+  display: grid;
+  gap: 14px;
+}
+.settings-help__faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.5;
+}
+@media (max-width: 480px) {
+  .settings-content .settings-group {
+    padding: 12px;
+  }
+  .settings-content .settings-group .settings-group {
+    padding: 10px;
+  }
+  .settings-help__guide .game-button {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+.settings-help__targets {
+  margin-top: 12px;
+}
+.settings-content [data-setting-highlight="true"] {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.settings-content :is(input, select, button, summary):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .instrument-chooser__trigger {
   display: flex;
   align-items: center;
@@ -4351,4 +4402,263 @@ button.song-card.song-card__open {
 .instrument-chooser__option[aria-disabled="true"] {
   opacity: 0.45;
   cursor: default;
+}
+
+/* Flex-column groups already have a gap; avoid adding block margins twice. */
+.settings-content .settings-list > .settings-group,
+.settings-content .settings-list > .settings-group + .settings-group {
+  margin: 0;
+}
+
+.hands-status {
+  position: absolute;
+  top: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  max-width: calc(100% - 2rem);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--panel);
+  color: var(--text);
+  pointer-events: none;
+}
+
+/* Arcadia's baked light loop keeps the core thin and the longitudinal glow soft. */
+.staff-cursor {
+  width: 18px;
+  margin-left: -9px;
+  border-radius: 0;
+  background-color: transparent;
+  background-size: 800% 600%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  box-shadow: none;
+  filter: drop-shadow(0 0 2px rgb(0 210 255 / 35%));
+  animation: none;
+}
+
+.lane-neon-edge {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  height: 16px;
+  transform: translateY(-50%);
+  background-size: 800% 600%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgb(0 210 255 / 35%));
+  animation: neon-rail-frames 12s steps(1, end) infinite;
+}
+.lane-neon-edge--top {
+  top: 1px;
+  opacity: 0.65;
+}
+.lane-neon-edge--hit {
+  top: var(--hit-line, 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-cursor,
+  .lane-neon-edge {
+    animation: none;
+  }
+}
+
+@keyframes neon-rail-frames {
+  0% {
+    background-position: 0% 0%;
+  }
+  2.0833% {
+    background-position: 14.2857% 0%;
+  }
+  4.1667% {
+    background-position: 28.5714% 0%;
+  }
+  6.25% {
+    background-position: 42.8571% 0%;
+  }
+  8.3333% {
+    background-position: 57.1429% 0%;
+  }
+  10.4167% {
+    background-position: 71.4286% 0%;
+  }
+  12.5% {
+    background-position: 85.7143% 0%;
+  }
+  14.5833% {
+    background-position: 100% 0%;
+  }
+  16.6667% {
+    background-position: 0% 20%;
+  }
+  18.75% {
+    background-position: 14.2857% 20%;
+  }
+  20.8333% {
+    background-position: 28.5714% 20%;
+  }
+  22.9167% {
+    background-position: 42.8571% 20%;
+  }
+  25% {
+    background-position: 57.1429% 20%;
+  }
+  27.0833% {
+    background-position: 71.4286% 20%;
+  }
+  29.1667% {
+    background-position: 85.7143% 20%;
+  }
+  31.25% {
+    background-position: 100% 20%;
+  }
+  33.3333% {
+    background-position: 0% 40%;
+  }
+  35.4167% {
+    background-position: 14.2857% 40%;
+  }
+  37.5% {
+    background-position: 28.5714% 40%;
+  }
+  39.5833% {
+    background-position: 42.8571% 40%;
+  }
+  41.6667% {
+    background-position: 57.1429% 40%;
+  }
+  43.75% {
+    background-position: 71.4286% 40%;
+  }
+  45.8333% {
+    background-position: 85.7143% 40%;
+  }
+  47.9167% {
+    background-position: 100% 40%;
+  }
+  50% {
+    background-position: 0% 60%;
+  }
+  52.0833% {
+    background-position: 14.2857% 60%;
+  }
+  54.1667% {
+    background-position: 28.5714% 60%;
+  }
+  56.25% {
+    background-position: 42.8571% 60%;
+  }
+  58.3333% {
+    background-position: 57.1429% 60%;
+  }
+  60.4167% {
+    background-position: 71.4286% 60%;
+  }
+  62.5% {
+    background-position: 85.7143% 60%;
+  }
+  64.5833% {
+    background-position: 100% 60%;
+  }
+  66.6667% {
+    background-position: 0% 80%;
+  }
+  68.75% {
+    background-position: 14.2857% 80%;
+  }
+  70.8333% {
+    background-position: 28.5714% 80%;
+  }
+  72.9167% {
+    background-position: 42.8571% 80%;
+  }
+  75% {
+    background-position: 57.1429% 80%;
+  }
+  77.0833% {
+    background-position: 71.4286% 80%;
+  }
+  79.1667% {
+    background-position: 85.7143% 80%;
+  }
+  81.25% {
+    background-position: 100% 80%;
+  }
+  83.3333% {
+    background-position: 0% 100%;
+  }
+  85.4167% {
+    background-position: 14.2857% 100%;
+  }
+  87.5% {
+    background-position: 28.5714% 100%;
+  }
+  89.5833% {
+    background-position: 42.8571% 100%;
+  }
+  91.6667% {
+    background-position: 57.1429% 100%;
+  }
+  93.75% {
+    background-position: 71.4286% 100%;
+  }
+  95.8333% {
+    background-position: 85.7143% 100%;
+  }
+  97.9167% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.play-countdown {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  background: radial-gradient(ellipse at center, rgb(4 27 44 / 90%), transparent 55%);
+  text-align: center;
+  pointer-events: none;
+}
+.play-countdown strong {
+  color: var(--accent);
+  font-family: var(--font-digits);
+  font-style: normal;
+  font-weight: 600;
+  font-size: clamp(4rem, 16vw, 10rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 0 20px var(--accent-soft);
+}
+
+/* Keep the play position readable across both staves without an animated hotspot. */
+.staff-cursor::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: #bdf7ff;
+  box-shadow: 0 0 4px #00d4ff;
+  pointer-events: none;
+}
+.staff .staffline > .vf-measure > path[fill="none"] {
+  stroke-width: 0.7;
+  stroke-opacity: 0.65;
+}
+.staff path.vf-stem {
+  stroke-width: 1.2;
 }

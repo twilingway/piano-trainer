@@ -1,3 +1,4 @@
+import { roadWidthUniforms } from "./roadWidthUniforms";
 import { DoubleSide, ShaderMaterial } from "three";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import { NOTE_SLAB_ATTRIBUTES, NOTE_SLAB_VERTEX } from "./noteSlabGeometry";
@@ -18,7 +19,7 @@ varying float vProjectedWidth;
 void main() {
   ${NOTE_SLAB_VERTEX}
   mat4 viewNote = modelViewMatrix * instanceMatrix;
-  vec4 view = viewNote * vec4(slabPoint, 1.0);
+  vec4 view = modelViewMatrix * roadInstancePoint(vec4(slabPoint, 1.0));
   vec4 clip = projectNoteLane(projectionMatrix * view);
   vPoint = slabPoint;
   vSize = noteSize;
@@ -91,7 +92,7 @@ void main() {
 /** Back then front surfaces expose the far outline through glass without occluding other notes. */
 export function createNoteBodyMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { visualTime: { value: 0 } },
+    uniforms: { ...roadWidthUniforms, visualTime: { value: 0 } },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
     transparent: true,

@@ -1,8 +1,8 @@
-import { Vector3 } from "three";
+import { Camera, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { CAMERA_PRESETS, DEFAULT_CAMERA, worldCamera } from "../worldCamera";
 import type { CameraPrefs } from "../worldCamera";
-import { projectionMatrix, viewMatrix } from "./threeCamera";
+import { projectionMatrix, setCameraProjectionKind, viewMatrix } from "./threeCamera";
 
 const VIEWS: readonly (readonly [number, number, number])[] = [
   // Screen width and height, and the camera's height (the view less the room for the hands).
@@ -58,4 +58,16 @@ describe("three camera", () => {
     }
     expect(checked).toBeGreaterThan(100);
   });
+});
+
+it("updates PBR projection flags when the same camera switches between top and player views", () => {
+  const camera = new Camera();
+  const typed = camera as Camera & { isOrthographicCamera: boolean; isPerspectiveCamera: boolean };
+  const perspective = worldCamera(1366, 600, DEFAULT_CAMERA).params;
+  setCameraProjectionKind(camera, { ...perspective, orthographicScale: 1 });
+  expect(typed.isOrthographicCamera).toBe(true);
+  expect(typed.isPerspectiveCamera).toBe(false);
+  setCameraProjectionKind(camera, perspective);
+  expect(typed.isOrthographicCamera).toBe(false);
+  expect(typed.isPerspectiveCamera).toBe(true);
 });

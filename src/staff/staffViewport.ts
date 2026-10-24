@@ -1,7 +1,7 @@
+import { STAFF_VERTICAL_SPACE } from "./staffSpacing";
 import { unitInPixels, type OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 
 const MAX_LINES = 3;
-const LINE_TOP_GAP_PX = 4;
 
 export interface ScrollTarget {
   left: number;
@@ -60,7 +60,9 @@ export function scrollTarget(
   const offset = svgOffset(scroller);
   const cursorY = mark.top - box.top + scroller.scrollTop - offset;
   const line = lines.filter((candidate) => candidate.top <= cursorY + 1).at(-1) ?? lines[0];
-  const top = line ? clamp(offset + line.top - LINE_TOP_GAP_PX, maxTop) : scroller.scrollTop;
+  const top = line
+    ? clamp(offset + line.top - STAFF_VERTICAL_SPACE.top, maxTop)
+    : scroller.scrollTop;
   if (!singleLine) return { left: scroller.scrollLeft, top };
   const shift = mark.left + mark.width / 2 - (box.left + box.width / 2);
   return { left: clamp(scroller.scrollLeft + shift, maxLeft), top };
@@ -100,7 +102,7 @@ export function fitHeight(
   if (!first) return;
   const scrollbar = scroller.offsetHeight - scroller.clientHeight;
   if (singleLine) {
-    scroller.style.height = `${String(Math.ceil(first.bottom - first.top + LINE_TOP_GAP_PX + scrollbar))}px`;
+    scroller.style.height = `${String(Math.ceil(first.bottom - first.top + STAFF_VERTICAL_SPACE.top + STAFF_VERTICAL_SPACE.bottom + scrollbar))}px`;
     return;
   }
   // The tallest run of `count` lines anywhere in the score: later lines carry the gap
@@ -114,8 +116,14 @@ export function fitHeight(
     }
     return height;
   };
-  const room = window.innerHeight * maxShare;
+  const room = Math.max(
+    0,
+    window.innerHeight * maxShare -
+      STAFF_VERTICAL_SPACE.top -
+      STAFF_VERTICAL_SPACE.bottom -
+      scrollbar
+  );
   let count = Math.min(MAX_LINES, lines.length);
   while (count > 1 && tallest(count) > room) count--;
-  scroller.style.height = `${String(Math.ceil(tallest(count) + LINE_TOP_GAP_PX * 2 + scrollbar))}px`;
+  scroller.style.height = `${String(Math.ceil(tallest(count) + STAFF_VERTICAL_SPACE.top + STAFF_VERTICAL_SPACE.bottom + scrollbar))}px`;
 }

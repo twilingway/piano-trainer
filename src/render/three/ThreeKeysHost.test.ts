@@ -9,7 +9,7 @@ import type { SongNote } from "../../song/song";
 import type { NativeContactNotes } from "./NativeKeyContacts";
 import type { HandsLayer } from "../HandsLayer";
 import type { KeyboardLayer } from "../KeyboardLayer";
-import type { PerspectiveKeyboardLayer } from "../PerspectiveKeyboardLayer";
+import type { NativeKeyboardScene } from "../NativeKeyboardScene";
 import { ThreeKeysHost } from "./ThreeKeysHost";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 
@@ -33,12 +33,12 @@ const mocks = vi.hoisted(() => ({
   pianistBodyVisible: vi.fn(),
   pianistDispose: vi.fn(),
   disposeModel: vi.fn(),
-  setNativePianist: vi.fn(),
   setSongStage: vi.fn(),
   addToKeys: vi.fn(),
   removeFromKeys: vi.fn(),
   pose: vi.fn(),
   publicReady: false,
+  publicStatus: "loading",
   publicSync: vi.fn(),
   publicPose: vi.fn(),
   publicClear: vi.fn(),
@@ -49,10 +49,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./ThreeStage", () => ({
   ThreeStage: class {
     beforeRender: ((camera: Camera) => void) | undefined;
-    hands = mocks.handPresent
-      ? { setPlayer: vi.fn(), poses: {}, group: mocks.handGroup }
-      : undefined;
-    setNativePianist = mocks.setNativePianist;
     setSongStage = mocks.setSongStage;
     addToKeys = mocks.addToKeys;
     removeFromKeys = mocks.removeFromKeys;
@@ -81,6 +77,9 @@ vi.mock("./Keyboard88PerformerHost", () => ({
   Keyboard88PerformerHost: class {
     get ready() {
       return mocks.publicReady;
+    }
+    get status() {
+      return mocks.publicStatus;
     }
     sync = mocks.publicSync;
     pose = mocks.publicPose;
@@ -143,15 +142,13 @@ function fixture() {
     remove: vi.fn((callback: () => void) => callbacks.delete(callback))
   };
   const app = { renderer, ticker, stage, canvas, render, screen: { width: 800, height: 600 } };
-  const restoreRoad = vi.fn();
   const keyboard = { frame: undefined as KeyboardLayer["frame"] };
   const host = new ThreeKeysHost(
     app as unknown as Application,
     road,
-    keys as unknown as PerspectiveKeyboardLayer,
+    keys as unknown as NativeKeyboardScene,
     keyboard as KeyboardLayer,
-    hands as unknown as HandsLayer,
-    restoreRoad
+    hands as unknown as HandsLayer
   );
   return {
     canvas,
@@ -166,7 +163,6 @@ function fixture() {
     render,
     ticker,
     host,
-    restoreRoad,
     tick: () => {
       [...callbacks].forEach((callback) => {
         callback();
@@ -188,6 +184,7 @@ beforeEach(() => {
   mocks.nativeEffectsReady = false;
   mocks.handPresent = true;
   mocks.publicReady = false;
+  mocks.publicStatus = "loading";
   mocks.handGroup.visible = true;
   mocks.loadPianist.mockReset().mockResolvedValue(undefined);
   mocks.construct.mockReset();
@@ -243,7 +240,39 @@ describe("shared WebGL keyboard recovery", () => {
     view.tick();
     expect(mocks.draw.mock.calls[0]?.[8]).toBe(frame);
     view.keys.container.visible = false;
+    expect(view.host.drawsRoad).toBe(true);
+    view.road.visible = false;
     expect(view.host.drawsRoad).toBe(false);
+    view.host.destroy();
+  });
+
+  it("draws the shared road with flat keys and hidden keyboard metadata", async () => {
+    const view = fixture();
+    const frame = new ThreeRoadFrame();
+    view.host.setRoadFrame(frame);
+    view.keys.container.visible = false;
+    await view.host.setEnabled(false, true);
+    view.tick();
+    expect(view.host.on).toBe(false);
+    expect(view.host.drawsRoad).toBe(true);
+    expect(mocks.draw.mock.lastCall?.[8]).toBe(frame);
+    expect(mocks.draw.mock.lastCall?.[12]).toBe(false);
+    expect(view.hands.live).toBe(false);
+    expect(view.overlay.parent).toBe(view.stage);
+    view.host.destroy();
+    expect(view.callbacks.has(view.render)).toBe(true);
+  });
+
+  it("keeps native keys when notes are hidden and omits the stale road snapshot", async () => {
+    const view = fixture();
+    view.host.setRoadFrame(new ThreeRoadFrame());
+    await view.host.setEnabled(true);
+    view.road.visible = false;
+    view.tick();
+    expect(view.host.on).toBe(true);
+    expect(view.host.drawsRoad).toBe(false);
+    expect(mocks.draw.mock.lastCall?.[8]).toBeUndefined();
+    expect(mocks.draw.mock.lastCall?.[12]).toBe(true);
     view.host.destroy();
   });
 
@@ -363,10 +392,6 @@ describe("shared WebGL keyboard recovery", () => {
         view.tick();
       }).not.toThrow();
       expect(view.host.on).toBe(false);
-      expect(view.restoreRoad).toHaveBeenCalledOnce();
-      expect(view.restoreRoad.mock.invocationCallOrder[0]).toBeLessThan(
-        view.renderer.render.mock.invocationCallOrder.at(-1) ?? 0
-      );
       expect(view.keys.container.renderable).toBe(true);
       expect(view.stage.children).toEqual([view.road, view.overlay]);
       expect(view.hands.live).toBe(false);
@@ -672,28 +697,6 @@ const settlePianist = async () => {
 };
 
 describe("native source pianist handoff", () => {
-  it("sends the fallback pose, source time and actual draw camera to additive gaze wiring", async () => {
-    const view = fixture(),
-      camera = new Camera();
-    view.hands.pianist = true;
-    mocks.loadPianist.mockResolvedValueOnce({ scene: new Group(), clip: undefined });
-    await view.host.setEnabled(true);
-    view.tick();
-    await settlePianist();
-    mocks.draw.mockImplementation(function (this: { beforeRender?: (camera: Camera) => void }) {
-      this.beforeRender?.(camera);
-    });
-    view.hands.time = 68;
-    view.tick();
-    expect(mocks.pose).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.objectContaining({ time: 68 }),
-      camera
-    );
-    expect(mocks.pianistSample).not.toHaveBeenCalled();
-    view.host.destroy();
-  });
-
   it("reloads a trial after source restoration and sends identity/time to the pre-render callback", async () => {
     const view = fixture();
     view.hands.pianist = true;
@@ -719,7 +722,6 @@ describe("native source pianist handoff", () => {
     expect(mocks.pianistDispose).toHaveBeenCalledOnce();
     expect(mocks.removeFromKeys).toHaveBeenCalledOnce();
     expect(mocks.loadPianist).toHaveBeenLastCalledWith(source);
-    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
     expect(mocks.pianistSample.mock.calls.at(-1)?.[0]).toMatchObject({
       time: 103,
       performance: source
@@ -780,16 +782,13 @@ it("keeps sprite/Studio hands hidden for a complete native model even when the S
   await settlePianist();
   view.tick();
   expect(view.hands.live).toBe(true);
-  expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
   view.hands.pianist = false;
   view.tick();
   expect(view.hands.live).toBe(true);
-  expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
   expect(mocks.pianistBodyVisible).toHaveBeenLastCalledWith(false);
   view.hands.container.visible = false;
   view.tick();
-  expect(view.hands.live).toBe(false);
-  expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
+  expect(view.hands.live).toBe(true);
   view.host.destroy();
 });
 
@@ -825,7 +824,6 @@ it("loads native hands without a body, samples them and switches every visibilit
     mocks.pianistSample.mockClear();
     view.tick();
     expect(space.visible).toBe(native);
-    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(native);
     expect(mocks.pianistSample.mock.calls.length).toBe(native ? 1 : 0);
     if (native) expect(mocks.pianistBodyVisible).toHaveBeenLastCalledWith(body);
   }
@@ -901,7 +899,7 @@ it("drives native keys from physical source contacts and keeps manual presses ab
   expect(downAt(2, 60)).toBe(true);
   expect(downAt(1.5, 60)).toBe(false);
   expect(downAt(1.5, 61)).toBe(true);
-  expect(downAt(1.5, 62)).toBe(false);
+  expect(downAt(1.5, 62)).toBe(true);
   pressed.add(60);
   expect(downAt(1.5, 60)).toBe(true);
   pressed.clear();
@@ -954,9 +952,9 @@ it("hides the pianist lower body only in ordinary overhead, preserving perspecti
 });
 
 describe("public keyboard88 ownership", () => {
-  it("keeps fallback while pending and hands the current song time to the ready public owner", async () => {
+  it("suppresses old hands while pending and gives current time to the new public owner", async () => {
     const view = fixture();
-    view.hands.renderedStyle = true;
+    view.hands.renderedStyle = false;
     view.hands.time = 7.5;
     mocks.draw.mockImplementation(function (this: {
       beforeRender?: (camera: Camera, separateCameras: boolean) => void;
@@ -966,32 +964,126 @@ describe("public keyboard88 ownership", () => {
     await view.host.setEnabled(true);
     view.tick();
     expect(mocks.publicSync).toHaveBeenCalledOnce();
-    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
+    expect(view.hands.live).toBe(true);
+    expect(mocks.loadHand).not.toHaveBeenCalled();
     expect(mocks.loadPianist).not.toHaveBeenCalled();
     mocks.publicReady = true;
     view.tick();
-    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(true);
     expect(mocks.publicPose).toHaveBeenLastCalledWith(expect.objectContaining({ time: 7.5 }), true);
     await view.host.setEnabled(false);
     expect(mocks.publicClear).toHaveBeenCalled();
-    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
     view.host.destroy();
   });
 
-  it("hides fallback hands when only the public body is wanted during loading or failure", async () => {
+  it("keeps old sprites suppressed while loading and on a public model failure", async () => {
     const view = fixture();
-    view.hands.renderedStyle = true;
-    view.hands.pianist = true;
-    view.hands.container.visible = false;
-    mocks.draw.mockImplementation(function (this: { beforeRender?: (camera: Camera) => void }) {
-      // LiveHands.update runs before this callback in the real stage.
-      mocks.handGroup.visible = true;
-      this.beforeRender?.(new Camera());
-    });
-    await view.host.setEnabled(true);
+    view.hands.renderedStyle = false;
+    const loading = deferred<{ keys: Map<number, unknown>; dispose: () => void }>();
+    mocks.loadKit.mockReturnValue(loading.promise);
+    const enabled = view.host.setEnabled(true);
+    expect(view.hands.live).toBe(true);
+    loading.resolve({ keys: new Map(), dispose: vi.fn() });
+    await enabled;
     view.tick();
-    expect(mocks.handGroup.visible).toBe(false);
-    expect(mocks.setNativePianist).toHaveBeenLastCalledWith(false);
+    expect(view.hands.live).toBe(true);
+    expect(mocks.loadHand).not.toHaveBeenCalled();
+    mocks.publicStatus = "error";
+    expect(view.host.handStatus).toBe("error");
+    view.tick();
+    expect(view.hands.live).toBe(true);
+    await view.host.setEnabled(false, true);
+    expect(view.hands.live).toBe(false);
+    expect(view.host.handStatus).toBe("idle");
     view.host.destroy();
   });
 });
+
+it.each(Array.from({ length: 8 }, (_, mask) => mask))(
+  "forwards all independent effect flags to the native scene (%s)",
+  async (mask) => {
+    const view = fixture();
+    const effects = { burning: !!(mask & 1), presses: !!(mask & 2), musicalNotes: !!(mask & 4) };
+    view.host.setEffects(effects);
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(mocks.draw.mock.lastCall?.[13]).toEqual(effects);
+    view.host.destroy();
+  }
+);
+
+it("reports native keyboard loading failure without returning to old hands", async () => {
+  const view = fixture();
+  mocks.loadKit.mockRejectedValueOnce(new Error("keyboard unavailable"));
+  await view.host.setEnabled(true);
+  expect(view.host.handStatus).toBe("error");
+  expect(view.hands.live).toBe(true);
+  expect(mocks.loadHand).not.toHaveBeenCalled();
+  view.host.destroy();
+});
+
+it.each(["free", "performance"] as const)(
+  "keeps %s camera ownership and advancing world time with falling notes hidden",
+  async (mode) => {
+    const view = fixture();
+    view.road.visible = false;
+    const staleRoad = new ThreeRoadFrame();
+    staleRoad.songTime = 1;
+    view.host.setRoadFrame(staleRoad);
+    await view.host.setEnabled(true, false);
+    if (mode === "free") view.host.setFreeCamera(true);
+    else view.host.setPerformanceScene(true);
+    mocks.nativeEffectsReady = true;
+    for (const time of [12, 13.5]) {
+      view.host.setSongTime(time);
+      view.tick();
+      expect(view.host.drawsRoad).toBe(false);
+      expect(view.host.sceneCamera).toBe(true);
+      expect(view.host.performanceScene).toBe(mode === "performance");
+      expect(mocks.draw.mock.lastCall?.[8]).toBeUndefined();
+      expect(mocks.draw.mock.lastCall?.[9]).toBe(true);
+      expect(mocks.draw.mock.lastCall?.[14]).toBe(time);
+    }
+    view.keys.container.visible = false;
+    view.tick();
+    expect(view.host.sceneCamera).toBe(false);
+    view.host.destroy();
+  }
+);
+
+it.each(["loading", "failed"])(
+  "releases repeated keys with hidden hands while the model is %s",
+  async (status) => {
+    const view = fixture();
+    mocks.publicReady = false;
+    mocks.publicStatus = status;
+    view.hands.container.visible = false;
+    view.hands.songNotes = {
+      left: [],
+      right: [
+        { pitch: 60, start: 1, duration: 4 },
+        { pitch: 60, start: 2, duration: 1 },
+        { pitch: 61, start: 1, duration: 4 }
+      ]
+    };
+    const pressed = new Set<number>();
+    view.keyboard.frame = { pressed, sounding: new Set([60, 61]), due: [], playing: new Map() };
+    await view.host.setEnabled(true);
+    const downAt = (time: number) => {
+      view.hands.time = time;
+      view.tick();
+      return mocks.draw.mock.lastCall?.[2] as (pitch: number) => boolean;
+    };
+    expect(downAt(1.8)(60)).toBe(true);
+    expect(downAt(1.9)(60)).toBe(false);
+    expect(downAt(1.9)(61)).toBe(true);
+    expect(downAt(2)(60)).toBe(true);
+    expect(downAt(1.9)(60)).toBe(false);
+    pressed.add(60);
+    expect(downAt(1.9)(60)).toBe(true);
+    pressed.clear();
+    view.keyboard.frame = { ...view.keyboard.frame, physicalDown: new Set([61]) };
+    expect(downAt(2)(60)).toBe(false);
+    expect(downAt(2)(61)).toBe(true);
+    view.host.destroy();
+  }
+);

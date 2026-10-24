@@ -1,6 +1,6 @@
 import type { Texture } from "../flatThree";
 import { describe, expect, it } from "vitest";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { worldCamera } from "../worldCamera";
 import { computerKeyboardSlabGeometry, keyboardSceneBoxes } from "./computerKeyboardSlab";
 

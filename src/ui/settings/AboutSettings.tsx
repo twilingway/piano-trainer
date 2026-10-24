@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { setInterfaceLanguage } from "../../app/interfaceLanguage";
 import { LOCALES, type Locale } from "../../i18n/locales";
 import { useI18n } from "../../app/useI18n";
@@ -42,16 +43,24 @@ function Version({ build }: { readonly build: BuildInfo }) {
 }
 
 /** What the program is for, which build is open, and where the author publishes. */
-export function AboutSettings({ build }: { readonly build: BuildInfo }) {
+export function AboutSettings({
+  build,
+  diagnostics
+}: {
+  readonly build: BuildInfo;
+  readonly diagnostics?: ReactNode;
+}) {
   const { t, locale, formatDate } = useI18n();
   return (
     <div className="about">
       <section className="settings-group">
+        <h3 className="settings-group__title">{t("Интерфейс")}</h3>
         <label className="setting">
           <span>{t("Язык интерфейса")}</span>
           <select
             className="game-select"
             aria-label={t("Язык интерфейса")}
+            data-setting-target="interface-language"
             value={locale}
             onChange={(event) => {
               setInterfaceLanguage(event.target.value as Locale);
@@ -93,6 +102,12 @@ export function AboutSettings({ build }: { readonly build: BuildInfo }) {
           </dd>
         </dl>
       </section>
+      {diagnostics && (
+        <section className="settings-group">
+          <h3 className="settings-group__title">{t("Диагностика")}</h3>
+          {diagnostics}
+        </section>
+      )}
       <section className="settings-group">
         <h3 className="settings-group__title">{t("Автор")}</h3>
         <ul className="about-links">

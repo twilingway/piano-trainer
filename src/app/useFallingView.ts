@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import type { Trainer } from "../practice/Trainer";
@@ -56,6 +56,7 @@ interface Options {
   readonly song: Song;
   readonly baseSong: Song;
   readonly staffPrefs: StaffPrefs;
+  readonly cameraInputBlocked?: boolean;
   readonly updateStaffPrefs: (change: Partial<StaffPrefs>) => void;
   readonly fallingNames: NoteNameStyle | undefined;
   readonly comparing: boolean;
@@ -71,14 +72,13 @@ interface Options {
  * original on a second screen while a take is compared with it.
  */
 export function useFallingView({
-  hostRef,
-  hasScore,
   viewRef,
   trainerRef,
   trainerReady,
   song,
   baseSong,
   staffPrefs,
+  cameraInputBlocked = false,
   updateStaffPrefs,
   fallingNames,
   comparing,
@@ -87,11 +87,24 @@ export function useFallingView({
   placement
 }: Options) {
   const { locale } = useI18n();
+  const [handStatus, setHandStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !trainerReady) return;
+    view.onHandStatus = setHandStatus;
+    return () => {
+      view.onHandStatus = undefined;
+    };
+  }, [viewRef, trainerReady]);
   const localeRef = useRef(locale);
   const comparisonRef = useRef<FallingNotesView | null>(null);
+  const fallingStyleRef = useRef(staffPrefs.fallingNoteStyle);
+  const freeLayout = staffPrefs.road ? staffPrefs.freePerspectiveField : staffPrefs.freeDirectField;
+  const freeLayoutRef = useRef(freeLayout);
   const flatEffectsRef = useRef({
     burning: staffPrefs.flatNoteBurning,
-    presses: staffPrefs.flatPressEffects
+    presses: staffPrefs.flatPressEffects,
+    musicalNotes: staffPrefs.noteParticles
   });
   useEffect(() => {
     localeRef.current = locale;
@@ -108,35 +121,10 @@ export function useFallingView({
   };
   const mirrorHostRef = useRef<HTMLDivElement>(null);
 
+  // The score occupies its own row; the canvas needs no score-overlap offset.
   useEffect(() => {
-    const host = hostRef.current;
-    if (!host || !trainerReady) return;
-    const staves = host.closest(".workspace-main")?.querySelector(".staves");
-    const overlay = staffPrefs.road && staffPrefs.lane && staffPrefs.visible && !comparing;
-    const update = () => {
-      const top =
-        overlay && staves
-          ? Math.max(0, staves.getBoundingClientRect().bottom - host.getBoundingClientRect().top)
-          : 0;
-      viewRef.current?.setHudTop(top);
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(host);
-    if (staves) observer.observe(staves);
-    return () => {
-      observer.disconnect();
-    };
-  }, [
-    hostRef,
-    viewRef,
-    trainerReady,
-    hasScore,
-    staffPrefs.road,
-    staffPrefs.lane,
-    staffPrefs.visible,
-    comparing
-  ]);
+    viewRef.current?.setHudTop(0);
+  }, [viewRef, trainerReady]);
 
   useEffect(() => {
     viewRef.current?.setFpsVisible(staffPrefs.fps);
@@ -183,10 +171,10 @@ export function useFallingView({
     viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
     viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
     viewRef.current?.setFreeCamera(staffPrefs.freeCamera);
+    viewRef.current?.setFreeCameraMovement(staffPrefs.freeCameraWasd && !cameraInputBlocked);
     viewRef.current?.setPerformanceScene(staffPrefs.performanceScene);
     if (viewRef.current)
-      viewRef.current.hands.pianist =
-        pianistAvailable(staffPrefs.keyStyle, staffPrefs.handStyle) && staffPrefs.pianist;
+      viewRef.current.hands.pianist = pianistAvailable(staffPrefs.keyStyle) && staffPrefs.pianist;
   }, [
     viewRef,
     trainerReady,
@@ -196,19 +184,46 @@ export function useFallingView({
     staffPrefs.keyStyle,
     staffPrefs.handStyle,
     staffPrefs.freeCamera,
+    staffPrefs.freeCameraWasd,
+    cameraInputBlocked,
     staffPrefs.performanceScene
   ]);
 
   useEffect(() => {
     flatEffectsRef.current = {
       burning: staffPrefs.flatNoteBurning,
-      presses: staffPrefs.flatPressEffects
+      presses: staffPrefs.flatPressEffects,
+      musicalNotes: staffPrefs.noteParticles
     };
-    viewRef.current?.flatEffects.set(staffPrefs.flatNoteBurning, staffPrefs.flatPressEffects);
-    comparisonRef.current?.flatEffects.set(staffPrefs.flatNoteBurning, staffPrefs.flatPressEffects);
-  }, [viewRef, trainerReady, staffPrefs.flatNoteBurning, staffPrefs.flatPressEffects]);
+    viewRef.current?.flatEffects.set(
+      staffPrefs.flatNoteBurning,
+      staffPrefs.flatPressEffects,
+      staffPrefs.noteParticles
+    );
+    comparisonRef.current?.flatEffects.set(
+      staffPrefs.flatNoteBurning,
+      staffPrefs.flatPressEffects,
+      staffPrefs.noteParticles
+    );
+  }, [
+    viewRef,
+    trainerReady,
+    staffPrefs.flatNoteBurning,
+    staffPrefs.flatPressEffects,
+    staffPrefs.noteParticles
+  ]);
 
+  useEffect(() => {
+    fallingStyleRef.current = staffPrefs.fallingNoteStyle;
+    viewRef.current?.setFallingNoteStyle(staffPrefs.fallingNoteStyle);
+    comparisonRef.current?.setFallingNoteStyle(staffPrefs.fallingNoteStyle);
+  }, [viewRef, trainerReady, staffPrefs.fallingNoteStyle]);
   const { lift, scale, x, y } = placement;
+  useEffect(() => {
+    freeLayoutRef.current = freeLayout;
+    viewRef.current?.setFreeRoadLayout(freeLayout);
+    comparisonRef.current?.setFreeRoadLayout(freeLayout);
+  }, [viewRef, trainerReady, freeLayout]);
   useEffect(() => {
     viewRef.current?.setKeysPlacement({ lift, scale, x, y });
   }, [viewRef, trainerReady, lift, scale, x, y]);
@@ -241,7 +256,13 @@ export function useFallingView({
     const mounted = mirror.mount(host).then(() => {
       if (disposed) return;
       mirror.setLocale(localeRef.current);
-      mirror.flatEffects.set(flatEffectsRef.current.burning, flatEffectsRef.current.presses);
+      mirror.setFallingNoteStyle(fallingStyleRef.current);
+      mirror.setFreeRoadLayout(freeLayoutRef.current);
+      mirror.flatEffects.set(
+        flatEffectsRef.current.burning,
+        flatEffectsRef.current.presses,
+        flatEffectsRef.current.musicalNotes
+      );
       mirror.setSong(song);
       mirror.setShowLabels(showLabels);
       mirror.setFpsVisible(staffPrefs.fps);
@@ -278,5 +299,5 @@ export function useFallingView({
     staffPrefs.hands
   ]);
 
-  return { showLabels, setShowLabels, keyRange, setKeyRange, mirrorHostRef };
+  return { showLabels, setShowLabels, keyRange, setKeyRange, mirrorHostRef, handStatus };
 }

@@ -69,6 +69,7 @@ export function InstrumentProfileSettings({ controls, preview }: Props) {
         <select
           className="game-select"
           aria-label={t("Профиль пианино")}
+          data-setting-target="instrument-profile"
           value={controls.profileId ?? ""}
           onChange={(event) => {
             controls.onProfile(event.target.value || null);

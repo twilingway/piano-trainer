@@ -180,7 +180,12 @@ export class FxLayer {
 
   constructor() {
     this.container.eventMode = "none";
-    this.container.addChild(this.glitter.container, this.halos, this.hit.container);
+    this.container.addChild(this.glitter.container, this.halos);
+  }
+
+  /** The attack overlay is drawn after opaque keys, independently of held fire. */
+  get hitContainer(): Container {
+    return this.hit.container;
   }
 
   async load(): Promise<void> {

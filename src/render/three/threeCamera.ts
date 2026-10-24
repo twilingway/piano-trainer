@@ -1,4 +1,5 @@
 import { Matrix4 } from "three";
+import type { Camera } from "three";
 import type { CameraParams } from "../worldCamera";
 
 /** Clip planes, in world units scaled by `prefs.scale`: the keys lie hundreds to thousands away. */
@@ -18,19 +19,20 @@ export function viewMatrix(params: CameraParams): Matrix4 {
   const height = prefs.height * fit,
     distance = prefs.distance * fit;
   // prettier-ignore
-  return new Matrix4().set(
+  const view = new Matrix4().set(
     1, 0, 0, 0,
     0, ca, -sa, -height * ca + distance * sa,
     0, sa, ca, -height * sa - distance * ca,
     0, 0, 0, 1
   );
+  return view;
 }
 
 /**
  * The perspective of a view `width` × `height` pixels whose centre of projection sits where
  * `worldCamera` puts it, moved by `offset` (the keys dragged off the hit line).
  */
-export function projectionMatrix(
+function baseProjectionMatrix(
   params: CameraParams,
   width: number,
   height: number,
@@ -57,4 +59,28 @@ export function projectionMatrix(
     0, 0, -(FAR + NEAR) / (FAR - NEAR), (-2 * FAR * NEAR) / (FAR - NEAR),
     0, 0, -1, 0
   );
+}
+
+/** Match the projection flags used by Three's PBR view-direction uniform. */
+export function setCameraProjectionKind(camera: Camera, params: CameraParams): void {
+  const typed = camera as Camera & { isOrthographicCamera: boolean; isPerspectiveCamera: boolean };
+  typed.isOrthographicCamera = params.orthographicScale !== undefined;
+  typed.isPerspectiveCamera = !typed.isOrthographicCamera;
+}
+
+/** Bake longitudinal display fitting into projection: Three deliberately strips scale from cameras. */
+export function projectionMatrix(
+  params: CameraParams,
+  width: number,
+  height: number,
+  offset: { readonly x: number; readonly y: number } = { x: 0, y: 0 }
+): Matrix4 {
+  const projection = baseProjectionMatrix(params, width, height, offset);
+  const factor = params.keyboardDepthScale;
+  const anchor = params.keyboardDepthAnchor;
+  if (factor === undefined || anchor === undefined) return projection;
+  const view = viewMatrix(params);
+  const depth = new Matrix4().makeScale(1, 1, factor);
+  depth.elements[14] = -anchor * (1 - factor) * params.prefs.scale;
+  return projection.multiply(view).multiply(depth).multiply(view.clone().invert());
 }

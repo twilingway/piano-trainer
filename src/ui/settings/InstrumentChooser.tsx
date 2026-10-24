@@ -157,6 +157,7 @@ export function InstrumentChooser({ profile, value, onChange }: Props) {
         data-keyboard-editor
         className="game-select instrument-chooser__trigger"
         aria-label={t("Тембр MIDI-пианино")}
+        data-setting-target="instrument-voice"
         aria-expanded={popup !== null}
         aria-controls={`${id}-list`}
         aria-haspopup="listbox"

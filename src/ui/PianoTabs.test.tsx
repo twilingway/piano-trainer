@@ -414,6 +414,7 @@ describe("piano tabs reader", () => {
           fingers: false,
           noteNames: "ru",
           noteColor: "#123456",
+          playedNoteColor: "#55ff99",
           scoreColor: "#abcdef"
         })}
       />
@@ -424,6 +425,7 @@ describe("piano tabs reader", () => {
     expect(host.querySelector<HTMLElement>(".piano-tabs__grid")?.style.width).toBe("584px");
     const section = host.querySelector<HTMLElement>(".piano-tabs");
     expect(section?.style.getPropertyValue("--tabs-notes")).toBe("#123456");
+    expect(section?.style.getPropertyValue("--tabs-played-notes")).toBe("#55ff99");
     expect(section?.style.getPropertyValue("--tabs-score")).toBe("#abcdef");
     await render(
       <PianoTabs song={short} stage="right" time={0} prefs={preferences({ noteNames: "off" })} />

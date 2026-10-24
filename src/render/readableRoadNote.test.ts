@@ -1,3 +1,4 @@
+import { separateRepeatTail } from "./noteSeparation";
 import { describe, expect, it } from "vitest";
 import { NOTE_SLAB_THICKNESS } from "./noteDimensions";
 import { holdBounds } from "./holdBounds";
@@ -179,4 +180,29 @@ describe("readable road notes", () => {
                 }
               }
   });
+});
+
+it("keeps a real perspective gap after the readable-face minimum without moving the head", () => {
+  const camera = worldCamera(1366, 768, CAMERA_PRESETS.player, PANEL_EDGE);
+  const hitY = 600,
+    bottom = 450,
+    width = 44,
+    keyX = 640;
+  const top = readableRoadTop(keyX, bottom - 2, bottom, width, hitY, camera, 0.02);
+  const project = (y: number) =>
+    camera.project(
+      camera.sourceX(keyX),
+      camera.near.y,
+      camera.near.z + (1 - y / hitY) * (camera.roadFarZ - camera.near.z)
+    );
+  const nextHead = (top + bottom) / 2;
+  const slope = project(nextHead + 1).y - project(nextHead).y;
+  const separated = separateRepeatTail(top, bottom, nextHead, slope);
+  expect(separated).toBeGreaterThan(top);
+  expect(separated).toBeLessThan(bottom);
+  const projectedGap = project(separated).y - project(nextHead).y;
+  const expectedGap = Math.min(3, (project(bottom).y - project(nextHead).y) * 0.3);
+  expect(projectedGap).toBeGreaterThan(expectedGap * 0.8);
+  expect(projectedGap).toBeLessThan(expectedGap * 1.4);
+  expect(bottom).toBe(450);
 });

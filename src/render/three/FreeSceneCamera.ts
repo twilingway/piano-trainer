@@ -1,7 +1,9 @@
+import { boxCameraDistance } from "./boxCameraDistance";
 import { Box3, MOUSE, Mesh, SkinnedMesh, PerspectiveCamera, Vector3 } from "three";
 import type { Object3D } from "three";
 import { MAX_ROAD_WORLD_Z } from "../worldCamera";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { FreeCameraMovement } from "../../input/freeCameraMovement";
 
 /** One inspection camera; gesture listeners exist only while this view is active. */
 export class FreeSceneCamera {
@@ -12,10 +14,16 @@ export class FreeSceneCamera {
   private needsBounds = true;
   private touchAction = "";
   private readonly bounds = new Box3();
+  private readonly scoreBounds = new Box3();
+  private readonly roadBounds = new Box3();
   private readonly centre = new Vector3();
   private readonly size = new Vector3();
   private radius = 1;
   private roadReach = MAX_ROAD_WORLD_Z;
+  private readonly movement = new FreeCameraMovement();
+  private movementWanted = false;
+  private readonly direction = new Vector3();
+  private readonly right = new Vector3();
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.touchAction = this.canvas.style.touchAction;
@@ -33,6 +41,7 @@ export class FreeSceneCamera {
   setEnabled(on: boolean): void {
     if (on === this.enabled) return;
     this.enabled = on;
+    this.movement.setEnabled(on && this.movementWanted);
     if (on) {
       this.touchAction = this.canvas.style.touchAction;
       this.controls.connect(this.canvas);
@@ -66,23 +75,53 @@ export class FreeSceneCamera {
   }
 
   invalidate(resetPose = true): void {
+    if (resetPose) this.movement.clear();
     this.needsBounds = true;
     this.needsReset ||= resetPose;
   }
 
-  update(width: number, height: number, subject: Object3D): void {
+  setRoadBounds(bounds: Box3 | undefined): void {
+    if (bounds ? this.roadBounds.equals(bounds) : this.roadBounds.isEmpty()) return;
+    if (bounds) this.roadBounds.copy(bounds);
+    else this.roadBounds.makeEmpty();
+    this.invalidate(false);
+  }
+
+  setScoreBounds(bounds: Box3 | undefined): void {
+    if (bounds ? this.scoreBounds.equals(bounds) : this.scoreBounds.isEmpty()) return;
+    if (bounds) this.scoreBounds.copy(bounds);
+    else this.scoreBounds.makeEmpty();
+    this.invalidate(false);
+  }
+
+  setMovement(on: boolean): void {
+    this.movementWanted = on;
+    this.movement.setEnabled(on && this.enabled);
+  }
+
+  update(width: number, height: number, subject: Object3D, deltaSeconds = 0): void {
     const aspect = Math.max(1, width) / Math.max(1, height);
     if (this.camera.aspect !== aspect) {
       this.camera.aspect = aspect;
       this.camera.updateProjectionMatrix();
     }
     if (this.needsBounds) this.reset(subject, this.needsReset);
+    const { forward, right } = this.movement.axes;
+    if (forward || right) {
+      this.camera.getWorldDirection(this.direction);
+      this.right.setFromMatrixColumn(this.camera.matrixWorld, 0);
+      this.direction.multiplyScalar(forward).addScaledVector(this.right, right).normalize();
+      this.direction.multiplyScalar(this.radius * Math.max(0, Math.min(0.05, deltaSeconds)));
+      this.camera.position.add(this.direction);
+      this.controls.target.add(this.direction);
+    }
     this.controls.update();
     this.updateClip();
     this.camera.updateMatrixWorld();
   }
 
   reset(subject: Object3D, resetPose = true): void {
+    if (resetPose) this.movement.clear();
     // SkinnedMesh.updateMatrixWorld refreshes bindMatrixInverse under the piano's large scale.
     subject.updateWorldMatrix(true, false);
     subject.updateMatrixWorld(true);
@@ -102,6 +141,7 @@ export class FreeSceneCamera {
       }
       this.bounds.union(part.applyMatrix4(object.matrixWorld));
     });
+    this.bounds.union(this.scoreBounds).union(this.roadBounds);
     if (this.bounds.isEmpty())
       this.bounds.setFromCenterAndSize(new Vector3(), new Vector3(400, 400, 400));
     this.bounds.getCenter(this.centre);
@@ -111,14 +151,10 @@ export class FreeSceneCamera {
     const scale = subject.getWorldScale(new Vector3());
     this.roadReach =
       MAX_ROAD_WORLD_Z * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z));
-    const halfFov = Math.atan(
-      Math.tan((this.camera.fov * Math.PI) / 360) * Math.min(1, this.camera.aspect)
-    );
-    const distance = (radius / Math.sin(halfFov)) * 1.12;
+    const direction = new Vector3(0.4, 0.55, 1).normalize();
+    const distance = boxCameraDistance(this.bounds, this.camera.fov, this.camera.aspect, direction);
     if (resetPose) {
-      this.camera.position
-        .copy(this.centre)
-        .addScaledVector(new Vector3(0.4, 0.55, 1).normalize(), distance);
+      this.camera.position.copy(this.centre).addScaledVector(direction, distance);
       this.controls.target.copy(this.centre);
     }
     const currentDistance = this.controls.getDistance();
@@ -151,6 +187,7 @@ export class FreeSceneCamera {
 
   dispose(): void {
     this.setEnabled(false);
+    this.movement.dispose();
     this.controls.dispose();
   }
 }

@@ -195,3 +195,15 @@ describe("PlayerTopBar difficulty", () => {
     expect(host.querySelector("[role='radiogroup'][aria-label='Сложность']")).toBeNull();
   });
 });
+
+it("keeps count-in cancellation available while sound prepares", () => {
+  const cancel = vi.fn();
+  render({ countdownActive: true, soundLoading: true, onTogglePlay: cancel });
+  const button = host.querySelector<HTMLButtonElement>(".play-button");
+  expect(button?.getAttribute("aria-label")).toBe("Отменить отсчёт");
+  expect(button?.disabled).toBe(false);
+  act(() => {
+    button?.click();
+  });
+  expect(cancel).toHaveBeenCalledOnce();
+});

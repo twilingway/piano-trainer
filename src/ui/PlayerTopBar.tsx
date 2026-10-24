@@ -25,6 +25,7 @@ interface Props {
   readonly metronome?: { readonly enabled: boolean; readonly onChange: (on: boolean) => void };
   readonly title: string;
   readonly playing: boolean;
+  readonly countdownActive?: boolean;
   readonly soundLoading: boolean;
   readonly mode: PracticeModeChoice;
   readonly hands: HandsChoice;
@@ -74,6 +75,13 @@ interface Props {
  */
 export function PlayerTopBar(props: Props) {
   const { t, formatNumber } = useI18n();
+  const playLabel = props.countdownActive
+    ? t("Отменить отсчёт")
+    : props.soundLoading
+      ? t("Звук…")
+      : props.playing
+        ? t("Пауза")
+        : t("Играть");
   const board = props.board ?? { clock: "0:00" };
   const controls = useRef<HTMLDetailsElement>(null);
   const compact = useSyncExternalStore(subscribeCompact, compactSnapshot, () => false);
@@ -193,15 +201,15 @@ export function PlayerTopBar(props: Props) {
         type="button"
         className="play-button"
         data-playing={props.playing}
-        aria-label={props.soundLoading ? t("Звук…") : props.playing ? t("Пауза") : t("Играть")}
-        title={props.playing ? t("Пауза") : t("Играть")}
-        disabled={props.soundLoading}
+        aria-label={playLabel}
+        title={playLabel}
+        disabled={props.soundLoading && !props.countdownActive}
         onClick={props.onTogglePlay}
       >
-        <span className="play-button__ring">{props.playing ? <PauseIcon /> : <PlayIcon />}</span>
-        <span className="play-button__label">
-          {props.soundLoading ? t("Звук…") : props.playing ? t("Пауза") : t("Играть")}
+        <span className="play-button__ring">
+          {props.playing || props.countdownActive ? <PauseIcon /> : <PlayIcon />}
         </span>
+        <span className="play-button__label">{playLabel}</span>
       </button>
       <div className="segmented" role="radiogroup" aria-label={t("Режим")}>
         {(

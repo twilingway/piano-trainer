@@ -2,7 +2,7 @@ import { KEYS_BACK, worldCamera, type CameraPrefs, type WorldCamera } from "./wo
 
 /** The road's shape, the player's to tune: a wider keyboard wants a lower horizon. */
 export interface RoadShape {
-  /** The road's width at the horizon, as a share of its width at the hit line. */
+  /** Nonnegative: near-road width share. Negative: inverse width as a viewport share. */
   readonly far: number;
   /** The horizon, as a share of the way down from the top of the view to the hit line. */
   readonly horizon: number;

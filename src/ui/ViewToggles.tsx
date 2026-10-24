@@ -112,6 +112,7 @@ export function ViewToggles({ prefs, hasScore, onChange, courseScore }: Props) {
         type="button"
         className="view-toggle"
         aria-label={t("Перспектива")}
+        data-setting-target="shared-notes-projection"
         aria-pressed={prefs.road}
         disabled={!prefs.lane}
         title={prefs.road ? t("Обычный вид нот") : t("Перспектива: объёмный вид нот")}

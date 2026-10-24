@@ -1,3 +1,5 @@
+import type { FreeRoadLayout, FreeRoadLane } from "../freeRoadLayout";
+import type { FallingNoteStyle } from "../fallingNoteStyle";
 import type { NoteLaneProjection } from "../noteLaneProjection";
 import type { WorldCamera } from "../worldCamera";
 import { worldRoadNote } from "./roadNoteGeometry";
@@ -10,6 +12,13 @@ export class ThreeRoadFrame {
   readonly beats: number[] = [];
   readonly trailAnchors: WorldRoadNote[] = [];
   guides = false;
+  direct = false;
+  freeLayout: FreeRoadLayout | undefined;
+  freeLanes: readonly FreeRoadLane[] = [];
+  flatMaterial = false;
+  noteStyle: FallingNoteStyle = "filled";
+  /** Flat-view preference; full 3D keeps the accepted decoration enabled. */
+  burning = true;
   noteCount = 0;
   beatCount = 0;
   trailAnchorCount = 0;
@@ -30,7 +39,7 @@ export class ThreeRoadFrame {
     camera: WorldCamera,
     lane?: NoteLaneProjection
   ): void {
-    const x = camera.sourceX(keyX);
+    const x = camera.sourceX(keyX) + (lane?.worldOffsetX ?? 0);
     if (
       this.trailAnchorCount >= ROAD_TRAIL_ANCHOR_CAPACITY ||
       !Number.isFinite(x) ||
@@ -87,6 +96,8 @@ export class ThreeRoadFrame {
       lane
     );
     if (!note) return;
+    note.materialUnitX = camera.params.sourceUnits ?? 0.5;
+    note.materialUnitZ = (camera.roadFarZ - (lane?.depth ?? camera.near.z)) / hitY;
     note.duration = duration;
     note.pitch = pitch;
     note.lane = lane;
@@ -105,34 +116,6 @@ export class ThreeRoadFrame {
     if (!Number.isFinite(y) || hitY <= 0 || y < 0 || y > hitY) return;
     this.beats[this.beatCount++] =
       camera.near.z + (1 - y / hitY) * (camera.roadFarZ - camera.near.z);
-  }
-
-  replay(
-    hitY: number,
-    camera: WorldCamera,
-    draw: (
-      x: number,
-      top: number,
-      bottom: number,
-      width: number,
-      color: number,
-      alpha: number
-    ) => void
-  ): void {
-    for (let index = 0; index < this.noteCount; index++) {
-      const note = this.notes[index];
-      if (!note) continue;
-      const contact = note.lane?.depth ?? camera.near.z;
-      const span = camera.roadFarZ - contact;
-      draw(
-        note.x / (camera.params.sourceUnits ?? 0.5) + camera.params.width / 2,
-        hitY * (1 - (note.top - contact) / span),
-        hitY * (1 - (note.bottom - contact) / span),
-        note.width / (camera.params.sourceUnits ?? 0.5),
-        note.color,
-        note.alpha
-      );
-    }
   }
 
   clear(): void {

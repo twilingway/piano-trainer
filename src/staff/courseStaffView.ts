@@ -1,7 +1,5 @@
+import { STAFF_VERTICAL_SPACE } from "./staffSpacing";
 import { unitInPixels, type OpenSheetMusicDisplay } from "opensheetmusicdisplay";
-
-/** Air left above and below a course's drawing, px. */
-const DRAWING_GAP_PX = 4;
 
 /** The first line's drawn size, page margins included, in pixels. */
 export function lineExtent(osmd: OpenSheetMusicDisplay): { width: number; height: number } {
@@ -17,7 +15,10 @@ export function lineExtent(osmd: OpenSheetMusicDisplay): { width: number; height
 export function courseRoom(host: HTMLElement, maxShare: number): { width: number; height: number } {
   const workspace = host.closest(".workspace-main");
   const height = (workspace?.clientHeight ?? window.innerHeight) * maxShare;
-  return { width: host.clientWidth - 16, height };
+  return {
+    width: host.clientWidth - 16,
+    height: Math.max(1, height - STAFF_VERTICAL_SPACE.top - STAFF_VERTICAL_SPACE.bottom)
+  };
 }
 
 /**
@@ -39,6 +40,6 @@ export function showDrawing(host: HTMLElement): void {
   const view = host.getBoundingClientRect();
   const scrollbar = host.offsetHeight - host.clientHeight;
   const contentTop = top - view.top + host.scrollTop;
-  host.style.height = `${String(Math.ceil(bottom - top + 2 * DRAWING_GAP_PX + scrollbar))}px`;
-  host.scrollTop = Math.max(0, contentTop - DRAWING_GAP_PX);
+  host.style.height = `${String(Math.ceil(bottom - top + STAFF_VERTICAL_SPACE.top + STAFF_VERTICAL_SPACE.bottom + scrollbar))}px`;
+  host.scrollTop = Math.max(0, contentTop - STAFF_VERTICAL_SPACE.top);
 }

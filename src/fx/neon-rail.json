@@ -1,0 +1,285 @@
+{
+  "app": "arcadia-effects",
+  "v": 1,
+  "doc": {
+    "id": "fx_neon_rail",
+    "name": "Neon Rail",
+    "comp": {
+      "w": 512,
+      "h": 32,
+      "dur": 12,
+      "fps": 60
+    },
+    "exp": {
+      "cols": 8,
+      "rows": 6,
+      "frames": 48,
+      "cellW": 512,
+      "cellH": 32,
+      "t0": 0,
+      "t1": 12,
+      "ss": 2,
+      "mode": "rgba"
+    },
+    "layers": [
+      {
+        "id": "lr_neon_rail_glint",
+        "name": "Traveling Glint",
+        "type": "sprite",
+        "start": 0,
+        "end": 12,
+        "blend": "normal",
+        "opacity": {
+          "keys": [
+            {
+              "t": 0,
+              "v": 0,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 1.5,
+              "v": 0.2,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 10.5,
+              "v": 0.2,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 12,
+              "v": 0,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            }
+          ]
+        },
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "soft",
+            "p": {}
+          },
+          "size": 12,
+          "aspect": 5,
+          "color": [236, 255, 255],
+          "x": {
+            "keys": [
+              {
+                "t": 0,
+                "v": -256,
+                "i": {
+                  "m": "lin"
+                },
+                "o": {
+                  "m": "lin"
+                }
+              },
+              {
+                "t": 12,
+                "v": 256,
+                "i": {
+                  "m": "lin"
+                },
+                "o": {
+                  "m": "lin"
+                }
+              }
+            ]
+          },
+          "y": 0,
+          "scale": 1,
+          "glow": 0
+        }
+      },
+      {
+        "id": "lr_neon_rail_core",
+        "name": "White Cyan Core",
+        "type": "sprite",
+        "start": 0,
+        "end": 12,
+        "blend": "normal",
+        "opacity": {
+          "keys": [
+            {
+              "t": 0,
+              "v": 0.62,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 6,
+              "v": 0.72,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 12,
+              "v": 0.62,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            }
+          ]
+        },
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "streak",
+            "p": {}
+          },
+          "size": 20,
+          "aspect": 24,
+          "color": [196, 255, 255],
+          "x": 0,
+          "y": 0,
+          "scale": 1,
+          "glow": 0
+        }
+      },
+      {
+        "id": "lr_neon_rail_edge",
+        "name": "Cyan Edge",
+        "type": "sprite",
+        "start": 0,
+        "end": 12,
+        "blend": "normal",
+        "opacity": {
+          "keys": [
+            {
+              "t": 0,
+              "v": 0.42,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 6,
+              "v": 0.48,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 12,
+              "v": 0.42,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            }
+          ]
+        },
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "streak",
+            "p": {}
+          },
+          "size": 34,
+          "aspect": 14,
+          "color": [0, 223, 255],
+          "x": 0,
+          "y": 0,
+          "scale": 1,
+          "glow": 0
+        }
+      },
+      {
+        "id": "lr_neon_rail_halo",
+        "name": "Breathing Halo",
+        "type": "sprite",
+        "start": 0,
+        "end": 12,
+        "blend": "normal",
+        "opacity": {
+          "keys": [
+            {
+              "t": 0,
+              "v": 0.14,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 6,
+              "v": 0.18,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            },
+            {
+              "t": 12,
+              "v": 0.14,
+              "i": {
+                "m": "ease"
+              },
+              "o": {
+                "m": "ease"
+              }
+            }
+          ]
+        },
+        "sp": {
+          "sprite": {
+            "kind": "shape",
+            "id": "soft",
+            "p": {}
+          },
+          "size": 28,
+          "aspect": 18,
+          "color": [0, 190, 235],
+          "x": 0,
+          "y": 0,
+          "scale": 1,
+          "glow": 0
+        }
+      }
+    ]
+  },
+  "tex": {}
+}

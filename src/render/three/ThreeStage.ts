@@ -1,3 +1,9 @@
+import { StageWorldScore } from "./StageWorldScore";
+import { buildKeyboardMesh } from "./buildKeyboardMesh";
+import type { StaffWorldSource } from "../../staff/staffWorldSnapshot";
+import { prepareRoadProjection, prepareFreeRoadBounds } from "./roadFrameProjection";
+import { drawRoadNoteAppearance } from "./drawRoadNoteAppearance";
+import type { ThreeFlatRoadNotes } from "./ThreeFlatRoadNotes";
 import {
   Camera,
   ColorManagement,
@@ -5,32 +11,30 @@ import {
   Texture,
   Group,
   HemisphereLight,
-  Mesh,
   MeshStandardMaterial,
   Scene,
   Raycaster,
   Vector2,
   Vector3
 } from "three";
-import type { WebGLRenderer } from "three";
+import type { WebGLRenderer, Mesh } from "three";
 import type { Object3D } from "three";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import type { SongStage } from "../../song/songStage";
 import type { EnergySource } from "../noteEnergy";
+import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "../flatEffectSettings";
 import { keyBoxes } from "./keyBoxes";
-import { computerKeyboardSlabGeometry, keyboardSceneBoxes } from "./computerKeyboardSlab";
+import { keyboardSceneBoxes } from "./computerKeyboardSlab";
 import { PianoCase } from "./PianoCase";
 import type { KeyBox } from "./keyBoxes";
 import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
 import type { Keyboard88 } from "./keyboard88";
 import { KEYBOARD_DIP, metricKeyX } from "../keyboardMetrics";
-import { LiveHands } from "./liveHands";
 import type { HandsSource } from "./liveHands";
-import { projectionMatrix, viewMatrix } from "./threeCamera";
+import { projectionMatrix, setCameraProjectionKind, viewMatrix } from "./threeCamera";
 import { ThreeNoteLights } from "./ThreeNoteLights";
 import { ThreeKeyEmission } from "./ThreeKeyEmission";
 import { KeyboardAppearance } from "./KeyboardAppearance";
-import { keyboard88Geometry, paintedKeyboardTop } from "./keyboard88Geometry";
 import { ThreeRimLights } from "./ThreeRimLights";
 import { ThreeRoadNotes } from "./ThreeRoadNotes";
 import { ThreeRoadTrails } from "./ThreeRoadTrails";
@@ -76,12 +80,14 @@ export class ThreeStage {
   private readonly baseLighting = new Group();
   private baseLightingVisible = true;
   private readonly roadNotes = new ThreeRoadNotes();
+  private flatRoadNotes: ThreeFlatRoadNotes | undefined;
   private readonly roadTrails = new ThreeRoadTrails();
   private readonly noteAura = new ThreeNoteAura();
   private readonly roadGuides = new ThreeRoadGuides();
   private boxes: readonly KeyBox[] = [];
   /** The song's range only: the road and its guides stay as wide as the song, not all 88 keys. */
   private roadBoxes: readonly KeyBox[] = [];
+  private roadVersion = -1;
   private readonly noteLights = new ThreeNoteLights();
   private readonly keyEmission = new ThreeKeyEmission();
   private readonly appearance: KeyboardAppearance;
@@ -102,26 +108,23 @@ export class ThreeStage {
   private readonly body = new Group();
   private readonly cabinet: PianoCase;
   private pickCamera: Camera | undefined;
-  /** The live hands, once their model has loaded; without it the sprite hands stay. */
-  readonly hands: LiveHands | undefined;
   private hinged: Hinged[] = [];
   private version = -1;
   private disposed = false;
-  private nativePianist = false;
+  private readonly scorePoster: StageWorldScore;
   private sign: string | undefined;
   /** Pose the character after this frame's camera setup and before any scene render pass. */
   beforeRender: ((camera: Camera, separateCameras: boolean) => void) | undefined;
 
   constructor(
     private readonly renderer: WebGLRenderer,
-    private readonly keyboard: Keyboard88,
-    hand: Object3D | undefined
+    private readonly keyboard: Keyboard88
   ) {
     this.free = new FreeSceneCamera(renderer.domElement);
+    this.scorePoster = new StageWorldScore(renderer, this.scene, this.keys, this.free);
     this.cabinet = new PianoCase(keyboard);
     this.performance = new PerformanceScene(this.scene);
     this.worldStage = new PerformanceWorldStage(this.scene);
-    this.hands = hand && new LiveHands(hand);
     this.roadCamera.matrixAutoUpdate = false;
     this.keyboardCamera.matrixAutoUpdate = false;
     this.top.vertexColors = true;
@@ -151,7 +154,6 @@ export class ThreeStage {
     this.keys.add(this.body, this.appearance.group);
     this.lighting.add(this.noteLights.group, this.rimLights.group);
     this.occluders.push(this.body);
-    if (this.hands) this.keys.add(this.hands.group);
   }
 
   /** Draws the keys over whatever is in the frame now, keeping it: the road under them. */
@@ -167,12 +169,21 @@ export class ThreeStage {
     roadFrame?: ThreeRoadFrame,
     worldEffects = false,
     songNotes?: HandsSource["notes"],
-    roadEffects?: () => void
+    roadEffects?: () => void,
+    nativeKeyboard = true,
+    effects: FlatEffectOptions = ALL_FLAT_EFFECTS,
+    songTime = roadFrame?.songTime ?? hands?.time ?? 0
   ): void {
+    this.keys.visible = nativeKeyboard;
+    this.lighting.visible = nativeKeyboard;
     const changedTexture = this.picture !== picture;
     this.picture = picture;
     this.top.map = picture;
-    if (keys.version !== this.version || changedTexture) this.build(keys);
+    if (nativeKeyboard && (keys.version !== this.version || changedTexture)) this.build(keys);
+    else if (!nativeKeyboard && keys.version !== this.roadVersion) {
+      this.roadBoxes = keyBoxes(keys);
+      this.roadVersion = keys.version;
+    }
     const roadCamera = keys.roadCamera ?? keys.camera;
     const keyboardCamera = keys.keyboardCamera ?? roadCamera;
     const { params } = roadCamera;
@@ -188,17 +199,17 @@ export class ThreeStage {
     this.lighting.position.copy(this.keys.position);
     this.road.visible = roadFrame !== undefined;
     this.roadNotes.setViewport(screen.width, screen.height);
-    if (!this.nativePianist) this.hands?.update(hands);
     const sceneEnabled = this.performanceEnabled || this.freeEnabled;
+    const effectBoxes = nativeKeyboard ? this.boxes : this.roadBoxes;
     if (sceneEnabled) {
-      this.worldStage.prepare(this.keys, this.boxes, roadCamera.near.z);
+      this.worldStage.prepare(this.keys, effectBoxes, roadCamera.near.z);
       this.performance.lights.setStageLayout(this.worldStage.stage);
     }
     this.performance.setNotes(songNotes ?? hands?.notes);
     this.worldStage.setBassNotes(this.bassFire ? (songNotes ?? hands?.notes) : undefined);
     this.performance.setRoad(roadFrame, roadCamera.near.y, roadCamera.near.z, roadCamera.roadFarZ);
     const angle = this.performanceEnabled
-      ? this.performance.update(roadFrame?.songTime ?? 0, screen.width, screen.height, this.keys)
+      ? this.performance.update(songTime, screen.width, screen.height, this.keys)
       : 0;
     this.roadNotes.performanceAngle =
       this.roadTrails.performanceAngle =
@@ -225,30 +236,33 @@ export class ThreeStage {
         roadFrame.trailAnchors,
         roadFrame.trailAnchorCount
       );
-      if (roadFrame.guides && !this.performanceEnabled)
-        this.roadGuides.update(this.roadBoxes, roadCamera, roadFrame.beats, roadFrame.beatCount);
-      else this.roadGuides.clear();
-      this.roadNotes.update(
-        roadFrame.notes,
+      this.noteAura.group.visible =
+        effects.burning && !roadFrame.flatMaterial && roadFrame.noteStyle === "glass";
+      this.roadTrails.group.visible = effects.burning;
+      this.flatRoadNotes = drawRoadNoteAppearance(
+        this.roadNotes,
+        this.flatRoadNotes,
+        this.road,
+        roadFrame,
         roadCamera.near.y,
-        roadFrame.visualTime,
-        roadFrame.noteCount
+        roadCamera.near.z
       );
     }
     const step = Math.min(1, deltaSeconds * DIP_RATE);
     this.noteLights.update(energy, roadCamera, energyDeltaSeconds);
     this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
-      const press = this.nativePianist ? undefined : this.hands?.keys.get(pitch);
-      const pressed = press ? Math.max(0, Math.min(KEYBOARD_DIP, press.drop)) : 0;
-      const target = -Math.max(down(pitch) ? KEYBOARD_DIP : 0, pressed);
-      hinge.position.y = press ? target : hinge.position.y + (target - hinge.position.y) * step;
+      const target = down(pitch) ? -KEYBOARD_DIP : 0;
+      hinge.position.y += (target - hinge.position.y) * step;
     }
+    const inspecting = this.freeEnabled && !this.performanceEnabled;
+    this.scorePoster.draw(keys, this.boxes, inspecting, roadFrame);
+    prepareFreeRoadBounds(this.free, this.road, roadFrame, inspecting);
     const detached = keys.offset.x !== 0 || keys.offset.y !== 0;
     const separate =
       !this.performanceEnabled && !this.freeEnabled && (detached || keyboardCamera !== roadCamera);
     if (!this.performanceEnabled && this.freeEnabled)
-      this.free.update(screen.width, screen.height, this.keys);
+      this.free.update(screen.width, screen.height, this.keys, deltaSeconds);
     else {
       this.configureCamera(this.roadCamera, roadCamera, screen);
       if (separate) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
@@ -260,19 +274,27 @@ export class ThreeStage {
         : this.roadCamera;
     this.pickCamera = separate ? this.keyboardCamera : camera;
     if (this.freeEnabled && !this.performanceEnabled)
-      this.performance.updateInspection(roadFrame?.songTime ?? 0, this.keys, camera);
+      this.performance.updateInspection(songTime, this.keys, camera);
     this.worldStage.setDuration(this.performance.getDuration());
     this.worldStage.update(
       sceneEnabled,
-      roadFrame?.songTime ?? 0,
+      songTime,
       this.keys,
-      this.boxes,
+      effectBoxes,
       energy,
       camera,
       roadCamera.near.z,
       worldEffects,
       roadFrame,
-      this.freeEnabled && !this.performanceEnabled
+      this.freeEnabled && !this.performanceEnabled,
+      effects
+    );
+    prepareRoadProjection(
+      this.roadGuides,
+      this.roadBoxes,
+      roadCamera,
+      roadFrame,
+      this.performanceEnabled ? "performance" : inspecting ? "free" : "standard"
     );
     this.beforeRender?.(this.pickCamera, separate);
     this.renderer.resetState();
@@ -288,7 +310,11 @@ export class ThreeStage {
         this.keyboardCamera,
         separate,
         // Free and performance cameras see one world: plain depth, no road-over-case passes.
-        this.freeEnabled || this.performanceEnabled ? undefined : this.body,
+        this.freeEnabled || this.performanceEnabled
+          ? undefined
+          : nativeKeyboard
+            ? this.body
+            : undefined,
         !this.freeEnabled && !this.performanceEnabled && roadEffects
           ? () => {
               try {
@@ -313,6 +339,7 @@ export class ThreeStage {
     screen: { readonly width: number; readonly height: number },
     offset?: { readonly x: number; readonly y: number }
   ): void {
+    setCameraProjectionKind(camera, world.params);
     camera.matrix.copy(viewMatrix(world.params)).invert();
     camera.matrixWorldNeedsUpdate = true;
     camera.projectionMatrix.copy(
@@ -356,6 +383,10 @@ export class ThreeStage {
     this.free.invalidate();
     this.performance.invalidate();
     this.worldStage.invalidate();
+  }
+
+  setFreeCameraMovement(on: boolean): void {
+    this.free.setMovement(on);
   }
 
   /** Actual mesh hits share the effective camera and the keys' current parallel travel. */
@@ -424,17 +455,14 @@ export class ThreeStage {
     this.bassFire = stage?.bassFire === true;
   }
 
-  setNativePianist(on: boolean): void {
-    if (on === this.nativePianist) return;
-    this.nativePianist = on;
-    if (on) this.hands?.suspend();
-    if (this.hands) this.hands.group.visible = false;
-  }
-
   clearEnergy(): void {
     this.noteLights.clear();
     this.worldStage.clear();
     this.keyEmission.clear();
+  }
+
+  setWorldScoreSource(source: StaffWorldSource | undefined): void {
+    this.scorePoster.setSource(source);
   }
 
   setKeyboardDim(on: boolean): void {
@@ -445,8 +473,8 @@ export class ThreeStage {
     if (this.disposed) return;
     this.disposed = true;
     this.beforeRender = undefined;
-    this.hands?.dispose();
     this.free.dispose();
+    this.scorePoster.dispose();
     this.performance.dispose();
     this.worldStage.dispose();
     this.clear();
@@ -455,6 +483,7 @@ export class ThreeStage {
     this.noteLights.dispose();
     this.rimLights.dispose();
     this.roadNotes.dispose();
+    this.flatRoadNotes?.dispose();
     this.roadTrails.dispose();
     this.noteAura.dispose();
     this.roadGuides.dispose();
@@ -478,22 +507,10 @@ export class ThreeStage {
     this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera);
     this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
     for (const box of boxes) {
-      const key = this.keyboard.keys.get(box.pitch);
-      if (!key && box.pitch !== 0) throw new Error(`keyboard88 has no key ${String(box.pitch)}`);
-      const geometry = key
-        ? keyboard88Geometry(key.geometry, box)
-        : computerKeyboardSlabGeometry(box);
-      const painted = key
-        ? paintedKeyboardTop(key.materials[0], this.picture, box.black, box.uv.u1 > box.uv.u0)
-        : this.top;
-      const materials = this.keyEmission.create(
-        box.pitch,
-        painted,
-        key?.materials[1] ?? this.white
-      );
-      if (key) this.keyEmission.ownTemplate(painted);
-      const mesh = new Mesh(geometry, materials);
-      mesh.position.set(box.x, 22, 0);
+      const mesh = buildKeyboardMesh(box, this.keyboard, this.picture, this.keyEmission, {
+        top: this.top,
+        white: this.white
+      });
       const hinge = new Group();
       hinge.add(mesh);
       this.keys.add(hinge);
@@ -507,7 +524,6 @@ export class ThreeStage {
   private buildBody(boxes: readonly KeyBox[]): void {
     const white = boxes.find((box) => !box.black);
     if (!white || white.pitch === 0) return;
-    this.hands?.layout(white);
     this.cabinet.layout(white.x - metricKeyX(white.pitch));
     this.body.add(this.cabinet.group);
   }
