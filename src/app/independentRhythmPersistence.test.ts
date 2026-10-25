@@ -124,7 +124,7 @@ describe("independentRhythm schema8 persistence", () => {
                   : null
       });
       expect(first.invalid).toBe(false);
-      expect(first.reading.schemaVersion).toBe(8);
+      expect(first.reading.schemaVersion).toBe(9);
       expect(first.reading.independentRhythm).toEqual(emptyIndependentRhythmState());
       expect(first.reading.history).toEqual(modern.history);
       if (version >= 2) expect(first.reading.profile).toEqual(modern.profile);
@@ -222,7 +222,7 @@ describe("independentRhythm schema8 persistence", () => {
     const reloaded = createAppStore({ storage: backing, readingRepository: repository });
     await reloaded.readingPersistenceReady;
     expect(reloaded.getState().reading).toMatchObject({
-      schemaVersion: 8,
+      schemaVersion: 9,
       activeCourse: "independent-rhythm-reading",
       independentRhythm: {
         seed: 7,
@@ -364,7 +364,7 @@ describe("independentRhythm schema8 persistence", () => {
     expect(saved.history).toEqual(expect.arrayContaining(legacy.history));
   });
   it.each([
-    { schemaVersion: 9, marker: "future" },
+    { schemaVersion: 10, marker: "future" },
     { ...emptyReadingState(), independentRhythm: undefined },
     {
       ...emptyReadingState(),
@@ -401,7 +401,7 @@ describe("independentRhythm schema8 persistence", () => {
   });
   it("blocks writes if future/corrupt data appears after hydration", async () => {
     for (const invalid of [
-      { schemaVersion: 9, marker: "future-after-hydration" },
+      { schemaVersion: 10, marker: "future-after-hydration" },
       {
         ...emptyReadingState(),
         independentRhythm: { ...emptyIndependentRhythmState(), generatorVersion: 99 }

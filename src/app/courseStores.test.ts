@@ -18,9 +18,12 @@ describe("reading course stores", () => {
       const slots = Object.fromEntries(
         READING_COURSE_STORES.map((other) => [other.key, other.normalize(undefined).state])
       );
-      const state = course.resumable
-        ? { ...course.normalize(undefined).state, mode: "see-and-play" }
-        : slots[course.key];
+      const state =
+        course.key === "music"
+          ? { ...slots.music, course: "sight-reading" }
+          : course.resumable
+            ? { ...course.normalize(undefined).state, mode: "see-and-play" }
+            : slots[course.key];
       const row = { ...slots, [course.key]: state, activeCourse: course.course };
       const stored = normalizeReadingCourses({ ...row, schemaVersion: course.since }, null);
       expect(stored.activeCourse).toBe(course.course);

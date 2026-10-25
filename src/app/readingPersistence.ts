@@ -1,4 +1,5 @@
-﻿import type { ListenerMiddlewareInstance } from "@reduxjs/toolkit";
+import { MUSIC_PREFERENCE_FIELDS } from "./musicPersistence";
+import type { ListenerMiddlewareInstance } from "@reduxjs/toolkit";
 import type { ReadingRoot, ReadingState } from "./readingSlice";
 import { readingActions } from "./readingSlice";
 import {
@@ -34,6 +35,7 @@ function persisted(reading: ReadingState) {
 export function loadReadingState(storage: PreferenceStorage = browserPreferenceStorage()): {
   reading: ReadingState;
   errors: Record<string, string>;
+  repairable: boolean;
 } {
   const errors: Record<string, string> = {};
   let normalized = normalizeReadingState(undefined);
@@ -46,7 +48,7 @@ export function loadReadingState(storage: PreferenceStorage = browserPreferenceS
     errors[persistenceKey(READING_STORAGE_KEY, "read")] =
       error instanceof SyntaxError ? "invalid" : "unavailable";
   }
-  return { reading: normalized.reading, errors };
+  return { reading: normalized.reading, errors, repairable: normalized.repairable };
 }
 
 interface ReadingStore<State> {
@@ -73,6 +75,12 @@ function localProgressSince(current: ReadingState, baseline: ReadingState): Read
   const heldBassRuns = new Set(baseline.heldBass.history.map((result) => result.runId));
   return {
     ...current,
+    music: {
+      ...current.music,
+      history: current.music.history.filter(
+        (result) => !baseline.music.history.some((known) => known.runId === result.runId)
+      )
+    },
     intervals: {
       ...current.intervals,
       history: current.intervals.history.filter((result) => !intervalRuns.has(result.runId))
@@ -150,7 +158,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
       try {
         await repository.update((saved) => {
           const normalized = normalizeReadingState(saved);
-          if (normalized.blocked || normalized.invalid) {
+          if (normalized.blocked || (normalized.invalid && !normalized.repairable)) {
             allowed = false;
             throw new Error("future-schema");
           }
@@ -169,11 +177,24 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
   const unsubscribe = listener.startListening({
     predicate: (action, current, previous) =>
       action.type !== readingActions.hydrated.type &&
-      (current.reading !== previous.reading || independentPreferenceActions.has(action.type)),
+      (current.reading !== previous.reading ||
+        independentPreferenceActions.has(action.type) ||
+        action.type === readingActions.musicPreferencesChanged.type),
     effect: (action, api) => {
       const current = api.getState().reading;
       const previous = api.getOriginalState().reading;
       const fields = changedReadingFields(current, previous);
+      if (readingActions.musicPreferencesChanged.match(action)) {
+        for (const { key, field } of MUSIC_PREFERENCE_FIELDS) {
+          if (action.payload[key] === undefined) continue;
+          if (!fields.includes(field)) fields.push(field);
+          if (!initialized) explicitBeforeHydration.add(field);
+        }
+      }
+      if (readingActions.musicSelected.match(action) && action.payload.purpose !== undefined) {
+        if (!fields.includes("musicPurpose")) fields.push("musicPurpose");
+        if (!initialized) explicitBeforeHydration.add("musicPurpose");
+      }
       const explicit = independentPreferenceActions.get(action.type);
       if (explicit) {
         if (!fields.includes(explicit)) fields.push(explicit);
@@ -181,6 +202,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
       }
       if (
         fields.length === 0 &&
+        current.music.history === previous.music.history &&
         current.history === previous.history &&
         current.profile === previous.profile &&
         current.presentedFingerprints === previous.presentedFingerprints &&
@@ -219,7 +241,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
       if (!allowed) return null;
       try {
         const normalized = normalizeReadingState(await repository.load());
-        if (normalized.blocked || normalized.invalid) {
+        if (normalized.blocked || (normalized.invalid && !normalized.repairable)) {
           allowed = false;
           store.dispatch(persistenceErrorChanged({ key: READ_ERROR, error: "invalid" }));
           return null;
@@ -250,7 +272,7 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
         try {
           await repository.update((saved) => {
             const normalized = normalizeReadingState(saved);
-            if (normalized.blocked || normalized.invalid) {
+            if (normalized.blocked || (normalized.invalid && !normalized.repairable)) {
               allowed = false;
               throw new Error("future-schema");
             }
@@ -323,16 +345,17 @@ export function registerReadingPersistence<State extends PreferenceRoot & Readin
             })
           );
           allowed =
-            !normalized.invalid && (saved !== undefined || Object.keys(legacy.errors).length === 0);
+            (!normalized.invalid || normalized.repairable) &&
+            (saved !== undefined || Object.keys(legacy.errors).length === 0 || legacy.repairable);
           if (
             saved === undefined &&
             storage.getItem(READING_STORAGE_KEY) !== null &&
-            Object.keys(legacy.errors).length === 0
+            (Object.keys(legacy.errors).length === 0 || legacy.repairable)
           ) {
             try {
               await repository.update((latest) => {
                 const loaded = normalizeReadingState(latest);
-                if (loaded.blocked || loaded.invalid) {
+                if (loaded.blocked || (loaded.invalid && !loaded.repairable)) {
                   allowed = false;
                   throw new Error("future-schema");
                 }

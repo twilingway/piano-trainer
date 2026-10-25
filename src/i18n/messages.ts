@@ -1,3 +1,7 @@
+import { musicProgressMessages } from "./musicProgressMessages";
+import { musicControllerMessages } from "./musicControllerMessages";
+import { musicCourseRuntimeMessages } from "./musicCourseRuntimeMessages";
+import { musicCourseMessages } from "./musicCourseMessages";
 import { cameraCompositionMessages } from "./cameraCompositionMessages";
 import { settingsHelpMessages } from "./settingsHelpMessages";
 import { projectionMessages } from "./projectionMessages";
@@ -24,6 +28,10 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...musicProgressMessages,
+  ...musicControllerMessages,
+  ...musicCourseMessages,
+  ...musicCourseRuntimeMessages,
   ...cameraCompositionMessages,
   ...projectionMessages,
   ...settingsHelpMessages,

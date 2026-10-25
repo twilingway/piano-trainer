@@ -1,3 +1,4 @@
+import { ConnectedMusicCards } from "./ConnectedMusicCourse";
 import { shallowEqual } from "react-redux";
 import { foldersSupported } from "../library/folder";
 import { LibraryDialog } from "../ui/LibraryDialog";
@@ -130,6 +131,7 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
       previousLessons={PREVIOUS_COURSE_LESSONS}
       course={
         <>
+          <ConnectedMusicCards onChoose={onClose} />
           <ConnectedReadingCard onChoose={onClose} />
           <ConnectedBassReadingCard onChoose={onClose} />
           <ConnectedTwoHandCard onChoose={onClose} />
