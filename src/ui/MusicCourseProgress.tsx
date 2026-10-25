@@ -97,10 +97,13 @@ function ProgressMetrics({ metrics }: { readonly metrics: readonly MusicCourseMe
   );
 }
 
-function EvidenceBody({ body }: { readonly body: MusicProgressBody }) {
+function EvidenceBody({ body, id }: { readonly body: MusicProgressBody; readonly id: string }) {
   const { t } = useI18n();
   return (
-    <details className="music-progress-evidence">
+    <details
+      className="music-progress-evidence"
+      data-window-detail={`music-progress:child:${id}:evidence`}
+    >
       <summary>{t("Сохранённый материал и исполнение")}</summary>
       <ProgressMetrics metrics={body.metrics} />
       <MusicCourseNotes expectedNotes={body.expectedNotes} playedNotes={body.playedNotes} />
@@ -161,7 +164,7 @@ function ProgressChild({ child }: { readonly child: MusicProgressChild }) {
         <p>{t("Зрительная замена: слуховой прогресс не начислялся.")}</p>
       ) : null}
       <ProgressMetrics metrics={child.metrics} />
-      {child.body ? <EvidenceBody body={child.body} /> : null}
+      {child.body ? <EvidenceBody body={child.body} id={child.id} /> : null}
     </section>
   );
 }
@@ -252,7 +255,7 @@ export function MusicCourseProgress({
           </select>
         </label>
       </div>
-      <details className="music-progress-summary" open>
+      <details className="music-progress-summary" data-window-detail="music-progress:summary" open>
         <summary>{t("Сводка музыкальных навыков")}</summary>
         {cohorts.length === 0 ? (
           <p>{t("Для этих фильтров пока нет сохранённых занятий.")}</p>
@@ -277,7 +280,7 @@ export function MusicCourseProgress({
           </div>
         )}
       </details>
-      <details className="music-progress-history" open>
+      <details className="music-progress-history" data-window-detail="music-progress:history" open>
         <summary>
           {t("Последние музыкальные занятия: {number}", { number: formatNumber(rows.length) })}
         </summary>
@@ -287,7 +290,7 @@ export function MusicCourseProgress({
           <ol>
             {rows.map((row) => (
               <li key={row.id} data-run={row.id}>
-                <details>
+                <details data-window-detail={`music-progress:run:${row.id}`}>
                   <summary>
                     {t("Сохранённое занятие: {course} · {date}", {
                       course: t(MUSIC_COURSE_LABELS[row.course]),
@@ -318,7 +321,10 @@ export function MusicCourseProgress({
                     <p key={key}>{t(key)}</p>
                   ))}
                   {row.children.length > 0 ? (
-                    <details className="music-progress-children">
+                    <details
+                      className="music-progress-children"
+                      data-window-detail={`music-progress:run:${row.id}:children`}
+                    >
                       <summary>{t("Задания мини-урока по своим навыкам")}</summary>
                       {row.children.map((child) => (
                         <ProgressChild key={child.id} child={child} />
@@ -332,7 +338,11 @@ export function MusicCourseProgress({
         )}
       </details>
       {pendingChildren.length > 0 ? (
-        <details className="music-progress-pending" open>
+        <details
+          className="music-progress-pending"
+          data-window-detail="music-progress:pending"
+          open
+        >
           <summary>{t("Сохранённые задания текущего мини-урока")}</summary>
           {pendingChildren.map((child) => (
             <ProgressChild key={child.id} child={child} />

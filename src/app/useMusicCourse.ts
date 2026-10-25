@@ -6,7 +6,7 @@ import {
   useState,
   useSyncExternalStore
 } from "react";
-import type { MusicCourse } from "../musicLearning/types";
+import type { MusicCourse, MusicPurpose } from "../musicLearning/types";
 import type {
   MusicCourseCommand,
   MusicCoursePreferences,
@@ -45,6 +45,9 @@ export function useMusicCourse() {
   const store = useAppStore();
   const dispatch = useAppDispatch();
   const [retry, setRetry] = useState(0);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [courseFilter, setCourseFilter] = useState<MusicCourse | "all">("all");
+  const [purposeFilter, setPurposeFilter] = useState<MusicPurpose | "all">("all");
   const retrySelection = useCallback(() => {
     const current = store.getState().reading.music;
     if (!current.course) return;
@@ -180,6 +183,12 @@ export function useMusicCourse() {
     preferences,
     history: saved.history,
     integrated: saved.integrated,
+    progressOpen,
+    setProgressOpen,
+    courseFilter,
+    setCourseFilter,
+    purposeFilter,
+    setPurposeFilter,
     command,
     choose,
     setPreferences,

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { MusicCourseCatalog, MusicCoursePractice } from "../ui/MusicCourse";
 import { MusicCourseProgress } from "../ui/MusicCourseProgress";
 import type {
@@ -245,9 +244,14 @@ function progressCohorts(
 
 export function ConnectedMusicCards({ onChoose }: { readonly onChoose: () => void }) {
   const music = useRuntimeSelector((runtime) => runtime.music);
-  const [progressOpen, setProgressOpen] = useState(false);
-  const [courseFilter, setCourseFilter] = useState<MusicCourse | "all">("all");
-  const [purposeFilter, setPurposeFilter] = useState<MusicPurpose | "all">("all");
+  const {
+    progressOpen,
+    setProgressOpen,
+    courseFilter,
+    setCourseFilter,
+    purposeFilter,
+    setPurposeFilter
+  } = music;
   const filters: MusicProgressFilters = {
     course: courseFilter,
     source: music.preferences.sourceFilter,

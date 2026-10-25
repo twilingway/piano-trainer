@@ -165,6 +165,18 @@ describe("pure music progress presentation", () => {
       />
     );
     const child = host.querySelector('[data-child="native-child"]');
+    expect(host.querySelector(".music-progress-summary")?.getAttribute("data-window-detail")).toBe(
+      "music-progress:summary"
+    );
+    expect(host.querySelector(".music-progress-history")?.getAttribute("data-window-detail")).toBe(
+      "music-progress:history"
+    );
+    expect(host.querySelector(".music-progress-pending")?.getAttribute("data-window-detail")).toBe(
+      "music-progress:pending"
+    );
+    expect(
+      child?.querySelector(".music-progress-evidence")?.getAttribute("data-window-detail")
+    ).toBe("music-progress:child:native-child:evidence");
     expect(child?.textContent).toContain("2026");
     expect(child?.textContent).toContain("до4");
     expect(child?.textContent).toContain("ре4");
@@ -176,6 +188,9 @@ describe("pure music progress presentation", () => {
     });
     expect(child?.textContent).toContain("Note C4");
     expect(child?.textContent).toContain("Note D4");
+    expect(
+      child?.querySelector(".music-progress-evidence")?.getAttribute("data-window-detail")
+    ).toBe("music-progress:child:native-child:evidence");
   });
   it("keeps mini-lesson skill/source errors and visual alternatives distinct", async () => {
     const current = props();
@@ -211,6 +226,12 @@ describe("pure music progress presentation", () => {
       />
     );
     const child = host.querySelector('[data-child="child-harmony"]');
+    expect(
+      host.querySelector('[data-run="saved-run"] > details')?.getAttribute("data-window-detail")
+    ).toBe("music-progress:run:saved-run");
+    expect(host.querySelector(".music-progress-children")?.getAttribute("data-window-detail")).toBe(
+      "music-progress:run:saved-run:children"
+    );
     expect(child?.textContent).toContain("Построение аккордов");
     expect(child?.textContent).toContain("Клавиши на экране");
     expect(child?.textContent).toContain("Зрительная замена");

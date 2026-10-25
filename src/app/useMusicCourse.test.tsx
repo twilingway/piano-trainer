@@ -212,6 +212,33 @@ describe("music hook selection identity", () => {
     });
     expect(current()).toBe(controller);
   });
+  it("changes only ephemeral library presentation without resetting an active music run", () => {
+    select();
+    const controller = current(),
+      count = mocks.controllers.length,
+      before = store.getState();
+    const scene = music.scene,
+      policy = music.policy;
+    vi.mocked(controller.command).mockClear();
+    vi.mocked(controller.cancel).mockClear();
+    vi.mocked(controller.dispose).mockClear();
+    act(() => {
+      music.setProgressOpen(true);
+      music.setCourseFilter("harmony");
+      music.setPurposeFilter("control");
+    });
+    expect(music.progressOpen).toBe(true);
+    expect(music.courseFilter).toBe("harmony");
+    expect(music.purposeFilter).toBe("control");
+    expect(music.scene).toBe(scene);
+    expect(music.policy).toBe(policy);
+    expect(store.getState()).toBe(before);
+    expect(mocks.controllers).toHaveLength(count);
+    expect(current()).toBe(controller);
+    expect(controller.command).not.toHaveBeenCalled();
+    expect(controller.cancel).not.toHaveBeenCalled();
+    expect(controller.dispose).not.toHaveBeenCalled();
+  });
   it("keeps an active answer when next-run purpose or stored results change", () => {
     select();
     const controller = current();
