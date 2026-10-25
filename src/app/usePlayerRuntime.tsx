@@ -1,3 +1,4 @@
+import { useSettingsPlayback } from "./useSettingsPlayback";
 import { usePlayCountdown } from "./usePlayCountdown";
 import { useAppSelector } from "./storeHooks";
 import { useMemo, useRef, useState } from "react";
@@ -37,7 +38,7 @@ import { useTakeReview } from "./useTakeReview";
 import { useTrainer } from "./useTrainer";
 import { ViewToggles } from "../ui/ViewToggles";
 import { useWordTyping, useWordTypingInterfaceLanguage } from "./useWordTyping";
-import { WordTypingSettings } from "../ui/WordTypingSettings";
+import { ConnectedWordSettings } from "./ConnectedSettings";
 import { GameModeSwitch } from "../ui/GameModeSwitch";
 import { PracticeTimingStatus } from "../ui/PracticeTimingStatus";
 import type { Part } from "../wordTyping/types";
@@ -226,7 +227,10 @@ export function usePlayerRuntime() {
       ear,
       takes.comparing
     ]),
-    blocked: libraryOpen || settingsOpen || (word.enabled && (word.pending || Boolean(word.error))),
+    blocked:
+      libraryOpen ||
+      (settingsOpen && practiceActive) ||
+      (word.enabled && (word.pending || Boolean(word.error))),
     prepare: ensureIntervalSound,
     onToggle: playNow
   });
@@ -367,7 +371,14 @@ export function usePlayerRuntime() {
     } else if (ear) intervals.audio.togglePause();
     else void trainer.togglePlay();
   }
-  const play = countdown.toggle;
+  const play = useSettingsPlayback(
+    countdown,
+    settingsOpen,
+    practiceActive,
+    playing,
+    computerKeyboard,
+    timing.settingsProps.running
+  );
   const startOver = () => {
     countdown.resetNewRun();
     setResultClosed(false);
@@ -407,25 +418,7 @@ export function usePlayerRuntime() {
     startFromRef.current = null;
     word.choosePart(part);
   };
-  const wordSettings = (
-    <WordTypingSettings
-      language={word.language}
-      part={word.part}
-      accompaniment={word.accompaniment}
-      onAccompaniment={word.setAccompaniment}
-      layout={word.layout}
-      onLayout={(layout) => {
-        word.update({ layout });
-      }}
-      onRegenerate={word.regenerate}
-      locked={playing}
-      pending={word.pending}
-      onLanguage={(language) => {
-        word.update({ language });
-      }}
-      onPart={chooseWordPart}
-    />
-  );
+  const wordSettings = <ConnectedWordSettings />;
 
   const chooseGame = (enabled: boolean) => {
     if (practiceActive) reading.exit();

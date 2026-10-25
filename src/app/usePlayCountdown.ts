@@ -59,11 +59,7 @@ export function usePlayCountdown(options: Options) {
       return;
     }
     if (blocked) return;
-    if ((started.current && !options.finished) || normalizeCountdownSeconds(seconds) === 0) {
-      action.current();
-      return;
-    }
-    const wait = normalizeCountdownSeconds(seconds);
+    const wait = started.current && !options.finished ? 0 : normalizeCountdownSeconds(seconds);
     const request: Pending = {
       generation: ++generation.current,
       deadline: performance.now() + wait * 1000,

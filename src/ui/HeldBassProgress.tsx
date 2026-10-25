@@ -100,7 +100,10 @@ export function HeldBassResults({
           (item) => sourceFilter === "all" || item.attempts.at(-1)?.inputSource === sourceFilter
         )
         .map((item) => (
-          <details key={item.fragmentId}>
+          <details
+            key={item.fragmentId}
+            data-window-detail={`held-bass:result:${result.id}:fragment:${item.fragmentId}`}
+          >
             <summary>
               {twoHandNoteName(item.bassPitch, t)} ·{" "}
               {item.melodyPitches.map((pitch) => twoHandNoteName(pitch, t)).join(" → ")} ·{" "}
@@ -161,11 +164,11 @@ export function HeldBassProgress(props: HeldBassProgressProps) {
           "Последние двадцать серий удержания. Фильтр выбирает фрагменты по успешной попытке; прежние ошибки и помощь сохраняются."
         )}
       </p>
-      <details>
+      <details data-window-detail="held-bass:progress">
         <summary>{t("Мой прогресс удержания баса")}</summary>
         <Metrics {...props} />
       </details>
-      <details>
+      <details data-window-detail="held-bass:history">
         <summary>{t("История удержания баса: {number}", { number: props.history.length })}</summary>
         {props.history
           .slice()

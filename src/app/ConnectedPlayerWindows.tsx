@@ -1,4 +1,6 @@
 import { shallowEqual } from "react-redux";
+import { useState } from "react";
+import { WindowViewMemory } from "../ui/windowViewMemory";
 import { foldersSupported } from "../library/folder";
 import { LibraryDialog } from "../ui/LibraryDialog";
 import { ConnectedPlayerSettings, ConnectedResultDialog } from "./ConnectedSettings";
@@ -18,6 +20,7 @@ import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 
 export function ConnectedPlayerWindows() {
+  const [libraryMemory] = useState(() => new WindowViewMemory());
   const {
     libraryOpen,
     settingsOpen,
@@ -67,6 +70,7 @@ export function ConnectedPlayerWindows() {
     <>
       {libraryOpen && (
         <ConnectedLibraryWindow
+          memory={libraryMemory}
           onClose={() => {
             setLibraryOpen(false);
           }}
@@ -104,7 +108,13 @@ export function ConnectedPlayerWindows() {
     </>
   );
 }
-function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
+function ConnectedLibraryWindow({
+  onClose,
+  memory
+}: {
+  onClose: () => void;
+  memory: WindowViewMemory;
+}) {
   const { lesson, source, mySongs, folder } = useRuntimeSelector(
     (runtime) => ({
       lesson: runtime.current.lesson,
@@ -125,6 +135,7 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
   return (
     <LibraryDialog
       open
+      viewMemory={memory}
       onClose={onClose}
       lessons={LESSONS.filter((lesson) => !PREVIOUS_COURSE_LESSONS.includes(lesson))}
       previousLessons={PREVIOUS_COURSE_LESSONS}

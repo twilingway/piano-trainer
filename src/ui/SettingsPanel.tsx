@@ -3,6 +3,7 @@ import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 
 import { GameDialog } from "./GameDialog";
+import { WindowViewMemory } from "./windowViewMemory";
 
 export type SettingsTab = {
   readonly id: string;
@@ -19,15 +20,22 @@ interface Props {
   readonly open: boolean;
   readonly onClose: () => void;
   readonly tabs: readonly SettingsTab[];
+  readonly controls?: ReactNode;
 }
 
 /** Keep section selection while the panel is closed, with keyboard-accessible navigation. */
-export function SettingsPanel({ open, onClose, tabs }: Props) {
+export function SettingsPanel({ open, onClose, tabs, controls }: Props) {
   const { t } = useI18n();
   const id = useId();
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const [active, setActive] = useState(tabs[0]?.id ?? "");
   const panel = useRef<HTMLDivElement>(null);
+  const [memory] = useState(() => new WindowViewMemory());
+  const shown = tabs.find((tab) => tab.id === active) ?? tabs[0];
+  const shownId = shown?.id;
+  const remember = () => {
+    if (open && shown && panel.current) memory.capture(shown.id, panel.current);
+  };
   const processedNavigation = useRef(0);
   const [navigation, setNavigation] = useState<{ target: string | undefined; version: number }>({
     target: undefined,
@@ -38,6 +46,8 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
     setNavigation((previous) => ({ target, version: previous.version + 1 }));
   };
   useLayoutEffect(() => {
+    if (!open) return;
+    if (shownId && panel.current) memory.restore(shownId, panel.current);
     if (processedNavigation.current === navigation.version) return;
     processedNavigation.current = navigation.version;
     const target = navigation.target;
@@ -51,6 +61,11 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
       ? control
       : (element?.closest<HTMLElement>("label,.settings-group") ?? panel.current);
     if (!destination) return;
+    let disclosure = destination.closest("details");
+    while (disclosure) {
+      disclosure.open = true;
+      disclosure = disclosure.parentElement?.closest("details") ?? null;
+    }
     const previousTabIndex = destination.getAttribute("tabindex");
     if (!available) destination.setAttribute("tabindex", "-1");
     destination.scrollIntoView({ block: "center", behavior: "auto" });
@@ -68,8 +83,7 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
       window.clearTimeout(timeout);
       clear();
     };
-  }, [active, navigation, open]);
-  const shown = tabs.find((tab) => tab.id === active) ?? tabs[0];
+  }, [shownId, navigation, open, memory]);
   const handleKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     let next: number;
     switch (event.key) {
@@ -93,6 +107,7 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
     const target = tabs[next];
     if (!target) return;
     event.preventDefault();
+    remember();
     setActive(target.id);
     buttons.current.get(target.id)?.focus();
   };
@@ -102,10 +117,14 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
       title={t("Настройки")}
       className="settings"
       modal={false}
-      onClose={onClose}
+      onClose={() => {
+        remember();
+        onClose();
+      }}
+      headerActions={open ? controls : null}
     >
       {open ? (
-        <div className="settings-layout">
+        <div className="settings-layout" onClickCapture={remember}>
           <div
             className="settings-navigation"
             role="tablist"
@@ -130,6 +149,7 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
                   handleKey(event, index);
                 }}
                 onClick={() => {
+                  remember();
                   setActive(tab.id);
                 }}
               >
@@ -144,6 +164,7 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
               aria-label={t("Раздел настроек")}
               value={shown?.id ?? ""}
               onChange={(event) => {
+                remember();
                 setActive(event.target.value);
               }}
             >
@@ -155,7 +176,15 @@ export function SettingsPanel({ open, onClose, tabs }: Props) {
             </select>
           </label>
           <div
-            ref={panel}
+            key={shown?.id}
+            ref={(element) => {
+              panel.current = element;
+              if (!element || !shown) return;
+              return () => {
+                memory.capture(shown.id, element);
+                if (panel.current === element) panel.current = null;
+              };
+            }}
             id={`${id}-panel`}
             className="settings-content tab-panel"
             role="tabpanel"

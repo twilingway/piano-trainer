@@ -152,7 +152,7 @@ export function IntervalProgress({
         )}
       </p>
       {result && <IntervalResults results={[result]} mode={mode} source={source} />}
-      <details>
+      <details data-window-detail="interval-reading:progress">
         <summary>{t("Мой прогресс интервалов")}</summary>
         <p>
           {t(
@@ -163,7 +163,7 @@ export function IntervalProgress({
           <IntervalResults key={value} results={history} mode={value} source={source} />
         ))}
       </details>
-      <details>
+      <details data-window-detail="interval-reading:history">
         <summary>
           {t("История интервалов: {number}", {
             number: history.filter((item) => item.mode === mode).length

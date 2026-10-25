@@ -1,9 +1,11 @@
 import { useI18n } from "../app/useI18n";
 import type { ChangeEvent, ReactNode } from "react";
+import { useState } from "react";
 
 import { EXERCISES } from "../song/exercises";
 
 import { GameDialog } from "./GameDialog";
+import { WindowViewMemory } from "./windowViewMemory";
 
 interface Lesson {
   readonly id: string;
@@ -13,6 +15,7 @@ interface Lesson {
 
 interface Props {
   readonly open: boolean;
+  readonly viewMemory?: WindowViewMemory;
   readonly onClose: () => void;
   readonly lessons: readonly Lesson[];
   readonly previousLessons?: readonly Lesson[];
@@ -49,6 +52,7 @@ interface Props {
 /** Every song to play, as cards: lessons with their levels, the player's own songs, the folder. */
 export function LibraryDialog(props: Props) {
   const { t } = useI18n();
+  const [memory] = useState(() => new WindowViewMemory());
   if (!props.open) return null;
   const bundledTitle = (lesson: Lesson, title: string) =>
     EXERCISES.some((exercise) => exercise.id === lesson.id) ? t(title) : title;
@@ -121,6 +125,7 @@ export function LibraryDialog(props: Props) {
       title={t("Библиотека")}
       className="library"
       onClose={props.onClose}
+      memory={props.viewMemory ?? memory}
     >
       <div className="library-actions">
         <label className="game-button">

@@ -4704,3 +4704,36 @@ button.song-card.song-card__open {
     width: 100%;
   }
 }
+
+.game-dialog__actions,
+.settings-transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.settings-transport__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.settings-transport__toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.settings-transport__count {
+  min-width: 1ch;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (width <= 400px) {
+  .settings-transport__label {
+    display: none;
+  }
+}
