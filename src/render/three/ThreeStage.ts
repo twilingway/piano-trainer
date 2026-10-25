@@ -83,8 +83,8 @@ export class ThreeStage {
   private readonly appearance: KeyboardAppearance;
   private readonly rimLights = new ThreeRimLights();
   private picture = new Texture();
-  private readonly materials = new StageKeyMaterials(() => {
-    this.keyEmission.refreshAppearance();
+  private readonly materials = new StageKeyMaterials((dim) => {
+    this.keyEmission.setDim(dim);
   });
   /** The case around the keys: rails, cheeks and the back panel. */
   private readonly body = new Group();

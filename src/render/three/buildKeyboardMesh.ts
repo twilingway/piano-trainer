@@ -19,7 +19,12 @@ export function buildKeyboardMesh(
   const painted = key
     ? paintedKeyboardTop(key.materials[0], picture, box.black, box.uv.u1 > box.uv.u0)
     : fallback.top;
-  const materials = emission.create(box.pitch, painted, key?.materials[1] ?? fallback.white);
+  const materials = emission.create(
+    box.pitch,
+    painted,
+    key?.materials[1] ?? fallback.white,
+    key ? (box.black ? "black" : "white") : undefined
+  );
   if (key) emission.ownTemplate(painted);
   const mesh = new Mesh(geometry, materials);
   mesh.position.set(box.x, 22, 0);
