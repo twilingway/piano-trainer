@@ -64,3 +64,15 @@ knuckles, turns the hand counter-clockwise and brings the outer fingers to the k
 `scale`; `rig_matrix_world` is the armature object's matrix. Units are metres. `report.json` holds
 the solver's measurements per pose (misses, pad gaps, collisions, hand angles), in millimetres and
 degrees.
+
+## Автозапуск HUD атласа Keyboard88
+
+`keyboard88_hud_autoload.py` восстанавливает подписи поз при запуске Blender и после открытия или
+перезагрузки сцены. Скопируйте его в `scripts/startup/` пользовательского каталога Blender (путь
+показывает `bpy.utils.user_resource('SCRIPTS')`). Для Blender 5.2 на Windows это обычно
+`%APPDATA%/Blender Foundation/Blender/5.2/scripts/startup/`.
+
+Модуль подхватывает `kb88_hud.py` и `frame-index.json` рядом с открытым атласом, поэтому работает и
+в отдельном worktree. Автозапуск Python из `.blend` включать не требуется. Фоновые Blender
+пропускаются; сцена не сохраняется, MCP не запускается. Для отключения удалите этот startup-файл и
+перезапустите Blender.
