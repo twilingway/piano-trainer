@@ -1,3 +1,4 @@
+import type { CameraComposition } from "../cameraComposition";
 import type { StaffWorldSource } from "../../staff/staffWorldSnapshot";
 import { Container, UPDATE_PRIORITY } from "../flatThree";
 import { Vector2, type Camera } from "three";
@@ -67,6 +68,7 @@ export class ThreeKeysHost {
   setEnabled(on: boolean, road = on): Promise<void> {
     if (this.destroyed) return Promise.resolve();
     this.wanted = on;
+    this.stage?.setCameraComposition(on ? this.composition : "standard");
     if (this.hands) this.hands.live = on;
     this.roadWanted = road;
     const loaded = on || road ? this.load() : Promise.resolve();
@@ -144,6 +146,18 @@ export class ThreeKeysHost {
     this.syncFreeCamera();
   }
 
+  private composition: CameraComposition = "standard";
+  private worldFov = 45;
+  setCameraComposition(mode: CameraComposition): void {
+    this.composition = mode;
+    this.stage?.setCameraComposition(this.wanted ? mode : "standard");
+    this.syncFreeCamera();
+  }
+  setWorldFov(fov: number): void {
+    this.worldFov = fov;
+    this.stage?.setWorldFov(fov);
+  }
+
   private movementWanted = false;
   setFreeCameraMovement(on: boolean): void {
     this.movementWanted = on;
@@ -207,7 +221,7 @@ export class ThreeKeysHost {
       !this.performanceWanted &&
       this.active &&
       this.wanted &&
-      this.keys.container.visible &&
+      (this.keys.container.visible || (this.composition !== "standard" && this.drawsRoad)) &&
       layered;
     if (on === this.freeActive) return;
     this.freeActive = on;
@@ -259,6 +273,8 @@ export class ThreeKeysHost {
         this.stage.beforeRender = this.beforeRender;
         this.stage.setKeyboardDim(this.keyboardDim);
         if (this.worldScore) this.stage.setWorldScoreSource(this.worldScore);
+        this.stage.setCameraComposition(this.wanted ? this.composition : "standard");
+        this.stage.setWorldFov(this.worldFov);
         this.stage.setFreeCameraMovement(this.movementWanted);
         this.stage.setPerformanceScene(this.performanceWanted);
       } catch (error) {

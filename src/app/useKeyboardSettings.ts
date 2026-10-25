@@ -13,6 +13,8 @@ export function useKeyboardSettings(
   staffPrefs: StaffPrefs,
   updateStaffPrefs: (change: Partial<StaffPrefs>) => void
 ): ComponentProps<typeof KeyboardSettings> & {
+  onCameraComposition: NonNullable<ComponentProps<typeof KeyboardSettings>["onCameraComposition"]>;
+  onWorldFov: NonNullable<ComponentProps<typeof KeyboardSettings>["onWorldFov"]>;
   onNoteProjection: NonNullable<ComponentProps<typeof KeyboardSettings>["onNoteProjection"]>;
   fps: boolean;
   onFps: (show: boolean) => void;
@@ -75,6 +77,14 @@ export function useKeyboardSettings(
     performanceScene: staffPrefs.performanceScene,
     onPerformanceScene: (performanceScene) => {
       updateStaffPrefs({ performanceScene });
+    },
+    cameraComposition: staffPrefs.cameraComposition,
+    onCameraComposition: (cameraComposition) => {
+      updateStaffPrefs({ cameraComposition });
+    },
+    worldFov: staffPrefs.worldFov,
+    onWorldFov: (worldFov) => {
+      updateStaffPrefs({ worldFov });
     },
     freeCamera: staffPrefs.freeCamera,
     freeCameraWasd: staffPrefs.freeCameraWasd,

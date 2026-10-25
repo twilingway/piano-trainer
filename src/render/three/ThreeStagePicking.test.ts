@@ -143,3 +143,15 @@ it("picks the real key mesh after standard-camera depth fitting at both heights"
     }
   }
 });
+
+it("picks docked visible keys even when the free world camera points elsewhere", () => {
+  const f = setup(false);
+  const elsewhere = new PerspectiveCamera(45, 1, 0.1, 100);
+  elsewhere.position.set(100, 100, 100);
+  elsewhere.lookAt(100, 0, 100);
+  elsewhere.updateMatrixWorld();
+  Object.assign(f.stage, { free: { camera: elsewhere }, composition: "free" });
+  expect(f.pick(new Vector3(0.65, 0.15, 0.8))).toBe(60);
+  expect(f.pick(new Vector3(-0.3, 0.45, -0.6))).toBe(61);
+  f.dispose();
+});

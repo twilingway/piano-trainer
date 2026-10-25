@@ -308,3 +308,51 @@ it("places metric back-row effects on the same GLB stem anchor as notes", () => 
     expect(key?.z).toBeCloseTo(40 - (black ? 145.8 : 149.1938) * 2);
   }
 });
+
+it("keeps docked key particles on the keyboard basis while ring particles follow the world camera", async () => {
+  const { stage, subject, camera } = await loaded();
+  const keyboard = new PerspectiveCamera(45, 1.6, 5, 10000);
+  keyboard.position.set(0, 500, 1800);
+  keyboard.lookAt(0, 0, 0);
+  keyboard.updateMatrixWorld();
+  camera.position.set(1800, 500, 0);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+  const update = () => {
+    stage.update(
+      true,
+      20,
+      subject,
+      boxes,
+      [source],
+      camera,
+      142,
+      true,
+      undefined,
+      true,
+      undefined,
+      keyboard
+    );
+  };
+  update();
+  await Promise.resolve();
+  update();
+  const keyFlame = batch(stage, 2),
+    ringFlame = batch(stage, 5);
+  expect(keyFlame.count).toBe(1);
+  const keyBasis: unknown = keyFlame.material.uniforms.cameraRight?.value;
+  const ringBasis: unknown = ringFlame.material.uniforms.cameraRight?.value;
+  if (!(keyBasis instanceof Vector3) || !(ringBasis instanceof Vector3))
+    throw new Error("Missing bases");
+  const beforeKey = keyBasis.clone(),
+    beforeRing = ringBasis.clone();
+  expect(beforeKey.distanceTo(beforeRing)).toBeGreaterThan(0.1);
+  camera.position.set(-1800, 100, 500);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+  update();
+  expect(keyBasis.equals(beforeKey)).toBe(true);
+  expect(ringBasis.equals(beforeRing)).toBe(false);
+  expect(stage.group.children[2]?.userData.cameraCompositionRole).toBe("keyboard");
+  expect(stage.group.children[5]?.userData.cameraCompositionRole).not.toBe("keyboard");
+});

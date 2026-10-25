@@ -14,13 +14,13 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FreeSceneCamera } from "./FreeSceneCamera";
 
-function setup() {
+function setup(autoFrame = false) {
   const canvas = document.createElement("canvas");
   document.body.append(canvas);
   Object.defineProperties(canvas, { clientWidth: { value: 800 }, clientHeight: { value: 600 } });
   canvas.setPointerCapture = vi.fn();
   canvas.releasePointerCapture = vi.fn();
-  const view = new FreeSceneCamera(canvas);
+  const view = new FreeSceneCamera(canvas, autoFrame);
   const subject = new Group();
   subject.add(new Mesh(new BoxGeometry(600, 800, 400)));
   view.setEnabled(true);
@@ -300,4 +300,63 @@ it("includes the structural score only on reset and never moves an existing pose
       expect(Math.abs(point.y)).toBeLessThan(1);
     }
   v.dispose();
+});
+
+it("changes world FOV without resetting the saved pose or keyboard projection", () => {
+  const f = setup();
+  const pose = f.view.camera.position.clone();
+  const rotation = f.view.camera.quaternion.clone();
+  f.view.setFov(80);
+  f.view.update(800, 600, f.subject);
+  expect(f.view.camera.fov).toBe(80);
+  expect(f.view.camera.position.equals(pose)).toBe(true);
+  expect(f.view.camera.quaternion.angleTo(rotation)).toBeLessThan(0.000001);
+  f.view.setFov(500);
+  expect(f.view.camera.fov).toBe(100);
+  f.view.setFov(Number.NaN);
+  expect(f.view.camera.fov).toBe(45);
+  f.dispose();
+});
+
+it("refits the fixed game view after structural field, score and aspect changes", () => {
+  const f = setup(true);
+  const original = f.view.camera.position.clone();
+  const field = new Box3(new Vector3(-50000, -30000, -90000), new Vector3(50000, 8000, -1000));
+  f.view.setRoadBounds(field);
+  f.view.update(800, 600, f.subject);
+  expect(f.view.camera.position.distanceTo(original)).toBeGreaterThan(10000);
+  const framed = f.view.camera.position.clone();
+  f.view.setRoadBounds(field.clone());
+  f.view.update(800, 600, f.subject);
+  expect(f.view.camera.position.distanceTo(framed)).toBeLessThan(0.000001);
+  const score = new Box3(new Vector3(-60000, 50000, -30000), new Vector3(60000, 70000, -20000));
+  f.view.setScoreBounds(score);
+  f.view.update(800, 600, f.subject);
+  const withScore = f.view.camera.position.clone();
+  expect(withScore.distanceTo(framed)).toBeGreaterThan(1000);
+  f.view.update(320, 600, f.subject);
+  expect(f.view.camera.position.distanceTo(withScore)).toBeGreaterThan(1000);
+  for (const bounds of [field, score])
+    for (const x of [bounds.min.x, bounds.max.x])
+      for (const y of [bounds.min.y, bounds.max.y])
+        for (const z of [bounds.min.z, bounds.max.z]) {
+          const clip = new Vector3(x, y, z).project(f.view.camera);
+          expect(Math.abs(clip.x)).toBeLessThanOrEqual(1.000001);
+          expect(Math.abs(clip.y)).toBeLessThanOrEqual(1.000001);
+        }
+  f.dispose();
+});
+
+it("preserves the free manual pose when structural field, score and aspect change", () => {
+  const f = setup();
+  const before = f.view.camera.position.clone();
+  f.view.setRoadBounds(
+    new Box3(new Vector3(-50000, -30000, -90000), new Vector3(50000, 8000, -1000))
+  );
+  f.view.setScoreBounds(
+    new Box3(new Vector3(-60000, 50000, -30000), new Vector3(60000, 70000, -20000))
+  );
+  f.view.update(320, 600, f.subject);
+  expect(f.view.camera.position.distanceTo(before)).toBeLessThan(0.000001);
+  f.dispose();
 });

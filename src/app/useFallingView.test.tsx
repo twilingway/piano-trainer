@@ -35,6 +35,8 @@ const view = {
   setRange: vi.fn(),
   setRoadGuides: vi.fn(),
   setKeyboardDim: vi.fn(),
+  setCameraComposition: vi.fn(),
+  setWorldFov: vi.fn(),
   setFreeCamera: vi.fn(),
   setFreeCameraMovement: vi.fn(),
   setPerformanceScene: vi.fn(),
@@ -361,4 +363,27 @@ it("applies note appearance to an existing comparison without remounting it", as
   expect(mirror.mount).toHaveBeenCalledOnce();
   expect(trainer.seek).not.toHaveBeenCalled();
   expect(trainer.load).not.toHaveBeenCalled();
+});
+
+it("passes world composition and FOV without moving or reloading the lesson", () => {
+  act(() => {
+    root.render(
+      <Harness prefs={{ ...DEFAULT_STAFF_PREFS, cameraComposition: "game", worldFov: 61 }} />
+    );
+  });
+  expect(view.setCameraComposition).toHaveBeenLastCalledWith("game");
+  expect(view.setWorldFov).toHaveBeenLastCalledWith(61);
+  trainer.load.mockClear();
+  trainer.seek.mockClear();
+  trainer.setPlaying.mockClear();
+  act(() => {
+    root.render(
+      <Harness prefs={{ ...DEFAULT_STAFF_PREFS, cameraComposition: "free", worldFov: 78 }} />
+    );
+  });
+  expect(view.setCameraComposition).toHaveBeenLastCalledWith("free");
+  expect(view.setWorldFov).toHaveBeenLastCalledWith(78);
+  expect(trainer.load).not.toHaveBeenCalled();
+  expect(trainer.seek).not.toHaveBeenCalled();
+  expect(trainer.setPlaying).not.toHaveBeenCalled();
 });

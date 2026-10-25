@@ -31,9 +31,10 @@ it.each(["ru", "en"] as const)("shows metric limits and localized shapes in %s",
   });
   const ranges = [...host.querySelectorAll<HTMLInputElement>('input[type="range"]')];
   expect(ranges.map((input) => [input.min, input.max, input.step])).toEqual([
-    ["0.25", "8", "0.05"],
-    ["0", "20", "0.05"],
-    ["0.25", "30", "0.05"]
+    ["-100", "100", "0.01"],
+    ["0", "1000", "0.01"],
+    ["0.25", "1000", "0.01"],
+    ["2", "10000", "0.01"]
   ]);
   expect(ranges[0]?.getAttribute("aria-label")).toBe(
     locale === "ru" ? "Высота горизонта, м" : "Horizon height, m"
@@ -107,3 +108,94 @@ it.each(["ru", "en"] as const)(
     }
   }
 );
+
+function editInput(input: HTMLInputElement, value: string): void {
+  const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  if (!descriptor?.set) throw new Error("Expected native input setter");
+  act(() => {
+    descriptor.set?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+it.each(["ru", "en"] as const)(
+  "keeps large metric number fields and sliders consistent in %s",
+  (locale) => {
+    setInterfaceLanguage(locale);
+    const change = vi.fn();
+    const value = {
+      ...DEFAULT_FREE_DIRECT_FIELD,
+      height: -30.05,
+      distance: 82.25,
+      width: 95.25,
+      radius: 100,
+      shape: "convex" as const
+    };
+    act(() => {
+      root.render(<FreeRoadSettings value={value} onChange={change} />);
+    });
+    for (const key of ["height", "distance", "width", "radius"] as const) {
+      const number = host.querySelector<HTMLInputElement>(
+        `[data-setting-target="free-source-${key}-number"]`
+      );
+      const range = host.querySelector<HTMLInputElement>(
+        `[data-setting-target="free-source-${key}"]`
+      );
+      expect(number?.value).toBe(String(value[key]));
+      expect(range?.value).toBe(String(value[key]));
+      expect(number?.min).toBe(range?.min);
+      expect(number?.max).toBe(range?.max);
+    }
+    const radius = host.querySelector<HTMLInputElement>(
+      '[data-setting-target="free-source-radius-number"]'
+    );
+    if (!radius) throw new Error("Missing radius number field");
+    expect(radius.min).toBe("47.625");
+    expect(radius.getAttribute("aria-label")).toContain(
+      locale === "ru" ? "Радиус мирового горизонта" : "World horizon radius"
+    );
+    editInput(radius, "10");
+    expect(change).toHaveBeenLastCalledWith({ radius: 47.625 });
+    expect(host.textContent).toContain(
+      locale === "ru" ? "не может быть меньше её половины" : "cannot be less than half the width"
+    );
+  }
+);
+
+it("allows an empty numeric draft without resetting the saved horizon", () => {
+  const change = vi.fn();
+  act(() => {
+    root.render(<FreeRoadSettings value={DEFAULT_FREE_DIRECT_FIELD} onChange={change} />);
+  });
+  const height = host.querySelector<HTMLInputElement>(
+    '[data-setting-target="free-source-height-number"]'
+  );
+  if (!height) throw new Error("Missing height number field");
+  act(() => {
+    height.focus();
+  });
+  editInput(height, "");
+  expect(height.value).toBe("");
+  expect(change).not.toHaveBeenCalled();
+  editInput(height, "-30.05");
+  expect(height.value).toBe("-30.05");
+  expect(change).toHaveBeenLastCalledWith({ height: -30.05 });
+  editInput(height, "");
+  act(() => {
+    height.blur();
+  });
+  expect(height.value).toBe("2");
+});
+
+it("clamps a widened chord and its radius together", () => {
+  const change = vi.fn();
+  act(() => {
+    root.render(<FreeRoadSettings value={DEFAULT_FREE_DIRECT_FIELD} onChange={change} />);
+  });
+  const width = host.querySelector<HTMLInputElement>(
+    '[data-setting-target="free-source-width-number"]'
+  );
+  if (!width) throw new Error("Missing width number field");
+  editInput(width, "95.25");
+  expect(change).toHaveBeenLastCalledWith({ width: 95.25, radius: 47.625 });
+});

@@ -1,7 +1,13 @@
+import { Matrix4, Vector4 } from "three";
 import type { WorldCamera } from "../worldCamera";
 
 /** Shared only by road materials; each stage sets these immediately before its own draw. */
 export const roadWidthUniforms = {
+  roadDockOffsets: { value: new Float32Array(88) },
+  roadDockY: { value: new Vector4() },
+  roadDockEnabled: { value: 0 },
+  roadDockTransform: { value: new Matrix4() },
+  roadDockInverse: { value: new Matrix4() },
   roadWidth: { value: [0, 1, 1, 0] },
   roadVertical: { value: 0 },
   roadFree: { value: 0 },

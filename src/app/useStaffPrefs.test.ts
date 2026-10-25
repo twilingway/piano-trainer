@@ -271,12 +271,14 @@ describe("inspection camera preference", () => {
       height: 2,
       distance: 0,
       width: 4,
+      radius: 4,
       shape: "line"
     });
     expect(prefs.staffPrefs.freePerspectiveField).toEqual({
       height: 2,
       distance: 4,
       width: 6,
+      radius: 6,
       shape: "line"
     });
     await act(async () => {
@@ -307,15 +309,17 @@ describe("inspection camera preference", () => {
       freePerspectiveField: { height: NaN }
     });
     expect(normalized.freeDirectField).toEqual({
-      height: 0.25,
-      distance: 20,
+      height: -1,
+      distance: 100,
       width: 0.25,
+      radius: 0.25,
       shape: "line"
     });
     expect(normalized.freePerspectiveField).toEqual({
       height: 2,
       distance: 4,
       width: 6,
+      radius: 6,
       shape: "line"
     });
   });
@@ -583,4 +587,54 @@ it("retains the 3D note choice while using flat keys and after reload", async ()
     await Promise.resolve();
   });
   expect(prefs.staffPrefs.fallingNoteStyle).toBe("glass");
+});
+
+describe("world compositions", () => {
+  it("preserves independent cameras and signed horizon values through reload", async () => {
+    await mount();
+    const original = prefs.staffPrefs.camera;
+    await act(async () => {
+      prefs.updateStaffPrefs({
+        cameraComposition: "free",
+        worldFov: 73,
+        freePerspectiveField: {
+          height: -30.05,
+          distance: 82.25,
+          width: 95.25,
+          radius: 160,
+          shape: "convex"
+        }
+      });
+      await Promise.resolve();
+    });
+    expect(prefs.staffPrefs.camera).toEqual(original);
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({
+      cameraComposition: "free",
+      worldFov: 73,
+      freePerspectiveField: {
+        height: -30.05,
+        distance: 82.25,
+        width: 95.25,
+        radius: 160,
+        shape: "convex"
+      }
+    });
+    expect(prefs.staffPrefs.camera).toEqual(original);
+  });
+  it("safely fills older or corrupt saved camera choices", () => {
+    expect(normalizeStaffPrefs({ cameraComposition: "other", worldFov: "80" })).toMatchObject({
+      cameraComposition: "standard",
+      worldFov: 45
+    });
+    expect(normalizeStaffPrefs({ cameraComposition: "game", worldFov: 120 })).toMatchObject({
+      cameraComposition: "game",
+      worldFov: 100
+    });
+  });
 });

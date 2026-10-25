@@ -1,11 +1,63 @@
+import { useState } from "react";
 import { useI18n } from "../../app/useI18n";
-import type { FreeRoadLayout } from "../../render/freeRoadLayout";
+import {
+  FREE_ROAD_LIMITS,
+  normalizeFreeRoadLayout,
+  type FreeRoadLayout
+} from "../../render/freeRoadLayout";
 
 const METRICS = [
-  { key: "height", label: "Высота горизонта, м", min: 0.25, max: 8, step: 0.05 },
-  { key: "distance", label: "Дальность горизонта, м", min: 0, max: 20, step: 0.05 },
-  { key: "width", label: "Ширина горизонта, м", min: 0.25, max: 30, step: 0.05 }
+  { key: "height", label: "Высота горизонта, м" },
+  { key: "distance", label: "Дальность горизонта, м" },
+  { key: "width", label: "Ширина горизонта, м" },
+  { key: "radius", label: "Радиус мирового горизонта, м" }
 ] as const;
+
+function HorizonNumberInput({
+  value,
+  min,
+  max,
+  step,
+  label,
+  target,
+  onChange
+}: {
+  readonly value: number;
+  readonly min: number;
+  readonly max: number;
+  readonly step: number;
+  readonly label: string;
+  readonly target: string;
+  readonly onChange: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+  return (
+    <input
+      type="number"
+      className="game-input"
+      min={min}
+      max={max}
+      step={step}
+      value={editing ? draft : String(value)}
+      aria-label={label}
+      data-setting-target={target}
+      onFocus={() => {
+        setDraft(String(value));
+        setEditing(true);
+      }}
+      onChange={(event) => {
+        setDraft(event.target.value);
+        const next = event.target.valueAsNumber;
+        if (event.target.value !== "" && Number.isFinite(next)) onChange(next);
+      }}
+      onBlur={() => {
+        setEditing(false);
+        setDraft(String(value));
+      }}
+    />
+  );
+}
 
 /** World-space source geometry, independent from screen projection and orbit. */
 export function FreeRoadSettings({
@@ -15,35 +67,57 @@ export function FreeRoadSettings({
   readonly value: FreeRoadLayout;
   readonly onChange: (change: Partial<FreeRoadLayout>) => void;
 }) {
-  const { t, locale } = useI18n();
-  const format = new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
+  const { t } = useI18n();
+  const normalized = normalizeFreeRoadLayout(value);
+  const change = (key: keyof typeof FREE_ROAD_LIMITS, next: number): void => {
+    const result = normalizeFreeRoadLayout({ ...normalized, [key]: next });
+    onChange({
+      [key]: result[key],
+      ...(key === "width" && result.radius !== normalized.radius ? { radius: result.radius } : {})
+    });
+  };
   return (
     <>
-      {METRICS.map(({ key, label, min, max, step }) => (
-        <label className="setting" key={key}>
-          <span>{t(label)}</span>
-          <span className="setting-control">
-            <input
-              type="range"
-              min={min}
-              max={max}
-              step={step}
-              value={value[key]}
-              aria-label={t(label)}
-              data-setting-target={`free-source-${key}`}
-              onChange={(event) => {
-                onChange({ [key]: Number(event.target.value) });
-              }}
-            />
-            <span className="digits">{format.format(value[key])}</span>
-          </span>
-        </label>
-      ))}
+      {METRICS.map(({ key, label }) => {
+        const limits = FREE_ROAD_LIMITS[key];
+        const min = key === "radius" ? Math.max(limits.min, normalized.width / 2) : limits.min;
+        const number = normalized[key] ?? normalized.width;
+        return (
+          <div className="setting projection-setting" key={key}>
+            <span>{t(label)}</span>
+            <span className="setting-control projection-number-control">
+              <input
+                type="range"
+                min={min}
+                max={limits.max}
+                step={limits.step}
+                value={number}
+                aria-label={t(label)}
+                data-setting-target={`free-source-${key}`}
+                onChange={(event) => {
+                  change(key, Number(event.target.value));
+                }}
+              />
+              <HorizonNumberInput
+                min={min}
+                max={limits.max}
+                step={limits.step}
+                value={number}
+                label={t("{parameter}: числовое значение", { parameter: t(label) })}
+                target={`free-source-${key}-number`}
+                onChange={(next) => {
+                  change(key, next);
+                }}
+              />
+            </span>
+          </div>
+        );
+      })}
       <label className="setting">
         <span>{t("Форма горизонта")}</span>
         <select
           className="game-select"
-          value={value.shape}
+          value={normalized.shape}
           aria-label={t("Форма горизонта")}
           data-setting-target="free-source-shape"
           onChange={(event) => {
@@ -57,7 +131,12 @@ export function FreeRoadSettings({
       </label>
       <p className="setting-hint">
         {t(
-          "Горизонт — точки появления нот. Высота — нижняя точка над белыми клавишами, дальность — от задней линии клавиш. У выпуклой дуги середина выше, у вогнутой — края."
+          "Высота — нижняя точка горизонта относительно белых клавиш; отрицательная высота опускает его ниже клавиатуры. Дальность отсчитывается от задней линии клавиш. У выпуклой дуги середина выше, у вогнутой — края."
+        )}
+      </p>
+      <p className="setting-hint">
+        {t(
+          "Ширина — расстояние между крайними источниками. Радиус меняет изгиб отдельно от ширины и не может быть меньше её половины: слишком малое значение увеличивается до этого предела. В режиме линии радиус сохраняется без изгиба."
         )}
       </p>
       <p className="setting-hint">

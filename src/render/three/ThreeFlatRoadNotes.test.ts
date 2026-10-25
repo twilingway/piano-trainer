@@ -91,7 +91,7 @@ describe("projected direct-view note masks", () => {
     const color = new Color();
     bevel.getColorAt(0, color);
     expect(color.toArray()).toEqual([1, 1, 1]);
-    expect(meshes[1]?.geometry.getAttribute("noteAlpha").getX(0)).toBeCloseTo(0.7);
+    expect(meshes[1]?.geometry.getAttribute("noteAlphaPitch").getX(0)).toBeCloseTo(0.7);
     expect(pictureWidth(meshes[0])).toBe(160);
     expect(pictureWidth(meshes[1])).toBe(64);
     view.dispose();
@@ -104,7 +104,7 @@ describe("projected direct-view note masks", () => {
     expect(meshes.map((mesh) => mesh.count)).toEqual([2, 1, 1, 1, 1, 1, 1, 1]);
     expect(shape(view, 4)).toEqual([20, 100, 3.75, 15]);
     expect(meshes[4]?.material.blending).toBe(NormalBlending);
-    expect(meshes[4]?.geometry.getAttribute("noteAlpha").getX(0)).toBe(1);
+    expect(meshes[4]?.geometry.getAttribute("noteAlphaPitch").getX(0)).toBe(1);
     expect(pictureWidth(meshes[4])).toBe(64);
     const matrix = new Matrix4();
     meshes[5]?.getMatrixAt(0, matrix);

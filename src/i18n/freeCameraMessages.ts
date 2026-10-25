@@ -4,6 +4,15 @@ export const freeCameraMessages: Messages = {
   "Высота горизонта, м": { en: "Horizon height, m" },
   "Дальность горизонта, м": { en: "Horizon distance, m" },
   "Ширина горизонта, м": { en: "Horizon width, m" },
+  "Радиус мирового горизонта, м": { en: "World horizon radius, m" },
+  "Высота — нижняя точка горизонта относительно белых клавиш; отрицательная высота опускает его ниже клавиатуры. Дальность отсчитывается от задней линии клавиш. У выпуклой дуги середина выше, у вогнутой — края.":
+    {
+      en: "Height is the lowest horizon point relative to the white keys; a negative height places it below the keyboard. Distance starts at the back line of the keys. A convex arc rises in the middle; a concave arc rises at the edges."
+    },
+  "Ширина — расстояние между крайними источниками. Радиус меняет изгиб отдельно от ширины и не может быть меньше её половины: слишком малое значение увеличивается до этого предела. В режиме линии радиус сохраняется без изгиба.":
+    {
+      en: "Width is the distance between the outermost sources. Radius controls curvature independently and cannot be less than half the width: smaller values are raised to that limit. Line mode keeps the radius without curving the horizon."
+    },
   "Форма горизонта": { en: "Horizon shape" },
   Линия: { en: "Line" },
   "Выпуклая дуга": { en: "Convex arc" },

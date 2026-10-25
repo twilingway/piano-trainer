@@ -50,7 +50,7 @@ export class ThreeRoadNotes {
       : THREE_ROAD_NOTE_CAPACITY;
     this.contacts = new InstancedBufferAttribute(new Float32Array(this.capacity * 4), 4);
     this.projections = new InstancedBufferAttribute(new Float32Array(this.capacity * 4), 4);
-    this.sizes = new InstancedBufferAttribute(new Float32Array(this.capacity * 3), 3);
+    this.sizes = new InstancedBufferAttribute(new Float32Array(this.capacity * 4), 4);
     this.alphas = new InstancedBufferAttribute(new Float32Array(this.capacity), 1);
     this.colors = new InstancedBufferAttribute(new Float32Array(this.capacity * 3), 3);
     this.matrices = new InstancedBufferAttribute(new Float32Array(this.capacity * 16), 16);
@@ -129,7 +129,7 @@ export class ThreeRoadNotes {
       const centreZ = -(note.top + note.bottom) / 2;
       if (!Number.isFinite(depth) || !Number.isFinite(centreY) || !Number.isFinite(centreZ))
         continue;
-      this.sizes.setXYZ(used, note.width, height, depth);
+      this.sizes.setXYZW(used, note.width, height, depth, note.pitch ?? 0);
       this.projections.setXYZW(
         used,
         note.lane?.scaleX ?? 1,

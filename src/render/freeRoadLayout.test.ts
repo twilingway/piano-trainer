@@ -4,9 +4,15 @@ import {
   freeRoadPoint,
   normalizeFreeRoadLayout,
   DEFAULT_FREE_DIRECT_FIELD,
-  DEFAULT_FREE_PERSPECTIVE_FIELD
+  DEFAULT_FREE_PERSPECTIVE_FIELD,
+  type FreeRoadLane
 } from "./freeRoadLayout";
 
+function laneAt(lanes: readonly FreeRoadLane[], index: number): FreeRoadLane {
+  const lane = lanes.at(index);
+  if (!lane) throw new Error(`Missing lane ${String(index)}`);
+  return lane;
+}
 const contacts = Array.from({ length: 88 }, (_, index) => ({
   pitch: index + 21,
   width: 22,
@@ -20,8 +26,8 @@ describe("metric fixed free-world note sources", () => {
     );
     expect(
       normalizeFreeRoadLayout({ height: Infinity, distance: -1, width: 100, shape: "sphere" })
-    ).toEqual({ height: 2, distance: 0, width: 30, shape: "line" });
-    expect(normalizeFreeRoadLayout({ height: 0 }).height).toBe(0.25);
+    ).toEqual({ height: 2, distance: 0, width: 100, radius: 100, shape: "line" });
+    expect(normalizeFreeRoadLayout({ height: 0 }).height).toBe(0);
   });
   it("uses every selected semitone including black lanes, irrespective of played notes", () => {
     const lanes = freeRoadLanes(contacts, DEFAULT_FREE_PERSPECTIVE_FIELD);
@@ -103,4 +109,97 @@ describe("metric fixed free-world note sources", () => {
       }
     }
   });
+});
+
+it("preserves the recorded large negative-height layout through JSON persistence", () => {
+  const layout = normalizeFreeRoadLayout({
+    height: -30.05,
+    distance: 82.25,
+    width: 95.25,
+    radius: 120,
+    shape: "convex"
+  });
+  expect(normalizeFreeRoadLayout(JSON.parse(JSON.stringify(layout)))).toEqual(layout);
+  expect(layout).toMatchObject({ height: -30.05, distance: 82.25, width: 95.25, radius: 120 });
+  const lanes = freeRoadLanes(contacts, layout);
+  expect(lanes.every((lane) => Object.values(lane.far).every(Number.isFinite))).toBe(true);
+  expect(Math.min(...lanes.map((lane) => lane.far.y))).toBeCloseTo(-30028, 7);
+  expect(laneAt(lanes, -1).far.x - laneAt(lanes, 0).far.x).toBeCloseTo(95250, 6);
+  expect(laneAt(lanes, 0).far.z).toBeCloseTo(-82399.1938, 6);
+});
+
+it.each(["convex", "concave"] as const)(
+  "migrates every old %s source without moving it",
+  (shape) => {
+    const legacy = { height: 2, distance: 4, width: 6, shape };
+    const migrated = normalizeFreeRoadLayout(legacy);
+    expect(migrated.radius).toBe(6);
+    const lanes = freeRoadLanes(contacts, migrated);
+    const minSag = Math.min(
+      ...contacts.map(
+        (lane) => 6000 * (1 - Math.cos(((((lane.pitch - 21) / 87) * 2 - 1) * Math.PI) / 6))
+      )
+    );
+    for (let i = 0; i < lanes.length; i++) {
+      const theta = (((2 * i) / 87 - 1) * Math.PI) / 6;
+      const sag = 6000 * (1 - Math.cos(theta));
+      expect(laneAt(lanes, i).far.x).toBeCloseTo(6000 * Math.sin(theta), 7);
+      expect(laneAt(lanes, i).far.y).toBeCloseTo(
+        2022 + (shape === "convex" ? 6000 * (1 - Math.cos(Math.PI / 6)) - sag : sag - minSag),
+        7
+      );
+    }
+  }
+);
+
+it("changes curvature without moving the chord ends, contacts or distance", () => {
+  const small = freeRoadLanes(contacts, {
+    height: 0,
+    distance: 82.25,
+    width: 95.25,
+    radius: 50,
+    shape: "convex"
+  });
+  const large = freeRoadLanes(contacts, {
+    height: 0,
+    distance: 82.25,
+    width: 95.25,
+    radius: 10000,
+    shape: "convex"
+  });
+  expect(laneAt(small, 0).far).toEqual(laneAt(large, 0).far);
+  expect(laneAt(small, -1).far).toEqual(laneAt(large, -1).far);
+  expect(laneAt(small, 43).far.y).toBeGreaterThan(laneAt(large, 43).far.y + 10000);
+  for (let i = 0; i < small.length; i++) {
+    expect(laneAt(small, i).near).toBe(laneAt(large, i).near);
+    expect(laneAt(small, i).far.z).toBe(laneAt(large, i).far.z);
+  }
+});
+
+it("limits radius to a valid circle while preserving zero height and line settings", () => {
+  expect(
+    normalizeFreeRoadLayout({ height: -1000, distance: 2000, width: 2000, radius: -1 })
+  ).toMatchObject({ height: -100, distance: 1000, width: 1000, radius: 500 });
+  expect(normalizeFreeRoadLayout({ height: 0, width: 6, radius: Number.NaN })).toMatchObject({
+    height: 0,
+    radius: 4
+  });
+  const value = { ...DEFAULT_FREE_DIRECT_FIELD, width: 20, radius: 120 };
+  const line = freeRoadLanes(contacts, value);
+  const alternateRadius = freeRoadLanes(contacts, { ...value, radius: 10 });
+  expect(alternateRadius).toEqual(line);
+  expect(normalizeFreeRoadLayout(value).radius).toBe(120);
+  for (const shape of ["line", "convex", "concave"] as const) {
+    const lanes = freeRoadLanes(contacts.slice(8, 9), {
+      height: -100,
+      distance: 0,
+      width: 1000,
+      radius: 500,
+      shape
+    });
+    expect(laneAt(lanes, 0).far.y).toBe(-99978);
+    expect(Object.values(freeRoadPoint(laneAt(lanes, 0), 0.5, 0, 3)).every(Number.isFinite)).toBe(
+      true
+    );
+  }
 });

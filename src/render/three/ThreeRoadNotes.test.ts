@@ -254,3 +254,27 @@ it("keeps real rounded volume and restores the exact legacy glass material after
   expect(body.material).toBe(solid);
   view.dispose();
 });
+
+it("fits the WebGL2 sixteen-slot attribute budget with lossless pitch packed in note dimensions", () => {
+  const notes = new ThreeRoadNotes(4);
+  notes.setStyle("glass");
+  notes.update([note({ pitch: 61 })], 50);
+  const layers = meshes(notes);
+  for (const mesh of layers) {
+    const size = mesh.geometry.getAttribute("noteSize");
+    expect(size.itemSize).toBe(4);
+    expect(size.getW(0)).toBe(61);
+    expect(size.getX(0)).toBe(20);
+    expect(mesh.geometry.hasAttribute("notePitch")).toBe(false);
+    // Count every geometry attribute conservatively, even normal/UV which the linker can omit.
+    const slots =
+      Object.values(mesh.geometry.attributes).reduce(
+        (sum, attribute) => sum + Math.ceil(attribute.itemSize / 4),
+        0
+      ) +
+      4 +
+      1;
+    expect(slots).toBeLessThanOrEqual(16);
+  }
+  notes.dispose();
+});

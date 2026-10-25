@@ -19,6 +19,10 @@ export class FreeCameraLegend {
     this.setLocale(locale);
   }
 
+  setDocked(on: boolean): void {
+    this.element.dataset.docked = String(on);
+  }
+
   setVisible(on: boolean): void {
     this.element.hidden = !on;
   }

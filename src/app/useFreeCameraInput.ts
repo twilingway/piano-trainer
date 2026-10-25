@@ -1,3 +1,4 @@
+import { interactiveWorldCamera } from "../render/cameraComposition";
 import { useMemo } from "react";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import { FREE_CAMERA_CODES } from "../input/freeCameraMovement";
@@ -11,8 +12,8 @@ export function useFreeCameraInput(
 ) {
   const enabled =
     prefs.keyStyle === "3d" &&
-    prefs.keys &&
-    prefs.freeCamera &&
+    (prefs.keys || (prefs.cameraComposition !== "standard" && prefs.lane)) &&
+    interactiveWorldCamera(prefs.cameraComposition, prefs.freeCamera) &&
     prefs.freeCameraWasd &&
     !prefs.performanceScene &&
     !blocked;

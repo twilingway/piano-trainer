@@ -25,7 +25,10 @@ export class FreeSceneCamera {
   private readonly direction = new Vector3();
   private readonly right = new Vector3();
 
-  constructor(private readonly canvas: HTMLCanvasElement) {
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    private readonly autoFrame = false
+  ) {
     this.touchAction = this.canvas.style.touchAction;
     this.controls = new OrbitControls(this.camera, this.canvas);
     this.controls.disconnect();
@@ -84,14 +87,21 @@ export class FreeSceneCamera {
     if (bounds ? this.roadBounds.equals(bounds) : this.roadBounds.isEmpty()) return;
     if (bounds) this.roadBounds.copy(bounds);
     else this.roadBounds.makeEmpty();
-    this.invalidate(false);
+    this.invalidate(this.autoFrame);
   }
 
   setScoreBounds(bounds: Box3 | undefined): void {
     if (bounds ? this.scoreBounds.equals(bounds) : this.scoreBounds.isEmpty()) return;
     if (bounds) this.scoreBounds.copy(bounds);
     else this.scoreBounds.makeEmpty();
-    this.invalidate(false);
+    this.invalidate(this.autoFrame);
+  }
+
+  setFov(value: number): void {
+    const fov = Number.isFinite(value) ? Math.max(20, Math.min(100, value)) : 45;
+    if (this.camera.fov === fov) return;
+    this.camera.fov = fov;
+    this.camera.updateProjectionMatrix();
   }
 
   setMovement(on: boolean): void {
@@ -104,6 +114,7 @@ export class FreeSceneCamera {
     if (this.camera.aspect !== aspect) {
       this.camera.aspect = aspect;
       this.camera.updateProjectionMatrix();
+      if (this.autoFrame) this.invalidate();
     }
     if (this.needsBounds) this.reset(subject, this.needsReset);
     const { forward, right } = this.movement.axes;
