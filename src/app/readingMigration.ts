@@ -1,3 +1,5 @@
+import { validateMusicResult } from "../musicLearning/progressValidation";
+import { emptyMusicState } from "./musicPersistence";
 import type { ReadingPersistentField } from "./readingPersistentFields";
 export { changedReadingFields, type ReadingPersistentField } from "./readingPersistentFields";
 import { emptyIndependentRhythmState } from "./independentRhythmPersistence";
@@ -185,8 +187,9 @@ function migrateResult(value: ReadingResult): ReadingResult {
 
 export function emptyReadingState(): ReadingState {
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     activeCourse: null,
+    music: emptyMusicState(),
     intervals: emptyIntervalState(),
     rhythm: emptyRhythmState(),
     bass: emptyBassState(),
@@ -209,22 +212,23 @@ export function normalizeReadingState(value: unknown): {
   reading: ReadingState;
   invalid: boolean;
   blocked: boolean;
+  repairable: boolean;
 } {
   const reading = emptyReadingState();
-  if (value === undefined) return { reading, invalid: false, blocked: false };
+  if (value === undefined) return { reading, invalid: false, blocked: false, repairable: false };
   const row = object(value);
-  if (typeof row.schemaVersion === "number" && row.schemaVersion > 8)
-    return { reading, invalid: false, blocked: true };
+  if (typeof row.schemaVersion === "number" && row.schemaVersion > 9)
+    return { reading, invalid: false, blocked: true, repairable: false };
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
     (row.schemaVersion !== undefined &&
-      ![1, 2, 3, 4, 5, 6, 7, 8].includes(row.schemaVersion as number))
+      ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(row.schemaVersion as number))
   )
-    return { reading, invalid: true, blocked: false };
+    return { reading, invalid: true, blocked: false, repairable: false };
   reading.task = task(row.task) ? row.task : null;
-  const modern = [3, 4, 5, 6, 7, 8].includes(row.schemaVersion as number);
+  const modern = [3, 4, 5, 6, 7, 8, 9].includes(row.schemaVersion as number);
   const { invalid: coursesInvalid, ...courses } = normalizeReadingCourses(row, reading.task);
   Object.assign(reading, courses);
   reading.seed = finite(row.seed) ? row.seed >>> 0 : 1;
@@ -293,7 +297,21 @@ export function normalizeReadingState(value: unknown): {
       fingerprints.push(result.notes.map((note) => note.expectedMidi).join(","));
   }
   reading.presentedFingerprints = readingJournal(fingerprints);
-  return { reading, invalid, blocked: false };
+  const musicRow = object(row.music);
+  const musicHistory = Array.isArray(musicRow.history) ? musicRow.history : [];
+  // Only individual schema9 music-history records may be repaired. Other corruption stays protected.
+  const repairable =
+    invalid &&
+    row.schemaVersion === 9 &&
+    musicHistory.some((result) => validateMusicResult(result) === null) &&
+    !normalizeReadingState({
+      ...row,
+      music: {
+        ...musicRow,
+        history: musicHistory.filter((result) => validateMusicResult(result) !== null)
+      }
+    }).invalid;
+  return { reading, invalid, blocked: false, repairable };
 }
 
 export function mergeReadingState(
@@ -302,6 +320,22 @@ export function mergeReadingState(
   fields: readonly ReadingPersistentField[] = [
     "selection",
     "activeCourse",
+    "musicSelection",
+    "musicPurpose",
+    "musicInputSource",
+    "musicSourceFilter",
+    "musicSightPreviewSeconds",
+    "musicSightLevel",
+    "musicHarmonyLesson",
+    "musicHarmonyMode",
+    "musicHarmonyAural",
+    "musicHarmonyRoot",
+    "musicHarmonyQuality",
+    "musicHarmonyInversion",
+    "musicHarmonyProgression",
+    "musicDictationLength",
+    "musicDictationStartMode",
+    "musicIntegrated",
     "intervalSelection",
     "intervalSourceFilter",
     "rhythmSelection",
@@ -342,7 +376,7 @@ export function mergeReadingState(
     ).values()
   ].sort((a, b) => (a.completedAt ?? a.createdAt) - (b.completedAt ?? b.createdAt));
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     activeCourse: fields.includes("activeCourse") ? incoming.activeCourse : saved.activeCourse,
     ...(courses as unknown as ReadingCourseStates),
     selectionRevision: incoming.selectionRevision,

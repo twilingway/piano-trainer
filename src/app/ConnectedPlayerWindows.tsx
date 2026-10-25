@@ -1,3 +1,4 @@
+import { ConnectedMusicCards } from "./ConnectedMusicCourse";
 import { shallowEqual } from "react-redux";
 import { useState } from "react";
 import { WindowViewMemory } from "../ui/windowViewMemory";
@@ -141,6 +142,7 @@ function ConnectedLibraryWindow({
       previousLessons={PREVIOUS_COURSE_LESSONS}
       course={
         <>
+          <ConnectedMusicCards onChoose={onClose} />
           <ConnectedReadingCard onChoose={onClose} />
           <ConnectedBassReadingCard onChoose={onClose} />
           <ConnectedTwoHandCard onChoose={onClose} />

@@ -6,13 +6,15 @@ import { rhythmCourse } from "./rhythmPolicy";
 import { pairCourse } from "./twoHandPolicy";
 import { heldBassCourse } from "./heldBassPolicy";
 import { independentRhythmCourse } from "./independentRhythmPolicy";
+import { musicCourse } from "./musicPolicy";
 
 const COURSES: { readonly [K in CourseKind]: (policy: CoursePolicies[K]) => TrainerCourse } = {
   reading: readingCourse,
   rhythm: rhythmCourse,
   pair: pairCourse,
   heldBass: heldBassCourse,
-  independentRhythm: independentRhythmCourse
+  independentRhythm: independentRhythmCourse,
+  music: musicCourse
 };
 
 /** One exclusive course; physical ownership crosses load and phase boundaries. */

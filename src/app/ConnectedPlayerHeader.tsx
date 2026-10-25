@@ -10,6 +10,7 @@ import { COURSE_STAGE_LABELS } from "../ui/CourseCards";
 import { stagePhrases } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedCourseLessonBar } from "./ConnectedCourse";
+import { MUSIC_COURSE_LABELS } from "../ui/MusicCourse";
 import { READING_TASK_LABELS } from "../ui/ReadingCourse";
 import { BASS_READING_TASK_LABELS } from "../ui/BassReadingProgress";
 import { INTERVAL_MODE_LABELS } from "../ui/IntervalCourse";
@@ -51,7 +52,8 @@ export function ConnectedPlayerHeader() {
     independentRhythmActive,
     rhythmActive,
     intervalMode,
-    practiceActive
+    practiceActive,
+    musicCourse
   } = useRuntimeSelector(
     (runtime) => ({
       sound: runtime.sound,
@@ -85,7 +87,8 @@ export function ConnectedPlayerHeader() {
       independentRhythmActive: runtime.independentRhythm.active,
       rhythmActive: runtime.rhythm.active,
       intervalMode: runtime.intervals.active ? runtime.intervals.mode : null,
-      practiceActive: runtime.practiceActive
+      practiceActive: runtime.practiceActive,
+      musicCourse: runtime.music.active ? runtime.music.view.course : null
     }),
     shallowEqual
   );
@@ -115,23 +118,25 @@ export function ConnectedPlayerHeader() {
           source={trainerSnapshotSource}
           song={wordPracticeSong}
           title={
-            independentRhythmActive
-              ? t(INDEPENDENT_RHYTHM_TITLE)
-              : heldBassActive
-                ? t(HELD_BASS_TITLE)
-                : twoHandActive
-                  ? t(TWO_HAND_TITLE)
-                  : rhythmActive
-                    ? t("Ритм под метроном")
-                    : intervalMode
-                      ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
-                      : readingTask
-                        ? readingIsBass && readingTask !== "check"
-                          ? t(BASS_READING_TASK_LABELS[readingTask])
-                          : `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
-                        : courseActive
-                          ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
-                          : lessonDisplayTitle(song.title, currentLesson, t)
+            musicCourse
+              ? t(MUSIC_COURSE_LABELS[musicCourse])
+              : independentRhythmActive
+                ? t(INDEPENDENT_RHYTHM_TITLE)
+                : heldBassActive
+                  ? t(HELD_BASS_TITLE)
+                  : twoHandActive
+                    ? t(TWO_HAND_TITLE)
+                    : rhythmActive
+                      ? t("Ритм под метроном")
+                      : intervalMode
+                        ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
+                        : readingTask
+                          ? readingIsBass && readingTask !== "check"
+                            ? t(BASS_READING_TASK_LABELS[readingTask])
+                            : `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
+                          : courseActive
+                            ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
+                            : lessonDisplayTitle(song.title, currentLesson, t)
           }
           playing={playing}
           countdownActive={countdown != null}
