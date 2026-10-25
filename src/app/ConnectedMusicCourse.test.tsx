@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, type ReactNode } from "react";
+import { act, createContext, useContext, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { retargetMusicResultFixture } from "../musicLearning/progressFixture";
@@ -12,16 +12,22 @@ import { setInterfaceLanguage } from "./interfaceLanguage";
 import { emptyMusicState } from "./musicPersistence";
 import type { PlayerRuntime } from "./PlayerRuntimeProvider";
 import type { MusicCourseHook } from "./useMusicCourse";
+import { useMusicCourse } from "./useMusicCourse";
+import { createAppStore, type AppStore } from "./store";
+import { createMemoryReadingRepository } from "./readingRepository";
+import { withTestStore } from "./storeTestSupport";
 import { ConnectedMusicCards, ConnectedMusicPractice } from "./ConnectedMusicCourse";
 
-const state = vi.hoisted(() => ({ runtime: null as PlayerRuntime | null }));
+const RuntimeTestContext = createContext<PlayerRuntime | null>(null);
 vi.mock("./PlayerRuntimeProvider", () => ({
   useRuntimeSelector: <Value,>(select: (runtime: PlayerRuntime) => Value) => {
-    if (!state.runtime) throw new Error("Missing test runtime");
-    return select(state.runtime);
+    const runtime = useContext(RuntimeTestContext);
+    if (!runtime) throw new Error("Missing test runtime");
+    return select(runtime);
   }
 }));
 let host: HTMLDivElement, root: Root;
+let store: AppStore;
 function music(): MusicCourseHook {
   const saved = emptyMusicState();
   return {
@@ -55,6 +61,12 @@ function music(): MusicCourseHook {
     preferences: saved,
     history: [],
     integrated: null,
+    progressOpen: false,
+    setProgressOpen: vi.fn(),
+    courseFilter: "all",
+    setCourseFilter: vi.fn(),
+    purposeFilter: "all",
+    setPurposeFilter: vi.fn(),
     command: vi.fn(),
     choose: vi.fn(),
     setPreferences: vi.fn(),
@@ -63,11 +75,25 @@ function music(): MusicCourseHook {
     refreshConnection: vi.fn()
   };
 }
+function RuntimeTestOwner({ children, value }: { children: ReactNode; value: MusicCourseHook }) {
+  const owner = useMusicCourse();
+  const runtime = {
+    music: {
+      ...value,
+      progressOpen: owner.progressOpen,
+      setProgressOpen: owner.setProgressOpen,
+      courseFilter: owner.courseFilter,
+      setCourseFilter: owner.setCourseFilter,
+      purposeFilter: owner.purposeFilter,
+      setPurposeFilter: owner.setPurposeFilter
+    }
+  } as unknown as PlayerRuntime;
+  return <RuntimeTestContext.Provider value={runtime}>{children}</RuntimeTestContext.Provider>;
+}
 async function render(node: ReactNode, value: MusicCourseHook) {
-  state.runtime = { music: value } as unknown as PlayerRuntime;
   await act(async () => {
     await Promise.resolve();
-    root.render(node);
+    root.render(withTestStore(<RuntimeTestOwner value={value}>{node}</RuntimeTestOwner>, store));
   });
 }
 async function click(node: HTMLElement) {
@@ -81,12 +107,17 @@ function button(text: string): HTMLButtonElement {
   if (!node) throw new Error(`Missing button: ${text}`);
   return node;
 }
-beforeEach(() => {
+beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   setInterfaceLanguage("ru");
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
+  store = createAppStore({
+    storage: { getItem: () => null, setItem: () => undefined },
+    readingRepository: createMemoryReadingRepository()
+  });
+  await store.readingPersistenceReady;
 });
 afterEach(async () => {
   await act(async () => {
@@ -95,7 +126,6 @@ afterEach(async () => {
   });
   host.remove();
   vi.unstubAllGlobals();
-  state.runtime = null;
 });
 
 function progressSelect(index: number): HTMLSelectElement {
@@ -166,6 +196,99 @@ describe("connected music catalog and practice", () => {
 });
 
 describe("connected persisted music progress", () => {
+  it("keeps library-only presentation in its live hook owner across child unmounts without learning actions", async () => {
+    const value = music(),
+      close = vi.fn();
+    const initial = store.getState();
+    const dispatch = vi.spyOn(store, "dispatch");
+    const claim = vi.spyOn(store, "claimReadingMaterial");
+    await render(<ConnectedMusicCards onChoose={close} />, value);
+    await click(button("Мой музыкальный прогресс"));
+    await changeProgress(0, "harmony");
+    await changeProgress(2, "control");
+    await render(null, value);
+    expect(host.querySelector(".music-course-progress")).toBeNull();
+    await render(<ConnectedMusicCards onChoose={close} />, value);
+    expect(host.querySelector(".music-course-progress")).not.toBeNull();
+    expect(progressSelect(0).value).toBe("harmony");
+    expect(progressSelect(2).value).toBe("control");
+    await click(button("Мой музыкальный прогресс"));
+    await render(null, value);
+    await render(<ConnectedMusicCards onChoose={close} />, value);
+    expect(host.querySelector(".music-course-progress")).toBeNull();
+    await click(button("Мой музыкальный прогресс"));
+    expect(progressSelect(0).value).toBe("harmony");
+    expect(progressSelect(2).value).toBe("control");
+    expect(store.getState()).toBe(initial);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(claim).not.toHaveBeenCalled();
+    expect(value.setPreferences).not.toHaveBeenCalled();
+    expect(value.open).not.toHaveBeenCalled();
+    expect(value.command).not.toHaveBeenCalled();
+    expect(value.cancel).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+    dispatch.mockRestore();
+    claim.mockRestore();
+  });
+  it("isolates progress visibility and filters between two live hook owners", async () => {
+    const value = music();
+    const renderOwners = async (open: boolean) => {
+      await act(async () => {
+        await Promise.resolve();
+        root.render(
+          withTestStore(
+            <>
+              <RuntimeTestOwner value={value}>
+                <section data-owner="first">
+                  {open && <ConnectedMusicCards onChoose={() => undefined} />}
+                </section>
+              </RuntimeTestOwner>
+              <RuntimeTestOwner value={value}>
+                <section data-owner="second">
+                  {open && <ConnectedMusicCards onChoose={() => undefined} />}
+                </section>
+              </RuntimeTestOwner>
+            </>,
+            store
+          )
+        );
+      });
+    };
+    await renderOwners(true);
+    const first = host.querySelector("[data-owner=first]"),
+      second = host.querySelector("[data-owner=second]");
+    if (!first || !second) throw new Error("Missing music owners");
+    const progressButton = [...first.querySelectorAll("button")].find(
+      (node) => node.textContent === "Мой музыкальный прогресс"
+    );
+    if (!progressButton) throw new Error("Missing progress action");
+    await click(progressButton);
+    const filters = first.querySelectorAll("select");
+    await act(async () => {
+      await Promise.resolve();
+      const course = filters[0],
+        purpose = filters[2];
+      if (!course || !purpose) throw new Error("Missing filters");
+      course.value = "dictation";
+      course.dispatchEvent(new Event("change", { bubbles: true }));
+      purpose.value = "training";
+      purpose.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await renderOwners(false);
+    await renderOwners(true);
+    expect(first.querySelectorAll("select")[0]?.value).toBe("dictation");
+    expect(first.querySelectorAll("select")[2]?.value).toBe("training");
+    expect(second.querySelector(".music-course-progress")).toBeNull();
+    const secondProgress = [...second.querySelectorAll("button")].find(
+      (node) => node.textContent === "Мой музыкальный прогресс"
+    );
+    if (!secondProgress) throw new Error("Missing second progress action");
+    await click(secondProgress);
+    expect(second.querySelectorAll("select")[0]?.value).toBe("all");
+    expect(second.querySelectorAll("select")[2]?.value).toBe("all");
+    expect(value.open).not.toHaveBeenCalled();
+    expect(value.command).not.toHaveBeenCalled();
+  });
   it.each(["sight-reading", "dictation"] as const)(
     "shows persisted %s reference and reply notes without reopening the course",
     async (course) => {
