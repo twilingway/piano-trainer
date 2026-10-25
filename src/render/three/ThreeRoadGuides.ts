@@ -15,11 +15,24 @@ import type { KeyBox } from "./keyBoxes";
 
 export const ROAD_BEAT_GUIDE_LIMIT = 128;
 const LANE_LIMIT = 89;
+const DOCKED_SEGMENTS = 16;
 const GUIDE_COLOR = 0x2f7bff;
 
 function lines(positions: Float32Array, opacity: number): LineSegments {
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new BufferAttribute(positions, 3).setUsage(DynamicDrawUsage));
+  geometry.setAttribute(
+    "roadDockProgress",
+    new BufferAttribute(new Float32Array(positions.length / 3), 1).setUsage(DynamicDrawUsage)
+  );
+  geometry.setAttribute(
+    "roadDockAnchor",
+    new BufferAttribute(new Float32Array(positions.length), 3).setUsage(DynamicDrawUsage)
+  );
+  geometry.setAttribute(
+    "roadDockPitch",
+    new BufferAttribute(new Float32Array(positions.length / 3), 1).setUsage(DynamicDrawUsage)
+  );
   geometry.setDrawRange(0, 0);
   const material = new LineBasicMaterial({
     color: GUIDE_COLOR,
@@ -36,9 +49,13 @@ function lines(positions: Float32Array, opacity: number): LineSegments {
 /** Native road lanes and measure bars; inputs already carry the session's current beat depths. */
 export class ThreeRoadGuides {
   readonly group = new Group();
-  private readonly whitePositions = new Float32Array(LANE_LIMIT * 6);
-  private readonly blackPositions = new Float32Array(LANE_LIMIT * 6);
+  private readonly whitePositions = new Float32Array(LANE_LIMIT * 6 * DOCKED_SEGMENTS);
+  private readonly blackPositions = new Float32Array(LANE_LIMIT * 6 * DOCKED_SEGMENTS);
   private readonly beatPositions = new Float32Array(ROAD_BEAT_GUIDE_LIMIT * 6 * (LANE_LIMIT - 1));
+  private docked = false;
+  private readonly anchorBuffers = new Map<Float32Array, BufferAttribute>();
+  private readonly pitchBuffers = new Map<Float32Array, BufferAttribute>();
+  private readonly progressBuffers = new Map<Float32Array, BufferAttribute>();
   private readonly whiteLanes = lines(this.whitePositions, 0.38);
   private readonly blackLanes = lines(this.blackPositions, 0.12);
   private readonly beats = lines(this.beatPositions, 0.4);
@@ -70,7 +87,42 @@ export class ThreeRoadGuides {
   private valid = false;
   private disposed = false;
 
+  setDocked(on: boolean): void {
+    if (this.docked === on) return;
+    this.docked = on;
+    this.camera = undefined;
+  }
   constructor() {
+    for (const [positions, item] of [
+      [this.whitePositions, this.whiteLanes],
+      [this.blackPositions, this.blackLanes],
+      [this.beatPositions, this.beats]
+    ] as const) {
+      this.anchorBuffers.set(
+        positions,
+        item.geometry.getAttribute("roadDockAnchor") as BufferAttribute
+      );
+      this.pitchBuffers.set(
+        positions,
+        item.geometry.getAttribute("roadDockPitch") as BufferAttribute
+      );
+      this.progressBuffers.set(
+        positions,
+        item.geometry.getAttribute("roadDockProgress") as BufferAttribute
+      );
+    }
+    this.sources.geometry.setAttribute(
+      "roadDockAnchor",
+      new BufferAttribute(new Float32Array(88 * 3), 3)
+    );
+    this.sources.geometry.setAttribute(
+      "roadDockPitch",
+      new BufferAttribute(new Float32Array(88), 1)
+    );
+    this.sources.geometry.setAttribute(
+      "roadDockProgress",
+      new BufferAttribute(new Float32Array(88).fill(1), 1)
+    );
     this.sources.geometry.setAttribute("position", this.sourcePositions);
     this.sources.geometry.setDrawRange(0, 0);
     this.sources.frustumCulled = false;
@@ -110,6 +162,9 @@ export class ThreeRoadGuides {
       for (let index = 0; index < this.sourceCount; index++) {
         const point = routes?.[index]?.far;
         if (point) this.sourcePositions.setXYZ(index, point.x, point.y, point.z);
+        this.sources.geometry
+          .getAttribute("roadDockPitch")
+          .setX(index, routes?.[index]?.pitch ?? 0);
       }
       this.sourcePositions.needsUpdate = true;
     }
@@ -149,6 +204,10 @@ export class ThreeRoadGuides {
     }
     this.beats.geometry.setDrawRange(0, used * 2);
     this.beats.geometry.getAttribute("position").needsUpdate = true;
+    for (const attribute of this.progressBuffers.values()) attribute.needsUpdate = true;
+    for (const attribute of this.pitchBuffers.values()) attribute.needsUpdate = true;
+    for (const attribute of this.anchorBuffers.values()) attribute.needsUpdate = true;
+    this.sources.geometry.getAttribute("roadDockPitch").needsUpdate = true;
   }
 
   private layout(boxes: readonly KeyBox[], camera: WorldCamera): void {
@@ -173,13 +232,16 @@ export class ThreeRoadGuides {
       this.left = Math.min(this.left, left);
       this.right = Math.max(this.right, right);
       const count = box.black ? this.blackCount : this.whiteCount;
-      if (count < LANE_LIMIT) {
+      if (count < LANE_LIMIT * DOCKED_SEGMENTS) {
         const route = this.routes?.find((lane) => lane.pitch === box.pitch);
         if (route) {
           const positions = box.black ? this.blackPositions : this.whitePositions;
-          const offset = (box.black ? this.blackCount++ : this.whiteCount++) * 6;
-          this.routePoint(positions, offset, route, 1);
-          this.routePoint(positions, offset + 3, route, 0);
+          const segments = this.docked ? DOCKED_SEGMENTS : 1;
+          for (let i = 0; i < segments; i++) {
+            const offset = (box.black ? this.blackCount++ : this.whiteCount++) * 6;
+            this.routePoint(positions, offset, route, 1 - i / segments);
+            this.routePoint(positions, offset + 3, route, 1 - (i + 1) / segments);
+          }
         } else if (!this.routes?.length) this.lane(box.x, box.black, camera);
       }
     }
@@ -206,6 +268,10 @@ export class ThreeRoadGuides {
     positions[offset] = point.x;
     positions[offset + 1] = point.y;
     positions[offset + 2] = point.z;
+    this.progressBuffers.get(positions)?.setX(offset / 3, progress);
+    this.pitchBuffers.get(positions)?.setX(offset / 3, lane.pitch);
+    const anchor = freeRoadPoint(lane, 0, 0, 0.025);
+    this.anchorBuffers.get(positions)?.setXYZ(offset / 3, anchor.x, anchor.y, anchor.z);
   }
 
   private point(
@@ -231,6 +297,9 @@ export class ThreeRoadGuides {
     positions[offset] = point.x;
     positions[offset + 1] = point.y;
     positions[offset + 2] = -point.z;
+    this.progressBuffers
+      .get(positions)
+      ?.setX(offset / 3, (z - contact.z) / Math.max(0.000001, camera.roadFarZ - contact.z));
   }
 
   clear(): void {

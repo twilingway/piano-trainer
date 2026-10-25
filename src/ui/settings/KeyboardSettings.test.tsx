@@ -402,3 +402,63 @@ it.each(["filled", "flat", "glass"] as const)(
     expect(host.querySelector('select[aria-label="Оформление нот"]')).toBeNull();
   }
 );
+
+describe("camera compositions", () => {
+  it("changes the composition and world FOV without invoking musical or keyboard camera actions", () => {
+    const onCameraComposition = vi.fn(),
+      onWorldFov = vi.fn(),
+      onCamera = vi.fn();
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          cameraComposition="free"
+          onCameraComposition={onCameraComposition}
+          worldFov={67}
+          onWorldFov={onWorldFov}
+          onCamera={onCamera}
+        />
+      );
+    });
+    const select = host.querySelector<HTMLSelectElement>(
+      '[data-setting-target="camera-composition"]'
+    );
+    const fov = host.querySelector<HTMLInputElement>('[data-setting-target="world-fov"]');
+    expect(select?.value).toBe("free");
+    expect(fov?.value).toBe("67");
+    act(() => {
+      if (select) {
+        select.value = "game";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+    expect(onCameraComposition).toHaveBeenCalledWith("game");
+    act(() => {
+      if (fov) {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(fov, "80");
+        fov.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    expect(onWorldFov).toHaveBeenCalledWith(80);
+    expect(onCamera).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-setting-target="free-source-height"]')).not.toBeNull();
+  });
+  it("explains performance camera priority and translates the composition selector", () => {
+    setInterfaceLanguage("en");
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          cameraComposition="game"
+          onCameraComposition={vi.fn()}
+          performanceScene
+        />
+      );
+    });
+    const select = host.querySelector<HTMLSelectElement>('[aria-label="3D composition"]');
+    expect(select?.disabled).toBe(true);
+    expect(select?.textContent).toContain("Game frame");
+    expect(host.textContent).toContain("Your composition returns");
+    setInterfaceLanguage("ru");
+  });
+});

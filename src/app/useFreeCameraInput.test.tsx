@@ -60,3 +60,51 @@ it.each<Partial<StaffPrefs>>([
   expect(result.enabled).toBe(false);
   expect(result.keyboard).toBe(options);
 });
+
+it.each([
+  ["game", false],
+  ["free", true]
+] as const)("reserves WASD according to composition %s", (cameraComposition, enabled) => {
+  act(() => {
+    root.render(
+      <Harness prefs={{ ...enabledPrefs, freeCamera: false, cameraComposition }} blocked={false} />
+    );
+  });
+  expect(result.enabled).toBe(enabled);
+  expect(result.keyboard.reservedCodes).toBe(enabled ? FREE_CAMERA_CODES : undefined);
+});
+
+it("keeps WASD reserved while a nonstandard free world is visible without keys", () => {
+  act(() => {
+    root.render(
+      <Harness
+        prefs={{
+          ...enabledPrefs,
+          freeCamera: false,
+          cameraComposition: "free",
+          keys: false,
+          lane: true
+        }}
+        blocked={false}
+      />
+    );
+  });
+  expect(result.enabled).toBe(true);
+  expect(result.keyboard.reservedCodes).toBe(FREE_CAMERA_CODES);
+  act(() => {
+    root.render(
+      <Harness
+        prefs={{
+          ...enabledPrefs,
+          freeCamera: false,
+          cameraComposition: "free",
+          keys: false,
+          lane: false
+        }}
+        blocked={false}
+      />
+    );
+  });
+  expect(result.enabled).toBe(false);
+  expect(result.keyboard.reservedCodes).toBeUndefined();
+});

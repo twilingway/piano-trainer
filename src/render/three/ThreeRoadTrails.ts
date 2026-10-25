@@ -19,7 +19,6 @@ const NO_ANCHORS: readonly WorldRoadNote[] = [];
 
 const VERTEX = /* glsl */ `
 ${NOTE_LANE_SHADER}
-attribute vec3 noteSize;
 attribute float noteAlpha;
 varying vec2 vUv;
 varying vec3 vTint;
@@ -29,7 +28,7 @@ void main() {
   vTint = instanceColor;
   vAlpha = noteAlpha;
   vec3 point = vec3(position.x * noteSize.x, 0.0, -position.y * noteSize.z);
-  gl_Position = projectNoteLane(projectRoadPoint(vec4(point, 1.0)));
+  gl_Position = projectRoadLanePoint(vec4(point, 1.0));
 }
 `;
 const FRAGMENT = /* glsl */ `
@@ -77,8 +76,8 @@ export class ThreeRoadTrails {
     4
   );
   private readonly sizes = new InstancedBufferAttribute(
-    new Float32Array(ROAD_TRAIL_CAPACITY * 3),
-    3
+    new Float32Array(ROAD_TRAIL_CAPACITY * 4),
+    4
   );
   private readonly alphas = new InstancedBufferAttribute(new Float32Array(ROAD_TRAIL_CAPACITY), 1);
   private readonly mesh = new InstancedMesh(this.geometry, this.material, ROAD_TRAIL_CAPACITY);
@@ -128,7 +127,7 @@ export class ThreeRoadTrails {
     for (let index = 0; index < used; index++) {
       const trail = this.selection.trails[index];
       if (!trail) continue;
-      this.sizes.setXYZ(index, trail.width, 0, trail.top - trail.bottom);
+      this.sizes.setXYZW(index, trail.width, 0, trail.top - trail.bottom, trail.pitch ?? 0);
       this.projections.setXYZW(
         index,
         trail.lane?.scaleX ?? 1,

@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   dispose: vi.fn(),
   loadKit: vi.fn(),
   loadHand: vi.fn(),
+  setCameraComposition: vi.fn(),
+  setWorldFov: vi.fn(),
   setFreeCamera: vi.fn(),
   resetFreeCamera: vi.fn(),
   freeKeyAt: vi.fn(),
@@ -60,6 +62,9 @@ vi.mock("./ThreeStage", () => ({
     get projectionGeometryOnly() {
       return mocks.projectionGeometryOnly;
     }
+    setCameraComposition = mocks.setCameraComposition;
+    setWorldFov = mocks.setWorldFov;
+    setFreeCameraMovement = vi.fn();
     setPerformanceScene = vi.fn();
     draw(...args: unknown[]): void {
       mocks.draw.apply(this, args);
@@ -1122,3 +1127,23 @@ it.each(["loading", "failed"])(
     view.host.destroy();
   }
 );
+
+it("does not reconnect a saved docked camera after leaving native 3D", async () => {
+  const view = fixture();
+  view.host.setCameraComposition("free");
+  view.host.setWorldFov(73);
+  await view.host.setEnabled(true);
+  view.host.setFreeCamera(true);
+  view.tick();
+  expect(mocks.setCameraComposition).toHaveBeenLastCalledWith("free");
+  expect(mocks.setWorldFov).toHaveBeenLastCalledWith(73);
+  await view.host.setEnabled(false, true);
+  view.host.setCameraComposition("free");
+  view.tick();
+  expect(mocks.setCameraComposition).toHaveBeenLastCalledWith("standard");
+  expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
+  await view.host.setEnabled(true);
+  view.tick();
+  expect(mocks.setCameraComposition).toHaveBeenLastCalledWith("free");
+  view.host.destroy();
+});

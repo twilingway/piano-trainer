@@ -1,3 +1,4 @@
+import { DOCKED_ROAD_SHADER } from "./dockedRoadProjection";
 import type { FreeRoadPoint } from "./freeRoadLayout";
 import type { Projected } from "./perspective";
 import type { WorldCamera } from "./worldCamera";
@@ -45,12 +46,29 @@ export function projectNoteLane(point: Projected, lane?: NoteLaneProjection): Pr
 
 /** The same correction is shared by every visible layer, including screen-space halo corners. */
 export const NOTE_LANE_SHADER = /* glsl */ `
+${DOCKED_ROAD_SHADER}
 attribute vec4 noteProjection;
 uniform vec4 roadWidth;
 attribute vec4 noteContact;
 uniform float roadVertical;
 uniform float roadFreeDepth;
 uniform float roadFree;
+uniform float roadDockEnabled;
+uniform float roadDockOffsets[88];
+uniform vec4 roadDockY;
+#ifdef NOTE_META_PACKED
+attribute vec2 noteAlphaPitch;
+#define notePitch noteAlphaPitch.y
+#define noteAlpha noteAlphaPitch.x
+#else
+attribute vec4 noteSize;
+#define notePitch noteSize.w
+#endif
+uniform mat4 roadDockTransform;
+uniform mat4 roadDockInverse;
+float roadNoteProgress(float localZ) {
+  return (noteProjection.w - localZ - noteContact.y) / max(roadWidth.y - noteContact.y, 0.000001);
+}
 vec4 roadInstancePoint(vec4 localPoint) {
   vec4 point = instanceMatrix * localPoint;
   float t = clamp((noteProjection.w - localPoint.z - noteContact.y) / max(roadWidth.y - noteContact.y, 0.000001), 0.0, 1.0);
@@ -58,7 +76,7 @@ vec4 roadInstancePoint(vec4 localPoint) {
     float progress = (noteProjection.w-localPoint.z-noteContact.y) / max(roadWidth.y-noteContact.y,0.000001);
     vec3 origin = vec3(instanceMatrix[3].x,noteContact.x,-noteContact.y);
     vec3 direction = vec3(noteContact.z,noteContact.w,roadFreeDepth)-origin;
-    vec3 normal = normalize(vec3(0.0,-direction.z,direction.y));
+    vec3 normal = vec3(0.0,-direction.z,direction.y) / max(length(direction.yz), 0.000001);
     vec3 routed = origin+direction*progress+vec3(point.x-origin.x,0.0,0.0)+normal*(point.y-noteContact.x);
     return vec4(routed,1.0);
   }
@@ -73,9 +91,24 @@ vec4 roadInstancePoint(vec4 localPoint) {
 vec4 projectRoadPoint(vec4 localPoint) {
   return projectionMatrix * modelViewMatrix * roadInstancePoint(localPoint);
 }
-vec4 projectNoteLane(vec4 point) {
+vec4 projectNoteLane(vec4 point, float localZ) {
+  if (roadDockEnabled > 0.0) {
+    vec4 local = roadDockInverse * point;
+    vec2 origin = vec2(noteContact.x, -noteContact.y);
+    vec2 direction = vec2(noteContact.w, roadFreeDepth) - origin;
+    float progress = roadNoteProgress(localZ);
+    vec3 contact = local.xyz / max(abs(local.w), 0.000001)
+      - vec3(noteContact.z - instanceMatrix[3].x, direction) * progress;
+    vec4 anchor = projectionMatrix * modelViewMatrix * vec4(contact, 1.0);
+    vec4 pinned = roadDockTransform * anchor;
+    if (notePitch >= 21.0 && notePitch <= 108.0) pinned += roadDockY * roadDockOffsets[int(floor(notePitch + 0.5)) - 21];
+    return anchorRelativeRoadClip(point, anchor, pinned, progress);
+  }
   point.x = noteProjection.x * point.x + noteProjection.y * point.w;
   point.y += noteProjection.z * point.w;
   return point;
+}
+vec4 projectRoadLanePoint(vec4 localPoint) {
+  return projectNoteLane(projectRoadPoint(localPoint), localPoint.z);
 }
 `;

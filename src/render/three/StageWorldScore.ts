@@ -25,7 +25,8 @@ export class StageWorldScore extends WorldScorePoster {
     keys: KeysScene,
     boxes: readonly KeyBox[],
     enabled: boolean,
-    field?: Partial<Pick<ThreeRoadFrame, "freeLayout" | "freeLanes">>
+    field?: Partial<Pick<ThreeRoadFrame, "freeLayout" | "freeLanes">>,
+    activeCamera = this.free
   ): void {
     const camera = keys.roadCamera ?? keys.camera;
     const centre = ((boxes[0]?.x ?? 0) + (boxes.at(-1)?.x ?? 0)) / 2;
@@ -39,7 +40,9 @@ export class StageWorldScore extends WorldScorePoster {
     this.root.position.copy(this.parent.position);
     this.root.scale.copy(this.parent.scale);
     this.root.updateMatrixWorld(true);
-    this.free.setScoreBounds(this.group.visible ? this.structuralBounds(this.bounds) : undefined);
+    activeCamera.setScoreBounds(
+      this.group.visible ? this.structuralBounds(this.bounds) : undefined
+    );
   }
   override dispose(): void {
     super.dispose();

@@ -22,6 +22,18 @@ function fixture() {
   const picture = new Texture();
   const stage = Object.create(ThreeStage.prototype) as ThreeStage;
   Object.assign(stage, {
+    composition: "standard",
+    freeEnabled: false,
+    performanceEnabled: false,
+    game: {
+      setRoadBounds: vi.fn(),
+      dispose: vi.fn(),
+      invalidate: vi.fn(),
+      setFov: vi.fn(),
+      update: vi.fn(),
+      camera: new Camera()
+    },
+    dockedLabels: { prepare: vi.fn(), draw: vi.fn(), suspend: vi.fn(), dispose: vi.fn() },
     scorePoster: { draw: vi.fn(), dispose: vi.fn(), setSource: vi.fn() },
     version: 1,
     disposed: false,
@@ -41,7 +53,7 @@ function fixture() {
     roadNotes: { ...disposable(), setViewport: vi.fn(), setStyle: vi.fn() },
     roadTrails: disposable(),
     noteAura: disposable(),
-    roadGuides: { ...disposable(), clear: vi.fn(), update: vi.fn() },
+    roadGuides: { ...disposable(), clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() },
     noteLights: layer(),
     keyEmission: layer(),
     appearance: disposable(),
@@ -52,6 +64,7 @@ function fixture() {
       ...disposable(),
       invalidate: vi.fn(),
       setEnabled: vi.fn(),
+      setFov: vi.fn(),
       setRoadBounds: vi.fn(),
       update: vi.fn(),
       camera: new Camera()
@@ -80,6 +93,7 @@ function fixture() {
       update: vi.fn()
     },
     cabinet: { ...disposable(), clear: vi.fn() },
+    materials: { ...disposable(), top: disposable(), black: disposable() },
     top: disposable(),
     white: { ...disposable(), map: disposable() },
     black: { ...disposable(), bumpMap: disposable() },
@@ -118,7 +132,7 @@ describe("ThreeStage physical key contact", () => {
         noteAura: aura,
         roadTrails: trails,
         roadNotes: notes,
-        roadGuides: { clear: vi.fn() },
+        roadGuides: { clear: vi.fn(), setDocked: vi.fn() },
         keys
       });
       Object.assign(view.scene, { faces: [], texture: { width: 800, height: 200 } });
@@ -375,7 +389,8 @@ it("uses the manual camera for the fully lit world without transforming notes or
     false,
     undefined,
     true,
-    { burning: true, presses: true, musicalNotes: true }
+    { burning: true, presses: true, musicalNotes: true },
+    undefined
   );
   expect(internal.roadNotes.performanceAngle).toBe(0);
   expect(internal.roadNotes.performanceScale).toBe(1);
@@ -516,7 +531,7 @@ it.each(["filled", "flat", "glass"] as const)(
       roadTrails: trails,
       roadNotes: native,
       flatRoadNotes: flat,
-      roadGuides: { clear: vi.fn() }
+      roadGuides: { clear: vi.fn(), setDocked: vi.fn() }
     });
     const frame = new ThreeRoadFrame();
     frame.noteStyle = style;
@@ -553,4 +568,42 @@ it("passes the workspace score source to its structural world poster", () => {
   const poster = (stage as unknown as { scorePoster: { setSource: ReturnType<typeof vi.fn> } })
     .scorePoster;
   expect(poster.setSource).toHaveBeenCalledWith(undefined);
+});
+
+it.each(["game", "free"] as const)(
+  "keeps the keyboard camera authoritative in %s composition",
+  (mode) => {
+    const f = fixture();
+    const internals = f.stage as unknown as {
+      free: { update: ReturnType<typeof vi.fn>; setEnabled: ReturnType<typeof vi.fn> };
+      game: { update: ReturnType<typeof vi.fn>; camera: Camera };
+      keyboardCamera: Camera;
+      worldStage: { update: ReturnType<typeof vi.fn> };
+      scorePoster: { draw: ReturnType<typeof vi.fn> };
+    };
+    const before = vi.fn();
+    f.stage.beforeRender = before;
+    f.stage.setCameraComposition(mode);
+    f.stage.setFreeCamera(true);
+    f.draw();
+    expect(before).toHaveBeenLastCalledWith(internals.keyboardCamera, true);
+    expect(internals.free.setEnabled).toHaveBeenLastCalledWith(mode === "free");
+    expect(mode === "game" ? internals.game.update : internals.free.update).toHaveBeenCalledOnce();
+    expect(internals.worldStage.update.mock.lastCall?.at(-1)).toBe(internals.keyboardCamera);
+    expect(internals.scorePoster.draw.mock.lastCall?.at(-1)).toBe(
+      mode === "game" ? internals.game : internals.free
+    );
+  }
+);
+
+it("does not reconnect free controls from a saved composition while the native view is inactive", () => {
+  const f = fixture();
+  const internal = f.stage as unknown as { free: { setEnabled: ReturnType<typeof vi.fn> } };
+  f.stage.setCameraComposition("free");
+  expect(internal.free.setEnabled).toHaveBeenLastCalledWith(false);
+  f.stage.setFreeCamera(true);
+  expect(internal.free.setEnabled).toHaveBeenLastCalledWith(true);
+  f.stage.setFreeCamera(false);
+  f.stage.setCameraComposition("free");
+  expect(internal.free.setEnabled).toHaveBeenLastCalledWith(false);
 });

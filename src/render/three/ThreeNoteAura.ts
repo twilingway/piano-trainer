@@ -46,7 +46,6 @@ float noise3(vec3 p) {
 
 const VERTEX = /* glsl */ `
 ${NOTE_LANE_SHADER}
-attribute vec3 noteSize;
 attribute vec3 noteEnvelope;
 attribute vec4 noteParams;
 ${NOTE_SLAB_ATTRIBUTES}
@@ -67,13 +66,13 @@ void main() {
   vec3 point = base + vec3(slabArc.x * sideInflate, slabProfile.x * 2.0 * inflate, slabArc.y * sideInflate);
   // Static shell coordinates retain affine world anchoring as either end is clipped.
   vLocal = point;
-  vSize = noteSize;
+  vSize = noteSize.xyz;
   vTint = instanceColor;
   vParams = noteParams;
   vAlpha = noteEnvelope.x;
   vLayer = noteEnvelope.y;
   vOffset = noteEnvelope.z;
-  gl_Position = projectNoteLane(projectRoadPoint(vec4(point, 1.0)));
+  gl_Position = projectRoadLanePoint(vec4(point, 1.0));
 }
 `;
 
@@ -136,7 +135,7 @@ export class ThreeNoteAura {
     new Float32Array(INSTANCE_CAPACITY * 4),
     4
   );
-  private readonly sizes = new InstancedBufferAttribute(new Float32Array(INSTANCE_CAPACITY * 3), 3);
+  private readonly sizes = new InstancedBufferAttribute(new Float32Array(INSTANCE_CAPACITY * 4), 4);
   private readonly envelopes = new InstancedBufferAttribute(
     new Float32Array(INSTANCE_CAPACITY * 3),
     3
@@ -243,7 +242,7 @@ export class ThreeNoteAura {
         this.performanceScale
       );
       for (let layer = 0; layer < NOTE_AURA_LAYERS; layer++, used++) {
-        this.sizes.setXYZ(used, note.width, height, depth);
+        this.sizes.setXYZW(used, note.width, height, depth, note.pitch ?? 0);
         this.projections.setXYZW(
           used,
           note.lane?.scaleX ?? 1,

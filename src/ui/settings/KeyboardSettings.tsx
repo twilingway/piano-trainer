@@ -1,3 +1,5 @@
+import type { CameraComposition } from "../../render/cameraComposition";
+import { CameraCompositionSettings } from "./CameraCompositionSettings";
 import type { FallingNoteStyle } from "../../render/fallingNoteStyle";
 import type { FreeRoadLayout } from "../../render/freeRoadLayout";
 import { FreeRoadSettings } from "./FreeRoadSettings";
@@ -41,6 +43,10 @@ interface Props {
   readonly onRoadGuides: (on: boolean) => void;
   /** The local pianist instead of the live hands; absent when there is no local model. */
   readonly pianist?: boolean;
+  readonly cameraComposition?: CameraComposition;
+  readonly onCameraComposition?: (value: CameraComposition) => void;
+  readonly worldFov?: number;
+  readonly onWorldFov?: (value: number) => void;
   readonly freeCamera?: boolean;
   readonly freeCameraWasd?: boolean;
   readonly onFreeCameraWasd?: (on: boolean) => void;
@@ -83,6 +89,10 @@ export function KeyboardSettings({
   roadGuides,
   onRoadGuides,
   pianist,
+  cameraComposition = "standard",
+  onCameraComposition,
+  worldFov = 45,
+  onWorldFov,
   freeCamera,
   freeCameraWasd,
   onFreeCameraWasd,
@@ -96,6 +106,9 @@ export function KeyboardSettings({
   onRoad
 }: Props) {
   const { t } = useI18n();
+  const worldInteractive =
+    cameraComposition === "free" || (cameraComposition === "standard" && freeCamera);
+  const worldVisible = cameraComposition !== "standard" || freeCamera;
   return (
     <>
       <SettingsGroup title={t("Клавиши")}>
@@ -209,7 +222,7 @@ export function KeyboardSettings({
               {t("Оформление объёмных нот выбирается в виде клавиш «3D».")}
             </p>
           )}
-          {keyStyle === "3d" && freeCamera && !performanceScene ? (
+          {keyStyle === "3d" && worldVisible && !performanceScene ? (
             <FreeRoadSettings value={freeRoadLayout} onChange={onFreeRoadLayout} />
           ) : (
             <>
@@ -363,7 +376,16 @@ export function KeyboardSettings({
       <SettingsGroup title={t("Камера")}>
         <div className="settings-list">
           {keyStyle === "3d" && <CameraSettings camera={camera} onChange={onCamera} />}
-          {keyStyle === "3d" && onFreeCamera && (
+          {keyStyle === "3d" && onCameraComposition && (
+            <CameraCompositionSettings
+              value={cameraComposition}
+              onChange={onCameraComposition}
+              worldFov={worldFov}
+              onWorldFov={onWorldFov}
+              disabled={performanceScene ?? false}
+            />
+          )}
+          {keyStyle === "3d" && cameraComposition === "standard" && onFreeCamera && (
             <label className="setting">
               <span>{t("Свободная камера")}</span>
               <input
@@ -375,7 +397,7 @@ export function KeyboardSettings({
               />
             </label>
           )}
-          {keyStyle === "3d" && freeCamera && !performanceScene && onFreeCameraWasd && (
+          {keyStyle === "3d" && worldInteractive && !performanceScene && onFreeCameraWasd && (
             <label className="setting" data-setting-target="free-camera-wasd">
               <span>{t("Передвижение WASD")}</span>
               <input
@@ -387,7 +409,7 @@ export function KeyboardSettings({
               />
             </label>
           )}
-          {keyStyle === "3d" && freeCamera && !performanceScene && onFreeCameraWasd && (
+          {keyStyle === "3d" && worldInteractive && !performanceScene && onFreeCameraWasd && (
             <p className="setting-hint">
               {t(
                 "WASD передвигает камеру вместо игры на клавишах. В меню и полях ввода передвижение отключено."

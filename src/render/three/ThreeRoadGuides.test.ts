@@ -106,8 +106,8 @@ describe("native road guides", () => {
     const laneBuffer = positions(line(guides, 0)).array;
     const blackBuffer = positions(line(guides, 1)).array;
     const beatBuffer = positions(line(guides, 2)).array;
-    expect(laneBuffer.length).toBe(89 * 6);
-    expect(blackBuffer.length).toBe(89 * 6);
+    expect(laneBuffer.length).toBe(89 * 6 * 16);
+    expect(blackBuffer.length).toBe(89 * 6 * 16);
     expect(beatBuffer.length).toBe(ROAD_BEAT_GUIDE_LIMIT * 6 * 88);
     const near = keys.camera.near.z,
       far = keys.camera.roadFarZ;
@@ -307,3 +307,32 @@ it.each(["line", "convex", "concave"] as const)(
     expect(materialDispose).toHaveBeenCalledTimes(1);
   }
 );
+
+it("joins segmented free guides to their own physical black and white contacts", () => {
+  const keys = scene(60, 64),
+    camera = keys.camera;
+  const contacts = keyBoxes(keys).map((box) => ({
+    pitch: box.pitch,
+    width: box.width,
+    near: { x: box.x, y: box.black ? 34 : 22, z: box.black ? -145.8 : -149.1938 }
+  }));
+  const routes = freeRoadLanes(contacts, DEFAULT_FREE_PERSPECTIVE_FIELD);
+  const guides = new ThreeRoadGuides();
+  guides.setDocked(true);
+  guides.update(keyBoxes(keys), camera, [], 0, false, routes);
+  const white = line(guides, 0),
+    black = line(guides, 1);
+  expect(white.geometry.drawRange.count + black.geometry.drawRange.count).toBe(routes.length * 32);
+  for (const item of [white, black]) {
+    const progress = item.geometry.getAttribute("roadDockProgress");
+    for (let index = 0; index < item.geometry.drawRange.count; index += 32) {
+      expect(progress.getX(index)).toBe(1);
+      expect(progress.getX(index + 31)).toBe(0);
+      expect(progress.getX(index + 25)).toBeLessThan(0.25);
+    }
+  }
+  guides.setDocked(false);
+  guides.update(keyBoxes(keys), camera, [], 0, false, routes);
+  expect(white.geometry.drawRange.count + black.geometry.drawRange.count).toBe(routes.length * 2);
+  guides.dispose();
+});

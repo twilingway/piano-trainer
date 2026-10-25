@@ -96,6 +96,7 @@ export class RoadTrailSelection {
         target.width = Math.min(previous.width, current.width) * 0.65;
         target.color = mixColor(previous.color, current.color);
         target.alpha = Math.min(1, previous.alpha, current.alpha);
+        target.pitch = current.pitch;
         target.lane = current.lane;
         used++;
       }
@@ -135,6 +136,7 @@ export class RoadTrailSelection {
       target.width = note.width;
       target.color = note.color;
       target.alpha = note.alpha;
+      target.pitch = note.pitch;
       target.lane = note.lane;
       target.originalTop = originalTop;
       target.active = true;

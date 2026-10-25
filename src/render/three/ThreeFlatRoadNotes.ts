@@ -69,28 +69,27 @@ export function flatNoteMaskMetrics(
 }
 
 const VERTEX = /* glsl */ `
+#define NOTE_META_PACKED
 ${NOTE_LANE_SHADER}
 attribute vec4 noteShape;
-attribute float noteAlpha;
 uniform vec4 maskSize;
 varying vec2 maskUv;
 varying vec3 maskTint;
 varying float maskAlpha;
 float sliceAxis(float cell, float extent, float edge) {
-  if (cell < 0.5) return 0.0;
-  if (cell < 1.5) return edge;
-  if (cell < 2.5) return extent - edge;
-  return extent;
+  if (cell < 1.0) return cell * edge;
+  if (cell < 2.0) return edge + (cell - 1.0) * (extent - edge * 2.0);
+  return extent - edge + (cell - 2.0) * edge;
 }
 void main() {
-  vec2 cell = floor(vec2(uv.x, 1.0 - uv.y) * 3.0 + 0.5);
+  vec2 cell = vec2(uv.x, 1.0 - uv.y) * 3.0;
   vec3 point = vec3(sliceAxis(cell.x, noteShape.x, noteShape.z) - noteShape.x * 0.5,
                     0.0, sliceAxis(cell.y, noteShape.y, noteShape.w) - noteShape.y * 0.5);
   maskUv = vec2(sliceAxis(cell.x, 1.0, maskSize.z / maskSize.x),
                 sliceAxis(cell.y, 1.0, maskSize.w / maskSize.y));
   maskTint = instanceColor;
   maskAlpha = noteAlpha;
-  gl_Position = projectNoteLane(projectRoadPoint(vec4(point, 1.0)));
+  gl_Position = projectRoadLanePoint(vec4(point, 1.0));
 }
 `;
 const FRAGMENT = /* glsl */ `
@@ -170,10 +169,10 @@ export class ThreeFlatRoadNotes {
     const shape = new InstancedBufferAttribute(new Float32Array(this.capacity * 4), 4);
     const projection = new InstancedBufferAttribute(new Float32Array(this.capacity * 4), 4);
     const contact = new InstancedBufferAttribute(new Float32Array(this.capacity * 4), 4);
-    const alpha = new InstancedBufferAttribute(new Float32Array(this.capacity), 1);
+    const alpha = new InstancedBufferAttribute(new Float32Array(this.capacity * 2), 2);
     geometry.setAttribute("noteShape", shape);
     geometry.setAttribute("noteProjection", projection);
-    geometry.setAttribute("noteAlpha", alpha);
+    geometry.setAttribute("noteAlphaPitch", alpha);
     geometry.setAttribute("noteContact", contact);
     const material = new ShaderMaterial({
       uniforms: {
@@ -252,7 +251,11 @@ export class ThreeFlatRoadNotes {
             note.lane?.freeFar?.x ?? 0,
             note.lane?.freeFar?.y ?? 0
           );
-          layer.alpha.setX(used, layer.kind === "plate" ? 1 : Math.min(1, note.alpha));
+          layer.alpha.setXY(
+            used,
+            layer.kind === "plate" ? 1 : Math.min(1, note.alpha),
+            note.pitch ?? 0
+          );
           const tint =
             layer.kind === "bevel" ? 0xffffff : layer.kind === "plate" ? 0x020c18 : note.color;
           this.color.setRGB(

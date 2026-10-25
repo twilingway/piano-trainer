@@ -14,6 +14,8 @@ it("remembers source layout before road mount and reapplies it without changing 
   const layout = { ...DEFAULT_FREE_PERSPECTIVE_FIELD, width: 12, shape: "concave" as const };
   camera.setRoadLayout(layout);
   const mounted = {
+    setCameraComposition: vi.fn(),
+    setWorldFov: vi.fn(),
     setFreeRoadLayout: vi.fn(),
     setPerformanceScene: vi.fn(),
     setFreeCamera: vi.fn(),
@@ -22,7 +24,7 @@ it("remembers source layout before road mount and reapplies it without changing 
   host.road = mounted as unknown as RoadLayer;
   camera.apply();
   expect(mounted.setFreeRoadLayout).toHaveBeenLastCalledWith(layout);
-  expect(mounted.setFreeCamera).toHaveBeenLastCalledWith(false, changed);
+  expect(mounted.setFreeCamera).toHaveBeenLastCalledWith(false, expect.any(Function));
   mounted.setFreeCamera.mockClear();
   camera.setRoadLayout({ ...layout, height: 3 });
   expect(mounted.setFreeRoadLayout).toHaveBeenLastCalledWith({ ...layout, height: 3 });
