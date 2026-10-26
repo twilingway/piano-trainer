@@ -127,7 +127,7 @@ describe("application preferences", () => {
     const store = createAppStore();
     expect(store.getState().preferences).toMatchObject({
       player: { speed: 0.4, mode: "tempo", metronome: false },
-      staff: { labels: true, zoom: 1.3 },
+      staff: { labels: true, zoom: 1.3, tabsZoom: 1.3 },
       layouts: { typing: { keysX: 112 } },
       fullscreen: false
     });

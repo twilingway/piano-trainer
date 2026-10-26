@@ -59,6 +59,30 @@ describe("notation vertical room", () => {
     expect(notation.render).toHaveBeenCalledOnce();
     host.remove();
   });
+  it.each([0.5, 1, 1.5, 2])("applies manual scale %s after compact fitting", (zoom) => {
+    const { host } = hostFixture();
+    document.body.append(host);
+    host.style.maxHeight = "200px";
+    host.style.setProperty("--staff-fit", "1");
+    const notation = { Zoom: 0.6, render: vi.fn() };
+    fitCompactStaff(
+      notation as unknown as OpenSheetMusicDisplay,
+      host,
+      { top: 0, bottom: 190 },
+      zoom
+    );
+    expect(notation.Zoom).toBeCloseTo(((0.6 * 166) / 190) * zoom);
+    // At 150/200% the music exceeds the baseline room and remains available by scrolling.
+    expect((190 * notation.Zoom) / 0.6).toBeCloseTo(166 * zoom);
+    host.remove();
+  });
+  it("applies manual scale without a compact CSS cap", () => {
+    const { host } = hostFixture();
+    const notation = { Zoom: 0.6, render: vi.fn() };
+    fitCompactStaff(notation as unknown as OpenSheetMusicDisplay, host, undefined, 1.5);
+    expect(notation.Zoom).toBeCloseTo(0.9);
+    expect(notation.render).toHaveBeenCalledOnce();
+  });
   it("leaves the same gaps around a fitted course drawing", () => {
     const { host, svg } = hostFixture();
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");

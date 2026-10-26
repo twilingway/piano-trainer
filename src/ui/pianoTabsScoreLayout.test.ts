@@ -63,10 +63,10 @@ describe("layoutTabsOnScore", () => {
     const row = rows[0];
     if (!row) throw new Error("Missing score row");
     expect(tabContentX(row, 8)).toBe(320);
-    expect(scoreTabLabelSize(row, 90, "right", "соль", 1)).toBe(26);
+    expect(scoreTabLabelSize(1)).toBe(26);
   });
 
-  it("fits wide Russian names between compressed score attacks without changing musical pixels", () => {
+  it("keeps the chosen letter size on dense score attacks instead of shrinking one hand", () => {
     const dense: Song = {
       ...song,
       notes: [0, 0.5].map((start) => ({
@@ -82,9 +82,11 @@ describe("layoutTabsOnScore", () => {
     const row = rows[0];
     if (!row) throw new Error("Missing row");
     expect(row.events.map((event) => event.left)).toEqual([50, 90]);
-    const size = scoreTabLabelSize(row, 50, "right", "соль", 1);
-    expect(size).toBeCloseTo(32 / 2.4);
-    expect(size * 2.4 + 4).toBeLessThan(40);
+    expect(scoreTabLabelSize(1)).toBe(26);
+    expect(scoreTabLabelSize(1.5)).toBe(39);
+    expect(scoreTabLabelSize(2)).toBe(52);
+    // Score pixels come exclusively from the engraving adapter, which reserves the label space.
+    expect(row.events.map((event) => event.left)).toEqual([50, 90]);
   });
 
   it("uses score systems for wrapping and does not reattack a sustained note after the break", () => {

@@ -89,6 +89,17 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
   const staffShown = Boolean(props.staffXml) && prefs.visible;
   const dualScore = Boolean(props.scoreBoard) && staffShown;
+  const sharedTabs = useMemo(
+    () =>
+      dualScore && props.timelineSong
+        ? {
+            notes: props.timelineSong.notes,
+            noteNames: prefs.noteNames,
+            zoom: prefs.tabsZoom
+          }
+        : undefined,
+    [dualScore, props.timelineSong, prefs.noteNames, prefs.tabsZoom]
+  );
   const share = props.layout.staffShare ?? DEFAULT_STAFF_SHARE;
   // Two staves in a column share what one would take.
   const staffShare =
@@ -130,7 +141,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           marks={props.reviewMarks}
           maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
           shareGeometry={dualScore}
-          sharedNoteNames={dualScore ? prefs.noteNames : undefined}
+          sharedTabs={sharedTabs}
           course={props.course ?? false}
           timeline={timeline}
           worldScoreSource={props.worldScore?.source}
