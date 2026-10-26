@@ -6,6 +6,7 @@ import { noteProjectionCamera } from "./noteProjectionCamera";
 import { createNoteLaneProjection } from "./noteLaneProjection";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
 import { NATIVE_BLACK_CONTACT_BACK, NATIVE_WHITE_CONTACT_BACK } from "./nativeKeyContactAnchors";
+import { fittedNativeKeyboardCamera, nativeKeyboardFootprint } from "./nativeKeyboardFraming";
 
 /** Derive note-only projection after the independent piano camera has its final layout. */
 export function nativeViewCameras(
@@ -19,11 +20,15 @@ export function nativeViewCameras(
   keyboardBottom?: number,
   keyboardOffset = { x: 0, y: 0 },
   horizonWidth?: number,
-  sourceWidth = base.params.width
+  sourceWidth = base.params.width,
+  nativeScale?: number
 ) {
-  let keyboard = keyboardTop
-    ? mixedKeyboardCamera(base, keyboardHeight)
-    : keyboardHeightCamera(base, keyboardHeight);
+  let keyboard =
+    nativeScale !== undefined && base.params.keyboardDepth !== undefined
+      ? fittedNativeKeyboardCamera(base, keyboardHeight, keyboardTop, nativeScale)
+      : keyboardTop
+        ? mixedKeyboardCamera(base, keyboardHeight)
+        : keyboardHeightCamera(base, keyboardHeight);
   if (keyboardBottom !== undefined) keyboard = dockKeyboardCamera(keyboard, keyboardBottom);
   return {
     keyboard,
@@ -96,7 +101,11 @@ export function nativeNoteCameras(
 /** Keep the visible keys on their layout floor while retaining the player's camera shift. */
 function dockKeyboardCamera(camera: WorldCamera, bottom: number): WorldCamera {
   if (!Number.isFinite(bottom)) return camera;
-  const shift = bottom + camera.params.prefs.targetY - camera.project(0, 22, 0).y;
+  const front =
+    camera.params.keyboardDepth === undefined
+      ? camera.project(0, 22, 0).y
+      : nativeKeyboardFootprint(camera).bottom;
+  const shift = bottom + camera.params.prefs.targetY - front;
   return shiftCamera(camera, 0, shift);
 }
 

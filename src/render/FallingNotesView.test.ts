@@ -635,13 +635,14 @@ describe("native hands layout", () => {
       rangeFitsViewport: false,
       placement: { lift: 0, scale: 1, x: 0, y: 125 },
       roadMode: true,
+      keyStyle: "3d",
       hands: { live: true }
     });
     const before = (view as unknown as LayoutHarness).geometry(610);
     Object.assign(view, { parts: { keys: true, notes: true, hands: true } });
     expect((view as unknown as LayoutHarness).geometry(610)).toEqual(before);
     Object.assign(view, { roadMode: false });
-    expect((view as unknown as LayoutHarness).geometry(610)).not.toEqual(before);
+    expect((view as unknown as LayoutHarness).geometry(610)).toEqual(before);
   });
 });
 

@@ -45,6 +45,12 @@ export interface ViewLayout {
   readonly height: number;
   readonly liveHands?: boolean;
 }
+export interface KeyboardViewport {
+  readonly width: number;
+  readonly height: number;
+  readonly floor: number;
+  readonly handRoom: number;
+}
 
 /** Async native-hand readiness changes the source hit row even without a resize. */
 export function viewLayoutChanged(
@@ -86,23 +92,30 @@ export function viewGeometry(
   parts: ViewParts,
   stickers: boolean,
   fitsViewport = false,
-  placement: KeysPlacement = USUAL_PLACEMENT
+  placement: KeysPlacement = USUAL_PLACEMENT,
+  nativeHeight?: number
 ): Geometry {
   if (!parts.keys) {
     const none = { keyboardHeight: 0, blackHeight: 0, feltHeight: 0 };
     return { ...none, keyboardTop: height, hitY: height, whiteWidth };
   }
-  const feltHeight = Math.max(3, whiteWidth * FELT_PER_WIDTH);
+  const native = nativeHeight !== undefined && Number.isFinite(nativeHeight) && nativeHeight > 0;
+  const wanted =
+    (native
+      ? nativeHeight
+      : Math.max(KEYBOARD_MIN_PX, whiteWidth * (fitsViewport ? 3 : KEY_LENGTH_PER_WIDTH))) *
+    placement.scale;
+  const framingWidth =
+    whiteWidth *
+    (native ? Math.min(1, (height * (parts.notes ? MAX_KEYBOARD_SHARE : 1)) / wanted) : 1);
+  const feltHeight = Math.max(3, framingWidth * FELT_PER_WIDTH);
   const blackOf = (keyboardHeight: number) =>
     keyboardHeight * (stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT);
   // The palms reach below the keys, into a strip of their own; without hands a margin stays.
-  const margin = whiteWidth * BOTTOM_MARGIN_PER_WIDTH;
+  const margin = framingWidth * BOTTOM_MARGIN_PER_WIDTH;
   const strip = parts.hands
-    ? Math.max(margin, Math.min(whiteWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE))
+    ? Math.max(margin, Math.min(framingWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE))
     : margin;
-  const wanted =
-    Math.max(KEYBOARD_MIN_PX, whiteWidth * (fitsViewport ? 3 : KEY_LENGTH_PER_WIDTH)) *
-    placement.scale;
   // The player's lift leaves an empty floor under the keys and the hands' strip.
   const below = strip + height * placement.lift;
   // Only the keys: they keep their length, not stretched over the view, and may use all of it.

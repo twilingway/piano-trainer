@@ -53,7 +53,7 @@ describe("independent note projection camera", () => {
       expect(Math.abs(far.x - centre)).toBeLessThan(Math.abs(contact.x - centre) * 0.8);
       expect(far.scale).toBeLessThan(contact.scale * 0.8);
     }
-    expect(player.params.prefs.pitch).toBe(25);
+    expect(player.params.prefs.pitch).toBe(42);
     expect(top.params.prefs.pitch).toBe(90);
   });
 

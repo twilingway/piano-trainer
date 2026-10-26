@@ -192,9 +192,11 @@ it("keeps the full white front in the viewport for player framing at every heigh
         height,
         bottom
       );
-      expect(keyboard.project(0, 22, 0).y).toBeCloseTo(bottom, 7);
-      expect(keyboard.project(0, 22, 150).y).toBeCloseTo(bottom - desired, 7);
-      expect(notes.project(0, 22, 150).y).toBeCloseTo(bottom - desired, 7);
+      expect(keyboard.project(0, -8, 0).y).toBeCloseTo(bottom, 7);
+      expect(keyboard.project(0, 0, 0).y).toBeLessThan(bottom);
+      expect(keyboard.project(0, 22, 0).y).toBeLessThan(bottom);
+      expect(keyboard.project(0, 22, 0).y - keyboard.project(0, 22, 150).y).toBeCloseTo(desired, 7);
+      expect(notes.project(0, 22, 150).y).toBeCloseTo(keyboard.project(0, 22, 150).y, 7);
     }
   }
 });

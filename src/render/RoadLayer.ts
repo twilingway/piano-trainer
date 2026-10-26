@@ -14,7 +14,7 @@ import { HorizonBurstLayer } from "./HorizonBurstLayer";
 import type { KeyRect } from "./keyboardLayout";
 import { DEFAULT_CAMERA, normalizeCamera, type CameraPrefs, type WorldCamera } from "./worldCamera";
 import { NativeKeyboardScene } from "./NativeKeyboardScene";
-import type { Geometry } from "./viewGeometry";
+import type { Geometry, KeyboardViewport } from "./viewGeometry";
 import type { Projected, RoadProjection } from "./perspective";
 import { handSurface } from "./handProjection";
 import { nativeNoteCameras, nativeViewCameras } from "./nativeViewCameras";
@@ -136,7 +136,32 @@ export class RoadLayer {
   endNotes(): void {
     this.three?.setRoadFrame(this.nativeRoad);
   }
-  setKeyboard(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, dockKeyboard = false): void {
+  layoutView(
+    keys: ReadonlyMap<number, KeyRect>,
+    geometry: Geometry,
+    total: number,
+    viewport: KeyboardViewport,
+    dock: boolean,
+    nativeScale: number | undefined,
+    computer: boolean,
+    roadMode: boolean
+  ): void {
+    const { width, height, floor, handRoom } = viewport;
+    this.layout(total, geometry.hitY, height - floor, width, handRoom);
+    this.setKeyboard(
+      computer ? new Map([[0, { pitch: 0, black: false, x: 0, width: total }]]) : keys,
+      geometry,
+      dock,
+      nativeScale
+    );
+    if (!roadMode) this.container.visible = this.effects.visible = false;
+  }
+  setKeyboard(
+    keys: ReadonlyMap<number, KeyRect>,
+    geometry: Geometry,
+    dockKeyboard = false,
+    nativeScale?: number
+  ): void {
     this.computerKeyboard = keys.size === 1 && keys.has(0);
     this.keyboardTopY = geometry.keyboardTop;
     this.keys.container.visible = geometry.keyboardHeight > 0;
@@ -156,7 +181,8 @@ export class RoadLayer {
         dockKeyboard ? geometry.keyboardTop + geometry.keyboardHeight : undefined,
         this.keys.container.position,
         this.shape.far,
-        this.size.width
+        this.size.width,
+        nativeScale
       );
       this.keyboardCamera = cameras.keyboard;
       Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
@@ -382,6 +408,9 @@ export class RoadLayer {
   }
   setKeyboardTop(on: boolean): void {
     this.keyboardTop = on;
+  }
+  get requestedKeyboardTop(): boolean {
+    return this.keyboardTop;
   }
   setCamera(prefs: CameraPrefs): void {
     this.cameraPrefs = normalizeCamera(prefs);
