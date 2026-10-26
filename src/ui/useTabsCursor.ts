@@ -10,12 +10,13 @@ export function useTabsCursor(
   liveBeat: (() => number) | undefined,
   follow: boolean,
   overflowing: boolean,
-  centreWidth?: number
+  centreWidth?: number,
+  centered = false
 ) {
   const readFrameBeat = useReaderFrameBeat();
-  const latest = useRef({ rows, beat, liveBeat, follow, overflowing, centreWidth });
+  const latest = useRef({ rows, beat, liveBeat, follow, overflowing, centreWidth, centered });
   useLayoutEffect(() => {
-    latest.current = { rows, beat, liveBeat, follow, overflowing, centreWidth };
+    latest.current = { rows, beat, liveBeat, follow, overflowing, centreWidth, centered };
   });
   useEffect(() => {
     const host = scrollRef.current;
@@ -24,6 +25,7 @@ export function useTabsCursor(
       lastFrame = performance.now(),
       lastBeat: number | undefined,
       lastFollow: boolean | undefined,
+      wasFollowing = false,
       manualUntil = 0,
       dragging = false;
     const hold = () => {
@@ -68,53 +70,53 @@ export function useTabsCursor(
       const current = latest.current;
       const currentBeat = readFrameBeat(now, () => current.liveBeat?.() ?? current.beat);
       const spot = positionInTabs(current.rows, currentBeat);
-      systems.forEach((system, index) => {
-        const cursor = cursors[index];
-        if (!cursor) return;
-        cursor.style.visibility = index === spot?.row ? "visible" : "hidden";
-        if (index === spot?.row) cursor.style.transform = `translateX(${String(spot.x)}px)`;
-      });
+      let cursorX = spot?.x ?? 0;
+      let following = false;
       for (const note of highlights) {
         const active = String(note.start <= currentBeat && currentBeat < note.end);
         if (note.element.dataset.current !== active) note.element.dataset.current = active;
       }
       const system = spot ? systems[spot.row] : undefined;
       const grid = spot ? grids[spot.row] : undefined;
-      if (
-        spot &&
-        system &&
-        grid &&
-        current.follow &&
-        !dragging &&
-        now >= manualUntil &&
-        (currentBeat !== lastBeat || current.follow !== lastFollow)
-      ) {
-        const ease = 1 - Math.exp(-Math.min(0.1, (now - lastFrame) / 1000) / 0.35);
+      if (spot && system && grid && current.follow && !dragging && now >= manualUntil) {
+        following = true;
         const bounds = grid.getBoundingClientRect();
         const view = host.getBoundingClientRect();
-        if (current.overflowing) {
-          const wanted = Math.max(
+        const previousLeft = host.scrollLeft;
+        const centre = (current.centreWidth ?? view.width) / 2;
+        if (currentBeat !== lastBeat || current.follow !== lastFollow || !wasFollowing) {
+          const ease = 1 - Math.exp(-Math.min(0.1, (now - lastFrame) / 1000) / 0.35);
+          if (current.overflowing) {
+            // The session clock is already continuous; a second easing would lag the staff.
+            host.scrollLeft = Math.max(
+              0,
+              bounds.left - view.left + previousLeft + grid.clientLeft + spot.x - centre
+            );
+          }
+          const wantedTop = Math.max(
             0,
-            bounds.left -
-              view.left +
-              host.scrollLeft +
-              grid.clientLeft +
-              spot.x -
-              (current.centreWidth ?? view.width) / 2
+            system.getBoundingClientRect().top - view.top + host.scrollTop - 4
           );
-          // The musical clock already moves continuously. A second easing puts the two readers
-          // at different screen positions because their musical intervals have different widths.
-          host.scrollLeft = wanted;
+          host.scrollTop +=
+            lastBeat === undefined || Math.abs(currentBeat - lastBeat) > 0.5
+              ? wantedTop - host.scrollTop
+              : (wantedTop - host.scrollTop) * ease;
         }
-        const wantedTop = Math.max(
-          0,
-          system.getBoundingClientRect().top - view.top + host.scrollTop - 4
-        );
-        host.scrollTop +=
-          lastBeat === undefined || Math.abs(currentBeat - lastBeat) > 0.5
-            ? wantedTop - host.scrollTop
-            : (wantedTop - host.scrollTop) * ease;
+        if (current.overflowing && current.centered) {
+          const screenX =
+            bounds.left - view.left + grid.clientLeft + spot.x + previousLeft - host.scrollLeft;
+          const residual = centre - screenX;
+          // Correct only the browser's fractional scroll rounding, never a real clamp or gesture.
+          if (Math.abs(residual) <= 1) cursorX += residual;
+        }
       }
+      systems.forEach((_system, index) => {
+        const cursor = cursors[index];
+        if (!cursor) return;
+        cursor.style.visibility = index === spot?.row ? "visible" : "hidden";
+        if (index === spot?.row) cursor.style.transform = `translateX(${String(cursorX)}px)`;
+      });
+      wasFollowing = following;
       lastBeat = currentBeat;
       lastFollow = current.follow;
       lastFrame = now;

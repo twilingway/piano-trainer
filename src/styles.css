@@ -262,9 +262,6 @@
   border-left: 1px solid var(--tabs-score);
   pointer-events: none;
 }
-.piano-tabs__column[data-current="true"] {
-  background: rgb(0 213 244 / 6%);
-}
 .piano-tabs__event {
   position: absolute;
   z-index: 1;
@@ -310,10 +307,6 @@
   position: absolute;
   inset: 0 auto 0 0;
   z-index: 3;
-  width: 3px;
-  margin-left: -1.5px;
-  background: var(--accent);
-  box-shadow: 0 0 12px var(--accent);
   visibility: hidden;
   pointer-events: none;
 }
@@ -3734,6 +3727,8 @@ button.song-card.song-card__open {
 .workspace-main:has(> .course-score-stack) .course-score-stack .staff {
   --staff-fit: 1;
 
+  align-self: stretch;
+  width: 100%;
   min-height: 0;
   max-height: calc(25cqh - 12px);
   pointer-events: auto;
@@ -4429,8 +4424,9 @@ button.song-card.song-card__open {
   pointer-events: none;
 }
 
-/* Arcadia's baked light loop keeps the core thin and the longitudinal glow soft. */
-.staff-cursor {
+/* Both readers share the same baked glow and thin play-position core. */
+.staff-cursor,
+.piano-tabs__cursor {
   width: 18px;
   margin-left: -9px;
   border-radius: 0;
@@ -4467,6 +4463,7 @@ button.song-card.song-card__open {
 
 @media (prefers-reduced-motion: reduce) {
   .staff-cursor,
+  .piano-tabs__cursor,
   .lane-neon-edge {
     animation: none;
   }
@@ -4647,7 +4644,8 @@ button.song-card.song-card__open {
 }
 
 /* Keep the play position readable across both staves without an animated hotspot. */
-.staff-cursor::after {
+.staff-cursor::after,
+.piano-tabs__cursor::after {
   content: "";
   position: absolute;
   top: 0;

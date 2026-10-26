@@ -33,6 +33,13 @@ export function lineBoxes(osmd: OpenSheetMusicDisplay): LineBox[] {
   });
 }
 
+/** Percentage padding uses clientWidth; the followed cursor centres on the full border box. */
+export function prepareStaffCursorPadding(host: HTMLElement, enabled: boolean): void {
+  const page = host.querySelector<HTMLElement>(".staff-page");
+  if (page)
+    page.style.paddingInline = enabled ? `${String(host.getBoundingClientRect().width / 2)}px` : "";
+}
+
 /** Where the score's SVG sits inside the scroller's content, in pixels from its top. */
 function svgOffset(scroller: HTMLElement): number {
   const svg = scroller.querySelector("svg");
