@@ -118,9 +118,6 @@ void main() {
   if (roadDockEnabled > 0.0) {
     float across = abs(vDockUv.x - 0.5) * (vDockWidth + 2.0 * vDockMargin);
     float distance = max(0.0, across - vDockWidth * 0.5);
-    #ifdef FILLED_NOTE_HALO
-      if (across < vDockWidth * 0.5) discard;
-    #endif
     float fade = smoothstep(0.0, 0.035, vDockUv.y) * smoothstep(0.0, 0.035, 1.0 - vDockUv.y);
     float alpha = min(0.8, exp(-distance * distance / max(2.0 * vRadius * vRadius, 0.000001)) * vAlpha * 0.8 * fade);
     if (alpha < 0.002) discard;
@@ -137,9 +134,6 @@ void main() {
     cross2(vQ2 - vQ1, vPoint - vQ1) * orientation >= 0.0 &&
     cross2(vQ3 - vQ2, vPoint - vQ2) * orientation >= 0.0 &&
     cross2(vQ0 - vQ3, vPoint - vQ3) * orientation >= 0.0;
-  #ifdef FILLED_NOTE_HALO
-    if (inside) discard;
-  #endif
   float radius = inside ? vRadius * 0.4 : vRadius;
   float glow = exp(-distance * distance / (2.0 * radius * radius));
   float alpha = min(0.8, glow * vAlpha * 0.8);
@@ -148,18 +142,20 @@ void main() {
 }
 `;
 
-/** An isotropic screen-space aura around the actual projected note, including both end caps. */
-export function createNoteHaloMaterial(exteriorOnly = false): ShaderMaterial {
+/**
+ * A solid core occludes its own halo. A rectangular cutout would leave the rounded corners dark.
+ * Keep coverage behind the whole footprint and draw opaque cores afterwards.
+ */
+export function createNoteHaloMaterial(beforeOpaqueCore = false): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
       ...roadWidthUniforms,
       viewport: { value: new Vector2(1, 1) },
       visualTime: { value: 0 }
     },
-    defines: exteriorOnly ? { FILLED_NOTE_HALO: 1 } : {},
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
-    transparent: !exteriorOnly,
+    transparent: !beforeOpaqueCore,
     blending: AdditiveBlending,
     depthTest: true,
     depthWrite: false
