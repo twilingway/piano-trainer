@@ -25,7 +25,7 @@ interface AppearanceTargets {
   readonly black: MeshPhysicalMaterial;
   readonly sun: DirectionalLight;
   readonly hemisphere: HemisphereLight;
-  readonly refresh: () => void;
+  readonly refresh: (dim: boolean) => void;
 }
 
 /** A baked soft box, under the raised key; its visible fringe supplies inexpensive contact AO. */
@@ -125,7 +125,7 @@ export class KeyboardAppearance {
     hemisphere.groundColor.copy(old.groundColor);
     if (!dim) hemisphere.groundColor.setHex(0xa6abb0);
     this.group.visible = !dim;
-    this.targets.refresh();
+    this.targets.refresh(dim);
   }
 
   /** Reuse one fixed instance buffer for at most the black keys of an 88-key piano. */

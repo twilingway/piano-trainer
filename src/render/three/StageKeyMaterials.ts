@@ -11,7 +11,7 @@ export class StageKeyMaterials {
   readonly felt = new MeshStandardMaterial({ color: 0x951f2c, roughness: 0.95 });
   readonly lighting = new Group();
   readonly appearance: KeyboardAppearance;
-  constructor(refresh: () => void) {
+  constructor(refresh: (dim: boolean) => void) {
     this.top.vertexColors = this.black.vertexColors = true;
     const sun = new DirectionalLight(0xffffff, 0.45);
     sun.position.set(-150, 900, 900);
