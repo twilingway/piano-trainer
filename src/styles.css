@@ -4902,3 +4902,72 @@ button.song-card.song-card__open {
     padding: 10px 12px;
   }
 }
+
+/* Optional lesson information stays below the current action. */
+.lesson-details {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+}
+.lesson-details > summary {
+  box-sizing: border-box;
+  padding: 10px 0;
+  color: var(--accent);
+  cursor: pointer;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.lesson-details > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.lesson-details__body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 0 10px;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+.lesson-details__body > p {
+  margin: 0;
+}
+.lesson-details__body .reading-actions {
+  min-width: 0;
+}
+.reading-course-card .lesson-primary-action {
+  grid-column: 1 / -1;
+  justify-content: center;
+  border-color: var(--accent);
+  text-align: center;
+  min-height: 44px;
+}
+.reading-course-card .lesson-secondary-action {
+  grid-column: 1 / -1;
+  justify-self: start;
+  background: transparent;
+  min-height: 44px;
+  font-size: 0.9em;
+}
+.reading-course-card:has(> .lesson-details) {
+  gap: 10px;
+}
+.reading-practice > .lesson-details {
+  margin-top: 8px;
+}
+
+.foundation-course-catalog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+  margin: 20px 0;
+}
+.foundation-course-catalog > .reading-course-card {
+  min-width: 0;
+  margin: 0;
+}
+@media (width <= 640px) {
+  .foundation-course-catalog {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

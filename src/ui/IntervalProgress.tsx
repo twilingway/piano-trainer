@@ -1,3 +1,4 @@
+import { LessonDetails } from "./LessonDetails";
 import { useI18n } from "../app/useI18n";
 import { summarizeIntervals } from "../intervals/progress";
 import type { IntervalMode, IntervalResult, IntervalSourceFilter } from "../intervals/types";
@@ -96,19 +97,31 @@ export function IntervalResults({
   );
 }
 
-export function IntervalProgress({
-  history,
-  mode,
-  source,
-  onSource,
-  result
-}: {
+interface IntervalProgressProps {
   history: readonly IntervalResult[];
   mode: IntervalMode;
   source: IntervalSourceFilter;
   onSource: (source: IntervalSourceFilter) => void;
   result: IntervalResult | null;
-}) {
+}
+export function IntervalProgress(props: IntervalProgressProps) {
+  return (
+    <section className="reading-progress">
+      {props.result && (
+        <IntervalResults results={[props.result]} mode={props.mode} source={props.source} />
+      )}
+      <LessonDetails kind="progress" id="interval:practice:progress">
+        <IntervalHistory {...props} />
+      </LessonDetails>
+    </section>
+  );
+}
+function IntervalHistory({
+  history,
+  mode,
+  source,
+  onSource
+}: Omit<IntervalProgressProps, "result">) {
   const { t } = useI18n();
   const sources: readonly IntervalSourceFilter[] =
     mode === "see-and-play"
@@ -127,7 +140,7 @@ export function IntervalProgress({
               : "Кнопки выбора интервала"
     );
   return (
-    <section className="reading-progress">
+    <>
       <label>
         {t("Способ ввода для сводки интервалов")}
         <select
@@ -151,7 +164,6 @@ export function IntervalProgress({
           "Фильтр выбирает пары по последнему верному ответу. Все ошибки и помощь внутри пары сохраняются."
         )}
       </p>
-      {result && <IntervalResults results={[result]} mode={mode} source={source} />}
       <details data-window-detail="interval-reading:progress">
         <summary>{t("Мой прогресс интервалов")}</summary>
         <p>
@@ -180,6 +192,6 @@ export function IntervalProgress({
             </div>
           ))}
       </details>
-    </section>
+    </>
   );
 }

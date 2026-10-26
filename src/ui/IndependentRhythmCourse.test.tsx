@@ -11,6 +11,7 @@ import type {
 } from "../independentRhythm/types";
 import { IndependentRhythmIntro } from "./IndependentRhythmIntro";
 import {
+  IndependentRhythmCourseCard,
   IndependentRhythmPracticePanel,
   type IndependentRhythmPracticeProps
 } from "./IndependentRhythmCourse";
@@ -37,6 +38,15 @@ function render(node: ReactNode, locale: "ru" | "en" = "ru") {
     root.render(node);
   });
 }
+function reveal(id: string) {
+  const details = host.querySelector<HTMLDetailsElement>(`[data-window-detail="${id}"]`);
+  if (!details) throw new Error(`Missing disclosure: ${id}`);
+  act(() => {
+    details.open = true;
+    details.dispatchEvent(new Event("toggle"));
+  });
+}
+
 function button(label: string) {
   return [...host.querySelectorAll("button")].find((item) => item.textContent === label);
 }
@@ -135,6 +145,56 @@ function result(source: "keyboard" | "midi", id: string): IndependentRhythmResul
 }
 
 describe("independent rhythm interface", () => {
+  it("offers pulse as primary, keeps intro secondary and mounts history on demand", () => {
+    const current = props();
+    const onStart = vi.fn(),
+      onIntro = vi.fn();
+    render(
+      <IndependentRhythmCourseCard
+        {...current}
+        history={[result("keyboard", "saved")]}
+        onStart={onStart}
+        onIntro={onIntro}
+      />
+    );
+    const actions = host.querySelectorAll(".reading-actions > button");
+    expect(actions[0]?.textContent).toBe("Открыть проверку пульса");
+    expect(
+      button("Знакомство с двумя ритмами")?.classList.contains("lesson-secondary-action")
+    ).toBe(true);
+    expect(host.querySelector('[data-window-detail="independent-rhythm:history"]')).toBeNull();
+    act(() => {
+      button("Открыть проверку пульса")?.click();
+      button("Знакомство с двумя ритмами")?.click();
+    });
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(onIntro).toHaveBeenCalledOnce();
+    reveal("independent-rhythm:catalog:progress");
+    expect(host.querySelector('[data-window-detail="independent-rhythm:history"]')).not.toBeNull();
+    expect(current.onSourceFilter).not.toHaveBeenCalled();
+    expect(onStart).toHaveBeenCalledOnce();
+  });
+  it("keeps a completed result visible without mounting history or issuing commands from guidance", () => {
+    const current = props();
+    render(
+      <IndependentRhythmPracticePanel
+        {...current}
+        status="completed"
+        result={result("keyboard", "current")}
+        history={[result("keyboard", "old")]}
+      />
+    );
+    expect(host.querySelector('[aria-label="Результат двух ритмов"]')).not.toBeNull();
+    expect(host.querySelector('[data-window-detail="independent-rhythm:history"]')).toBeNull();
+    reveal("independent-rhythm:practice:guide");
+    expect(host.textContent).toContain("Одной мышью");
+    expect(current.onShowKeyHints).not.toHaveBeenCalled();
+    expect(current.onStart).not.toHaveBeenCalled();
+    expect(current.onRepeat).not.toHaveBeenCalled();
+    expect(current.onNewSeries).not.toHaveBeenCalled();
+    reveal("independent-rhythm:practice:progress");
+    expect(host.querySelector('[data-window-detail="independent-rhythm:history"]')).not.toBeNull();
+  });
   it("explains both phases, onset limits, physical limitations and actual two-key bindings", () => {
     render(
       <IndependentRhythmIntro bindings={props().bindings} onStart={vi.fn()} onClose={vi.fn()} />
@@ -156,6 +216,8 @@ describe("independent rhythm interface", () => {
     const value = props();
     render(<IndependentRhythmPracticePanel {...value} ready={false} allReleased={false} />);
     expect(button("Начать проверку пульса")?.disabled).toBe(true);
+    expect(host.querySelector('input[type="checkbox"]')).toBeNull();
+    reveal("independent-rhythm:practice:settings");
     expect(host.querySelector<HTMLInputElement>('input[type="checkbox"]')?.disabled).toBe(true);
     expect(host.textContent).toContain("Отпустите все нажатые клавиши");
     render(<IndependentRhythmPracticePanel {...value} />);
@@ -183,6 +245,8 @@ describe("independent rhythm interface", () => {
     expect(host.textContent).toContain("Play two rhythms");
     expect(host.querySelector('input[type="checkbox"]')).toBeNull();
     expect(button("Start the pulse check")).toBeUndefined();
+    expect(host.querySelector("select")).toBeNull();
+    reveal("independent-rhythm:practice:settings");
     expect(host.querySelector("select")?.disabled).toBe(true);
   });
   it("does not let eight provisional hits or previous history bypass pulse finalization", () => {
@@ -258,6 +322,7 @@ describe("independent rhythm interface", () => {
     render(
       <IndependentRhythmPracticePanel {...props()} source="midi" midiAvailable midiChannel={2} />
     );
+    reveal("independent-rhythm:practice:settings");
     expect(host.textContent).toContain("Канал двух ритмов: 2");
     expect(button("Начать проверку пульса")?.disabled).toBe(false);
   });

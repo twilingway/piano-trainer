@@ -1,4 +1,5 @@
 import { useLayoutEffect, type MouseEvent, type ReactNode } from "react";
+import { LessonDetails } from "./LessonDetails";
 import { useI18n } from "../app/useI18n";
 import type { IntervalCategory, IntervalMode } from "../intervals/types";
 import { readingNoteName } from "./ReadingProgress";
@@ -21,20 +22,26 @@ export function IntervalCourseCard({ onStart }: { onStart: (mode: IntervalMode) 
     <section className="reading-course-card">
       <h3>{t("Интервалы")}</h3>
       <p>{t("Две ноты: повтор, шаг или терция вверх и вниз. Только до–соль первой октавы.")}</p>
-      <div className="reading-actions">
-        {(Object.keys(INTERVAL_MODE_LABELS) as IntervalMode[]).map((mode) => (
-          <button
-            type="button"
-            className="game-button"
-            key={mode}
-            onClick={() => {
-              onStart(mode);
-            }}
-          >
-            {t(INTERVAL_MODE_LABELS[mode])}
-          </button>
-        ))}
-      </div>
+      <button
+        type="button"
+        className="game-button"
+        onClick={() => {
+          onStart("see-and-play");
+        }}
+      >
+        {t(INTERVAL_MODE_LABELS["see-and-play"])}
+      </button>
+      <LessonDetails kind="more" id="interval:catalog:more">
+        <button
+          type="button"
+          className="game-button"
+          onClick={() => {
+            onStart("hear-and-choose");
+          }}
+        >
+          {t(INTERVAL_MODE_LABELS["hear-and-choose"])}
+        </button>
+      </LessonDetails>
     </section>
   );
 }
@@ -83,6 +90,8 @@ export function IntervalPracticePanel(props: IntervalPracticeProps) {
         <button type="button" className="game-button" onClick={props.onExit}>
           {t("Выйти из интервалов")}
         </button>
+      </div>
+      <LessonDetails kind="more" id="interval:practice:more">
         <button
           type="button"
           className="game-button"
@@ -92,12 +101,14 @@ export function IntervalPracticePanel(props: IntervalPracticeProps) {
         >
           {t(INTERVAL_MODE_LABELS[ear ? "see-and-play" : "hear-and-choose"])}
         </button>
-      </div>
+      </LessonDetails>
       {ear ? (
         <>
-          <p>
-            {t("Слушайте две ноты по очереди. Первая — опора. Выберите, куда движется вторая.")}
-          </p>
+          <LessonDetails kind="guide" id="interval:practice:guide">
+            <p>
+              {t("Слушайте две ноты по очереди. Первая — опора. Выберите, куда движется вторая.")}
+            </p>
+          </LessonDetails>
           <div className="reading-actions">
             <button
               type="button"

@@ -1,3 +1,4 @@
+import { LessonDetails } from "./LessonDetails";
 import { useI18n } from "../app/useI18n";
 import type {
   IndependentRhythmPhase,
@@ -27,14 +28,20 @@ export function IndependentRhythmCourseCard(
         )}
       </p>
       <div className="reading-actions">
-        <button type="button" className="game-button" onClick={props.onIntro}>
-          {t("Знакомство с двумя ритмами")}
-        </button>
         <button type="button" className="game-button" onClick={props.onStart}>
           {t("Открыть проверку пульса")}
         </button>
+        <button
+          type="button"
+          className="game-button lesson-secondary-action"
+          onClick={props.onIntro}
+        >
+          {t("Знакомство с двумя ритмами")}
+        </button>
       </div>
-      <IndependentRhythmProgress {...props} />
+      <LessonDetails kind="progress" id="independent-rhythm:catalog:progress">
+        <IndependentRhythmProgress {...props} />
+      </LessonDetails>
     </section>
   );
 }
@@ -138,55 +145,56 @@ export function IndependentRhythmPracticePanel(props: IndependentRhythmPracticeP
         </button>
       </div>
       <p className="reading-muted">
-        {t(
-          props.phase === "pulse"
-            ? "Пульс: 8 четвертей · 60 BPM · окно ±150 мс · 0 лишних атак."
-            : "Два ритма: 4 такта · 24 начала нот · 60 BPM · окно ±150 мс для каждой ноты."
-        )}
+        {t("Темп: {bpm} BPM · Ввод: {source}", {
+          bpm: 60,
+          source: t(INDEPENDENT_RHYTHM_SOURCES[props.source])
+        })}
       </p>
-      <label>
-        {t("Способ ввода двух ритмов")}{" "}
-        <select
-          value={props.source}
-          disabled={active}
-          onChange={(event) => {
-            props.onSource(event.target.value as ReadingInputSource);
-          }}
-        >
-          {(["keyboard", "pointer", "midi"] as const).map((source) => (
-            <option key={source} value={source}>
-              {t(INDEPENDENT_RHYTHM_SOURCES[source])}
-            </option>
-          ))}
-        </select>
-      </label>
-      {props.source === "midi" && (
-        <p className="reading-muted">
-          {props.midiChannel === null
-            ? t("Канал MIDI определится первой атакой проверки пульса.")
-            : t("Канал двух ритмов: {channel}", { channel: props.midiChannel })}
-        </p>
-      )}
-      {preparation && (
-        <>
-          <p>{t("Пульс: C4. Два ритма: C3 слева и C4 справа.")}</p>
-          <label>
-            <input
-              type="checkbox"
-              checked={props.showKeyHints}
-              disabled={!props.ready}
-              onChange={(event) => {
-                props.onShowKeyHints(event.target.checked);
-              }}
-            />
-            {t("Показать клавиши перед стартом")}
-          </label>
-          <details>
-            <summary>{t("Позиции и назначения двух ритмов")}</summary>
-            <IndependentRhythmBindings bindings={props.bindings} />
-          </details>
-        </>
-      )}
+      <LessonDetails kind="settings" id="independent-rhythm:practice:settings">
+        <label>
+          {t("Способ ввода двух ритмов")}{" "}
+          <select
+            value={props.source}
+            disabled={active}
+            onChange={(event) => {
+              props.onSource(event.target.value as ReadingInputSource);
+            }}
+          >
+            {(["keyboard", "pointer", "midi"] as const).map((source) => (
+              <option key={source} value={source}>
+                {t(INDEPENDENT_RHYTHM_SOURCES[source])}
+              </option>
+            ))}
+          </select>
+        </label>
+        {props.source === "midi" && (
+          <p className="reading-muted">
+            {props.midiChannel === null
+              ? t("Канал MIDI определится первой атакой проверки пульса.")
+              : t("Канал двух ритмов: {channel}", { channel: props.midiChannel })}
+          </p>
+        )}
+        {preparation && (
+          <>
+            <p>{t("Пульс: C4. Два ритма: C3 слева и C4 справа.")}</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={props.showKeyHints}
+                disabled={!props.ready}
+                onChange={(event) => {
+                  props.onShowKeyHints(event.target.checked);
+                }}
+              />
+              {t("Показать клавиши перед стартом")}
+            </label>
+            <details>
+              <summary>{t("Позиции и назначения двух ритмов")}</summary>
+              <IndependentRhythmBindings bindings={props.bindings} />
+            </details>
+          </>
+        )}
+      </LessonDetails>
       {!props.allReleased && !active && (
         <p role="alert">{t("Отпустите все нажатые клавиши перед стартом фазы.")}</p>
       )}
@@ -233,18 +241,29 @@ export function IndependentRhythmPracticePanel(props: IndependentRhythmPracticeP
           {t("Лишние удары")}: {props.pulseSummary.extras}
         </p>
       )}
-      <p className="reading-muted">
-        {t(
-          "Оцениваются только начала нот. Длительность удержания, легато и педаль не оцениваются. Перед повтором той же ноты полностью отпустите клавишу и нажмите снова."
-        )}
-      </p>
-      <p className="reading-muted">
-        {t(
-          "Без MIDI играйте двумя клавишами ПК или двумя касаниями. Одной мышью совместную атаку выполнить нельзя."
-        )}
-      </p>
+      <LessonDetails kind="guide" id="independent-rhythm:practice:guide">
+        <p className="reading-muted">
+          {t(
+            props.phase === "pulse"
+              ? "Пульс: 8 четвертей · 60 BPM · окно ±150 мс · 0 лишних атак."
+              : "Два ритма: 4 такта · 24 начала нот · 60 BPM · окно ±150 мс для каждой ноты."
+          )}
+        </p>
+        <p className="reading-muted">
+          {t(
+            "Оцениваются только начала нот. Длительность удержания, легато и педаль не оцениваются. Перед повтором той же ноты полностью отпустите клавишу и нажмите снова."
+          )}
+        </p>
+        <p className="reading-muted">
+          {t(
+            "Без MIDI играйте двумя клавишами ПК или двумя касаниями. Одной мышью совместную атаку выполнить нельзя."
+          )}
+        </p>
+      </LessonDetails>
       {props.result && <IndependentRhythmResults result={props.result} />}
-      <IndependentRhythmProgress {...props} />
+      <LessonDetails kind="progress" id="independent-rhythm:practice:progress">
+        <IndependentRhythmProgress {...props} />
+      </LessonDetails>
     </section>
   );
 }

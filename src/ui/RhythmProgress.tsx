@@ -1,3 +1,4 @@
+import { LessonDetails } from "./LessonDetails";
 import { useI18n } from "../app/useI18n";
 import { summarizeRhythmHistory } from "../rhythm/progress";
 import type { RhythmResult, RhythmSummary } from "../rhythm/types";
@@ -96,7 +97,6 @@ export function RhythmProgress({
   result: RhythmResult | null;
 }) {
   const { t } = useI18n();
-  const groups = summarizeRhythmHistory(history);
   return (
     <section className="reading-progress rhythm-progress">
       {result && (
@@ -106,6 +106,17 @@ export function RhythmProgress({
           <RhythmMetrics summary={result.summary} />
         </section>
       )}
+      <LessonDetails kind="progress" id="rhythm:practice:progress">
+        <RhythmHistory history={history} />
+      </LessonDetails>
+    </section>
+  );
+}
+function RhythmHistory({ history }: { history: readonly RhythmResult[] }) {
+  const { t } = useI18n();
+  const groups = summarizeRhythmHistory(history);
+  return (
+    <>
       <details data-window-detail="rhythm:progress">
         <summary>{t("Мой прогресс ритма")}</summary>
         <p>
@@ -143,6 +154,6 @@ export function RhythmProgress({
             </section>
           ))}
       </details>
-    </section>
+    </>
   );
 }

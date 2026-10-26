@@ -23,6 +23,16 @@ async function render(node: ReactNode) {
   });
 }
 
+async function reveal(id: string, open = true) {
+  const details = host.querySelector<HTMLDetailsElement>(`[data-window-detail="${id}"]`);
+  if (!details) throw new Error(`Missing disclosure: ${id}`);
+  await act(async () => {
+    await Promise.resolve();
+    details.open = open;
+    details.dispatchEvent(new Event("toggle"));
+  });
+}
+
 function button(text: string) {
   const found = [...host.querySelectorAll("button")].find((item) => item.textContent === text);
   if (!found) throw new Error(`Missing button: ${text}`);
@@ -104,6 +114,51 @@ afterEach(async () => {
 });
 
 describe("rhythm input button", () => {
+  it("keeps the same held tap mounted across guidance and settings toggles", async () => {
+    const current = {
+      ...props(),
+      source: "pointer" as const,
+      onTapDown: vi.fn(),
+      onTapUp: vi.fn(),
+      onStart: vi.fn(),
+      onBpm: vi.fn(),
+      onSource: vi.fn()
+    };
+    await render(<RhythmPanel {...current} />);
+    const tap = button("Ударить");
+    Object.defineProperty(tap, "setPointerCapture", { value: vi.fn(), configurable: true });
+    await dispatch(
+      tap,
+      new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerId: 7 })
+    );
+    await reveal("rhythm:practice:guide");
+    await reveal("rhythm:practice:settings");
+    await reveal("rhythm:practice:guide", false);
+    await reveal("rhythm:practice:settings", false);
+    expect(button("Ударить")).toBe(tap);
+    await dispatch(tap, new PointerEvent("pointerup", { bubbles: true, pointerId: 7 }));
+    expect(current.onTapDown).toHaveBeenCalledOnce();
+    expect(current.onTapUp).toHaveBeenCalledExactlyOnceWith("pointer", "pointer:7");
+    expect(current.onStart).not.toHaveBeenCalled();
+    expect(current.onBpm).not.toHaveBeenCalled();
+    expect(current.onSource).not.toHaveBeenCalled();
+  });
+  it("keeps current rhythm metrics visible while old history remains unmounted", async () => {
+    const result = missedRun("current");
+    await render(
+      <RhythmPanel
+        {...props()}
+        status="completed"
+        progress={<RhythmProgress history={[result]} result={result} />}
+      />
+    );
+    expect(host.querySelector('[aria-label="Результат ритма"]')).not.toBeNull();
+    expect(host.querySelector('[data-window-detail="rhythm:history"]')).toBeNull();
+    expect(button("Ударить").closest("details")).toBeNull();
+    await reveal("rhythm:practice:progress");
+    expect(host.querySelector('[data-window-detail="rhythm:history"]')).not.toBeNull();
+    expect(host.querySelector('[data-window-detail="rhythm:progress"]')).not.toBeNull();
+  });
   it("records the keydown timestamp once and preserves keyboard activation source", async () => {
     const current = { ...props(), onTapDown: vi.fn(), onTapUp: vi.fn() };
     await render(<RhythmPanel {...current} />);
@@ -181,6 +236,8 @@ describe("rhythm input button", () => {
     await dispatch(button("Начать ритм"), new MouseEvent("click", { bubbles: true }));
     expect(current.onStart).toHaveBeenCalledOnce();
     expect(current.onTapDown).not.toHaveBeenCalled();
+    expect(host.querySelector("select")).toBeNull();
+    await reveal("rhythm:practice:settings");
     const selects = host.querySelectorAll("select");
     const bpm = selects[0];
     const source = selects[1];
@@ -211,6 +268,7 @@ describe("rhythm course and progress", () => {
     expect(host.textContent).toContain("Connect and select a MIDI device");
     expect(host.textContent).toContain("Couldn't start the metronome");
     expect(button("Tap").getAttribute("aria-disabled")).toBe("true");
+    await reveal("rhythm:practice:settings");
     expect(host.textContent).toContain("No calibration profile: input compensation is 0 ms.");
   });
 
@@ -232,11 +290,14 @@ describe("rhythm course and progress", () => {
       { ...first, runId: "offset", offsets: { ...first.offsets, manualInputOffsetMs: 25 } }
     ];
     await render(<RhythmProgress history={history} result={null} />);
-    const progress = host.querySelector("details");
+    expect(host.querySelector(".rhythm-progress-group")).toBeNull();
+    await reveal("rhythm:practice:progress");
+    const progress = host.querySelector('[data-window-detail="rhythm:progress"]');
     expect(progress?.querySelectorAll(".rhythm-progress-group")).toHaveLength(5);
-    expect(host.querySelectorAll("details")[1]?.querySelector("summary")?.textContent).toBe(
-      "История ритма: 5"
-    );
+    expect(
+      host.querySelector('[data-window-detail="rhythm:history"]')?.querySelector("summary")
+        ?.textContent
+    ).toBe("История ритма: 5");
     expect(progress?.textContent).toContain("вручную 25");
     await act(async () => {
       await Promise.resolve();

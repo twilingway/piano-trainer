@@ -1,3 +1,4 @@
+import { useI18n } from "./useI18n";
 import { ConnectedMusicCards } from "./ConnectedMusicCourse";
 import { shallowEqual } from "react-redux";
 import { useState } from "react";
@@ -116,6 +117,7 @@ function ConnectedLibraryWindow({
   onClose: () => void;
   memory: WindowViewMemory;
 }) {
+  const { t } = useI18n();
   const { lesson, source, mySongs, folder } = useRuntimeSelector(
     (runtime) => ({
       lesson: runtime.current.lesson,
@@ -143,13 +145,19 @@ function ConnectedLibraryWindow({
       course={
         <>
           <ConnectedMusicCards onChoose={onClose} />
-          <ConnectedReadingCard onChoose={onClose} />
-          <ConnectedBassReadingCard onChoose={onClose} />
-          <ConnectedTwoHandCard onChoose={onClose} />
-          <ConnectedHeldBassCard onChoose={onClose} />
-          <ConnectedIndependentRhythmCard onChoose={onClose} />
-          <ConnectedIntervalCard onChoose={onClose} />
-          <ConnectedRhythmCard onChoose={onClose} />
+          <div
+            className="foundation-course-catalog"
+            role="group"
+            aria-label={t("Чтение, ритм и две руки")}
+          >
+            <ConnectedReadingCard onChoose={onClose} />
+            <ConnectedBassReadingCard onChoose={onClose} />
+            <ConnectedTwoHandCard onChoose={onClose} />
+            <ConnectedHeldBassCard onChoose={onClose} />
+            <ConnectedIndependentRhythmCard onChoose={onClose} />
+            <ConnectedIntervalCard onChoose={onClose} />
+            <ConnectedRhythmCard onChoose={onClose} />
+          </div>
           <ConnectedCourseCards onChoose={onClose} />
         </>
       }
