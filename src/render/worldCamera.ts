@@ -27,11 +27,10 @@ export const CAMERA_LIMITS = {
   scale: [0.55, 1.6]
 } as const;
 /**
- * Ready views of the keys; a preset keeps the keyboard's own scale. Each keeps the default's angle
- * between the view's axis and the keys, so the keys stay low in the frame.
+ * Ready views of the keys; the legacy calibration stays separate from explicitly selected poses.
  */
 export const CAMERA_PRESETS = {
-  player: DEFAULT_CAMERA,
+  player: { ...DEFAULT_CAMERA, height: 450, distance: 720, pitch: 42 },
   top: { ...DEFAULT_CAMERA, height: 803, distance: 120, pitch: 90 },
   hands: { ...DEFAULT_CAMERA, height: 212, distance: 300, pitch: 42 }
 } as const satisfies Record<string, CameraPrefs>;
