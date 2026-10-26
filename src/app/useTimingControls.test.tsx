@@ -4,6 +4,12 @@ import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import type { Trainer } from "../practice/Trainer";
 import type { MidiDevice } from "../input/midiInput";
+import {
+  scheduleSound,
+  cancelScheduledSound,
+  soundClick,
+  stopClickSound
+} from "../audio/pianoSound";
 import type { TimingSettings } from "../ui/TimingSettings";
 import { createTrainerSnapshotSource } from "./trainerSnapshots";
 import { useTimingControls } from "./useTimingControls";
@@ -22,7 +28,8 @@ vi.mock("../audio/pianoSound", () => ({
   audioTime: () => 0,
   cancelScheduledSound: vi.fn(),
   scheduleSound: vi.fn(),
-  soundClick: vi.fn()
+  soundClick: vi.fn(),
+  stopClickSound: vi.fn()
 }));
 let root: Root;
 let host: HTMLDivElement;
@@ -39,12 +46,14 @@ function Harness({
   ready,
   show = false,
   connected = devices,
-  localInput = false
+  localInput = false,
+  prepareSound = ensureSound
 }: {
   ready: boolean;
   show?: boolean;
   connected?: readonly MidiDevice[];
   localInput?: boolean;
+  prepareSound?: () => Promise<void>;
 }) {
   const timing = useTimingControls({
     trainerRef: ref,
@@ -53,11 +62,12 @@ function Harness({
     devices: connected,
     deviceId: "piano",
     localInput,
-    ensureSound
+    ensureSound: prepareSound
   });
   return show ? timing.settings : null;
 }
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   localStorage.clear();
   store = createAppStore();
@@ -105,7 +115,7 @@ describe("stable trainer timing wiring", () => {
       await Promise.resolve();
     });
     expect(ui.props?.running).toBe(true);
-    for (let index = 0; index < 28; index++) {
+    for (let index = 0; index < 31; index++) {
       now = 4300 + index * 600;
       act(() => {
         if (index % 2 === 0) {
@@ -122,6 +132,87 @@ describe("stable trainer timing wiring", () => {
     expect(store.getState().reading.history).toHaveLength(0);
     expect(store.getState().reading.rhythm.history).toHaveLength(0);
   });
+  it.each([0, 3400, 5300, 7700])("cancels when leaving calibration at %i ms", async (elapsed) => {
+    vi.useFakeTimers();
+    vi.spyOn(performance, "now").mockReturnValue(1000);
+    vi.mocked(scheduleSound).mockReturnValue(17);
+    ref.current = fake as unknown as Trainer;
+    await mount(true, true);
+    await act(async () => {
+      ui.props?.onStart();
+      await Promise.resolve();
+    });
+    await act(() => vi.advanceTimersByTime(elapsed));
+    const calls = vi.mocked(scheduleSound).mock.calls.length;
+    await mount(true, false);
+    await act(() => vi.advanceTimersByTime(30000));
+    expect(scheduleSound).toHaveBeenCalledTimes(calls);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(store.getState().preferences.timing.profiles).toEqual({});
+    if (calls > 0) expect(cancelScheduledSound).toHaveBeenCalledWith(17);
+    expect(
+      fake.onInput?.({
+        type: "down",
+        pitch: 60,
+        velocity: 100,
+        source: "midi",
+        deviceId: "piano",
+        timestamp: 1000
+      })
+    ).toBe(false);
+  });
+
+  it("stops a Web Audio click already queued by a lookahead callback when closing", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(performance, "now").mockReturnValue(1000);
+    vi.mocked(scheduleSound).mockImplementation((at, callback) => {
+      callback(at);
+      return 17;
+    });
+    ref.current = fake as unknown as Trainer;
+    await mount(true, true);
+    await act(async () => {
+      ui.props?.onStart();
+      await Promise.resolve();
+    });
+    await act(() => vi.advanceTimersByTime(3200));
+    expect(soundClick).toHaveBeenCalledWith(false, expect.any(Number));
+    vi.mocked(stopClickSound).mockClear();
+    await mount(true, false);
+    expect(stopClickSound).toHaveBeenCalled();
+    const clicks = vi.mocked(soundClick).mock.calls.length;
+    await act(() => vi.advanceTimersByTime(30000));
+    expect(soundClick).toHaveBeenCalledTimes(clicks);
+  });
+
+  it("invalidates a pending audio start when the calibration section closes", async () => {
+    vi.useFakeTimers();
+    let readySound: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      readySound = resolve;
+    });
+    const prepareSound = () => pending;
+    ref.current = fake as unknown as Trainer;
+    const show = async (visible: boolean) => {
+      await act(async () => {
+        await Promise.resolve();
+        root.render(
+          withTestStore(<Harness ready show={visible} prepareSound={prepareSound} />, store)
+        );
+      });
+    };
+    await show(true);
+    act(() => ui.props?.onStart());
+    await show(false);
+    await act(async () => {
+      readySound?.();
+      await pending;
+    });
+    expect(vi.getTimerCount()).toBe(0);
+    expect(scheduleSound).not.toHaveBeenCalled();
+    expect(store.getState().preferences.timing.profiles).toEqual({});
+  });
+
   it("applies timing once after async trainer readiness and does not reconfigure on shell updates", async () => {
     await mount(false);
     expect(fake.configureTiming).not.toHaveBeenCalled();

@@ -34,6 +34,7 @@ vi.mock("../audio/pianoSound", () => ({
   scheduleSound: () => 1,
   cancelScheduledSound: vi.fn(),
   soundClick: vi.fn(),
+  stopClickSound: vi.fn(),
   ensureMetronomeSound: audio.ensure,
   metronomeSoundReady: () => audio.ready,
   onPianoSoundInterrupted: (callback: () => void) => {
@@ -242,7 +243,7 @@ describe("rhythm preparation and ownership", () => {
       startButton.click();
       await Promise.resolve();
     });
-    for (let index = 0; index < 28; index++) {
+    for (let index = 0; index < 31; index++) {
       const timestamp = 4300 + index * 600;
       if (index % 2 === 0) space("keydown", timestamp);
       else {

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { analyzeCalibration, CalibrationSession, jitterQuality, median } from "./calibration";
+import {
+  analyzeCalibration,
+  CalibrationSession,
+  jitterQuality,
+  median,
+  CALIBRATION_LEAD_IN
+} from "./calibration";
 import {
   calibrationIsCurrent,
   defaultTimingPreferences,
@@ -104,28 +110,65 @@ describe("calibration profile persistence", () => {
 describe("calibration beat capture", () => {
   it("excludes four warmup taps from the measured median and accepts delayed callbacks by timestamp", () => {
     const session = new CalibrationSession(1000);
-    for (let beat = 0; beat < 28; beat++) {
-      expect(session.capture(60, 1000 + beat * 600 + (beat < 4 ? 180 : 36))).toBe(true);
+    expect(CALIBRATION_LEAD_IN).toBe(3);
+    for (let beat = 0; beat < 31; beat++) {
+      expect(session.capture(60, 1000 + beat * 600 + (beat < 7 ? 180 : 36))).toBe(beat >= 3);
     }
     const progress = session.snapshot();
     expect(progress.warmup).toBe(4);
     expect(progress.measured).toBe(24);
     expect(progress.complete).toBe(true);
     expect(progress.result?.inputOffsetMs).toBe(36);
+    expect(progress.result?.calibrationSamples).toEqual(Array<number>(24).fill(36));
   });
   it("rejects wrong pitches, duplicates, nonfinite and offbeat taps", () => {
     const session = new CalibrationSession(1000);
-    expect(session.capture(61, 1000)).toBe(false);
+    expect(session.capture(61, 2800)).toBe(false);
     expect(session.capture(60, NaN)).toBe(false);
-    expect(session.capture(60, 1300)).toBe(false);
-    expect(session.capture(60, 1000)).toBe(true);
-    expect(session.capture(60, 1010)).toBe(false);
-    expect(session.capture(60, 1000 + 28 * 600)).toBe(false);
+    expect(session.capture(60, 3100)).toBe(false);
+    expect(session.capture(60, 2800)).toBe(true);
+    expect(session.capture(60, 2810)).toBe(false);
+    expect(session.capture(60, 1000 + 31 * 600)).toBe(false);
     expect(session.snapshot().measured).toBe(0);
   });
   it("does not complete when a warmup beat is missing", () => {
     const session = new CalibrationSession(1000);
-    for (let beat = 1; beat < 28; beat++) session.capture(60, 1000 + beat * 600);
-    expect(session.snapshot().complete).toBe(false);
+    for (let beat = 0; beat < 31; beat++) if (beat !== 3) session.capture(60, 1000 + beat * 600);
+    expect(session.snapshot()).toMatchObject({
+      warmup: 3,
+      measured: 24,
+      complete: false,
+      result: null
+    });
+  });
+  it("ignores intro attacks without reserving a warmup slot, including delayed delivery", () => {
+    const session = new CalibrationSession(1000);
+    for (const timestamp of [1000, 1600, 2200, 2450])
+      expect(session.capture(60, timestamp)).toBe(false);
+    expect(session.snapshot()).toMatchObject({ warmup: 0, measured: 0 });
+    expect(session.capture(60, 2700)).toBe(true); // T3 - 100, even though it is before T3.
+    expect(session.capture(60, 2450)).toBe(false); // T2 + 250, delivered after the warmup attack.
+    expect(session.capture(60, 2800)).toBe(false);
+    expect(session.snapshot()).toMatchObject({ warmup: 1, measured: 0 });
+  });
+  it("includes the 270 ms nearest-beat window and keeps its gaps out of either stage", () => {
+    for (const [timestamp, accepted, warmup, measured] of [
+      [1000 + 3 * 600 - 271, false, 0, 0],
+      [1000 + 3 * 600 - 270, true, 1, 0],
+      [1000 + 3 * 600 + 270, true, 1, 0],
+      [1000 + 3 * 600 + 271, false, 0, 0],
+      [1000 + 2 * 600 + 270, false, 0, 0],
+      [1000 + 7 * 600 - 271, false, 0, 0],
+      [1000 + 7 * 600 - 270, true, 0, 1],
+      [1000 + 7 * 600 - 100, true, 0, 1],
+      [1000 + 7 * 600 + 270, true, 0, 1],
+      [1000 + 7 * 600 + 271, false, 0, 0],
+      [1000 + 30 * 600 + 270, true, 0, 1],
+      [1000 + 30 * 600 + 271, false, 0, 0]
+    ] as const) {
+      const session = new CalibrationSession(1000);
+      expect(session.capture(60, timestamp)).toBe(accepted);
+      expect(session.snapshot()).toMatchObject({ warmup, measured, complete: false });
+    }
   });
 });

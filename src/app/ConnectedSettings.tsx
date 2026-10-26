@@ -2,7 +2,7 @@ import { ConnectedSettingsTransport } from "./ConnectedSettingsTransport";
 import { preferencesActions } from "./preferencesSlice";
 import { useAppDispatch } from "./storeHooks";
 import { shallowEqual } from "react-redux";
-import type { ComponentProps } from "react";
+import { useLayoutEffect, type ComponentProps } from "react";
 import type { TrainerSnapshot } from "../practice/Trainer";
 import type { MidiDevice } from "../input/midiInput";
 import type { Language, Layout } from "../wordTyping/types";
@@ -368,6 +368,7 @@ function ConnectedSynchronizationSettings() {
       progress: runtime.timing.settingsProps.progress,
       running: runtime.timing.settingsProps.running,
       countdown: runtime.timing.settingsProps.countdown,
+      phase: runtime.timing.settingsProps.phase,
       locked: runtime.timing.settingsProps.locked,
       canCalibrate: runtime.timing.settingsProps.canCalibrate,
       tapAvailable: runtime.timing.settingsProps.onTap !== undefined
@@ -415,5 +416,6 @@ export function ConnectedTimingSettings({
   ...props
 }: SourceProps & Omit<ComponentProps<typeof TimingSettings>, "diagnostic">) {
   const diagnostic = useTrainerSelector(source, selectDiagnostic);
+  useLayoutEffect(() => props.onCancel, [props.onCancel]);
   return <TimingSettings {...props} {...(diagnostic ? { diagnostic } : {})} />;
 }
