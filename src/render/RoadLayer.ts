@@ -270,13 +270,15 @@ export class RoadLayer {
     await Promise.all([this.arrivals.load(), this.rail.load()]);
   }
   layout(width: number, height: number, bottom: number, viewWidth: number, handRoom = 0): void {
-    this.container.visible = width >= 1 && viewWidth >= 1 && height >= 1 && bottom >= height;
+    // A keys-only viewport can leave no road space, but still needs fresh paint and cameras.
+    const valid = width >= 1 && viewWidth >= 1 && bottom >= Math.max(1, height);
+    this.container.visible = valid && height >= 1;
     this.effects.visible = this.container.visible;
-    if (!this.container.visible) {
+    if (!valid) {
       this.size = { width: 0, height: 0 };
       return;
     }
-    this.size = { width, height };
+    this.size = { width, height: Math.max(0, height) };
     this.viewWidth = viewWidth;
     const resolution = Math.min(this.renderer.resolution, 8192 / width);
     this.keysTexture.source.resize(width, Math.max(1, bottom - height), resolution);

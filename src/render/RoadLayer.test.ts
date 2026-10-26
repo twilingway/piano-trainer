@@ -1,6 +1,9 @@
+import { NativeKeyboardScene } from "./NativeKeyboardScene";
+import { viewGeometry } from "./viewGeometry";
+import { DEFAULT_ROAD_SHAPE } from "./roadLayoutCamera";
 import { DEFAULT_FREE_DIRECT_FIELD } from "./freeRoadLayout";
 // @vitest-environment happy-dom
-import { Container, Graphics, Matrix, Texture } from "./flatThree";
+import { Container, Graphics, Matrix, RenderTexture, Texture } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { RoadLayer } from "./RoadLayer";
 import type { EnergySource } from "./noteEnergy";
@@ -368,4 +371,91 @@ it("routes every native note style, trail and CPU origin through the rear contac
   layer.beginNotes();
   layer.drawHold(x, 100, 400, c.width, 0xffffff, 1);
   expect(frame.notes[0]?.x).toBeCloseTo(cameras.notes.sourceX(x));
+});
+
+describe("native keyboard paint with no road space", () => {
+  it.each([667, 390, 320])(
+    "bakes a fresh %ipx keys-only keyboard even when the road has zero height",
+    (width) => {
+      const v = fixture();
+      const texture = RenderTexture.create({ width: 1, height: 1 });
+      const nativeKeys = new NativeKeyboardScene();
+      const renderer = { resolution: 1, render: vi.fn() };
+      Object.assign(v.internals, {
+        keys: nativeKeys,
+        keysTexture: texture,
+        renderer,
+        shape: DEFAULT_ROAD_SHAPE,
+        cameraPrefs: CAMERA_PRESETS.top,
+        pan: 0,
+        keyHeights: new Map<number, number>(),
+        keyboardTop: true,
+        notesPerspective: false,
+        app: { screen: { height: 110 } }
+      });
+      Object.assign(v.three, { on: true, setEnabled: vi.fn() });
+      const keys = layoutKeyboard(width, 48, 72);
+      const geometry = viewGeometry(
+        110,
+        width / 15,
+        { notes: false, keys: true, hands: false },
+        false,
+        true
+      );
+      expect(geometry.hitY).toBeCloseTo(0, 9);
+      v.layer.layout(width, geometry.hitY, geometry.keyboardTop + geometry.keyboardHeight, width);
+      v.layer.setKeyboard(keys, geometry, true);
+      v.draw(0);
+      expect(v.layer.container.visible).toBe(false);
+      expect(v.internals.effects.visible).toBe(false);
+      expect(texture.width).toBe(width);
+      expect(texture.height).toBeGreaterThan(90);
+      expect(renderer.render).toHaveBeenCalledWith(
+        expect.objectContaining({ target: texture, clear: true })
+      );
+      expect(nativeKeys.scene?.faces).toHaveLength(25);
+      expect(nativeKeys.scene?.texture).toBe(texture);
+      expect(nativeKeys.scene?.keyboardCamera?.params.keyboardDepth).toBeDefined();
+      texture.destroy(true);
+      nativeKeys.destroy();
+    }
+  );
+
+  it("refreshes keyboard paint and cameras through large, short and large layouts", () => {
+    const v = fixture();
+    const texture = RenderTexture.create({ width: 1, height: 1 });
+    const nativeKeys = new NativeKeyboardScene();
+    const renderer = { resolution: 1, render: vi.fn() };
+    Object.assign(v.internals, {
+      keys: nativeKeys,
+      keysTexture: texture,
+      renderer,
+      shape: DEFAULT_ROAD_SHAPE,
+      cameraPrefs: CAMERA_PRESETS.top,
+      pan: 0,
+      keyHeights: new Map<number, number>(),
+      keyboardTop: true,
+      notesPerspective: false
+    });
+    Object.assign(v.three, { on: true, setEnabled: vi.fn() });
+    for (const height of [600, 110, 600]) {
+      const geometry = viewGeometry(
+        height,
+        667 / 15,
+        { notes: false, keys: true, hands: false },
+        false,
+        true
+      );
+      v.layer.layout(667, geometry.hitY, geometry.keyboardTop + geometry.keyboardHeight, 667);
+      v.layer.setKeyboard(layoutKeyboard(667, 48, 72), geometry, true);
+      renderer.render.mockClear();
+      v.draw(0);
+      expect(v.layer.container.visible).toBe(height > 110);
+      expect(renderer.render).toHaveBeenCalledOnce();
+      expect(texture.height).toBeCloseTo(geometry.keyboardHeight + geometry.feltHeight, 8);
+      expect(nativeKeys.scene?.keyboardCamera?.project(0, 22, 0).scale).toBeGreaterThan(0);
+    }
+    texture.destroy(true);
+    nativeKeys.destroy();
+  });
 });
