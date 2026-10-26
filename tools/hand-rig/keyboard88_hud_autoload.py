@@ -91,6 +91,7 @@ _after_load._keyboard88_hud_tag = _TAG
 @persistent
 def _before_load(_unused):
     _remove_draw()
+    bpy.app.driver_namespace.pop('keyboard88_hud_loaded_identity_v1', None)
 
 
 _before_load._keyboard88_hud_tag = _TAG
