@@ -4,7 +4,13 @@ import { noteProjectionCamera } from "./noteProjectionCamera";
 import { mixedKeyboardCamera } from "./mixedKeyboardCamera";
 import { roadLayoutCamera } from "./roadLayoutCamera";
 import { projectionMatrix, viewMatrix } from "./three/threeCamera";
-import { CAMERA_PRESETS, KEYS_BACK, MAX_ROAD_WORLD_Z } from "./worldCamera";
+import {
+  CAMERA_PRESETS,
+  DEFAULT_CAMERA,
+  KEYS_BACK,
+  MAX_ROAD_WORLD_Z,
+  SAFE_VIEW_DEPTH
+} from "./worldCamera";
 
 const PROJECTIONS = ["direct", "perspective"] as const;
 
@@ -64,12 +70,124 @@ describe("independent note projection camera", () => {
         const notes = noteProjectionCamera(keyboard, projection, 700, horizon);
         const near = notes.project(0, 22, 142);
         const far = notes.project(0, 22, notes.roadFarZ);
-        const target = Math.max(0, Math.min(630, near.y * horizon));
+        const legacy = (share: number) => Math.max(0, Math.min(630, near.y * share));
+        const target =
+          projection === "direct" || horizon <= 0.6
+            ? legacy(horizon)
+            : legacy(0.6) + ((near.y - legacy(0.6)) * (horizon - 0.6)) / 0.4;
         expect(far.y).toBeCloseTo(target, 7);
         expect(notes.roadFarZ).toBeLessThanOrEqual(MAX_ROAD_WORLD_Z);
         expect(notes.roadFarZ).toBeGreaterThan(142);
         expect(Number.isFinite(notes.params.focal)).toBe(true);
       }
+  });
+
+  it("preserves the legacy 0..60% target, pitch, height and far-depth calibration", () => {
+    const keyboard = roadLayoutCamera(1440, 2288, 700, CAMERA_PRESETS.player, true, 0.1);
+    const hit = keyboard.project(0, KEYS_BACK.y, KEYS_BACK.z);
+    const pixels = keyboard.project(1, KEYS_BACK.y, KEYS_BACK.z).x - hit.x;
+    const radians = (25 * Math.PI) / 180;
+    for (const share of [0, 0.1, 0.3, 0.6]) {
+      const camera = noteProjectionCamera(keyboard, "perspective", 700, share);
+      const target = Math.max(0, Math.min(630, hit.y * share));
+      const travel = hit.y - target;
+      const expectedHeight = Math.max(
+        (KEYS_BACK.y + 1) / keyboard.params.fit,
+        (KEYS_BACK.y + (travel * Math.cos(radians)) / (pixels * 0.9)) / keyboard.params.fit
+      );
+      const depthZ = KEYS_BACK.z + DEFAULT_CAMERA.distance * keyboard.params.fit;
+      const expectedFar = KEYS_BACK.z + (travel * Math.sin(radians)) / (pixels * 0.1) + depthZ * 9;
+      expect(camera.params.prefs.pitch).toBe(25);
+      expect(camera.params.prefs.height).toBeCloseTo(expectedHeight, 8);
+      expect(camera.roadFarZ).toBeCloseTo(expectedFar, 7);
+      expect(camera.project(0, KEYS_BACK.y, camera.roadFarZ).y).toBeCloseTo(target, 7);
+    }
+  });
+
+  it.each([0.99, 1, 1.01, 1.2, 1.5])(
+    "crosses the key line continuously at horizon %s with fitted 88-key scales",
+    (share) => {
+      for (const width of [320, 1440])
+        for (const scale of [0.55, 1.6]) {
+          const keyboard = roadLayoutCamera(
+            width,
+            2288,
+            700,
+            { ...CAMERA_PRESETS.top, scale },
+            true,
+            0.1
+          );
+          const unchanged = JSON.stringify(keyboard.params);
+          const camera = noteProjectionCamera(keyboard, "perspective", 700, share);
+          const near = camera.project(0, KEYS_BACK.y, KEYS_BACK.z);
+          const legacy = Math.max(0, Math.min(630, near.y * 0.6));
+          const target =
+            share <= 1 ? legacy + ((near.y - legacy) * (share - 0.6)) / 0.4 : near.y * share;
+          const far = camera.project(0, KEYS_BACK.y, camera.roadFarZ);
+          expect(far.y).toBeCloseTo(target, 7);
+          expect(camera.roadFarZ).toBeGreaterThan(KEYS_BACK.z);
+          expect(camera.roadFarZ).toBeLessThanOrEqual(MAX_ROAD_WORLD_Z);
+          expect(far.scale / near.scale).toBeCloseTo(0.1, 7);
+          expect(Math.abs(camera.params.prefs.pitch)).toBeLessThanOrEqual(
+            25 * Math.min(1, Math.abs(1 - share) / 0.4) + 1e-9
+          );
+          expect(Math.sign(camera.params.prefs.pitch)).toBe(Math.sign(1 - share));
+          if (share > 1)
+            expect(camera.params.prefs.height).toBeLessThan(
+              (KEYS_BACK.y * scale) / keyboard.params.fit
+            );
+          const view = viewMatrix(camera.params);
+          const projection = projectionMatrix(camera.params, width, 900);
+          for (const pan of [0, 424])
+            for (const x of [-200, 300])
+              for (const y of [22, 34]) {
+                const worldX = camera.sourceX(x - pan);
+                for (const z of [
+                  KEYS_BACK.z,
+                  (KEYS_BACK.z + camera.roadFarZ) / 2,
+                  camera.roadFarZ
+                ]) {
+                  const actual = camera.project(worldX, y, z);
+                  const ndc = new Vector3(worldX * scale, y * scale, -z * scale)
+                    .applyMatrix4(view)
+                    .applyMatrix4(projection);
+                  expect(((ndc.x + 1) * width) / 2).toBeCloseTo(actual.x, 7);
+                  expect(((1 - ndc.y) * 900) / 2).toBeCloseTo(actual.y, 7);
+                  expect(ndc.z).toBeGreaterThan(-1);
+                  expect(ndc.z).toBeLessThan(1);
+                }
+                const expected = keyboard.project(worldX, KEYS_BACK.y, KEYS_BACK.z);
+                const contact = camera.project(worldX, KEYS_BACK.y, KEYS_BACK.z);
+                expect(contact.x).toBeCloseTo(expected.x, 7);
+                expect(contact.y).toBeCloseTo(expected.y, 7);
+              }
+          expect(JSON.stringify(keyboard.params)).toBe(unchanged);
+        }
+    }
+  );
+
+  it("retains finite taper at 100% and expands its internal far width only for impossible 10% budgets", () => {
+    for (const height of [700, 22000]) {
+      const keyboard = roadLayoutCamera(320, 2288, height, CAMERA_PRESETS.top, true, 0.1);
+      const camera = noteProjectionCamera(keyboard, "perspective", height, 1);
+      const near = camera.project(0, KEYS_BACK.y, KEYS_BACK.z);
+      const far = camera.project(0, KEYS_BACK.y, camera.roadFarZ);
+      expect(camera.params.prefs.pitch).toBe(0);
+      expect(far.y).toBeCloseTo(near.y, 7);
+      expect(camera.roadFarZ).toBeLessThanOrEqual(MAX_ROAD_WORLD_Z);
+      const depth =
+        camera.roadFarZ * camera.params.prefs.scale + DEFAULT_CAMERA.distance * camera.params.fit;
+      expect(depth).toBeLessThan(SAFE_VIEW_DEPTH);
+      if (height === 700) expect(far.scale / near.scale).toBeCloseTo(0.1, 7);
+      else expect(far.scale / near.scale).toBeGreaterThan(0.1);
+    }
+    const keyboard = roadLayoutCamera(1440, 2288, 700, CAMERA_PRESETS.player, true, 0.1);
+    const invalidBudget = { ...keyboard, params: { ...keyboard.params, fit: 1e9 } };
+    expect(noteProjectionCamera(invalidBudget, "perspective", 700, 1)).toBe(invalidBudget);
+    const fallback = noteProjectionCamera(keyboard, "perspective", NaN, NaN);
+    expect(
+      Object.values(fallback.project(0, KEYS_BACK.y, fallback.roadFarZ)).every(Number.isFinite)
+    ).toBe(true);
   });
 
   it("matches CPU and Three off-axis projection including pan and custom piano scale", () => {

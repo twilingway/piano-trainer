@@ -1,3 +1,4 @@
+import { RoadProjectionSettings } from "./RoadProjectionSettings";
 import type { CameraComposition } from "../../render/cameraComposition";
 import { CameraCompositionSettings } from "./CameraCompositionSettings";
 import type { FallingNoteStyle } from "../../render/fallingNoteStyle";
@@ -226,44 +227,7 @@ export function KeyboardSettings({
             <FreeRoadSettings value={freeRoadLayout} onChange={onFreeRoadLayout} />
           ) : (
             <>
-              <label className="setting">
-                <span>{t("Перспектива: горизонт")}</span>
-                <span className="setting-control">
-                  <input
-                    type="range"
-                    min={0}
-                    max={0.6}
-                    step={0.01}
-                    value={road.horizon}
-                    disabled={!notesPerspective}
-                    aria-label={t("Перспектива: горизонт")}
-                    data-setting-target="road-horizon"
-                    onChange={(event) => {
-                      onRoad({ horizon: Number(event.target.value) });
-                    }}
-                  />
-                  <span className="digits">{Math.round(road.horizon * 100)}%</span>
-                </span>
-              </label>
-              <label className="setting">
-                <span>{t("Перспектива: ширина у горизонта")}</span>
-                <span className="setting-control">
-                  <input
-                    type="range"
-                    min={-1}
-                    max={0.9}
-                    step={0.01}
-                    value={road.far}
-                    disabled={!notesPerspective}
-                    aria-label={t("Перспектива: ширина у горизонта")}
-                    data-setting-target="road-width"
-                    onChange={(event) => {
-                      onRoad({ far: Number(event.target.value) });
-                    }}
-                  />
-                  <span className="digits">{Math.round(road.far * 100)}%</span>
-                </span>
-              </label>
+              <RoadProjectionSettings value={road} enabled={notesPerspective} onChange={onRoad} />
               {!notesPerspective && (
                 <p className="setting-hint">
                   {t("Горизонт и ширина у горизонта доступны в перспективной проекции.")}

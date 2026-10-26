@@ -743,7 +743,15 @@ it.each(["ru", "en"] as const)(
       });
       const control = host.querySelector<HTMLInputElement>(`[data-setting-target="${target}"]`);
       expect(control?.disabled).toBe(true);
-      expect(document.activeElement).toBe(control?.closest("label"));
+      // The two-input row is a div; disabled controls use SettingsPanel's safe group fallback.
+      const destination = control?.closest("label,.settings-group");
+      expect(destination).not.toBeNull();
+      expect(document.activeElement).toBe(destination);
+      expect(destination?.contains(control ?? null)).toBe(true);
+      expect(destination?.getAttribute("data-setting-highlight")).toBe("true");
+      expect(
+        host.querySelector<HTMLInputElement>(`[data-setting-target="${target}-number"]`)?.disabled
+      ).toBe(true);
       expect(JSON.stringify(store.getState().preferences)).toBe(before);
     }
     await section(view);
@@ -768,6 +776,9 @@ it.each(["ru", "en"] as const)(
       });
       const control = host.querySelector<HTMLInputElement>(`[data-setting-target="${target}"]`);
       expect(control?.disabled).toBe(false);
+      expect(
+        host.querySelector<HTMLInputElement>(`[data-setting-target="${target}-number"]`)?.disabled
+      ).toBe(false);
       expect(document.activeElement).toBe(control);
       expect(JSON.stringify(store.getState().preferences)).toBe(enabled);
     }

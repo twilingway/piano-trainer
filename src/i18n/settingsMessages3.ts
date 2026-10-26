@@ -1,6 +1,9 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
+  "100% — линия клавиш. Значения выше опускают горизонт ниже неё.": {
+    en: "100% is the key line. Higher values move the horizon below it."
+  },
   "Подготовка к калибровке": { en: "Calibration preparation" },
   "Подстройтесь под метроном: первые 3 щелчка не считаются.": {
     en: "Find the beat: the first 3 clicks do not count."

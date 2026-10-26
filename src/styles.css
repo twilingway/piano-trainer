@@ -4971,3 +4971,18 @@ button.song-card.song-card__open {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Give both legacy projection controls the full row rather than a short trailing slider. */
+.road-projection-setting {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.road-projection-setting .projection-number-control {
+  width: 100%;
+  gap: 8px;
+}
+.road-projection-setting input[type="range"] {
+  width: 0;
+  min-width: 0;
+}

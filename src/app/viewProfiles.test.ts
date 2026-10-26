@@ -263,3 +263,18 @@ describe("unified keyboard migration", () => {
     }
   );
 });
+
+it("round-trips the extended horizon in saved framing without changing the legacy seed", () => {
+  const original = hydrateViewProfiles(null, { ...legacy, roadHorizon: 1.2 }, layout);
+  const saved = saveViewFraming(original, { ...activeViewFraming(original), roadHorizon: 1.4 });
+  const classic = selectViewProfile(saved, activeViewFraming(saved), { keyboardStyle: "classic" });
+  const returned = selectViewProfile(classic.profiles, classic.framing, { keyboardStyle: "3d" });
+  expect(returned.framing.roadHorizon).toBe(1.4);
+  const restored = hydrateViewProfiles(
+    JSON.parse(JSON.stringify(returned.profiles)),
+    legacy,
+    layout
+  );
+  expect(activeViewFraming(restored).roadHorizon).toBe(1.4);
+  expect(restored.legacySeed.roadHorizon).toBe(1.2);
+});
