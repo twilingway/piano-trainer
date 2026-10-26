@@ -49,3 +49,16 @@ PASS.
 pnpm check — PASS после обновления ветки от dev: 4178 тестов, 23 compiler-теста и сборка; 10 тестов
 пропущены существующей конфигурацией. pnpm spec:validate — 74/74. Prettier и git diff --check —
 PASS. Стенд задачи не запускался, пользовательский 5190 не менялся.
+
+## Конечный LEFT inventory
+
+Закреплены 74 случая по design: 64 одиночных A0–C6, ещё четыре пальца на C4 и шесть явных совместных
+нажатий. Свободным пальцам не назначаются дополнительные клавиши или XYZ. 11 тестов planner
+проверяют диапазон, сторону, повторы, точный pressed set и запрет фиктивного допуска; независимое
+ревью — PASS. Команда: `python -B -m unittest discover -s probes -p test_left_inventory_v1.py -v`.
+
+Локальный manifest `native-left-inventory-v1/manifest.json`, SHA256
+`8e8c6db73ec0c83dd08cf69c9ae83ab43eb303ca4c85df0cdf31cf9d875fd469`. Все 74 записи имеют статус
+NOT_RUN. Девять native/source/calibration prerequisites явно отсутствуют; planner запрещает GPU и
+запись. Это подтверждает фиксацию inventory, а не достижение C6 или проверку нативной левой
+геометрии. Положительная runtime-проверка требует отдельной версии.
