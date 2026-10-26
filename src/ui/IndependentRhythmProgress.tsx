@@ -129,12 +129,12 @@ export function IndependentRhythmProgress(props: IndependentRhythmProgressProps)
           "Хранятся последние 20 завершённых серий двух ритмов. Фильтр выбирает весь проход по способу ввода, сохраняя его ошибки и помощь."
         )}
       </p>
-      <details>
+      <details data-window-detail="independent-rhythm:progress">
         <summary>{t("Мой прогресс двух ритмов")}</summary>
         <p>{t("Завершённых серий двух ритмов: {number}", { number: summary.resultCount })}</p>
         <IndependentRhythmMetrics summary={summary} />
       </details>
-      <details>
+      <details data-window-detail="independent-rhythm:history">
         <summary>{t("История двух ритмов: {number}", { number: selected.length })}</summary>
         {selected
           .toSorted((a, b) => b.completedAt - a.completedAt)

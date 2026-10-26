@@ -1,21 +1,10 @@
 // @vitest-environment happy-dom
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { act } from "react";
-import type { ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsPanel } from "./SettingsPanel";
 import type { SettingsTab } from "./SettingsPanel";
-
-// Native dialog visibility is browser-owned; exercise real section navigation.
-vi.mock("./GameDialog", () => ({
-  GameDialog: ({ children, onClose }: { children: ReactNode; onClose: () => void }) => (
-    <section>
-      <button type="button" aria-label="Закрыть" onClick={onClose} />
-      {children}
-    </section>
-  )
-}));
 
 let host: HTMLDivElement;
 let root: Root;
@@ -69,6 +58,7 @@ afterEach(async () => {
     root.unmount();
   });
   host.remove();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -220,3 +210,224 @@ it.each(["disabled", "missing"] as const)(
     expect(changed).not.toHaveBeenCalled();
   }
 );
+
+describe("settings presentation memory", () => {
+  function panel() {
+    const element = host.querySelector<HTMLDivElement>("[role=tabpanel]");
+    if (!element) throw new Error("Missing settings panel");
+    return element;
+  }
+  function detail() {
+    const element = panel().querySelector("details");
+    if (!element) throw new Error("Missing disclosure");
+    return element;
+  }
+  function layout() {
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(200);
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (
+      this: HTMLElement
+    ) {
+      if (!this.closest("dialog")?.open) return 0;
+      return this.querySelector("details[open]") ? 1400 : 300;
+    });
+  }
+  const sections: readonly SettingsTab[] = [
+    {
+      id: "view",
+      title: "Вид",
+      content: (
+        <details data-window-detail="view:explanation">
+          <summary>View explanation</summary>
+          <p>Long content</p>
+        </details>
+      )
+    },
+    {
+      id: "piano",
+      title: "Пианино",
+      content: (
+        <details data-window-detail="piano:explanation">
+          <summary>Piano explanation</summary>
+          <p>Other long content</p>
+        </details>
+      )
+    }
+  ];
+  it("remembers independent tab scroll and disclosures before measuring, including external close", async () => {
+    layout();
+    await render(sections);
+    detail().open = true;
+    panel().scrollTop = 650;
+    await act(async () => {
+      await Promise.resolve();
+      tab(1).click();
+    });
+    expect(panel().scrollTop).toBe(0);
+    expect(detail().open).toBe(false);
+    detail().open = true;
+    panel().scrollTop = 420;
+    await act(async () => {
+      await Promise.resolve();
+      tab(0).click();
+    });
+    expect(detail().open).toBe(true);
+    expect(panel().scrollTop).toBe(650);
+    await act(async () => {
+      await Promise.resolve();
+      tab(1).click();
+    });
+    expect(detail().open).toBe(true);
+    expect(panel().scrollTop).toBe(420);
+    await render(sections, false);
+    expect(host.querySelector("[role=tabpanel]")).toBeNull();
+    await render(sections);
+    expect(tab(1).getAttribute("aria-selected")).toBe("true");
+    expect(detail().open).toBe(true);
+    expect(panel().scrollTop).toBe(420);
+    detail().open = false;
+    panel().scrollTop = 40;
+    await render(sections, false);
+    await render(sections);
+    expect(detail().open).toBe(false);
+    expect(panel().scrollTop).toBe(40);
+  });
+  it("ignores missing disclosures and clamps a shorter changed section", async () => {
+    layout();
+    await render(sections);
+    detail().open = true;
+    panel().scrollTop = 950;
+    await render(sections, false);
+    const changed = [{ id: "view", title: "Вид", content: <p>Short available content</p> }];
+    await render(changed);
+    expect(panel().scrollTop).toBe(100);
+    expect(panel().querySelector("details")).toBeNull();
+  });
+  it("lets explicit help focus override saved scroll and remembers the new destination", async () => {
+    layout();
+    const changed = vi.fn();
+    const scroll = vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(function (
+      this: HTMLElement
+    ) {
+      const container = this.closest<HTMLElement>("[role=tabpanel]");
+      if (container) container.scrollTop = 95;
+    });
+    const help: readonly SettingsTab[] = [
+      {
+        id: "help",
+        title: "Помощь",
+        render: (navigate) => (
+          <button
+            data-help-target="setting"
+            onClick={() => {
+              navigate("view", "setting");
+            }}
+          >
+            Go to setting
+          </button>
+        )
+      },
+      {
+        id: "view",
+        title: "Вид",
+        content: (
+          <details data-window-detail="view:setting">
+            <summary>More settings</summary>
+            <input data-setting-target="setting" value="unchanged" onChange={changed} />
+          </details>
+        )
+      }
+    ];
+    await render(help);
+    await act(async () => {
+      await Promise.resolve();
+      tab(1).click();
+    });
+    detail().open = true;
+    panel().scrollTop = 780;
+    detail().open = false;
+    await act(async () => {
+      await Promise.resolve();
+      tab(0).click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+      host.querySelector<HTMLButtonElement>("[data-help-target]")?.click();
+    });
+    const control = panel().querySelector("input");
+    expect(document.activeElement).toBe(control);
+    expect(detail().open).toBe(true);
+    expect(panel().scrollTop).toBe(95);
+    expect(control?.value).toBe("unchanged");
+    expect(changed).not.toHaveBeenCalled();
+    scroll.mockClear();
+    await render(help, false);
+    await render(help);
+    expect(panel().scrollTop).toBe(95);
+    expect(scroll).not.toHaveBeenCalled();
+  });
+  it("keeps memory private to each settings instance", async () => {
+    layout();
+    const both = async (open: boolean) => {
+      await act(async () => {
+        await Promise.resolve();
+        root.render(
+          <>
+            <SettingsPanel open={open} tabs={sections} onClose={onClose} />
+            <SettingsPanel open={open} tabs={sections} onClose={onClose} />
+          </>
+        );
+      });
+    };
+    await both(true);
+    const containers = host.querySelectorAll<HTMLElement>("[role=tabpanel]");
+    const first = containers[0],
+      second = containers[1];
+    if (!first || !second) throw new Error("Missing settings instances");
+    const firstDetails = first.querySelector("details");
+    if (!firstDetails) throw new Error("Missing first disclosure");
+    firstDetails.open = true;
+    first.scrollTop = 700;
+    second.scrollTop = 30;
+    await both(false);
+    await both(true);
+    const restored = host.querySelectorAll<HTMLElement>("[role=tabpanel]");
+    expect(restored[0]?.scrollTop).toBe(700);
+    expect(restored[0]?.querySelector("details")?.open).toBe(true);
+    expect(restored[1]?.scrollTop).toBe(30);
+    expect(restored[1]?.querySelector("details")?.open).toBe(false);
+  });
+  it("renders controls only in the open fixed header, never inside a tab", async () => {
+    const command = vi.fn(),
+      built = vi.fn();
+    function Controls() {
+      built();
+      return (
+        <button data-transport onClick={command}>
+          Play
+        </button>
+      );
+    }
+    const withControls = async (open: boolean) => {
+      await act(async () => {
+        await Promise.resolve();
+        root.render(
+          <SettingsPanel open={open} tabs={sections} onClose={onClose} controls={<Controls />} />
+        );
+      });
+    };
+    await withControls(false);
+    expect(built).not.toHaveBeenCalled();
+    await withControls(true);
+    const control = host.querySelector<HTMLButtonElement>(".game-dialog__actions [data-transport]");
+    expect(control).not.toBeNull();
+    expect(panel().contains(control)).toBe(false);
+    await act(async () => {
+      await Promise.resolve();
+      control?.click();
+    });
+    expect(command).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+    await withControls(false);
+    expect(host.querySelector("[data-transport]")).toBeNull();
+  });
+});

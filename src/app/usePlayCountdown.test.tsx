@@ -118,11 +118,12 @@ describe("play count-in", () => {
     await render({ seconds: 0 });
     await click();
     expect(start).toHaveBeenCalledOnce();
-    expect(prepare).not.toHaveBeenCalled();
+    expect(prepare).toHaveBeenCalledOnce();
     expect(frames.size).toBe(0);
     await render({ playing: true });
     await click();
     expect(start).toHaveBeenCalledTimes(2);
+    expect(prepare).toHaveBeenCalledOnce();
     expect(displayed()).toBe("paused");
   });
   it("resumes immediately after a real start even when song time is still zero", async () => {
@@ -137,7 +138,7 @@ describe("play count-in", () => {
     await click();
     expect(start).toHaveBeenCalledTimes(3);
     expect(displayed()).toBe("paused");
-    expect(prepare).toHaveBeenCalledOnce();
+    expect(prepare).toHaveBeenCalledTimes(2);
     expect(frames.size).toBe(0);
   });
   it("counts again only after an explicit new run reset", async () => {
@@ -171,7 +172,7 @@ describe("play count-in", () => {
     });
     await click();
     expect(start).toHaveBeenCalledOnce();
-    expect(prepare).not.toHaveBeenCalled();
+    expect(prepare).toHaveBeenCalledOnce();
     expect(displayed()).toBe("paused");
   });
   it("counts before replaying a finished run", async () => {
@@ -322,4 +323,116 @@ it("does not consume the initial count-in when audio fails before the real start
   expect(displayed()).toBe("3");
   await advance(3000);
   expect(start).toHaveBeenCalledOnce();
+});
+
+describe.each(["zero", "resume"] as const)("cancelable readiness for %s wait", (mode) => {
+  const seconds = mode === "zero" ? 0 : 3;
+  const idle = async () => {
+    if (mode === "resume") await render({ playing: true, seconds });
+    await render({ playing: false, seconds });
+  };
+  const deferred = () => {
+    let resolve: (value: boolean) => void = () => undefined;
+    let reject: (reason: Error) => void = () => undefined;
+    const promise = new Promise<boolean>((done, failed) => {
+      resolve = done;
+      reject = failed;
+    });
+    return { promise, resolve, reject };
+  };
+
+  it("shows preparing at zero and starts once as soon as audio is actually ready", async () => {
+    const ready = deferred();
+    prepare.mockReturnValueOnce(ready.promise);
+    await idle();
+    await click();
+    expect(prepare).toHaveBeenCalledOnce();
+    expect(displayed()).toBe("0");
+    expect(controls.active).toBe(true);
+    await advance(8000);
+    expect(start).not.toHaveBeenCalled();
+    await act(async () => {
+      ready.resolve(true);
+      await Promise.resolve();
+    });
+    expect(start).toHaveBeenCalledOnce();
+    expect(displayed()).toBe("paused");
+    expect(frames.size).toBe(0);
+  });
+
+  it.each(["command", "blocked", "caller-cancel", "unmount"] as const)(
+    "invalidates pending audio through %s and ignores its late readiness",
+    async (reason) => {
+      const ready = deferred();
+      prepare.mockReturnValueOnce(ready.promise);
+      await idle();
+      await click();
+      expect(displayed()).toBe("0");
+      if (reason === "command") await click();
+      else if (reason === "blocked") await render({ seconds, blocked: true });
+      else
+        await act(async () => {
+          if (reason === "unmount") root.unmount();
+          else controls.cancel(); // Capture, calibration and library commands use this cancellation API.
+          await Promise.resolve();
+        });
+      expect(frames.size).toBe(0);
+      await act(async () => {
+        ready.resolve(true);
+        await Promise.resolve();
+      });
+      await advance(9000);
+      expect(start).not.toHaveBeenCalled();
+      if (reason === "unmount") root = createRoot(host);
+      else expect(displayed()).toBe("paused");
+    }
+  );
+
+  it.each(["false", "reject", "throw"] as const)(
+    "does not start when readiness returns %s",
+    async (outcome) => {
+      const ready = deferred();
+      if (outcome === "throw")
+        prepare.mockImplementationOnce(() => {
+          throw new Error("Unavailable audio");
+        });
+      else prepare.mockReturnValueOnce(ready.promise);
+      await idle();
+      await click();
+      expect(prepare).toHaveBeenCalledOnce();
+      expect(start).not.toHaveBeenCalled();
+      await act(async () => {
+        if (outcome === "false") ready.resolve(false);
+        if (outcome === "reject") ready.reject(new Error("Unavailable audio"));
+        await Promise.resolve();
+      });
+      expect(displayed()).toBe("paused");
+      expect(frames.size).toBe(0);
+      await advance(9000);
+      expect(start).not.toHaveBeenCalled();
+    }
+  );
+
+  it("does not let an older canceled promise complete a newer preparation", async () => {
+    const old = deferred(),
+      current = deferred();
+    prepare.mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+    await idle();
+    await click();
+    await click();
+    await click();
+    expect(prepare).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      old.resolve(true);
+      await Promise.resolve();
+    });
+    expect(start).not.toHaveBeenCalled();
+    expect(displayed()).toBe("0");
+    await act(async () => {
+      current.resolve(true);
+      await Promise.resolve();
+    });
+    expect(start).toHaveBeenCalledOnce();
+    expect(frames.size).toBe(0);
+  });
 });

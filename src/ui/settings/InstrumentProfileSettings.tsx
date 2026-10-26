@@ -141,7 +141,7 @@ export function InstrumentProfileSettings({ controls, preview }: Props) {
         />
       </label>
       {controls.error && <p role="alert">{controls.error}</p>}
-      <details className="setting-hint">
+      <details className="setting-hint" data-window-detail="instrument-profile:import-format">
         <summary>{t("Формат импорта пианино")}</summary>
         <p>
           {t(

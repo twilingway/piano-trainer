@@ -1,6 +1,9 @@
 import type { Messages } from "./locales";
 
 export const settingsHelpMessages = {
+  "Отменить запуск": { en: "Cancel start" },
+  "Управление песней в настройках": { en: "Song controls in settings" },
+  "До начала: {seconds}": { en: "Starts in: {seconds}" },
   "Оформление нот": { en: "Note appearance" },
   "Объёмные с заливкой": { en: "Filled 3D notes" },
   "Как в аркаде": { en: "Arcade style" },

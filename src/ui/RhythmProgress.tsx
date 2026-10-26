@@ -106,7 +106,7 @@ export function RhythmProgress({
           <RhythmMetrics summary={result.summary} />
         </section>
       )}
-      <details>
+      <details data-window-detail="rhythm:progress">
         <summary>{t("Мой прогресс ритма")}</summary>
         <p>
           {t(
@@ -126,7 +126,7 @@ export function RhythmProgress({
           );
         })}
       </details>
-      <details>
+      <details data-window-detail="rhythm:history">
         <summary>{t("История ритма: {number}", { number: history.length })}</summary>
         {history
           .slice()

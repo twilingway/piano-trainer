@@ -178,7 +178,7 @@ export function HelpSettings({
               (item.targets[0] !== "free-source-height" || freeCamera) &&
               (item.targets[0] !== "falling-note-style" || !freeCamera)
           ).map((item) => (
-            <details key={item.question}>
+            <details key={item.question} data-window-detail={`help:${item.targets[0]}`}>
               <summary>{t(item.question)}</summary>
               <p>{t(item.answer)}</p>
               {item.targets[0] === "falling-note-style" && (

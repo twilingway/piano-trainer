@@ -18,6 +18,7 @@ interface Props {
   readonly midi: ReactNode;
   readonly synchronization: ReactNode;
   readonly diagnostics?: ReactNode;
+  readonly controls?: ReactNode;
 }
 /** Slots are mounted only for the active tab; the shell owns navigation alone. */
 export function PlayerSettings(props: Props) {
@@ -26,6 +27,7 @@ export function PlayerSettings(props: Props) {
     <SettingsPanel
       open={props.open}
       onClose={props.onClose}
+      controls={props.controls}
       tabs={[
         {
           id: "play",

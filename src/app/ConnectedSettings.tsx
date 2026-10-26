@@ -1,3 +1,4 @@
+import { ConnectedSettingsTransport } from "./ConnectedSettingsTransport";
 import { preferencesActions } from "./preferencesSlice";
 import { useAppDispatch } from "./storeHooks";
 import { shallowEqual } from "react-redux";
@@ -45,6 +46,7 @@ export function ConnectedPlayerSettings(props: { open: boolean; onClose: () => v
   return (
     <PlayerSettings
       {...props}
+      controls={<ConnectedSettingsTransport />}
       wordTyping={wordTyping}
       freeCamera={freeCamera && !wordTyping}
       play={<ConnectedPlaySettings />}
@@ -383,6 +385,7 @@ function ConnectedSynchronizationSettings() {
   return (
     <ConnectedTimingSettings
       {...props}
+
       preferences={preferences}
       {...(profile ? { profile } : {})}
       onTransport={onTransport}

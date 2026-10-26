@@ -231,7 +231,7 @@ export function TimingSettings(props: TimingSettingsProps) {
         </div>
       </SettingsGroup>
       {props.diagnostic && (
-        <details>
+        <details data-window-detail="timing:input-diagnostics">
           <summary>{t("Диагностика ввода")}</summary>
           <p>
             {props.diagnostic.source} · {props.diagnostic.deviceId} · MIDI {props.diagnostic.pitch}{" "}

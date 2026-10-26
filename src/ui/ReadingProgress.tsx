@@ -143,7 +143,7 @@ export function ReadingProgress({
           )}
         </p>
       )}
-      <details>
+      <details data-window-detail="five-note-reading:progress">
         <summary>{t("Мой прогресс чтения")}</summary>
         <p className="reading-muted">
           {t(

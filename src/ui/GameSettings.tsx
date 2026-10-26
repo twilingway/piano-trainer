@@ -124,7 +124,7 @@ export function GameSettings(props: Props) {
               ? t("После промаха или лишней ноты игра встаёт на паузу.")
               : t("Песня не останавливается на ошибках.")}
           </p>
-          <details>
+          <details data-window-detail="game:scoring-explanation">
             <summary>{t("Как считаются очки")}</summary>
             <p>
               {t(
