@@ -13,6 +13,7 @@ import type { HarmonyDegree, HarmonyTarget, TriadPitches } from "../musicLearnin
 import type { IntegratedActivity } from "../musicLearning/integratedPlan";
 import { createMusicExercise } from "../musicLearning/material";
 import { musicChoice, musicRandom } from "../musicLearning/random";
+import { createHarmonyToneMaterial, type HarmonyToneRecipe } from "../musicLearning/harmonyTone";
 import { generateSightReading } from "../musicLearning/sightReading";
 import type { SightReadingExercise } from "../musicLearning/sightReading";
 import type { MusicExercise, MusicPurpose } from "../musicLearning/types";
@@ -32,6 +33,7 @@ export interface MusicActivity {
   readonly noveltyRequired: boolean;
   readonly choices: readonly MusicCourseChoice[];
   readonly expectedChoice?: string;
+  readonly toneRecipe?: HarmonyToneRecipe;
   readonly sight?: SightReadingExercise;
   readonly dictation?: DictationExercise;
   readonly chords?: readonly MusicChordStep[];
@@ -84,24 +86,24 @@ export function makeMusicActivity(selection: MusicPersistentState): MusicActivit
   const root = selection.harmonyRoot;
   const bpm = 72;
   if (selection.harmonyLesson === "tone-semitone") {
-    const interval = musicChoice([1, 2], random);
+    const { interval, notes, toneRecipe } = createHarmonyToneMaterial(
+      seed,
+      selection.harmonyTonePitchSet,
+      root
+    );
     const exercise = createMusicExercise({
       id,
       seed,
       bpm,
-      fifths: -3,
-      notes: [root, root + interval].map((pitch, index) => ({
-        pitch,
-        startBeat: index,
-        durationBeats: 1,
-        hand: "right"
-      }))
+      fifths: toneRecipe.notationFifths,
+      notes
     });
     return {
       ...base,
       noveltyRequired: false,
       exercise,
       taskKind: "tone-semitone",
+      toneRecipe,
       choices: [
         { value: "1", labelKey: "Полутон" },
         { value: "2", labelKey: "Тон" }

@@ -96,7 +96,9 @@ root/quality не стираются. Изменение не заменяет �
 результатов и соответствующих embedded свидетельств хранить опциональную toneRecipe {version:1,
 pitchSet, root, notationFifths:0}. Validators принимают старые результаты без поля как legacy, не
 как white. История использует сохранённые expectedNotes/fingerprint; она не регенерируется из новых
-preferences. Текущий retry сохраняет свою captured recipe.
+preferences. Текущий retry сохраняет свою captured recipe. Если прежние правила контроля требуют
+новизны, такой повтор получает новый seed и материал из captured preferences, а не pending.
+Обучающий повтор сохраняет текущую пару/материал; интерфейс явно различает новую проверку и повтор.
 
 ### Согласованные пальцы и руки
 

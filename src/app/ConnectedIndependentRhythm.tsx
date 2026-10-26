@@ -25,7 +25,11 @@ export function ConnectedIndependentRhythmCard({ onChoose }: { onChoose: () => v
   );
 }
 
-export function ConnectedIndependentRhythmPractice() {
+export function ConnectedIndependentRhythmPractice({
+  mode = "all"
+}: {
+  mode?: "all" | "intro" | "practice";
+}) {
   const course = useRuntimeSelector((runtime) => runtime.independentRhythm);
   const savedBindings = useRuntimeSelector((runtime) => runtime.computerKeyboard.bindings);
   if (!course.active && !course.intro) return null;
@@ -34,7 +38,7 @@ export function ConnectedIndependentRhythmPractice() {
   );
   return (
     <>
-      {course.intro && (
+      {mode !== "practice" && course.intro && (
         <IndependentRhythmIntro
           bindings={bindings}
           onStart={course.start}
@@ -43,7 +47,7 @@ export function ConnectedIndependentRhythmPractice() {
           }}
         />
       )}
-      {course.active && (
+      {mode !== "intro" && course.active && (
         <IndependentRhythmPracticePanel
           {...course}
           bindings={bindings}

@@ -1,3 +1,5 @@
+import { useLessonWindow } from "./LessonWorkspace";
+import { LessonIllustration } from "./LessonIllustration";
 import type { KeyboardEvent, ReactNode } from "react";
 import { LessonDetails } from "./LessonDetails";
 import { useI18n } from "../app/useI18n";
@@ -9,16 +11,26 @@ export const RHYTHM_SOURCE_LABELS: Readonly<Record<RhythmInputSource, string>> =
   midi: "MIDI-пианино"
 };
 
-export function RhythmCourseCard({ onStart }: { onStart: () => void }) {
+export function RhythmCourseCard({
+  onStart,
+  completedRuns
+}: {
+  onStart: () => void;
+  completedRuns?: number;
+}) {
   const { t } = useI18n();
   return (
     <section className="reading-course-card rhythm-course-card">
+      <LessonIllustration lesson="rhythm" />
       <h3>{t("Ритм")}</h3>
-      <p>{t("Читайте четыре такта и отбивайте ритм: четверти, половинные и паузы.")}</p>
+      <p>{t("Поймайте пульс и прочитайте простой ритм.")}</p>
       <p className="reading-muted">{t("Высота нот не проверяется. Можно начать без пианино.")}</p>
       <button type="button" className="game-button" onClick={onStart}>
         {t("Читать и отбивать ритм")}
       </button>
+      {completedRuns !== undefined ? (
+        <p className="reading-muted">{t("Завершено серий: {number}", { number: completedRuns })}</p>
+      ) : null}
     </section>
   );
 }
@@ -50,6 +62,7 @@ export interface RhythmPanelProps {
 }
 
 export function RhythmPanel(props: RhythmPanelProps) {
+  const lessonWindow = useLessonWindow();
   const { t } = useI18n();
   const active = props.status === "count-in" || props.status === "running";
   const midiMissing = props.source === "midi" && !props.midiAvailable;
@@ -219,7 +232,13 @@ export function RhythmPanel(props: RhythmPanelProps) {
           )}
         </p>
       </LessonDetails>
-      {props.progress}
+      {lessonWindow ? (
+        <LessonDetails kind="progress" id="rhythm:practice:progress">
+          {props.progress}
+        </LessonDetails>
+      ) : (
+        props.progress
+      )}
     </section>
   );
 }

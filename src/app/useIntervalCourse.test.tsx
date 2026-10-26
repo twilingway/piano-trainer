@@ -536,6 +536,8 @@ describe("interval course audio integration", () => {
     expect(interval.snapshot?.errorCount).toBe(1);
     at(now + 50, interval.hint);
     at(now + 1, interval.onHelpPresented);
+    expect(interval.prompt?.musicXml).not.toContain("data-lesson-finger-cue");
+    expect(interval.policy?.cuePitch()).toBeUndefined();
     choose("keyboard");
     expect(interval.snapshot?.answers[0]).toMatchObject({
       firstAttemptCorrect: false,

@@ -52,9 +52,10 @@ export function MusicCourseSettings({
 }: MusicCoursePracticeProps) {
   const { t } = useI18n();
   return (
-    <details className="music-course-settings">
-      <summary>{t("Настройки музыкального курса")}</summary>
-      <p className="reading-muted">{t("Изменения задания применятся к следующему запуску.")}</p>
+    <div className="music-course-settings">
+      <p className="reading-muted">
+        {t("Параметры применятся к новому заданию. Повтор сохранит текущее.")}
+      </p>
       <fieldset>
         <legend>{t("Следующее музыкальное задание")}</legend>
         <SettingSelect
@@ -140,20 +141,35 @@ export function MusicCourseSettings({
                 onPreferences({ harmonyLesson });
               }}
             />
-            <SettingSelect
-              label="Действие с аккордом"
-              value={prefs.harmonyMode}
+            {prefs.harmonyLesson === "tone-semitone" ? (
+              <SettingSelect
+                label="Клавиши для тона и полутона"
+                value={prefs.harmonyTonePitchSet}
+                options={[
+                  ["white", "Только белые клавиши"],
+                  ["all", "Все клавиши, включая чёрные"]
+                ]}
+                onChange={(harmonyTonePitchSet) => {
+                  onPreferences({ harmonyTonePitchSet });
+                }}
+              />
+            ) : null}
+            {prefs.harmonyLesson !== "tone-semitone" ? (
+              <SettingSelect
+                label="Действие с аккордом"
+                value={prefs.harmonyMode}
 
-              options={[
-                ["build-chord", "Построить аккорд"],
-                ["name-chord", "Назвать аккорд"],
-                ["invert-chord", "Сыграть обращение"],
-                ["complete-progression", "Дополнить последовательность"]
-              ]}
-              onChange={(harmonyMode) => {
-                onPreferences({ harmonyMode });
-              }}
-            />
+                options={[
+                  ["build-chord", "Построить аккорд"],
+                  ["name-chord", "Назвать аккорд"],
+                  ["invert-chord", "Сыграть обращение"],
+                  ["complete-progression", "Дополнить последовательность"]
+                ]}
+                onChange={(harmonyMode) => {
+                  onPreferences({ harmonyMode });
+                }}
+              />
+            ) : null}
             <label>
               <input
                 type="checkbox"
@@ -164,60 +180,66 @@ export function MusicCourseSettings({
               />
               {t("Определять аккорд на слух")}
             </label>
-            <label>
-              {t("Основной звук аккорда")}
-              <select
-                value={prefs.harmonyRoot}
-                onChange={(event) => {
-                  const harmonyRoot = Number(event.currentTarget.value);
-                  if (Number.isInteger(harmonyRoot) && harmonyRoot >= 48 && harmonyRoot <= 72)
-                    onPreferences({ harmonyRoot });
-                }}
-              >
-                {Array.from({ length: 25 }, (_, index) => index + 48).map((pitch) => (
-                  <option key={pitch} value={pitch}>
-                    {musicCourseNoteLabel(pitch, t)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <SettingSelect
-              label="Лад трезвучия"
-              value={prefs.harmonyQuality}
+            {prefs.harmonyLesson !== "tone-semitone" || prefs.harmonyTonePitchSet === "all" ? (
+              <label>
+                {t("Основной звук аккорда")}
+                <select
+                  value={prefs.harmonyRoot}
+                  onChange={(event) => {
+                    const harmonyRoot = Number(event.currentTarget.value);
+                    if (Number.isInteger(harmonyRoot) && harmonyRoot >= 48 && harmonyRoot <= 72)
+                      onPreferences({ harmonyRoot });
+                  }}
+                >
+                  {Array.from({ length: 25 }, (_, index) => index + 48).map((pitch) => (
+                    <option key={pitch} value={pitch}>
+                      {musicCourseNoteLabel(pitch, t)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {prefs.harmonyLesson !== "tone-semitone" ? (
+              <>
+                <SettingSelect
+                  label="Лад трезвучия"
+                  value={prefs.harmonyQuality}
 
-              options={[
-                ["major", "Мажорное трезвучие"],
-                ["minor", "Минорное трезвучие"]
-              ]}
-              onChange={(harmonyQuality) => {
-                onPreferences({ harmonyQuality });
-              }}
-            />
-            <SettingSelect
-              label="Расположение аккорда"
-              value={prefs.harmonyInversion}
+                  options={[
+                    ["major", "Мажорное трезвучие"],
+                    ["minor", "Минорное трезвучие"]
+                  ]}
+                  onChange={(harmonyQuality) => {
+                    onPreferences({ harmonyQuality });
+                  }}
+                />
+                <SettingSelect
+                  label="Расположение аккорда"
+                  value={prefs.harmonyInversion}
 
-              options={[
-                [0, "Основной вид аккорда"],
-                [1, "Первое обращение аккорда"],
-                [2, "Второе обращение аккорда"]
-              ]}
-              onChange={(harmonyInversion) => {
-                onPreferences({ harmonyInversion });
-              }}
-            />
-            <SettingSelect
-              label="План аккордовой последовательности"
-              value={prefs.harmonyProgression}
+                  options={[
+                    [0, "Основной вид аккорда"],
+                    [1, "Первое обращение аккорда"],
+                    [2, "Второе обращение аккорда"]
+                  ]}
+                  onChange={(harmonyInversion) => {
+                    onPreferences({ harmonyInversion });
+                  }}
+                />
+                <SettingSelect
+                  label="План аккордовой последовательности"
+                  value={prefs.harmonyProgression}
 
-              options={[
-                ["I-IV-V-I", "Последовательность I–IV–V–I"],
-                ["I-V-vi-IV", "Последовательность I–V–vi–IV"]
-              ]}
-              onChange={(harmonyProgression) => {
-                onPreferences({ harmonyProgression });
-              }}
-            />
+                  options={[
+                    ["I-IV-V-I", "Последовательность I–IV–V–I"],
+                    ["I-V-vi-IV", "Последовательность I–V–vi–IV"]
+                  ]}
+                  onChange={(harmonyProgression) => {
+                    onPreferences({ harmonyProgression });
+                  }}
+                />
+              </>
+            ) : null}
           </>
         ) : null}
         {view.course === "dictation" ? (
@@ -252,7 +274,7 @@ export function MusicCourseSettings({
           </>
         ) : null}
       </fieldset>
-    </details>
+    </div>
   );
 }
 

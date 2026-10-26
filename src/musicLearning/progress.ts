@@ -1,4 +1,5 @@
 import type { MusicInputJournalData } from "./evidence";
+import type { HarmonyToneRecipe } from "./harmonyTone";
 import { HIT_WINDOW_S } from "../practice/session";
 import type { MusicCourse, MusicHelpEvent, MusicNote, MusicPurpose } from "./types";
 import type { SightGroupKind, SightReadingLevel } from "./sightReading";
@@ -86,6 +87,7 @@ export interface HarmonyMetrics {
   readonly theoryErrors: number;
 }
 export interface HarmonyMusicResult extends MusicResultCommon {
+  readonly toneRecipe?: HarmonyToneRecipe;
   readonly course: "harmony";
   readonly lesson: HarmonyLesson;
   readonly aural: boolean;

@@ -21,12 +21,16 @@ export function ConnectedTwoHandCard({ onChoose }: { onChoose: () => void }) {
     />
   );
 }
-export function ConnectedTwoHandPractice() {
+export function ConnectedTwoHandPractice({
+  mode = "all"
+}: {
+  mode?: "all" | "intro" | "practice";
+}) {
   const course = useRuntimeSelector((runtime) => runtime.twoHand);
   const bindings = useRuntimeSelector((runtime) => runtime.computerKeyboard.bindings);
   return (
     <>
-      {course.intro && (
+      {mode !== "practice" && course.intro && (
         <TwoHandIntro
           bindings={Object.entries(bindings).flatMap(([code, binding]) =>
             binding.type === "note" ? [{ pitch: binding.pitch, label: keyLabel(code) }] : []
@@ -37,7 +41,7 @@ export function ConnectedTwoHandPractice() {
           }}
         />
       )}
-      {course.active && (
+      {mode !== "intro" && course.active && (
         <TwoHandPracticePanel
           history={course.history}
           sourceFilter={course.sourceFilter}

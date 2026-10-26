@@ -9,6 +9,47 @@ import {
 import { createIntegratedPlan } from "../musicLearning/integratedPlan";
 
 describe("new course exercise descriptors", () => {
+  it("uses the same white tone pair in the score, reference and answer with no key signature", () => {
+    const intervals = new Set<string>();
+    for (let seed = 1; seed <= 16; seed++) {
+      const activity = makeMusicActivity({ ...emptyMusicState(), course: "harmony", seed });
+      const pitches = activity.exercise.notes.map((note) => note.pitch);
+      const first = pitches[0],
+        second = pitches[1];
+      if (first === undefined || second === undefined || !activity.expectedChoice)
+        throw new Error("Missing tone material");
+      expect(pitches.every((pitch) => [0, 2, 4, 5, 7, 9, 11].includes(pitch % 12))).toBe(true);
+      expect(activity.exercise.song.notes.map((note) => note.pitch)).toEqual(pitches);
+      expect(activity.exercise.musicXml).toContain("<fifths>0</fifths>");
+      expect(activity.exercise.musicXml).not.toContain("<alter>");
+      expect(activity.expectedChoice).toBe(String(second - first));
+      expect(activity.toneRecipe?.root).toBe(pitches[0]);
+      expect(activity.exercise.generatorVersion).toBe(1);
+      intervals.add(activity.expectedChoice);
+    }
+    expect(intervals).toEqual(new Set(["1", "2"]));
+  });
+  it("keeps chromatic roots and leaves other harmony topics unaffected by the tone preference", () => {
+    const saved = { ...emptyMusicState(), course: "harmony" as const, harmonyRoot: 61 };
+    const tone = makeMusicActivity({ ...saved, harmonyTonePitchSet: "all" });
+    expect(tone.exercise.notes[0]?.pitch).toBe(61);
+    expect(tone.exercise.musicXml).toContain("<fifths>0</fifths>");
+    for (const harmonyLesson of [
+      "triads",
+      "inversions",
+      "functions",
+      "progressions",
+      "accompaniment",
+      "voice-leading"
+    ] as const) {
+      const settings = { ...saved, harmonyLesson, harmonyQuality: "minor" as const };
+      const white = makeMusicActivity({ ...settings, harmonyTonePitchSet: "white" });
+      const all = makeMusicActivity({ ...settings, harmonyTonePitchSet: "all" });
+      expect(white.exercise.notes).toEqual(all.exercise.notes);
+      expect(white.exercise.fingerprint).toBe(all.exercise.fingerprint);
+      expect(white.toneRecipe).toBeUndefined();
+    }
+  });
   it("constructs every standalone course from preserved settings", () => {
     for (const course of ["sight-reading", "dictation", "harmony"] as const) {
       const activity = makeMusicActivity({ ...emptyMusicState(), course });

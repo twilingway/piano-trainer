@@ -1,3 +1,4 @@
+import { withLessonFingering } from "./fingerCues";
 import { songFromMusicXml } from "../song/musicxml";
 import {
   normalizeReadingSeed,
@@ -47,6 +48,6 @@ export function generateBassReadingExercise(
     seed: normalized,
     generatorVersion: BASS_READING_GENERATOR_VERSION,
     musicXml,
-    song: songFromMusicXml(musicXml, "")
+    song: withLessonFingering(songFromMusicXml(musicXml, ""))
   };
 }

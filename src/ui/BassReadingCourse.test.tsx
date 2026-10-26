@@ -128,10 +128,12 @@ describe("bass reading UI", () => {
     await render(<BassReadingCourseCard history={[]} onStart={onStart} onIntro={onIntro} />);
     expect(host.textContent).toContain("Левая рука: пять нот");
     expect(host.querySelectorAll("button:disabled")).toHaveLength(0);
-    expect(host.querySelectorAll("button")).toHaveLength(2);
+    expect(host.querySelectorAll("button")).toHaveLength(1);
     expect(host.querySelector(".lesson-primary-action")?.textContent).toBe(
       "Левая рука: отдельные ноты"
     );
+    expect(host.querySelector(".lesson-secondary-action")).toBeNull();
+    await reveal("bass-reading:catalog:more");
     expect(host.querySelector(".lesson-secondary-action")?.textContent).toBe(
       "Знакомство с левой рукой"
     );

@@ -96,10 +96,10 @@ async function render(node: ReactNode, value: MusicCourseHook) {
     root.render(withTestStore(<RuntimeTestOwner value={value}>{node}</RuntimeTestOwner>, store));
   });
 }
-async function click(node: HTMLElement) {
+async function click(node: HTMLElement, detail = 0) {
   await act(async () => {
     await Promise.resolve();
-    node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    node.dispatchEvent(new MouseEvent("click", { bubbles: true, detail }));
   });
 }
 function button(text: string): HTMLButtonElement {
@@ -186,12 +186,30 @@ describe("connected music catalog and practice", () => {
     const value = music();
     await render(<ConnectedMusicPractice />, value);
     expect(host.textContent).toBe("");
-    await render(<ConnectedMusicPractice />, { ...value, active: true });
-    await click(button("Начать музыкальное задание"));
-    expect(value.command).toHaveBeenCalledWith("start");
+    await render(<ConnectedMusicPractice />, {
+      ...value,
+      active: true,
+      view: { ...value.view, taskKind: "sight-reading", canAnswer: false }
+    });
+    await click(button("Начать задание"));
+    expect(value.command).toHaveBeenCalledExactlyOnceWith("start");
+    await render(<ConnectedMusicPractice />, {
+      ...value,
+      active: true,
+      source: "midi",
+      preferences: { ...value.preferences, inputSource: "midi" },
+      view: { ...value.view, status: "preflight", canStart: false, canAnswer: true }
+    });
     await click(button("Поступенное движение"));
-    expect(value.choose).toHaveBeenCalledWith("scalar", "keyboard");
-    expect(host.querySelectorAll("canvas, svg")).toHaveLength(0);
+    await click(button("Поступенное движение"), 1);
+    expect(value.choose).toHaveBeenCalledTimes(2);
+    expect(value.choose).toHaveBeenNthCalledWith(1, "scalar", "keyboard");
+    expect(value.choose).toHaveBeenNthCalledWith(2, "scalar", "pointer");
+    expect(value.command).toHaveBeenCalledOnce();
+    expect(host.querySelectorAll("canvas, .staff")).toHaveLength(0);
+    expect([...host.querySelectorAll("svg")].filter((svg) => !svg.closest("button"))).toHaveLength(
+      0
+    );
   });
 });
 

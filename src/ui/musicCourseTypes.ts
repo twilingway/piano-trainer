@@ -9,11 +9,13 @@ import type {
 } from "../musicLearning/progress";
 import type { SightReadingLevel } from "../musicLearning/sightReading";
 import type { MusicCourse, MusicPurpose, MusicNote } from "../musicLearning/types";
+import type { HarmonyTonePitchSet } from "../musicLearning/harmonyTone";
 
 export type MusicCourseCommand =
-  "start" | "listen" | "finish" | "next" | "retry" | "exit" | "hint" | "theory";
+  "start" | "listen" | "finish" | "next" | "retry" | "new" | "exit" | "hint" | "theory";
 export type MusicCourseStatus =
   | "preparation"
+  | "preflight"
   | "preview"
   | "ready"
   | "playing"
@@ -67,6 +69,7 @@ export interface MusicCourseChoice {
   readonly params?: MessageParams;
 }
 export interface MusicCourseView {
+  readonly inputSource?: MusicInputSource;
   readonly course: MusicCourse;
   readonly status: MusicCourseStatus;
   readonly taskKind: MusicTaskKind;
@@ -84,6 +87,7 @@ export interface MusicCourseView {
   readonly canHelp: boolean;
   readonly showHelp: boolean;
   readonly canRetry?: boolean;
+  readonly retryCreatesNewMaterial?: boolean;
   readonly canAnswer?: boolean;
   readonly positionLowPitch?: number;
   readonly startPitch?: number;
@@ -102,6 +106,7 @@ export interface MusicCoursePreferences {
   readonly harmonyLesson: HarmonyLesson;
   readonly harmonyMode: HarmonyMode;
   readonly harmonyAural: boolean;
+  readonly harmonyTonePitchSet: HarmonyTonePitchSet;
   readonly harmonyRoot: number;
   readonly harmonyQuality: TriadQuality;
   readonly harmonyInversion: TriadInversion;

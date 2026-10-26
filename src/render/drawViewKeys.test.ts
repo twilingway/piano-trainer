@@ -66,6 +66,9 @@ it("shares physical repeat gaps between flat and native keys without changing so
     hands: new Set(),
     owns: () => false
   };
+  const fingerCues = [
+    { noteId: "n", pitch: 60, hand: "right" as const, recommendedFinger: 3 as const }
+  ];
   const geometry = viewGeometry(800, 20, { notes: true, keys: true, hands: false }, false);
   const run = () => {
     drawViewKeys(
@@ -74,7 +77,7 @@ it("shares physical repeat gaps between flat and native keys without changing so
       new Map(),
       geometry,
       false,
-      frame,
+      { ...frame, fingerCues },
       new Map(),
       undefined,
       0,
@@ -85,6 +88,7 @@ it("shares physical repeat gaps between flat and native keys without changing so
   expect(run().physicalDown).toEqual(new Set([61]));
   expect(run().sounding).toBe(sounding);
   expect(run().pressed).toBe(pressed);
+  expect(run().fingerCues).toBe(fingerCues);
   pressed.add(60);
   expect(run().physicalDown).toEqual(new Set([60, 61]));
   pressed.clear();

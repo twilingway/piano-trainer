@@ -170,6 +170,7 @@ export class FallingNotesView {
     computerKeyboard.setKeys(this.computer);
     computerKeyboard.showStickers(this.labels);
     this.computerKeyboard = computerKeyboard;
+    this.setLocale(this.locale);
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
     this.road.setSceneEffects([this.plasma.container, this.road.effects, this.fx.container]);
     this.road.setCamera(this.cameraPrefs);
@@ -256,9 +257,8 @@ export class FallingNotesView {
 
   setLocale(locale: Locale): void {
     this.locale = locale;
-    this.hud.setLocale(locale);
-    this.fpsMeter?.setLocale(locale);
-    this.freeLegend?.setLocale(locale);
+    const layers = [this.keyboard, this.computerKeyboard, this.hud, this.fpsMeter, this.freeLegend];
+    layers.forEach((layer) => layer?.setLocale(locale));
   }
 
   /** The keys shown, lowest to highest; fewer keys are wider. */
