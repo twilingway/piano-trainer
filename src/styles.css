@@ -1059,6 +1059,20 @@ body {
   min-height: 0;
 }
 
+/* A long lesson score scrolls above the reserved keyboard instead of pushing it out. */
+.workspace-main--practice > .staves {
+  flex-shrink: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Lesson text may reflow; its keyboard keeps the existing responsive strip. */
+.workspace-main--practice > .lanes--keys {
+  flex: 0 0 auto;
+  max-height: 100%;
+  margin-top: auto;
+}
+
 .lanes--row {
   flex-direction: row;
 }

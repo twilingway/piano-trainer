@@ -538,7 +538,8 @@ export class FallingNotesView {
     this.keysRoot.position.set(keysPan + this.offset.x, this.offset.y);
     this.hands.container.position.copyFrom(this.offset);
     this.road?.setKeysOffset(this.offset);
-    if (this.roadMode || this.road?.drawsNativeKeyboard) this.road?.setPan(pan);
+    // Flat plasma still projects through the road, even when the notes use screen space.
+    this.road?.setPan(pan);
   }
 
   private isDestroyed = (): boolean => this.destroyed;
