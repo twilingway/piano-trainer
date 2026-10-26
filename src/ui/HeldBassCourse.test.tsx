@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { DEFAULT_READING_PREFERENCES } from "../reading/types";
 import { HeldBassIntro } from "./HeldBassIntro";
-import { HeldBassPracticePanel, type HeldBassPracticeProps } from "./HeldBassCourse";
+import {
+  HeldBassCourseCard,
+  HeldBassPracticePanel,
+  type HeldBassPracticeProps
+} from "./HeldBassCourse";
 
 let root: Root, host: HTMLDivElement;
 beforeEach(() => {
@@ -49,6 +53,15 @@ function props(): HeldBassPracticeProps {
     onExit: vi.fn(),
     onPreferences: vi.fn()
   };
+}
+async function reveal(id: string, open = true) {
+  const details = host.querySelector<HTMLDetailsElement>(`[data-window-detail="${id}"]`);
+  if (!details) throw new Error(`Missing lesson details: ${id}`);
+  await act(async () => {
+    await Promise.resolve();
+    details.open = open;
+    details.dispatchEvent(new Event("toggle", { bubbles: true }));
+  });
 }
 describe("held bass course interface", () => {
   it("asks to wait during count-in rather than accepting an early start", () => {
@@ -104,7 +117,7 @@ describe("held bass course interface", () => {
     );
     expect(hint?.disabled).toBe(true);
   });
-  it("offers retry after a staff error and keeps empty medians unknown", () => {
+  it("offers visible retry after a staff error and keeps optional empty medians unknown", async () => {
     const value = props();
     value.renderError = true;
     render(<HeldBassPracticePanel {...value} />);
@@ -116,6 +129,86 @@ describe("held bass course interface", () => {
       retry?.click();
     });
     expect(value.onRetry).toHaveBeenCalledOnce();
+    expect(host.querySelector('[aria-label="Нет данных об удержании баса"]')).toBeNull();
+    await reveal("held-bass:practice:progress");
     expect(host.querySelector('[aria-label="Нет данных об удержании баса"]')).not.toBeNull();
+  });
+  it("keeps its start and introduction available without constructing closed history", async () => {
+    const onStart = vi.fn(),
+      onIntro = vi.fn();
+    render(
+      <HeldBassCourseCard
+        history={[]}
+        sourceFilter="all"
+        onSourceFilter={vi.fn()}
+        onStart={onStart}
+        onIntro={onIntro}
+      />
+    );
+    expect(host.querySelectorAll("button")).toHaveLength(2);
+    expect(host.querySelector(".lesson-primary-action")?.textContent).toBe(
+      "Начать десять фрагментов с басом"
+    );
+    expect(host.querySelector(".lesson-secondary-action")?.textContent).toBe(
+      "Знакомство с удержанием баса"
+    );
+    expect(host.querySelector("select,dl")).toBeNull();
+    await reveal("held-bass:catalog:progress");
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onIntro).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-window-detail="held-bass:history"]')).not.toBeNull();
+    act(() => {
+      host.querySelector<HTMLButtonElement>(".lesson-primary-action")?.click();
+      host.querySelector<HTMLButtonElement>(".lesson-secondary-action")?.click();
+    });
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(onIntro).toHaveBeenCalledOnce();
+  });
+  it("keeps status and the current result visible and never treats guide disclosure as musical help", async () => {
+    const value = props();
+    const result: NonNullable<HeldBassPracticeProps["result"]> = {
+      id: "current",
+      runId: "run",
+      skillId: "held-bass-reading",
+      task: "held-bass",
+      exerciseId: "exercise",
+      seed: 1,
+      generatorVersion: 1,
+      startedAt: 0,
+      completedAt: 1000,
+      createdAt: 1000,
+      fragments: []
+    };
+    render(<HeldBassPracticePanel {...value} result={result} history={[result]} />);
+    const current = host.querySelector(".reading-results");
+    expect(current).not.toBeNull();
+    expect(current?.closest("details")).toBeNull();
+    expect(host.querySelector('[role="status"]')?.textContent).toBe(
+      "Серия удержания баса завершена"
+    );
+    expect(host.querySelector("input,select")).toBeNull();
+    expect(host.textContent).toContain("Фрагмент с басом 3 из 10");
+    await reveal("held-bass:practice:guide");
+    expect(host.textContent).toContain("настоящий мультитач");
+    await reveal("held-bass:practice:guide", false);
+    expect(host.querySelector(".reading-results")).toBe(current);
+    expect(value.onHint).not.toHaveBeenCalled();
+    expect(value.onNewSeries).not.toHaveBeenCalled();
+    expect(value.onPreferences).not.toHaveBeenCalled();
+    await reveal("held-bass:practice:settings");
+    const checkbox = host.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    act(() => {
+      checkbox?.click();
+    });
+    expect(value.onPreferences).toHaveBeenCalledExactlyOnceWith({ automaticHints: false });
+    const action = (label: string) =>
+      [...host.querySelectorAll("button")].find((button) => button.textContent === label);
+    expect(action("Подсказка")?.disabled).toBe(true);
+    act(() => {
+      action("Новая серия")?.click();
+      action("Выйти из удержания баса")?.click();
+    });
+    expect(value.onNewSeries).toHaveBeenCalledOnce();
+    expect(value.onExit).toHaveBeenCalledOnce();
   });
 });

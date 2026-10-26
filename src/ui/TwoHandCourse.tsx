@@ -1,4 +1,5 @@
 import { useI18n } from "../app/useI18n";
+import { LessonDetails } from "./LessonDetails";
 import type { ReadingHintLevel, ReadingPreferences } from "../reading/types";
 import type { TwoHandResult, TwoHandStatus } from "../reading/twoHandTypes";
 import {
@@ -23,14 +24,20 @@ export function TwoHandCourseCard(
         )}
       </p>
       <div className="reading-actions">
-        <button type="button" className="game-button" onClick={props.onIntro}>
-          {t("Знакомство с совместной игрой")}
-        </button>
-        <button type="button" className="game-button" onClick={props.onStart}>
+        <button type="button" className="game-button lesson-primary-action" onClick={props.onStart}>
           {t("Начать десять пар")}
         </button>
+        <button
+          type="button"
+          className="game-button lesson-secondary-action"
+          onClick={props.onIntro}
+        >
+          {t("Знакомство с совместной игрой")}
+        </button>
       </div>
-      <TwoHandProgress {...props} />
+      <LessonDetails kind="progress" id="two-hand-reading:catalog:progress">
+        <TwoHandProgress {...props} />
+      </LessonDetails>
     </section>
   );
 }
@@ -87,11 +94,13 @@ export function TwoHandPracticePanel(props: TwoHandPracticeProps) {
           {t("Подсказка")}
         </button>
       </div>
-      <p className="reading-muted">
-        {t(
-          "Без MIDI играйте двумя клавишами ПК или двумя касаниями. Одной мышью совместную атаку выполнить нельзя."
-        )}
-      </p>
+      <LessonDetails kind="guide" id="two-hand-reading:practice:guide">
+        <p className="reading-muted">
+          {t(
+            "Без MIDI играйте двумя клавишами ПК или двумя касаниями. Одной мышью совместную атаку выполнить нельзя."
+          )}
+        </p>
+      </LessonDetails>
       {props.ready && props.hintLevel > 0 && (
         <p className="reading-hint">
           {t("Текущая пара: {notes}", {
@@ -99,45 +108,49 @@ export function TwoHandPracticePanel(props: TwoHandPracticeProps) {
           })}
         </p>
       )}
-      <details className="reading-hint-settings">
-        <summary>{t("Настройки подсказок чтения")}</summary>
-        <label>
-          <input
-            type="checkbox"
-            checked={props.preferences.automaticHints}
-            onChange={(event) => {
-              props.onPreferences({ automaticHints: event.target.checked });
-            }}
-          />
-          {t("Показывать подсказки автоматически")}
-        </label>
-        <label>
-          {t("Название ноты через, с")}
-          <input
-            type="number"
-            min={1}
-            max={60}
-            value={props.preferences.nameDelayMs / 1000}
-            onChange={(event) => {
-              props.onPreferences({ nameDelayMs: Number(event.target.value) * 1000 });
-            }}
-          />
-        </label>
-        <label>
-          {t("Клавиша через, с")}
-          <input
-            type="number"
-            min={props.preferences.nameDelayMs / 1000}
-            max={60}
-            value={props.preferences.keyDelayMs / 1000}
-            onChange={(event) => {
-              props.onPreferences({ keyDelayMs: Number(event.target.value) * 1000 });
-            }}
-          />
-        </label>
-      </details>
+      <LessonDetails kind="settings" id="two-hand-reading:practice:settings">
+        <div className="reading-hint-settings">
+          <h4>{t("Настройки подсказок чтения")}</h4>
+          <label>
+            <input
+              type="checkbox"
+              checked={props.preferences.automaticHints}
+              onChange={(event) => {
+                props.onPreferences({ automaticHints: event.target.checked });
+              }}
+            />
+            {t("Показывать подсказки автоматически")}
+          </label>
+          <label>
+            {t("Название ноты через, с")}
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={props.preferences.nameDelayMs / 1000}
+              onChange={(event) => {
+                props.onPreferences({ nameDelayMs: Number(event.target.value) * 1000 });
+              }}
+            />
+          </label>
+          <label>
+            {t("Клавиша через, с")}
+            <input
+              type="number"
+              min={props.preferences.nameDelayMs / 1000}
+              max={60}
+              value={props.preferences.keyDelayMs / 1000}
+              onChange={(event) => {
+                props.onPreferences({ keyDelayMs: Number(event.target.value) * 1000 });
+              }}
+            />
+          </label>
+        </div>
+      </LessonDetails>
       {props.result && <TwoHandResults result={props.result} sourceFilter={props.sourceFilter} />}
-      <TwoHandProgress {...props} />
+      <LessonDetails kind="progress" id="two-hand-reading:practice:progress">
+        <TwoHandProgress {...props} />
+      </LessonDetails>
     </section>
   );
 }

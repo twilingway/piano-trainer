@@ -1,5 +1,11 @@
 import type { Messages } from "./locales";
 export const readingMessages: Messages = {
+  "Темп: {bpm} BPM · Ввод: {source}": { en: "Tempo: {bpm} BPM · Input: {source}" },
+  "Чтение, ритм и две руки": { en: "Reading, rhythm and both hands" },
+  "Как выполнять задание": { en: "How to do this exercise" },
+  "Параметры задания": { en: "Exercise settings" },
+  "Прогресс и история урока": { en: "Lesson progress and history" },
+  "Другие задания курса": { en: "More course exercises" },
   "Читаю пять нот": { en: "Read five notes" },
   "Читаю отдельные ноты": { en: "Read single notes" },
   "Читаю короткие фразы": { en: "Read short phrases" },

@@ -29,6 +29,15 @@ async function click(text: string) {
     button.click();
   });
 }
+async function reveal(id: string) {
+  const details = host.querySelector<HTMLDetailsElement>(`[data-window-detail="${id}"]`);
+  if (!details) throw new Error(`Missing lesson details: ${id}`);
+  await act(async () => {
+    await Promise.resolve();
+    details.open = true;
+    details.dispatchEvent(new Event("toggle", { bubbles: true }));
+  });
+}
 async function english() {
   await act(async () => {
     await Promise.resolve();
@@ -119,7 +128,18 @@ describe("bass reading UI", () => {
     await render(<BassReadingCourseCard history={[]} onStart={onStart} onIntro={onIntro} />);
     expect(host.textContent).toContain("Левая рука: пять нот");
     expect(host.querySelectorAll("button:disabled")).toHaveLength(0);
+    expect(host.querySelectorAll("button")).toHaveLength(2);
+    expect(host.querySelector(".lesson-primary-action")?.textContent).toBe(
+      "Левая рука: отдельные ноты"
+    );
+    expect(host.querySelector(".lesson-secondary-action")?.textContent).toBe(
+      "Знакомство с левой рукой"
+    );
+    expect(host.querySelector(".reading-progress")).toBeNull();
     await click("Левая рука: отдельные ноты");
+    await reveal("bass-reading:catalog:more");
+    expect(onStart).toHaveBeenCalledExactlyOnceWith("notes");
+    expect(onIntro).not.toHaveBeenCalled();
     await click("Левая рука: короткие фразы");
     await click("Знакомство с левой рукой");
     expect(onStart.mock.calls).toEqual([["notes"], ["phrases"]]);
@@ -155,6 +175,7 @@ describe("bass reading UI", () => {
     await click("Подсказка");
     expect(onHint).toHaveBeenCalledOnce();
     await render(<BassReadingPracticePanel {...props} result={fixture()} />);
+    expect(host.querySelector(".reading-results")?.closest("details")).toBeNull();
     await click("Подсказка");
     expect(onHint).toHaveBeenCalledOnce();
     await english();
@@ -194,6 +215,10 @@ describe("bass reading UI", () => {
         onPreferences={onPreferences}
       />
     );
+    expect(host.querySelector(".reading-history")).toBeNull();
+    await reveal("bass-reading:practice:progress");
+    expect(onSourceFilter).not.toHaveBeenCalled();
+    expect(onNewSeries).not.toHaveBeenCalled();
     expect(host.querySelector(".reading-history summary")?.textContent).toBe(
       "История этого задания: 1"
     );
@@ -213,6 +238,9 @@ describe("bass reading UI", () => {
     });
     expect(onSourceFilter).toHaveBeenCalledWith("keyboard");
     expect(onNewSeries).not.toHaveBeenCalled();
+    expect(host.querySelector('input[type="checkbox"]')).toBeNull();
+    await reveal("bass-reading:practice:settings");
+    expect(onPreferences).not.toHaveBeenCalled();
     const checkbox = host.querySelector<HTMLInputElement>('input[type="checkbox"]');
     if (!checkbox) throw new Error("Missing hint preference");
     await act(async () => {

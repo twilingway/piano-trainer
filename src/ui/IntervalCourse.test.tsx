@@ -27,6 +27,16 @@ async function render(node: ReactNode) {
   });
 }
 
+async function reveal(id: string) {
+  const details = host.querySelector<HTMLDetailsElement>(`[data-window-detail="${id}"]`);
+  if (!details) throw new Error(`Missing disclosure: ${id}`);
+  await act(async () => {
+    await Promise.resolve();
+    details.open = true;
+    details.dispatchEvent(new Event("toggle"));
+  });
+}
+
 function button(text: string): HTMLButtonElement {
   const found = [...host.querySelectorAll("button")].find((item) => item.textContent === text);
   if (!found) throw new Error(`Missing button: ${text}`);
@@ -120,12 +130,14 @@ afterEach(async () => {
 });
 
 describe("optional interval modes", () => {
-  it("offers both modes immediately and switches through their own commands", async () => {
+  it("offers one primary mode and reveals the alternative without changing commands", async () => {
     const onStart = vi.fn();
     await render(<IntervalCourseCard onStart={onStart} />);
     expect(host.querySelector("h3")?.textContent).toBe("Интервалы");
     expect(host.querySelectorAll("button:disabled")).toHaveLength(0);
     await click(button("Вижу и играю пару"));
+    expect(host.querySelectorAll("button")).toHaveLength(1);
+    await reveal("interval:catalog:more");
     await click(button("Слышу и выбираю интервал"));
     expect(onStart.mock.calls).toEqual([["see-and-play"], ["hear-and-choose"]]);
     await english();
@@ -137,6 +149,7 @@ describe("optional interval modes", () => {
   it("keeps switch, new series and exit available during playback", async () => {
     const current = { ...props(), onStart: vi.fn(), onNewSeries: vi.fn(), onExit: vi.fn() };
     await render(<IntervalPracticePanel {...current} ready={false} listening />);
+    await reveal("interval:practice:more");
     await click(button("Вижу и играю пару"));
     await click(button("Новая серия"));
     await click(button("Выйти из интервалов"));
@@ -150,6 +163,44 @@ describe("optional interval modes", () => {
 });
 
 describe("native category responses and manual help", () => {
+  it("opens general guidance without showing the answer or changing a question", async () => {
+    const current = {
+      ...props(),
+      onHelp: vi.fn(),
+      onHelpPresented: vi.fn(),
+      onStart: vi.fn(),
+      onNewSeries: vi.fn()
+    };
+    await render(<IntervalPracticePanel {...current} />);
+    expect(host.textContent).not.toContain("Первая — опора");
+    await reveal("interval:practice:guide");
+    expect(host.textContent).toContain("Первая — опора");
+    expect(host.querySelector(".reading-hint")).toBeNull();
+    expect(button("Терция вверх").disabled).toBe(false);
+    expect(host.textContent).toContain("Пара 1 из 10");
+    expect(current.onHelp).not.toHaveBeenCalled();
+    expect(current.onHelpPresented).not.toHaveBeenCalled();
+    expect(current.onStart).not.toHaveBeenCalled();
+    expect(current.onNewSeries).not.toHaveBeenCalled();
+  });
+  it("keeps the current interval result outside lazy history", async () => {
+    const result = completedRun("hear-and-choose");
+    await render(
+      <IntervalProgress
+        history={[result]}
+        result={result}
+        mode="hear-and-choose"
+        source="all"
+        onSource={vi.fn()}
+      />
+    );
+    expect(host.querySelectorAll(".reading-results")).toHaveLength(1);
+    expect(host.querySelector('[data-window-detail="interval-reading:history"]')).toBeNull();
+    await reveal("interval:practice:progress");
+    expect(host.querySelector('[data-window-detail="interval-reading:history"]')).not.toBeNull();
+    expect(host.querySelector('[data-window-detail="interval-reading:progress"]')).not.toBeNull();
+    expect(host.querySelectorAll(".reading-results").length).toBeGreaterThan(1);
+  });
   it("acknowledges only a mounted help answer and cancels its pending frame on removal", async () => {
     let nextFrame = 0;
     const frames = new Map<number, FrameRequestCallback>();
@@ -306,6 +357,8 @@ describe("mode-specific interval progress", () => {
         result={null}
       />
     );
+    expect(host.querySelector("select")).toBeNull();
+    await reveal("interval:practice:progress");
     const select = host.querySelector("select");
     if (!select) throw new Error("Missing source filter");
     expect([...select.options].map((option) => option.value)).toEqual([
@@ -324,15 +377,15 @@ describe("mode-specific interval progress", () => {
     });
     expect(onSource).toHaveBeenCalledWith("pointer");
     const details = [...host.querySelectorAll("details")];
-    expect(details[1]?.querySelector("summary")?.textContent).toBe("История интервалов: 1");
-    expect(details[1]?.querySelectorAll(".reading-results")).toHaveLength(1);
-    expect(details[1]?.textContent).toContain("выбор категории на слух");
-    expect(details[1]?.textContent).not.toContain("игра пары по нотам");
+    expect(details[2]?.querySelector("summary")?.textContent).toBe("История интервалов: 1");
+    expect(details[2]?.querySelectorAll(".reading-results")).toHaveLength(1);
+    expect(details[2]?.textContent).toContain("выбор категории на слух");
+    expect(details[2]?.textContent).not.toContain("игра пары по нотам");
     await english();
     expect(select.querySelector('option[value="pointer"]')?.textContent).toBe(
       "Interval choice buttons"
     );
-    expect(details[1]?.querySelector("summary")?.textContent).toBe("Interval history: 1");
+    expect(details[2]?.querySelector("summary")?.textContent).toBe("Interval history: 1");
     await render(
       <IntervalProgress
         history={history}

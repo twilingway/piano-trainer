@@ -1,4 +1,5 @@
 import { useI18n } from "../app/useI18n";
+import { LessonDetails } from "./LessonDetails";
 import type { ReadingHintLevel, ReadingPreferences } from "../reading/types";
 import type { HeldBassResult, HeldBassStatus } from "../reading/heldBassTypes";
 import {
@@ -23,14 +24,20 @@ export function HeldBassCourseCard(
         )}
       </p>
       <div className="reading-actions">
-        <button type="button" className="game-button" onClick={props.onIntro}>
-          {t("Знакомство с удержанием баса")}
-        </button>
-        <button type="button" className="game-button" onClick={props.onStart}>
+        <button type="button" className="game-button lesson-primary-action" onClick={props.onStart}>
           {t("Начать десять фрагментов с басом")}
         </button>
+        <button
+          type="button"
+          className="game-button lesson-secondary-action"
+          onClick={props.onIntro}
+        >
+          {t("Знакомство с удержанием баса")}
+        </button>
       </div>
-      <HeldBassProgress {...props} />
+      <LessonDetails kind="progress" id="held-bass:catalog:progress">
+        <HeldBassProgress {...props} />
+      </LessonDetails>
     </section>
   );
 }
@@ -106,11 +113,13 @@ export function HeldBassPracticePanel(props: HeldBassPracticeProps) {
           {t("Подсказка")}
         </button>
       </div>
-      <p className="reading-muted">
-        {t(
-          "Без MIDI используйте клавиатуру ПК или настоящий мультитач. Одной мышью удержать бас и сыграть мелодию нельзя."
-        )}
-      </p>
+      <LessonDetails kind="guide" id="held-bass:practice:guide">
+        <p className="reading-muted">
+          {t(
+            "Без MIDI используйте клавиатуру ПК или настоящий мультитач. Одной мышью удержать бас и сыграть мелодию нельзя."
+          )}
+        </p>
+      </LessonDetails>
       {props.ready && props.hintLevel > 0 && (
         <p className="reading-hint">
           {t("Бас и ожидаемая нота: {notes}", {
@@ -118,45 +127,49 @@ export function HeldBassPracticePanel(props: HeldBassPracticeProps) {
           })}
         </p>
       )}
-      <details className="reading-hint-settings">
-        <summary>{t("Настройки подсказок чтения")}</summary>
-        <label>
-          <input
-            type="checkbox"
-            checked={props.preferences.automaticHints}
-            onChange={(event) => {
-              props.onPreferences({ automaticHints: event.target.checked });
-            }}
-          />
-          {t("Показывать подсказки автоматически")}
-        </label>
-        <label>
-          {t("Название ноты через, с")}
-          <input
-            type="number"
-            min={1}
-            max={60}
-            value={props.preferences.nameDelayMs / 1000}
-            onChange={(event) => {
-              props.onPreferences({ nameDelayMs: Number(event.target.value) * 1000 });
-            }}
-          />
-        </label>
-        <label>
-          {t("Клавиша через, с")}
-          <input
-            type="number"
-            min={props.preferences.nameDelayMs / 1000}
-            max={60}
-            value={props.preferences.keyDelayMs / 1000}
-            onChange={(event) => {
-              props.onPreferences({ keyDelayMs: Number(event.target.value) * 1000 });
-            }}
-          />
-        </label>
-      </details>
+      <LessonDetails kind="settings" id="held-bass:practice:settings">
+        <div className="reading-hint-settings">
+          <h4>{t("Настройки подсказок чтения")}</h4>
+          <label>
+            <input
+              type="checkbox"
+              checked={props.preferences.automaticHints}
+              onChange={(event) => {
+                props.onPreferences({ automaticHints: event.target.checked });
+              }}
+            />
+            {t("Показывать подсказки автоматически")}
+          </label>
+          <label>
+            {t("Название ноты через, с")}
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={props.preferences.nameDelayMs / 1000}
+              onChange={(event) => {
+                props.onPreferences({ nameDelayMs: Number(event.target.value) * 1000 });
+              }}
+            />
+          </label>
+          <label>
+            {t("Клавиша через, с")}
+            <input
+              type="number"
+              min={props.preferences.nameDelayMs / 1000}
+              max={60}
+              value={props.preferences.keyDelayMs / 1000}
+              onChange={(event) => {
+                props.onPreferences({ keyDelayMs: Number(event.target.value) * 1000 });
+              }}
+            />
+          </label>
+        </div>
+      </LessonDetails>
       {props.result && <HeldBassResults result={props.result} sourceFilter={props.sourceFilter} />}
-      <HeldBassProgress {...props} />
+      <LessonDetails kind="progress" id="held-bass:practice:progress">
+        <HeldBassProgress {...props} />
+      </LessonDetails>
     </section>
   );
 }

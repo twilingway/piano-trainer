@@ -1,4 +1,5 @@
 import type { KeyboardEvent, ReactNode } from "react";
+import { LessonDetails } from "./LessonDetails";
 import { useI18n } from "../app/useI18n";
 import type { RhythmBpm, RhythmInputSource } from "../rhythm/types";
 
@@ -77,63 +78,8 @@ export function RhythmPanel(props: RhythmPanelProps) {
     <section className="reading-practice rhythm-practice" aria-label={t("Ритм")}>
       <div className="reading-actions rhythm-actions">
         <strong>{t("Читать и отбивать ритм")}</strong>
-        <button type="button" className="game-button" onClick={props.onNewSeries}>
-          {t("Новая серия")}
-        </button>
-        <button type="button" className="game-button" onClick={props.onRepeat}>
-          {t("Повторить этот ритм")}
-        </button>
         <button type="button" className="game-button" onClick={props.onExit}>
           {t("Выйти из ритма")}
-        </button>
-      </div>
-      <div className="rhythm-controls">
-        <label>
-          {t("Темп ритма, BPM")}
-          <select
-            value={props.bpm}
-            onChange={(event) => {
-              props.onBpm(Number(event.target.value) as RhythmBpm);
-            }}
-          >
-            {([60, 80, 100] as const).map((bpm) => (
-              <option key={bpm} value={bpm}>
-                {bpm}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t("Способ ввода ритма")}
-          <select
-            value={props.source}
-            onChange={(event) => {
-              props.onSource(event.target.value as RhythmInputSource);
-            }}
-          >
-            {(["keyboard", "pointer", "midi"] as const).map((source) => (
-              <option key={source} value={source}>
-                {t(RHYTHM_SOURCE_LABELS[source])}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <p className="reading-muted">
-        {t("4 такта · 10 ударов · окно ±150 мс. Половинную не нужно удерживать.")}
-      </p>
-      <div className="reading-actions">
-        <span className="reading-muted">
-          {props.compensated
-            ? t("Компенсация ввода: {offset} мс.", { offset: props.effectiveOffsetMs })
-            : props.effectiveOffsetMs === 0
-              ? t("Нет профиля калибровки: компенсация ввода 0 мс.")
-              : t("Нет профиля калибровки: ручная компенсация {offset} мс.", {
-                  offset: props.effectiveOffsetMs
-                })}
-        </span>
-        <button type="button" className="game-button" onClick={props.onCalibrate}>
-          {t("Калибровка ритма")}
         </button>
       </div>
       <p className="rhythm-status" aria-live="polite">
@@ -202,10 +148,77 @@ export function RhythmPanel(props: RhythmPanelProps) {
         </button>
       </div>
       <p className="reading-muted">
-        {t(
-          "Изменение настроек или уход со страницы прерывает серию. Незавершённая серия не сохраняется."
-        )}
+        {t("Темп: {bpm} BPM · Ввод: {source}", {
+          bpm: props.bpm,
+          source: t(RHYTHM_SOURCE_LABELS[props.source])
+        })}
       </p>
+      <div className="reading-actions rhythm-actions">
+        <button type="button" className="game-button" onClick={props.onNewSeries}>
+          {t("Новая серия")}
+        </button>
+        <button type="button" className="game-button" onClick={props.onRepeat}>
+          {t("Повторить этот ритм")}
+        </button>
+      </div>
+      <LessonDetails kind="settings" id="rhythm:practice:settings">
+        <div className="rhythm-controls">
+          <label>
+            {t("Темп ритма, BPM")}
+            <select
+              value={props.bpm}
+              onChange={(event) => {
+                props.onBpm(Number(event.target.value) as RhythmBpm);
+              }}
+            >
+              {([60, 80, 100] as const).map((bpm) => (
+                <option key={bpm} value={bpm}>
+                  {bpm}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {t("Способ ввода ритма")}
+            <select
+              value={props.source}
+              onChange={(event) => {
+                props.onSource(event.target.value as RhythmInputSource);
+              }}
+            >
+              {(["keyboard", "pointer", "midi"] as const).map((source) => (
+                <option key={source} value={source}>
+                  {t(RHYTHM_SOURCE_LABELS[source])}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="reading-actions">
+          <span className="reading-muted">
+            {props.compensated
+              ? t("Компенсация ввода: {offset} мс.", { offset: props.effectiveOffsetMs })
+              : props.effectiveOffsetMs === 0
+                ? t("Нет профиля калибровки: компенсация ввода 0 мс.")
+                : t("Нет профиля калибровки: ручная компенсация {offset} мс.", {
+                    offset: props.effectiveOffsetMs
+                  })}
+          </span>
+          <button type="button" className="game-button" onClick={props.onCalibrate}>
+            {t("Калибровка ритма")}
+          </button>
+        </div>
+      </LessonDetails>
+      <LessonDetails kind="guide" id="rhythm:practice:guide">
+        <p className="reading-muted">
+          {t("4 такта · 10 ударов · окно ±150 мс. Половинную не нужно удерживать.")}
+        </p>
+        <p className="reading-muted">
+          {t(
+            "Изменение настроек или уход со страницы прерывает серию. Незавершённая серия не сохраняется."
+          )}
+        </p>
+      </LessonDetails>
       {props.progress}
     </section>
   );

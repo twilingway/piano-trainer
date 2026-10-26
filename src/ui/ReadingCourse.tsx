@@ -1,4 +1,5 @@
 import { useI18n } from "../app/useI18n";
+import { LessonDetails } from "./LessonDetails";
 import { readingPurpose, summarizeReadingResults } from "../reading/progress";
 import type { ReadingPurpose, ReadingSourceFilter } from "../reading/progressTypes";
 import type {
@@ -26,6 +27,8 @@ export function ReadingCourseCard({
   onStart,
   onIntro,
   history,
+  onAdaptive,
+  onDelayedCheck,
   ...progress
 }: ReadingProgressProps & {
   onStart: (task: ReadingTask) => void;
@@ -38,30 +41,70 @@ export function ReadingCourseCard({
       <h3>{t("Читаю пять нот")}</h3>
       <p>{t("Учитесь узнавать ноты на стане и находить их на клавиатуре.")}</p>
       <div className="reading-actions">
-        <button type="button" className="game-button" onClick={onIntro}>
+        <button
+          type="button"
+          className="game-button lesson-primary-action"
+          onClick={() => {
+            onStart("notes");
+          }}
+        >
+          {t(READING_TASK_LABELS.notes)}
+        </button>
+        <button type="button" className="game-button lesson-secondary-action" onClick={onIntro}>
           {t("Знакомство с пятью нотами")}
         </button>
-        {(Object.keys(READING_TASK_LABELS) as ReadingTask[]).map((task) => (
-          <button
-            type="button"
-            className="game-button"
-            key={task}
-            onClick={() => {
-              onStart(task);
-            }}
-          >
-            {t(READING_TASK_LABELS[task])}
-          </button>
-        ))}
       </div>
+      <LessonDetails kind="more" id="reading:catalog:more">
+        <div className="reading-actions">
+          {(["phrases", "check"] as const).map((task) => (
+            <button
+              type="button"
+              className="game-button"
+              key={task}
+              onClick={() => {
+                onStart(task);
+              }}
+            >
+              {t(READING_TASK_LABELS[task])}
+            </button>
+          ))}
+          {onAdaptive && (
+            <button type="button" className="game-button" onClick={onAdaptive}>
+              {t("Повторить трудные ноты")}
+            </button>
+          )}
+          {progress.delayedDue && onDelayedCheck && (
+            <button type="button" className="game-button" onClick={onDelayedCheck}>
+              {t("Проверить чтение спустя время")}
+            </button>
+          )}
+        </div>
+      </LessonDetails>
       <p className="reading-muted">
         {t("Завершено серий: {number}", {
           number: progress.profile?.processedRunIds.length ?? history.length
         })}
       </p>
-      <ReadingProgress history={history} {...progress} />
+      <ReadingGenerationError {...progress} />
+      <LessonDetails kind="progress" id="reading:catalog:progress">
+        <ReadingProgress history={history} {...progress} generationError={false} />
+      </LessonDetails>
     </section>
   );
+}
+
+function ReadingGenerationError(props: ReadingProgressProps) {
+  const { t } = useI18n();
+  return props.generationError ? (
+    <p role="alert">
+      {t("Не удалось подобрать новый порядок нот для проверки.")}{" "}
+      {props.onGenerationRetry && (
+        <button type="button" onClick={props.onGenerationRetry}>
+          {t("Повторить поиск серии")}
+        </button>
+      )}
+    </p>
+  ) : null;
 }
 
 interface PracticeProps extends ReadingProgressProps {
@@ -130,60 +173,65 @@ export function ReadingPracticePanel(props: PracticeProps) {
         )}
       </div>
       {task !== "check" && (
-        <details className="reading-hint-settings">
-          <summary>{t("Настройки подсказок чтения")}</summary>
-          <label>
-            <input
-              type="checkbox"
-              checked={preferences.automaticHints}
-              onChange={(event) => {
-                props.onPreferences({ automaticHints: event.target.checked });
-              }}
-            />
-            {t("Показывать подсказки автоматически")}
-          </label>
-          <label>
-            {t("Название ноты через, с")}
-            <input
-              type="number"
-              min={1}
-              max={60}
-              value={preferences.nameDelayMs / 1000}
-              onChange={(event) => {
-                props.onPreferences({ nameDelayMs: Number(event.target.value) * 1000 });
-              }}
-            />
-          </label>
-          <label>
-            {t("Клавиша через, с")}
-            <input
-              type="number"
-              min={preferences.nameDelayMs / 1000}
-              max={60}
-              value={preferences.keyDelayMs / 1000}
-              onChange={(event) => {
-                props.onPreferences({ keyDelayMs: Number(event.target.value) * 1000 });
-              }}
-            />
-          </label>
-        </details>
+        <LessonDetails kind="settings" id="reading:practice:settings">
+          <div className="reading-hint-settings">
+            <h4>{t("Настройки подсказок чтения")}</h4>
+            <label>
+              <input
+                type="checkbox"
+                checked={preferences.automaticHints}
+                onChange={(event) => {
+                  props.onPreferences({ automaticHints: event.target.checked });
+                }}
+              />
+              {t("Показывать подсказки автоматически")}
+            </label>
+            <label>
+              {t("Название ноты через, с")}
+              <input
+                type="number"
+                min={1}
+                max={60}
+                value={preferences.nameDelayMs / 1000}
+                onChange={(event) => {
+                  props.onPreferences({ nameDelayMs: Number(event.target.value) * 1000 });
+                }}
+              />
+            </label>
+            <label>
+              {t("Клавиша через, с")}
+              <input
+                type="number"
+                min={preferences.nameDelayMs / 1000}
+                max={60}
+                value={preferences.keyDelayMs / 1000}
+                onChange={(event) => {
+                  props.onPreferences({ keyDelayMs: Number(event.target.value) * 1000 });
+                }}
+              />
+            </label>
+          </div>
+        </LessonDetails>
       )}
       {result && <ReadingResults result={result} sourceFilter={props.sourceFilter} />}
-      <ReadingProgress {...props} />
-      <details className="reading-history">
-        <summary>
-          {t("История этого задания: {number}", {
-            number: props.history.filter((item) => item.task === task).length
-          })}
-        </summary>
-        {props.history
-          .filter((item) => item.task === task)
-          .slice()
-          .reverse()
-          .map((item) => (
-            <ReadingResults key={item.id} result={item} sourceFilter={props.sourceFilter} />
-          ))}
-      </details>
+      <ReadingGenerationError {...props} />
+      <LessonDetails kind="progress" id="reading:practice:progress">
+        <ReadingProgress {...props} generationError={false} />
+        <details className="reading-history">
+          <summary>
+            {t("История этого задания: {number}", {
+              number: props.history.filter((item) => item.task === task).length
+            })}
+          </summary>
+          {props.history
+            .filter((item) => item.task === task)
+            .slice()
+            .reverse()
+            .map((item) => (
+              <ReadingResults key={item.id} result={item} sourceFilter={props.sourceFilter} />
+            ))}
+        </details>
+      </LessonDetails>
     </section>
   );
 }

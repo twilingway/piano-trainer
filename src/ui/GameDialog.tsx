@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { CloseIcon } from "./icons";
 import { WindowViewMemory } from "./windowViewMemory";
+import { WindowDisclosureContext } from "./windowDisclosureContext";
 
 interface Props {
   readonly open: boolean;
@@ -84,7 +85,7 @@ export function GameDialog({
         }}
         className="game-dialog__body"
       >
-        {children}
+        <WindowDisclosureContext value={viewMemory}>{children}</WindowDisclosureContext>
       </div>
     </dialog>
   );

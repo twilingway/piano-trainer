@@ -4,10 +4,23 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { DEFAULT_READING_PREFERENCES } from "../reading/types";
-import { TwoHandPracticePanel, type TwoHandPracticeProps } from "./TwoHandCourse";
+import {
+  TwoHandCourseCard,
+  TwoHandPracticePanel,
+  type TwoHandPracticeProps
+} from "./TwoHandCourse";
 import { TwoHandIntro } from "./TwoHandIntro";
 let root: Root, host: HTMLDivElement;
 const noop = () => undefined;
+async function reveal(id: string, open = true) {
+  const details = host.querySelector<HTMLDetailsElement>(`[data-window-detail="${id}"]`);
+  if (!details) throw new Error(`Missing lesson details: ${id}`);
+  await act(async () => {
+    await Promise.resolve();
+    details.open = open;
+    details.dispatchEvent(new Event("toggle", { bubbles: true }));
+  });
+}
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   setInterfaceLanguage("ru");
@@ -41,11 +54,13 @@ const props: TwoHandPracticeProps = {
   onPreferences: noop
 };
 describe("two-hand player interface", () => {
-  it("hides current names until help and explains release finality in both languages", () => {
+  it("hides current names until help and explains release finality in both languages", async () => {
     act(() => {
       root.render(<TwoHandPracticePanel {...props} />);
     });
     expect(host.textContent).not.toContain("Текущая пара");
+    expect(host.textContent).not.toContain("Одной мышью");
+    await reveal("two-hand-reading:practice:guide");
     expect(host.textContent).toContain("Одной мышью");
     act(() => {
       root.render(<TwoHandPracticePanel {...props} hintLevel={1} status="release" />);
@@ -58,6 +73,104 @@ describe("two-hand player interface", () => {
     expect(host.textContent).toContain("Current pair:");
     expect(host.textContent).toContain("The pair is still being checked");
     expect(host.textContent).not.toContain("Две руки");
+  });
+  it("keeps the start and introduction visible and mounts progress only after disclosure", async () => {
+    const onStart = vi.fn(),
+      onIntro = vi.fn(),
+      onSourceFilter = vi.fn();
+    act(() => {
+      root.render(
+        <TwoHandCourseCard
+          history={[]}
+          sourceFilter="all"
+          onSourceFilter={onSourceFilter}
+          onStart={onStart}
+          onIntro={onIntro}
+        />
+      );
+    });
+    expect(host.querySelectorAll("button")).toHaveLength(2);
+    expect(host.querySelector(".lesson-primary-action")?.textContent).toBe("Начать десять пар");
+    expect(host.querySelector(".lesson-secondary-action")?.textContent).toBe(
+      "Знакомство с совместной игрой"
+    );
+    expect(host.querySelector("select,dl")).toBeNull();
+    await reveal("two-hand-reading:catalog:progress");
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onIntro).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-window-detail="two-hand-reading:history"]')).not.toBeNull();
+    const filter = required(host.querySelector("select"));
+    act(() => {
+      filter.value = "midi";
+      filter.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onSourceFilter).toHaveBeenCalledExactlyOnceWith("midi");
+    act(() => {
+      host.querySelector<HTMLButtonElement>(".lesson-primary-action")?.click();
+      host.querySelector<HTMLButtonElement>(".lesson-secondary-action")?.click();
+    });
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(onIntro).toHaveBeenCalledOnce();
+  });
+  it("keeps the current result and commands visible while guide, settings and old history are lazy", async () => {
+    const result: NonNullable<TwoHandPracticeProps["result"]> = {
+      id: "current",
+      runId: "run",
+      skillId: "two-hand-coordination",
+      task: "simultaneous",
+      exerciseId: "exercise",
+      seed: 1,
+      generatorVersion: 1,
+      startedAt: 0,
+      completedAt: 1000,
+      createdAt: 1000,
+      pairs: []
+    };
+    const onHint = vi.fn(),
+      onNewSeries = vi.fn(),
+      onExit = vi.fn(),
+      onPreferences = vi.fn();
+    act(() => {
+      root.render(
+        <TwoHandPracticePanel
+          {...props}
+          result={result}
+          history={[result]}
+          onHint={onHint}
+          onNewSeries={onNewSeries}
+          onExit={onExit}
+          onPreferences={onPreferences}
+        />
+      );
+    });
+    const current = required(host.querySelector(".reading-results"));
+    expect(current.closest("details")).toBeNull();
+    expect(host.querySelector(".reading-history,input")).toBeNull();
+    expect(host.querySelector('[role="status"]')?.textContent).toBe("Серия двух рук завершена");
+    expect(host.textContent).toContain("Пара 1 из 10");
+    await reveal("two-hand-reading:practice:guide");
+    await reveal("two-hand-reading:practice:guide", false);
+    expect(host.querySelector(".reading-results")).toBe(current);
+    expect(onHint).not.toHaveBeenCalled();
+    expect(onNewSeries).not.toHaveBeenCalled();
+    await reveal("two-hand-reading:practice:settings");
+    expect(onPreferences).not.toHaveBeenCalled();
+    const checkbox = required(host.querySelector<HTMLInputElement>('input[type="checkbox"]'));
+    act(() => {
+      checkbox.click();
+    });
+    expect(onPreferences).toHaveBeenCalledExactlyOnceWith({ automaticHints: false });
+    await reveal("two-hand-reading:practice:progress");
+    expect(host.querySelectorAll(".reading-history .reading-results")).toHaveLength(1);
+    const action = (label: string) =>
+      required([...host.querySelectorAll("button")].find((button) => button.textContent === label));
+    expect(action("Подсказка").disabled).toBe(true);
+    act(() => {
+      action("Новая серия").click();
+      action("Выйти из совместной игры").click();
+    });
+    expect(onNewSeries).toHaveBeenCalledOnce();
+    expect(onExit).toHaveBeenCalledOnce();
   });
   it("offers manual help only for a presented active pair", () => {
     const onHint = vi.fn();
