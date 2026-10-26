@@ -1,0 +1,45 @@
+# Design
+
+## Context
+
+useTabsCursor рисует spot.x и затем задаёт scrollLeft, не компенсируя фактическое округление. Стан
+уже применяет placeCursorLine с коррекцией остатка до 1 px. Табовая линия 3 px и широкая заливка
+столбца отличаются от 18 px atlas carrier + 2 px core стана.
+
+Trace natural end, exact 1440×1000, lesson2/both/melody-01, zoom1: Wtabs=1440, Wstaff=1425,
+row.width=528,497, terminal spot.x=546,460. origin=712,5; desired scroll=546,460; actual=max=521.
+Центры 737,9602 / 712,5. Конечная ось uniformStaffLayout включает inset, ширина VFStave его не
+включает; overhang допустим. Изменять row.width нельзя: он также определяет durationSpots и
+длительности.
+
+## Goals / Non-Goals
+
+Цель — одинаковое оформление и стабильный общий центр до конца. Song/PracticeSession остаются
+единственным источником музыки и времени. Не меняются масштаб, геометрия нот, solver, пальцы,
+продолжительности и правила ручной прокрутки. Никаких независимых clock/easing/clamp duration.
+
+## Decisions
+
+1. Применить одинаковые CSS/текстуру к обеим линиям, сохранив специальное поведение P1–P8. Убрать
+   широкую заливку текущего столбца, но оставить подсветку нот.
+2. После записи scrollLeft читать фактический offset. При активном follow single-line и остатке до
+   одного пикселя компенсировать его только в transform линии, как у стана. При manual hold/drag или
+   wrapped не навязывать центр.
+3. Расширить только scroll extent. Для shared single-line L=max(row.width), E=max(L, все finite
+   cursorSpots.x), C=общий центр, W=ширина tab viewport: rightPad=max(0,W−C)+(E−L);
+   contentWidth=ceil(svgOffsetX+L+rightPad). В trace это rightPad745,463 и width1987: maxScroll547
+   достигает desired546,460. Не переписывать row.width, события, durations и terminal spots.
+   Standalone сохраняет прежнюю компактность.
+4. Расчёт extent чистый и выполняется при раскладке. RAF не получает новых коллекций или часов.
+   Общие geometry/frame beat и stop/resume сохраняются.
+5. Тесты каждой группы добавляются вместе с ней, по просьбе игрока выполняются в конце задачи.
+   Видимые before/after traces обязательны: mocked scroll не заменяет реальный Chromium.
+
+## Risks / Trade-offs
+
+- Scroll dimensions округляются: ceil конечного контейнера важен для последней дробной доли.
+- Порядок панелей/разная ширина/resize меняют центр: проверить оба порядка и narrow viewport.
+- Финальное поле может включать inset за stave: резервировать место, не двигать музыкальные anchors.
+- PR230 ещё отдельно: изменения должны сохранять его независимые размеры и API общей геометрии.
+- Пауза в конкретном фиксированном упражнении может запрещать seek: использовать разрешённую песню
+  или естественное окончание; не обходить учебные блокировки ради теста.
