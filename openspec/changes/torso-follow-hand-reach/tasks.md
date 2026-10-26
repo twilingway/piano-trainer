@@ -30,12 +30,21 @@
 
 ## 4. Нативная левая анатомия
 
-- [ ] 4.1 Добавить hand-aware native LEFT source chains/axes/weights/pad labels и evaluated-ID→ROW
+- [x] 4.1 Добавить hand-aware native LEFT source chains/axes/weights/pad labels и evaluated-ID→ROW
       contract в новых модулях/сцене; source/anatomy/geometry proof и wrong-hand/mirrored-right
       negatives PASS, старые RIGHT данные неизменны.
-- [ ] 4.2 Провести LEFT collar/arm/finger controls через codec/FK/judge с прежними bounds; CPU/GPU
-      parity, actual pad identity, собственная left arm/body calibration и независимые negatives
-      PASS.
+- [x] 4.2 Провести native LEFT collar/arm/finger controls через отдельные codec/FK с прежними
+      bounds; CPU/GPU parity full156/FK/PSD/gradients, source identity, reachable/unreachable, RIGHT
+      local preservation и независимые negatives PASS. Физический judge закрывается задачами4.3–4.5.
+- [ ] 4.3 Добавить отдельный bounded closed-volume kernel/intake с complementary interfaces,
+      embeddedness/orientation/winding и отрицательными fixtures полного вложения, coplanar,
+      nesting, неверного membership; numerical ambiguity не даёт PASS.
+- [ ] 4.4 Проверить feasibility неизменного native LEFT source и выдать независимую калибровку
+      только при полном PASS; неподтверждённый source остаётся явно UNRESOLVED/calibration=null, не
+      нормирует проникновение и не разрешает кандидаты.
+- [ ] 4.5 Подключить новый classifier и native LEFT arm/body calibration в per-candidate exact
+      judge; actual source/candidate geometry, прежний NONLEFT coverage, pads/query identity и
+      независимые negatives PASS до физического допуска.
 
 ## 5. Левый диапазон до C6
 

@@ -92,6 +92,35 @@ LEFT calibration требует независимо проверенную на
 
 ### 5. Проверки и происхождение
 
+#### Замкнутый classifier и физическая политика
+
+Отсутствие triangle crossings не исключает полного вложения одной сетки в другую. Открытые native
+patches не считаются закрытыми телами; численно неопределённый inside даёт UNRESOLVED и
+calibration=null. Реальные границы source631 выходят за прежний 90-мм shoulder exclusion, поэтому
+замыкание только внутри этого шара не подходит; радиус и физические masks не расширяются.
+
+Новый отдельный bounded classifier распределяет все исходные треугольники между LEFT/RIGHT/BODY по
+закреплённым native weight sums и tie order. Это вычислительная partition, а не новая физическая
+mask. Подлинные interface loops закрываются одинаковыми внутренними cap с противоположной
+ориентацией; их точное сокращение воспроизводит исходную ориентированную кожу.
+
+Первый этап принимает только связные замкнутые manifold volumes рода0 с подтверждёнными orientation,
+nondegeneracy и embeddedness каждой части. Сложные компоненты/cavities пока дают UNRESOLVED.
+Joint-center fan требует проверки всей поверхности cap: cap–skin/cap–cap intersections, coplanar
+overlaps и касания допустимы только на точном объявленном interface; cap должен находиться внутри
+full-body volume. Одних вершин или центроида недостаточно. Certificate повторяется для каждого
+кандидата; source calibration не доказывает корректность новой геометрии.
+
+Caps используются только в signed winding/inside-классификации, без XOR разных объёмов. Они не
+участвуют в физических crossings, расстояниях, глубине или clearance. Для arm–body сохраняется
+прежний NONLEFT=BODY∪RIGHT со взаимным сокращением RIGHT-cap; LEFT↔RIGHT проверяется отдельно и
+двунаправленно. Query ROW и membership остаются прежними; дополнительные cap/border vertices не
+становятся физическими query. Любая неопределённость даёт UNRESOLVED без допуска.
+
+Broadphase допускает встроенный Blender BVHTree на standalone arrays; narrowphase обязан
+обрабатывать coplanar/tangent случаи. Новая зависимость не вводится, CURRENT/пользовательские сцены
+при доказательстве kernel не меняются.
+
 Сохраняются прежние own-key/pressed-set/pad/skin/finger-pair/arm-body/reach/natural правила и
 numerical tolerances. Для нового yaw проверяется torso/оба shoulder transforms, длины и
 неподвижность таза. Калибровка arm/body относится к конкретной текущей руке и case: успех597 с одним

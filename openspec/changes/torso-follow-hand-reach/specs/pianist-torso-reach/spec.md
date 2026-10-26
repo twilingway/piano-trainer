@@ -141,3 +141,29 @@ surface/SIDE correctives и ногти. Физический GREEN, natural PASS
 - **WHEN** новый right/left либо совместный кандидат проходит GPU-аудит и записывается
 - **THEN** сохранённая сцена подтверждает ту же позу и контакты, frozen/unrequested данные
   совпадают, а визуальный статус остаётся отдельным до просмотра
+
+### Requirement: Полная вложенность и неопределённый classifier не дают допуска
+
+Проверка skin/body и LEFT↔RIGHT SHALL обнаруживать полное вложение допустимых query в другой
+геометрический объём, даже при отсутствии пересечений треугольников. Некорректный, открытый или
+численно неопределённый inside-classifier SHALL давать UNRESOLVED с calibration=null. Вычислительная
+partition SHALL NOT менять физические masks, query ROW, прежние исключения и допуски. Виртуальные
+interfaces SHALL использоваться только для классификации объёмов, а не как новая физическая кожа.
+
+#### Scenario: LEFT полностью внутри тела
+
+- **WHEN** LEFT patch находится целиком внутри тела или RIGHT и triangle crossings равны нулю
+- **THEN** ноль crossings не даёт PASS; containment отклоняет проникновение либо сообщает UNRESOLVED
+  без калибровки и права записи
+
+#### Scenario: Открытый или самопересекающийся вычислительный объём
+
+- **WHEN** classifier не подтверждает topology, orientation, embeddedness или inside для нужного
+  query
+- **THEN** кандидат остаётся UNRESOLVED, source не нормирует проникновение и общий GREEN не выдаётся
+
+#### Scenario: Partition выделила RIGHT отдельно
+
+- **WHEN** вычислительный classifier делит кожу на LEFT, RIGHT и BODY
+- **THEN** arm–body сохраняет прежнее покрытие всего NONLEFT, включая RIGHT; исходные физические
+  masks и query не сужаются, caps не участвуют в clearance

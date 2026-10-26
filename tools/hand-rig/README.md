@@ -76,3 +76,9 @@ degrees.
 в отдельном worktree. Автозапуск Python из `.blend` включать не требуется. Фоновые Blender
 пропускаются; сцена не сохраняется, MCP не запускается. Для отключения удалите этот startup-файл и
 перезапустите Blender.
+
+Для versioned V4-аудитов startup-модуль читает `audit_sources` из локального `active-audit.json`.
+Карта кадров, SHA отчётов и scene generation должны совпасть с complete promotion receipt.
+Повреждённая или неполная карта сбрасывает прежнюю зелёную отметку; старые отчёты не копируются
+поверх исходного аудита. Проверка без Blender:
+`python -B -m unittest discover -s tools/hand-rig -p test_keyboard88_hud_autoload.py -v`.
