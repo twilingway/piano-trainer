@@ -1,6 +1,16 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
+  "Подготовка к калибровке": { en: "Calibration preparation" },
+  "Подстройтесь под метроном: первые 3 щелчка не считаются.": {
+    en: "Find the beat: the first 3 clicks do not count."
+  },
+  "Разминка: нажимайте C4 под каждый щелчок.": {
+    en: "Warm-up: press C4 with each click."
+  },
+  "Замер: продолжайте нажимать C4 под каждый щелчок.": {
+    en: "Measurement: keep pressing C4 with each click."
+  },
   "Горение нот": { en: "Note flames" },
   "Эффекты нажатия": { en: "Key press effects" },
   "Приготовьтесь: {seconds}": { en: "Get ready: {seconds}" },

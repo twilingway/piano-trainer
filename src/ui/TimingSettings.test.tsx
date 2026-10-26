@@ -5,7 +5,11 @@ import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { defaultTimingPreferences } from "../app/timingPreferences";
 import { TimingSettings, type TimingSettingsProps } from "./TimingSettings";
 
-function render(countdown: number | null, running = true) {
+function render(
+  countdown: number | null,
+  running = true,
+  phase: TimingSettingsProps["phase"] = null
+) {
   const props: TimingSettingsProps = {
     preferences: defaultTimingPreferences(),
     deviceId: "piano",
@@ -14,6 +18,7 @@ function render(countdown: number | null, running = true) {
     progress: { warmup: 0, measured: 0, total: 24, complete: false, result: null },
     running,
     countdown,
+    phase,
     onTransport: vi.fn(),
     onOffsets: vi.fn(),
     onStart: vi.fn(),
@@ -38,6 +43,21 @@ describe("calibration instructions", () => {
     expect(ready).not.toContain("Приготовьтесь:");
     expect(ready).toContain("Разминка: 0/4 нажатия · Замер: 0/24 нажатия");
     expect(ready).toContain("24/24 — все 24 нажатия записаны");
+  });
+
+  it("shows distinct introductory, warm-up and measurement phases in both languages", () => {
+    expect(render(null, true, "lead-in")).toContain("первые 3 щелчка не считаются");
+    expect(render(null, true, "warmup")).toContain("Разминка: нажимайте C4");
+    expect(render(null, true, "measurement")).toContain("Замер: продолжайте нажимать C4");
+    expect(render(null, false, "lead-in")).not.toContain("Подстройтесь под метроном:");
+    setInterfaceLanguage("en");
+    expect(render(null, true, "lead-in")).toContain(
+      "Find the beat: the first 3 clicks do not count."
+    );
+    expect(render(null, true, "warmup")).toContain("Warm-up: press C4 with each click.");
+    expect(render(null, true, "measurement")).toContain(
+      "Measurement: keep pressing C4 with each click."
+    );
   });
 
   it("translates preparation and explains the 24 taps in English", () => {

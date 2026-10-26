@@ -1,5 +1,6 @@
 export type ConnectionType = "usb" | "ble" | "local";
 export type JitterQuality = "excellent" | "good" | "acceptable" | "unstable";
+export type CalibrationPhase = "preparation" | "lead-in" | "warmup" | "measurement";
 export interface CalibrationResult {
   inputOffsetMs: number;
   jitterMs: number;
@@ -16,6 +17,7 @@ export interface CalibrationProgress {
   complete: boolean;
   result: CalibrationResult | null;
 }
+export const CALIBRATION_LEAD_IN = 3;
 export const CALIBRATION_WARMUP = 4;
 export const CALIBRATION_SAMPLES = 24;
 export const CALIBRATION_PITCH = 60;
@@ -77,8 +79,8 @@ export class CalibrationSession {
     const beat = Math.round((rawTimestampMs - this.startPerformanceMs) / this.periodMs);
     const expected = this.startPerformanceMs + beat * this.periodMs;
     if (
-      beat < 0 ||
-      beat >= CALIBRATION_WARMUP + CALIBRATION_SAMPLES ||
+      beat < CALIBRATION_LEAD_IN ||
+      beat >= CALIBRATION_LEAD_IN + CALIBRATION_WARMUP + CALIBRATION_SAMPLES ||
       Math.abs(rawTimestampMs - expected) > this.periodMs * 0.45 ||
       this.taps.has(beat)
     )
@@ -90,7 +92,7 @@ export class CalibrationSession {
     let warmup = 0;
     const samples: number[] = [];
     for (const [beat, error] of this.taps) {
-      if (beat < CALIBRATION_WARMUP) warmup++;
+      if (beat < CALIBRATION_LEAD_IN + CALIBRATION_WARMUP) warmup++;
       else samples.push(error);
     }
     const complete = warmup === CALIBRATION_WARMUP && samples.length === CALIBRATION_SAMPLES;

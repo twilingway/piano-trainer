@@ -1,6 +1,10 @@
 import { SettingsGroup } from "./settings/SettingsGroup";
 import { useI18n } from "../app/useI18n";
-import type { CalibrationProgress, ConnectionType } from "../practice/calibration";
+import type {
+  CalibrationPhase,
+  CalibrationProgress,
+  ConnectionType
+} from "../practice/calibration";
 import {
   calibrationIsCurrent,
   type TimingPreferences,
@@ -16,6 +20,7 @@ export interface TimingSettingsProps {
   progress: CalibrationProgress | null;
   running: boolean;
   countdown?: number | null;
+  phase?: CalibrationPhase | null;
   locked?: boolean;
   canCalibrate?: boolean;
   diagnostic?: {
@@ -161,7 +166,7 @@ export function TimingSettings(props: TimingSettingsProps) {
           )}
           <p>
             {t(
-              "После отсчёта 3–2–1 нажимайте до первой октавы (C4) под каждый щелчок: 4 нажатия на разминку не учитываются, следующие 24 измеряют задержку. 24/24 — все 24 нажатия записаны. Результат включает вашу реакцию и задержку звука."
+              "После отсчёта 3–2–1 прозвучат 3 щелчка для подстройки — нажатия под них не считаются. Затем нажимайте до первой октавы (C4) под каждый щелчок: 4 нажатия на разминку, следующие 24 измеряют задержку. 24/24 — все 24 нажатия записаны. Результат включает вашу реакцию и задержку звука."
             )}
           </p>
           {running ? (
@@ -181,6 +186,18 @@ export function TimingSettings(props: TimingSettingsProps) {
           {running && props.countdown != null && (
             <p role="status" aria-live="assertive" className="calibration-countdown">
               {t("Приготовьтесь: {seconds}", { seconds: formatNumber(props.countdown) })}
+            </p>
+          )}
+          {running && props.countdown == null && props.phase && (
+            <p role="status" aria-live="polite">
+              {t(
+                {
+                  preparation: "Подготовка к калибровке",
+                  "lead-in": "Подстройтесь под метроном: первые 3 щелчка не считаются.",
+                  warmup: "Разминка: нажимайте C4 под каждый щелчок.",
+                  measurement: "Замер: продолжайте нажимать C4 под каждый щелчок."
+                }[props.phase]
+              )}
             </p>
           )}
           {progress && props.countdown == null && (
