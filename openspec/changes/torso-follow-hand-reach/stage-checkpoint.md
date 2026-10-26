@@ -1,141 +1,142 @@
-# Checkpoint: остановка 26 октября 2026
+# Сохранённый этап: остановка 26 октября 2026
 
-Этап сохранён и остановлен по прямой команде пользователя. Полный атлас, физический допуск новых поз
-с yaw и LEFT C6 не объявляются готовыми. Ветка `feat/torso-follow-hand-reach`, PR #221 в `dev`.
-Основная папка пользователя и стенд5190 не изменялись; собственные HTTP-серверы не запускались.
+Работа остановлена по прямой команде пользователя. Ветка `feat/torso-follow-hand-reach`,
+[PR #221 в dev](https://github.com/twilingway/piano-trainer/pull/221) открыт, не слит. Основная
+папка на dev и стенд5190 не менялись. Задача расстановки рук ещё не закончена.
 
-## Сохранённый результат
+## Что сохранено и проверено
 
-- 64 различные исправленные позы: прежние31 C3 и новые33. Новые33 прошли fresh exact GPU,
-  сериализацию и независимый actual saved Blender-аудит GREEN/source consistency.
-- CURRENT SHA256: `67c9980e9f0aebfc2f1e7a7f0e3e0ecde4fb36c7b18dc2d022848f9ff132f63c`. Локальный
-  `checkpoint-sixtyfour-verified-v1.json`:
-  `6ec15653dc4a2eefe49216f3dbc5a2855995577a5aa313d3b2b2a8f5d2705196`.
-- Исходный strict scene guard прошёл22069 записей без изменений вне новых33. Неиспользуемые
-  AUTO_CLAMPED handles CONSTANT-кривых восстановлены точно в отдельной копии; сами позы и оценки на
-  дробных кадрах не менялись. Старые failed-свидетельства сохранены.
-- Все51 frozen C4 и9 контрольных кадров совпали с прежним этапом:60 кадров по121 фактической сетке.
-  Pending отсутствует. Сводка1618 рабочих кадров:840G/92Y/686R, полученная из исходного аудита и
-  подтверждённых замен33Y→G; нового общего обхода не было.
-- В C3 остаются592,593,598. Число64 не означает готовность всех клавиш или визуальную приёмку.
+- 64 различные исправленные позы: прежние31 C3 и новые33. Все новые33 прошли свежий exact GPU-аудит,
+  сериализацию и независимую проверку фактически сохранённой Blender-геометрии GREEN/source
+  consistency.
+- CURRENT `smplh-black-key-atlas.blend`, SHA256
+  `67c9980e9f0aebfc2f1e7a7f0e3e0ecde4fb36c7b18dc2d022848f9ff132f63c`. После checkpoint64 новых
+  записей поз не было; SHA повторно подтверждён при остановке.
+- Strict guard:22069 записей без незапрошенных изменений; дробные кадры совпали. Неиспользуемые
+  handles CONSTANT-кривых восстановлены точно в отдельной копии; старые отказы сохранены.
+- Frozen51 C4 и9 контрольных кадров:60 кадров по121 фактической сетке совпали с прежним этапом.
+  Pending отсутствует. Сводка1618 рабочих кадров:840G/92Y/686R — исходный аудит плюс проверенные
+  замены33Y→G, не новый общий обход. В C3 остаются RED592,593,598.
+- HUD установлен в Blender startup. Source-aware слой проверяет SHA аудита, generation и complete
+  promotion receipt, сбрасывает прежний GREEN при неполной карте; старый frozen HUD не переписан.
+  Пять unit-тестов и восемь live negative-сценариев прошли, повторная автозагрузка проверена.
 
-GUI: `natural64-user-review-20261026.blend`, сцена `Natural 64 Review`, при открытии кадр631.
-Исходная пользовательская сцена сохранена дополнительно в `user-before-natural64-20261026.blend`.
-Камеру/кадр после этого пользователь может менять; его дальнейшее состояние не перезаписывается.
-Отдельная byte-copy `natural64-review-20261026-67c9980e9f0a.blend` сохраняет исходный SHA67c.
+GUI оставлен открытым: `natural64-review-stopped-20261026.blend`, сцена
+`SMPLH Black Key Atlas Refined - Natural 64 Review`, кадр631. Последний пользовательский ракурс
+отдельно сохранён через save-copy, без переоткрытия сцены:
+`natural64-final-stop-20261026T192538Z.blend`, SHA256
+`9f3ae5f1c731c07693637b19aed31541f6c29d6c77713823af437fb4ad4dc9ff`. Исходные
+`user-session-preserved-20261026.blend`, `user-before-natural64-20261026.blend` и byte-copy
+`natural64-review-20261026-67c9980e9f0a.blend` сохранены.
 
-HUD установлен в Blender startup и проверен после открытия новой review-сцены. Source-aware слой
-проверяет SHA каждого нового аудита, complete promotion receipt и generation. Неполная карта
-сбрасывает прежний GREEN. Старый замороженный `kb88_hud.py` и ROOT/audit не переписаны.
+## Поворот корпуса и новый поиск C3
 
-## Поворот корпуса и нативная LEFT
+Absolute yaw относительно закреплённой сидячей базы проведён через codec, optimizer,
+snapshot/restore и full156/сериализацию. CPU/CUDA parity прошла. Для631 пять GPU-стартов по40 шагов
+достижимы и проходят exact RH/natural. Общий допуск остаётся null: не хватает полной независимой
+проверки мировой геометрии LEFT. Source631 отдельно подтверждён fresh V4, FK/PSD и direct Bpy
+bridge121 объектов; исключён только редакторский BOOLEAN/EDGE `.select_edge`.
 
-Absolute yaw относительно закреплённой сидячей базы проходит codec, optimizer, snapshot/restore,
-full156 и сериализацию. CPU/CUDA parity10 случаев PASS. Численный поиск631:5 стартов×40 шагов, все
-достижимы. Свежий exact RH-аудит и natural-проверка всех5 — PASS. Общий класс=null и запись
-запрещена: отсутствует полный inactive LEFT world proof. Source631 отдельно подтверждён fresh V4
-authority, полным model FK/PSD и direct Bpy geometry bridge121 объектов; только редакторский
-BOOLEAN/EDGE `.select_edge` исключён из геометрического сравнения.
+Для592/593/598 сохранены свежие source proofs и явные численные старты: legacy thumb0→63,18°
+для592/593, отдельный donor597 с настоящими pressed labels598. Из15 пробных torso-контекстов12
+достижимы; отказ yaw−40° не доказывает невозможность клавиш.
 
-Нативная LEFT построена по собственным моделям/геометрии, без отражённой RIGHT. Подтверждены знаки
-сгиба/opposition/collar, raw pads и четыре пространства индексов. Factory Blender proof: 165314
-IDs/165312 oriented quads, геометрическая ошибка≤0,000477мм при прежнем допуске0,01мм. Actual FLOAT
-labels не подменены geometry-limit stencil. Полные pads684/642/592/617/668, thumb subset411 точно
-соответствует legacy-алгоритму; контроль RIGHT523.
+**Новый фактический GPU-прогон:12 стартов×40 шагов завершён.** Полные позы и сериализация
+согласованы, но ни один кандидат не прошёл natural proxy. Это не новые GREEN и не запись в сцену.
+CPU-диагностика показала промахи подушечек в XY и работающие градиенты; ограничения сгиба не
+исчерпаны. Подготовлены отдельные замороженные PLAN для exact RH-аудита этих12 результатов и
+cold12×160 на прежних исходных стартах. Оба следующих запуска **NOT_RUN**;40 шагов не выдаются
+за160.
 
-LEFT Pose/WholeChain прошла CPU/CUDA parity3 поз, bounds/source/reach negatives и сохранность RIGHT
-locals/таза/translation/длин. Контакты, standby, saved LEFT attributes и C6 этим не доказаны.
-Конечный LEFT inventory:74 случая — каждая MIDI21–84, все5 пальцев наC4,6 совместных нажатий. Все74
-пока NOT_RUN; MIDI85 отклоняется.
+Локальные артефакты относительно корня лаборатории:
 
-## Незавершённые текущие заготовки
+- `probes/natural-hand-20261025/torso-yaw-c3-continuation-v1/runs/63f3e9f0f24b/report.json`;
+- `probes/natural-hand-20261025/torso-yaw-c3-exact-v1/plans/1149b9a47335d94e/plan.json`;
+- `probes/natural-hand-20261025/torso-yaw-c3-continuation-v1/plans/3070227cce7abc57/plan.json`.
+- `probes/natural-hand-20261025/torso-yaw-c3-exact-v1/STOP-HANDOFF-V2-RU.md` — diagnosis/gradient
+  receipts, точные команды и NOT_RUN следующего этапа.
 
-**C3 yaw search:** fresh источники592/593/598 и CPU proof сохранены. Для592/593 задана явная
-миграция legacy thumb0→63,18°, для598 — отдельный CURRENT597 donor с labels/pressed set598.
-Ненормализованный source сохранён как literal incumbent, не выдаётся за bounded request. Из15
-контекстов12 достижимы; yaw−40° для всех3 недостижим в этом пробном наборе. Это не доказательство
-невозможности клавиш. 6 pure-тестов PASS; GPU15/optimizer/exact C3 не запускались. Остались driver,
-fresh-membership wrapper, reviewed GPU PLAN и фактический поиск.
+## Нативная LEFT и поза покоя RIGHT
 
-**LEFT collision/calibration:** старый producer v1 заблокирован — zero triangle crossings не
-обнаруживает полную вложенность. Generic v1_1 закрывает deep95мм и другие synthetic negatives, но
-настоящий source631 остаётся UNRESOLVED/calibration=null: его patch boundaries выходят за
-прежний90мм shoulder exclusion. Радиус/masks не расширяются. Новый semantic partition/fan intake —
-только заготовка вычислительных объёмов; embeddedness, cap-validity, winding и физический допуск ещё
-не подтверждены. Computational caps не становятся физической кожей или clearance-поверхностью.
+LEFT построена по собственным MANO_LEFT и геометрии, без отражения RIGHT. Проверены native axes,
+hinges/opposition/collar, raw pads, CPU/CUDA full156/FK/PSD parity, сохранность RIGHT locals, таза и
+длин костей. Factory Blender proof:165314 IDs/165312 oriented quads, ошибка≤0,000477мм при
+допуске0,01мм. Actual FLOAT labels не подменены geometry-limit stencil. Полные
+pads684/642/592/617/668; thumb subset411, контроль RIGHT523. Saved LEFT attributes в исходной сцене
+и контакты этим не подтверждены.
 
-**Standby602:** найден исторический RIGHT rest с pressed=[] и actual saved GREEN. Он остаётся legacy
-thumb0, не новым bounded candidate. Новый helper — WIP,8 pure-тестов PASS; backend/model
-full156/FK/PSD/noPressed/GPU ещё не запускались. Черновик PLAN с повреждённым UTF-8 не принят и
-сохранён как diagnostic; перед продолжением нужна новая корректная UTF-8 версия.
+Исторический standby602 сохранён отдельно как literal legacy thumb0. Четыре новых RIGHT варианта
+thumb40/63,18° × wrist lift0/+20мм прошли CPU full156/FK/PSD и фактический GPU exact RH GREEN с
+natural all-free PASS. Исправлены deepcopy ENTRY перед старым мутирующим Auditor и локальный
+CUDA-контекст sparse операций; прежний неудачный v1_2 запуск сохранён. Артефакт:
+`probes/native_standby602_v1_3/g/11e9d4e823/report.json`, SHA256
+`e665bc1c2e53f553ee7e27429635c2d3657b6ba1ee884d7be06e076f086950bb`. Общий физический допуск null;
+validated RIGHT standby=false до проверки обеих рук и корпуса.
 
-## Порядок продолжения
+LEFT inventory закреплён:74 случая A0–C6/MIDI21–84, пять пальцев на C4 и шесть совместных нажатий.
+Все74 остаются NOT_RUN. C6 implementation/PLAN/model search не начинались; сохранён только handoff
+`probes/native_left_c6_STOP-20261026-v1.md` с сравнением bases602/631 и предложением сохранить
+свободные LEFT пальцы2–5. Spine602/631 различается; новую базу нельзя выдавать за fixture631.
 
-1. Закончить closed semantic classifier с точными physical masks и NONLEFT=BODY∪RIGHT,
-   coplanar/tangent/containment negatives; подтвердить source feasibility и независимую calibration.
-   Любая неоднозначность остаётся UNRESOLVED, без допуска и без source-overlap normalization.
-2. Завершить C3 finite driver/guards и прогнать15 стартов; при необходимости отдельную конечную
-   continuation. Затем fresh exact RH+LEFT и natural judge для592/593/598.
-3. Добавить отдельный строгий yaw writer: резерв, full156 identity, surface/SIDE/nails, независимый
-   saved readback и frozen/unrequested guard. Записывать только полный PASS.
-4. Подтвердить новый standby602, нативной LEFT выполнить74-case inventory, включая реальный
-   контактC6/MIDI84, actual saved LEFT attributes и независимый Blender-readback.
-5. Завершить остальной объявленный диапазон/общую позу двух рук и визуальную приёмку. Совместные
-   позы обязаны иметь один yaw/lean/bend/base. Игровая интеграция и переходы между позами отдельно
-   этим локальным этапом не реализованы.
+## Коллизии: результат и конкретный незакрытый барьер
 
-Нельзя двигать всего пианиста, растягивать кости, ослаблять прежние bounds или менять frozen C4.
-Free fingers сохраняют исходную естественную кривизну как мягкую цель; точное касание нужно только
-нажатым. C2 bank не менять; frame319 оставлен последним bank-dependent исправлением.
+Прежнее отсутствие triangle crossings не исключало полного вложения. Старый producer заблокирован;
+source631 остаётся UNRESOLVED, calibration=null. Shoulder radius90мм и физические masks не
+расширены.
 
-## Проверки и локальные handoff
+Новая точная affine partition исправила ownership всех198 физических query ROW без удаления точек:
+756 смешанных треугольников разрезаны по native weight inequalities; физические payload/masks
+побайтно сохранены. Ограниченное независимое ревью подтвердило этот результат. Но замкнутая topology
+ещё не доказывает допустимый вычислительный объём.
 
-- `pnpm check` — PASS после checkpoint64/HUD:4178 обычных тестов,23 compiler-теста и сборка; 10
-  тестов пропущены существующей конфигурацией.
-- `pnpm spec:validate` —74/74; Prettier и `git diff --check` — PASS.
-- HUD:5 автономных unit-тестов,8 live negative сценариев, фактическая автозагрузка33 source-aware
-  записей и независимое review — PASS.
-- Native hand:12 тестов; pads:11; LEFT chain:11; RH integration:11; exact631:18 — PASS в своих
-  ограниченных scopes. Generic LEFT containment:7 tiny CPU-тестов, но actual calibration
-  отсутствует.
+Проверены285390 cap–cap пар первого fan. Последующий cap–skin аудит нашёл настоящее пересечение
+длиной1,159642мм. Конечная проверка10 native joint-anchor вариантов не дала допустимого cap. Затем
+выполнены все6 boundary-only disk trials по трём фиксированным проекциям: XY/YZ отклонены cap–skin
+проверкой, XZ — точным пересечением границы. Ошибка decimal Fraction serialization в первой версии
+сохранена; v7_1 меняет только HEX-кодирование, геометрические правила не ослаблены. Следующий
+two-anchor вариант — только PLAN, не реализован.
+
+Сохранены все отрицательные свидетельства. Полные embeddedness/inside/winding, source calibration и
+candidate admission ещё не выполнены. Виртуальные caps не участвуют в физических расстояниях. Нужны
+обе проверки LEFT↔NONLEFT и RIGHT↔NONRIGHT, где комплемент — объединение частей, с прежними physical
+query и допустимыми RH upper bounds; противоречие inside и proxy даёт UNRESOLVED.
+
+Последний semantic handoff: `probes/natural-hand-20261025/sd71/STOP-20261026-v2.json`, SHA256
+`76c7d3847d44c60bbb58487633bcf05b7bfef854e8e407c5620e4c9d271533f6`.
+
+## Что осталось и порядок продолжения
+
+1. Закончить допустимый closed-volume kernel, source feasibility и независимую LEFT calibration.
+2. Выполнить подготовленный C3 exact40; затем отдельный cold160 при необходимости. Получить полный
+   exact RH+LEFT/natural PASS для592/593/598.
+3. Реализовать строгий yaw writer: резерв, full156 identity, пересчёт surface/SIDE/nails,
+   независимый saved readback и frozen/unrequested guard. Писать только полный PASS.
+4. Подтвердить общий standby, реализовать native LEFT C6 и выполнить inventory74, включая
+   фактический контакт MIDI84 и saved LEFT attributes.
+5. Завершить оставшийся диапазон и общую позу двух рук с одним yaw/lean/bend/base; выполнить
+   межручные/arm–body/keyboard проверки и отдельную визуальную приёмку.
+
+Естественная кривизна свободных пальцев сохраняется; точный контакт нужен только нажатым. Нельзя
+двигать всего пианиста, растягивать кости, менять frozen C4 или ослаблять допуски. Игровая
+интеграция и переходы между позами этим локальным этапом не реализованы. Вопрос камер исключён
+пользователем из этой задачи.
+
+## Тесты, сохранение и публикация
+
+Предыдущая полная проверка checkpoint64/HUD: `pnpm check` PASS —4178 тестов,23 compiler-теста,
+сборка,10 существующих skipped; `pnpm spec:validate`74/74. CI PR на68e6ce2 — SUCCESS. Новые
+локальные проверки: C3 numerical9, diagnosis/exact10, standby12, semantic27 pure controls и
+compile/PLAN — PASS в своих ограниченных scopes. C3 exact GPU и LEFT C6 не запускались. Финальные
+команды документационного checkpoint записываются в [verification.md](verification.md).
+
+Все worker расчёты завершены; собственных GPU/CPU jobs и HTTP-серверов не осталось. Blender/MCP и
+чужие стенды сохранены. Продолжение — только по новой команде пользователя.
 
 Корень локальных данных:
-`blender/labs/mano-reference-20261018/black-key-atlas-20261018/keyboard88-20261019/`. Точные
-пути/SHA/code/commands текущих заготовок:
+`blender/labs/mano-reference-20261018/black-key-atlas-20261018/keyboard88-20261019/`. Итоговый
+manifest с точными SHA: `probes/natural-hand-20261025/checkpoint-final-stop-20261026-v2.json`.
 
-- `probes/natural-hand-20261025/torso-yaw-c3-v1/STOP-HANDOFF-V1.json` и `STOP-HANDOFF-V1-RU.md`;
-- `probes/native_standby602_v1_STOP-20261026-v1.md`;
-- `probes/natural-hand-20261025/checkpoint-sixtyfour-verified-v1.json`;
-- [фактические proofs и ограничения](verification.md).
-
-Модели MANO/SMPL+H, личные материалы, позы, сетки, атрибуты, изображения и экспериментальные скрипты
-остаются в локальной игнорируемой лаборатории. В PR входят авторский HUD, его безопасные тесты и
-контракты/описания проверки. Автоматической публикации моделей и игровой интеграции нет.
-
-## Последний semantic intake и остановка процессов
-
-До команды остановки завершён CPU-only intake: BODY195952/LEFT67347/RIGHT67325 исходных
-треугольников. Парные opposite fans дают closed connected genus0 topology, но198 физических query
-ROW (100 LEFT+98 RIGHT) ещё не имеют подтверждённого semantic ownership. Результат —
-STOP_UNRESOLVED_INTAKE, calibration=null; embeddedness, внутренность cap и GPU не проверялись. Это
-не полный физический classifier. Generic foundation7 и intake5 tiny-тестов, compile/PLAN прошли,
-исходные маски не менялись.
-
-Локальный STOP receipt: `probes/natural-hand-20261025/semvol1/STOP-20261026-v1.json`, SHA256
-`dc96b634a6d8b403d4c34fec8a25a284eba3ca8dd5e75accf427f8791db443a7`. Все собственные managed jobs и
-worker turns завершены. Blender/MCP и пользовательские/чужие процессы сохранены. При возобновлении
-нужны fresh CURRENT/membership checks и новые reviewed run-specific PLAN; исторический GREEN не
-заменяет актуальный допуск.
-
-## Итоговый остановленный снимок
-
-Единый локальный `probes/natural-hand-20261025/checkpoint-stage-stopped64-20261026-v1.json` сохранён
-с SHA256 `da0a3771e544798f33d47eab2e1c5d59c93f0abcabd97c5b5ebc735c0cfd1014`. Он связывает все
-готовые proofs и три STOP-handoff, тесты, незавершённые этапы и отсутствие собственных процессов.
-Active HUD pointer помечен STOPPED_BY_USER, все64 записи и карта аудитов сохранены. Последний
-GUI-снимок: `natural64-review-stopped-20261026.blend`, при сохранении кадр631; CURRENT67c и прежние
-review/пользовательские файлы не перезаписаны.
-
-Worktree содержит ценные игнорируемые модели и незавершённые локальные инструменты. Его нельзя
-удалять по одному `git status --short`: сначала нужно отдельно сохранить всю лабораторию.
-Продолжение требует новой команды пользователя.
+Модели MANO/SMPL+H, личные материалы, позы, сетки, NPZ, изображения, Blender-файлы и
+экспериментальные скрипты остаются в игнорируемой локальной лаборатории. PR содержит только
+авторский HUD с безопасными тестами и текстовые контракты/проверки. Worktree сохраняется вместе с
+приватными артефактами.

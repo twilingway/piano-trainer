@@ -139,3 +139,32 @@ SHA прежний GREEN сбрасывается. 5 автономных unit-�
 `python -B -m unittest discover -s tools/hand-rig -p test_keyboard88_hud_autoload.py -v`. Оконный
 framebuffer в фоне дал чёрный снимок; 3D-геометрия просмотрена через GPU Offscreen capture, который
 не доказывает видимость HUD на экранном снимке. Визуальная приёмка пользователя открыта.
+
+## Последняя остановка после продолжения — 26 октября 2026
+
+Актуальный итог и точные локальные пути находятся в [stage-checkpoint.md](stage-checkpoint.md).
+Исторические формулировки «ещё не запускался» выше относятся к предыдущим checkpoint.
+
+C3: GPU12×40 выполнен; natural proxy не прошёл ни один кандидат, новых сохранённых GREEN нет.
+Exact40 и cold12×160 имеют отдельные frozen PLAN, но NOT_RUN. Standby602: четыре новых варианта
+прошли CPU и GPU exact RH/natural; полный допуск остаётся null. Native LEFT C6 implementation/model
+search не запускались.
+
+Semantic ownership198 исправлен без изменения physical masks/query. Точные cap–skin проверки
+отклонили joint fans и все шесть projection disks. Это полезная отрицательная диагностика, не
+calibration/PASS. Полный closed classifier остаётся UNRESOLVED.
+
+При остановке source atlas повторно дал SHA67c9980e9f0a; checkpoint64 неизменён. Последняя GUI-сцена
+с кадром631 и пользовательским ракурсом сохранена отдельной save-copy без переоткрытия. Worker
+receipts подтверждают отсутствие собственных активных расчётов/серверов.
+
+### Финальная проверка сохранённого этапа
+
+- `pnpm check` — PASS, exit0:4178 passed/10 существующих skipped,23 compiler-теста, build. Лог:
+  `.browser-artifacts/torso-follow-final-stop-v2-check.log`.
+- `pnpm spec:validate` — PASS,78/78. Лог: `.browser-artifacts/torso-follow-final-stop-v2-spec.log`.
+- HUD unit —5/5 PASS. Первый изолированный запуск не получил доступ к временной папке
+  (PermissionError); повтор вне изоляции прошёл без изменений кода. Лог:
+  `.browser-artifacts/torso-follow-final-stop-v2-hud.log`.
+- Read-only final checkpoint review — PASS: actual receipts согласованы, NOT_RUN и приватность
+  отражены честно; замечаний нет. Полный OpenSpec change остаётся незавершённым.
