@@ -5,7 +5,7 @@
 - [x] 1.1 Добавить новую typed версию absolute torso yaw/hand controls с explicit collar и source
       base, не меняя frozen функции; roundtrip source yaw и отрицательных углов, NaN/window/mixed
       relative/absolute и double-source negatives проходят.
-- [ ] 1.2 Провести один и тот же yaw в CPU/GPU full pose; FK, posed surface и градиенты ±yaw
+- [x] 1.2 Провести один и тот же yaw в CPU/GPU full pose; FK, posed surface и градиенты ±yaw
       согласованы, pelvis/translation/длины костей неизменны; зафиксировать команды и SHA в
       локальном proof.
 
