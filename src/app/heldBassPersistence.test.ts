@@ -147,7 +147,7 @@ describe("heldBass schema7 persistence", () => {
                 : null
       });
       expect(first.invalid).toBe(false);
-      expect(first.reading.schemaVersion).toBe(8);
+      expect(first.reading.schemaVersion).toBe(9);
       expect(first.reading.heldBass).toEqual(emptyHeldBassState());
       if (version >= 6) expect(first.reading.coordination).toEqual(modern.coordination);
       expect(first.reading.history).toEqual(modern.history);
@@ -254,7 +254,7 @@ describe("heldBass schema7 persistence", () => {
     const restored = createAppStore({ storage: backing, readingRepository: repository });
     await restored.readingPersistenceReady;
     expect(restored.getState().reading).toMatchObject({
-      schemaVersion: 8,
+      schemaVersion: 9,
       activeCourse: "held-bass-reading",
       heldBass: { seed: 7, generatorVersion: 1, sourceFilter: "keyboard", history: [sample] }
     });
@@ -398,7 +398,7 @@ describe("heldBass schema7 persistence", () => {
     expect(saved.history).toContainEqual(legacy.history[0]);
   });
   it.each([
-    { schemaVersion: 9, marker: "future" },
+    { schemaVersion: 10, marker: "future" },
     { ...emptyReadingState(), heldBass: undefined },
     {
       ...emptyReadingState(),
@@ -420,7 +420,7 @@ describe("heldBass schema7 persistence", () => {
   );
   it("blocks destructive writes if corruption or a future schema appears after hydration", async () => {
     for (const invalid of [
-      { schemaVersion: 9, marker: "future-after-hydration" },
+      { schemaVersion: 10, marker: "future-after-hydration" },
       { ...emptyReadingState(), heldBass: { ...emptyHeldBassState(), generatorVersion: 99 } }
     ]) {
       const repository = createMemoryReadingRepository();

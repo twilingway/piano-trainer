@@ -1,3 +1,4 @@
+import { ConnectedMusicPractice } from "./ConnectedMusicCourse";
 import { useRuntimeCommand } from "./runtimeCommands";
 import {
   ConnectedGameBoard,
@@ -50,6 +51,7 @@ export function ConnectedPracticeWorkspace() {
     courseTabs,
     courseTopView,
     practiceActive,
+    music,
     reading,
     rhythm
   } = useRuntimeSelector(
@@ -84,6 +86,7 @@ export function ConnectedPracticeWorkspace() {
       viewHandStatus: runtime.view.handStatus,
       countdown: runtime.countdown,
       rhythm: runtime.rhythm,
+      music: runtime.music,
       reading: runtime.independentRhythm.active
         ? runtime.independentRhythm
         : runtime.heldBass.active
@@ -110,6 +113,7 @@ export function ConnectedPracticeWorkspace() {
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   return (
     <>
+      <ConnectedMusicPractice />
       <ConnectedReadingPractice />
       <ConnectedBassReadingPractice />
       <ConnectedTwoHandPractice />
@@ -148,6 +152,7 @@ export function ConnectedPracticeWorkspace() {
           ) : undefined
         }
         gameBoard={
+          !music.active &&
           !reading.active &&
           !rhythm.active && (
             <ConnectedGameBoard
@@ -161,38 +166,46 @@ export function ConnectedPracticeWorkspace() {
           )
         }
         staffXml={
-          rhythm.active
-            ? rhythm.exercise?.musicXml
-            : reading.active
-              ? reading.prompt?.musicXml
-              : scoreStaffXml
+          music.active
+            ? music.staffXml
+            : rhythm.active
+              ? rhythm.exercise?.musicXml
+              : reading.active
+                ? reading.prompt?.musicXml
+                : scoreStaffXml
         }
-        staffPresentation={rhythm.active ? rhythm.presentation : reading.presentation}
-        staffRetry={rhythm.active ? rhythm.retry : reading.retry}
-        readingBeat={reading.prompt?.beat}
+        staffPresentation={
+          music.active
+            ? music.presentation
+            : rhythm.active
+              ? rhythm.presentation
+              : reading.presentation
+        }
+        staffRetry={music.active ? music.retry : rhythm.active ? rhythm.retry : reading.retry}
+        readingBeat={music.active ? undefined : reading.prompt?.beat}
         course={practiceActive}
         prefs={displayPrefs}
         layout={screenLayout}
         onLayout={screenUpdateLayout}
         onResetLayout={screenResetLayout}
         layoutMoved={screenMoved}
-        editing={!reading.active && !rhythm.active && screenEditing}
+        editing={!music.active && !reading.active && !rhythm.active && screenEditing}
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}
         fixedLines={scoreFixedLines}
         liveBeat={trainerLiveBeat}
         onSeek={trainerSeekToBeat}
-        reviewMarks={reading.active ? undefined : takesReviewMarks}
-        transcription={reading.active ? undefined : takesTranscription}
-        takeStaff={takesTakeStaff}
+        reviewMarks={music.active || reading.active ? undefined : takesReviewMarks}
+        transcription={music.active || reading.active ? undefined : takesTranscription}
+        takeStaff={music.active ? "off" : takesTakeStaff}
         splitDirection={takesSplitDirection}
         comparing={comparing}
-        waiting={snapshotWaiting}
+        waiting={snapshotWaiting && (!music.active || playing)}
         hostRef={trainerHostRef}
         mirrorHostRef={viewMirrorHostRef}
         handStatus={viewHandStatus}
-        countdown={countdown}
+        countdown={music.active && !playing ? null : countdown}
       />
     </>
   );

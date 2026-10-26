@@ -5,6 +5,8 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import type { TrainerSnapshot } from "../practice/Trainer";
 import type { Song } from "../song/song";
 import type { Take } from "../recording/take";
+import type { PracticeOptions } from "../practice/session";
+import type { RunCompletion } from "../practice/runCompletion";
 import { useTrainer } from "./useTrainer";
 import { createAppStore, type AppStore } from "./store";
 import { withTestStore } from "./storeTestSupport";
@@ -18,6 +20,8 @@ import { setInterfaceLanguage } from "./interfaceLanguage";
 const mocks = vi.hoisted(() => ({
   trainers: [] as {
     onSnapshot?: (snapshot: TrainerSnapshot) => void;
+    onTake?: (take: Take) => void;
+    onRunFinished?: (result: RunCompletion) => void;
     load: ReturnType<typeof vi.fn>;
     setPlaying: ReturnType<typeof vi.fn>;
     setGraphicsAvailable: ReturnType<typeof vi.fn>;
@@ -46,6 +50,8 @@ vi.mock("../render/FallingNotesView", () => ({
 vi.mock("../practice/Trainer", () => ({
   Trainer: class {
     onSnapshot?: (snapshot: TrainerSnapshot) => void;
+    onTake?: (take: Take) => void;
+    onRunFinished?: (result: RunCompletion) => void;
     destroyed = false;
     load = vi.fn(() => this.onSnapshot?.(snapshot()));
     setPlaying = vi.fn();
@@ -84,7 +90,12 @@ let host: HTMLDivElement;
 let value: ReturnType<typeof useTrainer>;
 let renders: number;
 const startFromRef = { current: null as number | null };
-const handlers = { onNoteClick: vi.fn(), onTake: vi.fn(), onReplay: vi.fn() };
+const handlers = {
+  onNoteClick: vi.fn(),
+  onTake: vi.fn(),
+  onReplay: vi.fn(),
+  onRunFinished: vi.fn()
+};
 let ensureSound: () => Promise<void>;
 interface Replay {
   song: Song;
@@ -96,6 +107,7 @@ function Harness({
   readingHand = "right",
   rhythm = false,
   independentRhythm = false,
+  music,
   gameOptions,
   ranked = false,
   selectedSong = song,
@@ -107,6 +119,7 @@ function Harness({
   readingHand?: "left" | "right" | "both";
   rhythm?: boolean;
   independentRhythm?: boolean;
+  music?: PracticeOptions | undefined;
   gameOptions?: Parameters<typeof useTrainer>[0]["gameOptions"];
   ranked?: boolean;
   selectedSong?: Song;
@@ -125,6 +138,7 @@ function Harness({
     readingHand,
     rhythm,
     independentRhythm,
+    music,
     ...(gameOptions ? { gameOptions } : {}),
     course,
     startFromRef,
@@ -218,6 +232,125 @@ describe("seek playback intent", () => {
 });
 
 describe("trainer runtime isolation", () => {
+  const musicOptions: PracticeOptions = {
+    mode: "tempo",
+    hands: new Set(["left"]),
+    speed: 0.75,
+    accompaniment: false,
+    noteResult: false,
+    countInBeats: 0
+  };
+  const renderMusic = async (music: PracticeOptions = musicOptions, replay?: Replay) => {
+    await act(async () => {
+      root.render(withTestStore(<Harness music={music} replay={replay} />, store));
+      await Promise.resolve();
+    });
+  };
+  it("uses music options without mutating ordinary preferences and restores them on exit", async () => {
+    store.dispatch(
+      preferencesActions.playerChanged({
+        mode: "wait",
+        handChoice: "right",
+        speed: 0.5,
+        metronome: true,
+        accompaniment: true
+      })
+    );
+    const saved = store.getState().preferences.player;
+    startFromRef.current = 2;
+    await renderMusic();
+    expect(value.mode).toBe("tempo");
+    expect(value.handChoice).toBe("left");
+    expect(value.speed).toBe(0.75);
+    expect(value.metronome).toBe(false);
+    expect(value.listening).toBe(false);
+    expect(value.playerHands).toEqual(new Set(["left"]));
+    expect(value.playChoice.parts).toBeUndefined();
+    expect(active().load.mock.lastCall?.[1]).toBe(musicOptions);
+    expect(active().load.mock.lastCall?.[3]).toEqual({ preservePosition: false });
+    expect(active().seek).not.toHaveBeenCalled();
+    act(() => {
+      value.setMode("wait");
+      value.setHandChoice("both");
+      value.setSpeed(1);
+      value.setMetronome(true);
+      value.seekToBeat(4);
+    });
+    await act(async () => value.toggleListening());
+    expect(value.listening).toBe(false);
+    expect(store.getState().preferences.player).toEqual(saved);
+    expect(active().seek).not.toHaveBeenCalled();
+    await mount();
+    expect(value.mode).toBe("wait");
+    expect(value.handChoice).toBe("right");
+    expect(value.speed).toBe(0.5);
+    expect(value.metronome).toBe(true);
+    expect(active().load.mock.lastCall?.[3]).toEqual({ preservePosition: false });
+  });
+  it("blocks ordinary callbacks/comparison and keeps a finished music answer instead of restarting it", async () => {
+    const take: Take = {
+      id: "take",
+      songKey: song.title,
+      createdAt: "2026-10-25",
+      mode: "tempo",
+      speed: 1,
+      hands: ["right"],
+      from: 2,
+      notes: [],
+      pedal: []
+    };
+    handlers.onTake.mockClear();
+    handlers.onRunFinished.mockClear();
+    handlers.onReplay.mockClear();
+    await renderMusic(musicOptions, { song: { ...song, title: "comparison" }, take, count: 1 });
+    const trainer = active();
+    expect(trainer.load).toHaveBeenLastCalledWith(song, musicOptions, song.title, {
+      preservePosition: false
+    });
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    trainer.onTake?.(take);
+    trainer.onRunFinished?.({
+      runId: "ordinary",
+      songKey: song.title,
+      from: 0,
+      to: 3,
+      mode: "tempo",
+      hands: ["right"],
+      hitCount: 1,
+      interrupted: false,
+      fullRange: true
+    });
+    expect(handlers.onTake).not.toHaveBeenCalled();
+    expect(handlers.onRunFinished).not.toHaveBeenCalled();
+    trainer.onSnapshot?.(snapshot({ finished: true, playing: false }));
+    trainer.load.mockClear();
+    await act(async () => value.togglePlay());
+    expect(trainer.load).not.toHaveBeenCalled();
+    expect(trainer.setPlaying).toHaveBeenLastCalledWith(true);
+    act(() => {
+      value.restart();
+    });
+    expect(handlers.onReplay).not.toHaveBeenCalled();
+    expect(trainer.load).toHaveBeenLastCalledWith(song, musicOptions, song.title);
+  });
+  it("does not preserve or resume a music clock across changed phase options", async () => {
+    await renderMusic();
+    const trainer = active();
+    trainer.onSnapshot?.(snapshot({ playing: true, time: 2 }));
+    trainer.setPlaying.mockClear();
+    const next: PracticeOptions = {
+      ...musicOptions,
+      mode: "wait",
+      hands: new Set(["left", "right"])
+    };
+    await renderMusic(next);
+    expect(value.mode).toBe("wait");
+    expect(value.handChoice).toBe("both");
+    expect(trainer.load).toHaveBeenLastCalledWith(song, next, song.title, {
+      preservePosition: false
+    });
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+  });
   it("keeps independent rhythms in fixed tempo with both hands and restores ordinary preferences", async () => {
     store.dispatch(
       preferencesActions.playerChanged({
