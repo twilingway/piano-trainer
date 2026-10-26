@@ -7,11 +7,10 @@ import type { Locale } from "../i18n/locales";
 import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
 import { destroyViewContainers, initializeViewApplication } from "./viewApplication";
-import { publishOverlayLayout } from "./viewOverlayLayout";
 import { bakeDigits, bakeNames, type FallingNoteNames } from "./bakeLabels";
 import { bindKeyboardPointer } from "./bindKeyboardPointer";
 import { ComputerKeyboardLayer, type KeysLayer } from "./ComputerKeyboardLayer";
-import { computerGeometry, computerWidth, layoutComputerKeys } from "./computerKeyboardLayout";
+import { computerGeometry, computerWidth } from "./computerKeyboardLayout";
 import { ComputerKeys, type ComputerKeyboard } from "./computerKeys";
 import { HandsLayer } from "./HandsLayer";
 import { NotePlasma } from "./NotePlasma";
@@ -35,6 +34,7 @@ import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
 import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry, viewLayoutChanged } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewLayout, ViewParts } from "./viewGeometry";
 import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
+import { layoutFallingKeyboard } from "./layoutFallingKeyboard";
 
 export type { FallingNoteNames } from "./bakeLabels";
 export type { FrameState } from "./frameState";
@@ -134,6 +134,7 @@ export class FallingNotesView {
   private keyStyle: KeyStyle = "arcade";
   private roadGuides = false;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
+  private nativeHeight: number | undefined;
 
   async mount(host: HTMLElement): Promise<void> {
     await initializeViewApplication(this.app, host);
@@ -564,11 +565,13 @@ export class FallingNotesView {
   }
 
   private geometry(height: number): Geometry {
-    const { parts, placement, labels, rangeFitsViewport: fits } = this;
+    const { parts, placement, labels, rangeFitsViewport: fits, whiteWidth } = this;
     if (this.computer) return computerGeometry(height, this.total, parts, placement);
     // Native hands rest on the physical keys and need no sprite-palm strip.
-    const layoutParts = this.roadMode && this.hands.live ? { ...parts, hands: false } : parts;
-    return viewGeometry(height, this.whiteWidth, layoutParts, labels, fits, placement);
+    const layoutParts =
+      this.keyStyle === "3d" && this.hands.live ? { ...parts, hands: false } : parts;
+    const natural = this.keyStyle === "3d" ? this.nativeHeight : undefined;
+    return viewGeometry(height, whiteWidth, layoutParts, labels, fits, placement, natural);
   }
 
   private layout(width: number, height: number): void {
@@ -578,49 +581,38 @@ export class FallingNotesView {
     this.total = total;
     this.pan = panAfterResize(this.pan, this.panLayout, { width, total });
     this.panLayout = { width, total };
-    const geometry = this.geometry(height);
-    if (this.computer) this.keys = layoutComputerKeys(total, geometry).keys;
-    this.keysLayer?.layout(this.keys, geometry, total);
-    // The hands' pixels belong to the old layout.
-    this.hands.reset();
-    // The computer keys lie in staggered rows: no lane guides between them, only the hit line.
-    this.notesLayer?.layout(this.computer ? new Map() : this.keys, geometry.hitY, total);
-    // The road ends on the felt, where the notes meet the keys.
-    // Lifted keys leave the floor under them empty: the road and its keys end above it.
-    const floor = this.parts.keys ? height * this.placement.lift : 0;
-    const keysBottom = geometry.keyboardTop + geometry.keyboardHeight;
-    this.keysFloor = height - keysBottom;
-    if (this.road) {
-      // The live 3D hands lie on the keys: no room under them for the sprite hands.
-      const handRoom = this.parts.hands && !this.hands.live ? height - floor - keysBottom : 0;
-      this.road.layout(total, geometry.hitY, height - floor, width, handRoom);
-      // On the road the computer keyboard is one slab, its picture its face.
-      this.road.setKeyboard(
-        this.computer ? new Map([[0, { pitch: 0, black: false, x: 0, width: total }]]) : this.keys,
-        geometry,
-        !this.parts.hands
-      );
-      // The road shows itself when it fits; off, it stays hidden whatever the layout.
-      if (!this.roadMode) {
-        this.road.container.visible = false;
-        this.road.effects.visible = false;
-      }
-    }
-    const hitLineY = this.roadMode && this.road ? this.road.hitLineY : geometry.hitY;
-    this.hud.layout(width, hitLineY, this.hudTop);
-    // Where the notes meet the keys, for the page's overlays: the word mode's text sits over it.
-    publishOverlayLayout(this.app.canvas.parentElement, hitLineY, keysBottom, this.hudTop);
+    Object.assign(
+      this,
+      layoutFallingKeyboard({
+        screen: { width, height },
+        total,
+        keys: this.keys,
+        prefs: this.cameraPrefs,
+        native: this.keyStyle === "3d" && !this.computer,
+        overhead: this.road?.requestedKeyboardTop ?? false,
+        computer: !!this.computer,
+        parts: this.parts,
+        placement: this.placement,
+        labels: this.labels,
+        fits: this.rangeFitsViewport,
+        keysLayer: this.keysLayer,
+        hands: this.hands,
+        notes: this.notesLayer,
+        road: this.road,
+        roadMode: this.roadMode,
+        hud: this.hud,
+        hudTop: this.hudTop,
+        host: this.app.canvas.parentElement
+      })
+    );
   }
 
   /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */
   private fitPiano(width: number): number {
-    const layout = fitPianoKeys(
-      width,
-      this.range,
-      this.rangeFitsSong,
-      this.rangeFitsViewport,
-      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches
-    );
+    const { range, rangeFitsSong: song, rangeFitsViewport: viewport } = this;
+    const compact =
+      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches;
+    const layout = fitPianoKeys(width, range, song, viewport, compact);
     Object.assign(this, layout);
     return layout.total;
   }
