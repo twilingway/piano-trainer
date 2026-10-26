@@ -116,7 +116,7 @@ pan/scale/resize, reload и непрерывность воспроизведе�
 Остановка по лимиту: при 50% недельного расхода сохранить работу, commit/push/PR, остаток — в этой
 очереди. Разделение камер не начиналось; калибровка MIDI и микрофон отложены пользователем.
 
-Следующая ветка: feat/separate-camera-controls. OpenSpec:
-openspec/changes/separate-camera-controls/. Production-код камер не изменён, все implementation
-tasks открыты. Реализация и визуальная приёмка остаются в бэклоге; draft PR сохраняет
-проектирование, а не готовую функциональность.
+Draft PR №233: https://github.com/twilingway/piano-trainer/pull/233. Ветка:
+feat/separate-camera-controls. OpenSpec: openspec/changes/separate-camera-controls/. Production-код
+камер не изменён, все implementation tasks открыты. Реализация и визуальная приёмка остаются в
+бэклоге; draft PR сохраняет проектирование, а не готовую функциональность.
