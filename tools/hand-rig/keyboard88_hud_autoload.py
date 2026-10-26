@@ -6,7 +6,9 @@ the HUD next to the opened atlas and never saves the scene or starts MCP.
 """
 
 from pathlib import Path
+import hashlib
 import importlib.util
+import json
 import sys
 import traceback
 
@@ -45,6 +47,77 @@ def _atlas_hud():
     return hud
 
 
+def _verified_asset(folder, asset):
+    if not isinstance(asset, dict) or set(asset) != {"path", "sha256"}:
+        raise ValueError("Missing verified audit asset")
+    path = (folder / asset["path"]).resolve()
+    path.relative_to(folder.resolve())
+    payload = path.read_bytes()
+    if hashlib.sha256(payload).hexdigest() != asset["sha256"]:
+        raise ValueError("Audit asset SHA changed")
+    return json.loads(payload)
+
+
+def _frame_ids(value):
+    return {frame for frame in value if type(frame) is int and frame > 0} if isinstance(value, (list, tuple, set)) else set()
+
+def _apply_audit_sources(module, folder, active=None):
+    if active is None:
+        path = folder / "probes/continuation-20261025/active-audit.json"
+        active = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    frames = active.get("v4_frames", [])
+    summary = {"verified": 0, "unverified": 0}
+    receipt = {}
+    try:
+        if active.get("audit_source_profile") != "accepted_v4_saved_geometry_identity_v1":
+            raise ValueError("Unknown saved-geometry audit profile")
+        receipt = _verified_asset(folder, active.get("promotion_report"))
+        if not isinstance(receipt, dict):
+            receipt = {}
+            raise ValueError("Invalid promotion receipt")
+        if receipt.get("stage") != "complete" or receipt.get("after_blend_sha256") != active.get("scene_sha256"):
+            raise ValueError("Audit receipt belongs to another scene")
+        if (receipt.get("audit_source_profile") != active.get("audit_source_profile")
+                or receipt.get("v4_frames") != frames
+                or receipt.get("written_frames") != frames
+                or receipt.get("audit_sources") != active.get("audit_sources")):
+            raise ValueError("Audit mapping does not match the promotion receipt")
+        receipt_ok = True
+    except (KeyError, TypeError, ValueError, OSError):
+        receipt_ok = False
+    targets = _frame_ids(frames) | _frame_ids(receipt.get("v4_frames", []))
+    targets |= _frame_ids(getattr(module, "_versioned_audit_frames", []))
+    sources = active.get("audit_sources", {})
+    source_assets = sources if isinstance(sources, dict) else {}
+    if isinstance(sources, dict):
+        targets |= {int(key) for key in sources if isinstance(key, str) and key.isdecimal() and int(key) > 0}
+    if not receipt_ok and not targets and active.get("audit_source_profile") is not None:
+        targets |= _frame_ids(active.get("frames", []))
+    module._versioned_audit_frames = sorted(targets)
+    for frame in sorted(targets):
+        entry = module.STATUS.get(str(frame))
+        if entry is None:
+            continue
+        entry.setdefault("_verified_source_original_label", entry["label" ])
+        try:
+            if not receipt_ok or type(frame) is not int or frame not in active.get("frames", []):
+                raise ValueError("Unverified active frame")
+            record = _verified_asset(folder, source_assets.get(str(frame)))
+            if type(record.get("blender_frame")) is not int or record.get("blender_frame") != frame or record["report"]["source_consistency"]["pass"] is not True:
+                raise ValueError("Saved pose/source identity failed")
+            color = record["class"]
+            tail = entry["_verified_source_original_label"].partition(" · ")[2]
+            entry["label"] = f"{module.LABELS[color]} (проверено V4) · {tail}"
+            entry["color"] = module.COLORS[color]
+            entry["reason"] = ", ".join(record.get("reasons", [])[:3]) or "Сохранённая геометрия проверена"
+            summary["verified"] += 1
+        except (KeyError, TypeError, ValueError, OSError):
+            entry.update(label="НЕТ АКТУАЛЬНОЙ ПРОВЕРКИ", color=module.COLORS["YELLOW"],
+                         reason="Источник проверки не соответствует сохранённой сцене")
+            summary["unverified"] += 1
+    module._versioned_audit_summary = summary
+    return summary
+
 def _enable():
     global _active, _handle
     _remove_draw()
@@ -66,8 +139,10 @@ def _enable():
         count = module.install()
         _active = module
         _handle = bpy.app.driver_namespace.get(module.HANDLE)
+        _apply_audit_sources(module, path.parent)
         print(f"Keyboard88 HUD enabled: {count} frames; {path.parent}")
     except Exception:
+        _remove_draw()
         traceback.print_exc()
     return None
 
