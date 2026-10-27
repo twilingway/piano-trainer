@@ -72,7 +72,7 @@ export function PianoTabs({
       window.removeEventListener("resize", measure);
     };
   }, []);
-  const zoom = prefs.zoom * scale;
+  const zoom = prefs.tabsZoom * scale;
   const labelWidth = viewportWidth < 720 ? 70 : 100;
   // Labels are centred on the attack; gutters keep edge labels clear of sticky hand names.
   const noteGutter = geometry ? 0 : (prefs.noteNames === "ru" ? 48 : 18) * zoom;
@@ -284,13 +284,7 @@ export function PianoTabs({
                                   style={
                                     geometry
                                       ? {
-                                          fontSize: scoreTabLabelSize(
-                                            row,
-                                            left,
-                                            event.hand,
-                                            name,
-                                            zoom
-                                          )
+                                          fontSize: scoreTabLabelSize(zoom)
                                         }
                                       : undefined
                                   }

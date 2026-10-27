@@ -23,6 +23,7 @@ beforeEach(() => {
 const prefsWith = (lane: boolean): StaffPrefs => ({
   noteProjection: DEFAULT_PROJECTION_PARAMETERS,
   zoom: 1,
+  tabsZoom: 1,
   noteColor: "#00d4ff",
   playedNoteColor: "#00df50",
   scoreColor: "#ffffff",

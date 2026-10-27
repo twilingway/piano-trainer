@@ -1,3 +1,6 @@
+import { toneLessonMessages } from "./toneLessonMessages";
+import { fingerCueMessages } from "./fingerCueMessages";
+import { guidedLessonMessages } from "./guidedLessonMessages";
 import { musicProgressMessages } from "./musicProgressMessages";
 import { musicControllerMessages } from "./musicControllerMessages";
 import { musicCourseRuntimeMessages } from "./musicCourseRuntimeMessages";
@@ -53,5 +56,8 @@ export const messages: Messages = {
   ...bassReadingMessages,
   ...twoHandMessages,
   ...heldBassMessages,
+  ...toneLessonMessages,
+  ...fingerCueMessages,
+  ...guidedLessonMessages,
   ...independentRhythmMessages
 };

@@ -7,6 +7,9 @@ import {
   useSyncExternalStore
 } from "react";
 import { nextIndependentRhythmSeed } from "../independentRhythm/generator";
+import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
+import { useI18n } from "./useI18n";
 import type { ReadingInputSource } from "../reading/types";
 import type {
   IndependentRhythmConnection,
@@ -26,6 +29,7 @@ function controllerFor(
 const emptySubscribe = () => () => undefined;
 const emptySnapshot = () => null;
 export function useIndependentRhythmCourse() {
+  const { locale } = useI18n();
   const active = useAppSelector(
     (state) => state.reading.activeCourse === "independent-rhythm-reading"
   );
@@ -69,6 +73,22 @@ export function useIndependentRhythmCourse() {
     controller?.configureHints(saved.showKeyHints);
   }, [controller, saved.showKeyHints]);
   const scene = state?.scene ?? null;
+  const cueAllowed =
+    saved.showKeyHints && !!state?.ready && ["preparation", "passed"].includes(state.status);
+  const prompt = useMemo(() => {
+    if (!scene) return null;
+    const cues = cueAllowed
+      ? lessonFingerCues(scene.song.notes.filter((note) => note.start === 0))
+      : [];
+    return {
+      musicXml: cues.length
+        ? musicXmlWithLessonFingerCues(scene.musicXml, cues, scene.song.notes, (cue) =>
+            lessonFingerLabel(cue, locale)
+          )
+        : scene.musicXml,
+      beat: undefined
+    };
+  }, [scene, cueAllowed, locale]);
   const policy = useMemo(
     () => (controller && scene ? controller.policy(scene.id) : null),
     [controller, scene]
@@ -125,7 +145,7 @@ export function useIndependentRhythmCourse() {
     sourceFilter: saved.sourceFilter,
     policy,
     presentation,
-    prompt: scene ? { musicXml: scene.musicXml, beat: undefined } : null,
+    prompt,
     renderError: state?.error === "staff",
     retry,
     intro,

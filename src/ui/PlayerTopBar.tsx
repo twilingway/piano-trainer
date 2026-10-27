@@ -22,6 +22,7 @@ export type HandsChoice = "right" | "left" | "both" | "listen";
 
 interface Props {
   readonly fixedPractice?: boolean;
+  readonly playAction?: { readonly label: string; readonly disabled: boolean } | undefined;
   readonly metronome?: { readonly enabled: boolean; readonly onChange: (on: boolean) => void };
   readonly title: string;
   readonly playing: boolean;
@@ -75,13 +76,15 @@ interface Props {
  */
 export function PlayerTopBar(props: Props) {
   const { t, formatNumber } = useI18n();
-  const playLabel = props.countdownActive
-    ? t("Отменить отсчёт")
-    : props.soundLoading
-      ? t("Звук…")
-      : props.playing
-        ? t("Пауза")
-        : t("Играть");
+  const playLabel =
+    props.playAction?.label ??
+    (props.countdownActive
+      ? t("Отменить отсчёт")
+      : props.soundLoading
+        ? t("Звук…")
+        : props.playing
+          ? t("Пауза")
+          : t("Играть"));
   const board = props.board ?? { clock: "0:00" };
   const controls = useRef<HTMLDetailsElement>(null);
   const compact = useSyncExternalStore(subscribeCompact, compactSnapshot, () => false);
@@ -203,7 +206,7 @@ export function PlayerTopBar(props: Props) {
         data-playing={props.playing}
         aria-label={playLabel}
         title={playLabel}
-        disabled={props.soundLoading && !props.countdownActive}
+        disabled={props.playAction?.disabled ?? (props.soundLoading && !props.countdownActive)}
         onClick={props.onTogglePlay}
       >
         <span className="play-button__ring">

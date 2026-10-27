@@ -11,6 +11,7 @@ export type ReadingPersistentField =
   | "musicHarmonyLesson"
   | "musicHarmonyMode"
   | "musicHarmonyAural"
+  | "musicHarmonyTonePitchSet"
   | "musicHarmonyRoot"
   | "musicHarmonyQuality"
   | "musicHarmonyInversion"

@@ -7,6 +7,7 @@ import type { PracticeOptions } from "../practice/session";
 import type { MusicCourseView, MusicCourseCommand } from "../ui/musicCourseTypes";
 import type { TimingPreferences } from "./timingPreferences";
 import type { MusicPersistentState } from "./musicPersistence";
+import type { LessonFingerCue } from "../reading/fingerCues";
 
 export interface MusicCourseSelection {
   readonly active: boolean;
@@ -38,6 +39,7 @@ export interface MusicCourseSnapshot {
   readonly staffVisible: boolean;
   readonly keysVisible: boolean;
   readonly fingeringVisible?: boolean;
+  readonly fingerCues?: readonly LessonFingerCue[];
 }
 /** Stable external-store boundary; musical time remains owned by the lent Trainer session. */
 export interface MusicCourseControllerContract {

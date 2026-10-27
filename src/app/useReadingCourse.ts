@@ -5,6 +5,9 @@ import { toBassReadingResult, type BassReadingTask } from "../reading/bassTypes"
 import { readingFingerprint } from "../reading/adaptation";
 import { readingPromptXml } from "../reading/prompt";
 import { ReadingSession } from "../reading/session";
+import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
+import { useI18n } from "./useI18n";
 import { DEFAULT_READING_PREFERENCES } from "../reading/types";
 import type { ReadingHintLevel, ReadingPreferences, ReadingResult } from "../reading/types";
 import type { TrainerReadingPolicy } from "../practice/readingPolicy";
@@ -15,6 +18,7 @@ import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
 import { useReadingGeneration } from "./useReadingGeneration";
 
 export function useReadingCourse() {
+  const { locale } = useI18n();
   const saved = useAppSelector((state) => state.reading);
   const isBass = saved.activeCourse === "bass-reading";
   const dispatch = useAppDispatch();
@@ -125,10 +129,6 @@ export function useReadingCourse() {
       )
     : 0;
   const note = exercise?.song.notes[index];
-  const prompt = useMemo(
-    () => (exercise ? readingPromptXml(exercise.musicXml, exercise.task, index) : null),
-    [exercise, index]
-  );
   const noteId = snapshot?.noteId;
   const id = exercise
     ? `${run?.runId ?? ""}:${exercise.id}:${noteId ?? "preparing"}:${String(retry)}`
@@ -141,6 +141,18 @@ export function useReadingCourse() {
     errorRef.current = renderError;
   }, [renderError]);
   const hintLevel = renderedHint?.id === id ? renderedHint.level : 0;
+  const prompt = useMemo(() => {
+    if (!exercise) return null;
+    const allowed =
+      hintLevel === 2 && snapshot?.active && snapshot.presented && exercise.task !== "check";
+    const cues = allowed && note ? lessonFingerCues([note]) : [];
+    const xml = cues.length
+      ? musicXmlWithLessonFingerCues(exercise.musicXml, cues, exercise.song.notes, (cue) =>
+          lessonFingerLabel(cue, locale)
+        )
+      : exercise.musicXml;
+    return readingPromptXml(xml, exercise.task, index);
+  }, [exercise, index, hintLevel, snapshot?.active, snapshot?.presented, note, locale]);
   const requestHint = useCallback(
     (level: ReadingHintLevel, noteId: string) => {
       if (!session) return;

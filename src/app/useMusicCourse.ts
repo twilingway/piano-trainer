@@ -20,6 +20,9 @@ import type {
 } from "./musicCourseContracts";
 import { readingActions } from "./readingSlice";
 import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
+import { useI18n } from "./useI18n";
+import { musicXmlWithLessonFingerCues, NO_FINGER_CUES } from "../reading/fingerCues";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
 
 const emptySubscribe = () => () => undefined;
 const emptySnapshot = () => null;
@@ -38,6 +41,7 @@ const INACTIVE_VIEW: MusicCourseView = {
 };
 
 export function useMusicCourse() {
+  const { locale } = useI18n();
   const active = useAppSelector((state) => state.reading.activeCourse === "music-learning");
   const saved = useAppSelector((state) => state.reading.music);
   const revision = useAppSelector((state) => state.reading.selectionRevision);
@@ -103,6 +107,19 @@ export function useMusicCourse() {
     controller?.getSnapshot ?? emptySnapshot
   );
   const scene = snapshot?.scene ?? null;
+  const sourceXml = snapshot?.staffXml;
+  const fingerCues = snapshot?.fingerCues ?? NO_FINGER_CUES;
+  const handOnly = snapshot?.fingeringVisible ?? false;
+  const staffXml = useMemo(
+    () =>
+      sourceXml && scene && fingerCues.length
+        ? musicXmlWithLessonFingerCues(sourceXml, fingerCues, scene.song.notes, (cue) => {
+            const label = lessonFingerLabel(cue, locale);
+            return handOnly ? label.replace(/[1-5]/g, "") : label;
+          })
+        : sourceXml,
+    [sourceXml, scene, fingerCues, handOnly, locale]
+  );
   const policy = useMemo(
     () => (controller && scene ? controller.policy(scene.id) : null),
     [controller, scene]
@@ -170,10 +187,10 @@ export function useMusicCourse() {
     scene,
     exercise: scene,
     ready: snapshot?.view.ready ?? false,
-    source: saved.inputSource,
+    source: snapshot?.view.inputSource ?? saved.inputSource,
     view: snapshot?.view ?? INACTIVE_VIEW,
     options: active ? snapshot?.options : undefined,
-    staffXml: snapshot?.staffXml,
+    staffXml,
     staffVisible: snapshot?.staffVisible ?? false,
     fingeringVisible: snapshot?.fingeringVisible ?? false,
     keysVisible: snapshot?.keysVisible ?? true,

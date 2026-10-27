@@ -3,6 +3,7 @@ import type { MusicNote, MusicHelpEvent } from "./types";
 import type { MusicInputSource, HarmonyAnswer } from "./progress";
 import type { DictationResult } from "./dictationSession";
 import type { DictationListeningState } from "./dictationListening";
+import type { HarmonyToneRecipe } from "./harmonyTone";
 export { validateMusicInputJournal, validateMusicEvidence } from "./evidenceValidation";
 
 export const MUSIC_INPUT_EVIDENCE_LIMIT = 512;
@@ -50,6 +51,7 @@ export interface EmbeddedMusicEvidence {
     readonly bpm: number;
     readonly fingerprint: string;
     readonly notes: readonly MusicNote[];
+    readonly toneRecipe?: HarmonyToneRecipe;
   };
   readonly inputJournal: MusicInputJournalData;
   readonly notes: readonly MusicNote[];

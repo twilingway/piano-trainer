@@ -1,3 +1,4 @@
+import { withLessonFingering } from "../reading/fingerCues";
 import { songFromMusicXml } from "../song/musicxml";
 import { normalizeReadingSeed } from "../reading/generator";
 import { INDEPENDENT_RHYTHM_SKILL_ID } from "./types";
@@ -32,7 +33,12 @@ function makePhase(
   order: readonly ("A" | "B")[]
 ): IndependentRhythmPhaseExercise {
   const musicXml = phaseScore(phase, order);
-  return { id: `${id}:${phase}`, phase, musicXml, song: songFromMusicXml(musicXml, "") };
+  return {
+    id: `${id}:${phase}`,
+    phase,
+    musicXml,
+    song: withLessonFingering(songFromMusicXml(musicXml, ""))
+  };
 }
 export function generateIndependentRhythmExercise(
   seed: number,

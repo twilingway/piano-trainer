@@ -1,3 +1,6 @@
+import { TwoHandLessonSummary } from "./LessonResultSummary";
+import { LessonIllustration } from "./LessonIllustration";
+import { LessonReport } from "./LessonReport";
 import { useI18n } from "../app/useI18n";
 import { LessonDetails } from "./LessonDetails";
 import type { ReadingHintLevel, ReadingPreferences } from "../reading/types";
@@ -17,16 +20,15 @@ export function TwoHandCourseCard(
   const { t } = useI18n();
   return (
     <section className="reading-course-card">
+      <LessonIllustration lesson="two-hands" />
       <h3>{t(TWO_HAND_TITLE)}</h3>
-      <p>
-        {t(
-          "Десять пар: басовый ключ слева и скрипичный справа. Читайте и нажимайте обе ноты вместе."
-        )}
-      </p>
+      <p>{t("Сыграйте две ноты вместе — левой и правой рукой.")}</p>
       <div className="reading-actions">
         <button type="button" className="game-button lesson-primary-action" onClick={props.onStart}>
           {t("Начать десять пар")}
         </button>
+      </div>
+      <LessonDetails kind="more" id="two-hands:catalog:more">
         <button
           type="button"
           className="game-button lesson-secondary-action"
@@ -34,7 +36,10 @@ export function TwoHandCourseCard(
         >
           {t("Знакомство с совместной игрой")}
         </button>
-      </div>
+      </LessonDetails>
+      <p className="reading-muted">
+        {t("Завершено серий: {number}", { number: props.history.length })}
+      </p>
       <LessonDetails kind="progress" id="two-hand-reading:catalog:progress">
         <TwoHandProgress {...props} />
       </LessonDetails>
@@ -147,7 +152,11 @@ export function TwoHandPracticePanel(props: TwoHandPracticeProps) {
           </label>
         </div>
       </LessonDetails>
-      {props.result && <TwoHandResults result={props.result} sourceFilter={props.sourceFilter} />}
+      {props.result && (
+        <LessonReport summary={<TwoHandLessonSummary result={props.result} />}>
+          <TwoHandResults result={props.result} sourceFilter={props.sourceFilter} />
+        </LessonReport>
+      )}
       <LessonDetails kind="progress" id="two-hand-reading:practice:progress">
         <TwoHandProgress {...props} />
       </LessonDetails>

@@ -6,6 +6,8 @@ import {
   twoHandPromptXml
 } from "../reading/twoHandGenerator";
 import { TwoHandSession } from "../reading/twoHandSession";
+import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import type { TwoHandResult } from "../reading/twoHandTypes";
 import { DEFAULT_READING_PREFERENCES, type ReadingHintLevel } from "../reading/types";
 import type { TrainerPairPolicy } from "../practice/twoHandPolicy";
@@ -110,15 +112,33 @@ export function useTwoHandCourse() {
       ? requested.level
       : (snapshot?.hintLevel ?? 0);
   const { locale } = useI18n();
+  const cueActive = snapshot?.active ?? false;
+  const cuePresented = snapshot?.presented ?? false;
   // The staff names a hinted note exactly as the hint line beside it does.
   const prompt = useMemo(
     () =>
       exercise
-        ? twoHandPromptXml(exercise, index, hintLevel, (pitch) =>
-            twoHandNoteName(pitch, (key) => translate(locale, messages, key))
-          )
+        ? (() => {
+            const prompt = twoHandPromptXml(exercise, index, hintLevel, (pitch) =>
+              twoHandNoteName(pitch, (key) => translate(locale, messages, key))
+            );
+            const cues =
+              hintLevel === 2 && cueActive && cuePresented
+                ? lessonFingerCues(
+                    exercise.song.notes.filter((note) => pair?.noteIds.includes(note.id))
+                  )
+                : [];
+            return {
+              ...prompt,
+              musicXml: cues.length
+                ? musicXmlWithLessonFingerCues(prompt.musicXml, cues, exercise.song.notes, (cue) =>
+                    lessonFingerLabel(cue, locale)
+                  )
+                : prompt.musicXml
+            };
+          })()
         : null,
-    [exercise, index, hintLevel, locale]
+    [exercise, index, pair, hintLevel, cueActive, cuePresented, locale]
   );
   const id =
     exercise && pair ? `${exercise.id}:${String(revision)}:${pair.id}:${String(retry)}` : "";

@@ -53,10 +53,12 @@ export function ConnectedPlayerHeader() {
     rhythmActive,
     intervalMode,
     practiceActive,
-    musicCourse
+    musicCourse,
+    lessonAction
   } = useRuntimeSelector(
     (runtime) => ({
       sound: runtime.sound,
+      lessonAction: runtime.practiceActive ? runtime.lessonAction : null,
       settingsOpen: runtime.settingsOpen,
       song: runtime.song,
       playing: runtime.playing,
@@ -133,12 +135,17 @@ export function ConnectedPlayerHeader() {
                         : readingTask
                           ? readingIsBass && readingTask !== "check"
                             ? t(BASS_READING_TASK_LABELS[readingTask])
-                            : `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
+                            : `${t("Правая рука: пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
                           : courseActive
                             ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
                             : lessonDisplayTitle(song.title, currentLesson, t)
           }
           playing={playing}
+          playAction={
+            lessonAction
+              ? { label: t(lessonAction.labelKey), disabled: lessonAction.disabled }
+              : undefined
+          }
           countdownActive={countdown != null}
           soundLoading={sound === "loading" || (wordEnabled && (wordPending || Boolean(wordError)))}
           mode={trainerMode}

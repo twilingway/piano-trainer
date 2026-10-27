@@ -1,3 +1,6 @@
+import { ReadingLessonSummary } from "./LessonResultSummary";
+import { LessonIllustration } from "./LessonIllustration";
+import { LessonReport } from "./LessonReport";
 import { useI18n } from "../app/useI18n";
 import { LessonDetails } from "./LessonDetails";
 import { readingPurpose, summarizeReadingResults } from "../reading/progress";
@@ -38,8 +41,9 @@ export function ReadingCourseCard({
   const { t } = useI18n();
   return (
     <section className="reading-course-card">
-      <h3>{t("Читаю пять нот")}</h3>
-      <p>{t("Учитесь узнавать ноты на стане и находить их на клавиатуре.")}</p>
+      <LessonIllustration lesson="right-hand" />
+      <h3>{t("Правая рука: пять нот")}</h3>
+      <p>{t("Узнавайте до–соль в скрипичном ключе и находите их правой рукой.")}</p>
       <div className="reading-actions">
         <button
           type="button"
@@ -50,11 +54,11 @@ export function ReadingCourseCard({
         >
           {t(READING_TASK_LABELS.notes)}
         </button>
+      </div>
+      <LessonDetails kind="more" id="reading:catalog:more">
         <button type="button" className="game-button lesson-secondary-action" onClick={onIntro}>
           {t("Знакомство с пятью нотами")}
         </button>
-      </div>
-      <LessonDetails kind="more" id="reading:catalog:more">
         <div className="reading-actions">
           {(["phrases", "check"] as const).map((task) => (
             <button
@@ -128,7 +132,7 @@ export function ReadingPracticePanel(props: PracticeProps) {
   const { t } = useI18n();
   const { task, preferences, result } = props;
   return (
-    <section className="reading-practice" aria-label={t("Читаю пять нот")}>
+    <section className="reading-practice" aria-label={t("Правая рука: пять нот")}>
       <div className="reading-actions">
         <strong>{t(READING_PURPOSE_LABELS[props.purpose ?? task])}</strong>
         <span>{t("Нота {number} из 20", { number: Math.min(20, props.index + 1) })}</span>
@@ -153,7 +157,7 @@ export function ReadingPracticePanel(props: PracticeProps) {
         <p
           className={`reading-muted${props.ready || result || props.renderError ? " reading-status-hidden" : ""}`}
         >
-          {t("Нажмите «Играть» и дождитесь появления текущей ноты.")}
+          {t("Начните игру кнопкой под нотами, затем нажмите нужную клавишу.")}
         </p>
         {props.renderError ? (
           <p role="alert">
@@ -213,7 +217,11 @@ export function ReadingPracticePanel(props: PracticeProps) {
           </div>
         </LessonDetails>
       )}
-      {result && <ReadingResults result={result} sourceFilter={props.sourceFilter} />}
+      {result && (
+        <LessonReport summary={<ReadingLessonSummary result={result} />}>
+          <ReadingResults result={result} sourceFilter={props.sourceFilter} />
+        </LessonReport>
+      )}
       <ReadingGenerationError {...props} />
       <LessonDetails kind="progress" id="reading:practice:progress">
         <ReadingProgress {...props} generationError={false} />

@@ -1,6 +1,6 @@
 import { IntegratedLesson, createIntegratedPlan } from "../musicLearning/integrated";
 import type { IntegratedPhaseId } from "../musicLearning/integrated";
-import { SightReadingPreview } from "../musicLearning/sightReadingPreview";
+import { presentMusicControllerScore } from "./musicCourseControllerPreflight";
 import type { TrainerMusicPolicy } from "../practice/musicPolicy";
 import type { MusicCourseCommand } from "../ui/musicCourseTypes";
 import { MusicCourseRun } from "./musicCourseRun";
@@ -25,13 +25,13 @@ import { MusicControllerAudio } from "./musicCourseControllerAudio";
 import {
   completeMusicController,
   restoreMusicControllerBoundary,
-  saveMusicControllerLesson,
-  presentMusicControllerRun
+  saveMusicControllerLesson
 } from "./musicCourseControllerCompletion";
 import { prepareMusicControllerReplacement } from "./musicCourseControllerNext";
 import { musicControllerCommand, musicControllerChoose } from "./musicCourseControllerActions";
 import type { MusicControllerActionsHost } from "./musicCourseControllerActions";
 import type { MusicPersistentState } from "./musicPersistence";
+import { musicCourseGuidance } from "./musicCourseFingerCues";
 
 let controllerSequence = 0;
 /** One presentation owns callbacks, readiness and evidence; the Trainer owns the musical clock. */
@@ -259,19 +259,13 @@ export class MusicCourseController implements MusicCourseControllerContract {
       this.state.error
     )
       return;
-    this.state.presented = true;
-    const activity = this.state.activity;
-    if (activity?.sight) {
-      this.state.preview = new SightReadingPreview(atMs, this.saved.sightPreviewSeconds);
-      this.state.preview.setActive(!this.connection.blocked && !this.hidden, atMs);
-      this.state.status = "preview";
-    } else this.state.status = "ready";
-    presentMusicControllerRun(this.state, atMs, this.offset());
-    const lesson = this.state.lesson;
-    if (lesson && activity)
-      lesson.setReady(lesson.snapshot().identity, {
-        reservedFingerprint: activity.exercise.fingerprint
-      });
+    presentMusicControllerScore(
+      this.state,
+      this.saved,
+      atMs,
+      this.offset(),
+      !this.connection.blocked && !this.hidden
+    );
     this.publish();
   };
   readonly staffError = (id: string): void => {
@@ -366,16 +360,12 @@ export class MusicCourseController implements MusicCourseControllerContract {
           this.publish();
         }
       },
-      guidance: (session) => {
-        const lights =
-          current() && this.state.hint && this.state.activity?.purpose === "training"
-            ? session.nextDue().map((note) => note.pitch)
-            : [];
-        return {
-          lights,
-          frame: { hintNotes: [], due: [], waitingFor: [], hints: false, neutralKeys: true }
-        };
-      }
+      guidance: (session) =>
+        musicCourseGuidance(
+          this.state,
+          session,
+          !current() || this.connection.blocked || this.hidden
+        )
     };
   };
   private saveLesson(): void {
@@ -401,7 +391,7 @@ export class MusicCourseController implements MusicCourseControllerContract {
     }
     const operation = ++this.operation;
     try {
-      const latest = this.callbacks.readSelection?.() ?? this.saved;
+      const latest = advance ? (this.callbacks.readSelection?.() ?? this.saved) : this.saved;
       const replacement = await prepareMusicControllerReplacement(
         latest,
         this.state.lesson,
@@ -409,7 +399,8 @@ export class MusicCourseController implements MusicCourseControllerContract {
         advance,
         this.callbacks,
         () => this.active && operation === this.operation,
-        phase
+        phase,
+        this.state.activity ?? undefined
       );
       if (!replacement || !this.active || operation !== this.operation) return;
       this.stop();

@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installUniformStaffLayout, type UniformStaffAxis } from "./uniformStaffLayout";
 import { staffNoteInk } from "./uniformStaffInk";
+import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
 import { EXERCISES } from "../song/exercises";
 
 function axisX(axis: UniformStaffAxis, beat: number) {
@@ -29,14 +30,14 @@ const regular = score([
   note("G", 16, "whole")
 ]);
 
-async function load(xml: string) {
+async function load(xml: string, horizontal = true, width = 1000) {
   const host = document.createElement("div");
   document.body.append(host);
-  Object.defineProperty(host, "offsetWidth", { value: 1000 });
+  Object.defineProperty(host, "offsetWidth", { value: width, configurable: true });
   const osmd = new OpenSheetMusicDisplay(host, {
     backend: "svg",
     autoResize: false,
-    renderSingleHorizontalStaffline: true
+    renderSingleHorizontalStaffline: horizontal
   });
   await osmd.load(xml);
   return osmd;
@@ -62,7 +63,8 @@ function heads(osmd: OpenSheetMusicDisplay) {
             return [
               {
                 beat: entry.getAbsoluteTimestamp().RealValue * 4,
-                x: (drawn.getNoteHeadBeginX() + drawn.getGlyphWidth() / 2) * osmd.Zoom
+                x: (drawn.getNoteHeadBeginX() + drawn.getGlyphWidth() / 2) * osmd.Zoom,
+                right: (drawn.getNoteHeadBeginX() + drawn.getGlyphWidth()) * osmd.Zoom
               }
             ];
           })
@@ -108,6 +110,122 @@ describe("uniform staff layout with installed OSMD", () => {
     expect(osmd.GraphicSheet.MeasureList[0]?.[0]?.PositionAndShape.Size.width).toBeGreaterThan(
       widths[0] ?? 0
     );
+  });
+
+  it.each([true, false])(
+    "reserves shared tab labels without changing staff glyph size, horizontal=%s",
+    async (horizontal) => {
+      const osmd = await load(regular, horizontal);
+      let labelWidth = 0;
+      const layout = installUniformStaffLayout(osmd, (beat) => beat / 2, {
+        horizontal,
+        labelWidthAtBeat: () => labelWidth
+      });
+      osmd.render();
+      const originalZoom = osmd.Zoom;
+      const before = heads(osmd).filter((head) => head.beat < 4);
+      labelWidth = 82 * 1.5;
+      osmd.render();
+      const enlarged = heads(osmd).filter((head) => head.beat < 4);
+      expect(osmd.Zoom).toBe(originalZoom);
+      expect(enlarged).toHaveLength(before.length);
+      for (let index = 1; index < enlarged.length; index++) {
+        expect((enlarged[index]?.x ?? 0) - (enlarged[index - 1]?.x ?? 0)).toBeGreaterThanOrEqual(
+          labelWidth
+        );
+      }
+      expect((enlarged[1]?.x ?? 0) - (enlarged[0]?.x ?? 0)).toBeGreaterThan(
+        (before[1]?.x ?? 0) - (before[0]?.x ?? 0)
+      );
+      // Zooming the staff preserves the same tab label space in CSS pixels.
+      osmd.Zoom = 0.5;
+      osmd.render();
+      const smallerStaff = heads(osmd).filter((head) => head.beat < 4);
+      expect((smallerStaff[1]?.x ?? 0) - (smallerStaff[0]?.x ?? 0)).toBeGreaterThanOrEqual(
+        labelWidth
+      );
+      expect(layout.getAxis()).toBeDefined();
+    }
+  );
+
+  it("expands the wrapped SVG viewport to its actual ink without scaling noteheads", async () => {
+    const osmd = await load(regular, false, 245);
+    installUniformStaffLayout(osmd, (beat) => beat / 2, {
+      horizontal: false,
+      labelWidthAtBeat: () => 123
+    });
+    osmd.Zoom = 1.5;
+    osmd.render();
+    const backend = osmd.Drawer.Backends[0];
+    const svg = backend?.getRenderElement().querySelector("svg");
+    if (!backend || !svg) throw new Error("No SVG backend after rendering");
+    const before = heads(osmd);
+    const previousWidth = Number(svg.getAttribute("width"));
+    const oldViewBox = (svg.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
+    expect(before.some((head) => head.right > previousWidth)).toBe(true);
+    fitWrappedStaffSvg(osmd);
+    const width = Number(svg.getAttribute("width"));
+    const viewBox = (svg.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
+    expect(width).toBeGreaterThan(previousWidth);
+    for (const head of heads(osmd)) expect(head.right).toBeLessThanOrEqual(width);
+    expect(heads(osmd)).toEqual(before);
+    expect(osmd.Zoom).toBe(1.5);
+    expect(width / (viewBox[2] ?? 1)).toBeCloseTo(previousWidth / (oldViewBox[2] ?? 1));
+    expect(viewBox[3]).toBe(oldViewBox[3]);
+    // Re-layout still reads the narrow host, rather than the expanded render viewport.
+    osmd.render();
+    fitWrappedStaffSvg(osmd);
+    expect(heads(osmd)).toEqual(before);
+  });
+
+  it("keeps wrapped glyph scale independent across repeated tab zoom and scrollbar changes", async () => {
+    const osmd = await load(regular, false, 1000);
+    osmd.render();
+    const backend = osmd.Drawer.Backends[0];
+    const host = backend?.getRenderElement().parentElement;
+    if (!host) throw new Error("No score host after rendering");
+    const workspace = document.createElement("div");
+    workspace.className = "workspace-main";
+    workspace.getBoundingClientRect = () => new DOMRect(0, 0, 1440, 1000);
+    document.body.append(workspace);
+    workspace.append(host);
+    host.style.maxHeight = "220px";
+    host.style.setProperty("--staff-fit", "1");
+    const baseline = new StaffZoomBaseline();
+    let labelWidth = 0;
+    installUniformStaffLayout(osmd, (beat) => beat / 2, {
+      horizontal: false,
+      labelWidthAtBeat: () => labelWidth
+    });
+    const options = { zoom: 1.4, singleLine: false, breaksFromScore: true, maxShare: 0.2 };
+    const scales: number[] = [];
+    const glyphWidths: number[] = [];
+    for (const tabsZoom of [2, 1, 1.5, 2, 1]) {
+      // A vertical scrollbar narrows the current engraving, not its viewport fit budget.
+      Object.defineProperty(host, "offsetWidth", {
+        value: tabsZoom > 1 ? 985 : 1000,
+        configurable: true
+      });
+      labelWidth = 0;
+      baseline.render(osmd, host, options);
+      labelWidth = 82 * tabsZoom;
+      osmd.render();
+      fitWrappedStaffSvg(osmd);
+      scales.push(osmd.Zoom);
+      const head = heads(osmd)[0];
+      if (!head) throw new Error("No notehead after wrapped rendering");
+      glyphWidths.push((head.right - head.x) * 2);
+    }
+    for (const width of glyphWidths) expect(width).toBeCloseTo(glyphWidths[0] ?? 0, 8);
+    expect(scales.every((scale) => scale === scales[0])).toBe(true);
+    const before = osmd.Zoom;
+    labelWidth = 0;
+    baseline.render(osmd, host, { ...options, zoom: 2 });
+    expect(osmd.Zoom / before).toBeCloseTo(2 / 1.4);
+    // A real CSS budget change invalidates the measured baseline.
+    host.style.maxHeight = "100px";
+    baseline.render(osmd, host, options);
+    expect(osmd.Zoom).toBeLessThan(before);
   });
 
   it("uses seconds through tempo changes, including changes between noteheads", async () => {
