@@ -637,6 +637,37 @@ describe("world compositions", () => {
       worldFov: 100
     });
   });
+  it("restores the road straightening and repairs only its own corrupt values", () => {
+    expect(normalizeStaffPrefs({})).toMatchObject({ roadFit: "button", roadFitCamera: null });
+    const snapshot = { ...CAMERA_PRESETS.player, pitch: 30 };
+    const saved = normalizeStaffPrefs({ roadFit: "auto", roadFitCamera: snapshot, worldFov: 60 });
+    expect(saved).toMatchObject({ roadFit: "auto", roadFitCamera: snapshot, worldFov: 60 });
+    const broken = normalizeStaffPrefs({
+      roadFit: "sideways",
+      roadFitCamera: { ...snapshot, fov: Number.NaN },
+      roadHorizon: 1.2
+    });
+    expect(broken.roadFit).toBe("button");
+    expect(broken.roadFitCamera).toEqual({ ...snapshot, fov: 43 });
+    expect(broken.roadHorizon).toBe(1.2);
+    expect(normalizeStaffPrefs({ roadFitCamera: "top" }).roadFitCamera).toBeNull();
+  });
+
+  it("repairs only the corrupt one of the keyboard and world camera sets", () => {
+    const keyboard = { ...CAMERA_PRESETS.player, height: 610, pitch: 30 };
+    const broken = normalizeStaffPrefs({
+      camera: { ...keyboard, fov: Number.NaN, distance: Infinity },
+      worldFov: 72,
+      roadHorizon: 1.2
+    });
+    expect(broken.camera).toEqual({ ...keyboard, fov: 43, distance: 720 });
+    expect(broken.worldFov).toBe(72);
+    expect(broken.roadHorizon).toBe(1.2);
+    const world = normalizeStaffPrefs({ camera: keyboard, worldFov: Infinity, roadHorizon: 1.2 });
+    expect(world.camera).toEqual(keyboard);
+    expect(world.worldFov).toBe(45);
+    expect(world.roadHorizon).toBe(1.2);
+  });
 });
 
 describe("extended screen horizon", () => {

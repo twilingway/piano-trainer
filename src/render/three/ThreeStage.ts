@@ -39,6 +39,7 @@ import { drawSceneCameraPasses } from "./sceneCameraPasses";
 import { PerformanceWorldStage } from "./PerformanceWorldStage";
 import { PerformanceScene } from "./PerformanceScene";
 import { FreeSceneCamera } from "./FreeSceneCamera";
+import { keysGroupScale, placeStageGroups } from "./stageGroupFrames";
 
 // Baked colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
@@ -155,20 +156,22 @@ export class ThreeStage {
     }
     const roadCamera = keys.roadCamera ?? keys.camera;
     const keyboardCamera = keys.keyboardCamera ?? roadCamera;
-    const { params } = roadCamera;
-    const scale = params.prefs.scale;
-    this.keys.scale.setScalar(scale);
-    this.keys.position.x =
-      this.freeEnabled || this.performanceEnabled
-        ? 0
-        : -keys.pan * (params.sourceUnits ?? 0.5) * scale;
-    this.road.scale.copy(this.keys.scale);
-    this.road.position.copy(this.keys.position);
+    placeStageGroups(
+      this.keys,
+      this.road,
+      keyboardCamera,
+      roadCamera,
+      keys.pan,
+      this.freeEnabled || this.performanceEnabled,
+      this.performanceEnabled
+    );
     this.lighting.scale.copy(this.keys.scale);
     this.lighting.position.copy(this.keys.position);
     this.road.visible = roadFrame !== undefined;
     this.roadNotes.setViewport(screen.width, screen.height);
-    const docked = !this.performanceEnabled && this.composition !== "standard";
+    // Every world view outside the staging draws the world and the keys with separate cameras.
+    const docked =
+      !this.performanceEnabled && (this.composition !== "standard" || this.freeEnabled);
     const sceneEnabled = this.performanceEnabled || this.freeEnabled || docked;
     const effectBoxes = nativeKeyboard ? this.boxes : this.roadBoxes;
     if (sceneEnabled) {
@@ -219,7 +222,7 @@ export class ThreeStage {
       );
     }
     const step = Math.min(1, deltaSeconds * DIP_RATE);
-    this.noteLights.update(energy, roadCamera, energyDeltaSeconds);
+    this.noteLights.update(energy, roadCamera, energyDeltaSeconds, this.keys.scale.x);
     this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
       const target = down(pitch) ? -KEYBOARD_DIP : 0;
@@ -230,12 +233,7 @@ export class ThreeStage {
     const worldView = docked && this.composition === "game" ? this.game : this.free;
     this.scorePoster.draw(keys, this.boxes, inspecting, roadFrame, worldView);
     prepareFreeRoadBounds(worldView, this.road, roadFrame, inspecting);
-    const detached = keys.offset.x !== 0 || keys.offset.y !== 0;
-    const separate =
-      docked ||
-      (!this.performanceEnabled &&
-        !this.freeEnabled &&
-        (detached || keyboardCamera !== roadCamera));
+    const separate = !this.performanceEnabled;
     if (inspecting) {
       worldView.update(screen.width, screen.height, this.keys, deltaSeconds);
       if (docked) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
@@ -262,6 +260,8 @@ export class ThreeStage {
         roadCamera,
         nativeKeyboard && !this.performanceEnabled
       ) ?? false;
+    // The near quarter of every separate view joins the displayed keys, also on the legacy road.
+    const roadDock = separate && !projected;
     if (inspecting) this.performance.updateInspection(songTime, this.keys, camera);
     this.worldStage.setDuration(this.performance.getDuration());
     this.worldStage.update(
@@ -278,7 +278,7 @@ export class ThreeStage {
       this.projectionGeometryOnly ? NO_EFFECTS : effects,
       docked ? this.keyboardCamera : undefined
     );
-    this.roadGuides.setDocked(docked && !projected);
+    this.roadGuides.setDocked(roadDock);
     prepareRoadProjection(
       this.roadGuides,
       this.roadBoxes,
@@ -290,11 +290,15 @@ export class ThreeStage {
       this.road,
       camera,
       this.keyboardCamera,
-      docked && !projected,
+      roadDock,
       roadCamera.near.z,
-      roadCamera.roadFarZ
+      roadCamera.roadFarZ,
+      this.keys,
+      // Straightening belongs to the standard road only; world views keep their plain bend.
+      !inspecting && { ...keys, screen }
     );
-    if (docked) this.dockedLabels ??= new DockedRoadLabels();
+    // Standard keeps the overlay labels: they already follow the dock through notePlace.
+    if (roadDock && docked) this.dockedLabels ??= new DockedRoadLabels();
     this.dockedLabels?.prepare(
       roadFrame,
       roadCamera,
@@ -302,7 +306,9 @@ export class ThreeStage {
       camera,
       this.keyboardCamera,
       screen,
-      docked && !projected
+      roadDock && docked,
+      inspecting,
+      this.keys
     );
     if (projected) this.road.visible = false;
     this.renderer.resetState();
@@ -325,7 +331,7 @@ export class ThreeStage {
             ? this.body
             : undefined,
         this.projection?.requested ||
-          docked ||
+          roadDock ||
           (!this.freeEnabled && !this.performanceEnabled && roadEffects)
           ? () => {
               try {
@@ -357,10 +363,8 @@ export class ThreeStage {
   };
 
   get nativeEffectsReady(): boolean {
-    return (
-      (this.performanceEnabled || this.freeEnabled || this.composition !== "standard") &&
-      this.worldStage.ready
-    );
+    const world = this.performanceEnabled || this.freeEnabled || this.composition !== "standard";
+    return world && this.worldStage.ready;
   }
 
   setCameraComposition(mode: CameraComposition): void {
@@ -512,8 +516,9 @@ export class ThreeStage {
     this.roadBoxes = keyBoxes(keys);
     this.performance.layout(boxes);
     this.appearance.layout(boxes);
-    this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera);
-    this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
+    // Both light rigs sit in the keys group, scaled by the keyboard camera.
+    this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera, keysGroupScale(keys));
+    this.rimLights.layout(boxes, keysGroupScale(keys));
     this.hinged = buildStageKeys(
       this.keys,
       boxes,

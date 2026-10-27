@@ -305,13 +305,13 @@ it.each(["ru", "en"] as const)(
   }
 );
 
-it("resets the camera to the initial full top preset", () => {
+it("resets the keyboard camera to the initial full top preset", () => {
   const onCamera = vi.fn();
   act(() => {
     root.render(<KeyboardSettings {...base} onCamera={onCamera} />);
   });
   const reset = [...host.querySelectorAll("button")].find(
-    (button) => button.textContent === "Сбросить камеру"
+    (button) => button.textContent === "Сбросить камеру клавиатуры"
   );
   act(() => {
     reset?.click();
@@ -469,5 +469,162 @@ describe("camera compositions", () => {
     expect(select?.textContent).toContain("Game frame");
     expect(host.textContent).toContain("Your composition returns");
     setInterfaceLanguage("ru");
+  });
+});
+
+describe("separate keyboard and world cameras", () => {
+  const group = (title: string) => host.querySelector(`section[aria-label="${title}"]`);
+  const button = (scope: Element | null, text: string) =>
+    [...(scope?.querySelectorAll("button") ?? [])].find((item) => item.textContent === text);
+  const fov = () => host.querySelector<HTMLInputElement>('[data-setting-target="world-fov"]');
+
+  it("keeps each reset to its own set", () => {
+    const onCamera = vi.fn(),
+      onWorldFov = vi.fn(),
+      onResetWorldCamera = vi.fn(),
+      onRoad = vi.fn();
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          onCamera={onCamera}
+          onCameraComposition={vi.fn()}
+          onWorldFov={onWorldFov}
+          onResetWorldCamera={onResetWorldCamera}
+          onRoad={onRoad}
+        />
+      );
+    });
+    const keyboard = group("Камера клавиатуры"),
+      world = group("Камера нот и мира");
+    expect(button(keyboard, "Сбросить камеру мира")).toBeUndefined();
+    expect(button(world, "Сбросить камеру клавиатуры")).toBeUndefined();
+    act(() => {
+      button(keyboard, "Сбросить камеру клавиатуры")?.click();
+    });
+    expect(onCamera).toHaveBeenCalledExactlyOnceWith(CAMERA_PRESETS.top);
+    expect(onResetWorldCamera).not.toHaveBeenCalled();
+    act(() => {
+      button(world, "Сбросить камеру мира")?.click();
+    });
+    expect(onResetWorldCamera).toHaveBeenCalledOnce();
+    expect(onCamera).toHaveBeenCalledOnce();
+    expect(onWorldFov).not.toHaveBeenCalled();
+    expect(onRoad).not.toHaveBeenCalled();
+  });
+
+  it("puts the standard horizon pair in the world set and explains the fixed world FOV", () => {
+    act(() => {
+      root.render(
+        <KeyboardSettings {...base} onCameraComposition={vi.fn()} onWorldFov={vi.fn()} />
+      );
+    });
+    const world = group("Камера нот и мира");
+    expect(world?.querySelector('[data-setting-target="road-horizon"]')).not.toBeNull();
+    expect(
+      group("Падающие ноты")?.querySelector('[data-setting-target="road-horizon"]')
+    ).toBeNull();
+    expect(fov()?.disabled).toBe(true);
+    expect(world?.textContent).toContain("дальнюю часть поля задают горизонт");
+    for (const [composition, freeCamera] of [
+      ["standard", true],
+      ["game", false],
+      ["free", false]
+    ] as const) {
+      act(() => {
+        root.render(
+          <KeyboardSettings
+            {...base}
+            cameraComposition={composition}
+            freeCamera={freeCamera}
+            onCameraComposition={vi.fn()}
+            onWorldFov={vi.fn()}
+          />
+        );
+      });
+      expect(fov()?.disabled).toBe(false);
+      expect(group("Камера нот и мира")?.textContent).not.toContain(
+        "дальнюю часть поля задают горизонт"
+      );
+    }
+  });
+
+  it("straightens the standard road automatically or by the button, only where it applies", () => {
+    const onRoadFit = vi.fn();
+    const onStraightenRoad = vi.fn();
+    const render = (props: Partial<Parameters<typeof KeyboardSettings>[0]>) => {
+      act(() => {
+        root.render(
+          <KeyboardSettings
+            {...base}
+            onRoadFit={onRoadFit}
+            onStraightenRoad={onStraightenRoad}
+            {...props}
+          />
+        );
+      });
+      return group("Камера нот и мира");
+    };
+    const select = () =>
+      group("Камера нот и мира")?.querySelector<HTMLSelectElement>(
+        '[data-setting-target="road-fit"]'
+      );
+    let world = render({});
+    expect(select()?.value).toBe("button");
+    expect(select()?.disabled).toBe(false);
+    act(() => {
+      button(world, "Выпрямить по клавиатуре")?.click();
+    });
+    expect(onStraightenRoad).toHaveBeenCalledOnce();
+    act(() => {
+      const element = select();
+      if (!element) throw new Error("Missing road fit");
+      element.value = "auto";
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onRoadFit).toHaveBeenCalledWith("auto");
+    world = render({ roadFit: "auto" });
+    expect(button(world, "Выпрямить по клавиатуре")).toBeUndefined();
+    expect(world?.textContent).toContain("всегда идут прямо к клавишам");
+    for (const props of [
+      { cameraComposition: "game" as const },
+      { freeCamera: true },
+      { performanceScene: true }
+    ]) {
+      world = render(props);
+      expect(select()?.disabled).toBe(true);
+      expect(button(world, "Выпрямить по клавиатуре")?.disabled).toBe(true);
+      expect(world?.textContent).toContain("действует в обычной композиции");
+    }
+    expect(onStraightenRoad).toHaveBeenCalledOnce();
+  });
+
+  it("disables manual world control while the performance scene owns the camera", () => {
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          cameraComposition="free"
+          performanceScene
+          onCameraComposition={vi.fn()}
+          onWorldFov={vi.fn()}
+          onResetWorldCamera={vi.fn()}
+        />
+      );
+    });
+    expect(fov()?.disabled).toBe(true);
+    expect(button(group("Камера нот и мира"), "Сбросить камеру мира")?.disabled).toBe(true);
+    expect(button(group("Камера клавиатуры"), "Сбросить камеру клавиатуры")?.disabled).toBe(false);
+  });
+
+  it("shows no camera sets for flat keys and keeps their horizon with the falling notes", () => {
+    act(() => {
+      root.render(<KeyboardSettings {...base} keyStyle="classic" />);
+    });
+    expect(group("Камера клавиатуры")).toBeNull();
+    expect(group("Камера нот и мира")).toBeNull();
+    expect(
+      group("Падающие ноты")?.querySelector('[data-setting-target="road-horizon"]')
+    ).not.toBeNull();
   });
 });

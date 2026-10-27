@@ -10,6 +10,7 @@ import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
 import { pianistAvailable } from "../render/three/pianistAvailability";
+import { DEFAULT_WORLD_FOV } from "../render/cameraComposition";
 import type { StaffPrefs } from "./useStaffPrefs";
 import { useI18n } from "./useI18n";
 
@@ -144,7 +145,11 @@ export function useFallingView({
     viewRef.current?.setKeyboardTop(
       staffPrefs.keyStyle === "3d" && staffPrefs.keyboardOrientation === "top"
     );
-    viewRef.current?.setRoadShape({ far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon });
+    viewRef.current?.setRoadShape({
+      far: staffPrefs.roadFar,
+      horizon: staffPrefs.roadHorizon,
+      fit: { mode: staffPrefs.roadFit, camera: staffPrefs.roadFitCamera ?? undefined }
+    });
   }, [
     viewRef,
     trainerReady,
@@ -161,7 +166,9 @@ export function useFallingView({
     staffPrefs.camera,
     staffPrefs.keyboardOrientation,
     staffPrefs.roadFar,
-    staffPrefs.roadHorizon
+    staffPrefs.roadHorizon,
+    staffPrefs.roadFit,
+    staffPrefs.roadFitCamera
   ]);
 
   useEffect(() => {
@@ -310,5 +317,18 @@ export function useFallingView({
     staffPrefs.hands
   ]);
 
-  return { showLabels, setShowLabels, keyRange, setKeyRange, mirrorHostRef, handStatus };
+  const resetWorldCamera = () => {
+    // The world reset also drops the straightening snapshot; its mode stays.
+    updateStaffPrefs({ worldFov: DEFAULT_WORLD_FOV, roadFitCamera: null });
+    viewRef.current?.setWorldFov(DEFAULT_WORLD_FOV, true);
+  };
+  return {
+    showLabels,
+    setShowLabels,
+    keyRange,
+    setKeyRange,
+    resetWorldCamera,
+    mirrorHostRef,
+    handStatus
+  };
 }

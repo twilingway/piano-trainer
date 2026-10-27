@@ -7,6 +7,8 @@ export const roadWidthUniforms = {
   roadDockY: { value: new Vector4() },
   roadDockEnabled: { value: 0 },
   roadDockTransform: { value: new Matrix4() },
+  /** World clip to the straightening keyboard's clip; identity keeps the plain bend. */
+  roadDockFitTransform: { value: new Matrix4() },
   roadDockInverse: { value: new Matrix4() },
   roadWidth: { value: [0, 1, 1, 0] },
   roadVertical: { value: 0 },

@@ -242,7 +242,7 @@ export class ThreeRoadGuides {
             this.routePoint(positions, offset, route, 1 - i / segments);
             this.routePoint(positions, offset + 3, route, 1 - (i + 1) / segments);
           }
-        } else if (!this.routes?.length) this.lane(box.x, box.black, camera);
+        } else if (!this.routes?.length) this.lane(box.x, box.black, camera, box.pitch);
       }
     }
     this.valid = this.whiteCount + this.blackCount > 0 && this.right > this.left;
@@ -251,11 +251,21 @@ export class ThreeRoadGuides {
     this.blackLanes.geometry.getAttribute("position").needsUpdate = true;
   }
 
-  private lane(x: number, black: boolean, camera: WorldCamera): void {
+  private lane(x: number, black: boolean, camera: WorldCamera, pitch: number): void {
     const positions = black ? this.blackPositions : this.whitePositions;
-    const offset = (black ? this.blackCount++ : this.whiteCount++) * 6;
-    this.point(positions, offset, x, camera.roadFarZ, camera, black);
-    this.point(positions, offset + 3, x, camera.near.z, camera, black);
+    const contact = camera.roadWidth?.contacts?.[black ? 1 : 0] ?? camera.near;
+    // A docked lane bends near the keys; enough segments follow the same blend as the notes.
+    const segments = this.docked ? DOCKED_SEGMENTS : 1;
+    for (let i = 0; i < segments; i++) {
+      const offset = (black ? this.blackCount++ : this.whiteCount++) * 6;
+      for (const [end, share] of [
+        [0, 1 - i / segments],
+        [3, 1 - (i + 1) / segments]
+      ] as const) {
+        const z = contact.z + share * (camera.roadFarZ - contact.z);
+        this.point(positions, offset + end, x, z, camera, black, pitch);
+      }
+    }
   }
 
   private routePoint(
@@ -280,23 +290,29 @@ export class ThreeRoadGuides {
     x: number,
     z: number,
     camera: WorldCamera,
-    black = false
+    black = false,
+    pitch = 0
   ): void {
     const contact = camera.roadWidth?.contacts?.[black ? 1 : 0] ?? camera.near;
-    const point = camera.roadWidth
-      ? roadWorldPoint(
-          camera.roadWidth,
-          x,
-          contact.y + 0.025,
-          Math.max(z, contact.z),
-          contact.y,
-          contact.z,
-          this.vertical
-        )
-      : { x, y: camera.near.y + 0.025, z };
+    const at = (depth: number) =>
+      camera.roadWidth
+        ? roadWorldPoint(
+            camera.roadWidth,
+            x,
+            contact.y + 0.025,
+            Math.max(depth, contact.z),
+            contact.y,
+            contact.z,
+            this.vertical
+          )
+        : { x, y: camera.near.y + 0.025, z: depth };
+    const point = at(z);
     positions[offset] = point.x;
     positions[offset + 1] = point.y;
     positions[offset + 2] = -point.z;
+    const anchor = at(contact.z);
+    this.anchorBuffers.get(positions)?.setXYZ(offset / 3, anchor.x, anchor.y, -anchor.z);
+    this.pitchBuffers.get(positions)?.setX(offset / 3, pitch);
     this.progressBuffers
       .get(positions)
       ?.setX(offset / 3, (z - contact.z) / Math.max(0.000001, camera.roadFarZ - contact.z));

@@ -12,9 +12,11 @@ export class ViewSceneCamera {
     this.composition = value;
     this.apply();
   };
-  setWorldFov = (value: number): void => {
+  /** A world reset also returns the selected composition's initial pose. */
+  setWorldFov = (value: number, resetPose = false): void => {
     this.worldFov = value;
     this.road()?.setWorldFov(value);
+    if (resetPose) this.road()?.resetFreeCamera();
   };
   private movement = false;
   private layout: FreeRoadLayout = DEFAULT_FREE_DIRECT_FIELD;

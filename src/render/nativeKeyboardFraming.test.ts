@@ -10,6 +10,7 @@ import { layoutKeyboard } from "./keyboardLayout";
 import type { Geometry, KeysPlacement } from "./viewGeometry";
 import { USUAL_PLACEMENT, viewGeometry, viewLayoutChanged } from "./viewGeometry";
 import { CAMERA_PRESETS, DEFAULT_CAMERA, normalizeCamera, type CameraPrefs } from "./worldCamera";
+import type { RoadShape } from "./roadLayoutCamera";
 import { nativeViewCameras } from "./nativeViewCameras";
 import * as framing from "./nativeKeyboardFraming";
 import { nativeKeyboardFootprint, naturalNativeKeyboardHeight } from "./nativeKeyboardFraming";
@@ -93,6 +94,118 @@ function layoutHarness(
   };
   return { view, internal, screen, road, setKeyboard, layout, scene, dispose };
 }
+
+describe("independent world road", () => {
+  interface RoadFields {
+    camera: {
+      project: (x: number, y: number, z: number) => { x: number; y: number };
+      roadFarZ: number;
+      sourceX: (x: number) => number;
+      params: unknown;
+    };
+    size: { height: number };
+    contactKeys: ReadonlyMap<number, { x: number; width: number; black: boolean }>;
+    dock: { lanes: ReadonlyMap<number, { worldOffsetX?: number; depth?: number }> };
+    shape: RoadShape;
+  }
+  const keyboards: readonly CameraPrefs[] = [
+    CAMERA_PRESETS.top,
+    CAMERA_PRESETS.player,
+    CAMERA_PRESETS.hands,
+    { ...CAMERA_PRESETS.player, fov: 25 },
+    { ...CAMERA_PRESETS.player, fov: 85 },
+    { ...CAMERA_PRESETS.player, height: 1000, distance: 1200 },
+    { ...CAMERA_PRESETS.player, pitch: -5, targetY: 250 },
+    { ...CAMERA_PRESETS.top, targetY: -250, scale: 0.55 },
+    { ...CAMERA_PRESETS.top, scale: 1.6 }
+  ];
+
+  it("keeps the world road while every keyboard camera setting changes and joins the shown keys", () => {
+    for (const horizon of [0.1, 0.99, 1, 1.01, 1.5])
+      for (const [low, high] of [
+        [48, 72],
+        [21, 108]
+      ] as const) {
+        let world: string | undefined;
+        for (const prefs of keyboards) {
+          const test = layoutHarness(1440, 900, low, high, prefs, false);
+          const road = test.road as unknown as RoadFields;
+          road.shape = { far: 0.1, horizon };
+          test.layout();
+          const camera = test.scene().keyboardCamera;
+          if (!camera) throw new Error("Missing camera");
+          const far = [0, 400, 1440].map((x) =>
+            road.camera.project(road.camera.sourceX(x), 22, road.camera.roadFarZ)
+          );
+          const signature = JSON.stringify([road.camera.params, road.camera.roadFarZ, far]);
+          world ??= signature;
+          expect(signature).toBe(world);
+          for (const key of road.contactKeys.values()) {
+            const keyX = key.x + key.width / 2;
+            const lane = road.dock.lanes.get(keyX);
+            const floor = key.black ? 34 : 22;
+            const expected = camera.project(
+              camera.sourceX(keyX) + (lane?.worldOffsetX ?? 0),
+              floor,
+              lane?.depth ?? 150
+            );
+            const actual = test.road.notePlace(keyX, road.size.height);
+            expect(Math.abs((actual?.x ?? NaN) - expected.x)).toBeLessThanOrEqual(1);
+            expect(Math.abs((actual?.y ?? NaN) - expected.y)).toBeLessThanOrEqual(1);
+          }
+          test.dispose();
+        }
+      }
+  });
+  it("straightens lanes onto the shown keys automatically and under a camera snapshot", () => {
+    const lane = (fit: RoadShape["fit"], prefs: CameraPrefs) => {
+      const test = layoutHarness(1440, 900, 21, 108, prefs, false);
+      const road = test.road as unknown as RoadFields;
+      road.shape = { far: 0.1, horizon: 0.1, fit };
+      test.layout();
+      const key = [...road.contactKeys.values()].find((each) => !each.black && each.x > 200);
+      if (!key) throw new Error("Missing key");
+      const points = [1, 0.95, 0.85, 0.7, 0.5, 0.25, 0].map(
+        (share) =>
+          test.road.notePlace(key.x + key.width / 2, road.size.height * share) ?? {
+            x: NaN,
+            y: NaN
+          }
+      );
+      test.dispose();
+      return points;
+    };
+    const deviation = (points: readonly { x: number; y: number }[]) => {
+      const [a, b] = [points[0] ?? { x: NaN, y: NaN }, points.at(-1) ?? { x: NaN, y: NaN }];
+      const length = Math.hypot(b.x - a.x, b.y - a.y);
+      return Math.max(
+        ...points.map(
+          (p) => Math.abs((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)) / length
+        )
+      );
+    };
+    const near = (
+      a: { x: number; y: number } | undefined,
+      b: { x: number; y: number } | undefined
+    ) => Math.hypot((a?.x ?? NaN) - (b?.x ?? NaN), (a?.y ?? NaN) - (b?.y ?? NaN));
+    const tilted = CAMERA_PRESETS.player;
+    const bent = lane(undefined, tilted);
+    expect(deviation(bent)).toBeGreaterThan(1);
+    expect(deviation(lane({ mode: "button" }, tilted))).toBeCloseTo(deviation(bent), 6);
+    const auto = lane({ mode: "auto" }, tilted);
+    expect(deviation(auto)).toBeLessThan(0.5);
+    expect(near(auto[0], bent[0])).toBeLessThanOrEqual(0.01);
+    expect(near(auto.at(-1), bent.at(-1))).toBeLessThanOrEqual(0.01);
+    const snapshot = lane({ mode: "button", camera: tilted }, tilted);
+    snapshot.forEach((point, i) => {
+      expect(near(point, auto[i])).toBeLessThanOrEqual(0.5);
+    });
+    // A keyboard camera changed after the snapshot bends the near quarter again.
+    const later = lane({ mode: "button", camera: CAMERA_PRESETS.hands }, tilted);
+    expect(deviation(later)).toBeGreaterThan(1);
+    expect(near(later[0], auto[0])).toBeLessThanOrEqual(0.01);
+  });
+});
 
 describe("native natural framing", () => {
   it("keeps the full parallel key travel inside the player viewport", () => {
@@ -250,14 +363,21 @@ describe("native natural framing", () => {
             expect(((point.x + 1) * 667) / 2).toBeCloseTo(expected.x, 6);
             expect(((1 - point.y) * 180) / 2).toBeCloseTo(expected.y, 6);
             expect(point.z).toBeLessThan(1);
-            const fields = test.road as unknown as {
-              camera: typeof camera;
-              blackLane: Parameters<typeof projectNoteLane>[1];
-              whiteLane: Parameters<typeof projectNoteLane>[1];
-            };
+            // The displayed keys' own note camera; the reference world joins it at contact.
+            const fields = (
+              test.road as unknown as {
+                dock: {
+                  cameras: {
+                    notes: typeof camera;
+                    blackLane: Parameters<typeof projectNoteLane>[1];
+                    whiteLane: Parameters<typeof projectNoteLane>[1];
+                  };
+                };
+              }
+            ).dock.cameras;
             if (z > 100) {
               const contact = projectNoteLane(
-                fields.camera.project(x, y, z),
+                fields.notes.project(x, y, z),
                 y === 34 ? fields.blackLane : fields.whiteLane
               );
               expect(contact.x).toBeCloseTo(expected.x, 6);
@@ -292,7 +412,8 @@ describe("native natural framing", () => {
     test.view.setKeysPlacement(USUAL_PLACEMENT);
     const reset = test.layout();
     expect(reset.keyboardHeight).toBeGreaterThan(short.keyboardHeight);
-    expect(cached.mock.calls.length).toBe(before + 3);
+    // Each layout measures the player's keyboard and the world's fixed reference keyboard.
+    expect(cached.mock.calls.length).toBe(before + 6);
     test.dispose();
   });
 });

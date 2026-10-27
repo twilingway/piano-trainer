@@ -6,7 +6,18 @@ export interface RoadShape {
   readonly far: number;
   /** The horizon, as a share of the way down from the top of the view to the hit line. */
   readonly horizon: number;
+  /** Standard road straightening; absent keeps the plain near-quarter bend. */
+  readonly fit?: RoadFit | undefined;
 }
+/**
+ * "auto" keeps every standard lane straight to the shown keys; "button" bends the near quarter,
+ * straight only under the keyboard camera snapshot the button took.
+ */
+export interface RoadFit {
+  readonly mode: "auto" | "button";
+  readonly camera?: CameraPrefs | undefined;
+}
+export const DEFAULT_ROAD_FIT: RoadFit = { mode: "button" };
 export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
 
 /** Layout-only camera inputs; the scene width may exceed the visible viewport. */
