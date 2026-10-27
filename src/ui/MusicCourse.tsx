@@ -1,6 +1,7 @@
 import { MusicCourseResultDetails, MusicCourseResultSummary } from "./MusicCourseResultDetails";
 import { GameDialog } from "./GameDialog";
 import { useLessonWindow } from "./LessonWorkspace";
+import { LessonMenuItem, LessonSlot } from "./LessonSlots";
 import { musicLessonAction, musicButtonAnswer } from "../app/musicLessonAction";
 import { LessonIllustration } from "./LessonIllustration";
 import { useState } from "react";
@@ -216,15 +217,73 @@ export function MusicCoursePractice(props: MusicCoursePracticeProps) {
       className="reading-practice music-course-practice"
       aria-label={t(MUSIC_COURSE_LABELS[view.course])}
     >
-      <p className="music-course-status" role="status">
-        {t(view.phaseKey ?? STATUS[view.status])}
-        {view.counter
-          ? t(" · Задание {current} из {total}", {
+      {view.counter ? (
+        <LessonSlot name="counter">
+          <span className="lesson-counter">
+            {t("Задание {current} из {total}", {
               current: formatNumber(view.counter.current),
               total: formatNumber(view.counter.total)
-            })
-          : null}
-      </p>
+            })}
+          </span>
+        </LessonSlot>
+      ) : null}
+      <LessonSlot name="exit">
+        <button
+          type="button"
+          className="game-button lesson-exit"
+          onClick={() => {
+            onCommand("exit");
+          }}
+        >
+          {t("Выйти")}
+        </button>
+      </LessonSlot>
+      <LessonSlot name="feedback">
+        <p className="music-course-status" role="status">
+          {t(view.phaseKey ?? STATUS[view.status])}
+        </p>
+        {view.previewSeconds !== undefined ? (
+          <p>{t("До закрытия нот: {seconds} с", { seconds: formatNumber(view.previewSeconds) })}</p>
+        ) : null}
+        {view.startPitch !== undefined ? (
+          <p className="music-course-anchor">
+            {t("Начните с {note}.", { note: musicCourseNoteLabel(view.startPitch, t) })}
+          </p>
+        ) : null}
+        {view.positionLowPitch !== undefined ? (
+          <p>
+            {t("Позиция руки от ноты {note}", {
+              note: musicCourseNoteLabel(view.positionLowPitch, t)
+            })}
+          </p>
+        ) : null}
+        {view.error ? <p role="alert">{t(view.error.key, view.error.params)}</p> : null}
+        {!view.allReleased ? <p>{t("Отпустите все клавиши перед продолжением.")}</p> : null}
+        {view.showHelp ? (
+          <div className="music-course-help" role="status">
+            <p>{t("Подсказка использована: этот проход остаётся обучением.")}</p>
+            {view.helpKeys?.map((key) => (
+              <p key={key}>{t(key)}</p>
+            ))}
+          </div>
+        ) : null}
+        {result ? (
+          <div className="lesson-result">
+            <div role="status">
+              <MusicCourseResultSummary result={result} />
+            </div>
+            <button
+              type="button"
+              className="game-button"
+              onClick={() => {
+                setWindow("music-result");
+              }}
+            >
+              {t("Подробнее")}
+            </button>
+          </div>
+        ) : null}
+      </LessonSlot>
       <p
         className={
           windows
@@ -234,23 +293,6 @@ export function MusicCoursePractice(props: MusicCoursePracticeProps) {
       >
         {t(view.instructionKey ?? MUSIC_TASK_INSTRUCTIONS[view.taskKind], view.instructionParams)}
       </p>
-      {view.previewSeconds !== undefined ? (
-        <p>{t("До закрытия нот: {seconds} с", { seconds: formatNumber(view.previewSeconds) })}</p>
-      ) : null}
-      {view.startPitch !== undefined ? (
-        <p className="music-course-anchor">
-          {t("Начните с {note}.", { note: musicCourseNoteLabel(view.startPitch, t) })}
-        </p>
-      ) : null}
-      {view.positionLowPitch !== undefined ? (
-        <p>
-          {t("Позиция руки от ноты {note}", {
-            note: musicCourseNoteLabel(view.positionLowPitch, t)
-          })}
-        </p>
-      ) : null}
-      {view.error ? <p role="alert">{t(view.error.key, view.error.params)}</p> : null}
-      {!view.allReleased ? <p>{t("Отпустите все клавиши перед продолжением.")}</p> : null}
       {!windows && action.command && action.command !== "stop" ? (
         <button
           type="button"
@@ -263,44 +305,47 @@ export function MusicCoursePractice(props: MusicCoursePracticeProps) {
           {t(action.labelKey)}
         </button>
       ) : null}
-      {answerChoices.length > 0 && (view.canAnswer || result) ? (
-        <div
-          className="reading-actions music-course-choices"
-          role="group"
-          aria-label={t("Варианты музыкального ответа")}
-        >
-          {answerChoices.map((choice) => (
-            <button
-              type="button"
-              className="game-button"
-              key={choice.value}
-              disabled={!canAnswer || (!result && !musicButtonAnswer(view))}
-              onClick={(event) => {
-                choose(choice.value, event);
-              }}
-            >
-              {t(choice.labelKey, choiceParams(choice, t))}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {result ? (
-        <div className="lesson-result">
-          <div role="status">
-            <MusicCourseResultSummary result={result} />
-          </div>
-          <button
-            type="button"
-            className="game-button"
-            onClick={() => {
-              setWindow("music-result");
-            }}
+      <LessonSlot name="answer">
+        {answerChoices.length > 0 && (view.canAnswer || result) ? (
+          <div
+            className="reading-actions music-course-choices"
+            role="group"
+            aria-label={t("Варианты музыкального ответа")}
           >
-            {t("Подробный результат")}
-          </button>
-        </div>
-      ) : null}
-      <div className="reading-actions lesson-secondary-actions">
+            {answerChoices.map((choice) => (
+              <button
+                type="button"
+                className="game-button"
+                key={choice.value}
+                disabled={!canAnswer || (!result && !musicButtonAnswer(view))}
+                onClick={(event) => {
+                  choose(choice.value, event);
+                }}
+              >
+                {t(choice.labelKey, choiceParams(choice, t))}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {alternatives.length > 0 ? (
+          <div className="reading-actions">
+            {alternatives.map((choice) => (
+              <button
+                type="button"
+                className="game-button"
+                key={choice.value}
+                disabled={!canAnswer}
+                onClick={(event) => {
+                  choose(choice.value, event);
+                }}
+              >
+                {t(choice.labelKey, choiceParams(choice, t))}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </LessonSlot>
+      <LessonSlot name="hint">
         {view.canListen && action.command !== "listen" ? (
           <button
             type="button"
@@ -325,83 +370,43 @@ export function MusicCoursePractice(props: MusicCoursePracticeProps) {
             {t("Подсказка")}
           </button>
         ) : null}
-        {(view.canRetry || view.error) && action.command !== "retry" ? (
-          <button
-            type="button"
-            className="game-button"
-            disabled={view.canRetry === false}
-            onClick={() => {
-              onCommand("retry");
-            }}
-          >
-            {t(view.retryCreatesNewMaterial ? "Новый пример для проверки" : "Повторить текущее")}
-          </button>
-        ) : null}
-        {!result && view.course !== "integrated" ? (
-          <button
-            type="button"
-            className="game-button"
-            onClick={() => {
-              onCommand("new");
-            }}
-          >
-            {t("Новое задание")}
-          </button>
-        ) : null}
-      </div>
-      {view.showHelp ? (
-        <div className="music-course-help" role="status">
-          <p>{t("Подсказка использована: этот проход остаётся обучением.")}</p>
-          {view.helpKeys?.map((key) => (
-            <p key={key}>{t(key)}</p>
-          ))}
-        </div>
+      </LessonSlot>
+      {(view.canRetry || view.error) && action.command !== "retry" ? (
+        <LessonMenuItem
+          kind="repeat"
+          label={t(
+            view.retryCreatesNewMaterial ? "Новый пример для проверки" : "Повторить текущее"
+          )}
+          disabled={view.canRetry === false}
+          onSelect={() => {
+            onCommand("retry");
+          }}
+        />
       ) : null}
-      <nav
-        className="reading-actions lesson-reference-actions"
-        aria-label={t("Дополнительно к уроку")}
-      >
-        <button
-          type="button"
-          className="game-button"
-          onClick={() => {
-            setTheoryOpen(true);
+      {!result && view.course !== "integrated" ? (
+        <LessonMenuItem
+          kind="newSeries"
+          label={t("Новое задание")}
+          onSelect={() => {
+            onCommand("new");
           }}
-        >
-          {t("Как это работает")}
-        </button>
-        <button
-          type="button"
-          className="game-button"
-          onClick={() => {
-            setWindow("music-settings");
-          }}
-        >
-          {t(windows?.interruptsAttempt ? "Параметры · остановить попытку" : "Параметры и ввод")}
-        </button>
-        {alternatives.map((choice) => (
-          <button
-            type="button"
-            className="game-button"
-            key={choice.value}
-            disabled={!canAnswer}
-            onClick={(event) => {
-              choose(choice.value, event);
-            }}
-          >
-            {t(choice.labelKey, choiceParams(choice, t))}
-          </button>
-        ))}
-        <button
-          type="button"
-          className="game-button"
-          onClick={() => {
-            onCommand("exit");
-          }}
-        >
-          {t("Закончить урок")}
-        </button>
-      </nav>
+        />
+      ) : null}
+      <LessonMenuItem
+        kind="guide"
+        label={t("Как это работает")}
+        onSelect={() => {
+          setTheoryOpen(true);
+        }}
+      />
+      <LessonMenuItem
+        kind="settings"
+        label={t("Параметры и ввод")}
+        note={windows?.interruptsAttempt ? t("остановит попытку") : undefined}
+        onSelect={() => {
+          setWindow("music-settings");
+        }}
+      />
       <GameDialog
         open={theoryOpen}
         modal={false}

@@ -159,7 +159,7 @@ describe("reading course UI", () => {
         generationError
       />
     );
-    expect(host.querySelector("strong")?.textContent).toBe("Повторяю трудные ноты");
+    expect(host.querySelector(".lesson-counter__mode")?.textContent).toBe("Повторяю трудные ноты");
     expect(host.querySelector('[role="alert"]')?.closest("details")).toBeNull();
     await click(button("Повторить поиск серии"));
     expect(host.querySelector(".reading-progress")).toBeNull();
@@ -292,8 +292,8 @@ describe("reading course UI", () => {
     await click(button("Подсказка"));
     expect(props.onHint).toHaveBeenCalledOnce();
     await render(<ReadingPracticePanel {...props} hintLevel={1} hintPitch={64} />);
-    expect(host.querySelector(".reading-hint")?.textContent).toBe("Текущая нота: ми 4");
-    expect(host.textContent).not.toContain("Текущая нота: до 4");
+    expect(host.querySelector(".reading-hint")?.textContent).toBe("Подсказка: ми 4");
+    expect(host.textContent).not.toContain("Подсказка: до 4");
     await render(<ReadingPracticePanel {...props} hintLevel={2} />);
     expect(button("Подсказка").disabled).toBe(true);
     await render(<ReadingPracticePanel {...props} result={result()} />);

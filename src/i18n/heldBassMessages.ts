@@ -115,6 +115,5 @@ export const heldBassMessages: Messages = {
   "Серия удержания баса завершена": { en: "Bass-hold series complete" },
   "Фрагмент с басом {number} из 10": { en: "Bass-hold fragment {number} of 10" },
   "Мелодия: нота {number} из {total}": { en: "Melody: note {number} of {total}" },
-  "Выйти из удержания баса": { en: "Leave bass-hold practice" },
   "Бас и ожидаемая нота: {notes}": { en: "Bass and expected note: {notes}" }
 };

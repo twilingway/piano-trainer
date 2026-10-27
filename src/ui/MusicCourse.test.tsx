@@ -234,7 +234,7 @@ describe("phase actions and real response modality", () => {
     await render(<MusicCoursePractice {...current} />);
     await click(button("Повторить текущее"));
     await click(button("Новое задание"));
-    await click(button("Закончить урок"));
+    await click(button("Выйти"));
     expect(current.onCommand.mock.calls).toEqual([["retry"], ["new"], ["exit"]]);
   });
 });
@@ -282,7 +282,13 @@ describe("references, blocking windows and compact results", () => {
     }
     await render(<Harness />);
     expect(host.querySelector("fieldset")).toBeNull();
-    await click(button("Параметры · остановить попытку"));
+    const settings = required(
+      [...host.querySelectorAll("button")].find((item) =>
+        item.textContent.startsWith("Параметры и ввод")
+      )
+    );
+    expect(settings.textContent).toContain("остановит попытку");
+    await click(settings);
     expect(changes).toHaveBeenLastCalledWith("music-settings");
     expect(host.querySelector(".lesson-settings-dialog")?.hasAttribute("open")).toBe(true);
     await change(select("Ввод в музыкальном курсе"), "midi");
@@ -319,7 +325,7 @@ describe("references, blocking windows and compact results", () => {
       />
     );
     expect(host.querySelector("dt, .music-course-notes")).toBeNull();
-    await click(button("Подробный результат"));
+    await click(button("Подробнее"));
     expect(host.querySelectorAll('[data-notes="expected"] li')).toHaveLength(1);
     expect(host.querySelector('[data-notes="played"]')?.textContent).toContain("начало 0,125");
     expect(host.querySelectorAll("dt")).toHaveLength(2);

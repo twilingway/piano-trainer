@@ -3,6 +3,7 @@ import { LessonIllustration } from "./LessonIllustration";
 import { LessonReport } from "./LessonReport";
 import { useI18n } from "../app/useI18n";
 import { LessonDetails } from "./LessonDetails";
+import { LessonMenuItem, LessonSlot } from "./LessonSlots";
 import { readingPurpose, summarizeReadingResults } from "../reading/progress";
 import type { ReadingPurpose, ReadingSourceFilter } from "../reading/progressTypes";
 import type {
@@ -133,16 +134,26 @@ export function ReadingPracticePanel(props: PracticeProps) {
   const { task, preferences, result } = props;
   return (
     <section className="reading-practice" aria-label={t("Правая рука: пять нот")}>
-      <div className="reading-actions">
-        <strong>{t(READING_PURPOSE_LABELS[props.purpose ?? task])}</strong>
-        <span>{t("Нота {number} из 20", { number: Math.min(20, props.index + 1) })}</span>
-        <button type="button" className="game-button" onClick={props.onNewSeries}>
-          {t("Новая серия")}
+      <LessonSlot name="counter">
+        <span className="lesson-counter__mode">
+          {t(READING_PURPOSE_LABELS[props.purpose ?? task])}
+        </span>
+        <span className="lesson-counter">
+          {result
+            ? t("Завершено · {number} из {total}", { number: 20, total: 20 })
+            : t("Нота {number} из 20", { number: Math.min(20, props.index + 1) })}
+        </span>
+      </LessonSlot>
+      <LessonSlot name="exit">
+        <button type="button" className="game-button lesson-exit" onClick={props.onExit}>
+          {t("Выйти")}
         </button>
-        <button type="button" className="game-button" onClick={props.onExit}>
-          {t("Выйти из чтения нот")}
-        </button>
-        {task !== "check" && (
+      </LessonSlot>
+      {result === null && (
+        <LessonMenuItem kind="newSeries" label={t("Новая серия")} onSelect={props.onNewSeries} />
+      )}
+      {task !== "check" && (
+        <LessonSlot name="hint">
           <button
             type="button"
             className="game-button"
@@ -151,31 +162,28 @@ export function ReadingPracticePanel(props: PracticeProps) {
           >
             {t("Подсказка")}
           </button>
-        )}
-      </div>
-      <div className="reading-status">
-        <p
-          className={`reading-muted${props.ready || result || props.renderError ? " reading-status-hidden" : ""}`}
-        >
-          {t("Начните игру кнопкой под нотами, затем нажмите нужную клавишу.")}
-        </p>
-        {props.renderError ? (
+        </LessonSlot>
+      )}
+      {props.renderError ? (
+        <LessonSlot name="feedback">
           <p role="alert">
             {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
             <button type="button" onClick={props.onRetry}>
               {t("Повторить загрузку стана")}
             </button>
           </p>
-        ) : (
-          props.hintLevel > 0 &&
-          props.hintPitch !== undefined &&
-          task !== "check" && (
-            <p className="reading-hint" aria-live="polite">
-              {t("Текущая нота: {note}", { note: readingNoteName(props.hintPitch, t) })}
+        </LessonSlot>
+      ) : (
+        props.hintLevel > 0 &&
+        props.hintPitch !== undefined &&
+        task !== "check" && (
+          <LessonSlot name="feedback">
+            <p className="reading-hint">
+              {t("Подсказка: {note}", { note: readingNoteName(props.hintPitch, t) })}
             </p>
-          )
-        )}
-      </div>
+          </LessonSlot>
+        )
+      )}
       {task !== "check" && (
         <LessonDetails kind="settings" id="reading:practice:settings">
           <div className="reading-hint-settings">
@@ -222,7 +230,9 @@ export function ReadingPracticePanel(props: PracticeProps) {
           <ReadingResults result={result} sourceFilter={props.sourceFilter} />
         </LessonReport>
       )}
-      <ReadingGenerationError {...props} />
+      <LessonSlot name="feedback">
+        <ReadingGenerationError {...props} />
+      </LessonSlot>
       <LessonDetails kind="progress" id="reading:practice:progress">
         <ReadingProgress {...props} generationError={false} />
         <details className="reading-history">

@@ -14,6 +14,7 @@ import { createMemoryReadingRepository } from "./readingRepository";
 import { generateReadingExercise } from "../reading/generator";
 import { initialReadingState } from "./readingSlice";
 import { trainerGuidance } from "../practice/readingPolicy";
+import { HIDDEN_LESSON_CUE } from "../reading/fingerCues";
 
 let root: Root;
 let host: HTMLDivElement;
@@ -146,28 +147,30 @@ afterEach(() => {
 describe("reading course presentation and trainer wiring", () => {
   it("uses the same allowed finger on the score and keyboard, clears it on the next note and in a check", () => {
     const practice = selection();
+    const cueText = () =>
+      new DOMParser()
+        .parseFromString(reading.prompt?.musicXml ?? "", "application/xml")
+        .querySelector('[data-lesson-finger-cue="true"] > text')?.textContent;
     present();
-    expect(reading.prompt?.musicXml).not.toContain("data-lesson-finger-cue");
+    // The row is reserved from the start, so the hint does not grow the staff.
+    expect(cueText()).toBe(HIDDEN_LESSON_CUE);
     act(() => {
       reading.hint();
     });
     frame(1016);
-    expect(reading.prompt?.musicXml).not.toContain("data-lesson-finger-cue");
+    expect(cueText()).toBe(HIDDEN_LESSON_CUE);
     act(() => {
       reading.hint();
     });
     const cues = trainerGuidance(practice, reading.policy, true, false).frame.fingerCues;
     expect(cues).toHaveLength(1);
-    const label = new DOMParser()
-      .parseFromString(reading.prompt?.musicXml ?? "", "application/xml")
-      .querySelector('[data-lesson-finger-cue="true"] > text')?.textContent;
-    expect(label).toMatch(new RegExp(`${String(cues?.[0]?.recommendedFinger)}$`));
+    expect(cueText()).toMatch(new RegExp(`${String(cues?.[0]?.recommendedFinger)}$`));
     const originalExercise = reading.exercise;
     answer(practice, 1100);
     practice.tick(1700);
     update(practice, true, 1700);
     expect(reading.exercise).toBe(originalExercise);
-    expect(reading.prompt?.musicXml).not.toContain("data-lesson-finger-cue");
+    expect(cueText()).toBe(HIDDEN_LESSON_CUE);
     expect(trainerGuidance(practice, reading.policy, true, false).frame.fingerCues).toEqual([]);
     selection("check");
     present();

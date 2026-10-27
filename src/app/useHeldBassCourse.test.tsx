@@ -2,6 +2,7 @@
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HIDDEN_LESSON_CUE } from "../reading/fingerCues";
 import { PracticeSession } from "../practice/session";
 import type { Trainer } from "../practice/Trainer";
 import { createAppStore, type AppStore } from "./store";
@@ -9,6 +10,13 @@ import { withTestStore } from "./storeTestSupport";
 import { createMemoryReadingRepository } from "./readingRepository";
 import { useHeldBassCourse, useHeldBassTrainer } from "./useHeldBassCourse";
 
+/** Hint rows stay reserved under the notes; only their text tells a shown hint. */
+function shownLyrics(xml = "") {
+  return Array.from(
+    new DOMParser().parseFromString(xml, "application/xml").querySelectorAll("lyric > text"),
+    (text) => text.textContent
+  ).filter((text) => text !== HIDDEN_LESSON_CUE);
+}
 let root: Root, host: HTMLDivElement, store: AppStore, now: number;
 let course: ReturnType<typeof useHeldBassCourse>;
 const configureCourse = vi.fn(),
@@ -233,7 +241,7 @@ describe("held bass course shell with the actual single clock", () => {
     expect(course.hintLevel).toBe(0);
     expect(course.policy?.cuePitches()).toEqual([]);
     expect(course.scene).toBe(scene);
-    expect(course.prompt?.musicXml).not.toContain("<lyric>");
+    expect(shownLyrics(course.prompt?.musicXml)).toEqual([]);
     frame(practice, now + 500);
     act(() => {
       course.hint();

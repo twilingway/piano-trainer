@@ -9,6 +9,13 @@ export interface LessonFingerCue {
   readonly recommendedFinger: Finger;
 }
 
+/**
+ * The cue row with nothing in it: the staff keeps its height until a hint fills the row.
+ * A zero-width space: OSMD neither lays out nor draws a label whose text trims to nothing,
+ * and `trim()` removes every Unicode space but this one.
+ */
+export const HIDDEN_LESSON_CUE = String.fromCharCode(0x200b);
+
 const FIVE_NOTES = [0, 2, 4, 5, 7];
 const cachedCues = new WeakMap<SongNote, LessonFingerCue>();
 export const NO_FINGER_CUES: readonly LessonFingerCue[] = [];

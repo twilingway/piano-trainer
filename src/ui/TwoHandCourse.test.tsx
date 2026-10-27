@@ -58,19 +58,19 @@ describe("two-hand player interface", () => {
     act(() => {
       root.render(<TwoHandPracticePanel {...props} />);
     });
-    expect(host.textContent).not.toContain("Текущая пара");
+    expect(host.textContent).not.toContain("Подсказка:");
     expect(host.textContent).not.toContain("Одной мышью");
     await reveal("two-hand-reading:practice:guide");
     expect(host.textContent).toContain("Одной мышью");
     act(() => {
       root.render(<TwoHandPracticePanel {...props} hintLevel={1} status="release" />);
     });
-    expect(host.textContent).toContain("Текущая пара: до 3 + до 4");
+    expect(host.textContent).toContain("Подсказка: до 3 + до 4");
     expect(host.textContent).toContain("Пара ещё проверяется");
     act(() => {
       setInterfaceLanguage("en");
     });
-    expect(host.textContent).toContain("Current pair:");
+    expect(host.textContent).toContain("Hint:");
     expect(host.textContent).toContain("The pair is still being checked");
     expect(host.textContent).not.toContain("Две руки");
   });
@@ -149,7 +149,7 @@ describe("two-hand player interface", () => {
     expect(current.closest("details")).toBeNull();
     expect(host.querySelector(".reading-history,input")).toBeNull();
     expect(host.querySelector('[role="status"]')?.textContent).toBe("Серия двух рук завершена");
-    expect(host.textContent).toContain("Пара 1 из 10");
+    expect(host.textContent).toContain("Завершено · 10 из 10");
     await reveal("two-hand-reading:practice:guide");
     await reveal("two-hand-reading:practice:guide", false);
     expect(host.querySelector(".reading-results")).toBe(current);
@@ -167,11 +167,14 @@ describe("two-hand player interface", () => {
     const action = (label: string) =>
       required([...host.querySelectorAll("button")].find((button) => button.textContent === label));
     expect(action("Подсказка").disabled).toBe(true);
+    // A finished series offers a new one as the main action, not as a second panel button.
+    expect(
+      [...host.querySelectorAll("button")].some((button) => button.textContent === "Новая серия")
+    ).toBe(false);
     act(() => {
-      action("Новая серия").click();
-      action("Выйти из совместной игры").click();
+      action("Выйти").click();
     });
-    expect(onNewSeries).toHaveBeenCalledOnce();
+    expect(onNewSeries).not.toHaveBeenCalled();
     expect(onExit).toHaveBeenCalledOnce();
   });
   it("offers manual help only for a presented active pair", () => {

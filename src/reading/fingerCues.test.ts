@@ -5,7 +5,12 @@ import { generateReadingExercise } from "./generator";
 import { generateBassReadingExercise } from "./bassGenerator";
 import { generateTwoHandExercise, twoHandPromptXml } from "./twoHandGenerator";
 import { generateHeldBassExercise } from "./heldBassGenerator";
-import { lessonFingerCues, musicXmlWithLessonFingerCues, withLessonFingering } from "./fingerCues";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues,
+  withLessonFingering
+} from "./fingerCues";
 import { lessonFingerLabel } from "./fingerCueLabel";
 import { readingPromptXml } from "./prompt";
 import { songFromMusicXml } from "../song/musicxml";
@@ -84,6 +89,25 @@ describe("allowed display-only MusicXML cue pass", () => {
     expect(cleared).not.toContain("lesson-finger-cue");
     expect(songFromMusicXml(cleared, "").notes).toEqual(
       songFromMusicXml(exercise.musicXml, "").notes
+    );
+  });
+
+  it("reserves the cue row with a text OSMD still draws but nobody sees", () => {
+    // OSMD skips a label whose text trims to nothing; a zero-width space survives trim().
+    expect(HIDDEN_LESSON_CUE.codePointAt(0)).toBe(0x200b);
+    expect(HIDDEN_LESSON_CUE.trim()).toBe(HIDDEN_LESSON_CUE);
+    const exercise = generateReadingExercise("notes", 22);
+    const cues = lessonFingerCues(exercise.song.notes.slice(8, 9));
+    const xml = musicXmlWithLessonFingerCues(
+      exercise.musicXml,
+      cues,
+      exercise.song.notes,
+      () => HIDDEN_LESSON_CUE
+    );
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+    expect(doc.querySelector("parsererror")).toBeNull();
+    expect(doc.querySelector('[data-lesson-finger-cue="true"] > text')?.textContent).toBe(
+      HIDDEN_LESSON_CUE
     );
   });
 

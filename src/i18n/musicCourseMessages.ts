@@ -154,7 +154,7 @@ export const musicCourseMessages: Messages = {
   "Первая нота известна": { en: "Given first note" },
   "Любая начальная нота": { en: "Choose any starting note" },
   "Выйти из музыкального урока": { en: "Leave music lesson" },
-  " · Задание {current} из {total}": { en: " · Task {current} of {total}" },
+  "Задание {current} из {total}": { en: "Task {current} of {total}" },
   "До закрытия нот: {seconds} с": { en: "Score closes in {seconds} s" },
   "Позиция руки от ноты {note}": { en: "Hand position starts at {note}" },
   "Дождитесь готовности нот и звука.": { en: "Wait for the score and sound to be ready." },

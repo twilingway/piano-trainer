@@ -30,7 +30,6 @@ export const readingMessages: Messages = {
   },
   "Нота {number} из 20": { en: "Note {number} of 20" },
   "Новая серия": { en: "New set" },
-  "Выйти из чтения нот": { en: "Leave note reading" },
   Подсказка: { en: "Hint" },
   "Не удалось показать ноты. Попробуйте загрузить стан снова.": {
     en: "Could not display the notes. Try loading the staff again."
@@ -39,7 +38,6 @@ export const readingMessages: Messages = {
   "Нажмите «Играть» и дождитесь появления текущей ноты.": {
     en: "Press Play and wait for the current note to appear."
   },
-  "Текущая нота: {note}": { en: "Current note: {note}" },
   "Настройки подсказок чтения": { en: "Reading hint settings" },
   "Показывать подсказки автоматически": { en: "Show hints automatically" },
   "Название ноты через, с": { en: "Note name after, s" },

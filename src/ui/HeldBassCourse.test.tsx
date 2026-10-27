@@ -109,7 +109,7 @@ describe("held bass course interface", () => {
     value.status = "travelling";
     value.hintLevel = 2;
     render(<HeldBassPracticePanel {...value} />, "en");
-    expect(host.textContent).toContain("Hold the bass, play the melody");
+    expect(host.textContent).toContain("Bass-hold fragment 3 of 10");
     expect(host.querySelector('[role="status"]')?.textContent).toContain("Wait for the next note");
     expect(host.textContent).not.toContain("Bass and expected note:");
     const hint = [...host.querySelectorAll("button")].find(
@@ -189,7 +189,7 @@ describe("held bass course interface", () => {
       "Серия удержания баса завершена"
     );
     expect(host.querySelector("input,select")).toBeNull();
-    expect(host.textContent).toContain("Фрагмент с басом 3 из 10");
+    expect(host.textContent).toContain("Завершено · 10 из 10");
     await reveal("held-bass:practice:guide");
     expect(host.textContent).toContain("настоящий мультитач");
     await reveal("held-bass:practice:guide", false);
@@ -206,11 +206,12 @@ describe("held bass course interface", () => {
     const action = (label: string) =>
       [...host.querySelectorAll("button")].find((button) => button.textContent === label);
     expect(action("Подсказка")?.disabled).toBe(true);
+    // A finished series offers a new one as the main action, not as a second panel button.
+    expect(action("Новая серия")).toBeUndefined();
     act(() => {
-      action("Новая серия")?.click();
-      action("Выйти из удержания баса")?.click();
+      action("Выйти")?.click();
     });
-    expect(value.onNewSeries).toHaveBeenCalledOnce();
+    expect(value.onNewSeries).not.toHaveBeenCalled();
     expect(value.onExit).toHaveBeenCalledOnce();
   });
 });

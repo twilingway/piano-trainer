@@ -152,7 +152,7 @@ describe("optional interval modes", () => {
     await reveal("interval:practice:more");
     await click(button("Вижу и играю пару"));
     await click(button("Новая серия"));
-    await click(button("Выйти из интервалов"));
+    await click(button("Выйти"));
     expect(current.onStart).toHaveBeenCalledWith("see-and-play");
     expect(current.onNewSeries).toHaveBeenCalledOnce();
     expect(current.onExit).toHaveBeenCalledOnce();

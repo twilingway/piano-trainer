@@ -165,8 +165,8 @@ describe("bass reading UI", () => {
     await render(
       <BassReadingPracticePanel {...props} task="phrases" hintLevel={1} hintPitch={52} />
     );
-    expect(host.querySelector(".reading-hint")?.textContent).toBe("Текущая нота: ми 3");
-    expect(host.textContent).not.toContain("Текущая нота: до 3");
+    expect(host.querySelector(".reading-hint")?.textContent).toBe("Подсказка: ми 3");
+    expect(host.textContent).not.toContain("Подсказка: до 3");
     await render(<BassReadingPracticePanel {...props} renderError hintLevel={1} />);
     expect(host.querySelector(".reading-hint")).toBeNull();
     await click("Подсказка");
@@ -251,7 +251,7 @@ describe("bass reading UI", () => {
     });
     expect(onPreferences).toHaveBeenCalledWith({ automaticHints: false });
     await click("Новая серия");
-    await click("Выйти из басового чтения");
+    await click("Выйти");
     expect(onNewSeries).toHaveBeenCalledOnce();
     expect(onExit).toHaveBeenCalledOnce();
     await english();
