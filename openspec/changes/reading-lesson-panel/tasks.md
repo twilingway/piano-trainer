@@ -4,23 +4,23 @@
 
 - [x] 1.1 Концепт Codex (codex-visual) по скриншотам пользователя; решения: все 8 панелей, одно
       «Меню урока».
-- [ ] 1.2 Proposal, delta spec `practice-controls`, design, tasks; `pnpm spec:validate`; одобрение
+- [x] 1.2 Proposal, delta spec `practice-controls`, design, tasks; `pnpm spec:validate`; одобрение
       пользователя до кода.
 
 ## 2. Каркас урока
 
-- [ ] 2.1 `LessonWorkspace`: места `header-actions`, `progress`, `action-row`, `feedback`, `answer`,
+- [x] 2.1 `LessonWorkspace`: места `header-actions`, `progress`, `action-row`, `feedback`, `answer`,
       `menu` и контекст их узлов; компоненты `LessonCounter`, `LessonExit`, `LessonHint`,
       `LessonFeedback`, `LessonAnswer`, `LessonMenuItem` рендерятся в место внутри каркаса и на
       месте вне его. Проверка: unit-тест монтирования (элемент попадает в нужное место, вне каркаса
       — на месте).
-- [ ] 2.2 «Меню урока»: немодальный список с `aria-expanded`, Escape/клик вне закрывают, фокус
+- [x] 2.2 «Меню урока»: немодальный список с `aria-expanded`, Escape/клик вне закрывают, фокус
       возвращается; не пишет в `lessonWindow`. Проверка: тест — открытие и закрытие меню не вызывает
       `onOpen`, выбор пункта вызывает его один раз.
-- [ ] 2.3 `LessonDetails` внутри каркаса → пункт меню с постоянной подписью и пометкой «остановит
+- [x] 2.3 `LessonDetails` внутри каркаса → пункт меню с постоянной подписью и пометкой «остановит
       попытку» при `interruptsAttempt`; `guide` → немодальное окно без `lessonWindow`. Проверка:
       обновлённые тесты `Workspace.test.tsx`, `LessonResultSummary.test.tsx`.
-- [ ] 2.4 `ConnectedLessonWorkspace`: главное действие фиксированной ширины с центрированной
+- [x] 2.4 `ConnectedLessonWorkspace`: главное действие фиксированной ширины с центрированной
       подписью; `reasonKey` уходит в слот обратной связи. Проверка: `pnpm typecheck`.
 
 ## 3. Панели упражнений
@@ -30,27 +30,30 @@
 `LessonHint` + текст в `LessonFeedback`, строки «Начните игру…» и название режима убраны,
 `LessonDetails` — в меню. Проверка каждой: `pnpm exec vitest run src/ui/<Panel>.test.tsx`.
 
-- [ ] 3.1 `ReadingCourse` (правая рука) и `BassReadingCourse` (левая рука).
-- [ ] 3.2 `IntervalCourse` (+`IntervalProgress`): «Вижу и играю» без длинной инструкции; на слух —
+- [x] 3.1 `ReadingCourse` (правая рука) и `BassReadingCourse` (левая рука).
+- [x] 3.2 `IntervalCourse` (+`IntervalProgress`): «Вижу и играю» без длинной инструкции; на слух —
       прослушивание и выбор в `LessonAnswer`; «Показать ответ» — `LessonHint`.
-- [ ] 3.3 `TwoHandCourse` и `HeldBassCourse` («Держите бас…» — в слоте обратной связи).
-- [ ] 3.4 `RhythmCourse` (+`RhythmProgress`) и `IndependentRhythmCourse`: «Ударить» и выбор ввода в
+- [x] 3.3 `TwoHandCourse` и `HeldBassCourse` («Держите бас…» — в слоте обратной связи).
+- [x] 3.4 `RhythmCourse` (+`RhythmProgress`) и `IndependentRhythmCourse`: «Ударить» и выбор ввода в
       `LessonAnswer`, фаза пульса в счётчике.
-- [ ] 3.5 `MusicCourse`: «Этап N/7» в счётчике, варианты ответа в `LessonAnswer`, «Параметры и
+- [x] 3.5 `MusicCourse`: «Этап N/7» в счётчике, варианты ответа в `LessonAnswer`, «Параметры и
       ввод», «Как это работает», «Дополнительно к уроку» — в меню.
 
 ## 4. Стили и тексты
 
-- [ ] 4.1 CSS `.lesson-workspace`: слот обратной связи с `min-height` без `display: none`, счётчик с
+- [x] 4.1 CSS `.lesson-workspace`: слот обратной связи с `min-height` без `display: none`, счётчик с
       `tabular-nums`, строка действий одной высоты, меню-список, низкие экраны
       (`max-height: 480px`). Проверка: `pnpm lint`.
-- [ ] 4.2 RU/EN ключи новых подписей; неиспользуемые ключи удалены, уникальность ключей сохранена.
+- [x] 4.2 RU/EN ключи новых подписей; неиспользуемые ключи удалены, уникальность ключей сохранена.
       Проверка: тест каталогов локализации в `pnpm test`.
 
 ## 5. Доставка
 
-- [ ] 5.1 Скриншоты на стенде задачи (порт 5191–5199): отдельные ноты до старта, во время попытки с
+- [x] 5.1 Скриншоты на стенде задачи (порт 5191–5199): отдельные ноты до старта, во время попытки с
       подсказкой, конец серии; интервалы (оба режима); ритм; музыкальный курс — 1920×1080, 1024×700,
       390×844, 667×375; плашка «Жду ноту» и клавиатура видны. Аудит скриншотов Codex (codex-visual),
       исправление подтверждённых замечаний.
+- [ ] 5.3 Плашка «Жду ноту» обрезана верхним краем 3D-холста (`lanes--keys`), не панелью; подпись
+      пальца на 2-м уровне подсказки увеличивает стан и сдвигает строку действий. Решение — у
+      пользователя: отдельное изменение или в этом.
 - [ ] 5.2 `pnpm check`, `pnpm spec:validate`; ревью диффа; PR в dev; стенд задачи остановлен.
