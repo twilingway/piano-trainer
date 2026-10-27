@@ -181,6 +181,11 @@ export function ConnectedPracticeWorkspace() {
         }
         staffRetry={music.active ? music.retry : rhythm.active ? rhythm.retry : reading.retry}
         readingBeat={music.active ? undefined : reading.prompt?.beat}
+        courseRange={
+          !music.active && !rhythm.active && reading.active && "range" in reading
+            ? reading.range
+            : undefined
+        }
         course={practiceActive}
         prefs={displayPrefs}
         layout={screenLayout}

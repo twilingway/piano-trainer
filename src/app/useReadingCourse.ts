@@ -11,6 +11,7 @@ import {
   musicXmlWithLessonFingerCues
 } from "../reading/fingerCues";
 import { lessonFingerLabel } from "../reading/fingerCueLabel";
+import { courseRangeIndices } from "../staff/courseStaff";
 import { useI18n } from "./useI18n";
 import { DEFAULT_READING_PREFERENCES } from "../reading/types";
 import type { ReadingHintLevel, ReadingPreferences, ReadingResult } from "../reading/types";
@@ -158,6 +159,21 @@ export function useReadingCourse() {
       : exercise.musicXml;
     return readingPromptXml(xml, exercise.task, index);
   }, [exercise, index, hintLevel, snapshot?.active, snapshot?.presented, note, locale]);
+  // The prompts with the lowest and the highest note, cues shown (a shown cue sits lowest): the
+  // staff keeps their room.
+  const range = useMemo(() => {
+    if (!exercise) return undefined;
+    const notes = exercise.song.notes;
+    const cues = exercise.task !== "check" ? lessonFingerCues(notes) : [];
+    const xml = cues.length
+      ? musicXmlWithLessonFingerCues(exercise.musicXml, cues, notes, (cue) =>
+          lessonFingerLabel(cue, locale)
+        )
+      : exercise.musicXml;
+    return courseRangeIndices(notes.map((source) => [source.pitch])).map(
+      (extreme) => readingPromptXml(xml, exercise.task, extreme).musicXml
+    );
+  }, [exercise, locale]);
   const requestHint = useCallback(
     (level: ReadingHintLevel, noteId: string) => {
       if (!session) return;
@@ -348,6 +364,7 @@ export function useReadingCourse() {
     snapshot,
     index,
     prompt,
+    range,
     presentation,
     retry,
     renderError,

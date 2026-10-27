@@ -26,6 +26,8 @@ interface Props {
   readonly readingBeat?: number | undefined;
   /** A reading course is on: its staff is fitted and its cursor leaves the note readable. */
   readonly course?: boolean;
+  /** A course's prompts with the exercise's extreme notes: the staff keeps room for them. */
+  readonly courseRange?: readonly string[] | undefined;
   /** The score on the staff; a MIDI song has none. */
   readonly staffXml: string | undefined;
   readonly prefs: StaffPrefs;
@@ -144,6 +146,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           shareGeometry={dualScore}
           sharedTabs={sharedTabs}
           course={props.course ?? false}
+          courseRange={props.courseRange}
           timeline={timeline}
           worldScoreSource={props.worldScore?.source}
         />
