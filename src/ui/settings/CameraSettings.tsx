@@ -87,7 +87,7 @@ export function CameraSettings({ camera, onChange }: Props) {
           onChange(CAMERA_PRESETS.top);
         }}
       >
-        {t("Сбросить камеру")}
+        {t("Сбросить камеру клавиатуры")}
       </button>
     </>
   );

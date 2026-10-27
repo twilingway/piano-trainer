@@ -39,6 +39,7 @@ export function ConnectedKeyboardSettings() {
   );
   const onKeyRange = useRuntimeCommand((runtime) => runtime.view.setKeyRange);
   const onShowLabels = useRuntimeCommand((runtime) => runtime.view.setShowLabels);
+  const onResetWorldCamera = useRuntimeCommand((runtime) => runtime.view.resetWorldCamera);
   const onKeyStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyStyle);
   const onNotesPerspective = useRuntimeCommand(
     (runtime) => runtime.keyboardSettings.onNotesPerspective
@@ -106,6 +107,7 @@ export function ConnectedKeyboardSettings() {
       onCameraComposition={onCameraComposition}
       worldFov={state.worldFov}
       onWorldFov={onWorldFov}
+      onResetWorldCamera={onResetWorldCamera}
       freeCamera={state.freeCamera}
       freeCameraWasd={state.freeCameraWasd}
       onFreeCameraWasd={onFreeCameraWasd}

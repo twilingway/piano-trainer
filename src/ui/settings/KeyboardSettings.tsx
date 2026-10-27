@@ -48,6 +48,8 @@ interface Props {
   readonly onCameraComposition?: (value: CameraComposition) => void;
   readonly worldFov?: number;
   readonly onWorldFov?: (value: number) => void;
+  /** Initial world FOV and pose of the selected composition; keys and horizon stay. */
+  readonly onResetWorldCamera?: () => void;
   readonly freeCamera?: boolean;
   readonly freeCameraWasd?: boolean;
   readonly onFreeCameraWasd?: (on: boolean) => void;
@@ -94,6 +96,7 @@ export function KeyboardSettings({
   onCameraComposition,
   worldFov = 45,
   onWorldFov,
+  onResetWorldCamera,
   freeCamera,
   freeCameraWasd,
   onFreeCameraWasd,
@@ -110,6 +113,21 @@ export function KeyboardSettings({
   const worldInteractive =
     cameraComposition === "free" || (cameraComposition === "standard" && freeCamera);
   const worldVisible = cameraComposition !== "standard" || freeCamera;
+  const roadProjection = (
+    <>
+      <RoadProjectionSettings value={road} enabled={notesPerspective} onChange={onRoad} />
+      {!notesPerspective && (
+        <p className="setting-hint">
+          {t("Горизонт и ширина у горизонта доступны в перспективной проекции.")}
+        </p>
+      )}
+      <p className="setting-hint">
+        {t(
+          "Отрицательные значения задают ширину дальнего края относительно экрана основного вида; свободная камера меняет его ракурс."
+        )}
+      </p>
+    </>
+  );
   return (
     <>
       <SettingsGroup title={t("Клавиши")}>
@@ -223,23 +241,7 @@ export function KeyboardSettings({
               {t("Оформление объёмных нот выбирается в виде клавиш «3D».")}
             </p>
           )}
-          {keyStyle === "3d" && worldVisible && !performanceScene ? (
-            <FreeRoadSettings value={freeRoadLayout} onChange={onFreeRoadLayout} />
-          ) : (
-            <>
-              <RoadProjectionSettings value={road} enabled={notesPerspective} onChange={onRoad} />
-              {!notesPerspective && (
-                <p className="setting-hint">
-                  {t("Горизонт и ширина у горизонта доступны в перспективной проекции.")}
-                </p>
-              )}
-              <p className="setting-hint">
-                {t(
-                  "Отрицательные значения задают ширину дальнего края относительно экрана основного вида; свободная камера меняет его ракурс."
-                )}
-              </p>
-            </>
-          )}
+          {keyStyle !== "3d" && roadProjection}
           {keyStyle === "3d" && (
             <label className="setting">
               <span>{t("Линии перспективы")}</span>
@@ -337,51 +339,75 @@ export function KeyboardSettings({
           )}
         </div>
       </SettingsGroup>
-      <SettingsGroup title={t("Камера")}>
-        <div className="settings-list">
-          {keyStyle === "3d" && <CameraSettings camera={camera} onChange={onCamera} />}
-          {keyStyle === "3d" && onCameraComposition && (
-            <CameraCompositionSettings
-              value={cameraComposition}
-              onChange={onCameraComposition}
-              worldFov={worldFov}
-              onWorldFov={onWorldFov}
-              disabled={performanceScene ?? false}
-            />
-          )}
-          {keyStyle === "3d" && cameraComposition === "standard" && onFreeCamera && (
-            <label className="setting">
-              <span>{t("Свободная камера")}</span>
-              <input
-                type="checkbox"
-                checked={freeCamera ?? false}
-                onChange={(event) => {
-                  onFreeCamera(event.target.checked);
-                }}
+      {keyStyle === "3d" && (
+        <SettingsGroup title={t("Камера клавиатуры")}>
+          <div className="settings-list">
+            <CameraSettings camera={camera} onChange={onCamera} />
+          </div>
+        </SettingsGroup>
+      )}
+      {keyStyle === "3d" && (
+        <SettingsGroup title={t("Камера нот и мира")}>
+          <div className="settings-list">
+            {onCameraComposition && (
+              <CameraCompositionSettings
+                value={cameraComposition}
+                onChange={onCameraComposition}
+                worldFov={worldFov}
+                onWorldFov={onWorldFov}
+                fixed={!worldVisible}
+                disabled={performanceScene ?? false}
               />
-            </label>
-          )}
-          {keyStyle === "3d" && worldInteractive && !performanceScene && onFreeCameraWasd && (
-            <label className="setting" data-setting-target="free-camera-wasd">
-              <span>{t("Передвижение WASD")}</span>
-              <input
-                type="checkbox"
-                checked={freeCameraWasd ?? false}
-                onChange={(event) => {
-                  onFreeCameraWasd(event.target.checked);
-                }}
-              />
-            </label>
-          )}
-          {keyStyle === "3d" && worldInteractive && !performanceScene && onFreeCameraWasd && (
-            <p className="setting-hint">
-              {t(
-                "WASD передвигает камеру вместо игры на клавишах. В меню и полях ввода передвижение отключено."
-              )}
-            </p>
-          )}
-        </div>
-      </SettingsGroup>
+            )}
+            {cameraComposition === "standard" && onFreeCamera && (
+              <label className="setting">
+                <span>{t("Свободная камера")}</span>
+                <input
+                  type="checkbox"
+                  checked={freeCamera ?? false}
+                  onChange={(event) => {
+                    onFreeCamera(event.target.checked);
+                  }}
+                />
+              </label>
+            )}
+            {worldInteractive && !performanceScene && onFreeCameraWasd && (
+              <>
+                <label className="setting" data-setting-target="free-camera-wasd">
+                  <span>{t("Передвижение WASD")}</span>
+                  <input
+                    type="checkbox"
+                    checked={freeCameraWasd ?? false}
+                    onChange={(event) => {
+                      onFreeCameraWasd(event.target.checked);
+                    }}
+                  />
+                </label>
+                <p className="setting-hint">
+                  {t(
+                    "WASD передвигает камеру вместо игры на клавишах. В меню и полях ввода передвижение отключено."
+                  )}
+                </p>
+              </>
+            )}
+            {worldVisible && !performanceScene ? (
+              <FreeRoadSettings value={freeRoadLayout} onChange={onFreeRoadLayout} />
+            ) : (
+              roadProjection
+            )}
+            {onResetWorldCamera && (
+              <button
+                className="game-button"
+                type="button"
+                disabled={performanceScene ?? false}
+                onClick={onResetWorldCamera}
+              >
+                {t("Сбросить камеру мира")}
+              </button>
+            )}
+          </div>
+        </SettingsGroup>
+      )}
     </>
   );
 }

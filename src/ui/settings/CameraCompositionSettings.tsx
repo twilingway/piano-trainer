@@ -10,12 +10,15 @@ export function CameraCompositionSettings({
   onChange,
   worldFov,
   onWorldFov,
+  fixed = false,
   disabled
 }: {
   readonly value: CameraComposition;
   readonly onChange: (value: CameraComposition) => void;
   readonly worldFov: number;
   readonly onWorldFov?: ((value: number) => void) | undefined;
+  /** The fixed standard road: contact, horizon and width leave the world FOV nothing to change. */
+  readonly fixed?: boolean;
   readonly disabled: boolean;
 }) {
   const { t } = useI18n();
@@ -38,7 +41,7 @@ export function CameraCompositionSettings({
           <option value="free">{t("Свободный мир с клавиатурой")}</option>
         </select>
       </label>
-      {value !== "standard" && onWorldFov && (
+      {onWorldFov && (
         <label className="setting">
           <span>{t("Угол обзора мира, °")}</span>
           <span className="setting-control">
@@ -47,7 +50,7 @@ export function CameraCompositionSettings({
               {...WORLD_FOV_LIMITS}
               step="1"
               value={worldFov}
-              disabled={disabled}
+              disabled={disabled || fixed}
               aria-label={t("Угол обзора мира, °")}
               data-setting-target="world-fov"
               onChange={(event) => {
@@ -57,6 +60,13 @@ export function CameraCompositionSettings({
             <span className="digits">{worldFov}°</span>
           </span>
         </label>
+      )}
+      {fixed && !disabled && (
+        <p className="setting-hint">
+          {t(
+            "В обычной композиции дальнюю часть поля задают горизонт и ширина у горизонта. Угол обзора мира действует в свободном осмотре, игровом кадре и свободном мире."
+          )}
+        </p>
       )}
       <p className="setting-hint">
         {t(

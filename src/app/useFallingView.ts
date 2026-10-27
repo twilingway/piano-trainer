@@ -10,6 +10,7 @@ import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
 import { pianistAvailable } from "../render/three/pianistAvailability";
+import { DEFAULT_WORLD_FOV } from "../render/cameraComposition";
 import type { StaffPrefs } from "./useStaffPrefs";
 import { useI18n } from "./useI18n";
 
@@ -310,5 +311,17 @@ export function useFallingView({
     staffPrefs.hands
   ]);
 
-  return { showLabels, setShowLabels, keyRange, setKeyRange, mirrorHostRef, handStatus };
+  const resetWorldCamera = () => {
+    updateStaffPrefs({ worldFov: DEFAULT_WORLD_FOV });
+    viewRef.current?.setWorldFov(DEFAULT_WORLD_FOV, true);
+  };
+  return {
+    showLabels,
+    setShowLabels,
+    keyRange,
+    setKeyRange,
+    resetWorldCamera,
+    mirrorHostRef,
+    handStatus
+  };
 }

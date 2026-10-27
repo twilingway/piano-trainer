@@ -27,9 +27,6 @@ export const settingsMessages1 = {
   "Звук фортепиано": {
     en: "Piano sound"
   },
-  "Сбросить камеру": {
-    en: "Reset camera"
-  },
   "Приглушить клавиатуру": { en: "Dim keyboard" },
   "Ракурс пианино": { en: "Piano view" },
   Ракурс: {
