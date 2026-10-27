@@ -24,7 +24,12 @@ it("shares the score area while keeping the trainer host and supplied song clock
   const root = createRoot(host);
   const trainerHost = createRef<HTMLDivElement>();
   const noop = () => undefined;
-  const render = async (tabs: boolean, staff: boolean, scoreFirst: "tabs" | "staff" = "tabs") => {
+  const render = async (
+    tabs: boolean,
+    staff: boolean,
+    scoreFirst: "tabs" | "staff" = "tabs",
+    practice = false
+  ) => {
     await act(async () => {
       await Promise.resolve();
       root.render(
@@ -45,6 +50,7 @@ it("shares the score area while keeping the trainer host and supplied song clock
           mirrorHostRef={{ current: null }}
           scoreBoard={tabs ? <div data-testid="tabs">Tabs</div> : undefined}
           scoreFirst={scoreFirst}
+          course={practice}
           layout={DEFAULT_SCREEN_LAYOUT}
           onLayout={noop}
           onZoom={noop}
@@ -86,6 +92,12 @@ it("shares the score area while keeping the trainer host and supplied song clock
     expect(score?.compareDocumentPosition(lanes as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(host.querySelector(".course-score-stack")).toBeNull();
     expect(host.querySelector(".workspace-main > .staves .staff")).not.toBeNull();
+    assertTrainer();
+    await render(false, true, "tabs", true);
+    expect(host.querySelector(".workspace-main--practice > .lanes")).toBe(lanes);
+    assertTrainer();
+    await render(false, true);
+    expect(host.querySelector(".workspace-main--practice")).toBeNull();
     assertTrainer();
     await render(false, false);
     expect(host.querySelector(".staff")).toBeNull();

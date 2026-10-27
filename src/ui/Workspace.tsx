@@ -178,7 +178,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   );
   return (
     <div className="workspace">
-      <div className="workspace-main">
+      <div className={props.course ? "workspace-main workspace-main--practice" : "workspace-main"}>
         {props.countdown != null && (
           <div className="play-countdown" role="status" aria-live="polite" aria-atomic="true">
             <span>{props.countdown > 0 ? t("Приготовьтесь") : t("Готовим звук…")}</span>
