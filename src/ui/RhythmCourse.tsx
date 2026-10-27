@@ -2,6 +2,7 @@ import { useLessonWindow } from "./LessonWorkspace";
 import { LessonIllustration } from "./LessonIllustration";
 import type { KeyboardEvent, ReactNode } from "react";
 import { LessonDetails } from "./LessonDetails";
+import { LessonMenuItem, LessonSlot, useInLessonWorkspace } from "./LessonSlots";
 import { useI18n } from "../app/useI18n";
 import type { RhythmBpm, RhythmInputSource } from "../rhythm/types";
 
@@ -63,6 +64,7 @@ export interface RhythmPanelProps {
 
 export function RhythmPanel(props: RhythmPanelProps) {
   const lessonWindow = useLessonWindow();
+  const inWorkspace = useInLessonWorkspace();
   const { t } = useI18n();
   const active = props.status === "count-in" || props.status === "running";
   const midiMissing = props.source === "midi" && !props.midiAvailable;
@@ -89,91 +91,96 @@ export function RhythmPanel(props: RhythmPanelProps) {
   }[props.status];
   return (
     <section className="reading-practice rhythm-practice" aria-label={t("Ритм")}>
-      <div className="reading-actions rhythm-actions">
-        <strong>{t("Читать и отбивать ритм")}</strong>
-        <button type="button" className="game-button" onClick={props.onExit}>
-          {t("Выйти из ритма")}
+      <LessonSlot name="counter">
+        <span className="lesson-counter__mode">{t("Читать и отбивать ритм")}</span>
+        <span className="lesson-counter">
+          {t("Темп: {bpm} BPM · Ввод: {source}", {
+            bpm: props.bpm,
+            source: t(RHYTHM_SOURCE_LABELS[props.source])
+          })}
+        </span>
+      </LessonSlot>
+      <LessonSlot name="exit">
+        <button type="button" className="game-button lesson-exit" onClick={props.onExit}>
+          {t("Выйти")}
         </button>
-      </div>
-      <p className="rhythm-status" aria-live="polite">
-        {t(statusLabel)}
-        {props.status === "count-in" && props.countInBeat !== undefined && (
-          <> {t("Доля отсчёта: {beat} из 4", { beat: props.countInBeat })}</>
-        )}
-      </p>
-      {midiMissing && (
-        <p role="alert">{t("Подключите и выберите MIDI-устройство или смените способ ввода.")}</p>
-      )}
-      {props.error === "audio" && (
-        <p role="alert">{t("Не удалось включить метроном. Включите звук и начните ритм снова.")}</p>
-      )}
-      {props.error === "staff" && (
-        <p role="alert">
-          {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
-          <button type="button" onClick={props.onRetryStaff}>
-            {t("Повторить загрузку стана")}
-          </button>
+      </LessonSlot>
+      <LessonSlot name="feedback">
+        <p className="rhythm-status">
+          {t(statusLabel)}
+          {props.status === "count-in" && props.countInBeat !== undefined && (
+            <> {t("Доля отсчёта: {beat} из 4", { beat: props.countInBeat })}</>
+          )}
         </p>
-      )}
-      <div className="reading-actions rhythm-tap-actions">
-        <button
-          type="button"
-          className="game-button"
-          disabled={!props.ready || active || props.status === "preparing" || midiMissing}
-          onClick={props.onStart}
-        >
-          {t("Начать ритм")}
-        </button>
-        <button
-          type="button"
-          className="game-button rhythm-tap"
-          data-rhythm-tap
-          aria-disabled={!tapAvailable}
-          onPointerDown={(event) => {
-            if (event.button !== 0) return;
-            event.preventDefault();
-            if (!tapAvailable || props.source !== "pointer") return;
-            event.currentTarget.setPointerCapture(event.pointerId);
-            props.onTapDown("pointer", event.timeStamp, `pointer:${String(event.pointerId)}`);
-          }}
-          onPointerUp={(event) => {
-            props.onTapUp("pointer", `pointer:${String(event.pointerId)}`);
-          }}
-          onPointerCancel={(event) => {
-            props.onTapUp("pointer", `pointer:${String(event.pointerId)}`);
-          }}
-          onKeyDown={(event) => {
-            tapKey(event, true);
-          }}
-          onKeyUp={(event) => {
-            tapKey(event, false);
-          }}
-          onBlur={() => {
-            props.onTapUp("keyboard", "key:Space");
-            props.onTapUp("keyboard", "key:Enter");
-          }}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-        >
-          {t("Ударить")}
-        </button>
-      </div>
-      <p className="reading-muted">
-        {t("Темп: {bpm} BPM · Ввод: {source}", {
-          bpm: props.bpm,
-          source: t(RHYTHM_SOURCE_LABELS[props.source])
-        })}
-      </p>
-      <div className="reading-actions rhythm-actions">
-        <button type="button" className="game-button" onClick={props.onNewSeries}>
-          {t("Новая серия")}
-        </button>
-        <button type="button" className="game-button" onClick={props.onRepeat}>
-          {t("Повторить этот ритм")}
-        </button>
-      </div>
+        {midiMissing && (
+          <p role="alert">{t("Подключите и выберите MIDI-устройство или смените способ ввода.")}</p>
+        )}
+        {props.error === "audio" && (
+          <p role="alert">
+            {t("Не удалось включить метроном. Включите звук и начните ритм снова.")}
+          </p>
+        )}
+        {props.error === "staff" && (
+          <p role="alert">
+            {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
+            <button type="button" onClick={props.onRetryStaff}>
+              {t("Повторить загрузку стана")}
+            </button>
+          </p>
+        )}
+      </LessonSlot>
+      <LessonMenuItem kind="newSeries" label={t("Новая серия")} onSelect={props.onNewSeries} />
+      <LessonMenuItem kind="repeat" label={t("Повторить этот ритм")} onSelect={props.onRepeat} />
+      <LessonSlot name="answer">
+        <div className="reading-actions rhythm-tap-actions">
+          {/* In the workspace the main action starts the rhythm. */}
+          {!inWorkspace && (
+            <button
+              type="button"
+              className="game-button"
+              disabled={!props.ready || active || props.status === "preparing" || midiMissing}
+              onClick={props.onStart}
+            >
+              {t("Начать ритм")}
+            </button>
+          )}
+          <button
+            type="button"
+            className="game-button rhythm-tap"
+            data-rhythm-tap
+            aria-disabled={!tapAvailable}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              if (!tapAvailable || props.source !== "pointer") return;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              props.onTapDown("pointer", event.timeStamp, `pointer:${String(event.pointerId)}`);
+            }}
+            onPointerUp={(event) => {
+              props.onTapUp("pointer", `pointer:${String(event.pointerId)}`);
+            }}
+            onPointerCancel={(event) => {
+              props.onTapUp("pointer", `pointer:${String(event.pointerId)}`);
+            }}
+            onKeyDown={(event) => {
+              tapKey(event, true);
+            }}
+            onKeyUp={(event) => {
+              tapKey(event, false);
+            }}
+            onBlur={() => {
+              props.onTapUp("keyboard", "key:Space");
+              props.onTapUp("keyboard", "key:Enter");
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+          >
+            {t("Ударить")}
+          </button>
+        </div>
+      </LessonSlot>
       <LessonDetails kind="settings" id="rhythm:practice:settings">
         <div className="rhythm-controls">
           <label>

@@ -3,6 +3,7 @@ import { useLessonWindow } from "./LessonWorkspace";
 import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "../app/useI18n";
 import { WindowDisclosureContext } from "./windowDisclosureContext";
+import { LessonMenuItem } from "./LessonSlots";
 import { WindowViewMemory } from "./windowViewMemory";
 
 const LABELS = {
@@ -11,6 +12,10 @@ const LABELS = {
   progress: "Прогресс и история урока",
   more: "Другие задания курса"
 } as const;
+const MENU_LABELS: Readonly<Record<keyof typeof LABELS, string>> = {
+  ...LABELS,
+  progress: "История"
+};
 
 /** Only explicit disclosure mounts optional lesson content; the exercise keeps its own owner. */
 export function LessonDetails({
@@ -28,32 +33,36 @@ export function LessonDetails({
   const [localMemory] = useState(() => new WindowViewMemory());
   const detailMemory = memory ?? localMemory;
   const [open, setOpen] = useState(() => memory?.detailOpen("body", id) ?? false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const ref = useRef<HTMLDetailsElement>(null);
   useLayoutEffect(() => {
     if (open && ref.current) detailMemory.restoreDetails("body", ref.current);
   }, [open, detailMemory]);
-  if (windows && kind !== "guide") {
-    const modalOpen = windows.open === id;
+  if (windows) {
+    // The guide stays out of the lesson window: an open lesson window suspends the attempt.
+    const guide = kind === "guide";
+    const modalOpen = guide ? guideOpen : windows.open === id;
     return (
-      <div className="lesson-window-entry">
-        <button
-          type="button"
-          className="game-button"
-          onClick={() => {
-            windows.onOpen(id);
+      <>
+        <LessonMenuItem
+          kind={kind}
+          label={t(MENU_LABELS[kind])}
+          note={
+            kind === "settings" && windows.interruptsAttempt ? t("остановит попытку") : undefined
+          }
+          onSelect={() => {
+            if (guide) setGuideOpen(true);
+            else windows.onOpen(id);
           }}
-        >
-          {t(
-            kind === "settings" && windows.interruptsAttempt
-              ? "Параметры · остановить попытку"
-              : LABELS[kind]
-          )}
-        </button>
+        />
         <GameDialog
           open={modalOpen}
+          modal={!guide}
+          {...(guide && { className: "lesson-theory-panel" })}
           title={t(LABELS[kind])}
           onClose={() => {
-            windows.onOpen(null);
+            if (guide) setGuideOpen(false);
+            else windows.onOpen(null);
           }}
         >
           {modalOpen ? (
@@ -72,7 +81,7 @@ export function LessonDetails({
             </div>
           ) : null}
         </GameDialog>
-      </div>
+      </>
     );
   }
   return (

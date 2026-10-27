@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useI18n } from "../app/useI18n";
 import { GameDialog } from "./GameDialog";
 import { useLessonWindow } from "./LessonWorkspace";
+import { LessonSlot } from "./LessonSlots";
 
 export function LessonReport({
   children,
@@ -20,19 +21,23 @@ export function LessonReport({
   };
   if (!windows) return children;
   return (
-    <div className="lesson-result">
-      <div className="lesson-result__summary" role="status">
-        {summary}
-      </div>
-      <button
-        type="button"
-        className="game-button"
-        onClick={() => {
-          setOpen(true);
-        }}
-      >
-        {t("Подробный результат")}
-      </button>
+    <>
+      <LessonSlot name="feedback">
+        <div className="lesson-result">
+          <div className="lesson-result__summary" role="status">
+            {summary}
+          </div>
+          <button
+            type="button"
+            className="game-button"
+            onClick={() => {
+              setOpen(true);
+            }}
+          >
+            {t("Подробнее")}
+          </button>
+        </div>
+      </LessonSlot>
       <GameDialog
         open={open}
         title={t("Подробный результат")}
@@ -42,6 +47,6 @@ export function LessonReport({
       >
         {open ? children : null}
       </GameDialog>
-    </div>
+    </>
   );
 }

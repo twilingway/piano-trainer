@@ -3,6 +3,7 @@ import { LessonIllustration } from "./LessonIllustration";
 import { LessonReport } from "./LessonReport";
 import { useI18n } from "../app/useI18n";
 import { LessonDetails } from "./LessonDetails";
+import { LessonMenuItem, LessonSlot } from "./LessonSlots";
 import type { BassReadingResult, BassReadingTask } from "../reading/bassTypes";
 import type { ReadingHintLevel, ReadingPreferences } from "../reading/types";
 import {
@@ -84,15 +85,23 @@ export function BassReadingPracticePanel(props: BassReadingPracticeProps) {
     .slice(-20);
   return (
     <section className="reading-practice" aria-label={t("Левая рука: пять нот")}>
-      <div className="reading-actions">
-        <strong>{t(BASS_READING_TASK_LABELS[task])}</strong>
-        <span>{t("Нота {number} из 20", { number: Math.min(20, props.index + 1) })}</span>
-        <button type="button" className="game-button" onClick={props.onNewSeries}>
-          {t("Новая серия")}
+      <LessonSlot name="counter">
+        <span className="lesson-counter__mode">{t(BASS_READING_TASK_LABELS[task])}</span>
+        <span className="lesson-counter">
+          {result
+            ? t("Завершено · {number} из {total}", { number: 20, total: 20 })
+            : t("Нота {number} из 20", { number: Math.min(20, props.index + 1) })}
+        </span>
+      </LessonSlot>
+      <LessonSlot name="exit">
+        <button type="button" className="game-button lesson-exit" onClick={props.onExit}>
+          {t("Выйти")}
         </button>
-        <button type="button" className="game-button" onClick={props.onExit}>
-          {t("Выйти из басового чтения")}
-        </button>
+      </LessonSlot>
+      {result === null && (
+        <LessonMenuItem kind="newSeries" label={t("Новая серия")} onSelect={props.onNewSeries} />
+      )}
+      <LessonSlot name="hint">
         <button
           type="button"
           className="game-button"
@@ -101,31 +110,28 @@ export function BassReadingPracticePanel(props: BassReadingPracticeProps) {
         >
           {t("Подсказка")}
         </button>
-      </div>
-      <div className="reading-status">
-        <p
-          className={`reading-muted${props.ready || result || props.renderError ? " reading-status-hidden" : ""}`}
-        >
-          {t("Начните игру кнопкой под нотами, затем нажмите нужную клавишу.")}
-        </p>
-        {props.renderError ? (
+      </LessonSlot>
+      {props.renderError ? (
+        <LessonSlot name="feedback">
           <p role="alert">
             {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
             <button type="button" onClick={props.onRetry}>
               {t("Повторить загрузку стана")}
             </button>
           </p>
-        ) : (
-          props.ready &&
-          result === null &&
-          props.hintLevel > 0 &&
-          props.hintPitch !== undefined && (
-            <p className="reading-hint" aria-live="polite">
-              {t("Текущая нота: {note}", { note: bassReadingNoteName(props.hintPitch, t) })}
+        </LessonSlot>
+      ) : (
+        props.ready &&
+        result === null &&
+        props.hintLevel > 0 &&
+        props.hintPitch !== undefined && (
+          <LessonSlot name="feedback">
+            <p className="reading-hint">
+              {t("Подсказка: {note}", { note: bassReadingNoteName(props.hintPitch, t) })}
             </p>
-          )
-        )}
-      </div>
+          </LessonSlot>
+        )
+      )}
       <LessonDetails kind="settings" id="bass-reading:practice:settings">
         <div className="reading-hint-settings">
           <h4>{t("Настройки подсказок чтения")}</h4>

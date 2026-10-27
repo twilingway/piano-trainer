@@ -244,7 +244,7 @@ describe("independent rhythm interface", () => {
     );
     expect(host.querySelector('[role="status"]')?.textContent).toContain("four count-in beats");
     expect(host.textContent).toContain("Count-in beat: 3 of 4");
-    expect(host.textContent).toContain("Play two rhythms");
+    expect(host.textContent).toContain("C4 pulse check");
     expect(host.querySelector('input[type="checkbox"]')).toBeNull();
     expect(button("Start the pulse check")).toBeUndefined();
     expect(host.querySelector("select")).toBeNull();

@@ -3,6 +3,7 @@ import { LessonIllustration } from "./LessonIllustration";
 import { LessonReport } from "./LessonReport";
 import { useI18n } from "../app/useI18n";
 import { LessonDetails } from "./LessonDetails";
+import { LessonMenuItem, LessonSlot } from "./LessonSlots";
 import type { ReadingHintLevel, ReadingPreferences } from "../reading/types";
 import type { HeldBassResult, HeldBassStatus } from "../reading/heldBassTypes";
 import {
@@ -70,43 +71,59 @@ export function HeldBassPracticePanel(props: HeldBassPracticeProps) {
       className="reading-practice two-hand-practice held-bass-practice"
       aria-label={t(HELD_BASS_TITLE)}
     >
-      {props.renderError ? (
-        <p className="two-hand-feedback" role="alert">
-          {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
-          <button type="button" onClick={props.onRetry}>
-            {t("Повторить загрузку стана")}
-          </button>
-        </p>
-      ) : (
-        <p className="two-hand-feedback" role="status" aria-live="polite">
+      <LessonSlot name="feedback">
+        {props.renderError ? (
+          <p className="two-hand-feedback" role="alert">
+            {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
+            <button type="button" onClick={props.onRetry}>
+              {t("Повторить загрузку стана")}
+            </button>
+          </p>
+        ) : (
+          <p className="two-hand-feedback" role="status">
+            {props.result
+              ? t("Серия удержания баса завершена")
+              : props.status === "ready" && !props.ready
+                ? props.step === 0
+                  ? t("Дождитесь начала фрагмента. Пока не нажимайте клавиши.")
+                  : t(HELD_BASS_STATUS.travelling)
+                : props.status === "ready" && props.step > 0
+                  ? t("Держите бас и сыграйте следующую правую ноту.")
+                  : t(HELD_BASS_STATUS[props.status])}
+          </p>
+        )}
+        {props.ready && props.hintLevel > 0 && (
+          <p className="reading-hint">
+            {t("Бас и ожидаемая нота: {notes}", {
+              notes: props.pitches.map((pitch) => twoHandNoteName(pitch, t)).join(" + ")
+            })}
+          </p>
+        )}
+      </LessonSlot>
+      <LessonSlot name="counter">
+        <span className="lesson-counter">
           {props.result
-            ? t("Серия удержания баса завершена")
-            : props.status === "ready" && !props.ready
-              ? props.step === 0
-                ? t("Дождитесь начала фрагмента. Пока не нажимайте клавиши.")
-                : t(HELD_BASS_STATUS.travelling)
-              : props.status === "ready" && props.step > 0
-                ? t("Держите бас и сыграйте следующую правую ноту.")
-                : t(HELD_BASS_STATUS[props.status])}
-        </p>
+            ? t("Завершено · {number} из {total}", { number: 10, total: 10 })
+            : t("Фрагмент с басом {number} из 10", { number: Math.min(10, props.index + 1) })}
+        </span>
+        {props.result === null && (
+          <span className="lesson-counter__mode">
+            {t("Мелодия: нота {number} из {total}", {
+              number: Math.min(props.melodyLength, props.step + 1),
+              total: props.melodyLength
+            })}
+          </span>
+        )}
+      </LessonSlot>
+      <LessonSlot name="exit">
+        <button type="button" className="game-button lesson-exit" onClick={props.onExit}>
+          {t("Выйти")}
+        </button>
+      </LessonSlot>
+      {props.result === null && (
+        <LessonMenuItem kind="newSeries" label={t("Новая серия")} onSelect={props.onNewSeries} />
       )}
-      <div className="reading-actions">
-        <strong>{t(HELD_BASS_TITLE)}</strong>
-        <span>
-          {t("Фрагмент с басом {number} из 10", { number: Math.min(10, props.index + 1) })}
-        </span>
-        <span>
-          {t("Мелодия: нота {number} из {total}", {
-            number: Math.min(props.melodyLength, props.step + 1),
-            total: props.melodyLength
-          })}
-        </span>
-        <button type="button" className="game-button" onClick={props.onNewSeries}>
-          {t("Новая серия")}
-        </button>
-        <button type="button" className="game-button" onClick={props.onExit}>
-          {t("Выйти из удержания баса")}
-        </button>
+      <LessonSlot name="hint">
         <button
           type="button"
           className="game-button"
@@ -117,7 +134,7 @@ export function HeldBassPracticePanel(props: HeldBassPracticeProps) {
         >
           {t("Подсказка")}
         </button>
-      </div>
+      </LessonSlot>
       <LessonDetails kind="guide" id="held-bass:practice:guide">
         <p className="reading-muted">
           {t(
@@ -125,13 +142,6 @@ export function HeldBassPracticePanel(props: HeldBassPracticeProps) {
           )}
         </p>
       </LessonDetails>
-      {props.ready && props.hintLevel > 0 && (
-        <p className="reading-hint">
-          {t("Бас и ожидаемая нота: {notes}", {
-            notes: props.pitches.map((pitch) => twoHandNoteName(pitch, t)).join(" + ")
-          })}
-        </p>
-      )}
       <LessonDetails kind="settings" id="held-bass:practice:settings">
         <div className="reading-hint-settings">
           <h4>{t("Настройки подсказок чтения")}</h4>

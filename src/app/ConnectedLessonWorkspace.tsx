@@ -6,6 +6,7 @@ import { useI18n } from "./useI18n";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 import { LessonWorkspace } from "../ui/LessonWorkspace";
+import { LessonSlot } from "../ui/LessonSlots";
 import { ConnectedMusicPractice } from "./ConnectedMusicCourse";
 import { ConnectedReadingPractice } from "./ConnectedReading";
 import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
@@ -123,7 +124,11 @@ export function ConnectedLessonWorkspace({ score }: { readonly score: ReactNode 
         )
       }
     >
-      {state.action.reasonKey && <p role="status">{t(state.action.reasonKey)}</p>}
+      {state.action.reasonKey && (
+        <LessonSlot name="feedback">
+          <p role="status">{t(state.action.reasonKey)}</p>
+        </LessonSlot>
+      )}
       <ConnectedMusicPractice />
       <ConnectedReadingPractice mode="practice" />
       <ConnectedBassReadingPractice mode="practice" />

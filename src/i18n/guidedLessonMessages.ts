@@ -57,9 +57,6 @@ export const guidedLessonMessages: Messages = {
   "Узнавайте до–соль в скрипичном ключе и находите их правой рукой.": {
     en: "Read C–G in treble clef and find them with your right hand."
   },
-  "Начните игру кнопкой под нотами, затем нажмите нужную клавишу.": {
-    en: "Start with the button below the score, then press the matching key."
-  },
   "Смотрите на задание и следуйте шагам под нотами.": {
     en: "Look at the exercise and follow the steps below the score."
   },
@@ -85,13 +82,17 @@ export const guidedLessonMessages: Messages = {
   "Играйте на MIDI, клавиатуре компьютера или клавишах на экране.": {
     en: "Use MIDI, your computer keyboard or the on-screen keys."
   },
-  "Параметры · остановить попытку": { en: "Settings · stop this attempt" },
+  "Меню урока": { en: "Lesson menu" },
+  Выйти: { en: "Leave" },
+  История: { en: "History" },
+  Подробнее: { en: "Details" },
+  "остановит попытку": { en: "stops this attempt" },
+  "Подсказка: {note}": { en: "Hint: {note}" },
+  "Завершено · {number} из {total}": { en: "Done · {number} of {total}" },
   "Подготовьте руку и найдите рисунок нот": { en: "Find your hand position and the note pattern" },
   "Послушать образец ещё раз": { en: "Listen to the example again" },
-  "Дополнительно к уроку": { en: "More lesson options" },
   "Как это работает": { en: "How it works" },
   "Параметры и ввод": { en: "Settings and input" },
-  "Закончить урок": { en: "Leave lesson" },
   "Параметры применятся к новому заданию. Повтор сохранит текущее.": {
     en: "Settings apply to a new exercise. Repeat keeps this exercise."
   },
