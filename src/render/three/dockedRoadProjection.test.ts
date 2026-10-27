@@ -148,7 +148,7 @@ describe("native docked road projection", () => {
     material.onBeforeCompile(shader as never, {} as never);
     expect(original).toHaveBeenCalledOnce();
     expect(shader.vertexShader).toContain(
-      "anchorRelativeRoadClip(gl_Position, anchor, roadDockFitTransform * anchor, pinned, roadDockProgress)"
+      "anchorRelativeRoadClip(gl_Position, anchor, roadDockFitTransform * anchor, pinned, roadDockProgress, keyboard)"
     );
     expect(shader.uniforms).toHaveProperty(
       "roadDockTransform",
@@ -180,7 +180,7 @@ describe("native docked road projection", () => {
     notes.dispose();
     expect(dispose).toHaveBeenCalledOnce();
     expect(NOTE_LANE_SHADER).toContain(
-      "return anchorRelativeRoadClip(point, anchor, roadDockFitTransform * anchor, pinned, progress)"
+      "return anchorRelativeRoadClip(point, anchor, roadDockFitTransform * anchor, pinned, progress, keyboard)"
     );
   });
 });
