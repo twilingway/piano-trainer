@@ -1,6 +1,9 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
+  "100% — линия клавиш. Значения выше опускают горизонт ниже неё.": {
+    en: "100% is the key line. Higher values move the horizon below it."
+  },
   "Масштаб нотного стана": { en: "Staff size" },
   "Масштаб пианинных табов": { en: "Piano tab size" },
   "Уменьшить нотный стан": { en: "Make staff smaller" },

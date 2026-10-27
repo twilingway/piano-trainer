@@ -1,3 +1,4 @@
+import { normalizeRoadHorizon } from "../render/roadHorizon";
 import { CAMERA_PRESETS, normalizeCamera, type CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_SCREEN_LAYOUT, normalizeLayout, type ScreenLayout } from "./screenLayout";
 
@@ -80,7 +81,7 @@ export function normalizeViewFraming(
   return {
     camera: normalizeCamera(mergedCamera),
     roadFar: number(raw.roadFar, -1, 0.9, fallback.roadFar),
-    roadHorizon: number(raw.roadHorizon, 0, 0.6, fallback.roadHorizon),
+    roadHorizon: normalizeRoadHorizon(raw.roadHorizon, fallback.roadHorizon),
     layout:
       raw.layout &&
       typeof raw.layout === "object" &&

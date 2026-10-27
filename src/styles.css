@@ -4980,6 +4980,20 @@ button.song-card.song-card__open {
   }
 }
 
+/* Give both legacy projection controls the full row rather than a short trailing slider. */
+.road-projection-setting {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.road-projection-setting .projection-number-control {
+  width: 100%;
+  gap: 8px;
+}
+.road-projection-setting input[type="range"] {
+  width: 0;
+  min-width: 0;
+}
 /* A lesson owns one compact score focus; its persistent canvas remains below it. */
 .lesson-workspace {
   box-sizing: border-box;

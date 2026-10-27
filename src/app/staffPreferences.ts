@@ -1,3 +1,4 @@
+import { normalizeRoadHorizon } from "../render/roadHorizon";
 import {
   normalizeCameraComposition,
   normalizeWorldFov,
@@ -215,6 +216,6 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     autoReview: boolean("autoReview"),
     camera: raw.camera === undefined ? CAMERA_PRESETS.top : normalizeCamera(raw.camera),
     roadFar: number("roadFar", -1, 0.9),
-    roadHorizon: number("roadHorizon", 0, 0.6)
+    roadHorizon: normalizeRoadHorizon(raw.roadHorizon, defaults.roadHorizon)
   };
 }
