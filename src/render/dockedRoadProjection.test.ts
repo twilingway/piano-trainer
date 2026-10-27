@@ -73,18 +73,25 @@ it("bounds the correction by the anchor delta even under a hundred-metre horizon
       0.600001
     );
   }
-  expect(anchorRelativeDockedClip(worldAnchor, worldAnchor, keyAnchor, 0)).toEqual(keyAnchor);
+  const contact = anchorRelativeDockedClip(worldAnchor, worldAnchor, keyAnchor, 0);
+  expect([contact.x / contact.w, contact.y / contact.w, contact.z / contact.w]).toEqual([
+    keyAnchor.x,
+    keyAnchor.y,
+    keyAnchor.z
+  ]);
   expect(anchorRelativeDockedClip(worldPoint, worldAnchor, keyAnchor, 0.25)).toEqual(worldPoint);
 });
-it("keeps a continuous homogeneous w at both ends so varyings do not split at the join", () => {
+it("carries the point's own w through the whole near quarter so varyings stay straight", () => {
+  // A w mixed in from the keyboard camera kept the pixels but bent rims and halos into combs.
   const world = { x: 10, y: 20, z: 0.5, w: 3 },
     key = { x: -0.5, y: -0.5, z: 0.1, w: 1 };
-  const delta = 1e-4;
-  expect(anchorRelativeDockedClip(world, world, key, 0.25 - delta).w).toBeCloseTo(world.w, 3);
-  expect(anchorRelativeDockedClip(world, world, key, delta).w).toBeCloseTo(key.w, 3);
-  const mid = anchorRelativeDockedClip(world, world, key, 0.125);
-  expect(mid.w).toBeGreaterThan(key.w);
-  expect(mid.w).toBeLessThan(world.w);
+  for (const progress of [0, 1e-4, 0.05, 0.125, 0.2, 0.25 - 1e-4]) {
+    const result = anchorRelativeDockedClip(world, world, key, progress);
+    expect(result.w).toBeCloseTo(world.w, 9);
+  }
+  const contact = anchorRelativeDockedClip(world, world, key, 0);
+  expect(contact.x / contact.w).toBeCloseTo(key.x / key.w, 9);
+  expect(contact.y / contact.w).toBeCloseTo(key.y / key.w, 9);
 });
 it("preserves behind-camera world clipping while the exact keyboard contact remains visible", () => {
   const behind = { x: 20, y: 30, z: -200, w: -100 };
