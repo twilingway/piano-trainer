@@ -15,6 +15,7 @@ import type { MusicControllerAudio } from "./musicCourseControllerAudio";
 import type { IntegratedPhaseId } from "../musicLearning/integrated";
 import { musicControllerRepeatPhase } from "./musicCourseControllerRecommendations";
 import { answerMusicControlGroup } from "./musicCourseControllerGroups";
+import { beginMusicSightPreview } from "./musicCourseControllerPreflight";
 
 export interface MusicControllerActionsHost {
   readonly state: MusicControllerState;
@@ -51,6 +52,10 @@ export function musicControllerCommand(
   }
   if (command === "retry") {
     host.retry();
+    return;
+  }
+  if (command === "new") {
+    if (!state.lesson) host.next();
     return;
   }
   if (command === "next") {
@@ -158,6 +163,7 @@ export function musicControllerChoose(
         ? undefined
         : "Сравните шаги и скачки в первой группе и выберите снова.";
     }
+    beginMusicSightPreview(state, host.selection.saved, performance.now(), true);
     host.publish();
     return;
   }

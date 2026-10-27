@@ -1,3 +1,4 @@
+import { messages } from "../i18n/messages";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -9,16 +10,10 @@ import { ConnectedPlayerWindows } from "./ConnectedPlayerWindows";
 import { ConnectedPracticeWorkspace } from "./ConnectedPracticeWorkspace";
 import { ConnectedNotices } from "./ConnectedPlayerNotices";
 import { emptyMusicState } from "./musicPersistence";
-import { musicCourseMessages } from "../i18n/musicCourseMessages";
 import { createAppStore } from "./store";
 import { progressKey, type CourseLesson } from "../course/model";
 import type { Locale } from "../i18n/locales";
 import { translate } from "../i18n/translate";
-import { readingMessages } from "../i18n/readingMessages";
-import { bassReadingMessages } from "../i18n/bassReadingMessages";
-import { twoHandMessages } from "../i18n/twoHandMessages";
-import { heldBassMessages } from "../i18n/heldBassMessages";
-import { independentRhythmMessages } from "../i18n/independentRhythmMessages";
 let activeLocale: Locale = "ru";
 const observed = vi.hoisted(() => ({
   header: vi.fn(),
@@ -32,19 +27,7 @@ const observed = vi.hoisted(() => ({
 vi.mock("./usePlayerRuntime", () => ({ usePlayerRuntime: () => observed.runtime }));
 vi.mock("./useI18n", () => ({
   useI18n: () => ({
-    t: (key: string) =>
-      translate(
-        activeLocale,
-        {
-          ...musicCourseMessages,
-          ...readingMessages,
-          ...bassReadingMessages,
-          ...twoHandMessages,
-          ...heldBassMessages,
-          ...independentRhythmMessages
-        },
-        key
-      )
+    t: (key: string) => translate(activeLocale, messages, key)
   })
 }));
 vi.mock("./ConnectedSettings", () => ({
@@ -68,6 +51,9 @@ const initial = (): PlayerRuntime =>
     libraryOpen: false,
     settingsOpen: false,
     resultClosed: false,
+    lessonWindow: null,
+    setLessonWindow: vi.fn(),
+    lessonAction: { labelKey: "Играть", command: "start", disabled: false },
     listening: false,
     comparing: false,
     snapshot: { finished: false },
@@ -276,7 +262,10 @@ describe("connected regions without React Compiler", () => {
       snapshot: { ...observed.runtime.snapshot, waiting: true },
       music: {
         ...observed.runtime.music,
-        view: { ...observed.runtime.music.view, status: "playing", canStart: false }
+        view: {
+          ...observed.runtime.music.view,
+          instructionKey: "Найдите ноту на стане и нажмите её клавишу."
+        }
       }
     };
     view.render();
@@ -377,10 +366,10 @@ describe("connected regions without React Compiler", () => {
     });
   });
   it.each([
-    ["ru", "notes", "Левая рука: отдельные ноты", "Читаю пять нот · Читаю отдельные ноты"],
-    ["ru", "phrases", "Левая рука: короткие фразы", "Читаю пять нот · Читаю короткие фразы"],
-    ["en", "notes", "Left hand: single notes", "Read five notes · Read single notes"],
-    ["en", "phrases", "Left hand: short phrases", "Read five notes · Read short phrases"]
+    ["ru", "notes", "Левая рука: отдельные ноты", "Правая рука: пять нот · Читаю отдельные ноты"],
+    ["ru", "phrases", "Левая рука: короткие фразы", "Правая рука: пять нот · Читаю короткие фразы"],
+    ["en", "notes", "Left hand: single notes", "Right hand: five notes · Read single notes"],
+    ["en", "phrases", "Left hand: short phrases", "Right hand: five notes · Read short phrases"]
   ] as const)(
     "uses the %s bass %s title and updates on an isBass-only change",
     (locale, task, bassTitle, trebleTitle) => {
@@ -497,6 +486,41 @@ describe("connected regions without React Compiler", () => {
     view.render();
     expect(observed.header.mock.calls.length).toBe(renders + 1);
   });
+  it("updates the shared primary action after completion and invokes the latest dispatcher", () => {
+    observed.runtime = initial();
+    observed.runtime = {
+      ...observed.runtime,
+      practiceActive: true,
+      reading: { ...observed.runtime.reading, active: true, task: "notes" }
+    };
+    const view = mount(<ConnectedPlayerHeader />);
+    expect(observed.header.mock.lastCall?.[0]).toMatchObject({
+      playAction: { label: "Играть", disabled: false }
+    });
+    const renders = observed.header.mock.calls.length;
+    const newSeries = vi.fn();
+    observed.runtime = {
+      ...observed.runtime,
+      lessonAction: { labelKey: "Новая серия", command: "new", disabled: false },
+      play: newSeries
+    };
+    view.render();
+    expect(observed.header.mock.calls.length).toBe(renders + 1);
+    expect(observed.header.mock.lastCall?.[0]).toMatchObject({
+      playAction: { label: "Новая серия", disabled: false }
+    });
+    const props = observed.header.mock.lastCall?.[0] as { onTogglePlay: () => void };
+    props.onTogglePlay();
+    expect(newSeries).toHaveBeenCalledOnce();
+    observed.runtime = {
+      ...observed.runtime,
+      lessonAction: { ...observed.runtime.lessonAction, disabled: true }
+    };
+    view.render();
+    expect(observed.header.mock.lastCall?.[0]).toMatchObject({
+      playAction: { label: "Новая серия", disabled: true }
+    });
+  });
   it("updates notices only for displayed error fields", () => {
     observed.runtime = initial();
     const view = mount(<ConnectedNotices />);
@@ -565,7 +589,7 @@ describe("connected regions without React Compiler", () => {
       game: unknown;
       course: unknown;
     };
-    expect(props.title).toBe("Читаю пять нот · Проверяю чтение без подсказок");
+    expect(props.title).toBe("Правая рука: пять нот · Проверяю чтение без подсказок");
     expect(props.fixedPractice).toBe(true);
     expect([props.mode, props.hands, props.speed]).toEqual(["wait", "right", 1]);
     expect(props.difficulty).toBeUndefined();

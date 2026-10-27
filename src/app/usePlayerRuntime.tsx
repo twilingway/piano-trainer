@@ -1,3 +1,10 @@
+import {
+  dispatchMusicLessonAction,
+  practiceLessonAction,
+  lessonPlayback,
+  completedPracticeTransport,
+  restartBasicPractice
+} from "./musicLessonAction";
 import { useSettingsPlayback } from "./useSettingsPlayback";
 import { useMusicCourse } from "./useMusicCourse";
 import { useMusicTrainer, usePracticeDisplayPrefs, musicClockAllowed } from "./useMusicTrainer";
@@ -41,7 +48,7 @@ import { ViewToggles } from "../ui/ViewToggles";
 import { useWordTyping, useWordTypingInterfaceLanguage } from "./useWordTyping";
 import { ConnectedWordSettings } from "./ConnectedSettings";
 import { GameModeSwitch } from "../ui/GameModeSwitch";
-import { PracticeTimingStatus } from "../ui/PracticeTimingStatus";
+import { PracticeTimingStatus, IndependentRhythmTimingStatus } from "../ui/PracticeTimingStatus";
 import type { Part } from "../wordTyping/types";
 
 import { useDeviceRange, useRangeFit } from "./useDeviceRange";
@@ -52,6 +59,7 @@ export function usePlayerRuntime() {
   const fullscreen = useFullscreen();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [lessonWindow, setLessonWindow] = useState<string | null>(null);
   const [resultClosed, setResultClosed] = useState(false);
   /**
    * Song time practice starts from after a click on the staff; null = the beginning.
@@ -69,7 +77,12 @@ export function usePlayerRuntime() {
   const independentRhythm = useIndependentRhythmCourse();
   const music = useMusicCourse();
   const lessonDialogsOpen =
-    libraryOpen || settingsOpen || twoHand.intro || heldBass.intro || independentRhythm.intro;
+    lessonWindow !== null ||
+    libraryOpen ||
+    settingsOpen ||
+    twoHand.intro ||
+    heldBass.intro ||
+    independentRhythm.intro;
   const practiceActive =
     reading.active ||
     intervals.active ||
@@ -203,6 +216,7 @@ export function usePlayerRuntime() {
     ]),
     blocked:
       music.active ||
+      lessonWindow !== null ||
       libraryOpen ||
       (settingsOpen && practiceActive) ||
       (word.enabled && (word.pending || Boolean(word.error))),
@@ -326,28 +340,28 @@ export function usePlayerRuntime() {
     openLesson: current.openLesson
   });
 
-  const { review, lastTake, comparing } = takes;
-
   // The shell: one bar, the song's progress, windows for the library and the settings.
   const playing = snapshot.playing;
+  const completedPractice = completedPracticeTransport(
+    { reading, intervals, twoHand, heldBass, rhythm, independentRhythm },
+    sound === "loading" || lessonDialogsOpen
+  );
 
   function playNow() {
     setResultClosed(false);
+    if (lessonWindow !== null) return;
     if (music.active) {
-      if (["playing", "listening", "reply"].includes(music.view.status)) music.cancel();
-      else music.command("start");
+      dispatchMusicLessonAction(music.view, music.command, music.cancel);
     } else if (independentRhythm.active) {
       if (snapshot.playing) independentRhythm.cancel();
       else void independentRhythm.onStart();
-    } else if (heldBass.active && heldBass.snapshot?.completed) {
-      void heldBass.playAgain(ensureSound);
-    } else if (twoHand.active && twoHand.snapshot?.completed) {
-      void twoHand.playAgain(ensureSound);
     } else if (rhythm.active) {
       if (snapshot.playing) rhythm.cancel();
       else void rhythm.onStart();
-    } else if (ear) intervals.audio.togglePause();
-    else void trainer.togglePlay();
+    } else if (ear) {
+      if (intervals.audio.paused || intervals.snapshot?.listening) intervals.audio.togglePause();
+      else intervals.audio.listen();
+    } else void trainer.togglePlay();
   }
   const songPlay = useSettingsPlayback(
     countdown,
@@ -357,18 +371,29 @@ export function usePlayerRuntime() {
     computerKeyboard,
     timing.settingsProps.running
   );
-  const play = music.active ? playNow : songPlay;
+  const play =
+    completedPractice?.invoke ??
+    lessonPlayback(lessonWindow !== null, music.active || ear, playNow, songPlay);
+  const lessonAction = practiceLessonAction({
+    music: music.active ? music.view : undefined,
+    completed: completedPractice?.action,
+    ear,
+    paused: intervals.audio.paused,
+    listening: intervals.snapshot?.listening ?? false,
+    counting: countdown.active,
+    playing,
+    cancelsAttempt: rhythm.active || independentRhythm.active,
+    blocked: sound === "loading" || lessonWindow !== null
+  });
   const startOver = () => {
     countdown.resetNewRun();
     setResultClosed(false);
     if (music.active) music.command("retry");
-    else if (independentRhythm.active) independentRhythm.onRepeat();
-    else if (heldBass.active) heldBass.newSeries();
-    else if (twoHand.active) twoHand.newSeries();
-    else if (rhythm.active) void rhythm.onRepeat();
-    else if (intervals.active) intervals.newSeries();
-    else if (reading.active) reading.newSeries();
-    else trainer.restart();
+    else
+      restartBasicPractice(
+        { reading, intervals, twoHand, heldBass, rhythm, independentRhythm },
+        trainer.restart
+      );
   };
   useShortcuts({
     play,
@@ -408,15 +433,7 @@ export function usePlayerRuntime() {
     word.update({ enabled });
   };
   const timingStatus = independentRhythm.active ? (
-    <span
-      className="practice-timing-status"
-      role="status"
-      title={t(
-        "Каждая нота проверяется отдельно в окне ±150 мс. Разрыв совместных атак показывается отдельно, без дополнительного порога 200 мс."
-      )}
-    >
-      {t("Два ритма · ±150 мс")}
-    </span>
+    <IndependentRhythmTimingStatus />
   ) : (
     <PracticeTimingStatus policy={snapshot.timingPolicy} ranked={game.ranked} />
   );
@@ -429,6 +446,9 @@ export function usePlayerRuntime() {
 
   return {
     music,
+    lessonWindow,
+    setLessonWindow,
+    lessonAction,
     independentRhythm,
     heldBass,
     twoHand,
@@ -473,9 +493,9 @@ export function usePlayerRuntime() {
     view,
     library,
     listening: trainer.listening,
-    review: practiceActive ? null : review,
-    lastTake,
-    comparing: !practiceActive && comparing,
+    review: practiceActive ? null : takes.review,
+    lastTake: takes.lastTake,
+    comparing: !practiceActive && takes.comparing,
     playing: music.active
       ? ["playing", "listening", "reply"].includes(music.view.status)
       : ear

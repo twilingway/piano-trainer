@@ -51,6 +51,7 @@ interface Props {
   readonly gameBoard?: ReactNode;
   /** Course tabs share the score area without remounting the falling-note view. */
   readonly scoreBoard?: ReactNode;
+  readonly lessonBoard?: ((score: ReactNode) => ReactNode) | undefined;
   /** The first enabled reader stays above the second while both are shown. */
   readonly scoreFirst?: "tabs" | "staff";
   readonly wordBoard?: ReactNode;
@@ -201,6 +202,8 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
               {props.scoreFirst === "staff" ? [staffBoard, tabsBoard] : [tabsBoard, staffBoard]}
             </ReaderGeometryProvider>
           </div>
+        ) : props.lessonBoard ? (
+          props.lessonBoard(staffBoard)
         ) : (
           staffBoard
         )}

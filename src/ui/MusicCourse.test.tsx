@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
-import { act, type ReactNode } from "react";
+import { act, useState, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { messages } from "../i18n/messages";
-import { musicCourseMessages } from "../i18n/musicCourseMessages";
+import { guidedLessonMessages } from "../i18n/guidedLessonMessages";
 import { translate } from "../i18n/translate";
 import { MusicCourseCatalog, MusicCoursePractice } from "./MusicCourse";
+import { LessonWindowContext } from "./LessonWorkspace";
 import type { MusicCoursePracticeProps, MusicCourseView } from "./musicCourseTypes";
 
 let host: HTMLDivElement;
@@ -20,7 +21,7 @@ function props(patch: Partial<MusicCourseView> = {}): MusicCoursePracticeProps {
       status: "ready",
       ready: true,
       allReleased: true,
-      canStart: true,
+      canStart: false,
       canListen: true,
       canFinish: false,
       canNext: false,
@@ -35,6 +36,7 @@ function props(patch: Partial<MusicCourseView> = {}): MusicCoursePracticeProps {
       sightPreviewSeconds: 10,
       sightLevel: "notes",
       harmonyLesson: "triads",
+      harmonyTonePitchSet: "white",
       harmonyMode: "build-chord",
       harmonyAural: false,
       harmonyRoot: 60,
@@ -48,6 +50,10 @@ function props(patch: Partial<MusicCourseView> = {}): MusicCoursePracticeProps {
     onCommand: noop,
     onChoose: noop
   };
+}
+function required<Value>(value: Value | null | undefined): Value {
+  if (value == null) throw new Error("Missing test element");
+  return value;
 }
 async function render(node: ReactNode) {
   await act(async () => {
@@ -83,8 +89,7 @@ async function change(node: HTMLSelectElement, value: string) {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   setInterfaceLanguage("ru");
-  host = document.createElement("div");
-  document.body.append(host);
+  host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);
 });
 afterEach(async () => {
@@ -97,268 +102,80 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-describe("compact music course catalog", () => {
-  it("shows four short cards with one entry command each and localized progress", async () => {
-    const onOpen = vi.fn();
-    await render(
-      <MusicCourseCatalog
-        cards={[
-          { course: "sight-reading", completedRuns: 12, resumable: false },
-          { course: "harmony", completedRuns: 0, resumable: false },
-          { course: "dictation", completedRuns: 3, resumable: true },
-          { course: "integrated", completedRuns: 1, resumable: true }
-        ]}
-        onOpen={onOpen}
-      />
-    );
-    expect([...host.querySelectorAll("h3")].map((node) => node.textContent)).toEqual([
-      "Чтение с листа",
-      "Гармония",
-      "Диктанты",
-      "Мини-уроки"
-    ]);
-    expect(host.querySelectorAll("button")).toHaveLength(4);
-    expect(host.querySelectorAll("table, canvas, svg")).toHaveLength(0);
-    const dictationButton = host.querySelectorAll("button")[2];
-    if (!dictationButton) throw new Error("Missing dictation card action");
-    await click(dictationButton);
-    expect(onOpen).toHaveBeenCalledExactlyOnceWith("dictation");
-    await act(async () => {
-      await Promise.resolve();
-      setInterfaceLanguage("en");
-    });
-    expect(host.textContent).toContain("Sight-reading");
-    expect(host.textContent).toContain("Music sessions completed: 12");
-    expect(host.textContent).toContain("Continue music course");
+it("keeps four course IDs, original progress and one primary entry per card", async () => {
+  const onOpen = vi.fn();
+  await render(
+    <MusicCourseCatalog
+      cards={[
+        { course: "sight-reading", completedRuns: 12, resumable: false },
+        { course: "harmony", completedRuns: 0, resumable: false },
+        { course: "dictation", completedRuns: 3, resumable: true },
+        { course: "integrated", completedRuns: 1, resumable: true }
+      ]}
+      onOpen={onOpen}
+    />
+  );
+  expect(host.querySelectorAll("h3")).toHaveLength(4);
+  expect(host.querySelectorAll("button")).toHaveLength(4);
+  await click(required(host.querySelectorAll("button")[2]));
+  expect(onOpen).toHaveBeenCalledExactlyOnceWith("dictation");
+  await act(async () => {
+    await Promise.resolve();
+    setInterfaceLanguage("en");
   });
+  expect(host.textContent).toContain("Music sessions completed: 12");
+  expect(host.textContent).toContain("Continue music course");
 });
 
-describe("one active music task", () => {
-  it("shows the exact reference and played pitches and beat timings only inside completed review", async () => {
-    const current = props({
-      status: "result",
-      result: {
-        helped: false,
-        newMaterial: true,
-        metrics: [],
-        notes: {
-          expectedNotes: [
-            { pitch: 60, startBeat: 0, durationBeats: 1, hand: "right" },
-            { pitch: 64, startBeat: 1, durationBeats: 0.25, hand: "right" }
-          ],
-          playedNotes: [{ pitch: 62, startBeat: 0.125, durationBeats: 0.0625, hand: "right" }]
-        }
-      }
-    });
-    await render(<MusicCoursePractice {...current} />);
-    const review = host.querySelector<HTMLDetailsElement>(".music-course-result details");
-    expect(review?.open).toBe(false);
-    expect(review?.querySelectorAll('[data-notes="expected"] li')).toHaveLength(2);
-    expect(review?.querySelectorAll('[data-notes="played"] li')).toHaveLength(1);
-    expect(review?.querySelector('[data-notes="played"]')?.textContent).toContain(
-      "Нота ре4: начало 0,125, удержание 0,063 доли"
-    );
-    await act(async () => {
-      await Promise.resolve();
-      setInterfaceLanguage("en");
-    });
-    expect(review?.textContent).toContain("Reference notes");
-    expect(review?.textContent).toContain("Note C4: starts at 0, held for 1 beats");
-    expect(review?.textContent).toContain("Note D4: starts at 0.125, held for 0.063 beats");
-    expect(review?.textContent).not.toMatch(/[А-Яа-яЁё]/);
-  });
-  it("makes an empty played response explicit without substituting reference notes", async () => {
-    await render(
-      <MusicCoursePractice
-        {...props({
-          status: "result",
-          result: {
-            helped: false,
-            newMaterial: true,
-            metrics: [],
-            notes: {
-              expectedNotes: [{ pitch: 67, startBeat: 0, durationBeats: 1, hand: "right" }],
-              playedNotes: []
-            }
-          }
-        })}
-      />
-    );
-    const played = host.querySelector('[data-notes="played"]');
-    expect(played?.textContent).toContain("Сыгранных нот нет.");
-    expect(played?.querySelectorAll("li")).toHaveLength(0);
-    await act(async () => {
-      await Promise.resolve();
-      setInterfaceLanguage("en");
-    });
-    expect(played?.textContent).toContain("No notes were played.");
-  });
-  it.each(["ready", "playing", "listening", "reply", "paused"] as const)(
-    "does not reveal result notes or theory before finish during %s control",
-    async (status) => {
-      const current = props({
-        status,
-        canHelp: false,
-        result: {
-          helped: false,
-          newMaterial: true,
-          metrics: [],
-          notes: {
-            expectedNotes: [{ pitch: 60, startBeat: 0, durationBeats: 1, hand: "right" }],
-            playedNotes: []
-          }
-        }
-      });
-      await render(
-        <MusicCoursePractice
-          {...current}
-          preferences={{ ...current.preferences, purpose: "control" }}
-        />
-      );
-      expect(host.querySelector(".music-course-result")).toBeNull();
-      expect(host.querySelector(".music-course-notes")).toBeNull();
-      expect(host.querySelector(".music-course-theory")).toBeNull();
-    }
-  );
-  it("routes start/listen/exit and gates start by readiness and released keys", async () => {
+describe("phase actions and real response modality", () => {
+  it("starts a dictation with listening, then an explicit answer and finish", async () => {
     const current = { ...props(), onCommand: vi.fn() };
     await render(<MusicCoursePractice {...current} />);
-    await click(button("Начать музыкальное задание"));
-    await click(button("Прослушать музыкальный эталон"));
-    await click(button("Выйти из музыкального урока"));
-    expect(current.onCommand.mock.calls).toEqual([["start"], ["listen"], ["exit"]]);
+    expect(
+      [...host.querySelectorAll("button")].some((node) => node.textContent === "Начать мой ответ")
+    ).toBe(false);
+    await click(button("Послушать образец"));
+    expect(current.onCommand).toHaveBeenLastCalledWith("listen");
+    await render(<MusicCoursePractice {...current} view={{ ...current.view, canStart: true }} />);
+    await click(button("Начать мой ответ"));
+    expect(current.onCommand).toHaveBeenLastCalledWith("start");
     await render(
       <MusicCoursePractice
         {...current}
-        view={{ ...current.view, ready: false, allReleased: false }}
+        view={{
+          ...current.view,
+          status: "reply",
+          canListen: false,
+          canFinish: false,
+          allReleased: false
+        }}
       />
     );
-    expect(button("Начать музыкальное задание").disabled).toBe(true);
-    expect(button("Прослушать музыкальный эталон").disabled).toBe(true);
+    expect(button("Завершить ответ").disabled).toBe(true);
     expect(host.textContent).toContain("Отпустите все клавиши");
-  });
-  it("keeps finish explicit and disabled until every key is released", async () => {
-    const current = {
-      ...props({ status: "reply", canStart: false, canFinish: true, allReleased: false }),
-      onCommand: vi.fn()
-    };
-    await render(<MusicCoursePractice {...current} />);
-    expect(button("Завершить музыкальный ответ").disabled).toBe(true);
-    await render(
-      <MusicCoursePractice {...current} view={{ ...current.view, allReleased: true }} />
-    );
-    await click(button("Завершить музыкальный ответ"));
-    expect(current.onCommand).toHaveBeenCalledExactlyOnceWith("finish");
-    expect(
-      [...host.querySelectorAll("button")].some(
-        (node) => node.textContent === "Начать музыкальное задание"
-      )
-    ).toBe(false);
-  });
-  it("routes next/retry and translates a presentation error", async () => {
-    const current = {
-      ...props({
-        status: "error",
-        canRetry: true,
-        canNext: true,
-        error: { key: "Задание недоступно" }
-      }),
-      onCommand: vi.fn()
-    };
-    await render(<MusicCoursePractice {...current} />);
-    expect(host.querySelector('[role="alert"]')?.textContent).toBe("Задание недоступно");
-    await click(button("Повторить музыкальное задание"));
-    await click(button("К следующему музыкальному заданию"));
-    expect(current.onCommand.mock.calls).toEqual([["retry"], ["next"]]);
-  });
-  it("shows help only after its command and keeps theory folded until requested", async () => {
-    const current = { ...props({ helpKeys: ["Между нотами полутон"] }), onCommand: vi.fn() };
-    await render(<MusicCoursePractice {...current} />);
-    expect(host.querySelector(".music-course-help")).toBeNull();
-    const theory = host.querySelector<HTMLDetailsElement>(".music-course-theory");
-    if (!theory) throw new Error("Missing theory disclosure");
-    expect(theory.open).toBe(false);
-    await click(button("Подсказка к музыкальному заданию"));
-    expect(current.onCommand).toHaveBeenCalledWith("hint");
-    await render(<MusicCoursePractice {...current} view={{ ...current.view, showHelp: true }} />);
-    expect(host.querySelector<HTMLDetailsElement>(".music-course-help")?.open).toBe(true);
-    expect(host.textContent).toContain("этот проход остаётся обучением");
-    await act(async () => {
-      await Promise.resolve();
-      theory.open = true;
-      theory.dispatchEvent(new Event("toggle"));
-    });
-    expect(current.onCommand).toHaveBeenCalledWith("theory");
-  });
-  it("does not reveal hints or theory during independent control", async () => {
-    const current = props({ canHelp: false });
     await render(
       <MusicCoursePractice
         {...current}
-        preferences={{ ...current.preferences, purpose: "control" }}
+        view={{
+          ...current.view,
+          status: "reply",
+          canListen: false,
+          canFinish: true,
+          allReleased: true
+        }}
       />
     );
-    expect(host.querySelector(".music-course-theory")).toBeNull();
-    expect(
-      [...host.querySelectorAll("button")].some(
-        (node) => node.textContent === "Подсказка к музыкальному заданию"
-      )
-    ).toBe(false);
+    await click(button("Завершить ответ"));
+    expect(current.onCommand).toHaveBeenLastCalledWith("finish");
   });
-  it("does not reveal active-control theory after changing next-run purpose to training", async () => {
-    const current = props({ canHelp: false });
+
+  it("never starts before controller readiness", async () => {
     await render(
-      <MusicCoursePractice
-        {...current}
-        preferences={{ ...current.preferences, purpose: "training" }}
-      />
+      <MusicCoursePractice {...props({ ready: false, canStart: true, allReleased: false })} />
     );
-    expect(host.querySelector(".music-course-theory")).toBeNull();
-    expect(host.querySelector(".music-course-help")).toBeNull();
+    expect(button("Начать мой ответ").disabled).toBe(true);
   });
-  it("keeps active-training help available when next-run purpose is control", async () => {
-    const current = { ...props({ canHelp: true }), onCommand: vi.fn() };
-    await render(
-      <MusicCoursePractice
-        {...current}
-        preferences={{ ...current.preferences, purpose: "control" }}
-      />
-    );
-    const hint = host.querySelector(".music-course-actions button:last-child");
-    if (!(hint instanceof HTMLButtonElement)) throw new Error("Missing current-training hint");
-    await click(hint);
-    expect(current.onCommand).toHaveBeenCalledWith("hint");
-    expect(host.querySelector(".music-course-theory")).not.toBeNull();
-  });
-  it("shows distinct supplied metrics in a collapsed review without universal accuracy", async () => {
-    const current = props({
-      status: "result",
-      canNext: true,
-      result: {
-        helped: true,
-        newMaterial: false,
-        metrics: [
-          { labelKey: "Ошибки высоты в задании", value: 2 },
-          { labelKey: "Интервалы между атаками", value: 0.25 },
-          { labelKey: "Длительности удержания", value: null }
-        ]
-      }
-    });
-    await render(<MusicCoursePractice {...current} />);
-    const review = host.querySelector<HTMLDetailsElement>(".music-course-result details");
-    if (!review) throw new Error("Missing result disclosure");
-    expect(review.open).toBe(false);
-    expect(host.querySelectorAll("dt")).toHaveLength(3);
-    expect(host.textContent).toContain("Повтор знакомого материала");
-    expect(host.textContent).toContain("0,25");
-    await act(async () => {
-      await Promise.resolve();
-      setInterfaceLanguage("en");
-    });
-    expect(host.textContent).toContain("0.25");
-    expect(host.textContent).toContain("Key-holding durations");
-    expect(host.textContent).toContain("This music measure was not recorded");
-  });
+
   it.each([
     ["group", "Поступенное движение", "scalar"],
     ["auditory-interval", "Слышу квинту", "5"],
@@ -366,13 +183,18 @@ describe("one active music task", () => {
     ["tone-semitone", "Между нотами полутон", "semitone"],
     ["function", "Доминантовая функция", "dominant"]
   ] as const)(
-    "routes %s keyboard and pointer choices with provenance",
+    "uses native %s buttons even when musical input is MIDI",
     async (taskKind, label, value) => {
       const current = {
         ...props({ taskKind, status: "reply", canAnswer: true }),
         onChoose: vi.fn()
       };
-      await render(<MusicCoursePractice {...current} />);
+      await render(
+        <MusicCoursePractice
+          {...current}
+          preferences={{ ...current.preferences, inputSource: "midi" }}
+        />
+      );
       await click(button(label));
       await click(button(label), 1);
       expect(current.onChoose.mock.calls).toEqual([
@@ -383,129 +205,269 @@ describe("one active music task", () => {
       expect(button(label).disabled).toBe(true);
     }
   );
-  it("formats position choices as localized note names instead of MIDI numbers", async () => {
-    const current = props({
-      taskKind: "position",
-      status: "preview",
-      canAnswer: true,
-      choices: [{ value: "position:60", labelKey: "Позиция руки от ноты {note}", pitch: 60 }]
-    });
+
+  it("keeps preparation choices available without starting a preview on its own", async () => {
+    const current = {
+      ...props({
+        course: "sight-reading",
+        status: "preflight",
+        taskKind: "position",
+        canAnswer: true,
+        choices: [{ value: "position:60", labelKey: "Позиция руки от ноты {note}", pitch: 60 }]
+      }),
+      onChoose: vi.fn(),
+      onCommand: vi.fn()
+    };
     await render(<MusicCoursePractice {...current} />);
-    expect(host.querySelector(".music-course-choices button")?.textContent).toContain("до4");
+    await click(button("Позиция руки от ноты до4"));
+    expect(current.onChoose).toHaveBeenCalledExactlyOnceWith("position:60", "keyboard");
+    expect(current.onCommand).not.toHaveBeenCalled();
     await act(async () => {
       await Promise.resolve();
       setInterfaceLanguage("en");
     });
     expect(host.querySelector(".music-course-choices button")?.textContent).toContain("C4");
-    expect(host.querySelector(".music-course-choices button")?.textContent).not.toContain("60");
   });
-  it("shows only the actual known starting note, localized in Russian and English", async () => {
-    const current = props({ startPitch: 65 });
+
+  it("keeps captured repeat separate from a new exercise and exit", async () => {
+    const current = { ...props({ canRetry: true }), onCommand: vi.fn() };
     await render(<MusicCoursePractice {...current} />);
-    expect(host.querySelector(".music-course-anchor")?.textContent).toBe("Начните с фа4.");
-    await act(async () => {
-      await Promise.resolve();
-      setInterfaceLanguage("en");
-    });
-    expect(host.querySelector(".music-course-anchor")?.textContent).toBe("Start on F4.");
-    const relative = props();
-    await render(
-      <MusicCoursePractice
-        {...relative}
-        preferences={{ ...relative.preferences, dictationStartMode: "relative" }}
-      />
-    );
-    expect(host.querySelector(".music-course-anchor")).toBeNull();
-  });
-  it("translates a recommended skill inside an enabled result choice", async () => {
-    const current = props({
-      course: "integrated",
-      taskKind: "integrated",
-      status: "result",
-      canAnswer: true,
-      choices: [
-        {
-          value: "repeat:heard-rhythm",
-          labelKey: "Рекомендуем повторить: {skill}",
-          params: { skill: "Ритм на слух" }
-        }
-      ]
-    });
-    await render(<MusicCoursePractice {...current} />);
-    await act(async () => {
-      await Promise.resolve();
-      setInterfaceLanguage("en");
-    });
-    const choice = host.querySelector<HTMLButtonElement>(".music-course-choices button");
-    expect(choice?.textContent).toBe("Suggested review: Rhythm by ear");
-    expect(choice?.disabled).toBe(false);
-  });
-  it("shows preparation/preview choices when the active controller explicitly allows them", async () => {
-    const current = {
-      ...props({ taskKind: "group", status: "preview", canAnswer: true }),
-      onChoose: vi.fn()
-    };
-    await render(<MusicCoursePractice {...current} />);
-    const choice = host.querySelector(".music-course-choices button");
-    if (!(choice instanceof HTMLButtonElement)) throw new Error("Missing preparation choice");
-    expect(choice.disabled).toBe(false);
-    await click(choice);
-    expect(current.onChoose).toHaveBeenCalledWith("scalar", "keyboard");
-  });
-  it("shows the task counter and actual hand position without creating a staff", async () => {
-    await render(
-      <MusicCoursePractice
-        {...props({
-          taskKind: "position",
-          positionLowPitch: 60,
-          counter: { current: 2, total: 7 },
-          previewSeconds: 5
-        })}
-      />
-    );
-    expect(host.textContent).toContain("Задание 2 из 7");
-    expect(host.textContent).toContain("Позиция руки от ноты до4");
-    expect(host.querySelectorAll("canvas, svg, table")).toHaveLength(0);
+    await click(button("Повторить текущее"));
+    await click(button("Новое задание"));
+    await click(button("Закончить урок"));
+    expect(current.onCommand.mock.calls).toEqual([["retry"], ["new"], ["exit"]]);
   });
 });
 
-describe("folded course preferences", () => {
-  it("offers every harmony lesson and applies typed root, quality, inversion and progression changes", async () => {
+describe("references, blocking windows and compact results", () => {
+  it("opens generic theory without a hint command or blocking musical input", async () => {
+    const current = {
+      ...props({ course: "harmony", taskKind: "tone-semitone", status: "reply" }),
+      onCommand: vi.fn()
+    };
+    const onOpen = vi.fn();
+    await render(
+      <LessonWindowContext value={{ open: null, onOpen, interruptsAttempt: true }}>
+        <MusicCoursePractice {...current} />
+      </LessonWindowContext>
+    );
+    await click(button("Как это работает"));
+    const panel = host.querySelector<HTMLDialogElement>(".lesson-theory-panel");
+    expect(panel?.open).toBe(true);
+    expect(panel?.textContent).toContain("Тон состоит из двух полутонов");
+    expect(current.onCommand).not.toHaveBeenCalled();
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".music-course-help")).toBeNull();
+  });
+
+  it("owns settings in the app window state, warns about interruption, closes without starting", async () => {
+    const current = { ...props({ status: "reply" }), onCommand: vi.fn(), onPreferences: vi.fn() };
+    const changes = vi.fn();
+    function Harness() {
+      const [open, setOpen] = useState<string | null>(null);
+      return (
+        <LessonWindowContext
+          value={{
+            open,
+            interruptsAttempt: true,
+            onOpen: (id) => {
+              changes(id);
+              setOpen(id);
+            }
+          }}
+        >
+          <MusicCoursePractice {...current} />
+        </LessonWindowContext>
+      );
+    }
+    await render(<Harness />);
+    expect(host.querySelector("fieldset")).toBeNull();
+    await click(button("Параметры · остановить попытку"));
+    expect(changes).toHaveBeenLastCalledWith("music-settings");
+    expect(host.querySelector(".lesson-settings-dialog")?.hasAttribute("open")).toBe(true);
+    await change(select("Ввод в музыкальном курсе"), "midi");
+    expect(current.onPreferences).toHaveBeenCalledExactlyOnceWith({ inputSource: "midi" });
+    const dialog = required(host.querySelector<HTMLDialogElement>(".lesson-settings-dialog"));
+    await act(async () => {
+      await Promise.resolve();
+      dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
+    });
+    expect(changes).toHaveBeenLastCalledWith(null);
+    expect(host.querySelector("fieldset")).toBeNull();
+    expect(current.onCommand).not.toHaveBeenCalled();
+  });
+
+  it("keeps detailed notes and metrics lazy and preserves recorded values in RU and EN", async () => {
+    await render(
+      <MusicCoursePractice
+        {...props({
+          status: "result",
+          canNext: true,
+          result: {
+            helped: false,
+            newMaterial: true,
+            metrics: [
+              { labelKey: "Интервалы между атаками", value: 0.25 },
+              { labelKey: "Длительности удержания", value: null }
+            ],
+            notes: {
+              expectedNotes: [{ pitch: 60, startBeat: 0, durationBeats: 1, hand: "right" }],
+              playedNotes: [{ pitch: 62, startBeat: 0.125, durationBeats: 0.0625, hand: "right" }]
+            }
+          }
+        })}
+      />
+    );
+    expect(host.querySelector("dt, .music-course-notes")).toBeNull();
+    await click(button("Подробный результат"));
+    expect(host.querySelectorAll('[data-notes="expected"] li')).toHaveLength(1);
+    expect(host.querySelector('[data-notes="played"]')?.textContent).toContain("начало 0,125");
+    expect(host.querySelectorAll("dt")).toHaveLength(2);
+    await act(async () => {
+      await Promise.resolve();
+      setInterfaceLanguage("en");
+    });
+    expect(host.querySelector(".music-course-result")?.textContent).toContain(
+      "Note D4: starts at 0.125"
+    );
+    expect(host.querySelector(".music-course-result")?.textContent).not.toMatch(/[А-Яа-яЁё]/);
+  });
+
+  it("keeps control's hidden result and hints absent while allowing generic reference", async () => {
+    const current = props({
+      status: "reply",
+      canHelp: false,
+      result: {
+        helped: false,
+        newMaterial: true,
+        metrics: [],
+        notes: { expectedNotes: [], playedNotes: [] }
+      }
+    });
+    await render(
+      <MusicCoursePractice
+        {...current}
+        preferences={{ ...current.preferences, purpose: "control" }}
+      />
+    );
+    expect(host.querySelector(".music-course-result, .music-course-help")).toBeNull();
+    expect(
+      [...host.querySelectorAll("button")].some((node) => node.textContent === "Подсказка")
+    ).toBe(false);
+    await click(button("Как это работает"));
+    expect(host.querySelector(".lesson-theory-panel")?.hasAttribute("open")).toBe(true);
+  });
+
+  it("offers the white-key preference only for tone exercises without an inactive root", async () => {
+    const current = {
+      ...props({ course: "harmony", taskKind: "tone-semitone" }),
+      onPreferences: vi.fn()
+    };
+    await render(
+      <MusicCoursePractice
+        {...current}
+        preferences={{ ...current.preferences, harmonyLesson: "tone-semitone" }}
+      />
+    );
+    await click(button("Параметры и ввод"));
+    expect(select("Клавиши для тона и полутона").value).toBe("white");
+    expect(
+      [...host.querySelectorAll("label")].some((node) =>
+        node.textContent.startsWith("Основной звук аккорда")
+      )
+    ).toBe(false);
+    await change(select("Клавиши для тона и полутона"), "all");
+    expect(current.onPreferences).toHaveBeenCalledExactlyOnceWith({ harmonyTonePitchSet: "all" });
+  });
+
+  it("keeps all advanced harmony fields and the P2-like history filter separate", async () => {
     const current = {
       ...props({ course: "harmony", taskKind: "build-chord" }),
       onPreferences: vi.fn()
     };
     await render(<MusicCoursePractice {...current} />);
-    expect(host.querySelector<HTMLDetailsElement>(".music-course-settings")?.open).toBe(false);
+    await click(button("Параметры и ввод"));
     expect(select("Тема урока гармонии").options).toHaveLength(7);
-    await change(select("Тема урока гармонии"), "voice-leading");
     await change(select("Основной звук аккорда"), "65");
     await change(select("Лад трезвучия"), "minor");
     await change(select("Расположение аккорда"), "2");
     await change(select("План аккордовой последовательности"), "I-V-vi-IV");
+    await change(select("История музыкального курса"), "midi");
     expect(current.onPreferences.mock.calls).toEqual([
-      [{ harmonyLesson: "voice-leading" }],
       [{ harmonyRoot: 65 }],
       [{ harmonyQuality: "minor" }],
       [{ harmonyInversion: 2 }],
-      [{ harmonyProgression: "I-V-vi-IV" }]
+      [{ harmonyProgression: "I-V-vi-IV" }],
+      [{ sourceFilter: "midi" }]
     ]);
   });
-  it("keeps next-run preferences editable during an active answer without issuing task commands", async () => {
-    const current = { ...props({ status: "reply" }), onPreferences: vi.fn(), onCommand: vi.fn() };
-    await render(<MusicCoursePractice {...current} />);
-    expect(host.querySelector("fieldset")?.disabled).toBe(false);
-    expect(select("История музыкального курса").disabled).toBe(false);
-    await render(<MusicCoursePractice {...current} view={{ ...current.view, status: "ready" }} />);
-    await change(select("История музыкального курса"), "midi");
-    expect(current.onPreferences).toHaveBeenCalledExactlyOnceWith({ sourceFilter: "midi" });
-    expect(current.onCommand).not.toHaveBeenCalled();
-  });
-  it("keeps every added catalog message available in English without losing parameters", () => {
-    for (const [key, entry] of Object.entries(musicCourseMessages)) {
+
+  it("localizes every new message and retains interpolation variables", () => {
+    for (const [key, entry] of Object.entries(guidedLessonMessages)) {
       expect(translate("en", messages, key)).toBe(entry.en);
-      const placeholders = key.match(/\{[^}]+\}/g) ?? [];
-      expect(entry.en.match(/\{[^}]+\}/g) ?? []).toEqual(placeholders);
+      expect(entry.en.match(/\{[^}]+\}/g) ?? []).toEqual(key.match(/\{[^}]+\}/g) ?? []);
     }
   });
+});
+
+it.each([0, 1])("shows actual harmony correctness %s/1 before opening details", async (correct) => {
+  await render(
+    <MusicCoursePractice
+      {...props({
+        course: "harmony",
+        taskKind: "tone-semitone",
+        status: "result",
+        result: {
+          helped: false,
+          newMaterial: true,
+          metrics: [
+            { labelKey: "Ответов на задания", value: 1 },
+            { labelKey: "Верных ответов", value: correct },
+            { labelKey: "Ошибки определения", value: 1 - correct }
+          ]
+        }
+      })}
+    />
+  );
+  expect(host.querySelector(".lesson-result__summary")?.textContent).toContain(
+    `Верно: ${String(correct)}/1`
+  );
+  expect(host.querySelector("dt")).toBeNull();
+  await act(async () => {
+    await Promise.resolve();
+    setInterfaceLanguage("en");
+  });
+  expect(host.querySelector(".lesson-result__summary")?.textContent).toContain(
+    `Correct: ${String(correct)}/1`
+  );
+});
+
+it("prioritizes actual reading errors over note counts in the compact musical result", async () => {
+  await render(
+    <MusicCoursePractice
+      {...props({
+        course: "sight-reading",
+        taskKind: "sight-reading",
+        status: "result",
+        result: {
+          helped: true,
+          newMaterial: true,
+          metrics: [
+            { labelKey: "Нот в партитуре", value: 8 },
+            { labelKey: "Нот в ответе", value: 8 },
+            { labelKey: "Ошибки высоты", value: 2 },
+            { labelKey: "Ошибки ритма", value: null },
+            { labelKey: "Пропущенные ноты", value: 1 }
+          ]
+        }
+      })}
+    />
+  );
+  const summary = host.querySelector(".lesson-result__summary")?.textContent;
+  expect(summary).toContain("Ошибки высоты: 2");
+  expect(summary).toContain("Пропущенные ноты: 1");
+  expect(summary).toContain("Проход с музыкальной подсказкой");
+  expect(summary).not.toContain("Нот в партитуре");
+  expect(summary).not.toContain("Ошибки ритма");
+  expect(host.querySelector("dt")).toBeNull();
 });

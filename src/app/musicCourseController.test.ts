@@ -6,7 +6,7 @@ import { PracticeSession } from "../practice/session";
 import type { TrainerMusicPolicy } from "../practice/musicPolicy";
 import { classifySightGroup } from "../musicLearning/sightReading";
 import type { MusicResult, IntegratedProgress } from "../musicLearning/progress";
-import { copyMusicResult } from "../musicLearning/progress";
+import { copyMusicResult, validateMusicResult } from "../musicLearning/progress";
 import { musicFingerprint } from "../musicLearning/material";
 import { generateSightReadingMaterial } from "../musicLearning/sightReading";
 import { musicControllerChildView } from "./musicCourseControllerView";
@@ -141,8 +141,8 @@ async function harness(
     controller.command("start");
     await flush();
   };
-  const prepareReading = () => {
-    if (controller.getSnapshot().view.status === "preview")
+  const prepareReading = (completePreview = true) => {
+    if (completePreview && controller.getSnapshot().view.status === "preview")
       frame(now + saved.sightPreviewSeconds * 1000);
     let snapshot = controller.getSnapshot();
     if (snapshot.view.taskKind === "position" && snapshot.scene) {
@@ -169,6 +169,8 @@ async function harness(
         ),
         "keyboard"
       );
+    if (completePreview && controller.getSnapshot().view.status === "preview")
+      frame(now + saved.sightPreviewSeconds * 1000);
   };
   const playNotes = () => {
     const scene = controller.getSnapshot().scene;
@@ -249,10 +251,116 @@ function completeAudio() {
 }
 
 describe("MusicCourseController", () => {
+  it("keeps training preflight untimed and starts the full captured preview only after its last answer", async () => {
+    const h = await harness({ sightLevel: "steps" });
+    const sessionTime = h.session()?.time;
+    expect(h.controller.getSnapshot().view.status).toBe("preflight");
+    h.frame(now + 20_000);
+    h.controller.choose("position:48", "pointer");
+    h.frame(now + 20_000);
+    expect(h.controller.getSnapshot()).toMatchObject({
+      staffVisible: true,
+      keysVisible: false,
+      view: { status: "preflight", taskKind: "position", canStart: false }
+    });
+    expect(h.controller.getSnapshot().view.previewSeconds).toBeUndefined();
+    expect(h.session()?.time).toBe(sessionTime);
+    await h.start();
+    expect(h.isPlaying()).toBe(false);
+    h.prepareReading(false);
+    expect(h.controller.getSnapshot().view).toMatchObject({
+      status: "preview",
+      previewSeconds: 10,
+      canStart: false
+    });
+    h.frame(now + 3000);
+    h.controller.refreshConnection({ ...h.connection, blocked: true });
+    h.frame(now + 60_000);
+    h.controller.refreshConnection(h.connection);
+    expect(h.controller.getSnapshot().view.previewSeconds).toBe(7);
+    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    document.dispatchEvent(new Event("visibilitychange"));
+    h.frame(now + 60_000);
+    vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(h.controller.getSnapshot().view.previewSeconds).toBe(7);
+    h.frame(now + 7000);
+    expect(h.controller.getSnapshot()).toMatchObject({
+      staffVisible: false,
+      view: { status: "ready", canStart: true }
+    });
+    expect(h.session()?.time).toBe(sessionTime);
+    await h.start();
+    h.playNotes();
+    const choices = h.results[0]?.inputJournal?.events.filter((event) => event.kind === "choice");
+    expect(choices).toHaveLength(3);
+    expect(choices?.[0]).toMatchObject({
+      value: "position:48",
+      source: "pointer",
+      rawAtMs: 21000,
+      eligible: true
+    });
+    expect(choices?.[1]?.id).not.toBe(choices?.[0]?.id);
+    expect(choices?.[2]?.runId).toBe(h.results[0]?.runId);
+  });
+  it("retries a captured tone pair while New applies pending settings without rewriting its result", async () => {
+    let latest = {
+      ...emptyMusicState(),
+      course: "harmony" as const,
+      harmonyTonePitchSet: "all" as const,
+      harmonyRoot: 61
+    };
+    const h = await harness(latest, { readSelection: () => latest });
+    const original = h.controller.getSnapshot().scene;
+    latest = { ...latest, harmonyRoot: 65 };
+    h.controller.command("retry");
+    await flush();
+    h.attach();
+    const retry = h.controller.getSnapshot().scene;
+    expect(retry?.id).not.toBe(original?.id);
+    expect(retry?.seed).toBe(original?.seed);
+    expect(retry?.fingerprint).toBe(original?.fingerprint);
+    expect(retry?.notes).toEqual(original?.notes);
+    const notes = retry?.notes;
+    if (!notes?.[0] || !notes[1]) throw new Error("Missing tone pair");
+    await h.start();
+    h.controller.choose(String(notes[1].pitch - notes[0].pitch), "pointer");
+    expect(h.results[0]).toMatchObject({
+      course: "harmony",
+      toneRecipe: { version: 1, pitchSet: "all", root: 61, notationFifths: 0 }
+    });
+    const savedResult = h.results[0];
+    if (!savedResult) throw new Error("Missing tone result");
+    const preserved = copyMusicResult(savedResult);
+    expect(validateMusicResult(preserved)).toEqual(preserved);
+    h.controller.command("new");
+    await flush();
+    expect(h.controller.getSnapshot().scene?.notes[0]?.pitch).toBe(65);
+    expect(h.controller.getSnapshot().scene?.seed).not.toBe(original?.seed);
+    expect(h.results[0]).toEqual(preserved);
+  });
+  it("keeps novelty control retries on captured parameters instead of pending preferences", async () => {
+    const latest = {
+      ...emptyMusicState(),
+      course: "sight-reading" as const,
+      purpose: "control" as const,
+      sightLevel: "triads" as const
+    };
+    const h = await harness({ purpose: "control" }, { readSelection: () => latest });
+    const original = h.controller.getSnapshot().scene;
+    h.controller.command("retry");
+    await flush();
+    h.attach();
+    h.prepareReading();
+    await h.start();
+    h.playNotes();
+    expect(h.results[0]).toMatchObject({ course: "sight-reading", level: "notes" });
+    expect(h.results[0]?.fingerprint).not.toBe(original?.fingerprint);
+  });
   it("waits for reservation and actual staff presentation before preview and manual start", async () => {
     let unlock: () => void = () => undefined;
     const h = await harness(
-      {},
+      { purpose: "control" },
       {
         claim: () =>
           new Promise<boolean>((resolve) => {
@@ -685,7 +793,7 @@ describe("MusicCourseController", () => {
     h.prepareReading();
     await h.start();
     const previous = h.controller.getSnapshot();
-    h.controller.command("retry");
+    h.controller.command("new");
     await flush();
     expect(h.controller.getSnapshot().scene?.id).not.toBe(previous.scene?.id);
     expect(h.controller.getSnapshot().options.mode).toBe("tempo");
@@ -791,6 +899,14 @@ describe("MusicCourseController", () => {
     expect(h.controller.getSnapshot().staffXml).not.toContain("<fingering>");
     h.controller.command("hint");
     expect(h.controller.getSnapshot().fingeringVisible).toBe(true);
+    const cues = h.controller.getSnapshot().fingerCues;
+    expect(cues?.length).toBeGreaterThan(0);
+    const snapshot = h.controller.getSnapshot();
+    const session = h.session();
+    if (!snapshot.scene || !session) throw new Error("Missing cue scene");
+    expect(h.controller.policy(snapshot.scene.id).guidance(session, false).frame.fingerCues).toBe(
+      cues
+    );
     expect(h.controller.getSnapshot().staffXml).toMatch(/<fingering>[1-5]<\/fingering>/);
     expect(annotate).toHaveBeenCalledTimes(1);
     h.frame(now + 1000);
@@ -801,6 +917,7 @@ describe("MusicCourseController", () => {
     expect(h.results[0]?.help.some((event) => event.kind === "fingering")).toBe(true);
     const control = await harness({ purpose: "control" });
     control.controller.command("hint");
+    expect(control.controller.getSnapshot().fingerCues).toEqual([]);
     expect(control.controller.getSnapshot().fingeringVisible).toBe(false);
     expect(control.controller.getSnapshot().staffXml).not.toContain("<fingering>");
   });

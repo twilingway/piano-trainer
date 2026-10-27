@@ -1,5 +1,6 @@
 import type { KeyEvent } from "../input/midiInput";
 import type { SongNote } from "../song/song";
+import type { LessonFingerCue } from "../reading/fingerCues";
 import type { NoteStatus, PracticeEvent, PracticeSession, PracticeStats } from "./session";
 import type { TimingConfig } from "./timingConfig";
 import type { ReadingAttackGate, TrainerReadingPolicy } from "./readingPolicy";
@@ -27,6 +28,7 @@ export interface CourseGuidance {
     readonly waitingFor: readonly SongNote[];
     readonly hints: boolean;
     readonly neutralKeys: boolean;
+    readonly fingerCues?: readonly LessonFingerCue[];
   };
 }
 
