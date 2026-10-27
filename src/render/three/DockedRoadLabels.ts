@@ -23,6 +23,7 @@ export class DockedRoadLabels {
   private readonly point = new Vector4();
   private readonly from = new Vector4();
   private readonly to = new Vector4();
+  private readonly keyboard = new Vector4();
   private readonly anchor = new Vector4();
   private readonly clip = new Vector4();
   private labels: readonly { renderable: boolean }[] = [];
@@ -91,11 +92,22 @@ export class DockedRoadLabels {
         1
       );
       this.from.copy(this.point).applyMatrix4(this.worldMatrix);
+      this.keyboard.copy(this.point);
+      this.keyboard.y += dockedKeyOffset(note.pitch ?? 0);
+      this.keyboard.applyMatrix4(this.keyboardMatrix);
       this.point.set(note.x, laneY - dz / length, -contact + dy / length, 1);
       this.anchor.copy(this.point).applyMatrix4(this.worldMatrix);
       this.point.y += dockedKeyOffset(note.pitch ?? 0);
       this.to.copy(this.point).applyMatrix4(this.keyboardMatrix);
-      anchorRelativeDockedClip(this.from, this.anchor, this.to, progress, this.clip);
+      anchorRelativeDockedClip(
+        this.from,
+        this.anchor,
+        this.to,
+        progress,
+        this.clip,
+        undefined,
+        this.keyboard
+      );
       if (this.clip.w <= 0 || this.clip.z < -this.clip.w || this.clip.z > this.clip.w) continue;
       const x = ((this.clip.x / this.clip.w + 1) * screen.width) / 2;
       const y = ((1 - this.clip.y / this.clip.w) * screen.height) / 2;

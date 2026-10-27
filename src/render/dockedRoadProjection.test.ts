@@ -150,3 +150,91 @@ it("matches the clip straight offset in screen pixels through the scale ratio", 
   expect(result.y).toBeCloseTo(300 + 0.125 * 60);
   expect(dockedScreenPoint({ ...anchor }, anchor, fitted, 0, fitted)).toMatchObject(fitted);
 });
+describe("bent join in keyboard perspective", () => {
+  const world = new PerspectiveCamera(50, 16 / 9, 1, 200000);
+  world.position.set(0, 1800, 900);
+  world.lookAt(0, 0, -3000);
+  // A tilted keyboard camera that no longer matches the fitted snapshot.
+  const keyboard = new PerspectiveCamera(30, 16 / 9, 1, 200000);
+  keyboard.position.set(0, 400, 1300);
+  keyboard.lookAt(0, 0, -150);
+  const contact = new Vector3(-600, 20, -150),
+    far = new Vector3(-300, 20, -6000);
+  const anchor = clip(world, contact),
+    pinned = clip(keyboard, contact);
+  const ndc = (p: { x: number; y: number; w: number }) => [p.x / p.w, p.y / p.w] as const;
+  const at = (progress: number) => contact.clone().lerp(far, progress);
+  const [cx, cy] = ndc(pinned);
+
+  it("leaves the key along the lane's own keyboard projection", () => {
+    const [kx, ky] = ndc(clip(keyboard, at(0.25)));
+    // Pixel distance from the keyboard lane through the contact at 1568x733.
+    const offLane = (progress: number, lean: boolean) => {
+      const result = anchorRelativeDockedClip(
+        clip(world, at(progress)),
+        anchor,
+        pinned,
+        progress,
+        undefined,
+        undefined,
+        lean ? clip(keyboard, at(progress)) : undefined
+      );
+      const [x, y] = ndc(result);
+      const along = (y - cy) / (ky - cy);
+      return Math.abs(x - (cx + (kx - cx) * along)) * 784;
+    };
+    // Only the smoothstep's own start (t ~ 0.7 % at 0.01) is left off the keyboard lane.
+    expect(offLane(0.01, true)).toBeLessThan(0.5);
+    expect(offLane(0.03, true)).toBeLessThan(3);
+    // The plain bend leaves the key along the contact delta instead.
+    expect(offLane(0.01, false)).toBeGreaterThan(10);
+    expect(offLane(0.03, false)).toBeGreaterThan(10);
+  });
+
+  it("keeps the near-quarter boundary and the contact in place", () => {
+    const key = clip(keyboard, at(0.25));
+    const edge = clip(world, at(0.25));
+    expect(anchorRelativeDockedClip(edge, anchor, pinned, 0.25, undefined, undefined, key)).toEqual(
+      edge
+    );
+    const start = anchorRelativeDockedClip(anchor, anchor, pinned, 0, undefined, undefined, pinned);
+    expect(ndc(start)[0]).toBeCloseTo(cx, 9);
+    expect(ndc(start)[1]).toBeCloseTo(cy, 9);
+  });
+
+  it("stays straight when the shown keys match the fitted contact", () => {
+    for (const progress of [0.02, 0.1, 0.2]) {
+      const point = clip(world, at(progress));
+      const lane = clip(keyboard, at(progress));
+      expect(
+        anchorRelativeDockedClip(point, anchor, pinned, progress, undefined, pinned, lane)
+      ).toEqual(anchorRelativeDockedClip(point, anchor, pinned, progress, undefined, pinned));
+    }
+  });
+
+  it("matches the clip join in screen pixels", () => {
+    const [width, height] = [1568, 733];
+    const px = (p: { x: number; y: number; w: number }) => ({
+      x: ((p.x / p.w + 1) * width) / 2,
+      y: ((1 - p.y / p.w) * height) / 2
+    });
+    for (const progress of [0.02, 0.1, 0.2]) {
+      const point = clip(world, at(progress)),
+        lane = clip(keyboard, at(progress));
+      const expected = px(
+        anchorRelativeDockedClip(point, anchor, pinned, progress, undefined, undefined, lane)
+      );
+      const result = dockedScreenPoint(
+        px(point),
+        px(anchor),
+        px(pinned),
+        progress,
+        undefined,
+        px(lane),
+        height
+      );
+      expect(result.x).toBeCloseTo(expected.x, 6);
+      expect(result.y).toBeCloseTo(expected.y, 6);
+    }
+  });
+});

@@ -274,8 +274,29 @@ export class ReferenceRoadDock {
             this.fitLanes?.get(keyX),
             keyHeight
           );
+    // The lane's own keyboard projection at this row: the direction the bent join leaves the key.
+    const keyboard = roadNotePlace(
+      notes,
+      notes.road,
+      height,
+      pan,
+      keyX,
+      y,
+      offset,
+      lift,
+      this.lanes?.get(keyX),
+      keyHeight
+    );
     return anchor && pinned
-      ? dockedScreenPoint(point, anchor, pinned, 1 - Math.max(0, Math.min(1, y / height)), fitted)
+      ? dockedScreenPoint(
+          point,
+          anchor,
+          pinned,
+          1 - Math.max(0, Math.min(1, y / height)),
+          fitted,
+          keyboard,
+          height
+        )
       : point;
   }
 }
