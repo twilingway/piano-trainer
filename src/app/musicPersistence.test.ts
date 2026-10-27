@@ -28,6 +28,52 @@ function deferred<T>() {
   return { promise, resolve };
 }
 describe("one music slot in the reading repository", () => {
+  it.each([
+    [60, "major", "white"],
+    [61, "major", "all"],
+    [60, "minor", "all"]
+  ] as const)(
+    "migrates absent tone preference without replacing root %s or quality %s",
+    (harmonyRoot, harmonyQuality, harmonyTonePitchSet) => {
+      const { harmonyTonePitchSet: _new, ...legacy } = emptyMusicState();
+      const previous = musicResultFixture("harmony");
+      const history = [{ ...previous, lesson: "tone-semitone" }];
+      const normalized = normalizeMusicState({ ...legacy, harmonyRoot, harmonyQuality, history });
+      expect(normalized.invalid).toBe(false);
+      expect(normalized.music).toMatchObject({
+        harmonyRoot,
+        harmonyQuality,
+        harmonyTonePitchSet,
+        generatorVersion: 1
+      });
+      expect(normalized.music.history).toEqual(history);
+      expect(normalized.music.history[0]).not.toHaveProperty("toneRecipe");
+      expect(normalizeMusicState(normalized.music).music).toEqual(normalized.music);
+    }
+  );
+  it("persists the tone preference independently without changing selection, custom roots or history", async () => {
+    const repository = createMemoryReadingRepository();
+    const store = createAppStore({ storage: storage(), readingRepository: repository });
+    await store.readingPersistenceReady;
+    const revision = store.getState().reading.selectionRevision;
+    store.dispatch(
+      readingActions.musicPreferencesChanged({
+        harmonyRoot: 61,
+        harmonyQuality: "minor",
+        harmonyTonePitchSet: "all"
+      })
+    );
+    store.dispatch(readingActions.musicPreferencesChanged({ harmonyTonePitchSet: "white" }));
+    await store.flushReadingPersistence();
+    expect(store.getState().reading.selectionRevision).toBe(revision);
+    const reloaded = createAppStore({ storage: storage(), readingRepository: repository });
+    await reloaded.readingPersistenceReady;
+    expect(reloaded.getState().reading.music).toMatchObject({
+      harmonyRoot: 61,
+      harmonyQuality: "minor",
+      harmonyTonePitchSet: "white"
+    });
+  });
   it("migrates schema8 to9 without dropping earlier courses, journal, profile or preferences", () => {
     const previous = emptyReadingState();
     previous.activeCourse = "note-reading";

@@ -98,11 +98,13 @@ describe("KeyboardSettings: the local pianist", () => {
 describe("free camera setting", () => {
   it("replaces screen percentages with world controls only in free 3D and restores the saved framing", () => {
     const changed = vi.fn();
+    const roadChanged = vi.fn();
     act(() => {
       root.render(
         <KeyboardSettings
           {...base}
           freeCamera
+          onRoad={roadChanged}
           freeRoadLayout={{ height: 2, distance: 4, width: 6, shape: "convex" }}
           onFreeRoadLayout={changed}
         />
@@ -120,15 +122,22 @@ describe("free camera setting", () => {
       host.querySelector<HTMLSelectElement>('[data-setting-target="free-source-shape"]')?.value
     ).toBe("convex");
     act(() => {
-      root.render(<KeyboardSettings {...base} freeCamera={false} />);
+      root.render(<KeyboardSettings {...base} freeCamera={false} onRoad={roadChanged} />);
     });
     expect(host.querySelector('[data-setting-target="free-source-height"]')).toBeNull();
     expect(
       host.querySelector<HTMLInputElement>('[data-setting-target="road-horizon"]')?.value
-    ).toBe(String(base.road.horizon));
+    ).toBe(String(base.road.horizon * 100));
     expect(host.querySelector<HTMLInputElement>('[data-setting-target="road-width"]')?.value).toBe(
-      String(base.road.far)
+      String(base.road.far * 100)
     );
+    expect(
+      host.querySelector<HTMLInputElement>('[data-setting-target="road-horizon-number"]')?.value
+    ).toBe("30");
+    expect(
+      host.querySelector<HTMLInputElement>('[data-setting-target="road-width-number"]')?.value
+    ).toBe("30");
+    expect(roadChanged).not.toHaveBeenCalled();
     expect(changed).not.toHaveBeenCalled();
   });
   it.each(["ru", "en"] as const)("offers WASD only in the 3D free camera in %s", (language) => {
@@ -324,7 +333,7 @@ it.each(["classic", "arcade", "3d"] as const)(
     const far = () => host.querySelector<HTMLInputElement>('[data-setting-target="road-width"]');
     expect(horizon()?.disabled).toBe(true);
     expect(far()?.disabled).toBe(true);
-    expect(horizon()?.value).toBe(String(base.road.horizon));
+    expect(horizon()?.value).toBe(String(base.road.horizon * 100));
     expect(host.textContent).toContain(
       "Горизонт и ширина у горизонта доступны в перспективной проекции."
     );
@@ -336,9 +345,9 @@ it.each(["classic", "arcade", "3d"] as const)(
     expect(horizon()?.disabled).toBe(false);
     expect(far()?.disabled).toBe(false);
     expect(horizon()?.min).toBe("0");
-    expect(horizon()?.max).toBe("0.6");
-    expect(far()?.min).toBe("-1");
-    expect(far()?.max).toBe("0.9");
+    expect(horizon()?.max).toBe("150");
+    expect(far()?.min).toBe("-100");
+    expect(far()?.max).toBe("90");
     const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
     const slider = horizon();
     if (!slider || !nativeValue?.set) throw new Error("Expected horizon control");
@@ -350,11 +359,11 @@ it.each(["classic", "arcade", "3d"] as const)(
     const width = far();
     if (!width) throw new Error("Expected width control");
     act(() => {
-      nativeValue.set?.call(width, "-1");
+      nativeValue.set?.call(width, "-100");
       width.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(change).toHaveBeenCalledWith({ far: -1 });
-    expect(width.step).toBe("0.01");
+    expect(width.step).toBe("1");
   }
 );
 it.each(["filled", "flat", "glass"] as const)(

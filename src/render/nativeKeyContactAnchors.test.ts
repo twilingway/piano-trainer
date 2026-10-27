@@ -59,9 +59,13 @@ describe("native key rear contacts from the published GLB", () => {
     expect(nativeKeyContactOffsetX(108)).toBe(0);
   });
 
-  it.each(["player", "top"] as const)(
-    "aligns geometry, trails and CPU effect/label origins in %s",
-    (preset) => {
+  it.each(
+    (["player", "top"] as const).flatMap((preset) =>
+      [0.1, 0.99, 1, 1.01, 1.2, 1.5].map((horizon) => ({ preset, horizon }))
+    )
+  )(
+    "aligns geometry, trails and CPU effect/label origins in $preset at horizon $horizon",
+    ({ preset, horizon }) => {
       const width = 1366,
         height = 768,
         sourceWidth = 2288;
@@ -74,7 +78,7 @@ describe("native key rear contacts from the published GLB", () => {
           width,
           sourceWidth,
           height,
-          CAMERA_PRESETS[preset],
+          { ...CAMERA_PRESETS[preset], scale: horizon === 0.1 ? 1 : 1.35 },
           0.1,
           keys.values()
         );
@@ -84,7 +88,7 @@ describe("native key rear contacts from the published GLB", () => {
           preset === "top",
           true,
           height,
-          0.1,
+          horizon,
           height,
           height - 8,
           { x: 0, y: 0 },
@@ -126,6 +130,7 @@ describe("native key rear contacts from the published GLB", () => {
             expect(actual.y).toBeCloseTo(expected.y, 3);
             const cpu = roadNotePlace(notes, notes.road, 500, pan, source, 500, 0, 0, lane, floor);
             expect(cpu?.x).toBeCloseTo(expected.x, 3);
+            expect(cpu?.y).toBeCloseTo(expected.y, 3);
             expect(frame.trailAnchors[0]?.x).toBeCloseTo(note.x, 8);
             if (key.black) {
               expect(depth).toBeCloseTo(rear.z, 3);

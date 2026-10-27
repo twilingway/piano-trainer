@@ -4,6 +4,7 @@ import type { Song } from "../song/song";
 import { buildPianoTabs, positionInTabs, tabContentX } from "./pianoTabsLayout";
 import { layoutTabsOnScore, scoreTabLabelSize } from "./pianoTabsScoreLayout";
 import { spotAt } from "../staff/liveCursor";
+import { sharedTabsExtent } from "./pianoTabsExtent";
 
 const song: Song = {
   title: "Synthetic",
@@ -63,10 +64,10 @@ describe("layoutTabsOnScore", () => {
     const row = rows[0];
     if (!row) throw new Error("Missing score row");
     expect(tabContentX(row, 8)).toBe(320);
-    expect(scoreTabLabelSize(row, 90, "right", "соль", 1)).toBe(26);
+    expect(scoreTabLabelSize(1)).toBe(26);
   });
 
-  it("fits wide Russian names between compressed score attacks without changing musical pixels", () => {
+  it("keeps the chosen letter size on dense score attacks instead of shrinking one hand", () => {
     const dense: Song = {
       ...song,
       notes: [0, 0.5].map((start) => ({
@@ -82,9 +83,41 @@ describe("layoutTabsOnScore", () => {
     const row = rows[0];
     if (!row) throw new Error("Missing row");
     expect(row.events.map((event) => event.left)).toEqual([50, 90]);
-    const size = scoreTabLabelSize(row, 50, "right", "соль", 1);
-    expect(size).toBeCloseTo(32 / 2.4);
-    expect(size * 2.4 + 4).toBeLessThan(40);
+    expect(scoreTabLabelSize(1)).toBe(26);
+    expect(scoreTabLabelSize(1.5)).toBe(39);
+    expect(scoreTabLabelSize(2)).toBe(52);
+    // Score pixels come exclusively from the engraving adapter, which reserves the label space.
+    expect(row.events.map((event) => event.left)).toEqual([50, 90]);
+  });
+
+  it("reserves a terminal cursor overhang without lengthening a held note to that anchor", () => {
+    const terminal: ReaderGeometry = {
+      ...geometry,
+      svgOffsetX: 712.5,
+      viewportWidth: 1425,
+      spots: [
+        { beat: 0, x: 50, line: 0 },
+        { beat: 4, x: 230, line: 0 },
+        { beat: 8, x: 546.46, line: 0 }
+      ],
+      systems: [
+        { line: 0, startBeat: 0, endBeat: 8, width: 528.497, barlines: [{ beat: 8, x: 528.497 }] }
+      ]
+    };
+    const model = buildPianoTabs(song);
+    const rows = layoutTabsOnScore(model, terminal);
+    const row = rows[0];
+    if (!row) throw new Error("Missing terminal score row");
+    const extent = sharedTabsExtent(rows, terminal, 1440, true);
+    expect(extent.width).toBe(1987);
+    expect(row.width).toBe(528.497);
+    expect(positionInTabs(rows, 8)?.x).toBe(546.46);
+    expect(tabContentX(row, 8)).toBe(528.497);
+    expect(row.events.find((event) => event.event.hand === "left")?.width).toBeCloseTo(
+      528.497 - 230
+    );
+    expect(model.events.find((event) => event.hand === "left")?.endBeat).toBe(8);
+    expect(terminal.spots.at(-1)?.x).toBe(546.46);
   });
 
   it("uses score systems for wrapping and does not reattack a sustained note after the break", () => {

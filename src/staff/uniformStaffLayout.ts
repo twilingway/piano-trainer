@@ -120,7 +120,8 @@ function timedTicks(row: readonly Measure[], startBeat: number): TimedTick[] {
 function density(
   states: readonly MeasureState[],
   timeAtBeat: (beat: number) => number,
-  instructions: { readonly inset: number; readonly endings: ReadonlyMap<number, number> }
+  instructions: { readonly inset: number; readonly endings: ReadonlyMap<number, number> },
+  labelWidthAtBeat: ((beat: number) => number) | undefined
 ) {
   let pixelsPerSecond = MIN_PIXELS_PER_SECOND;
   let inset = Math.max(MIN_INSET, instructions.inset);
@@ -168,7 +169,10 @@ function density(
             barlineRight = Math.max(barlineRight, box.right);
           }
         }
-        const labelHalf = labels.get(tick.beat) ?? 0;
+        const labelHalf = Math.max(
+          labels.get(tick.beat) ?? 0,
+          (labelWidthAtBeat?.(tick.beat) ?? 0) / 2
+        );
         const column = {
           beat: tick.beat,
           measureStart: state.startBeat,
@@ -285,10 +289,14 @@ export interface UniformStaffLayout {
   dispose(): void;
 }
 
-/** Install after load and before render, only for the single horizontal staff. */
+/** Install after load; shared wrapped readers retain natural system breaks. */
 export function installUniformStaffLayout(
   osmd: OpenSheetMusicDisplay,
-  timeAtBeat: (beat: number) => number
+  timeAtBeat: (beat: number) => number,
+  options: {
+    readonly horizontal?: boolean;
+    readonly labelWidthAtBeat?: (beat: number) => number;
+  } = {}
 ): UniformStaffLayout {
   const sheet = osmd.GraphicSheet as unknown as LayoutSheet;
   const calculator = sheet.GetCalculator;
@@ -350,9 +358,16 @@ export function installUniformStaffLayout(
       pixelsPerSecond: scale,
       inset,
       gutters
-    } = density(states, timeAtBeat, uniformStaffInstructionSpace(osmd));
+    } = density(
+      states,
+      timeAtBeat,
+      uniformStaffInstructionSpace(osmd),
+      options.labelWidthAtBeat
+        ? (beat) => (options.labelWidthAtBeat?.(beat) ?? 0) / osmd.Zoom
+        : undefined
+    );
     const last = states.at(-1);
-    if (last) {
+    if (last && options.horizontal !== false) {
       // OSMD normally caps a horizontal sheet at 32767 CSS pixels and then
       // silently wraps long music. Its pageWidth was assigned before this hook.
       const duration = timeAtBeat(last.endBeat) - timeAtBeat(states[0]?.startBeat ?? 0);
@@ -374,7 +389,7 @@ export function installUniformStaffLayout(
         measure.setWidth = function () {
           // First clef/key/time signature occupy a lead-in outside musical time.
           const prefix =
-            state === states[0]
+            state === states[0] || options.horizontal === false
               ? Math.max(0, this.getVFStave().getNoteStartX() - this.getVFStave().getX())
               : 0;
           if (axis && this === first) axis.prefix = prefix;
@@ -386,7 +401,12 @@ export function installUniformStaffLayout(
               for (const note of tick.tickables) restoreHead(note);
             }
             formatter.call(this, width, target);
-            const prefix = state === states[0] ? (axis?.prefix ?? 0) : 0;
+            const prefix =
+              options.horizontal === false
+                ? Math.max(0, target.getVFStave().getNoteStartX() - target.getVFStave().getX())
+                : state === states[0]
+                  ? (axis?.prefix ?? 0)
+                  : 0;
             // Formatter recreates TickContexts on every invocation.
             for (const tick of timedTicks(state.row, state.startBeat)) {
               const reference = tick.tickables.find((note) => note.getGlyphWidth !== undefined);

@@ -1,4 +1,9 @@
-import { ConnectedMusicPractice } from "./ConnectedMusicCourse";
+import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
+import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
+import { ConnectedTwoHandPractice } from "./ConnectedTwoHand";
+import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
+import { ConnectedReadingPractice } from "./ConnectedReading";
+import { ConnectedLessonWorkspace } from "./ConnectedLessonWorkspace";
 import { useRuntimeCommand } from "./runtimeCommands";
 import {
   ConnectedGameBoard,
@@ -8,13 +13,6 @@ import {
 } from "./ConnectedPlayback";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedPianoTabs } from "./ConnectedCourse";
-import { ConnectedReadingPractice } from "./ConnectedReading";
-import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
-import { ConnectedTwoHandPractice } from "./ConnectedTwoHand";
-import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
-import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
-import { ConnectedRhythmPractice } from "./ConnectedRhythm";
-import { ConnectedIntervalPractice } from "./ConnectedIntervals";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPracticeWorkspace() {
@@ -113,15 +111,15 @@ export function ConnectedPracticeWorkspace() {
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   return (
     <>
-      <ConnectedMusicPractice />
-      <ConnectedReadingPractice />
-      <ConnectedBassReadingPractice />
-      <ConnectedTwoHandPractice />
-      <ConnectedHeldBassPractice />
-      <ConnectedIndependentRhythmPractice />
-      <ConnectedIntervalPractice />
-      <ConnectedRhythmPractice />
+      <ConnectedReadingPractice mode="intro" />
+      <ConnectedBassReadingPractice mode="intro" />
+      <ConnectedTwoHandPractice mode="intro" />
+      <ConnectedHeldBassPractice mode="intro" />
+      <ConnectedIndependentRhythmPractice mode="intro" />
       <ConnectedWorkspace
+        lessonBoard={
+          practiceActive ? (score) => <ConnectedLessonWorkspace score={score} /> : undefined
+        }
         worldScoreViewRef={worldScoreViewRef}
         worldScoreViewReady={worldScoreViewReady}
         timelineSong={timelineSong}

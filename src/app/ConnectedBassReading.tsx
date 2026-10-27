@@ -22,12 +22,16 @@ export function ConnectedBassReadingCard({ onChoose }: { onChoose: () => void })
   );
 }
 
-export function ConnectedBassReadingPractice() {
+export function ConnectedBassReadingPractice({
+  mode = "all"
+}: {
+  mode?: "all" | "intro" | "practice";
+}) {
   const reading = useRuntimeSelector((runtime) => runtime.reading);
   const bindings = useRuntimeSelector((runtime) => runtime.computerKeyboard.bindings);
   return (
     <>
-      {reading.intro && reading.introCourse === "bass" && (
+      {mode !== "practice" && reading.intro && reading.introCourse === "bass" && (
         <BassReadingIntro
           keyBindings={Object.entries(bindings).flatMap(([code, binding]) =>
             binding.type === "note" ? [{ pitch: binding.pitch, label: keyLabel(code) }] : []
@@ -40,7 +44,7 @@ export function ConnectedBassReadingPractice() {
           }}
         />
       )}
-      {reading.isBass && reading.task && reading.task !== "check" && (
+      {mode !== "intro" && reading.isBass && reading.task && reading.task !== "check" && (
         <BassReadingPracticePanel
           task={reading.task}
           preferences={reading.preferences}

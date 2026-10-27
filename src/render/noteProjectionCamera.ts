@@ -1,4 +1,5 @@
 import { depthAtScreenProgress } from "./perspective";
+import { normalizeRoadHorizon } from "./roadHorizon";
 import {
   DEFAULT_CAMERA,
   MAX_ROAD_WORLD_Z,
@@ -21,30 +22,50 @@ export function noteProjectionCamera(
   const pixels = (across.x - origin.x) / scale;
   if (origin.scale <= 0 || !Number.isFinite(pixels) || pixels <= 0) return keyboard;
   const fit = keyboard.params.fit;
-  const height = Math.max(1, viewportHeight);
-  const share = Number.isFinite(horizonShare) ? Math.max(0, Math.min(0.95, horizonShare)) : 0.1;
-  const targetY = Math.max(0, Math.min(height * 0.9, origin.y * share));
-  const farShare = 0.1;
+  if (
+    ![origin.x, origin.y, origin.scale, fit, scale, near.y, near.z].every(Number.isFinite) ||
+    fit <= 0 ||
+    scale <= 0
+  )
+    return keyboard;
+  const height = Number.isFinite(viewportHeight)
+    ? Math.max(1, viewportHeight)
+    : Math.max(1, origin.y);
   const direct = projection === "direct";
+  const share = normalizeRoadHorizon(horizonShare);
+  const legacyTarget = (value: number) => Math.max(0, Math.min(height * 0.9, origin.y * value));
+  const targetY = direct
+    ? legacyTarget(Math.min(0.95, share))
+    : share <= 0.6
+      ? legacyTarget(share)
+      : share < 1
+        ? legacyTarget(0.6) + ((origin.y - legacyTarget(0.6)) * (share - 0.6)) / 0.4
+        : origin.y * share;
+  const farShare = direct ? 0.1 : farWidthBudget(near.z, scale, fit);
+  if (farShare === undefined) return keyboard;
+  const travel = origin.y - targetY;
   const pitch = direct
     ? 90
-    : calibratedPitch(farShare, origin.y - targetY, pixels, near.y, near.z, scale, fit);
+    : Math.sign(travel) *
+      Math.min(
+        calibratedPitch(farShare, Math.abs(travel), pixels, near.y, near.z, scale, fit),
+        25 * Math.min(1, Math.abs(1 - share) / 0.4)
+      );
   const angle = (pitch * Math.PI) / 180;
   const ca = direct ? 0 : Math.cos(angle);
   const sa = direct ? 1 : Math.sin(angle);
   // Keep the perspective vanishing row beyond the desired horizon even for a fitted 88-key view.
   const cameraHeight = direct
     ? 1000
-    : Math.max(
-        (near.y * scale + 1) / fit,
-        (near.y * scale + ((origin.y - targetY) * ca) / (pixels * (1 - farShare))) / fit
-      );
+    : (near.y * scale + (travel * ca) / (pixels * (1 - farShare))) / fit;
   const prefs = { ...DEFAULT_CAMERA, height: cameraHeight, pitch, scale, targetY: 0 };
   const yy = near.y * scale - prefs.height * fit;
   const zz = near.z * scale + prefs.distance * fit;
   const contactDepth = -yy * sa + zz * ca;
   const focal = pixels * contactDepth;
   const originY = origin.y + (yy * ca + zz * sa) * pixels;
+  if (![cameraHeight, contactDepth, focal, originY].every(Number.isFinite) || contactDepth <= 1)
+    return keyboard;
   const params: CameraParams = {
     width: keyboard.params.width,
     focal,
@@ -77,11 +98,21 @@ export function noteProjectionCamera(
   const maximum = Math.max(near.z + 1, Math.min(MAX_ROAD_WORLD_Z, clipLimit));
   let low = near.z;
   let high = maximum;
-  // Projection is monotone on this plane. The bounded solve also handles unreachable top rows.
-  for (let step = 0; step < 48; step++) {
-    const middle = (low + high) / 2;
-    if (project(0, near.y, middle).y > targetY) low = middle;
-    else high = middle;
+  const direction = Math.sign(targetY - origin.y);
+  // A horizontal plane still needs finite depth to reach the requested width taper.
+  if (!direct && direction === 0) {
+    high = low = Math.min(maximum, near.z + (contactDepth * (1 / farShare - 1)) / (scale * ca));
+  } else {
+    for (let step = 0; step < 48; step++) {
+      const middle = (low + high) / 2;
+      if (
+        direct
+          ? project(0, near.y, middle).y > targetY
+          : (project(0, near.y, middle).y - targetY) * direction < 0
+      )
+        low = middle;
+      else high = middle;
+    }
   }
   const roadFarZ = Math.max(near.z + 1, (low + high) / 2);
   const projectAtProgress: WorldCamera["projectAtProgress"] = (x, y, nearZ, farZ, progress) => {
@@ -140,4 +171,16 @@ function calibratedPitch(
     else high = middle;
   }
   return low;
+}
+
+/** Increase the internal far width only when even a level plane exceeds the existing budgets. */
+function farWidthBudget(nearZ: number, scale: number, fit: number): number | undefined {
+  const distance = DEFAULT_CAMERA.distance * fit;
+  const contact = nearZ * scale + distance;
+  const required = Math.max(
+    contact / (scale * (MAX_ROAD_WORLD_Z - 1) + distance),
+    contact / (SAFE_VIEW_DEPTH * 0.95)
+  );
+  if (!Number.isFinite(required) || required >= 1 || contact <= 1) return undefined;
+  return required < 0.1 ? 0.1 : required + (1 - required) * 1e-8;
 }

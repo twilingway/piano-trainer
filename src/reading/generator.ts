@@ -1,3 +1,4 @@
+import { withLessonFingering } from "./fingerCues";
 import { songFromMusicXml } from "../song/musicxml";
 import type { ReadingExercise, ReadingTask } from "./types";
 import type { ReadingPlan } from "./progressTypes";
@@ -95,7 +96,7 @@ export function generateReadingExercise(
     seed: normalized,
     generatorVersion: version,
     musicXml,
-    song: songFromMusicXml(musicXml, "")
+    song: withLessonFingering(songFromMusicXml(musicXml, ""))
   };
 }
 

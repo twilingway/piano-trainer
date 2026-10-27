@@ -1,3 +1,6 @@
+import { IndependentRhythmLessonSummary } from "./LessonResultSummary";
+import { LessonIllustration } from "./LessonIllustration";
+import { LessonReport } from "./LessonReport";
 import { LessonDetails } from "./LessonDetails";
 import { useI18n } from "../app/useI18n";
 import type {
@@ -21,16 +24,15 @@ export function IndependentRhythmCourseCard(
   const { t } = useI18n();
   return (
     <section className="reading-course-card">
+      <LessonIllustration lesson="two-rhythms" />
       <h3>{t(INDEPENDENT_RHYTHM_TITLE)}</h3>
-      <p>
-        {t(
-          "Проверка пульса и четыре такта с разными ритмами слева и справа. Только C3 и C4, 60 BPM."
-        )}
-      </p>
+      <p>{t("Левая и правая руки играют свой ритм.")}</p>
       <div className="reading-actions">
         <button type="button" className="game-button" onClick={props.onStart}>
           {t("Открыть проверку пульса")}
         </button>
+      </div>
+      <LessonDetails kind="more" id="two-rhythms:catalog:more">
         <button
           type="button"
           className="game-button lesson-secondary-action"
@@ -38,7 +40,10 @@ export function IndependentRhythmCourseCard(
         >
           {t("Знакомство с двумя ритмами")}
         </button>
-      </div>
+      </LessonDetails>
+      <p className="reading-muted">
+        {t("Завершено серий: {number}", { number: props.history.length })}
+      </p>
       <LessonDetails kind="progress" id="independent-rhythm:catalog:progress">
         <IndependentRhythmProgress {...props} />
       </LessonDetails>
@@ -260,7 +265,11 @@ export function IndependentRhythmPracticePanel(props: IndependentRhythmPracticeP
           )}
         </p>
       </LessonDetails>
-      {props.result && <IndependentRhythmResults result={props.result} />}
+      {props.result && (
+        <LessonReport summary={<IndependentRhythmLessonSummary result={props.result} />}>
+          <IndependentRhythmResults result={props.result} />
+        </LessonReport>
+      )}
       <LessonDetails kind="progress" id="independent-rhythm:practice:progress">
         <IndependentRhythmProgress {...props} />
       </LessonDetails>

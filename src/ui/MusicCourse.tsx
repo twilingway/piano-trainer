@@ -1,4 +1,9 @@
-import { MusicCourseNotes } from "./MusicCourseNotes";
+import { MusicCourseResultDetails, MusicCourseResultSummary } from "./MusicCourseResultDetails";
+import { GameDialog } from "./GameDialog";
+import { useLessonWindow } from "./LessonWorkspace";
+import { musicLessonAction, musicButtonAnswer } from "../app/musicLessonAction";
+import { LessonIllustration } from "./LessonIllustration";
+import { useState } from "react";
 import type { MessageParams } from "../i18n/locales";
 import { MusicCourseSettings, musicCourseNoteLabel } from "./MusicCourseSettings";
 import type { MouseEvent } from "react";
@@ -32,6 +37,7 @@ const GOALS: Readonly<Record<MusicCourse, string>> = {
 };
 const STATUS: Readonly<Record<MusicCoursePracticeProps["view"]["status"], string>> = {
   preparation: "Подготовка задания",
+  preflight: "Подготовьте руку и найдите рисунок нот",
   preview: "Предпросмотр фразы",
   ready: "Можно начинать",
   playing: "Играйте фразу",
@@ -42,7 +48,7 @@ const STATUS: Readonly<Record<MusicCoursePracticeProps["view"]["status"], string
   error: "Задание недоступно",
   completed: "Музыкальный урок завершён"
 };
-const INSTRUCTIONS: Readonly<Record<MusicTaskKind, string>> = {
+export const MUSIC_TASK_INSTRUCTIONS: Readonly<Record<MusicTaskKind, string>> = {
   "sight-reading": "Посмотрите фразу, затем начните игру. Сохраняйте порядок нот и ритм.",
   group: "Как устроена эта группа нот? Выберите её рисунок.",
   position: "Найдите нижнюю клавишу указанной позиции руки.",
@@ -140,9 +146,13 @@ export function MusicCourseCatalog({
   const { t, formatNumber } = useI18n();
   return (
     <>
-      <div className="music-course-catalog" aria-label={t("Новые музыкальные курсы")}>
+      <div
+        className="music-course-catalog first-steps-music"
+        aria-label={t("Новые музыкальные курсы")}
+      >
         {cards.map((card) => (
           <section className="reading-course-card music-course-card" key={card.course}>
+            <LessonIllustration lesson={card.course} />
             <h3>{t(MUSIC_COURSE_LABELS[card.course])}</h3>
             <p>{t(GOALS[card.course])}</p>
             <p className="reading-muted">
@@ -179,16 +189,21 @@ export function MusicCourseCatalog({
 
 export function MusicCoursePractice(props: MusicCoursePracticeProps) {
   const { view, onCommand, onChoose } = props;
-  const result = ["result", "completed"].includes(view.status) ? view.result : undefined;
   const { t, formatNumber } = useI18n();
+  const windows = useLessonWindow();
+  const [localWindow, setLocalWindow] = useState<string | null>(null);
+  const [theoryOpen, setTheoryOpen] = useState(false);
+  const openWindow = windows?.open ?? localWindow;
+  const setWindow = (id: string | null) => {
+    if (windows) windows.onOpen(id);
+    else setLocalWindow(id);
+  };
+  const result = ["result", "completed"].includes(view.status) ? view.result : undefined;
   const choices = view.choices ?? DEFAULT_CHOICES[view.taskKind] ?? [];
+  const answerChoices = choices.filter((choice) => !choice.value.endsWith("-alternative"));
+  const alternatives = choices.filter((choice) => choice.value.endsWith("-alternative"));
   const canAnswer = view.ready && !view.error && (view.canAnswer ?? view.status === "reply");
-  const showStart = ["preparation", "ready", "paused"].includes(view.status);
-  const showListen =
-    view.canListen ||
-    view.status === "listening" ||
-    ["dictation", "auditory-interval"].includes(view.taskKind);
-  const showFinish = view.canFinish || ["reply", "playing"].includes(view.status);
+  const action = musicLessonAction(view);
   const theory =
     view.course === "harmony"
       ? THEORY[ACTIVE_THEORY[view.taskKind] ?? "triads"]
@@ -201,18 +216,6 @@ export function MusicCoursePractice(props: MusicCoursePracticeProps) {
       className="reading-practice music-course-practice"
       aria-label={t(MUSIC_COURSE_LABELS[view.course])}
     >
-      <div className="music-course-heading">
-        <h3>{t(MUSIC_COURSE_LABELS[view.course])}</h3>
-        <button
-          type="button"
-          className="game-button"
-          onClick={() => {
-            onCommand("exit");
-          }}
-        >
-          {t("Выйти из музыкального урока")}
-        </button>
-      </div>
       <p className="music-course-status" role="status">
         {t(view.phaseKey ?? STATUS[view.status])}
         {view.counter
@@ -222,8 +225,14 @@ export function MusicCoursePractice(props: MusicCoursePracticeProps) {
             })
           : null}
       </p>
-      <p className="music-course-instruction">
-        {t(view.instructionKey ?? INSTRUCTIONS[view.taskKind], view.instructionParams)}
+      <p
+        className={
+          windows
+            ? "music-course-instruction lesson-repeated-instruction"
+            : "music-course-instruction"
+        }
+      >
+        {t(view.instructionKey ?? MUSIC_TASK_INSTRUCTIONS[view.taskKind], view.instructionParams)}
       </p>
       {view.previewSeconds !== undefined ? (
         <p>{t("До закрытия нот: {seconds} с", { seconds: formatNumber(view.previewSeconds) })}</p>
@@ -241,75 +250,67 @@ export function MusicCoursePractice(props: MusicCoursePracticeProps) {
         </p>
       ) : null}
       {view.error ? <p role="alert">{t(view.error.key, view.error.params)}</p> : null}
-      {!view.ready && !view.error ? (
-        <p className="reading-muted">{t("Дождитесь готовности нот и звука.")}</p>
+      {!view.allReleased ? <p>{t("Отпустите все клавиши перед продолжением.")}</p> : null}
+      {!windows && action.command && action.command !== "stop" ? (
+        <button
+          type="button"
+          className="game-button lesson-main-action"
+          disabled={action.disabled}
+          onClick={() => {
+            if (action.command && action.command !== "stop") onCommand(action.command);
+          }}
+        >
+          {t(action.labelKey)}
+        </button>
       ) : null}
-      {!view.allReleased ? (
-        <p className="reading-muted">{t("Отпустите все клавиши перед продолжением.")}</p>
+      {answerChoices.length > 0 && (view.canAnswer || result) ? (
+        <div
+          className="reading-actions music-course-choices"
+          role="group"
+          aria-label={t("Варианты музыкального ответа")}
+        >
+          {answerChoices.map((choice) => (
+            <button
+              type="button"
+              className="game-button"
+              key={choice.value}
+              disabled={!canAnswer || (!result && !musicButtonAnswer(view))}
+              onClick={(event) => {
+                choose(choice.value, event);
+              }}
+            >
+              {t(choice.labelKey, choiceParams(choice, t))}
+            </button>
+          ))}
+        </div>
       ) : null}
-      <div className="reading-actions music-course-actions">
-        {showStart ? (
+      {result ? (
+        <div className="lesson-result">
+          <div role="status">
+            <MusicCourseResultSummary result={result} />
+          </div>
           <button
             type="button"
             className="game-button"
-            disabled={!view.canStart || !view.ready || !view.allReleased}
             onClick={() => {
-              onCommand("start");
+              setWindow("music-result");
             }}
           >
-            {t(
-              view.status === "paused"
-                ? "Продолжить музыкальное задание"
-                : "Начать музыкальное задание"
-            )}
+            {t("Подробный результат")}
           </button>
-        ) : null}
-        {showListen ? (
+        </div>
+      ) : null}
+      <div className="reading-actions lesson-secondary-actions">
+        {view.canListen && action.command !== "listen" ? (
           <button
             type="button"
             className="game-button"
-            disabled={!view.canListen || !view.ready}
+            disabled={!view.ready}
             onClick={() => {
               onCommand("listen");
             }}
           >
-            {t("Прослушать музыкальный эталон")}
-          </button>
-        ) : null}
-        {showFinish ? (
-          <button
-            type="button"
-            className="game-button"
-            disabled={!view.canFinish || !view.ready || !view.allReleased}
-            onClick={() => {
-              onCommand("finish");
-            }}
-          >
-            {t("Завершить музыкальный ответ")}
-          </button>
-        ) : null}
-        {view.canNext ? (
-          <button
-            type="button"
-            className="game-button"
-            disabled={!view.allReleased}
-            onClick={() => {
-              onCommand("next");
-            }}
-          >
-            {t("К следующему музыкальному заданию")}
-          </button>
-        ) : null}
-        {view.canRetry || view.error ? (
-          <button
-            type="button"
-            className="game-button"
-            disabled={view.canRetry === false}
-            onClick={() => {
-              onCommand("retry");
-            }}
-          >
-            {t("Повторить музыкальное задание")}
+            {t("Послушать образец ещё раз")}
           </button>
         ) : null}
         {view.canHelp ? (
@@ -321,89 +322,118 @@ export function MusicCoursePractice(props: MusicCoursePracticeProps) {
               onCommand("hint");
             }}
           >
-            {t("Подсказка к музыкальному заданию")}
+            {t("Подсказка")}
+          </button>
+        ) : null}
+        {(view.canRetry || view.error) && action.command !== "retry" ? (
+          <button
+            type="button"
+            className="game-button"
+            disabled={view.canRetry === false}
+            onClick={() => {
+              onCommand("retry");
+            }}
+          >
+            {t(view.retryCreatesNewMaterial ? "Новый пример для проверки" : "Повторить текущее")}
+          </button>
+        ) : null}
+        {!result && view.course !== "integrated" ? (
+          <button
+            type="button"
+            className="game-button"
+            onClick={() => {
+              onCommand("new");
+            }}
+          >
+            {t("Новое задание")}
           </button>
         ) : null}
       </div>
-      {choices.length > 0 &&
-      (view.canAnswer ?? ["ready", "playing", "reply"].includes(view.status)) ? (
-        <div
-          className="reading-actions music-course-choices"
-          role="group"
-          aria-label={t("Варианты музыкального ответа")}
-        >
-          {choices.map((choice) => (
-            <button
-              type="button"
-              className="game-button"
-              key={choice.value}
-              disabled={!canAnswer}
-              onClick={(event) => {
-                choose(choice.value, event);
-              }}
-            >
-              {t(choice.labelKey, choiceParams(choice, t))}
-            </button>
-          ))}
-        </div>
-      ) : null}
       {view.showHelp ? (
-        <details open className="music-course-help">
-          <summary>{t("Разбор подсказки")}</summary>
+        <div className="music-course-help" role="status">
           <p>{t("Подсказка использована: этот проход остаётся обучением.")}</p>
           {view.helpKeys?.map((key) => (
             <p key={key}>{t(key)}</p>
           ))}
-        </details>
-      ) : null}
-      {result ? (
-        <div className="music-course-result">
-          <p>{t(result.summaryKey ?? "Результат музыкального задания")}</p>
-          <p className="reading-muted">
-            {t(
-              result.helped
-                ? "Проход с музыкальной подсказкой"
-                : "Самостоятельный музыкальный ответ"
-            )}
-            {t(result.newMaterial ? " · Новый материал" : " · Повтор знакомого материала")}
-          </p>
-          <details>
-            <summary>{t("Подробный разбор музыкального ответа")}</summary>
-            <dl>
-              {result.metrics.map((metric) => (
-                <div key={metric.labelKey}>
-                  <dt>{t(metric.labelKey)}</dt>
-                  <dd>
-                    {metric.valueKey
-                      ? t(metric.valueKey)
-                      : metric.value === null
-                        ? t("Музыкальный показатель не измерялся")
-                        : typeof metric.value === "number"
-                          ? formatNumber(metric.value, { maximumFractionDigits: 2 })
-                          : metric.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            {result.notes ? <MusicCourseNotes {...result.notes} /> : null}
-            {result.detailKeys?.map((key) => (
-              <p key={key}>{t(key)}</p>
-            ))}
-          </details>
         </div>
       ) : null}
-      {view.canHelp || result ? (
-        <details
-          className="music-course-theory"
-          onToggle={(event) => {
-            if (event.currentTarget.open) onCommand("theory");
+      <nav
+        className="reading-actions lesson-reference-actions"
+        aria-label={t("Дополнительно к уроку")}
+      >
+        <button
+          type="button"
+          className="game-button"
+          onClick={() => {
+            setTheoryOpen(true);
           }}
         >
-          <summary>{t("Почему это устроено так")}</summary>
-          <p>{t(theory)}</p>
-        </details>
-      ) : null}
-      <MusicCourseSettings {...props} />
+          {t("Как это работает")}
+        </button>
+        <button
+          type="button"
+          className="game-button"
+          onClick={() => {
+            setWindow("music-settings");
+          }}
+        >
+          {t(windows?.interruptsAttempt ? "Параметры · остановить попытку" : "Параметры и ввод")}
+        </button>
+        {alternatives.map((choice) => (
+          <button
+            type="button"
+            className="game-button"
+            key={choice.value}
+            disabled={!canAnswer}
+            onClick={(event) => {
+              choose(choice.value, event);
+            }}
+          >
+            {t(choice.labelKey, choiceParams(choice, t))}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="game-button"
+          onClick={() => {
+            onCommand("exit");
+          }}
+        >
+          {t("Закончить урок")}
+        </button>
+      </nav>
+      <GameDialog
+        open={theoryOpen}
+        modal={false}
+        title={t("Как это работает")}
+        className="lesson-theory-panel"
+        onClose={() => {
+          setTheoryOpen(false);
+        }}
+      >
+        {theoryOpen ? <p>{t(theory)}</p> : null}
+      </GameDialog>
+      <GameDialog
+        open={openWindow === "music-settings"}
+        title={t("Параметры и ввод")}
+        className="lesson-settings-dialog"
+        onClose={() => {
+          setWindow(null);
+        }}
+      >
+        {openWindow === "music-settings" ? <MusicCourseSettings {...props} /> : null}
+      </GameDialog>
+      <GameDialog
+        open={openWindow === "music-result"}
+        title={t("Подробный результат")}
+        onClose={() => {
+          setWindow(null);
+        }}
+      >
+        {openWindow === "music-result" && result ? (
+          <MusicCourseResultDetails result={result} />
+        ) : null}
+      </GameDialog>
     </section>
   );
 }

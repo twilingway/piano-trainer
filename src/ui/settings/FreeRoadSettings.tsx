@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ProjectionNumberInput } from "./ProjectionNumberInput";
 import { useI18n } from "../../app/useI18n";
 import {
   FREE_ROAD_LIMITS,
@@ -12,52 +12,6 @@ const METRICS = [
   { key: "width", label: "Ширина горизонта, м" },
   { key: "radius", label: "Радиус мирового горизонта, м" }
 ] as const;
-
-function HorizonNumberInput({
-  value,
-  min,
-  max,
-  step,
-  label,
-  target,
-  onChange
-}: {
-  readonly value: number;
-  readonly min: number;
-  readonly max: number;
-  readonly step: number;
-  readonly label: string;
-  readonly target: string;
-  readonly onChange: (value: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-  const [editing, setEditing] = useState(false);
-  return (
-    <input
-      type="number"
-      className="game-input"
-      min={min}
-      max={max}
-      step={step}
-      value={editing ? draft : String(value)}
-      aria-label={label}
-      data-setting-target={target}
-      onFocus={() => {
-        setDraft(String(value));
-        setEditing(true);
-      }}
-      onChange={(event) => {
-        setDraft(event.target.value);
-        const next = event.target.valueAsNumber;
-        if (event.target.value !== "" && Number.isFinite(next)) onChange(next);
-      }}
-      onBlur={() => {
-        setEditing(false);
-        setDraft(String(value));
-      }}
-    />
-  );
-}
 
 /** World-space source geometry, independent from screen projection and orbit. */
 export function FreeRoadSettings({
@@ -98,7 +52,7 @@ export function FreeRoadSettings({
                   change(key, Number(event.target.value));
                 }}
               />
-              <HorizonNumberInput
+              <ProjectionNumberInput
                 min={min}
                 max={limits.max}
                 step={limits.step}

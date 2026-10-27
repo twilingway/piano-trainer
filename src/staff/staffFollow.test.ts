@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { placeCursorLine } from "./liveCursor";
+import { prepareStaffCursorPadding } from "./staffViewport";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
 
 const spots = [
@@ -83,6 +84,54 @@ describe("staff cursor following", () => {
     view.host.getBoundingClientRect = () => new DOMRect(30, 0, 815, 120);
     view.frame(0);
     expect(view.cursorX()).toBe(407.5);
+  });
+
+  it("reaches the final anchor when a scrollbar gutter narrows percentage padding", () => {
+    const host = document.createElement("div");
+    const page = document.createElement("div");
+    page.className = "staff-page";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const cursor = document.createElement("div");
+    page.append(svg);
+    host.append(page, cursor);
+    let offset = 0;
+    const width = 607;
+    const clientWidth = 592;
+    const svgWidth = 80.0625;
+    const terminal = [
+      { beat: 0, x: 0, line: 0 },
+      { beat: 4, x: 75.6524, line: 0 }
+    ];
+    const padding = () =>
+      page.style.paddingInline ? Number.parseFloat(page.style.paddingInline) : clientWidth / 2;
+    const nativeMaximum = () => Math.floor(padding() * 2 + svgWidth - width);
+    Object.defineProperties(host, {
+      clientWidth: { value: clientWidth },
+      scrollWidth: { get: () => Math.round(padding() * 2 + svgWidth) },
+      scrollLeft: {
+        get: () => offset,
+        set: (value: number) => {
+          offset = Math.round(Math.max(0, Math.min(nativeMaximum(), value)));
+        }
+      }
+    });
+    host.getBoundingClientRect = () => new DOMRect(8, 0, width, 120);
+    svg.getBoundingClientRect = () => new DOMRect(8 + padding() - offset, 0, svgWidth, 120);
+    centreLivePosition(host, terminal, 4);
+    expect(host.scrollWidth - host.clientWidth).toBe(80);
+    expect(offset).toBe(65);
+    expect(padding() + 75.6524 - offset - width / 2).toBeCloseTo(3.1524);
+    prepareStaffCursorPadding(host, true);
+    expect(page.style.paddingInline).toBe("303.5px");
+    centreLivePosition(host, terminal, 4);
+    placeCursorLine(host, cursor, terminal, [{ top: 0, bottom: 120 }], 4, { centered: true });
+    const cursorX = Number(/translate\(([^p]+)px/.exec(cursor.style.transform)?.[1]) - offset;
+    expect(nativeMaximum()).toBe(80);
+    expect(cursorX).toBeCloseTo(width / 2, 8);
+    expect(terminal.at(-1)?.x).toBe(75.6524);
+    // Wrapped and special course layout resume their own CSS padding.
+    prepareStaffCursorPadding(host, false);
+    expect(page.style.paddingInline).toBe("");
   });
 
   it("does not replace the reader's scroll while paused or following is disabled", () => {

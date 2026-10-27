@@ -1,3 +1,4 @@
+import { withLessonFingering } from "./fingerCues";
 import { songFromMusicXml } from "../song/musicxml";
 import { normalizeReadingSeed, readingPitchesForSeed } from "./generator";
 import { BASS_READING_PROFILE } from "./profiles";
@@ -59,7 +60,7 @@ export function heldBassFragmentsForSeed(seed: number, version = 1): readonly He
     )
       melody[0] = PITCHES[(PITCHES.indexOf(melody[0] ?? 60) + 1) % 5] ?? 60;
     const musicXml = score(bassPitch, melody);
-    const song = songFromMusicXml(musicXml, "");
+    const song = withLessonFingering(songFromMusicXml(musicXml, ""));
     const bassNoteId = `p0n${String(melody.length)}`;
     const melodyNoteIds = melody.map((_, step) => `p0n${String(step)}`);
     fragments.push({

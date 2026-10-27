@@ -1,3 +1,5 @@
+import { LessonWorkspace } from "./LessonWorkspace";
+import { LessonDetails } from "./LessonDetails";
 import { renderToStaticMarkup } from "react-dom/server";
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 // @vitest-environment happy-dom
@@ -22,7 +24,12 @@ it("shares the score area while keeping the trainer host and supplied song clock
   const root = createRoot(host);
   const trainerHost = createRef<HTMLDivElement>();
   const noop = () => undefined;
-  const render = async (tabs: boolean, staff: boolean, scoreFirst: "tabs" | "staff" = "tabs") => {
+  const render = async (
+    tabs: boolean,
+    staff: boolean,
+    scoreFirst: "tabs" | "staff" = "tabs",
+    practice = false
+  ) => {
     await act(async () => {
       await Promise.resolve();
       root.render(
@@ -43,6 +50,7 @@ it("shares the score area while keeping the trainer host and supplied song clock
           mirrorHostRef={{ current: null }}
           scoreBoard={tabs ? <div data-testid="tabs">Tabs</div> : undefined}
           scoreFirst={scoreFirst}
+          course={practice}
           layout={DEFAULT_SCREEN_LAYOUT}
           onLayout={noop}
           onZoom={noop}
@@ -84,6 +92,12 @@ it("shares the score area while keeping the trainer host and supplied song clock
     expect(score?.compareDocumentPosition(lanes as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(host.querySelector(".course-score-stack")).toBeNull();
     expect(host.querySelector(".workspace-main > .staves .staff")).not.toBeNull();
+    assertTrainer();
+    await render(false, true, "tabs", true);
+    expect(host.querySelector(".workspace-main--practice > .lanes")).toBe(lanes);
+    assertTrainer();
+    await render(false, true);
+    expect(host.querySelector(".workspace-main--practice")).toBeNull();
     assertTrainer();
     await render(false, false);
     expect(host.querySelector(".staff")).toBeNull();
@@ -271,5 +285,87 @@ it("keeps the measured DOM score mounted and restores it on poster failure", () 
     expect(fallback).toContain("Could not show the score in 3D");
   } finally {
     setInterfaceLanguage("ru");
+  }
+});
+
+it("keeps one lesson score and the same canvas through prompts, hints and windows", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(host);
+  const trainerHost = createRef<HTMLDivElement>();
+  const noop = () => undefined;
+  const draw = async (beat: number, window: string | null, hint: boolean) => {
+    await act(async () => {
+      await Promise.resolve();
+      root.render(
+        <Workspace
+          staffXml="<score-partwise/>"
+          prefs={DEFAULT_STAFF_PREFS}
+          fixedLines={false}
+          beat={beat}
+          liveBeat={() => beat}
+          onSeek={noop}
+          reviewMarks={undefined}
+          transcription={undefined}
+          takeStaff="row"
+          splitDirection="row"
+          comparing={false}
+          waiting={false}
+          hostRef={trainerHost}
+          mirrorHostRef={{ current: null }}
+          layout={DEFAULT_SCREEN_LAYOUT}
+          onLayout={noop}
+          onZoom={noop}
+          layoutMoved={false}
+          onResetLayout={noop}
+          editing={false}
+          course
+          lessonBoard={(score) => (
+            <LessonWorkspace
+              title="Lesson"
+              instruction="Play"
+              input="MIDI"
+              score={score}
+              action={<button type="button">Start</button>}
+              windows={{ open: window, onOpen: noop, interruptsAttempt: true }}
+            >
+              <p>{hint ? "Hint" : "No hint"}</p>
+              <LessonDetails kind="settings" id="test-settings">
+                <label>
+                  Setting
+                  <input type="number" defaultValue={10} />
+                </label>
+              </LessonDetails>
+            </LessonWorkspace>
+          )}
+        />
+      );
+    });
+  };
+  try {
+    await draw(0, null, false);
+    const lane = trainerHost.current;
+    const canvas = lane?.appendChild(document.createElement("canvas"));
+    const staff = host.querySelector(".staff");
+    for (const [beat, window, hint] of [
+      [1, null, false],
+      [1, null, true],
+      [1, "test-settings", true],
+      [2, null, false]
+    ] as const) {
+      await draw(beat, window, hint);
+      expect(host.querySelectorAll(".staff")).toHaveLength(1);
+      expect(host.querySelector(".staff")).toBe(staff);
+      expect(trainerHost.current).toBe(lane);
+      expect(trainerHost.current?.querySelector("canvas")).toBe(canvas);
+      expect(host.querySelector(".lesson-workspace .staff")).toBe(staff);
+    }
+  } finally {
+    await act(async () => {
+      await Promise.resolve();
+      root.unmount();
+    });
+    host.remove();
+    vi.unstubAllGlobals();
   }
 });
