@@ -29,11 +29,13 @@ export function dockedRoadLean(
   anchor: { readonly x: number; readonly y: number },
   contact: { readonly x: number; readonly y: number },
   keyboard: { readonly x: number; readonly y: number },
-  full: number
+  full: number,
+  rest: { readonly y: number } = contact
 ): number {
   const keyRise = keyboard.y - contact.y;
   if (!(full > 0) || !(Math.abs(keyRise) > 1e-9)) return 0;
-  const lean = Math.min(1, Math.abs(contact.y - anchor.y) / full);
+  // The bend is measured from the key at rest: a pressed key's dip is not a bend.
+  const lean = Math.min(1, Math.abs(rest.y - anchor.y) / full);
   return lean * (contact.x + ((keyboard.x - contact.x) * (bent.y - contact.y)) / keyRise - bent.x);
 }
 function straightGain(progress: number): number {
@@ -61,7 +63,8 @@ export function straightDockedClip(
 /**
  * Translate by the contact delta; never project a distant horizon through the keyboard camera.
  * A fitted contact first straightens the whole route onto it; the bend then covers the rest, leaving
- * the key along the lane's own keyboard projection (`keyboard`) as far as the join is bent.
+ * the key along the lane's own keyboard projection (`keyboard`) as far as the join is bent. `press`
+ * is the key's dip already added to `keyboardAnchor` and `keyboard`; it never counts as bend.
  */
 export function anchorRelativeDockedClip(
   world: RoadClipPoint,
@@ -70,7 +73,8 @@ export function anchorRelativeDockedClip(
   progress: number,
   target: RoadClipPoint = { x: 0, y: 0, z: 0, w: 1 },
   fitted?: RoadClipPoint,
-  keyboard?: RoadClipPoint
+  keyboard?: RoadClipPoint,
+  press?: RoadClipPoint
 ): RoadClipPoint {
   if (fitted) {
     const straight = straightDockedClip(world, worldAnchor, fitted, progress);
@@ -107,7 +111,10 @@ export function anchorRelativeDockedClip(
           { x: worldAnchor.x / aw, y: worldAnchor.y / aw },
           { x: keyboardAnchor.x / kw, y: keyboardAnchor.y / kw },
           { x: keyboard.x / keyboard.w, y: keyboard.y / keyboard.w },
-          DOCKED_ROAD_LEAN_BEND * 2
+          DOCKED_ROAD_LEAN_BEND * 2,
+          press && keyboardAnchor.w - press.w > 0
+            ? { y: (keyboardAnchor.y - press.y) / (keyboardAnchor.w - press.w) }
+            : undefined
         )
       : 0;
   target.x = (x + weight * lean) * w;
@@ -169,13 +176,13 @@ export const DOCKED_ROAD_SHADER = /* glsl */ `
 float dockSafeW(float w) {
   return w < 0.0 ? min(-0.000001, w) : max(0.000001, w);
 }
-float dockLean(vec2 bent, vec2 a, vec2 c, vec2 k) {
+float dockLean(vec2 bent, vec2 a, vec2 c, vec2 k, float rest) {
   float keyRise = k.y - c.y;
   if (abs(keyRise) <= 1e-9) return 0.0;
-  float lean = min(1.0, abs(c.y - a.y) / ${(DOCKED_ROAD_LEAN_BEND * 2).toFixed(6)});
+  float lean = min(1.0, abs(rest - a.y) / ${(DOCKED_ROAD_LEAN_BEND * 2).toFixed(6)});
   return lean * (c.x + (k.x - c.x) * (bent.y - c.y) / keyRise - bent.x);
 }
-vec4 anchorRelativeRoadClip(vec4 point, vec4 anchor, vec4 fitted, vec4 pinned, float progress, vec4 keyboard) {
+vec4 anchorRelativeRoadClip(vec4 point, vec4 anchor, vec4 fitted, vec4 pinned, float progress, vec4 keyboard, vec4 press) {
   if (point.w > 0.0 && anchor.w > 0.0 && fitted.w > 0.0) {
     float straight = anchor.w * clamp(1.0 - progress, 0.0, 1.0);
     point.xyz += straight * (fitted.xyz / fitted.w - anchor.xyz / anchor.w);
@@ -190,8 +197,9 @@ vec4 anchorRelativeRoadClip(vec4 point, vec4 anchor, vec4 fitted, vec4 pinned, f
   float gain = 1.0 - t;
   float w = sameSide ? pw : sign(kw) * gain + sign(pw) * t;
   vec2 xy = point.xy / pw + gain * (pinned.xy / kw - anchor.xy / aw);
-  if (keyboard.w > 0.0 && kw > 0.0 && pw > 0.0)
-    xy.x += gain * dockLean(xy, anchor.xy / aw, pinned.xy / kw, keyboard.xy / keyboard.w);
+  vec4 rest = pinned - press;
+  if (keyboard.w > 0.0 && kw > 0.0 && pw > 0.0 && rest.w > 0.0)
+    xy.x += gain * dockLean(xy, anchor.xy / aw, pinned.xy / kw, keyboard.xy / keyboard.w, rest.y / rest.w);
   float z = mix(pinned.z / kw, point.z / pw, t);
   return vec4(xy * w, z * w, w);
 }

@@ -109,12 +109,11 @@ vec4 projectNoteLane(vec4 point, float localZ) {
     vec3 contact = local.xyz / max(abs(local.w), 0.000001) - roadRouteDirection() * progress;
     vec4 anchor = projectionMatrix * modelViewMatrix * vec4(contact, 1.0);
     vec4 pinned = roadDockTransform * anchor, keyboard = roadDockTransform * point;
-    if (notePitch >= 21.0 && notePitch <= 108.0) {
-      vec4 press = roadDockY * roadDockOffsets[int(floor(notePitch + 0.5)) - 21];
-      pinned += press;
-      keyboard += press;
-    }
-    return anchorRelativeRoadClip(point, anchor, roadDockFitTransform * anchor, pinned, progress, keyboard);
+    vec4 press = vec4(0.0);
+    if (notePitch >= 21.0 && notePitch <= 108.0) press = roadDockY * roadDockOffsets[int(floor(notePitch + 0.5)) - 21];
+    pinned += press;
+    keyboard += press;
+    return anchorRelativeRoadClip(point, anchor, roadDockFitTransform * anchor, pinned, progress, keyboard, press);
   }
   point.x = noteProjection.x * point.x + noteProjection.y * point.w;
   point.y += noteProjection.z * point.w;

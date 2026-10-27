@@ -38,7 +38,7 @@ function installGuide(material: Material): void {
   installed.add(material);
   const compile = material.onBeforeCompile.bind(material);
   const cacheKey = material.customProgramCacheKey.bind(material);
-  material.customProgramCacheKey = () => cacheKey() + "-docked-road-v3";
+  material.customProgramCacheKey = () => cacheKey() + "-docked-road-v4";
   material.onBeforeCompile = (shader, renderer) => {
     compile(shader, renderer);
     shader.uniforms.roadDockOffsets = roadWidthUniforms.roadDockOffsets;
@@ -61,12 +61,11 @@ ${shader.vertexShader}`.replace(
 if (roadDockEnabled > 0.0) {
   vec4 anchor = projectionMatrix * modelViewMatrix * vec4(roadDockAnchor, 1.0);
   vec4 pinned = roadDockTransform * anchor, keyboard = roadDockTransform * gl_Position;
-  if (roadDockPitch >= 21.0 && roadDockPitch <= 108.0) {
-    vec4 press = roadDockY * roadDockOffsets[int(floor(roadDockPitch + 0.5)) - 21];
-    pinned += press;
-    keyboard += press;
-  }
-  gl_Position = anchorRelativeRoadClip(gl_Position, anchor, roadDockFitTransform * anchor, pinned, roadDockProgress, keyboard);
+  vec4 press = vec4(0.0);
+  if (roadDockPitch >= 21.0 && roadDockPitch <= 108.0) press = roadDockY * roadDockOffsets[int(floor(roadDockPitch + 0.5)) - 21];
+  pinned += press;
+  keyboard += press;
+  gl_Position = anchorRelativeRoadClip(gl_Position, anchor, roadDockFitTransform * anchor, pinned, roadDockProgress, keyboard, press);
 }`
     );
   };
