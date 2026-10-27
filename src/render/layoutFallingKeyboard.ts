@@ -10,6 +10,7 @@ import type { HandsLayer } from "./HandsLayer";
 import type { NotesLayer } from "./NotesLayer";
 import type { HudLayer } from "./HudLayer";
 import { publishOverlayLayout } from "./viewOverlayLayout";
+import { WORLD_REFERENCE_CAMERA } from "./worldReferenceCamera";
 
 /** Layout-only composition; cached dimensions are returned for the existing frame path. */
 export function layoutFallingKeyboard(options: {
@@ -39,30 +40,35 @@ export function layoutFallingKeyboard(options: {
   const flat = computer
     ? computerGeometry(screen.height, total, parts, placement)
     : viewGeometry(screen.height, whiteWidth, layoutParts, options.labels, options.fits, placement);
-  const nativeHeight =
-    native && parts.keys
-      ? naturalNativeViewHeight(
-          screen,
-          total,
-          options.prefs,
-          options.keys,
-          options.overhead,
-          placement.lift,
-          parts.hands && !options.hands.live ? flat : undefined
-        )
-      : undefined;
-  const geometry =
-    nativeHeight === undefined
-      ? flat
-      : viewGeometry(
-          screen.height,
-          whiteWidth,
-          layoutParts,
-          options.labels,
-          options.fits,
-          placement,
-          nativeHeight
-        );
+  const nativeGeometry = (prefs: CameraPrefs) => {
+    const height = naturalNativeViewHeight(
+      screen,
+      total,
+      prefs,
+      options.keys,
+      options.overhead,
+      placement.lift,
+      parts.hands && !options.hands.live ? flat : undefined
+    );
+    return {
+      height,
+      geometry: viewGeometry(
+        screen.height,
+        whiteWidth,
+        layoutParts,
+        options.labels,
+        options.fits,
+        placement,
+        height
+      )
+    };
+  };
+  const native3d = native && parts.keys ? nativeGeometry(options.prefs) : undefined;
+  const nativeHeight = native3d?.height;
+  const geometry = native3d?.geometry ?? flat;
+  // The world road's reference keyboard: the same view, never the player's camera.*.
+  const reference =
+    native3d && !computer ? nativeGeometry(WORLD_REFERENCE_CAMERA).geometry : undefined;
   const keys = computer ? layoutComputerKeys(total, geometry).keys : options.keys;
   options.keysLayer?.layout(keys, geometry, total);
   options.hands.reset();
@@ -78,7 +84,8 @@ export function layoutFallingKeyboard(options: {
     !parts.hands || native,
     native ? placement.scale : undefined,
     computer,
-    roadMode
+    roadMode,
+    reference
   );
   const hitLine = roadMode && road ? road.hitLineY : geometry.hitY;
   options.hud.layout(screen.width, hitLine, options.hudTop);

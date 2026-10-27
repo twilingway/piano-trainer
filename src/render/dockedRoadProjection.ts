@@ -44,6 +44,32 @@ export function anchorRelativeDockedClip(
   target.w = w;
   return target;
 }
+/** Road-local end of a legacy lane's straight route, mirroring the shader's roadRouteDirection. */
+export function legacyRouteFar(
+  x: number,
+  y: number,
+  contactZ: number,
+  road: { readonly axis: number; readonly farScale: number; readonly farZ: number },
+  vertical = 0
+): { x: number; y: number; z: number } {
+  const far = road.axis + (x - road.axis) * road.farScale;
+  return vertical > 0 ? { x: far, y: y + vertical, z: -contactZ } : { x: far, y, z: -road.farZ };
+}
+/** The screen-pixel form of the same blend for CPU layers that already project to pixels. */
+export function dockedScreenPoint<T extends { x: number; y: number }>(
+  point: T,
+  worldAnchor: { readonly x: number; readonly y: number },
+  keyboardAnchor: { readonly x: number; readonly y: number },
+  progress: number
+): T {
+  const weight = 1 - dockedRoadBlend(progress);
+  if (weight <= 0) return point;
+  return {
+    ...point,
+    x: point.x + weight * (keyboardAnchor.x - worldAnchor.x),
+    y: point.y + weight * (keyboardAnchor.y - worldAnchor.y)
+  };
+}
 /** The CPU labels and every road material use this exact anchor-relative policy. */
 export const DOCKED_ROAD_SHADER = /* glsl */ `
 float dockSafeW(float w) {

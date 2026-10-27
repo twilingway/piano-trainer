@@ -8,7 +8,7 @@ import {
   type WebGLRenderer
 } from "three";
 import { dockedKeyOffset } from "./dockedRoadProjection";
-import { anchorRelativeDockedClip } from "../dockedRoadProjection";
+import { anchorRelativeDockedClip, legacyRouteFar } from "../dockedRoadProjection";
 import type { WorldCamera } from "../worldCamera";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { ProjectionDigits } from "./ProjectionDigits";
@@ -38,7 +38,9 @@ export class DockedRoadLabels {
     worldCamera: Camera,
     keyboardCamera: Camera,
     screen: { readonly width: number; readonly height: number },
-    enabled: boolean
+    enabled: boolean,
+    freeRoute = true,
+    keys: Object3D = road
   ): void {
     this.enabled = enabled && frame !== undefined;
     // StylizedProjectionLayer owns the labels whenever its mode is active.
@@ -48,6 +50,7 @@ export class DockedRoadLabels {
     if (!this.enabled || !frame) return;
     for (const label of this.labels) label.renderable = false;
     road.updateWorldMatrix(true, false);
+    keys.updateWorldMatrix(true, false);
     worldCamera.updateMatrixWorld(true);
     keyboardCamera.updateMatrixWorld(true);
     this.worldMatrix
@@ -55,29 +58,41 @@ export class DockedRoadLabels {
       .multiply(road.matrixWorld);
     this.keyboardMatrix
       .multiplyMatrices(keyboardCamera.projectionMatrix, keyboardCamera.matrixWorldInverse)
-      .multiply(road.matrixWorld);
+      .multiply(keys.matrixWorld);
     this.camera.right = screen.width;
     this.camera.bottom = screen.height;
     this.camera.updateProjectionMatrix();
     this.digits.begin();
     for (let i = 0; i < frame.noteCount; i++) {
       const note = frame.notes[i];
-      if (!note || (!note.finger && !note.label) || !note.lane?.freeFar) continue;
-      const contact = note.lane.depth ?? world.near.z;
+      if (!note || (!note.finger && !note.label)) continue;
+      const laneY = note.lane?.y ?? world.near.y;
+      const contact = note.lane?.depth ?? world.near.z;
+      const warp = world.roadWidth;
+      const farZ = warp?.farZ ?? world.roadFarZ;
       const progress =
-        ((note.top + note.bottom) / 2 - contact) / Math.max(0.000001, world.roadFarZ - contact);
-      const far = note.lane.freeFar;
-      const dy = far.y - note.lane.y;
+        ((note.top + note.bottom) / 2 - contact) / Math.max(0.000001, farZ - contact);
+      const far = freeRoute
+        ? note.lane?.freeFar
+        : legacyRouteFar(
+            note.x,
+            laneY,
+            contact,
+            { axis: warp?.axis ?? 0, farScale: warp?.farScale ?? 1, farZ },
+            frame.direct ? 2000 : 0
+          );
+      if (!far) continue;
+      const dy = far.y - laneY;
       const dz = far.z + contact;
       const length = Math.max(0.000001, Math.hypot(dy, dz));
       this.point.set(
         note.x + (far.x - note.x) * progress,
-        note.lane.y + dy * progress - dz / length,
+        laneY + dy * progress - dz / length,
         -contact + dz * progress + dy / length,
         1
       );
       this.from.copy(this.point).applyMatrix4(this.worldMatrix);
-      this.point.set(note.x, note.lane.y - dz / length, -contact + dy / length, 1);
+      this.point.set(note.x, laneY - dz / length, -contact + dy / length, 1);
       this.anchor.copy(this.point).applyMatrix4(this.worldMatrix);
       this.point.y += dockedKeyOffset(note.pitch ?? 0);
       this.to.copy(this.point).applyMatrix4(this.keyboardMatrix);

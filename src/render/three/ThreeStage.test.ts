@@ -203,9 +203,9 @@ describe("ThreeStage physical key contact", () => {
 it("samples pre-render against the configured camera before GPU rendering and bypasses native workers", () => {
   const view = fixture();
   const order: string[] = [];
-  const internal = view.stage as unknown as { configureCamera: () => void; roadCamera: Camera };
-  internal.configureCamera = () => {
-    internal.roadCamera.position.x = 42;
+  const internal = view.stage as unknown as { configureCamera: (camera: Camera) => void };
+  internal.configureCamera = (camera) => {
+    camera.position.x = 42;
     order.push("camera");
   };
   view.stage.beforeRender = (camera) => {
@@ -215,7 +215,10 @@ it("samples pre-render against the configured camera before GPU rendering and by
   view.renderer.render.mockImplementation(() => order.push("render"));
   view.draw(0);
   expect(view.hinge.rotation.x).toBe(0);
-  expect(order).toEqual(["camera", "pose", "render"]);
+  // World and keyboard cameras are both configured before the pose and every render pass.
+  expect(order.slice(0, 3)).toEqual(["camera", "camera", "pose"]);
+  expect(order.slice(3).length).toBeGreaterThan(0);
+  expect(order.slice(3).every((step) => step === "render")).toBe(true);
   expect("hands" in view.stage).toBe(false);
 });
 
@@ -233,7 +236,8 @@ it("supplies the performer the physical keyboard camera and restores full-body m
   expect(before).toHaveBeenLastCalledWith(internal.keyboardCamera, true);
   view.stage.setFreeCamera(true);
   view.draw();
-  expect(before).toHaveBeenLastCalledWith(internal.free.camera, false);
+  // Free inspection turns the world; the keys keep their own camera.
+  expect(before).toHaveBeenLastCalledWith(internal.keyboardCamera, true);
   view.stage.setPerformanceScene(true);
   view.draw();
   expect(before).toHaveBeenLastCalledWith(internal.performance.camera, false);
@@ -271,12 +275,14 @@ it.each([false, true])("resets shared Three state after screen FX (failure: %s)"
   if (failure) expect(draw).toThrow("FX failed");
   else draw();
   expect(order).toEqual(
-    failure ? ["reset", "fx", "reset", "reset"] : ["reset", "fx", "reset", "render", "reset"]
+    failure
+      ? ["reset", "fx", "reset", "reset"]
+      : ["reset", "fx", "reset", "render", "render", "reset"]
   );
   expect(view.renderer.setViewport).toHaveBeenCalledTimes(2);
 });
 
-it("keeps free-camera case and native glow in one physical depth pass without screen FX", () => {
+it("draws the free world and the keyboard case in separate depth passes without screen FX", () => {
   const view = fixture();
   const internal = view.stage as unknown as { scene: Scene; keys: Group; body: Group };
   const board = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
@@ -289,10 +295,10 @@ it("keeps free-camera case and native glow in one physical depth pass without sc
   internal.scene.add(internal.keys, glow);
   const effects = vi.fn();
   view.stage.setFreeCamera(true);
+  const passes: { board: boolean; glow: boolean }[] = [];
   view.renderer.render.mockImplementation(() => {
-    expect(board.visible).toBe(true);
+    passes.push({ board: board.visible, glow: glow.visible });
     expect(board.material.colorWrite).toBe(true);
-    expect(glow.visible).toBe(true);
     expect(glow.material).toMatchObject({ depthTest: true, depthWrite: false });
   });
   view.stage.draw(
@@ -310,8 +316,11 @@ it("keeps free-camera case and native glow in one physical depth pass without sc
     effects
   );
   expect(effects).not.toHaveBeenCalled();
-  expect(view.renderer.render).toHaveBeenCalledOnce();
-  expect(view.renderer.clearDepth).toHaveBeenCalledOnce();
+  expect(passes).toEqual([
+    { board: false, glow: true },
+    { board: true, glow: false }
+  ]);
+  expect(view.renderer.clearDepth).toHaveBeenCalledTimes(2);
   board.geometry.dispose();
   board.material.dispose();
   glow.geometry.dispose();
@@ -356,6 +365,7 @@ it("uses the manual camera for the fully lit world without transforming notes or
   const view = fixture();
   const internal = view.stage as unknown as {
     free: { camera: Camera; update: ReturnType<typeof vi.fn> };
+    keyboardCamera: Camera;
     performance: {
       camera: Camera;
       update: ReturnType<typeof vi.fn>;
@@ -390,7 +400,7 @@ it("uses the manual camera for the fully lit world without transforming notes or
     undefined,
     true,
     { burning: true, presses: true, musicalNotes: true },
-    undefined
+    internal.keyboardCamera
   );
   expect(internal.roadNotes.performanceAngle).toBe(0);
   expect(internal.roadNotes.performanceScale).toBe(1);

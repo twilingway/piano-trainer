@@ -61,23 +61,24 @@ export function configureDockedRoad(
   keyboardCamera: Camera,
   enabled: boolean,
   nearZ: number,
-  farZ: number
+  farZ: number,
+  keys: Object3D = roadGroup
 ): void {
   enabled = enabled && Number.isFinite(nearZ) && Number.isFinite(farZ) && farZ > nearZ;
   roadWidthUniforms.roadDockEnabled.value = enabled ? 1 : 0;
   configureSegmentedRoad(roadGroup, enabled);
   if (!enabled) return;
   roadGroup.updateWorldMatrix(true, true);
+  if (keys !== roadGroup) keys.updateWorldMatrix(true, false);
   worldCamera.updateMatrixWorld();
   keyboardCamera.updateMatrixWorld();
   worldClip.multiplyMatrices(worldCamera.projectionMatrix, worldCamera.matrixWorldInverse);
   keyboardClip.multiplyMatrices(keyboardCamera.projectionMatrix, keyboardCamera.matrixWorldInverse);
-  inverse.copy(worldClip).invert();
+  // Road-local contacts share the keys' local units; the keyboard pass sees them on the keys.
+  keyboardClip.multiply(keys.matrixWorld);
+  inverse.copy(worldClip).multiply(roadGroup.matrixWorld).invert();
   roadWidthUniforms.roadDockTransform.value.multiplyMatrices(keyboardClip, inverse);
-  roadWidthUniforms.roadDockY.value
-    .copy(localY)
-    .applyMatrix4(roadGroup.matrixWorld)
-    .applyMatrix4(keyboardClip);
+  roadWidthUniforms.roadDockY.value.copy(localY).applyMatrix4(keyboardClip);
   roadWidthUniforms.roadDockInverse.value.copy(worldClip).multiply(roadGroup.matrixWorld).invert();
   roadGroup.traverse((object) => {
     if (!(object instanceof Line || object instanceof Points)) return;

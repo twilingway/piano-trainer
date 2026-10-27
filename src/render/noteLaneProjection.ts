@@ -91,14 +91,21 @@ vec4 roadInstancePoint(vec4 localPoint) {
 vec4 projectRoadPoint(vec4 localPoint) {
   return projectionMatrix * modelViewMatrix * roadInstancePoint(localPoint);
 }
+// One unit of progress along this note's straight route: free lanes carry their far point, the
+// legacy road is its width taper plus the depth span (or the direct view's vertical rise).
+vec3 roadRouteDirection() {
+  if (roadFree > 0.0)
+    return vec3(noteContact.z - instanceMatrix[3].x,
+      vec2(noteContact.w, roadFreeDepth) - vec2(noteContact.x, -noteContact.y));
+  float taper = (instanceMatrix[3].x - roadWidth.w) * (roadWidth.z - 1.0);
+  if (roadVertical > 0.0) return vec3(taper, roadVertical, 0.0);
+  return vec3(taper, 0.0, -(roadWidth.y - noteContact.y));
+}
 vec4 projectNoteLane(vec4 point, float localZ) {
   if (roadDockEnabled > 0.0) {
     vec4 local = roadDockInverse * point;
-    vec2 origin = vec2(noteContact.x, -noteContact.y);
-    vec2 direction = vec2(noteContact.w, roadFreeDepth) - origin;
     float progress = roadNoteProgress(localZ);
-    vec3 contact = local.xyz / max(abs(local.w), 0.000001)
-      - vec3(noteContact.z - instanceMatrix[3].x, direction) * progress;
+    vec3 contact = local.xyz / max(abs(local.w), 0.000001) - roadRouteDirection() * progress;
     vec4 anchor = projectionMatrix * modelViewMatrix * vec4(contact, 1.0);
     vec4 pinned = roadDockTransform * anchor;
     if (notePitch >= 21.0 && notePitch <= 108.0) pinned += roadDockY * roadDockOffsets[int(floor(notePitch + 0.5)) - 21];

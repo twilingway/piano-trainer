@@ -17,25 +17,20 @@ import { NativeKeyboardScene } from "./NativeKeyboardScene";
 import type { Geometry, KeyboardViewport } from "./viewGeometry";
 import type { Projected, RoadProjection } from "./perspective";
 import { handSurface } from "./handProjection";
-import { nativeNoteCameras, nativeViewCameras } from "./nativeViewCameras";
-import { nativeRoadCameraLayout } from "./nativeRoadCameraLayout";
+import { nativeNoteCameras } from "./nativeViewCameras";
 import { flatRoadCamera } from "./flatRoadCamera";
 import { metricCameraForKeys } from "./metricKeyboardCamera";
 import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
 import { nativeKeyContactLanes } from "./nativeKeyContactAnchors";
 import type { NoteLaneProjection } from "./noteLaneProjection";
-import {
-  FREE_BLACK_LANE,
-  freeRoadKeyPoint,
-  roadKeyHeights,
-  roadNotePlace
-} from "./roadScenePoints";
+import { FREE_BLACK_LANE, freeRoadKeyPoint, roadKeyHeights } from "./roadScenePoints";
 import { DEFAULT_ROAD_SHAPE, roadLayoutCamera, type RoadShape } from "./roadLayoutCamera";
 import type { HandsGeometry, HandsLayer } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
 import { ThreeKeysHost } from "./three/ThreeKeysHost";
 import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
 import { readableRoadTop } from "./readableRoadNote";
+import { nativeRoadCameras, ReferenceRoadDock as Dock } from "./worldReferenceCamera";
 import type { EnergySource } from "./noteEnergy";
 import type { Arrival } from "./roadTypes";
 export type { Strike, Arrival } from "./roadTypes";
@@ -73,6 +68,7 @@ export class RoadLayer {
   private contactKeys: ReadonlyMap<number, KeyRect> | undefined;
   private contactLanes: ReadonlyMap<number, NoteLaneProjection> | undefined;
   private physicalContactLanes: ReadonlyMap<number, NoteLaneProjection> | undefined;
+  private dock: Dock | undefined;
   private readonly horizon = new Graphics();
   private readonly arrivals = new HorizonBurstLayer();
   private readonly rail = new NeonRailLayer();
@@ -144,7 +140,8 @@ export class RoadLayer {
     dock: boolean,
     nativeScale: number | undefined,
     computer: boolean,
-    roadMode: boolean
+    roadMode: boolean,
+    reference?: Geometry
   ): void {
     const { width, height, floor, handRoom } = viewport;
     this.layout(total, geometry.hitY, height - floor, width, handRoom);
@@ -152,7 +149,8 @@ export class RoadLayer {
       computer ? new Map([[0, { pitch: 0, black: false, x: 0, width: total }]]) : keys,
       geometry,
       dock,
-      nativeScale
+      nativeScale,
+      reference
     );
     if (!roadMode) this.container.visible = this.effects.visible = false;
   }
@@ -160,9 +158,11 @@ export class RoadLayer {
     keys: ReadonlyMap<number, KeyRect>,
     geometry: Geometry,
     dockKeyboard = false,
-    nativeScale?: number
+    nativeScale?: number,
+    reference?: Geometry
   ): void {
     this.computerKeyboard = keys.size === 1 && keys.has(0);
+    this.dock ??= new Dock();
     this.keyboardTopY = geometry.keyboardTop;
     this.keys.container.visible = geometry.keyboardHeight > 0;
     this.keyHeights = roadKeyHeights(keys, true);
@@ -170,22 +170,21 @@ export class RoadLayer {
     void this.three?.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard);
     if (this.nativeKeyboard && this.camera) {
       this.camera = metricCameraForKeys(this.camera, keys, this.cameraHeight, this.shape.horizon);
-      const cameras = nativeViewCameras(
-        this.camera,
-        geometry.keyboardHeight,
-        this.keyboardTop,
-        this.notesPerspective,
-        this.cameraHeight,
-        this.shape.horizon,
-        this.app?.screen.height ?? this.cameraHeight,
-        dockKeyboard ? geometry.keyboardTop + geometry.keyboardHeight : undefined,
-        this.keys.container.position,
-        this.shape.far,
-        this.size.width,
+      const { cameras, world } = nativeRoadCameras(this.camera, keys, geometry, reference, {
+        viewWidth: this.viewWidth,
+        sceneWidth: this.size.width,
+        cameraHeight: this.cameraHeight,
+        viewportHeight: this.app?.screen.height ?? this.cameraHeight,
+        horizon: this.shape.horizon,
+        far: this.shape.far,
+        overhead: this.keyboardTop,
+        perspective: this.notesPerspective,
+        dock: dockKeyboard,
+        offset: this.keys.container.position,
         nativeScale
-      );
+      });
       this.keyboardCamera = cameras.keyboard;
-      Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
+      Object.assign(this, this.dock.layout(world, cameras, keys, this.viewWidth, this.fog));
     } else {
       const cameras = flatRoadCamera(
         this.viewWidth,
@@ -199,7 +198,7 @@ export class RoadLayer {
         this.size.width
       );
       this.keyboardCamera = cameras.keyboard;
-      Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
+      Object.assign(this, this.dock.layout(cameras, cameras, keys, this.viewWidth, this.fog));
     }
     this.contactKeys = keys;
     this.refreshContactLanes();
@@ -210,7 +209,10 @@ export class RoadLayer {
     return keyX - this.pan;
   }
   notePlace(keyX: number, y: number, offset = 0, lift = 0): Projected | undefined {
-    return roadNotePlace(
+    // Standard keeps a fixed reference world; only the displayed keys move with camera.*.
+    return Dock.place(
+      this.dock,
+      !this.freeCamera && !this.three?.performanceScene,
       this.camera,
       this.projection,
       this.size.height,
@@ -234,7 +236,7 @@ export class RoadLayer {
   private noteLane(keyX: number): NoteLaneProjection | undefined {
     if (this.nativeKeyboard && this.contactLanes)
       return (
-        this.freeCamera || this.three?.performanceScene
+        this.freeCamera || this.three?.performanceScene || this.dock?.active
           ? this.physicalContactLanes
           : this.contactLanes
       )?.get(keyX);
@@ -453,7 +455,7 @@ export class RoadLayer {
       this.shape.far,
       this.size.width
     );
-    Object.assign(this, nativeRoadCameraLayout(cameras, this.viewWidth, this.fog));
+    Object.assign(this, Dock.moved(this.dock, cameras, this.contactKeys, this.viewWidth, this.fog));
     this.refreshContactLanes();
     this.setPan(this.pan, true);
   }

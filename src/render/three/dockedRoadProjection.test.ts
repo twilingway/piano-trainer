@@ -20,6 +20,7 @@ import { roadWidthUniforms } from "./roadWidthUniforms";
 import { ThreeRoadNotes } from "./ThreeRoadNotes";
 import { runInNewContext } from "node:vm";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
+import { legacyRouteFar } from "../dockedRoadProjection";
 
 describe("native docked road projection", () => {
   it("maps actual world clip to the shown keyboard camera under a scaled road parent", () => {
@@ -56,6 +57,37 @@ describe("native docked road projection", () => {
     configureDockedRoad(root, world, keyboard, false, 149.1938, 5000);
     expect(roadWidthUniforms.roadDockEnabled.value).toBe(0);
   });
+  it("pins a road-local contact onto separately scaled and panned keys", () => {
+    const road = new Group();
+    road.position.set(-120, 0, 0);
+    const keys = new Group();
+    keys.scale.setScalar(1.45);
+    keys.position.set(-174, 0, 0);
+    const world = new PerspectiveCamera(45, 1.6, 0.1, 100000);
+    world.position.set(0, 1400, 900);
+    world.lookAt(0, 0, -800);
+    const keyboard = new OrthographicCamera(-1500, 1500, 800, -800, 0.1, 100000);
+    keyboard.position.set(0, 2000, 0);
+    keyboard.lookAt(0, 0, 0);
+    configureDockedRoad(road, world, keyboard, true, 149.1938, 5000, keys);
+    const contact = new Vector4(33, 34, -145.8, 1);
+    const from = contact
+      .clone()
+      .applyMatrix4(road.matrixWorld)
+      .applyMatrix4(world.matrixWorldInverse)
+      .applyMatrix4(world.projectionMatrix);
+    const actual = from.clone().applyMatrix4(roadWidthUniforms.roadDockTransform.value);
+    const expected = contact
+      .clone()
+      .applyMatrix4(keys.matrixWorld)
+      .applyMatrix4(keyboard.matrixWorldInverse)
+      .applyMatrix4(keyboard.projectionMatrix);
+    actual.toArray().forEach((v, i) => {
+      expect(v).toBeCloseTo(expected.toArray()[i] ?? 0, 6);
+    });
+    configureDockedRoad(road, world, keyboard, false, 149.1938, 5000, keys);
+  });
+
   it("adds guide projection only once and preserves existing compile hooks", () => {
     const root = new Group();
     const geometry = new BufferGeometry();
@@ -166,4 +198,35 @@ it("retains score-derived progress when a zero-height zero-distance route only f
   expect(NOTE_LANE_SHADER).toContain("float progress = roadNoteProgress(localZ);");
   expect(NOTE_LANE_SHADER).not.toContain("roadPointProgress");
   expect(NOTE_LANE_SHADER).toContain("max(length(direction.yz), 0.000001)");
+});
+
+it("routes legacy docked notes exactly like the CPU legacy far point", () => {
+  const taper = /float taper = ([^;]+);/.exec(NOTE_LANE_SHADER)?.[1];
+  if (!taper) throw new Error("missing legacy route taper");
+  expect(NOTE_LANE_SHADER).toContain(
+    "if (roadVertical > 0.0) return vec3(taper, roadVertical, 0.0);"
+  );
+  expect(NOTE_LANE_SHADER).toContain("return vec3(taper, 0.0, -(roadWidth.y - noteContact.y));");
+  expect(NOTE_LANE_SHADER).toContain("- roadRouteDirection() * progress;");
+  const across = runInNewContext(
+    `(x, axis, farScale) => ${taper
+      .replaceAll("instanceMatrix[3].x", "x")
+      .replaceAll("roadWidth.w", "axis")
+      .replaceAll("roadWidth.z", "farScale")}`
+  ) as (x: number, axis: number, farScale: number) => number;
+  for (const [x, axis, farScale, farZ, contact] of [
+    [33, 0, 0.1, 5000, 149.1938],
+    [-410, 25, 0.6, 2200, 145.8],
+    [700, -90, 1, 900, 149.1938]
+  ] as const) {
+    const road = { axis, farScale, farZ };
+    const level = legacyRouteFar(x, 22, contact, road);
+    expect(across(x, axis, farScale)).toBeCloseTo(level.x - x, 9);
+    expect(level.y).toBe(22);
+    expect(level.z + contact).toBeCloseTo(-(farZ - contact), 9);
+    const rise = legacyRouteFar(x, 22, contact, road, 2000);
+    expect(rise.x - x).toBeCloseTo(across(x, axis, farScale), 9);
+    expect(rise.y - 22).toBe(2000);
+    expect(rise.z).toBe(-contact);
+  }
 });

@@ -94,6 +94,70 @@ function layoutHarness(
   return { view, internal, screen, road, setKeyboard, layout, scene, dispose };
 }
 
+describe("independent world road", () => {
+  interface RoadFields {
+    camera: {
+      project: (x: number, y: number, z: number) => { x: number; y: number };
+      roadFarZ: number;
+      sourceX: (x: number) => number;
+      params: unknown;
+    };
+    size: { height: number };
+    contactKeys: ReadonlyMap<number, { x: number; width: number; black: boolean }>;
+    dock: { lanes: ReadonlyMap<number, { worldOffsetX?: number; depth?: number }> };
+    shape: { far: number; horizon: number };
+  }
+  const keyboards: readonly CameraPrefs[] = [
+    CAMERA_PRESETS.top,
+    CAMERA_PRESETS.player,
+    CAMERA_PRESETS.hands,
+    { ...CAMERA_PRESETS.player, fov: 25 },
+    { ...CAMERA_PRESETS.player, fov: 85 },
+    { ...CAMERA_PRESETS.player, height: 1000, distance: 1200 },
+    { ...CAMERA_PRESETS.player, pitch: -5, targetY: 250 },
+    { ...CAMERA_PRESETS.top, targetY: -250, scale: 0.55 },
+    { ...CAMERA_PRESETS.top, scale: 1.6 }
+  ];
+
+  it("keeps the world road while every keyboard camera setting changes and joins the shown keys", () => {
+    for (const horizon of [0.1, 0.99, 1, 1.01, 1.5])
+      for (const [low, high] of [
+        [48, 72],
+        [21, 108]
+      ] as const) {
+        let world: string | undefined;
+        for (const prefs of keyboards) {
+          const test = layoutHarness(1440, 900, low, high, prefs, false);
+          const road = test.road as unknown as RoadFields;
+          road.shape = { far: 0.1, horizon };
+          test.layout();
+          const camera = test.scene().keyboardCamera;
+          if (!camera) throw new Error("Missing camera");
+          const far = [0, 400, 1440].map((x) =>
+            road.camera.project(road.camera.sourceX(x), 22, road.camera.roadFarZ)
+          );
+          const signature = JSON.stringify([road.camera.params, road.camera.roadFarZ, far]);
+          world ??= signature;
+          expect(signature).toBe(world);
+          for (const key of road.contactKeys.values()) {
+            const keyX = key.x + key.width / 2;
+            const lane = road.dock.lanes.get(keyX);
+            const floor = key.black ? 34 : 22;
+            const expected = camera.project(
+              camera.sourceX(keyX) + (lane?.worldOffsetX ?? 0),
+              floor,
+              lane?.depth ?? 150
+            );
+            const actual = test.road.notePlace(keyX, road.size.height);
+            expect(Math.abs((actual?.x ?? NaN) - expected.x)).toBeLessThanOrEqual(1);
+            expect(Math.abs((actual?.y ?? NaN) - expected.y)).toBeLessThanOrEqual(1);
+          }
+          test.dispose();
+        }
+      }
+  });
+});
+
 describe("native natural framing", () => {
   it("keeps the full parallel key travel inside the player viewport", () => {
     for (const [width, height] of [
@@ -250,14 +314,21 @@ describe("native natural framing", () => {
             expect(((point.x + 1) * 667) / 2).toBeCloseTo(expected.x, 6);
             expect(((1 - point.y) * 180) / 2).toBeCloseTo(expected.y, 6);
             expect(point.z).toBeLessThan(1);
-            const fields = test.road as unknown as {
-              camera: typeof camera;
-              blackLane: Parameters<typeof projectNoteLane>[1];
-              whiteLane: Parameters<typeof projectNoteLane>[1];
-            };
+            // The displayed keys' own note camera; the reference world joins it at contact.
+            const fields = (
+              test.road as unknown as {
+                dock: {
+                  cameras: {
+                    notes: typeof camera;
+                    blackLane: Parameters<typeof projectNoteLane>[1];
+                    whiteLane: Parameters<typeof projectNoteLane>[1];
+                  };
+                };
+              }
+            ).dock.cameras;
             if (z > 100) {
               const contact = projectNoteLane(
-                fields.camera.project(x, y, z),
+                fields.notes.project(x, y, z),
                 y === 34 ? fields.blackLane : fields.whiteLane
               );
               expect(contact.x).toBeCloseTo(expected.x, 6);
@@ -292,7 +363,8 @@ describe("native natural framing", () => {
     test.view.setKeysPlacement(USUAL_PLACEMENT);
     const reset = test.layout();
     expect(reset.keyboardHeight).toBeGreaterThan(short.keyboardHeight);
-    expect(cached.mock.calls.length).toBe(before + 3);
+    // Each layout measures the player's keyboard and the world's fixed reference keyboard.
+    expect(cached.mock.calls.length).toBe(before + 6);
     test.dispose();
   });
 });
