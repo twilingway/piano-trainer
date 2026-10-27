@@ -5,7 +5,11 @@ import { toBassReadingResult, type BassReadingTask } from "../reading/bassTypes"
 import { readingFingerprint } from "../reading/adaptation";
 import { readingPromptXml } from "../reading/prompt";
 import { ReadingSession } from "../reading/session";
-import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues
+} from "../reading/fingerCues";
 import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import { useI18n } from "./useI18n";
 import { DEFAULT_READING_PREFERENCES } from "../reading/types";
@@ -145,10 +149,11 @@ export function useReadingCourse() {
     if (!exercise) return null;
     const allowed =
       hintLevel === 2 && snapshot?.active && snapshot.presented && exercise.task !== "check";
-    const cues = allowed && note ? lessonFingerCues([note]) : [];
+    // The cue row stays, empty until the hint: the staff and the row under it do not move.
+    const cues = note && exercise.task !== "check" ? lessonFingerCues([note]) : [];
     const xml = cues.length
       ? musicXmlWithLessonFingerCues(exercise.musicXml, cues, exercise.song.notes, (cue) =>
-          lessonFingerLabel(cue, locale)
+          allowed ? lessonFingerLabel(cue, locale) : HIDDEN_LESSON_CUE
         )
       : exercise.musicXml;
     return readingPromptXml(xml, exercise.task, index);

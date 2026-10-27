@@ -6,7 +6,11 @@ import {
   twoHandPromptXml
 } from "../reading/twoHandGenerator";
 import { TwoHandSession } from "../reading/twoHandSession";
-import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues
+} from "../reading/fingerCues";
 import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import type { TwoHandResult } from "../reading/twoHandTypes";
 import { DEFAULT_READING_PREFERENCES, type ReadingHintLevel } from "../reading/types";
@@ -119,20 +123,22 @@ export function useTwoHandCourse() {
     () =>
       exercise
         ? (() => {
-            const prompt = twoHandPromptXml(exercise, index, hintLevel, (pitch) =>
-              twoHandNoteName(pitch, (key) => translate(locale, messages, key))
+            // Both hint rows, names and fingers, stay under the pair and are empty until
+            // their level: the staff and the row under it do not move.
+            const prompt = twoHandPromptXml(exercise, index, 1, (pitch) =>
+              hintLevel > 0
+                ? twoHandNoteName(pitch, (key) => translate(locale, messages, key))
+                : HIDDEN_LESSON_CUE
             );
-            const cues =
-              hintLevel === 2 && cueActive && cuePresented
-                ? lessonFingerCues(
-                    exercise.song.notes.filter((note) => pair?.noteIds.includes(note.id))
-                  )
-                : [];
+            const shown = hintLevel === 2 && cueActive && cuePresented;
+            const cues = lessonFingerCues(
+              exercise.song.notes.filter((note) => pair?.noteIds.includes(note.id))
+            );
             return {
               ...prompt,
               musicXml: cues.length
                 ? musicXmlWithLessonFingerCues(prompt.musicXml, cues, exercise.song.notes, (cue) =>
-                    lessonFingerLabel(cue, locale)
+                    shown ? lessonFingerLabel(cue, locale) : HIDDEN_LESSON_CUE
                   )
                 : prompt.musicXml
             };

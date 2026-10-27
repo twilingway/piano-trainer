@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { generateIntervalExercise, nextIntervalSeed } from "../intervals/generator";
 import { intervalPromptXml } from "../intervals/prompt";
-import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues
+} from "../reading/fingerCues";
 import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import { useI18n } from "./useI18n";
 import { IntervalSession } from "../intervals/session";
@@ -81,12 +85,14 @@ export function useIntervalCourse() {
   // Changing the cursor's beat does not re-parse or re-render the same pair's score.
   const pairXml = useMemo(() => {
     if (!exercise) return undefined;
-    const cues = cueAllowed
-      ? lessonFingerCues(exercise.song.notes.filter((note) => note.id === cueNoteId))
-      : [];
+    // The cue row stays, empty until the help: the staff and the row under it do not move.
+    const cues =
+      exercise.mode === "see-and-play"
+        ? lessonFingerCues(exercise.song.notes.filter((note) => note.id === cueNoteId))
+        : [];
     const xml = cues.length
       ? musicXmlWithLessonFingerCues(exercise.musicXml, cues, exercise.song.notes, (cue) =>
-          lessonFingerLabel(cue, locale)
+          cueAllowed ? lessonFingerLabel(cue, locale) : HIDDEN_LESSON_CUE
         )
       : exercise.musicXml;
     return intervalPromptXml(xml, questionIndex).musicXml;

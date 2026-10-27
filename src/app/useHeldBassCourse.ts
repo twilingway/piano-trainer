@@ -2,7 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { RefObject } from "react";
 import { generateHeldBassExercise, nextHeldBassSeed } from "../reading/heldBassGenerator";
 import { HeldBassSession } from "../reading/heldBassSession";
-import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues
+} from "../reading/fingerCues";
 import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import { useI18n } from "./useI18n";
 import type {
@@ -137,14 +141,13 @@ export function useHeldBassCourse() {
   const prompt = useMemo(() => {
     if (!scene || !fragment) return null;
     const ids = [fragment.bassNoteId, fragment.melodyNoteIds[snapshot?.step ?? 0]];
-    const cues =
-      hintLevel === 2 && snapshot?.ready
-        ? lessonFingerCues(fragment.song.notes.filter((note) => ids.includes(note.id)))
-        : [];
+    const shown = hintLevel === 2 && snapshot?.ready;
+    // The cue row stays, empty until the hint: the staff and the row under it do not move.
+    const cues = lessonFingerCues(fragment.song.notes.filter((note) => ids.includes(note.id)));
     return {
       musicXml: cues.length
         ? musicXmlWithLessonFingerCues(scene.musicXml, cues, fragment.song.notes, (cue) =>
-            lessonFingerLabel(cue, locale)
+            shown ? lessonFingerLabel(cue, locale) : HIDDEN_LESSON_CUE
           )
         : scene.musicXml,
       beat: undefined

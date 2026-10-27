@@ -7,7 +7,11 @@ import {
   useSyncExternalStore
 } from "react";
 import { nextIndependentRhythmSeed } from "../independentRhythm/generator";
-import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues
+} from "../reading/fingerCues";
 import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import { useI18n } from "./useI18n";
 import type { ReadingInputSource } from "../reading/types";
@@ -77,18 +81,19 @@ export function useIndependentRhythmCourse() {
     saved.showKeyHints && !!state?.ready && ["preparation", "passed"].includes(state.status);
   const prompt = useMemo(() => {
     if (!scene) return null;
-    const cues = cueAllowed
+    // With key hints on, the cue row stays through the take, empty while it runs.
+    const cues = saved.showKeyHints
       ? lessonFingerCues(scene.song.notes.filter((note) => note.start === 0))
       : [];
     return {
       musicXml: cues.length
         ? musicXmlWithLessonFingerCues(scene.musicXml, cues, scene.song.notes, (cue) =>
-            lessonFingerLabel(cue, locale)
+            cueAllowed ? lessonFingerLabel(cue, locale) : HIDDEN_LESSON_CUE
           )
         : scene.musicXml,
       beat: undefined
     };
-  }, [scene, cueAllowed, locale]);
+  }, [scene, saved.showKeyHints, cueAllowed, locale]);
   const policy = useMemo(
     () => (controller && scene ? controller.policy(scene.id) : null),
     [controller, scene]

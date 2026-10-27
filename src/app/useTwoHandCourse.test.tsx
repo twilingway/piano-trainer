@@ -2,6 +2,7 @@
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HIDDEN_LESSON_CUE } from "../reading/fingerCues";
 import { PracticeSession } from "../practice/session";
 import { createAppStore, type AppStore } from "./store";
 import { withTestStore } from "./storeTestSupport";
@@ -10,6 +11,13 @@ import { useTwoHandCourse, useTwoHandTrainer } from "./useTwoHandCourse";
 import type { Trainer } from "../practice/Trainer";
 import type { KeyEvent } from "../input/midiInput";
 
+/** Hint rows stay reserved under the notes; only their text tells a shown hint. */
+function shownLyrics(xml = "") {
+  return Array.from(
+    new DOMParser().parseFromString(xml, "application/xml").querySelectorAll("lyric > text"),
+    (text) => text.textContent
+  ).filter((text) => text !== HIDDEN_LESSON_CUE);
+}
 let root: Root, host: HTMLDivElement, store: AppStore;
 let course: ReturnType<typeof useTwoHandCourse>, now: number;
 const configureCourse = vi.fn(),
@@ -140,7 +148,7 @@ describe("two-hand course shell", () => {
       course.newSeries();
     });
     expect(course.hintLevel).toBe(0);
-    expect(course.prompt?.musicXml).not.toContain("<lyric>");
+    expect(shownLyrics(course.prompt?.musicXml)).toEqual([]);
     expect(course.policy?.cuePitches()).toEqual([]);
     act(() => {
       course.exit();
@@ -149,7 +157,7 @@ describe("two-hand course shell", () => {
       course.start();
     });
     expect(course.hintLevel).toBe(0);
-    expect(course.prompt?.musicXml).not.toContain("<lyric>");
+    expect(shownLyrics(course.prompt?.musicXml)).toEqual([]);
   });
   it("presents exact current pair and saves only after ten atomic accepted commits", async () => {
     const practice = select();
