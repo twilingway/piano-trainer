@@ -1091,7 +1091,7 @@ body {
   position: absolute;
   z-index: 3;
   top: 8px;
-  left: 8px;
+  right: calc(8px + var(--mobile-bar-width, 0px));
   min-width: 58px;
   padding: 3px 7px;
   border: 1px solid rgb(83 204 255 / 50%);
@@ -1104,10 +1104,6 @@ body {
   font-variant-numeric: tabular-nums;
   text-align: center;
   pointer-events: none;
-}
-
-.lane-label ~ .lane-fps {
-  top: 34px;
 }
 
 .lane-fps[data-level="mid"] {
