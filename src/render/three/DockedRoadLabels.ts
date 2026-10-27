@@ -74,13 +74,12 @@ export class DockedRoadLabels {
         ((note.top + note.bottom) / 2 - contact) / Math.max(0.000001, farZ - contact);
       const far = freeRoute
         ? note.lane?.freeFar
-        : legacyRouteFar(
-            note.x,
-            laneY,
-            contact,
-            { axis: warp?.axis ?? 0, farScale: warp?.farScale ?? 1, farZ },
-            frame.direct ? 2000 : 0
-          );
+        : // The legacy route rises only for free views; the shader keeps roadVertical 0 here.
+          legacyRouteFar(note.x, laneY, contact, {
+            axis: warp?.axis ?? 0,
+            farScale: warp?.farScale ?? 1,
+            farZ
+          });
       if (!far) continue;
       const dy = far.y - laneY;
       const dz = far.z + contact;

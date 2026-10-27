@@ -1,6 +1,14 @@
 import type { Object3D } from "three";
 import type { WorldCamera } from "../worldCamera";
 
+/** The keys group's scale, which every rig inside that group compensates for. */
+export function keysGroupScale(keys: {
+  readonly camera: WorldCamera;
+  readonly keyboardCamera?: WorldCamera;
+}): number {
+  return (keys.keyboardCamera ?? keys.camera).params.prefs.scale;
+}
+
 /** Keys follow the keyboard camera; the world road keeps its own reference scale and pan. */
 export function placeStageGroups(
   keys: Object3D,

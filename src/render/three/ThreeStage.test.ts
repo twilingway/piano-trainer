@@ -606,6 +606,18 @@ it.each(["game", "free"] as const)(
   }
 );
 
+it("bakes docked labels only in separate world views; standard keeps the overlay labels", () => {
+  const f = fixture();
+  const labels = (f.stage as unknown as { dockedLabels: { prepare: ReturnType<typeof vi.fn> } })
+    .dockedLabels;
+  f.draw();
+  expect(labels.prepare.mock.lastCall?.[6]).toBe(false);
+  f.stage.setCameraComposition("game");
+  f.stage.setFreeCamera(true);
+  f.draw();
+  expect(labels.prepare.mock.lastCall?.[6]).toBe(true);
+});
+
 it("does not reconnect free controls from a saved composition while the native view is inactive", () => {
   const f = fixture();
   const internal = f.stage as unknown as { free: { setEnabled: ReturnType<typeof vi.fn> } };

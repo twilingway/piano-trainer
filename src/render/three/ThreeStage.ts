@@ -39,7 +39,7 @@ import { drawSceneCameraPasses } from "./sceneCameraPasses";
 import { PerformanceWorldStage } from "./PerformanceWorldStage";
 import { PerformanceScene } from "./PerformanceScene";
 import { FreeSceneCamera } from "./FreeSceneCamera";
-import { placeStageGroups } from "./stageGroupFrames";
+import { keysGroupScale, placeStageGroups } from "./stageGroupFrames";
 
 // Baked colours and the keys' texture are display values: keep three in the same space.
 ColorManagement.enabled = false;
@@ -222,7 +222,7 @@ export class ThreeStage {
       );
     }
     const step = Math.min(1, deltaSeconds * DIP_RATE);
-    this.noteLights.update(energy, roadCamera, energyDeltaSeconds);
+    this.noteLights.update(energy, roadCamera, energyDeltaSeconds, this.keys.scale.x);
     this.keyEmission.update(energy, energyDeltaSeconds);
     for (const { pitch, hinge } of this.hinged) {
       const target = down(pitch) ? -KEYBOARD_DIP : 0;
@@ -295,7 +295,8 @@ export class ThreeStage {
       roadCamera.roadFarZ,
       this.keys
     );
-    if (roadDock) this.dockedLabels ??= new DockedRoadLabels();
+    // Standard keeps the overlay labels: they already follow the dock through notePlace.
+    if (roadDock && docked) this.dockedLabels ??= new DockedRoadLabels();
     this.dockedLabels?.prepare(
       roadFrame,
       roadCamera,
@@ -303,7 +304,7 @@ export class ThreeStage {
       camera,
       this.keyboardCamera,
       screen,
-      roadDock,
+      roadDock && docked,
       inspecting,
       this.keys
     );
@@ -515,8 +516,9 @@ export class ThreeStage {
     this.roadBoxes = keyBoxes(keys);
     this.performance.layout(boxes);
     this.appearance.layout(boxes);
-    this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera);
-    this.rimLights.layout(boxes, keys.camera.params.prefs.scale);
+    // Both light rigs sit in the keys group, scaled by the keyboard camera.
+    this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera, keysGroupScale(keys));
+    this.rimLights.layout(boxes, keysGroupScale(keys));
     this.hinged = buildStageKeys(
       this.keys,
       boxes,

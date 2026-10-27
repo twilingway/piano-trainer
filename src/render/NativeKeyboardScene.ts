@@ -54,7 +54,8 @@ export class NativeKeyboardScene {
   draw(camera: WorldCamera, pan: number, keyboardCamera = camera): void {
     if (
       camera.params.width !== this.camera?.params.width ||
-      camera.params.prefs.scale !== this.camera.params.prefs.scale
+      camera.params.prefs.scale !== this.camera.params.prefs.scale ||
+      keyboardCamera.params.prefs.scale !== this.keyboardCamera?.params.prefs.scale
     )
       this.version++;
     this.camera = camera;
