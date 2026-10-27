@@ -115,7 +115,7 @@ export function heldBassCourse(policy: TrainerHeldBassPolicy): TrainerCourse {
         step: (session, playing, atMs) => stepTrainerHeldBass(policy, session, playing, atMs)
       });
     },
-    guidance: (session, playing) => pairGuidance(session, policy, playing),
+    guidance: (session, playing) => pairGuidance(session, policy, playing, true),
     cuePresented: (lights, atMs) => {
       if (lights.length > 0) policy.onCuePresented?.(lights, atMs);
     },

@@ -1,4 +1,5 @@
-﻿import { songFromMusicXml } from "../song/musicxml";
+import { withLessonFingering } from "./fingerCues";
+import { songFromMusicXml } from "../song/musicxml";
 import { normalizeReadingSeed, readingPitchesForSeed } from "./generator";
 import { BASS_READING_PROFILE, TREBLE_READING_PROFILE } from "./profiles";
 import { TWO_HAND_GENERATOR_VERSION, TWO_HAND_SKILL_ID } from "./twoHandTypes";
@@ -87,7 +88,7 @@ export function generateTwoHandExercise(seed: number, version = 1): TwoHandExerc
     generatorVersion: 1,
     pairs,
     musicXml,
-    song: songFromMusicXml(musicXml, "")
+    song: withLessonFingering(songFromMusicXml(musicXml, ""))
   };
 }
 export function twoHandPromptXml(

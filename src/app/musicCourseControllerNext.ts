@@ -19,8 +19,22 @@ export async function prepareMusicControllerReplacement(
   advance: boolean,
   callbacks: MusicCourseCallbacks,
   current: () => boolean,
-  phase?: IntegratedPhaseId
+  phase?: IntegratedPhaseId,
+  captured?: MusicActivity
 ): Promise<MusicControllerReplacement | null> {
+  if (!lesson && !advance && captured && !captured.noveltyRequired) {
+    await callbacks.persistenceReady();
+    if (!current()) return null;
+    const fresh = await callbacks.claim(captured.exercise.fingerprint);
+    return current()
+      ? {
+          saved: { ...saved, seed: captured.exercise.seed },
+          lesson: null,
+          activity: captured,
+          newMaterial: fresh
+        }
+      : null;
+  }
   const nextSaved = { ...saved, seed: lesson && plan ? plan.seed : (saved.seed + 1) >>> 0 };
   let nextLesson: IntegratedLesson | null = null;
   if (lesson && plan) {

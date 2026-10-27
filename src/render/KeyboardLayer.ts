@@ -15,6 +15,10 @@ import { bakeKeyTextures, destroyKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
 import { PointerKeys, type KeyPointer } from "./pointerKeys";
+import type { Locale } from "../i18n/locales";
+import { NO_FINGER_CUES, type LessonFingerCue } from "../reading/fingerCues";
+import { bakeLessonFingerBadges, LessonFingerBadges } from "./lessonFingerBadges";
+import { DIGIT_MAX_PX, placeKeyboardFingerDigit } from "./keyboardFingerDigits";
 
 const HAND_HINT: Readonly<Record<Hand, number>> = {
   right: FINGER_COLOR[3],
@@ -106,10 +110,6 @@ const RAIL_PER_WIDTH = 0.2;
 
 type PaintedFaces = KeyTextures & Readonly<Record<FaceName, Texture>>;
 const NO_SLICE = { leftWidth: 0, topHeight: 0, rightWidth: 0, bottomHeight: 0 };
-/** Largest size of a finger digit on a key. */
-const DIGIT_MAX_PX = 26;
-/** The finger digit's height on a key without stickers, at most. */
-const DIGIT_BARE_PX = 44;
 
 /** What the keys show in a frame: what is held, sounded and owed, and what crosses the hit line. */
 export interface KeysFrame {
@@ -126,6 +126,7 @@ export interface KeysFrame {
   readonly playing: ReadonlyMap<number, SongNote>;
   readonly hints?: boolean;
   readonly neutralKeys?: boolean;
+  readonly fingerCues?: readonly LessonFingerCue[];
 }
 
 /**
@@ -142,6 +143,7 @@ export class KeyboardLayer {
   private readonly felt = new Container();
   private readonly keySprites = new Map<number, NineSliceSprite>();
   private readonly keyDigits = new Map<number, Sprite>();
+  private readonly lessonBadges?: LessonFingerBadges;
   /** The light over each key, in its note's colour; a white key's under the black keys. */
   private readonly keyFronts = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
@@ -173,6 +175,8 @@ export class KeyboardLayer {
     onKeyPointer: (event: KeyEvent) => void
   ) {
     this.pointers = new PointerKeys(onKeyPointer);
+    this.lessonBadges = new LessonFingerBadges(bakeLessonFingerBadges(renderer));
+    this.hints.addChild(this.lessonBadges.container);
     this.container.addChild(this.keyboard, this.rail, this.felt, this.stickers, this.hints);
     this.rail.eventMode = "none";
     this.rail.visible = false;
@@ -331,6 +335,9 @@ export class KeyboardLayer {
 
   /** The last frame drawn: the 3D keys dip the keys it holds down. */
   frame: KeysFrame | undefined;
+  setLocale(locale: Locale): void {
+    this.lessonBadges?.setLocale(locale);
+  }
 
   /** Lights the keys for this frame: the owed chord, the notes sounding, the keys held. */
   draw(
@@ -340,6 +347,12 @@ export class KeyboardLayer {
     stickers: boolean
   ): void {
     this.frame = frame;
+    this.lessonBadges?.draw(
+      frame.hints === false ? NO_FINGER_CUES : (frame.fingerCues ?? NO_FINGER_CUES),
+      keys,
+      geometry,
+      this.modelFaces
+    );
     const { keyboardTop, keyboardHeight, blackHeight } = geometry;
     for (const [pitch, sprite] of this.keySprites) {
       const due = strongestKeyHint(
@@ -411,41 +424,14 @@ export class KeyboardLayer {
       if (!hint) continue;
       hint.visible =
         !frame.neutralKeys &&
+        frame.fingerCues === undefined &&
         key !== undefined &&
         shown?.finger !== undefined &&
         frame.hints !== false;
       hint.alpha = sounding ? 1 : hintStrength;
       if (!key || shown?.finger === undefined) continue;
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
-      hint.x = key.x + key.width / 2;
-      if (!stickers) {
-        // Fit the digit below the black keys and above the front bevel.
-        const bevel = key.black ? this.bevel.black : this.bevel.white;
-        const bottom = keyboardTop + (key.black ? blackHeight : keyboardHeight) - bevel - 4;
-        const top = keyboardTop + (key.black ? 4 : blackHeight + 4);
-        hint.scale.set(
-          Math.min(
-            (key.width * 0.7) / hint.texture.width,
-            DIGIT_BARE_PX / hint.texture.height,
-            Math.max(0, bottom - top) / hint.texture.height
-          )
-        );
-        hint.y = bottom;
-      } else {
-        hint.scale.set(Math.min(1, (key.width * 0.9) / 40, DIGIT_MAX_PX / 40));
-        // The sticker fills the bottom of the key; the finger sits at the top of its free part.
-        hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
-      }
-      if (this.modelFaces) {
-        // Compensate the painted atlas for the metric cap and the cropped side bevels.
-        const oldHeight = hint.height;
-        const depth = key.black ? 94.0242 : 150;
-        const sourceHeight = key.black ? blackHeight : keyboardHeight;
-        const usableWidth = key.black ? 0.84 : 0.86;
-        const units = key.black ? 13.31152 / key.width : 22.5 / key.width;
-        hint.scale.y *= (sourceHeight * units) / (depth * usableWidth);
-        if (stickers) hint.y += hint.height - oldHeight;
-      }
+      placeKeyboardFingerDigit(hint, key, geometry, stickers, this.modelFaces, this.bevel);
     }
   }
 
@@ -530,6 +516,7 @@ export class KeyboardLayer {
     this.disposed = true;
     this.paintGeneration++;
     this.releaseMouse();
+    this.lessonBadges?.destroy();
     destroyKeyTextures(this.bakedTextures);
     for (const texture of this.lightTextures.values()) texture.destroy(true);
     for (const sprite of this.stickerSprites.values()) sprite.texture.destroy(true);

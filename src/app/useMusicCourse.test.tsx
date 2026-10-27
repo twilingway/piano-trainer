@@ -22,6 +22,8 @@ import { withTestStore } from "./storeTestSupport";
 import { createMemoryReadingRepository } from "./readingRepository";
 import { useMusicCourse } from "./useMusicCourse";
 import { useMusicTrainer, usePracticeDisplayPrefs } from "./useMusicTrainer";
+import { lessonFingerCues } from "../reading/fingerCues";
+import { getInterfaceLanguage, setInterfaceLanguage } from "./interfaceLanguage";
 
 type MockController = MusicCourseControllerContract & {
   snapshot: MusicCourseSnapshot;
@@ -74,6 +76,7 @@ vi.mock("./musicCourseController", () => ({
         options: { mode: "tempo", hands: new Set(["right"]), speed: 1 },
         view: {
           course: selection.saved.course ?? "sight-reading",
+          inputSource: selection.saved.inputSource,
           status: "preview",
           taskKind: "sight-reading",
           ready: false,
@@ -180,6 +183,42 @@ afterEach(() => {
 });
 
 describe("music hook selection identity", () => {
+  it("localizes only the allowed XML hand cue without duplicating an existing numeric finger", () => {
+    select();
+    const controller = current();
+    const scene = controller.snapshot.scene;
+    if (!scene) throw new Error("No scene");
+    const previousLocale = getInterfaceLanguage();
+    const cue = lessonFingerCues(scene.song.notes);
+    act(() => {
+      setInterfaceLanguage("ru");
+      controller.snapshot = { ...controller.snapshot, fingerCues: cue, fingeringVisible: true };
+      for (const listener of controller.listeners) listener();
+    });
+    const label = () =>
+      new DOMParser()
+        .parseFromString(music.staffXml ?? "", "application/xml")
+        .querySelector('[data-lesson-finger-cue="true"] > text')?.textContent;
+    expect(label()).toBe("П");
+    act(() => {
+      setInterfaceLanguage("en");
+    });
+    expect(label()).toBe("R");
+    act(() => {
+      controller.snapshot = { ...controller.snapshot, fingeringVisible: false };
+      for (const listener of controller.listeners) listener();
+    });
+    expect(label()).toBe(`R${String(cue[0]?.recommendedFinger)}`);
+    act(() => {
+      controller.snapshot = { ...controller.snapshot, fingerCues: [] };
+      for (const listener of controller.listeners) listener();
+    });
+    expect(label()).toBeUndefined();
+    expect(music.scene).toBe(scene);
+    act(() => {
+      setInterfaceLanguage(previousLocale);
+    });
+  });
   it("stays inactive until a music course is selected", () => {
     expect(music.active).toBe(false);
     expect(music.scene).toBeNull();

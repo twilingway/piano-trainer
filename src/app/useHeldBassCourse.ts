@@ -2,6 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { RefObject } from "react";
 import { generateHeldBassExercise, nextHeldBassSeed } from "../reading/heldBassGenerator";
 import { HeldBassSession } from "../reading/heldBassSession";
+import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
+import { useI18n } from "./useI18n";
 import type {
   HeldBassExercise,
   HeldBassFragment,
@@ -47,6 +50,7 @@ interface HintRequest {
 }
 
 export function useHeldBassCourse() {
+  const { locale } = useI18n();
   const active = useAppSelector((state) => state.reading.activeCourse === "held-bass-reading");
   const saved = useAppSelector((state) => state.reading.heldBass);
   const preferences = useAppSelector((state) => state.reading.preferences);
@@ -130,6 +134,22 @@ export function useHeldBassCourse() {
     requested.step === snapshot?.step
       ? requested.level
       : (snapshot?.hintLevel ?? 0);
+  const prompt = useMemo(() => {
+    if (!scene || !fragment) return null;
+    const ids = [fragment.bassNoteId, fragment.melodyNoteIds[snapshot?.step ?? 0]];
+    const cues =
+      hintLevel === 2 && snapshot?.ready
+        ? lessonFingerCues(fragment.song.notes.filter((note) => ids.includes(note.id)))
+        : [];
+    return {
+      musicXml: cues.length
+        ? musicXmlWithLessonFingerCues(scene.musicXml, cues, fragment.song.notes, (cue) =>
+            lessonFingerLabel(cue, locale)
+          )
+        : scene.musicXml,
+      beat: undefined
+    };
+  }, [scene, fragment, hintLevel, snapshot?.ready, snapshot?.step, locale]);
   const requestHint = useCallback(
     (state: HeldBassSnapshot, level: ReadingHintLevel) => {
       if (!session || !state.fragmentId || !state.presentationId) return;
@@ -347,7 +367,7 @@ export function useHeldBassCourse() {
     presentation,
     renderError,
     retry,
-    prompt: scene ? { musicXml: scene.musicXml, beat: undefined } : null,
+    prompt,
     index: snapshot?.fragmentIndex ?? 0,
     hintLevel,
     preferences,

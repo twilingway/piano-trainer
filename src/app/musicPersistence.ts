@@ -2,6 +2,7 @@ import type { HarmonyProgression, TriadQuality, TriadInversion } from "../musicL
 import type { MusicCourse, MusicPurpose } from "../musicLearning/types";
 import type { DictationStartMode } from "../musicLearning/dictation";
 import type { SightReadingLevel } from "../musicLearning/sightReading";
+import type { HarmonyTonePitchSet } from "../musicLearning/harmonyTone";
 import type {
   HarmonyLesson,
   HarmonyMode,
@@ -34,6 +35,7 @@ export interface MusicPreferences {
   harmonyLesson: HarmonyLesson;
   harmonyMode: HarmonyMode;
   harmonyAural: boolean;
+  harmonyTonePitchSet: HarmonyTonePitchSet;
   harmonyRoot: number;
   harmonyQuality: TriadQuality;
   harmonyInversion: TriadInversion;
@@ -57,6 +59,7 @@ export const MUSIC_PREFERENCE_FIELDS = [
   { key: "harmonyLesson", field: "musicHarmonyLesson" },
   { key: "harmonyMode", field: "musicHarmonyMode" },
   { key: "harmonyAural", field: "musicHarmonyAural" },
+  { key: "harmonyTonePitchSet", field: "musicHarmonyTonePitchSet" },
   { key: "harmonyRoot", field: "musicHarmonyRoot" },
   { key: "harmonyQuality", field: "musicHarmonyQuality" },
   { key: "harmonyInversion", field: "musicHarmonyInversion" },
@@ -77,6 +80,7 @@ export function emptyMusicState(): MusicPersistentState {
     harmonyLesson: "tone-semitone",
     harmonyMode: "build-chord",
     harmonyAural: false,
+    harmonyTonePitchSet: "white",
     harmonyRoot: 60,
     harmonyQuality: "major",
     harmonyInversion: 0,
@@ -113,6 +117,8 @@ export function validMusicPreference(key: keyof MusicPreferences, value: unknown
       return oneOf(value, ["build-chord", "name-chord", "invert-chord", "complete-progression"]);
     case "harmonyAural":
       return typeof value === "boolean";
+    case "harmonyTonePitchSet":
+      return oneOf(value, ["white", "all"]);
     case "harmonyRoot":
       return integer(value, 48, 72);
     case "harmonyQuality":
@@ -151,9 +157,15 @@ export function normalizeMusicState(value: unknown): {
   if (oneOf(value.purpose, PURPOSES)) music.purpose = value.purpose as MusicPurpose;
   else invalid = true;
   for (const { key } of MUSIC_PREFERENCE_FIELDS) {
+    if (key === "harmonyTonePitchSet" && value[key] === undefined) {
+      continue;
+    }
     if (validMusicPreference(key, value[key])) Object.assign(music, { [key]: value[key] });
     else invalid = true;
   }
+  if (value.harmonyTonePitchSet === undefined)
+    music.harmonyTonePitchSet =
+      music.harmonyRoot !== 60 || music.harmonyQuality !== "major" ? "all" : "white";
   if (value.integrated !== null) {
     if (validateIntegratedProgress(value.integrated))
       music.integrated = copyMusicIntegrated(value.integrated);

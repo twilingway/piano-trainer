@@ -256,11 +256,13 @@ describe("reading course UI", () => {
     const onStart = vi.fn();
     const onIntro = vi.fn();
     await render(<ReadingCourseCard onStart={onStart} onIntro={onIntro} history={[]} />);
-    expect(host.textContent).toContain("Читаю пять нот");
+    expect(host.textContent).toContain("Правая рука: пять нот");
     expect(host.textContent).toContain("Завершено серий: 0");
     expect(host.querySelectorAll("button:disabled")).toHaveLength(0);
-    expect(host.querySelectorAll("button")).toHaveLength(2);
+    expect(host.querySelectorAll("button")).toHaveLength(1);
     expect(host.querySelector(".lesson-primary-action")?.textContent).toBe("Читаю отдельные ноты");
+    expect(host.querySelector(".lesson-secondary-action")).toBeNull();
+    await reveal("reading:catalog:more");
     expect(host.querySelector(".lesson-secondary-action")?.textContent).toBe(
       "Знакомство с пятью нотами"
     );
@@ -276,7 +278,7 @@ describe("reading course UI", () => {
     await click(button("Знакомство с пятью нотами"));
     expect(onIntro).toHaveBeenCalledOnce();
     await english();
-    expect(host.textContent).toContain("Read five notes");
+    expect(host.textContent).toContain("Right hand: five notes");
     expect(button("Check reading without hints").disabled).toBe(false);
   });
 

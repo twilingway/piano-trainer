@@ -144,20 +144,20 @@ function ConnectedLibraryWindow({
       previousLessons={PREVIOUS_COURSE_LESSONS}
       course={
         <>
-          <ConnectedMusicCards onChoose={onClose} />
-          <div
-            className="foundation-course-catalog"
-            role="group"
-            aria-label={t("Чтение, ритм и две руки")}
-          >
-            <ConnectedReadingCard onChoose={onClose} />
-            <ConnectedBassReadingCard onChoose={onClose} />
-            <ConnectedTwoHandCard onChoose={onClose} />
-            <ConnectedHeldBassCard onChoose={onClose} />
-            <ConnectedIndependentRhythmCard onChoose={onClose} />
-            <ConnectedIntervalCard onChoose={onClose} />
-            <ConnectedRhythmCard onChoose={onClose} />
-          </div>
+          <section className="first-steps" aria-label={t("Первые шаги")}>
+            <h3>{t("Первые шаги")}</h3>
+            <p>{t("От первой ноты к маленькой пьесе. Выбирайте удобный шаг.")}</p>
+            <div className="foundation-course-catalog">
+              <ConnectedReadingCard onChoose={onClose} />
+              <ConnectedBassReadingCard onChoose={onClose} />
+              <ConnectedIntervalCard onChoose={onClose} />
+              <ConnectedRhythmCard onChoose={onClose} />
+              <ConnectedTwoHandCard onChoose={onClose} />
+              <ConnectedHeldBassCard onChoose={onClose} />
+              <ConnectedIndependentRhythmCard onChoose={onClose} />
+              <ConnectedMusicCards onChoose={onClose} />
+            </div>
+          </section>
           <ConnectedCourseCards onChoose={onClose} />
         </>
       }

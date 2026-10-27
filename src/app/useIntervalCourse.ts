@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { generateIntervalExercise, nextIntervalSeed } from "../intervals/generator";
 import { intervalPromptXml } from "../intervals/prompt";
+import { lessonFingerCues, musicXmlWithLessonFingerCues } from "../reading/fingerCues";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
+import { useI18n } from "./useI18n";
 import { IntervalSession } from "../intervals/session";
 import type { IntervalMode, IntervalSnapshot, IntervalSourceFilter } from "../intervals/types";
 import type { TrainerReadingPolicy } from "../practice/readingPolicy";
@@ -9,6 +12,7 @@ import { useAppDispatch, useAppSelector } from "./storeHooks";
 import { useIntervalAudio } from "./useIntervalAudio";
 
 export function useIntervalCourse() {
+  const { locale } = useI18n();
   const saved = useAppSelector((state) => state.reading.intervals);
   const activeCourse = useAppSelector((state) => state.reading.activeCourse);
   const revision = useAppSelector((state) => state.reading.selectionRevision);
@@ -72,11 +76,21 @@ export function useIntervalCourse() {
   const [helpRequest, setHelpRequest] = useState<string | null>(null);
   const questionIndex = Math.min(9, snapshot?.questionIndex ?? 0);
   const pair = exercise?.pairs[questionIndex];
+  const cueAllowed = !!snapshot?.helpShown && snapshot.active && exercise?.mode === "see-and-play";
+  const cueNoteId = snapshot?.expectedNoteId;
   // Changing the cursor's beat does not re-parse or re-render the same pair's score.
-  const pairXml = useMemo(
-    () => (exercise ? intervalPromptXml(exercise.musicXml, questionIndex).musicXml : undefined),
-    [exercise, questionIndex]
-  );
+  const pairXml = useMemo(() => {
+    if (!exercise) return undefined;
+    const cues = cueAllowed
+      ? lessonFingerCues(exercise.song.notes.filter((note) => note.id === cueNoteId))
+      : [];
+    const xml = cues.length
+      ? musicXmlWithLessonFingerCues(exercise.musicXml, cues, exercise.song.notes, (cue) =>
+          lessonFingerLabel(cue, locale)
+        )
+      : exercise.musicXml;
+    return intervalPromptXml(xml, questionIndex).musicXml;
+  }, [exercise, questionIndex, cueAllowed, cueNoteId, locale]);
   const id = session
     ? `${session.identity()?.runId ?? ""}:${snapshot?.questionId ?? "done"}:${String(retry)}`
     : "";
@@ -134,7 +148,15 @@ export function useIntervalCourse() {
                 publish();
               }
             },
-            cuePitch: () => undefined
+            cuePitch: () => {
+              const state = session.snapshot();
+              return exercise.mode === "see-and-play" &&
+                state.active &&
+                state.presented &&
+                state.helpShown
+                ? exercise.song.notes.find((note) => note.id === state.expectedNoteId)?.pitch
+                : undefined;
+            }
           }
         : null,
     [session, exercise, publish]
