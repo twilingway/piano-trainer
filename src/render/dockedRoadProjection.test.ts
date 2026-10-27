@@ -212,6 +212,29 @@ describe("bent join in keyboard perspective", () => {
     }
   });
 
+  it("does not bend a straight lane while its key is pressed", () => {
+    // Straightened onto the shown keys; the key dips 8 units, as a hinge offset does.
+    const dip = clip(keyboard, contact.clone().add(new Vector3(0, -8, 0))).sub(pinned);
+    const pressed = pinned.clone().add(dip);
+    for (const progress of [0.02, 0.1, 0.2]) {
+      const point = clip(world, at(progress));
+      const lane = clip(keyboard, at(progress)).add(dip);
+      const plain = ndc(
+        anchorRelativeDockedClip(point, anchor, pressed, progress, undefined, pinned)
+      );
+      const held = ndc(
+        anchorRelativeDockedClip(point, anchor, pressed, progress, undefined, pinned, lane, dip)
+      );
+      expect(held[0]).toBeCloseTo(plain[0], 9);
+      expect(held[1]).toBeCloseTo(plain[1], 9);
+      // Counted as bend, the dip alone would lean the whole near quarter: the arc on every hit.
+      const leaned = ndc(
+        anchorRelativeDockedClip(point, anchor, pressed, progress, undefined, pinned, lane)
+      );
+      expect(Math.abs(leaned[0] - plain[0]) * 784).toBeGreaterThan(1);
+    }
+  });
+
   it("matches the clip join in screen pixels", () => {
     const [width, height] = [1568, 733];
     const px = (p: { x: number; y: number; w: number }) => ({
