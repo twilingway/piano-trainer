@@ -55,10 +55,6 @@ export function anchorRelativeDockedClip(
     if (straight !== world) [world, worldAnchor] = [straight, fitted];
   }
   const t = dockedRoadBlend(progress);
-  if (t <= 0) {
-    Object.assign(target, keyboardAnchor);
-    return target;
-  }
   if (t >= 1) {
     Object.assign(target, world);
     return target;
@@ -66,12 +62,20 @@ export function anchorRelativeDockedClip(
   const pw = safeClipW(world.w),
     aw = safeClipW(worldAnchor.w),
     kw = safeClipW(keyboardAnchor.w);
+  const sameSide = Math.sign(kw) === Math.sign(pw);
+  if (t <= 0) {
+    // The contact itself, carried at the point's own w: the same pixel, no w step at the keys.
+    const scale = sameSide ? pw / kw : 1;
+    target.x = keyboardAnchor.x * scale;
+    target.y = keyboardAnchor.y * scale;
+    target.z = keyboardAnchor.z * scale;
+    target.w = keyboardAnchor.w * scale;
+    return target;
+  }
   const weight = 1 - t;
-  // A real homogeneous w, continuous with both ends, keeps varyings perspective-correct across t=1.
-  const w =
-    Math.sign(kw) === Math.sign(pw)
-      ? kw * weight + pw * t
-      : Math.sign(kw) * weight + Math.sign(pw) * t;
+  // The point's own w. A w mixed in from the keyboard camera keeps the pixels but bends
+  // perspective-correct varyings (rims, halo) inside every strip of the near quarter.
+  const w = sameSide ? pw : Math.sign(kw) * weight + Math.sign(pw) * t;
   target.x = (world.x / pw + weight * (keyboardAnchor.x / kw - worldAnchor.x / aw)) * w;
   target.y = (world.y / pw + weight * (keyboardAnchor.y / kw - worldAnchor.y / aw)) * w;
   target.z = ((keyboardAnchor.z / kw) * weight + (world.z / pw) * t) * w;
@@ -128,11 +132,12 @@ vec4 anchorRelativeRoadClip(vec4 point, vec4 anchor, vec4 fitted, vec4 pinned, f
   }
   float t = clamp(progress / 0.25, 0.0, 1.0);
   t = t * t * (3.0 - 2.0 * t);
-  if (t <= 0.0) return pinned;
   if (t >= 1.0) return point;
   float pw = dockSafeW(point.w), aw = dockSafeW(anchor.w), kw = dockSafeW(pinned.w);
+  bool sameSide = sign(kw) == sign(pw);
+  if (t <= 0.0) return sameSide ? pinned * (pw / kw) : pinned;
   float gain = 1.0 - t;
-  float w = sign(kw) == sign(pw) ? mix(kw, pw, t) : sign(kw) * gain + sign(pw) * t;
+  float w = sameSide ? pw : sign(kw) * gain + sign(pw) * t;
   vec2 xy = point.xy / pw + gain * (pinned.xy / kw - anchor.xy / aw);
   float z = mix(pinned.z / kw, point.z / pw, t);
   return vec4(xy * w, z * w, w);

@@ -17,7 +17,7 @@ export interface RoadFit {
   readonly mode: "auto" | "button";
   readonly camera?: CameraPrefs | undefined;
 }
-export const DEFAULT_ROAD_FIT: RoadFit = { mode: "button" };
+export const DEFAULT_ROAD_FIT: RoadFit = { mode: "auto" };
 export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
 
 /** Layout-only camera inputs; the scene width may exceed the visible viewport. */

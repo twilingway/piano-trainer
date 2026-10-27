@@ -638,7 +638,9 @@ describe("world compositions", () => {
     });
   });
   it("restores the road straightening and repairs only its own corrupt values", () => {
-    expect(normalizeStaffPrefs({})).toMatchObject({ roadFit: "button", roadFitCamera: null });
+    // Straight lanes into the keys by default; the bend stays a choice.
+    expect(normalizeStaffPrefs({})).toMatchObject({ roadFit: "auto", roadFitCamera: null });
+    expect(normalizeStaffPrefs({ roadFit: "button" }).roadFit).toBe("button");
     const snapshot = { ...CAMERA_PRESETS.player, pitch: 30 };
     const saved = normalizeStaffPrefs({ roadFit: "auto", roadFitCamera: snapshot, worldFov: 60 });
     expect(saved).toMatchObject({ roadFit: "auto", roadFitCamera: snapshot, worldFov: 60 });
@@ -647,7 +649,7 @@ describe("world compositions", () => {
       roadFitCamera: { ...snapshot, fov: Number.NaN },
       roadHorizon: 1.2
     });
-    expect(broken.roadFit).toBe("button");
+    expect(broken.roadFit).toBe("auto");
     expect(broken.roadFitCamera).toEqual({ ...snapshot, fov: 43 });
     expect(broken.roadHorizon).toBe(1.2);
     expect(normalizeStaffPrefs({ roadFitCamera: "top" }).roadFitCamera).toBeNull();
