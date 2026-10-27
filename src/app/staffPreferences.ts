@@ -22,6 +22,7 @@ import type { KeyStyle } from "../render/KeyboardLayer";
 import { CAMERA_PRESETS, normalizeCamera } from "../render/worldCamera";
 import type { CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_ROAD_SHAPE } from "../render/RoadLayer";
+import { DEFAULT_ROAD_FIT, type RoadFit } from "../render/roadLayoutCamera";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { KeyRange } from "./useFallingView";
 import type { KeyboardOrientation } from "./viewProfiles";
@@ -96,6 +97,9 @@ export interface StaffPrefs {
   readonly camera: CameraPrefs;
   /** The road's horizon, as a share of the way from the top down to the keys. */
   readonly roadHorizon: number;
+  /** Standard road straightening; the snapshot is the keyboard camera the button took. */
+  readonly roadFit: RoadFit["mode"];
+  readonly roadFitCamera: CameraPrefs | null;
 }
 
 export const DEFAULT_STAFF_PREFS: StaffPrefs = {
@@ -142,7 +146,9 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   autoReview: false,
   camera: CAMERA_PRESETS.top,
   roadFar: DEFAULT_ROAD_SHAPE.far,
-  roadHorizon: DEFAULT_ROAD_SHAPE.horizon
+  roadHorizon: DEFAULT_ROAD_SHAPE.horizon,
+  roadFit: DEFAULT_ROAD_FIT.mode,
+  roadFitCamera: null
 };
 
 export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs {
@@ -216,6 +222,11 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     autoReview: boolean("autoReview"),
     camera: raw.camera === undefined ? CAMERA_PRESETS.top : normalizeCamera(raw.camera),
     roadFar: number("roadFar", -1, 0.9),
-    roadHorizon: normalizeRoadHorizon(raw.roadHorizon, defaults.roadHorizon)
+    roadHorizon: normalizeRoadHorizon(raw.roadHorizon, defaults.roadHorizon),
+    roadFit: choice("roadFit", ["button", "auto"]),
+    roadFitCamera:
+      raw.roadFitCamera && typeof raw.roadFitCamera === "object"
+        ? normalizeCamera(raw.roadFitCamera)
+        : null
   };
 }

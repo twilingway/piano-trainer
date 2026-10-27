@@ -65,6 +65,7 @@ attribute vec4 noteSize;
 #define notePitch noteSize.w
 #endif
 uniform mat4 roadDockTransform;
+uniform mat4 roadDockFitTransform;
 uniform mat4 roadDockInverse;
 float roadNoteProgress(float localZ) {
   return (noteProjection.w - localZ - noteContact.y) / max(roadWidth.y - noteContact.y, 0.000001);
@@ -109,7 +110,7 @@ vec4 projectNoteLane(vec4 point, float localZ) {
     vec4 anchor = projectionMatrix * modelViewMatrix * vec4(contact, 1.0);
     vec4 pinned = roadDockTransform * anchor;
     if (notePitch >= 21.0 && notePitch <= 108.0) pinned += roadDockY * roadDockOffsets[int(floor(notePitch + 0.5)) - 21];
-    return anchorRelativeRoadClip(point, anchor, pinned, progress);
+    return anchorRelativeRoadClip(point, anchor, roadDockFitTransform * anchor, pinned, progress);
   }
   point.x = noteProjection.x * point.x + noteProjection.y * point.w;
   point.y += noteProjection.z * point.w;

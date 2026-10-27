@@ -29,7 +29,8 @@ export function ConnectedKeyboardSettings() {
       freeCameraWasd: state.preferences.staff.freeCameraWasd,
       far: state.preferences.staff.roadFar,
       horizon: state.preferences.staff.roadHorizon,
-      camera: state.preferences.staff.camera
+      camera: state.preferences.staff.camera,
+      roadFit: state.preferences.staff.roadFit
     }),
     shallowEqual
   );
@@ -77,6 +78,10 @@ export function ConnectedKeyboardSettings() {
   const onPianist = useRuntimeCommand((runtime) => runtime.keyboardSettings.onPianist);
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
   const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
+  const onRoadFit = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadFit);
+  const onStraightenRoad = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onStraightenRoad
+  );
   return (
     <KeyboardSettings
       {...view}
@@ -108,6 +113,9 @@ export function ConnectedKeyboardSettings() {
       worldFov={state.worldFov}
       onWorldFov={onWorldFov}
       onResetWorldCamera={onResetWorldCamera}
+      roadFit={state.roadFit}
+      onRoadFit={onRoadFit}
+      onStraightenRoad={onStraightenRoad}
       freeCamera={state.freeCamera}
       freeCameraWasd={state.freeCameraWasd}
       onFreeCameraWasd={onFreeCameraWasd}

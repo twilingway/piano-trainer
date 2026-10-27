@@ -22,6 +22,8 @@ export function useKeyboardSettings(
   onFreeCamera: (on: boolean) => void;
   onFreeCameraWasd: (on: boolean) => void;
   onPerformanceScene: (on: boolean) => void;
+  onRoadFit: NonNullable<ComponentProps<typeof KeyboardSettings>["onRoadFit"]>;
+  onStraightenRoad: () => void;
 } {
   return {
     keyRange: view.keyRange,
@@ -111,6 +113,13 @@ export function useKeyboardSettings(
     camera: staffPrefs.camera,
     onCamera: (camera) => {
       updateStaffPrefs({ camera });
+    },
+    roadFit: staffPrefs.roadFit,
+    onRoadFit: (roadFit) => {
+      updateStaffPrefs({ roadFit });
+    },
+    onStraightenRoad: () => {
+      updateStaffPrefs({ roadFitCamera: staffPrefs.camera });
     }
   };
 }

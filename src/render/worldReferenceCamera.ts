@@ -5,15 +5,22 @@ import { metricCameraForKeys } from "./metricKeyboardCamera";
 import { nativeKeyContactLanes } from "./nativeKeyContactAnchors";
 import type { NoteLaneProjection } from "./noteLaneProjection";
 import type { Projected } from "./perspective";
-import { nativeViewCameras, type nativeNoteCameras } from "./nativeViewCameras";
+import { nativeNoteCameras, nativeViewCameras } from "./nativeViewCameras";
 import { nativeRoadCameraLayout } from "./nativeRoadCameraLayout";
-import { roadLayoutCamera } from "./roadLayoutCamera";
+import { roadLayoutCamera, type RoadFit } from "./roadLayoutCamera";
 import { roadNotePlace } from "./roadScenePoints";
 import type { Geometry } from "./viewGeometry";
 import { CAMERA_PRESETS, type CameraPrefs, type WorldCamera } from "./worldCamera";
 
 /** The world road's fixed reference keyboard: the player's camera.* never reaches it. */
 export const WORLD_REFERENCE_CAMERA: CameraPrefs = CAMERA_PRESETS.top;
+
+type NoteCameras = ReturnType<typeof nativeNoteCameras>;
+/** A snapshot keyboard's note cameras and their recalibration for a moved keyboard. */
+type FitCameras = NoteCameras & {
+  readonly keyboard: WorldCamera;
+  readonly refit: (offset: PointData) => NoteCameras;
+};
 
 /**
  * The standard composition's world road, derived from the reference keyboard on the same viewport,
@@ -59,15 +66,30 @@ export function worldRoadCameras(
   );
 }
 
-/** The player's displayed keyboard and, given a reference geometry, the world road beside it. */
-export function nativeRoadCameras(
-  base: WorldCamera,
-  keys: ReadonlyMap<number, KeyRect>,
-  geometry: Geometry,
-  reference: Geometry | undefined,
-  options: Parameters<typeof worldRoadCameras>[2] & { readonly offset: PointData }
-) {
-  const cameras = nativeViewCameras(
+/** What the standard road straightens onto: the shown keyboard or a snapshot of its camera. */
+export type RoadFitTarget =
+  "keyboard" | { readonly prefs: CameraPrefs; readonly geometry: Geometry } | undefined;
+
+/** The world road's reference geometry and what the standard road straightens onto. */
+export interface RoadReference {
+  readonly geometry: Geometry;
+  readonly fit?: RoadFitTarget;
+}
+
+/** The layout's straightening target for a road fit. */
+export function roadFitTarget(
+  fit: RoadFit | undefined,
+  geometry: (prefs: CameraPrefs) => Geometry
+): RoadFitTarget {
+  if (fit?.mode === "auto") return "keyboard";
+  return fit?.camera && { prefs: fit.camera, geometry: geometry(fit.camera) };
+}
+
+type RoadCameraOptions = Parameters<typeof worldRoadCameras>[2] & { readonly offset: PointData };
+
+/** One keyboard's cameras on this view; the snapshot keyboard shares every option but its own. */
+function keyboardRoadCameras(base: WorldCamera, geometry: Geometry, options: RoadCameraOptions) {
+  return nativeViewCameras(
     base,
     geometry.keyboardHeight,
     options.overhead,
@@ -81,13 +103,62 @@ export function nativeRoadCameras(
     options.sceneWidth,
     options.nativeScale
   );
-  return { cameras, world: reference ? worldRoadCameras(keys, reference, options) : cameras };
+}
+
+function snapshotRoadCameras(
+  prefs: CameraPrefs,
+  keys: ReadonlyMap<number, KeyRect>,
+  geometry: Geometry,
+  options: RoadCameraOptions
+): FitCameras {
+  const { viewWidth, sceneWidth, cameraHeight, horizon } = options;
+  const base = metricCameraForKeys(
+    roadLayoutCamera(viewWidth, sceneWidth, cameraHeight, prefs, true, horizon),
+    keys,
+    cameraHeight,
+    horizon
+  );
+  const cameras = keyboardRoadCameras(base, geometry, options);
+  const refit = (offset: PointData) =>
+    nativeNoteCameras(
+      cameras.keyboard,
+      options.perspective,
+      cameraHeight,
+      horizon,
+      options.viewportHeight,
+      offset,
+      options.far,
+      sceneWidth
+    );
+  return { ...cameras, refit };
+}
+
+/** The player's displayed keyboard and, given a reference geometry, the world road beside it. */
+export function nativeRoadCameras(
+  base: WorldCamera,
+  keys: ReadonlyMap<number, KeyRect>,
+  geometry: Geometry,
+  reference: RoadReference | undefined,
+  options: RoadCameraOptions
+) {
+  const cameras = keyboardRoadCameras(base, geometry, options);
+  const fit = reference?.fit;
+  return {
+    cameras,
+    world: reference ? worldRoadCameras(keys, reference.geometry, options) : cameras,
+    fit:
+      fit === "keyboard" || !fit ? fit : snapshotRoadCameras(fit.prefs, keys, fit.geometry, options)
+  };
 }
 
 /** The displayed keyboard's own note camera; the reference world road joins it at contact. */
 export class ReferenceRoadDock {
-  private cameras: ReturnType<typeof nativeNoteCameras> | undefined;
+  private cameras: NoteCameras | undefined;
   private lanes: ReadonlyMap<number, NoteLaneProjection> | undefined;
+  private fit: NoteCameras | undefined;
+  private fitLanes: ReadonlyMap<number, NoteLaneProjection> | undefined;
+  private fitSource: FitCameras | "keyboard" | undefined;
+  private keys: ReadonlyMap<number, KeyRect> | undefined;
 
   /** Without a laid-out dock the road keeps its plain world placement. */
   static place(
@@ -98,16 +169,24 @@ export class ReferenceRoadDock {
     return dock ? dock.place(docked, ...args) : roadNotePlace(...args);
   }
 
-  /** A moved keyboard changes only the contact of a docked world, else the whole road. */
+  /** A moved keyboard recalibrates the shown and the fitted contacts with the same offset. */
   static moved(
     dock: ReferenceRoadDock | undefined,
-    cameras: ReturnType<typeof nativeNoteCameras>,
-    keys: ReadonlyMap<number, KeyRect> | undefined,
+    cameras: NoteCameras,
     width: number,
-    fog: Parameters<typeof nativeRoadCameraLayout>[2]
+    fog: Parameters<typeof nativeRoadCameraLayout>[2],
+    offset: PointData
   ): { hitY?: number } {
-    const hitY = dock?.active && keys ? dock.set(cameras, keys, width) : undefined;
+    const source = dock?.fitSource;
+    const fit = source === "keyboard" ? cameras : source?.refit(offset);
+    const keys = dock?.active ? dock.keys : undefined;
+    const hitY = keys ? dock?.set(cameras, keys, width, fit) : undefined;
     return hitY === undefined ? nativeRoadCameraLayout(cameras, width, fog) : { hitY };
+  }
+
+  /** The keyboard the standard road straightens onto, for the three road pass. */
+  get fitKeyboard(): WorldCamera | "keyboard" | undefined {
+    return this.cameras && (this.fitSource === "keyboard" ? "keyboard" : this.fitSource?.keyboard);
   }
 
   get active(): boolean {
@@ -116,25 +195,35 @@ export class ReferenceRoadDock {
 
   /** The road's layout from the world camera, with the hit row of the shown keys. */
   layout(
-    world: ReturnType<typeof nativeNoteCameras>,
-    cameras: ReturnType<typeof nativeNoteCameras>,
+    world: NoteCameras,
+    cameras: NoteCameras,
     keys: ReadonlyMap<number, KeyRect>,
     width: number,
-    fog: Parameters<typeof nativeRoadCameraLayout>[2]
+    fog: Parameters<typeof nativeRoadCameraLayout>[2],
+    fit?: FitCameras | "keyboard"
   ) {
     const layout = nativeRoadCameraLayout(world, width, fog);
-    const hitY = this.set(world === cameras ? undefined : cameras, keys, width);
+    this.fitSource = fit;
+    const shown = world === cameras ? undefined : cameras;
+    const hitY = this.set(shown, keys, width, fit === "keyboard" ? cameras : fit);
     return hitY === undefined ? layout : { ...layout, hitY };
   }
 
-  /** Returns the shown keys' hit row while docked. */
+  /** Returns the shown keys' hit row while docked; `fit` straightens the route onto its keys. */
   set(
-    cameras: ReturnType<typeof nativeNoteCameras> | undefined,
+    cameras: NoteCameras | undefined,
     keys: ReadonlyMap<number, KeyRect>,
-    viewWidth: number
+    viewWidth: number,
+    fit?: NoteCameras
   ): number | undefined {
     this.cameras = cameras;
+    this.keys = keys;
     this.lanes = cameras && nativeKeyContactLanes(keys, cameras.blackLane, cameras.whiteLane);
+    this.fit = cameras && fit;
+    this.fitLanes =
+      fit === cameras
+        ? this.lanes
+        : this.fit && nativeKeyContactLanes(keys, this.fit.blackLane, this.fit.whiteLane);
     return cameras?.notes.road.at(viewWidth / 2, 1).y;
   }
 
@@ -168,8 +257,25 @@ export class ReferenceRoadDock {
       this.lanes?.get(keyX),
       keyHeight
     );
+    const fit = this.fit?.notes;
+    const fitted =
+      fit === notes
+        ? pinned
+        : fit &&
+          roadNotePlace(
+            fit,
+            fit.road,
+            height,
+            pan,
+            keyX,
+            height,
+            offset,
+            lift,
+            this.fitLanes?.get(keyX),
+            keyHeight
+          );
     return anchor && pinned
-      ? dockedScreenPoint(point, anchor, pinned, 1 - Math.max(0, Math.min(1, y / height)))
+      ? dockedScreenPoint(point, anchor, pinned, 1 - Math.max(0, Math.min(1, y / height)), fitted)
       : point;
   }
 }

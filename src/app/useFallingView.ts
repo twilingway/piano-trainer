@@ -145,7 +145,11 @@ export function useFallingView({
     viewRef.current?.setKeyboardTop(
       staffPrefs.keyStyle === "3d" && staffPrefs.keyboardOrientation === "top"
     );
-    viewRef.current?.setRoadShape({ far: staffPrefs.roadFar, horizon: staffPrefs.roadHorizon });
+    viewRef.current?.setRoadShape({
+      far: staffPrefs.roadFar,
+      horizon: staffPrefs.roadHorizon,
+      fit: { mode: staffPrefs.roadFit, camera: staffPrefs.roadFitCamera ?? undefined }
+    });
   }, [
     viewRef,
     trainerReady,
@@ -162,7 +166,9 @@ export function useFallingView({
     staffPrefs.camera,
     staffPrefs.keyboardOrientation,
     staffPrefs.roadFar,
-    staffPrefs.roadHorizon
+    staffPrefs.roadHorizon,
+    staffPrefs.roadFit,
+    staffPrefs.roadFitCamera
   ]);
 
   useEffect(() => {
@@ -312,7 +318,8 @@ export function useFallingView({
   ]);
 
   const resetWorldCamera = () => {
-    updateStaffPrefs({ worldFov: DEFAULT_WORLD_FOV });
+    // The world reset also drops the straightening snapshot; its mode stays.
+    updateStaffPrefs({ worldFov: DEFAULT_WORLD_FOV, roadFitCamera: null });
     viewRef.current?.setWorldFov(DEFAULT_WORLD_FOV, true);
   };
   return {

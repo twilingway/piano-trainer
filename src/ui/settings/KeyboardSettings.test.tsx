@@ -549,6 +549,56 @@ describe("separate keyboard and world cameras", () => {
     }
   });
 
+  it("straightens the standard road automatically or by the button, only where it applies", () => {
+    const onRoadFit = vi.fn();
+    const onStraightenRoad = vi.fn();
+    const render = (props: Partial<Parameters<typeof KeyboardSettings>[0]>) => {
+      act(() => {
+        root.render(
+          <KeyboardSettings
+            {...base}
+            onRoadFit={onRoadFit}
+            onStraightenRoad={onStraightenRoad}
+            {...props}
+          />
+        );
+      });
+      return group("Камера нот и мира");
+    };
+    const select = () =>
+      group("Камера нот и мира")?.querySelector<HTMLSelectElement>(
+        '[data-setting-target="road-fit"]'
+      );
+    let world = render({});
+    expect(select()?.value).toBe("button");
+    expect(select()?.disabled).toBe(false);
+    act(() => {
+      button(world, "Выпрямить по клавиатуре")?.click();
+    });
+    expect(onStraightenRoad).toHaveBeenCalledOnce();
+    act(() => {
+      const element = select();
+      if (!element) throw new Error("Missing road fit");
+      element.value = "auto";
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onRoadFit).toHaveBeenCalledWith("auto");
+    world = render({ roadFit: "auto" });
+    expect(button(world, "Выпрямить по клавиатуре")).toBeUndefined();
+    expect(world?.textContent).toContain("всегда идут прямо к клавишам");
+    for (const props of [
+      { cameraComposition: "game" as const },
+      { freeCamera: true },
+      { performanceScene: true }
+    ]) {
+      world = render(props);
+      expect(select()?.disabled).toBe(true);
+      expect(button(world, "Выпрямить по клавиатуре")?.disabled).toBe(true);
+      expect(world?.textContent).toContain("действует в обычной композиции");
+    }
+    expect(onStraightenRoad).toHaveBeenCalledOnce();
+  });
+
   it("disables manual world control while the performance scene owns the camera", () => {
     act(() => {
       root.render(

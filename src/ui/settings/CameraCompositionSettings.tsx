@@ -1,4 +1,5 @@
 import { useI18n } from "../../app/useI18n";
+import type { RoadFit } from "../../render/roadLayoutCamera";
 import {
   normalizeCameraComposition,
   WORLD_FOV_LIMITS,
@@ -73,6 +74,56 @@ export function CameraCompositionSettings({
           disabled
             ? "Во время постановки используется её камера. Выбранная композиция вернётся после выключения постановки."
             : "В игровом кадре мир показан отдельной камерой, а клавиатура закреплена снизу. В свободном мире можно вращать и перемещать мировую камеру."
+        )}
+      </p>
+    </>
+  );
+}
+
+/** Standard road straightening: always straight, or bent until the button's camera snapshot. */
+export function RoadFitSettings({
+  value,
+  onChange,
+  onStraighten,
+  disabled
+}: {
+  readonly value: RoadFit["mode"];
+  readonly onChange: (value: RoadFit["mode"]) => void;
+  readonly onStraighten?: (() => void) | undefined;
+  /** Straightening belongs to the standard composition without the free camera or staging. */
+  readonly disabled: boolean;
+}) {
+  const { t } = useI18n();
+  return (
+    <>
+      <label className="setting">
+        <span>{t("Выпрямление дороги")}</span>
+        <select
+          className="game-select"
+          aria-label={t("Выпрямление дороги")}
+          value={value}
+          disabled={disabled}
+          data-setting-target="road-fit"
+          onChange={(event) => {
+            onChange(event.target.value === "auto" ? "auto" : "button");
+          }}
+        >
+          <option value="auto">{t("Автоматически")}</option>
+          <option value="button">{t("По кнопке")}</option>
+        </select>
+      </label>
+      {value === "button" && onStraighten && (
+        <button className="game-button" type="button" disabled={disabled} onClick={onStraighten}>
+          {t("Выпрямить по клавиатуре")}
+        </button>
+      )}
+      <p className="setting-hint">
+        {t(
+          disabled
+            ? "Выпрямление дороги действует в обычной композиции без свободной камеры и постановки."
+            : value === "auto"
+              ? "Дорожки нот всегда идут прямо к клавишам при любой камере клавиатуры."
+              : "Кнопка выпрямляет дорожки под текущую камеру клавиатуры. После нового наклона у клавиш снова появится излом."
         )}
       </p>
     </>

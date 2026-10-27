@@ -55,7 +55,7 @@ export class RoadLayer {
     this.freeRoadLayout = layout;
   }
   private computerKeyboard = false;
-  private shape: RoadShape = DEFAULT_ROAD_SHAPE;
+  shape: RoadShape = DEFAULT_ROAD_SHAPE;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
   private camera: WorldCamera | undefined;
   private keyboardCamera: WorldCamera | undefined;
@@ -141,7 +141,7 @@ export class RoadLayer {
     nativeScale: number | undefined,
     computer: boolean,
     roadMode: boolean,
-    reference?: Geometry
+    reference?: Parameters<typeof nativeRoadCameras>[3]
   ): void {
     const { width, height, floor, handRoom } = viewport;
     this.layout(total, geometry.hitY, height - floor, width, handRoom);
@@ -159,7 +159,7 @@ export class RoadLayer {
     geometry: Geometry,
     dockKeyboard = false,
     nativeScale?: number,
-    reference?: Geometry
+    reference?: Parameters<typeof nativeRoadCameras>[3]
   ): void {
     this.computerKeyboard = keys.size === 1 && keys.has(0);
     this.dock ??= new Dock();
@@ -170,7 +170,7 @@ export class RoadLayer {
     void this.three?.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard);
     if (this.nativeKeyboard && this.camera) {
       this.camera = metricCameraForKeys(this.camera, keys, this.cameraHeight, this.shape.horizon);
-      const { cameras, world } = nativeRoadCameras(this.camera, keys, geometry, reference, {
+      const { cameras, world, fit } = nativeRoadCameras(this.camera, keys, geometry, reference, {
         viewWidth: this.viewWidth,
         sceneWidth: this.size.width,
         cameraHeight: this.cameraHeight,
@@ -184,7 +184,7 @@ export class RoadLayer {
         nativeScale
       });
       this.keyboardCamera = cameras.keyboard;
-      Object.assign(this, this.dock.layout(world, cameras, keys, this.viewWidth, this.fog));
+      Object.assign(this, this.dock.layout(world, cameras, keys, this.viewWidth, this.fog, fit));
     } else {
       const cameras = flatRoadCamera(
         this.viewWidth,
@@ -422,7 +422,7 @@ export class RoadLayer {
     this.pan = pan;
     if (this.camera?.roadWidth)
       this.camera.roadWidth.pan = pan * (this.camera.params.sourceUnits ?? 0.5);
-    if (this.camera) this.keys.draw(this.camera, pan, this.keyboardCamera);
+    if (this.camera) this.keys.draw(this.camera, pan, this.keyboardCamera, this.dock?.fitKeyboard);
   }
   clarity(y: number): number {
     return this.size.height <= 0 ? 1 : Math.max(0, Math.min(1, y / this.size.height / 0.5));
@@ -455,7 +455,7 @@ export class RoadLayer {
       this.shape.far,
       this.size.width
     );
-    Object.assign(this, Dock.moved(this.dock, cameras, this.contactKeys, this.viewWidth, this.fog));
+    Object.assign(this, Dock.moved(this.dock, cameras, this.viewWidth, this.fog, offset));
     this.refreshContactLanes();
     this.setPan(this.pan, true);
   }

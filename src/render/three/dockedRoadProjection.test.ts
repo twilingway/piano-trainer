@@ -3,6 +3,8 @@ import type { ShaderMaterial } from "three";
 import {
   BufferAttribute,
   BufferGeometry,
+  Camera,
+  Matrix4,
   Group,
   InstancedMesh,
   LineBasicMaterial,
@@ -21,6 +23,9 @@ import { ThreeRoadNotes } from "./ThreeRoadNotes";
 import { runInNewContext } from "node:vm";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import { legacyRouteFar } from "../dockedRoadProjection";
+import { CAMERA_PRESETS, worldCamera } from "../worldCamera";
+import { configureStageCamera } from "./configureStageCamera";
+import { placeStageGroups } from "./stageGroupFrames";
 
 describe("native docked road projection", () => {
   it("maps actual world clip to the shown keyboard camera under a scaled road parent", () => {
@@ -87,6 +92,40 @@ describe("native docked road projection", () => {
     });
     configureDockedRoad(road, world, keyboard, false, 149.1938, 5000, keys);
   });
+  it("straightens onto the shown keys, a camera snapshot framed like them, or nothing", () => {
+    const road = new Group();
+    const keys = new Group();
+    const world = new PerspectiveCamera(45, 1.6, 0.1, 100000);
+    world.position.set(0, 1400, 900);
+    world.lookAt(0, 0, -800);
+    const screen = { width: 1280, height: 640 },
+      offset = { x: 12, y: -30 },
+      pan = 40;
+    const snapshot = worldCamera(1280, 640, { ...CAMERA_PRESETS.player, scale: 1.3 });
+    // The shown keyboard is the same camera, placed as the stage places its keys group.
+    const keyboard = new Camera();
+    keyboard.matrixAutoUpdate = false;
+    configureStageCamera(keyboard, snapshot, screen, offset);
+    placeStageGroups(keys, new Group(), snapshot, snapshot, pan, false, false);
+    const fit = roadWidthUniforms.roadDockFitTransform.value;
+    const shown = roadWidthUniforms.roadDockTransform.value;
+    const frame = { pan, offset, screen };
+    configureDockedRoad(road, world, keyboard, true, 149.1938, 5000, keys, {
+      ...frame,
+      fitCamera: snapshot
+    });
+    fit.elements.forEach((v, i) => {
+      expect(v).toBeCloseTo(shown.elements[i] ?? NaN, 6);
+    });
+    configureDockedRoad(road, world, keyboard, true, 149.1938, 5000, keys, {
+      ...frame,
+      fitCamera: "keyboard"
+    });
+    expect(fit.elements).toEqual(shown.elements);
+    configureDockedRoad(road, world, keyboard, true, 149.1938, 5000, keys, false);
+    expect(fit.equals(new Matrix4())).toBe(true);
+    configureDockedRoad(road, world, keyboard, false, 149.1938, 5000, keys);
+  });
 
   it("adds guide projection only once and preserves existing compile hooks", () => {
     const root = new Group();
@@ -109,7 +148,7 @@ describe("native docked road projection", () => {
     material.onBeforeCompile(shader as never, {} as never);
     expect(original).toHaveBeenCalledOnce();
     expect(shader.vertexShader).toContain(
-      "anchorRelativeRoadClip(gl_Position, anchor, pinned, roadDockProgress)"
+      "anchorRelativeRoadClip(gl_Position, anchor, roadDockFitTransform * anchor, pinned, roadDockProgress)"
     );
     expect(shader.uniforms).toHaveProperty(
       "roadDockTransform",
@@ -141,7 +180,7 @@ describe("native docked road projection", () => {
     notes.dispose();
     expect(dispose).toHaveBeenCalledOnce();
     expect(NOTE_LANE_SHADER).toContain(
-      "return anchorRelativeRoadClip(point, anchor, pinned, progress)"
+      "return anchorRelativeRoadClip(point, anchor, roadDockFitTransform * anchor, pinned, progress)"
     );
   });
 });

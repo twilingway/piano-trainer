@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { Matrix4, PerspectiveCamera, OrthographicCamera, Vector3, Vector4 } from "three";
-import { anchorRelativeDockedClip, dockedRoadBlend } from "./dockedRoadProjection";
+import {
+  anchorRelativeDockedClip,
+  dockedRoadBlend,
+  dockedScreenPoint
+} from "./dockedRoadProjection";
 
 function clip(camera: PerspectiveCamera | OrthographicCamera, point: Vector3): Vector4 {
   camera.updateMatrixWorld();
@@ -72,6 +76,16 @@ it("bounds the correction by the anchor delta even under a hundred-metre horizon
   expect(anchorRelativeDockedClip(worldAnchor, worldAnchor, keyAnchor, 0)).toEqual(keyAnchor);
   expect(anchorRelativeDockedClip(worldPoint, worldAnchor, keyAnchor, 0.25)).toEqual(worldPoint);
 });
+it("keeps a continuous homogeneous w at both ends so varyings do not split at the join", () => {
+  const world = { x: 10, y: 20, z: 0.5, w: 3 },
+    key = { x: -0.5, y: -0.5, z: 0.1, w: 1 };
+  const delta = 1e-4;
+  expect(anchorRelativeDockedClip(world, world, key, 0.25 - delta).w).toBeCloseTo(world.w, 3);
+  expect(anchorRelativeDockedClip(world, world, key, delta).w).toBeCloseTo(key.w, 3);
+  const mid = anchorRelativeDockedClip(world, world, key, 0.125);
+  expect(mid.w).toBeGreaterThan(key.w);
+  expect(mid.w).toBeLessThan(world.w);
+});
 it("preserves behind-camera world clipping while the exact keyboard contact remains visible", () => {
   const behind = { x: 20, y: 30, z: -200, w: -100 };
   const key = { x: -0.5, y: -0.5, z: 0, w: 1 };
@@ -80,4 +94,52 @@ it("preserves behind-camera world clipping while the exact keyboard contact rema
   const partial = anchorRelativeDockedClip(behind, behind, key, 0.2);
   expect(partial.w).toBeLessThan(0);
   expect(Object.values(partial).every(Number.isFinite)).toBe(true);
+});
+it("keeps a fitted route straight from the far end to the keyboard contact", () => {
+  const world = new PerspectiveCamera(50, 16 / 9, 1, 200000);
+  world.position.set(0, 1800, 900);
+  world.lookAt(0, 0, -3000);
+  const keyboard = new OrthographicCamera(-700, 700, 400, -400, 0.1, 10000);
+  keyboard.position.set(0, 1400, 900);
+  keyboard.lookAt(0, 0, 0);
+  const contact = new Vector3(240, 20, -150),
+    far = new Vector3(120, 20, -6000);
+  const anchor = clip(world, contact),
+    pinned = clip(keyboard, contact);
+  const ndc = (p: { x: number; y: number; w: number }) => [p.x / p.w, p.y / p.w] as const;
+  const points = [0, 0.05, 0.2, 0.25, 0.5, 0.8, 1].map((progress) => {
+    const point = clip(world, contact.clone().lerp(far, progress));
+    return ndc(anchorRelativeDockedClip(point, anchor, pinned, progress, undefined, pinned));
+  });
+  const [start, end] = [points[0] ?? [0, 0], points[points.length - 1] ?? [0, 0]];
+  expect(start[0]).toBeCloseTo(ndc(pinned)[0], 6);
+  expect(start[1]).toBeCloseTo(ndc(pinned)[1], 6);
+  expect(end[0]).toBeCloseTo(ndc(clip(world, far))[0], 6);
+  expect(end[1]).toBeCloseTo(ndc(clip(world, far))[1], 6);
+  const [dx, dy] = [end[0] - start[0], end[1] - start[1]];
+  for (const [x, y] of points)
+    expect(Math.abs((x - start[0]) * dy - (y - start[1]) * dx) * 960).toBeLessThan(0.01);
+  // The plain bend of the same route is visibly not straight.
+  const bent = [0.1, 0.5].map((progress) =>
+    ndc(
+      anchorRelativeDockedClip(
+        clip(world, contact.clone().lerp(far, progress)),
+        anchor,
+        pinned,
+        progress
+      )
+    )
+  );
+  const [bx, by] = bent[0] ?? [0, 0];
+  expect(Math.abs((bx - start[0]) * dy - (by - start[1]) * dx) * 960).toBeGreaterThan(1);
+});
+it("matches the clip straight offset in screen pixels through the scale ratio", () => {
+  const anchor = { x: 400, y: 700, scale: 2 },
+    fitted = { x: 380, y: 760 },
+    point = { x: 450, y: 300, scale: 0.5 };
+  const result = dockedScreenPoint(point, anchor, fitted, 0.5, fitted);
+  // (1 - 0.5) * 0.5 / 2 of the contact delta.
+  expect(result.x).toBeCloseTo(450 + 0.125 * -20);
+  expect(result.y).toBeCloseTo(300 + 0.125 * 60);
+  expect(dockedScreenPoint({ ...anchor }, anchor, fitted, 0, fitted)).toMatchObject(fitted);
 });

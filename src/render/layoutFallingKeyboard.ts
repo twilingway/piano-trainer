@@ -10,7 +10,7 @@ import type { HandsLayer } from "./HandsLayer";
 import type { NotesLayer } from "./NotesLayer";
 import type { HudLayer } from "./HudLayer";
 import { publishOverlayLayout } from "./viewOverlayLayout";
-import { WORLD_REFERENCE_CAMERA } from "./worldReferenceCamera";
+import { roadFitTarget, WORLD_REFERENCE_CAMERA } from "./worldReferenceCamera";
 
 /** Layout-only composition; cached dimensions are returned for the existing frame path. */
 export function layoutFallingKeyboard(options: {
@@ -67,8 +67,14 @@ export function layoutFallingKeyboard(options: {
   const nativeHeight = native3d?.height;
   const geometry = native3d?.geometry ?? flat;
   // The world road's reference keyboard: the same view, never the player's camera.*.
+  // The standard road straightens onto the shown keys or a snapshot of their camera.
   const reference =
-    native3d && !computer ? nativeGeometry(WORLD_REFERENCE_CAMERA).geometry : undefined;
+    native3d && !computer
+      ? {
+          geometry: nativeGeometry(WORLD_REFERENCE_CAMERA).geometry,
+          fit: roadFitTarget(road?.shape.fit, (prefs) => nativeGeometry(prefs).geometry)
+        }
+      : undefined;
   const keys = computer ? layoutComputerKeys(total, geometry).keys : options.keys;
   options.keysLayer?.layout(keys, geometry, total);
   options.hands.reset();

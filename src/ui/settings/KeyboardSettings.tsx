@@ -1,6 +1,7 @@
 import { RoadProjectionSettings } from "./RoadProjectionSettings";
 import type { CameraComposition } from "../../render/cameraComposition";
-import { CameraCompositionSettings } from "./CameraCompositionSettings";
+import { CameraCompositionSettings, RoadFitSettings } from "./CameraCompositionSettings";
+import type { RoadFit } from "../../render/roadLayoutCamera";
 import type { FallingNoteStyle } from "../../render/fallingNoteStyle";
 import type { FreeRoadLayout } from "../../render/freeRoadLayout";
 import { FreeRoadSettings } from "./FreeRoadSettings";
@@ -50,6 +51,10 @@ interface Props {
   readonly onWorldFov?: (value: number) => void;
   /** Initial world FOV and pose of the selected composition; keys and horizon stay. */
   readonly onResetWorldCamera?: () => void;
+  readonly roadFit?: RoadFit["mode"];
+  readonly onRoadFit?: (value: RoadFit["mode"]) => void;
+  /** Straightens the standard road under the current keyboard camera. */
+  readonly onStraightenRoad?: () => void;
   readonly freeCamera?: boolean;
   readonly freeCameraWasd?: boolean;
   readonly onFreeCameraWasd?: (on: boolean) => void;
@@ -97,6 +102,9 @@ export function KeyboardSettings({
   worldFov = 45,
   onWorldFov,
   onResetWorldCamera,
+  roadFit = "button",
+  onRoadFit,
+  onStraightenRoad,
   freeCamera,
   freeCameraWasd,
   onFreeCameraWasd,
@@ -394,6 +402,14 @@ export function KeyboardSettings({
               <FreeRoadSettings value={freeRoadLayout} onChange={onFreeRoadLayout} />
             ) : (
               roadProjection
+            )}
+            {onRoadFit && (
+              <RoadFitSettings
+                value={roadFit}
+                onChange={onRoadFit}
+                onStraighten={onStraightenRoad}
+                disabled={worldVisible === true || performanceScene === true}
+              />
             )}
             {onResetWorldCamera && (
               <button

@@ -293,7 +293,9 @@ export class ThreeStage {
       roadDock,
       roadCamera.near.z,
       roadCamera.roadFarZ,
-      this.keys
+      this.keys,
+      // Straightening belongs to the standard road only; world views keep their plain bend.
+      !inspecting && { ...keys, screen }
     );
     // Standard keeps the overlay labels: they already follow the dock through notePlace.
     if (roadDock && docked) this.dockedLabels ??= new DockedRoadLabels();
@@ -361,10 +363,8 @@ export class ThreeStage {
   };
 
   get nativeEffectsReady(): boolean {
-    return (
-      (this.performanceEnabled || this.freeEnabled || this.composition !== "standard") &&
-      this.worldStage.ready
-    );
+    const world = this.performanceEnabled || this.freeEnabled || this.composition !== "standard";
+    return world && this.worldStage.ready;
   }
 
   setCameraComposition(mode: CameraComposition): void {

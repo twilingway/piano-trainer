@@ -20,5 +20,18 @@ export const cameraCompositionMessages: Messages = {
   "Во время постановки используется её камера. Выбранная композиция вернётся после выключения постановки.":
     {
       en: "The performance scene uses its own camera. Your composition returns when you turn it off."
+    },
+  "Выпрямление дороги": { en: "Road straightening" },
+  "По кнопке": { en: "On button" },
+  "Выпрямить по клавиатуре": { en: "Straighten to keyboard" },
+  "Выпрямление дороги действует в обычной композиции без свободной камеры и постановки.": {
+    en: "Road straightening applies to the standard composition without the free camera or the performance scene."
+  },
+  "Дорожки нот всегда идут прямо к клавишам при любой камере клавиатуры.": {
+    en: "Note lanes always run straight to the keys, whatever the keyboard camera."
+  },
+  "Кнопка выпрямляет дорожки под текущую камеру клавиатуры. После нового наклона у клавиш снова появится излом.":
+    {
+      en: "The button straightens the lanes for the current keyboard camera. After a new tilt, the bend near the keys returns."
     }
 };
