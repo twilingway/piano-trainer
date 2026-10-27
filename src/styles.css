@@ -1620,10 +1620,15 @@ select:disabled {
 .waiting-pill {
   position: absolute;
   z-index: 2;
-  /* Over the hit line, wherever the keys were moved: above the word mode's running line. */
-  bottom: calc(100% - var(--hit-line, 62%) + 70px);
+  /*
+   * Over the hit line, wherever the keys were moved: above the word mode's running line.
+   * Its bottom sits 70px over the line (30px tall pill), but never above the lane's top
+   * edge, which clips it in the keys-only strip.
+   */
+  top: max(6px, calc(var(--hit-line, 62%) - 100px));
   left: 50%;
   padding: 4px 14px;
+  line-height: 20px;
   transform: translateX(-50%);
   border: 1px solid var(--early);
   border-radius: 999px;
