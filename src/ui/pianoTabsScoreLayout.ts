@@ -2,21 +2,9 @@ import { spotAt } from "../staff/liveCursor";
 import type { ReaderGeometry } from "../staff/readerGeometry";
 import type { TabModel, TabRow } from "./pianoTabsLayout";
 
-/** Wrapped scores can compress their engraving; labels must stay inside neighbouring attacks. */
-export function scoreTabLabelSize(
-  row: TabRow,
-  left: number,
-  hand: "left" | "right",
-  label: string,
-  zoom: number
-): number {
-  const gap = Math.min(
-    ...row.events
-      .filter((entry) => entry.attack && entry.event.hand === hand && entry.left !== left)
-      .map((entry) => Math.abs(entry.left - left))
-  );
-  // IBM Plex Mono uses a 0.6em advance; reserve padding and a visible gap on both sides.
-  return Math.min(26 * zoom, Math.max(1, gap - 8) / (label.length * 0.6));
+/** Shared engraving reserves label space; both hands retain the same chosen size. */
+export function scoreTabLabelSize(zoom: number): number {
+  return 26 * zoom;
 }
 
 /** Geometry supplies pixels only; the song remains the source of attacks and releases. */

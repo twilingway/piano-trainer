@@ -46,3 +46,54 @@ it.each(["ru", "en"] as const)("changes the played-note color independently in %
   expect(changed).toHaveBeenLastCalledWith({ playedNoteColor: "#123456" });
   expect(colors[0]?.value).toBe("#ffffff");
 });
+
+it.each(["ru", "en"] as const)("changes staff and tab sizes independently in %s", (language) => {
+  setInterfaceLanguage(language);
+  const changed = vi.fn();
+  act(() => {
+    root.render(
+      <StaffSettings
+        hasScore
+        prefs={{ ...DEFAULT_STAFF_PREFS, zoom: 1.5, tabsZoom: 0.8 }}
+        onChange={changed}
+      />
+    );
+  });
+  const staff = language === "ru" ? "Увеличить нотный стан" : "Make staff larger";
+  const tabs = language === "ru" ? "Уменьшить пианинные табы" : "Make piano tabs smaller";
+  const click = (name: string) => {
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="' + name + '"]');
+    if (!button) throw new Error("Missing notation scale control");
+    act(() => {
+      button.click();
+    });
+  };
+  expect(host.textContent).toContain("150%");
+  expect(host.textContent).toContain("80%");
+  click(staff);
+  expect(changed).toHaveBeenLastCalledWith({ zoom: 1.6 });
+  click(tabs);
+  expect(changed).toHaveBeenLastCalledWith({ tabsZoom: 0.7 });
+});
+
+it.each([
+  { zoom: 0.5, tabsZoom: 2, disabled: ["Уменьшить нотный стан", "Увеличить пианинные табы"] },
+  { zoom: 2, tabsZoom: 0.5, disabled: ["Увеличить нотный стан", "Уменьшить пианинные табы"] }
+])("bounds both notation controls independently at %j", ({ zoom, tabsZoom, disabled }) => {
+  const changed = vi.fn();
+  act(() => {
+    root.render(
+      <StaffSettings
+        hasScore
+        prefs={{ ...DEFAULT_STAFF_PREFS, zoom, tabsZoom }}
+        onChange={changed}
+      />
+    );
+  });
+  for (const name of disabled) {
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="' + name + '"]');
+    expect(button?.disabled).toBe(true);
+    button?.click();
+  }
+  expect(changed).not.toHaveBeenCalled();
+});
