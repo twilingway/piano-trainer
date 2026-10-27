@@ -28,38 +28,55 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
       </p>
       <SettingsGroup title={t("Размер и прокрутка")}>
         <div className="settings-list">
-          <div className="setting">
-            <span>{t("Масштаб")}</span>
-            <span className="setting-control">
-              <button
-                type="button"
-                className="game-button"
-                aria-label={t("Мельче")}
-                disabled={prefs.zoom <= ZOOM_MIN + 1e-9}
-                onClick={() => {
-                  onChange({
-                    zoom: Math.max(ZOOM_MIN, Math.round((prefs.zoom - ZOOM_STEP) * 10) / 10)
-                  });
-                }}
-              >
-                −
-              </button>
-              <span className="digits">{Math.round(prefs.zoom * 100)}%</span>
-              <button
-                type="button"
-                className="game-button"
-                aria-label={t("Крупнее")}
-                disabled={prefs.zoom >= ZOOM_MAX - 1e-9}
-                onClick={() => {
-                  onChange({
-                    zoom: Math.min(ZOOM_MAX, Math.round((prefs.zoom + ZOOM_STEP) * 10) / 10)
-                  });
-                }}
-              >
-                +
-              </button>
-            </span>
-          </div>
+          {[
+            {
+              key: "zoom",
+              label: t("Масштаб нотного стана"),
+              smaller: t("Уменьшить нотный стан"),
+              larger: t("Увеличить нотный стан")
+            },
+            {
+              key: "tabsZoom",
+              label: t("Масштаб пианинных табов"),
+              smaller: t("Уменьшить пианинные табы"),
+              larger: t("Увеличить пианинные табы")
+            }
+          ].map(({ key, label, smaller, larger }) => {
+            const value = key === "zoom" ? prefs.zoom : prefs.tabsZoom;
+            const update = (next: number) => {
+              onChange(key === "zoom" ? { zoom: next } : { tabsZoom: next });
+            };
+            return (
+              <div className="setting" key={key}>
+                <span>{label}</span>
+                <span className="setting-control">
+                  <button
+                    type="button"
+                    className="game-button"
+                    aria-label={smaller}
+                    disabled={value <= ZOOM_MIN + 1e-9}
+                    onClick={() => {
+                      update(Math.max(ZOOM_MIN, Math.round((value - ZOOM_STEP) * 10) / 10));
+                    }}
+                  >
+                    −
+                  </button>
+                  <span className="digits">{Math.round(value * 100)}%</span>
+                  <button
+                    type="button"
+                    className="game-button"
+                    aria-label={larger}
+                    disabled={value >= ZOOM_MAX - 1e-9}
+                    onClick={() => {
+                      update(Math.min(ZOOM_MAX, Math.round((value + ZOOM_STEP) * 10) / 10));
+                    }}
+                  >
+                    +
+                  </button>
+                </span>
+              </div>
+            );
+          })}
           <label className="setting">
             <span>{t("По строкам")}</span>
             <input

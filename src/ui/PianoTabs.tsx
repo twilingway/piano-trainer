@@ -7,6 +7,8 @@ import { quartersAt, type Song } from "../song/song";
 import type { CourseStageId } from "./CourseCards";
 import { buildPianoTabs, layoutPianoTabs, tabContentX } from "./pianoTabsLayout";
 import { useTabsCursor } from "./useTabsCursor";
+import { sharedTabsExtent } from "./pianoTabsExtent";
+import neonCursorUrl from "../fx/neon-cursor.webp?url";
 import { useReaderGeometry } from "../staff/readerGeometry";
 import { layoutTabsOnScore, scoreTabLabelSize } from "./pianoTabsScoreLayout";
 
@@ -70,7 +72,7 @@ export function PianoTabs({
       window.removeEventListener("resize", measure);
     };
   }, []);
-  const zoom = prefs.zoom * scale;
+  const zoom = prefs.tabsZoom * scale;
   const labelWidth = viewportWidth < 720 ? 70 : 100;
   // Labels are centred on the attack; gutters keep edge labels clear of sticky hand names.
   const noteGutter = geometry ? 0 : (prefs.noteNames === "ru" ? 48 : 18) * zoom;
@@ -97,6 +99,11 @@ export function PianoTabs({
       geometry
     ]
   );
+  const sharedExtent = useMemo(
+    () =>
+      geometry ? sharedTabsExtent(rows, geometry, viewportWidth, prefs.singleLine) : undefined,
+    [rows, geometry, viewportWidth, prefs.singleLine]
+  );
   const naturalWidth =
     Math.max(0, ...rows.map((row) => row.width)) + (geometry ? 0 : labelWidth) + noteGutter * 2;
   const padding = Math.max(0, (viewportWidth - naturalWidth) / 2);
@@ -111,7 +118,8 @@ export function PianoTabs({
     liveBeat,
     prefs.follow,
     geometry ? prefs.singleLine : centerCursor || naturalWidth > viewportWidth,
-    geometry?.viewportWidth
+    geometry?.viewportWidth,
+    prefs.singleLine
   );
   if (song.notes.length === 0) return <div className="piano-tabs">{t("Пока нет нот")}</div>;
   const style = {
@@ -158,16 +166,7 @@ export function PianoTabs({
       >
         <div
           className="piano-tabs__content"
-          style={
-            geometry
-              ? {
-                  width:
-                    naturalWidth + geometry.svgOffsetX + (prefs.singleLine ? viewportWidth / 2 : 0),
-                  paddingLeft: geometry.svgOffsetX,
-                  paddingRight: prefs.singleLine ? viewportWidth / 2 : 0
-                }
-              : { width: naturalWidth + edgeSpace * 2, paddingInline: edgeSpace }
-          }
+          style={sharedExtent ?? { width: naturalWidth + edgeSpace * 2, paddingInline: edgeSpace }}
         >
           {rows.map((row, rowIndex) => {
             const rightCount = Math.max(
@@ -285,13 +284,7 @@ export function PianoTabs({
                                   style={
                                     geometry
                                       ? {
-                                          fontSize: scoreTabLabelSize(
-                                            row,
-                                            left,
-                                            event.hand,
-                                            name,
-                                            zoom
-                                          )
+                                          fontSize: scoreTabLabelSize(zoom)
                                         }
                                       : undefined
                                   }
@@ -336,7 +329,11 @@ export function PianoTabs({
                       </div>
                     </div>
                   ))}
-                  <div className="piano-tabs__cursor" aria-hidden="true" />
+                  <div
+                    className="piano-tabs__cursor"
+                    aria-hidden="true"
+                    style={{ backgroundImage: `url("${neonCursorUrl}")` }}
+                  />
                 </div>
               </div>
             );

@@ -13,6 +13,10 @@ import { TYPING_FINGER_COLOR, towardWhite } from "./fingerColors";
 import { keyHintStrength, strongestKeyHint } from "./keyFeedback";
 import type { KeyboardLayer, KeysFrame } from "./KeyboardLayer";
 import type { Geometry } from "./viewGeometry";
+import type { Locale } from "../i18n/locales";
+import { NO_FINGER_CUES } from "../reading/fingerCues";
+import { bakeLessonFingerBadges, LessonFingerBadges } from "./lessonFingerBadges";
+import { shiftedKeyLabel } from "./computerShiftedLabels";
 
 /** What the view asks of a keyboard, the piano's or the computer's. */
 export type KeysLayer = Pick<
@@ -40,21 +44,6 @@ const PULSE = 0.35;
 const PULSE_HZ = 1.6;
 /** A held key sinks this share of its height. */
 const SINK_SHARE = 0.06;
-/** The digits' shifted signs, printed over them as on a real keyboard. */
-const SHIFTED: Readonly<Record<"ru" | "en", Readonly<Record<string, string>>>> = {
-  en: { Backquote: "~", Digit1: "!", Digit2: "@", Digit3: "#", Digit4: "$", Digit5: "%" },
-  ru: { Backquote: "Ё", Digit1: "!", Digit2: '"', Digit3: "№", Digit4: ";", Digit5: "%" }
-};
-const SHIFTED_COMMON: Readonly<Record<string, string>> = {
-  Digit6: "^",
-  Digit7: "&",
-  Digit8: "*",
-  Digit9: "(",
-  Digit0: ")",
-  Minus: "_",
-  Equal: "+"
-};
-const SHIFTED_RU: Readonly<Record<string, string>> = { Digit6: ":", Digit7: "?" };
 
 type KeyState = "idle" | "due" | "pressed";
 
@@ -82,6 +71,8 @@ export class ComputerKeyboardLayer implements KeysLayer {
   private readonly felt = new Container();
   private readonly material: Readonly<Record<"halo" | "base" | "glass" | "edge", Texture>>;
   private keys: KeySprites[] = [];
+  private readonly lessonBadges?: LessonFingerBadges;
+  private faces: readonly KeyFace[] = [];
   private labelTextures: Texture[] = [];
   /** The falling notes' letters, baked the first time one is needed and kept with the layer. */
   private readonly letters = new Map<string, Texture>();
@@ -100,10 +91,12 @@ export class ComputerKeyboardLayer implements KeysLayer {
     private readonly onKeyPointer: (event: KeyEvent) => void
   ) {
     this.material = bakeMaterial();
+    this.lessonBadges = new LessonFingerBadges(bakeLessonFingerBadges(renderer));
     this.casing = slice(this.material.base, 0);
     this.casing.tint = CASE;
     this.casing.eventMode = "none";
     this.container.addChild(this.felt, this.casing, this.keysLayer, this.dust);
+    this.container.addChild(this.lessonBadges.container);
     this.dust.eventMode = "none";
     for (let index = 0; index < SPARKS; index++) {
       const sprite = new Sprite(this.sparkTexture);
@@ -141,6 +134,9 @@ export class ComputerKeyboardLayer implements KeysLayer {
   showFelt(show: boolean): void {
     this.felt.visible = show;
   }
+  setLocale(locale: Locale): void {
+    this.lessonBadges?.setLocale(locale);
+  }
 
   showStickers(show: boolean): void {
     if (show === this.names) return;
@@ -151,6 +147,7 @@ export class ComputerKeyboardLayer implements KeysLayer {
   /** Lays every key in its row `total` pixels wide where `geometry` puts the keyboard. */
   layout(_keys: unknown, geometry: Geometry, total: number): void {
     const { faces, inset } = layoutComputerKeys(total, geometry);
+    this.faces = faces;
     for (const key of this.keys) {
       for (const sprite of [key.halo, key.base, key.glass, key.edge, key.label]) sprite.destroy();
     }
@@ -199,6 +196,10 @@ export class ComputerKeyboardLayer implements KeysLayer {
 
   /** Lights pending keys in their final approach, as well as the held and sounding ones. */
   draw(frame: KeysFrame): void {
+    this.lessonBadges?.drawComputer(
+      frame.hints === false ? NO_FINGER_CUES : (frame.fingerCues ?? NO_FINGER_CUES),
+      this.faces
+    );
     const pending = frame.hintNotes ?? frame.due;
     const { hintTime = 0, hintSpeed = 1, hints = true, waiting } = frame;
     const now = performance.now();
@@ -339,6 +340,7 @@ export class ComputerKeyboardLayer implements KeysLayer {
   }
 
   destroy(): void {
+    this.lessonBadges?.destroy();
     window.removeEventListener("keydown", this.onKeyDown, true);
     window.removeEventListener("keyup", this.onKeyUp, true);
     window.removeEventListener("blur", this.onLeave);
@@ -373,10 +375,7 @@ export class ComputerKeyboardLayer implements KeysLayer {
         })
         .filter((part) => part !== "")
         .join(" ");
-      const shifted =
-        (language === "ru" ? SHIFTED_RU[face.code] : undefined) ??
-        SHIFTED[language][face.code] ??
-        SHIFTED_COMMON[face.code];
+      const shifted = shiftedKeyLabel(language, face.code);
       const texture =
         face.caption !== undefined
           ? this.bakeLabel([{ text: face.caption, size: 18 }], face, 0.7)

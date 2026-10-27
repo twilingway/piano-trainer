@@ -6,6 +6,7 @@ import type { IntegratedChildResult } from "../musicLearning/integrated";
 import type { IntegratedPhaseId } from "../musicLearning/integrated";
 import { musicXmlWithFingering } from "../song/musicxml";
 import { musicControllerRepeatChoices } from "./musicCourseControllerRecommendations";
+import { musicCourseFingerCues } from "./musicCourseFingerCues";
 import { INTEGRATED_PHASE_IDS } from "../musicLearning/integratedPlan";
 import type { MusicControlGroupQuestion } from "./musicCourseControllerGroups";
 import type { HarmonyInputFailure } from "../musicLearning/harmonyInput";
@@ -234,6 +235,17 @@ export function musicControllerSnapshot(
   }
   const instruction =
     state.feedback ??
+    (state.status === "preview"
+      ? "Рассмотрите фразу. После предпросмотра начните исполнение вручную."
+      : undefined) ??
+    (state.status === "ready" && a?.sight && preview?.phase === "ready"
+      ? "Предпросмотр завершён. Нажмите «Начать задание», чтобы сыграть фразу."
+      : undefined) ??
+    (state.status === "preflight"
+      ? state.positionReady
+        ? "Определите рисунок первой группы. Затем начнётся предпросмотр."
+        : "Выберите начальную позицию руки. Предпросмотр начнётся после подготовки."
+      : undefined) ??
     (question ? "Как устроена группа {number}? Выберите её рисунок." : undefined) ??
     (state.visualAlternative
       ? "Посмотрите фразу на стане и повторите её на клавишах. Слух в этом задании не оценивается."
@@ -249,10 +261,13 @@ export function musicControllerSnapshot(
     options: state.options,
     staffXml,
     staffVisible,
-    keysVisible: !question && !!state.scene && (!preview || preview.phase === "started" || result),
+    keysVisible:
+      !question && !!state.scene && (!a?.sight || preview?.phase === "started" || result),
     fingeringVisible,
+    fingerCues: musicCourseFingerCues(state, blocked),
     view: {
       course: saved.course ?? "integrated",
+      inputSource: saved.inputSource,
       status: error ? "error" : state.status,
       taskKind,
       ready,
@@ -286,6 +301,7 @@ export function musicControllerSnapshot(
       canHelp: training && !result,
       showHelp: state.helpShown,
       canRetry: true,
+      retryCreatesNewMaterial: !!a?.noveltyRequired,
       canAnswer:
         ready &&
         (!result || repeats.length > 0) &&
@@ -392,6 +408,7 @@ export function musicControllerFrameSignature(state: MusicControllerState): stri
     run?.finished,
     run?.chordIndex,
     run?.chordError,
+    state.hint ? state.session?.nextDue().map((note) => note.id) : undefined,
     group
   ]);
 }

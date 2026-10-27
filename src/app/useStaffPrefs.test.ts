@@ -675,3 +675,55 @@ describe("extended screen horizon", () => {
     expect(prefs.staffPrefs).toMatchObject({ roadHorizon: 1.2, roadFar: -0.01 });
   });
 });
+
+describe("independent notation sizes", () => {
+  it.each([
+    [{ zoom: 1.5 }, { zoom: 1.5, tabsZoom: 1.5 }],
+    [{ zoom: 9 }, { zoom: 2, tabsZoom: 2 }],
+    [{ zoom: 0.1 }, { zoom: 0.5, tabsZoom: 0.5 }],
+    [
+      { zoom: 1.5, tabsZoom: 0.8 },
+      { zoom: 1.5, tabsZoom: 0.8 }
+    ],
+    [
+      { zoom: 1.5, tabsZoom: null },
+      { zoom: 1.5, tabsZoom: 1 }
+    ],
+    [
+      { zoom: Number.NaN, tabsZoom: 1.8 },
+      { zoom: 1, tabsZoom: 1.8 }
+    ],
+    [
+      { zoom: 1.5, tabsZoom: Number.POSITIVE_INFINITY },
+      { zoom: 1.5, tabsZoom: 1 }
+    ]
+  ])("normalizes legacy and explicit sizes %j", (raw, expected) => {
+    expect(normalizeStaffPrefs(raw)).toMatchObject(expected);
+  });
+
+  it("keeps the other size on changes and restores both after reload", async () => {
+    localStorage.setItem("staff-prefs", JSON.stringify({ zoom: 1.5 }));
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({ zoom: 1.5, tabsZoom: 1.5 });
+    await act(async () => {
+      prefs.updateStaffPrefs({ zoom: 1.8 });
+      await Promise.resolve();
+    });
+    expect(prefs.staffPrefs).toMatchObject({ zoom: 1.8, tabsZoom: 1.5 });
+    await act(async () => {
+      prefs.updateStaffPrefs({ tabsZoom: 0.8 });
+      await Promise.resolve();
+    });
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      zoom: 1.8,
+      tabsZoom: 0.8
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({ zoom: 1.8, tabsZoom: 0.8 });
+  });
+});

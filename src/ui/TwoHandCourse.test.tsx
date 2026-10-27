@@ -89,8 +89,10 @@ describe("two-hand player interface", () => {
         />
       );
     });
-    expect(host.querySelectorAll("button")).toHaveLength(2);
+    expect(host.querySelectorAll("button")).toHaveLength(1);
     expect(host.querySelector(".lesson-primary-action")?.textContent).toBe("Начать десять пар");
+    expect(host.querySelector(".lesson-secondary-action")).toBeNull();
+    await reveal("two-hands:catalog:more");
     expect(host.querySelector(".lesson-secondary-action")?.textContent).toBe(
       "Знакомство с совместной игрой"
     );

@@ -1,3 +1,5 @@
+import { GameDialog } from "./GameDialog";
+import { useLessonWindow } from "./LessonWorkspace";
 import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "../app/useI18n";
 import { WindowDisclosureContext } from "./windowDisclosureContext";
@@ -21,6 +23,7 @@ export function LessonDetails({
   readonly children: ReactNode;
 }) {
   const { t } = useI18n();
+  const windows = useLessonWindow();
   const memory = useContext(WindowDisclosureContext);
   const [localMemory] = useState(() => new WindowViewMemory());
   const detailMemory = memory ?? localMemory;
@@ -29,6 +32,49 @@ export function LessonDetails({
   useLayoutEffect(() => {
     if (open && ref.current) detailMemory.restoreDetails("body", ref.current);
   }, [open, detailMemory]);
+  if (windows && kind !== "guide") {
+    const modalOpen = windows.open === id;
+    return (
+      <div className="lesson-window-entry">
+        <button
+          type="button"
+          className="game-button"
+          onClick={() => {
+            windows.onOpen(id);
+          }}
+        >
+          {t(
+            kind === "settings" && windows.interruptsAttempt
+              ? "Параметры · остановить попытку"
+              : LABELS[kind]
+          )}
+        </button>
+        <GameDialog
+          open={modalOpen}
+          title={t(LABELS[kind])}
+          onClose={() => {
+            windows.onOpen(null);
+          }}
+        >
+          {modalOpen ? (
+            <div
+              className="lesson-details__body"
+              onClick={(event) => {
+                if (
+                  kind === "more" &&
+                  event.target instanceof Element &&
+                  event.target.closest("button")
+                )
+                  windows.onOpen(null);
+              }}
+            >
+              {children}
+            </div>
+          ) : null}
+        </GameDialog>
+      </div>
+    );
+  }
   return (
     <details
       ref={ref}

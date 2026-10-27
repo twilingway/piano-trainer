@@ -143,7 +143,7 @@ describe("optional interval modes", () => {
     await english();
     expect(button("See and play a pair").disabled).toBe(false);
     expect(button("Hear and choose an interval").disabled).toBe(false);
-    expect(host.textContent).toContain("Only middle C to G");
+    expect(host.textContent).toContain("Hear and play the distance between two notes.");
   });
 
   it("keeps switch, new series and exit available during playback", async () => {

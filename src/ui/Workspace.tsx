@@ -51,6 +51,7 @@ interface Props {
   readonly gameBoard?: ReactNode;
   /** Course tabs share the score area without remounting the falling-note view. */
   readonly scoreBoard?: ReactNode;
+  readonly lessonBoard?: ((score: ReactNode) => ReactNode) | undefined;
   /** The first enabled reader stays above the second while both are shown. */
   readonly scoreFirst?: "tabs" | "staff";
   readonly wordBoard?: ReactNode;
@@ -89,6 +90,17 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
   const staffShown = Boolean(props.staffXml) && prefs.visible;
   const dualScore = Boolean(props.scoreBoard) && staffShown;
+  const sharedTabs = useMemo(
+    () =>
+      dualScore && props.timelineSong
+        ? {
+            notes: props.timelineSong.notes,
+            noteNames: prefs.noteNames,
+            zoom: prefs.tabsZoom
+          }
+        : undefined,
+    [dualScore, props.timelineSong, prefs.noteNames, prefs.tabsZoom]
+  );
   const share = props.layout.staffShare ?? DEFAULT_STAFF_SHARE;
   // Two staves in a column share what one would take.
   const staffShare =
@@ -130,7 +142,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           marks={props.reviewMarks}
           maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
           shareGeometry={dualScore}
-          sharedNoteNames={dualScore ? prefs.noteNames : undefined}
+          sharedTabs={sharedTabs}
           course={props.course ?? false}
           timeline={timeline}
           worldScoreSource={props.worldScore?.source}
@@ -177,7 +189,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   );
   return (
     <div className="workspace">
-      <div className="workspace-main">
+      <div className={props.course ? "workspace-main workspace-main--practice" : "workspace-main"}>
         {props.countdown != null && (
           <div className="play-countdown" role="status" aria-live="polite" aria-atomic="true">
             <span>{props.countdown > 0 ? t("Приготовьтесь") : t("Готовим звук…")}</span>
@@ -201,6 +213,8 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
               {props.scoreFirst === "staff" ? [staffBoard, tabsBoard] : [tabsBoard, staffBoard]}
             </ReaderGeometryProvider>
           </div>
+        ) : props.lessonBoard ? (
+          props.lessonBoard(staffBoard)
         ) : (
           staffBoard
         )}

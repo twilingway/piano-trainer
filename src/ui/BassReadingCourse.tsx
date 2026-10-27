@@ -1,3 +1,6 @@
+import { BassReadingLessonSummary } from "./LessonResultSummary";
+import { LessonIllustration } from "./LessonIllustration";
+import { LessonReport } from "./LessonReport";
 import { useI18n } from "../app/useI18n";
 import { LessonDetails } from "./LessonDetails";
 import type { BassReadingResult, BassReadingTask } from "../reading/bassTypes";
@@ -18,6 +21,7 @@ export function BassReadingCourseCard({
   const { t } = useI18n();
   return (
     <section className="reading-course-card">
+      <LessonIllustration lesson="left-hand" />
       <h3>{t("Левая рука: пять нот")}</h3>
       <p>{t("Читайте до–соль малой октавы в басовом ключе и находите их на клавиатуре.")}</p>
       <div className="reading-actions">
@@ -30,11 +34,11 @@ export function BassReadingCourseCard({
         >
           {t(BASS_READING_TASK_LABELS.notes)}
         </button>
+      </div>
+      <LessonDetails kind="more" id="bass-reading:catalog:more">
         <button type="button" className="game-button lesson-secondary-action" onClick={onIntro}>
           {t("Знакомство с левой рукой")}
         </button>
-      </div>
-      <LessonDetails kind="more" id="bass-reading:catalog:more">
         <button
           type="button"
           className="game-button"
@@ -102,7 +106,7 @@ export function BassReadingPracticePanel(props: BassReadingPracticeProps) {
         <p
           className={`reading-muted${props.ready || result || props.renderError ? " reading-status-hidden" : ""}`}
         >
-          {t("Нажмите «Играть» и дождитесь появления текущей ноты.")}
+          {t("Начните игру кнопкой под нотами, затем нажмите нужную клавишу.")}
         </p>
         {props.renderError ? (
           <p role="alert">
@@ -161,7 +165,11 @@ export function BassReadingPracticePanel(props: BassReadingPracticeProps) {
           </label>
         </div>
       </LessonDetails>
-      {result && <BassReadingResults result={result} sourceFilter={props.sourceFilter} />}
+      {result && (
+        <LessonReport summary={<BassReadingLessonSummary result={result} />}>
+          <BassReadingResults result={result} sourceFilter={props.sourceFilter} />
+        </LessonReport>
+      )}
       <LessonDetails kind="progress" id="bass-reading:practice:progress">
         <BassReadingProgress
           history={props.history}

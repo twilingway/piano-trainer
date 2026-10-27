@@ -3,6 +3,7 @@ import type { MusicResult } from "./progress";
 import { compareDictation } from "./dictation";
 import type { DictationExercise } from "./dictation";
 import { musicFingerprint, normalizeMusicNotes } from "./material";
+import { validHarmonyToneRecipe } from "./harmonyTone";
 import { validMusicInputEntry, MUSIC_INPUT_EVIDENCE_LIMIT } from "./evidence";
 import type { EmbeddedMusicEvidence, MusicInputEvidence, MusicInputJournalData } from "./evidence";
 import type { MusicNote } from "./types";
@@ -299,8 +300,16 @@ export function validateMusicEvidence(
     !text(material.fingerprint, 16384) ||
     !validNotes(material.notes, true) ||
     Object.keys(material).some(
-      (key) => !["id", "seed", "generatorVersion", "bpm", "fingerprint", "notes"].includes(key)
+      (key) =>
+        !["id", "seed", "generatorVersion", "bpm", "fingerprint", "notes", "toneRecipe"].includes(
+          key
+        )
     )
+  )
+    return false;
+  if (
+    material.toneRecipe !== undefined &&
+    !validHarmonyToneRecipe(material.toneRecipe, material.notes)
   )
     return false;
   try {
@@ -316,7 +325,8 @@ export function validateMusicEvidence(
     value.answers.length > 0 &&
     !validHarmony({
       aural: false,
-      lesson: "triads",
+      lesson: material.toneRecipe === undefined ? "triads" : "tone-semitone",
+      ...(material.toneRecipe === undefined ? {} : { toneRecipe: material.toneRecipe }),
       mode: "build-chord",
       expectedNotes: material.notes,
       answers: value.answers

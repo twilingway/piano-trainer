@@ -54,3 +54,18 @@ export function PracticeTimingStatus({ policy, ranked }: Props) {
     </span>
   );
 }
+
+export function IndependentRhythmTimingStatus() {
+  const { t } = useI18n();
+  return (
+    <span
+      className="practice-timing-status"
+      role="status"
+      title={t(
+        "Каждая нота проверяется отдельно в окне ±150 мс. Разрыв совместных атак показывается отдельно, без дополнительного порога 200 мс."
+      )}
+    >
+      {t("Два ритма · ±150 мс")}
+    </span>
+  );
+}

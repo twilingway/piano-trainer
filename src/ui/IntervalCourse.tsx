@@ -1,3 +1,5 @@
+import { useLessonWindow } from "./LessonWorkspace";
+import { LessonIllustration } from "./LessonIllustration";
 import { useLayoutEffect, type MouseEvent, type ReactNode } from "react";
 import { LessonDetails } from "./LessonDetails";
 import { useI18n } from "../app/useI18n";
@@ -16,12 +18,19 @@ export const INTERVAL_CATEGORY_LABELS: Readonly<Record<IntervalCategory, string>
   "third-down": "Терция вниз"
 };
 
-export function IntervalCourseCard({ onStart }: { onStart: (mode: IntervalMode) => void }) {
+export function IntervalCourseCard({
+  onStart,
+  completedRuns
+}: {
+  onStart: (mode: IntervalMode) => void;
+  completedRuns?: number;
+}) {
   const { t } = useI18n();
   return (
     <section className="reading-course-card">
+      <LessonIllustration lesson="intervals" />
       <h3>{t("Интервалы")}</h3>
-      <p>{t("Две ноты: повтор, шаг или терция вверх и вниз. Только до–соль первой октавы.")}</p>
+      <p>{t("Услышьте и сыграйте расстояние между двумя нотами.")}</p>
       <button
         type="button"
         className="game-button"
@@ -31,6 +40,9 @@ export function IntervalCourseCard({ onStart }: { onStart: (mode: IntervalMode) 
       >
         {t(INTERVAL_MODE_LABELS["see-and-play"])}
       </button>
+      {completedRuns !== undefined ? (
+        <p className="reading-muted">{t("Завершено серий: {number}", { number: completedRuns })}</p>
+      ) : null}
       <LessonDetails kind="more" id="interval:catalog:more">
         <button
           type="button"
@@ -74,6 +86,7 @@ export interface IntervalPracticeProps {
 
 /** Native buttons keep Tab/Enter/Space and pointer choices on the same command path. */
 export function IntervalPracticePanel(props: IntervalPracticeProps) {
+  const lessonWindow = useLessonWindow();
   const { t } = useI18n();
   const ear = props.mode === "hear-and-choose";
   const choose = (category: IntervalCategory, event: MouseEvent<HTMLButtonElement>) => {
@@ -208,7 +221,13 @@ export function IntervalPracticePanel(props: IntervalPracticeProps) {
           })}
         </IntervalHelp>
       )}
-      {props.progress}
+      {lessonWindow ? (
+        <LessonDetails kind="progress" id="interval:practice:progress">
+          {props.progress}
+        </LessonDetails>
+      ) : (
+        props.progress
+      )}
     </section>
   );
 }

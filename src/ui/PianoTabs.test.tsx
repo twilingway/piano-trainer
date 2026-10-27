@@ -277,6 +277,67 @@ describe("piano tabs reader", () => {
     }
   );
 
+  it("scales dense right and sparse left labels equally without following staff zoom", async () => {
+    const melody = song([
+      { start: 0, duration: 0.25, pitch: 68 },
+      { start: 0.25, duration: 0.25, pitch: 68 },
+      { start: 0.5, duration: 0.25, pitch: 68 }
+    ]);
+    const both: Song = {
+      ...melody,
+      notes: [
+        ...melody.notes,
+        {
+          id: "bass",
+          hand: "left",
+          pitch: 48,
+          scoreFinger: 5,
+          start: 0,
+          startBeat: 0,
+          duration: 4
+        }
+      ]
+    };
+    const geometry: ReaderGeometry = {
+      svgOffsetX: 400,
+      viewportWidth: 800,
+      spots: [0, 0.25, 0.5].map((beat, index) => ({ beat, x: 80 + index * 68, line: 0 })),
+      systems: [{ line: 0, startBeat: 0, endBeat: 4, width: 400, barlines: [] }]
+    };
+    const node = (zoom: number, tabsZoom: number) => (
+      <ReaderGeometryProvider>
+        <GeometryPublisher geometry={geometry} />
+        <PianoTabs song={both} time={0.25} stage="both" prefs={preferences({ zoom, tabsZoom })} />
+      </ReaderGeometryProvider>
+    );
+    const sizes = () =>
+      ["right", "left"].map((hand) =>
+        Number.parseFloat(
+          host.querySelector<HTMLElement>(`[data-hand="${hand}"] .piano-tabs__note`)?.style
+            .fontSize ?? "0"
+        )
+      );
+    await render(node(1, 1));
+    expect(sizes()).toEqual([26, 26]);
+    const viewportNode = scrollHost();
+    const grid = host.querySelector(".piano-tabs__grid");
+    await render(node(2, 1));
+    expect(sizes()).toEqual([26, 26]);
+    await render(node(2, 1.5));
+    expect(sizes()).toEqual([39, 39]);
+    await render(node(2, 2));
+    expect(sizes()).toEqual([52, 52]);
+    expect(scrollHost()).toBe(viewportNode);
+    expect(host.querySelector(".piano-tabs__grid")).toBe(grid);
+    const right = [...host.querySelectorAll<HTMLElement>('[data-hand="right"]')];
+    expect(right.map((event) => event.style.left)).toEqual(["80px", "148px", "216px"]);
+    expect(host.querySelector('[data-hand="left"] .piano-tabs__finger')?.textContent).toBe("5");
+    draw(16);
+    expect(host.querySelector<HTMLElement>(".piano-tabs__cursor")?.style.transform).toBe(
+      "translateX(148px)"
+    );
+  });
+
   it("combines CSS presentation scale with the saved zoom across geometry, height and cursor", async () => {
     let beat = 1.5;
     await render(
@@ -285,7 +346,7 @@ describe("piano tabs reader", () => {
         stage="both"
         time={0}
         liveBeat={() => beat}
-        prefs={preferences({ zoom: 1.5 })}
+        prefs={preferences({ tabsZoom: 1.5 })}
       />
     );
     const scroll = scrollHost();
@@ -410,7 +471,7 @@ describe("piano tabs reader", () => {
         stage="right"
         time={0}
         prefs={preferences({
-          zoom: 2,
+          tabsZoom: 2,
           fingers: false,
           noteNames: "ru",
           noteColor: "#123456",

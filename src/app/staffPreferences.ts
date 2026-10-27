@@ -29,6 +29,8 @@ import type { KeyboardOrientation } from "./viewProfiles";
 export interface StaffPrefs {
   readonly noteProjection: ProjectionParameters;
   readonly zoom: number;
+  /** Independent size of piano tab labels. */
+  readonly tabsZoom: number;
   readonly noteColor: string;
   readonly playedNoteColor: string;
   readonly scoreColor: string;
@@ -99,6 +101,7 @@ export interface StaffPrefs {
 export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   noteProjection: DEFAULT_PROJECTION_PARAMETERS,
   zoom: 1,
+  tabsZoom: 1,
   noteColor: "#ffffff",
   playedNoteColor: DEFAULT_PLAYED_NOTE_COLOR,
   scoreColor: "#ffffff",
@@ -147,7 +150,11 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const boolean = <K extends keyof StaffPrefs>(key: K): StaffPrefs[K] =>
     (typeof raw[key] === "boolean" ? raw[key] : defaults[key]) as StaffPrefs[K];
-  const number = (key: "zoom" | "roadFar" | "roadHorizon", low: number, high: number) => {
+  const number = (
+    key: "zoom" | "tabsZoom" | "roadFar" | "roadHorizon",
+    low: number,
+    high: number
+  ) => {
     const v = raw[key];
     return typeof v === "number" && Number.isFinite(v)
       ? Math.max(low, Math.min(high, v))
@@ -160,9 +167,11 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     values: readonly StaffPrefs[K][]
   ): StaffPrefs[K] =>
     values.includes(raw[key] as StaffPrefs[K]) ? (raw[key] as StaffPrefs[K]) : defaults[key];
+  const zoom = number("zoom", 0.5, 2);
   return {
     noteProjection: normalizeProjectionParameters(raw.noteProjection),
-    zoom: number("zoom", 0.5, 2),
+    zoom,
+    tabsZoom: raw.tabsZoom === undefined ? zoom : number("tabsZoom", 0.5, 2),
     noteColor: color("noteColor"),
     playedNoteColor: color("playedNoteColor"),
     scoreColor: color("scoreColor"),

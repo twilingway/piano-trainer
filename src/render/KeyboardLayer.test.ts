@@ -68,6 +68,27 @@ function harness(modelFaces: boolean) {
 
 describe("keyboard finger labels", () => {
   it.each([false, true])(
+    "passes explicit lesson badges independently of neutral tint, native=%s",
+    (native) => {
+      const run = harness(native);
+      const draw = vi.fn();
+      Object.assign(run.layer, { lessonBadges: { draw } });
+      const fingerCues = [
+        { noteId: "n", pitch: 60, hand: "right" as const, recommendedFinger: 3 as const }
+      ];
+      run.layer.draw({ ...run.frame, neutralKeys: true, fingerCues }, keys, geometry(180), false);
+      expect(draw).toHaveBeenLastCalledWith(fingerCues, keys, geometry(180), native);
+      expect([...run.digits.values()].every((sprite) => !sprite.visible)).toBe(true);
+      run.layer.draw(
+        { ...run.frame, neutralKeys: true, fingerCues: [], hints: false },
+        keys,
+        geometry(180),
+        false
+      );
+      expect(draw).toHaveBeenLastCalledWith([], keys, geometry(180), native);
+    }
+  );
+  it.each([false, true])(
     "preserves glyph proportions on full white and black 3D tops, stickers=%s",
     (stickers) => {
       const run = harness(true);

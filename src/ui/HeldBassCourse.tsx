@@ -1,3 +1,6 @@
+import { HeldBassLessonSummary } from "./LessonResultSummary";
+import { LessonIllustration } from "./LessonIllustration";
+import { LessonReport } from "./LessonReport";
 import { useI18n } from "../app/useI18n";
 import { LessonDetails } from "./LessonDetails";
 import type { ReadingHintLevel, ReadingPreferences } from "../reading/types";
@@ -17,16 +20,15 @@ export function HeldBassCourseCard(
   const { t } = useI18n();
   return (
     <section className="reading-course-card">
+      <LessonIllustration lesson="held-bass" />
       <h3>{t(HELD_BASS_TITLE)}</h3>
-      <p>
-        {t(
-          "Удерживайте левую ноту, пока правая играет две или четыре ноты мелодии. Десять фрагментов на двух станах."
-        )}
-      </p>
+      <p>{t("Удерживайте бас слева и ведите мелодию справа.")}</p>
       <div className="reading-actions">
         <button type="button" className="game-button lesson-primary-action" onClick={props.onStart}>
           {t("Начать десять фрагментов с басом")}
         </button>
+      </div>
+      <LessonDetails kind="more" id="held-bass:catalog:more">
         <button
           type="button"
           className="game-button lesson-secondary-action"
@@ -34,7 +36,10 @@ export function HeldBassCourseCard(
         >
           {t("Знакомство с удержанием баса")}
         </button>
-      </div>
+      </LessonDetails>
+      <p className="reading-muted">
+        {t("Завершено серий: {number}", { number: props.history.length })}
+      </p>
       <LessonDetails kind="progress" id="held-bass:catalog:progress">
         <HeldBassProgress {...props} />
       </LessonDetails>
@@ -166,7 +171,11 @@ export function HeldBassPracticePanel(props: HeldBassPracticeProps) {
           </label>
         </div>
       </LessonDetails>
-      {props.result && <HeldBassResults result={props.result} sourceFilter={props.sourceFilter} />}
+      {props.result && (
+        <LessonReport summary={<HeldBassLessonSummary result={props.result} />}>
+          <HeldBassResults result={props.result} sourceFilter={props.sourceFilter} />
+        </LessonReport>
+      )}
       <LessonDetails kind="progress" id="held-bass:practice:progress">
         <HeldBassProgress {...props} />
       </LessonDetails>

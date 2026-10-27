@@ -329,6 +329,7 @@ export function mergeReadingState(
     "musicHarmonyLesson",
     "musicHarmonyMode",
     "musicHarmonyAural",
+    "musicHarmonyTonePitchSet",
     "musicHarmonyRoot",
     "musicHarmonyQuality",
     "musicHarmonyInversion",

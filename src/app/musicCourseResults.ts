@@ -112,6 +112,7 @@ export function createMusicStandaloneResult(context: MusicResultContext): MusicR
           ...base,
           course: "harmony",
           lesson: saved.harmonyLesson,
+          ...(activity.toneRecipe ? { toneRecipe: activity.toneRecipe } : {}),
           aural: activity.auditory && !context.visualAlternative,
           mode: saved.harmonyMode,
           expectedNotes: activity.exercise.notes,
@@ -167,7 +168,8 @@ export function createMusicIntegratedChild(
           generatorVersion: 1,
           bpm: activity.exercise.bpm,
           fingerprint: activity.exercise.fingerprint,
-          notes: activity.exercise.notes
+          notes: activity.exercise.notes,
+          ...(activity.toneRecipe ? { toneRecipe: activity.toneRecipe } : {})
         },
         inputJournal: journal,
         notes: evidence.notes,

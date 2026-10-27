@@ -4,6 +4,12 @@ export const settingsMessages3 = {
   "100% — линия клавиш. Значения выше опускают горизонт ниже неё.": {
     en: "100% is the key line. Higher values move the horizon below it."
   },
+  "Масштаб нотного стана": { en: "Staff size" },
+  "Масштаб пианинных табов": { en: "Piano tab size" },
+  "Уменьшить нотный стан": { en: "Make staff smaller" },
+  "Увеличить нотный стан": { en: "Make staff larger" },
+  "Уменьшить пианинные табы": { en: "Make piano tabs smaller" },
+  "Увеличить пианинные табы": { en: "Make piano tabs larger" },
   "Подготовка к калибровке": { en: "Calibration preparation" },
   "Подстройтесь под метроном: первые 3 щелчка не считаются.": {
     en: "Find the beat: the first 3 clicks do not count."

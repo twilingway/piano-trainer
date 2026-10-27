@@ -184,7 +184,7 @@ describe("real music controller wired to the hooks and existing PracticeSession"
     });
     expect(store.getState().reading.music.history).toHaveLength(1);
   });
-  it("runs the finite preview on policy frames before starting the musical answer clock", async () => {
+  it("waits for the position answer, then runs the full preview before starting the musical clock", async () => {
     await select("sight-reading");
     expect(policy).not.toBeNull();
     const presentation = music.presentation;
@@ -192,15 +192,52 @@ describe("real music controller wired to the hooks and existing PracticeSession"
     act(() => {
       presentation.onPresented(presentation.id, now);
     });
+    const preparedTime = practice.time;
+    expect(music.view.status).toBe("preflight");
+    expect(music.view.taskKind).toBe("position");
+    expect(music.view.previewSeconds).toBeUndefined();
+    expect(music.staffVisible).toBe(true);
+    now += 20_000;
+    act(() => {
+      if (practice) policy?.onFrame(practice, false, now);
+      music.command("start");
+    });
+    expect(music.view.status).toBe("preflight");
+    expect(music.view.previewSeconds).toBeUndefined();
+    expect(music.staffVisible).toBe(true);
+    expect(practice.time).toBe(preparedTime);
+    expect(playing).toBe(false);
+    expect(music.view.choices?.some((choice) => choice.value === "position:60")).toBe(true);
+    act(() => {
+      music.choose("position:60", "keyboard");
+    });
+    expect(music.view.status).toBe("preview");
+    expect(music.view.previewSeconds).toBe(5);
+    expect(music.staffVisible).toBe(true);
+    now += 4999;
+    act(() => {
+      if (practice) policy?.onFrame(practice, false, now);
+      music.command("start");
+    });
     expect(music.view.status).toBe("preview");
     expect(music.staffVisible).toBe(true);
-    now += 5001;
+    expect(music.view.canStart).toBe(false);
+    expect(practice.time).toBe(preparedTime);
+    now += 1;
     act(() => {
       if (practice) policy?.onFrame(practice, false, now);
     });
     expect(music.view.status).toBe("ready");
     expect(music.staffVisible).toBe(false);
     expect(playing).toBe(false);
+    expect(practice.time).toBe(preparedTime);
+    expect(music.view.canStart).toBe(true);
+    await act(async () => {
+      music.command("start");
+      await Promise.resolve();
+    });
+    expect(playing).toBe(true);
+    expect(music.view.status).toBe("playing");
   });
   it("opens hidden-score dictation listening without waiting for an invisible staff receipt", async () => {
     await select("dictation");
