@@ -6,6 +6,7 @@ import {
   scrollTarget,
   centreShortScore,
   fitHeight,
+  prepareStaffCursorPadding,
   type LineBox,
   type ScrollTarget
 } from "./staffViewport";
@@ -202,6 +203,7 @@ export function Staff({
 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
+    prepareStaffCursorPadding(host, latest.current.singleLine && !latest.current.course);
     setStaffColors(osmd, noteColor, scoreColor);
     tabWidthsRef.current = new Map();
     if (latest.current.course) {
