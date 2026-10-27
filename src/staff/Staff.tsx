@@ -11,7 +11,7 @@ import {
 } from "./staffViewport";
 import { entryBeatAt, placeCursorLine } from "./liveCursor";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
-import { beatPositions, indexNotes, type NoteIndex } from "./staffNoteIndex";
+import { beatPositions, indexNotes, nearestNoteBeat, type NoteIndex } from "./staffNoteIndex";
 import { fitCompactStaff, fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
 import { timelineSpots } from "./staffTimelineSpots";
 import { installUniformStaffLayout } from "./uniformStaffLayout";
@@ -502,21 +502,8 @@ export function Staff({
 
   const seekAt = (clientX: number, clientY: number) => {
     if (!onSeek) return;
-    let best: number | undefined;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const [element, beat] of noteIndexRef.current.beats) {
-      const box = element.getBoundingClientRect();
-      if (box.width === 0 && box.height === 0) continue;
-      // Rows count heavily: a note on the clicked line beats a closer one on the next line.
-      const dx = clientX - (box.left + box.width / 2);
-      const dy = Math.max(0, Math.abs(clientY - (box.top + box.height / 2)) - box.height / 2);
-      const distance = dx * dx + 16 * dy * dy;
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = beat;
-      }
-    }
-    if (best !== undefined) onSeek(best);
+    const beat = nearestNoteBeat(noteIndexRef.current.beats, clientX, clientY);
+    if (beat !== undefined) onSeek(beat);
   };
 
   return (
