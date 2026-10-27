@@ -145,10 +145,12 @@ describe("held bass course interface", () => {
         onIntro={onIntro}
       />
     );
-    expect(host.querySelectorAll("button")).toHaveLength(2);
+    expect(host.querySelectorAll("button")).toHaveLength(1);
     expect(host.querySelector(".lesson-primary-action")?.textContent).toBe(
       "Начать десять фрагментов с басом"
     );
+    expect(host.querySelector(".lesson-secondary-action")).toBeNull();
+    await reveal("held-bass:catalog:more");
     expect(host.querySelector(".lesson-secondary-action")?.textContent).toBe(
       "Знакомство с удержанием баса"
     );

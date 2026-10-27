@@ -159,6 +159,8 @@ describe("independent rhythm interface", () => {
     );
     const actions = host.querySelectorAll(".reading-actions > button");
     expect(actions[0]?.textContent).toBe("Открыть проверку пульса");
+    expect(button("Знакомство с двумя ритмами")).toBeUndefined();
+    reveal("two-rhythms:catalog:more");
     expect(
       button("Знакомство с двумя ритмами")?.classList.contains("lesson-secondary-action")
     ).toBe(true);

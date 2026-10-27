@@ -7,6 +7,7 @@ import { compareDictation } from "./dictation";
 import type { DictationExercise } from "./dictation";
 import { summarizeDictationListening } from "./dictationListening";
 import { validateHarmonyTarget } from "./harmony";
+import { validHarmonyToneRecipe } from "./harmonyTone";
 import { musicFingerprint, normalizeMusicNotes } from "./material";
 import { computeHarmonyMetrics, computeSightReadingMetrics } from "./progress";
 import type { MusicResult } from "./progress";
@@ -137,6 +138,21 @@ export function validHarmony(row: Record<string, unknown>): boolean {
     row.answers.length > 128
   )
     return false;
+  if (
+    row.toneRecipe !== undefined &&
+    (row.lesson !== "tone-semitone" || !validHarmonyToneRecipe(row.toneRecipe, row.expectedNotes))
+  )
+    return false;
+  if (row.toneRecipe !== undefined) {
+    const notes = row.expectedNotes;
+    const expected = String((notes[1]?.pitch ?? 0) - (notes[0]?.pitch ?? 0));
+    if (
+      !row.answers.every(
+        (answer) => record(answer) && answer.kind === "named" && answer.expected === expected
+      )
+    )
+      return false;
+  }
   return row.answers.every((answer) => {
     if (!record(answer)) return false;
     if (answer.kind === "named") return text(answer.expected) && text(answer.answer);
@@ -334,7 +350,7 @@ export function validateMusicResult(value: unknown): MusicResult | null {
       "groupAnswers",
       "metrics"
     ],
-    harmony: ["lesson", "mode", "aural", "expectedNotes", "answers", "metrics"],
+    harmony: ["lesson", "mode", "aural", "expectedNotes", "answers", "metrics", "toneRecipe"],
     dictation: ["expectedNotes", "startMode", "level", "result"],
     integrated: ["plan", "state"]
   };

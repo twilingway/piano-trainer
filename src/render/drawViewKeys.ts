@@ -42,6 +42,7 @@ export function drawViewKeys(
       ...(state.hintNotes ? { hintNotes: state.hintNotes } : {}),
       playing,
       ...(state.hints === undefined ? {} : { hints: state.hints }),
+      ...(state.fingerCues === undefined ? {} : { fingerCues: state.fingerCues }),
       ...(state.neutralKeys === undefined ? {} : { neutralKeys: state.neutralKeys })
     },
     keys,

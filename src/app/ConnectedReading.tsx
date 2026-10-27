@@ -40,11 +40,15 @@ export function ConnectedReadingCard({ onChoose }: { onChoose: () => void }) {
     />
   );
 }
-export function ConnectedReadingPractice() {
+export function ConnectedReadingPractice({
+  mode = "all"
+}: {
+  mode?: "all" | "intro" | "practice";
+}) {
   const reading = useRuntimeSelector((runtime) => runtime.reading);
   return (
     <>
-      {reading.intro && reading.introCourse !== "bass" && (
+      {mode !== "practice" && reading.intro && reading.introCourse !== "bass" && (
         <ReadingIntro
           onStart={() => {
             reading.setIntro(false);
@@ -55,7 +59,7 @@ export function ConnectedReadingPractice() {
           }}
         />
       )}
-      {reading.task && !reading.isBass && (
+      {mode !== "intro" && reading.task && !reading.isBass && (
         <ReadingPracticePanel
           task={reading.task}
           purpose={reading.purpose ?? reading.task}

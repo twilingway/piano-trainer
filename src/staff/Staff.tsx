@@ -31,7 +31,13 @@ import {
 import type { BeatSpot } from "./liveCursor";
 import { watchStaffPresentation, type StaffPresentation } from "./staffPresentation";
 import { courseCursor, courseStaffXml, courseStaffZoom } from "./courseStaff";
-import { courseRoom, lineExtent, showDrawing } from "./courseStaffView";
+import {
+  courseRoom,
+  lineExtent,
+  showDrawing,
+  fitCourseDrawing,
+  fitCourseInk
+} from "./courseStaffView";
 import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 
@@ -216,11 +222,13 @@ export function Staff({
       osmd.render();
     }
     if (!latest.current.course && !latest.current.singleLine) fitWrappedStaffSvg(osmd);
+    if (latest.current.course) fitCourseInk(osmd, host);
     paintStaffNotes(osmd, noteColor);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
+    if (latest.current.course) fitCourseDrawing(host);
     const page = pageRef.current;
     if (page) {
-      if (latest.current.singleLine) page.style.transform = "";
+      if (latest.current.singleLine || latest.current.course) page.style.transform = "";
       else centreShortScore(osmd, page);
     }
     linesRef.current = lineBoxes(osmd);
