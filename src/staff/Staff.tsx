@@ -13,7 +13,7 @@ import {
 import { entryBeatAt, placeCursorLine } from "./liveCursor";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
 import { beatPositions, indexNotes, nearestNoteBeat, type NoteIndex } from "./staffNoteIndex";
-import { fitCompactStaff, fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
+import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
 import { timelineSpots } from "./staffTimelineSpots";
 import { installUniformStaffLayout } from "./uniformStaffLayout";
 import { installLocalNoteNames } from "./localNoteNames";
@@ -31,15 +31,17 @@ import {
 } from "./staffNoteColors";
 import type { BeatSpot } from "./liveCursor";
 import { watchStaffPresentation, type StaffPresentation } from "./staffPresentation";
-import { courseCursor, courseStaffXml, courseStaffZoom } from "./courseStaff";
+import { courseCursor, courseStaffXml } from "./courseStaff";
 import {
-  courseRoom,
-  lineExtent,
+  fitCourseZoom,
+  measureCourseReach,
+  noteCourseReach,
+  reservedSpan,
   showDrawing,
   fitCourseDrawing,
   fitCourseInk
 } from "./courseStaffView";
-import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
+import { OpenSheetMusicDisplay, unitInPixels, type IOSMDOptions } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 
 export { markKey } from "./staffNoteIndex";
@@ -84,6 +86,8 @@ interface StaffProps {
   readonly sharedTabs?: SharedTabLabels | undefined;
   /** A reading course: no highlight, a fitted zoom and a cursor that leaves the note readable. */
   readonly course?: boolean;
+  /** A course's prompts with its extreme notes: every prompt keeps their room, nothing jumps. */
+  readonly courseRange?: readonly string[] | undefined;
 }
 
 const BEAT_EPSILON = 1e-6;
@@ -137,7 +141,8 @@ export function Staff({
   sharedTabs,
   liveBeat,
   presentation,
-  course = false
+  course = false,
+  courseRange
 }: StaffProps) {
   const hasSharedTabs = sharedTabs !== undefined;
   const publishGeometry = usePublishReaderGeometry();
@@ -151,6 +156,7 @@ export function Staff({
   const pageRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   const uniformRef = useRef<ReturnType<typeof installUniformStaffLayout> | undefined>(undefined);
+  const reachRef = useRef<Awaited<ReturnType<typeof measureCourseReach>>>(undefined);
   const presentationRef = useRef(presentation);
   useEffect(() => {
     presentationRef.current = presentation;
@@ -206,13 +212,9 @@ export function Staff({
     prepareStaffCursorPadding(host, latest.current.singleLine && !latest.current.course);
     setStaffColors(osmd, noteColor, scoreColor);
     tabWidthsRef.current = new Map();
-    if (latest.current.course) {
-      osmd.Zoom = 1;
-      osmd.render();
-      osmd.Zoom *= courseStaffZoom(lineExtent(osmd), courseRoom(host, latest.current.maxShare));
-      osmd.render();
-      fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
-    } else
+    const reach = latest.current.course ? reachRef.current : undefined;
+    if (latest.current.course) fitCourseZoom(osmd, host, latest.current.maxShare, reach);
+    else
       baselineRef.current.render(osmd, host, {
         zoom: latest.current.zoom,
         singleLine: latest.current.singleLine,
@@ -224,16 +226,17 @@ export function Staff({
       osmd.render();
     }
     if (!latest.current.course && !latest.current.singleLine) fitWrappedStaffSvg(osmd);
-    if (latest.current.course) fitCourseInk(osmd, host);
+    if (latest.current.course) fitCourseInk(osmd, host, reservedSpan(osmd, reach));
+    if (latest.current.course) noteCourseReach(courseRange, osmd, host);
     paintStaffNotes(osmd, noteColor);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
-    if (latest.current.course) fitCourseDrawing(host);
+    const shift = latest.current.course ? fitCourseDrawing(host, reservedSpan(osmd, reach)) : 0;
     const page = pageRef.current;
     if (page) {
       if (latest.current.singleLine || latest.current.course) page.style.transform = "";
       else centreShortScore(osmd, page);
     }
-    linesRef.current = lineBoxes(osmd);
+    linesRef.current = lineBoxes(osmd, shift);
     noteIndexRef.current = indexNotes(osmd);
     beatXRef.current = beatPositions(noteIndexRef.current.cursorBeats, host, linesRef.current);
     const axis = latest.current.singleLine ? uniformRef.current?.getAxis() : undefined;
@@ -270,7 +273,7 @@ export function Staff({
       } else host.scrollLeft = target.left;
       host.scrollTop = target.top;
     }
-    if (latest.current.course) showDrawing(host);
+    if (latest.current.course) showDrawing(host, reservedSpan(osmd, reach));
     targetRef.current = null;
     if (shareGeometry) {
       publishGeometry(readStaffGeometry(osmd, host, beatXRef.current, linesRef.current));
@@ -284,7 +287,7 @@ export function Staff({
     if (shareGeometry) publishGeometry(null);
     let cancelled = false;
     let resizeTimer = 0;
-    const osmd = new OpenSheetMusicDisplay(page, {
+    const options: IOSMDOptions = {
       backend: "svg",
       defaultColorMusic: getComputedStyle(host).getPropertyValue("--accent").trim(),
       // Re-flowing on resize is done below, so the line sizes are measured again too.
@@ -300,12 +303,13 @@ export function Staff({
       // Eighths and shorter are beamed beat by beat, so each beat reads as one group at a glance.
       autoBeam: true,
       autoBeamOptions: { groups: [[1, 4]] }
-    });
+    };
+    const osmd = new OpenSheetMusicDisplay(page, options);
     const presentationId = presentationRef.current?.id;
-    void osmd
-      .load(shownXml)
-      .then(() => {
+    void Promise.all([osmd.load(shownXml), measureCourseReach(courseRange, options, host)])
+      .then(([, reach]) => {
         if (cancelled) return;
+        reachRef.current = reach;
         installLocalNoteNames(osmd);
         uniformRef.current =
           !course && timeline && (singleLine || hasSharedTabs)
@@ -368,7 +372,8 @@ export function Staff({
     publishGeometry,
     course,
     timeline,
-    hasSharedTabs
+    hasSharedTabs,
+    courseRange
   ]);
 
   const presentationId = presentation?.id;

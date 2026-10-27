@@ -11,6 +11,7 @@ import {
   lessonFingerCues,
   musicXmlWithLessonFingerCues
 } from "../reading/fingerCues";
+import { courseRangeIndices } from "../staff/courseStaff";
 import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import type { TwoHandResult } from "../reading/twoHandTypes";
 import { DEFAULT_READING_PREFERENCES, type ReadingHintLevel } from "../reading/types";
@@ -145,6 +146,28 @@ export function useTwoHandCourse() {
           })()
         : null,
     [exercise, index, pair, hintLevel, cueActive, cuePresented, locale]
+  );
+  // The pairs with each hand's lowest and highest note, hint rows shown (a shown hint sits lowest):
+  // the staves keep their room.
+  const range = useMemo(
+    () =>
+      exercise
+        ? courseRangeIndices(exercise.pairs.map((item) => [...item.pitches])).map((extreme) => {
+            const shown = twoHandPromptXml(exercise, extreme, 1, (pitch) =>
+              twoHandNoteName(pitch, (key) => translate(locale, messages, key))
+            );
+            const noteIds: readonly string[] = exercise.pairs[extreme]?.noteIds ?? [];
+            const cues = lessonFingerCues(
+              exercise.song.notes.filter((note) => noteIds.includes(note.id))
+            );
+            return cues.length
+              ? musicXmlWithLessonFingerCues(shown.musicXml, cues, exercise.song.notes, (cue) =>
+                  lessonFingerLabel(cue, locale)
+                )
+              : shown.musicXml;
+          })
+        : undefined,
+    [exercise, locale]
   );
   const id =
     exercise && pair ? `${exercise.id}:${String(revision)}:${pair.id}:${String(retry)}` : "";
@@ -320,6 +343,7 @@ export function useTwoHandCourse() {
     snapshot,
     policy,
     prompt,
+    range,
     presentation,
     index,
     pair,

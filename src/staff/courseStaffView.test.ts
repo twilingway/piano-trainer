@@ -1,7 +1,7 @@
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
-import { fitCourseDrawing, fitCourseInk, courseRoom } from "./courseStaffView";
+import { fitCourseDrawing, fitCourseInk, courseRoom, showDrawing } from "./courseStaffView";
 import { beatPositions } from "./staffNoteIndex";
 import { placeCursorLine } from "./liveCursor";
 
@@ -212,5 +212,45 @@ describe("the complete lesson ink budget", () => {
       Number(svg.getAttribute("width")) / Number(svg.getAttribute("viewBox")?.split(" ")[2])
     ).toBeCloseTo(2);
     expect(svg.getAttribute("height")).toBe("400");
+  });
+});
+
+describe("the room reserved for an exercise's range", () => {
+  it("stretches the viewport over the reserved span and reports how far the drawing moved", () => {
+    const { host, svg } = fixture(new DOMRect(20, 20, 100, 60));
+    svg.setAttribute("width", "1200");
+    svg.setAttribute("height", "600");
+    svg.setAttribute("viewBox", "0 0 400 200");
+    const reserved = { top: -10, bottom: 250 };
+    expect(fitCourseDrawing(host, reserved)).toBe(30);
+    expect(svg.getAttribute("viewBox")).toBe("16 -10 108 260");
+    expect(svg.getAttribute("height")).toBe("780");
+    // A second pass starts from OSMD's own viewport, not from the stretched one.
+    expect(fitCourseDrawing(host, reserved)).toBe(30);
+    expect(svg.getAttribute("viewBox")).toBe("16 -10 108 260");
+  });
+
+  it("leaves the page's height alone when the reserved span fits inside it", () => {
+    const { host, svg } = fixture(new DOMRect(20, 20, 100, 60));
+    svg.setAttribute("width", "1200");
+    svg.setAttribute("height", "600");
+    svg.setAttribute("viewBox", "0 0 400 200");
+    expect(fitCourseDrawing(host, { top: 10, bottom: 150 })).toBe(0);
+    expect(svg.getAttribute("viewBox")).toBe("16 0 108 200");
+    expect(svg.getAttribute("height")).toBe("600");
+  });
+
+  it("sizes the view to the reserved span, not only to the note drawn now", () => {
+    const { host, svg } = fixture(new DOMRect(20, 20, 100, 60));
+    svg.setAttribute("height", "600");
+    svg.setAttribute("viewBox", "0 0 400 200");
+    const ink = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    ink.getBoundingClientRect = () => new DOMRect(300, 60, 200, 180);
+    svg.append(ink);
+    showDrawing(host);
+    expect(host.style.height).toBe("212px");
+    // Reserved 10..150 SVG units at 3 px each: 30..450 px on screen.
+    showDrawing(host, { top: 10, bottom: 150 });
+    expect(host.style.height).toBe("452px");
   });
 });

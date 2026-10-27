@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 
-import { courseCursor, courseStaffXml, courseStaffZoom } from "./courseStaff";
+import { courseCursor, courseRangeIndices, courseStaffXml, courseStaffZoom } from "./courseStaff";
 
 const score = (implicit: boolean) =>
   `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name/></score-part></part-list><part id="P1"><measure number="1"${implicit ? ' implicit="yes"' : ""}><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note></measure></part></score-partwise>`;
@@ -60,5 +60,34 @@ describe("courseCursor", () => {
 
   it("puts the cursor left of the notehead when there is more than one position", () => {
     expect(courseCursor(4, 10)).toEqual({ hidden: false, offsetX: -14 });
+  });
+});
+
+describe("courseRangeIndices", () => {
+  it("picks the first prompts with the lowest and the highest note", () => {
+    expect(courseRangeIndices([[64], [60], [67], [60], [67]])).toEqual([1, 2]);
+  });
+
+  it("picks each voice's extremes once", () => {
+    // Right hand first, left hand second: the hands' extremes sit in different prompts.
+    expect(
+      courseRangeIndices([
+        [72, 48],
+        [76, 43],
+        [67, 50],
+        [76, 48]
+      ])
+    ).toEqual([1, 2]);
+    expect(
+      courseRangeIndices([
+        [60, 40],
+        [62, 45],
+        [70, 42]
+      ])
+    ).toEqual([0, 1, 2]);
+  });
+
+  it("returns nothing for an empty exercise", () => {
+    expect(courseRangeIndices([])).toEqual([]);
   });
 });

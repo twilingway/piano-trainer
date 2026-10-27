@@ -49,3 +49,25 @@ export function courseCursor(
 ): { readonly hidden: boolean; readonly offsetX: number } {
   return { hidden: positions <= 1, offsetX: -CURSOR_LEAD_UNITS * unitPx };
 }
+
+/**
+ * The prompts that hold an exercise's extreme notes: for each voice (the n-th pitch of every
+ * prompt) the first prompt with its lowest and the first with its highest pitch, each once.
+ */
+export function courseRangeIndices(prompts: readonly (readonly number[])[]): number[] {
+  const picked = new Set<number>();
+  const voices = Math.max(0, ...prompts.map((pitches) => pitches.length));
+  for (let voice = 0; voice < voices; voice++) {
+    let low = -1;
+    let high = -1;
+    prompts.forEach((pitches, index) => {
+      const pitch = pitches[voice];
+      if (pitch === undefined) return;
+      if (low < 0 || pitch < (prompts[low]?.[voice] ?? Infinity)) low = index;
+      if (high < 0 || pitch > (prompts[high]?.[voice] ?? -Infinity)) high = index;
+    });
+    if (low >= 0) picked.add(low);
+    if (high >= 0) picked.add(high);
+  }
+  return [...picked].sort((a, b) => a - b);
+}

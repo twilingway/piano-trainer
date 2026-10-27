@@ -6,6 +6,7 @@ import {
   lessonFingerCues,
   musicXmlWithLessonFingerCues
 } from "../reading/fingerCues";
+import { courseRangeIndices } from "../staff/courseStaff";
 import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import { useI18n } from "./useI18n";
 import { IntervalSession } from "../intervals/session";
@@ -97,6 +98,21 @@ export function useIntervalCourse() {
       : exercise.musicXml;
     return intervalPromptXml(xml, questionIndex).musicXml;
   }, [exercise, questionIndex, cueAllowed, cueNoteId, locale]);
+  // The pairs with the lowest and the highest notes, cues shown (a shown cue sits lowest): the
+  // staff keeps their room.
+  const range = useMemo(() => {
+    if (!exercise) return undefined;
+    const notes = exercise.song.notes;
+    const cues = exercise.mode === "see-and-play" ? lessonFingerCues(notes) : [];
+    const xml = cues.length
+      ? musicXmlWithLessonFingerCues(exercise.musicXml, cues, notes, (cue) =>
+          lessonFingerLabel(cue, locale)
+        )
+      : exercise.musicXml;
+    return courseRangeIndices(exercise.pairs.map((pair) => [pair.anchorMidi, pair.targetMidi])).map(
+      (extreme) => intervalPromptXml(xml, extreme).musicXml
+    );
+  }, [exercise, locale]);
   const id = session
     ? `${session.identity()?.runId ?? ""}:${snapshot?.questionId ?? "done"}:${String(retry)}`
     : "";
@@ -243,6 +259,7 @@ export function useIntervalCourse() {
     onHelpPresented,
     audio,
     prompt: pairXml ? { musicXml: pairXml, beat: snapshot?.noteRole ?? 0 } : null,
+    range,
     result: snapshot?.completed
       ? (saved.history.find((result) => result.runId === run?.runId) ?? null)
       : null,

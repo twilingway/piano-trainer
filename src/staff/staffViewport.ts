@@ -19,7 +19,7 @@ export interface LineBox {
  * leaves out fingerings and ledger notes above it, so it starts where the
  * line before it ends.
  */
-export function lineBoxes(osmd: OpenSheetMusicDisplay): LineBox[] {
+export function lineBoxes(osmd: OpenSheetMusicDisplay, shift = 0): LineBox[] {
   const pixels = unitInPixels * osmd.Zoom;
   const systems = osmd.GraphicSheet.MusicPages[0]?.MusicSystems ?? [];
   return systems.map((system, index) => {
@@ -29,7 +29,10 @@ export function lineBoxes(osmd: OpenSheetMusicDisplay): LineBox[] {
     const top = previous
       ? Math.min(own, (previous.AbsolutePosition.y + previous.BorderMarginBottom) * pixels)
       : own;
-    return { top, bottom: (box.AbsolutePosition.y + box.BorderMarginBottom) * pixels };
+    return {
+      top: top + shift,
+      bottom: (box.AbsolutePosition.y + box.BorderMarginBottom) * pixels + shift
+    };
   });
 }
 
