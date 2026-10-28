@@ -1,3 +1,4 @@
+import { isBlackKey } from "../../fingering/fingering";
 import { freeRoadLanes, freeRoadPoint, DEFAULT_FREE_PERSPECTIVE_FIELD } from "../freeRoadLayout";
 import { roadWidthCamera } from "../roadWidthWarp";
 import {
@@ -223,7 +224,7 @@ it("puts direct inspection guides on the same two-metre board at each physical l
   guides.dispose();
 });
 
-it("connects beat segments across every selected curved source instead of drawing a straight shortcut", () => {
+it("connects beat segments across every white curved source, skipping the raised black lanes", () => {
   const keys = scene(60, 64),
     boxes = keyBoxes(keys),
     camera = keys.camera;
@@ -239,14 +240,20 @@ it("connects beat segments across every selected curved source instead of drawin
   guides.update(boxes, camera, [(camera.near.z + camera.roadFarZ) / 2], 1, false, routes);
   const beat = line(guides, 2),
     data = positions(beat);
-  expect(beat.geometry.drawRange.count).toBe((routes.length - 1) * 2);
-  for (let index = 0; index < routes.length - 1; index++) {
-    const route = routes[index];
-    if (!route) throw new Error("Missing selected lane");
-    const point = freeRoadPoint(route, 0.5, 0, 0.025);
-    expect(data.getX(index * 2)).toBeCloseTo(point.x, 3);
-    expect(data.getY(index * 2)).toBeCloseTo(point.y, 3);
-    expect(data.getZ(index * 2)).toBeCloseTo(point.z, 3);
+  const whites = routes.filter((route) => !isBlackKey(route.pitch));
+  expect(whites.map((route) => route.pitch)).toEqual([60, 62, 64]);
+  expect(beat.geometry.drawRange.count).toBe((whites.length - 1) * 2);
+  for (let index = 0; index < whites.length - 1; index++) {
+    for (const [vertex, route] of [
+      [index * 2, whites[index]],
+      [index * 2 + 1, whites[index + 1]]
+    ] as const) {
+      if (!route) throw new Error("Missing selected lane");
+      const point = freeRoadPoint(route, 0.5, 0, 0.025);
+      expect(data.getX(vertex)).toBeCloseTo(point.x, 3);
+      expect(data.getY(vertex)).toBeCloseTo(point.y, 3);
+      expect(data.getZ(vertex)).toBeCloseTo(point.z, 3);
+    }
   }
   guides.dispose();
 });
