@@ -16,6 +16,8 @@ export interface KeysScene {
   readonly keyboardCamera?: WorldCamera;
   /** The standard road straightens onto this keyboard: the shown one, a snapshot, or none. */
   readonly fitCamera?: WorldCamera | "keyboard" | undefined;
+  /** How far the straightened road follows the keyboard's perspective (0 world direction, 1 full). */
+  readonly fitTilt?: number | undefined;
   readonly pan: number;
   readonly offset: { readonly x: number; readonly y: number };
   readonly version: number;
@@ -29,6 +31,7 @@ export class NativeKeyboardScene {
   private camera: WorldCamera | undefined;
   private keyboardCamera: WorldCamera | undefined;
   private fitCamera: KeysScene["fitCamera"];
+  private fitTilt: KeysScene["fitTilt"];
   private pan = 0;
   private version = 0;
   private native = true;
@@ -58,7 +61,7 @@ export class NativeKeyboardScene {
     camera: WorldCamera,
     pan: number,
     keyboardCamera = camera,
-    fitCamera?: KeysScene["fitCamera"]
+    fit?: { readonly camera: KeysScene["fitCamera"]; readonly tilt: number }
   ): void {
     if (
       camera.params.width !== this.camera?.params.width ||
@@ -68,7 +71,8 @@ export class NativeKeyboardScene {
       this.version++;
     this.camera = camera;
     this.keyboardCamera = keyboardCamera;
-    this.fitCamera = fitCamera;
+    this.fitCamera = fit?.camera;
+    this.fitTilt = fit?.tilt;
     this.pan = pan;
   }
 
@@ -82,6 +86,7 @@ export class NativeKeyboardScene {
           roadCamera: camera,
           keyboardCamera,
           fitCamera: this.fitCamera,
+          fitTilt: this.fitTilt,
           native,
           pan,
           version,

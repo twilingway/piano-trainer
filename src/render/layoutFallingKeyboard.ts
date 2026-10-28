@@ -72,7 +72,8 @@ export function layoutFallingKeyboard(options: {
     native3d && !computer
       ? {
           geometry: nativeGeometry(WORLD_REFERENCE_CAMERA).geometry,
-          fit: roadFitTarget(road?.shape.fit, (prefs) => nativeGeometry(prefs).geometry)
+          fit: roadFitTarget(road?.shape.fit, (prefs) => nativeGeometry(prefs).geometry),
+          tilt: road?.shape.fit?.tilt
         }
       : undefined;
   const keys = computer ? layoutComputerKeys(total, geometry).keys : options.keys;

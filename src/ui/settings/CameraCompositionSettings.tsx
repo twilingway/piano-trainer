@@ -1,5 +1,6 @@
 import { useI18n } from "../../app/useI18n";
 import type { RoadFit } from "../../render/roadLayoutCamera";
+import { ProjectionNumberInput } from "./ProjectionNumberInput";
 import {
   normalizeCameraComposition,
   WORLD_FOV_LIMITS,
@@ -85,15 +86,25 @@ export function RoadFitSettings({
   value,
   onChange,
   onStraighten,
+  tilt = 0,
+  onTilt,
   disabled
 }: {
   readonly value: RoadFit["mode"];
   readonly onChange: (value: RoadFit["mode"]) => void;
   readonly onStraighten?: (() => void) | undefined;
+  /** 0 keeps straightened lanes in the world direction, 1 follows the keyboard's perspective. */
+  readonly tilt?: number;
+  readonly onTilt?: ((value: number) => void) | undefined;
   /** Straightening belongs to the standard composition without the free camera or staging. */
   readonly disabled: boolean;
 }) {
   const { t } = useI18n();
+  const tiltLabel = t("Наклон нот за клавиатурой");
+  const tiltPercent = Math.round(tilt * 100);
+  const changeTilt = (next: number) => {
+    if (Number.isFinite(next)) onTilt?.(Math.max(0, Math.min(100, next)) / 100);
+  };
   return (
     <>
       <label className="setting">
@@ -116,6 +127,37 @@ export function RoadFitSettings({
         <button className="game-button" type="button" disabled={disabled} onClick={onStraighten}>
           {t("Выпрямить по клавиатуре")}
         </button>
+      )}
+      {onTilt && (
+        <div className="setting road-projection-setting">
+          <span>{tiltLabel}</span>
+          <span className="setting-control projection-number-control">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={tiltPercent}
+              disabled={disabled}
+              aria-label={tiltLabel}
+              data-setting-target="road-note-tilt"
+              onChange={(event) => {
+                changeTilt(Number(event.target.value));
+              }}
+            />
+            <ProjectionNumberInput
+              min={0}
+              max={100}
+              step={5}
+              value={tiltPercent}
+              disabled={disabled}
+              label={t("{parameter}: числовое значение", { parameter: tiltLabel })}
+              target="road-note-tilt-number"
+              onChange={changeTilt}
+            />
+            <span aria-hidden="true">%</span>
+          </span>
+        </div>
       )}
       <p className="setting-hint">
         {t(

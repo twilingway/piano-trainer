@@ -66,7 +66,8 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   camera: DEFAULT_CAMERA,
   roadHorizon: 0.2,
   roadFit: "button",
-  roadFitCamera: null
+  roadFitCamera: null,
+  roadNoteTilt: 0
 });
 
 describe("game score presentation", () => {

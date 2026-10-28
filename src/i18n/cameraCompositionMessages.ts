@@ -24,6 +24,7 @@ export const cameraCompositionMessages: Messages = {
   "Выпрямление дороги": { en: "Road straightening" },
   "По кнопке": { en: "On button" },
   "Выпрямить по клавиатуре": { en: "Straighten to keyboard" },
+  "Наклон нот за клавиатурой": { en: "Note tilt with keyboard" },
   "Выпрямление дороги действует в обычной композиции без свободной камеры и постановки.": {
     en: "Road straightening applies to the standard composition without the free camera or the performance scene."
   },

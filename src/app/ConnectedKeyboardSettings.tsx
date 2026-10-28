@@ -30,7 +30,8 @@ export function ConnectedKeyboardSettings() {
       far: state.preferences.staff.roadFar,
       horizon: state.preferences.staff.roadHorizon,
       camera: state.preferences.staff.camera,
-      roadFit: state.preferences.staff.roadFit
+      roadFit: state.preferences.staff.roadFit,
+      roadNoteTilt: state.preferences.staff.roadNoteTilt
     }),
     shallowEqual
   );
@@ -79,6 +80,7 @@ export function ConnectedKeyboardSettings() {
   const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
   const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
   const onRoadFit = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadFit);
+  const onRoadNoteTilt = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadNoteTilt);
   const onStraightenRoad = useRuntimeCommand(
     (runtime) => runtime.keyboardSettings.onStraightenRoad
   );
@@ -116,6 +118,8 @@ export function ConnectedKeyboardSettings() {
       roadFit={state.roadFit}
       onRoadFit={onRoadFit}
       onStraightenRoad={onStraightenRoad}
+      roadNoteTilt={state.roadNoteTilt}
+      onRoadNoteTilt={onRoadNoteTilt}
       freeCamera={state.freeCamera}
       freeCameraWasd={state.freeCameraWasd}
       onFreeCameraWasd={onFreeCameraWasd}

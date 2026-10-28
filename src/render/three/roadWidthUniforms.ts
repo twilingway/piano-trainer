@@ -9,6 +9,8 @@ export const roadWidthUniforms = {
   roadDockTransform: { value: new Matrix4() },
   /** World clip to the straightening keyboard's clip; identity keeps the plain bend. */
   roadDockFitTransform: { value: new Matrix4() },
+  /** How far a straightened lane follows the keyboard's perspective: 0 world direction, 1 full. */
+  roadDockTilt: { value: 0 },
   roadDockInverse: { value: new Matrix4() },
   roadWidth: { value: [0, 1, 1, 0] },
   roadVertical: { value: 0 },

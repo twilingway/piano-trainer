@@ -100,6 +100,8 @@ export interface StaffPrefs {
   /** Standard road straightening; the snapshot is the keyboard camera the button took. */
   readonly roadFit: RoadFit["mode"];
   readonly roadFitCamera: CameraPrefs | null;
+  /** How far straightened lanes follow the keyboard's perspective: 0 world direction, 1 full. */
+  readonly roadNoteTilt: number;
 }
 
 export const DEFAULT_STAFF_PREFS: StaffPrefs = {
@@ -148,7 +150,8 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   roadFar: DEFAULT_ROAD_SHAPE.far,
   roadHorizon: DEFAULT_ROAD_SHAPE.horizon,
   roadFit: DEFAULT_ROAD_FIT.mode,
-  roadFitCamera: null
+  roadFitCamera: null,
+  roadNoteTilt: 0
 };
 
 export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs {
@@ -157,7 +160,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
   const boolean = <K extends keyof StaffPrefs>(key: K): StaffPrefs[K] =>
     (typeof raw[key] === "boolean" ? raw[key] : defaults[key]) as StaffPrefs[K];
   const number = (
-    key: "zoom" | "tabsZoom" | "roadFar" | "roadHorizon",
+    key: "zoom" | "tabsZoom" | "roadFar" | "roadHorizon" | "roadNoteTilt",
     low: number,
     high: number
   ) => {
@@ -227,6 +230,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     roadFitCamera:
       raw.roadFitCamera && typeof raw.roadFitCamera === "object"
         ? normalizeCamera(raw.roadFitCamera)
-        : null
+        : null,
+    roadNoteTilt: number("roadNoteTilt", 0, 1)
   };
 }
