@@ -54,8 +54,6 @@ uniform float roadVertical;
 uniform float roadFreeDepth;
 uniform float roadFree;
 uniform float roadDockEnabled;
-uniform float roadDockOffsets[88];
-uniform vec4 roadDockY;
 #ifdef NOTE_META_PACKED
 attribute vec2 noteAlphaPitch;
 #define notePitch noteAlphaPitch.y
@@ -108,11 +106,9 @@ vec4 projectNoteLane(vec4 point, float localZ) {
     float progress = roadNoteProgress(localZ);
     vec3 contact = local.xyz / max(abs(local.w), 0.000001) - roadRouteDirection() * progress;
     vec4 anchor = projectionMatrix * modelViewMatrix * vec4(contact, 1.0);
+    // Notes meet the key's resting top: following its press would jerk the whole note down.
     vec4 pinned = roadDockTransform * anchor, keyboard = roadDockTransform * point;
     vec4 press = vec4(0.0);
-    if (notePitch >= 21.0 && notePitch <= 108.0) press = roadDockY * roadDockOffsets[int(floor(notePitch + 0.5)) - 21];
-    pinned += press;
-    keyboard += press;
     return anchorRelativeRoadClip(point, anchor, roadDockFitTransform * anchor, pinned, progress, keyboard, press);
   }
   point.x = noteProjection.x * point.x + noteProjection.y * point.w;

@@ -1,10 +1,9 @@
-import { Matrix4, Vector4 } from "three";
+import { Matrix4 } from "three";
 import type { WorldCamera } from "../worldCamera";
 
 /** Shared only by road materials; each stage sets these immediately before its own draw. */
 export const roadWidthUniforms = {
   roadDockOffsets: { value: new Float32Array(88) },
-  roadDockY: { value: new Vector4() },
   roadDockEnabled: { value: 0 },
   roadDockTransform: { value: new Matrix4() },
   /** World clip to the straightening keyboard's clip; identity keeps the plain bend. */

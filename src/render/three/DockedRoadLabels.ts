@@ -7,7 +7,6 @@ import {
   type Object3D,
   type WebGLRenderer
 } from "three";
-import { dockedKeyOffset } from "./dockedRoadProjection";
 import { anchorRelativeDockedClip, legacyRouteFar } from "../dockedRoadProjection";
 import type { WorldCamera } from "../worldCamera";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
@@ -24,7 +23,8 @@ export class DockedRoadLabels {
   private readonly from = new Vector4();
   private readonly to = new Vector4();
   private readonly keyboard = new Vector4();
-  private readonly press = new Vector4();
+  // Labels ride their notes, which meet the key's resting top and never follow its press.
+  private readonly press = new Vector4(0, 0, 0, 0);
   private readonly anchor = new Vector4();
   private readonly clip = new Vector4();
   private labels: readonly { renderable: boolean }[] = [];
@@ -93,13 +93,9 @@ export class DockedRoadLabels {
         1
       );
       this.from.copy(this.point).applyMatrix4(this.worldMatrix);
-      this.keyboard.copy(this.point);
-      this.keyboard.y += dockedKeyOffset(note.pitch ?? 0);
-      this.keyboard.applyMatrix4(this.keyboardMatrix);
-      this.press.set(0, dockedKeyOffset(note.pitch ?? 0), 0, 0).applyMatrix4(this.keyboardMatrix);
+      this.keyboard.copy(this.point).applyMatrix4(this.keyboardMatrix);
       this.point.set(note.x, laneY - dz / length, -contact + dy / length, 1);
       this.anchor.copy(this.point).applyMatrix4(this.worldMatrix);
-      this.point.y += dockedKeyOffset(note.pitch ?? 0);
       this.to.copy(this.point).applyMatrix4(this.keyboardMatrix);
       anchorRelativeDockedClip(
         this.from,

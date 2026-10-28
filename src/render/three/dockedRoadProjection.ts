@@ -1,6 +1,6 @@
 import { DOCKED_ROAD_SHADER } from "../dockedRoadProjection";
 import { configureSegmentedRoad } from "./segmentedRoadGeometry";
-import { Camera, Line, Points, ShaderMaterial, Matrix4, Vector3, Vector4 } from "three";
+import { Camera, Line, Points, ShaderMaterial, Matrix4, Vector3 } from "three";
 import type { Material, Object3D } from "three";
 import { roadWidthUniforms } from "./roadWidthUniforms";
 import type { KeysScene } from "../NativeKeyboardScene";
@@ -10,7 +10,6 @@ const installed = new WeakSet<Material>();
 const worldClip = new Matrix4();
 const keyboardClip = new Matrix4();
 const inverse = new Matrix4();
-const localY = new Vector4(0, 1, 0, 0);
 const fitCamera = new Camera();
 fitCamera.matrixAutoUpdate = false;
 const fitKeys = new Matrix4();
@@ -41,8 +40,6 @@ function installGuide(material: Material): void {
   material.customProgramCacheKey = () => cacheKey() + "-docked-road-v4";
   material.onBeforeCompile = (shader, renderer) => {
     compile(shader, renderer);
-    shader.uniforms.roadDockOffsets = roadWidthUniforms.roadDockOffsets;
-    shader.uniforms.roadDockY = roadWidthUniforms.roadDockY;
     shader.uniforms.roadDockEnabled = roadWidthUniforms.roadDockEnabled;
     shader.uniforms.roadDockTransform = roadWidthUniforms.roadDockTransform;
     shader.uniforms.roadDockFitTransform = roadWidthUniforms.roadDockFitTransform;
@@ -53,8 +50,6 @@ uniform mat4 roadDockFitTransform;
 attribute float roadDockProgress;
 attribute float roadDockPitch;
 attribute vec3 roadDockAnchor;
-uniform float roadDockOffsets[88];
-uniform vec4 roadDockY;
 ${DOCKED_ROAD_SHADER}
 ${shader.vertexShader}`.replace(
       "#include <project_vertex>",
@@ -63,9 +58,6 @@ if (roadDockEnabled > 0.0) {
   vec4 anchor = projectionMatrix * modelViewMatrix * vec4(roadDockAnchor, 1.0);
   vec4 pinned = roadDockTransform * anchor, keyboard = roadDockTransform * gl_Position;
   vec4 press = vec4(0.0);
-  if (roadDockPitch >= 21.0 && roadDockPitch <= 108.0) press = roadDockY * roadDockOffsets[int(floor(roadDockPitch + 0.5)) - 21];
-  pinned += press;
-  keyboard += press;
   gl_Position = anchorRelativeRoadClip(gl_Position, anchor, roadDockFitTransform * anchor, pinned, roadDockProgress, keyboard, press);
 }`
     );
@@ -119,7 +111,6 @@ export function configureDockedRoad(
       .multiply(fitKeys)
       .multiply(inverse);
   }
-  roadWidthUniforms.roadDockY.value.copy(localY).applyMatrix4(keyboardClip);
   roadWidthUniforms.roadDockInverse.value.copy(worldClip).multiply(roadGroup.matrixWorld).invert();
   roadGroup.traverse((object) => {
     if (!(object instanceof Line || object instanceof Points)) return;
