@@ -16,6 +16,8 @@ export interface RoadShape {
 export interface RoadFit {
   readonly mode: "auto" | "button";
   readonly camera?: CameraPrefs | undefined;
+  /** How far straightened lanes follow the keyboard's perspective: 0 (default) world direction, 1 full. */
+  readonly tilt?: number | undefined;
 }
 export const DEFAULT_ROAD_FIT: RoadFit = { mode: "auto" };
 export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };

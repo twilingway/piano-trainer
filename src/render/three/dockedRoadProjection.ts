@@ -18,7 +18,7 @@ const fitPosition = new Vector3();
 const fitScale = new Vector3();
 
 /** The keyboard the standard road straightens onto, framed like the keys group would be. */
-export type DockedRoadFit = Pick<KeysScene, "fitCamera" | "pan" | "offset"> & {
+export type DockedRoadFit = Pick<KeysScene, "fitCamera" | "fitTilt" | "pan" | "offset"> & {
   readonly screen: { readonly width: number; readonly height: number };
 };
 export function updateDockedKeyOffsets(
@@ -46,6 +46,7 @@ function installGuide(material: Material): void {
     shader.uniforms.roadDockEnabled = roadWidthUniforms.roadDockEnabled;
     shader.uniforms.roadDockTransform = roadWidthUniforms.roadDockTransform;
     shader.uniforms.roadDockFitTransform = roadWidthUniforms.roadDockFitTransform;
+    shader.uniforms.roadDockTilt = roadWidthUniforms.roadDockTilt;
     shader.vertexShader = `uniform float roadDockEnabled;
 uniform mat4 roadDockTransform;
 uniform mat4 roadDockFitTransform;
@@ -98,6 +99,7 @@ export function configureDockedRoad(
   roadWidthUniforms.roadDockTransform.value.multiplyMatrices(keyboardClip, inverse);
   const fitTransform = roadWidthUniforms.roadDockFitTransform.value;
   const camera = fit && fit.fitCamera;
+  roadWidthUniforms.roadDockTilt.value = fit ? (fit.fitTilt ?? 0) : 0;
   if (!fit || !camera) fitTransform.identity();
   else if (camera === "keyboard") fitTransform.copy(roadWidthUniforms.roadDockTransform.value);
   else {

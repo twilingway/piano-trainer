@@ -150,6 +150,77 @@ it("matches the clip straight offset in screen pixels through the scale ratio", 
   expect(result.y).toBeCloseTo(300 + 0.125 * 60);
   expect(dockedScreenPoint({ ...anchor }, anchor, fitted, 0, fitted)).toMatchObject(fitted);
 });
+describe("note tilt with the keyboard", () => {
+  // The direct view: the world camera faces the vertical route plane, so its lanes are parallel.
+  const world = new PerspectiveCamera(50, 16 / 9, 1, 200000);
+  world.position.set(0, 600, 1500);
+  world.lookAt(0, 600, -150);
+  const keyboard = new PerspectiveCamera(40, 16 / 9, 1, 200000);
+  keyboard.position.set(0, 1100, 900);
+  keyboard.lookAt(0, 0, -150);
+  const contact = new Vector3(-520, 20, -150),
+    far = new Vector3(-520, 1400, -150);
+  const anchor = clip(world, contact),
+    pinned = clip(keyboard, contact);
+  const ndc = (p: { x: number; y: number; w: number }) => [p.x / p.w, p.y / p.w] as const;
+  const lane = (tilt: number) =>
+    [0, 0.3, 0.6, 1].map((progress) =>
+      ndc(
+        anchorRelativeDockedClip(
+          clip(world, contact.clone().lerp(far, progress)),
+          anchor,
+          pinned,
+          progress,
+          undefined,
+          pinned,
+          undefined,
+          undefined,
+          tilt
+        )
+      )
+    );
+  const slope = (points: readonly (readonly [number, number])[]) => {
+    const [start, end] = [points[0] ?? [0, 0], points[points.length - 1] ?? [0, 0]];
+    return (end[0] - start[0]) / (end[1] - start[1]);
+  };
+  const straight = (points: readonly (readonly [number, number])[]) => {
+    const [start, end] = [points[0] ?? [0, 0], points[points.length - 1] ?? [0, 0]];
+    const [dx, dy] = [end[0] - start[0], end[1] - start[1]];
+    for (const [x, y] of points)
+      expect(Math.abs((x - start[0]) * dy - (y - start[1]) * dx) * 960).toBeLessThan(0.01);
+  };
+  const worldSlope = slope([ndc(clip(world, contact)), ndc(clip(world, far))]);
+
+  it("keeps the world direction at 0 and the keyboard's perspective at 1, landing on the contact", () => {
+    const flat = lane(0),
+      full = lane(1);
+    for (const points of [flat, full, lane(0.5)]) {
+      straight(points);
+      expect(points[0]?.[0]).toBeCloseTo(ndc(pinned)[0], 6);
+      expect(points[0]?.[1]).toBeCloseTo(ndc(pinned)[1], 6);
+    }
+    expect(slope(flat)).toBeCloseTo(worldSlope, 6);
+    // The far end keeps its height at any tilt: only its sideways place follows the share.
+    for (const points of [flat, full])
+      expect(points[3]?.[1]).toBeCloseTo(ndc(clip(world, far))[1], 6);
+    // Full tilt leaves the far end where the world put it, so the lane leans toward the contact.
+    expect(full[3]?.[0]).toBeCloseTo(ndc(clip(world, far))[0], 6);
+    expect(Math.abs(slope(full) - worldSlope)).toBeGreaterThan(0.01);
+    const half = slope(lane(0.5));
+    expect(half).toBeGreaterThan(Math.min(slope(flat), slope(full)));
+    expect(half).toBeLessThan(Math.max(slope(flat), slope(full)));
+  });
+
+  it("shifts screen points by the same tilted gain", () => {
+    const at = { x: 400, y: 700, scale: 2 },
+      fitted = { x: 380, y: 760 },
+      point = { x: 450, y: 300, scale: 0.5 };
+    // Tilt 0: the whole sideways delta at the point's own 1/w factor, 0.5 / 2; height still fades.
+    const result = dockedScreenPoint(point, at, fitted, 0.5, fitted, undefined, 0, 0);
+    expect(result.x).toBeCloseTo(450 + 0.25 * -20);
+    expect(result.y).toBeCloseTo(300 + 0.125 * 60);
+  });
+});
 describe("bent join in keyboard perspective", () => {
   const world = new PerspectiveCamera(50, 16 / 9, 1, 200000);
   world.position.set(0, 1800, 900);

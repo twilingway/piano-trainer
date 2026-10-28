@@ -55,6 +55,9 @@ interface Props {
   readonly onRoadFit?: (value: RoadFit["mode"]) => void;
   /** Straightens the standard road under the current keyboard camera. */
   readonly onStraightenRoad?: () => void;
+  /** How far straightened lanes follow the keyboard's perspective: 0 world direction, 1 full. */
+  readonly roadNoteTilt?: number;
+  readonly onRoadNoteTilt?: (value: number) => void;
   readonly freeCamera?: boolean;
   readonly freeCameraWasd?: boolean;
   readonly onFreeCameraWasd?: (on: boolean) => void;
@@ -105,6 +108,8 @@ export function KeyboardSettings({
   roadFit = "button",
   onRoadFit,
   onStraightenRoad,
+  roadNoteTilt = 0,
+  onRoadNoteTilt,
   freeCamera,
   freeCameraWasd,
   onFreeCameraWasd,
@@ -408,6 +413,8 @@ export function KeyboardSettings({
                 value={roadFit}
                 onChange={onRoadFit}
                 onStraighten={onStraightenRoad}
+                tilt={roadNoteTilt}
+                onTilt={onRoadNoteTilt}
                 disabled={worldVisible === true || performanceScene === true}
               />
             )}

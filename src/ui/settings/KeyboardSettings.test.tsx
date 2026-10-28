@@ -599,6 +599,39 @@ describe("separate keyboard and world cameras", () => {
     expect(onStraightenRoad).toHaveBeenCalledOnce();
   });
 
+  it("tilts the notes with the keyboard from 0 to 100 percent beside the straightening", () => {
+    const onRoadNoteTilt = vi.fn();
+    const render = (props: Partial<Parameters<typeof KeyboardSettings>[0]>) => {
+      act(() => {
+        root.render(
+          <KeyboardSettings
+            {...base}
+            onRoadFit={vi.fn()}
+            onRoadNoteTilt={onRoadNoteTilt}
+            {...props}
+          />
+        );
+      });
+      return group("Камера нот и мира")?.querySelector<HTMLInputElement>(
+        '[data-setting-target="road-note-tilt"]'
+      );
+    };
+    let slider = render({ roadNoteTilt: 0.35 });
+    expect(slider?.getAttribute("aria-label")).toBe("Наклон нот за клавиатурой");
+    expect(slider?.value).toBe("35");
+    expect(slider?.step).toBe("5");
+    expect(slider?.disabled).toBe(false);
+    act(() => {
+      if (!slider) throw new Error("Missing note tilt");
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(slider, "60");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(onRoadNoteTilt).toHaveBeenLastCalledWith(0.6);
+    slider = render({ freeCamera: true });
+    expect(slider?.disabled).toBe(true);
+    expect(slider?.value).toBe("0");
+  });
+
   it("disables manual world control while the performance scene owns the camera", () => {
     act(() => {
       root.render(

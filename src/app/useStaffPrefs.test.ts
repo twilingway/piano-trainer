@@ -654,6 +654,14 @@ describe("world compositions", () => {
     expect(broken.roadHorizon).toBe(1.2);
     expect(normalizeStaffPrefs({ roadFitCamera: "top" }).roadFitCamera).toBeNull();
   });
+  it("keeps notes in the world direction by default and repairs the note tilt", () => {
+    expect(normalizeStaffPrefs({}).roadNoteTilt).toBe(0);
+    expect(normalizeStaffPrefs({ roadNoteTilt: 0.35 }).roadNoteTilt).toBe(0.35);
+    expect(normalizeStaffPrefs({ roadNoteTilt: 1.4 }).roadNoteTilt).toBe(1);
+    expect(normalizeStaffPrefs({ roadNoteTilt: -0.2 }).roadNoteTilt).toBe(0);
+    const broken = normalizeStaffPrefs({ roadNoteTilt: "steep", roadFit: "button" });
+    expect(broken).toMatchObject({ roadNoteTilt: 0, roadFit: "button" });
+  });
 
   it("repairs only the corrupt one of the keyboard and world camera sets", () => {
     const keyboard = { ...CAMERA_PRESETS.player, height: 610, pitch: 30 };

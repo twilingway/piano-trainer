@@ -192,11 +192,20 @@ describe("independent world road", () => {
     const bent = lane(undefined, tilted);
     expect(deviation(bent)).toBeGreaterThan(1);
     expect(deviation(lane({ mode: "button" }, tilted))).toBeCloseTo(deviation(bent), 6);
-    const auto = lane({ mode: "auto" }, tilted);
+    // Full note tilt leaves the far end where the world put it.
+    const auto = lane({ mode: "auto", tilt: 1 }, tilted);
     expect(deviation(auto)).toBeLessThan(0.5);
     expect(near(auto[0], bent[0])).toBeLessThanOrEqual(0.01);
     expect(near(auto.at(-1), bent.at(-1))).toBeLessThanOrEqual(0.01);
-    const snapshot = lane({ mode: "button", camera: tilted }, tilted);
+    // The default world direction shifts the whole lane sideways; the far end keeps its height.
+    const upright = lane({ mode: "auto" }, tilted);
+    expect(deviation(upright)).toBeLessThan(0.5);
+    expect(near(upright[0], bent[0])).toBeLessThanOrEqual(0.01);
+    expect(Math.abs((upright.at(-1)?.y ?? NaN) - (bent.at(-1)?.y ?? NaN))).toBeLessThanOrEqual(
+      0.01
+    );
+    expect(Math.abs((upright.at(-1)?.x ?? NaN) - (bent.at(-1)?.x ?? NaN))).toBeGreaterThan(1);
+    const snapshot = lane({ mode: "button", camera: tilted, tilt: 1 }, tilted);
     snapshot.forEach((point, i) => {
       expect(near(point, auto[i])).toBeLessThanOrEqual(0.5);
     });

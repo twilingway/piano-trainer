@@ -122,8 +122,16 @@ describe("native docked road projection", () => {
       fitCamera: "keyboard"
     });
     expect(fit.elements).toEqual(shown.elements);
+    expect(roadWidthUniforms.roadDockTilt.value).toBe(0);
+    configureDockedRoad(road, world, keyboard, true, 149.1938, 5000, keys, {
+      ...frame,
+      fitCamera: "keyboard",
+      fitTilt: 0.35
+    });
+    expect(roadWidthUniforms.roadDockTilt.value).toBe(0.35);
     configureDockedRoad(road, world, keyboard, true, 149.1938, 5000, keys, false);
     expect(fit.equals(new Matrix4())).toBe(true);
+    expect(roadWidthUniforms.roadDockTilt.value).toBe(0);
     configureDockedRoad(road, world, keyboard, false, 149.1938, 5000, keys);
   });
 

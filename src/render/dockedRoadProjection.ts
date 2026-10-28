@@ -38,23 +38,27 @@ export function dockedRoadLean(
   const lean = Math.min(1, Math.abs(rest.y - anchor.y) / full);
   return lean * (contact.x + ((keyboard.x - contact.x) * (bent.y - contact.y)) / keyRise - bent.x);
 }
-function straightGain(progress: number): number {
-  return Math.max(0, Math.min(1, 1 - (Number.isFinite(progress) ? progress : 1)));
+function straightGain(progress: number, tilt: number): number {
+  return Math.max(0, Math.min(1, 1 - tilt * (Number.isFinite(progress) ? progress : 1)));
 }
 /**
  * The straight join: a homogeneous offset linear in route progress keeps every straight road line
- * straight, lands exactly on the fitted contact at progress 0 and leaves the far end in place.
+ * straight and lands exactly on the fitted contact at progress 0. The far end keeps its height;
+ * sideways, `tilt` 1 leaves it in place, so the lane leans with the keyboard's perspective, and 0
+ * shifts the whole lane, keeping the world camera's lean (and vanishing point); shares lie between.
  */
 export function straightDockedClip(
   world: RoadClipPoint,
   worldAnchor: RoadClipPoint,
   fitted: RoadClipPoint,
-  progress: number
+  progress: number,
+  tilt = 1
 ): RoadClipPoint {
   if (!(world.w > 0 && worldAnchor.w > 0 && fitted.w > 0)) return world;
-  const gain = worldAnchor.w * straightGain(progress);
+  const gain = worldAnchor.w * straightGain(progress, 1),
+    side = worldAnchor.w * straightGain(progress, tilt);
   return {
-    x: world.x + gain * (fitted.x / fitted.w - worldAnchor.x / worldAnchor.w),
+    x: world.x + side * (fitted.x / fitted.w - worldAnchor.x / worldAnchor.w),
     y: world.y + gain * (fitted.y / fitted.w - worldAnchor.y / worldAnchor.w),
     z: world.z + gain * (fitted.z / fitted.w - worldAnchor.z / worldAnchor.w),
     w: world.w
@@ -74,10 +78,11 @@ export function anchorRelativeDockedClip(
   target: RoadClipPoint = { x: 0, y: 0, z: 0, w: 1 },
   fitted?: RoadClipPoint,
   keyboard?: RoadClipPoint,
-  press?: RoadClipPoint
+  press?: RoadClipPoint,
+  tilt = 1
 ): RoadClipPoint {
   if (fitted) {
-    const straight = straightDockedClip(world, worldAnchor, fitted, progress);
+    const straight = straightDockedClip(world, worldAnchor, fitted, progress, tilt);
     if (straight !== world) [world, worldAnchor] = [straight, fitted];
   }
   const t = dockedRoadBlend(progress);
@@ -142,14 +147,17 @@ export function dockedScreenPoint<T extends { x: number; y: number; scale?: numb
   progress: number,
   fitted?: { readonly x: number; readonly y: number },
   keyboard?: { readonly x: number; readonly y: number },
-  viewHeight = 0
+  viewHeight = 0,
+  tilt = 1
 ): T {
   // Screen scale is inverse to clip w, so scale ratios give the straight offset's 1/w factor.
   if (fitted && (point.scale ?? 0) > 0 && (worldAnchor.scale ?? 0) > 0) {
-    const gain = (straightGain(progress) * (point.scale ?? 0)) / (worldAnchor.scale ?? 1);
+    const ratio = (point.scale ?? 0) / (worldAnchor.scale ?? 1);
+    const gain = straightGain(progress, 1) * ratio,
+      side = straightGain(progress, tilt) * ratio;
     point = {
       ...point,
-      x: point.x + gain * (fitted.x - worldAnchor.x),
+      x: point.x + side * (fitted.x - worldAnchor.x),
       y: point.y + gain * (fitted.y - worldAnchor.y)
     };
     worldAnchor = fitted;
@@ -173,6 +181,7 @@ export function dockedScreenPoint<T extends { x: number; y: number; scale?: numb
 }
 /** The CPU labels and every road material use this exact anchor-relative policy. */
 export const DOCKED_ROAD_SHADER = /* glsl */ `
+uniform float roadDockTilt;
 float dockSafeW(float w) {
   return w < 0.0 ? min(-0.000001, w) : max(0.000001, w);
 }
@@ -184,8 +193,9 @@ float dockLean(vec2 bent, vec2 a, vec2 c, vec2 k, float rest) {
 }
 vec4 anchorRelativeRoadClip(vec4 point, vec4 anchor, vec4 fitted, vec4 pinned, float progress, vec4 keyboard, vec4 press) {
   if (point.w > 0.0 && anchor.w > 0.0 && fitted.w > 0.0) {
-    float straight = anchor.w * clamp(1.0 - progress, 0.0, 1.0);
-    point.xyz += straight * (fitted.xyz / fitted.w - anchor.xyz / anchor.w);
+    vec3 delta = fitted.xyz / fitted.w - anchor.xyz / anchor.w;
+    point.x += anchor.w * clamp(1.0 - roadDockTilt * progress, 0.0, 1.0) * delta.x;
+    point.yz += anchor.w * clamp(1.0 - progress, 0.0, 1.0) * delta.yz;
     anchor = fitted;
   }
   float t = clamp(progress / 0.25, 0.0, 1.0);

@@ -74,6 +74,13 @@ export type RoadFitTarget =
 export interface RoadReference {
   readonly geometry: Geometry;
   readonly fit?: RoadFitTarget;
+  /** How far the straightened road follows the keyboard's perspective: 0 world direction, 1 full. */
+  readonly tilt?: number | undefined;
+}
+/** The straightening target with its tilt, as the dock takes it. */
+interface DockFit {
+  readonly source: FitCameras | "keyboard";
+  readonly tilt: number;
 }
 
 /** The layout's straightening target for a road fit. */
@@ -143,11 +150,12 @@ export function nativeRoadCameras(
 ) {
   const cameras = keyboardRoadCameras(base, geometry, options);
   const fit = reference?.fit;
+  const source =
+    fit === "keyboard" || !fit ? fit : snapshotRoadCameras(fit.prefs, keys, fit.geometry, options);
   return {
     cameras,
     world: reference ? worldRoadCameras(keys, reference.geometry, options) : cameras,
-    fit:
-      fit === "keyboard" || !fit ? fit : snapshotRoadCameras(fit.prefs, keys, fit.geometry, options)
+    fit: source && { source, tilt: reference?.tilt ?? 0 }
   };
 }
 
@@ -158,6 +166,7 @@ export class ReferenceRoadDock {
   private fit: NoteCameras | undefined;
   private fitLanes: ReadonlyMap<number, NoteLaneProjection> | undefined;
   private fitSource: FitCameras | "keyboard" | undefined;
+  private tilt = 0;
   private keys: ReadonlyMap<number, KeyRect> | undefined;
 
   /** Without a laid-out dock the road keeps its plain world placement. */
@@ -185,8 +194,10 @@ export class ReferenceRoadDock {
   }
 
   /** The keyboard the standard road straightens onto, for the three road pass. */
-  get fitKeyboard(): WorldCamera | "keyboard" | undefined {
-    return this.cameras && (this.fitSource === "keyboard" ? "keyboard" : this.fitSource?.keyboard);
+  get fitKeyboard(): { camera: WorldCamera | "keyboard"; tilt: number } | undefined {
+    const camera =
+      this.cameras && (this.fitSource === "keyboard" ? "keyboard" : this.fitSource?.keyboard);
+    return camera && { camera, tilt: this.tilt };
   }
 
   get active(): boolean {
@@ -200,12 +211,14 @@ export class ReferenceRoadDock {
     keys: ReadonlyMap<number, KeyRect>,
     width: number,
     fog: Parameters<typeof nativeRoadCameraLayout>[2],
-    fit?: FitCameras | "keyboard"
+    fit?: DockFit
   ) {
     const layout = nativeRoadCameraLayout(world, width, fog);
-    this.fitSource = fit;
+    const source = fit?.source;
+    this.fitSource = source;
+    this.tilt = fit?.tilt ?? 0;
     const shown = world === cameras ? undefined : cameras;
-    const hitY = this.set(shown, keys, width, fit === "keyboard" ? cameras : fit);
+    const hitY = this.set(shown, keys, width, source === "keyboard" ? cameras : source);
     return hitY === undefined ? layout : { ...layout, hitY };
   }
 
@@ -295,7 +308,8 @@ export class ReferenceRoadDock {
           1 - Math.max(0, Math.min(1, y / height)),
           fitted,
           keyboard,
-          height
+          height,
+          this.tilt
         )
       : point;
   }

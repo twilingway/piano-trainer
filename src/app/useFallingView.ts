@@ -148,7 +148,11 @@ export function useFallingView({
     viewRef.current?.setRoadShape({
       far: staffPrefs.roadFar,
       horizon: staffPrefs.roadHorizon,
-      fit: { mode: staffPrefs.roadFit, camera: staffPrefs.roadFitCamera ?? undefined }
+      fit: {
+        mode: staffPrefs.roadFit,
+        camera: staffPrefs.roadFitCamera ?? undefined,
+        tilt: staffPrefs.roadNoteTilt
+      }
     });
   }, [
     viewRef,
@@ -168,7 +172,8 @@ export function useFallingView({
     staffPrefs.roadFar,
     staffPrefs.roadHorizon,
     staffPrefs.roadFit,
-    staffPrefs.roadFitCamera
+    staffPrefs.roadFitCamera,
+    staffPrefs.roadNoteTilt
   ]);
 
   useEffect(() => {
