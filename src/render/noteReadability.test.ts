@@ -17,7 +17,7 @@ describe("shared direct note readability", () => {
       owns: () => true,
       hintSpeed: 0.75
     };
-    const road = { noteField: () => ({ length: 3000, whiteStep: 23.5 }) };
+    const road = { notePlace: (x: number, y: number) => ({ x, y: y / 4, scale: 1 }) };
     for (const visual of [
       roadFrameState(frame, undefined, 400, 20),
       roadFrameState(frame, road, 400, 20)

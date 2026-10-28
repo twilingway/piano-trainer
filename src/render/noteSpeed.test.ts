@@ -51,16 +51,27 @@ describe("one note speed in metres", () => {
     expect(noteLookAhead(Infinity, 20)).toBeUndefined();
   });
 
-  it("takes the road's field when the road draws the notes, else the flat lane", () => {
+  it("crosses the same on-screen white keys a second at the hit line on any road", () => {
+    const keysPerSecond = NOTE_SPEED_MM / KEYBOARD_WHITE_STEP;
+    // A road squeezing depth (perspective) or widening keys on screen near the hit line.
+    for (const [depth, across] of [
+      [1, 1],
+      [0.25, 1],
+      [0.1, 1.6],
+      [0.6, 0.7]
+    ] as const) {
+      const road = {
+        notePlace: (x: number, y: number) => ({ x: x * across, y: 100 + y * depth, scale: 1 })
+      };
+      const { lookAhead } = roadFrameState(frame, road, 400, 20, 300);
+      const screenSpeed = (400 * depth) / lookAhead;
+      expect(screenSpeed / (20 * across)).toBeCloseTo(keysPerSecond, 9);
+    }
+    // Without a road the lane itself is the screen.
     const flat = roadFrameState(frame, undefined, 400, 20);
-    expect(flat.lookAhead).toBeCloseTo(noteLookAhead(400, 20) ?? NaN, 9);
-    const road = { noteField: () => ({ length: 5000, whiteStep: 23.5 }) };
-    expect(roadFrameState(frame, road, 400, 20).lookAhead).toBeCloseTo(
-      noteLookAhead(5000, 23.5) ?? NaN,
-      9
-    );
-    const unready = { noteField: () => undefined };
-    expect(roadFrameState(frame, unready, 400, 20).lookAhead).toBeCloseTo(flat.lookAhead, 9);
+    expect(400 / flat.lookAhead / 20).toBeCloseTo(keysPerSecond, 9);
+    const unready = { notePlace: () => undefined };
+    expect(roadFrameState(frame, unready, 400, 20).lookAhead).toBe(frame.lookAhead);
     expect(roadFrameState(frame, undefined, 0, 20).lookAhead).toBe(frame.lookAhead);
   });
 });

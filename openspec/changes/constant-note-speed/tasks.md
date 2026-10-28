@@ -17,3 +17,10 @@
 - [ ] 2.1 `pnpm check` and `pnpm spec:validate`
 - [ ] 2.2 Browser on the task stand: reference view, far horizon and hidden staff show the same note
       speed and length in white-key steps
+
+## 3. Screen speed at the hit line (after PR #253)
+
+- [x] 3.1 Replace the world speed on roads with the on-screen speed at the hit line
+      (`screenNoteField` over `RoadLayer.notePlace`); flat lanes unchanged
+- [x] 3.2 Tests: the same on-screen white keys a second at the hit line for roads that squeeze depth
+      or widen keys; spec, proposal and design updated

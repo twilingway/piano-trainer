@@ -451,7 +451,8 @@ export class FallingNotesView {
     const effects = this.flatEffects.current(this.parts.keys || this.parts.notes);
     this.road?.setAnimationEffects(effects);
     const effectRoad = road ?? (this.road?.drawsNativeKeyboard ? this.road : undefined);
-    const noteState = roadFrameState(state, road, geometry.hitY, geometry.whiteWidth);
+    const centre = this.pan + width / 2;
+    const noteState = roadFrameState(state, road, geometry.hitY, geometry.whiteWidth, centre);
     this.notesLayer.root.renderable = !road?.drawsNativeRoad;
     this.plasma.draw(
       noteState,

@@ -1,5 +1,4 @@
-import { KEYBOARD_WHITE_STEP } from "./keyboardMetrics";
-import { NOTE_SPEED_MM, noteLookAhead } from "./noteSpeed";
+import { noteLookAhead } from "./noteSpeed";
 import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
 import { metricKeyboardCamera } from "./metricKeyboardCamera";
 import { nativeNoteCameras } from "./nativeViewCameras";
@@ -79,6 +78,8 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
 /** The harness road's field in seconds, and the flat lane's: hitY 400 px under 40 px keys. */
 const ROAD_LOOK_AHEAD = 6;
 const FLAT_LOOK_AHEAD = noteLookAhead(400, 40) ?? NaN;
+/** The harness road shows keys this much narrower than the lane, so its rows take 6 s. */
+const ROAD_ACROSS = FLAT_LOOK_AHEAD / ROAD_LOOK_AHEAD;
 
 const notes: SongNote[] = [
   { id: "left", pitch: 48, hand: "left", finger: 5, start: 0, startBeat: 0, duration: 1 },
@@ -124,13 +125,9 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
       setAnimationEffects: vi.fn(),
       draw: roadDraw,
       hitLineY: 400,
-      notePlace: (x: number, y: number) => ({ x, y, scale: 1 }),
+      notePlace: (x: number, y: number) => ({ x: x * ROAD_ACROSS, y, scale: 1 }),
       noteLaneY: () => 22,
       beatY: (y: number) => y,
-      noteField: () => ({
-        length: NOTE_SPEED_MM * ROAD_LOOK_AHEAD,
-        whiteStep: KEYBOARD_WHITE_STEP
-      }),
       beginNotes: vi.fn(),
       setLegacyLabels: vi.fn(),
       endNotes: vi.fn(),

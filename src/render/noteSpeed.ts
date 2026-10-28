@@ -1,9 +1,9 @@
 import { KEYBOARD_WHITE_STEP } from "./keyboardMetrics";
-import type { WorldCamera } from "./worldCamera";
 
 /**
- * One fall speed for every view, in the real piano's millimetres per second: the 3D «Прямо»
- * road with the staff on, which showed 2.22 s over its field.
+ * One fall speed for every view at the hit line, in the real piano's millimetres per second
+ * (7.3 white keys a second) of the keys as the screen shows them there: the 3D «Прямо» road with
+ * the staff on, which showed 2.22 s over its field. Deeper, perspective slows a note down.
  */
 export const NOTE_SPEED_MM = 172;
 
@@ -12,7 +12,7 @@ export const LOOK_AHEAD_CAP_S = 6;
 
 /**
  * Seconds a note takes from the far end of the field to the hit line. The field and the white-key
- * step are in the same units (pixels flat, world units on the road), so the speed stays in metres.
+ * step are in the same units, so the speed is in white keys a second.
  */
 export function noteLookAhead(fieldLength: number, whiteStep: number): number | undefined {
   if (!(fieldLength > 0) || !(whiteStep > 0) || !Number.isFinite(fieldLength * whiteStep))
@@ -20,15 +20,26 @@ export function noteLookAhead(fieldLength: number, whiteStep: number): number | 
   return (fieldLength * KEYBOARD_WHITE_STEP) / (NOTE_SPEED_MM * whiteStep);
 }
 
-/** The road from the hit row to its far end, and the white-key step, both in road units. */
-export function roadNoteField(
-  camera: Pick<WorldCamera, "roadFarZ" | "near" | "params">,
-  whiteWidth: number
-): { length: number; whiteStep: number } {
-  return {
-    length: camera.roadFarZ - camera.near.z,
-    whiteStep: whiteWidth * (camera.params.sourceUnits ?? 0.5)
-  };
+/**
+ * The road's rows down to the hit line and the white key as the screen shows it at the hit line,
+ * in rows: a note then crosses the same on-screen white keys a second there as on a flat lane.
+ */
+export function screenNoteField(
+  place: (keyX: number, row: number) => { readonly x: number; readonly y: number } | undefined,
+  keyX: number,
+  whiteWidth: number,
+  hitY: number
+): { length: number; whiteStep: number } | undefined {
+  const step = hitY / 100;
+  const hit = place(keyX, hitY);
+  const before = place(keyX, hitY - step);
+  const left = place(keyX - whiteWidth / 2, hitY);
+  const right = place(keyX + whiteWidth / 2, hitY);
+  if (!hit || !before || !left || !right || !(step > 0)) return undefined;
+  const rowScreen = Math.hypot(hit.x - before.x, hit.y - before.y) / step;
+  const keyScreen = Math.hypot(right.x - left.x, right.y - left.y);
+  if (!(rowScreen > 0) || !(keyScreen > 0)) return undefined;
+  return { length: hitY, whiteStep: keyScreen / rowScreen };
 }
 
 /** The look-ahead of decisions that must not change with the field length. */
