@@ -2,6 +2,7 @@
 import { act, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { CAMERA_PRESETS } from "../render/worldCamera";
 import { DEFAULT_STAFF_PREFS, type StaffPrefs } from "./staffPreferences";
 import { useKeyboardSettings } from "./useKeyboardSettings";
 
@@ -55,4 +56,27 @@ it("writes only the profile selected by note projection, retaining its other val
     freePerspectiveField: { ...prefs.freePerspectiveField, width: 20 }
   });
   expect(prefs.freeDirectField.height).toBe(3);
+});
+
+it("retakes a button road fit when a camera preset is chosen, not when a slider moves", () => {
+  const prefs = {
+    ...DEFAULT_STAFF_PREFS,
+    roadFit: "button" as const,
+    camera: CAMERA_PRESETS.top,
+    roadFitCamera: CAMERA_PRESETS.top
+  };
+  act(() => {
+    root.render(<Harness prefs={prefs} />);
+  });
+  const player = { ...CAMERA_PRESETS.player, scale: 1.2 };
+  settings.onCamera(player);
+  expect(change).toHaveBeenLastCalledWith({ camera: player, roadFitCamera: player });
+  const moved = { ...CAMERA_PRESETS.top, pitch: 80 };
+  settings.onCamera(moved);
+  expect(change).toHaveBeenLastCalledWith({ camera: moved });
+  act(() => {
+    root.render(<Harness prefs={{ ...prefs, roadFit: "auto" }} />);
+  });
+  settings.onCamera(player);
+  expect(change).toHaveBeenLastCalledWith({ camera: player });
 });
