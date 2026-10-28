@@ -16,6 +16,8 @@ export class FreeSceneCamera {
   private readonly bounds = new Box3();
   private readonly scoreBounds = new Box3();
   private readonly roadBounds = new Box3();
+  private readonly world = new Box3();
+  private readonly corner = new Vector3();
   private readonly centre = new Vector3();
   private readonly size = new Vector3();
   private radius = 1;
@@ -148,9 +150,10 @@ export class FreeSceneCamera {
       }
       this.bounds.union(part.applyMatrix4(object.matrixWorld));
     });
-    this.bounds.union(this.scoreBounds).union(this.roadBounds);
     if (this.bounds.isEmpty())
       this.bounds.setFromCenterAndSize(new Vector3(), new Vector3(400, 400, 400));
+    // «Вернуться к пианино» frames the instrument; road and poster only keep far and zoom-out open.
+    this.world.copy(this.bounds).union(this.scoreBounds).union(this.roadBounds);
     this.bounds.getCenter(this.centre);
     this.bounds.getSize(this.size);
     const radius = Math.max(1, this.size.length() / 2);
@@ -160,6 +163,7 @@ export class FreeSceneCamera {
       MAX_ROAD_WORLD_Z * Math.max(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z));
     const direction = new Vector3(0.4, 0.55, 1).normalize();
     const distance = boxCameraDistance(this.bounds, this.camera.fov, this.camera.aspect, direction);
+    const overview = boxCameraDistance(this.world, this.camera.fov, this.camera.aspect, direction);
     if (resetPose) {
       this.camera.position.copy(this.centre).addScaledVector(direction, distance);
       this.controls.target.copy(this.centre);
@@ -168,9 +172,8 @@ export class FreeSceneCamera {
     this.controls.minDistance = resetPose
       ? Math.max(1, radius * 0.05)
       : Math.min(Math.max(1, radius * 0.05), currentDistance);
-    this.controls.maxDistance = resetPose
-      ? distance * 20
-      : Math.max(distance * 20, currentDistance);
+    const farthest = Math.max(distance * 20, overview * 2);
+    this.controls.maxDistance = resetPose ? farthest : Math.max(farthest, currentDistance);
 
     this.controls.update();
     this.updateClip();
@@ -181,10 +184,18 @@ export class FreeSceneCamera {
 
   private updateClip(): void {
     const near = Math.max(0.1, this.radius / 200);
-    // Keys/pianist bounds are cached at reset; leave room for the road beyond them.
+    // Keys/pianist bounds are cached at reset; leave room for the road and poster beyond them.
+    const { min, max } = this.world;
+    const eye = this.camera.position;
+    this.corner.set(
+      eye.x * 2 < min.x + max.x ? max.x : min.x,
+      eye.y * 2 < min.y + max.y ? max.y : min.y,
+      eye.z * 2 < min.z + max.z ? max.z : min.z
+    );
     const far = Math.max(
       this.radius * 20,
-      this.camera.position.distanceTo(this.centre) + Math.max(this.radius * 4, this.roadReach * 1.1)
+      eye.distanceTo(this.centre) + Math.max(this.radius * 4, this.roadReach * 1.1),
+      this.world.isEmpty() ? 0 : eye.distanceTo(this.corner) * 1.05
     );
     if (this.camera.near === near && this.camera.far === far) return;
     this.camera.near = near;

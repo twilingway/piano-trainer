@@ -286,19 +286,32 @@ it("keeps submillimetre depth detail and fits far to orbit distance without resc
   v.dispose();
 });
 
-it("includes the structural score only on reset and never moves an existing pose when a tile becomes ready", () => {
+it("frames the instrument on reset, keeps road and poster inside depth and never moves a pose when a tile becomes ready", () => {
   const v = setup();
   const position = v.view.camera.position.clone();
   v.view.setScoreBounds(new Box3(new Vector3(-750, 2200, -260), new Vector3(750, 2600, -260)));
+  v.view.setRoadBounds(new Box3(new Vector3(-900, 0, -9000), new Vector3(900, 2000, -200)));
   v.view.update(800, 600, v.subject);
   expect(v.view.camera.position.distanceTo(position)).toBeLessThan(1e-6);
   v.view.reset(v.subject);
-  for (const x of [-750, 750])
-    for (const y of [2200, 2600]) {
-      const point = new Vector3(x, y, -260).project(v.view.camera);
-      expect(Math.abs(point.x)).toBeLessThan(1);
-      expect(Math.abs(point.y)).toBeLessThan(1);
-    }
+  expect(v.view.camera.position.distanceTo(position)).toBeLessThan(1e-6);
+  const camera = v.view.camera;
+  let span = 0;
+  for (const x of [-300, 300])
+    for (const y of [-400, 400])
+      for (const z of [-200, 200]) {
+        const point = new Vector3(x, y, z).project(camera);
+        expect(Math.abs(point.x)).toBeLessThan(1);
+        expect(Math.abs(point.y)).toBeLessThan(1);
+        span = Math.max(span, Math.abs(point.x), Math.abs(point.y));
+      }
+  expect(span).toBeGreaterThan(0.8);
+  for (const point of [
+    new Vector3(-900, 0, -9000),
+    new Vector3(900, 2000, -9000),
+    new Vector3(-750, 2600, -260)
+  ])
+    expect(Math.abs(point.project(camera).z)).toBeLessThan(1);
   v.dispose();
 });
 
