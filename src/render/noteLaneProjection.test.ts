@@ -65,6 +65,10 @@ describe("raised black note lanes", () => {
       const width = 28,
         bottom = hitY * 0.8;
       const top = readableRoadTop(720, bottom - 0.1, bottom, width, hitY, notes, 0.05, lane);
+      if (notes.params.orthographicScale === undefined) {
+        expect(top).toBe(bottom - 0.1);
+        continue;
+      }
       const surface = (sourceY: number) =>
         projectNoteLane(
           notes.project(
@@ -76,10 +80,7 @@ describe("raised black note lanes", () => {
         );
       const lower = surface(bottom),
         upper = surface(top);
-      const minimum =
-        notes.params.orthographicScale === undefined
-          ? Math.max(24, Math.min(64, width * lower.scale * 0.8))
-          : Math.max(18, Math.min(30, width * lower.scale * 0.8));
+      const minimum = Math.max(18, Math.min(30, width * lower.scale * 0.8));
       expect(lower.y - upper.y).toBeCloseTo(minimum, 6);
     }
   });
