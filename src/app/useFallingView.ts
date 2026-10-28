@@ -182,7 +182,6 @@ export function useFallingView({
   useEffect(() => {
     viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
     viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
-    viewRef.current?.setCameraComposition(staffPrefs.cameraComposition);
     viewRef.current?.setWorldFov(staffPrefs.worldFov);
     viewRef.current?.setFreeCamera(staffPrefs.freeCamera);
     viewRef.current?.setFreeCameraMovement(staffPrefs.freeCameraWasd && !cameraInputBlocked);
@@ -197,7 +196,6 @@ export function useFallingView({
     staffPrefs.pianist,
     staffPrefs.keyStyle,
     staffPrefs.handStyle,
-    staffPrefs.cameraComposition,
     staffPrefs.worldFov,
     staffPrefs.freeCamera,
     staffPrefs.freeCameraWasd,

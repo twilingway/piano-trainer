@@ -575,13 +575,13 @@ it("retains the 3D note choice while using flat keys and after reload", async ()
   expect(prefs.staffPrefs.fallingNoteStyle).toBe("glass");
 });
 
-describe("world compositions", () => {
+describe("world camera", () => {
   it("preserves independent cameras and signed horizon values through reload", async () => {
     await mount();
     const original = prefs.staffPrefs.camera;
     await act(async () => {
       prefs.updateStaffPrefs({
-        cameraComposition: "free",
+        freeCamera: true,
         worldFov: 73,
         freePerspectiveField: {
           height: -30.05,
@@ -601,7 +601,7 @@ describe("world compositions", () => {
     root = createRoot(host);
     await mount();
     expect(prefs.staffPrefs).toMatchObject({
-      cameraComposition: "free",
+      freeCamera: true,
       worldFov: 73,
       freePerspectiveField: {
         height: -30.05,
@@ -614,14 +614,19 @@ describe("world compositions", () => {
     expect(prefs.staffPrefs.camera).toEqual(original);
   });
   it("safely fills older or corrupt saved camera choices", () => {
-    expect(normalizeStaffPrefs({ cameraComposition: "other", worldFov: "80" })).toMatchObject({
-      cameraComposition: "standard",
-      worldFov: 45
-    });
-    expect(normalizeStaffPrefs({ cameraComposition: "game", worldFov: 120 })).toMatchObject({
-      cameraComposition: "game",
-      worldFov: 100
-    });
+    expect(normalizeStaffPrefs({ worldFov: "80" }).worldFov).toBe(45);
+    expect(normalizeStaffPrefs({ worldFov: 120 }).worldFov).toBe(100);
+  });
+  it("turns the removed free-world composition into the free camera and drops the field", () => {
+    const camera = { ...CAMERA_PRESETS.player, pitch: 30 };
+    const free = normalizeStaffPrefs({ cameraComposition: "free", worldFov: 70, camera });
+    expect(free).toMatchObject({ freeCamera: true, worldFov: 70, camera });
+    expect(free).not.toHaveProperty("cameraComposition");
+    for (const cameraComposition of ["game", "other", 3, null]) {
+      expect(normalizeStaffPrefs({ cameraComposition }).freeCamera).toBe(false);
+      expect(normalizeStaffPrefs({ cameraComposition, freeCamera: true }).freeCamera).toBe(true);
+      expect(normalizeStaffPrefs({ cameraComposition })).not.toHaveProperty("cameraComposition");
+    }
   });
   it("restores the road straightening and repairs only its own corrupt values", () => {
     // Straight lanes into the keys by default; the bend stays a choice.

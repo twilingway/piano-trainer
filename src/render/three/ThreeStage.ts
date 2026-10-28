@@ -1,7 +1,5 @@
-import type { CameraComposition } from "../cameraComposition";
 import { configureDockedRoad, updateDockedKeyOffsets } from "./dockedRoadProjection";
-import { DockedRoadLabels } from "./DockedRoadLabels";
-import { invalidateDockedScenePasses } from "./dockedScenePasses";
+import { invalidateKeyboardCasePasses } from "./keyboardCasePasses";
 import { StageWorldScore } from "./StageWorldScore";
 import { pickKeyboardKey } from "./pickKeyboardKey";
 import { configureStageCamera } from "./configureStageCamera";
@@ -49,9 +47,6 @@ const DIP_RATE = 30;
 /** The keyboard drawn by three.js using the shared Three renderer. */
 export class ThreeStage {
   private readonly free: FreeSceneCamera;
-  private readonly game: FreeSceneCamera;
-  private composition: CameraComposition = "standard";
-  private dockedLabels: DockedRoadLabels | undefined;
   private freeEnabled = false;
   private performanceEnabled = false;
   private bassFire = false;
@@ -102,7 +97,6 @@ export class ThreeStage {
     private readonly keyboard: Keyboard88
   ) {
     this.free = new FreeSceneCamera(renderer.domElement);
-    this.game = new FreeSceneCamera(renderer.domElement, true);
     this.scorePoster = new StageWorldScore(renderer, this.scene, this.keys, this.free);
     this.cabinet = new PianoCase(keyboard);
     this.performance = new PerformanceScene(this.scene);
@@ -166,10 +160,7 @@ export class ThreeStage {
     this.lighting.position.copy(this.keys.position);
     this.road.visible = roadFrame !== undefined;
     this.roadNotes.setViewport(screen.width, screen.height);
-    // Every world view outside the staging draws the world and the keys with separate cameras.
-    const docked =
-      !this.performanceEnabled && (this.composition !== "standard" || this.freeEnabled);
-    const sceneEnabled = this.performanceEnabled || this.freeEnabled || docked;
+    const sceneEnabled = this.performanceEnabled || this.freeEnabled;
     const effectBoxes = nativeKeyboard ? this.boxes : this.roadBoxes;
     if (sceneEnabled) {
       this.worldStage.prepare(this.keys, effectBoxes, roadCamera.near.z);
@@ -226,22 +217,21 @@ export class ThreeStage {
       hinge.position.y += (target - hinge.position.y) * step;
     }
     updateDockedKeyOffsets(this.hinged);
-    const inspecting = (this.freeEnabled || docked) && !this.performanceEnabled;
-    const worldView = docked && this.composition === "game" ? this.game : this.free;
-    this.scorePoster.draw(keys, this.boxes, inspecting, roadFrame, worldView);
-    prepareFreeRoadBounds(worldView, this.road, roadFrame, inspecting);
-    const separate = !this.performanceEnabled;
-    if (inspecting) {
-      worldView.update(screen.width, screen.height, this.keys, deltaSeconds);
-      if (docked) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
-    } else {
+    const inspecting = this.freeEnabled && !this.performanceEnabled;
+    this.scorePoster.draw(keys, this.boxes, inspecting, roadFrame, this.free);
+    prepareFreeRoadBounds(this.free, this.road, roadFrame, inspecting);
+    // Free and performance cameras see one world with the keys in it; only the standard view
+    // draws the keys with their own camera.
+    const separate = !this.performanceEnabled && !this.freeEnabled;
+    if (inspecting) this.free.update(screen.width, screen.height, this.keys, deltaSeconds);
+    else {
       this.configureCamera(this.roadCamera, roadCamera, screen);
       if (separate) this.configureCamera(this.keyboardCamera, keyboardCamera, screen, keys.offset);
     }
     const camera = this.performanceEnabled
       ? this.performance.camera
       : inspecting
-        ? worldView.camera
+        ? this.free.camera
         : this.roadCamera;
     this.pickCamera = separate ? this.keyboardCamera : camera;
     this.beforeRender?.(this.pickCamera, separate);
@@ -260,8 +250,7 @@ export class ThreeStage {
       worldEffects,
       roadFrame,
       this.freeEnabled && !this.performanceEnabled,
-      effects,
-      docked ? this.keyboardCamera : undefined
+      effects
     );
     this.roadGuides.setDocked(roadDock);
     prepareRoadProjection(
@@ -282,19 +271,6 @@ export class ThreeStage {
       // Straightening belongs to the standard road only; world views keep their plain bend.
       !inspecting && { ...keys, screen }
     );
-    // Standard keeps the overlay labels: they already follow the dock through notePlace.
-    if (roadDock && docked) this.dockedLabels ??= new DockedRoadLabels();
-    this.dockedLabels?.prepare(
-      roadFrame,
-      roadCamera,
-      this.road,
-      camera,
-      this.keyboardCamera,
-      screen,
-      roadDock && docked,
-      inspecting,
-      this.keys
-    );
     this.renderer.resetState();
     try {
       this.renderer.setViewport(0, 0, screen.width, screen.height);
@@ -313,19 +289,17 @@ export class ThreeStage {
           : nativeKeyboard
             ? this.body
             : undefined,
-        roadDock || (!this.freeEnabled && !this.performanceEnabled && roadEffects)
+        roadDock && roadEffects
           ? () => {
               try {
-                this.dockedLabels?.draw(this.renderer);
-                if (!this.freeEnabled && !this.performanceEnabled) roadEffects?.();
+                roadEffects();
               } finally {
                 // The flat pass changes camera state; rebind before the depth-only pass.
                 this.renderer.resetState();
                 this.renderer.setViewport(0, 0, screen.width, screen.height);
               }
             }
-          : undefined,
-        docked
+          : undefined
       );
     } finally {
       // Return GL defaults even if a pass failed; the host can draw the flat scene safely.
@@ -334,24 +308,14 @@ export class ThreeStage {
   }
 
   private readonly configureCamera = configureStageCamera;
-  suspendProjection = (): void => {
-    this.dockedLabels?.suspend();
-  };
 
   get nativeEffectsReady(): boolean {
-    const world = this.performanceEnabled || this.freeEnabled || this.composition !== "standard";
+    const world = this.performanceEnabled || this.freeEnabled;
     return world && this.worldStage.ready;
-  }
-
-  setCameraComposition(mode: CameraComposition): void {
-    if (mode !== this.composition) invalidateDockedScenePasses(this.scene);
-    this.composition = mode;
-    this.free.setEnabled(this.freeEnabled && mode !== "game" && !this.performanceEnabled);
   }
 
   setWorldFov(fov: number): void {
     this.free.setFov(fov);
-    this.game.setFov(fov);
   }
 
   setFreeCamera(on: boolean): void {
@@ -361,7 +325,7 @@ export class ThreeStage {
     }
     this.freeEnabled = on;
     this.syncSceneLighting();
-    this.free.setEnabled(on && !this.performanceEnabled && this.composition !== "game");
+    this.free.setEnabled(on && !this.performanceEnabled);
   }
 
   setPerformanceScene(on: boolean): void {
@@ -370,7 +334,7 @@ export class ThreeStage {
     this.worldStage.invalidate();
     this.performanceEnabled = on;
     this.syncSceneLighting();
-    this.free.setEnabled(this.freeEnabled && !on && this.composition !== "game");
+    this.free.setEnabled(this.freeEnabled && !on);
   }
 
   private syncSceneLighting(): void {
@@ -383,7 +347,6 @@ export class ThreeStage {
 
   resetFreeCamera(): void {
     this.free.invalidate();
-    this.game.invalidate();
     this.performance.invalidate();
     this.worldStage.invalidate();
   }
@@ -418,7 +381,7 @@ export class ThreeStage {
 
   /** Something of the host's that rides with the keys: the local pianist. */
   addToKeys(object: Object3D): void {
-    invalidateDockedScenePasses(this.scene);
+    invalidateKeyboardCasePasses(this.scene);
     this.keys.add(object);
     this.free.invalidate(false);
     this.performance.invalidate();
@@ -426,7 +389,7 @@ export class ThreeStage {
   }
 
   removeFromKeys(object: Object3D): void {
-    invalidateDockedScenePasses(this.scene);
+    invalidateKeyboardCasePasses(this.scene);
     object.removeFromParent();
     this.free.invalidate(false);
     this.performance.invalidate();
@@ -437,7 +400,7 @@ export class ThreeStage {
   setSongStage(stage: SongStage | undefined): void {
     if (stage?.sign !== this.sign) {
       this.sign = stage?.sign;
-      invalidateDockedScenePasses(this.scene);
+      invalidateKeyboardCasePasses(this.scene);
     }
     this.worldStage.setSign(stage?.sign);
     this.bassFire = stage?.bassFire === true;
@@ -462,8 +425,6 @@ export class ThreeStage {
     this.disposed = true;
     this.beforeRender = undefined;
     this.free.dispose();
-    this.game.dispose();
-    this.dockedLabels?.dispose();
     this.scorePoster.dispose();
     this.performance.dispose();
     this.worldStage.dispose();
@@ -482,7 +443,7 @@ export class ThreeStage {
   }
 
   private build(keys: KeysScene): void {
-    invalidateDockedScenePasses(this.scene);
+    invalidateKeyboardCasePasses(this.scene);
     this.free.invalidate(false);
     this.clear(true);
     this.version = keys.version;

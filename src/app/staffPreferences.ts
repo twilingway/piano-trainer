@@ -1,9 +1,5 @@
 import { normalizeRoadHorizon } from "../render/roadHorizon";
-import {
-  normalizeCameraComposition,
-  normalizeWorldFov,
-  type CameraComposition
-} from "../render/cameraComposition";
+import { normalizeWorldFov } from "../render/cameraComposition";
 import type { FallingNoteStyle } from "../render/fallingNoteStyle";
 import {
   DEFAULT_FREE_DIRECT_FIELD,
@@ -58,7 +54,6 @@ export interface StaffPrefs {
   /** The local pianist model at the 3D keys instead of the live hands, when it is there. */
   readonly pianist: boolean;
   /** Inspection mode persists; the manual orbit pose is transient. */
-  readonly cameraComposition: CameraComposition;
   readonly worldFov: number;
   readonly freeCamera: boolean;
   readonly freeCameraWasd: boolean;
@@ -120,7 +115,6 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   roadGuides: false,
   fallingNoteStyle: "filled",
   pianist: false,
-  cameraComposition: "standard",
   worldFov: 45,
   freeCamera: false,
   freeCameraWasd: false,
@@ -192,9 +186,9 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     roadGuides: boolean("roadGuides"),
     fallingNoteStyle: choice("fallingNoteStyle", ["filled", "flat", "glass"]),
     pianist: boolean("pianist"),
-    cameraComposition: normalizeCameraComposition(raw.cameraComposition),
     worldFov: normalizeWorldFov(raw.worldFov),
-    freeCamera: boolean("freeCamera"),
+    // The removed «free world» composition was the free camera with a pinned keyboard.
+    freeCamera: raw.cameraComposition === "free" || boolean("freeCamera"),
     freeCameraWasd: boolean("freeCameraWasd"),
     freeDirectField: normalizeFreeRoadLayout(raw.freeDirectField, DEFAULT_FREE_DIRECT_FIELD),
     freePerspectiveField: normalizeFreeRoadLayout(

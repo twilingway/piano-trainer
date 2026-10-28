@@ -5,6 +5,8 @@ import type { CameraPrefs } from "../../render/worldCamera";
 interface Props {
   readonly camera: CameraPrefs;
   readonly onChange: (camera: CameraPrefs) => void;
+  /** The free camera shows the whole stage; the saved keyboard view waits for its return. */
+  readonly disabled?: boolean;
 }
 
 const PRESETS: readonly { key: keyof typeof CAMERA_PRESETS; label: string }[] = [
@@ -37,7 +39,7 @@ const CONTROLS: readonly {
 ];
 
 /** Camera controls stay in the scrollable settings rather than covering the piano. */
-export function CameraSettings({ camera, onChange }: Props) {
+export function CameraSettings({ camera, onChange, disabled = false }: Props) {
   const { t } = useI18n();
   return (
     <>
@@ -49,6 +51,7 @@ export function CameraSettings({ camera, onChange }: Props) {
               className="game-button"
               type="button"
               key={key}
+              disabled={disabled}
               onClick={() => {
                 onChange({ ...CAMERA_PRESETS[key], scale: camera.scale });
               }}
@@ -69,6 +72,7 @@ export function CameraSettings({ camera, onChange }: Props) {
               max={max}
               step={step}
               value={camera[key]}
+              disabled={disabled}
               onChange={(event) => {
                 onChange({ ...camera, [key]: Number(event.target.value) });
               }}
@@ -83,6 +87,7 @@ export function CameraSettings({ camera, onChange }: Props) {
       <button
         className="game-button"
         type="button"
+        disabled={disabled}
         onClick={() => {
           onChange(CAMERA_PRESETS.top);
         }}
