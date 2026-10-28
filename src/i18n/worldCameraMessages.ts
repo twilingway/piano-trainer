@@ -1,5 +1,5 @@
 import type { Messages } from "./locales";
-export const cameraCompositionMessages: Messages = {
+export const worldCameraMessages: Messages = {
   "Угол обзора мира, °": { en: "World field of view, °" },
   "Камера клавиатуры": { en: "Keyboard camera" },
   "Камера нот и мира": { en: "Notes and world camera" },

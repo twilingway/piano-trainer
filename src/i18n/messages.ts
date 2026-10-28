@@ -5,7 +5,7 @@ import { musicProgressMessages } from "./musicProgressMessages";
 import { musicControllerMessages } from "./musicControllerMessages";
 import { musicCourseRuntimeMessages } from "./musicCourseRuntimeMessages";
 import { musicCourseMessages } from "./musicCourseMessages";
-import { cameraCompositionMessages } from "./cameraCompositionMessages";
+import { worldCameraMessages } from "./worldCameraMessages";
 import { settingsHelpMessages } from "./settingsHelpMessages";
 import { performanceMessages } from "./performanceMessages";
 import { instrumentMessages } from "./instrumentMessages";
@@ -34,7 +34,7 @@ export const messages: Messages = {
   ...musicControllerMessages,
   ...musicCourseMessages,
   ...musicCourseRuntimeMessages,
-  ...cameraCompositionMessages,
+  ...worldCameraMessages,
   ...settingsHelpMessages,
   ...instrumentMessages,
   ...graphicsMessages,
