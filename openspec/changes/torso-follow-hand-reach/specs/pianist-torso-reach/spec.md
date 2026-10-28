@@ -167,3 +167,27 @@ interfaces SHALL использоваться только для классиф
 - **WHEN** вычислительный classifier делит кожу на LEFT, RIGHT и BODY
 - **THEN** arm–body сохраняет прежнее покрытие всего NONLEFT, включая RIGHT; исходные физические
   masks и query не сужаются, caps не участвуют в clearance
+
+### Requirement: Отдельная исправленная исходная поза
+
+При подтверждённом самопересечении исходной кожи система SHALL сохранять historical source и
+checkpoint64 неизменными и SHALL отклонять его как новую LEFT calibration. Исправленная pose base
+SHALL иметь собственную source identity и заново проходить source, bilateral/world,
+correctives/nails, embeddedness и saved readback. Физические masks, allowances и shoulder exclusion
+SHALL сохраняться.
+
+#### Scenario: Пересекающийся source
+
+- **WHEN** независимые original-skin и saved Blender проверки подтверждают самопересечение source631
+- **THEN** calibration остаётся null, исторические файлы сохраняются и candidate admission запрещён
+
+#### Scenario: Отдельный новый standby
+
+- **WHEN** новая LEFT pose base проходит все обязательные проверки при сохранении pelvis, model,
+  shape, scale, rest/bind и длин костей
+- **THEN** она получает отдельное происхождение, не меняет checkpoint64 и не наследует старый PASS
+
+#### Scenario: Старый отчёт подан для нового source
+
+- **WHEN** геометрия или pose base отличаются от source identity отчёта
+- **THEN** калибровка и запись отклоняются до применения позы

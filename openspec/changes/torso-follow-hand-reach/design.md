@@ -90,6 +90,17 @@ LEFT calibration требует независимо проверенную на
 Сохраняются прежние измерительные allowances: forearm1мм и upper slack2мм. Исключения для
 соединённого плечевого шва задаются явно; остальные реальные пересечения остаются отказом.
 
+### 4a. Отказ исходной калибровки и новая базовая поза
+
+Если независимые unsplit original-skin и saved Blender проверки подтверждают самопересечение,
+исторический source631 сохраняется побайтно и не используется как новая LEFT calibration.
+Исправленная pose base создаётся отдельно с новой source identity. Сначала меняются только native
+LEFT arm/collar controls в прежних bounds; pelvis, модель, shape, rest/bind, scale, RIGHT locals и
+общий torso сохраняются. При необходимости менять torso требуется новая явная версия и повторный
+bilateral/world proof. Старый отчёт не переносится на новый base. Новая поза заново проходит
+correctives/nails, embeddedness, source feasibility и независимый saved readback; исходное
+проникновение не становится новой нормой. Physical masks/exclusions/allowances не расширяются.
+
 ### 5. Проверки и происхождение
 
 #### Замкнутый classifier и физическая политика

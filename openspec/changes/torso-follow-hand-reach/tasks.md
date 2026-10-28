@@ -39,9 +39,10 @@
 - [ ] 4.3 Добавить отдельный bounded closed-volume kernel/intake с complementary interfaces,
       embeddedness/orientation/winding и отрицательными fixtures полного вложения, coplanar,
       nesting, неверного membership; numerical ambiguity не даёт PASS.
-- [ ] 4.4 Проверить feasibility неизменного native LEFT source и выдать независимую калибровку
-      только при полном PASS; неподтверждённый source остаётся явно UNRESOLVED/calibration=null, не
-      нормирует проникновение и не разрешает кандидаты.
+- [ ] 4.4 Проверить неизменный historical native LEFT source; при отказе отдельно подготовить новый
+      pose base и выдать независимую калибровку только при полном PASS; неподтверждённый source
+      остаётся явно UNRESOLVED/calibration=null, не нормирует проникновение и не разрешает
+      кандидаты.
 - [ ] 4.5 Подключить новый classifier и native LEFT arm/body calibration в per-candidate exact
       judge; actual source/candidate geometry, прежний NONLEFT coverage, pads/query identity и
       независимые negatives PASS до физического допуска.
