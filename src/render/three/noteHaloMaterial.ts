@@ -17,6 +17,7 @@ varying float vRadius;
 varying vec2 vDockUv;
 varying float vDockWidth;
 varying float vDockMargin;
+varying vec2 vDockEnds;
 // Homogeneous z + w is zero on the actual near plane, including oblique views.
 float haloNearFade(float clipZ, float clipW, float worldWidth, float depthScale) {
   float gap = (clipZ + clipW) / max(depthScale, 0.000001);
@@ -31,10 +32,18 @@ float haloRadius(float width, float screenShort) {
 float haloMargin(float width, float screenShort) {
   return min(max(width * 1.0, 4.0), max(2.0, screenShort * 0.18));
 }
+// Screen midpoint of the top face's cross-section at local z; w <= 0 marks it unusable.
+vec3 dockHaloMid(vec3 halfSize, float z, vec2 screen) {
+  vec4 left = projectRoadLanePoint(vec4(-halfSize.x, halfSize.y, z, 1.0));
+  vec4 right = projectRoadLanePoint(vec4(halfSize.x, halfSize.y, z, 1.0));
+  if (left.w <= 0.0 || right.w <= 0.0) return vec3(0.0, 0.0, -1.0);
+  return vec3((left.xy / left.w + right.xy / right.w) * 0.5 * screen, 1.0);
+}
 void main() {
   vDockUv = vec2(0.0);
   vDockWidth = 0.0;
   vDockMargin = 0.0;
+  vDockEnds = vec2(0.0);
   vec3 halfSize = noteSize.xyz * 0.5;
   if (roadDockEnabled > 0.0) {
     float z = -position.y * noteSize.z;
@@ -48,6 +57,24 @@ void main() {
     vec2 side = (b - a) / max(width, 0.000001);
     vec4 centre = (left + right) * 0.5;
     vec2 xy = mix(a, b, position.x + 0.5) + side * position.x * 2.0 * margin;
+    // Chord distances to both ends. The end rows step one margin past their end along the note,
+    // carrying -margin: across that last strip the value stays linear and is zero on the end.
+    vec2 mid = (a + b) * 0.5;
+    vec3 head = dockHaloMid(halfSize, -halfSize.z, screen);
+    vec3 tail = dockHaloMid(halfSize, halfSize.z, screen);
+    vDockEnds = vec2(
+      head.z > 0.0 ? length(mid - head.xy) : 1.0e6,
+      tail.z > 0.0 ? length(mid - tail.xy) : 1.0e6
+    );
+    if (abs(position.y) > 0.499) {
+      vec3 inner = dockHaloMid(halfSize, z * 0.95, screen);
+      vec2 along = mid - inner.xy;
+      float span = length(along);
+      vec2 outward = inner.z > 0.0 && span > 0.01 ? along / span : vec2(-side.y, side.x) * sign(position.y);
+      xy += outward * margin;
+      if (position.y > 0.0) vDockEnds += vec2(-margin, margin);
+      else vDockEnds += vec2(margin, -margin);
+    }
     vDockUv = uv;
     vDockWidth = width;
     vDockMargin = margin;
@@ -105,6 +132,7 @@ varying float vRadius;
 varying vec2 vDockUv;
 varying float vDockWidth;
 varying float vDockMargin;
+varying vec2 vDockEnds;
 float cross2(vec2 a, vec2 b) {
   return a.x * b.y - a.y * b.x;
 }
@@ -117,9 +145,10 @@ void main() {
   if (vAlpha <= 0.0) discard;
   if (roadDockEnabled > 0.0) {
     float across = abs(vDockUv.x - 0.5) * (vDockWidth + 2.0 * vDockMargin);
-    float distance = max(0.0, across - vDockWidth * 0.5);
-    float fade = smoothstep(0.0, 0.035, vDockUv.y) * smoothstep(0.0, 0.035, 1.0 - vDockUv.y);
-    float alpha = min(0.8, exp(-distance * distance / max(2.0 * vRadius * vRadius, 0.000001)) * vAlpha * 0.8 * fade);
+    float aside = max(0.0, across - vDockWidth * 0.5);
+    float beyond = max(0.0, -min(vDockEnds.x, vDockEnds.y));
+    float distance = length(vec2(aside, beyond));
+    float alpha = min(0.8, exp(-distance * distance / max(2.0 * vRadius * vRadius, 0.000001)) * vAlpha * 0.8);
     if (alpha < 0.002) discard;
     gl_FragColor = vec4(vTint, alpha);
     return;
