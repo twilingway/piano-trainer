@@ -128,6 +128,19 @@ OUTSIDE: непрерывный луч от query к бесконечности,
 отдельным BODY_SELF_INTERSECTIONS_PRESENT, не выдаются за физический arm failure либо за исчезнувшие
 пересечения. Свободный луч доказывает неограниченную внешнюю компоненту даже для immersed BODY.
 
+Отдельный `certified-exterior-v3` сохраняет v2 и его отчёты неизменными, но разрешает immersed
+original skin всех трёх частей. Для достаточного zero-hit-ray proof embeddedness собственной руки не
+требуется: свободный непрерывный путь ведёт в неограниченную компоненту дополнения к surface.
+Замкнутые oriented chains, точная partition/ownership/provenance и все исходные faces сохраняются.
+Это не новый physical mask: прежние finger-pair, arm/body, межручные, skin/key, pad/nail и natural
+hard gates обязательны независимо от exterior certificate. Own-part witnesses сохраняются отдельно;
+попадание в запрещённый прежними правилами subset отклоняет позу. Длина intersection segment не
+является depth и не сравнивается с allowances. Caps v3 по-прежнему требуют полного internality и
+cap–skin/cap–cap proof; снятие original-skin embeddedness не разрешает их пересечения. Никакой
+original skin face не сокращается из-за противоположной ориентации; сокращаются только доказанные
+виртуальные interfaces. Все следующие coverage/uncertainty/source admission ограничения действуют
+для v2 и v3 одинаково. Новое доказательство не переименовывает старые результаты.
+
 Фиксируется конечный набор направлений до вычислений. Broadphase покрывает все возможные faces;
 narrowphase включает t=0, edge/vertex/tangent/coplanar touches. Для OUTSIDE_CERTIFIED нужны zero
 hits и zero unresolved faces по хотя бы одному полному лучу. Нет hit budget, distance cutoff и
@@ -135,7 +148,7 @@ hits и zero unresolved faces по хотя бы одному полному л�
 не физический RED и не PASS. Source controls могут независимо проверяться exact rational CPU;
 per-candidate certificate считается GPU interval arithmetic, неоднозначность не допускается.
 
-В первом v2 inside не допускается. Прежние 1/2мм allowances остаются неизменными; они не
+В первых v2/v3 inside не допускается. Прежние 1/2мм allowances остаются неизменными; они не
 используются для допуска по ближайшей внутренней складке. Поддержка shallow inside требует
 отдельного actual-skin boundary witness q с сертифицированным расстоянием до query не больше
 прежнего допуска и доказанным разделением реальных inside/outside; virtual cap или internal face не

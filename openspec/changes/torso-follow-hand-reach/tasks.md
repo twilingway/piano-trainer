@@ -36,13 +36,14 @@
 - [x] 4.2 Провести native LEFT collar/arm/finger controls через отдельные codec/FK с прежними
       bounds; CPU/GPU parity full156/FK/PSD/gradients, source identity, reachable/unreachable, RIGHT
       local preservation и независимые negatives PASS. Физический judge закрывается задачами4.3–4.5.
-- [ ] 4.3 Реализовать отдельный certified-exterior-v2 kernel/intake: closed oriented BODY chain,
-      embedded LEFT/RIGHT, complementary caps и exact internality; полные zero-hit ray certificates
-      без сокращения query/face coverage. Pure negative fixtures и source/kernel review PASS.
+- [ ] 4.3 Реализовать отдельный certified-exterior-v3 kernel/intake: closed oriented chains всех
+      частей, complementary caps и exact internality; original-skin folds сохраняются диагностикой,
+      computational validity не заменяет прежние physical gates. Полные zero-hit ray certificates
+      без сокращения query/face coverage; v2 и его результаты сохранены. Pure negatives/review PASS.
 - [ ] 4.4 Проверить неизменный historical source; при отказе отдельно подготовить pose base с новым
       происхождением. GPU exterior proof всех обязательных query, прежние physical gates и saved
       Blender readback подтверждают source без нормирования BODY folds; иначе calibration=null.
-- [ ] 4.5 Подключить v2 в per-candidate exact GPU judge для обеих рук и обоих complements;
+- [ ] 4.5 Подключить v3 в per-candidate exact GPU judge для обеих рук и обоих complements;
       интервальная неоднозначность/inside без boundary witness дают UNRESOLVED, прежние
       masks/allowances сохранены. Полное вложение, cancellation, internal-face, t0/coplanar/tangent
       и missing-face negatives PASS.

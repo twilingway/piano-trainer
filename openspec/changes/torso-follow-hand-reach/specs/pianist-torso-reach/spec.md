@@ -151,10 +151,14 @@ UNRESOLVED с calibration=null. Partition SHALL NOT менять physical masks,
 
 Версионированный sufficient exterior профиль SHALL выдавать OUTSIDE_CERTIFIED только при полном
 zero-intersection ray proof до бесконечности по всей замкнутой complement surface. LEFT/RIGHT SHALL
-сохранять embeddedness; BODY-only self-folds SHALL храниться отдельно и SHALL NOT подменять
-результат проверки физических запросов рук. Winding0 и отсутствие crossing сами по себе SHALL NOT
-давать PASS. Все query SHALL проверяться симметрично для LEFT↔NONLEFT и RIGHT↔NONRIGHT, без XOR
-объёмов.
+сохранять embeddedness в профиле v2. Отдельный профиль v3 SHALL разрешать immersed original skin
+всех частей при замкнутых oriented chains, сохранении partition/provenance и полном cap validity /
+internality proof. Own-part folds SHALL храниться отдельно и SHALL NOT подменять результат прежних
+finger-pair, arm/body, межручных, skin/key, pad/nail и natural hard gates. Все original skin faces
+SHALL сохраняться; сокращение SHALL разрешаться только для подтверждённых виртуальных interfaces.
+Профиль v3 SHALL NOT переименовывать результаты v2 или давать admission только по winding0. Winding0
+и отсутствие crossing сами по себе SHALL NOT давать PASS. Все query SHALL проверяться симметрично
+для LEFT↔NONLEFT и RIGHT↔NONRIGHT, без XOR объёмов.
 
 #### Scenario: LEFT полностью внутри тела
 
@@ -173,6 +177,28 @@ zero-intersection ray proof до бесконечности по всей зам
   свободный луч по complement при пройденных остальных физических gates
 - **THEN** sufficient exterior gate подтверждён, BODY-only folds остаются отдельной диагностикой
 - **AND** новый профиль не переименовывает старые UNRESOLVED отчёты и не меняет physical masks
+
+#### Scenario: Собственная складка руки вне запрещённых физических пар
+
+- **WHEN** v3 сохраняет подтверждённый own-arm skin fold, все прежние physical gates пройдены,
+  chains/caps корректны и каждый обязательный query имеет полный zero-hit certificate
+- **THEN** sufficient exterior gate подтверждён, fold остаётся отдельной диагностикой
+- **AND** новое вычислительное доказательство не добавляет исключений physical mask
+
+#### Scenario: Собственная складка попала в запрещённый finger subset
+
+- **WHEN** exterior certificate получен, но own-part witness нарушает прежний finger-pair hard gate
+- **THEN** поза отклоняется независимо от вычислительного exterior PASS
+
+#### Scenario: Полностью вложенная рука без triangle crossings
+
+- **WHEN** query руки полностью вложен в complement и ни один полный луч не свободен
+- **THEN** отсутствия crossings недостаточно, exterior admission запрещён
+
+#### Scenario: Некорректная виртуальная крышка
+
+- **WHEN** cap пересекает original skin вне объявленного interface либо не имеет internality proof
+- **THEN** v3 остаётся UNRESOLVED, даже если original-skin folds разрешены вычислительным профилем
 
 #### Scenario: Origin либо луч касается поверхности
 

@@ -93,3 +93,38 @@ Frames592/593/598 остаются открытыми. LEFT inventory74/C6, stri
 Git или production. Numerical, saved Blender, export, browser и visual gates остаются отдельными.
 Собственные PID/порты/managed sessions записываются в локальный session-ownership.json; после
 завершения каждого временного стенда проверяется освобождение его порта.
+
+## Новые отдельные проверки
+
+Fresh source120 factory пересчитала756 exact affine vertices и4 native anchors. При прежнем90мм
+predicate обнаружены114 дополнительных LEFT eligible ROW относительно source631; пропусков query не
+допускается. Все4 новых shoulder/collar fan-caps отвергнуты cap–skin audit; closed interfaces,
+internality и source admission ещё не получены.
+
+Root независимо подтвердил Cramer-предикатом15 original unsplit own-part skin intersection pairs из
+caps-v10. LEFT witnesses около elbow18, RIGHT около shoulder17. Проверка физических masks показала:
+эти конкретные пары не образуют arm↔opposite-body пары; длины сегментов не являются depth. Receipt:
+`semantic/source120-witness-unsplit-anatomy-root-v1.json`, SHA
+`7db26275a92f8ca4b961b1d9369a584c5f2b171a2aaae9faf4878049f583685f`. Архитектурное review разрешило
+отдельный v3 без global original-part embeddedness; все прежние actual-skin hard gates, cap validity
+и source requirements остаются обязательными.
+
+Синтетический interval exterior GPU parity завершён PASS:8 fixtures, полный пакетный face/ray обход
+совпал с Fraction reference. Report `semantic/exterior-v2/runs/84b23c2dfb25/report.json`, SHA
+`4bbbfa53581021eeed2ac49497ceaedac4b6e23e81d18a83548ceaeeb0ac096c`, global peak4320MiB. Это kernel
+proof на synthetic fixtures; actual model intake остаётся NOTREADY. Два предыдущих runner/broadcast
+отказа сохранены, исправления прошли независимое review и24 CPU tests.
+
+Paired continuous C3 сохранил те же initial3seeds: все нажатые пальцы получили actual plateau
+samples, но proxy PASS не получен. Fresh exact3 завершён:592/593/598 RED по контактам и skin/key.
+Report `c3-continuous-acquisition/exact/runs/0381989d026c/report.json`; global peak5642MiB. Один
+найденный trace-intake пропуск исправлен: diagnostic terms проверяются на каждом baseline, trial и
+final;19 integration/source tests и независимое review PASS. Нужны дальнейшие решения, а не запись
+этих кандидатов в atlas.
+
+Read-only Blender631 full-surface export input: skin165314 vertices/330624triangles и5 RIGHT nails
+по1450vertices/2896triangles. Report `surface-readback631/report.json`, SHA
+`7792ca337bae3ede42ab92c3af257c58192d152a16e399ec90494bb79819f70c`.
+Frame/dirty/viewport/selection/HUD handlers не изменились. Это input для разработки приватного
+экспорта, не готовый runtime asset и не physical admission; LEFT nail geometry в источнике
+отсутствует.
