@@ -141,3 +141,58 @@ bound min(max L,max R)<=0,06943010304000344 исключает mixed-family face
 `1a5a96f98439b3f6f55c14aa4f35be06723ef38d77635aa38923a4cacea9645c`. Архитектурное review разрешило
 реализацию нового cut. Его новые full interfaces/caps/source proof ещё не выполнены; прежние отказы
 не переименовываются.
+
+## Промежуточные результаты surface и source
+
+Полный статический private export631 прошёл независимый actual Three audit против исходных6NPZ:
+172564 уникальных vertices,345104triangles,6surfaces/7primitives/5RIGHTnails. POSITION/NORMAL
+Float32 payload совпал побайтно, maximum world position error3,054e-16м. SAME52 rest/pose sidecar
+проверен по unique names; повторного skinning нет. PLAN SHA
+`b487c28739629591f89b99961595a937662873bf2e787c8bb28c397e0f749452`, GLB SHA
+`44d510a452f3e06c91bbf3a58d1939c1698fac715cfbacf3b11aedff9b244f41`, roundtrip report SHA
+`a3cb8907cd623004feae1322effcfceabb5d0d24eaedc1c4ceee25d0c44309ac`. 10 tests,7 содержательных
+negatives и independent review PASS. NORMAL означает vertex payload, не custom split normals; UV в
+исходных readback отсутствуют, материалы диагностические серые. Видимый Chrome показал полный static
+body и RIGHT hand/nails без console errors/warnings. Стенд5191 и страница закрыты, порт освобождён.
+Это не проверка анимации или новых физических контактов.
+
+Все четыре exact threshold partition v12 сохранили oriented source и все6 query/ROW/masks. LEFT при
+t=1/10 получила collar13 cap:518triangles, complete global cap–skin/self, closure/cancellation,
+точная interior oriented degree+1. Независимое review повторило проверки;17 tests PASS.
+`semantic/caps-v12/SEALED-RESULT.json` SHA
+`7b421c066c694366d1f457f567cfeee39441b05ad53f635f1b1f685b31c4b97a`. RIGHT по-прежнему имела2
+boundary crossings на каждом пороге, поэтому bilateral/source calibration не получена. Cap
+certificate относится только к source120; на новую позу он не переносится.
+
+Отдельная RIGHT source family выполнена на CUDA:12 вариантов и2 обязательных baseline. Менялись
+только14/17/19/21; обе world wrist/orientation, LEFT/torso/pelvis/legs/fingers/rest/scale сохранены.
+18 pure tests и independent review PASS; native/literal baselines прошли. У8/12 вариантов исчезли 8
+известных RIGHT boundary-carrier pairs, это diagnostic only. Выбран минимальный c+0/e0/s-25:
+изменение swivel+15°, maximum wrist error1,12e-15м, rotation3,34e-15, pelvis error0. Report
+`semantic/right-source-v1/runs/fad2dddf1a6d/report.json`, SHA
+`75eb727523d10fff1c4caae094c91b3a0b187b75807748d5ddbbd65e497e13e4`. Новые threshold
+geometry/caps/queries пересчитываются заново; полный world/source PASS отсутствует.
+
+C3 restart:592/10 steps loss211,71→172,30,8 принятых шагов;593/30 steps72,72→65,73, 10 принятых
+шагов и20 отклонённых. Fresh exact592 остаётся RED по contacts и skin/key;593 RED только по
+contacts1–4, прежние skin/key/nonpad reasons очищены. Reports находятся в
+`c3-continuous-acquisition/restart-v1/exact/runs/ff6924835aeb/` и `ae4eb712487c/`. Оба запуска затем
+остановились на разрывах старого collision objective; слепого продления нет.
+
+Новый отдельный SDF prototype сохраняет hard auditor и physical source bytes. Для optimizer-view
+из88 key meshes удалены208 exact-zero triangles с рациональным доказательством полного покрытия
+каждого удалённого segment сохранённой гранью; nonzero faces/vertices не изменены. Signed Euclidean
+SDF использует fixed query/key tuples и denominator, прежние discontinuous terms остаются только raw
+diagnostics. Own-pad required0 не объявляется pointwise усилением старого heightfield; точные
+физические правила остаются прежними.25 CPU tests, independent analytic reference и review PASS.
+Synthetic CUDA parity88keys/268queries/23584tuples PASS: residual error0, gradient7,11e-15. Report
+`c3-sdf-collision-v1/synthetic-runs/8888c719eee2/report.json`, SHA
+`ab211c95f789a653fef91dfd17d5ee2ac3745661d633f7d9f3f59982f23760ef`. Body-SDF поиск ещё не
+выполнялся; нужен отдельный reviewed PLAN. Повреждённый RU документ сохранён как invalid-encoding
+bytes, исправление UTF-8 проверено, новый PLAN закреплён отдельно.
+
+Для native LEFT FREE сохраняется фактический602 expanded full156: LEFT66:111 равен
+0,30*hands_mean_left, не нулевому hinge массиву. Подмена нулями уничтожает исходный curl; source
+full156 и mean-once provenance должны проверяться отдельно от authoring/PCA chart.
+`pnpm spec:validate` повторён после threshold specification:81/81PASS, прежний warning
+game-visual-update.
