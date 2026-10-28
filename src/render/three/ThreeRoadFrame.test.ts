@@ -106,3 +106,18 @@ it("preserves source-pixel units for the shared baked perspective skin", () => {
   expect(frame.notes[0]?.materialUnitX).toBe(camera.params.sourceUnits ?? 0.5);
   expect(frame.notes[0]?.materialUnitZ).toBeCloseTo((camera.roadFarZ - camera.near.z) / 600);
 });
+
+it("measures a flat note's depth edges in on-screen picture pixels, not in long lane rows", () => {
+  const camera = worldCamera(1440, 900, undefined, PANEL_EDGE);
+  const frame = new ThreeRoadFrame();
+  const plain = new ThreeRoadFrame();
+  frame.flatPictureRows = 0.05;
+  frame.add(720, 100, 600, 44, 0x00df50, 1, 600, camera);
+  plain.add(720, 100, 600, 44, 0x00df50, 1, 600, camera);
+  expect(frame.notes[0]?.materialUnitZ).toBeCloseTo(
+    ((camera.roadFarZ - camera.near.z) / 600) * 0.05
+  );
+  // Only the picture's edges change: the note keeps its place and length on the road.
+  expect(frame.notes[0]?.top).toBe(plain.notes[0]?.top);
+  expect(frame.notes[0]?.bottom).toBe(plain.notes[0]?.bottom);
+});

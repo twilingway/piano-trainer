@@ -42,6 +42,33 @@ export function screenNoteField(
   return { length: hitY, whiteStep: keyScreen / rowScreen };
 }
 
+/**
+ * Lane rows a flat note's picture pixel spans at the hit line. A lane row is road length over the
+ * lane height, far longer than a pixel across the key: the bevel and bloom stretched into long end
+ * gradients and streaks. Measured at the white key nearest `centre`.
+ */
+export function flatPictureRows(
+  place: (keyX: number, row: number) => { readonly x: number; readonly y: number } | undefined,
+  keys:
+    | ReadonlyMap<number, { readonly black: boolean; readonly x: number; readonly width: number }>
+    | undefined,
+  centre: number,
+  hitY: number
+): number {
+  let white: { readonly x: number; readonly width: number } | undefined;
+  for (const key of keys?.values() ?? [])
+    if (
+      !key.black &&
+      (!white ||
+        Math.abs(key.x + key.width / 2 - centre) < Math.abs(white.x + white.width / 2 - centre))
+    )
+      white = key;
+  if (!white) return 1;
+  const field = screenNoteField(place, white.x + white.width / 2, white.width, hitY);
+  const rows = field ? field.whiteStep / white.width : 1;
+  return Number.isFinite(rows) && rows > 0 ? rows : 1;
+}
+
 /** The look-ahead of decisions that must not change with the field length. */
 export function boundedLookAhead(lookAhead: number): number {
   return Math.min(Math.max(0, lookAhead), LOOK_AHEAD_CAP_S);

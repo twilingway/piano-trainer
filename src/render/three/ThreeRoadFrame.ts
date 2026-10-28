@@ -17,6 +17,8 @@ export class ThreeRoadFrame {
   freeLayout: FreeRoadLayout | undefined;
   freeLanes: readonly FreeRoadLane[] = [];
   flatMaterial = false;
+  /** Lane rows per pixel of a flat note's picture, so its edges keep 2D proportions on screen. */
+  flatPictureRows = 1;
   noteStyle: FallingNoteStyle = "filled";
   /** Flat-view preference; full 3D keeps the accepted decoration enabled. */
   burning = true;
@@ -102,7 +104,8 @@ export class ThreeRoadFrame {
     );
     if (!note) return;
     note.materialUnitX = camera.params.sourceUnits ?? 0.5;
-    note.materialUnitZ = (camera.roadFarZ - (lane?.depth ?? camera.near.z)) / hitY;
+    note.materialUnitZ =
+      ((camera.roadFarZ - (lane?.depth ?? camera.near.z)) / hitY) * this.flatPictureRows;
     note.duration = duration;
     note.pitch = pitch;
     note.finger = finger;

@@ -3,7 +3,13 @@ import type { SongNote } from "../song/song";
 import type { FrameState } from "./frameState";
 import { KEYBOARD_WHITE_STEP } from "./keyboardMetrics";
 import { energySources } from "./noteEnergy";
-import { LOOK_AHEAD_CAP_S, NOTE_SPEED_MM, boundedLookAhead, noteLookAhead } from "./noteSpeed";
+import {
+  LOOK_AHEAD_CAP_S,
+  NOTE_SPEED_MM,
+  boundedLookAhead,
+  flatPictureRows,
+  noteLookAhead
+} from "./noteSpeed";
 import { roadTrailMaxGap, ROAD_TRAIL_MAX_GAP_SHARE } from "./three/roadTrailGeometry";
 import { roadFrameState } from "./viewEffects";
 
@@ -108,4 +114,17 @@ describe("look-ahead consumers on a long field", () => {
       9
     );
   });
+});
+
+it("sizes the flat picture's depth by the white key and lane rows on screen at the hit line", () => {
+  const keys = new Map([
+    [61, { black: true, x: 390, width: 24 }],
+    [60, { black: false, x: 380, width: 40 }],
+    [48, { black: false, x: 0, width: 40 }]
+  ]);
+  // Rows near the hit line show three times taller than a pixel across the key.
+  const place = (x: number, y: number) => ({ x, y: y * 3 });
+  expect(flatPictureRows(place, keys, 400, 400)).toBeCloseTo(1 / 3);
+  expect(flatPictureRows(place, undefined, 400, 400)).toBe(1);
+  expect(flatPictureRows(() => undefined, keys, 400, 400)).toBe(1);
 });
