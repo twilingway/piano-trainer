@@ -172,6 +172,28 @@ per-candidate certificate считается GPU interval arithmetic, неодн
 завышенный sourceDepth для новой калибровки. v2 сначала требует доказанного exterior каждого
 обязательного source query и не нормирует проникновения.
 
+### Полный GPU BVH и привязка proofs
+
+Отдельный v3 intake связывает model/topology receipts и pose-specific cap proofs по source/profile,
+точным coordinates, physical/query arrays и полному face coverage; одних PASS-строк недостаточно.
+Recovery принимается только через закреплённый verifier. CPU source guard проверяет tree topology:
+один root, непересекающиеся child ranges, leaf face IDs как точную permutation всех target faces.
+GPU заново refit LOW/HIGH каждого node; старые posed boxes не переносятся. Prune возможен только при
+строгом interval-разделении. Equality, NaN, overflow или неизвестная enclosure не дают prune.
+
+Bounded depth-first wavefront сохраняет однородный уровень каждого chunk и каждый отложенный
+sibling; память ограничивает размер chunk, не число посещений. Padding leaf arrays не считается face
+coverage. Структурная partition доказывает покрытие; int64 counters с проверенными пределами служат
+дополнительным контролем. Полные sets faces сравниваются с exhaustive reference на fixtures.
+Фиксированные6 ledgers можно вычислять через dedup только при точном subset/ROW и одинаковом target
+SHA; исходный порядок и каждая строка разворачиваются в final report.
+
+COMPLETE разрешён только после CUDA synchronize, полного результата и readback записанного receipt.
+OOM, timeout, отмена, потерянный spill или неполная запись дают PARTIAL_UNRESOLVED. Этапы разделены:
+intake/CPU parity → synthetic CUDA/review → frozen full-source PLAN → один root GPU exterior audit.
+Exhaustive coverage, t0/coplanar/tangent и complete zero-hit ray policy не меняются. Source exterior
+PASS оставляет physical gates/saved Blender/visual отдельными, calibration=null и eligible=false.
+
 Caps остаются только вычислительными интерфейсами. Вся поверхность cap проходит cap–skin/cap–cap
 checks; touches/overlaps разрешены только на точном объявленном interface. Для связного открытого
 disk interior полное отсутствие пересечения с original full skin и один точный interior sample с

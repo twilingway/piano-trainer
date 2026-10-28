@@ -44,6 +44,10 @@
       всех шести прежних query-наборов и finite thresholds 2/5,3/10,1/5,1/10; проверить новые
       interfaces/caps и freeze source/profile/threshold до candidate admission. Equality/tie/sliver,
       mixed-family triangle, missing ROW/mask и changed-threshold negatives PASS.
+- [ ] 4.3.2 Проверить typed v3 intake, exact six-ledger reuse maps и CPU BVH parity с exhaustive
+      face-set trace; затем synthetic CUDA/review и frozen full-source PLAN/run. GPU refit/prune
+      использует строгие интервальные bounds; homogeneous spill, padding, int64 overflow,
+      fake-PASS/wrong-source и interrupted receipt negatives не дают COMPLETE.
 - [ ] 4.4 Проверить неизменный historical source; при отказе отдельно подготовить pose base с новым
       происхождением. GPU exterior proof всех обязательных query, прежние physical gates и saved
       Blender readback подтверждают source без нормирования BODY folds; иначе calibration=null.
