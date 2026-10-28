@@ -27,8 +27,12 @@ perspective shrink of far notes.
    same metres per second and has the same length in metres. A narrower key range shows bigger keys,
    so the same metres take more pixels: this follows the piano, as requested.
 3. **Bounded consumers.** `keyboardPan`, `noteEnergy`, `noteArrival` and `RoadTrailAnchors` read
-   `min(lookAhead, 6 s)` so a long window does not change panning, glow or trails.
-4. **Capacity.** The frame fills nearest notes first; a capacity cap only trims the far end.
+   `min(lookAhead, 6 s)` so a long window does not change panning, glow or trails. Notes themselves
+   are never capped: everything between the horizon and the keys is drawn.
+4. **No catch-up at start or seek.** Placement is a pure function of `start - time`; a note's
+   appearance age counts from the moment it crosses the horizon (`start - lookAhead`), so after a
+   load or seek every note already inside the window is drawn at its place without a birth effect.
+5. **Capacity.** The frame fills nearest notes first; a capacity cap only trims the far end.
 
 ## Risks / Trade-offs
 

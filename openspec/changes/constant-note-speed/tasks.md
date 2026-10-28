@@ -9,6 +9,8 @@
       fill under the note capacity
 - [ ] 1.5 Tests: same white steps per second and note length in steps for near and far horizon,
       staff on and off, flat and 3D, straight and perspective
+- [ ] 1.6 Start and seek: notes inside the window drawn at their places on the first frame, no birth
+      effect or catch-up; test with a seek into the middle of a song
 
 ## 2. Verification
 
