@@ -25,6 +25,8 @@ export class ThreeRoadFrame {
   trailAnchorCount = 0;
   songTime = 0;
   visualTime = 0;
+  /** Seconds the notes take across the whole road; 0 before the first frame. */
+  lookAhead = 0;
 
   begin(): void {
     this.noteCount = 0;

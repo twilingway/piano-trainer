@@ -28,6 +28,7 @@ import { ThreeKeyEmission } from "./ThreeKeyEmission";
 import type { KeyboardAppearance } from "./KeyboardAppearance";
 import { ThreeRimLights } from "./ThreeRimLights";
 import { ThreeRoadNotes } from "./ThreeRoadNotes";
+import { roadTrailMaxGap } from "./roadTrailGeometry";
 import { ThreeRoadTrails } from "./ThreeRoadTrails";
 import { ThreeNoteAura } from "./ThreeNoteAura";
 import { ThreeRoadGuides } from "./ThreeRoadGuides";
@@ -193,7 +194,7 @@ export class ThreeStage {
         roadCamera.near.y,
         roadFrame.visualTime,
         roadFrame.noteCount,
-        (roadCamera.roadFarZ - roadCamera.near.z) * 0.22,
+        roadTrailMaxGap(roadCamera.roadFarZ - roadCamera.near.z, roadFrame.lookAhead),
         roadFrame.trailAnchors,
         roadFrame.trailAnchorCount
       );
