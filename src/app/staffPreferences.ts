@@ -1,5 +1,5 @@
 import { normalizeRoadHorizon } from "../render/roadHorizon";
-import { normalizeWorldFov } from "../render/cameraComposition";
+import { normalizeWorldFov } from "../render/worldFov";
 import type { FallingNoteStyle } from "../render/fallingNoteStyle";
 import {
   DEFAULT_FREE_DIRECT_FIELD,

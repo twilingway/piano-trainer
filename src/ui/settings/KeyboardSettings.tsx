@@ -1,5 +1,5 @@
 import { RoadProjectionSettings } from "./RoadProjectionSettings";
-import { CameraCompositionSettings, RoadFitSettings } from "./CameraCompositionSettings";
+import { RoadFitSettings, WorldFovSettings } from "./WorldCameraSettings";
 import type { RoadFit } from "../../render/roadLayoutCamera";
 import type { FallingNoteStyle } from "../../render/fallingNoteStyle";
 import type { FreeRoadLayout } from "../../render/freeRoadLayout";
@@ -362,7 +362,7 @@ export function KeyboardSettings({
               </label>
             )}
             {onWorldFov && (
-              <CameraCompositionSettings
+              <WorldFovSettings
                 worldFov={worldFov}
                 onWorldFov={onWorldFov}
                 free={worldVisible}

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { normalizeWorldFov } from "./cameraComposition";
+import { normalizeWorldFov } from "./worldFov";
 it("rejects a corrupt world FOV", () => {
   expect(normalizeWorldFov(Number.NaN)).toBe(45);
   expect(normalizeWorldFov("80")).toBe(45);

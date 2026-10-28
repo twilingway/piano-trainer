@@ -10,7 +10,7 @@ import type { Song } from "../song/song";
 import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
 import { pianistAvailable } from "../render/three/pianistAvailability";
-import { DEFAULT_WORLD_FOV } from "../render/cameraComposition";
+import { DEFAULT_WORLD_FOV } from "../render/worldFov";
 import type { StaffPrefs } from "./useStaffPrefs";
 import { useI18n } from "./useI18n";
 

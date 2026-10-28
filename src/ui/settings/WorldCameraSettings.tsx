@@ -1,10 +1,10 @@
 import { useI18n } from "../../app/useI18n";
 import type { RoadFit } from "../../render/roadLayoutCamera";
 import { ProjectionNumberInput } from "./ProjectionNumberInput";
-import { WORLD_FOV_LIMITS } from "../../render/cameraComposition";
+import { WORLD_FOV_LIMITS } from "../../render/worldFov";
 
 /** The free camera's field of view; the standard view's far field follows the horizon instead. */
-export function CameraCompositionSettings({
+export function WorldFovSettings({
   worldFov,
   onWorldFov,
   free,
