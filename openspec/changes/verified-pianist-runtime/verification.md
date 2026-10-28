@@ -1,6 +1,7 @@
 # Проверка продолжения, 28 октября 2026
 
-Статус: работа продолжается; игровая анимация и весь этап не завершены. Ветка
+Статус: работа приостановлена по просьбе пользователя; игровая анимация не завершена. Актуальный
+итог и порядок продолжения: [resume-checkpoint.md](resume-checkpoint.md). Ветка
 `feat/keyboard88-hands-runtime` от свежего `origin/dev` (`6d738d54`). Основная папка `dev` и
 пользовательский5190 не менялись; PR221 подтверждён merged. Промежуточный draft:
 https://github.com/twilingway/piano-trainer/pull/243.
@@ -196,3 +197,12 @@ bytes, исправление UTF-8 проверено, новый PLAN закр
 full156 и mean-once provenance должны проверяться отдельно от authoring/PCA chart.
 `pnpm spec:validate` повторён после threshold specification:81/81PASS, прежний warning
 game-visual-update.
+
+## Итог перед паузой
+
+Закрыт strict computational kernel v14 для обеих рук и всех5parts; независимый replay PASS. Проведён
+synthetic GPU BVH25cases PASS. Новый C3 SDF3×5 завершён, но proxyfalse и новый exact3 не выполнялся.
+Native LEFT90+2 driver подготовлен с11puretests, GPU/helper unreviewed и NOT_RUN. Полный current
+source audit, C6, writer/correctives/nails, transitions и реальная игровая приёмка остаются
+открытыми. Порядок и frozen PLAN/SHA записаны в resume-checkpoint.md; его текущие статусы имеют
+приоритет над хронологическими промежуточными заметками выше.
