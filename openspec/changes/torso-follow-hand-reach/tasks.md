@@ -36,15 +36,25 @@
 - [x] 4.2 Провести native LEFT collar/arm/finger controls через отдельные codec/FK с прежними
       bounds; CPU/GPU parity full156/FK/PSD/gradients, source identity, reachable/unreachable, RIGHT
       local preservation и независимые negatives PASS. Физический judge закрывается задачами4.3–4.5.
-- [ ] 4.3 Добавить отдельный bounded closed-volume kernel/intake с complementary interfaces,
-      embeddedness/orientation/winding и отрицательными fixtures полного вложения, coplanar,
-      nesting, неверного membership; numerical ambiguity не даёт PASS.
-- [ ] 4.4 Проверить feasibility неизменного native LEFT source и выдать независимую калибровку
-      только при полном PASS; неподтверждённый source остаётся явно UNRESOLVED/calibration=null, не
-      нормирует проникновение и не разрешает кандидаты.
-- [ ] 4.5 Подключить новый classifier и native LEFT arm/body calibration в per-candidate exact
-      judge; actual source/candidate geometry, прежний NONLEFT coverage, pads/query identity и
-      независимые negatives PASS до физического допуска.
+- [ ] 4.3 Реализовать отдельный certified-exterior-v3 kernel/intake: closed oriented chains всех
+      частей, complementary caps и exact internality; original-skin folds сохраняются диагностикой,
+      computational validity не заменяет прежние physical gates. Полные zero-hit ray certificates
+      без сокращения query/face coverage; v2 и его результаты сохранены. Pure negatives/review PASS.
+- [ ] 4.3.1 Построить exact threshold partition с полным oriented source coverage, строгим ownership
+      всех шести прежних query-наборов и finite thresholds 2/5,3/10,1/5,1/10; проверить новые
+      interfaces/caps и freeze source/profile/threshold до candidate admission. Equality/tie/sliver,
+      mixed-family triangle, missing ROW/mask и changed-threshold negatives PASS.
+- [ ] 4.3.2 Проверить typed v3 intake, exact six-ledger reuse maps и CPU BVH parity с exhaustive
+      face-set trace; затем synthetic CUDA/review и frozen full-source PLAN/run. GPU refit/prune
+      использует строгие интервальные bounds; homogeneous spill, padding, int64 overflow,
+      fake-PASS/wrong-source и interrupted receipt negatives не дают COMPLETE.
+- [ ] 4.4 Проверить неизменный historical source; при отказе отдельно подготовить pose base с новым
+      происхождением. GPU exterior proof всех обязательных query, прежние physical gates и saved
+      Blender readback подтверждают source без нормирования BODY folds; иначе calibration=null.
+- [ ] 4.5 Подключить v3 в per-candidate exact GPU judge для обеих рук и обоих complements;
+      интервальная неоднозначность/inside без boundary witness дают UNRESOLVED, прежние
+      masks/allowances сохранены. Полное вложение, cancellation, internal-face, t0/coplanar/tangent
+      и missing-face negatives PASS.
 
 ## 5. Левый диапазон до C6
 
@@ -54,6 +64,11 @@
 - [ ] 5.2 Выполнить bounded LEFT GPU-smoke и source/readback проверки; фактический C6 подтверждён
       native left pad и точным pressed set, остальные случаи имеют результат/диагностику, без
       заявлений о произвольных аккордах или доказанной невозможности.
+
+- [ ] 5.2.1 Подготовить и выполнить отдельный native LEFT smoke90seeds+2baseline от actual602;
+      literal FREE/RIGHT, mean-once, legs.OLD/raw mapping, правильный anchor frame и строгий reach
+      подтверждены negative tests. Source631/RIGHT reflection, centroid-only contact и stale caps не
+      дают допуска; refinement не запускается автоматически.
 
 ## 6. Один корпус для двух рук
 

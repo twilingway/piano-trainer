@@ -144,26 +144,129 @@ surface/SIDE correctives и ногти. Физический GREEN, natural PASS
 
 ### Requirement: Полная вложенность и неопределённый classifier не дают допуска
 
-Проверка skin/body и LEFT↔RIGHT SHALL обнаруживать полное вложение допустимых query в другой
-геометрический объём, даже при отсутствии пересечений треугольников. Некорректный, открытый или
-численно неопределённый inside-classifier SHALL давать UNRESOLVED с calibration=null. Вычислительная
-partition SHALL NOT менять физические masks, query ROW, прежние исключения и допуски. Виртуальные
-interfaces SHALL использоваться только для классификации объёмов, а не как новая физическая кожа.
+Проверка skin/body и LEFT↔RIGHT SHALL обнаруживать полное вложение прежних query в другой объём,
+даже без triangle crossings. Открытый, некорректный или неопределённый classifier SHALL давать
+UNRESOLVED с calibration=null. Partition SHALL NOT менять physical masks, query ROW, исключения и
+допуски. Virtual interfaces SHALL использоваться только для классификации, не как физическая кожа.
+
+Версионированный sufficient exterior профиль SHALL выдавать OUTSIDE_CERTIFIED только при полном
+zero-intersection ray proof до бесконечности по всей замкнутой complement surface. LEFT/RIGHT SHALL
+сохранять embeddedness в профиле v2. Отдельный профиль v3 SHALL разрешать immersed original skin
+всех частей при замкнутых oriented chains, сохранении partition/provenance и полном cap validity /
+internality proof. Own-part folds SHALL храниться отдельно и SHALL NOT подменять результат прежних
+finger-pair, arm/body, межручных, skin/key, pad/nail и natural hard gates. Все original skin faces
+SHALL сохраняться; сокращение SHALL разрешаться только для подтверждённых виртуальных interfaces.
+Профиль v3 SHALL NOT переименовывать результаты v2 или давать admission только по winding0. Winding0
+и отсутствие crossing сами по себе SHALL NOT давать PASS. Все query SHALL проверяться симметрично
+для LEFT↔NONLEFT и RIGHT↔NONRIGHT, без XOR объёмов.
 
 #### Scenario: LEFT полностью внутри тела
 
-- **WHEN** LEFT patch находится целиком внутри тела или RIGHT и triangle crossings равны нулю
-- **THEN** ноль crossings не даёт PASS; containment отклоняет проникновение либо сообщает UNRESOLVED
-  без калибровки и права записи
+- **WHEN** LEFT находится целиком внутри тела или RIGHT, а triangle crossings равны нулю
+- **THEN** ноль crossings не даёт PASS; отсутствие exterior proof сохраняет UNRESOLVED либо
+  проникновение отклоняется другим доказанным gate без калибровки и права записи
 
-#### Scenario: Открытый или самопересекающийся вычислительный объём
+#### Scenario: Нет полного внешнего certificate
 
-- **WHEN** classifier не подтверждает topology, orientation, embeddedness или inside для нужного
-  query
-- **THEN** кандидат остаётся UNRESOLVED, source не нормирует проникновение и общий GREEN не выдаётся
+- **WHEN** topology, orientation, interface validity или хотя бы один нужный query не подтверждены
+- **THEN** общий GREEN не выдаётся, calibration остаётся null и исходник не нормирует проникновение
+
+#### Scenario: Собственная складка BODY вне физических запросов рук
+
+- **WHEN** BODY chain замкнута, caps подтверждены, а каждый обязательный query имеет полный
+  свободный луч по complement при пройденных остальных физических gates
+- **THEN** sufficient exterior gate подтверждён, BODY-only folds остаются отдельной диагностикой
+- **AND** новый профиль не переименовывает старые UNRESOLVED отчёты и не меняет physical masks
+
+#### Scenario: Вычислительная граница перенесена при прежних физических запросах
+
+- **WHEN** новый v3 threshold из закреплённого finite списка сохраняет все шесть query-наборов,
+  exact affine partition покрывает oriented skin без потерь и новые interfaces/caps подтверждены
+- **THEN** cut может отличаться от исторического, physical masks/ROW/allowances остаются прежними
+- **AND** первый полностью допустимый threshold/source/profile фиксируется до candidate admission
+
+#### Scenario: Упрощённое разбиение потеряло вторую семью либо запрос
+
+- **WHEN** triangle содержит обе семьи без доказанного split либо threshold исключил required query
+  или изменил physical ROW/mask
+- **THEN** partition отклоняется до source calibration; sliver/equality/tie не удаляются молча
+
+#### Scenario: Порог изменён после допуска источника
+
+- **WHEN** candidate использует другой threshold/source/profile SHA
+- **THEN** прежний source certificate не переносится и admission отклоняется
+
+#### Scenario: Собственная складка руки вне запрещённых физических пар
+
+- **WHEN** v3 сохраняет подтверждённый own-arm skin fold, все прежние physical gates пройдены,
+  chains/caps корректны и каждый обязательный query имеет полный zero-hit certificate
+- **THEN** sufficient exterior gate подтверждён, fold остаётся отдельной диагностикой
+- **AND** новое вычислительное доказательство не добавляет исключений physical mask
+
+#### Scenario: Собственная складка попала в запрещённый finger subset
+
+- **WHEN** exterior certificate получен, но own-part witness нарушает прежний finger-pair hard gate
+- **THEN** поза отклоняется независимо от вычислительного exterior PASS
+
+#### Scenario: Полностью вложенная рука без triangle crossings
+
+- **WHEN** query руки полностью вложен в complement и ни один полный луч не свободен
+- **THEN** отсутствия crossings недостаточно, exterior admission запрещён
+
+#### Scenario: Некорректная виртуальная крышка
+
+- **WHEN** cap пересекает original skin вне объявленного interface либо не имеет internality proof
+- **THEN** v3 остаётся UNRESOLVED, даже если original-skin folds разрешены вычислительным профилем
+
+#### Scenario: Origin либо луч касается поверхности
+
+- **WHEN** origin лежит на surface либо луч имеет t0, edge, vertex, tangent или coplanar touch
+- **THEN** этот луч не даёт exterior certificate; без другого полного certificate остаётся
+  UNRESOLVED
+
+#### Scenario: Signed cancellation даёт winding0
+
+- **WHEN** противоположные signed contributions дают winding0 внутри ограниченной области
+- **THEN** winding0 не даёт PASS, необходим полный zero-hit ray либо иной sound certificate
+
+#### Scenario: Ближайшая кожа оказалась внутренней складкой
+
+- **WHEN** query внутри complement близок к internal face или virtual cap
+- **THEN** такое расстояние не доказывает shallow admission и без actual-boundary witness остаётся
+  UNRESOLVED
+
+#### Scenario: Исчерпаны направления либо пропущен face
+
+- **WHEN** конечный набор лучей не дал полного certificate либо broadphase не подтвердил все faces
+- **THEN** результат UNRESOLVED без source calibration и записи
 
 #### Scenario: Partition выделила RIGHT отдельно
 
-- **WHEN** вычислительный classifier делит кожу на LEFT, RIGHT и BODY
-- **THEN** arm–body сохраняет прежнее покрытие всего NONLEFT, включая RIGHT; исходные физические
-  masks и query не сужаются, caps не участвуют в clearance
+- **WHEN** classifier делит кожу на LEFT, RIGHT и BODY
+- **THEN** NONLEFT покрывает BODY OR RIGHT, NONRIGHT покрывает BODY OR LEFT; caps сокращаются только
+  при точной противоположной ориентации и не участвуют в physical clearance
+
+### Requirement: Отдельная исправленная исходная поза
+
+При подтверждённом нарушении физических запросов рук либо отсутствии полного source certificate
+система SHALL сохранять historical source и checkpoint64 неизменными и SHALL отклонять его как новую
+LEFT calibration. Исправленная pose base SHALL иметь собственную source identity и заново проходить
+source, bilateral/world, correctives/nails, sufficient volume certificate и saved readback.
+Физические masks, allowances и shoulder exclusion SHALL сохраняться.
+
+#### Scenario: Пересекающийся source
+
+- **WHEN** независимые original-skin и saved Blender проверки подтверждают нарушение физических
+  запросов рук source631 либо source certificate не получен
+- **THEN** calibration остаётся null, исторические файлы сохраняются и candidate admission запрещён
+
+#### Scenario: Отдельный новый standby
+
+- **WHEN** новая LEFT pose base проходит все обязательные проверки при сохранении pelvis, model,
+  shape, scale, rest/bind и длин костей
+- **THEN** она получает отдельное происхождение, не меняет checkpoint64 и не наследует старый PASS
+
+#### Scenario: Старый отчёт подан для нового source
+
+- **WHEN** геометрия или pose base отличаются от source identity отчёта
+- **THEN** калибровка и запись отклоняются до применения позы

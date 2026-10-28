@@ -1,12 +1,4 @@
-import {
-  Matrix4,
-  Mesh,
-  Quaternion,
-  SkinnedMesh,
-  SRGBColorSpace,
-  TextureLoader,
-  Vector3
-} from "three";
+import { Matrix4, Mesh, Quaternion, SRGBColorSpace, TextureLoader, Vector3 } from "three";
 import type { Group, Material, MeshStandardMaterial, Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { unzlibSync } from "fflate";
@@ -14,6 +6,7 @@ import { disposePianistModel } from "./disposePianistModel";
 import { validateKeyboard88Atlas } from "./keyboard88Atlas";
 import type { Keyboard88Atlas, Keyboard88Frame } from "./keyboard88Atlas";
 import type { Keyboard88Rig } from "./keyboard88Bones";
+import { validateKeyboard88RigCompatibility } from "./keyboard88RigCompatibility";
 import { bindKeyboard88Visibility, validateKeyboard88Masks } from "./keyboard88Visibility";
 import type { Keyboard88Masks } from "./keyboard88Visibility";
 
@@ -281,19 +274,7 @@ export async function loadKeyboard88Performer(
   try {
     scene = await deps.parseModel(bytesBuffer(body));
     checkAbort(signal);
-    const skeletons = new Set<unknown>();
-    scene.traverse((node) => {
-      if (!(node instanceof SkinnedMesh)) return;
-      skeletons.add(node.skeleton);
-      if (
-        !sameNames(
-          node.skeleton.bones.map((bone) => bone.name),
-          manifest.boneNames
-        )
-      )
-        throw new Error("keyboard88 GLB bone order mismatch");
-    });
-    if (skeletons.size === 0) throw new Error("keyboard88 GLB is not skinned");
+    validateKeyboard88RigCompatibility(scene, rig);
     bindKeyboard88Visibility(scene, manifest.masks).dispose();
     texture = await deps.decodeTexture(skinBytes);
     checkAbort(signal);
