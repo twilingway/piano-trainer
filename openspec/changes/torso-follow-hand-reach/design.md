@@ -276,3 +276,32 @@ cuts едины, slivers не удаляются, snapping не применяе
 проверки, не новое правило нулевого RH overlap. Прежние допустимые RH upper bounds сохраняются;
 противоречие deep-inside свидетельства и обрезанного distance proxy остаётся UNRESOLVED до
 надлежащего физического измерения.
+
+### Первая конечная диагностика native LEFT до C6
+
+До refinement выполняется отдельная семья90 seeds: MIDI84/thumb1 и MIDI60/thumb1, пять shared yaw,
+три объявленных thumb seed и три swivel. Два baseline имеют отдельные роли: direct literal source и
+новый diagnostic control. Parent — фактический RIGHT standby602 report; source631 fixture не
+подменяет602. Все controls, native pad411/permission684, source/neutral и fingerprints фиксируются
+до запуска. Этот этап не завершает inventory74 и не получает physical admission.
+
+Expanded absolute locals уже содержат0,30*left_hand_mean; evaluate_smplh/Body mean не добавляют.
+FREE joints22–33 копируются буквально, а не восстанавливаются нулевыми hinges. NativeLeftHand
+возвращает absolute matrices; wrapper берёт только active thumb34–36, сохраняет FREE и вызывает
+полный Body.evaluate_rotations заново. NativeLeftChain.forward, переписывающий все15 finger joints,
+нельзя использовать без этого разделения. Нужны явный Body(model,legs.OLD), patched source/neutral,
+нулевые betas и проверка geometry pose == legs.patch(raw). Pelvis/legs/rest/scale и RIGHT locals
+сохраняются; общий torso принадлежит обеим рукам, поэтому RIGHT world проверяется позднее заново.
+
+Pad offset извлекается через фактическую исходную ориентацию запястья: R_actual=C*G_wrist*H^T,
+q=R_actual^T*(pad_world-wrist_world), w_seed=T-R_seed*q. Новая R_seed не подставляется при
+извлечении старого q; frame сохраняет det+1 без RIGHT reflection. Разрешены максимум два
+deterministic residual updates с закреплённым sample/tie order по ROW. Каждый wrist до вызова arm
+solver проходит strict reach annulus, без clamp/stretch. Unreachable seed отклоняется отдельно;
+ошибка source identity/parity/invariants завершает весь run.
+
+Наблюдения относятся только к raw masked-PSD/subdivision. Старые GN/SIDE не объявляются актуальными
+для новых поз, отсутствующие LEFT nails остаются открытым gate. Поза/centroid над клавишей не
+заменяет actual native pad/pressed-set contact. Новые caps/exterior/world/saved Blender обязательны;
+posed caps-v14 не переносятся на C6. Refinement и следующие controls требуют отдельного PLAN после
+чтения фактических residuals. Во всех результатах physical_class/calibration=null, eligible=false.

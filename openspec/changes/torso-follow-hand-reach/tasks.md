@@ -65,6 +65,11 @@
       native left pad и точным pressed set, остальные случаи имеют результат/диагностику, без
       заявлений о произвольных аккордах или доказанной невозможности.
 
+- [ ] 5.2.1 Подготовить и выполнить отдельный native LEFT smoke90seeds+2baseline от actual602;
+      literal FREE/RIGHT, mean-once, legs.OLD/raw mapping, правильный anchor frame и строгий reach
+      подтверждены negative tests. Source631/RIGHT reflection, centroid-only contact и stale caps не
+      дают допуска; refinement не запускается автоматически.
+
 ## 6. Один корпус для двух рук
 
 - [ ] 6.1 Добавить общий torso state с одним yaw/lean/bend/base и отдельными arm/collar controls;
