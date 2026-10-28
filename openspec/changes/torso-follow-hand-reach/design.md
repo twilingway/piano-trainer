@@ -92,14 +92,15 @@ LEFT calibration требует независимо проверенную на
 
 ### 4a. Отказ исходной калибровки и новая базовая поза
 
-Если независимые unsplit original-skin и saved Blender проверки подтверждают самопересечение,
-исторический source631 сохраняется побайтно и не используется как новая LEFT calibration.
-Исправленная pose base создаётся отдельно с новой source identity. Сначала меняются только native
-LEFT arm/collar controls в прежних bounds; pelvis, модель, shape, rest/bind, scale, RIGHT locals и
-общий torso сохраняются. При необходимости менять torso требуется новая явная версия и повторный
-bilateral/world proof. Старый отчёт не переносится на новый base. Новая поза заново проходит
-correctives/nails, embeddedness, source feasibility и независимый saved readback; исходное
-проникновение не становится новой нормой. Physical masks/exclusions/allowances не расширяются.
+Если независимые unsplit original-skin и saved Blender проверки подтверждают нарушение физических
+запросов рук либо source certificate не получен, исторический source631 сохраняется побайтно и не
+используется как новая LEFT calibration. Исправленная pose base создаётся отдельно с новой source
+identity. Сначала меняются только native LEFT arm/collar controls в прежних bounds; pelvis, модель,
+shape, rest/bind, scale, RIGHT locals и общий torso сохраняются. При необходимости менять torso
+требуется новая явная версия и повторный bilateral/world proof. Старый отчёт не переносится на новый
+base. Новая поза заново проходит correctives/nails, embeddedness, source feasibility и независимый
+saved readback; исходное проникновение не становится новой нормой. Physical
+masks/exclusions/allowances не расширяются.
 
 ### 5. Проверки и происхождение
 
@@ -115,22 +116,48 @@ calibration=null. Реальные границы source631 выходят за 
 mask. Подлинные interface loops закрываются одинаковыми внутренними cap с противоположной
 ориентацией; их точное сокращение воспроизводит исходную ориентированную кожу.
 
-Первый этап принимает только связные замкнутые manifold volumes рода0 с подтверждёнными orientation,
-nondegeneracy и embeddedness каждой части. Сложные компоненты/cavities пока дают UNRESOLVED.
-Joint-center fan требует проверки всей поверхности cap: cap–skin/cap–cap intersections, coplanar
-overlaps и касания допустимы только на точном объявленном interface; cap должен находиться внутри
-full-body volume. Одних вершин или центроида недостаточно. Certificate повторяется для каждого
-кандидата; source calibration не доказывает корректность новой геометрии.
+Прежний bounded профиль `embedded-volumes-v1` сохраняется отдельно: связные замкнутые manifold
+volumes рода0 с orientation/nondegeneracy/embeddedness каждой части; его UNRESOLVED отчёты не
+переименовываются. Расширенный source-аудит выявил также BODY-only складки таза вне физических query
+рук. Исправлять форму модели или расширять physical masks ради вычислительного объёма нельзя.
 
-Caps используются только в signed winding/inside-классификации, без XOR разных объёмов. Они не
-участвуют в физических crossings, расстояниях, глубине или clearance. Для arm–body сохраняется
-прежний NONLEFT=BODY∪RIGHT со взаимным сокращением RIGHT-cap; LEFT↔RIGHT проверяется отдельно и
-двунаправленно. Query ROW и membership остаются прежними; дополнительные cap/border vertices не
-становятся физическими query. Любая неопределённость даёт UNRESOLVED без допуска.
+Новый версионированный профиль `certified-exterior-v2` использует достаточное доказательство
+OUTSIDE: непрерывный луч от query к бесконечности, не имеющий ни одного пересечения со всей
+замкнутой complement surface. LEFT/RIGHT остаются замкнутыми embedded manifold genus0. BODY должен
+быть замкнутой ориентированной chain с прежними skin triangles; его собственные folds сохраняются
+отдельным BODY_SELF_INTERSECTIONS_PRESENT, не выдаются за физический arm failure либо за исчезнувшие
+пересечения. Свободный луч доказывает неограниченную внешнюю компоненту даже для immersed BODY.
 
-Broadphase допускает встроенный Blender BVHTree на standalone arrays; narrowphase обязан
-обрабатывать coplanar/tangent случаи. Новая зависимость не вводится, CURRENT/пользовательские сцены
-при доказательстве kernel не меняются.
+Фиксируется конечный набор направлений до вычислений. Broadphase покрывает все возможные faces;
+narrowphase включает t=0, edge/vertex/tangent/coplanar touches. Для OUTSIDE_CERTIFIED нужны zero
+hits и zero unresolved faces по хотя бы одному полному лучу. Нет hit budget, distance cutoff и
+допущения winding0=outside. Отсутствие свободного луча среди выбранных направлений даёт UNRESOLVED,
+не физический RED и не PASS. Source controls могут независимо проверяться exact rational CPU;
+per-candidate certificate считается GPU interval arithmetic, неоднозначность не допускается.
+
+В первом v2 inside не допускается. Прежние 1/2мм allowances остаются неизменными; они не
+используются для допуска по ближайшей внутренней складке. Поддержка shallow inside требует
+отдельного actual-skin boundary witness q с сертифицированным расстоянием до query не больше
+прежнего допуска и доказанным разделением реальных inside/outside; virtual cap или internal face не
+подходит. Без такого доказательства результат UNRESOLVED. Upper-bound witness нельзя брать как
+завышенный sourceDepth для новой калибровки. v2 сначала требует доказанного exterior каждого
+обязательного source query и не нормирует проникновения.
+
+Caps остаются только вычислительными интерфейсами. Вся поверхность cap проходит cap–skin/cap–cap
+checks; touches/overlaps разрешены только на точном объявленном interface. Для связного открытого
+disk interior полное отсутствие пересечения с original full skin и один точный interior sample с
+oriented degree >=1 дают CAP_POSITIVE_DEGREE_CERTIFIED на всём interior. Нужны connectedness,
+orientation, nondegeneracy, отсутствие скрытых касаний, sample вне кожи. Одних вершин/центроида без
+глобального intersection proof недостаточно. Certificate повторяется для каждого кандидата.
+
+Physical crossing/distance/depth/clearance считают прежнюю actual skin без caps. Симметрично
+проверяются все прежние LEFT↔NONLEFT и RIGHT↔NONRIGHT query ROW; complements означают BODY OR другая
+рука, не XOR. Внутренние caps сокращаются только как доказанные противоположные oriented faces.
+Межручные проверки сохраняются отдельно. Query/membership/near30/skip90 и numerical allowances не
+меняются, cap/border vertices не становятся новыми физическими query. Любая неопределённость
+сохраняет calibration=null и eligible_for_write=false. Broadphase допускает встроенный Blender
+BVHTree на standalone arrays; narrowphase обязан обрабатывать coplanar/tangent случаи. Новая
+зависимость не вводится, CURRENT/пользовательские сцены при доказательстве kernel не меняются.
 
 Сохраняются прежние own-key/pressed-set/pad/skin/finger-pair/arm-body/reach/natural правила и
 numerical tolerances. Для нового yaw проверяется torso/оба shoulder transforms, длины и
