@@ -1,3 +1,4 @@
+import { isBlackKey } from "../../fingering/fingering";
 import { freeRoadPoint, type FreeRoadLane } from "../freeRoadLayout";
 import { roadWorldPoint } from "../roadWidthWarp";
 import {
@@ -194,13 +195,16 @@ export class ThreeRoadGuides {
       if (this.routes?.length) {
         const progress =
           (depth - camera.near.z) / Math.max(0.000001, camera.roadFarZ - camera.near.z);
-        for (let lane = 1; lane < this.routes.length; lane++) {
-          const left = this.routes[lane - 1],
-            right = this.routes[lane];
-          if (!left || !right) continue;
-          const offset = used++ * 6;
-          this.routePoint(this.beatPositions, offset, left, progress);
-          this.routePoint(this.beatPositions, offset + 3, right, progress);
+        // Black lanes start higher, on their keys' backs: through them the line would zigzag.
+        let left: FreeRoadLane | undefined;
+        for (const right of this.routes) {
+          if (isBlackKey(right.pitch)) continue;
+          if (left) {
+            const offset = used++ * 6;
+            this.routePoint(this.beatPositions, offset, left, progress);
+            this.routePoint(this.beatPositions, offset + 3, right, progress);
+          }
+          left = right;
         }
       } else {
         const offset = used++ * 6;
