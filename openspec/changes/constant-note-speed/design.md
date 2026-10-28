@@ -8,9 +8,9 @@ the 3D road maps that row linearly onto `[near.z, roadFarZ]`. Field length there
 
 ## Goals / Non-Goals
 
-**Goals:** one screen speed at the hit line, equal to today's 3D «Прямо» with the staff on; the
-window follows from field length. **Non-Goals:** music time, grading, horizon and camera geometry,
-perspective shrink of far notes.
+**Goals:** one world speed in millimetres per second, equal to today's 3D «Прямо» with the staff on;
+the window follows from field length. **Non-Goals:** music time, grading, horizon and camera
+geometry, perspective shrink of far notes.
 
 ## Decisions
 
@@ -26,9 +26,11 @@ perspective shrink of far notes.
    own field length. Notes keep their linear time-to-position placement, so every note moves at the
    same metres per second and has the same length in metres. A narrower key range shows bigger keys,
    so the same metres take more pixels: this follows the piano, as requested.
-3. **Bounded consumers.** `keyboardPan`, `noteEnergy`, `noteArrival` and `RoadTrailAnchors` read
-   `min(lookAhead, 6 s)` so a long window does not change panning, glow or trails. Notes themselves
-   are never capped: everything between the horizon and the keys is drawn.
+3. **Bounded consumers.** `noteEnergy`, `RoadTrailAnchors` and the trail mesh's world gap read
+   `min(lookAhead, 6 s)` so a long window does not change glow or trails. `keyboardPan` already
+   reads the trainer's own 2 s snapshot, not the notes' window, and stays as it is. `noteArrival`
+   keeps the full window: the birth effect belongs at the horizon. Notes themselves are never
+   capped: everything between the horizon and the keys is drawn.
 4. **No catch-up at start or seek.** Placement is a pure function of `start - time`; a note's
    appearance age counts from the moment it crosses the horizon (`start - lookAhead`), so after a
    load or seek every note already inside the window is drawn at its place without a birth effect.
@@ -38,5 +40,8 @@ perspective shrink of far notes.
 
 - [Far horizon puts tens of seconds in view] → nearest-first fill and the capacity cap; measured on
   a dense song.
-- [k measured on one screen] → viewport-relative speed keeps proportions on other screens; phones
-  cover the same share of the window per second.
+- [Reference measured on one screen] → the speed is in metres, so it holds on every screen; the
+  value (172 mm/s, 7.3 white keys a second) comes from the user's screenshot and is pinned by a
+  test, the user confirms it in the browser.
+- [Lanes ending at different depths] → the field length is taken at the camera's hit row; contact
+  lanes a few centimetres nearer move a few per cent faster on a metres-long field, as before.

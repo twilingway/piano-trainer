@@ -278,7 +278,7 @@ export class NotesLayer {
     road?.setLegacyLabels(this.overlayLabels);
     const pixelsPerSecond = hitY / state.lookAhead;
     const cards = this.cardsOn;
-    road?.beginNotes();
+    road?.beginNotes(state.lookAhead);
     this.playing.clear();
     this.arrivals.length = 0;
     this.guides.visible = road === undefined && this.lane.visible;

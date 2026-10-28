@@ -17,9 +17,12 @@ describe("shared direct note readability", () => {
       owns: () => true,
       hintSpeed: 0.75
     };
-    for (const perspective of [false, true]) {
-      const visual = roadFrameState(frame, perspective);
-      expect(visual.lookAhead).toBe(perspective ? 6 : 2.22);
+    const road = { noteField: () => ({ length: 3000, whiteStep: 23.5 }) };
+    for (const visual of [
+      roadFrameState(frame, undefined, 400, 20),
+      roadFrameState(frame, road, 400, 20)
+    ]) {
+      expect(visual.lookAhead).not.toBe(frame.lookAhead);
       expect({ ...visual, lookAhead: frame.lookAhead }).toEqual(frame);
       expect(visual.pressed).toBe(frame.pressed);
       expect(visual.sounding).toBe(frame.sounding);

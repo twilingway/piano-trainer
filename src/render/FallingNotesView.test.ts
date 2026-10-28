@@ -1,3 +1,5 @@
+import { KEYBOARD_WHITE_STEP } from "./keyboardMetrics";
+import { NOTE_SPEED_MM, noteLookAhead } from "./noteSpeed";
 import { ThreeRoadFrame } from "./three/ThreeRoadFrame";
 import { metricKeyboardCamera } from "./metricKeyboardCamera";
 import { nativeNoteCameras } from "./nativeViewCameras";
@@ -74,6 +76,10 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
   return { layer, sprites, flatDraw };
 }
 
+/** The harness road's field in seconds, and the flat lane's: hitY 400 px under 40 px keys. */
+const ROAD_LOOK_AHEAD = 6;
+const FLAT_LOOK_AHEAD = noteLookAhead(400, 40) ?? NaN;
+
 const notes: SongNote[] = [
   { id: "left", pitch: 48, hand: "left", finger: 5, start: 0, startBeat: 0, duration: 1 },
   { id: "right", pitch: 72, hand: "right", finger: 1, start: 0, startBeat: 0, duration: 1 }
@@ -121,6 +127,10 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
       notePlace: (x: number, y: number) => ({ x, y, scale: 1 }),
       noteLaneY: () => 22,
       beatY: (y: number) => y,
+      noteField: () => ({
+        length: NOTE_SPEED_MM * ROAD_LOOK_AHEAD,
+        whiteStep: KEYBOARD_WHITE_STEP
+      }),
       beginNotes: vi.fn(),
       setLegacyLabels: vi.fn(),
       endNotes: vi.fn(),
@@ -265,8 +275,44 @@ describe("accompaniment fire independent of key colours", () => {
       hands: new Set(["right"]),
       owns: (note) => note.hand === "right"
     });
-    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBe(roadMode ? 6 : 2.22);
+    expect(notesDraw.mock.calls[0]?.[0].lookAhead).toBeCloseTo(
+      roadMode ? ROAD_LOOK_AHEAD : FLAT_LOOK_AHEAD
+    );
     expect(notesDraw.mock.calls[0]?.[0].time).toBe(0.1);
+  });
+  it("places notes already in flight at once after a seek, born only at the far end", () => {
+    const song: SongNote[] = Array.from({ length: 20 }, (_, index) => ({
+      id: `n${String(index)}`,
+      pitch: 40 + index,
+      hand: "right",
+      start: index,
+      startBeat: index,
+      duration: 0.5
+    }));
+    const { view, sprites, layer } = viewHarness(true, song);
+    const frame: FrameState = {
+      time: 0,
+      lookAhead: 2,
+      statusOf: () => undefined,
+      pressed: new Set(),
+      sounding: new Set(),
+      due: [],
+      hands: new Set(["right"]),
+      owns: () => true
+    };
+    view.draw(frame);
+    view.draw({ ...frame, time: 10.2 });
+    const pixelsPerSecond = 400 / ROAD_LOOK_AHEAD;
+    for (const start of [11, 13, 15]) {
+      const body = sprites[start]?.body;
+      expect(body?.visible).toBe(true);
+      expect((body?.y ?? NaN) + (body?.height ?? NaN)).toBeCloseTo(
+        400 - (start - 10.2) * pixelsPerSecond
+      );
+    }
+    expect(sprites[17]?.body.visible).toBe(false);
+    // Only the note crossing the far end right now plays its birth.
+    expect(layer.arrivals.map((arrival) => arrival.x)).toEqual([16 * 80 + 20]);
   });
   it.each(["classic", "arcade", "3d"] as const)(
     "preserves flat keys through native loading and restores them after failure, style=%s",
@@ -307,7 +353,7 @@ describe("accompaniment fire independent of key colours", () => {
       expect(layer.root.renderable).toBe(true);
     }
   );
-  it("switches overhead and perspective flight independently without changing musical time", () => {
+  it("keeps the road's note speed across overhead and perspective without changing musical time", () => {
     const { view, notesDraw } = viewHarness(true);
     Object.assign(view, { keyStyle: "3d", layout: vi.fn() });
     const frame: FrameState = {
@@ -322,13 +368,10 @@ describe("accompaniment fire independent of key colours", () => {
     };
     for (const prefs of [CAMERA_PRESETS.top, CAMERA_PRESETS.player, CAMERA_PRESETS.hands]) {
       view.setCamera(prefs);
-      for (const [perspective, expected] of [
-        [false, 2.22],
-        [true, 6]
-      ] as const) {
+      for (const perspective of [false, true]) {
         Object.assign(view, { roadWanted: perspective });
         view.draw(frame);
-        expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(expected);
+        expect(notesDraw.mock.lastCall?.[0].lookAhead).toBeCloseTo(ROAD_LOOK_AHEAD);
         expect(notesDraw.mock.lastCall?.[0].time).toBe(0.1);
       }
     }
@@ -351,7 +394,9 @@ describe("accompaniment fire independent of key colours", () => {
       hands: new Set(),
       owns: () => false
     });
-    expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(roadMode ? 6 : 2.22);
+    expect(notesDraw.mock.lastCall?.[0].lookAhead).toBeCloseTo(
+      roadMode ? ROAD_LOOK_AHEAD : FLAT_LOOK_AHEAD
+    );
     expect(notesDraw.mock.lastCall?.[0].time).toBe(-0.5);
   });
   it.each([CAMERA_PRESETS.top, CAMERA_PRESETS.player])(
@@ -369,7 +414,7 @@ describe("accompaniment fire independent of key colours", () => {
         hands: new Set(),
         owns: () => false
       });
-      expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(6);
+      expect(notesDraw.mock.lastCall?.[0].lookAhead).toBeCloseTo(ROAD_LOOK_AHEAD);
       expect(notesDraw.mock.lastCall?.[0].time).toBe(-0.5);
     }
   );
@@ -664,11 +709,12 @@ it("keeps native 3D enabled for direct notes and restores perspective without ch
   view.setRoad(false);
   expect(roadCamera).not.toHaveBeenCalled();
   view.draw(state);
-  expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(2.22);
+  // Direct 3D notes still travel the road, so they keep its field and speed.
+  expect(notesDraw.mock.lastCall?.[0].lookAhead).toBeCloseTo(ROAD_LOOK_AHEAD);
   expect(notesDraw.mock.lastCall?.[3]).toBeDefined();
   view.setRoad(true);
   view.draw(state);
-  expect(notesDraw.mock.lastCall?.[0].lookAhead).toBe(6);
+  expect(notesDraw.mock.lastCall?.[0].lookAhead).toBeCloseTo(ROAD_LOOK_AHEAD);
   expect(state.time).toBe(5);
 });
 
@@ -976,7 +1022,9 @@ it.each([false, true])(
     }
     for (let index = 0; index < bars.length; index++)
       expect(bars[index]?.bottom).toBeCloseTo(
-        400 - (((repeated[index]?.start ?? 0) - time) * 400) / (roadMode ? 6 : 2.22)
+        400 -
+          (((repeated[index]?.start ?? 0) - time) * 400) /
+            (roadMode ? ROAD_LOOK_AHEAD : FLAT_LOOK_AHEAD)
       );
   }
 );

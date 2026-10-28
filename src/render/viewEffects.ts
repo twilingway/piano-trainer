@@ -1,5 +1,5 @@
 import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "./flatEffectSettings";
-import { roadApproach } from "./roadApproach";
+import { noteLookAhead } from "./noteSpeed";
 import type { HudLayer } from "./HudLayer";
 import type { SongNote } from "../song/song";
 import { noteColor } from "./computerKeys";
@@ -90,7 +90,16 @@ export function drawViewHud(
   );
 }
 
-/** The native road previews a longer approach without advancing the shared song clock. */
-export function roadFrameState(state: FrameState, perspective: boolean): FrameState {
-  return { ...state, lookAhead: roadApproach(perspective) };
+/**
+ * The notes' look-ahead is the time the shared note speed needs to cross the field: the road's
+ * own when it draws the notes, else the flat lane down to the hit line. Song time is untouched.
+ */
+export function roadFrameState(
+  state: FrameState,
+  road: Pick<RoadLayer, "noteField"> | undefined,
+  hitY: number,
+  whiteWidth: number
+): FrameState {
+  const field = road?.noteField(whiteWidth) ?? { length: hitY, whiteStep: whiteWidth };
+  return { ...state, lookAhead: noteLookAhead(field.length, field.whiteStep) ?? state.lookAhead };
 }
