@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 
 import { pianistAvailable } from "../render/three/pianistAvailability";
+import { CAMERA_PRESETS } from "../render/worldCamera";
 import type { KeyboardSettings } from "../ui/settings/KeyboardSettings";
 import type { useFallingView } from "./useFallingView";
 import type { StaffPrefs } from "./useStaffPrefs";
@@ -112,7 +113,16 @@ export function useKeyboardSettings(
     },
     camera: staffPrefs.camera,
     onCamera: (camera) => {
-      updateStaffPrefs({ camera });
+      // A preset is a new view: a button fit taken in the old one would bend every lane at the keys.
+      const preset = Object.values(CAMERA_PRESETS).some((view) =>
+        (["fov", "height", "distance", "pitch", "targetY"] as const).every(
+          (key) => view[key] === camera[key]
+        )
+      );
+      updateStaffPrefs({
+        camera,
+        ...(preset && staffPrefs.roadFit === "button" ? { roadFitCamera: camera } : {})
+      });
     },
     roadFit: staffPrefs.roadFit,
     onRoadFit: (roadFit) => {
