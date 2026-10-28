@@ -1,5 +1,5 @@
 import { createNoteBodyMaterial } from "./ThreeNoteMaterial";
-import type { ShaderMaterial } from "three";
+import { FrontSide, type ShaderMaterial } from "three";
 
 const FRAGMENT = /* glsl */ `
 varying vec3 vPoint;
@@ -57,5 +57,8 @@ export function createFilledNoteBodyMaterial(): ShaderMaterial {
   material.transparent = false;
   material.depthWrite = true;
   material.forceSinglePass = true;
+  // Opaque: the facing side wins by winding. Docked depth mixes in the keyboard camera, whose
+  // order of a direct note's faces can differ from the world's and would show the dark back.
+  material.side = FrontSide;
   return material;
 }
