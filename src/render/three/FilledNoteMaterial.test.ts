@@ -1,5 +1,5 @@
 import { runInNewContext } from "node:vm";
-import { NormalBlending } from "three";
+import { DoubleSide, FrontSide, NormalBlending } from "three";
 import { expect, it } from "vitest";
 import { createFilledNoteBodyMaterial } from "./FilledNoteMaterial";
 import { createNoteBodyMaterial } from "./ThreeNoteMaterial";
@@ -13,6 +13,9 @@ it("keeps an opaque depth-writing core on the same closed-slab vertex transform"
   expect(filled.depthWrite).toBe(true);
   expect(filled.blending).toBe(NormalBlending);
   expect(filled.lights).toBe(false);
+  // The facing side wins by winding, whatever depth order the docked keyboard gives the faces.
+  expect(filled.side).toBe(FrontSide);
+  expect(glass.side).toBe(DoubleSide);
   expect(filled.fragmentShader).toContain("gl_FragColor = vec4(tint, filledNoteAlpha())");
   const body = /float filledNoteAlpha\(\)\s*\{([^}]+)\}/.exec(filled.fragmentShader)?.[1];
   if (!body) throw new Error("Missing solid core alpha");
