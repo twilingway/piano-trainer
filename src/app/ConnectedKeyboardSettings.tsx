@@ -14,7 +14,6 @@ export function ConnectedKeyboardSettings() {
         ? state.preferences.staff.freePerspectiveField
         : state.preferences.staff.freeDirectField,
       fallingNoteStyle: state.preferences.staff.fallingNoteStyle,
-      noteProjection: state.preferences.staff.noteProjection,
       handStyle: state.preferences.staff.handStyle,
       flatNoteBurning: state.preferences.staff.flatNoteBurning,
       flatPressEffects: state.preferences.staff.flatPressEffects,
@@ -48,9 +47,6 @@ export function ConnectedKeyboardSettings() {
   );
   const onFallingNoteStyle = useRuntimeCommand(
     (runtime) => runtime.keyboardSettings.onFallingNoteStyle
-  );
-  const onNoteProjection = useRuntimeCommand(
-    (runtime) => runtime.keyboardSettings.onNoteProjection
   );
   const onFreeRoadLayout = useRuntimeCommand(
     (runtime) => runtime.keyboardSettings.onFreeRoadLayout
@@ -93,8 +89,6 @@ export function ConnectedKeyboardSettings() {
       onFreeRoadLayout={onFreeRoadLayout}
       onNotesPerspective={onNotesPerspective}
       fallingNoteStyle={state.fallingNoteStyle}
-      noteProjection={state.noteProjection}
-      onNoteProjection={onNoteProjection}
       onFallingNoteStyle={onFallingNoteStyle}
       handStyle={state.handStyle}
       flatNoteBurning={state.flatNoteBurning}

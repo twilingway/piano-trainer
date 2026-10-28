@@ -153,6 +153,7 @@ export const settingsMessages1 = {
   "Перспектива: горизонт": {
     en: "Perspective: horizon"
   },
+  "{parameter}: числовое значение": { en: "{parameter}: numeric value" },
   "Перспектива: ширина у горизонта": {
     en: "Perspective: width at horizon"
   },

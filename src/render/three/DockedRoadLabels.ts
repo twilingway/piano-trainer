@@ -45,9 +45,7 @@ export class DockedRoadLabels {
     keys: Object3D = road
   ): void {
     this.enabled = enabled && frame !== undefined;
-    // StylizedProjectionLayer owns the labels whenever its mode is active.
-    if (frame?.noteProjection.mode !== "stylizedProjection")
-      for (const label of this.labels) label.renderable = true;
+    for (const label of this.labels) label.renderable = true;
     this.labels = this.enabled ? (frame?.legacyLabels ?? []) : [];
     if (!this.enabled || !frame) return;
     for (const label of this.labels) label.renderable = false;

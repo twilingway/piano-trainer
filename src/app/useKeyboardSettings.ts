@@ -16,7 +16,6 @@ export function useKeyboardSettings(
 ): ComponentProps<typeof KeyboardSettings> & {
   onCameraComposition: NonNullable<ComponentProps<typeof KeyboardSettings>["onCameraComposition"]>;
   onWorldFov: NonNullable<ComponentProps<typeof KeyboardSettings>["onWorldFov"]>;
-  onNoteProjection: NonNullable<ComponentProps<typeof KeyboardSettings>["onNoteProjection"]>;
   fps: boolean;
   onFps: (show: boolean) => void;
   onPianist: (on: boolean) => void;
@@ -41,10 +40,6 @@ export function useKeyboardSettings(
       updateStaffPrefs({ keyStyle });
     },
     fallingNoteStyle: staffPrefs.fallingNoteStyle,
-    noteProjection: staffPrefs.noteProjection,
-    onNoteProjection: (noteProjection) => {
-      updateStaffPrefs({ noteProjection });
-    },
     onFallingNoteStyle: (fallingNoteStyle) => {
       updateStaffPrefs({ fallingNoteStyle });
     },

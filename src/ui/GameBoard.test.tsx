@@ -9,7 +9,6 @@ import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { DEFAULT_SCREEN_LAYOUT } from "../app/screenLayout";
 import type { StaffPrefs } from "../app/useStaffPrefs";
 import { DEFAULT_CAMERA } from "../render/worldCamera";
-import { DEFAULT_PROJECTION_PARAMETERS } from "../render/stylizedProjection";
 import { GameBoard } from "./GameBoard";
 import { ResultDialog } from "./ResultDialog";
 import { Workspace } from "./Workspace";
@@ -21,7 +20,6 @@ beforeEach(() => {
 });
 
 const prefsWith = (lane: boolean): StaffPrefs => ({
-  noteProjection: DEFAULT_PROJECTION_PARAMETERS,
   zoom: 1,
   tabsZoom: 1,
   noteColor: "#00d4ff",

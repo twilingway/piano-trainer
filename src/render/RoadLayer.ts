@@ -1,6 +1,5 @@
 import type { CameraComposition } from "./cameraComposition";
 import { FreeRoadRoutes } from "./freeRoadRoutes";
-import type { ProjectionParameters } from "./stylizedProjection";
 export type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import type { FallingNoteStyle } from "./fallingNoteStyle";
@@ -40,9 +39,6 @@ export { DEFAULT_ROAD_SHAPE, type RoadShape } from "./roadLayoutCamera";
 export class RoadLayer {
   setLegacyLabels(labels: readonly { renderable: boolean }[]): void {
     this.nativeRoad.legacyLabels = labels;
-  }
-  setNoteProjection(value: ProjectionParameters): void {
-    this.nativeRoad.noteProjection = value;
   }
   readonly container = new Container();
   readonly effects = new Container();

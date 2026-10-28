@@ -100,7 +100,6 @@ export function useFallingView({
   const localeRef = useRef(locale);
   const comparisonRef = useRef<FallingNotesView | null>(null);
   const fallingStyleRef = useRef(staffPrefs.fallingNoteStyle);
-  const noteProjectionRef = useRef(staffPrefs.noteProjection);
   const freeLayout = staffPrefs.road ? staffPrefs.freePerspectiveField : staffPrefs.freeDirectField;
   const freeLayoutRef = useRef(freeLayout);
   const flatEffectsRef = useRef({
@@ -235,11 +234,6 @@ export function useFallingView({
     viewRef.current?.setFallingNoteStyle(staffPrefs.fallingNoteStyle);
     comparisonRef.current?.setFallingNoteStyle(staffPrefs.fallingNoteStyle);
   }, [viewRef, trainerReady, staffPrefs.fallingNoteStyle]);
-  useEffect(() => {
-    noteProjectionRef.current = staffPrefs.noteProjection;
-    viewRef.current?.setNoteProjection(staffPrefs.noteProjection);
-    comparisonRef.current?.setNoteProjection(staffPrefs.noteProjection);
-  }, [viewRef, trainerReady, staffPrefs.noteProjection]);
   const { lift, scale, x, y } = placement;
   useEffect(() => {
     freeLayoutRef.current = freeLayout;
@@ -279,7 +273,6 @@ export function useFallingView({
       if (disposed) return;
       mirror.setLocale(localeRef.current);
       mirror.setFallingNoteStyle(fallingStyleRef.current);
-      mirror.setNoteProjection(noteProjectionRef.current);
       mirror.setFreeRoadLayout(freeLayoutRef.current);
       mirror.flatEffects.set(
         flatEffectsRef.current.burning,

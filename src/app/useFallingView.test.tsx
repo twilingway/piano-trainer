@@ -24,7 +24,6 @@ const view = {
   setRoad: vi.fn(),
   setNoteCards: vi.fn(),
   setFallingNoteStyle: vi.fn(),
-  setNoteProjection: vi.fn(),
   setFreeRoadLayout: vi.fn(),
   setKeyStyle: vi.fn(),
   setCamera: vi.fn(),
@@ -286,29 +285,6 @@ it("reports hand loading state without restarting the song and unsubscribes on u
   });
   expect(view.onHandStatus).toBeUndefined();
   root = createRoot(host);
-});
-
-it("applies projection geometry without changing the clock, camera, or keyboard", async () => {
-  await act(async () => {
-    root.render(<Harness prefs={DEFAULT_STAFF_PREFS} />);
-    await Promise.resolve();
-  });
-  vi.clearAllMocks();
-  const noteProjection = {
-    ...DEFAULT_STAFF_PREFS.noteProjection,
-    mode: "stylizedProjection" as const,
-    horizonRadius: 3.25
-  };
-  await act(async () => {
-    root.render(<Harness prefs={{ ...DEFAULT_STAFF_PREFS, noteProjection }} />);
-    await Promise.resolve();
-  });
-  expect(view.setNoteProjection).toHaveBeenLastCalledWith(noteProjection);
-  expect(view.setCamera).not.toHaveBeenCalled();
-  expect(view.setKeyStyle).not.toHaveBeenCalled();
-  expect(trainer.load).not.toHaveBeenCalled();
-  expect(trainer.seek).not.toHaveBeenCalled();
-  expect(trainer.setPlaying).not.toHaveBeenCalled();
 });
 
 it.each(["filled", "flat", "glass"] as const)(

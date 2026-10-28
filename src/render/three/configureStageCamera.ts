@@ -2,7 +2,7 @@ import type { Camera } from "three";
 import type { WorldCamera } from "../worldCamera";
 import { projectionMatrix, setCameraProjectionKind, viewMatrix } from "./threeCamera";
 
-/** Existing camera matrices; artistic projection does not alter keyboard perspective. */
+/** Existing camera matrices for the stage and the straightening snapshot. */
 export function configureStageCamera(
   camera: Camera,
   world: WorldCamera,

@@ -6,11 +6,6 @@ import {
 } from "../render/cameraComposition";
 import type { FallingNoteStyle } from "../render/fallingNoteStyle";
 import {
-  DEFAULT_PROJECTION_PARAMETERS,
-  normalizeProjectionParameters,
-  type ProjectionParameters
-} from "../render/stylizedProjection";
-import {
   DEFAULT_FREE_DIRECT_FIELD,
   DEFAULT_FREE_PERSPECTIVE_FIELD,
   normalizeFreeRoadLayout,
@@ -28,7 +23,6 @@ import type { KeyRange } from "./useFallingView";
 import type { KeyboardOrientation } from "./viewProfiles";
 
 export interface StaffPrefs {
-  readonly noteProjection: ProjectionParameters;
   readonly zoom: number;
   /** Independent size of piano tab labels. */
   readonly tabsZoom: number;
@@ -105,7 +99,6 @@ export interface StaffPrefs {
 }
 
 export const DEFAULT_STAFF_PREFS: StaffPrefs = {
-  noteProjection: DEFAULT_PROJECTION_PARAMETERS,
   zoom: 1,
   tabsZoom: 1,
   noteColor: "#ffffff",
@@ -178,7 +171,6 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     values.includes(raw[key] as StaffPrefs[K]) ? (raw[key] as StaffPrefs[K]) : defaults[key];
   const zoom = number("zoom", 0.5, 2);
   return {
-    noteProjection: normalizeProjectionParameters(raw.noteProjection),
     zoom,
     tabsZoom: raw.tabsZoom === undefined ? zoom : number("tabsZoom", 0.5, 2),
     noteColor: color("noteColor"),
