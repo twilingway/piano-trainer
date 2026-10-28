@@ -1,62 +1,95 @@
 # Проверка продолжения, 28 октября 2026
 
-Статус: работа продолжается; весь этап и игровая анимация не завершены. Ветка
+Статус: работа продолжается; игровая анимация и весь этап не завершены. Ветка
 `feat/keyboard88-hands-runtime` от свежего `origin/dev` (`6d738d54`). Основная папка `dev` и
-пользовательский5190 не менялись. PR221 подтверждён merged.
+пользовательский5190 не менялись; PR221 подтверждён merged. Промежуточный draft:
+https://github.com/twilingway/piano-trainer/pull/243.
 
-## Сохранность и независимые измерения
+## Выбранный игровой риг
 
-SHA исходного atlas, final-stop review и manifest совпали с handoff. Приватная лаборатория старого
-worktree сохранена; новые эксперименты находятся в ignored `blender/labs/continuation-20261028/`.
-Blender открыл сохранённый review631 без dirty-изменений; HUD активен, по одному load_pre/load_post
-handler, verified33/unverified0 для versioned audit mappings. Это не новый полный audit атласа.
+Пользователь посмотрел обе реальные модели со скелетами и выбрал серую основную модель на52кости.
+Сравнение было отдельным ignored просмотром на5191; стенд остановлен, порт освобождён.
 
-Новый two-anchor construction и 3D advancing-front ears не дали полного cap. Вместо дальнейшего
-перебора обнаружены6 пар original unsplit skin triangles с настоящими пересечениями исходной LEFT
-геометрии. Fraction и независимый Cramer согласованы. Saved Blender readback с правильной frozen
-ROW-map подтвердил все6 пар, сегменты0,225–1,602мм; maximum numeric/saved coordinate error
-0,0000506мм. Первое чтение с неверным ROW order отвергнуто и сохранено как
-INVALID_MAPPING_NOT_EVIDENCE. Это отказ embeddedness source631 для новой калибровки, а не расширение
-physical query или отмена исторических checkpoint64/RH-гейтов. Новая pose base готовится отдельно с
-null calibration.
+Actual public52 и saved Blender: все6890 Basis vertices/13776faces совпали точно. Public top4 joint
+IDs/Float32 weights воспроизводятся точно; rest/bind совпадают в пределах Float32 rounding
+(rest3,02e-7, inversebind1,71e-7, head/tail3,22e-7м). Это тот же rig/base, другая анатомия не нужна.
+Полный исходный skin имеет дополнительные влияния: maximum discarded weight0,00561679. В public
+нет1670frame-baked pose corrections, subdivision2, GN PAD/SIDE и отдельных ногтей. Требуется
+приватный corrective export с отдельным surface proof; один перенос quaternion недостаточен.
 
-## C3 и покрытие
+Отдельная модель68костей не выбрана для интеграции. Её compatibility/GPU/Three исследования
+сохранены только как локальная диагностика, не как новый игровой результат.
 
-Prepared exact40 выполнен:12/12 RED. Cold12×160 выполнен с прежними исходными starts, затем выполнен
-fresh exact160:12/12 RED. Frames592/593/598 остаются открытыми. Все исходники совпали до/после,
-overall physical_class=null и eligible_for_write=false; новых записей в atlas нет.
+## Сохранность источников
 
-Диагностика нашла две причины для нового отдельного solver profile: gated press-band cost исчезает
-при потере XY plateau samples; stale collision planes делают best scores разных шагов несравнимыми.
-Следующий профиль сохраняет физический judge/bounds/masks и естественную форму свободных пальцев,
-меняет мягкий acquisition objective и заново ранжирует свежие оценки. Это не ослабление допуска.
+SHA исходного atlas, final-stop review и manifest совпали с handoff. Checkpoint64/frozen C4, старые
+сцены и физические маски сохранены. Все новые эксперименты находятся только в ignored
+`blender/labs/continuation-20261028/` нового worktree, исходная лаборатория не переписывается.
 
-LEFT inventory74 и C6 пока NOT_RUN; bilateral/world/kernel и строгий yaw writer остаются открытыми.
+Blender открыл saved review631 без dirty-изменений. HUD активен с одним load_pre/load_post handler,
+verified33/unverified0 для versioned audit mappings; это не новый полный audit атласа. Независимый
+public52 comparison подтвердил неизменность filepath/frame/viewport/dirty/HUD.
 
-## Совместимость игрового пути
+## Collision/containment: фактическая диагностика
 
-Реальные public GLB/index:52кости, parent/rest/root совпадают, inversebind max difference
-3,934865e-7 при mesh-relative convention. Новый guard проверяет действительную hierarchy/rest/root/
-mesh/bind/inversebind и cleanup до texture decode; same-name несовместимость отклоняется.
+Two-anchor и 3D advancing-front caps не дали полного допустимого диска на старой геометрии.
+Обнаружены6пар original unsplit skin intersections; Fraction и независимый Cramer согласованы. Saved
+Blender с правильной frozen ROW-map подтвердил все6пар: сегменты0,225–1,602мм, maximum numeric/saved
+coordinate error0,0000506мм. Первое чтение с неверным ROW order отвергнуто и сохранено как
+INVALID_MAPPING_NOT_EVIDENCE.
 
-Private native GLB имеет68костей вместо source52, иной rest/bind, split forearm twists и
-metacarpals; длины upperarm отличаются до33,207мм, forearm до22,758мм. Body mesh/morph и nails также
-различаются. Исходная Blender кожа использует subdivision, PSD/SIDE и отдельные ногти; публичный
-экспорт этих correctives не содержит. Поэтому нужен offline target-rig solve с повторным surface
-audit; копирование quaternion или успешный rig guard не подтверждают игровые контакты.
+Выполнены99новых source candidates: LEFT collar/swivel18, wrist lift20/40мм36, shared torso27 и
+wrist lift80/120мм18; baseline/rebuild controls считаются отдельно. Все новые позы имеют raw
+full156/FK/PSD/world-wrist/pelvis/length/source guards, но это не физический допуск. Known52 exact
+ledger последней семьи:13/18clear только по перечисленным witness pairs.
 
-## Выполненные проверки
+Один расширенный global source audit lift80 остановлен по maxbad512, а не завершил полный обход.
+Найдены84 LEFT index↔бедро пересечения в прежнем физическом LEFT-body query scope и428 BODY-only
+own-fold intersections вне этого scope. На lift120 все эти84 известные пересечения пальца
+устранены;246известных BODY-only пересечений сохраняются. Это ограниченная region map, не полный
+LEFT/world PASS, не доказательство полного embeddedness и не расширение физических исключений.
 
-- Narrow rig/loader tests:33PASS, включая actual public GLB и negative hierarchy/rest/bind cases.
-- Независимое review: блокирующих ошибок production diff не найдено.
+Для вычислительного барьера подготовлен отдельный `certified-exterior-v2` профиль; архитектурное
+review подтвердило sound sufficient proof по полностью свободному лучу через всю замкнутую
+complement surface. Winding0, отсутствие crossing и близость к внутренней складке не дают PASS.
+Physical masks/query/skip90/near30/allowances не меняются. BODY-only folds остаются диагностикой;
+LEFT/RIGHT closure/embeddedness, caps internality, полный GPU exterior query proof и saved readback
+ещё нужны. Исторические UNRESOLVED отчёты не переименовываются; calibration остаётся null.
+
+## C3 и оставшееся покрытие
+
+Prepared exact40:12/12RED. Cold12×160 выполнен, затем fresh exact160:12/12RED. Новый active
+contact-acquisition160 и fullbounded160 также выполнены и независимо exact rejudged:12/12RED каждый.
+Frozen source и overall admission fields сохранены; новых записей в atlas нет.
+
+Fresh-objective backtracking:3seeds, ровно10итераций. Loss снизился592:295,38→244,80;
+593:374,23→251,63;598:68,66→67,01. Это численная диагностика, не физический PASS. Fresh exact3 снова
+RED. Фактические trial traces показали finite press-band jump при первом XY plateau sample, который
+перекрывает правильное descent направление. Отдельный paired continuous-acquisition experiment
+использует те же initial seeds и прежние hard gates; raw band сохраняется диагностикой. Его
+результат фиксируется отдельным report, старый контрольный run не меняется.
+
+Frames592/593/598 остаются открытыми. LEFT inventory74/C6, strict yaw writer, bilateral/world,
+переходы, corrective export и визуальная приёмка не завершены. Накопленная исходная сводка
+840GREEN/92YELLOW/686RED не является новым полным аудитом.
+
+## Проверки кода и границы результатов
+
+- Rig/loader narrow tests33PASS, включая реальный public GLB и wrong hierarchy/rest/bind cases.
+- Независимое production review: блокирующих ошибок не найдено.
 - `pnpm check`: PASS,4428tests +23compiler tests,10существующих skipped,
   typecheck/lint/format/build.
-- `pnpm spec:validate`:81/81PASS; существующий duplicate task1.7 warning относится к
-  game-visual-update.
-- Semantic synthetic/source controls:17PASS; original and saved skin witnesses проверены отдельно.
-- Видимый Chrome на5191: реальный loader загрузил1215frames/52bones/3skinned primitives/2textures,
-  dispose завершился. Ошибок console нет; есть существующие autoplay/shader warnings. Это проверка
-  loader, не приёмка новой анимации.
+- `pnpm spec:validate`:81/81PASS; старый duplicate task1.7 warning относится к game-visual-update.
+- Видимый Chrome loader smoke:1215frames/52bones/3skinned primitives/2textures, dispose выполнен.
+  Console errors отсутствовали; существующие autoplay/shader warnings записаны. Это не animation
+  acceptance.
+- Public52/static Blender compatibility controls6PASS; source kernel controls23PASS.
+- Для каждого нового GPU profile отдельно выполнены pure/source tests, PLAN/hash checks и
+  independent review.
+- Native68 optional GPU/actualThree parity: source0 4,44e-16м, nonzero70surfaces4,58e-16м; это
+  только compatibility evidence невыбранного пути, не contact/physical acceptance.
 
-Стенд: `http://localhost:5191/`, новая ветка, новый worktree. Его PID/managed session записаны в
-приватном session-ownership.json; после завершения стенд должен быть остановлен и порт проверен.
+Приватные MANO/SMPL+H, GLB, текстуры, позы, NPZ, картинки и экспериментальные скрипты не входят в
+Git или production. Numerical, saved Blender, export, browser и visual gates остаются отдельными.
+Собственные PID/порты/managed sessions записываются в локальный session-ownership.json; после
+завершения каждого временного стенда проверяется освобождение его порта.
