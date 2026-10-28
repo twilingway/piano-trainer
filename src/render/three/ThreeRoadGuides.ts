@@ -3,6 +3,7 @@ import { roadWorldPoint } from "../roadWidthWarp";
 import {
   BufferAttribute,
   BufferGeometry,
+  CustomBlending,
   DynamicDrawUsage,
   Group,
   LineBasicMaterial,
@@ -34,14 +35,19 @@ function lines(positions: Float32Array, opacity: number): LineSegments {
     new BufferAttribute(new Float32Array(positions.length / 3), 1).setUsage(DynamicDrawUsage)
   );
   geometry.setDrawRange(0, 0);
+  // Docked depth shifts each point by its own anchor's keyboard-camera delta, so a floor line can
+  // test nearer than a note's top face. Blend in the opaque list, first, without writing depth:
+  // every road object drawn after it covers it.
   const material = new LineBasicMaterial({
     color: GUIDE_COLOR,
-    transparent: true,
+    transparent: false,
+    blending: CustomBlending,
     opacity,
     depthWrite: false,
     toneMapped: false
   });
   const result = new LineSegments(geometry, material);
+  result.renderOrder = -2;
   result.frustumCulled = false;
   return result;
 }
