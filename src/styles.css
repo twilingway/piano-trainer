@@ -4669,20 +4669,6 @@ button.song-card.song-card__open {
   stroke-width: 1.2;
 }
 
-.projection-settings {
-  min-width: 0;
-  display: grid;
-  gap: 12px;
-}
-.projection-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.projection-presets .game-button {
-  min-width: 0;
-  white-space: normal;
-}
 .projection-number-control {
   min-width: 0;
   max-width: 100%;

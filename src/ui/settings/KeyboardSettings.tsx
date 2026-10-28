@@ -5,8 +5,6 @@ import type { RoadFit } from "../../render/roadLayoutCamera";
 import type { FallingNoteStyle } from "../../render/fallingNoteStyle";
 import type { FreeRoadLayout } from "../../render/freeRoadLayout";
 import { FreeRoadSettings } from "./FreeRoadSettings";
-import { StylizedProjectionSettings } from "./StylizedProjectionSettings";
-import type { ProjectionParameters } from "../../render/stylizedProjection";
 import { useI18n } from "../../app/useI18n";
 import { CameraSettings } from "./CameraSettings";
 import type { CameraPrefs } from "../../render/worldCamera";
@@ -17,8 +15,6 @@ import type { HandStyle } from "../../render/handRenderCatalog";
 import type { KeyStyle } from "../../render/KeyboardLayer";
 
 interface Props {
-  readonly noteProjection?: ProjectionParameters;
-  readonly onNoteProjection?: (value: ProjectionParameters) => void;
   readonly keyRange: KeyRange;
   readonly onKeyRange: (range: KeyRange) => void;
   readonly showLabels: boolean;
@@ -73,8 +69,6 @@ interface Props {
 
 /** The keyboard tab: how many keys, the stickers and what to show. */
 export function KeyboardSettings({
-  noteProjection,
-  onNoteProjection,
   keyRange,
   onKeyRange,
   showLabels,
@@ -206,13 +200,6 @@ export function KeyboardSettings({
       </SettingsGroup>
       <SettingsGroup title={t("Падающие ноты")}>
         <div className="settings-list">
-          {noteProjection && onNoteProjection && (
-            <StylizedProjectionSettings
-              value={noteProjection}
-              onChange={onNoteProjection}
-              keyboard3d={keyStyle === "3d"}
-            />
-          )}
           <label className="setting">
             <span>{t("Проекция нот")}</span>
             <select

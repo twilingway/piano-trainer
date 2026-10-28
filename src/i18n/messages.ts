@@ -7,7 +7,6 @@ import { musicCourseRuntimeMessages } from "./musicCourseRuntimeMessages";
 import { musicCourseMessages } from "./musicCourseMessages";
 import { cameraCompositionMessages } from "./cameraCompositionMessages";
 import { settingsHelpMessages } from "./settingsHelpMessages";
-import { projectionMessages } from "./projectionMessages";
 import { performanceMessages } from "./performanceMessages";
 import { instrumentMessages } from "./instrumentMessages";
 import { graphicsMessages } from "./graphicsMessages";
@@ -36,7 +35,6 @@ export const messages: Messages = {
   ...musicCourseMessages,
   ...musicCourseRuntimeMessages,
   ...cameraCompositionMessages,
-  ...projectionMessages,
   ...settingsHelpMessages,
   ...instrumentMessages,
   ...graphicsMessages,

@@ -28,7 +28,6 @@ const mocks = vi.hoisted(() => ({
   resetFreeCamera: vi.fn(),
   freeKeyAt: vi.fn(),
   nativeEffectsReady: false,
-  projectionGeometryOnly: false,
   handPresent: true,
   loadPianist: vi.fn(),
   pianistConstruct: vi.fn(),
@@ -58,9 +57,6 @@ vi.mock("./ThreeStage", () => ({
     removeFromKeys = mocks.removeFromKeys;
     get nativeEffectsReady() {
       return mocks.nativeEffectsReady;
-    }
-    get projectionGeometryOnly() {
-      return mocks.projectionGeometryOnly;
     }
     setCameraComposition = mocks.setCameraComposition;
     setWorldFov = mocks.setWorldFov;
@@ -193,7 +189,6 @@ function deferred<T>() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.nativeEffectsReady = false;
-  mocks.projectionGeometryOnly = false;
   mocks.handPresent = true;
   mocks.publicReady = false;
   mocks.publicStatus = "loading";
@@ -213,26 +208,6 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
-  it("keeps flat effects hidden through the final HUD pass in active geometry-only projection", async () => {
-    const view = fixture();
-    const fire = view.overlay.addChild(new Container()),
-      mist = view.overlay.addChild(new Container());
-    view.host.setSceneEffects([fire], [mist]);
-    await view.host.setEnabled(true);
-    mocks.projectionGeometryOnly = true;
-    view.renderer.render.mockImplementation(({ container }) => {
-      expect(container).not.toBe(fire);
-      expect(container).not.toBe(mist);
-      if (container === view.stage) {
-        expect(fire.renderable).toBe(false);
-        expect(mist.renderable).toBe(false);
-      }
-    });
-    view.tick();
-    expect(fire.renderable).toBe(true);
-    expect(mist.renderable).toBe(true);
-    view.host.destroy();
-  });
   it("releases screen projection ownership when native rendering stops", async () => {
     const view = fixture();
     await view.host.setEnabled(true);

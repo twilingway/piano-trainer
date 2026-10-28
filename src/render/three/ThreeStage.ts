@@ -3,7 +3,6 @@ import { configureDockedRoad, updateDockedKeyOffsets } from "./dockedRoadProject
 import { DockedRoadLabels } from "./DockedRoadLabels";
 import { invalidateDockedScenePasses } from "./dockedScenePasses";
 import { StageWorldScore } from "./StageWorldScore";
-import { StylizedProjectionLayer } from "./StylizedProjectionLayer";
 import { pickKeyboardKey } from "./pickKeyboardKey";
 import { configureStageCamera } from "./configureStageCamera";
 import { buildStageKeys, clearStageKeys, type HingedKey } from "./stageKeyboardLayout";
@@ -46,7 +45,6 @@ ColorManagement.enabled = false;
 
 /** How fast a key follows the finger, per second. */
 const DIP_RATE = 30;
-const NO_EFFECTS: FlatEffectOptions = { burning: false, presses: false, musicalNotes: false };
 
 /** The keyboard drawn by three.js using the shared Three renderer. */
 export class ThreeStage {
@@ -95,7 +93,6 @@ export class ThreeStage {
   private version = -1;
   private disposed = false;
   private readonly scorePoster: StageWorldScore;
-  private projection: StylizedProjectionLayer | undefined;
   private sign: string | undefined;
   /** Pose the character after this frame's camera setup and before any scene render pass. */
   beforeRender: ((camera: Camera, separateCameras: boolean) => void) | undefined;
@@ -248,20 +245,8 @@ export class ThreeStage {
         : this.roadCamera;
     this.pickCamera = separate ? this.keyboardCamera : camera;
     this.beforeRender?.(this.pickCamera, separate);
-    if (roadFrame?.noteProjection.mode === "stylizedProjection")
-      this.projection ??= new StylizedProjectionLayer();
-    const projected =
-      this.projection?.prepare(
-        roadFrame,
-        this.boxes,
-        this.hinged,
-        this.pickCamera,
-        screen,
-        roadCamera,
-        nativeKeyboard && !this.performanceEnabled
-      ) ?? false;
     // The near quarter of every separate view joins the displayed keys, also on the legacy road.
-    const roadDock = separate && !projected;
+    const roadDock = separate;
     if (inspecting) this.performance.updateInspection(songTime, this.keys, camera);
     this.worldStage.setDuration(this.performance.getDuration());
     this.worldStage.update(
@@ -275,7 +260,7 @@ export class ThreeStage {
       worldEffects,
       roadFrame,
       this.freeEnabled && !this.performanceEnabled,
-      this.projectionGeometryOnly ? NO_EFFECTS : effects,
+      effects,
       docked ? this.keyboardCamera : undefined
     );
     this.roadGuides.setDocked(roadDock);
@@ -310,12 +295,10 @@ export class ThreeStage {
       inspecting,
       this.keys
     );
-    if (projected) this.road.visible = false;
     this.renderer.resetState();
     try {
       this.renderer.setViewport(0, 0, screen.width, screen.height);
       this.renderer.clearDepth();
-      this.projection?.drawBackground(this.renderer);
       drawSceneCameraPasses(
         this.renderer,
         this.scene,
@@ -325,17 +308,14 @@ export class ThreeStage {
         this.keyboardCamera,
         separate,
         // Free and performance cameras see one world: plain depth, no road-over-case passes.
-        (this.freeEnabled && !projected) || this.performanceEnabled
+        this.freeEnabled || this.performanceEnabled
           ? undefined
           : nativeKeyboard
             ? this.body
             : undefined,
-        this.projection?.requested ||
-          roadDock ||
-          (!this.freeEnabled && !this.performanceEnabled && roadEffects)
+        roadDock || (!this.freeEnabled && !this.performanceEnabled && roadEffects)
           ? () => {
               try {
-                this.projection?.draw(this.renderer);
                 this.dockedLabels?.draw(this.renderer);
                 if (!this.freeEnabled && !this.performanceEnabled) roadEffects?.();
               } finally {
@@ -354,11 +334,7 @@ export class ThreeStage {
   }
 
   private readonly configureCamera = configureStageCamera;
-  get projectionGeometryOnly(): boolean {
-    return this.projection?.geometryOnly ?? false;
-  }
   suspendProjection = (): void => {
-    this.projection?.suspend();
     this.dockedLabels?.suspend();
   };
 
@@ -489,7 +465,6 @@ export class ThreeStage {
     this.game.dispose();
     this.dockedLabels?.dispose();
     this.scorePoster.dispose();
-    this.projection?.dispose();
     this.performance.dispose();
     this.worldStage.dispose();
     this.clear();

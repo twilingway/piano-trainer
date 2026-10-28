@@ -2,7 +2,6 @@
 import { Camera, Group } from "three";
 import { expect, it, vi } from "vitest";
 import type { WorldCamera } from "../worldCamera";
-import { DEFAULT_PROJECTION_PARAMETERS } from "../stylizedProjection";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { DockedRoadLabels } from "./DockedRoadLabels";
 
@@ -22,18 +21,5 @@ it("replaces legacy labels only while docked and returns ownership on exit", () 
   const renderer = { clearDepth: vi.fn(), render: vi.fn() };
   labels.draw(renderer as unknown as Parameters<typeof labels.draw>[0]);
   expect(renderer.render).not.toHaveBeenCalled();
-  labels.dispose();
-});
-it("does not restore labels hidden by artistic projection", () => {
-  const labels = new DockedRoadLabels();
-  const frame = new ThreeRoadFrame();
-  const legacy = { renderable: true };
-  frame.legacyLabels = [legacy];
-  const camera = new Camera();
-  const world = { near: { z: 100 }, roadFarZ: 2000 } as WorldCamera;
-  labels.prepare(frame, world, new Group(), camera, camera, { width: 1000, height: 700 }, true);
-  frame.noteProjection = { ...DEFAULT_PROJECTION_PARAMETERS, mode: "stylizedProjection" };
-  labels.prepare(frame, world, new Group(), camera, camera, { width: 1000, height: 700 }, false);
-  expect(legacy.renderable).toBe(false);
   labels.dispose();
 });

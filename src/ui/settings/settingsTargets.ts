@@ -1,6 +1,5 @@
 /** Stable local destinations for help links; values never depend on interface language. */
 export const SETTINGS_TARGETS = {
-  "stylized-projection": { tab: "view", label: "Система проекции" },
   "free-source-height": { tab: "view", label: "Высота горизонта, м" },
   "free-source-distance": { tab: "view", label: "Дальность горизонта, м" },
   "free-source-width": { tab: "view", label: "Ширина горизонта, м" },

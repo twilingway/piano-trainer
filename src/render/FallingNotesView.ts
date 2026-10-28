@@ -321,7 +321,6 @@ export class FallingNotesView {
     this.road?.setRoadGuides(on);
   }
 
-  setNoteProjection = this.noteSettings.setProjection;
   setFallingNoteStyle = this.noteSettings.setStyle;
 
   setFreeRoadLayout = this.sceneCamera.setRoadLayout;

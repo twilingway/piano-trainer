@@ -8,7 +8,7 @@ import {
   type Vector2
 } from "three";
 
-/** Existing mesh picking, shared unchanged by legacy and artistic note composition. */
+/** Existing mesh picking against the displayed keyboard. */
 export function pickKeyboardKey(
   raycaster: Raycaster,
   pointer: Vector2,
