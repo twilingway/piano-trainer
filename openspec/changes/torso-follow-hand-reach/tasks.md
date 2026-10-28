@@ -40,6 +40,10 @@
       частей, complementary caps и exact internality; original-skin folds сохраняются диагностикой,
       computational validity не заменяет прежние physical gates. Полные zero-hit ray certificates
       без сокращения query/face coverage; v2 и его результаты сохранены. Pure negatives/review PASS.
+- [ ] 4.3.1 Построить exact threshold partition с полным oriented source coverage, строгим ownership
+      всех шести прежних query-наборов и finite thresholds 2/5,3/10,1/5,1/10; проверить новые
+      interfaces/caps и freeze source/profile/threshold до candidate admission. Equality/tie/sliver,
+      mixed-family triangle, missing ROW/mask и changed-threshold negatives PASS.
 - [ ] 4.4 Проверить неизменный historical source; при отказе отдельно подготовить pose base с новым
       происхождением. GPU exterior proof всех обязательных query, прежние physical gates и saved
       Blender readback подтверждают source без нормирования BODY folds; иначе calibration=null.

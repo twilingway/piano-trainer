@@ -178,6 +178,24 @@ SHALL сохраняться; сокращение SHALL разрешаться 
 - **THEN** sufficient exterior gate подтверждён, BODY-only folds остаются отдельной диагностикой
 - **AND** новый профиль не переименовывает старые UNRESOLVED отчёты и не меняет physical masks
 
+#### Scenario: Вычислительная граница перенесена при прежних физических запросах
+
+- **WHEN** новый v3 threshold из закреплённого finite списка сохраняет все шесть query-наборов,
+  exact affine partition покрывает oriented skin без потерь и новые interfaces/caps подтверждены
+- **THEN** cut может отличаться от исторического, physical masks/ROW/allowances остаются прежними
+- **AND** первый полностью допустимый threshold/source/profile фиксируется до candidate admission
+
+#### Scenario: Упрощённое разбиение потеряло вторую семью либо запрос
+
+- **WHEN** triangle содержит обе семьи без доказанного split либо threshold исключил required query
+  или изменил physical ROW/mask
+- **THEN** partition отклоняется до source calibration; sliver/equality/tie не удаляются молча
+
+#### Scenario: Порог изменён после допуска источника
+
+- **WHEN** candidate использует другой threshold/source/profile SHA
+- **THEN** прежний source certificate не переносится и admission отклоняется
+
 #### Scenario: Собственная складка руки вне запрещённых физических пар
 
 - **WHEN** v3 сохраняет подтверждённый own-arm skin fold, все прежние physical gates пройдены,

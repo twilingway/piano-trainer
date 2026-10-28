@@ -128,3 +128,16 @@ Read-only Blender631 full-surface export input: skin165314 vertices/330624triang
 Frame/dirty/viewport/selection/HUD handlers не изменились. Это input для разработки приватного
 экспорта, не готовый runtime asset и не physical admission; LEFT nail geometry в источнике
 отсутствует.
+
+Новый полный boundary audit подтвердил4 transverse пересечения старых interface edges с original
+unsplit skin (по2 LEFT/RIGHT); Cramer и strict barycentric signs согласованы. Поэтому никакой cap с
+этими границами не допустим. `semantic/caps-v11/fixed-interface-blocker.json` сохраняет отказ.
+
+Read-only threshold prior выявил другую допустимую computational partition без смены physical masks:
+пороги2/5,3/10,1/5,1/10 строго сохраняют все6 query-наборов, по одному closed degree2 contour для
+каждой руки. Exact common ownership interval: (0,04999914644689589;0,5000655037229187). Full-face
+bound min(max L,max R)<=0,06943010304000344 исключает mixed-family faces при этих порогах. Receipt
+`semantic/caps-v11/proximal-threshold-design-prior.json`, SHA
+`1a5a96f98439b3f6f55c14aa4f35be06723ef38d77635aa38923a4cacea9645c`. Архитектурное review разрешило
+реализацию нового cut. Его новые full interfaces/caps/source proof ещё не выполнены; прежние отказы
+не переименовываются.

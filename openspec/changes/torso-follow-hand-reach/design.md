@@ -141,6 +141,22 @@ original skin face не сокращается из-за противополо�
 виртуальные interfaces. Все следующие coverage/uncertainty/source admission ограничения действуют
 для v2 и v3 одинаково. Новое доказательство не переименовывает старые результаты.
 
+Внутри v3 вводится отдельная версионированная computational partition по native family sums L/R.
+Конечный порядок рациональных порогов фиксируется до построения: 2/5, 3/10, 1/5, 1/10. LEFT задаётся
+L>=t и L>=R; RIGHT — R>=t и R>L; BODY — max(L,R)<t. Применяются exact affine inequalities и явный
+tie order. Исходная oriented skin сохраняется полностью; slivers, faces и physical query не
+удаляются. Все шесть неизменных query-наборов должны получить строгий ownership proof. Упрощённый
+clipping двумя независимыми плоскостями разрешён лишь после доказательства для каждого original
+triangle: min(max_vertex L, max_vertex R)<t. Отсутствие LEFT/RIGHT interface и triplepoints не
+предполагается.
+
+Выбирается первый порог закреплённого списка, прошедший полные topology/interface/cap/source gates.
+Порог, source и partition/profile SHA фиксируются до candidate admission; кандидат не меняет их ради
+прохождения аудита. Все отказы сохраняются. Новые interfaces проходят полный boundary/skin и
+cap–skin/cap–cap/internality audit; уход от прежних witnesses не заменяет полного обхода. Изменение
+cut не меняет physical masks/ROW/exclusions/allowances и actual-skin hard gates. Старые max-family
+partition и её отказы остаются отдельными историческими inputs.
+
 Фиксируется конечный набор направлений до вычислений. Broadphase покрывает все возможные faces;
 narrowphase включает t=0, edge/vertex/tangent/coplanar touches. Для OUTSIDE_CERTIFIED нужны zero
 hits и zero unresolved faces по хотя бы одному полному лучу. Нет hit budget, distance cutoff и
