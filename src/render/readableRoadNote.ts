@@ -18,7 +18,9 @@ export function readableRoadTop(
 ): number {
   // Sustained notes must consume to zero; a minimum would pin their burning tail in place.
   if (duration >= READABLE_ROAD_DURATION_LIMIT) return top;
-  const { prefs, focal, originY, fit, orthographicScale } = camera.params;
+  const { prefs, orthographicScale } = camera.params;
+  // In perspective a screen minimum makes far short notes as long as near ones and inverts depth.
+  if (orthographicScale === undefined) return top;
   const contact = lane?.depth ?? camera.near.z;
   const span = camera.roadFarZ - contact;
   if (
@@ -29,18 +31,10 @@ export function readableRoadTop(
     !Number.isFinite(hitY) ||
     !Number.isFinite(span) ||
     !Number.isFinite(camera.near.y) ||
-    !Number.isFinite(focal) ||
-    !Number.isFinite(originY) ||
-    !Number.isFinite(fit) ||
-    !Number.isFinite(prefs.height) ||
-    !Number.isFinite(prefs.distance) ||
-    !Number.isFinite(prefs.pitch) ||
-    !Number.isFinite(prefs.targetY) ||
     !Number.isFinite(prefs.scale) ||
     hitY <= 0 ||
     width <= 0 ||
     span <= 0 ||
-    focal <= 0 ||
     prefs.scale <= 0 ||
     top <= 0 ||
     bottom <= top
@@ -68,25 +62,9 @@ export function readableRoadTop(
   )
     return top;
   const visibleScale = lower.scale * (lane?.scaleX ?? 1);
-  const minimum = readableNoteFaceHeight(width * visibleScale, orthographicScale === undefined);
+  const minimum = readableNoteFaceHeight(width * visibleScale, false);
   if (lower.y - upper.y >= minimum) return top;
-
-  const fallback = Math.max(0, Math.min(top, nearBottom - 4));
-  if (orthographicScale !== undefined) {
-    if (!Number.isFinite(orthographicScale) || orthographicScale <= 0) return top;
-    const extension = (minimum * hitY) / (orthographicScale * prefs.scale * span);
-    return Number.isFinite(extension) ? Math.max(0, Math.min(top, nearBottom - extension)) : top;
-  }
-  const angle = (prefs.pitch * Math.PI) / 180;
-  const ca = Math.cos(angle),
-    sa = Math.sin(angle);
-  const q = (originY + prefs.targetY - (lower.y - minimum)) / focal;
-  const denominator = q * ca - sa;
-  if (Math.abs(denominator) <= 1e-8) return fallback;
-  const yy = y * prefs.scale - prefs.height * fit;
-  const zz = (yy * (ca + q * sa)) / denominator;
-  const solvedZ = (zz - prefs.distance * fit) / prefs.scale;
-  const solvedTop = hitY * (1 - (solvedZ - contact) / span);
-  if (!Number.isFinite(solvedTop) || solvedZ <= zBottom) return fallback;
-  return Math.max(0, Math.min(top, solvedTop));
+  if (!Number.isFinite(orthographicScale) || orthographicScale <= 0) return top;
+  const extension = (minimum * hitY) / (orthographicScale * prefs.scale * span);
+  return Number.isFinite(extension) ? Math.max(0, Math.min(top, nearBottom - extension)) : top;
 }
