@@ -1,5 +1,5 @@
 import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "./flatEffectSettings";
-import { noteLookAhead } from "./noteSpeed";
+import { noteLookAhead, screenNoteField } from "./noteSpeed";
 import type { HudLayer } from "./HudLayer";
 import type { SongNote } from "../song/song";
 import { noteColor } from "./computerKeys";
@@ -91,15 +91,20 @@ export function drawViewHud(
 }
 
 /**
- * The notes' look-ahead is the time the shared note speed needs to cross the field: the road's
- * own when it draws the notes, else the flat lane down to the hit line. Song time is untouched.
+ * The notes' look-ahead is the time the shared note speed needs to cross the field: measured on
+ * screen at the hit line of the road (around `keyX`) when it draws the notes, else the flat lane.
+ * Song time is untouched.
  */
 export function roadFrameState(
   state: FrameState,
-  road: Pick<RoadLayer, "noteField"> | undefined,
+  road: Pick<RoadLayer, "notePlace"> | undefined,
   hitY: number,
-  whiteWidth: number
+  whiteWidth: number,
+  keyX = 0
 ): FrameState {
-  const field = road?.noteField(whiteWidth) ?? { length: hitY, whiteStep: whiteWidth };
-  return { ...state, lookAhead: noteLookAhead(field.length, field.whiteStep) ?? state.lookAhead };
+  const field = road
+    ? screenNoteField((x, y) => road.notePlace(x, y), keyX, whiteWidth, hitY)
+    : { length: hitY, whiteStep: whiteWidth };
+  const lookAhead = field && noteLookAhead(field.length, field.whiteStep);
+  return { ...state, lookAhead: lookAhead ?? state.lookAhead };
 }

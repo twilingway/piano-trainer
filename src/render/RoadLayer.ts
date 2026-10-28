@@ -31,7 +31,6 @@ import { readableRoadTop } from "./readableRoadNote";
 import { nativeRoadCameras, ReferenceRoadDock as Dock } from "./worldReferenceCamera";
 import type { EnergySource } from "./noteEnergy";
 import type { Arrival } from "./roadTypes";
-import { roadNoteField } from "./noteSpeed";
 export type { Strike, Arrival } from "./roadTypes";
 export { DEFAULT_ROAD_SHAPE, type RoadShape } from "./roadLayoutCamera";
 
@@ -288,8 +287,6 @@ export class RoadLayer {
     );
     return true;
   }
-  /** The notes' field and the white-key step, in road units. */
-  noteField = (whiteWidth: number) => this.camera && roadNoteField(this.camera, whiteWidth);
   get arrivalEffectsReady(): boolean {
     return this.arrivals.ready && !this.freeCamera && !this.three?.performanceScene;
   }
