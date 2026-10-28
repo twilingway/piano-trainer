@@ -22,7 +22,6 @@ export function ConnectedKeyboardSettings() {
       roadGuides: state.preferences.staff.roadGuides,
       pianist: state.preferences.staff.pianist,
       performanceScene: state.preferences.staff.performanceScene,
-      cameraComposition: state.preferences.staff.cameraComposition,
       worldFov: state.preferences.staff.worldFov,
       freeCamera: state.preferences.staff.freeCamera,
       freeCameraWasd: state.preferences.staff.freeCameraWasd,
@@ -64,9 +63,6 @@ export function ConnectedKeyboardSettings() {
   const onPerformanceScene = useRuntimeCommand(
     (runtime) => runtime.keyboardSettings.onPerformanceScene
   );
-  const onCameraComposition = useRuntimeCommand(
-    (runtime) => runtime.keyboardSettings.onCameraComposition
-  );
   const onWorldFov = useRuntimeCommand((runtime) => runtime.keyboardSettings.onWorldFov);
   const onFreeCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onFreeCamera);
   const onFreeCameraWasd = useRuntimeCommand(
@@ -104,8 +100,6 @@ export function ConnectedKeyboardSettings() {
       onPianist={onPianist}
       performanceScene={state.performanceScene}
       onPerformanceScene={onPerformanceScene}
-      cameraComposition={state.cameraComposition}
-      onCameraComposition={onCameraComposition}
       worldFov={state.worldFov}
       onWorldFov={onWorldFov}
       onResetWorldCamera={onResetWorldCamera}

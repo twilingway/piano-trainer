@@ -17,12 +17,10 @@ const mocks = vi.hoisted(() => ({
   construct: vi.fn(),
   draw: vi.fn(),
   clearEnergy: vi.fn(),
-  suspendProjection: vi.fn(),
   setKeyboardDim: vi.fn(),
   dispose: vi.fn(),
   loadKit: vi.fn(),
   loadHand: vi.fn(),
-  setCameraComposition: vi.fn(),
   setWorldFov: vi.fn(),
   setFreeCamera: vi.fn(),
   resetFreeCamera: vi.fn(),
@@ -58,7 +56,6 @@ vi.mock("./ThreeStage", () => ({
     get nativeEffectsReady() {
       return mocks.nativeEffectsReady;
     }
-    setCameraComposition = mocks.setCameraComposition;
     setWorldFov = mocks.setWorldFov;
     setFreeCameraMovement = vi.fn();
     setPerformanceScene = vi.fn();
@@ -67,7 +64,6 @@ vi.mock("./ThreeStage", () => ({
       (args[11] as (() => void) | undefined)?.();
     }
     clearEnergy = mocks.clearEnergy;
-    suspendProjection = mocks.suspendProjection;
     setKeyboardDim = mocks.setKeyboardDim;
     dispose = mocks.dispose;
     setFreeCamera = mocks.setFreeCamera;
@@ -208,14 +204,6 @@ afterEach(() => {
 });
 
 describe("shared WebGL keyboard recovery", () => {
-  it("releases screen projection ownership when native rendering stops", async () => {
-    const view = fixture();
-    await view.host.setEnabled(true);
-    mocks.suspendProjection.mockClear();
-    await view.host.setEnabled(false, false);
-    expect(mocks.suspendProjection).toHaveBeenCalledOnce();
-    view.host.destroy();
-  });
   it("draws flat road, native scene and HUD in order", async () => {
     const view = fixture();
     await view.host.setEnabled(true);
@@ -1102,23 +1090,3 @@ it.each(["loading", "failed"])(
     view.host.destroy();
   }
 );
-
-it("does not reconnect a saved docked camera after leaving native 3D", async () => {
-  const view = fixture();
-  view.host.setCameraComposition("free");
-  view.host.setWorldFov(73);
-  await view.host.setEnabled(true);
-  view.host.setFreeCamera(true);
-  view.tick();
-  expect(mocks.setCameraComposition).toHaveBeenLastCalledWith("free");
-  expect(mocks.setWorldFov).toHaveBeenLastCalledWith(73);
-  await view.host.setEnabled(false, true);
-  view.host.setCameraComposition("free");
-  view.tick();
-  expect(mocks.setCameraComposition).toHaveBeenLastCalledWith("standard");
-  expect(mocks.setFreeCamera).toHaveBeenLastCalledWith(false);
-  await view.host.setEnabled(true);
-  view.tick();
-  expect(mocks.setCameraComposition).toHaveBeenLastCalledWith("free");
-  view.host.destroy();
-});

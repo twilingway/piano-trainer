@@ -1,5 +1,4 @@
 import { FLAME, MIST, HIT, GLITTER } from "./worldStageEffectDefinitions";
-import { DockedWorldEffects } from "./DockedWorldEffects";
 import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "../flatEffectSettings";
 import { performanceRingField } from "./performanceRingField";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
@@ -48,7 +47,6 @@ interface BassNotes {
 /** Separate scene ownership keeps decorative particles out of camera collision bounds. */
 export class PerformanceWorldStage {
   readonly group = new Group();
-  private composition: DockedWorldEffects | undefined;
   private readonly curtain = new PerformanceCurtain();
   private duration = Infinity;
   private opening = performanceOpeningSeconds(Infinity);
@@ -143,8 +141,7 @@ export class PerformanceWorldStage {
       this.mist.ready &&
       this.hit.ready &&
       this.glitter.ready &&
-      this.spirals.ready &&
-      (!this.composition || this.composition.ready)
+      this.spirals.ready
     );
   }
   invalidate(): void {
@@ -204,8 +201,7 @@ export class PerformanceWorldStage {
     emitEffects = true,
     visible?: Pick<ThreeRoadFrame, "notes" | "noteCount">,
     inspection = false,
-    options: FlatEffectOptions = ALL_FLAT_EFFECTS,
-    keyboardCamera?: Camera
+    options: FlatEffectOptions = ALL_FLAT_EFFECTS
   ): void {
     if (!on) {
       this.group.visible = false;
@@ -232,17 +228,8 @@ export class PerformanceWorldStage {
     const reveal = this.reveal;
     const burst = this.bassOnsets.length > 0 ? bassFireStrength(time, this.bassOnsets) * reveal : 0;
     this.sign?.update(time, camera, reveal, burst);
-    if (keyboardCamera)
-      this.composition ??= new DockedWorldEffects(
-        this.group,
-        { flame: this.flame, mist: this.mist, hit: this.hit, glitter: this.glitter },
-        { flame: FLAME, mist: MIST, hit: HIT, glitter: GLITTER }
-      );
-    this.composition?.begin(camera, keyboardCamera);
-    this.spirals.group.userData.cameraCompositionRole = keyboardCamera ? "keyboard" : "world";
     const batches = [this.flame, this.mist, this.hit, this.glitter, this.ringFlame];
-    for (const batch of batches)
-      batch.begin(batch === this.ringFlame ? camera : (keyboardCamera ?? camera));
+    for (const batch of batches) batch.begin(camera);
     for (const light of this.lights) light.intensity = 0;
     if (this.ready && emitEffects) {
       this.state.update(time, sources);
@@ -253,11 +240,10 @@ export class PerformanceWorldStage {
         this.drawBassFire(time, stage, burst);
       }
       if (options.presses) this.drawHits(time, stage);
-      if (options.musicalNotes) this.drawSpirals(time, keyboardCamera ?? camera, stage);
+      if (options.musicalNotes) this.drawSpirals(time, camera, stage);
       else this.spirals.clear();
     } else this.spirals.clear();
     for (const batch of batches) batch.end();
-    this.composition?.end();
   }
   private drawMist(time: number, stage: PerformanceStageLayout): void {
     for (const key of this.keys.values()) {
@@ -266,9 +252,7 @@ export class PerformanceWorldStage {
         const phase = key.pitch * 13 + layer * 31;
         this.mist.add(
           key.x + Math.sin(time * 0.6 + phase) * key.width * 0.4,
-          key.y +
-            (this.composition?.keyLift(key.pitch, stage.unit) ?? 0) +
-            (18 + layer * 28) * stage.unit,
+          key.y + (18 + layer * 28) * stage.unit,
           key.z - 5 * stage.unit,
           key.width * 4.5,
           key.width * 2.8,
@@ -284,7 +268,7 @@ export class PerformanceWorldStage {
         const angle = (index / RING_PUFFS) * Math.PI * 2 + layer * 0.07;
         const drift = Math.sin(time * 0.21 + index * 1.7 + layer) * 0.035;
         const radius = stage.radius * (0.96 + layer * 0.06 + drift);
-        (this.composition?.world("mist") ?? this.mist).add(
+        this.mist.add(
           stage.centre.x + Math.sin(angle) * radius,
           stage.top + (28 + layer * 34 + Math.sin(time * 0.3 + index) * 18) * stage.unit,
           stage.centre.z - Math.cos(angle) * radius,
@@ -311,7 +295,7 @@ export class PerformanceWorldStage {
       if (key) {
         this.flame.add(
           key.x,
-          key.y + (this.composition?.keyLift(key.pitch, stage.unit) ?? 0) + 18 * stage.unit,
+          key.y + 18 * stage.unit,
           key.z,
           key.width * 4.2,
           key.width * 5.6,
@@ -321,7 +305,7 @@ export class PerformanceWorldStage {
         );
         this.glitter.add(
           key.x,
-          key.y + (this.composition?.keyLift(key.pitch, stage.unit) ?? 0) + 55 * stage.unit,
+          key.y + 55 * stage.unit,
           key.z,
           key.width * 4.8,
           key.width * 6.4,
@@ -362,7 +346,7 @@ export class PerformanceWorldStage {
           0.78 * intensity * reveal,
           frame
         );
-        (this.composition?.world("glitter") ?? this.glitter).add(
+        this.glitter.add(
           ring.x,
           ring.y + 60 * stage.unit,
           ring.z,
@@ -393,7 +377,7 @@ export class PerformanceWorldStage {
       if (key)
         this.hit.add(
           key.x,
-          key.y + (this.composition?.keyLift(key.pitch, stage.unit) ?? 0) + 12 * stage.unit,
+          key.y + 12 * stage.unit,
           key.z,
           key.width * 8.6,
           key.width * 8.6,
@@ -402,7 +386,7 @@ export class PerformanceWorldStage {
           frame
         );
       if (ring)
-        (this.composition?.world("hit") ?? this.hit).add(
+        this.hit.add(
           ring.x,
           ring.y + 10 * stage.unit,
           ring.z,
@@ -434,7 +418,7 @@ export class PerformanceWorldStage {
         0.9 * burst,
         frame
       );
-      (this.composition?.world("flame") ?? this.flame).add(
+      this.flame.add(
         x,
         stage.top + 40 * unit,
         z,
@@ -469,7 +453,7 @@ export class PerformanceWorldStage {
           ...hit,
           position: {
             x: key.x,
-            y: key.y + (this.composition?.keyLift(key.pitch, stage.unit) ?? 0) + 24 * stage.unit,
+            y: key.y + 24 * stage.unit,
             z: key.z
           }
         });
@@ -489,7 +473,6 @@ export class PerformanceWorldStage {
     this.platform.dispose();
     this.setSign(undefined);
     this.spirals.dispose();
-    this.composition?.dispose();
     this.curtain.dispose();
     for (const batch of [this.flame, this.mist, this.hit, this.glitter, this.ringFlame])
       batch.dispose();

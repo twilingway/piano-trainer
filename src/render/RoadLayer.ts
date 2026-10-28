@@ -1,4 +1,3 @@
-import type { CameraComposition } from "./cameraComposition";
 import { FreeRoadRoutes } from "./freeRoadRoutes";
 export type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
@@ -368,7 +367,6 @@ export class RoadLayer {
     return this.three?.sceneCamera === true;
   }
   resetFreeCamera = (): void => this.three?.resetFreeCamera();
-  setCameraComposition = (mode: CameraComposition): void => this.three?.setCameraComposition(mode);
   setWorldFov = (fov: number): void => this.three?.setWorldFov(fov);
   setFreeCameraMovement = (on: boolean): void => this.three?.setFreeCameraMovement(on);
   setPerformanceScene = (on: boolean): void => this.three?.setPerformanceScene(on);

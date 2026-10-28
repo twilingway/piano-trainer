@@ -122,7 +122,6 @@ export class FallingNotesView {
     () => this.road,
     () => this.keyStyle === "3d" && !this.computer,
     (on) => {
-      this.freeLegend?.setDocked(this.sceneCamera.docked);
       this.freeLegend?.setVisible(on);
       if (!on) this.panSnap = true;
     }
@@ -309,7 +308,6 @@ export class FallingNotesView {
 
   setPerformanceScene = this.sceneCamera.setPerformance;
 
-  setCameraComposition = this.sceneCamera.setComposition;
   setWorldFov = this.sceneCamera.setWorldFov;
   setFreeCamera = this.sceneCamera.setFree;
   setFreeCameraMovement = this.sceneCamera.setMovement;

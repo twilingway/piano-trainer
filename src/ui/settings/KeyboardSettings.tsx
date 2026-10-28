@@ -1,5 +1,4 @@
 import { RoadProjectionSettings } from "./RoadProjectionSettings";
-import type { CameraComposition } from "../../render/cameraComposition";
 import { CameraCompositionSettings, RoadFitSettings } from "./CameraCompositionSettings";
 import type { RoadFit } from "../../render/roadLayoutCamera";
 import type { FallingNoteStyle } from "../../render/fallingNoteStyle";
@@ -41,11 +40,9 @@ interface Props {
   readonly onRoadGuides: (on: boolean) => void;
   /** The local pianist instead of the live hands; absent when there is no local model. */
   readonly pianist?: boolean;
-  readonly cameraComposition?: CameraComposition;
-  readonly onCameraComposition?: (value: CameraComposition) => void;
   readonly worldFov?: number;
   readonly onWorldFov?: (value: number) => void;
-  /** Initial world FOV and pose of the selected composition; keys and horizon stay. */
+  /** Initial world FOV and free camera pose; keys and horizon stay. */
   readonly onResetWorldCamera?: () => void;
   readonly roadFit?: RoadFit["mode"];
   readonly onRoadFit?: (value: RoadFit["mode"]) => void;
@@ -94,8 +91,6 @@ export function KeyboardSettings({
   roadGuides,
   onRoadGuides,
   pianist,
-  cameraComposition = "standard",
-  onCameraComposition,
   worldFov = 45,
   onWorldFov,
   onResetWorldCamera,
@@ -117,9 +112,7 @@ export function KeyboardSettings({
   onRoad
 }: Props) {
   const { t } = useI18n();
-  const worldInteractive =
-    cameraComposition === "free" || (cameraComposition === "standard" && freeCamera);
-  const worldVisible = cameraComposition !== "standard" || freeCamera;
+  const worldVisible = freeCamera === true;
   const roadProjection = (
     <>
       <RoadProjectionSettings value={road} enabled={notesPerspective} onChange={onRoad} />
@@ -342,24 +335,21 @@ export function KeyboardSettings({
       {keyStyle === "3d" && (
         <SettingsGroup title={t("Камера клавиатуры")}>
           <div className="settings-list">
-            <CameraSettings camera={camera} onChange={onCamera} />
+            <CameraSettings camera={camera} onChange={onCamera} disabled={worldVisible} />
+            {worldVisible && (
+              <p className="setting-hint">
+                {t(
+                  "Свободная камера показывает всю сцену. Ракурс клавиатуры вернётся после её выключения."
+                )}
+              </p>
+            )}
           </div>
         </SettingsGroup>
       )}
       {keyStyle === "3d" && (
         <SettingsGroup title={t("Камера нот и мира")}>
           <div className="settings-list">
-            {onCameraComposition && (
-              <CameraCompositionSettings
-                value={cameraComposition}
-                onChange={onCameraComposition}
-                worldFov={worldFov}
-                onWorldFov={onWorldFov}
-                fixed={!worldVisible}
-                disabled={performanceScene ?? false}
-              />
-            )}
-            {cameraComposition === "standard" && onFreeCamera && (
+            {onFreeCamera && (
               <label className="setting">
                 <span>{t("Свободная камера")}</span>
                 <input
@@ -371,7 +361,15 @@ export function KeyboardSettings({
                 />
               </label>
             )}
-            {worldInteractive && !performanceScene && onFreeCameraWasd && (
+            {onWorldFov && (
+              <CameraCompositionSettings
+                worldFov={worldFov}
+                onWorldFov={onWorldFov}
+                free={worldVisible}
+                disabled={performanceScene ?? false}
+              />
+            )}
+            {worldVisible && !performanceScene && onFreeCameraWasd && (
               <>
                 <label className="setting" data-setting-target="free-camera-wasd">
                   <span>{t("Передвижение WASD")}</span>
@@ -402,7 +400,7 @@ export function KeyboardSettings({
                 onStraighten={onStraightenRoad}
                 tilt={roadNoteTilt}
                 onTilt={onRoadNoteTilt}
-                disabled={worldVisible === true || performanceScene === true}
+                disabled={worldVisible || performanceScene === true}
               />
             )}
             {onResetWorldCamera && (

@@ -41,7 +41,6 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   roadGuides: false,
   fallingNoteStyle: "filled",
   pianist: false,
-  cameraComposition: "standard",
   worldFov: 45,
   freeCamera: false,
   freeCameraWasd: false,

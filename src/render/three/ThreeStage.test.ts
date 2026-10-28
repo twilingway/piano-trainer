@@ -22,18 +22,8 @@ function fixture() {
   const picture = new Texture();
   const stage = Object.create(ThreeStage.prototype) as ThreeStage;
   Object.assign(stage, {
-    composition: "standard",
     freeEnabled: false,
     performanceEnabled: false,
-    game: {
-      setRoadBounds: vi.fn(),
-      dispose: vi.fn(),
-      invalidate: vi.fn(),
-      setFov: vi.fn(),
-      update: vi.fn(),
-      camera: new Camera()
-    },
-    dockedLabels: { prepare: vi.fn(), draw: vi.fn(), suspend: vi.fn(), dispose: vi.fn() },
     scorePoster: { draw: vi.fn(), dispose: vi.fn(), setSource: vi.fn() },
     version: 1,
     disposed: false,
@@ -236,8 +226,8 @@ it("supplies the performer the physical keyboard camera and restores full-body m
   expect(before).toHaveBeenLastCalledWith(internal.keyboardCamera, true);
   view.stage.setFreeCamera(true);
   view.draw();
-  // Free inspection turns the world; the keys keep their own camera.
-  expect(before).toHaveBeenLastCalledWith(internal.keyboardCamera, true);
+  // The free camera sees the keys in the world, like the staging.
+  expect(before).toHaveBeenLastCalledWith(internal.free.camera, false);
   view.stage.setPerformanceScene(true);
   view.draw();
   expect(before).toHaveBeenLastCalledWith(internal.performance.camera, false);
@@ -282,7 +272,7 @@ it.each([false, true])("resets shared Three state after screen FX (failure: %s)"
   expect(view.renderer.setViewport).toHaveBeenCalledTimes(2);
 });
 
-it("draws the free world and the keyboard case in separate depth passes without screen FX", () => {
+it("draws the free world with the keys in one depth pass without screen FX", () => {
   const view = fixture();
   const internal = view.stage as unknown as { scene: Scene; keys: Group; body: Group };
   const board = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
@@ -316,11 +306,8 @@ it("draws the free world and the keyboard case in separate depth passes without 
     effects
   );
   expect(effects).not.toHaveBeenCalled();
-  expect(passes).toEqual([
-    { board: false, glow: true },
-    { board: true, glow: false }
-  ]);
-  expect(view.renderer.clearDepth).toHaveBeenCalledTimes(2);
+  expect(passes).toEqual([{ board: true, glow: true }]);
+  expect(view.renderer.clearDepth).toHaveBeenCalledOnce();
   board.geometry.dispose();
   board.material.dispose();
   glow.geometry.dispose();
@@ -365,7 +352,6 @@ it("uses the manual camera for the fully lit world without transforming notes or
   const view = fixture();
   const internal = view.stage as unknown as {
     free: { camera: Camera; update: ReturnType<typeof vi.fn> };
-    keyboardCamera: Camera;
     performance: {
       camera: Camera;
       update: ReturnType<typeof vi.fn>;
@@ -399,8 +385,7 @@ it("uses the manual camera for the fully lit world without transforming notes or
     false,
     undefined,
     true,
-    { burning: true, presses: true, musicalNotes: true },
-    internal.keyboardCamera
+    { burning: true, presses: true, musicalNotes: true }
   );
   expect(internal.roadNotes.performanceAngle).toBe(0);
   expect(internal.roadNotes.performanceScale).toBe(1);
@@ -578,54 +563,4 @@ it("passes the workspace score source to its structural world poster", () => {
   const poster = (stage as unknown as { scorePoster: { setSource: ReturnType<typeof vi.fn> } })
     .scorePoster;
   expect(poster.setSource).toHaveBeenCalledWith(undefined);
-});
-
-it.each(["game", "free"] as const)(
-  "keeps the keyboard camera authoritative in %s composition",
-  (mode) => {
-    const f = fixture();
-    const internals = f.stage as unknown as {
-      free: { update: ReturnType<typeof vi.fn>; setEnabled: ReturnType<typeof vi.fn> };
-      game: { update: ReturnType<typeof vi.fn>; camera: Camera };
-      keyboardCamera: Camera;
-      worldStage: { update: ReturnType<typeof vi.fn> };
-      scorePoster: { draw: ReturnType<typeof vi.fn> };
-    };
-    const before = vi.fn();
-    f.stage.beforeRender = before;
-    f.stage.setCameraComposition(mode);
-    f.stage.setFreeCamera(true);
-    f.draw();
-    expect(before).toHaveBeenLastCalledWith(internals.keyboardCamera, true);
-    expect(internals.free.setEnabled).toHaveBeenLastCalledWith(mode === "free");
-    expect(mode === "game" ? internals.game.update : internals.free.update).toHaveBeenCalledOnce();
-    expect(internals.worldStage.update.mock.lastCall?.at(-1)).toBe(internals.keyboardCamera);
-    expect(internals.scorePoster.draw.mock.lastCall?.at(-1)).toBe(
-      mode === "game" ? internals.game : internals.free
-    );
-  }
-);
-
-it("bakes docked labels only in separate world views; standard keeps the overlay labels", () => {
-  const f = fixture();
-  const labels = (f.stage as unknown as { dockedLabels: { prepare: ReturnType<typeof vi.fn> } })
-    .dockedLabels;
-  f.draw();
-  expect(labels.prepare.mock.lastCall?.[6]).toBe(false);
-  f.stage.setCameraComposition("game");
-  f.stage.setFreeCamera(true);
-  f.draw();
-  expect(labels.prepare.mock.lastCall?.[6]).toBe(true);
-});
-
-it("does not reconnect free controls from a saved composition while the native view is inactive", () => {
-  const f = fixture();
-  const internal = f.stage as unknown as { free: { setEnabled: ReturnType<typeof vi.fn> } };
-  f.stage.setCameraComposition("free");
-  expect(internal.free.setEnabled).toHaveBeenLastCalledWith(false);
-  f.stage.setFreeCamera(true);
-  expect(internal.free.setEnabled).toHaveBeenLastCalledWith(true);
-  f.stage.setFreeCamera(false);
-  f.stage.setCameraComposition("free");
-  expect(internal.free.setEnabled).toHaveBeenLastCalledWith(false);
 });

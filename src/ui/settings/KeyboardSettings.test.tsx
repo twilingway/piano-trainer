@@ -412,62 +412,76 @@ it.each(["filled", "flat", "glass"] as const)(
   }
 );
 
-describe("camera compositions", () => {
-  it("changes the composition and world FOV without invoking musical or keyboard camera actions", () => {
-    const onCameraComposition = vi.fn(),
-      onWorldFov = vi.fn(),
+describe("one free camera", () => {
+  const fov = () => host.querySelector<HTMLInputElement>('[data-setting-target="world-fov"]');
+  const freeToggle = () =>
+    [...host.querySelectorAll("label")].find((label) => label.textContent === "Свободная камера");
+
+  it("offers no composition and keeps the world FOV right under the free camera", () => {
+    const onWorldFov = vi.fn(),
       onCamera = vi.fn();
+    const render = (freeCamera: boolean) => {
+      act(() => {
+        root.render(
+          <KeyboardSettings
+            {...base}
+            freeCamera={freeCamera}
+            onFreeCamera={vi.fn()}
+            worldFov={67}
+            onWorldFov={onWorldFov}
+            onCamera={onCamera}
+          />
+        );
+      });
+    };
+    render(false);
+    expect(host.querySelector('[data-setting-target="camera-composition"]')).toBeNull();
+    expect(host.textContent).not.toContain("Игровой кадр");
+    expect(host.textContent).not.toContain("Свободный мир");
+    expect(freeToggle()?.nextElementSibling?.contains(fov())).toBe(true);
+    expect(fov()?.disabled).toBe(true);
+    expect(host.textContent).toContain("Угол обзора мира действует в свободной камере");
+    render(true);
+    expect(fov()?.value).toBe("67");
+    expect(fov()?.disabled).toBe(false);
     act(() => {
-      root.render(
-        <KeyboardSettings
-          {...base}
-          cameraComposition="free"
-          onCameraComposition={onCameraComposition}
-          worldFov={67}
-          onWorldFov={onWorldFov}
-          onCamera={onCamera}
-        />
-      );
-    });
-    const select = host.querySelector<HTMLSelectElement>(
-      '[data-setting-target="camera-composition"]'
-    );
-    const fov = host.querySelector<HTMLInputElement>('[data-setting-target="world-fov"]');
-    expect(select?.value).toBe("free");
-    expect(fov?.value).toBe("67");
-    act(() => {
-      if (select) {
-        select.value = "game";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-    });
-    expect(onCameraComposition).toHaveBeenCalledWith("game");
-    act(() => {
-      if (fov) {
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(fov, "80");
-        fov.dispatchEvent(new Event("input", { bubbles: true }));
-      }
+      const input = fov();
+      if (!input) throw new Error("Missing world FOV");
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "80");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(onWorldFov).toHaveBeenCalledWith(80);
     expect(onCamera).not.toHaveBeenCalled();
     expect(host.querySelector('[data-setting-target="free-source-height"]')).not.toBeNull();
   });
-  it("explains performance camera priority and translates the composition selector", () => {
+
+  it("locks the keyboard camera while the free camera shows the whole stage", () => {
+    const keyboardControls = () => [
+      ...(host
+        .querySelector('section[aria-label="Камера клавиатуры"]')
+        ?.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button") ?? [])
+    ];
+    act(() => {
+      root.render(<KeyboardSettings {...base} freeCamera onFreeCamera={vi.fn()} />);
+    });
+    expect(keyboardControls().length).toBeGreaterThan(0);
+    expect(keyboardControls().every((control) => control.disabled)).toBe(true);
+    expect(host.textContent).toContain("Ракурс клавиатуры вернётся после её выключения");
+    act(() => {
+      root.render(<KeyboardSettings {...base} freeCamera={false} onFreeCamera={vi.fn()} />);
+    });
+    expect(keyboardControls().some((control) => control.disabled)).toBe(false);
+    expect(host.textContent).not.toContain("Ракурс клавиатуры вернётся");
+  });
+
+  it("explains the performance camera priority in English", () => {
     setInterfaceLanguage("en");
     act(() => {
-      root.render(
-        <KeyboardSettings
-          {...base}
-          cameraComposition="game"
-          onCameraComposition={vi.fn()}
-          performanceScene
-        />
-      );
+      root.render(<KeyboardSettings {...base} freeCamera onWorldFov={vi.fn()} performanceScene />);
     });
-    const select = host.querySelector<HTMLSelectElement>('[aria-label="3D composition"]');
-    expect(select?.disabled).toBe(true);
-    expect(select?.textContent).toContain("Game frame");
-    expect(host.textContent).toContain("Your composition returns");
+    expect(fov()?.disabled).toBe(true);
+    expect(host.textContent).toContain("Your view returns");
+    expect(host.textContent).toContain("The free camera shows the whole stage");
     setInterfaceLanguage("ru");
   });
 });
@@ -488,7 +502,6 @@ describe("separate keyboard and world cameras", () => {
         <KeyboardSettings
           {...base}
           onCamera={onCamera}
-          onCameraComposition={vi.fn()}
           onWorldFov={onWorldFov}
           onResetWorldCamera={onResetWorldCamera}
           onRoad={onRoad}
@@ -515,9 +528,7 @@ describe("separate keyboard and world cameras", () => {
 
   it("puts the standard horizon pair in the world set and explains the fixed world FOV", () => {
     act(() => {
-      root.render(
-        <KeyboardSettings {...base} onCameraComposition={vi.fn()} onWorldFov={vi.fn()} />
-      );
+      root.render(<KeyboardSettings {...base} onWorldFov={vi.fn()} />);
     });
     const world = group("Камера нот и мира");
     expect(world?.querySelector('[data-setting-target="road-horizon"]')).not.toBeNull();
@@ -526,27 +537,13 @@ describe("separate keyboard and world cameras", () => {
     ).toBeNull();
     expect(fov()?.disabled).toBe(true);
     expect(world?.textContent).toContain("дальнюю часть поля задают горизонт");
-    for (const [composition, freeCamera] of [
-      ["standard", true],
-      ["game", false],
-      ["free", false]
-    ] as const) {
-      act(() => {
-        root.render(
-          <KeyboardSettings
-            {...base}
-            cameraComposition={composition}
-            freeCamera={freeCamera}
-            onCameraComposition={vi.fn()}
-            onWorldFov={vi.fn()}
-          />
-        );
-      });
-      expect(fov()?.disabled).toBe(false);
-      expect(group("Камера нот и мира")?.textContent).not.toContain(
-        "дальнюю часть поля задают горизонт"
-      );
-    }
+    act(() => {
+      root.render(<KeyboardSettings {...base} freeCamera onWorldFov={vi.fn()} />);
+    });
+    expect(fov()?.disabled).toBe(false);
+    expect(group("Камера нот и мира")?.textContent).not.toContain(
+      "дальнюю часть поля задают горизонт"
+    );
   });
 
   it("straightens the standard road automatically or by the button, only where it applies", () => {
@@ -586,15 +583,11 @@ describe("separate keyboard and world cameras", () => {
     world = render({ roadFit: "auto" });
     expect(button(world, "Выпрямить по клавиатуре")).toBeUndefined();
     expect(world?.textContent).toContain("всегда идут прямо к клавишам");
-    for (const props of [
-      { cameraComposition: "game" as const },
-      { freeCamera: true },
-      { performanceScene: true }
-    ]) {
+    for (const props of [{ freeCamera: true }, { performanceScene: true }]) {
       world = render(props);
       expect(select()?.disabled).toBe(true);
       expect(button(world, "Выпрямить по клавиатуре")?.disabled).toBe(true);
-      expect(world?.textContent).toContain("действует в обычной композиции");
+      expect(world?.textContent).toContain("действует в обычном виде");
     }
     expect(onStraightenRoad).toHaveBeenCalledOnce();
   });
@@ -637,9 +630,7 @@ describe("separate keyboard and world cameras", () => {
       root.render(
         <KeyboardSettings
           {...base}
-          cameraComposition="free"
           performanceScene
-          onCameraComposition={vi.fn()}
           onWorldFov={vi.fn()}
           onResetWorldCamera={vi.fn()}
         />
