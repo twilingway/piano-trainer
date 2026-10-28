@@ -10,6 +10,7 @@ import type { Application, PointData, Renderer } from "./flatThree";
 import { bakeFog, drawRoadHorizon } from "./roadTextures";
 import { HorizonBurstLayer } from "./HorizonBurstLayer";
 import type { KeyRect } from "./keyboardLayout";
+import { flatPictureRows } from "./noteSpeed";
 import { DEFAULT_CAMERA, normalizeCamera, type CameraPrefs, type WorldCamera } from "./worldCamera";
 import { NativeKeyboardScene } from "./NativeKeyboardScene";
 import type { Geometry, KeyboardViewport } from "./viewGeometry";
@@ -124,6 +125,10 @@ export class RoadLayer {
         ? this.fallingNoteStyle
         : "flat";
     this.nativeRoad.flatMaterial = this.nativeRoad.noteStyle === "flat";
+    const keys = this.nativeRoad.flatMaterial && this.camera ? this.contactKeys : undefined;
+    const place = this.notePlace.bind(this);
+    const centre = this.pan + this.size.width / 2;
+    this.nativeRoad.flatPictureRows = flatPictureRows(place, keys, centre, this.size.height);
   }
   endNotes(): void {
     this.three?.setRoadFrame(this.nativeRoad);
