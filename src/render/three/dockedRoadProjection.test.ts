@@ -193,38 +193,30 @@ describe("native docked road projection", () => {
   });
 });
 
-it("projects each pressed key at its own damped hinge depth without shifting another pitch", () => {
-  const root = new Group();
-  root.scale.setScalar(2.75);
-  root.position.set(50, 20, -30);
-  const world = new PerspectiveCamera(70, 1.6, 0.1, 100000);
-  world.position.set(3500, 900, 1500);
-  world.lookAt(0, 0, 0);
-  const keyboard = new OrthographicCamera(-1500, 1500, 800, -800, 0.1, 100000);
-  keyboard.position.set(0, 2000, 2000);
-  keyboard.lookAt(0, 0, 0);
+it("keeps notes, guides and labels on the key's resting top while effects follow the press", () => {
   const hinge = new Group();
   hinge.position.y = -4.8;
   updateDockedKeyOffsets([{ pitch: 61, hinge }]);
-  configureDockedRoad(root, world, keyboard, true, 149.1938, 5000);
-  const staticPoint = new Vector4(33, 34, -145.8, 1).applyMatrix4(root.matrixWorld);
-  const from = staticPoint
-    .clone()
-    .applyMatrix4(world.matrixWorldInverse)
-    .applyMatrix4(world.projectionMatrix);
-  const actual = from
-    .clone()
-    .applyMatrix4(roadWidthUniforms.roadDockTransform.value)
-    .addScaledVector(roadWidthUniforms.roadDockY.value, dockedKeyOffset(61));
-  const expected = new Vector4(33, 34 - 4.8, -145.8, 1)
-    .applyMatrix4(root.matrixWorld)
-    .applyMatrix4(keyboard.matrixWorldInverse)
-    .applyMatrix4(keyboard.projectionMatrix);
-  expect(Math.abs((actual.x / actual.w - expected.x / expected.w) * 960)).toBeLessThan(1);
-  expect(Math.abs((actual.y / actual.w - expected.y / expected.w) * 540)).toBeLessThan(1);
+  // Key effects still sit on the pressed key, only that pitch.
+  expect(dockedKeyOffset(61)).toBeCloseTo(-4.8);
   expect(dockedKeyOffset(60)).toBe(0);
+  const material = new LineBasicMaterial();
+  const root = new Group();
+  root.add(new LineSegments(new BufferGeometry(), material));
+  const camera = new PerspectiveCamera();
+  configureDockedRoad(root, camera, camera, true, 0, 1);
+  const shader = {
+    uniforms: {},
+    vertexShader: "void main() { #include <project_vertex> }",
+    fragmentShader: ""
+  };
+  material.onBeforeCompile(shader as never, {} as never);
+  for (const source of [NOTE_LANE_SHADER, shader.vertexShader])
+    expect(source).not.toContain("roadDockOffsets");
+  expect(shader.uniforms).not.toHaveProperty("roadDockOffsets");
   updateDockedKeyOffsets([]);
   expect(dockedKeyOffset(61)).toBe(0);
+  material.dispose();
 });
 
 it("retains score-derived progress when a zero-height zero-distance route only fans across X", () => {
