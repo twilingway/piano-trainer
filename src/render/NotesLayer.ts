@@ -15,7 +15,7 @@ import { scorePlacements } from "../song/scorePlacement";
 import type { ScorePlacement } from "../song/scorePlacement";
 import { PIANO_LOOK } from "./noteLook";
 import type { NoteLook } from "./noteLook";
-import { fitNoteLabel, noteLabelInset } from "./noteLabelLayout";
+import { fingerLabelAlpha, fitNoteLabel, noteAxisX, noteLabelInset } from "./noteLabelLayout";
 import { noteSlabHeight } from "./noteDimensions";
 import { NOTE_WIDTH_SHARE, flatNoteMinimumHeight } from "./noteReadability";
 import type { KeyRect } from "./keyboardLayout";
@@ -451,8 +451,15 @@ export class NotesLayer {
       const labelTop = labelTopSpot?.y ?? bodyBounds.top;
       const labelWidth = key.width * NOTE_WIDTH_SHARE * (labelSpot?.scale ?? 1);
       const labelHeight = Math.max(0, labelBottom - labelTop);
-      const inset = noteLabelInset(labelWidth, labelHeight);
+      // On the road a label keeps the note's width at its depth: a short note no longer shrinks
+      // it, so labels grow only with perspective.
+      const widthOnly = road !== undefined;
+      const inset = noteLabelInset(labelWidth, widthOnly ? Infinity : labelHeight);
       const labelX = labelSpot?.x ?? keyCentre - (road?.scenePan ?? 0);
+      // A perspective note leans: the label centres on its axis at its own height, not on the
+      // near end's centre.
+      const axisX = (y: number): number =>
+        noteAxisX(labelSpot?.x, labelTopSpot?.x, labelBottom, labelHeight, y) ?? labelX;
       if (note.finger !== undefined) {
         digit.texture =
           this.look.badge?.(note) ??
@@ -461,7 +468,7 @@ export class NotesLayer {
       }
       const digitScale = fitNoteLabel(
         labelWidth - inset * 2,
-        labelHeight - inset * 2,
+        widthOnly ? Infinity : labelHeight - inset * 2,
         digit.texture.width,
         digit.texture.height,
         24
@@ -469,9 +476,9 @@ export class NotesLayer {
       digit.scale.set(digitScale);
       digit.visible = digit.visible && digitScale > 0;
       digit.anchor.set(0.5, 1);
-      digit.x = labelX;
       digit.y = labelBottom - inset;
-      digit.alpha = body.alpha;
+      digit.x = axisX(digit.y - (digit.texture.height * digitScale) / 2);
+      digit.alpha = body.alpha * (widthOnly ? fingerLabelAlpha(note.start - state.time) : 1);
       if (cards) {
         // The card stands where the note lands; on the road it faces the player and
         // grows as it comes nearer.
@@ -524,9 +531,9 @@ export class NotesLayer {
         name.scale.set(nameScale);
         name.visible = nameScale > 0;
         name.anchor.set(0.5, 1);
-        name.x = labelX;
         name.y = labelBottom - inset - digitHeight;
-        name.alpha = body.alpha;
+        name.x = axisX(name.y - (name.texture.height * nameScale) / 2);
+        name.alpha = digit.alpha;
       }
     }
     this.flatBlocks.end();
