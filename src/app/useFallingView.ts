@@ -120,7 +120,9 @@ export function useFallingView({
   const setKeyRange = (range: KeyRange) => {
     updateStaffPrefs({ keyRange: range });
   };
-  const mirrorHostRef = useRef<HTMLDivElement>(null);
+  // A callback ref into state: the runtime turns comparing on before the workspace renders the
+  // second lane, so the comparison effect has to run again once the lane is there.
+  const [mirrorHost, mirrorHostRef] = useState<HTMLDivElement | null>(null);
 
   // The score occupies its own row; the canvas needs no score-overlap offset.
   useEffect(() => {
@@ -254,7 +256,7 @@ export function useFallingView({
 
   // The original on a second screen, drawn by the trainer at the take's song time.
   useEffect(() => {
-    const host = mirrorHostRef.current;
+    const host = mirrorHost;
     const trainer = trainerRef.current;
     if (!comparing || !host || !trainer || !lastTake) return;
     const { take, review: taken } = lastTake;
@@ -299,6 +301,7 @@ export function useFallingView({
     };
   }, [
     trainerRef,
+    mirrorHost,
     comparing,
     lastTake,
     song,

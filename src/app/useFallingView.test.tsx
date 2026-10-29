@@ -62,11 +62,13 @@ const comparisonTake = { take: { notes: [] }, review: { notes: [] } } as unknown
 function Harness({
   prefs,
   comparing = false,
-  blocked = false
+  blocked = false,
+  mirrorShown = true
 }: {
   readonly prefs: StaffPrefs;
   readonly comparing?: boolean;
   readonly blocked?: boolean;
+  readonly mirrorShown?: boolean;
 }) {
   const { handStatus, mirrorHostRef } = useFallingView({
     hostRef,
@@ -87,7 +89,7 @@ function Harness({
   return (
     <>
       <output>{handStatus}</output>
-      <div ref={mirrorHostRef} />
+      {mirrorShown && <div ref={mirrorHostRef} />}
     </>
   );
 }
@@ -338,6 +340,34 @@ it("applies note appearance to an existing comparison without remounting it", as
   expect(mirror.mount).toHaveBeenCalledOnce();
   expect(trainer.seek).not.toHaveBeenCalled();
   expect(trainer.load).not.toHaveBeenCalled();
+});
+
+it("mounts the comparison once its lane appears after comparing starts", async () => {
+  const mirror = {
+    ...view,
+    flatEffects: { set: vi.fn() },
+    mount: vi.fn(async () => {
+      await Promise.resolve();
+    }),
+    setSong: vi.fn(),
+    destroy: vi.fn()
+  };
+  vi.mocked(FallingNotesView).mockImplementation(function () {
+    return mirror as unknown as FallingNotesView;
+  });
+  // The runtime turns comparing on before the workspace has rendered the second lane.
+  await act(async () => {
+    root.render(<Harness prefs={DEFAULT_STAFF_PREFS} comparing mirrorShown={false} />);
+    await Promise.resolve();
+  });
+  expect(mirror.mount).not.toHaveBeenCalled();
+  await act(async () => {
+    root.render(<Harness prefs={DEFAULT_STAFF_PREFS} comparing />);
+    await Promise.resolve();
+  });
+  expect(mirror.mount).toHaveBeenCalledOnce();
+  const [comparison] = trainer.setComparison.mock.lastCall as [{ mirror: { view: unknown } }];
+  expect(comparison.mirror.view).toBe(mirror);
 });
 
 it("passes the world FOV without moving or reloading the lesson", () => {
