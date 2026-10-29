@@ -207,7 +207,8 @@ export class ThreeStage {
         this.road,
         roadFrame,
         roadCamera.near.y,
-        roadCamera.near.z
+        roadCamera.near.z,
+        this.freeEnabled && !this.performanceEnabled
       );
     }
     const step = Math.min(1, deltaSeconds * DIP_RATE);

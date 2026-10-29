@@ -12,6 +12,8 @@ export interface WorldRoadNote {
   /** Source-pixel dimensions keep the shared nine-slice mask stable under projection. */
   materialUnitX?: number;
   materialUnitZ?: number;
+  /** The depth unit when the free camera routes the note along its lane's `freeFar`. */
+  freeMaterialUnitZ?: number | undefined;
   color: number;
   alpha: number;
   /** Original duration only controls decoration, never the score clock. */
