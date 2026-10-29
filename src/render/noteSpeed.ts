@@ -1,3 +1,4 @@
+import type { FreeRoadLane } from "./freeRoadLayout";
 import { KEYBOARD_WHITE_STEP } from "./keyboardMetrics";
 
 /**
@@ -40,6 +41,27 @@ export function screenNoteField(
   const keyScreen = Math.hypot(right.x - left.x, right.y - left.y);
   if (!(rowScreen > 0) || !(keyScreen > 0)) return undefined;
   return { length: hitY, whiteStep: keyScreen / rowScreen };
+}
+
+const BLACK_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]);
+
+/**
+ * The free camera's field in world units: the route of the white lane in the middle of the range
+ * and that key's step. A note then walks the same white steps a second along any field, so a long
+ * road shows more notes rather than stretching them.
+ */
+export function freeNoteField(
+  lanes: readonly FreeRoadLane[]
+): { length: number; whiteStep: number } | undefined {
+  const whites = lanes.filter((lane) => !BLACK_PITCH_CLASSES.has(((lane.pitch % 12) + 12) % 12));
+  const lane = whites[Math.floor(whites.length / 2)];
+  if (!lane) return undefined;
+  const length = Math.hypot(
+    lane.far.x - lane.near.x,
+    lane.far.y - lane.near.y,
+    lane.far.z - lane.near.z
+  );
+  return length > 0 && lane.width > 0 ? { length, whiteStep: lane.width } : undefined;
 }
 
 /**

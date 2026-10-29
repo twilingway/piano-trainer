@@ -8,8 +8,11 @@ import {
   NOTE_SPEED_MM,
   boundedLookAhead,
   flatPictureRows,
+  freeNoteField,
   noteLookAhead
 } from "./noteSpeed";
+import { freeRoadLanes } from "./freeRoadLayout";
+import type { FreeRoadRoutes } from "./freeRoadRoutes";
 import { roadTrailMaxGap, ROAD_TRAIL_MAX_GAP_SHARE } from "./three/roadTrailGeometry";
 import { roadFrameState } from "./viewEffects";
 
@@ -79,6 +82,47 @@ describe("one note speed in metres", () => {
     const unready = { notePlace: () => undefined };
     expect(roadFrameState(frame, unready, 400, 20).lookAhead).toBe(frame.lookAhead);
     expect(roadFrameState(frame, undefined, 0, 20).lookAhead).toBe(frame.lookAhead);
+  });
+
+  it("walks the same white steps a second along a short board and a long free road", () => {
+    const keysPerSecond = NOTE_SPEED_MM / KEYBOARD_WHITE_STEP;
+    const contacts = Array.from({ length: 88 }, (_, index) => ({
+      pitch: 21 + index,
+      width: [1, 3, 6, 8, 10].includes((21 + index) % 12) ? 13.7 : KEYBOARD_WHITE_STEP,
+      near: { x: index * 13.6, y: 22, z: -150 }
+    }));
+    const screen = { notePlace: (x: number, y: number) => ({ x, y, scale: 1 }) };
+    const fields = [
+      { height: 0.45, distance: 0, width: 1.2, radius: 1, shape: "line" as const },
+      { height: 0, distance: 59.52, width: 12.15, radius: 3216.32, shape: "line" as const }
+    ].map((layout) => {
+      const lanes = freeRoadLanes(contacts, layout);
+      const field = freeNoteField(lanes);
+      const { lookAhead } = roadFrameState(
+        frame,
+        { ...screen, freeCamera: true, freeRoutes: { lanes } as unknown as FreeRoadRoutes },
+        400,
+        20,
+        300
+      );
+      return { length: field?.length ?? NaN, lookAhead };
+    });
+    for (const { length, lookAhead } of fields)
+      expect(length / lookAhead / KEYBOARD_WHITE_STEP).toBeCloseTo(keysPerSecond, 9);
+    // The long road shows more seconds of notes, not longer notes.
+    const [board, road] = fields as [(typeof fields)[0], (typeof fields)[0]];
+    expect(road.lookAhead / board.lookAhead).toBeCloseTo(road.length / board.length, 9);
+    expect(road.lookAhead).toBeGreaterThan(board.lookAhead * 100);
+    // Without the free camera the screen decides, as before.
+    const off = roadFrameState(
+      frame,
+      { ...screen, freeCamera: false, freeRoutes: { lanes: [] } as unknown as FreeRoadRoutes },
+      400,
+      20,
+      300
+    );
+    expect(off.lookAhead).toBeCloseTo(roadFrameState(frame, screen, 400, 20, 300).lookAhead, 9);
+    expect(freeNoteField([])).toBeUndefined();
   });
 });
 

@@ -1,5 +1,5 @@
 import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "./flatEffectSettings";
-import { noteLookAhead, screenNoteField } from "./noteSpeed";
+import { freeNoteField, noteLookAhead, screenNoteField } from "./noteSpeed";
 import type { HudLayer } from "./HudLayer";
 import type { SongNote } from "../song/song";
 import { noteColor } from "./computerKeys";
@@ -93,18 +93,25 @@ export function drawViewHud(
 /**
  * The notes' look-ahead is the time the shared note speed needs to cross the field: measured on
  * screen at the hit line of the road (around `keyX`) when it draws the notes, else the flat lane.
- * Song time is untouched.
+ * The free camera's own field is measured in the world instead. Song time is untouched.
  */
 export function roadFrameState(
   state: FrameState,
-  road: Pick<RoadLayer, "notePlace"> | undefined,
+  road:
+    | (Pick<RoadLayer, "notePlace"> & Partial<Pick<RoadLayer, "freeCamera" | "freeRoutes">>)
+    | undefined,
   hitY: number,
   whiteWidth: number,
   keyX = 0
 ): FrameState {
-  const field = road
-    ? screenNoteField((x, y) => road.notePlace(x, y), keyX, whiteWidth, hitY)
-    : { length: hitY, whiteStep: whiteWidth };
+  // The free camera never runs inside the performance scene, so its lanes are what the notes walk.
+  const lanes = road?.freeCamera ? road.freeRoutes?.lanes : undefined;
+  const free = lanes && freeNoteField(lanes);
+  const field =
+    free ??
+    (road
+      ? screenNoteField((x, y) => road.notePlace(x, y), keyX, whiteWidth, hitY)
+      : { length: hitY, whiteStep: whiteWidth });
   const lookAhead = field && noteLookAhead(field.length, field.whiteStep);
   return { ...state, lookAhead: lookAhead ?? state.lookAhead };
 }
