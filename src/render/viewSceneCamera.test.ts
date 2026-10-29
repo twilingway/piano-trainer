@@ -25,8 +25,8 @@ it("remembers source layout before road mount and reapplies it without changing 
   expect(mounted.setFreeRoadLayout).toHaveBeenLastCalledWith(layout);
   expect(mounted.setFreeCamera).toHaveBeenLastCalledWith(false, expect.any(Function));
   mounted.setFreeCamera.mockClear();
-  camera.setRoadLayout({ ...layout, height: 3 });
-  expect(mounted.setFreeRoadLayout).toHaveBeenLastCalledWith({ ...layout, height: 3 });
+  camera.setRoadLayout({ ...layout, tilt: 45 });
+  expect(mounted.setFreeRoadLayout).toHaveBeenLastCalledWith({ ...layout, tilt: 45 });
   expect(mounted.setFreeCamera).not.toHaveBeenCalled();
 });
 

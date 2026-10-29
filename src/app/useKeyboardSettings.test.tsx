@@ -36,16 +36,16 @@ afterEach(() => {
 it("writes only the profile selected by note projection, retaining its other values", () => {
   const prefs = {
     ...DEFAULT_STAFF_PREFS,
-    freeDirectField: { height: 3, distance: 1, width: 8, shape: "convex" as const },
-    freePerspectiveField: { height: 4, distance: 7, width: 12, shape: "concave" as const }
+    freeDirectField: { tilt: 30, length: 1, width: 8, shape: "convex" as const },
+    freePerspectiveField: { tilt: 20, length: 7, width: 12, shape: "concave" as const }
   };
   act(() => {
     root.render(<Harness prefs={prefs} />);
   });
   expect(settings.freeRoadLayout).toBe(prefs.freeDirectField);
-  settings.onFreeRoadLayout({ height: 5 });
+  settings.onFreeRoadLayout({ tilt: 45 });
   expect(change).toHaveBeenLastCalledWith({
-    freeDirectField: { ...prefs.freeDirectField, height: 5 }
+    freeDirectField: { ...prefs.freeDirectField, tilt: 45 }
   });
   act(() => {
     root.render(<Harness prefs={{ ...prefs, road: true }} />);
@@ -55,7 +55,7 @@ it("writes only the profile selected by note projection, retaining its other val
   expect(change).toHaveBeenLastCalledWith({
     freePerspectiveField: { ...prefs.freePerspectiveField, width: 20 }
   });
-  expect(prefs.freeDirectField.height).toBe(3);
+  expect(prefs.freeDirectField.tilt).toBe(30);
 });
 
 it("retakes a button road fit when a camera preset is chosen, not when a slider moves", () => {

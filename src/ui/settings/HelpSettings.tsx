@@ -51,15 +51,10 @@ const GUIDE = [
 ] as const;
 const FAQ = [
   {
-    targets: [
-      "free-source-height",
-      "free-source-distance",
-      "free-source-width",
-      "free-source-shape"
-    ],
+    targets: ["free-source-tilt", "free-source-length", "free-source-width", "free-source-shape"],
     question: "Как настроить горизонт в свободной камере?",
     answer:
-      "Горизонт — линия или дуга точек появления нот, их источников. В «Вид / Камера нот и мира» настройте его высоту, дальность, ширину и форму в метрах мира. Прямая и перспективная проекции сохраняют свои настройки отдельно. Высота — нижняя точка над белыми клавишами, дальность — от задней линии клавиш. У выпуклой дуги середина выше, у вогнутой — края. Вращение камеры меняет ракурс, а не ширину. Каждая клавиша диапазона, включая чёрные, имеет постоянный источник: повторные ноты идут из него же."
+      "Горизонт — линия или дуга точек появления нот, их источников. В «Вид / Камера нот и мира» настройте наклон и длину поля, ширину и форму горизонта. Прямая и перспективная проекции сохраняют свои настройки отдельно. Поле идёт от задней линии клавиш: наклон 0° кладёт его на пол, 90° ставит стоя; длина отодвигает горизонт вдоль поля, не меняя наклона. У выпуклой дуги середина выше, у вогнутой — края. Вращение камеры меняет ракурс, а не ширину. Каждая клавиша диапазона, включая чёрные, имеет постоянный источник: повторные ноты идут из него же."
   },
   {
     targets: ["falling-note-style", "road-horizon", "road-width", "notes-projection"],
@@ -166,10 +161,10 @@ export function HelpSettings({
           {FAQ.filter(
             (item) =>
               (!wordTyping ||
-                !["note-burning", "falling-note-style", "free-source-height"].includes(
+                !["note-burning", "falling-note-style", "free-source-tilt"].includes(
                   item.targets[0]
                 )) &&
-              (item.targets[0] !== "free-source-height" || freeCamera) &&
+              (item.targets[0] !== "free-source-tilt" || freeCamera) &&
               (item.targets[0] !== "falling-note-style" || !freeCamera)
           ).map((item) => (
             <details key={item.question} data-window-detail={`help:${item.targets[0]}`}>

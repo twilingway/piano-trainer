@@ -93,8 +93,8 @@ describe("one note speed in metres", () => {
     }));
     const screen = { notePlace: (x: number, y: number) => ({ x, y, scale: 1 }) };
     const fields = [
-      { height: 0.45, distance: 0, width: 1.2, radius: 1, shape: "line" as const },
-      { height: 0, distance: 59.52, width: 12.15, radius: 3216.32, shape: "line" as const }
+      { tilt: 90, length: 0.45, width: 1.2, radius: 1, shape: "line" as const },
+      { tilt: 0, length: 59.52, width: 12.15, radius: 3216.32, shape: "line" as const }
     ].map((layout) => {
       const lanes = freeRoadLanes(contacts, layout);
       const field = freeNoteField(lanes);

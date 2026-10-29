@@ -1,13 +1,13 @@
 import type { Messages } from "./locales";
 
 export const freeCameraMessages: Messages = {
-  "Высота горизонта, м": { en: "Horizon height, m" },
-  "Дальность горизонта, м": { en: "Horizon distance, m" },
+  "Наклон поля, °": { en: "Field tilt, °" },
+  "Длина поля, м": { en: "Field length, m" },
   "Ширина горизонта, м": { en: "Horizon width, m" },
   "Радиус мирового горизонта, м": { en: "World horizon radius, m" },
-  "Высота — нижняя точка горизонта относительно белых клавиш; отрицательная высота опускает его ниже клавиатуры. Дальность отсчитывается от задней линии клавиш. У выпуклой дуги середина выше, у вогнутой — края.":
+  "Поле идёт от задней линии клавиш к горизонту. Наклон 0° кладёт его на пол, 90° ставит стоя, отрицательный наклон опускает горизонт ниже клавиатуры. Длина меняет только удалённость горизонта вдоль поля, не его наклон. У выпуклой дуги середина выше, у вогнутой — края.":
     {
-      en: "Height is the lowest horizon point relative to the white keys; a negative height places it below the keyboard. Distance starts at the back line of the keys. A convex arc rises in the middle; a concave arc rises at the edges."
+      en: "The field runs from the back line of the keys to the horizon. A 0° tilt lays it on the floor, 90° stands it up, a negative tilt takes the horizon below the keyboard. Length only moves the horizon along the field, never its tilt. A convex arc rises in the middle; a concave arc rises at the edges."
     },
   "Ширина — расстояние между крайними источниками. Радиус меняет изгиб отдельно от ширины и не может быть меньше её половины: слишком малое значение увеличивается до этого предела. В режиме линии радиус сохраняется без изгиба.":
     {
@@ -28,9 +28,9 @@ export const freeCameraMessages: Messages = {
   "Как настроить горизонт в свободной камере?": {
     en: "How do I adjust the horizon in the free camera?"
   },
-  "Горизонт — линия или дуга точек появления нот, их источников. В «Вид / Камера нот и мира» настройте его высоту, дальность, ширину и форму в метрах мира. Прямая и перспективная проекции сохраняют свои настройки отдельно. Высота — нижняя точка над белыми клавишами, дальность — от задней линии клавиш. У выпуклой дуги середина выше, у вогнутой — края. Вращение камеры меняет ракурс, а не ширину. Каждая клавиша диапазона, включая чёрные, имеет постоянный источник: повторные ноты идут из него же.":
+  "Горизонт — линия или дуга точек появления нот, их источников. В «Вид / Камера нот и мира» настройте наклон и длину поля, ширину и форму горизонта. Прямая и перспективная проекции сохраняют свои настройки отдельно. Поле идёт от задней линии клавиш: наклон 0° кладёт его на пол, 90° ставит стоя; длина отодвигает горизонт вдоль поля, не меняя наклона. У выпуклой дуги середина выше, у вогнутой — края. Вращение камеры меняет ракурс, а не ширину. Каждая клавиша диапазона, включая чёрные, имеет постоянный источник: повторные ноты идут из него же.":
     {
-      en: "The horizon is a line or arc of note spawn points, called sources. In View / Notes and world camera, adjust its height, distance, width and shape in world metres. Direct and perspective projections keep separate settings. Height is the lowest point above the white keys; distance is measured from the back line of the keys. A convex arc rises in the middle; a concave arc rises at the edges. Orbiting changes the viewing angle, not the width. Every key in the range, including black keys, has a fixed source: repeated notes come from the same point."
+      en: "The horizon is a line or arc of note spawn points, called sources. In View / Notes and world camera, adjust the field's tilt and length and the horizon's width and shape. Direct and perspective projections keep separate settings. The field starts at the back line of the keys: a 0° tilt lays it on the floor, 90° stands it up; length moves the horizon along the field without changing the tilt. A convex arc rises in the middle; a concave arc rises at the edges. Orbiting changes the viewing angle, not the width. Every key in the range, including black keys, has a fixed source: repeated notes come from the same point."
     },
   "Отрицательные значения задают ширину дальнего края относительно экрана основного вида; свободная камера меняет его ракурс.":
     {
