@@ -126,6 +126,7 @@ describe("translated player interface", () => {
         onClose={vi.fn()}
         onAgain={vi.fn()}
         onReview={vi.fn()}
+        onStats={() => undefined}
       />
     );
     expect(results).toContain("weighted accuracy");

@@ -14,12 +14,14 @@ import { createAppStore } from "./store";
 import { progressKey, type CourseLesson } from "../course/model";
 import type { Locale } from "../i18n/locales";
 import { translate } from "../i18n/translate";
+import type { PracticeStats } from "../practice/session";
 let activeLocale: Locale = "ru";
 const observed = vi.hoisted(() => ({
   header: vi.fn(),
   progress: vi.fn(),
   settings: vi.fn(),
   result: vi.fn(),
+  stats: vi.fn(),
   library: vi.fn(),
   workspace: vi.fn(),
   runtime: {} as PlayerRuntime
@@ -46,6 +48,7 @@ vi.mock("../ui/GameModeSwitch", () => ({ GameModeSegment: () => null }));
 vi.mock("../ui/WordTextPopover", () => ({ WordTextPopover: () => null }));
 vi.mock("../ui/WordTypingBoard", () => ({ WordQuality: () => null }));
 vi.mock("../ui/LibraryDialog", () => ({ LibraryDialog: observed.library }));
+vi.mock("../ui/ResultStats", () => ({ ResultStats: observed.stats }));
 const initial = (): PlayerRuntime =>
   ({
     libraryOpen: false,
@@ -165,6 +168,7 @@ const initial = (): PlayerRuntime =>
     word: { storageError: null, enabled: false, pending: false, practiceSong: { title: "A" } },
     song: { title: "A" },
     current: {
+      songKey: "initial",
       lesson: null,
       arrangement: {
         simplified: true,
@@ -436,6 +440,55 @@ describe("connected regions without React Compiler", () => {
     props.onNext();
     expect(open).toHaveBeenCalledWith({ ...selection, stage: "both" });
     expect(observed.runtime.setResultClosed).toHaveBeenCalledWith(true);
+  });
+  it("keeps the take's details beside the game through compare and closes them on the next run", () => {
+    observed.runtime = initial();
+    observed.runtime.snapshot = { ...observed.runtime.snapshot, finished: true };
+    observed.runtime.current = { ...observed.runtime.current, songKey: "song" };
+    const view = mount(<ConnectedPlayerWindows />);
+    expect(observed.stats).not.toHaveBeenCalled();
+    const stats = { hits: 3 } as PracticeStats;
+    const result = observed.result.mock.lastCall?.[0] as {
+      onStats: (value: PracticeStats) => void;
+    };
+    act(() => {
+      result.onStats(stats);
+    });
+    expect(observed.runtime.setResultClosed).toHaveBeenCalledWith(true);
+    const shown = () => (observed.stats.mock.lastCall?.[0] as { stats: PracticeStats }).stats;
+    expect(shown()).toBe(stats);
+    // Compare replays the take as a song: the panel keeps the take's own numbers.
+    observed.runtime = {
+      ...observed.runtime,
+      comparing: true,
+      snapshot: { ...observed.runtime.snapshot, finished: false, playing: true }
+    };
+    observed.stats.mockClear();
+    view.render();
+    expect(shown()).toBe(stats);
+    observed.runtime = { ...observed.runtime, comparing: false };
+    observed.stats.mockClear();
+    view.render();
+    expect(observed.stats).not.toHaveBeenCalled();
+  });
+  it("closes the take's details on «Ещё раз»", () => {
+    observed.runtime = initial();
+    observed.runtime.snapshot = { ...observed.runtime.snapshot, finished: true };
+    observed.runtime.current = { ...observed.runtime.current, songKey: "song" };
+    const view = mount(<ConnectedPlayerWindows />);
+    act(() => {
+      (observed.result.mock.lastCall?.[0] as { onStats: (value: PracticeStats) => void }).onStats({
+        hits: 1
+      } as PracticeStats);
+    });
+    const panel = observed.stats.mock.lastCall?.[0] as { onAgain: () => void };
+    act(() => {
+      panel.onAgain();
+    });
+    expect(observed.runtime.startOver).toHaveBeenCalled();
+    observed.stats.mockClear();
+    view.render();
+    expect(observed.stats).not.toHaveBeenCalled();
   });
   it("does not render closed windows or subscribe to their catalog after unrelated owner updates", () => {
     observed.runtime = initial();
