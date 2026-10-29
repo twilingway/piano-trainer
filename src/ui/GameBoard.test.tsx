@@ -303,6 +303,24 @@ describe("game score presentation", () => {
       />
     );
     expect(details).toContain("идеальная игра без Overdrive");
+    expect(
+      renderToStaticMarkup(
+        <ResultStats
+          stats={{
+            hits: 2,
+            misses: 1,
+            wrong: 0,
+            meanOffset: 0,
+            troubleSpots: [{ pitch: 60, errors: 2 }],
+            game: score.snapshot(1)
+          }}
+          canReview={false}
+          onClose={vi.fn()}
+          onAgain={vi.fn()}
+          onReview={vi.fn()}
+        />
+      )
+    ).toContain('<p class="result-stats-trouble">Трудные ноты: до4 (2)</p>');
     expect(details).toContain("Распределение ошибки времени");
     const empty = render(new GameScore(0).snapshot(0));
     expect(empty).toContain("Нет нот для оценки");
