@@ -155,3 +155,21 @@ it("keeps a flat note's picture square to the world on a free field of any lengt
     expect((free.capZ * route) / span).toBeCloseTo(free.capX);
   }
 });
+
+it("bursts arrivals at their free lane's far end and skips keys without one", () => {
+  const frame = new ThreeRoadFrame();
+  const lane = { y: 22, scaleX: 1, offsetX: 0, offsetY: 0, width: 1, height: 1 };
+  frame.freeContacts = new Map([[100, { ...lane, freeFar: { x: -40, y: 2022, z: -4500 } }]]);
+  frame.withBursts([
+    { x: 100, color: 0xff0060, age: 0.1, width: 24 },
+    { x: 130, color: 0x00ff60, age: 0.1, width: 24 }
+  ]);
+  expect(frame.burstCount).toBe(1);
+  expect(frame.bursts[0]).toEqual({ x: -40, y: 2022, z: -4500, color: 0xff0060, age: 0.1 });
+  const first = frame.bursts[0];
+  frame.begin();
+  expect(frame.burstCount).toBe(0);
+  frame.withBursts([{ x: 100, color: 0x0060ff, age: 0.3, width: 24 }]);
+  expect(frame.bursts[0]).toBe(first);
+  expect(first?.color).toBe(0x0060ff);
+});

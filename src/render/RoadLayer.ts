@@ -118,7 +118,7 @@ export class RoadLayer {
       this.freeRoutes.update(this.contactKeys, this.camera, this.freeRoadLayout);
       this.nativeRoad.freeLayout = this.freeRoadLayout;
       this.nativeRoad.freeLanes = this.freeRoutes.lanes;
-      this.physicalContactLanes = this.freeRoutes.contacts;
+      this.physicalContactLanes = this.nativeRoad.freeContacts = this.freeRoutes.contacts;
     }
     this.nativeRoad.noteStyle = this.computerKeyboard
       ? "glass"
@@ -131,8 +131,8 @@ export class RoadLayer {
     const centre = this.pan + this.size.width / 2;
     this.nativeRoad.flatPictureRows = flatPictureRows(place, keys, centre, this.size.height);
   }
-  endNotes(): void {
-    this.three?.setRoadFrame(this.nativeRoad);
+  endNotes(arrivals: readonly Arrival[] = []): void {
+    this.three?.setRoadFrame(this.nativeRoad.withBursts(arrivals));
   }
   layoutView(
     keys: ReadonlyMap<number, KeyRect>,

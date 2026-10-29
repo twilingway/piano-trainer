@@ -44,6 +44,7 @@ function fixture() {
     roadTrails: disposable(),
     noteAura: disposable(),
     roadGuides: { ...disposable(), clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() },
+    freeBursts: { ...disposable(), update: vi.fn() },
     noteLights: layer(),
     keyEmission: layer(),
     appearance: disposable(),
