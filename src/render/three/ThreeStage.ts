@@ -32,6 +32,7 @@ import { roadTrailMaxGap } from "./roadTrailGeometry";
 import { ThreeRoadTrails } from "./ThreeRoadTrails";
 import { ThreeNoteAura } from "./ThreeNoteAura";
 import { ThreeRoadGuides } from "./ThreeRoadGuides";
+import { ThreeFreeBursts } from "./ThreeFreeBursts";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { drawSceneCameraPasses } from "./sceneCameraPasses";
 import { PerformanceWorldStage } from "./PerformanceWorldStage";
@@ -69,6 +70,7 @@ export class ThreeStage {
   private readonly roadTrails = new ThreeRoadTrails();
   private readonly noteAura = new ThreeNoteAura();
   private readonly roadGuides = new ThreeRoadGuides();
+  private readonly freeBursts = new ThreeFreeBursts();
   private boxes: readonly KeyBox[] = [];
   /** The song's range only: the road and its guides stay as wide as the song, not all 88 keys. */
   private roadBoxes: readonly KeyBox[] = [];
@@ -111,8 +113,10 @@ export class ThreeStage {
       this.roadGuides.group,
       this.roadTrails.group,
       this.roadNotes.group,
-      this.noteAura.group
+      this.noteAura.group,
+      this.freeBursts.group
     );
+    void this.freeBursts.load();
     this.keys.add(this.body, this.appearance.group);
     this.lighting.add(this.noteLights.group, this.rimLights.group);
     this.occluders.push(this.body);
@@ -235,6 +239,7 @@ export class ThreeStage {
       : inspecting
         ? this.free.camera
         : this.roadCamera;
+    this.freeBursts.update(inspecting ? roadFrame : undefined, this.free.camera);
     this.pickCamera = separate ? this.keyboardCamera : camera;
     this.beforeRender?.(this.pickCamera, separate);
     // The near quarter of every separate view joins the displayed keys, also on the legacy road.
@@ -440,6 +445,7 @@ export class ThreeStage {
     this.roadTrails.dispose();
     this.noteAura.dispose();
     this.roadGuides.dispose();
+    this.freeBursts.dispose();
     this.materials.dispose();
     this.keyboard.dispose();
   }

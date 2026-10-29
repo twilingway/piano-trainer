@@ -537,7 +537,7 @@ export class NotesLayer {
       }
     }
     this.flatBlocks.end();
-    road?.endNotes();
+    road?.endNotes(this.arrivals);
   }
 
   /** Loads the cards' neon loop; a failure leaves them their still glow. */
