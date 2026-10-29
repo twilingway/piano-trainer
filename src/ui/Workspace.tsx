@@ -1,7 +1,7 @@
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import neonRailUrl from "../fx/neon-rail.webp?url";
 import { useI18n } from "../app/useI18n";
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode, Ref, RefObject } from "react";
 import { useMemo } from "react";
 import { secondsAt, type Song } from "../song/song";
 
@@ -47,7 +47,7 @@ interface Props {
   /** Where the trainer's Pixi view mounts. */
   readonly hostRef: RefObject<HTMLDivElement | null>;
   /** Where the original mounts while a take is compared with it. */
-  readonly mirrorHostRef: RefObject<HTMLDivElement | null>;
+  readonly mirrorHostRef: Ref<HTMLDivElement>;
   readonly countdown?: number | null;
   readonly handStatus?: "idle" | "loading" | "ready" | "error";
   readonly gameBoard?: ReactNode;
