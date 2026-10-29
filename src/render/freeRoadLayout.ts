@@ -1,6 +1,8 @@
 export interface FreeRoadLayout {
-  readonly height: number;
-  readonly distance: number;
+  /** Degrees up from the floor: 0 lies flat away from the keys, 90 stands, below 0 goes down. */
+  readonly tilt: number;
+  /** Metres along the field, from the keys' back line to its far edge. */
+  readonly length: number;
   readonly width: number;
   /** Missing in older preferences; their radius was the horizon width. */
   readonly radius?: number;
@@ -8,45 +10,71 @@ export interface FreeRoadLayout {
 }
 
 export const FREE_ROAD_LIMITS = {
-  height: { min: -100, max: 100, step: 0.01 },
-  distance: { min: 0, max: 1000, step: 0.01 },
+  tilt: { min: -90, max: 90, step: 0.01 },
+  length: { min: 0.05, max: 1000, step: 0.01 },
   width: { min: 0.25, max: 1000, step: 0.01 },
   radius: { min: 0.125, max: 10000, step: 0.01 }
 } as const;
 
 export const DEFAULT_FREE_DIRECT_FIELD: FreeRoadLayout = {
-  height: 2,
-  distance: 0,
+  tilt: 90,
+  length: 2,
   width: 4,
   radius: 4,
   shape: "line"
 };
 export const DEFAULT_FREE_PERSPECTIVE_FIELD: FreeRoadLayout = {
-  height: 2,
-  distance: 4,
+  tilt: 26.57,
+  length: 4.47,
   width: 6,
   radius: 6,
   shape: "line"
 };
+
+const round = (value: number): number => Math.round(value * 100) / 100;
+
+/** The far edge's rise and run in metres: up from the white keys, back from their back line. */
+export function freeFieldReach(layout: FreeRoadLayout): { rise: number; run: number } {
+  const angle = (layout.tilt * Math.PI) / 180;
+  // A standing field has no run at all, not a float crumb of one.
+  const run = Math.abs(layout.tilt) === 90 ? 0 : Math.cos(angle);
+  return { rise: layout.length * Math.sin(angle), run: layout.length * run };
+}
 
 export function normalizeFreeRoadLayout(
   value: unknown,
   fallback = DEFAULT_FREE_DIRECT_FIELD
 ): FreeRoadLayout {
   const input = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  const number = (key: keyof typeof FREE_ROAD_LIMITS, defaultValue: number): number => {
+  const finite = (key: string): number | undefined => {
     const candidate = input[key];
-    const { min, max } = FREE_ROAD_LIMITS[key];
-    return typeof candidate === "number" && Number.isFinite(candidate)
-      ? Math.max(min, Math.min(max, candidate))
-      : defaultValue;
+    return typeof candidate === "number" && Number.isFinite(candidate) ? candidate : undefined;
   };
+  const number = (key: keyof typeof FREE_ROAD_LIMITS, defaultValue: number): number => {
+    const { min, max } = FREE_ROAD_LIMITS[key];
+    return Math.max(min, Math.min(max, finite(key) ?? defaultValue));
+  };
+  // Older fields were a far edge's height (-100…100 m) and distance (0…1000 m): the same edge.
+  const legacyHeight = finite("height"),
+    legacyDistance = finite("distance");
+  let { tilt, length } = fallback;
+  if (
+    finite("tilt") === undefined &&
+    finite("length") === undefined &&
+    (legacyHeight ?? legacyDistance) !== undefined
+  ) {
+    const reach = freeFieldReach(fallback);
+    const rise = Math.max(-100, Math.min(100, legacyHeight ?? reach.rise)),
+      run = Math.max(0, Math.min(1000, legacyDistance ?? reach.run));
+    tilt = round((Math.atan2(rise, run) * 180) / Math.PI);
+    length = round(Math.hypot(rise, run));
+  }
   const width = number("width", fallback.width);
   // Legacy arcs used R=W and a sixty-degree sweep. Preserve every angular source on migration.
   const radius = input.radius === undefined ? width : number("radius", fallback.radius ?? width);
   return {
-    height: number("height", fallback.height),
-    distance: number("distance", fallback.distance),
+    tilt: number("tilt", tilt),
+    length: number("length", length),
     width,
     radius: Math.max(width / 2, radius),
     shape:
@@ -87,6 +115,7 @@ export function freeRoadLanes(
       Math.max(...contacts.map((lane) => lane.near.x))) /
     2;
   const back = Math.min(...contacts.map((lane) => lane.near.z));
+  const { rise, run } = freeFieldReach(layout);
   const width = layout.width * 1000,
     radius = (layout.radius ?? layout.width) * 1000,
     halfAngle = Math.asin(Math.min(1, width / (2 * radius))),
@@ -106,7 +135,7 @@ export function freeRoadLanes(
           x: axis + x,
           y:
             22 +
-            layout.height * 1000 +
+            rise * 1000 +
             (high === low
               ? 0
               : layout.shape === "convex"
@@ -114,7 +143,7 @@ export function freeRoadLanes(
                 : layout.shape === "concave"
                   ? sag - minSag
                   : 0),
-          z: back - layout.distance * 1000
+          z: back - run * 1000
         }
       };
     })

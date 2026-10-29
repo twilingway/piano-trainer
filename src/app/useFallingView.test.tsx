@@ -200,8 +200,8 @@ it("disables camera movement in menus without resetting camera, playback or the 
 });
 
 it("applies the selected world source profile without camera or transport resets", async () => {
-  const direct = { height: 3, distance: 1, width: 8, shape: "convex" as const };
-  const perspective = { height: 4, distance: 7, width: 12, shape: "concave" as const };
+  const direct = { tilt: 30, length: 1, width: 8, shape: "convex" as const };
+  const perspective = { tilt: 20, length: 7, width: 12, shape: "concave" as const };
   const prefs = {
     ...DEFAULT_STAFF_PREFS,
     freeDirectField: direct,
@@ -213,7 +213,7 @@ it("applies the selected world source profile without camera or transport resets
   });
   expect(view.setFreeRoadLayout).toHaveBeenLastCalledWith(direct);
   vi.clearAllMocks();
-  const changed = { ...direct, height: 5 };
+  const changed = { ...direct, tilt: 45 };
   await act(async () => {
     root.render(<Harness prefs={{ ...prefs, freeDirectField: changed }} />);
     await Promise.resolve();

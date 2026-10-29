@@ -32,9 +32,9 @@ it("reserves stable score bounds with the piano hidden without reusing key visib
   };
   expect(bounds.min.y).toBe(4444);
   expect(bounds.max.y).toBe(5244);
-  poster.draw(view, [], true, { freeLayout: { ...DEFAULT_FREE_DIRECT_FIELD, height: 8 } });
+  poster.draw(view, [], true, { freeLayout: { ...DEFAULT_FREE_DIRECT_FIELD, length: 8 } });
   expect(poster.group.position.y).toBe(8422);
-  const layout = { ...DEFAULT_FREE_DIRECT_FIELD, height: 2, width: 30, shape: "convex" as const };
+  const layout = { ...DEFAULT_FREE_DIRECT_FIELD, width: 30, shape: "convex" as const };
   const lanes = freeRoadLanes(
     [60, 61, 62].map((pitch, index) => ({
       pitch,

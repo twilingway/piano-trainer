@@ -19,7 +19,7 @@ const base: ComponentProps<typeof KeyboardSettings> = {
   keyStyle: "3d",
   onKeyStyle: noop,
   notesPerspective: true,
-  freeRoadLayout: { height: 2, distance: 0, width: 4, shape: "line" },
+  freeRoadLayout: { tilt: 90, length: 2, width: 4, shape: "line" },
   onFreeRoadLayout: noop,
   onNotesPerspective: noop,
   fallingNoteStyle: "filled",
@@ -105,7 +105,7 @@ describe("free camera setting", () => {
           {...base}
           freeCamera
           onRoad={roadChanged}
-          freeRoadLayout={{ height: 2, distance: 4, width: 6, shape: "convex" }}
+          freeRoadLayout={{ tilt: 26.57, length: 4.47, width: 6, shape: "convex" }}
           onFreeRoadLayout={changed}
         />
       );
@@ -113,18 +113,18 @@ describe("free camera setting", () => {
     expect(host.querySelector('[data-setting-target="road-horizon"]')).toBeNull();
     expect(host.querySelector('[data-setting-target="road-width"]')).toBeNull();
     expect(
-      host.querySelector<HTMLInputElement>('[data-setting-target="free-source-height"]')?.value
-    ).toBe("2");
+      host.querySelector<HTMLInputElement>('[data-setting-target="free-source-tilt"]')?.value
+    ).toBe("26.57");
     expect(
-      host.querySelector<HTMLInputElement>('[data-setting-target="free-source-distance"]')?.value
-    ).toBe("4");
+      host.querySelector<HTMLInputElement>('[data-setting-target="free-source-length"]')?.value
+    ).toBe("4.47");
     expect(
       host.querySelector<HTMLSelectElement>('[data-setting-target="free-source-shape"]')?.value
     ).toBe("convex");
     act(() => {
       root.render(<KeyboardSettings {...base} freeCamera={false} onRoad={roadChanged} />);
     });
-    expect(host.querySelector('[data-setting-target="free-source-height"]')).toBeNull();
+    expect(host.querySelector('[data-setting-target="free-source-tilt"]')).toBeNull();
     expect(
       host.querySelector<HTMLInputElement>('[data-setting-target="road-horizon"]')?.value
     ).toBe(String(base.road.horizon * 100));
@@ -452,7 +452,7 @@ describe("one free camera", () => {
     });
     expect(onWorldFov).toHaveBeenCalledWith(80);
     expect(onCamera).not.toHaveBeenCalled();
-    expect(host.querySelector('[data-setting-target="free-source-height"]')).not.toBeNull();
+    expect(host.querySelector('[data-setting-target="free-source-tilt"]')).not.toBeNull();
   });
 
   it("locks the keyboard camera while the free camera shows the whole stage", () => {

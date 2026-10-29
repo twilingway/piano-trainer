@@ -254,23 +254,23 @@ describe("inspection camera preference", () => {
   it("keeps distinct direct and perspective source layouts across reload and preserves screen framing", async () => {
     await mount();
     expect(prefs.staffPrefs.freeDirectField).toEqual({
-      height: 2,
-      distance: 0,
+      tilt: 90,
+      length: 2,
       width: 4,
       radius: 4,
       shape: "line"
     });
     expect(prefs.staffPrefs.freePerspectiveField).toEqual({
-      height: 2,
-      distance: 4,
+      tilt: 26.57,
+      length: 4.47,
       width: 6,
       radius: 6,
       shape: "line"
     });
     await act(async () => {
       prefs.updateStaffPrefs({
-        freeDirectField: { height: 3, distance: 1, width: 8, shape: "convex" },
-        freePerspectiveField: { height: 4, distance: 7, width: 12, shape: "concave" },
+        freeDirectField: { tilt: 30, length: 1, width: 8, shape: "convex" },
+        freePerspectiveField: { tilt: 20, length: 7, width: 12, shape: "concave" },
         roadFar: -0.4,
         roadHorizon: 0.2
       });
@@ -283,8 +283,8 @@ describe("inspection camera preference", () => {
     root = createRoot(host);
     await mount();
     expect(prefs.staffPrefs).toMatchObject({
-      freeDirectField: { height: 3, distance: 1, width: 8, shape: "convex" },
-      freePerspectiveField: { height: 4, distance: 7, width: 12, shape: "concave" },
+      freeDirectField: { tilt: 30, length: 1, width: 8, shape: "convex" },
+      freePerspectiveField: { tilt: 20, length: 7, width: 12, shape: "concave" },
       roadFar: -0.4,
       roadHorizon: 0.2
     });
@@ -294,16 +294,17 @@ describe("inspection camera preference", () => {
       freeDirectField: { height: -1, distance: 100, width: 0, shape: "sphere" },
       freePerspectiveField: { height: NaN }
     });
+    // Old fields are migrated: 1 m below at 100 m back is a −0.57° field 100 m long.
     expect(normalized.freeDirectField).toEqual({
-      height: -1,
-      distance: 100,
+      tilt: -0.57,
+      length: 100,
       width: 0.25,
       radius: 0.25,
       shape: "line"
     });
     expect(normalized.freePerspectiveField).toEqual({
-      height: 2,
-      distance: 4,
+      tilt: 26.57,
+      length: 4.47,
       width: 6,
       radius: 6,
       shape: "line"
@@ -584,8 +585,8 @@ describe("world camera", () => {
         freeCamera: true,
         worldFov: 73,
         freePerspectiveField: {
-          height: -30.05,
-          distance: 82.25,
+          tilt: -20.07,
+          length: 87.57,
           width: 95.25,
           radius: 160,
           shape: "convex"
@@ -604,8 +605,8 @@ describe("world camera", () => {
       freeCamera: true,
       worldFov: 73,
       freePerspectiveField: {
-        height: -30.05,
-        distance: 82.25,
+        tilt: -20.07,
+        length: 87.57,
         width: 95.25,
         radius: 160,
         shape: "convex"

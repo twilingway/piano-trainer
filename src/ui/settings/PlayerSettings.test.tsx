@@ -132,7 +132,7 @@ function Harness({
           }
           keyboard={
             <KeyboardSettings
-              freeRoadLayout={{ height: 2, distance: 0, width: 4, shape: "line" }}
+              freeRoadLayout={{ tilt: 90, length: 2, width: 4, shape: "line" }}
               onFreeRoadLayout={() => undefined}
               {...{
                 keyRange: "song",

@@ -29,9 +29,9 @@ describe("structural selected-key road routes", () => {
     expect(routes.lanes).toBe(previous);
     routes.update(keys, camera, {
       ...DEFAULT_FREE_DIRECT_FIELD,
-      height: 8,
-      width: 30,
-      distance: 20
+      tilt: 21.8,
+      length: 21.54,
+      width: 30
     });
     expect(routes.lanes).not.toBe(previous);
     const bounds = freeRoadBounds(routes.lanes);

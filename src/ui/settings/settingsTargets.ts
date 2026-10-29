@@ -1,7 +1,7 @@
 /** Stable local destinations for help links; values never depend on interface language. */
 export const SETTINGS_TARGETS = {
-  "free-source-height": { tab: "view", label: "Высота горизонта, м" },
-  "free-source-distance": { tab: "view", label: "Дальность горизонта, м" },
+  "free-source-tilt": { tab: "view", label: "Наклон поля, °" },
+  "free-source-length": { tab: "view", label: "Длина поля, м" },
   "free-source-width": { tab: "view", label: "Ширина горизонта, м" },
   "free-source-shape": { tab: "view", label: "Форма горизонта" },
   "play-countdown": { tab: "play", label: "Отсчёт перед игрой, с" },

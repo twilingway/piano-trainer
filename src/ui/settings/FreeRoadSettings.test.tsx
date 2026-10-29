@@ -31,13 +31,13 @@ it.each(["ru", "en"] as const)("shows metric limits and localized shapes in %s",
   });
   const ranges = [...host.querySelectorAll<HTMLInputElement>('input[type="range"]')];
   expect(ranges.map((input) => [input.min, input.max, input.step])).toEqual([
-    ["-100", "100", "0.01"],
-    ["0", "1000", "0.01"],
+    ["-90", "90", "0.01"],
+    ["0.05", "1000", "0.01"],
     ["0.25", "1000", "0.01"],
     ["2", "10000", "0.01"]
   ]);
   expect(ranges[0]?.getAttribute("aria-label")).toBe(
-    locale === "ru" ? "Высота горизонта, м" : "Horizon height, m"
+    locale === "ru" ? "Наклон поля, °" : "Field tilt, °"
   );
   const select = host.querySelector("select");
   if (!select) throw new Error("Expected shape selector");
@@ -51,14 +51,14 @@ it.each(["ru", "en"] as const)("shows metric limits and localized shapes in %s",
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
   expect(change).toHaveBeenLastCalledWith({ shape: "concave" });
-  const distance = ranges[1];
+  const length = ranges[1];
   const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
-  if (!distance || !descriptor?.set) throw new Error("Expected distance slider and native setter");
+  if (!length || !descriptor?.set) throw new Error("Expected length slider and native setter");
   act(() => {
-    descriptor.set?.call(distance, "7.5");
-    distance.dispatchEvent(new Event("input", { bubbles: true }));
+    descriptor.set?.call(length, "7.5");
+    length.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  expect(change).toHaveBeenLastCalledWith({ distance: 7.5 });
+  expect(change).toHaveBeenLastCalledWith({ length: 7.5 });
 });
 
 it.each(["ru", "en"] as const)(
@@ -83,7 +83,7 @@ it.each(["ru", "en"] as const)(
       );
       await Promise.resolve();
     });
-    for (const target of ["height", "distance", "width", "shape"]) {
+    for (const target of ["tilt", "length", "width", "shape"]) {
       const help = [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
         (button) => button.textContent === (locale === "ru" ? "Помощь" : "Help")
       );
@@ -125,8 +125,8 @@ it.each(["ru", "en"] as const)(
     const change = vi.fn();
     const value = {
       ...DEFAULT_FREE_DIRECT_FIELD,
-      height: -30.05,
-      distance: 82.25,
+      tilt: -20.07,
+      length: 87.57,
       width: 95.25,
       radius: 100,
       shape: "convex" as const
@@ -134,7 +134,7 @@ it.each(["ru", "en"] as const)(
     act(() => {
       root.render(<FreeRoadSettings value={value} onChange={change} />);
     });
-    for (const key of ["height", "distance", "width", "radius"] as const) {
+    for (const key of ["tilt", "length", "width", "radius"] as const) {
       const number = host.querySelector<HTMLInputElement>(
         `[data-setting-target="free-source-${key}-number"]`
       );
@@ -167,24 +167,24 @@ it("allows an empty numeric draft without resetting the saved horizon", () => {
   act(() => {
     root.render(<FreeRoadSettings value={DEFAULT_FREE_DIRECT_FIELD} onChange={change} />);
   });
-  const height = host.querySelector<HTMLInputElement>(
-    '[data-setting-target="free-source-height-number"]'
+  const tilt = host.querySelector<HTMLInputElement>(
+    '[data-setting-target="free-source-tilt-number"]'
   );
-  if (!height) throw new Error("Missing height number field");
+  if (!tilt) throw new Error("Missing tilt number field");
   act(() => {
-    height.focus();
+    tilt.focus();
   });
-  editInput(height, "");
-  expect(height.value).toBe("");
+  editInput(tilt, "");
+  expect(tilt.value).toBe("");
   expect(change).not.toHaveBeenCalled();
-  editInput(height, "-30.05");
-  expect(height.value).toBe("-30.05");
-  expect(change).toHaveBeenLastCalledWith({ height: -30.05 });
-  editInput(height, "");
+  editInput(tilt, "-20.07");
+  expect(tilt.value).toBe("-20.07");
+  expect(change).toHaveBeenLastCalledWith({ tilt: -20.07 });
+  editInput(tilt, "");
   act(() => {
-    height.blur();
+    tilt.blur();
   });
-  expect(height.value).toBe("2");
+  expect(tilt.value).toBe("90");
 });
 
 it("clamps a widened chord and its radius together", () => {

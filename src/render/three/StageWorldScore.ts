@@ -4,6 +4,7 @@ import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import type { KeyBox } from "./keyBoxes";
 import type { FreeSceneCamera } from "./FreeSceneCamera";
 import { WorldScorePoster } from "./WorldScorePoster";
+import { freeFieldReach } from "../freeRoadLayout";
 
 /** Keep structural poster placement independent of note batches and transient particles. */
 export class StageWorldScore extends WorldScorePoster {
@@ -30,7 +31,8 @@ export class StageWorldScore extends WorldScorePoster {
   ): void {
     const camera = keys.roadCamera ?? keys.camera;
     const centre = ((boxes[0]?.x ?? 0) + (boxes.at(-1)?.x ?? 0)) / 2;
-    let top = 22 + 1000 * (field?.freeLayout?.height ?? 2);
+    const layout = field?.freeLayout;
+    let top = 22 + 1000 * (layout ? freeFieldReach(layout).rise : 2);
     if (field?.freeLanes?.length) {
       top = -Infinity;
       for (const lane of field.freeLanes) top = Math.max(top, lane.far.y);
