@@ -5,6 +5,8 @@ import { useState } from "react";
 import { WindowViewMemory } from "../ui/windowViewMemory";
 import { foldersSupported } from "../library/folder";
 import { LibraryDialog } from "../ui/LibraryDialog";
+import { ResultStats } from "../ui/ResultStats";
+import type { PracticeStats } from "../practice/session";
 import { ConnectedPlayerSettings, ConnectedResultDialog } from "./ConnectedSettings";
 import { downloadLesson } from "./lessonExport";
 import { LESSONS } from "./lessons";
@@ -27,6 +29,8 @@ export function ConnectedPlayerWindows() {
     libraryOpen,
     settingsOpen,
     finished,
+    playing,
+    songKey,
     resultClosed,
     listening,
     comparing,
@@ -40,6 +44,8 @@ export function ConnectedPlayerWindows() {
       libraryOpen: runtime.libraryOpen,
       settingsOpen: runtime.settingsOpen,
       finished: runtime.snapshot.finished,
+      playing: runtime.snapshot.playing,
+      songKey: runtime.current.songKey,
       resultClosed: runtime.resultClosed,
       listening: runtime.listening,
       comparing: runtime.comparing,
@@ -58,6 +64,20 @@ export function ConnectedPlayerWindows() {
   const startOver = useRuntimeCommand((runtime) => runtime.startOver);
   const showReview = useRuntimeCommand((runtime) => runtime.takes.showReview);
   const openCourse = useRuntimeCommand((runtime) => runtime.course.controller.open);
+  // The details of the finished take, copied when they opened: compare replays the take as a song.
+  const [statsView, setStatsView] = useState<{
+    readonly stats: PracticeStats;
+    readonly songKey: string;
+  } | null>(null);
+  if (statsView && playing && !comparing) setStatsView(null);
+  const again = () => {
+    setStatsView(null);
+    startOver();
+  };
+  const review = () => {
+    showReview();
+    setResultClosed(true);
+  };
   const nextCourse =
     courseActive &&
     phraseCompleted(
@@ -93,7 +113,7 @@ export function ConnectedPlayerWindows() {
         onClose={() => {
           setResultClosed(true);
         }}
-        onAgain={startOver}
+        onAgain={again}
         {...(nextCourse
           ? {
               onNext: () => {
@@ -102,11 +122,23 @@ export function ConnectedPlayerWindows() {
               }
             }
           : {})}
-        onReview={() => {
-          showReview();
+        onReview={review}
+        onStats={(stats) => {
           setResultClosed(true);
+          setStatsView({ stats, songKey });
         }}
       />
+      {statsView?.songKey === songKey && (
+        <ResultStats
+          stats={statsView.stats}
+          canReview={canReview}
+          onClose={() => {
+            setStatsView(null);
+          }}
+          onAgain={again}
+          onReview={review}
+        />
+      )}
     </>
   );
 }

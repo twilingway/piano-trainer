@@ -2102,6 +2102,16 @@ button.song-card.song-card__open {
   text-align: center;
 }
 
+/* The take's details sit beside the game, below the review bar, so the review stays in view. */
+.game-dialog.result-stats {
+  position: fixed;
+  inset: 112px 12px auto auto;
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100dvh - 124px);
+  margin: 0;
+  z-index: 10;
+}
+
 .result-score {
   margin: 8px 0 0;
   font-family: var(--font-display);
@@ -2287,6 +2297,20 @@ button.song-card.song-card__open {
     width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     border-radius: 12px;
+  }
+
+  /* A phone has no room for the review beside the game: the details take the screen. */
+  .game-dialog.result-stats {
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  /* The result dialogs already drop «Разобрать дубль» here; the bar goes too. */
+  .review-bar {
+    display: none;
   }
 
   .game-dialog__head {
@@ -3023,10 +3047,6 @@ button.song-card.song-card__open {
 .timing-histogram {
   text-align: left;
   font-size: 12px;
-}
-.game-result-details {
-  max-height: 50dvh;
-  overflow-y: auto;
 }
 @media (max-width: 900px), (max-height: 680px) {
   .game-score-board > section {

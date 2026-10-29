@@ -64,6 +64,9 @@ export const uiMessagesExtra = {
   "Разобрать дубль": {
     en: "Review take"
   },
+  Статистика: {
+    en: "Statistics"
+  },
   "в темпе": {
     en: "in tempo"
   },

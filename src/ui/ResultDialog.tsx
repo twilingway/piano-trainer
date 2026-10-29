@@ -31,6 +31,8 @@ interface Props {
   readonly onClose: () => void;
   readonly onAgain: () => void;
   readonly onReview: () => void;
+  /** Opens the details of the run beside the game. */
+  readonly onStats: (stats: PracticeStats) => void;
   readonly onNext?: () => void;
   readonly course?: boolean;
 }
@@ -43,14 +45,11 @@ export function ResultDialog({
   onClose,
   onAgain,
   onReview,
+  onStats,
   onNext,
   course = false
 }: Props) {
   const { t, formatNumber } = useI18n();
-  const milliseconds = (value: number | null): string =>
-    value === null
-      ? "—"
-      : `${value > 0 ? "+" : ""}${formatNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${t("мс")}`;
   if (!open) return null;
   const played = stats ? stats.hits + stats.misses : 0;
   const game = stats?.game;
@@ -132,102 +131,6 @@ export function ResultDialog({
         )}
       </div>
       <div className="result-details">
-        {game && game.expectedNotes > 0 && (
-          <div className="game-result-details">
-            {result && game.accuracy !== null && (
-              <p>
-                {t("Точность попадания: {percent}%", {
-                  percent: formatNumber(game.accuracy, { maximumFractionDigits: 1 })
-                })}
-              </p>
-            )}
-            <p>
-              {t("Очки")} <strong>{formatNumber(game.score)}</strong>{" "}
-              {result ? t("· Ранг по времени") : t("· Ранг")} <strong>{game.rank}</strong>
-            </p>
-            <p>
-              {t("Максимум:")} {formatNumber(game.targetScore)}{" "}
-              {t("очков (идеальная игра без Overdrive)")}
-            </p>
-            <p>
-              {t("Максимальная серия:")} {formatNumber(game.maxCombo)} {t("· Нот:")}{" "}
-              {formatNumber(game.expectedNotes)}
-              {game.perfectFullCombo
-                ? t(" · Идеальное Full Combo")
-                : game.fullCombo
-                  ? " · Full Combo"
-                  : ""}
-            </p>
-            <dl className="game-result-stats">
-              <dt>{t("Идеально / Отлично / Хорошо / Зачтено / Пропущено")}</dt>
-              <dd>
-                {formatNumber(game.grades.PERFECT)} / {formatNumber(game.grades.GREAT)} /{" "}
-                {formatNumber(game.grades.GOOD)} / {formatNumber(game.grades.OK)} /{" "}
-                {formatNumber(game.grades.MISS)}
-              </dd>
-              <dt>{t("Лишние клавиши")}</dt>
-              <dd>{formatNumber(game.wrong)}</dd>
-              <dt>{t("Аккорды: полные / частичные")}</dt>
-              <dd>
-                {formatNumber(game.chords - game.partialChords)} /{" "}
-                {formatNumber(game.partialChords)}
-              </dd>
-              <dt>{t("Средняя / медианная ошибка")}</dt>
-              <dd>
-                {milliseconds(game.timing.meanMs)} / {milliseconds(game.timing.medianMs)}
-              </dd>
-              <dt>{t("Рано / Поздно / Вовремя")}</dt>
-              <dd>
-                {formatNumber(game.timing.early)} / {formatNumber(game.timing.late)} /{" "}
-                {formatNumber(game.timing.exact)}
-              </dd>
-              <dt>{t("Очки удержания / бонус Overdrive")}</dt>
-              <dd>
-                {formatNumber(game.holdScore)} / {formatNumber(game.overdriveScore)}
-              </dd>
-              {stats.hold && (
-                <>
-                  <dt>{t("Точность удержания")}</dt>
-                  <dd>
-                    {stats.hold.accuracy === null
-                      ? "—"
-                      : `${formatNumber(stats.hold.accuracy, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
-                    {" · "}
-                    {formatNumber(stats.hold.heldSeconds, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}{" "}
-                    /{" "}
-                    {formatNumber(stats.hold.possibleSeconds, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}{" "}
-                    {t("с")}
-                  </dd>
-                  <dt>{t("Отпущено нот · средняя / медианная ошибка отпускания")}</dt>
-                  <dd>
-                    {formatNumber(stats.hold.releasedNotes)} ·{" "}
-                    {milliseconds(stats.hold.meanReleaseOffsetMs)} /{" "}
-                    {milliseconds(stats.hold.medianReleaseOffsetMs)}
-                  </dd>
-                </>
-              )}
-            </dl>
-            {game.timing.histogram.length > 0 && (
-              <details>
-                <summary>{t("Распределение ошибки времени")}</summary>
-                <ul className="timing-histogram">
-                  {game.timing.histogram.map(({ fromMs, count }) => (
-                    <li key={fromMs}>
-                      {formatNumber(fromMs)}…{formatNumber(fromMs + 10)} {t("мс:")}{" "}
-                      {formatNumber(count)}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-        )}
         {stats && stats.troubleSpots.length > 0 && (
           <p>
             {t("Трудные ноты:")}{" "}
@@ -249,6 +152,17 @@ export function ResultDialog({
         {canReview && (
           <button type="button" className="game-button result-review-action" onClick={onReview}>
             {t("Разобрать дубль")}
+          </button>
+        )}
+        {stats && game && game.expectedNotes > 0 && (
+          <button
+            type="button"
+            className="game-button"
+            onClick={() => {
+              onStats(stats);
+            }}
+          >
+            {t("Статистика")}
           </button>
         )}
         <button type="button" className="game-button" onClick={onClose}>
