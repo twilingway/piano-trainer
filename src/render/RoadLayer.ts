@@ -79,7 +79,8 @@ export class RoadLayer {
   private keyboardTopY = 0;
   private clock = 0;
   private readonly nativeRoad = new ThreeRoadFrame();
-  private freeRoutes: FreeRoadRoutes | undefined;
+  /** The free camera's field; the frame reads its lanes for the note speed. */
+  freeRoutes: FreeRoadRoutes | undefined;
   private readonly three: ThreeKeysHost | undefined;
 
   constructor(
