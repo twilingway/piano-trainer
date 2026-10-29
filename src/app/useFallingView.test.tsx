@@ -404,6 +404,49 @@ it("gives the original the take lane's range and look, live", async () => {
   expect(mirror.mount).toHaveBeenCalledOnce();
 });
 
+it("draws both lanes flat from above while comparing and restores the view after", async () => {
+  const mirror = {
+    ...view,
+    setRoad: vi.fn(),
+    setFreeCamera: vi.fn(),
+    setCamera: vi.fn(),
+    flatEffects: { set: vi.fn() },
+    mount: vi.fn(async () => {
+      await Promise.resolve();
+    }),
+    setSong: vi.fn(),
+    destroy: vi.fn()
+  };
+  vi.mocked(FallingNotesView).mockImplementation(function () {
+    return mirror as unknown as FallingNotesView;
+  });
+  const prefs = {
+    ...DEFAULT_STAFF_PREFS,
+    road: true,
+    freeCamera: true,
+    performanceScene: true,
+    camera: CAMERA_PRESETS.player
+  };
+  await act(async () => {
+    root.render(<Harness prefs={prefs} comparing />);
+    await Promise.resolve();
+  });
+  for (const lane of [view, mirror]) {
+    expect(lane.setRoad).toHaveBeenLastCalledWith(false);
+    expect(lane.setFreeCamera).toHaveBeenLastCalledWith(false);
+    expect(lane.setCamera).toHaveBeenLastCalledWith(CAMERA_PRESETS.top);
+  }
+  expect(view.setPerformanceScene).toHaveBeenLastCalledWith(false);
+  await act(async () => {
+    root.render(<Harness prefs={prefs} />);
+    await Promise.resolve();
+  });
+  expect(view.setRoad).toHaveBeenLastCalledWith(true);
+  expect(view.setFreeCamera).toHaveBeenLastCalledWith(true);
+  expect(view.setCamera).toHaveBeenLastCalledWith(CAMERA_PRESETS.player);
+  expect(view.setPerformanceScene).toHaveBeenLastCalledWith(true);
+});
+
 it("passes the world FOV without moving or reloading the lesson", () => {
   act(() => {
     root.render(<Harness prefs={{ ...DEFAULT_STAFF_PREFS, worldFov: 61 }} />);

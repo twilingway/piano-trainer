@@ -11,6 +11,7 @@ import type { ComputerKeyboard } from "../render/computerKeys";
 import type { KeysPlacement } from "../render/viewGeometry";
 import { pianistAvailable } from "../render/three/pianistAvailability";
 import { DEFAULT_WORLD_FOV } from "../render/worldFov";
+import { CAMERA_PRESETS } from "../render/worldCamera";
 import type { StaffPrefs } from "./useStaffPrefs";
 import { useI18n } from "./useI18n";
 
@@ -92,6 +93,21 @@ function applyLaneScene(view: FallingNotesView, scene: LaneScene): void {
   view.setFreeCamera(scene.freeCamera);
 }
 
+/**
+ * While comparing, both lanes are drawn flat from above: no perspective road, free camera, stage
+ * or pianist, so the take and the original stay key for key. The saved settings are untouched.
+ */
+function comparisonPrefs(prefs: StaffPrefs): StaffPrefs {
+  return {
+    ...prefs,
+    road: false,
+    freeCamera: false,
+    performanceScene: false,
+    pianist: false,
+    camera: CAMERA_PRESETS.top
+  };
+}
+
 /** The take's lane and, while comparing, the original's. */
 function lanes(...refs: readonly RefObject<FallingNotesView | null>[]): FallingNotesView[] {
   return refs.map((ref) => ref.current).filter((view) => view !== null);
@@ -134,7 +150,7 @@ export function useFallingView({
   trainerReady,
   song,
   baseSong,
-  staffPrefs,
+  staffPrefs: savedPrefs,
   cameraInputBlocked = false,
   updateStaffPrefs,
   fallingNames,
@@ -144,6 +160,7 @@ export function useFallingView({
   placement
 }: Options) {
   const { locale } = useI18n();
+  const staffPrefs = comparing ? comparisonPrefs(savedPrefs) : savedPrefs;
   const [handStatus, setHandStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   useEffect(() => {
     const view = viewRef.current;
