@@ -76,6 +76,8 @@ export default defineConfig(({ mode }) => ({
   // Test only product source, not copies cached by pnpm or agents' worktrees.
   test: {
     include: ["src/**/*.test.{ts,tsx}"],
-    exclude: [...configDefaults.exclude, "**/.claude/**", "**/.worktrees/**", "tools/**"]
+    exclude: [...configDefaults.exclude, "**/.claude/**", "**/.worktrees/**", "tools/**"],
+    // Heavy CPU files starve light IO tests in the parallel gate: a 0.2 s test can take 5 s there.
+    testTimeout: 20_000
   }
 }));
