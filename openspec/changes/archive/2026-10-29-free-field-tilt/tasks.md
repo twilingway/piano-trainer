@@ -11,4 +11,4 @@
 - [x] 2.1 `pnpm check` and `pnpm spec:validate`
 - [x] 2.2 Browser on the task stand: old fields 0.45/0 and 0/59.52 read as 90°/0.45 m and 0°/59.52 m
       and are saved as tilt and length
-- [ ] 2.3 The user checks on 5190 that length moves the horizon without turning it
+- [x] 2.3 The user checks on 5190 that length moves the horizon without turning it
