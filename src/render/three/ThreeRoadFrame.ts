@@ -104,8 +104,14 @@ export class ThreeRoadFrame {
     );
     if (!note) return;
     note.materialUnitX = camera.params.sourceUnits ?? 0.5;
-    note.materialUnitZ =
-      ((camera.roadFarZ - (lane?.depth ?? camera.near.z)) / hitY) * this.flatPictureRows;
+    const span = camera.roadFarZ - (lane?.depth ?? camera.near.z);
+    note.materialUnitZ = (span / hitY) * this.flatPictureRows;
+    // A free lane stretches the road's depth onto its own route: a picture pixel along it then
+    // spans as much of the world as one across, the flat note turned into the field.
+    const far = lane?.freeFar;
+    const route = far && Math.hypot(far.x - note.x, far.y - lane.y, far.z + (lane.depth ?? 0));
+    note.freeMaterialUnitZ =
+      route && route > 0 && span > 0 ? (note.materialUnitX * span) / route : undefined;
     note.duration = duration;
     note.pitch = pitch;
     note.finger = finger;

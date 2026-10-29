@@ -10,7 +10,8 @@ export function drawRoadNoteAppearance(
   road: Group,
   frame: ThreeRoadFrame,
   floorY: number,
-  nearZ: number
+  nearZ: number,
+  freeRoute = false
 ): ThreeFlatRoadNotes | undefined {
   if (!frame.flatMaterial) {
     flat?.clear();
@@ -24,6 +25,7 @@ export function drawRoadNoteAppearance(
   flat.nearZ = nearZ;
   flat.performanceAngle = native.performanceAngle;
   flat.performanceScale = native.performanceScale;
+  flat.freeRoute = freeRoute;
   flat.update(frame.notes, floorY, frame.noteCount);
   return flat;
 }

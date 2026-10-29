@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { worldCamera, PANEL_EDGE } from "../worldCamera";
+import { flatNoteMaskMetrics } from "./ThreeFlatRoadNotes";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 
 describe("Three road visual snapshot", () => {
@@ -120,4 +121,37 @@ it("measures a flat note's depth edges in on-screen picture pixels, not in long 
   // Only the picture's edges change: the note keeps its place and length on the road.
   expect(frame.notes[0]?.top).toBe(plain.notes[0]?.top);
   expect(frame.notes[0]?.bottom).toBe(plain.notes[0]?.bottom);
+});
+
+it("keeps a flat note's picture square to the world on a free field of any length", () => {
+  const camera = worldCamera(1440, 900, undefined, PANEL_EDGE);
+  const span = camera.roadFarZ - 150;
+  const lane = { y: 22, depth: 150, scaleX: 1, offsetX: 0, offsetY: 0, width: 44, height: 0 };
+  for (const far of [
+    { x: 0, y: 22 + 450, z: -150 },
+    { x: 0, y: 22, z: -150 - 59520 }
+  ]) {
+    const frame = new ThreeRoadFrame();
+    frame.flatPictureRows = 0.05;
+    frame.add(720, 100, 600, 44, 0x00df50, 1, 600, camera, 0, "", 0, {
+      ...lane,
+      freeFar: { ...far, x: camera.sourceX(720) }
+    });
+    const note = frame.notes[0];
+    if (!note) throw new Error("no note");
+    const route = Math.hypot(far.y - 22, far.z + 150);
+    // A picture pixel along the route covers as much world as one across it.
+    expect(((note.freeMaterialUnitZ ?? NaN) * route) / span).toBeCloseTo(note.materialUnitX ?? 0);
+    // The standard road keeps the screen-measured rows.
+    expect(note.materialUnitZ).toBeCloseTo((span / 600) * 0.05);
+    const standard = { width: 0, depth: 0, capX: 0, capZ: 0 };
+    const free = { ...standard };
+    flatNoteMaskMetrics(note, "face", standard);
+    flatNoteMaskMetrics(note, "face", free, true);
+    expect(standard.capZ / (note.materialUnitZ ?? 1)).toBeCloseTo(
+      standard.capX / (note.materialUnitX ?? 1)
+    );
+    // On the route the corner spans as much world along as across.
+    expect((free.capZ * route) / span).toBeCloseTo(free.capX);
+  }
 });

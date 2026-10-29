@@ -52,10 +52,11 @@ export interface FlatNoteMaskMetrics {
 export function flatNoteMaskMetrics(
   note: WorldRoadNote,
   kind: LayerKind,
-  target: FlatNoteMaskMetrics
+  target: FlatNoteMaskMetrics,
+  freeRoute = false
 ): void {
   const unitX = note.materialUnitX ?? 1;
-  const unitZ = note.materialUnitZ ?? 1;
+  const unitZ = (freeRoute ? note.freeMaterialUnitZ : undefined) ?? note.materialUnitZ ?? 1;
   const width = note.width / unitX;
   const height = (note.top - note.bottom) / unitZ;
   const scale = Math.min(1, width / 64, height / 24);
@@ -109,6 +110,8 @@ export class ThreeFlatRoadNotes {
   readonly capacity: number;
   performanceAngle = 0;
   performanceScale = 1;
+  /** The free camera walks the notes along its own field's lanes. */
+  freeRoute = false;
   nearZ = 0;
   private readonly layers: Layer[] = [];
   private readonly textures: Texture[];
@@ -228,7 +231,7 @@ export class ThreeFlatRoadNotes {
           note.pitch !== undefined && BLACK_PITCH_CLASSES.has(((note.pitch % 12) + 12) % 12);
         for (const layer of this.layers) {
           if (layer.raised !== undefined && layer.raised !== raised) continue;
-          flatNoteMaskMetrics(note, layer.kind, this.metrics);
+          flatNoteMaskMetrics(note, layer.kind, this.metrics, this.freeRoute);
           const used = layer.used++;
           layer.shape.setXYZW(
             used,
