@@ -48,6 +48,62 @@ const GRADE_TINTS: Readonly<Record<Grade, number>> = {
 };
 const EXTRA_TINT = 0xe63946;
 
+/** How a lane looks; the original takes the take's, so the two line up key for key. */
+interface LaneLook {
+  readonly fps: boolean;
+  readonly labels: boolean;
+  readonly names: NoteNameStyle | undefined;
+  readonly parts: { readonly notes: boolean; readonly keys: boolean; readonly hands: boolean };
+  readonly road: StaffPrefs["road"];
+  readonly noteCards: StaffPrefs["noteCards"];
+  readonly keyStyle: StaffPrefs["keyStyle"];
+  readonly handStyle: StaffPrefs["handStyle"];
+  readonly camera: StaffPrefs["camera"];
+  readonly keyboardTop: boolean;
+  readonly roadShape: Parameters<FallingNotesView["setRoadShape"]>[0];
+}
+
+function applyLaneLook(view: FallingNotesView, look: LaneLook): void {
+  view.setFpsVisible(look.fps);
+  view.setShowLabels(look.labels);
+  view.setNoteNames(look.names);
+  view.setParts(look.parts);
+  view.setRoad(look.road);
+  view.setNoteCards(look.noteCards);
+  view.setKeyStyle(look.keyStyle);
+  view.hands.setStyle(look.handStyle);
+  view.setCamera(look.camera);
+  view.setKeyboardTop(look.keyboardTop);
+  view.setRoadShape(look.roadShape);
+}
+
+/** The scene settings both lanes share; camera input, the pianist and the stage stay the take's. */
+interface LaneScene {
+  readonly roadGuides: boolean;
+  readonly keyboardDim: StaffPrefs["keyboardDim"];
+  readonly worldFov: number;
+  readonly freeCamera: StaffPrefs["freeCamera"];
+}
+
+function applyLaneScene(view: FallingNotesView, scene: LaneScene): void {
+  view.setRoadGuides(scene.roadGuides);
+  view.setKeyboardDim(scene.keyboardDim);
+  view.setWorldFov(scene.worldFov);
+  view.setFreeCamera(scene.freeCamera);
+}
+
+/** The take's lane and, while comparing, the original's. */
+function lanes(...refs: readonly RefObject<FallingNotesView | null>[]): FallingNotesView[] {
+  return refs.map((ref) => ref.current).filter((view) => view !== null);
+}
+
+interface LaneRange {
+  readonly low: number;
+  readonly high: number;
+  readonly fitsSong: boolean;
+  readonly fitsViewport: boolean;
+}
+
 interface Options {
   readonly hostRef: RefObject<HTMLDivElement | null>;
   readonly hasScore: boolean;
@@ -129,32 +185,36 @@ export function useFallingView({
     viewRef.current?.setHudTop(0);
   }, [viewRef, trainerReady]);
 
+  const lookRef = useRef<LaneLook | null>(null);
+  const sceneRef = useRef<LaneScene | null>(null);
+  const placementRef = useRef<KeysPlacement>(placement);
+  const rangeRef = useRef<LaneRange | null>(null);
+
   useEffect(() => {
-    viewRef.current?.setFpsVisible(staffPrefs.fps);
-    viewRef.current?.setShowLabels(showLabels);
-    viewRef.current?.setNoteNames(fallingNames);
-    viewRef.current?.setParts({
-      notes: staffPrefs.lane,
-      keys: staffPrefs.keys,
-      hands: staffPrefs.hands
-    });
-    viewRef.current?.setRoad(staffPrefs.road);
-    viewRef.current?.setNoteCards(staffPrefs.noteCards);
-    viewRef.current?.setKeyStyle(staffPrefs.keyStyle);
-    viewRef.current?.hands.setStyle(staffPrefs.handStyle);
-    viewRef.current?.setCamera(staffPrefs.camera);
-    viewRef.current?.setKeyboardTop(
-      staffPrefs.keyStyle === "3d" && staffPrefs.keyboardOrientation === "top"
-    );
-    viewRef.current?.setRoadShape({
-      far: staffPrefs.roadFar,
-      horizon: staffPrefs.roadHorizon,
-      fit: {
-        mode: staffPrefs.roadFit,
-        camera: staffPrefs.roadFitCamera ?? undefined,
-        tilt: staffPrefs.roadNoteTilt
+    const look: LaneLook = {
+      fps: staffPrefs.fps,
+      labels: showLabels,
+      names: fallingNames,
+      // The same parts in both lanes, or the two run at different speeds.
+      parts: { notes: staffPrefs.lane, keys: staffPrefs.keys, hands: staffPrefs.hands },
+      road: staffPrefs.road,
+      noteCards: staffPrefs.noteCards,
+      keyStyle: staffPrefs.keyStyle,
+      handStyle: staffPrefs.handStyle,
+      camera: staffPrefs.camera,
+      keyboardTop: staffPrefs.keyStyle === "3d" && staffPrefs.keyboardOrientation === "top",
+      roadShape: {
+        far: staffPrefs.roadFar,
+        horizon: staffPrefs.roadHorizon,
+        fit: {
+          mode: staffPrefs.roadFit,
+          camera: staffPrefs.roadFitCamera ?? undefined,
+          tilt: staffPrefs.roadNoteTilt
+        }
       }
-    });
+    };
+    lookRef.current = look;
+    for (const view of lanes(viewRef, comparisonRef)) applyLaneLook(view, look);
   }, [
     viewRef,
     trainerReady,
@@ -182,10 +242,14 @@ export function useFallingView({
   }, [viewRef, trainerReady, computerKeys]);
 
   useEffect(() => {
-    viewRef.current?.setRoadGuides(staffPrefs.roadGuides);
-    viewRef.current?.setKeyboardDim(staffPrefs.keyboardDim);
-    viewRef.current?.setWorldFov(staffPrefs.worldFov);
-    viewRef.current?.setFreeCamera(staffPrefs.freeCamera);
+    const scene: LaneScene = {
+      roadGuides: staffPrefs.roadGuides,
+      keyboardDim: staffPrefs.keyboardDim,
+      worldFov: staffPrefs.worldFov,
+      freeCamera: staffPrefs.freeCamera
+    };
+    sceneRef.current = scene;
+    for (const view of lanes(viewRef, comparisonRef)) applyLaneScene(view, scene);
     viewRef.current?.setFreeCameraMovement(staffPrefs.freeCameraWasd && !cameraInputBlocked);
     viewRef.current?.setPerformanceScene(staffPrefs.performanceScene);
     if (viewRef.current)
@@ -241,17 +305,21 @@ export function useFallingView({
     comparisonRef.current?.setFreeRoadLayout(freeLayout);
   }, [viewRef, trainerReady, freeLayout]);
   useEffect(() => {
-    viewRef.current?.setKeysPlacement({ lift, scale, x, y });
+    placementRef.current = { lift, scale, x, y };
+    for (const view of lanes(viewRef, comparisonRef)) view.setKeysPlacement({ lift, scale, x, y });
   }, [viewRef, trainerReady, lift, scale, x, y]);
 
   const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
   useEffect(() => {
-    viewRef.current?.setRange(
-      rangeLow,
-      rangeHigh,
-      keyRange === "song",
-      keyRange === "3oct" || keyRange === "4oct"
-    );
+    const range: LaneRange = {
+      low: rangeLow,
+      high: rangeHigh,
+      fitsSong: keyRange === "song",
+      fitsViewport: keyRange === "3oct" || keyRange === "4oct"
+    };
+    rangeRef.current = range;
+    for (const view of lanes(viewRef, comparisonRef))
+      view.setRange(range.low, range.high, range.fitsSong, range.fitsViewport);
   }, [viewRef, trainerReady, rangeLow, rangeHigh, keyRange]);
 
   // The original on a second screen, drawn by the trainer at the take's song time.
@@ -280,12 +348,11 @@ export function useFallingView({
         flatEffectsRef.current.musicalNotes
       );
       mirror.setSong(song);
-      mirror.setShowLabels(showLabels);
-      mirror.setFpsVisible(staffPrefs.fps);
-      mirror.setNoteNames(fallingNames);
-      // The same parts as the main view, or the two lanes run at different speeds.
-      mirror.setParts({ notes: staffPrefs.lane, keys: staffPrefs.keys, hands: staffPrefs.hands });
-      mirror.setRange(rangeLow, rangeHigh, false, keyRange === "3oct" || keyRange === "4oct");
+      if (lookRef.current) applyLaneLook(mirror, lookRef.current);
+      if (sceneRef.current) applyLaneScene(mirror, sceneRef.current);
+      mirror.setKeysPlacement(placementRef.current);
+      const range = rangeRef.current;
+      if (range) mirror.setRange(range.low, range.high, range.fitsSong, range.fitsViewport);
       trainer.setComparison({
         colorOf: (note) => playedTint.get(note.id),
         mirror: { view: mirror, colorOf: (note) => gradeOf.get(note.id) }
@@ -299,22 +366,7 @@ export function useFallingView({
         mirror.destroy();
       });
     };
-  }, [
-    trainerRef,
-    mirrorHost,
-    comparing,
-    lastTake,
-    song,
-    showLabels,
-    staffPrefs.fps,
-    rangeLow,
-    rangeHigh,
-    keyRange,
-    fallingNames,
-    staffPrefs.lane,
-    staffPrefs.keys,
-    staffPrefs.hands
-  ]);
+  }, [trainerRef, mirrorHost, comparing, lastTake, song]);
 
   const resetWorldCamera = () => {
     // The world reset also drops the straightening snapshot; its mode stays.

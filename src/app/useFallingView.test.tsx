@@ -370,6 +370,40 @@ it("mounts the comparison once its lane appears after comparing starts", async (
   expect(comparison.mirror.view).toBe(mirror);
 });
 
+it("gives the original the take lane's range and look, live", async () => {
+  const mirror = {
+    ...view,
+    setRange: vi.fn(),
+    setNoteCards: vi.fn(),
+    setKeysPlacement: vi.fn(),
+    flatEffects: { set: vi.fn() },
+    mount: vi.fn(async () => {
+      await Promise.resolve();
+    }),
+    setSong: vi.fn(),
+    destroy: vi.fn()
+  };
+  vi.mocked(FallingNotesView).mockImplementation(function () {
+    return mirror as unknown as FallingNotesView;
+  });
+  const prefs = { ...DEFAULT_STAFF_PREFS, keyRange: "song" as const, noteCards: false };
+  await act(async () => {
+    root.render(<Harness prefs={prefs} comparing />);
+    await Promise.resolve();
+  });
+  expect(view.setRange).toHaveBeenLastCalledWith(48, 84, true, false);
+  expect(mirror.setRange).toHaveBeenLastCalledWith(48, 84, true, false);
+  expect(mirror.setKeysPlacement).toHaveBeenLastCalledWith(USUAL_PLACEMENT);
+  expect(mirror.setNoteCards).toHaveBeenLastCalledWith(false);
+  await act(async () => {
+    root.render(<Harness prefs={{ ...prefs, noteCards: true, keyRange: "88" }} comparing />);
+    await Promise.resolve();
+  });
+  expect(mirror.setNoteCards).toHaveBeenLastCalledWith(true);
+  expect(mirror.setRange).toHaveBeenLastCalledWith(21, 108, false, false);
+  expect(mirror.mount).toHaveBeenCalledOnce();
+});
+
 it("passes the world FOV without moving or reloading the lesson", () => {
   act(() => {
     root.render(<Harness prefs={{ ...DEFAULT_STAFF_PREFS, worldFov: 61 }} />);
