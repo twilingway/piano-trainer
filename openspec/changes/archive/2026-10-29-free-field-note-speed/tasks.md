@@ -7,5 +7,5 @@
 ## 2. Verification
 
 - [x] 2.1 `pnpm check` and `pnpm spec:validate`
-- [ ] 2.2 Browser on the task stand with the user's free fields: both projections show notes of the
+- [x] 2.2 Browser on the task stand with the user's free fields: both projections show notes of the
       same length in white steps

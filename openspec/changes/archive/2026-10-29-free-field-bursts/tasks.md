@@ -9,5 +9,5 @@
 ## 2. Verification
 
 - [x] 2.1 `pnpm check` and `pnpm spec:validate`
-- [ ] 2.2 Browser: the user judges size and brightness on the 5190 stand (task stand: sprites at the
+- [x] 2.2 Browser: the user judges size and brightness on the 5190 stand (task stand: sprites at the
       far point, measured; a flash and a ring seen)
