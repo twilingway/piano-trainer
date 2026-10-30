@@ -15,3 +15,6 @@
   Chrome: AudioContext до пользовательского жеста и существующие shader warnings. Звук и физический
   MIDI не проверялись.
 - Пользовательская приёмка на 5190 ожидает слияния PR; dev и сервер 5190 не менялись.
+
+- Полный OpenSpec: 86/86. PR: https://github.com/twilingway/piano-trainer/pull/268 (в dev, без
+  слияния).
