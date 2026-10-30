@@ -45,12 +45,12 @@ staff-chord-success-390.png. Для снимков короткая CSS-аним
 проверялись. Reduced-motion покрыт CSS/static режимом и DOM lifecycle; системная настройка браузера
 не менялась.
 
-Первый полный зелёный gate до уточнения chord anchors:4444 passed,10 skipped,compiler23/23, 207.4s.
+Первый полный зелёный gate до уточнения chord anchors:4444 passed,10 skipped,compiler30/30, 207.4s.
 spec:validate85/85. Финальный gate после anchor fix фиксируется ниже.
 
 ## Итоговые проверки
 
-Окончательный pnpm check после anchor fix:4448 passed,10 skipped,compiler23/23; все шаги зелёные,
+Окончательный pnpm check после anchor fix:4448 passed,10 skipped,compiler30/30; все шаги зелёные,
 exit0,208.8s. Лог ops_run:lesson-staff-feedback-delivery-check.log. pnpm spec:validate85/85.
 Независимое финальное ревью anchor mapping:15/15 тестов, замечаний нет.
 
@@ -61,4 +61,4 @@ feedback layer (0), вернул обычный вид и сохранённый
 
 Свой managed сервер33902/PID45436 на5191 остановлен, listener и процесс отсутствуют.
 Пользовательский 5190/PID7828 и Blender49976 сохранены. Основная папка остаётся наdev1f7332a; агент
-её не обновлял. PR вdev создаётся отдельно, без merge/deployment.
+её не обновлял. PR #273 открыт вdev, без merge/deployment.

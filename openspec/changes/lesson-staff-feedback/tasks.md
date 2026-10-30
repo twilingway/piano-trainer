@@ -35,5 +35,5 @@
 - [x] 4.1 В видимом браузере проверить чтение RH/LH, две руки/аккорд, held bass, independent rhythm,
       интервалы, ритм и музыкальный курс; desktop/320×568/390×844/667×375, короткие начала, no key
       sparks и exit restoration.
-- [ ] 4.2 Независимое ревью всех адаптеров и overlay, `pnpm check`, `pnpm spec:validate`, отдельный
+- [x] 4.2 Независимое ревью всех адаптеров и overlay, `pnpm check`, `pnpm spec:validate`, отдельный
       PR в dev без merge; свой сервер остановлен.
