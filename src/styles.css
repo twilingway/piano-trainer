@@ -2102,6 +2102,11 @@ button.song-card.song-card__open {
   text-align: center;
 }
 
+/* Compact result summaries move the trouble notes into the stats panel. */
+.result-stats-trouble {
+  display: none;
+}
+
 /* The take's details sit beside the game, below the review bar, so the review stays in view. */
 .game-dialog.result-stats {
   position: fixed;
@@ -2143,6 +2148,10 @@ button.song-card.song-card__open {
 }
 
 @media (max-width: 640px), (pointer: coarse) and (max-height: 640px) {
+  .result-stats-trouble {
+    display: block;
+  }
+
   .result-details,
   .result-review-action {
     display: none;
