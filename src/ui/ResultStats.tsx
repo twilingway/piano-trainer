@@ -1,6 +1,7 @@
 import { useI18n } from "../app/useI18n";
 import type { PracticeStats } from "../practice/session";
 import { GameDialog } from "./GameDialog";
+import { TroubleNotes } from "./ResultDialog";
 
 interface Props {
   /** The finished take's stats, copied when the panel opened. */
@@ -124,6 +125,8 @@ export function ResultStats({ stats, canReview, onClose, onAgain, onReview }: Pr
           )}
         </div>
       )}
+      {/* A phone's «Готово» has no room for them: they are read here. */}
+      <TroubleNotes stats={stats} className="result-stats-trouble" />
       <div className="result-actions">
         <button type="button" className="game-button game-button--play" onClick={onAgain}>
           {t("Ещё раз")}

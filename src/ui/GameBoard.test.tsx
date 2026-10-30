@@ -303,11 +303,70 @@ describe("game score presentation", () => {
       />
     );
     expect(details).toContain("идеальная игра без Overdrive");
+    expect(
+      renderToStaticMarkup(
+        <ResultStats
+          stats={{
+            hits: 2,
+            misses: 1,
+            wrong: 0,
+            meanOffset: 0,
+            troubleSpots: [{ pitch: 60, errors: 2 }],
+            game: score.snapshot(1)
+          }}
+          canReview={false}
+          onClose={vi.fn()}
+          onAgain={vi.fn()}
+          onReview={vi.fn()}
+        />
+      )
+    ).toContain('<p class="result-stats-trouble">Трудные ноты: до4 (2)</p>');
     expect(details).toContain("Распределение ошибки времени");
     const empty = render(new GameScore(0).snapshot(0));
     expect(empty).toContain("Нет нот для оценки");
     expect(empty).not.toContain("Ранг");
     expect(empty).not.toContain("Статистика");
+  });
+
+  it.each([
+    [
+      "ru",
+      "Трудные ноты:",
+      ["до", "до♯", "ре", "ре♯", "ми", "фа", "фа♯", "соль", "соль♯", "ля", "ля♯", "си"]
+    ],
+    ["en", "Trouble notes:", ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]]
+  ] as const)("localizes trouble-note names in both result views (%s)", (locale, label, names) => {
+    setInterfaceLanguage(locale);
+    const stats = {
+      hits: 0,
+      misses: 12,
+      wrong: 0,
+      meanOffset: 0,
+      troubleSpots: names.map((_, index) => ({ pitch: 60 + index, errors: 2 }))
+    };
+    const summary = renderToStaticMarkup(
+      <ResultDialog
+        open
+        stats={stats}
+        canReview={false}
+        onClose={vi.fn()}
+        onAgain={vi.fn()}
+        onReview={vi.fn()}
+        onStats={vi.fn()}
+      />
+    );
+    const panel = renderToStaticMarkup(
+      <ResultStats
+        stats={stats}
+        canReview={false}
+        onClose={vi.fn()}
+        onAgain={vi.fn()}
+        onReview={vi.fn()}
+      />
+    );
+    const expected = label + " " + names.map((name) => `${name}4 (2)`).join(", ");
+    expect(summary).toContain(expected);
+    expect(panel).toContain(expected);
   });
 
   it("shows the scorer's combo, accuracy and uncapped energy, without grade counts", () => {

@@ -19,8 +19,28 @@ const NOTE_NAMES = [
   "си"
 ];
 
-function noteLabel(pitch: number): string {
-  return `${NOTE_NAMES[pitch % 12] ?? "?"}${String(Math.floor(pitch / 12) - 1)}`;
+function noteLabel(pitch: number, t: (message: string) => string): string {
+  return `${t(NOTE_NAMES[pitch % 12] ?? "?")}${String(Math.floor(pitch / 12) - 1)}`;
+}
+
+/** The notes that went wrong most, with their error counts. */
+export function TroubleNotes({
+  stats,
+  className
+}: {
+  readonly stats: PracticeStats;
+  readonly className?: string;
+}) {
+  const { t, formatNumber } = useI18n();
+  if (stats.troubleSpots.length === 0) return null;
+  return (
+    <p className={className}>
+      {t("Трудные ноты:")}{" "}
+      {stats.troubleSpots
+        .map((spot) => `${noteLabel(spot.pitch, t)} (${formatNumber(spot.errors)})`)
+        .join(", ")}
+    </p>
+  );
 }
 
 interface Props {
@@ -130,16 +150,7 @@ export function ResultDialog({
           </>
         )}
       </div>
-      <div className="result-details">
-        {stats && stats.troubleSpots.length > 0 && (
-          <p>
-            {t("Трудные ноты:")}{" "}
-            {stats.troubleSpots
-              .map((spot) => `${noteLabel(spot.pitch)} (${formatNumber(spot.errors)})`)
-              .join(", ")}
-          </p>
-        )}
-      </div>
+      <div className="result-details">{stats && <TroubleNotes stats={stats} />}</div>
       <div className="result-actions">
         {onNext && (
           <button type="button" className="game-button game-button--play" onClick={onNext}>
