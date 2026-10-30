@@ -16,6 +16,7 @@ import { ThreeRoadFrame } from "./ThreeRoadFrame";
 const mocks = vi.hoisted(() => ({
   construct: vi.fn(),
   draw: vi.fn(),
+  drawOctaveLabels: vi.fn(),
   clearEnergy: vi.fn(),
   setKeyboardDim: vi.fn(),
   dispose: vi.fn(),
@@ -63,6 +64,7 @@ vi.mock("./ThreeStage", () => ({
       mocks.draw.apply(this, args);
       (args[11] as (() => void) | undefined)?.();
     }
+    drawOctaveLabels = mocks.drawOctaveLabels;
     clearEnergy = mocks.clearEnergy;
     setKeyboardDim = mocks.setKeyboardDim;
     dispose = mocks.dispose;
@@ -1090,3 +1092,21 @@ it.each(["loading", "failed"])(
     view.host.destroy();
   }
 );
+
+it("routes native octave visibility and projection before the final flat overlay pass", async () => {
+  const view = fixture();
+  const marks = { setNative: vi.fn(), mountNative: vi.fn() };
+  Object.assign(view.keyboard, { octaveMarks: marks });
+  await view.host.setEnabled(true);
+  view.tick();
+  expect(marks.setNative).toHaveBeenLastCalledWith(true);
+  expect(marks.mountNative).toHaveBeenCalledWith(view.stage);
+  expect(mocks.drawOctaveLabels).toHaveBeenCalledWith(marks, { width: 800, height: 600 });
+  expect(view.renderer.render).toHaveBeenLastCalledWith({ container: view.stage, clear: false });
+  view.keys.container.visible = false;
+  view.tick();
+  expect(marks.setNative).toHaveBeenLastCalledWith(false);
+  await view.host.setEnabled(false);
+  expect(marks.setNative).toHaveBeenLastCalledWith(false);
+  view.host.destroy();
+});

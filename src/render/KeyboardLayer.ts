@@ -16,9 +16,10 @@ import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
 import { PointerKeys, type KeyPointer } from "./pointerKeys";
 import type { Locale } from "../i18n/locales";
-import { NO_FINGER_CUES, type LessonFingerCue } from "../reading/fingerCues";
+import type { LessonFingerCue } from "../reading/fingerCues";
 import { bakeLessonFingerBadges, LessonFingerBadges } from "./lessonFingerBadges";
-import { DIGIT_MAX_PX, placeKeyboardFingerDigit } from "./keyboardFingerDigits";
+import { DIGIT_MAX_PX } from "./keyboardFingerDigits";
+import { OctaveKeyLabels, keyDigit, lessonLabels } from "./octaveKeyLabels";
 
 const HAND_HINT: Readonly<Record<Hand, number>> = {
   right: FINGER_COLOR[3],
@@ -140,6 +141,7 @@ export class KeyboardLayer {
   private readonly keyboard = new Container();
   private readonly hints = new Container();
   private readonly stickers = new Container();
+  readonly octaveMarks?: OctaveKeyLabels;
   private readonly felt = new Container();
   private readonly keySprites = new Map<number, NineSliceSprite>();
   private readonly keyDigits = new Map<number, Sprite>();
@@ -175,9 +177,11 @@ export class KeyboardLayer {
     onKeyPointer: (event: KeyEvent) => void
   ) {
     this.pointers = new PointerKeys(onKeyPointer);
+    this.octaveMarks = new OctaveKeyLabels(renderer);
     this.lessonBadges = new LessonFingerBadges(bakeLessonFingerBadges(renderer));
     this.hints.addChild(this.lessonBadges.container);
-    this.container.addChild(this.keyboard, this.rail, this.felt, this.stickers, this.hints);
+    this.container.addChild(this.keyboard, this.rail, this.felt, this.stickers);
+    this.container.addChild(this.octaveMarks.container, this.hints);
     this.rail.eventMode = "none";
     this.rail.visible = false;
     this.stickers.eventMode = "none";
@@ -247,7 +251,10 @@ export class KeyboardLayer {
   /** Compact Latin and solfege note names on every key. */
   showStickers(show: boolean): void {
     this.stickers.visible = show;
+    this.octaveMarks?.show(undefined, show);
   }
+
+  showOctaveLabels = (show: boolean): void => this.octaveMarks?.show(show);
 
   /** Puts the keys, their stickers and the felt `total` pixels wide where `geometry` says. */
   layout(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, total: number): void {
@@ -274,6 +281,7 @@ export class KeyboardLayer {
         ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width
         : 3;
     this.bevel = { white: whiteBevel, black: blackBevel };
+    this.octaveMarks?.layout(keys, geometry, this.modelFaces, whiteBevel);
     // Nine-slice border bands include broad flat areas, especially on arcade keys.
     // Only reserve the narrow visible rim, rather than shrinking to their centre slice.
     const whiteLabelWidth = Math.max(0, whiteWidth - Math.max(4, whiteWidth * 0.12));
@@ -337,6 +345,7 @@ export class KeyboardLayer {
   frame: KeysFrame | undefined;
   setLocale(locale: Locale): void {
     this.lessonBadges?.setLocale(locale);
+    this.octaveMarks?.setLocale(locale);
   }
 
   /** Lights the keys for this frame: the owed chord, the notes sounding, the keys held. */
@@ -347,12 +356,7 @@ export class KeyboardLayer {
     stickers: boolean
   ): void {
     this.frame = frame;
-    this.lessonBadges?.draw(
-      frame.hints === false ? NO_FINGER_CUES : (frame.fingerCues ?? NO_FINGER_CUES),
-      keys,
-      geometry,
-      this.modelFaces
-    );
+    lessonLabels(this.lessonBadges, this.octaveMarks, frame, keys, geometry, this.modelFaces);
     const { keyboardTop, keyboardHeight, blackHeight } = geometry;
     for (const [pitch, sprite] of this.keySprites) {
       const due = strongestKeyHint(
@@ -431,7 +435,7 @@ export class KeyboardLayer {
       hint.alpha = sounding ? 1 : hintStrength;
       if (!key || shown?.finger === undefined) continue;
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
-      placeKeyboardFingerDigit(hint, key, geometry, stickers, this.modelFaces, this.bevel);
+      keyDigit(hint, key, geometry, stickers, this.modelFaces, this.bevel, this.octaveMarks);
     }
   }
 
@@ -517,6 +521,7 @@ export class KeyboardLayer {
     this.paintGeneration++;
     this.releaseMouse();
     this.lessonBadges?.destroy();
+    this.octaveMarks?.destroy();
     destroyKeyTextures(this.bakedTextures);
     for (const texture of this.lightTextures.values()) texture.destroy(true);
     for (const sprite of this.stickerSprites.values()) sprite.texture.destroy(true);

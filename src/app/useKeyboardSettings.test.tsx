@@ -80,3 +80,13 @@ it("retakes a button road fit when a camera preset is chosen, not when a slider 
   settings.onCamera(player);
   expect(change).toHaveBeenLastCalledWith({ camera: player });
 });
+
+it("writes octave labels independently of full stickers", () => {
+  act(() => {
+    root.render(<Harness prefs={{ ...DEFAULT_STAFF_PREFS, octaveLabels: false }} />);
+  });
+  expect(settings.octaveLabels).toBe(false);
+  settings.onOctaveLabels(true);
+  expect(change).toHaveBeenLastCalledWith({ octaveLabels: true });
+  expect(view.setShowLabels).not.toHaveBeenCalled();
+});

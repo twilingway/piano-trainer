@@ -19,6 +19,7 @@ const view = {
   setHudTop: vi.fn(),
   setFpsVisible: vi.fn(),
   setShowLabels: vi.fn(),
+  setShowOctaveLabels: vi.fn(),
   setNoteNames: vi.fn(),
   setParts: vi.fn(),
   setRoad: vi.fn(),
@@ -375,6 +376,7 @@ it("gives the original the take lane's range and look, live", async () => {
     ...view,
     setRange: vi.fn(),
     setNoteCards: vi.fn(),
+    setShowOctaveLabels: vi.fn(),
     setKeysPlacement: vi.fn(),
     flatEffects: { set: vi.fn() },
     mount: vi.fn(async () => {
@@ -386,7 +388,12 @@ it("gives the original the take lane's range and look, live", async () => {
   vi.mocked(FallingNotesView).mockImplementation(function () {
     return mirror as unknown as FallingNotesView;
   });
-  const prefs = { ...DEFAULT_STAFF_PREFS, keyRange: "song" as const, noteCards: false };
+  const prefs = {
+    ...DEFAULT_STAFF_PREFS,
+    keyRange: "song" as const,
+    noteCards: false,
+    octaveLabels: false
+  };
   await act(async () => {
     root.render(<Harness prefs={prefs} comparing />);
     await Promise.resolve();
@@ -395,11 +402,20 @@ it("gives the original the take lane's range and look, live", async () => {
   expect(mirror.setRange).toHaveBeenLastCalledWith(48, 84, true, false);
   expect(mirror.setKeysPlacement).toHaveBeenLastCalledWith(USUAL_PLACEMENT);
   expect(mirror.setNoteCards).toHaveBeenLastCalledWith(false);
+  expect(mirror.setShowOctaveLabels).toHaveBeenLastCalledWith(false);
+  expect(view.setShowOctaveLabels).toHaveBeenLastCalledWith(false);
   await act(async () => {
-    root.render(<Harness prefs={{ ...prefs, noteCards: true, keyRange: "88" }} comparing />);
+    root.render(
+      <Harness
+        prefs={{ ...prefs, noteCards: true, octaveLabels: true, keyRange: "88" }}
+        comparing
+      />
+    );
     await Promise.resolve();
   });
   expect(mirror.setNoteCards).toHaveBeenLastCalledWith(true);
+  expect(mirror.setShowOctaveLabels).toHaveBeenLastCalledWith(true);
+  expect(view.setShowOctaveLabels).toHaveBeenLastCalledWith(true);
   expect(mirror.setRange).toHaveBeenLastCalledWith(21, 108, false, false);
   expect(mirror.mount).toHaveBeenCalledOnce();
 });

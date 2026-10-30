@@ -276,6 +276,7 @@ it.each([false, true])(
     }) as unknown as RoadLayer;
     const state = frame();
     const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
+      keyLabels: { labels: false, octaves: true },
       total,
       pan: 16,
       panSnap: startsOnRoad,

@@ -19,6 +19,7 @@ export function ConnectedKeyboardSettings() {
       flatPressEffects: state.preferences.staff.flatPressEffects,
       noteParticles: state.preferences.staff.noteParticles,
       keyboardDim: state.preferences.staff.keyboardDim,
+      octaveLabels: state.preferences.staff.octaveLabels,
       roadGuides: state.preferences.staff.roadGuides,
       pianist: state.preferences.staff.pianist,
       performanceScene: state.preferences.staff.performanceScene,
@@ -39,6 +40,7 @@ export function ConnectedKeyboardSettings() {
   );
   const onKeyRange = useRuntimeCommand((runtime) => runtime.view.setKeyRange);
   const onShowLabels = useRuntimeCommand((runtime) => runtime.view.setShowLabels);
+  const onOctaveLabels = useRuntimeCommand((runtime) => runtime.keyboardSettings.onOctaveLabels);
   const onResetWorldCamera = useRuntimeCommand((runtime) => runtime.view.resetWorldCamera);
   const onKeyStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyStyle);
   const onNotesPerspective = useRuntimeCommand(
@@ -79,6 +81,8 @@ export function ConnectedKeyboardSettings() {
   return (
     <KeyboardSettings
       {...view}
+      octaveLabels={state.octaveLabels}
+      onOctaveLabels={onOctaveLabels}
       keyStyle={state.keyStyle}
       notesPerspective={state.notesPerspective}
       freeRoadLayout={state.freeRoadLayout}

@@ -284,6 +284,7 @@ export class ThreeKeysHost {
   private sync(): void {
     const on = (this.wanted || this.roadWanted) && this.stage !== undefined;
     if (this.hands) this.hands.live = this.wanted;
+    this.keyboard.octaveMarks?.setNative(on && this.wanted && this.keys.container.visible);
     if (on === this.active) return;
     this.active = on;
     this.syncFreeCamera();
@@ -308,6 +309,7 @@ export class ThreeKeysHost {
       scene &&
       (this.road.visible || (this.wanted && this.keys.container.visible));
     this.layer(Boolean(layered));
+    this.keyboard.octaveMarks?.mountNative(stage);
     this.syncFreeCamera(Boolean(layered));
     if (!layered || !this.stage) {
       renderer.render({ container: stage });
@@ -362,6 +364,8 @@ export class ThreeKeysHost {
         this.effectOptions,
         this.songTime ?? this.roadFrame?.songTime ?? hands?.time ?? 0
       );
+      const marks = this.keyboard.octaveMarks;
+      if (marks) this.stage.drawOctaveLabels(marks, this.app.screen);
     } catch (error) {
       this.effects.restore();
       this.roadEffects.restore();
@@ -500,6 +504,7 @@ export class ThreeKeysHost {
 
   /** The road off the stage, drawn first, and native keys in the flat keys' place; or back. */
   private layer(on: boolean): void {
+    this.keyboard.octaveMarks?.setNative(on && this.wanted && this.keys.container.visible);
     const stage = this.app.stage;
     const from = on ? this.road : this.placeholder;
     if (from.parent !== stage) return;

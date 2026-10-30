@@ -1,6 +1,8 @@
 import type { Messages } from "./locales";
 
 export const graphicsMessages = {
+  "Номера октав на клавишах": { en: "Octave numbers on keys" },
+  "C{octave}": { en: "C{octave}" },
   "Не удалось показать нотный стан в 3D. Оставили обычный вид.": {
     en: "Could not show the score in 3D. The regular score is still available."
   },

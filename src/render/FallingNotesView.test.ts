@@ -93,6 +93,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
   const { layer, sprites, flatDraw } = notesHarness(songNotes);
   // Exercise frame wiring with real draw(), substituting only the GPU-backed layers.
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
+    keyLabels: { labels: false, octaves: true },
     ready: true,
     handStatus: new HandStatusSignal(),
     flatEffects: new FlatEffectSettings(),
@@ -552,6 +553,7 @@ describe("keyboard initial centring", () => {
     const setPan = vi.fn();
     const keysRoot = new Container();
     const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
+      keyLabels: { labels: false, octaves: true },
       total: 2288,
       pan: 0,
       panSnap: false,
@@ -671,9 +673,9 @@ describe("native hands layout", () => {
       geometry(height: number): unknown;
     }
     const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
+      keyLabels: { labels: false, octaves: true },
       parts: { keys: true, notes: true, hands: false },
       whiteWidth: 44,
-      labels: false,
       rangeFitsViewport: false,
       placement: { lift: 0, scale: 1, x: 0, y: 125 },
       roadMode: true,

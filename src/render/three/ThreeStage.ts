@@ -1,4 +1,6 @@
 import { configureDockedRoad, updateDockedKeyOffsets } from "./dockedRoadProjection";
+import { NativeOctaveProjection } from "./nativeOctaveProjection";
+import type { OctaveKeyLabels } from "../octaveKeyLabels";
 import { invalidateKeyboardCasePasses } from "./keyboardCasePasses";
 import { StageWorldScore } from "./StageWorldScore";
 import { pickKeyboardKey } from "./pickKeyboardKey";
@@ -87,6 +89,7 @@ export class ThreeStage {
   private readonly body = new Group();
   private readonly cabinet: PianoCase;
   private pickCamera: Camera | undefined;
+  private readonly octaveProjection = new NativeOctaveProjection();
   private hinged: HingedKey[] = [];
   private version = -1;
   private disposed = false;
@@ -448,6 +451,20 @@ export class ThreeStage {
     this.freeBursts.dispose();
     this.materials.dispose();
     this.keyboard.dispose();
+  }
+
+  drawOctaveLabels(
+    labels: OctaveKeyLabels,
+    screen: { readonly width: number; readonly height: number }
+  ): void {
+    this.octaveProjection.update(
+      labels,
+      this.keys,
+      this.boxes,
+      this.hinged,
+      this.pickCamera,
+      screen
+    );
   }
 
   private build(keys: KeysScene): void {

@@ -10,14 +10,16 @@ export function placeKeyboardFingerDigit(
   geometry: Geometry,
   stickers: boolean,
   modelFaces: boolean,
-  bevels: { readonly black: number; readonly white: number }
+  bevels: { readonly black: number; readonly white: number },
+  octaveLabels = false
 ): void {
   const { keyboardTop, blackHeight, keyboardHeight } = geometry;
   hint.x = key.x + key.width / 2;
   if (!stickers) {
     const bevel = key.black ? bevels.black : bevels.white;
     const bottom = keyboardTop + (key.black ? blackHeight : keyboardHeight) - bevel - 4;
-    const top = keyboardTop + (key.black ? 4 : blackHeight + 4);
+    const markerBand = octaveLabels && !modelFaces && key.pitch % 12 === 0;
+    const top = keyboardTop + (key.black ? 4 : blackHeight + (markerBand ? 23 : 4));
     hint.scale.set(
       Math.min(
         (key.width * 0.7) / hint.texture.width,

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CAMERA_PRESETS, DEFAULT_CAMERA } from "../render/worldCamera";
 import { normalizeStaffPrefs } from "./staffPreferences";
 import { useStaffPrefs } from "./useStaffPrefs";
+import { readingDisplayProfile } from "./readingProfile";
 
 let root: Root;
 let host: HTMLDivElement;
@@ -758,5 +759,37 @@ describe("independent notation sizes", () => {
     root = createRoot(host);
     await mount();
     expect(prefs.staffPrefs).toMatchObject({ zoom: 1.8, tabsZoom: 0.8 });
+  });
+});
+
+describe("octave label preference", () => {
+  it.each([undefined, {}, { octaveLabels: "true" }])(
+    "enables octave labels for old or invalid prefs %j",
+    (raw) => {
+      expect(normalizeStaffPrefs(raw).octaveLabels).toBe(true);
+      expect(normalizeStaffPrefs(raw, true).octaveLabels).toBe(true);
+    }
+  );
+  it.each([false, true])(
+    "preserves explicit octaveLabels=%s through reading profiles",
+    (octaveLabels) => {
+      const base = normalizeStaffPrefs({ octaveLabels, labels: true });
+      expect(readingDisplayProfile(base)).toMatchObject({ octaveLabels, labels: false });
+    }
+  );
+  it("persists an explicit false across remount without changing full stickers", async () => {
+    await mount();
+    expect(prefs.staffPrefs.octaveLabels).toBe(true);
+    await act(async () => {
+      prefs.updateStaffPrefs({ octaveLabels: false, labels: true });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({ octaveLabels: false, labels: true });
   });
 });
