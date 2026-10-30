@@ -22,6 +22,7 @@ import { loadViewAssets, loadViewFonts } from "./viewAssets";
 import type { FrameState } from "./frameState";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer, type KeyStyle } from "./KeyboardLayer";
+import { KeyboardLabelSettings } from "./octaveKeyLabels";
 import { HIGHEST_PITCH, LOWEST_PITCH, type KeyRect } from "./keyboardLayout";
 import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
@@ -84,7 +85,10 @@ export class FallingNotesView {
   private song: Song | undefined;
   /** Its notes, earliest first: the scroll looks ahead through them. */
   private songNotes: readonly SongNote[] = [];
-  private labels = false;
+  private readonly keyLabels = new KeyboardLabelSettings(
+    () => [this.keyboard, this.computerKeyboard],
+    () => this.relayout()
+  );
   /** Which parts are on screen: the falling notes, the keyboard, the hands over it. */
   private parts: ViewParts = { notes: true, keys: true, hands: false };
   private keys = new Map<number, KeyRect>();
@@ -162,13 +166,14 @@ export class FallingNotesView {
     const keyboard = new KeyboardLayer(renderer, this.digitTextures, (event) =>
       this.onKeyPointer?.(event)
     );
-    keyboard.showStickers(this.labels);
+    keyboard.showStickers(this.keyLabels.labels);
+    keyboard.showOctaveLabels(this.keyLabels.octaves);
     this.keyboard = keyboard;
     const computerKeyboard = new ComputerKeyboardLayer(renderer, (event) =>
       this.onKeyPointer?.(event)
     );
     computerKeyboard.setKeys(this.computer);
-    computerKeyboard.showStickers(this.labels);
+    computerKeyboard.showStickers(this.keyLabels.labels);
     this.computerKeyboard = computerKeyboard;
     this.setLocale(this.locale);
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
@@ -242,12 +247,9 @@ export class FallingNotesView {
   }
 
   /** Note names, key numbers and a mini staff on every key, like classroom stickers. */
-  setShowLabels(show: boolean): void {
-    this.labels = show;
-    this.keyboard?.showStickers(show);
-    this.computerKeyboard?.showStickers(show);
-    this.laidOutFor = { width: 0, height: 0 };
-  }
+  setShowLabels = this.keyLabels.setLabels;
+
+  setShowOctaveLabels = this.keyLabels.setOctaves;
 
   /** Renderer diagnostics do not affect song time or the scene layout. */
   setFpsVisible(visible: boolean): void {
@@ -472,7 +474,7 @@ export class FallingNotesView {
       this.hands,
       this.keys,
       geometry,
-      this.labels,
+      this.keyLabels.labels,
       state,
       playing,
       road,
@@ -564,7 +566,8 @@ export class FallingNotesView {
   }
 
   private geometry(height: number): Geometry {
-    const { parts, placement, labels, rangeFitsViewport: fits, whiteWidth } = this;
+    const { parts, placement, rangeFitsViewport: fits, whiteWidth } = this;
+    const labels = this.keyLabels.labels;
     if (this.computer) return computerGeometry(height, this.total, parts, placement);
     // Native hands rest on the physical keys and need no sprite-palm strip.
     const layoutParts =
@@ -592,7 +595,7 @@ export class FallingNotesView {
         computer: !!this.computer,
         parts: this.parts,
         placement: this.placement,
-        labels: this.labels,
+        labels: this.keyLabels.labels,
         fits: this.rangeFitsViewport,
         keysLayer: this.keysLayer,
         hands: this.hands,

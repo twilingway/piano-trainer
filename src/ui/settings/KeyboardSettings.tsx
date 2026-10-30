@@ -18,6 +18,8 @@ interface Props {
   readonly onKeyRange: (range: KeyRange) => void;
   readonly showLabels: boolean;
   readonly onShowLabels: (show: boolean) => void;
+  readonly octaveLabels: boolean;
+  readonly onOctaveLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
   readonly fallingNoteStyle: FallingNoteStyle;
@@ -70,6 +72,8 @@ export function KeyboardSettings({
   onKeyRange,
   showLabels,
   onShowLabels,
+  octaveLabels,
+  onOctaveLabels,
   keyStyle,
   onKeyStyle,
   fallingNoteStyle,
@@ -179,6 +183,16 @@ export function KeyboardSettings({
               />
             </label>
           )}
+          <label className="setting">
+            <span>{t("Номера октав на клавишах")}</span>
+            <input
+              type="checkbox"
+              checked={octaveLabels}
+              onChange={(event) => {
+                onOctaveLabels(event.target.checked);
+              }}
+            />
+          </label>
           <label className="setting">
             <span>{t("Названия нот на клавишах")}</span>
             <input

@@ -139,6 +139,10 @@ function Harness({
                 onKeyRange: noop,
                 showLabels: false,
                 onShowLabels: noop,
+                octaveLabels: staffPrefs.octaveLabels,
+                onOctaveLabels: (octaveLabels) => {
+                  updateStaffPrefs({ octaveLabels });
+                },
                 keyStyle: staffPrefs.keyStyle,
                 onKeyStyle: (keyStyle) => {
                   updateStaffPrefs({ keyStyle });

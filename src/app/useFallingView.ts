@@ -53,6 +53,7 @@ const EXTRA_TINT = 0xe63946;
 interface LaneLook {
   readonly fps: boolean;
   readonly labels: boolean;
+  readonly octaveLabels: boolean;
   readonly names: NoteNameStyle | undefined;
   readonly parts: { readonly notes: boolean; readonly keys: boolean; readonly hands: boolean };
   readonly road: StaffPrefs["road"];
@@ -67,6 +68,7 @@ interface LaneLook {
 function applyLaneLook(view: FallingNotesView, look: LaneLook): void {
   view.setFpsVisible(look.fps);
   view.setShowLabels(look.labels);
+  view.setShowOctaveLabels(look.octaveLabels);
   view.setNoteNames(look.names);
   view.setParts(look.parts);
   view.setRoad(look.road);
@@ -211,6 +213,7 @@ export function useFallingView({
     const look: LaneLook = {
       fps: staffPrefs.fps,
       labels: showLabels,
+      octaveLabels: staffPrefs.octaveLabels,
       names: fallingNames,
       // The same parts in both lanes, or the two run at different speeds.
       parts: { notes: staffPrefs.lane, keys: staffPrefs.keys, hands: staffPrefs.hands },
@@ -236,6 +239,7 @@ export function useFallingView({
     viewRef,
     trainerReady,
     showLabels,
+    staffPrefs.octaveLabels,
     staffPrefs.fps,
     fallingNames,
     staffPrefs.lane,

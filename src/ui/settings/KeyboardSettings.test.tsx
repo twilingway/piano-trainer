@@ -16,6 +16,8 @@ const base: ComponentProps<typeof KeyboardSettings> = {
   onKeyRange: noop,
   showLabels: false,
   onShowLabels: noop,
+  octaveLabels: true,
+  onOctaveLabels: noop,
   keyStyle: "3d",
   onKeyStyle: noop,
   notesPerspective: true,
@@ -650,5 +652,36 @@ describe("separate keyboard and world cameras", () => {
     expect(
       group("Падающие ноты")?.querySelector('[data-setting-target="road-horizon"]')
     ).not.toBeNull();
+  });
+});
+
+describe("octave key label setting", () => {
+  it.each([
+    ["ru", "Номера октав на клавишах"],
+    ["en", "Octave numbers on keys"]
+  ] as const)("offers an independent localized toggle (%s)", (locale, label) => {
+    setInterfaceLanguage(locale);
+    const onOctaveLabels = vi.fn(),
+      onShowLabels = vi.fn();
+    act(() => {
+      root.render(
+        <KeyboardSettings
+          {...base}
+          octaveLabels
+          onOctaveLabels={onOctaveLabels}
+          onShowLabels={onShowLabels}
+        />
+      );
+    });
+    const row = [...host.querySelectorAll("label")].find((node) =>
+      node.textContent.includes(label)
+    );
+    const box = row?.querySelector("input");
+    expect(box?.checked).toBe(true);
+    act(() => {
+      box?.click();
+    });
+    expect(onOctaveLabels).toHaveBeenCalledExactlyOnceWith(false);
+    expect(onShowLabels).not.toHaveBeenCalled();
   });
 });

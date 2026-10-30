@@ -30,6 +30,10 @@ export function useKeyboardSettings(
     onKeyRange: view.setKeyRange,
     showLabels: view.showLabels,
     onShowLabels: view.setShowLabels,
+    octaveLabels: staffPrefs.octaveLabels,
+    onOctaveLabels: (octaveLabels) => {
+      updateStaffPrefs({ octaveLabels });
+    },
     fps: staffPrefs.fps,
     onFps: (fps) => {
       updateStaffPrefs({ fps });

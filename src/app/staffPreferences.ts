@@ -71,6 +71,8 @@ export interface StaffPrefs {
   readonly noteCardsConfigured: boolean;
   /** Classroom stickers on the keys. */
   readonly labels: boolean;
+  /** Octave numbers on C keys, independent of full note stickers. */
+  readonly octaveLabels: boolean;
   /** Optional renderer diagnostics. */
   readonly fps: boolean;
   /** The keys shown: fitted to the song, or a real keyboard's range. */
@@ -128,6 +130,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   noteCards: false,
   noteCardsConfigured: true,
   labels: false,
+  octaveLabels: true,
   fps: false,
   keyRange: "song",
   keyStyle: "3d",
@@ -203,6 +206,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),
     labels: boolean("labels"),
+    octaveLabels: boolean("octaveLabels"),
     fps: boolean("fps"),
     keyRange: choice("keyRange", ["song", "3oct", "4oct", "88", "61", "49", "25"]),
     keyStyle: choice("keyStyle", ["classic", "arcade", "3d"]),

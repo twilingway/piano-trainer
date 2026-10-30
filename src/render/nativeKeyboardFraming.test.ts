@@ -50,6 +50,7 @@ function layoutHarness(
     three: { on: true, setEnabled: vi.fn(() => Promise.resolve()) }
   }) as unknown as RoadLayer;
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
+    keyLabels: { labels: false, octaves: true },
     app: { screen, canvas: { parentElement: null } },
     road,
     roadMode: notes,
@@ -58,7 +59,6 @@ function layoutHarness(
     keyboardTop: false,
     parts: { notes, keys: true, hands },
     placement: USUAL_PLACEMENT,
-    labels: false,
     range: { low, high },
     rangeFitsViewport: true,
     rangeFitsSong: false,

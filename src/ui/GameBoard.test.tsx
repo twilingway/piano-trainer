@@ -55,6 +55,7 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   noteCards: false,
   noteCardsConfigured: false,
   labels: true,
+  octaveLabels: true,
   fps: false,
   keyRange: "song",
   keyStyle: "arcade",

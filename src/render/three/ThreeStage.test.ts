@@ -1,6 +1,7 @@
 import { Texture, BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Scene } from "three";
 import { describe, expect, it, vi } from "vitest";
 import type { KeysScene } from "../NativeKeyboardScene";
+import type { OctaveKeyLabels } from "../octaveKeyLabels";
 import { ThreeStage } from "./ThreeStage";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 
@@ -564,4 +565,29 @@ it("passes the workspace score source to its structural world poster", () => {
   const poster = (stage as unknown as { scorePoster: { setSource: ReturnType<typeof vi.fn> } })
     .scorePoster;
   expect(poster.setSource).toHaveBeenCalledWith(undefined);
+});
+
+it("projects octave labels with the same current camera chosen for native picking", () => {
+  const view = fixture();
+  const update = vi.fn();
+  Object.assign(view.stage, { octaveProjection: { update } });
+  const labels = {} as OctaveKeyLabels;
+  const screen = { width: 390, height: 844 };
+  const state = view.stage as unknown as {
+    keyboardCamera: Camera;
+    free: { camera: Camera };
+    performance: { camera: Camera };
+  };
+  view.draw();
+  view.stage.drawOctaveLabels(labels, screen);
+  expect(update.mock.lastCall?.[4]).toBe(state.keyboardCamera);
+  view.stage.setFreeCamera(true);
+  view.draw();
+  view.stage.drawOctaveLabels(labels, screen);
+  expect(update.mock.lastCall?.[4]).toBe(state.free.camera);
+  view.stage.setPerformanceScene(true);
+  view.draw();
+  view.stage.drawOctaveLabels(labels, screen);
+  expect(update.mock.lastCall?.[4]).toBe(state.performance.camera);
+  expect(update.mock.lastCall?.[5]).toBe(screen);
 });
