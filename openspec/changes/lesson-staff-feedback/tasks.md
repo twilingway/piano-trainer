@@ -2,7 +2,7 @@
 
 ## 1. Контракт и эффективный профиль
 
-- [ ] 1.1 Реализовать общий receipt/source с dedupe и lifecycle без replay, React/DOM/timers;
+- [ ] 1.1 Реализовать общий receipt/source и renderer dedupe/lifecycle без replay, React/DOM/timers;
       meaningful тесты дубликатов, run/presentation isolation, stale identity, нескольких notes и
       отказа listener.
 - [ ] 1.2 Выключить три игровых FX только в effective readingDisplayProfile; тесты всех

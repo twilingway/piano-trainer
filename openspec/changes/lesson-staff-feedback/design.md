@@ -18,7 +18,8 @@ scene-эффекты обычных песен.
 - Общий ephemeral source с типизированным receipt:
   `{runId,presentationId,receiptId,notes:[{noteId,staffBeat,pitch}]}`. Он создаётся стабильно в
   usePlayerRuntime до hooks и передаётся им как optional sink. Подписка не переигрывает прежний
-  receipt; дубликаты отсекаются по идентичности run/presentation/note. Очистка новой серии/выхода не
+  receipt. Renderer отсекает дубликаты после проверки текущей готовой presentation: Set noteId
+  только для неё, без истории предыдущих runs/presentations. Очистка новой серии/выхода не
   переживает reload. Это UI-доставка, не Redux/localStorage и не новая оценка.
 - Точный public контракт source находится в отдельном небольшом файле рядом со staff helpers, без
   DOM/React/timers; renderer и app-адаптеры используют одну реализацию. Отказ декоративного listener
@@ -68,3 +69,13 @@ scene-эффекты обычных песен.
 - indexNotes объединяет одинаковые beat/pitch разных станов и голосов. Авторский noteId receipt не
   даёт права подсветить всю такую группу. Нужна однозначная привязка конкретной головки; если её
   доказать нельзя, эффект безопасно пропускается. Обязателен DOM-тест унисона.
+
+## Контракт доставки после уточнения ревью
+
+Transport имеет publish(receipt), clear() и subscribe(listener): unsubscribe. Event — union
+accepted(receipt) | clear. Подписка синхронна и без replay; каждый listener изолирован от исключений.
+Dedupe принадлежит renderer после проверки готового presentationId, а не transport: stale receipt
+не сбрасывает Set текущей presentation. Обычная смена presentation сбрасывает лишь этот Set,
+сохраняя уже захваченные вспышки. clear очищает вспышки и инвалидирует текущий presentationId до
+готовности другого id. Это закрывает окно между domain reset и React commit, без present() в семи
+адаптерах и без неограниченной истории receipt.
