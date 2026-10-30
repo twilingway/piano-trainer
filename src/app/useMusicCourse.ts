@@ -1,3 +1,4 @@
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
 import {
   useCallback,
   useLayoutEffect,
@@ -40,7 +41,7 @@ const INACTIVE_VIEW: MusicCourseView = {
   showHelp: false
 };
 
-export function useMusicCourse() {
+export function useMusicCourse(feedback?: LessonStaffFeedbackSink) {
   const { locale } = useI18n();
   const active = useAppSelector((state) => state.reading.activeCourse === "music-learning");
   const saved = useAppSelector((state) => state.reading.music);
@@ -67,6 +68,7 @@ export function useMusicCourse() {
     if (!active || !course) return null;
     const captured = store.getState().reading.music;
     const callbacks: MusicCourseCallbacks = {
+      ...(feedback ? { staffFeedback: feedback } : {}),
       readSelection: () => store.getState().reading.music,
       save: (result) => {
         dispatch(readingActions.musicResultAdded(result));
@@ -90,7 +92,7 @@ export function useMusicCourse() {
       }
     };
     return new MusicCourseController({ active, saved: captured, revision }, callbacks);
-  }, [active, revision, course, store, dispatch, retrySelection]);
+  }, [active, revision, course, store, dispatch, retrySelection, feedback]);
   const currentRef = useRef(controller);
   useLayoutEffect(() => {
     currentRef.current = controller;

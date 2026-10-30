@@ -9,7 +9,9 @@ import type { TrainerRhythmPolicy } from "../practice/rhythmPolicy";
 import type { TimingPreferences } from "./timingPreferences";
 import { calibrationIsCurrent, getTimingProfile } from "./timingPreferences";
 import { readingActions } from "./readingSlice";
-import { useAppDispatch, useAppSelector } from "./storeHooks";
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+import { useLessonAcceptedFeedback } from "./useLessonAcceptedFeedback";
+import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
 
 type Status =
   "idle" | "preparing" | "count-in" | "running" | "completed" | "empty" | "cancelled" | "error";
@@ -20,18 +22,30 @@ interface Connection {
   timing: TimingPreferences;
 }
 
-export function useRhythmCourse() {
+export function useRhythmCourse(feedback?: LessonStaffFeedbackSink) {
   const saved = useAppSelector((state) => state.reading.rhythm);
   const active = useAppSelector((state) => state.reading.activeCourse === "rhythm-training");
   const revision = useAppSelector((state) => state.reading.selectionRevision);
   const dispatch = useAppDispatch();
+  const store = useAppStore();
   const exercise = useMemo(
     () => (active ? generateRhythmExercise(saved.seed, saved.bpm, saved.generatorVersion) : null),
     [active, saved.seed, saved.bpm, saved.generatorVersion]
   );
+  const feedbackRef = useLessonAcceptedFeedback(feedback, exercise);
+  const activeRef = useRef(active);
+  useLayoutEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+  const presentedIdRef = useRef<string | null>(null);
   const connectionRef = useRef<Connection | null>(null);
   const sessionRef = useRef<RhythmSession | null>(null);
-  const runRef = useRef<{ id: string; offsets: RhythmOffsets } | null>(null);
+  const runRef = useRef<{
+    id: string;
+    offsets: RhythmOffsets;
+    presentationId: string;
+    exerciseId: string;
+  } | null>(null);
   const statusRef = useRef<Status>("idle");
   const requestRef = useRef(0);
   const [status, setStatus] = useState<Status>("idle");
@@ -40,12 +54,16 @@ export function useRhythmCourse() {
   const [countInBeat, setCountInBeat] = useState(1);
   const [retry, setRetry] = useState(0);
   const [readyId, setReadyId] = useState<string | null>(null);
-  const id = exercise ? `${exercise.id}:${String(revision)}:${String(retry)}` : "";
+  const baseId = exercise ? `${exercise.id}:${String(revision)}:${String(retry)}` : "";
+  const [runPresentation, setRunPresentation] = useState<{ baseId: string; runId: string } | null>(
+    null
+  );
+  const id = runPresentation?.baseId === baseId ? `${baseId}:${runPresentation.runId}` : baseId;
   const idRef = useRef(id);
   useLayoutEffect(() => {
     idRef.current = id;
   }, [id]);
-  const ready = readyId === id && !!exercise;
+  const ready = readyId === baseId && !!exercise;
   const readyRef = useRef(ready);
   useLayoutEffect(() => {
     readyRef.current = ready;
@@ -54,20 +72,25 @@ export function useRhythmCourse() {
     statusRef.current = value;
     setStatus(value);
   }, []);
-  const cancel = useCallback((notify = true) => {
-    requestRef.current++;
-    const running = ["preparing", "count-in", "running"].includes(statusRef.current);
-    // Guard the stop callback before freezing the musical clock.
-    statusRef.current = "cancelled";
-    if (running || sessionRef.current) connectionRef.current?.trainer?.setPlaying(false);
-    sessionRef.current?.cancel();
-    sessionRef.current = null;
-    runRef.current = null;
-    if (running && notify) setStatus("cancelled");
-  }, []);
-  const [selectionId, setSelectionId] = useState(id);
-  if (selectionId !== id) {
-    setSelectionId(id);
+  const cancel = useCallback(
+    (notify = true) => {
+      if (activeRef.current || runRef.current || sessionRef.current) feedbackRef.current?.clear();
+      presentedIdRef.current = null;
+      requestRef.current++;
+      const running = ["preparing", "count-in", "running"].includes(statusRef.current);
+      // Guard the stop callback before freezing the musical clock.
+      statusRef.current = "cancelled";
+      if (running || sessionRef.current) connectionRef.current?.trainer?.setPlaying(false);
+      sessionRef.current?.cancel();
+      sessionRef.current = null;
+      runRef.current = null;
+      if (running && notify) setStatus("cancelled");
+    },
+    [feedbackRef]
+  );
+  const [selectionId, setSelectionId] = useState(baseId);
+  if (selectionId !== baseId) {
+    setSelectionId(baseId);
     setStatus("idle");
     setResult(null);
     setError(undefined);
@@ -133,6 +156,27 @@ export function useRhythmCourse() {
                 ...(evidence.event.channel === undefined ? {} : { channel: evidence.event.channel })
               });
               if (attack && evidence.event.source !== "midi") soundRhythmTap();
+              const note =
+                attack?.kind === "hit"
+                  ? exercise?.song.notes.find((note) => note.id === attack.onsetId)
+                  : undefined;
+              if (
+                attack &&
+                note &&
+                run.exerciseId === exercise?.id &&
+                presentedIdRef.current === run.presentationId &&
+                idRef.current === run.presentationId &&
+                !connectionRef.current?.blocked &&
+                document.visibilityState !== "hidden" &&
+                store.getState().reading.selectionRevision === revision
+              ) {
+                feedbackRef.current?.publish({
+                  runId: run.id,
+                  presentationId: run.presentationId,
+                  receiptId: attack.attemptId,
+                  notes: [{ noteId: note.id, staffBeat: note.startBeat, pitch: note.pitch }]
+                });
+              }
             },
             onFrame(practice, playing) {
               if (!sessionRef.current || !["count-in", "running"].includes(statusRef.current))
@@ -176,7 +220,17 @@ export function useRhythmCourse() {
             }
           }
         : null,
-    [active, saved.inputSource, exercise, cancel, changeStatus, dispatch]
+    [
+      active,
+      saved.inputSource,
+      exercise,
+      cancel,
+      changeStatus,
+      dispatch,
+      feedbackRef,
+      store,
+      revision
+    ]
   );
   const presentation = useMemo(
     () =>
@@ -190,7 +244,8 @@ export function useRhythmCourse() {
                 !Number.isFinite(Math.max(atMs, performance.now()))
               )
                 return;
-              setReadyId(shownId);
+              presentedIdRef.current = shownId;
+              setReadyId(baseId);
               setError(undefined);
             },
             onError(shownId: string) {
@@ -202,7 +257,7 @@ export function useRhythmCourse() {
             }
           }
         : undefined,
-    [active, id, cancel, changeStatus]
+    [active, id, baseId, cancel, changeStatus]
   );
   const onStart = useCallback(async () => {
     const connection = connectionRef.current;
@@ -242,7 +297,14 @@ export function useRhythmCourse() {
       return;
     }
     connection.trainer.restart();
-    const run = { id: crypto.randomUUID(), offsets: offsetsFor(connection) };
+    const runId = crypto.randomUUID();
+    const run = {
+      id: runId,
+      offsets: offsetsFor(connection),
+      presentationId: `${baseId}:${runId}`,
+      exerciseId: exercise.id
+    };
+    setRunPresentation({ baseId, runId });
     runRef.current = run;
     sessionRef.current = new RhythmSession(exercise, {
       runId: run.id,
@@ -255,7 +317,7 @@ export function useRhythmCourse() {
     changeStatus("count-in");
     setCountInBeat(1);
     connection.trainer.setPlaying(true);
-  }, [exercise, saved.inputSource, cancel, changeStatus, offsetsFor]);
+  }, [exercise, saved.inputSource, cancel, changeStatus, offsetsFor, baseId]);
   const select = (bpm: RhythmBpm, inputSource: RhythmInputSource, seed = saved.seed) => {
     cancel();
     dispatch(

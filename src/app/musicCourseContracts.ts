@@ -1,3 +1,4 @@
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
 import type { MusicExercise } from "../musicLearning/types";
 import type { IntegratedProgress, MusicResult } from "../musicLearning/progress";
 import type { KeyEvent, MidiDevice } from "../input/midiInput";
@@ -15,6 +16,7 @@ export interface MusicCourseSelection {
   readonly revision: number;
 }
 export interface MusicCourseCallbacks {
+  readonly staffFeedback?: LessonStaffFeedbackSink;
   readonly readSelection?: () => MusicPersistentState;
   readonly save: (result: MusicResult) => void;
   readonly saveIntegrated: (progress: IntegratedProgress) => void;

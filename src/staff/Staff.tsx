@@ -1,5 +1,9 @@
 import { worldScoreSnapshot } from "./publishWorldScore";
 import type { StaffWorldSource } from "./staffWorldSnapshot";
+import type { LessonStaffFeedbackSource } from "./lessonStaffFeedback";
+import { useLessonStaffFeedback } from "./useLessonStaffFeedback";
+import { moveCursor, seekStaffAt } from "./staffCursorNavigation";
+import { createStaffOsmdOptions } from "./staffOsmdOptions";
 import neonCursorUrl from "../fx/neon-cursor.webp?url";
 import {
   lineBoxes,
@@ -12,7 +16,7 @@ import {
 } from "./staffViewport";
 import { entryBeatAt, placeCursorLine } from "./liveCursor";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
-import { beatPositions, indexNotes, nearestNoteBeat, type NoteIndex } from "./staffNoteIndex";
+import { beatPositions, indexNotes, type NoteIndex } from "./staffNoteIndex";
 import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
 import { timelineSpots } from "./staffTimelineSpots";
 import { installUniformStaffLayout } from "./uniformStaffLayout";
@@ -41,12 +45,13 @@ import {
   fitCourseDrawing,
   fitCourseInk
 } from "./courseStaffView";
-import { OpenSheetMusicDisplay, unitInPixels, type IOSMDOptions } from "opensheetmusicdisplay";
+import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 
 export { markKey } from "./staffNoteIndex";
 
 interface StaffProps {
+  readonly lessonStaffFeedback?: LessonStaffFeedbackSource | undefined;
   readonly worldScoreSource?: StaffWorldSource | undefined;
   readonly timeline?:
     | {
@@ -90,7 +95,6 @@ interface StaffProps {
   readonly courseRange?: readonly string[] | undefined;
 }
 
-const BEAT_EPSILON = 1e-6;
 /** Share of the remaining distance the view covers each frame: a glide, not a jump. */
 const GLIDE = 0.12;
 /** Share of the window the score may take; the lines that fit decide the exact height. */
@@ -98,29 +102,13 @@ const DEFAULT_MAX_SHARE = 0.45;
 /** Movement that turns a press on the score from a click into a drag, px. */
 const DRAG_THRESHOLD_PX = 5;
 
-function cursorBeat(osmd: OpenSheetMusicDisplay): number {
-  // OSMD counts in whole notes.
-  return osmd.cursor.Iterator.currentTimeStamp.RealValue * 4;
-}
-
-/** Walks the cursor to the last entry at or before `beat`. */
-function moveCursor(osmd: OpenSheetMusicDisplay, beat: number): void {
-  const cursor = osmd.cursor;
-  if (cursorBeat(osmd) > beat + BEAT_EPSILON) cursor.reset();
-  for (;;) {
-    const peek = cursor.Iterator.clone();
-    peek.moveToNext();
-    if (peek.EndReached || peek.currentTimeStamp.RealValue * 4 > beat + BEAT_EPSILON) break;
-    cursor.next();
-  }
-}
-
 /**
  * The score under a cursor that follows the song by beats rather than by
  * seconds, so tempo changes cannot drift it off; the notes under it are
  * coloured. Zoom, line wrapping and following are the reader's choice.
  */
 export function Staff({
+  lessonStaffFeedback,
   timeline,
   worldScoreSource,
   musicXml,
@@ -173,6 +161,7 @@ export function Staff({
     heads: new Map(),
     cursorBeats: new Map()
   });
+  const feedbackRef = useLessonStaffFeedback(lessonStaffFeedback, hostRef, noteIndexRef);
   /** Musical entries, including rests, with their x from the SVG's left edge and their line. */
   const beatXRef = useRef<BeatSpot[]>([]);
   /** The play cursor: a thin glowing line gliding with the song, over OSMD's own. */
@@ -275,6 +264,7 @@ export function Staff({
     }
     if (latest.current.course) showDrawing(host, reservedSpan(osmd, reach));
     targetRef.current = null;
+    feedbackRef.current?.refresh();
     if (shareGeometry) {
       publishGeometry(readStaffGeometry(osmd, host, beatXRef.current, linesRef.current));
     }
@@ -284,26 +274,12 @@ export function Staff({
     const host = hostRef.current;
     const page = pageRef.current;
     if (!host || !page) return;
+    const feedback = feedbackRef.current;
+    feedback?.invalidate();
     if (shareGeometry) publishGeometry(null);
     let cancelled = false;
     let resizeTimer = 0;
-    const options: IOSMDOptions = {
-      backend: "svg",
-      defaultColorMusic: getComputedStyle(host).getPropertyValue("--accent").trim(),
-      // Re-flowing on resize is done below, so the line sizes are measured again too.
-      autoResize: false,
-      drawTitle: false,
-      drawComposer: false,
-      drawPartNames: false,
-      // OSMD leaves them off for a one-part score; here the reader chooses.
-      drawFingerings: fingers,
-      renderSingleHorizontalStaffline: singleLine,
-      followCursor: false,
-      newSystemFromXML: breaksFromScore,
-      // Eighths and shorter are beamed beat by beat, so each beat reads as one group at a glance.
-      autoBeam: true,
-      autoBeamOptions: { groups: [[1, 4]] }
-    };
+    const options = createStaffOsmdOptions(host, { fingers, singleLine, breaksFromScore });
     const osmd = new OpenSheetMusicDisplay(page, options);
     const presentationId = presentationRef.current?.id;
     void Promise.all([osmd.load(shownXml), measureCourseReach(courseRange, options, host)])
@@ -330,6 +306,7 @@ export function Staff({
         relayout(osmd, host);
       })
       .catch(() => {
+        if (!cancelled) feedback?.fail();
         if (
           !cancelled &&
           presentationId === presentationRef.current?.id &&
@@ -350,6 +327,7 @@ export function Staff({
     if (workspace) resizeObserver.observe(workspace);
     return () => {
       cancelled = true;
+      feedback?.invalidate();
       window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
       resizeObserver.disconnect();
@@ -364,6 +342,7 @@ export function Staff({
     };
   }, [
     shownXml,
+    feedbackRef,
     worldScoreSource,
     singleLine,
     breaksFromScore,
@@ -383,10 +362,29 @@ export function Staff({
       () => osmdRef.current !== null && Boolean(hostRef.current?.querySelector("svg")),
       (atMs) => {
         const current = presentationRef.current;
-        if (current?.id === presentationId) current.onPresented(presentationId, atMs);
+        if (current?.id === presentationId) {
+          feedbackRef.current?.ready(presentationId);
+          current.onPresented(presentationId, atMs);
+        }
       }
     );
-  }, [presentationId, musicXml]);
+  }, [
+    presentationId,
+    musicXml,
+    feedbackRef,
+    lessonStaffFeedback,
+    shownXml,
+    worldScoreSource,
+    singleLine,
+    breaksFromScore,
+    fingers,
+    shareGeometry,
+    publishGeometry,
+    course,
+    timeline,
+    hasSharedTabs,
+    courseRange
+  ]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
@@ -507,12 +505,6 @@ export function Staff({
   } | null>(null);
   const suppressClickRef = useRef(false);
 
-  const seekAt = (clientX: number, clientY: number) => {
-    if (!onSeek) return;
-    const beat = nearestNoteBeat(noteIndexRef.current.beats, clientX, clientY);
-    if (beat !== undefined) onSeek(beat);
-  };
-
   return (
     <div
       className={`${singleLine ? "staff staff--single" : "staff staff--wrapped"}${course ? " staff--course" : ""}`}
@@ -555,7 +547,7 @@ export function Staff({
           suppressClickRef.current = false;
           return;
         }
-        seekAt(event.clientX, event.clientY);
+        seekStaffAt(noteIndexRef.current, onSeek, event.clientX, event.clientY);
       }}
     >
       <div className="staff-page" ref={pageRef} />

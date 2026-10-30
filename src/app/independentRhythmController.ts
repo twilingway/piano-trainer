@@ -1,3 +1,5 @@
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+import { publishIndependentStaffFeedback } from "./independentStaffFeedback";
 import {
   ensureMetronomeSound,
   metronomeSoundReady,
@@ -101,7 +103,8 @@ export class IndependentRhythmController {
   private state;
   constructor(
     readonly selection: IndependentRhythmSelection,
-    private readonly save: (result: IndependentRhythmResult) => void
+    private readonly save: (result: IndependentRhythmResult) => void,
+    private readonly feedback?: LessonStaffFeedbackSink
   ) {
     this.exercise = generateIndependentRhythmExercise(selection.seed, selection.version);
     this.state = this.freshState("preparation");
@@ -162,6 +165,14 @@ export class IndependentRhythmController {
     });
   }
   private cachePhase(snapshot: IndependentRhythmSnapshot | null): void {
+    publishIndependentStaffFeedback(
+      this.feedback,
+      this.runId,
+      this.state.scene.id,
+      this.phase === "pulse" ? this.exercise.pulse : this.exercise.series,
+      this.phaseSnapshot,
+      snapshot
+    );
     this.phaseSnapshot = snapshot;
     this.noteStatuses = new Map(
       snapshot?.outcomes.map((note) => [
@@ -183,6 +194,7 @@ export class IndependentRhythmController {
   }
   readonly cancel = (): void => {
     if (this.disposed || this.expectedStop || this.state.status === "completed") return;
+    this.feedback?.clear();
     this.generation++;
     this.audioPending = false;
     this.phaseSession?.cancel(performance.now());
@@ -201,6 +213,7 @@ export class IndependentRhythmController {
   readonly repeat = (): void => {
     this.cancel();
     if (this.state.status === "completed") {
+      this.feedback?.clear();
       this.generation++;
       this.runId = crypto.randomUUID();
       this.phase = "pulse";
@@ -460,6 +473,7 @@ export class IndependentRhythmController {
     };
   }
   readonly dispose = (): void => {
+    this.feedback?.clear();
     this.disposed = true;
     this.generation++;
     this.phaseSession?.cancel(performance.now());

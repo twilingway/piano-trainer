@@ -1,3 +1,4 @@
+import { musicStaffReceiver } from "./musicStaffFeedback";
 import { IntegratedLesson, createIntegratedPlan } from "../musicLearning/integrated";
 import type { IntegratedPhaseId } from "../musicLearning/integrated";
 import { presentMusicControllerScore } from "./musicCourseControllerPreflight";
@@ -101,6 +102,7 @@ export class MusicCourseController implements MusicCourseControllerContract {
   };
   readonly dispose = (): void => {
     if (!this.active) return;
+    this.callbacks.staffFeedback?.clear();
     this.active = false;
     this.operation++;
     this.generation++;
@@ -216,10 +218,22 @@ export class MusicCourseController implements MusicCourseControllerContract {
       runId: `${this.owner}:${String(++this.sequence)}:run`,
       presentationId: `${this.owner}:${String(this.sequence)}:presentation`
     };
+    if (s.identity?.runId !== identity.runId) this.callbacks.staffFeedback?.clear();
     s.identity = identity;
     s.activity = activity;
     s.scene = { ...activity.exercise, id: identity.presentationId };
-    s.run = new MusicCourseRun(activity, this.saved, identity, this.connection.deviceId);
+    s.run = new MusicCourseRun(
+      activity,
+      this.saved,
+      identity,
+      this.connection.deviceId,
+      musicStaffReceiver(
+        this.callbacks.staffFeedback,
+        () => this.active && !this.hidden && !this.connection.blocked && !this.state.savedResult,
+        () => this.state,
+        () => this.snapshot.staffVisible
+      )
+    );
     s.session = null;
     s.preview = null;
     s.presented = false;
@@ -376,12 +390,8 @@ export class MusicCourseController implements MusicCourseControllerContract {
       this.state,
       this.saved,
       this.callbacks,
-      () => {
-        this.stop();
-      },
-      () => {
-        this.publish();
-      }
+      this.stop.bind(this),
+      this.publish.bind(this)
     );
   }
   private async prepareNext(advance: boolean, phase?: IntegratedPhaseId): Promise<void> {
@@ -476,6 +486,7 @@ export class MusicCourseController implements MusicCourseControllerContract {
     musicControllerChoose(this.actions(), value, source);
   };
   readonly cancel = (): void => {
+    this.callbacks.staffFeedback?.clear();
     this.operation++;
     this.generation++;
     this.audio.cancel();

@@ -1,3 +1,4 @@
+import type { LessonStaffFeedbackSource } from "../staff/lessonStaffFeedback";
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import neonRailUrl from "../fx/neon-rail.webp?url";
 import { useI18n } from "../app/useI18n";
@@ -22,6 +23,7 @@ interface Props {
   };
   readonly timelineSong?: Song | undefined;
   readonly staffPresentation?: StaffPresentation | undefined;
+  readonly lessonStaffFeedback?: LessonStaffFeedbackSource | undefined;
   readonly staffRetry?: number;
   readonly readingBeat?: number | undefined;
   /** A reading course is on: its staff is fitted and its cursor leaves the note readable. */
@@ -127,6 +129,14 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
         {transcription && <span className="staff-label">{t("Оригинал")}</span>}
         <Staff
           key={props.staffRetry ?? 0}
+          lessonStaffFeedback={
+            props.course &&
+            !props.comparing &&
+            !props.worldScore?.hidden &&
+            !props.worldScore?.error
+              ? props.lessonStaffFeedback
+              : undefined
+          }
           presentation={props.staffPresentation}
           musicXml={props.staffXml}
           beat={props.readingBeat ?? props.beat}

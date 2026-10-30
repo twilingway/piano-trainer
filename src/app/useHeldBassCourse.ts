@@ -1,3 +1,5 @@
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+import { publishJointStaffFeedback } from "./jointStaffFeedback";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { generateHeldBassExercise, nextHeldBassSeed } from "../reading/heldBassGenerator";
@@ -53,7 +55,7 @@ interface HintRequest {
   level: ReadingHintLevel;
 }
 
-export function useHeldBassCourse() {
+export function useHeldBassCourse(feedback?: LessonStaffFeedbackSink) {
   const { locale } = useI18n();
   const active = useAppSelector((state) => state.reading.activeCourse === "held-bass-reading");
   const saved = useAppSelector((state) => state.reading.heldBass);
@@ -258,7 +260,27 @@ export function useHeldBassCourse() {
           commit.step !== request.step
         )
           return;
+        const before = session.snapshot();
         session.acknowledgeOnset(commit, accepted, receipt);
+        const after = session.snapshot();
+        if (
+          accepted &&
+          after.presentationId === before.presentationId &&
+          after.step === before.step + 1 &&
+          after.retryCommand === null &&
+          ["ready", "travelling", "hold", "release"].includes(after.status) &&
+          after.pendingCommit === null
+        )
+          publishJointStaffFeedback(
+            feedback,
+            {
+              runId: course.runId,
+              presentationId: idRef.current,
+              receiptId: `${commit.presentationId}:${String(commit.step)}`
+            },
+            fragment.song,
+            commit.noteIds
+          );
         if (!accepted) setErrorId(idRef.current);
         publish();
       },
@@ -310,7 +332,7 @@ export function useHeldBassCourse() {
         }
       }
     };
-  }, [session, course, fragment, presentationId, requestHint, transition, publish]);
+  }, [session, course, fragment, presentationId, requestHint, transition, publish, feedback]);
   const presentation = useMemo(
     () =>
       session && fragment
@@ -384,12 +406,14 @@ export function useHeldBassCourse() {
     history: saved.history,
     sourceFilter: saved.sourceFilter,
     start: () => {
+      feedback?.clear();
       setIntro(false);
       dispatch(readingActions.heldBassSelected({ seed: saved.seed }));
     },
     playAgain: async (ensureSound: () => Promise<void>) => {
       await ensureSound();
       if (sessionRef.current !== session || !session) return;
+      feedback?.clear();
       playRequestedRef.current = true;
       dispatch(
         readingActions.heldBassSelected({
@@ -399,6 +423,7 @@ export function useHeldBassCourse() {
       );
     },
     newSeries: () => {
+      feedback?.clear();
       dispatch(
         readingActions.heldBassSelected({
           seed: nextHeldBassSeed(saved.seed),
@@ -407,6 +432,7 @@ export function useHeldBassCourse() {
       );
     },
     exit: () => {
+      feedback?.clear();
       dispatch(readingActions.exit());
     },
     setSourceFilter: (value: typeof saved.sourceFilter) => {
@@ -420,6 +446,7 @@ export function useHeldBassCourse() {
       if (state?.ready) requestHint(state, Math.min(2, hintLevel + 1) as ReadingHintLevel);
     },
     onRetry: () => {
+      feedback?.clear();
       if (fragment) session?.requirePresentation(fragment.id, performance.now());
       setErrorId(null);
       setRetry((value) => value + 1);

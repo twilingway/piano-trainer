@@ -61,6 +61,12 @@ const ORDINARY_SONG: Song = {
   beats: [],
   measures: []
 };
+import type { LessonStaffFeedbackReceipt } from "../staff/lessonStaffFeedback";
+
+const feedback = {
+  publish: vi.fn<(receipt: LessonStaffFeedbackReceipt) => void>(),
+  clear: vi.fn()
+};
 let host: HTMLDivElement;
 let root: Root;
 let store: AppStore;
@@ -82,7 +88,7 @@ function Harness({
   deviceId?: string;
   calibrate?: boolean;
 }) {
-  const value = useRhythmCourse();
+  const value = useRhythmCourse(feedback);
   const timing = useAppSelector((state) => state.preferences.timing);
   const loadedId = useRef<string | null>(null);
   useRhythmTrainer(value, trainerRef, true, blocked, DEVICES, deviceId);
@@ -179,6 +185,8 @@ function space(type: "keydown" | "keyup", timestamp: number) {
 }
 
 beforeEach(async () => {
+  feedback.publish.mockClear();
+  feedback.clear.mockClear();
   setInterfaceLanguage("ru");
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   now = 1000;
@@ -532,4 +540,111 @@ describe("rhythm cancellation", () => {
       expect(store.getState().reading.rhythm.history).toHaveLength(0);
     }
   );
+});
+
+describe("accepted rhythm staff feedback", () => {
+  it("publishes authored hit coordinates once and ignores count-in, extras, held and wrong-source taps", async () => {
+    select();
+    present();
+    await start();
+    const started = now;
+    present();
+    const presentationId = course.presentation?.id;
+    const note = course.exercise?.song.notes[0];
+    feedback.clear.mockClear();
+    space("keydown", started + 1000);
+    space("keyup", started + 1001);
+    key("down", started + 4000, "pointer");
+    key("up", started + 4001, "pointer");
+    expect(feedback.publish).not.toHaveBeenCalled();
+    space("keydown", started + 4000);
+    space("keydown", started + 4001);
+    space("keyup", started + 4002);
+    space("keydown", started + 4500);
+    space("keyup", started + 4501);
+    expect(feedback.publish).toHaveBeenCalledTimes(1);
+    expect(feedback.publish.mock.calls[0]?.[0]).toMatchObject({
+      presentationId,
+      notes: [{ noteId: note?.id, staffBeat: note?.startBeat, pitch: note?.pitch }]
+    });
+    expect(feedback.clear).not.toHaveBeenCalled();
+  });
+
+  it("uses a new ready presentation on repeat and rejects the old acknowledgement", async () => {
+    select();
+    present();
+    await start();
+    present();
+    const old = course.presentation;
+    const firstStarted = now;
+    space("keydown", firstStarted + 4000);
+    space("keyup", firstStarted + 4001);
+    expect(feedback.publish).toHaveBeenCalledTimes(1);
+    await start();
+    const secondStarted = now;
+    expect(course.presentation?.id).not.toBe(old?.id);
+    expect(feedback.clear).toHaveBeenCalled();
+    at(now, () => {
+      old?.onPresented(old.id, now);
+    });
+    space("keydown", secondStarted + 4000);
+    space("keyup", secondStarted + 4001);
+    expect(feedback.publish).toHaveBeenCalledTimes(1);
+    present();
+    const next = course.exercise?.song.notes[1];
+    if (!next) throw new Error("No second rhythm note");
+    space("keydown", secondStarted + 4000 + next.start * 1000);
+    space("keyup", secondStarted + 4001 + next.start * 1000);
+    expect(feedback.publish).toHaveBeenCalledTimes(2);
+    expect(feedback.publish.mock.calls[1]?.[0].presentationId).toBe(course.presentation?.id);
+    expect(feedback.publish.mock.calls[1]?.[0].runId).not.toBe(
+      feedback.publish.mock.calls[0]?.[0].runId
+    );
+  });
+
+  it("uses score pitch for arbitrary MIDI attacks and clears synchronously on cancellation", async () => {
+    select("midi");
+    present();
+    await start();
+    present();
+    const started = now;
+    key("down", started + 4000, "midi", 81);
+    key("up", started + 4001, "midi", 81);
+    expect(feedback.publish).toHaveBeenCalledTimes(1);
+    const acceptedNote = feedback.publish.mock.calls[0]?.[0].notes[0];
+    if (!acceptedNote) throw new Error("No accepted staff note");
+    expect(acceptedNote.pitch).toBe(course.exercise?.song.notes[0]?.pitch);
+    expect(acceptedNote.pitch).not.toBe(81);
+    feedback.clear.mockClear();
+    at(now, () => {
+      course.cancel();
+      expect(feedback.clear).toHaveBeenCalled();
+    });
+    key("down", started + 5000, "midi", 81);
+    expect(feedback.publish).toHaveBeenCalledTimes(1);
+  });
+});
+
+it("does not clear another course's feedback when inactive rhythm observes a new revision or connection", () => {
+  expect(course.active).toBe(false);
+  feedback.clear.mockClear();
+  at(now, () => {
+    store.dispatch(readingActions.twoHandSelected({ seed: 42 }));
+  });
+  expect(course.active).toBe(false);
+  expect(feedback.clear).not.toHaveBeenCalled();
+  at(now, () => {
+    store.dispatch(readingActions.twoHandSelected({ seed: 43 }));
+  });
+  render(true, "missing");
+  at(now, () => {
+    store.dispatch(
+      preferencesActions.timingChanged({
+        ...store.getState().preferences.timing,
+        manualOffsetMs: 25
+      })
+    );
+    course.cancel();
+  });
+  expect(feedback.clear).not.toHaveBeenCalled();
 });

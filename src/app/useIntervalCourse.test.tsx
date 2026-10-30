@@ -67,6 +67,12 @@ vi.mock("../audio/intervalPreview", () => ({
   }
 }));
 
+import type { LessonStaffFeedbackReceipt } from "../staff/lessonStaffFeedback";
+
+const feedback = {
+  publish: vi.fn<(receipt: LessonStaffFeedbackReceipt) => void>(),
+  clear: vi.fn()
+};
 let root: Root;
 let host: HTMLDivElement;
 let store: AppStore;
@@ -82,7 +88,7 @@ const trainerRef = { current: { configureCourse, setPlaying } as unknown as Trai
 
 function Harness({ blocked = false }: { blocked?: boolean }) {
   const p2 = useReadingCourse();
-  const p3 = useIntervalCourse();
+  const p3 = useIntervalCourse(feedback);
   useReadingTrainer(p3.active ? p3 : p2, trainerRef, true, blocked);
   useIntervalAudioTrainer(p3.audio, p3.session, trainerRef, true, blocked, p3.publish);
   useEffect(() => {
@@ -185,6 +191,8 @@ function visibility(state: DocumentVisibilityState) {
 }
 
 beforeEach(async () => {
+  feedback.publish.mockClear();
+  feedback.clear.mockClear();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   now = 1000;
   visible = "visible";
@@ -661,5 +669,76 @@ describe("exclusive course ownership", () => {
     expect(reading.session).toBeNull();
     expect(exiting.disposed).toBe(true);
     expect(configureCourse).toHaveBeenLastCalledWith("reading", null);
+  });
+});
+
+describe("accepted interval staff feedback", () => {
+  it("captures both authored pair heads with their old presentation and local beats", () => {
+    const practice = practiceForVisual();
+    present();
+    feedback.clear.mockClear();
+    const pairId = interval.presentation?.id;
+    const firstId = interval.snapshot?.expectedNoteId;
+    const firstPitch = interval.snapshot?.expectedMidi;
+    expected(practice);
+    expect(feedback.publish).toHaveBeenCalledTimes(1);
+    expect(feedback.publish.mock.calls[0]?.[0]).toMatchObject({
+      presentationId: pairId,
+      notes: [{ noteId: firstId, staffBeat: 0, pitch: firstPitch }]
+    });
+    nextVisual(practice);
+    const secondId = interval.snapshot?.expectedNoteId;
+    const secondPitch = interval.snapshot?.expectedMidi;
+    expected(practice);
+    expect(feedback.publish).toHaveBeenCalledTimes(2);
+    expect(feedback.publish.mock.calls[1]?.[0]).toMatchObject({
+      presentationId: pairId,
+      notes: [{ noteId: secondId, staffBeat: 1, pitch: secondPitch }]
+    });
+    expect(feedback.publish.mock.calls[0]?.[0].receiptId).not.toBe(
+      feedback.publish.mock.calls[1]?.[0].receiptId
+    );
+    expect(feedback.clear).not.toHaveBeenCalled();
+  });
+
+  it("ignores wrong answers, help alone and blocked or stale callbacks, and clears before reset", () => {
+    const practice = practiceForVisual();
+    present();
+    pitch(practice, (interval.snapshot?.expectedMidi ?? 60) + 12);
+    at(now, () => {
+      interval.hint();
+      interval.onHelpPresented();
+    });
+    expect(feedback.publish).not.toHaveBeenCalled();
+    render(true);
+    at(now + 100, () => {
+      const input = key(practice, interval.snapshot?.expectedMidi ?? 60, "keyboard");
+      interval.policy?.onJudgement(input, practice.pressKeyAt(input.pitch, now), now, now);
+    });
+    expect(feedback.publish).not.toHaveBeenCalled();
+    render(false);
+    frame(practice, now + 100);
+    const stale = interval.policy;
+    const input = key(practice, interval.snapshot?.expectedMidi ?? 60, "keyboard");
+    feedback.clear.mockClear();
+    at(now + 100, () => {
+      interval.newSeries();
+      stale?.onJudgement(input, practice.pressKeyAt(input.pitch, now), now, now);
+      expect(feedback.clear).toHaveBeenCalled();
+      expect(feedback.publish).not.toHaveBeenCalled();
+    });
+  });
+
+  it("does not publish for reference playback or a correct category button and clears on exit", () => {
+    select("hear-and-choose");
+    listen();
+    complete();
+    choose();
+    expect(feedback.publish).not.toHaveBeenCalled();
+    feedback.clear.mockClear();
+    at(now, () => {
+      interval.exit();
+      expect(feedback.clear).toHaveBeenCalled();
+    });
   });
 });

@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { LessonStaffFeedbackReceipt } from "../staff/lessonStaffFeedback";
 import { createMusicExercise } from "../musicLearning/material";
 import { generateDictation } from "../musicLearning/dictation";
 import { buildTriad } from "../musicLearning/harmony";
@@ -32,7 +33,8 @@ function harness(
   course: "sight-reading" | "harmony" | "dictation" = "sight-reading"
 ) {
   const saved = { ...emptyMusicState(), course };
-  const run = new MusicCourseRun(activity, saved, identity, undefined);
+  const feedback = vi.fn<(receipt: LessonStaffFeedbackReceipt) => void>();
+  const run = new MusicCourseRun(activity, saved, identity, undefined, feedback);
   const session = new PracticeSession(activity.exercise.song, {
     mode: course === "sight-reading" ? "wait" : "tempo",
     hands: new Set(["left", "right"]),
@@ -54,7 +56,7 @@ function harness(
     const event: KeyEvent = { type, pitch, velocity: 80, source: "keyboard", timestamp: at };
     return run.input(event, session, playing, { raw: at, corrected: at, received: at, admitted });
   };
-  return { run, session, input, saved };
+  return { run, session, input, saved, feedback };
 }
 const reading: MusicActivity = {
   exercise,
@@ -400,5 +402,89 @@ describe("one-clock music course input wiring", () => {
         { labelKey: "Минимальное движение, полутоны", value: 3 }
       ])
     );
+  });
+});
+
+describe("music accepted staff feedback", () => {
+  it("publishes authored heads only for fresh admitted hits, never wrong, held or blocked attacks", () => {
+    const h = harness(reading);
+    expect(h.run.start(h.session, 1000, 0)).toBe(true);
+    h.input("down", 65, 1010);
+    h.input("up", 65, 1020);
+    h.input("down", 60, 1030, false);
+    h.input("up", 60, 1040, false);
+    expect(h.feedback).not.toHaveBeenCalled();
+    h.input("down", 60, 1100);
+    expect(h.feedback).toHaveBeenCalledTimes(1);
+    const note = exercise.song.notes[0];
+    if (!note) throw new Error("Missing written target");
+    expect(h.feedback.mock.calls[0]?.[0]).toMatchObject({
+      ...identity,
+      notes: [{ noteId: note.id, pitch: note.pitch, staffBeat: note.startBeat }]
+    });
+    h.input("down", 60, 1110);
+    h.run.frame(h.session, true, 1120, 0);
+    expect(h.feedback).toHaveBeenCalledTimes(1);
+    h.input("up", 60, 1130);
+    h.run.pause(true, 1140);
+    h.input("down", 62, 1200, true, false);
+    expect(h.feedback).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for a full accepted chord in frame before publishing all its written heads once", () => {
+    const saved = {
+      ...emptyMusicState(),
+      course: "harmony" as const,
+      harmonyLesson: "triads" as const
+    };
+    const activity = makeMusicActivity(saved);
+    const h = harness(activity, "harmony");
+    expect(h.run.start(h.session, 1000, 0)).toBe(true);
+    const step = activity.chords?.[0];
+    if (!step) throw new Error("Missing chord target");
+    step.target.pitches.forEach((pitch, index) => {
+      h.input("down", pitch, 1100 + index * 10);
+      expect(h.feedback).not.toHaveBeenCalled();
+    });
+    h.run.frame(h.session, true, 1700, 0);
+    expect(h.feedback).toHaveBeenCalledTimes(1);
+    expect(h.feedback.mock.calls[0]?.[0].notes).toEqual(
+      activity.exercise.song.notes.map((note) => ({
+        noteId: note.id,
+        pitch: note.pitch,
+        staffBeat: note.startBeat
+      }))
+    );
+    h.run.frame(h.session, true, 1710, 0);
+    expect(h.feedback).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not publish missing accompaniment deadlines or rejected provisional chords", () => {
+    const activity = makeMusicActivity({
+      ...emptyMusicState(),
+      course: "harmony",
+      harmonyLesson: "accompaniment"
+    });
+    const h = harness(activity, "harmony");
+    h.run.start(h.session, 1000, 0);
+    for (let at = 1000; at < 30000; at += 100) {
+      h.session.tick(at);
+      h.run.frame(h.session, true, at, 0);
+    }
+    expect(h.feedback).not.toHaveBeenCalled();
+    const chord = makeMusicActivity({
+      ...emptyMusicState(),
+      course: "harmony",
+      harmonyLesson: "triads"
+    });
+    const rejected = harness(chord, "harmony");
+    rejected.run.start(rejected.session, 1000, 0);
+    const step = chord.chords?.[0];
+    if (!step) throw new Error("Missing triad");
+    [...step.target.pitches, 61].forEach((pitch, index) =>
+      rejected.input("down", pitch, 1100 + index * 10)
+    );
+    rejected.run.frame(rejected.session, true, 1700, 0);
+    expect(rejected.feedback).not.toHaveBeenCalled();
   });
 });
