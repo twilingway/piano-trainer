@@ -66,4 +66,4 @@
       276–320 px, строка действий 477–521 px; после — 17 нот подряд стан 323 px, строка действий на
       524.6 px, верхняя линейка на 248.1 px; тесты `courseRangeIndices` и резерва в
       `courseStaffView`.
-- [ ] 5.2 `pnpm check`, `pnpm spec:validate`; ревью диффа; PR в dev; стенд задачи остановлен.
+- [x] 5.2 `pnpm check`, `pnpm spec:validate`; ревью диффа; PR в dev; стенд задачи остановлен.

@@ -1,5 +1,9 @@
 # Сохранённый этап: остановка 26 октября 2026
 
+Исторический checkpoint. Актуальный порядок продолжения и статусы —
+[verified-pianist-runtime/resume-checkpoint.md](../verified-pianist-runtime/resume-checkpoint.md).
+Two-anchor/sd71 ниже не повторять: в более позднем этапе уже получен kernel v14.
+
 Работа остановлена по прямой команде пользователя. Ветка `feat/torso-follow-hand-reach`,
 [PR #221 в dev](https://github.com/twilingway/piano-trainer/pull/221) открыт, не слит. Основная
 папка на dev и стенд5190 не менялись. Задача расстановки рук ещё не закончена.
