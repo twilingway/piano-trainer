@@ -1,3 +1,5 @@
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+import { publishJointStaffFeedback } from "./jointStaffFeedback";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import {
@@ -37,7 +39,7 @@ function selectedExercise(selection: TwoHandSelection) {
   return selection.active ? generateTwoHandExercise(selection.seed, selection.version) : null;
 }
 
-export function useTwoHandCourse() {
+export function useTwoHandCourse(feedback?: LessonStaffFeedbackSink) {
   const active = useAppSelector((state) => state.reading.activeCourse === "two-hand-coordination");
   const saved = useAppSelector((state) => state.reading.coordination);
   const preferences = useAppSelector((state) => state.reading.preferences);
@@ -49,16 +51,18 @@ export function useTwoHandCourse() {
     [active, saved.seed, saved.generatorVersion, revision]
   );
   const exercise = useMemo(() => selectedExercise(selection), [selection]);
-  const session = useMemo(() => {
+  const course = useMemo(() => {
     if (!exercise) return null;
+    const runId = `${crypto.randomUUID()}:${String(revision)}`;
     const run = new TwoHandSession(exercise, DEFAULT_READING_PREFERENCES, {
-      runId: `${crypto.randomUUID()}:${String(revision)}`,
+      runId,
       startedAt: null
     });
     const first = exercise.pairs[0];
     if (first) run.prepare(first.id, 0);
-    return run;
+    return { session: run, runId };
   }, [exercise, revision]);
+  const session = course?.session ?? null;
   const [published, setPublished] = useState<{
     session: TwoHandSession;
     signature: string;
@@ -257,7 +261,25 @@ export function useTwoHandCourse() {
               if (!accepted) {
                 session.cancel(now);
                 setErrorId(idRef.current);
-              } else finish();
+              } else {
+                if (
+                  sessionRef.current === session &&
+                  course &&
+                  commit.presentationId === session.snapshot().presentationId
+                )
+                  publishJointStaffFeedback(
+                    feedback,
+                    {
+                      runId: course.runId,
+                      presentationId: idRef.current,
+                      receiptId: commit.presentationId
+                    },
+                    exercise.song,
+                    commit.noteIds,
+                    0
+                  );
+                finish();
+              }
               publish();
             },
             cancel(now, resetAll) {
@@ -298,7 +320,7 @@ export function useTwoHandCourse() {
             }
           }
         : null,
-    [session, exercise, requestHint, publish, finish]
+    [session, course, exercise, requestHint, publish, finish, feedback]
   );
   const presentation = useMemo(
     () =>
@@ -361,12 +383,14 @@ export function useTwoHandCourse() {
     sourceFilter: saved.sourceFilter,
     result: finished?.session === session ? finished.result : null,
     start: () => {
+      feedback?.clear();
       setIntro(false);
       dispatch(readingActions.twoHandSelected({ seed: saved.seed }));
     },
     playAgain: async (ensureSound: () => Promise<void>) => {
       await ensureSound();
       if (sessionRef.current !== session || !session) return;
+      feedback?.clear();
       playRequestedRef.current = true;
       dispatch(
         readingActions.twoHandSelected({
@@ -375,14 +399,19 @@ export function useTwoHandCourse() {
         })
       );
     },
-    exit: () => dispatch(readingActions.exit()),
-    newSeries: () =>
+    exit: () => {
+      feedback?.clear();
+      dispatch(readingActions.exit());
+    },
+    newSeries: () => {
+      feedback?.clear();
       dispatch(
         readingActions.twoHandSelected({
           seed: nextTwoHandSeed(saved.seed),
           generatorVersion: saved.generatorVersion
         })
-      ),
+      );
+    },
     setSourceFilter: (value: typeof saved.sourceFilter) =>
       dispatch(readingActions.twoHandSourceFilterChanged(value)),
     updatePreferences: (value: Partial<typeof preferences>) =>
@@ -392,6 +421,7 @@ export function useTwoHandCourse() {
         requestHint(Math.min(2, hintLevel + 1) as ReadingHintLevel, pair.id);
     },
     onRetry: () => {
+      feedback?.clear();
       if (pair) session?.requirePresentation(pair.id, performance.now());
       setErrorId(null);
       setRetry((value) => value + 1);

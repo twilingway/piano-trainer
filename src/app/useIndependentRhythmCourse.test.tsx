@@ -3,6 +3,8 @@ import { StrictMode, act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PracticeSession } from "../practice/session";
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+const staffFeedback = { publish: vi.fn<LessonStaffFeedbackSink["publish"]>(), clear: vi.fn() };
 import type { Trainer } from "../practice/Trainer";
 import type { TrainerIndependentRhythmPolicy } from "../practice/independentRhythmPolicy";
 import type { KeyEvent, MidiDevice } from "../input/midiInput";
@@ -63,7 +65,7 @@ const setPlaying = vi.fn((next: boolean) => {
 });
 const trainerRef = { current: { configureCourse, setPlaying } as unknown as Trainer };
 function Harness() {
-  const value = useIndependentRhythmCourse();
+  const value = useIndependentRhythmCourse(staffFeedback);
   useIndependentRhythmTrainer(value, trainerRef, true, blocked, devices, selectedDeviceId);
   useEffect(() => {
     course = value;
@@ -512,5 +514,67 @@ describe("independent rhythm React shell and actual tempo clock", () => {
     expect(course.ready).toBe(true);
     expect(course.error).toBeNull();
     expect(required(course.scene).song).not.toBe(oldSong);
+  });
+});
+
+describe("independent-rhythm accepted staff feedback", () => {
+  it("publishes each new authored hit once with the phase presentation and ignores stale policy input", async () => {
+    select();
+    const firstId = required(course.presentation).id;
+    await start();
+    expect(staffFeedback.publish).not.toHaveBeenCalled();
+    solvePhase();
+    expect(staffFeedback.publish.mock.calls.flatMap(([receipt]) => receipt.notes)).toHaveLength(8);
+    expect(
+      staffFeedback.publish.mock.calls.every(([receipt]) => receipt.presentationId === firstId)
+    ).toBe(true);
+    const firstNotes = staffFeedback.publish.mock.calls.flatMap(([receipt]) => receipt.notes);
+    expect(new Set(firstNotes.map((note) => note.noteId)).size).toBe(8);
+    const count = staffFeedback.publish.mock.calls.length;
+    frame(now + 10);
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(count);
+    now += 100;
+    loadScene();
+    const secondId = required(course.presentation).id;
+    expect(secondId).not.toBe(firstId);
+    await start();
+    solvePhase();
+    expect(
+      staffFeedback.publish.mock.calls
+        .filter(([receipt]) => receipt.presentationId === secondId)
+        .flatMap(([receipt]) => receipt.notes)
+    ).toHaveLength(24);
+    const oldPolicy = required(policy),
+      oldPractice = required(practice);
+    act(() => {
+      course.start();
+    });
+    const afterReset = staffFeedback.publish.mock.calls.length;
+    act(() => {
+      oldPolicy.onFrame(oldPractice, true, now, oldPractice.tempoClockReceipt(now));
+    });
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(afterReset);
+    expect(staffFeedback.clear).toHaveBeenCalled();
+  });
+});
+
+describe("independent-rhythm rejected staff feedback", () => {
+  it("does not decorate wrong pitches, count-in frames or preparation hints", async () => {
+    select();
+    act(() => {
+      course.setShowKeyHints(true);
+    });
+    act(() => {
+      course.policy?.onCuePresented?.([48, 60], now);
+    });
+    expect(staffFeedback.publish).not.toHaveBeenCalled();
+    await start();
+    frame(now + 100);
+    expect(staffFeedback.publish).not.toHaveBeenCalled();
+    const zero = required(required(practice).tempoClockReceipt(now).startPerformanceMs);
+    input("down", 61, zero);
+    input("up", 61, zero + 10);
+    frame(zero + 251);
+    expect(staffFeedback.publish).not.toHaveBeenCalled();
   });
 });

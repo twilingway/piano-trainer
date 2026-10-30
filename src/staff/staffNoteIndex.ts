@@ -12,13 +12,24 @@ export interface NoteIndex {
   /** Sounding notes only: rests cannot receive note clicks or take marks. */
   readonly beats: Map<SVGGElement, number>;
   readonly heads: Map<string, SVGElement[]>;
+  /** Exact per-key heads for feedback; ordinary chord painting keeps the full shapes above. */
+  readonly feedbackHeads?: Map<string, SVGElement[]>;
   /** Rest glyphs and noteheads both locate the continuous musical cursor. */
   readonly cursorBeats: Map<SVGElement, number>;
+}
+
+/** OSMD's public chord index matches VexFlow's note_heads / drawn vf-notehead order. */
+export function feedbackNotehead(note: VexFlowGraphicalNote): SVGElement | undefined {
+  const index = note.vfnoteIndex;
+  if (!Number.isInteger(index) || index < 0) return undefined;
+  const head = note.getNoteheadSVGs()[index];
+  return head instanceof SVGElement ? head : undefined;
 }
 
 export function indexNotes(osmd: OpenSheetMusicDisplay): NoteIndex {
   const beats = new Map<SVGGElement, number>();
   const heads = new Map<string, SVGElement[]>();
+  const feedbackHeads = new Map<string, SVGElement[]>();
   const cursorBeats = new Map<SVGElement, number>();
   for (const row of osmd.GraphicSheet.MeasureList) {
     for (const measure of row) {
@@ -38,12 +49,14 @@ export function indexNotes(osmd: OpenSheetMusicDisplay): NoteIndex {
             beats.set(element, beat);
             const key = markKey(beat, note.sourceNote.halfTone + 12);
             heads.set(key, [...(heads.get(key) ?? []), ...shapes]);
+            const head = feedbackNotehead(note);
+            if (head) feedbackHeads.set(key, [...(feedbackHeads.get(key) ?? []), head]);
           }
         }
       }
     }
   }
-  return { beats, heads, cursorBeats };
+  return { beats, heads, feedbackHeads, cursorBeats };
 }
 
 /** Each drawn musical entry, including silence, with its SVG position and line. */

@@ -1,3 +1,4 @@
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
 import {
   useCallback,
   useLayoutEffect,
@@ -26,13 +27,14 @@ export { useIndependentRhythmTrainer } from "./useIndependentRhythmTrainer";
 
 function controllerFor(
   selection: IndependentRhythmSelection,
-  save: ConstructorParameters<typeof IndependentRhythmController>[1]
+  save: ConstructorParameters<typeof IndependentRhythmController>[1],
+  feedback?: LessonStaffFeedbackSink
 ) {
-  return selection.active ? new IndependentRhythmController(selection, save) : null;
+  return selection.active ? new IndependentRhythmController(selection, save, feedback) : null;
 }
 const emptySubscribe = () => () => undefined;
 const emptySnapshot = () => null;
-export function useIndependentRhythmCourse() {
+export function useIndependentRhythmCourse(feedback?: LessonStaffFeedbackSink) {
   const { locale } = useI18n();
   const active = useAppSelector(
     (state) => state.reading.activeCourse === "independent-rhythm-reading"
@@ -58,7 +60,10 @@ export function useIndependentRhythmCourse() {
     },
     [dispatch]
   );
-  const controller = useMemo(() => controllerFor(selection, save), [selection, save]);
+  const controller = useMemo(
+    () => controllerFor(selection, save, feedback),
+    [selection, save, feedback]
+  );
   const currentRef = useRef(controller);
   useLayoutEffect(() => {
     currentRef.current = controller;
@@ -125,6 +130,7 @@ export function useIndependentRhythmCourse() {
     controller?.cancel();
   }, [controller]);
   const select = (seed: number) => {
+    feedback?.clear();
     controller?.cancel();
     dispatch(
       readingActions.independentRhythmSelected({ seed, generatorVersion: saved.generatorVersion })
@@ -172,6 +178,7 @@ export function useIndependentRhythmCourse() {
       select(nextIndependentRhythmSeed(saved.seed));
     },
     exit: () => {
+      feedback?.clear();
       controller?.cancel();
       dispatch(readingActions.exit());
     },

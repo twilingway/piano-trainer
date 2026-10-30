@@ -49,6 +49,7 @@ export function ConnectedPracticeWorkspace() {
     courseTabs,
     courseTopView,
     practiceActive,
+    lessonStaffFeedback,
     music,
     reading,
     rhythm
@@ -100,6 +101,7 @@ export function ConnectedPracticeWorkspace() {
         (runtime.course.saved.view === "tabs" || runtime.course.saved.view === "both") &&
         !runtime.comparing,
       courseTopView: runtime.course.saved.topView,
+      lessonStaffFeedback: runtime.lessonStaffFeedback,
       practiceActive: runtime.practiceActive
     }),
     shallowEqual
@@ -179,6 +181,7 @@ export function ConnectedPracticeWorkspace() {
               ? rhythm.presentation
               : reading.presentation
         }
+        lessonStaffFeedback={practiceActive ? lessonStaffFeedback : undefined}
         staffRetry={music.active ? music.retry : rhythm.active ? rhythm.retry : reading.retry}
         readingBeat={music.active ? undefined : reading.prompt?.beat}
         courseRange={

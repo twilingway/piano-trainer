@@ -1,3 +1,5 @@
+import type { LessonStaffFeedbackReceipt } from "../staff/lessonStaffFeedback";
+import { MusicStaffFeedback } from "./musicStaffFeedback";
 import type { KeyEvent } from "../input/midiInput";
 import { DictationSession } from "../musicLearning/dictationSession";
 import type { DictationResult } from "../musicLearning/dictationSession";
@@ -59,13 +61,16 @@ export class MusicCourseRun {
   private readonly recorder: MusicRunRecorder;
   private ready = false;
   private cancelled = false;
+  private readonly staffFeedback: MusicStaffFeedback;
 
   constructor(
     readonly activity: MusicActivity,
     readonly selection: MusicPersistentState,
     readonly identity: MusicRunIdentity,
-    readonly deviceId: string | undefined
+    readonly deviceId: string | undefined,
+    feedback?: (receipt: LessonStaffFeedbackReceipt) => void
   ) {
+    this.staffFeedback = new MusicStaffFeedback(activity, identity, feedback);
     this.recorder = new MusicRunRecorder(identity, activity.exercise.notes);
     const input = {
       source: selection.inputSource,
@@ -254,6 +259,7 @@ export class MusicCourseRun {
       this.receiveInput(event, session, playing, times, context)
     );
     if (!this.recorder.valid) this.cancel(times.received);
+    else this.staffFeedback.input(events);
     return events;
   }
   private receiveInput(
@@ -398,6 +404,7 @@ export class MusicCourseRun {
           hand: accompaniment ? ("left" as const) : ("right" as const),
           ...(accompaniment ? { onsetOffsetMs: accepted ? onsetOffsetMs : null } : {})
         };
+        if (accepted) this.staffFeedback.chord(step.startBeat, answer.hand);
         this.answers.push(answer);
         this.failedPitches = [];
         this.chordIndex++;

@@ -699,6 +699,50 @@ body {
   position: relative;
 }
 
+/* Feedback is clipped to the viewport, outside OSMD's measured SVG ink. */
+.staff-feedback {
+  position: fixed;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.staff-feedback__pulse {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #65ffbf;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(101 255 191 / 22%), transparent 70%);
+  box-shadow: 0 0 9px 2px rgb(36 255 163 / 70%);
+  pointer-events: none;
+  animation: lesson-staff-feedback-pop 520ms ease-out both;
+}
+
+@keyframes lesson-staff-feedback-pop {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.65);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.55);
+  }
+}
+
+@keyframes lesson-staff-feedback-still {
+  from,
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-feedback__pulse {
+    animation: lesson-staff-feedback-still 220ms linear both;
+  }
+}
 /* OSMD's cursor jumps from note to note: it stays, unseen, to steer the scrolling. */
 .staff img[id^="cursorImg"] {
   opacity: 0;

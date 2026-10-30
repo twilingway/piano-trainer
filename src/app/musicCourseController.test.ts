@@ -930,3 +930,67 @@ describe("MusicCourseController", () => {
     expect(relative.controller.getSnapshot().view.startPitch).toBeUndefined();
   });
 });
+
+describe("music controller staff feedback boundary", () => {
+  it("routes a complete played triad before publishing progress and rejects partial, stale and automatic notes", async () => {
+    const staffFeedback = { publish: vi.fn(), clear: vi.fn() };
+    const h = await harness({ course: "harmony", harmonyLesson: "triads" }, { staffFeedback });
+    await h.start();
+    const scene = h.controller.getSnapshot().scene;
+    if (!scene) throw new Error("Missing triad score");
+    const id = scene.id,
+      start = now;
+    const pitches = scene.notes.map((note) => note.pitch);
+    pitches.forEach((pitch, index) => {
+      h.send("down", pitch, start + 10 + index * 10);
+      expect(staffFeedback.publish).not.toHaveBeenCalled();
+    });
+    let statusAtFeedback: string | undefined;
+    staffFeedback.publish.mockImplementation(() => {
+      statusAtFeedback = h.controller.getSnapshot().view.status;
+    });
+    h.frame(start + 481);
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(1);
+    expect(staffFeedback.publish.mock.calls[0]?.[0]).toMatchObject({
+      presentationId: id,
+      notes: scene.song.notes.map((note) => ({
+        noteId: note.id,
+        pitch: note.pitch,
+        staffBeat: note.startBeat
+      }))
+    });
+    expect(statusAtFeedback).toBe("playing");
+    h.frame(start + 482);
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(1);
+    pitches.forEach((pitch) => {
+      h.send("up", pitch, start + 490);
+    });
+    const oldPolicy = h.controller.policy(id),
+      oldSession = h.session();
+    h.controller.command("new");
+    await flush();
+    expect(staffFeedback.clear).toHaveBeenCalled();
+    if (!oldSession) throw new Error("Missing old session");
+    oldPolicy.onFrame(oldSession, true, now + 1000);
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not turn listening or answer buttons into played-note feedback", async () => {
+    const staffFeedback = { publish: vi.fn(), clear: vi.fn() };
+    const h = await harness(
+      {
+        course: "harmony",
+        harmonyLesson: "triads",
+        harmonyMode: "name-chord"
+      },
+      { staffFeedback }
+    );
+    h.controller.command("listen");
+    await flush();
+    for (const request of audio.requests) request.onStarted(receipt(request));
+    h.frame(now + 1000);
+    const choice = h.controller.getSnapshot().view.choices?.[0];
+    if (choice) h.controller.choose(choice.value, "pointer");
+    expect(staffFeedback.publish).not.toHaveBeenCalled();
+  });
+});

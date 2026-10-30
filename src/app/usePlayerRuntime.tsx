@@ -1,3 +1,4 @@
+import { usePracticeCourses } from "./usePracticeCourses";
 import {
   dispatchMusicLessonAction,
   practiceLessonAction,
@@ -6,7 +7,6 @@ import {
   restartBasicPractice
 } from "./musicLessonAction";
 import { useSettingsPlayback } from "./useSettingsPlayback";
-import { useMusicCourse } from "./useMusicCourse";
 import { useMusicTrainer, usePracticeDisplayPrefs, musicClockAllowed } from "./useMusicTrainer";
 import { usePlayCountdown } from "./usePlayCountdown";
 import { useAppSelector } from "./storeHooks";
@@ -26,16 +26,11 @@ import { usePlayerLibrary } from "./usePlayerLibrary";
 import { useShortcuts } from "./useShortcuts";
 import { useSong } from "./useSong";
 import { useCourse } from "./useCourse";
-import { useReadingCourse, useReadingTrainer } from "./useReadingCourse";
-import { useRhythmCourse } from "./useRhythmCourse";
-import { useTwoHandCourse, useTwoHandTrainer } from "./useTwoHandCourse";
-import { useHeldBassCourse, useHeldBassTrainer } from "./useHeldBassCourse";
-import {
-  useIndependentRhythmCourse,
-  useIndependentRhythmTrainer
-} from "./useIndependentRhythmCourse";
+import { useReadingTrainer } from "./useReadingCourse";
+import { useTwoHandTrainer } from "./useTwoHandCourse";
+import { useHeldBassTrainer } from "./useHeldBassCourse";
+import { useIndependentRhythmTrainer } from "./useIndependentRhythmCourse";
 import { useRhythmTrainer } from "./useRhythmTrainer";
-import { useIntervalCourse } from "./useIntervalCourse";
 import { useIntervalAudioTrainer } from "./useIntervalAudio";
 import { DEFAULT_SCREEN_LAYOUT } from "./screenLayout";
 import { useSound } from "./useSound";
@@ -69,13 +64,16 @@ export function usePlayerRuntime() {
   const { sound, ensureSound, ensureIntervalSound } = useSound();
   const current = useSong(startFromRef);
   const course = useCourse(current.showSong);
-  const reading = useReadingCourse();
-  const intervals = useIntervalCourse();
-  const rhythm = useRhythmCourse();
-  const twoHand = useTwoHandCourse();
-  const heldBass = useHeldBassCourse();
-  const independentRhythm = useIndependentRhythmCourse();
-  const music = useMusicCourse();
+  const {
+    reading,
+    intervals,
+    rhythm,
+    twoHand,
+    heldBass,
+    independentRhythm,
+    music,
+    lessonStaffFeedback
+  } = usePracticeCourses();
   const lessonDialogsOpen =
     lessonWindow !== null ||
     libraryOpen ||
@@ -456,6 +454,7 @@ export function usePlayerRuntime() {
     rhythm,
     intervals,
     practiceActive,
+    lessonStaffFeedback,
     displayPrefs: workspacePrefs,
     sound,
     t,

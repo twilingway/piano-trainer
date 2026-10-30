@@ -4,6 +4,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HIDDEN_LESSON_CUE } from "../reading/fingerCues";
 import { PracticeSession } from "../practice/session";
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+const staffFeedback = { publish: vi.fn<LessonStaffFeedbackSink["publish"]>(), clear: vi.fn() };
 import type { Trainer } from "../practice/Trainer";
 import { createAppStore, type AppStore } from "./store";
 import { withTestStore } from "./storeTestSupport";
@@ -25,7 +27,7 @@ const trainerRef = {
   current: { configureCourse, setPlaying, cancelInput: vi.fn() } as unknown as Trainer
 };
 function Harness({ connect = false }: { connect?: boolean }) {
-  const value = useHeldBassCourse();
+  const value = useHeldBassCourse(staffFeedback);
   useHeldBassTrainer(value, trainerRef, connect, false);
   useEffect(() => {
     course = value;
@@ -282,4 +284,63 @@ describe("held bass course shell with the actual single clock", () => {
     expect(course.playRequestedRef.current).toBe(false);
     expect(store.getState().reading.heldBass.history).toHaveLength(0);
   });
+});
+
+describe("held-bass accepted staff feedback", () => {
+  it("decorates the initial pair and then only each new melody onset, without repeated held bass", () => {
+    const practice = select(),
+      fragment = required(course.fragment);
+    const presentationId = required(course.presentation).id;
+    firstOnset(practice);
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(1);
+    expect(staffFeedback.publish.mock.calls[0]?.[0]).toMatchObject({
+      presentationId,
+      notes: fragment.song.notes
+        .filter((note) => required(fragment.steps[0]).includes(note.id))
+        .map((note) => ({ noteId: note.id, pitch: note.pitch, staffBeat: note.startBeat }))
+    });
+    const start = now + 500;
+    frame(practice, start);
+    input(practice, "down", required(fragment.melodyPitches[1]), start + 10);
+    input(practice, "up", required(fragment.melodyPitches[1]), start + 20);
+    frame(practice, start + 261);
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(2);
+    const next = required(
+      fragment.song.notes.find((note) => note.id === fragment.melodyNoteIds[1])
+    );
+    expect(staffFeedback.publish.mock.calls[1]?.[0].notes).toEqual([
+      { noteId: next.id, pitch: next.pitch, staffBeat: next.startBeat }
+    ]);
+    frame(practice, start + 262);
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(2);
+    act(() => {
+      course.exit();
+    });
+    expect(staffFeedback.clear).toHaveBeenCalled();
+  });
+
+  it.each([true, false])(
+    "does not decorate accepted=true with a rejected clock receipt (wrong timestamp %s)",
+    (wrongTimestamp) => {
+      const practice = select(),
+        fragment = required(course.fragment),
+        start = now;
+      input(practice, "down", fragment.bassPitch, start + 10);
+      input(practice, "down", required(fragment.melodyPitches[0]), start + 110);
+      input(practice, "up", required(fragment.melodyPitches[0]), start + 120);
+      const at = start + 361;
+      now = at;
+      practice.tick(at);
+      act(() => {
+        const policy = required(course.policy);
+        const request = required(policy.onFrame(practice, true, at, practice.clockReceipt(at)));
+        policy.onCommit?.(request, true, {
+          ...practice.clockReceipt(at),
+          atMs: at + (wrongTimestamp ? 1 : 0)
+        });
+      });
+      expect(staffFeedback.publish).not.toHaveBeenCalled();
+      expect(course.snapshot?.status).toBe("retry");
+    }
+  );
 });

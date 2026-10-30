@@ -16,6 +16,12 @@ import { initialReadingState } from "./readingSlice";
 import { trainerGuidance } from "../practice/readingPolicy";
 import { HIDDEN_LESSON_CUE } from "../reading/fingerCues";
 
+import type { LessonStaffFeedbackReceipt } from "../staff/lessonStaffFeedback";
+
+const feedback = {
+  publish: vi.fn<(receipt: LessonStaffFeedbackReceipt) => void>(),
+  clear: vi.fn()
+};
 let root: Root;
 let host: HTMLDivElement;
 let store: AppStore;
@@ -28,7 +34,7 @@ const configureCourse = vi.fn();
 const trainerRef = { current: { configureCourse } as unknown as Trainer };
 
 function Harness({ blocked = false }: { blocked?: boolean }) {
-  const value = useReadingCourse();
+  const value = useReadingCourse(feedback);
   useReadingTrainer(value, trainerRef, true, blocked);
   useEffect(() => {
     reading = value;
@@ -111,6 +117,8 @@ function answer(practice: PracticeSession, atMs: number) {
 }
 
 beforeEach(() => {
+  feedback.publish.mockClear();
+  feedback.clear.mockClear();
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   now = 1000;
   visible = "visible";
@@ -578,5 +586,97 @@ describe("reading course presentation and trainer wiring", () => {
     expect(reading.result).toBeNull();
     expect(reading.snapshot?.answers).toEqual([]);
     expect(store.getState().reading.history).toHaveLength(1);
+  });
+});
+
+describe("accepted reading staff feedback", () => {
+  it.each(["right", "left"] as const)(
+    "captures the old %s prompt and its locally numbered beat before advancing",
+    (hand) => {
+      const practice = hand === "right" ? selection() : bassSelection();
+      present();
+      const oldId = reading.presentation?.id;
+      const oldNote = reading.note;
+      const oldBeat = reading.prompt?.beat;
+      feedback.clear.mockClear();
+      answer(practice, 1100);
+      expect(feedback.publish).toHaveBeenCalledTimes(1);
+      expect(feedback.publish).toHaveBeenLastCalledWith({
+        runId: reading.snapshot?.answers[0]?.attempts[0]?.runId,
+        receiptId: reading.snapshot?.answers[0]?.attempts[0]?.attemptId,
+        presentationId: oldId,
+        notes: [{ noteId: oldNote?.id, staffBeat: oldBeat, pitch: oldNote?.pitch }]
+      });
+      practice.tick(1700);
+      update(practice, true, 1700);
+      present();
+      expect(reading.note?.startBeat).toBeGreaterThan(0);
+      const secondNote = reading.note;
+      const secondBeat = reading.prompt?.beat;
+      const secondId = reading.presentation?.id;
+      answer(practice, 1800);
+      expect(feedback.publish).toHaveBeenCalledTimes(2);
+      expect(feedback.publish.mock.calls[1]?.[0]).toMatchObject({
+        presentationId: secondId,
+        notes: [{ noteId: secondNote?.id, staffBeat: secondBeat, pitch: secondNote?.pitch }]
+      });
+      expect(secondBeat).not.toBe(secondNote?.startBeat);
+      expect(feedback.clear).not.toHaveBeenCalled();
+    }
+  );
+
+  it("does not publish for wrong answers, hints, blocked input or stale callbacks after reset", () => {
+    const practice = selection();
+    present();
+    now = 1100;
+    const wrong = { ...event(practice), pitch: (reading.note?.pitch ?? 60) + 12 };
+    act(() => {
+      reading.policy?.onJudgement(wrong, practice.pressKeyAt(wrong.pitch, now), now, now);
+      reading.hint();
+    });
+    frame(1116);
+    expect(feedback.publish).not.toHaveBeenCalled();
+    render(true);
+    act(() => {
+      reading.policy?.onJudgement(
+        event(practice),
+        [{ type: "hit", noteId: practice.nextDue()[0]?.id ?? "", offset: 0 }],
+        now,
+        now
+      );
+    });
+    expect(feedback.publish).not.toHaveBeenCalled();
+    render(false);
+    update(practice, true, 1200);
+    const stalePolicy = reading.policy;
+    const staleInput = event(practice);
+    feedback.clear.mockClear();
+    act(() => {
+      reading.newSeries();
+      stalePolicy?.onJudgement(staleInput, practice.pressKeyAt(staleInput.pitch, 1300), 1300, 1300);
+      expect(feedback.clear).toHaveBeenCalled();
+      expect(feedback.publish).not.toHaveBeenCalled();
+    });
+  });
+
+  it("clears synchronously on retry and exit but a correct answer after a hint can publish", () => {
+    const practice = selection();
+    present();
+    act(() => {
+      reading.hint();
+    });
+    frame(1016);
+    answer(practice, 1100);
+    expect(feedback.publish).toHaveBeenCalledTimes(1);
+    feedback.clear.mockClear();
+    act(() => {
+      reading.onRetry();
+      expect(feedback.clear).toHaveBeenCalled();
+    });
+    feedback.clear.mockClear();
+    act(() => {
+      reading.exit();
+      expect(feedback.clear).toHaveBeenCalled();
+    });
   });
 });
