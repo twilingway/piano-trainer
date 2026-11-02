@@ -312,3 +312,27 @@ numerical tolerance.
 принудительной остановке host. Новый Windows JobObject lifecycle проверяется отдельно; frozen
 quota89 guard и исходная сцена не меняются. Physical class/calibration остаются null; новых зелёных
 записей нет.
+
+### LP593 continuation и совместимость source capture с Blender5.2
+
+Ограниченное продолжение LP593 завершено exit0 после37 actual audits и3 принятых проходов: gap2
+уменьшен1.335778→1.253405мм. Серия остановилась на UNAVAILABLE_ACTUAL_GAP_WITNESS_SWITCH: оба hard
+skin constraints сохраняли ROW/key/coplanar face, но один probe сменил actual minimum-pad ROW.
+Лучший проверенный endpoint сохранён. Отчёт:
+`c3-lp593-continuation-v1/runs/0ed0a6f9f935/report.json`, SHA
+`8ba4390b918f398fdffa5801be74084c961ca660243c2bcb47064e403a7fecd8`. Готовится отдельная
+objective-branch family с fresh single-ROW gap и прежним actual minimum/contact acceptance;
+физические ограничения не ослабляются.
+
+Первый read-only background Blender631 завершился ошибкой73 до переключения префиксов:
+`NodesModifier.keys()` в установленном5.2.2 не поддерживает старое IDProperty чтение. Job lifecycle
+завершил принадлежащие задаче host/child; checksum исходного `.blend` после запуска остался
+`9f3ae5f1c731c07693637b19aed31541f6c29d6c77713823af437fb4ad4dc9ff`.
+
+[Blender5.2 изменил API настроек GN modifier](https://developer.blender.org/docs/release_notes/compatibility/#blender-52):
+новый профиль читает полный Runtime RNA `properties.inputs/outputs/panels` и сверяет его с interface
+sockets. Неподдерживаемые custom properties обозначаются как NOT_SUPPORTED с values=null, а не как
+пустая конфигурация. Все неизвестные operational fields остаются ошибкой. Новый v3 прошёл66 CPU
+tests; до следующего actual run требуется независимое review81 pins. Exact PAD/SIDE no-op,
+source/restore hashes и защищённый Windows Job lifecycle остаются обязательными. Сохранённой новой
+сцены и физического допуска пока нет.
