@@ -333,10 +333,8 @@ export class RoadLayer {
   }
   setKeyStyle(style: KeyStyle): Promise<void> {
     this.style = style;
-    return (
-      this.three?.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard) ??
-      Promise.resolve()
-    );
+    if (!this.three) return Promise.resolve();
+    return this.three.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard);
   }
   get drawsNativeRoad(): boolean {
     return this.three?.drawsRoad === true;
@@ -359,6 +357,7 @@ export class RoadLayer {
     this.three.onFreeCamera = changed;
     this.three.setFreeCamera(on);
   }
+  readonly startupStatus = () => this.three?.startupStatus ?? "ready";
   get handStatus(): "idle" | "loading" | "ready" | "error" {
     return this.three?.handStatus ?? "idle";
   }

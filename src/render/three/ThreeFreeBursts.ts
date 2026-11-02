@@ -50,6 +50,7 @@ export class ThreeFreeBursts {
   private readonly eye = new Vector3();
   private readonly scale = new Vector3();
   private disposed = false;
+  settled = false;
 
   async load(): Promise<void> {
     try {
@@ -58,6 +59,8 @@ export class ThreeFreeBursts {
       else this.setAtlas(atlas);
     } catch (error) {
       console.warn("The free field explosion did not load; notes appear without it", error);
+    } finally {
+      this.settled = true;
     }
   }
 

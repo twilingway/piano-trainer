@@ -1,6 +1,7 @@
 import { Matrix4, Mesh, Quaternion, SRGBColorSpace, TextureLoader, Vector3 } from "three";
 import type { Group, Material, MeshStandardMaterial, Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { readStartupResponse } from "../../startup/readResponse";
 import { unzlibSync } from "fflate";
 import { disposePianistModel } from "./disposePianistModel";
 import { validateKeyboard88Atlas } from "./keyboard88Atlas";
@@ -243,12 +244,11 @@ export async function loadKeyboard88Performer(
   const deps = { ...defaults, ...options.dependencies };
   const signal = options.signal;
   const url = options.manifestUrl ?? DEFAULT_URL;
-  const fetchBytes = async (path: string, max: number): Promise<Uint8Array> => {
+  const fetchBytes = async (path: string, max: number, expected?: number): Promise<Uint8Array> => {
     checkAbort(signal);
     const response = await deps.fetch(path, { signal: signal ?? null });
     if (!response.ok) throw new Error(`keyboard88 HTTP ${String(response.status)}`);
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length > max) throw new Error("keyboard88 response exceeds budget");
+    const bytes = await readStartupResponse(response, path, max, expected);
     checkAbort(signal);
     return bytes;
   };
@@ -257,7 +257,7 @@ export async function loadKeyboard88Performer(
   const payloads = await Promise.all(
     FILES.map(async (name) => {
       const descriptor = manifest.files[name];
-      const bytes = await fetchBytes(prefix + descriptor.url, descriptor.bytes);
+      const bytes = await fetchBytes(prefix + descriptor.url, descriptor.bytes, descriptor.bytes);
       if (bytes.byteLength !== descriptor.bytes || (await deps.digest(bytes)) !== descriptor.sha256)
         throw new Error(`keyboard88 ${name} hash or size mismatch`);
       return bytes;

@@ -1,3 +1,4 @@
+import { startupProgress } from "../../startup/bridge";
 import { Bone, Group, LinearSRGBColorSpace, Matrix4, Mesh, PropertyBinding } from "three";
 import type { BufferGeometry, MeshStandardMaterial, Object3D, Quaternion } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -83,7 +84,10 @@ export const workerPlanner: Planner = (notes, onChunk, context) => {
 /** Mm into the keys: the solver keyboard's length. */
 const KEY_LENGTH = 150;
 export async function loadHand(): Promise<Object3D> {
-  const model = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/hand.glb`);
+  const url = `${import.meta.env.BASE_URL}models/hand.glb`;
+  const model = await new GLTFLoader().loadAsync(url, (event) => {
+    startupProgress(url, event.loaded);
+  });
   model.scene.traverse((node) => {
     if (!(node instanceof Mesh)) return;
     // Its bounds stay those of the rest pose: never cull the posed hand.

@@ -1,4 +1,5 @@
 import { toneLessonMessages } from "./toneLessonMessages";
+import { startupMessages } from "./startupMessages";
 import { fingerCueMessages } from "./fingerCueMessages";
 import { guidedLessonMessages } from "./guidedLessonMessages";
 import { musicProgressMessages } from "./musicProgressMessages";
@@ -30,6 +31,7 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...startupMessages,
   ...musicProgressMessages,
   ...musicControllerMessages,
   ...musicCourseMessages,

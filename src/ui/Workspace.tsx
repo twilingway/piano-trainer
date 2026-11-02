@@ -3,7 +3,8 @@ import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import neonRailUrl from "../fx/neon-rail.webp?url";
 import { useI18n } from "../app/useI18n";
 import type { ReactNode, Ref, RefObject } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { startupReady } from "../startup/bridge";
 import { secondsAt, type Song } from "../song/song";
 
 import type { StaffPrefs } from "../app/useStaffPrefs";
@@ -93,6 +94,9 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   // With the lane hidden or cut to its keys, the staff may take more of the screen.
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
   const staffShown = Boolean(props.staffXml) && prefs.visible;
+  useEffect(() => {
+    if (!staffShown) startupReady("staff");
+  }, [staffShown]);
   const dualScore = Boolean(props.scoreBoard) && staffShown;
   const sharedTabs = useMemo(
     () =>
@@ -128,6 +132,9 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
       <div className="staff-slot">
         {transcription && <span className="staff-label">{t("Оригинал")}</span>}
         <Staff
+          onLoadSettled={() => {
+            startupReady("staff");
+          }}
           key={props.staffRetry ?? 0}
           lessonStaffFeedback={
             props.course &&

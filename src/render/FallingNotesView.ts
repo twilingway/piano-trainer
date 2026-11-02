@@ -1,3 +1,4 @@
+import { ViewStartupPresentation } from "./viewStartupPresentation";
 import { ViewNoteSettings } from "./ViewNoteSettings";
 import { HandStatusSignal, type HandModelStatus } from "./handStatusSignal";
 import { Application, Container, Texture, type FederatedPointerEvent } from "./flatThree";
@@ -8,7 +9,7 @@ import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
 import { destroyViewContainers, initializeViewApplication } from "./viewApplication";
 import { bakeDigits, bakeNames, type FallingNoteNames } from "./bakeLabels";
-import { bindKeyboardPointer } from "./bindKeyboardPointer";
+import { bindViewKeyboardPointer } from "./viewApplication";
 import { ComputerKeyboardLayer, type KeysLayer } from "./ComputerKeyboardLayer";
 import { computerGeometry, computerWidth } from "./computerKeyboardLayout";
 import { ComputerKeys, type ComputerKeyboard } from "./computerKeys";
@@ -116,6 +117,7 @@ export class FallingNotesView {
   private pan = 0;
   private panLayout = { width: 0, total: 0 };
   private ready = false;
+  readonly startup = new ViewStartupPresentation(this.app.ticker);
   private destroyed = false;
   private resizeObserver: ResizeObserver | undefined;
   private fpsMeter: FpsMeter | undefined;
@@ -177,6 +179,7 @@ export class FallingNotesView {
     this.computerKeyboard = computerKeyboard;
     this.setLocale(this.locale);
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
+    this.startup.setSources(keyboard, this.hands, this.road);
     this.road.setSceneEffects([this.plasma.container, this.road.effects, this.fx.container]);
     this.road.setCamera(this.cameraPrefs);
     this.noteSettings.apply();
@@ -207,12 +210,8 @@ export class FallingNotesView {
     await Promise.all([loadViewAssets(this.fx, notes, this.road, this.hands), this.plasma.load()]);
     if (this.isDestroyed()) return;
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
-    const stage = this.app.stage;
-    stage.eventMode = "static";
-    stage.hitArea = this.app.screen;
-    this.unbindKeyboardPointer = bindKeyboardPointer(
-      stage,
-      this.app.canvas,
+    this.unbindKeyboardPointer = bindViewKeyboardPointer(
+      this.app,
       this.keysPointer.bind(this),
       viewKeyRelease(this)
     );
@@ -505,6 +504,7 @@ export class FallingNotesView {
     this.fx.hitContainer.renderable = !effectRoad?.sceneCamera;
     // React's GameBoard owns the score panels; Three only draws transient strike grades.
     drawViewHud(this.hud, state, this.keys, road, this.pan, geometry.hitY, hitLineY, delta);
+    this.startup.markDrawn();
   }
 
   /**

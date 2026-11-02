@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   resetFreeCamera: vi.fn(),
   freeKeyAt: vi.fn(),
   nativeEffectsReady: false,
+  startupResourcesSettled: true,
   handPresent: true,
   loadPianist: vi.fn(),
   pianistConstruct: vi.fn(),
@@ -54,6 +55,9 @@ vi.mock("./ThreeStage", () => ({
     setSongStage = mocks.setSongStage;
     addToKeys = mocks.addToKeys;
     removeFromKeys = mocks.removeFromKeys;
+    get startupResourcesSettled() {
+      return mocks.startupResourcesSettled;
+    }
     get nativeEffectsReady() {
       return mocks.nativeEffectsReady;
     }
@@ -187,6 +191,7 @@ function deferred<T>() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.nativeEffectsReady = false;
+  mocks.startupResourcesSettled = true;
   mocks.handPresent = true;
   mocks.publicReady = false;
   mocks.publicStatus = "loading";
@@ -1109,4 +1114,71 @@ it("routes native octave visibility and projection before the final flat overlay
   await view.host.setEnabled(false);
   expect(marks.setNative).toHaveBeenLastCalledWith(false);
   view.host.destroy();
+});
+
+describe("startup scene presentation", () => {
+  it("accepts visible flat keys when saved perspective is enabled but its road is hidden", async () => {
+    const view = fixture();
+    view.keys.container.visible = true;
+    view.road.visible = false;
+    await view.host.setEnabled(false, true);
+    expect(view.host.startupStatus).toBe("ready");
+    view.tick();
+    expect(mocks.draw).not.toHaveBeenCalled();
+    expect(view.host.startupStatus).toBe("ready");
+    view.host.destroy();
+  });
+
+  it("waits for the model and an actual native frame instead of accepting loaded geometry", async () => {
+    const kit = deferred<{ keys: Map<number, unknown>; dispose: () => void }>();
+    mocks.loadKit.mockReturnValueOnce(kit.promise);
+    const view = fixture();
+    view.hands.container.visible = false;
+    const loading = view.host.setEnabled(true);
+    expect(view.host.startupStatus).toBe("loading");
+    kit.resolve({ keys: new Map(), dispose: vi.fn() });
+    await loading;
+    expect(view.host.startupStatus).toBe("loading");
+    view.tick();
+    expect(view.host.startupStatus).toBe("ready");
+    expect(mocks.draw).toHaveBeenCalledOnce();
+    view.host.destroy();
+  });
+
+  it("keeps loading while selected hands load and presents their first completed frame", async () => {
+    const view = fixture();
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(view.host.startupStatus).toBe("loading");
+    mocks.publicReady = true;
+    mocks.publicStatus = "ready";
+    expect(view.host.startupStatus).toBe("loading");
+    view.tick();
+    expect(view.host.startupStatus).toBe("ready");
+    view.host.destroy();
+  });
+
+  it("waits for decorative resource settlement and accepts failed optional hands", async () => {
+    const view = fixture();
+    mocks.publicStatus = "error";
+    mocks.startupResourcesSettled = false;
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(view.host.startupStatus).toBe("loading");
+    mocks.startupResourcesSettled = true;
+    expect(view.host.startupStatus).toBe("loading");
+    view.tick();
+    expect(view.host.startupStatus).toBe("ready");
+    view.host.destroy();
+  });
+
+  it("settles a failed optional native model so the existing flat fallback can be presented", async () => {
+    const view = fixture();
+    mocks.loadKit.mockRejectedValueOnce(new Error("offline"));
+    await view.host.setEnabled(true);
+    expect(view.host.startupStatus).toBe("ready");
+    view.tick();
+    expect(view.render).toHaveBeenCalledOnce();
+    view.host.destroy();
+  });
 });

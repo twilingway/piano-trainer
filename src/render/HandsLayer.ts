@@ -54,6 +54,10 @@ export class HandsLayer {
   /** The 3D renders loaded so far; fetched only once the 3D style is chosen. */
   private readonly renders: HandSpriteDefinition[] = [];
   private rendersRequested = false;
+  private rendersSettled = false;
+  get startupSettled(): boolean {
+    return this.live || this.style !== "rendered" || this.rendersSettled;
+  }
   private style: HandStyle = "drawn";
   private readonly markerTexture = bakeMarker();
   private readonly poses = new Map<Hand, HandPose>();
@@ -133,6 +137,7 @@ export class HandsLayer {
         }
       })
     );
+    this.rendersSettled = true;
   }
 
   /** The local pianist sits behind the 3D view's keys, the live hands playing in front of it. */

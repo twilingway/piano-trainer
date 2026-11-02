@@ -155,6 +155,7 @@ export class KeyboardLayer {
   private painted: PaintedFaces | undefined;
   private disposed = false;
   private paintGeneration = 0;
+  paintLoading = false;
   /** The style the painted faces are of. */
   private style: Exclude<KeyStyle, "3d"> = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
@@ -224,6 +225,7 @@ export class KeyboardLayer {
    */
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
     const generation = ++this.paintGeneration;
+    this.paintLoading = true;
     this.modelFaces = style === "3d";
     const paintedStyle = style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
@@ -240,6 +242,8 @@ export class KeyboardLayer {
       this.style = paintedStyle;
     } catch (error) {
       console.warn("The painted key faces did not load; keeping the keys as they are", error);
+    } finally {
+      if (generation === this.paintGeneration) this.paintLoading = false;
     }
   }
 
