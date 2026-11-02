@@ -21,7 +21,8 @@ export function useKeyInput(
   trainerReady = false,
   pianoBlocked = false,
   rhythm = false,
-  observeAllInputs = false
+  observeAllInputs = false,
+  songPlaying = false
 ) {
   const observeAllRef = useRef(observeAllInputs);
   useLayoutEffect(() => {
@@ -51,7 +52,7 @@ export function useKeyInput(
   /** Which MIDI input plays; "all" listens to every one. */
   const [midiDeviceId, setMidiDeviceId] = useState("all");
   const midiDeviceRef = useRef("all");
-  const { controls: output, isEcho } = useMidiOutput(trainerRef, trainerReady);
+  const { controls: output, isEcho } = useMidiOutput(trainerRef, trainerReady, songPlaying);
 
   useEffect(() => {
     const onKey = (event: KeyEvent) => {

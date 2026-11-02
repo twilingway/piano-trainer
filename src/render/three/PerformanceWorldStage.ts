@@ -1,3 +1,5 @@
+import { FLAME, MIST, HIT, GLITTER } from "./worldStageEffectDefinitions";
+import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "../flatEffectSettings";
 import { performanceRingField } from "./performanceRingField";
 import type { ThreeRoadFrame } from "./ThreeRoadFrame";
 import { PerformanceNoteSpirals } from "./PerformanceNoteSpirals";
@@ -7,6 +9,7 @@ import { performanceOutroTimeline } from "./performanceOutroTimeline";
 import { Box3, Group, PointLight, Vector3 } from "three";
 import type { Camera, Object3D } from "three";
 import type { EnergySource } from "../noteEnergy";
+import { nativeKeyContactPoint } from "../nativeKeyContactAnchors";
 import type { KeyBox } from "./keyBoxes";
 import { posedSceneBounds } from "./posedSceneBounds";
 import { PerformancePlatform } from "./PerformancePlatform";
@@ -23,39 +26,6 @@ import { PerformanceFxState, performanceAtlasFrame } from "./performanceFxState"
 import { performanceOpeningSeconds, performanceSceneTimeline } from "./performanceSceneTimeline";
 import { WorldAtlasBatch } from "./WorldAtlasBatch";
 
-const FLAME = {
-  url: new URL("../../fx/plasma-flame.webp", import.meta.url).href,
-  columns: 8,
-  rows: 12,
-  frames: 96,
-  fps: 24,
-  anchorY: 0.88
-};
-const MIST = {
-  additive: false,
-  url: new URL("../../fx/piano-mist.webp", import.meta.url).href,
-  columns: 8,
-  rows: 12,
-  frames: 96,
-  fps: 16,
-  anchorY: 0.8125
-};
-const HIT = {
-  url: new URL("../../fx/piano-hit.webp", import.meta.url).href,
-  columns: 4,
-  rows: 3,
-  frames: 12,
-  fps: 24,
-  anchorY: 0.5 + 50 / 384
-};
-const GLITTER = {
-  url: new URL("../../fx/piano-glitter.webp", import.meta.url).href,
-  columns: 6,
-  rows: 4,
-  frames: 24,
-  fps: 24,
-  anchorY: 0.5 + 200 / 512
-};
 interface WorldKey {
   readonly pitch: number;
   readonly x: number;
@@ -95,6 +65,7 @@ export class PerformanceWorldStage {
     () => new PointLight(0xffffff, 0, 240, 2)
   );
   private readonly bounds = new Box3();
+  private readonly logicalKeyBounds = new Box3();
   private readonly position = new Vector3();
   private readonly keys = new Map<number, WorldKey>();
   private boxes: readonly KeyBox[] | undefined;
@@ -102,6 +73,10 @@ export class PerformanceWorldStage {
   private scale = -1;
   private nearZ = -1;
   private lastOn = false;
+  private pressesOn = true;
+  private notesOn = true;
+  private pressesSince = -Infinity;
+  private notesSince = -Infinity;
   private layoutValue: PerformanceStageLayout | undefined;
   private sign: PerformanceNeonSign | undefined;
   private signPlacement: PerformanceSignPlacement | undefined;
@@ -182,19 +157,25 @@ export class PerformanceWorldStage {
     )
       return;
     posedSceneBounds(subject, this.bounds);
-    if (this.bounds.isEmpty()) return;
+    if (this.bounds.isEmpty()) {
+      // Hidden keys still own the hit line; their existing layout is enough for effect anchors.
+      for (const box of boxes) {
+        this.logicalKeyBounds.min.set(box.x - box.width / 2, box.bottom, -box.back);
+        this.logicalKeyBounds.max.set(box.x + box.width / 2, box.top, -box.front);
+        this.bounds.union(this.logicalKeyBounds.applyMatrix4(subject.matrixWorld));
+      }
+      if (this.bounds.isEmpty()) return;
+    }
     const unit = Math.max(0.001, subject.scale.x);
-    const bounds = {
-      min: { x: this.bounds.min.x, y: this.bounds.min.y, z: this.bounds.min.z },
-      max: { x: this.bounds.max.x, y: this.bounds.max.y, z: this.bounds.max.z }
-    };
+    const bounds = { min: this.bounds.min, max: this.bounds.max };
     this.layoutValue = performanceStageLayout(bounds, unit);
     this.signPlacement = performanceSignPlacement(bounds);
     this.sign?.layout(this.signPlacement);
     this.platform.layout(this.layoutValue);
     this.keys.clear();
     for (const box of boxes) {
-      this.position.set(box.x, box.top, -nearZ).applyMatrix4(subject.matrixWorld);
+      const { x, y, z } = nativeKeyContactPoint(box, nearZ);
+      this.position.set(x, y, z).applyMatrix4(subject.matrixWorld);
       this.keys.set(box.pitch, {
         pitch: box.pitch,
         x: this.position.x,
@@ -219,7 +200,8 @@ export class PerformanceWorldStage {
     nearZ: number,
     emitEffects = true,
     visible?: Pick<ThreeRoadFrame, "notes" | "noteCount">,
-    inspection = false
+    inspection = false,
+    options: FlatEffectOptions = ALL_FLAT_EFFECTS
   ): void {
     if (!on) {
       this.group.visible = false;
@@ -228,6 +210,10 @@ export class PerformanceWorldStage {
       return;
     }
     this.lastOn = true;
+    if (options.presses && !this.pressesOn) this.pressesSince = time;
+    if (options.musicalNotes && !this.notesOn) this.notesSince = time;
+    this.pressesOn = options.presses;
+    this.notesOn = options.musicalNotes;
     this.prepare(subject, boxes, nearZ);
     this.group.visible = true;
     this.platform.group.visible = this.layoutValue !== undefined;
@@ -247,12 +233,15 @@ export class PerformanceWorldStage {
     for (const light of this.lights) light.intensity = 0;
     if (this.ready && emitEffects) {
       this.state.update(time, sources);
-      this.drawMist(time, stage);
-      this.drawHolds(time, sources, stage);
-      this.drawRing(time, sources, stage, visible);
-      this.drawBassFire(time, stage, burst);
-      this.drawHits(time, stage);
-      this.drawSpirals(time, camera, stage);
+      if (options.burning) {
+        this.drawMist(time, stage);
+        this.drawHolds(time, sources, stage);
+        this.drawRing(time, sources, stage, visible);
+        this.drawBassFire(time, stage, burst);
+      }
+      if (options.presses) this.drawHits(time, stage);
+      if (options.musicalNotes) this.drawSpirals(time, camera, stage);
+      else this.spirals.clear();
     } else this.spirals.clear();
     for (const batch of batches) batch.end();
   }
@@ -381,7 +370,7 @@ export class PerformanceWorldStage {
     const reveal = this.reveal;
     for (const hit of this.state.hits) {
       const age = time - hit.time;
-      if (age < 0 || age >= HIT.frames / HIT.fps) continue;
+      if (hit.time <= this.pressesSince || age < 0 || age >= HIT.frames / HIT.fps) continue;
       const frame = Math.floor(age * HIT.fps),
         key = this.keys.get(hit.pitch),
         ring = stageNotePoint(hit.pitch, stage);
@@ -457,15 +446,23 @@ export class PerformanceWorldStage {
     const events: PerformanceNoteSpiralEvent[] = [];
     for (const hit of this.state.hits) {
       const age = time - hit.time;
-      if (age < 0 || age > 3.76) continue;
+      if (hit.time <= this.notesSince || age < 0 || age > 3.76) continue;
       const key = this.keys.get(hit.pitch);
       if (key)
-        events.push({ ...hit, position: { x: key.x, y: key.y + 24 * stage.unit, z: key.z } });
+        events.push({
+          ...hit,
+          position: {
+            x: key.x,
+            y: key.y + 24 * stage.unit,
+            z: key.z
+          }
+        });
     }
     this.spirals.update(time, events, camera, stage.unit);
   }
   clear(): void {
     this.state.clear();
+    this.pressesSince = this.notesSince = -Infinity;
     this.spirals.clear();
     this.curtain.set(0);
     this.fade = 1;

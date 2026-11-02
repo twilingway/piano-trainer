@@ -6,6 +6,7 @@ export function ConnectedIntervalCard({ onChoose }: { onChoose: () => void }) {
   const intervals = useRuntimeSelector((runtime) => runtime.intervals);
   return (
     <IntervalCourseCard
+      completedRuns={intervals.history.length}
       onStart={(mode) => {
         intervals.start(mode);
         onChoose();

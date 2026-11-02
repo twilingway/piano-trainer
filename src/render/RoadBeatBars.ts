@@ -1,5 +1,5 @@
-import { Sprite, Texture } from "pixi.js";
-import type { Container } from "pixi.js";
+import { Sprite, Texture } from "./flatThree";
+import type { Container } from "./flatThree";
 import type { SongBeat } from "../song/song";
 import type { RoadLayer } from "./RoadLayer";
 

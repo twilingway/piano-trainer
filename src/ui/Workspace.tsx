@@ -1,5 +1,8 @@
+import type { LessonStaffFeedbackSource } from "../staff/lessonStaffFeedback";
+import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
+import neonRailUrl from "../fx/neon-rail.webp?url";
 import { useI18n } from "../app/useI18n";
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode, Ref, RefObject } from "react";
 import { useMemo } from "react";
 import { secondsAt, type Song } from "../song/song";
 
@@ -13,12 +16,20 @@ import { ReaderGeometryProvider } from "../staff/readerGeometry";
 import { KeysHandles, LaneTopHandle, StaffHandle, TickerSlot } from "./LayoutHandles";
 
 interface Props {
+  readonly worldScore?: {
+    readonly source: StaffWorldSource;
+    readonly hidden: boolean;
+    readonly error: boolean;
+  };
   readonly timelineSong?: Song | undefined;
   readonly staffPresentation?: StaffPresentation | undefined;
+  readonly lessonStaffFeedback?: LessonStaffFeedbackSource | undefined;
   readonly staffRetry?: number;
   readonly readingBeat?: number | undefined;
   /** A reading course is on: its staff is fitted and its cursor leaves the note readable. */
   readonly course?: boolean;
+  /** A course's prompts with the exercise's extreme notes: the staff keeps room for them. */
+  readonly courseRange?: readonly string[] | undefined;
   /** The score on the staff; a MIDI song has none. */
   readonly staffXml: string | undefined;
   readonly prefs: StaffPrefs;
@@ -38,10 +49,13 @@ interface Props {
   /** Where the trainer's Pixi view mounts. */
   readonly hostRef: RefObject<HTMLDivElement | null>;
   /** Where the original mounts while a take is compared with it. */
-  readonly mirrorHostRef: RefObject<HTMLDivElement | null>;
+  readonly mirrorHostRef: Ref<HTMLDivElement>;
+  readonly countdown?: number | null;
+  readonly handStatus?: "idle" | "loading" | "ready" | "error";
   readonly gameBoard?: ReactNode;
   /** Course tabs share the score area without remounting the falling-note view. */
   readonly scoreBoard?: ReactNode;
+  readonly lessonBoard?: ((score: ReactNode) => ReactNode) | undefined;
   /** The first enabled reader stays above the second while both are shown. */
   readonly scoreFirst?: "tabs" | "staff";
   readonly wordBoard?: ReactNode;
@@ -62,7 +76,7 @@ interface Props {
 
 /** The game: the staff (and the take's own) over the falling notes (and the original's). */
 export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
   const { prefs, transcription, takeStaff } = props;
   // Stable for the score's lifetime: the engraving adapter reads this mapping at relayout.
   const timeline = useMemo(() => {
@@ -80,12 +94,17 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
   const staffShown = Boolean(props.staffXml) && prefs.visible;
   const dualScore = Boolean(props.scoreBoard) && staffShown;
-  const overlay =
-    !dualScore &&
-    (prefs.keyStyle === "perspective" || prefs.keyStyle === "3d") &&
-    prefs.road &&
-    prefs.lane &&
-    !props.comparing;
+  const sharedTabs = useMemo(
+    () =>
+      dualScore && props.timelineSong
+        ? {
+            notes: props.timelineSong.notes,
+            noteNames: prefs.noteNames,
+            zoom: prefs.tabsZoom
+          }
+        : undefined,
+    [dualScore, props.timelineSong, prefs.noteNames, prefs.tabsZoom]
+  );
   const share = props.layout.staffShare ?? DEFAULT_STAFF_SHARE;
   // Two staves in a column share what one would take.
   const staffShare =
@@ -94,17 +113,36 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   // Without the staff the lane's own top edge drags, leaving room over it.
   const laneTop = !staffShown && !props.scoreBoard && laneMode !== "hidden" && !props.comparing;
   const handles = props.editing && !props.comparing;
+  const showEdges = prefs.lane && !prefs.freeCamera && !prefs.performanceScene;
+  const showHitEdge = prefs.keyStyle !== "3d" || !prefs.keys || Boolean(props.wordBoard);
   const staffBoard = staffShown && props.staffXml && (
-    <div key="staff" className={`staves staves--${transcription ? takeStaff : "single"}`}>
+    <div
+      key="staff"
+      className={`staves staves--${transcription ? takeStaff : "single"}`}
+      style={
+        props.worldScore?.hidden
+          ? { visibility: "hidden", position: "absolute", width: "100%", pointerEvents: "none" }
+          : undefined
+      }
+    >
       <div className="staff-slot">
         {transcription && <span className="staff-label">{t("Оригинал")}</span>}
         <Staff
           key={props.staffRetry ?? 0}
+          lessonStaffFeedback={
+            props.course &&
+            !props.comparing &&
+            !props.worldScore?.hidden &&
+            !props.worldScore?.error
+              ? props.lessonStaffFeedback
+              : undefined
+          }
           presentation={props.staffPresentation}
           musicXml={props.staffXml}
           beat={props.readingBeat ?? props.beat}
           zoom={prefs.zoom}
           noteColor={prefs.noteColor}
+          playedNoteColor={prefs.playedNoteColor}
           scoreColor={prefs.scoreColor}
           singleLine={prefs.singleLine}
           follow={prefs.follow}
@@ -116,9 +154,11 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           marks={props.reviewMarks}
           maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
           shareGeometry={dualScore}
-          sharedNoteNames={dualScore ? prefs.noteNames : undefined}
+          sharedTabs={sharedTabs}
           course={props.course ?? false}
+          courseRange={props.courseRange}
           timeline={timeline}
+          worldScoreSource={props.worldScore?.source}
         />
       </div>
       {transcription && (
@@ -129,6 +169,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             beat={props.beat}
             zoom={prefs.zoom}
             noteColor={prefs.noteColor}
+            playedNoteColor={prefs.playedNoteColor}
             scoreColor={prefs.scoreColor}
             singleLine={prefs.singleLine}
             follow={prefs.follow}
@@ -161,7 +202,18 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   );
   return (
     <div className="workspace">
-      <div className={`workspace-main${overlay ? " workspace-main--overlay" : ""}`}>
+      <div className={props.course ? "workspace-main workspace-main--practice" : "workspace-main"}>
+        {props.countdown != null && (
+          <div className="play-countdown" role="status" aria-live="polite" aria-atomic="true">
+            <span>{props.countdown > 0 ? t("Приготовьтесь") : t("Готовим звук…")}</span>
+            {props.countdown > 0 && <strong>{formatNumber(props.countdown)}</strong>}
+          </div>
+        )}
+        {props.worldScore?.error && (
+          <span role="status">
+            {t("Не удалось показать нотный стан в 3D. Оставили обычный вид.")}
+          </span>
+        )}
         {/* The word mode's text over the usual staff and lane, whose keys turn computer keys. */}
         {props.wordBoard}
         {laneMode !== "full" && props.wordTicker}
@@ -174,6 +226,8 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
               {props.scoreFirst === "staff" ? [staffBoard, tabsBoard] : [tabsBoard, staffBoard]}
             </ReaderGeometryProvider>
           </div>
+        ) : props.lessonBoard ? (
+          props.lessonBoard(staffBoard)
         ) : (
           staffBoard
         )}
@@ -202,6 +256,18 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
             <LaneTopHandle top={props.layout.laneTop} onLayout={props.onLayout} />
           )}
           <div className="lane" ref={hostRef}>
+            {showEdges && <LaneEdges hitVisible={showHitEdge} />}
+            {prefs.keyStyle === "3d" &&
+              prefs.hands &&
+              prefs.keys &&
+              !props.comparing &&
+              (props.handStatus === "loading" || props.handStatus === "error") && (
+                <span className="hands-status" role="status">
+                  {props.handStatus === "loading"
+                    ? t("Загружаем 3D-руки…")
+                    : t("3D-руки не загрузились. Можно продолжать играть.")}
+                </span>
+              )}
             {props.comparing && <span className="lane-label">{t("Ваш дубль")}</span>}
             {props.waiting && <span className="waiting-pill">{t("Жду ноту")}</span>}
             {!props.comparing && laneMode === "full" && props.gameBoard}
@@ -227,11 +293,24 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           </div>
           {props.comparing && (
             <div className="lane" ref={mirrorHostRef}>
+              {showEdges && <LaneEdges hitVisible={showHitEdge} />}
               <span className="lane-label">{t("Оригинал")}</span>
             </div>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function LaneEdges({ hitVisible }: { readonly hitVisible: boolean }) {
+  const style = { backgroundImage: `url("${neonRailUrl}")` };
+  return (
+    <>
+      <div className="lane-neon-edge lane-neon-edge--top" aria-hidden="true" style={style} />
+      {hitVisible && (
+        <div className="lane-neon-edge lane-neon-edge--hit" aria-hidden="true" style={style} />
+      )}
+    </>
   );
 }

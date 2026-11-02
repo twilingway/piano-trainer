@@ -1,0 +1,130 @@
+import { shallowEqual } from "react-redux";
+import { KeyboardSettings } from "../ui/settings/KeyboardSettings";
+import { pianistAvailable } from "../render/three/pianistAvailability";
+import { useAppSelector } from "./storeHooks";
+import { useRuntimeSelector } from "./PlayerRuntimeProvider";
+import { useRuntimeCommand } from "./runtimeCommands";
+
+export function ConnectedKeyboardSettings() {
+  const state = useAppSelector(
+    (state) => ({
+      keyStyle: state.preferences.staff.keyStyle,
+      notesPerspective: state.preferences.staff.road,
+      freeRoadLayout: state.preferences.staff.road
+        ? state.preferences.staff.freePerspectiveField
+        : state.preferences.staff.freeDirectField,
+      fallingNoteStyle: state.preferences.staff.fallingNoteStyle,
+      handStyle: state.preferences.staff.handStyle,
+      flatNoteBurning: state.preferences.staff.flatNoteBurning,
+      flatPressEffects: state.preferences.staff.flatPressEffects,
+      noteParticles: state.preferences.staff.noteParticles,
+      keyboardDim: state.preferences.staff.keyboardDim,
+      octaveLabels: state.preferences.staff.octaveLabels,
+      roadGuides: state.preferences.staff.roadGuides,
+      pianist: state.preferences.staff.pianist,
+      performanceScene: state.preferences.staff.performanceScene,
+      worldFov: state.preferences.staff.worldFov,
+      freeCamera: state.preferences.staff.freeCamera,
+      freeCameraWasd: state.preferences.staff.freeCameraWasd,
+      far: state.preferences.staff.roadFar,
+      horizon: state.preferences.staff.roadHorizon,
+      camera: state.preferences.staff.camera,
+      roadFit: state.preferences.staff.roadFit,
+      roadNoteTilt: state.preferences.staff.roadNoteTilt
+    }),
+    shallowEqual
+  );
+  const view = useRuntimeSelector(
+    (runtime) => ({ keyRange: runtime.view.keyRange, showLabels: runtime.view.showLabels }),
+    shallowEqual
+  );
+  const onKeyRange = useRuntimeCommand((runtime) => runtime.view.setKeyRange);
+  const onShowLabels = useRuntimeCommand((runtime) => runtime.view.setShowLabels);
+  const onOctaveLabels = useRuntimeCommand((runtime) => runtime.keyboardSettings.onOctaveLabels);
+  const onResetWorldCamera = useRuntimeCommand((runtime) => runtime.view.resetWorldCamera);
+  const onKeyStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyStyle);
+  const onNotesPerspective = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onNotesPerspective
+  );
+  const onFallingNoteStyle = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onFallingNoteStyle
+  );
+  const onFreeRoadLayout = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onFreeRoadLayout
+  );
+  const onHandStyle = useRuntimeCommand((runtime) => runtime.keyboardSettings.onHandStyle);
+  const onFlatNoteBurning = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onFlatNoteBurning
+  );
+  const onFlatPressEffects = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onFlatPressEffects
+  );
+  const onNoteParticles = useRuntimeCommand((runtime) => runtime.keyboardSettings.onNoteParticles);
+  const onKeyboardDim = useRuntimeCommand((runtime) => runtime.keyboardSettings.onKeyboardDim);
+  const onRoadGuides = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadGuides);
+  const onPerformanceScene = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onPerformanceScene
+  );
+  const onWorldFov = useRuntimeCommand((runtime) => runtime.keyboardSettings.onWorldFov);
+  const onFreeCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onFreeCamera);
+  const onFreeCameraWasd = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onFreeCameraWasd
+  );
+  const onPianist = useRuntimeCommand((runtime) => runtime.keyboardSettings.onPianist);
+  const onRoad = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoad);
+  const onCamera = useRuntimeCommand((runtime) => runtime.keyboardSettings.onCamera);
+  const onRoadFit = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadFit);
+  const onRoadNoteTilt = useRuntimeCommand((runtime) => runtime.keyboardSettings.onRoadNoteTilt);
+  const onStraightenRoad = useRuntimeCommand(
+    (runtime) => runtime.keyboardSettings.onStraightenRoad
+  );
+  return (
+    <KeyboardSettings
+      {...view}
+      octaveLabels={state.octaveLabels}
+      onOctaveLabels={onOctaveLabels}
+      keyStyle={state.keyStyle}
+      notesPerspective={state.notesPerspective}
+      freeRoadLayout={state.freeRoadLayout}
+      onFreeRoadLayout={onFreeRoadLayout}
+      onNotesPerspective={onNotesPerspective}
+      fallingNoteStyle={state.fallingNoteStyle}
+      onFallingNoteStyle={onFallingNoteStyle}
+      handStyle={state.handStyle}
+      flatNoteBurning={state.flatNoteBurning}
+      onFlatNoteBurning={onFlatNoteBurning}
+      flatPressEffects={state.flatPressEffects}
+      onFlatPressEffects={onFlatPressEffects}
+      noteParticles={state.noteParticles}
+      onNoteParticles={onNoteParticles}
+      keyboardDim={state.keyboardDim}
+      onKeyboardDim={onKeyboardDim}
+      roadGuides={state.roadGuides}
+      {...(pianistAvailable(state.keyStyle) ? { pianist: state.pianist } : {})}
+      onPianist={onPianist}
+      performanceScene={state.performanceScene}
+      onPerformanceScene={onPerformanceScene}
+      worldFov={state.worldFov}
+      onWorldFov={onWorldFov}
+      onResetWorldCamera={onResetWorldCamera}
+      roadFit={state.roadFit}
+      onRoadFit={onRoadFit}
+      onStraightenRoad={onStraightenRoad}
+      roadNoteTilt={state.roadNoteTilt}
+      onRoadNoteTilt={onRoadNoteTilt}
+      freeCamera={state.freeCamera}
+      freeCameraWasd={state.freeCameraWasd}
+      onFreeCameraWasd={onFreeCameraWasd}
+      onFreeCamera={onFreeCamera}
+      road={{ far: state.far, horizon: state.horizon }}
+      camera={state.camera}
+      onKeyRange={onKeyRange}
+      onShowLabels={onShowLabels}
+      onKeyStyle={onKeyStyle}
+      onHandStyle={onHandStyle}
+      onRoadGuides={onRoadGuides}
+      onRoad={onRoad}
+      onCamera={onCamera}
+    />
+  );
+}

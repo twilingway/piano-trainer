@@ -6,6 +6,8 @@ export interface UniformStaffAxis {
   readonly originX: number;
   readonly pixelsPerSecond: number;
   readonly timeAtBeat: (beat: number) => number;
+  readonly xAtBeat?: (beat: number) => number;
+  readonly breakBeats?: readonly number[];
 }
 
 /** Bounded OSMD 2.1.3 / bundled VexFlow 1.2.93 engraving contract.
@@ -85,8 +87,10 @@ interface MeasureState {
   readonly ticks: TimedTick[];
 }
 
-const MIN_PIXELS_PER_SECOND = 90;
+const MIN_PIXELS_PER_SECOND = 72;
 const SYMBOL_GAP = 4;
+// Barline gutters are independent of the spacing between neighbouring symbols.
+const BARLINE_GAP = 10;
 const MIN_INSET = 10;
 
 /** Collects all voices, including invisible ghost rests which advance their clocks. */
@@ -112,16 +116,18 @@ function timedTicks(row: readonly Measure[], startBeat: number): TimedTick[] {
   return [...byContext.values()].sort((a, b) => a.beat - b.beat);
 }
 
-/** One density for the entire piece; a dense measure never locally stretches time. */
+/** One musical density; fixed boundary gutters do not stretch every measure. */
 function density(
   states: readonly MeasureState[],
   timeAtBeat: (beat: number) => number,
-  instructions: { readonly inset: number; readonly endings: ReadonlyMap<number, number> }
+  instructions: { readonly inset: number; readonly endings: ReadonlyMap<number, number> },
+  labelWidthAtBeat: ((beat: number) => number) | undefined
 ) {
   let pixelsPerSecond = MIN_PIXELS_PER_SECOND;
   let inset = Math.max(MIN_INSET, instructions.inset);
   interface Column {
     beat: number;
+    measureStart: number;
     ink: readonly StaffInkBox[];
     labelHalf: number;
     glyphRight: number;
@@ -163,9 +169,13 @@ function density(
             barlineRight = Math.max(barlineRight, box.right);
           }
         }
-        const labelHalf = labels.get(tick.beat) ?? 0;
+        const labelHalf = Math.max(
+          labels.get(tick.beat) ?? 0,
+          (labelWidthAtBeat?.(tick.beat) ?? 0) / 2
+        );
         const column = {
           beat: tick.beat,
+          measureStart: state.startBeat,
           glyphRight: barlineRight,
           ink,
           labelHalf
@@ -173,7 +183,7 @@ function density(
         columns.push(column);
         // Internal accidentals need neighbour space, not extra inset at every bar.
         if (Math.abs(tick.beat - state.startBeat) < 1e-8)
-          inset = Math.max(inset, barlineLeft + SYMBOL_GAP);
+          inset = Math.max(inset, barlineLeft + BARLINE_GAP);
       }
       const staff = measure.ParentStaff.idInMusicSheet;
       const previous = columnsByStaff.get(staff) ?? [];
@@ -210,7 +220,7 @@ function density(
         if (!previous) continue;
         const seconds = timeAtBeat(next.beat) - timeAtBeat(previous.beat);
         if (seconds > horizon) break;
-        if (seconds <= 0) continue;
+        if (seconds <= 0 || previous.measureStart !== next.measureStart) continue;
         const inkSpace = overlappingInkSpace(previous.ink, next.ink);
         const labelSpace =
           previous.labelHalf > 0 && next.labelHalf > 0 ? previous.labelHalf + next.labelHalf : 0;
@@ -219,16 +229,59 @@ function density(
       }
     }
   }
-  // Lyrics lie below the barline and do not need additional trailing space.
+  // Boundary space belongs only to the affected measure, not the song's density.
+  const gutters = new Map<number, number>();
   for (const { column, endBeat, ending } of tails) {
     const seconds = timeAtBeat(endBeat) - timeAtBeat(column.beat);
-    if (seconds > 0)
-      pixelsPerSecond = Math.max(
-        pixelsPerSecond,
-        (inset + column.glyphRight + SYMBOL_GAP + ending) / seconds
-      );
+    const needed = Math.max(
+      0,
+      inset + column.glyphRight + BARLINE_GAP + ending - seconds * pixelsPerSecond
+    );
+    gutters.set(column.measureStart, Math.max(gutters.get(column.measureStart) ?? 0, needed));
   }
-  return { pixelsPerSecond, inset };
+  const starts = states.map((state) => state.startBeat);
+  const indices = new Map(starts.map((beat, index) => [beat, index]));
+  // A lyric can cross below a barline: cover cross-measure ink and label pairs too.
+  for (const columns of columnsByStaff.values()) {
+    const maxLeft = Math.max(
+      0,
+      ...columns.map((column) => Math.max(column.labelHalf, ...column.ink.map((box) => box.left)))
+    );
+    const maxRight = Math.max(
+      0,
+      ...columns.map((column) => Math.max(column.labelHalf, ...column.ink.map((box) => box.right)))
+    );
+    const horizon = (maxLeft + maxRight + SYMBOL_GAP) / pixelsPerSecond;
+    for (let index = 1; index < columns.length; index++) {
+      const next = columns[index];
+      if (!next) continue;
+      const nextIndex = indices.get(next.measureStart) ?? 0;
+      const boundary = starts[nextIndex - 1];
+      if (boundary === undefined) continue;
+      for (let previousIndex = index - 1; previousIndex >= 0; previousIndex--) {
+        const previous = columns[previousIndex];
+        if (!previous) continue;
+        const seconds = timeAtBeat(next.beat) - timeAtBeat(previous.beat);
+        if (seconds > horizon) break;
+        if (previous.measureStart === next.measureStart) continue;
+        let distance = seconds * pixelsPerSecond;
+        for (
+          let measureIndex = indices.get(previous.measureStart) ?? 0;
+          measureIndex < nextIndex;
+          measureIndex++
+        ) {
+          distance += gutters.get(starts[measureIndex] ?? 0) ?? 0;
+        }
+        const labelSpace =
+          previous.labelHalf > 0 && next.labelHalf > 0 ? previous.labelHalf + next.labelHalf : 0;
+        const needed =
+          Math.max(overlappingInkSpace(previous.ink, next.ink), labelSpace) + SYMBOL_GAP;
+        if (needed > distance)
+          gutters.set(boundary, (gutters.get(boundary) ?? 0) + needed - distance);
+      }
+    }
+  }
+  return { pixelsPerSecond, inset, gutters };
 }
 
 export interface UniformStaffLayout {
@@ -236,10 +289,14 @@ export interface UniformStaffLayout {
   dispose(): void;
 }
 
-/** Install after load and before render, only for the single horizontal staff. */
+/** Install after load; shared wrapped readers retain natural system breaks. */
 export function installUniformStaffLayout(
   osmd: OpenSheetMusicDisplay,
-  timeAtBeat: (beat: number) => number
+  timeAtBeat: (beat: number) => number,
+  options: {
+    readonly horizontal?: boolean;
+    readonly labelWidthAtBeat?: (beat: number) => number;
+  } = {}
 ): UniformStaffLayout {
   const sheet = osmd.GraphicSheet as unknown as LayoutSheet;
   const calculator = sheet.GetCalculator;
@@ -254,7 +311,16 @@ export function installUniformStaffLayout(
       headShifts.delete(note);
     }
   };
-  let axis: { first: Measure; prefix: number; inset: number; scale: number } | undefined;
+  let axis:
+    | {
+        first: Measure;
+        prefix: number;
+        inset: number;
+        scale: number;
+        states: readonly MeasureState[];
+        gutters: ReadonlyMap<number, number>;
+      }
+    | undefined;
   const reset = () => {
     for (const note of headShifts.keys()) restoreHead(note);
     for (const restore of restoreMeasures) restore();
@@ -288,37 +354,46 @@ export function installUniformStaffLayout(
     }
     const first = states[0]?.row[0];
     if (!first) return;
-    const { pixelsPerSecond: scale, inset } = density(
+    const {
+      pixelsPerSecond: scale,
+      inset,
+      gutters
+    } = density(
       states,
       timeAtBeat,
-      uniformStaffInstructionSpace(osmd)
+      uniformStaffInstructionSpace(osmd),
+      options.labelWidthAtBeat
+        ? (beat) => (options.labelWidthAtBeat?.(beat) ?? 0) / osmd.Zoom
+        : undefined
     );
     const last = states.at(-1);
-    if (last) {
+    if (last && options.horizontal !== false) {
       // OSMD normally caps a horizontal sheet at 32767 CSS pixels and then
       // silently wraps long music. Its pageWidth was assigned before this hook.
       const duration = timeAtBeat(last.endBeat) - timeAtBeat(states[0]?.startBeat ?? 0);
       osmd.EngravingRules.SheetMaximumWidth = Math.max(
         originalMaximumWidth,
-        (duration * scale + 2048) * osmd.Zoom
+        (duration * scale + [...gutters.values()].reduce((sum, gap) => sum + gap, 0) + 2048) *
+          osmd.Zoom
       );
       osmd.Sheet.pageWidth = osmd.EngravingRules.SheetMaximumWidth / osmd.Zoom / unitInPixels;
     }
-    axis = { first, prefix: 0, inset, scale };
+    axis = { first, prefix: 0, inset, scale, states, gutters };
     for (const state of states) {
       for (const measure of state.row) {
         const setWidth = measure.setWidth;
         const formatter = measure.formatVoices;
         const duration = timeAtBeat(state.endBeat) - timeAtBeat(state.startBeat);
-        measure.minimumStaffEntriesWidth = (duration * scale) / unitInPixels;
+        const gutter = gutters.get(state.startBeat) ?? 0;
+        measure.minimumStaffEntriesWidth = (duration * scale + gutter) / unitInPixels;
         measure.setWidth = function () {
           // First clef/key/time signature occupy a lead-in outside musical time.
           const prefix =
-            state === states[0]
+            state === states[0] || options.horizontal === false
               ? Math.max(0, this.getVFStave().getNoteStartX() - this.getVFStave().getX())
               : 0;
           if (axis && this === first) axis.prefix = prefix;
-          setWidth.call(this, (prefix + duration * scale) / unitInPixels);
+          setWidth.call(this, (prefix + duration * scale + gutter) / unitInPixels);
         };
         if (formatter) {
           measure.formatVoices = function (width, target) {
@@ -326,7 +401,12 @@ export function installUniformStaffLayout(
               for (const note of tick.tickables) restoreHead(note);
             }
             formatter.call(this, width, target);
-            const prefix = state === states[0] ? (axis?.prefix ?? 0) : 0;
+            const prefix =
+              options.horizontal === false
+                ? Math.max(0, target.getVFStave().getNoteStartX() - target.getVFStave().getX())
+                : state === states[0]
+                  ? (axis?.prefix ?? 0)
+                  : 0;
             // Formatter recreates TickContexts on every invocation.
             for (const tick of timedTicks(state.row, state.startBeat)) {
               const reference = tick.tickables.find((note) => note.getGlyphWidth !== undefined);
@@ -363,16 +443,57 @@ export function installUniformStaffLayout(
     }
   };
   return {
-    getAxis: () =>
-      axis && {
-        originX:
-          (axis.first.PositionAndShape.AbsolutePosition.x * unitInPixels +
-            axis.prefix +
-            axis.inset) *
-          osmd.Zoom,
-        pixelsPerSecond: axis.scale * osmd.Zoom,
-        timeAtBeat
-      },
+    getAxis: () => {
+      if (!axis) return undefined;
+      const snapshot = axis;
+      const zoom = osmd.Zoom;
+      const knots = new Map<number, number>();
+      for (const [index, state] of snapshot.states.entries()) {
+        const measure = state.row[0];
+        if (!measure) continue;
+        const startX =
+          measure.PositionAndShape.AbsolutePosition.x * unitInPixels +
+          (index === 0 ? snapshot.prefix : 0) +
+          snapshot.inset;
+        for (const beat of [state.startBeat, ...state.ticks.map((tick) => tick.beat)]) {
+          knots.set(
+            beat,
+            (startX + (timeAtBeat(beat) - timeAtBeat(state.startBeat)) * snapshot.scale) * zoom
+          );
+        }
+        if (index === snapshot.states.length - 1) {
+          knots.set(
+            state.endBeat,
+            (startX +
+              (timeAtBeat(state.endBeat) - timeAtBeat(state.startBeat)) * snapshot.scale +
+              (snapshot.gutters.get(state.startBeat) ?? 0)) *
+              zoom
+          );
+        }
+      }
+      const points = [...knots].sort((a, b) => a[0] - b[0]);
+      const xAtBeat = (beat: number): number => {
+        const first = points[0];
+        if (!first) return 0;
+        if (beat <= first[0]) return first[1];
+        for (let index = 1; index < points.length; index++) {
+          const before = points[index - 1],
+            after = points[index];
+          if (!before || !after || beat > after[0]) continue;
+          const duration = timeAtBeat(after[0]) - timeAtBeat(before[0]);
+          const share = duration > 0 ? (timeAtBeat(beat) - timeAtBeat(before[0])) / duration : 0;
+          return before[1] + (after[1] - before[1]) * share;
+        }
+        return points.at(-1)?.[1] ?? first[1];
+      };
+      return {
+        originX: xAtBeat(snapshot.states[0]?.startBeat ?? 0),
+        pixelsPerSecond: snapshot.scale * zoom,
+        timeAtBeat,
+        xAtBeat,
+        breakBeats: points.map(([beat]) => beat)
+      };
+    },
     dispose: () => {
       reset();
       calculator.calculateXLayout = original;

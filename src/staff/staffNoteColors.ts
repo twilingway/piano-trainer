@@ -2,8 +2,7 @@ import { VexFlowGraphicalNote } from "opensheetmusicdisplay";
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { FINGER_COLOR } from "../render/fingerColors";
 import type { Finger } from "../fingering/fingering";
-
-const HIGHLIGHT = "#e63946";
+import { DEFAULT_PLAYED_NOTE_COLOR } from "./notationColors";
 
 /** Only OSMD's fingering labels are painted, leaving lyrics and measure numbers alone. */
 export function paintStaffFingerings(
@@ -51,14 +50,15 @@ function restoreFill(shape: SVGElement): void {
 
 export function highlightUnderCursor(
   osmd: OpenSheetMusicDisplay,
-  previous: readonly SVGElement[]
+  previous: readonly SVGElement[],
+  color = DEFAULT_PLAYED_NOTE_COLOR
 ): SVGElement[] {
   for (const element of previous) restoreFill(element);
   const painted: SVGElement[] = [];
   for (const note of osmd.cursor.GNotesUnderCursor()) {
     if (!(note instanceof VexFlowGraphicalNote)) continue;
     for (const shape of noteheadShapes(note)) {
-      shape.style.fill = HIGHLIGHT;
+      shape.style.fill = color;
       painted.push(shape);
     }
   }

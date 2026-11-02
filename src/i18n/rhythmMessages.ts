@@ -16,7 +16,6 @@ export const rhythmMessages: Messages = {
   "Пробел или кнопка с клавиатуры": { en: "Space or keyboard activation of the button" },
   "Кнопка мышью или касанием": { en: "Mouse or touch on the button" },
   "Повторить этот ритм": { en: "Repeat this rhythm" },
-  "Выйти из ритма": { en: "Leave rhythm" },
   "Темп ритма, BPM": { en: "Rhythm tempo, BPM" },
   "Способ ввода ритма": { en: "Rhythm input method" },
   "4 такта · 10 ударов · окно ±150 мс. Половинную не нужно удерживать.": {

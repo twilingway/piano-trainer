@@ -10,9 +10,9 @@ and shockwave are neutral white for the note's finger-colour tint; dark smoke is
 FPS over 0.5 seconds, with a centred anchor. The road selects its frame from song time.
 
 `hold-glass.json` is a static Arcadia composition of white glass, bevels and glow. `hold-glass.webp`
-is a lossless 96×192 RGBA frame, tinted per note. `RoadGlassLayer.ts` preserves its borders with
-NineSlice (32 pixels left/right, 36 top, 38 bottom), shrinking the caps proportionally for short
-notes.
+is a lossless 96×192 RGBA frame, tinted per note. The retired legacy road used NineSlice borders (32
+pixels left/right, 36 top, 38 bottom), shrinking the caps proportionally for short notes. The
+original composition and export remain here; the shared native road uses its existing 3D materials.
 
 `note-glass-block.json` is a brighter neutral Arcadia composition for the world-camera notes.
 `note-glass-block.webp` is its lossless 96×192 RGBA export from `AFX.Atlas.build`. The renderer
@@ -102,3 +102,35 @@ older strike sparks and flashes remain separate effects.
 The ten-second source excerpt 00:30–00:40 was viewed in a foreground browser page; reference frames
 remain outside git. No music or imagery from the video is included in distributed assets. The editor
 retains the MIT attribution above.
+
+## Neon rail and cursor
+
+`neon-rail.json` — оригинальный источник Arcadia Effects для тонкой границы зоны нот. Использованы
+четыре слоя-спрайта: мягкий ореол, циановая кромка, светлое ядро и слабый движущийся блик. Блик
+проходит слева направо один раз за 12 секунд, плавно появляется и гаснет у концов; обратного прохода
+и пульсации всей линии нет. Мягкий ореол шире ядра, само ядро остаётся тонким. Эмиттеров, пузырьков,
+вспышек и заимствованных текстур нет.
+
+`neon-cursor.json` — отдельный редактируемый источник для неподвижного курсора. Его слой блика
+выключен; все 48 кадров одинаковы, яркость постоянна. Источник курсора не копирует движущийся блик
+горизонтальной границы.
+
+Экспорт выполнен настоящими `AFX.Model.migrate`, `AFX.Engine` и `AFX.Atlas.build` из редактора с
+сохранением прозрачности. Обе композиции 512×32, период 12 секунд; 48 кадров по центрам интервалов,
+8 столбцов и 6 строк, 4 кадра/с. `neon-rail.webp` — лист 4096×192, ячейка 512×32. `neon-cursor.webp`
+— лист 256×3072 из отдельного статичного источника: каждая ячейка повёрнута на 90° по часовой
+стрелке, размер ячейки 32×512. Поворот всего листа вместо отдельных кадров меняет порядок кадров и
+недопустим.
+
+Для повторного экспорта открыть соответствующий JSON в Arcadia, выполнить
+`AFX.Atlas.build(AFX.Model.migrate(file.doc))` и сохранить прозрачный PNG. Вертикальный лист собрать
+из 48 ячеек источника курсора с покадровым поворотом, сохраняя индексы `(i % 8, Math.floor(i / 8))`.
+Оба PNG кодировать в WebP без потерь с сохранением альфы. Проверка каждого исходника:
+`node tools/validate.mjs <путь-к-neon-rail.json>` и
+`node tools/validate.mjs <путь-к-neon-cursor.json>` из редактора.
+
+При проверке все 48 кадров курсора совпали попиксельно. Верхняя и нижняя кромки каждой
+горизонтальной ячейки полностью прозрачны. Кадры движущейся линии в моменты 0 и 12 секунд идентичны;
+разница между последним и первым экспортированными кадрами не превышает максимальную разницу
+соседних кадров. Декодированные WebP совпадают с исходными PNG. Принятая толщина отображения:
+граница 16 px, курсор 18 px; фон прозрачен.

@@ -1,5 +1,5 @@
-import { Container, FillGradient, Sprite, Text, Texture } from "pixi.js";
-import type { TextStyleOptions } from "pixi.js";
+import { Container, FillGradient, Sprite, Text, Texture } from "./flatThree";
+import type { TextStyleOptions } from "./flatThree";
 
 import type { ComboBoard, GradedStrike, StrikeGrade } from "../practice/combo";
 import type { Locale } from "../i18n/locales";

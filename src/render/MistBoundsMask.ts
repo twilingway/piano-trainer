@@ -1,5 +1,5 @@
-import { BufferImageSource, Sprite, Texture } from "pixi.js";
-import type { Container } from "pixi.js";
+import { BufferImageSource, Sprite, Texture } from "./flatThree";
+import type { Container } from "./flatThree";
 import type { PlasmaAnchor } from "./PlasmaLayer";
 
 /** A fixed alpha ramp is baked once; only its bounds change with projected piano geometry. */

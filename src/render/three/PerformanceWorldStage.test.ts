@@ -256,3 +256,55 @@ describe("bass fire on the stage", () => {
     expect(lit(stage)).toHaveLength(0);
   });
 });
+
+it.each(
+  Array.from({ length: 8 }, (_, mask) => ({
+    burning: (mask & 1) !== 0,
+    presses: (mask & 2) !== 0,
+    musicalNotes: (mask & 4) !== 0
+  }))
+)("honors independent world animations for %j", async (options) => {
+  const { stage, subject, camera } = await loaded();
+  stage.update(true, 20, subject, boxes, [source], camera, 142, true, undefined, true, options);
+  stage.update(true, 20.1, subject, boxes, [source], camera, 142, true, undefined, true, options);
+  expect(batch(stage, 1).count > 0).toBe(options.burning);
+  expect(batch(stage, 2).count > 0).toBe(options.burning);
+  expect(batch(stage, 4).count > 0).toBe(options.presses);
+  const spirals = stage.group.children[6];
+  expect(spirals?.visible).toBe(options.musicalNotes);
+});
+
+it("anchors world flames and flashes without loading or showing keyboard meshes", async () => {
+  const { stage, camera } = await loaded();
+  const hidden = new Group();
+  hidden.visible = false;
+  hidden.position.set(100, 50, 10);
+  hidden.scale.setScalar(2);
+  stage.update(true, 20, hidden, boxes, [source], camera, 142, true, undefined, true);
+  expect(stage.stage).toBeDefined();
+  expect(batch(stage, 2).count).toBe(1);
+  expect(batch(stage, 4).count).toBeGreaterThan(0);
+  const centres = batch(stage, 2).geometry.getAttribute("particleCentre");
+  expect([centres.getX(0), centres.getY(0), centres.getZ(0)]).toEqual([120, 130, -274]);
+  expect(hidden.visible).toBe(false);
+  expect(hidden.children).toHaveLength(0);
+});
+
+it("places metric back-row effects on the same GLB stem anchor as notes", () => {
+  const { stage, subject } = fixture();
+  subject.scale.setScalar(2);
+  subject.position.set(20, 30, 40);
+  subject.updateMatrixWorld(true);
+  const box = boxes[0];
+  if (!box) throw new Error("Missing test key");
+  for (const black of [false, true]) {
+    const pitch = black ? 61 : 60;
+    stage.prepare(subject, [{ ...box, pitch, black, top: black ? 34 : 22, metric: true }], 150);
+    const key = (
+      stage as unknown as { keys: Map<number, { x: number; y: number; z: number }> }
+    ).keys.get(pitch);
+    expect(key?.x).toBeCloseTo(20 + (10 - (black ? 0 : 3.575)) * 2);
+    expect(key?.y).toBeCloseTo(30 + (black ? 34 : 22) * 2);
+    expect(key?.z).toBeCloseTo(40 - (black ? 145.8 : 149.1938) * 2);
+  }
+});

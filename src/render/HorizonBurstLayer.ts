@@ -1,4 +1,4 @@
-import { Assets, Container, Rectangle, Sprite, Texture } from "pixi.js";
+import { Assets, Container, Rectangle, Sprite, Texture } from "./flatThree";
 import { arrivalFrame } from "./noteArrival";
 import type { RoadProjection } from "./perspective";
 import type { Arrival } from "./RoadLayer";
@@ -25,7 +25,7 @@ export class HorizonBurstLayer {
 
   async load(): Promise<void> {
     try {
-      const atlas = await Assets.load<Texture>(ATLAS);
+      const atlas = await Assets.load(ATLAS);
       this.frames = Array.from(
         { length: FRAMES },
         (_, index) =>
@@ -54,14 +54,14 @@ export class HorizonBurstLayer {
       if (!sprite) {
         sprite = new Sprite(texture);
         sprite.anchor.set(0.5);
-        sprite.blendMode = "normal";
+        sprite.blendMode = "screen";
         this.sprites.push(sprite);
         this.container.addChild(sprite);
       }
       const spot = projection.at(arrival.x - pan, 0);
       sprite.texture = texture;
       sprite.position.set(arrival.screenX ?? spot.x, arrival.screenY ?? spot.y);
-      sprite.scale.set(Math.max(32, Math.min(72, arrival.width * 1.6)) / CELL_PX);
+      sprite.scale.set(Math.max(160, Math.min(240, arrival.width * 5)) / CELL_PX);
       sprite.tint = arrival.color;
       sprite.visible = true;
       used++;

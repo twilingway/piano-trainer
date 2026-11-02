@@ -12,7 +12,6 @@ export const intervalMessages: Messages = {
     en: "Two notes: a repeat, step or third, up or down. Only middle C to G."
   },
   "Пара {number} из 10": { en: "Pair {number} of 10" },
-  "Выйти из интервалов": { en: "Leave intervals" },
   "Слушайте две ноты по очереди. Первая — опора. Выберите, куда движется вторая.": {
     en: "Listen to two notes in order. The first is your starting note. Choose how the second moves."
   },
@@ -31,9 +30,6 @@ export const intervalMessages: Messages = {
   },
   "Не удалось воспроизвести пару. Включите звук и повторите прослушивание.": {
     en: "Couldn't play the pair. Enable sound and try listening again."
-  },
-  "Нажмите «Играть» и сыграйте обе ноты по порядку. Ошибка оставляет текущую ноту.": {
-    en: "Press Play and play both notes in order. A mistake keeps you on the current note."
   },
   "Ошибок в текущей паре: {number}": { en: "Mistakes in this pair: {number}" },
   "Показать ответ": { en: "Show the answer" },

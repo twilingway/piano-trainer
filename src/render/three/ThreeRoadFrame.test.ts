@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { worldCamera, PANEL_EDGE } from "../worldCamera";
+import { flatNoteMaskMetrics } from "./ThreeFlatRoadNotes";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
 
 describe("Three road visual snapshot", () => {
@@ -80,23 +81,6 @@ describe("Three road visual snapshot", () => {
     expect((consumed?.top ?? 0) + (consumed?.textureOffset ?? 0)).toBeCloseTo(worldAt(580));
   });
 
-  it("replays the same visual bodies immediately for a renderer failure without advancing time", () => {
-    const frame = new ThreeRoadFrame();
-    frame.add(740, 50, 600, 44, 0xc528f5, 0.8, 600, camera);
-    frame.visualTime = 12;
-    const restored: number[][] = [];
-    frame.replay(600, camera, (...body) => {
-      restored.push(body);
-    });
-    expect(restored).toHaveLength(1);
-    expect(restored[0]?.[0]).toBeCloseTo(740);
-    expect(restored[0]?.[1]).toBeCloseTo(50);
-    expect(restored[0]?.[2]).toBeCloseTo(600);
-    expect(restored[0]?.slice(3)).toEqual([44, 0xc528f5, 0.8]);
-    expect(frame.visualTime).toBe(12);
-    expect(frame.noteCount).toBe(1);
-  });
-
   it("keeps simultaneous voices separate and carries measures in the same depth space", () => {
     const frame = new ThreeRoadFrame();
     frame.add(720, 0, 600, 44, 0xc528f5, 1, 600, camera);
@@ -114,4 +98,78 @@ describe("Three road visual snapshot", () => {
     expect(frame.beatCount).toBe(0);
     expect(frame.visualTime).toBe(0);
   });
+});
+
+it("preserves source-pixel units for the shared baked perspective skin", () => {
+  const camera = worldCamera(1440, 900, undefined, PANEL_EDGE);
+  const frame = new ThreeRoadFrame();
+  frame.add(720, 100, 600, 44, 0x00df50, 1, 600, camera);
+  expect(frame.notes[0]?.materialUnitX).toBe(camera.params.sourceUnits ?? 0.5);
+  expect(frame.notes[0]?.materialUnitZ).toBeCloseTo((camera.roadFarZ - camera.near.z) / 600);
+});
+
+it("measures a flat note's depth edges in on-screen picture pixels, not in long lane rows", () => {
+  const camera = worldCamera(1440, 900, undefined, PANEL_EDGE);
+  const frame = new ThreeRoadFrame();
+  const plain = new ThreeRoadFrame();
+  frame.flatPictureRows = 0.05;
+  frame.add(720, 100, 600, 44, 0x00df50, 1, 600, camera);
+  plain.add(720, 100, 600, 44, 0x00df50, 1, 600, camera);
+  expect(frame.notes[0]?.materialUnitZ).toBeCloseTo(
+    ((camera.roadFarZ - camera.near.z) / 600) * 0.05
+  );
+  // Only the picture's edges change: the note keeps its place and length on the road.
+  expect(frame.notes[0]?.top).toBe(plain.notes[0]?.top);
+  expect(frame.notes[0]?.bottom).toBe(plain.notes[0]?.bottom);
+});
+
+it("keeps a flat note's picture square to the world on a free field of any length", () => {
+  const camera = worldCamera(1440, 900, undefined, PANEL_EDGE);
+  const span = camera.roadFarZ - 150;
+  const lane = { y: 22, depth: 150, scaleX: 1, offsetX: 0, offsetY: 0, width: 44, height: 0 };
+  for (const far of [
+    { x: 0, y: 22 + 450, z: -150 },
+    { x: 0, y: 22, z: -150 - 59520 }
+  ]) {
+    const frame = new ThreeRoadFrame();
+    frame.flatPictureRows = 0.05;
+    frame.add(720, 100, 600, 44, 0x00df50, 1, 600, camera, 0, "", 0, {
+      ...lane,
+      freeFar: { ...far, x: camera.sourceX(720) }
+    });
+    const note = frame.notes[0];
+    if (!note) throw new Error("no note");
+    const route = Math.hypot(far.y - 22, far.z + 150);
+    // A picture pixel along the route covers as much world as one across it.
+    expect(((note.freeMaterialUnitZ ?? NaN) * route) / span).toBeCloseTo(note.materialUnitX ?? 0);
+    // The standard road keeps the screen-measured rows.
+    expect(note.materialUnitZ).toBeCloseTo((span / 600) * 0.05);
+    const standard = { width: 0, depth: 0, capX: 0, capZ: 0 };
+    const free = { ...standard };
+    flatNoteMaskMetrics(note, "face", standard);
+    flatNoteMaskMetrics(note, "face", free, true);
+    expect(standard.capZ / (note.materialUnitZ ?? 1)).toBeCloseTo(
+      standard.capX / (note.materialUnitX ?? 1)
+    );
+    // On the route the corner spans as much world along as across.
+    expect((free.capZ * route) / span).toBeCloseTo(free.capX);
+  }
+});
+
+it("bursts arrivals at their free lane's far end and skips keys without one", () => {
+  const frame = new ThreeRoadFrame();
+  const lane = { y: 22, scaleX: 1, offsetX: 0, offsetY: 0, width: 1, height: 1 };
+  frame.freeContacts = new Map([[100, { ...lane, freeFar: { x: -40, y: 2022, z: -4500 } }]]);
+  frame.withBursts([
+    { x: 100, color: 0xff0060, age: 0.1, width: 24 },
+    { x: 130, color: 0x00ff60, age: 0.1, width: 24 }
+  ]);
+  expect(frame.burstCount).toBe(1);
+  expect(frame.bursts[0]).toEqual({ x: -40, y: 2022, z: -4500, color: 0xff0060, age: 0.1 });
+  const first = frame.bursts[0];
+  frame.begin();
+  expect(frame.burstCount).toBe(0);
+  frame.withBursts([{ x: 100, color: 0x0060ff, age: 0.3, width: 24 }]);
+  expect(frame.bursts[0]).toBe(first);
+  expect(first?.color).toBe(0x0060ff);
 });

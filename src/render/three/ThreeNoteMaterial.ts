@@ -1,3 +1,4 @@
+import { roadWidthUniforms } from "./roadWidthUniforms";
 import { DoubleSide, ShaderMaterial } from "three";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import { NOTE_SLAB_ATTRIBUTES, NOTE_SLAB_VERTEX } from "./noteSlabGeometry";
@@ -5,7 +6,6 @@ import { NOTE_SLAB_ATTRIBUTES, NOTE_SLAB_VERTEX } from "./noteSlabGeometry";
 const VERTEX = /* glsl */ `
 ${NOTE_LANE_SHADER}
 ${NOTE_SLAB_ATTRIBUTES}
-attribute vec3 noteSize;
 attribute float noteAlpha;
 varying vec3 vPoint;
 varying vec3 vSize;
@@ -18,10 +18,10 @@ varying float vProjectedWidth;
 void main() {
   ${NOTE_SLAB_VERTEX}
   mat4 viewNote = modelViewMatrix * instanceMatrix;
-  vec4 view = viewNote * vec4(slabPoint, 1.0);
-  vec4 clip = projectNoteLane(projectionMatrix * view);
+  vec4 view = modelViewMatrix * roadInstancePoint(vec4(slabPoint, 1.0));
+  vec4 clip = projectNoteLane(projectionMatrix * view, slabPoint.z);
   vPoint = slabPoint;
-  vSize = noteSize;
+  vSize = noteSize.xyz;
   vTint = instanceColor;
   vAlpha = noteAlpha;
   vClipW = clip.w;
@@ -29,6 +29,13 @@ void main() {
   vNearGap = (clip.z + clip.w) / max(depthScale, 0.000001);
   vWorldWidth = length((viewNote * vec4(noteSize.x, 0.0, 0.0, 0.0)).xyz);
   vProjectedWidth = length((projectionMatrix * vec4(vWorldWidth, 0.0, 0.0, 0.0)).xy);
+  if (roadDockEnabled > 0.0) {
+    vec4 left = projectRoadLanePoint(vec4(slabPoint - vec3(noteSize.x * 0.5, 0.0, 0.0), 1.0));
+    vec4 right = projectRoadLanePoint(vec4(slabPoint + vec3(noteSize.x * 0.5, 0.0, 0.0), 1.0));
+    vProjectedWidth = length(right.xy / max(abs(right.w), 0.000001) - left.xy / max(abs(left.w), 0.000001)) * max(clip.w, 0.0);
+    // The two projections use different near/far planes and homogeneous scales.
+    vNearGap = (clip.z + clip.w) / max(abs(clip.w), 0.000001) * vWorldWidth * 8.0;
+  }
   gl_Position = clip;
 }
 `;
@@ -91,7 +98,7 @@ void main() {
 /** Back then front surfaces expose the far outline through glass without occluding other notes. */
 export function createNoteBodyMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { visualTime: { value: 0 } },
+    uniforms: { ...roadWidthUniforms, visualTime: { value: 0 } },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
     transparent: true,

@@ -1,3 +1,4 @@
+import { roadWidthUniforms } from "./roadWidthUniforms";
 import {
   AdditiveBlending,
   Color,
@@ -45,7 +46,6 @@ float noise3(vec3 p) {
 
 const VERTEX = /* glsl */ `
 ${NOTE_LANE_SHADER}
-attribute vec3 noteSize;
 attribute vec3 noteEnvelope;
 attribute vec4 noteParams;
 ${NOTE_SLAB_ATTRIBUTES}
@@ -66,13 +66,13 @@ void main() {
   vec3 point = base + vec3(slabArc.x * sideInflate, slabProfile.x * 2.0 * inflate, slabArc.y * sideInflate);
   // Static shell coordinates retain affine world anchoring as either end is clipped.
   vLocal = point;
-  vSize = noteSize;
+  vSize = noteSize.xyz;
   vTint = instanceColor;
   vParams = noteParams;
   vAlpha = noteEnvelope.x;
   vLayer = noteEnvelope.y;
   vOffset = noteEnvelope.z;
-  gl_Position = projectNoteLane(projectionMatrix * modelViewMatrix * instanceMatrix * vec4(point, 1.0));
+  gl_Position = projectRoadLanePoint(vec4(point, 1.0));
 }
 `;
 
@@ -118,7 +118,7 @@ export class ThreeNoteAura {
   private readonly geometry = createNoteSlabGeometry();
   private readonly time = { value: 0 };
   private readonly material = new ShaderMaterial({
-    uniforms: { visualTime: this.time },
+    uniforms: { ...roadWidthUniforms, visualTime: this.time },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
     transparent: true,
@@ -127,11 +127,15 @@ export class ThreeNoteAura {
     depthWrite: false,
     side: DoubleSide
   });
-  private readonly projections = new InstancedBufferAttribute(
-    new Float32Array(INSTANCE_CAPACITY * 3),
-    3
+  private readonly contacts = new InstancedBufferAttribute(
+    new Float32Array(INSTANCE_CAPACITY * 4),
+    4
   );
-  private readonly sizes = new InstancedBufferAttribute(new Float32Array(INSTANCE_CAPACITY * 3), 3);
+  private readonly projections = new InstancedBufferAttribute(
+    new Float32Array(INSTANCE_CAPACITY * 4),
+    4
+  );
+  private readonly sizes = new InstancedBufferAttribute(new Float32Array(INSTANCE_CAPACITY * 4), 4);
   private readonly envelopes = new InstancedBufferAttribute(
     new Float32Array(INSTANCE_CAPACITY * 3),
     3
@@ -148,6 +152,7 @@ export class ThreeNoteAura {
   constructor() {
     this.geometry.setAttribute("noteSize", this.sizes);
     this.geometry.setAttribute("noteProjection", this.projections);
+    this.geometry.setAttribute("noteContact", this.contacts);
     this.geometry.setAttribute("noteEnvelope", this.envelopes);
     this.geometry.setAttribute("noteParams", this.params);
     this.mesh.instanceColor = new InstancedBufferAttribute(
@@ -157,6 +162,7 @@ export class ThreeNoteAura {
     for (const attribute of [
       this.sizes,
       this.projections,
+      this.contacts,
       this.envelopes,
       this.params,
       this.mesh.instanceMatrix,
@@ -236,12 +242,20 @@ export class ThreeNoteAura {
         this.performanceScale
       );
       for (let layer = 0; layer < NOTE_AURA_LAYERS; layer++, used++) {
-        this.sizes.setXYZ(used, note.width, height, depth);
-        this.projections.setXYZ(
+        this.sizes.setXYZW(used, note.width, height, depth, note.pitch ?? 0);
+        this.projections.setXYZW(
           used,
           note.lane?.scaleX ?? 1,
           note.lane?.offsetX ?? 0,
-          note.lane?.offsetY ?? 0
+          note.lane?.offsetY ?? 0,
+          -centreZ
+        );
+        this.contacts.setXYZW(
+          used,
+          laneY,
+          note.lane?.depth ?? this.nearZ,
+          note.lane?.freeFar?.x ?? 0,
+          note.lane?.freeFar?.y ?? 0
         );
         this.params.setXYZW(used, phase, speed, frequency, spread);
         this.envelopes.setXYZ(used, alpha, layer, offset);
@@ -255,6 +269,7 @@ export class ThreeNoteAura {
     if (used > 0) {
       this.upload(this.sizes, used);
       this.upload(this.projections, used);
+      this.upload(this.contacts, used);
       this.upload(this.envelopes, used);
       this.upload(this.params, used);
       this.upload(this.mesh.instanceMatrix, used);

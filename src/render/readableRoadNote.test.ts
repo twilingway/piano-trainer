@@ -1,3 +1,4 @@
+import { separateRepeatTail } from "./noteSeparation";
 import { describe, expect, it } from "vitest";
 import { NOTE_SLAB_THICKNESS } from "./noteDimensions";
 import { holdBounds } from "./holdBounds";
@@ -20,7 +21,7 @@ function face(camera: WorldCamera, keyX: number, sourceY: number, width: number,
 
 describe("readable road notes", () => {
   it.each(Object.entries(CAMERA_PRESETS))(
-    "makes very short notes readable without moving contact in the %s view",
+    "makes very short overhead notes readable and keeps perspective ones true in the %s view",
     (_, prefs) => {
       for (const [viewportWidth, viewportHeight] of [
         [390, 500],
@@ -36,11 +37,12 @@ describe("readable road notes", () => {
               const top = bottom - (duration / 2.22) * hitY;
               const before = face(camera, viewportWidth / 2, bottom, width, hitY);
               const adjusted = readableRoadTop(viewportWidth / 2, top, bottom, width, hitY, camera);
+              if (camera.params.orthographicScale === undefined) {
+                expect(adjusted).toBe(top);
+                continue;
+              }
               const after = face(camera, viewportWidth / 2, adjusted, width, hitY);
-              const minimum =
-                camera.params.orthographicScale === undefined
-                  ? Math.max(24, Math.min(64, width * before.scale * 0.8))
-                  : Math.max(18, Math.min(30, width * before.scale * 0.8));
+              const minimum = Math.max(18, Math.min(30, width * before.scale * 0.8));
               const available = before.y - face(camera, viewportWidth / 2, 0, width, hitY).y;
               expect(before.y - after.y).toBeGreaterThanOrEqual(
                 Math.min(minimum, available) - 1e-6
@@ -83,21 +85,15 @@ describe("readable road notes", () => {
     );
   });
 
-  it("keeps short perspective blocks proportional to their visible width", () => {
+  it("keeps short perspective notes at their true length at every depth", () => {
     const camera = worldCamera(1920, 828, CAMERA_PRESETS.player, PANEL_EDGE, 0.1);
     const hitY = camera.road.at(960, 1).y;
-    for (const width of [44, 80, 120]) {
-      const bottom = hitY * 0.95;
-      const top = readableRoadTop(960, bottom - 0.1, bottom, width, hitY, camera, 0.08);
-      const lower = face(camera, 960, bottom, width, hitY);
-      const upper = face(camera, 960, top, width, hitY);
-      expect(lower.y - upper.y).toBeGreaterThanOrEqual(24 - 1e-6);
-      expect(lower.y - upper.y).toBeLessThanOrEqual(64 + 1e-6);
-      expect(lower.y - upper.y).toBeCloseTo(
-        Math.min(64, Math.max(24, width * lower.scale * 0.8)),
-        6
-      );
-    }
+    for (const width of [44, 80, 120])
+      for (const progress of [0.2, 0.6, 0.95]) {
+        const bottom = hitY * progress;
+        const top = bottom - 0.1;
+        expect(readableRoadTop(960, top, bottom, width, hitY, camera, 0.08)).toBe(top);
+      }
   });
 
   it("stops at the horizon when there is insufficient room for the digit", () => {
@@ -179,4 +175,29 @@ describe("readable road notes", () => {
                 }
               }
   });
+});
+
+it("keeps a real perspective gap after the readable-face minimum without moving the head", () => {
+  const camera = worldCamera(1366, 768, CAMERA_PRESETS.player, PANEL_EDGE);
+  const hitY = 600,
+    bottom = 450,
+    width = 44,
+    keyX = 640;
+  const top = readableRoadTop(keyX, bottom - 2, bottom, width, hitY, camera, 0.02);
+  const project = (y: number) =>
+    camera.project(
+      camera.sourceX(keyX),
+      camera.near.y,
+      camera.near.z + (1 - y / hitY) * (camera.roadFarZ - camera.near.z)
+    );
+  const nextHead = (top + bottom) / 2;
+  const slope = project(nextHead + 1).y - project(nextHead).y;
+  const separated = separateRepeatTail(top, bottom, nextHead, slope);
+  expect(separated).toBeGreaterThan(top);
+  expect(separated).toBeLessThan(bottom);
+  const projectedGap = project(separated).y - project(nextHead).y;
+  const expectedGap = Math.min(3, (project(bottom).y - project(nextHead).y) * 0.3);
+  expect(projectedGap).toBeGreaterThan(expectedGap * 0.8);
+  expect(projectedGap).toBeLessThan(expectedGap * 1.4);
+  expect(bottom).toBe(450);
 });

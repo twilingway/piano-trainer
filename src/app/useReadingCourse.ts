@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { generateReadingExercise } from "../reading/generator";
 import { generateBassReadingExercise, nextBassReadingSeed } from "../reading/bassGenerator";
 import { toBassReadingResult, type BassReadingTask } from "../reading/bassTypes";
 import { readingFingerprint } from "../reading/adaptation";
 import { readingPromptXml } from "../reading/prompt";
 import { ReadingSession } from "../reading/session";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues
+} from "../reading/fingerCues";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
+import { courseRangeIndices } from "../staff/courseStaff";
+import { useI18n } from "./useI18n";
 import { DEFAULT_READING_PREFERENCES } from "../reading/types";
 import type { ReadingHintLevel, ReadingPreferences, ReadingResult } from "../reading/types";
 import type { TrainerReadingPolicy } from "../practice/readingPolicy";
@@ -12,9 +20,12 @@ import type { Trainer } from "../practice/Trainer";
 import type { RefObject } from "react";
 import { readingActions, type ReadingState } from "./readingSlice";
 import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+import { useLessonAcceptedFeedback } from "./useLessonAcceptedFeedback";
 import { useReadingGeneration } from "./useReadingGeneration";
 
-export function useReadingCourse() {
+export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
+  const { locale } = useI18n();
   const saved = useAppSelector((state) => state.reading);
   const isBass = saved.activeCourse === "bass-reading";
   const dispatch = useAppDispatch();
@@ -79,6 +90,7 @@ export function useReadingCourse() {
     () => (exercise && run ? new ReadingSession(exercise, DEFAULT_READING_PREFERENCES, run) : null),
     [exercise, run]
   );
+  const feedbackRef = useLessonAcceptedFeedback(feedback, session);
   const [published, setPublished] = useState<{
     session: ReadingSession;
     snapshot: ReturnType<ReadingSession["snapshot"]>;
@@ -97,7 +109,7 @@ export function useReadingCourse() {
     noteId: string;
     level: ReadingHintLevel;
   } | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     sessionRef.current = session;
   }, [session]);
   useEffect(() => {
@@ -125,15 +137,11 @@ export function useReadingCourse() {
       )
     : 0;
   const note = exercise?.song.notes[index];
-  const prompt = useMemo(
-    () => (exercise ? readingPromptXml(exercise.musicXml, exercise.task, index) : null),
-    [exercise, index]
-  );
   const noteId = snapshot?.noteId;
   const id = exercise
     ? `${run?.runId ?? ""}:${exercise.id}:${noteId ?? "preparing"}:${String(retry)}`
     : "";
-  useEffect(() => {
+  useLayoutEffect(() => {
     presentationIdRef.current = id;
   }, [id]);
   const renderError = errorId === id;
@@ -141,6 +149,38 @@ export function useReadingCourse() {
     errorRef.current = renderError;
   }, [renderError]);
   const hintLevel = renderedHint?.id === id ? renderedHint.level : 0;
+  const prompt = useMemo(() => {
+    if (!exercise) return null;
+    const allowed =
+      hintLevel === 2 && snapshot?.active && snapshot.presented && exercise.task !== "check";
+    // The cue row stays, empty until the hint: the staff and the row under it do not move.
+    const cues = note && exercise.task !== "check" ? lessonFingerCues([note]) : [];
+    const xml = cues.length
+      ? musicXmlWithLessonFingerCues(exercise.musicXml, cues, exercise.song.notes, (cue) =>
+          allowed ? lessonFingerLabel(cue, locale) : HIDDEN_LESSON_CUE
+        )
+      : exercise.musicXml;
+    return readingPromptXml(xml, exercise.task, index);
+  }, [exercise, index, hintLevel, snapshot?.active, snapshot?.presented, note, locale]);
+  const shownRef = useRef({ id, noteId, beat: prompt?.beat });
+  useLayoutEffect(() => {
+    shownRef.current = { id, noteId, beat: prompt?.beat };
+  }, [id, noteId, prompt?.beat]);
+  // The prompts with the lowest and the highest note, cues shown (a shown cue sits lowest): the
+  // staff keeps their room.
+  const range = useMemo(() => {
+    if (!exercise) return undefined;
+    const notes = exercise.song.notes;
+    const cues = exercise.task !== "check" ? lessonFingerCues(notes) : [];
+    const xml = cues.length
+      ? musicXmlWithLessonFingerCues(exercise.musicXml, cues, notes, (cue) =>
+          lessonFingerLabel(cue, locale)
+        )
+      : exercise.musicXml;
+    return courseRangeIndices(notes.map((source) => [source.pitch])).map(
+      (extreme) => readingPromptXml(xml, exercise.task, extreme).musicXml
+    );
+  }, [exercise, locale]);
   const requestHint = useCallback(
     (level: ReadingHintLevel, noteId: string) => {
       if (!session) return;
@@ -191,7 +231,29 @@ export function useReadingCourse() {
             },
             onJudgement(event, events, raw) {
               if (events.some((event) => event.type === "hit" || event.type === "wrong")) {
-                session.answer(event.pitch, event.source ?? "pointer", raw);
+                const shown = shownRef.current;
+                const answer = session.answer(event.pitch, event.source ?? "pointer", raw);
+                if (
+                  answer?.expectedMidi === answer?.playedMidi &&
+                  answer?.runId &&
+                  answer.attemptId &&
+                  shown.noteId === answer.noteId &&
+                  shown.beat !== undefined &&
+                  presentationIdRef.current === shown.id &&
+                  sessionRef.current === session &&
+                  !blockedRef.current &&
+                  !errorRef.current &&
+                  document.visibilityState !== "hidden" &&
+                  store.getState().reading.selectionRevision === saved.selectionRevision
+                )
+                  feedbackRef.current?.publish({
+                    runId: answer.runId,
+                    presentationId: shown.id,
+                    receiptId: answer.attemptId,
+                    notes: [
+                      { noteId: answer.noteId, staffBeat: shown.beat, pitch: answer.expectedMidi }
+                    ]
+                  });
                 publish();
               }
             },
@@ -220,7 +282,7 @@ export function useReadingCourse() {
             }
           }
         : null,
-    [session, exercise, publish, requestHint]
+    [session, exercise, publish, requestHint, store, saved.selectionRevision, feedbackRef]
   );
 
   const presentation = useMemo(
@@ -259,6 +321,7 @@ export function useReadingCourse() {
                 presentationIdRef.current === shownId &&
                 sessionRef.current === session
               ) {
+                feedbackRef.current?.clear();
                 setErrorId(id);
                 session.setActive(false, performance.now());
                 publish();
@@ -266,7 +329,7 @@ export function useReadingCourse() {
             }
           }
         : undefined,
-    [session, id, noteId, publish, exercise, store]
+    [session, id, noteId, publish, exercise, store, feedbackRef]
   );
 
   useEffect(() => {
@@ -283,9 +346,10 @@ export function useReadingCourse() {
   }, [session, hintLevel, snapshot?.noteId, snapshot?.active, snapshot?.presented, publish]);
 
   const onSelected = useCallback(() => {
+    feedbackRef.current?.clear();
     setIntro(false);
     refreshClock();
-  }, [refreshClock]);
+  }, [refreshClock, feedbackRef]);
   const generation = useReadingGeneration(onSelected);
   const finish = useCallback(() => {
     if (!session || finished?.session === session) return;
@@ -312,6 +376,7 @@ export function useReadingCourse() {
     setBassSourceFilter: (value: typeof saved.bass.sourceFilter) =>
       dispatch(readingActions.bassSourceFilterChanged(value)),
     startBass: (task: BassReadingTask) => {
+      feedbackRef.current?.clear();
       setIntro(false);
       dispatch(readingActions.bassSelected({ task, seed: saved.bass.seed }));
     },
@@ -331,6 +396,7 @@ export function useReadingCourse() {
     snapshot,
     index,
     prompt,
+    range,
     presentation,
     retry,
     renderError,
@@ -347,10 +413,14 @@ export function useReadingCourse() {
     },
     blockedRef,
     ...generation,
-    exit: () => dispatch(readingActions.exit()),
+    exit: () => {
+      feedbackRef.current?.clear();
+      dispatch(readingActions.exit());
+    },
     finish,
     suspend,
     newSeries: () => {
+      feedbackRef.current?.clear();
       if (isBass)
         dispatch(
           readingActions.bassSelected({
@@ -362,6 +432,7 @@ export function useReadingCourse() {
       else if (saved.task) void generation.select(saved.plan?.purpose ?? saved.task);
     },
     onRetry: () => {
+      feedbackRef.current?.clear();
       if (snapshot?.noteId) session?.requirePresentation(snapshot.noteId, performance.now());
       publish();
       setRetry((value) => value + 1);

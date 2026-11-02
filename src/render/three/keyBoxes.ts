@@ -1,5 +1,5 @@
 import { BLACK_NOTE_FLOOR } from "../noteDimensions";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { isBlackKey } from "../../fingering/fingering";
 import {
   KEYBOARD_BLACK_BACK,

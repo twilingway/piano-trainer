@@ -1,15 +1,29 @@
+import { normalizeRoadHorizon } from "../render/roadHorizon";
+import { normalizeWorldFov } from "../render/worldFov";
+import type { FallingNoteStyle } from "../render/fallingNoteStyle";
+import {
+  DEFAULT_FREE_DIRECT_FIELD,
+  DEFAULT_FREE_PERSPECTIVE_FIELD,
+  normalizeFreeRoadLayout,
+  type FreeRoadLayout
+} from "../render/freeRoadLayout";
+import { DEFAULT_PLAYED_NOTE_COLOR } from "../staff/notationColors";
 import type { HandStyle } from "../render/handRenderCatalog";
 import type { KeyStyle } from "../render/KeyboardLayer";
-import { DEFAULT_CAMERA, normalizeCamera } from "../render/worldCamera";
+import { CAMERA_PRESETS, normalizeCamera } from "../render/worldCamera";
 import type { CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_ROAD_SHAPE } from "../render/RoadLayer";
+import { DEFAULT_ROAD_FIT, type RoadFit } from "../render/roadLayoutCamera";
 import type { NoteNameStyle } from "../song/musicxml";
 import type { KeyRange } from "./useFallingView";
 import type { KeyboardOrientation } from "./viewProfiles";
 
 export interface StaffPrefs {
   readonly zoom: number;
+  /** Independent size of piano tab labels. */
+  readonly tabsZoom: number;
   readonly noteColor: string;
+  readonly playedNoteColor: string;
   readonly scoreColor: string;
   readonly singleLine: boolean;
   readonly follow: boolean;
@@ -36,18 +50,29 @@ export interface StaffPrefs {
   readonly road: boolean;
   /** Optional lane guides on the 3D road. */
   readonly roadGuides: boolean;
+  readonly fallingNoteStyle: FallingNoteStyle;
   /** The local pianist model at the 3D keys instead of the live hands, when it is there. */
   readonly pianist: boolean;
   /** Inspection mode persists; the manual orbit pose is transient. */
+  readonly worldFov: number;
   readonly freeCamera: boolean;
+  readonly freeCameraWasd: boolean;
+  readonly freeDirectField: FreeRoadLayout;
+  readonly freePerspectiveField: FreeRoadLayout;
   readonly performanceScene: boolean;
   /** Dim physical keys for a demonstration; study stays bright. */
   readonly keyboardDim: boolean;
+  /** Independent visual effects in every keyboard view. */
+  readonly flatNoteBurning: boolean;
+  readonly flatPressEffects: boolean;
+  readonly noteParticles: boolean;
   /** Falling notes carry the note written on a small staff. */
   readonly noteCards: boolean;
   readonly noteCardsConfigured: boolean;
   /** Classroom stickers on the keys. */
   readonly labels: boolean;
+  /** Octave numbers on C keys, independent of full note stickers. */
+  readonly octaveLabels: boolean;
   /** Optional renderer diagnostics. */
   readonly fps: boolean;
   /** The keys shown: fitted to the song, or a real keyboard's range. */
@@ -58,16 +83,23 @@ export interface StaffPrefs {
   readonly keyboardOrientation: KeyboardOrientation;
   /** The take's review opens by itself at the end of a run. */
   readonly autoReview: boolean;
-  /** The road's width at the horizon, as a share of its width at the keys. */
+  /** Positive: key-width share; negative: screen-width share in the standard view. */
   readonly roadFar: number;
   readonly camera: CameraPrefs;
   /** The road's horizon, as a share of the way from the top down to the keys. */
   readonly roadHorizon: number;
+  /** Standard road straightening; the snapshot is the keyboard camera the button took. */
+  readonly roadFit: RoadFit["mode"];
+  readonly roadFitCamera: CameraPrefs | null;
+  /** How far straightened lanes follow the keyboard's perspective: 0 world direction, 1 full. */
+  readonly roadNoteTilt: number;
 }
 
 export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   zoom: 1,
-  noteColor: "#62d9ff",
+  tabsZoom: 1,
+  noteColor: "#ffffff",
+  playedNoteColor: DEFAULT_PLAYED_NOTE_COLOR,
   scoreColor: "#ffffff",
   singleLine: true,
   follow: true,
@@ -83,21 +115,33 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   handStyle: "rendered",
   road: false,
   roadGuides: false,
+  fallingNoteStyle: "filled",
   pianist: false,
+  worldFov: 45,
   freeCamera: false,
+  freeCameraWasd: false,
+  freeDirectField: DEFAULT_FREE_DIRECT_FIELD,
+  freePerspectiveField: DEFAULT_FREE_PERSPECTIVE_FIELD,
   performanceScene: false,
   keyboardDim: false,
+  flatNoteBurning: true,
+  flatPressEffects: true,
+  noteParticles: true,
   noteCards: false,
   noteCardsConfigured: true,
   labels: false,
+  octaveLabels: true,
   fps: false,
   keyRange: "song",
-  keyStyle: "arcade",
+  keyStyle: "3d",
   keyboardOrientation: "follow",
   autoReview: false,
-  camera: DEFAULT_CAMERA,
+  camera: CAMERA_PRESETS.top,
   roadFar: DEFAULT_ROAD_SHAPE.far,
-  roadHorizon: DEFAULT_ROAD_SHAPE.horizon
+  roadHorizon: DEFAULT_ROAD_SHAPE.horizon,
+  roadFit: DEFAULT_ROAD_FIT.mode,
+  roadFitCamera: null,
+  roadNoteTilt: 0
 };
 
 export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs {
@@ -105,22 +149,29 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const boolean = <K extends keyof StaffPrefs>(key: K): StaffPrefs[K] =>
     (typeof raw[key] === "boolean" ? raw[key] : defaults[key]) as StaffPrefs[K];
-  const number = (key: "zoom" | "roadFar" | "roadHorizon", low: number, high: number) => {
+  const number = (
+    key: "zoom" | "tabsZoom" | "roadFar" | "roadHorizon" | "roadNoteTilt",
+    low: number,
+    high: number
+  ) => {
     const v = raw[key];
     return typeof v === "number" && Number.isFinite(v)
       ? Math.max(low, Math.min(high, v))
       : defaults[key];
   };
-  const color = (key: "noteColor" | "scoreColor") =>
+  const color = (key: "noteColor" | "playedNoteColor" | "scoreColor") =>
     typeof raw[key] === "string" && /^#[\da-f]{6}$/i.test(raw[key]) ? raw[key] : defaults[key];
   const choice = <K extends keyof StaffPrefs>(
     key: K,
     values: readonly StaffPrefs[K][]
   ): StaffPrefs[K] =>
     values.includes(raw[key] as StaffPrefs[K]) ? (raw[key] as StaffPrefs[K]) : defaults[key];
+  const zoom = number("zoom", 0.5, 2);
   return {
-    zoom: number("zoom", 0.5, 2),
+    zoom,
+    tabsZoom: raw.tabsZoom === undefined ? zoom : number("tabsZoom", 0.5, 2),
     noteColor: color("noteColor"),
+    playedNoteColor: color("playedNoteColor"),
     scoreColor: color("scoreColor"),
     singleLine: boolean("singleLine"),
     follow: boolean("follow"),
@@ -136,21 +187,40 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     handStyle: choice("handStyle", ["drawn", "rendered"]),
     road: boolean("road"),
     roadGuides: boolean("roadGuides"),
+    fallingNoteStyle: choice("fallingNoteStyle", ["filled", "flat", "glass"]),
     pianist: boolean("pianist"),
-    freeCamera: boolean("freeCamera"),
+    worldFov: normalizeWorldFov(raw.worldFov),
+    // The removed «free world» composition was the free camera with a pinned keyboard.
+    freeCamera: raw.cameraComposition === "free" || boolean("freeCamera"),
+    freeCameraWasd: boolean("freeCameraWasd"),
+    freeDirectField: normalizeFreeRoadLayout(raw.freeDirectField, DEFAULT_FREE_DIRECT_FIELD),
+    freePerspectiveField: normalizeFreeRoadLayout(
+      raw.freePerspectiveField,
+      DEFAULT_FREE_PERSPECTIVE_FIELD
+    ),
     performanceScene: boolean("performanceScene"),
     keyboardDim: boolean("keyboardDim"),
+    flatNoteBurning: boolean("flatNoteBurning"),
+    flatPressEffects: boolean("flatPressEffects"),
+    noteParticles: boolean("noteParticles"),
     noteCards: boolean("noteCards"),
     noteCardsConfigured: boolean("noteCardsConfigured"),
     labels: boolean("labels"),
+    octaveLabels: boolean("octaveLabels"),
     fps: boolean("fps"),
     keyRange: choice("keyRange", ["song", "3oct", "4oct", "88", "61", "49", "25"]),
-    keyStyle: choice("keyStyle", ["classic", "arcade", "perspective", "3d"]),
+    keyStyle: choice("keyStyle", ["classic", "arcade", "3d"]),
     keyboardOrientation:
       raw.keyStyle === "3d" && raw.keyboardOrientation === "top" ? "top" : "follow",
     autoReview: boolean("autoReview"),
-    camera: normalizeCamera(raw.camera),
-    roadFar: number("roadFar", 0.1, 0.9),
-    roadHorizon: number("roadHorizon", 0, 0.6)
+    camera: raw.camera === undefined ? CAMERA_PRESETS.top : normalizeCamera(raw.camera),
+    roadFar: number("roadFar", -1, 0.9),
+    roadHorizon: normalizeRoadHorizon(raw.roadHorizon, defaults.roadHorizon),
+    roadFit: choice("roadFit", ["button", "auto"]),
+    roadFitCamera:
+      raw.roadFitCamera && typeof raw.roadFitCamera === "object"
+        ? normalizeCamera(raw.roadFitCamera)
+        : null,
+    roadNoteTilt: number("roadNoteTilt", 0, 1)
   };
 }

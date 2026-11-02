@@ -5,10 +5,15 @@ import type { KeyLightSettings } from "../input/keyLights";
 import { DEFAULT_KEY_LIGHTS } from "../input/keyLights";
 import type { KeyBinding, KeyboardPrefs, KeyboardPreset } from "../input/keyboardLayouts";
 import { DEFAULT_KEYBOARD_PREFS } from "../input/keyboardLayouts";
-import type { OutputChoice } from "../input/midiOutput";
+import { AUTO_OUTPUT_CHOICE, type OutputChoice } from "../input/midiOutput";
 import { DEFAULT_MELODY_OUTPUT, type MelodyOutputSettings } from "../input/melodyOutput";
 import type { GamePreferences } from "./gamePreferences";
 import { DEFAULT_GAME_PREFERENCES } from "./gamePreferences";
+import {
+  DEFAULT_INSTRUMENT_PROFILE_PREFERENCES,
+  normalizeInstrumentProfilePreferences,
+  type InstrumentProfilePreferences
+} from "./instrumentProfilePreferences";
 import type { PlayerPrefs } from "./playerPrefs";
 import { DEFAULT_PLAYER_PREFS } from "./playerPrefs";
 import type { StaffPrefs } from "./staffPreferences";
@@ -46,6 +51,7 @@ export interface PreferencesState {
   midiOutput: OutputChoice | null;
   keyLights: KeyLightSettings;
   melodyOutput: MelodyOutputSettings;
+  instrumentProfiles: InstrumentProfilePreferences;
   fullscreen: boolean;
   timing: TimingPreferences;
 }
@@ -59,9 +65,10 @@ const initialState: PreferencesState = {
   layouts: DEFAULT_SCREEN_LAYOUTS,
   viewProfiles: hydrateViewProfiles(null, DEFAULT_STAFF_PREFS, DEFAULT_SCREEN_LAYOUTS.piano),
   deviceRange: DEFAULT_DEVICE_RANGE,
-  midiOutput: null,
+  midiOutput: AUTO_OUTPUT_CHOICE,
   keyLights: DEFAULT_KEY_LIGHTS,
   melodyOutput: DEFAULT_MELODY_OUTPUT,
+  instrumentProfiles: DEFAULT_INSTRUMENT_PROFILE_PREFERENCES,
   fullscreen: true,
   timing: defaultTimingPreferences()
 };
@@ -202,6 +209,16 @@ const preferencesSlice = createSlice({
     },
     melodyOutputChanged(state, action: PayloadAction<MelodyOutputSettings>) {
       state.melodyOutput = action.payload;
+    },
+    instrumentProfilesChanged(state, action: PayloadAction<InstrumentProfilePreferences>) {
+      const next = normalizeInstrumentProfilePreferences(action.payload);
+      state.instrumentProfiles = {
+        ...next,
+        customProfiles: next.customProfiles.map((profile) => ({
+          ...profile,
+          instruments: profile.instruments.map((instrument) => ({ ...instrument }))
+        }))
+      };
     },
     fullscreenChanged(state, action: PayloadAction<boolean>) {
       state.fullscreen = action.payload;

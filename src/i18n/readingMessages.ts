@@ -1,5 +1,11 @@
 import type { Messages } from "./locales";
 export const readingMessages: Messages = {
+  "Темп: {bpm} BPM · Ввод: {source}": { en: "Tempo: {bpm} BPM · Input: {source}" },
+  "Чтение, ритм и две руки": { en: "Reading, rhythm and both hands" },
+  "Как выполнять задание": { en: "How to do this exercise" },
+  "Параметры задания": { en: "Exercise settings" },
+  "Прогресс и история урока": { en: "Lesson progress and history" },
+  "Другие задания курса": { en: "More course exercises" },
   "Читаю пять нот": { en: "Read five notes" },
   "Читаю отдельные ноты": { en: "Read single notes" },
   "Читаю короткие фразы": { en: "Read short phrases" },
@@ -24,7 +30,6 @@ export const readingMessages: Messages = {
   },
   "Нота {number} из 20": { en: "Note {number} of 20" },
   "Новая серия": { en: "New set" },
-  "Выйти из чтения нот": { en: "Leave note reading" },
   Подсказка: { en: "Hint" },
   "Не удалось показать ноты. Попробуйте загрузить стан снова.": {
     en: "Could not display the notes. Try loading the staff again."
@@ -33,7 +38,6 @@ export const readingMessages: Messages = {
   "Нажмите «Играть» и дождитесь появления текущей ноты.": {
     en: "Press Play and wait for the current note to appear."
   },
-  "Текущая нота: {note}": { en: "Current note: {note}" },
   "Настройки подсказок чтения": { en: "Reading hint settings" },
   "Показывать подсказки автоматически": { en: "Show hints automatically" },
   "Название ноты через, с": { en: "Note name after, s" },

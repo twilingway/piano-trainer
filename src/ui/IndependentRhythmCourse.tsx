@@ -1,3 +1,8 @@
+import { IndependentRhythmLessonSummary } from "./LessonResultSummary";
+import { LessonIllustration } from "./LessonIllustration";
+import { LessonReport } from "./LessonReport";
+import { LessonDetails } from "./LessonDetails";
+import { LessonMenuItem, LessonSlot, useInLessonWorkspace } from "./LessonSlots";
 import { useI18n } from "../app/useI18n";
 import type {
   IndependentRhythmPhase,
@@ -20,21 +25,29 @@ export function IndependentRhythmCourseCard(
   const { t } = useI18n();
   return (
     <section className="reading-course-card">
+      <LessonIllustration lesson="two-rhythms" />
       <h3>{t(INDEPENDENT_RHYTHM_TITLE)}</h3>
-      <p>
-        {t(
-          "Проверка пульса и четыре такта с разными ритмами слева и справа. Только C3 и C4, 60 BPM."
-        )}
-      </p>
+      <p>{t("Левая и правая руки играют свой ритм.")}</p>
       <div className="reading-actions">
-        <button type="button" className="game-button" onClick={props.onIntro}>
-          {t("Знакомство с двумя ритмами")}
-        </button>
         <button type="button" className="game-button" onClick={props.onStart}>
           {t("Открыть проверку пульса")}
         </button>
       </div>
-      <IndependentRhythmProgress {...props} />
+      <LessonDetails kind="more" id="two-rhythms:catalog:more">
+        <button
+          type="button"
+          className="game-button lesson-secondary-action"
+          onClick={props.onIntro}
+        >
+          {t("Знакомство с двумя ритмами")}
+        </button>
+      </LessonDetails>
+      <p className="reading-muted">
+        {t("Завершено серий: {number}", { number: props.history.length })}
+      </p>
+      <LessonDetails kind="progress" id="independent-rhythm:catalog:progress">
+        <IndependentRhythmProgress {...props} />
+      </LessonDetails>
     </section>
   );
 }
@@ -108,6 +121,7 @@ function phaseStatus(status: IndependentRhythmPanelStatus, phase: IndependentRhy
 }
 export function IndependentRhythmPracticePanel(props: IndependentRhythmPracticeProps) {
   const { t } = useI18n();
+  const inWorkspace = useInLessonWorkspace();
   const preparation = props.status === "preparation" || props.status === "passed";
   const active =
     props.status === "count-in" || props.status === "playing" || props.status === "finalizing";
@@ -118,94 +132,123 @@ export function IndependentRhythmPracticePanel(props: IndependentRhythmPracticeP
       className="reading-practice two-hand-practice independent-rhythm-practice"
       aria-label={t(INDEPENDENT_RHYTHM_TITLE)}
     >
-      <p className="two-hand-feedback" role="status" aria-live="polite">
-        {t(phaseStatus(props.status, props.phase))}
-        {props.status === "count-in" && props.countInBeat !== undefined && (
-          <> {t("Доля отсчёта: {beat} из 4", { beat: props.countInBeat })}</>
-        )}
-      </p>
-      <div className="reading-actions">
-        <strong>{t(INDEPENDENT_RHYTHM_TITLE)}</strong>
-        <span>{t(props.phase === "pulse" ? "Проверка пульса C4" : "Два ритма C3/C4")}</span>
-        <button type="button" className="game-button" onClick={props.onNewSeries}>
-          {t("Новая серия")}
+      <LessonSlot name="counter">
+        <span className="lesson-counter__mode">
+          {t("Темп: {bpm} BPM · Ввод: {source}", {
+            bpm: 60,
+            source: t(INDEPENDENT_RHYTHM_SOURCES[props.source])
+          })}
+        </span>
+        <span className="lesson-counter">
+          {t(props.phase === "pulse" ? "Проверка пульса C4" : "Два ритма C3/C4")}
+        </span>
+      </LessonSlot>
+      <LessonSlot name="exit">
+        <button type="button" className="game-button lesson-exit" onClick={props.onExit}>
+          {t("Выйти")}
         </button>
-        <button type="button" className="game-button" onClick={props.onRepeat}>
-          {t("Повторить с проверки пульса")}
-        </button>
-        <button type="button" className="game-button" onClick={props.onExit}>
-          {t("Выйти из двух ритмов")}
-        </button>
-      </div>
-      <p className="reading-muted">
-        {t(
-          props.phase === "pulse"
-            ? "Пульс: 8 четвертей · 60 BPM · окно ±150 мс · 0 лишних атак."
-            : "Два ритма: 4 такта · 24 начала нот · 60 BPM · окно ±150 мс для каждой ноты."
-        )}
-      </p>
-      <label>
-        {t("Способ ввода двух ритмов")}{" "}
-        <select
-          value={props.source}
-          disabled={active}
-          onChange={(event) => {
-            props.onSource(event.target.value as ReadingInputSource);
-          }}
-        >
-          {(["keyboard", "pointer", "midi"] as const).map((source) => (
-            <option key={source} value={source}>
-              {t(INDEPENDENT_RHYTHM_SOURCES[source])}
-            </option>
-          ))}
-        </select>
-      </label>
-      {props.source === "midi" && (
-        <p className="reading-muted">
-          {props.midiChannel === null
-            ? t("Канал MIDI определится первой атакой проверки пульса.")
-            : t("Канал двух ритмов: {channel}", { channel: props.midiChannel })}
+      </LessonSlot>
+      <LessonMenuItem kind="newSeries" label={t("Новая серия")} onSelect={props.onNewSeries} />
+      <LessonMenuItem
+        kind="repeat"
+        label={t("Повторить с проверки пульса")}
+        onSelect={props.onRepeat}
+      />
+      <LessonSlot name="feedback">
+        <p className="two-hand-feedback" role="status">
+          {t(phaseStatus(props.status, props.phase))}
+          {props.status === "count-in" && props.countInBeat !== undefined && (
+            <> {t("Доля отсчёта: {beat} из 4", { beat: props.countInBeat })}</>
+          )}
         </p>
-      )}
-      {preparation && (
-        <>
-          <p>{t("Пульс: C4. Два ритма: C3 слева и C4 справа.")}</p>
-          <label>
-            <input
-              type="checkbox"
-              checked={props.showKeyHints}
-              disabled={!props.ready}
-              onChange={(event) => {
-                props.onShowKeyHints(event.target.checked);
-              }}
-            />
-            {t("Показать клавиши перед стартом")}
-          </label>
-          <details>
-            <summary>{t("Позиции и назначения двух ритмов")}</summary>
-            <IndependentRhythmBindings bindings={props.bindings} />
-          </details>
-        </>
-      )}
-      {!props.allReleased && !active && (
-        <p role="alert">{t("Отпустите все нажатые клавиши перед стартом фазы.")}</p>
-      )}
-      {midiMissing && (
-        <p role="alert">{t("Подключите и выберите MIDI-устройство или смените способ ввода.")}</p>
-      )}
-      {props.error === "audio" && (
-        <p role="alert">{t("Не удалось включить метроном. Включите звук и начните ритм снова.")}</p>
-      )}
-      {props.error === "staff" && (
-        <p role="alert">
-          {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
-          <button type="button" onClick={props.onRetryStaff}>
-            {t("Повторить загрузку стана")}
-          </button>
-        </p>
-      )}
-      <div className="reading-actions">
+      </LessonSlot>
+      <LessonDetails kind="settings" id="independent-rhythm:practice:settings">
+        <label>
+          {t("Способ ввода двух ритмов")}{" "}
+          <select
+            value={props.source}
+            disabled={active}
+            onChange={(event) => {
+              props.onSource(event.target.value as ReadingInputSource);
+            }}
+          >
+            {(["keyboard", "pointer", "midi"] as const).map((source) => (
+              <option key={source} value={source}>
+                {t(INDEPENDENT_RHYTHM_SOURCES[source])}
+              </option>
+            ))}
+          </select>
+        </label>
+        {props.source === "midi" && (
+          <p className="reading-muted">
+            {props.midiChannel === null
+              ? t("Канал MIDI определится первой атакой проверки пульса.")
+              : t("Канал двух ритмов: {channel}", { channel: props.midiChannel })}
+          </p>
+        )}
         {preparation && (
+          <>
+            <p>{t("Пульс: C4. Два ритма: C3 слева и C4 справа.")}</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={props.showKeyHints}
+                disabled={!props.ready}
+                onChange={(event) => {
+                  props.onShowKeyHints(event.target.checked);
+                }}
+              />
+              {t("Показать клавиши перед стартом")}
+            </label>
+            <details>
+              <summary>{t("Позиции и назначения двух ритмов")}</summary>
+              <IndependentRhythmBindings bindings={props.bindings} />
+            </details>
+          </>
+        )}
+      </LessonDetails>
+      <LessonSlot name="feedback">
+        {!props.allReleased && !active && (
+          <p role="alert">{t("Отпустите все нажатые клавиши перед стартом фазы.")}</p>
+        )}
+        {midiMissing && (
+          <p role="alert">{t("Подключите и выберите MIDI-устройство или смените способ ввода.")}</p>
+        )}
+        {props.error === "audio" && (
+          <p role="alert">
+            {t("Не удалось включить метроном. Включите звук и начните ритм снова.")}
+          </p>
+        )}
+        {props.error === "staff" && (
+          <p role="alert">
+            {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
+            <button type="button" onClick={props.onRetryStaff}>
+              {t("Повторить загрузку стана")}
+            </button>
+          </p>
+        )}
+        {props.phase === "pulse" && props.pulseSummary && (
+          <p>
+            {t("Попадания: {hits} из {expected} ({percent}%).", {
+              hits: props.pulseSummary.right.hits,
+              expected: props.pulseSummary.right.expected,
+              percent: Math.round(
+                (props.pulseSummary.right.hits / Math.max(1, props.pulseSummary.right.expected)) *
+                  100
+              )
+            })}{" "}
+            {t("Лишние удары")}: {props.pulseSummary.extras}
+          </p>
+        )}
+        {props.status === "failed" && (
+          <button type="button" className="game-button" onClick={props.onGoToRhythm}>
+            {t("Перейти к курсу «Ритм»")}
+          </button>
+        )}
+      </LessonSlot>
+      {/* In the workspace the main action starts the phase. */}
+      {preparation && !inWorkspace && (
+        <div className="reading-actions">
           <button
             type="button"
             className="game-button"
@@ -214,37 +257,35 @@ export function IndependentRhythmPracticePanel(props: IndependentRhythmPracticeP
           >
             {t(props.phase === "pulse" ? "Начать проверку пульса" : "Начать два ритма")}
           </button>
-        )}
-        {props.status === "failed" && (
-          <button type="button" className="game-button" onClick={props.onGoToRhythm}>
-            {t("Перейти к курсу «Ритм»")}
-          </button>
-        )}
-      </div>
-      {props.phase === "pulse" && props.pulseSummary && (
-        <p>
-          {t("Попадания: {hits} из {expected} ({percent}%).", {
-            hits: props.pulseSummary.right.hits,
-            expected: props.pulseSummary.right.expected,
-            percent: Math.round(
-              (props.pulseSummary.right.hits / Math.max(1, props.pulseSummary.right.expected)) * 100
-            )
-          })}{" "}
-          {t("Лишние удары")}: {props.pulseSummary.extras}
-        </p>
+        </div>
       )}
-      <p className="reading-muted">
-        {t(
-          "Оцениваются только начала нот. Длительность удержания, легато и педаль не оцениваются. Перед повтором той же ноты полностью отпустите клавишу и нажмите снова."
-        )}
-      </p>
-      <p className="reading-muted">
-        {t(
-          "Без MIDI играйте двумя клавишами ПК или двумя касаниями. Одной мышью совместную атаку выполнить нельзя."
-        )}
-      </p>
-      {props.result && <IndependentRhythmResults result={props.result} />}
-      <IndependentRhythmProgress {...props} />
+      <LessonDetails kind="guide" id="independent-rhythm:practice:guide">
+        <p className="reading-muted">
+          {t(
+            props.phase === "pulse"
+              ? "Пульс: 8 четвертей · 60 BPM · окно ±150 мс · 0 лишних атак."
+              : "Два ритма: 4 такта · 24 начала нот · 60 BPM · окно ±150 мс для каждой ноты."
+          )}
+        </p>
+        <p className="reading-muted">
+          {t(
+            "Оцениваются только начала нот. Длительность удержания, легато и педаль не оцениваются. Перед повтором той же ноты полностью отпустите клавишу и нажмите снова."
+          )}
+        </p>
+        <p className="reading-muted">
+          {t(
+            "Без MIDI играйте двумя клавишами ПК или двумя касаниями. Одной мышью совместную атаку выполнить нельзя."
+          )}
+        </p>
+      </LessonDetails>
+      {props.result && (
+        <LessonReport summary={<IndependentRhythmLessonSummary result={props.result} />}>
+          <IndependentRhythmResults result={props.result} />
+        </LessonReport>
+      )}
+      <LessonDetails kind="progress" id="independent-rhythm:practice:progress">
+        <IndependentRhythmProgress {...props} />
+      </LessonDetails>
     </section>
   );
 }

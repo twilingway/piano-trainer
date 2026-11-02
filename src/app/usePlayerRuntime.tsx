@@ -1,4 +1,16 @@
-import { useMemo, useRef, useState } from "react";
+import { usePracticeCourses } from "./usePracticeCourses";
+import {
+  dispatchMusicLessonAction,
+  practiceLessonAction,
+  lessonPlayback,
+  completedPracticeTransport,
+  restartBasicPractice
+} from "./musicLessonAction";
+import { useSettingsPlayback } from "./useSettingsPlayback";
+import { useMusicTrainer, usePracticeDisplayPrefs, musicClockAllowed } from "./useMusicTrainer";
+import { usePlayCountdown } from "./usePlayCountdown";
+import { useAppSelector } from "./storeHooks";
+import { useRef, useState } from "react";
 import { useGameRuntime } from "./useGameRuntime";
 import { useI18n } from "./useI18n";
 import { useGameOptions } from "./useGameOptions";
@@ -9,22 +21,17 @@ import { useFullscreen } from "./useFullscreen";
 import { useKeyInput } from "./useKeyInput";
 import { useKeyboardSettings } from "./useKeyboardSettings";
 import { useComputerKeyboard } from "./useComputerKeyboard";
+import { useFreeCameraInput } from "./useFreeCameraInput";
 import { usePlayerLibrary } from "./usePlayerLibrary";
 import { useShortcuts } from "./useShortcuts";
 import { useSong } from "./useSong";
 import { useCourse } from "./useCourse";
-import { useReadingCourse, useReadingTrainer } from "./useReadingCourse";
-import { useRhythmCourse } from "./useRhythmCourse";
-import { useTwoHandCourse, useTwoHandTrainer } from "./useTwoHandCourse";
-import { useHeldBassCourse, useHeldBassTrainer } from "./useHeldBassCourse";
-import {
-  useIndependentRhythmCourse,
-  useIndependentRhythmTrainer
-} from "./useIndependentRhythmCourse";
+import { useReadingTrainer } from "./useReadingCourse";
+import { useTwoHandTrainer } from "./useTwoHandCourse";
+import { useHeldBassTrainer } from "./useHeldBassCourse";
+import { useIndependentRhythmTrainer } from "./useIndependentRhythmCourse";
 import { useRhythmTrainer } from "./useRhythmTrainer";
-import { useIntervalCourse } from "./useIntervalCourse";
 import { useIntervalAudioTrainer } from "./useIntervalAudio";
-import { readingDisplayProfile } from "./readingProfile";
 import { DEFAULT_SCREEN_LAYOUT } from "./screenLayout";
 import { useSound } from "./useSound";
 import { useScreenLayout } from "./useScreenLayout";
@@ -34,9 +41,9 @@ import { useTakeReview } from "./useTakeReview";
 import { useTrainer } from "./useTrainer";
 import { ViewToggles } from "../ui/ViewToggles";
 import { useWordTyping, useWordTypingInterfaceLanguage } from "./useWordTyping";
-import { WordTypingSettings } from "../ui/WordTypingSettings";
+import { ConnectedWordSettings } from "./ConnectedSettings";
 import { GameModeSwitch } from "../ui/GameModeSwitch";
-import { PracticeTimingStatus } from "../ui/PracticeTimingStatus";
+import { PracticeTimingStatus, IndependentRhythmTimingStatus } from "../ui/PracticeTimingStatus";
 import type { Part } from "../wordTyping/types";
 
 import { useDeviceRange, useRangeFit } from "./useDeviceRange";
@@ -47,30 +54,44 @@ export function usePlayerRuntime() {
   const fullscreen = useFullscreen();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [lessonWindow, setLessonWindow] = useState<string | null>(null);
   const [resultClosed, setResultClosed] = useState(false);
   /**
    * Song time practice starts from after a click on the staff; null = the beginning.
    * Kept across reloads (listen, speed, hand, mode), cleared by "Сначала" and a new song.
    */
   const startFromRef = useRef<number | null>(null);
-  const { sound, ensureSound } = useSound();
+  const { sound, ensureSound, ensureIntervalSound } = useSound();
   const current = useSong(startFromRef);
   const course = useCourse(current.showSong);
-  const reading = useReadingCourse();
-  const intervals = useIntervalCourse();
-  const rhythm = useRhythmCourse();
-  const twoHand = useTwoHandCourse();
-  const heldBass = useHeldBassCourse();
-  const independentRhythm = useIndependentRhythmCourse();
+  const {
+    reading,
+    intervals,
+    rhythm,
+    twoHand,
+    heldBass,
+    independentRhythm,
+    music,
+    lessonStaffFeedback
+  } = usePracticeCourses();
+  const lessonDialogsOpen =
+    lessonWindow !== null ||
+    libraryOpen ||
+    settingsOpen ||
+    twoHand.intro ||
+    heldBass.intro ||
+    independentRhythm.intro;
   const practiceActive =
     reading.active ||
     intervals.active ||
     rhythm.active ||
     twoHand.active ||
     heldBass.active ||
-    independentRhythm.active;
+    independentRhythm.active ||
+    music.active;
   const ear = intervals.active && intervals.mode === "hear-and-choose";
   const practiceExercise =
+    music.scene ??
     independentRhythm.scene ??
     heldBass.scene ??
     twoHand.exercise ??
@@ -92,30 +113,15 @@ export function usePlayerRuntime() {
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const screen = useScreenLayout(word.enabled ? "typing" : "piano");
   const workspaceLayout = practiceActive ? DEFAULT_SCREEN_LAYOUT : screen.layout;
-  const displayPrefs = useMemo(
-    () =>
-      practiceActive
-        ? { ...readingDisplayProfile(staffPrefs), visible: !ear, keys: !ear }
-        : game.performance
-          ? {
-              ...staffPrefs,
-              visible: course.active
-                ? course.saved.view === "staff" || course.saved.view === "both"
-                : staffPrefs.visible,
-              fingers: false,
-              hands: false,
-              labels: false,
-              noteNames: "off" as const,
-              chords: false
-            }
-          : course.active
-            ? {
-                ...staffPrefs,
-                visible: course.saved.view === "staff" || course.saved.view === "both"
-              }
-            : staffPrefs,
-    [practiceActive, ear, game.performance, staffPrefs, course.active, course.saved.view]
-  );
+  const displayPrefs = usePracticeDisplayPrefs({
+    practiceActive,
+    ear,
+    music,
+    staffPrefs,
+    performance: game.performance,
+    courseActive: course.active !== null,
+    courseView: course.saved.view
+  });
   const score = useStaffScore(song, current.baseSong, displayPrefs);
   const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
     withNames: score.withNames,
@@ -130,6 +136,7 @@ export function usePlayerRuntime() {
     readingHand: twoHand.active || heldBass.active ? "both" : reading.isBass ? "left" : "right",
     rhythm: rhythm.active,
     independentRhythm: independentRhythm.active,
+    music: music.options,
     pianoBlocked: ear || rhythm.active,
     songKey: word.practiceKey,
     wordTyping: word.enabled,
@@ -137,19 +144,21 @@ export function usePlayerRuntime() {
     ensureSound,
     onNoteClick: current.cycleFinger,
     onTake: practiceActive ? () => undefined : takes.recordTake,
-    onRunFinished: independentRhythm.active
+    onRunFinished: music.active
       ? () => undefined
-      : heldBass.active
-        ? heldBass.finish
-        : twoHand.active
-          ? twoHand.finish
-          : rhythm.active
-            ? () => undefined
-            : intervals.active
-              ? intervals.publish
-              : reading.active
-                ? reading.finish
-                : course.controller.finish,
+      : independentRhythm.active
+        ? () => undefined
+        : heldBass.active
+          ? heldBass.finish
+          : twoHand.active
+            ? twoHand.finish
+            : rhythm.active
+              ? () => undefined
+              : intervals.active
+                ? intervals.publish
+                : reading.active
+                  ? reading.finish
+                  : course.controller.finish,
     course: practiceActive ? undefined : course.practice,
     compareSong: takes.compareSong,
     lastTake: takes.lastTake,
@@ -163,41 +172,21 @@ export function usePlayerRuntime() {
     intervals.active ? intervals : reading,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen ||
-      settingsOpen ||
-      reading.intro ||
-      twoHand.intro ||
-      heldBass.intro ||
-      independentRhythm.intro
+    lessonDialogsOpen || reading.intro
   );
-  useTwoHandTrainer(
-    twoHand,
-    trainer.trainerRef,
-    trainer.trainerReady,
-    libraryOpen || settingsOpen || twoHand.intro || heldBass.intro || independentRhythm.intro
-  );
+  useTwoHandTrainer(twoHand, trainer.trainerRef, trainer.trainerReady, lessonDialogsOpen);
   useHeldBassTrainer(
     heldBass,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen ||
-      settingsOpen ||
-      reading.intro ||
-      twoHand.intro ||
-      heldBass.intro ||
-      independentRhythm.intro
+    lessonDialogsOpen || reading.intro
   );
   useIntervalAudioTrainer(
     intervals.audio,
     intervals.session,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen ||
-      settingsOpen ||
-      reading.intro ||
-      twoHand.intro ||
-      heldBass.intro ||
-      independentRhythm.intro,
+    lessonDialogsOpen || reading.intro,
     intervals.publish
   );
   const workspacePrefs =
@@ -209,20 +198,56 @@ export function usePlayerRuntime() {
     selectTrainerStatus,
     sameTrainerStatus
   );
+  const countdownSeconds = useAppSelector((state) => state.preferences.player.countdownSeconds);
+  const countdown = usePlayCountdown({
+    seconds: countdownSeconds,
+    playing: ear ? !intervals.audio.paused : snapshot.playing,
+    finished: snapshot.finished,
+    song: word.practiceSong,
+    context: JSON.stringify([
+      word.practiceKey,
+      trainer.mode,
+      trainer.handChoice,
+      trainer.speed,
+      ear,
+      takes.comparing
+    ]),
+    blocked:
+      music.active ||
+      lessonWindow !== null ||
+      libraryOpen ||
+      (settingsOpen && practiceActive) ||
+      (word.enabled && (word.pending || Boolean(word.error))),
+    prepare: ensureIntervalSound,
+    onToggle: playNow
+  });
   useWordTypingInterfaceLanguage(word, snapshot.playing);
   const computerKeyboard = useComputerKeyboard();
+  const cameraInput = useFreeCameraInput(
+    workspacePrefs,
+    computerKeyboard.options,
+    libraryOpen ||
+      settingsOpen ||
+      computerKeyboard.editing ||
+      word.enabled ||
+      ear ||
+      twoHand.intro ||
+      heldBass.intro ||
+      independentRhythm.intro
+  );
   const input = useKeyInput(
     trainer.trainerRef,
     ear || rhythm.active
-      ? { ...computerKeyboard.options, blocked: true }
+      ? { ...cameraInput.keyboard, blocked: true }
       : word.enabled
         ? word.keyboardOptions
-        : computerKeyboard.options,
-    rhythm.active || independentRhythm.active ? undefined : device.intercept,
+        : cameraInput.keyboard,
+    music.active || rhythm.active || independentRhythm.active ? undefined : device.intercept,
     trainer.trainerReady,
-    ear,
+    ear || countdown.active,
     rhythm.active || independentRhythm.active,
-    independentRhythm.active
+    music.active || independentRhythm.active,
+    snapshot.playing
   );
   const fit = useRangeFit(
     song.notes,
@@ -240,7 +265,8 @@ export function usePlayerRuntime() {
     snapshotSource: trainer.snapshotSource,
     localInput:
       (rhythm.active && rhythm.source !== "midi") ||
-      (independentRhythm.active && independentRhythm.source !== "midi"),
+      (independentRhythm.active && independentRhythm.source !== "midi") ||
+      (music.active && music.source !== "midi"),
     locked: game.ranked && snapshot.playing
   });
   useGameRuntime(trainer.trainerRef, trainer.trainerReady, {
@@ -250,25 +276,21 @@ export function usePlayerRuntime() {
     rankedReady: timing.rankedReady,
     performance: !practiceActive && game.performance,
     canStart:
+      musicClockAllowed(music.active, music.view) &&
       !ear &&
       !twoHand.intro &&
       !heldBass.intro &&
       !independentRhythm.intro &&
       !reading.intro &&
       (!word.enabled || (!word.pending && !word.error)),
-    resumeWhenReady: word.enabled,
+    resumeWhenReady: word.enabled && !music.active,
     deviceId: timing.profile?.deviceId ?? ""
   });
   useRhythmTrainer(
     rhythm,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen ||
-      settingsOpen ||
-      reading.intro ||
-      twoHand.intro ||
-      heldBass.intro ||
-      independentRhythm.intro,
+    lessonDialogsOpen || reading.intro,
     input.devices,
     input.midiDeviceId
   );
@@ -276,24 +298,28 @@ export function usePlayerRuntime() {
     independentRhythm,
     trainer.trainerRef,
     trainer.trainerReady,
-    libraryOpen ||
-      settingsOpen ||
-      reading.intro ||
-      twoHand.intro ||
-      heldBass.intro ||
-      independentRhythm.intro,
+    lessonDialogsOpen || reading.intro,
+    input.devices,
+    input.midiDeviceId
+  );
+  useMusicTrainer(
+    music,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    lessonDialogsOpen || reading.intro || computerKeyboard.editing,
     input.devices,
     input.midiDeviceId
   );
   const view = useFallingView({
     hostRef: trainer.hostRef,
-    hasScore: Boolean(score.staffXml),
+    hasScore: Boolean(music.active ? music.staffXml : score.staffXml),
     viewRef: trainer.viewRef,
     trainerRef: trainer.trainerRef,
     trainerReady: trainer.trainerReady,
     song: word.practiceSong,
     baseSong: practiceActive || word.enabled ? word.practiceSong : current.baseSong,
     staffPrefs: workspacePrefs,
+    cameraInputBlocked: !cameraInput.enabled,
     updateStaffPrefs,
     fallingNames: score.nameStyle,
     comparing: !practiceActive && takes.comparing,
@@ -312,40 +338,65 @@ export function usePlayerRuntime() {
     openLesson: current.openLesson
   });
 
-  const { listening } = trainer;
-  const { review, lastTake, comparing } = takes;
-
   // The shell: one bar, the song's progress, windows for the library and the settings.
   const playing = snapshot.playing;
+  const completedPractice = completedPracticeTransport(
+    { reading, intervals, twoHand, heldBass, rhythm, independentRhythm },
+    sound === "loading" || lessonDialogsOpen
+  );
 
-  const play = () => {
+  function playNow() {
     setResultClosed(false);
-    if (independentRhythm.active) {
+    if (lessonWindow !== null) return;
+    if (music.active) {
+      dispatchMusicLessonAction(music.view, music.command, music.cancel);
+    } else if (independentRhythm.active) {
       if (snapshot.playing) independentRhythm.cancel();
       else void independentRhythm.onStart();
-    } else if (heldBass.active && heldBass.snapshot?.completed) {
-      void heldBass.playAgain(ensureSound);
-    } else if (twoHand.active && twoHand.snapshot?.completed) {
-      void twoHand.playAgain(ensureSound);
     } else if (rhythm.active) {
       if (snapshot.playing) rhythm.cancel();
       else void rhythm.onStart();
-    } else if (ear) intervals.audio.togglePause();
-    else void trainer.togglePlay();
-  };
+    } else if (ear) {
+      if (intervals.audio.paused || intervals.snapshot?.listening) intervals.audio.togglePause();
+      else intervals.audio.listen();
+    } else void trainer.togglePlay();
+  }
+  const songPlay = useSettingsPlayback(
+    countdown,
+    settingsOpen,
+    practiceActive,
+    playing,
+    computerKeyboard,
+    timing.settingsProps.running
+  );
+  const play =
+    completedPractice?.invoke ??
+    lessonPlayback(lessonWindow !== null, music.active || ear, playNow, songPlay);
+  const lessonAction = practiceLessonAction({
+    music: music.active ? music.view : undefined,
+    completed: completedPractice?.action,
+    ear,
+    paused: intervals.audio.paused,
+    listening: intervals.snapshot?.listening ?? false,
+    counting: countdown.active,
+    playing,
+    cancelsAttempt: rhythm.active || independentRhythm.active,
+    blocked: sound === "loading" || lessonWindow !== null
+  });
   const startOver = () => {
+    countdown.resetNewRun();
     setResultClosed(false);
-    if (independentRhythm.active) independentRhythm.onRepeat();
-    else if (heldBass.active) heldBass.newSeries();
-    else if (twoHand.active) twoHand.newSeries();
-    else if (rhythm.active) void rhythm.onRepeat();
-    else if (intervals.active) intervals.newSeries();
-    else if (reading.active) reading.newSeries();
-    else trainer.restart();
+    if (music.active) music.command("retry");
+    else
+      restartBasicPractice(
+        { reading, intervals, twoHand, heldBass, rhythm, independentRhythm },
+        trainer.restart
+      );
   };
   useShortcuts({
     play,
     blocked:
+      music.active ||
       rhythm.active ||
       independentRhythm.active ||
       (word.enabled
@@ -365,31 +416,13 @@ export function usePlayerRuntime() {
       }
     />
   );
-  const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs, toggles);
+  const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs);
 
   const chooseWordPart = (part: Part) => {
     startFromRef.current = null;
     word.choosePart(part);
   };
-  const wordSettings = (
-    <WordTypingSettings
-      language={word.language}
-      part={word.part}
-      accompaniment={word.accompaniment}
-      onAccompaniment={word.setAccompaniment}
-      layout={word.layout}
-      onLayout={(layout) => {
-        word.update({ layout });
-      }}
-      onRegenerate={word.regenerate}
-      locked={playing}
-      pending={word.pending}
-      onLanguage={(language) => {
-        word.update({ language });
-      }}
-      onPart={chooseWordPart}
-    />
-  );
+  const wordSettings = <ConnectedWordSettings />;
 
   const chooseGame = (enabled: boolean) => {
     if (practiceActive) reading.exit();
@@ -398,15 +431,7 @@ export function usePlayerRuntime() {
     word.update({ enabled });
   };
   const timingStatus = independentRhythm.active ? (
-    <span
-      className="practice-timing-status"
-      role="status"
-      title={t(
-        "Каждая нота проверяется отдельно в окне ±150 мс. Разрыв совместных атак показывается отдельно, без дополнительного порога 200 мс."
-      )}
-    >
-      {t("Два ритма · ±150 мс")}
-    </span>
+    <IndependentRhythmTimingStatus />
   ) : (
     <PracticeTimingStatus policy={snapshot.timingPolicy} ranked={game.ranked} />
   );
@@ -418,6 +443,10 @@ export function usePlayerRuntime() {
   );
 
   return {
+    music,
+    lessonWindow,
+    setLessonWindow,
+    lessonAction,
     independentRhythm,
     heldBass,
     twoHand,
@@ -425,6 +454,7 @@ export function usePlayerRuntime() {
     rhythm,
     intervals,
     practiceActive,
+    lessonStaffFeedback,
     displayPrefs: workspacePrefs,
     sound,
     t,
@@ -446,7 +476,14 @@ export function usePlayerRuntime() {
     screen: { ...screen, layout: workspaceLayout },
     score,
     takes,
-    trainer,
+    trainer: {
+      ...trainer,
+      seekToBeat: (beat: number) => {
+        countdown.cancel();
+        trainer.seekToBeat(beat);
+      }
+    },
+    countdown: countdown.countdown,
     snapshot,
     computerKeyboard,
     input,
@@ -454,11 +491,15 @@ export function usePlayerRuntime() {
     timing,
     view,
     library,
-    listening,
-    review: practiceActive ? null : review,
-    lastTake,
-    comparing: !practiceActive && comparing,
-    playing: ear ? !intervals.audio.paused : playing,
+    listening: trainer.listening,
+    review: practiceActive ? null : takes.review,
+    lastTake: takes.lastTake,
+    comparing: !practiceActive && takes.comparing,
+    playing: music.active
+      ? ["playing", "listening", "reply"].includes(music.view.status)
+      : ear
+        ? !intervals.audio.paused
+        : playing,
     play,
     startOver,
     toggles,

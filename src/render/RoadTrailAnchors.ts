@@ -2,6 +2,7 @@ import type { SongNote } from "../song/song";
 import type { KeyRect } from "./keyboardLayout";
 import type { NotesFrame } from "./NotesLayer";
 import type { NoteLook } from "./noteLook";
+import { boundedLookAhead } from "./noteSpeed";
 import { ROAD_TRAIL_MAX_GAP_SHARE } from "./three/roadTrailGeometry";
 
 interface TrailLink {
@@ -41,10 +42,11 @@ export class RoadTrailAnchors {
     road: TrailRoad | undefined
   ): void {
     if (!road?.drawsNativeRoad) return;
-    const gapLimit = frame.lookAhead * ROAD_TRAIL_MAX_GAP_SHARE;
+    const lookAhead = boundedLookAhead(frame.lookAhead);
+    const gapLimit = lookAhead * ROAD_TRAIL_MAX_GAP_SHARE;
     for (const { previous, next, gap } of this.links) {
       if (next.start <= frame.time) continue;
-      if (next.start > frame.time + frame.lookAhead) break;
+      if (next.start > frame.time + lookAhead) break;
       if (previous.start + previous.duration > frame.time || gap > gapLimit) continue;
       const key = keys.get(next.pitch);
       if (!key) continue;

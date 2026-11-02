@@ -1,4 +1,4 @@
-import { Container } from "pixi.js";
+import { Container } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { drawRoadBeatBars } from "./RoadBeatBars";
 import type { SongBeat } from "../song/song";

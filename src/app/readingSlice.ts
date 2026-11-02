@@ -1,3 +1,16 @@
+import type { MusicCourse, MusicPurpose } from "../musicLearning/types";
+import type { MusicResult, IntegratedProgress } from "../musicLearning/progress";
+import { validateIntegratedProgress } from "../musicLearning/progressIntegrated";
+import {
+  emptyMusicState,
+  mergeMusicHistory,
+  validMusicSelection,
+  validMusicPreference,
+  copyMusicIntegrated,
+  MUSIC_PREFERENCE_FIELDS,
+  type MusicPersistentState,
+  type MusicPreferences
+} from "./musicPersistence";
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import {
   DEFAULT_READING_PREFERENCES,
@@ -44,8 +57,9 @@ import {
 } from "./independentRhythmPersistence";
 
 export interface ReadingState {
-  schemaVersion: 8;
+  schemaVersion: 9;
   activeCourse:
+    | "music-learning"
     | "note-reading"
     | "interval-training"
     | "rhythm-training"
@@ -54,6 +68,7 @@ export interface ReadingState {
     | "held-bass-reading"
     | "independent-rhythm-reading"
     | null;
+  music: MusicPersistentState;
   intervals: IntervalPersistentState;
   rhythm: RhythmPersistentState;
   bass: BassPersistentState;
@@ -75,8 +90,9 @@ export interface ReadingRoot {
   reading: ReadingState;
 }
 export const initialReadingState: ReadingState = {
-  schemaVersion: 8,
+  schemaVersion: 9,
   activeCourse: null,
+  music: emptyMusicState(),
   intervals: emptyIntervalState(),
   rhythm: emptyRhythmState(),
   bass: emptyBassState(),
@@ -125,6 +141,64 @@ const readingSlice = createSlice({
     exit(state) {
       state.activeCourse = null;
       state.selectionRevision++;
+    },
+    musicSelected(
+      state,
+      {
+        payload
+      }: PayloadAction<{
+        course: MusicCourse;
+        seed: number;
+        purpose?: MusicPurpose;
+        generatorVersion?: number;
+      }>
+    ) {
+      if (
+        !validMusicSelection(payload) ||
+        (payload.generatorVersion !== undefined && payload.generatorVersion !== 1)
+      )
+        return;
+      state.activeCourse = "music-learning";
+      state.music.course = payload.course;
+      state.music.seed = payload.seed;
+      state.music.generatorVersion = 1;
+      if (payload.purpose !== undefined) state.music.purpose = payload.purpose;
+      state.selectionRevision++;
+    },
+    musicMaterialPrepared(
+      state,
+      { payload }: PayloadAction<{ seed: number; selectionRevision: number }>
+    ) {
+      if (
+        state.activeCourse !== "music-learning" ||
+        payload.selectionRevision !== state.selectionRevision ||
+        !Number.isInteger(payload.seed) ||
+        payload.seed < 0 ||
+        payload.seed > 0xffffffff
+      )
+        return;
+      state.music.seed = payload.seed;
+    },
+    musicPreferencesChanged(state, { payload }: PayloadAction<Partial<MusicPreferences>>) {
+      let changesInputSource = false;
+      for (const { key } of MUSIC_PREFERENCE_FIELDS) {
+        if (
+          payload[key] === undefined ||
+          !validMusicPreference(key, payload[key]) ||
+          state.music[key] === payload[key]
+        )
+          continue;
+        Object.assign(state.music, { [key]: payload[key] });
+        if (key === "inputSource") changesInputSource = true;
+      }
+      if (changesInputSource && state.activeCourse === "music-learning") state.selectionRevision++;
+    },
+    musicResultAdded(state, { payload }: PayloadAction<MusicResult>) {
+      state.music.history = mergeMusicHistory(state.music.history, [payload]);
+    },
+    musicIntegratedChanged(state, { payload }: PayloadAction<IntegratedProgress | null>) {
+      if (payload !== null && !validateIntegratedProgress(payload)) return;
+      state.music.integrated = payload === null ? null : copyMusicIntegrated(payload);
     },
     intervalSelected(
       state,

@@ -1,6 +1,7 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps } from "react";
 
 import { pianistAvailable } from "../render/three/pianistAvailability";
+import { CAMERA_PRESETS } from "../render/worldCamera";
 import type { KeyboardSettings } from "../ui/settings/KeyboardSettings";
 import type { useFallingView } from "./useFallingView";
 import type { StaffPrefs } from "./useStaffPrefs";
@@ -11,20 +12,28 @@ type FallingView = ReturnType<typeof useFallingView>;
 export function useKeyboardSettings(
   view: Pick<FallingView, "keyRange" | "setKeyRange" | "showLabels" | "setShowLabels">,
   staffPrefs: StaffPrefs,
-  updateStaffPrefs: (change: Partial<StaffPrefs>) => void,
-  toggles: ReactNode
+  updateStaffPrefs: (change: Partial<StaffPrefs>) => void
 ): ComponentProps<typeof KeyboardSettings> & {
+  onWorldFov: NonNullable<ComponentProps<typeof KeyboardSettings>["onWorldFov"]>;
   fps: boolean;
   onFps: (show: boolean) => void;
   onPianist: (on: boolean) => void;
   onFreeCamera: (on: boolean) => void;
+  onFreeCameraWasd: (on: boolean) => void;
   onPerformanceScene: (on: boolean) => void;
+  onRoadFit: NonNullable<ComponentProps<typeof KeyboardSettings>["onRoadFit"]>;
+  onRoadNoteTilt: NonNullable<ComponentProps<typeof KeyboardSettings>["onRoadNoteTilt"]>;
+  onStraightenRoad: () => void;
 } {
   return {
     keyRange: view.keyRange,
     onKeyRange: view.setKeyRange,
     showLabels: view.showLabels,
     onShowLabels: view.setShowLabels,
+    octaveLabels: staffPrefs.octaveLabels,
+    onOctaveLabels: (octaveLabels) => {
+      updateStaffPrefs({ octaveLabels });
+    },
     fps: staffPrefs.fps,
     onFps: (fps) => {
       updateStaffPrefs({ fps });
@@ -33,18 +42,37 @@ export function useKeyboardSettings(
     onKeyStyle: (keyStyle) => {
       updateStaffPrefs({ keyStyle });
     },
+    fallingNoteStyle: staffPrefs.fallingNoteStyle,
+    onFallingNoteStyle: (fallingNoteStyle) => {
+      updateStaffPrefs({ fallingNoteStyle });
+    },
     notesPerspective: staffPrefs.road,
+    freeRoadLayout: staffPrefs.road ? staffPrefs.freePerspectiveField : staffPrefs.freeDirectField,
+    onFreeRoadLayout: (change) => {
+      const key = staffPrefs.road ? "freePerspectiveField" : "freeDirectField";
+      updateStaffPrefs({ [key]: { ...staffPrefs[key], ...change } });
+    },
     onNotesPerspective: (road) => {
       updateStaffPrefs({ road });
     },
     handStyle: staffPrefs.handStyle,
+    flatNoteBurning: staffPrefs.flatNoteBurning,
+    onFlatNoteBurning: (flatNoteBurning) => {
+      updateStaffPrefs({ flatNoteBurning });
+    },
+    flatPressEffects: staffPrefs.flatPressEffects,
+    onFlatPressEffects: (flatPressEffects) => {
+      updateStaffPrefs({ flatPressEffects });
+    },
+    noteParticles: staffPrefs.noteParticles,
+    onNoteParticles: (noteParticles) => {
+      updateStaffPrefs({ noteParticles });
+    },
     keyboardDim: staffPrefs.keyboardDim,
     onKeyboardDim: (keyboardDim) => {
       updateStaffPrefs({ keyboardDim });
     },
-    ...(pianistAvailable(staffPrefs.keyStyle, staffPrefs.handStyle)
-      ? { pianist: staffPrefs.pianist }
-      : {}),
+    ...(pianistAvailable(staffPrefs.keyStyle) ? { pianist: staffPrefs.pianist } : {}),
     onPianist: (pianist) => {
       updateStaffPrefs({ pianist });
     },
@@ -52,7 +80,15 @@ export function useKeyboardSettings(
     onPerformanceScene: (performanceScene) => {
       updateStaffPrefs({ performanceScene });
     },
+    worldFov: staffPrefs.worldFov,
+    onWorldFov: (worldFov) => {
+      updateStaffPrefs({ worldFov });
+    },
     freeCamera: staffPrefs.freeCamera,
+    freeCameraWasd: staffPrefs.freeCameraWasd,
+    onFreeCameraWasd: (freeCameraWasd) => {
+      updateStaffPrefs({ freeCameraWasd });
+    },
     onFreeCamera: (freeCamera) => {
       updateStaffPrefs({ freeCamera });
     },
@@ -72,8 +108,27 @@ export function useKeyboardSettings(
     },
     camera: staffPrefs.camera,
     onCamera: (camera) => {
-      updateStaffPrefs({ camera });
+      // A preset is a new view: a button fit taken in the old one would bend every lane at the keys.
+      const preset = Object.values(CAMERA_PRESETS).some((view) =>
+        (["fov", "height", "distance", "pitch", "targetY"] as const).every(
+          (key) => view[key] === camera[key]
+        )
+      );
+      updateStaffPrefs({
+        camera,
+        ...(preset && staffPrefs.roadFit === "button" ? { roadFitCamera: camera } : {})
+      });
     },
-    toggles
+    roadFit: staffPrefs.roadFit,
+    onRoadFit: (roadFit) => {
+      updateStaffPrefs({ roadFit });
+    },
+    onStraightenRoad: () => {
+      updateStaffPrefs({ roadFitCamera: staffPrefs.camera });
+    },
+    roadNoteTilt: staffPrefs.roadNoteTilt,
+    onRoadNoteTilt: (roadNoteTilt) => {
+      updateStaffPrefs({ roadNoteTilt });
+    }
   };
 }

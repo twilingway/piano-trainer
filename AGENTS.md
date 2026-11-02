@@ -43,8 +43,10 @@ plays in tempo, plays the other hand, records every take and compares it with th
 - **Fixed-shape art is baked.** In Pixi, anything that does not change per frame (finger digits, key
   stickers, note names) is drawn once into a texture and shown as a sprite; `Graphics` is only for
   baking.
-- `local-lessons/` is git-ignored on purpose: scores there may not be published (the repository is
-  public). Never add its files to a commit, and never copy their music into `src/`.
+- `local-lessons/` is ignored except for the exact score files and course manifest explicitly
+  approved by the user on 2026-10-22 and allowlisted in `.gitignore`. Preserve that bounded set; new
+  scores, videos, source documents and analysis stay local unless separately authorized. Never copy
+  their music into `src/`.
 - Local video lesson analysis for Codex, Claude Code and Qwen follows
   [video-lesson-analysis](.agents/skills/video-lesson-analysis/SKILL.md) and
   [docs/VIDEO_LESSON_PIPELINE.md](docs/VIDEO_LESSON_PIPELINE.md). Preserve source folders and name
@@ -152,6 +154,16 @@ existing one.
 - `ref2game` (`.agents/skills/ref2game`, vendored, unchanged) turns a reference image into a
   playable 2D slice on its own WebGL2 engine. Game projects go to the git-ignored `games/<name>`;
   only accepted assets move into `src`.
+
+## Game development skills
+
+- Four vendored skills are available in `.agents/skills/`: `performance-optimization`,
+  `threejs-materials-lighting`, `create-game-assets`, and `shader-programming`. Use only the skill
+  relevant to the current task.
+- Source revision, license and project-specific usage are recorded in
+  [.agents/skills/GAMEDEV_SKILLS.md](.agents/skills/GAMEDEV_SKILLS.md).
+- Adapt examples to the existing renderer and `PracticeSession` clock. Keep musical timing,
+  pure-core boundaries, localization and the existing asset workflow defined by this project.
 
 ## Verification
 

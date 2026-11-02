@@ -19,75 +19,79 @@ interface Props {
 export function WordTypingSettings(props: Props) {
   const { t } = useI18n();
   return (
-    <div className="word-options">
-      <label>
-        {t("Язык текста")}{" "}
-        <select
-          className="game-select"
-          aria-label={t("Язык текста")}
-          value={props.language}
-          disabled={props.locked}
-          onChange={(event) => {
-            props.onLanguage(event.target.value as Language);
-          }}
+    <section className="settings-group">
+      <h3 className="settings-group__title">{t("Текст и партия")}</h3>
+      <div className="word-options">
+        <label>
+          {t("Язык текста")}{" "}
+          <select
+            className="game-select"
+            aria-label={t("Язык текста")}
+            data-setting-target="word-language"
+            value={props.language}
+            disabled={props.locked}
+            onChange={(event) => {
+              props.onLanguage(event.target.value as Language);
+            }}
+          >
+            <option value="ru">{t("Русский")}</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <label>
+          {t("Партия")}{" "}
+          <select
+            className="game-select"
+            aria-label={t("Партия для печати")}
+            value={props.part}
+            disabled={props.locked}
+            onChange={(event) => {
+              props.onPart(event.target.value as Part);
+            }}
+          >
+            <option value="melody">{t("Мелодия")}</option>
+            <option value="bass">{t("Бас")}</option>
+          </select>
+        </label>
+        <label
+          title={t(
+            "На слово: буква привязана к ноте только внутри слова, поэтому слова получаются длиннее"
+          )}
         >
-          <option value="ru">{t("Русский")}</option>
-          <option value="en">English</option>
-        </select>
-      </label>
-      <label>
-        {t("Партия")}{" "}
-        <select
-          className="game-select"
-          aria-label={t("Партия для печати")}
-          value={props.part}
-          disabled={props.locked}
-          onChange={(event) => {
-            props.onPart(event.target.value as Part);
-          }}
+          {t("Раскладка")}{" "}
+          <select
+            className="game-select"
+            aria-label={t("Раскладка букв")}
+            value={props.layout}
+            disabled={props.locked}
+            onChange={(event) => {
+              props.onLayout(event.target.value as Layout);
+            }}
+          >
+            <option value="word">{t("На слово")}</option>
+            <option value="song">{t("На песню")}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="game-button"
+          disabled={props.locked || props.pending}
+          onClick={props.onRegenerate}
         >
-          <option value="melody">{t("Мелодия")}</option>
-          <option value="bass">{t("Бас")}</option>
-        </select>
-      </label>
-      <label
-        title={t(
-          "На слово: буква привязана к ноте только внутри слова, поэтому слова получаются длиннее"
-        )}
-      >
-        {t("Раскладка")}{" "}
-        <select
-          className="game-select"
-          aria-label={t("Раскладка букв")}
-          value={props.layout}
-          disabled={props.locked}
-          onChange={(event) => {
-            props.onLayout(event.target.value as Layout);
-          }}
-        >
-          <option value="word">{t("На слово")}</option>
-          <option value="song">{t("На песню")}</option>
-        </select>
-      </label>
-      <button
-        type="button"
-        className="game-button"
-        disabled={props.locked || props.pending}
-        onClick={props.onRegenerate}
-      >
-        {t("Другие слова")}
-      </button>
-      <label title={t("Вторую руку играет программа, пока вы печатаете свою партию")}>
-        <input
-          type="checkbox"
-          checked={props.accompaniment}
-          disabled={props.locked}
-          onChange={(event) => {
-            props.onAccompaniment(event.target.checked);
-          }}
-        />
-        {t("Аккомпанемент второй руки")}
-      </label>
-    </div>
+          {t("Другие слова")}
+        </button>
+        <label title={t("Вторую руку играет программа, пока вы печатаете свою партию")}>
+          <input
+            type="checkbox"
+            checked={props.accompaniment}
+            disabled={props.locked}
+            onChange={(event) => {
+              props.onAccompaniment(event.target.checked);
+            }}
+          />
+          {t("Аккомпанемент второй руки")}
+        </label>
+      </div>
+    </section>
   );
 }

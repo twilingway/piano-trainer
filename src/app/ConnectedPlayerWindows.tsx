@@ -1,6 +1,12 @@
+import { useI18n } from "./useI18n";
+import { ConnectedMusicCards } from "./ConnectedMusicCourse";
 import { shallowEqual } from "react-redux";
+import { useState } from "react";
+import { WindowViewMemory } from "../ui/windowViewMemory";
 import { foldersSupported } from "../library/folder";
 import { LibraryDialog } from "../ui/LibraryDialog";
+import { ResultStats } from "../ui/ResultStats";
+import type { PracticeStats } from "../practice/session";
 import { ConnectedPlayerSettings, ConnectedResultDialog } from "./ConnectedSettings";
 import { downloadLesson } from "./lessonExport";
 import { LESSONS } from "./lessons";
@@ -18,10 +24,13 @@ import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 
 export function ConnectedPlayerWindows() {
+  const [libraryMemory] = useState(() => new WindowViewMemory());
   const {
     libraryOpen,
     settingsOpen,
     finished,
+    playing,
+    songKey,
     resultClosed,
     listening,
     comparing,
@@ -35,6 +44,8 @@ export function ConnectedPlayerWindows() {
       libraryOpen: runtime.libraryOpen,
       settingsOpen: runtime.settingsOpen,
       finished: runtime.snapshot.finished,
+      playing: runtime.snapshot.playing,
+      songKey: runtime.current.songKey,
       resultClosed: runtime.resultClosed,
       listening: runtime.listening,
       comparing: runtime.comparing,
@@ -53,6 +64,20 @@ export function ConnectedPlayerWindows() {
   const startOver = useRuntimeCommand((runtime) => runtime.startOver);
   const showReview = useRuntimeCommand((runtime) => runtime.takes.showReview);
   const openCourse = useRuntimeCommand((runtime) => runtime.course.controller.open);
+  // The details of the finished take, copied when they opened: compare replays the take as a song.
+  const [statsView, setStatsView] = useState<{
+    readonly stats: PracticeStats;
+    readonly songKey: string;
+  } | null>(null);
+  if (statsView && playing && !comparing) setStatsView(null);
+  const again = () => {
+    setStatsView(null);
+    startOver();
+  };
+  const review = () => {
+    showReview();
+    setResultClosed(true);
+  };
   const nextCourse =
     courseActive &&
     phraseCompleted(
@@ -67,6 +92,7 @@ export function ConnectedPlayerWindows() {
     <>
       {libraryOpen && (
         <ConnectedLibraryWindow
+          memory={libraryMemory}
           onClose={() => {
             setLibraryOpen(false);
           }}
@@ -87,7 +113,7 @@ export function ConnectedPlayerWindows() {
         onClose={() => {
           setResultClosed(true);
         }}
-        onAgain={startOver}
+        onAgain={again}
         {...(nextCourse
           ? {
               onNext: () => {
@@ -96,15 +122,34 @@ export function ConnectedPlayerWindows() {
               }
             }
           : {})}
-        onReview={() => {
-          showReview();
+        onReview={review}
+        onStats={(stats) => {
           setResultClosed(true);
+          setStatsView({ stats, songKey });
         }}
       />
+      {statsView?.songKey === songKey && (
+        <ResultStats
+          stats={statsView.stats}
+          canReview={canReview}
+          onClose={() => {
+            setStatsView(null);
+          }}
+          onAgain={again}
+          onReview={review}
+        />
+      )}
     </>
   );
 }
-function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
+function ConnectedLibraryWindow({
+  onClose,
+  memory
+}: {
+  onClose: () => void;
+  memory: WindowViewMemory;
+}) {
+  const { t } = useI18n();
   const { lesson, source, mySongs, folder } = useRuntimeSelector(
     (runtime) => ({
       lesson: runtime.current.lesson,
@@ -125,18 +170,26 @@ function ConnectedLibraryWindow({ onClose }: { onClose: () => void }) {
   return (
     <LibraryDialog
       open
+      viewMemory={memory}
       onClose={onClose}
       lessons={LESSONS.filter((lesson) => !PREVIOUS_COURSE_LESSONS.includes(lesson))}
       previousLessons={PREVIOUS_COURSE_LESSONS}
       course={
         <>
-          <ConnectedReadingCard onChoose={onClose} />
-          <ConnectedBassReadingCard onChoose={onClose} />
-          <ConnectedTwoHandCard onChoose={onClose} />
-          <ConnectedHeldBassCard onChoose={onClose} />
-          <ConnectedIndependentRhythmCard onChoose={onClose} />
-          <ConnectedIntervalCard onChoose={onClose} />
-          <ConnectedRhythmCard onChoose={onClose} />
+          <section className="first-steps" aria-label={t("Первые шаги")}>
+            <h3>{t("Первые шаги")}</h3>
+            <p>{t("От первой ноты к маленькой пьесе. Выбирайте удобный шаг.")}</p>
+            <div className="foundation-course-catalog">
+              <ConnectedReadingCard onChoose={onClose} />
+              <ConnectedBassReadingCard onChoose={onClose} />
+              <ConnectedIntervalCard onChoose={onClose} />
+              <ConnectedRhythmCard onChoose={onClose} />
+              <ConnectedTwoHandCard onChoose={onClose} />
+              <ConnectedHeldBassCard onChoose={onClose} />
+              <ConnectedIndependentRhythmCard onChoose={onClose} />
+              <ConnectedMusicCards onChoose={onClose} />
+            </div>
+          </section>
           <ConnectedCourseCards onChoose={onClose} />
         </>
       }

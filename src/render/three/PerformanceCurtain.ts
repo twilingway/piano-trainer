@@ -1,5 +1,5 @@
 import { Mesh, NormalBlending, PlaneGeometry, ShaderMaterial } from "three";
-/** The last transparent scene draw covers shared-canvas legacy FX while leaving Pixi HUD intact. */
+/** The last transparent scene draw covers shared-canvas legacy FX while leaving the flat HUD intact. */
 export class PerformanceCurtain {
   readonly mesh: Mesh<PlaneGeometry, ShaderMaterial>;
   private readonly material = new ShaderMaterial({

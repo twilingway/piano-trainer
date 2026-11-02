@@ -1,9 +1,12 @@
+import { roadWidthCamera } from "./roadWidthWarp";
 import type { WorldCamera } from "./worldCamera";
+import { keyboardHeightCamera } from "./keyboardHeightCamera";
 import { mixedKeyboardCamera } from "./mixedKeyboardCamera";
 import { noteProjectionCamera } from "./noteProjectionCamera";
 import { createNoteLaneProjection } from "./noteLaneProjection";
-import { BLACK_NOTE_FLOOR } from "./noteDimensions";
-import { KEYBOARD_BLACK_BACK } from "./keyboardMetrics";
+import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
+import { NATIVE_BLACK_CONTACT_BACK, NATIVE_WHITE_CONTACT_BACK } from "./nativeKeyContactAnchors";
+import { fittedNativeKeyboardCamera, nativeKeyboardFootprint } from "./nativeKeyboardFraming";
 
 /** Derive note-only projection after the independent piano camera has its final layout. */
 export function nativeViewCameras(
@@ -15,14 +18,30 @@ export function nativeViewCameras(
   horizon: number,
   viewportHeight: number,
   keyboardBottom?: number,
-  keyboardOffset = { x: 0, y: 0 }
+  keyboardOffset = { x: 0, y: 0 },
+  horizonWidth?: number,
+  sourceWidth = base.params.width,
+  nativeScale?: number
 ) {
-  let keyboard = keyboardTop ? mixedKeyboardCamera(base, keyboardHeight) : base;
-  if (keyboardBottom !== undefined && keyboard.params.prefs.pitch === 90)
-    keyboard = dockKeyboardCamera(keyboard, keyboardBottom);
+  let keyboard =
+    nativeScale !== undefined && base.params.keyboardDepth !== undefined
+      ? fittedNativeKeyboardCamera(base, keyboardHeight, keyboardTop, nativeScale)
+      : keyboardTop
+        ? mixedKeyboardCamera(base, keyboardHeight)
+        : keyboardHeightCamera(base, keyboardHeight);
+  if (keyboardBottom !== undefined) keyboard = dockKeyboardCamera(keyboard, keyboardBottom);
   return {
     keyboard,
-    ...nativeNoteCameras(keyboard, perspective, roadHeight, horizon, viewportHeight, keyboardOffset)
+    ...nativeNoteCameras(
+      keyboard,
+      perspective,
+      roadHeight,
+      horizon,
+      viewportHeight,
+      keyboardOffset,
+      horizonWidth,
+      sourceWidth
+    )
   };
 }
 
@@ -33,7 +52,9 @@ export function nativeNoteCameras(
   roadHeight: number,
   horizon: number,
   viewportHeight: number,
-  offset: { readonly x: number; readonly y: number }
+  offset: { readonly x: number; readonly y: number },
+  horizonWidth?: number,
+  sourceWidth = keyboard.params.width
 ) {
   const placed = shiftCamera(keyboard, offset.x, offset.y);
   const notes = noteProjectionCamera(
@@ -48,15 +69,43 @@ export function nativeNoteCameras(
     BLACK_NOTE_FLOOR,
     keyboard.params.width,
     viewportHeight,
-    keyboard.params.keyboardDepth === undefined ? undefined : KEYBOARD_BLACK_BACK
+    keyboard.params.keyboardDepth === undefined ? undefined : NATIVE_BLACK_CONTACT_BACK
   );
-  return { notes, blackLane };
+  const whiteLane =
+    keyboard.params.keyboardDepth === undefined
+      ? undefined
+      : createNoteLaneProjection(
+          notes,
+          placed,
+          WHITE_NOTE_FLOOR,
+          keyboard.params.width,
+          viewportHeight,
+          NATIVE_WHITE_CONTACT_BACK
+        );
+  return {
+    notes: roadWidthCamera(
+      notes,
+      horizonWidth ?? 0.1,
+      sourceWidth,
+      [
+        { y: WHITE_NOTE_FLOOR, z: whiteLane?.depth ?? notes.near.z },
+        { y: BLACK_NOTE_FLOOR, z: blackLane.depth ?? notes.near.z }
+      ],
+      perspective
+    ),
+    blackLane,
+    whiteLane
+  };
 }
 
-/** Keep overhead keys on their layout floor while retaining the player's camera shift. */
+/** Keep the visible keys on their layout floor while retaining the player's camera shift. */
 function dockKeyboardCamera(camera: WorldCamera, bottom: number): WorldCamera {
   if (!Number.isFinite(bottom)) return camera;
-  const shift = bottom + camera.params.prefs.targetY - camera.project(0, 22, 0).y;
+  const front =
+    camera.params.keyboardDepth === undefined
+      ? camera.project(0, 22, 0).y
+      : nativeKeyboardFootprint(camera).bottom;
+  const shift = bottom + camera.params.prefs.targetY - front;
   return shiftCamera(camera, 0, shift);
 }
 

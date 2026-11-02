@@ -1,4 +1,4 @@
-import type { Ticker } from "pixi.js";
+import type { Ticker } from "./flatThree";
 
 const SAMPLE_MS = 1000;
 
@@ -6,7 +6,7 @@ import type { Locale } from "../i18n/locales";
 import { appMessages } from "../i18n/appMessages";
 import { translate } from "../i18n/translate";
 
-/** A low-cost display of the actual Pixi frame cadence, independent of song time. */
+/** A low-cost display of the actual renderer frame cadence, independent of song time. */
 export class FpsMeter {
   private readonly element = document.createElement("output");
   private sampleStart = 0;

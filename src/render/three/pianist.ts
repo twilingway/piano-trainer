@@ -1,7 +1,7 @@
 import { AnimationMixer, Group, LinearSRGBColorSpace, Mesh, SkinnedMesh, Vector3 } from "three";
 import type { AnimationClip, BufferGeometry, Camera, Material, Object3D, Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { whitePosition } from "./handSolver/mech";
 import { keyBoxes } from "./keyBoxes";
 import { pianistModelUrl } from "./pianistModel";

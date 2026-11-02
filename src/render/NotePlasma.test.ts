@@ -6,7 +6,12 @@ import type { FrameState } from "./frameState";
 import { layoutKeyboard } from "./keyboardLayout";
 import { NotePlasma } from "./NotePlasma";
 import type { PlasmaLayer } from "./PlasmaLayer";
-import type { RoadLayer } from "./RoadLayer";
+import { RoadLayer } from "./RoadLayer";
+import { Container } from "./flatThree";
+import { FallingNotesView } from "./FallingNotesView";
+import { flatRoadCamera } from "./flatRoadCamera";
+import { panAfterResize } from "./keyboardPan";
+import { roadKeyHeights } from "./roadScenePoints";
 import type { Geometry } from "./viewGeometry";
 
 const spies = vi.hoisted(() => ({
@@ -16,7 +21,7 @@ const spies = vi.hoisted(() => ({
 }));
 
 vi.mock("./PlasmaLayer", async () => {
-  const { Container } = await import("pixi.js");
+  const { Container } = await import("./flatThree");
   return {
     PlasmaLayer: class {
       readonly container = new Container();
@@ -222,3 +227,108 @@ describe("NotePlasma renderer integration", () => {
     expect(rendered.height).toBe(400);
   });
 });
+
+it("retains energy and consumes attacks while both screen animations are disabled", () => {
+  const view = setup();
+  const options = { burning: false, presses: true, musicalNotes: false };
+  view.effect.draw(
+    frame(),
+    [note],
+    keys,
+    geometry,
+    view.road as unknown as RoadLayer,
+    true,
+    0.016,
+    options
+  );
+  expect(view.effect.container.visible).toBe(false);
+  expect(view.road.setEnergy).toHaveBeenCalled();
+  expect(lastDraw().attacks).toHaveLength(1);
+  view.effect.draw(
+    frame(),
+    [note],
+    keys,
+    geometry,
+    view.road as unknown as RoadLayer,
+    true,
+    0.016,
+    { ...options, musicalNotes: true }
+  );
+  expect(view.effect.container.visible).toBe(true);
+  expect(lastDraw().attacks).toHaveLength(0);
+  view.effect.destroy();
+});
+
+it.each([false, true])(
+  "keeps flat flame anchors through resize, starting on road=%s",
+  (startsOnRoad) => {
+    const effect = new NotePlasma();
+    const total = 1040;
+    const keysRoot = new Container();
+    const notesRoot = new Container();
+    const road = Object.assign(Object.create(RoadLayer.prototype) as object, {
+      style: "classic",
+      pan: 6,
+      hitY: geometry.hitY,
+      keyHeights: roadKeyHeights(keys, true),
+      keys: { container: new Container(), draw: vi.fn() },
+      clearEnergy: vi.fn()
+    }) as unknown as RoadLayer;
+    const state = frame();
+    const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
+      keyLabels: { labels: false, octaves: true },
+      total,
+      pan: 16,
+      panSnap: startsOnRoad,
+      whiteWidth: geometry.whiteWidth,
+      keys,
+      songNotes: [note],
+      app: { ticker: { deltaMS: 16 } },
+      placement: { x: 0, y: 0 },
+      keysFloor: 100,
+      keysRoot,
+      notesLayer: { root: notesRoot, cards: new Container() },
+      hands: { container: new Container() },
+      roadMode: startsOnRoad,
+      road
+    }) as unknown as {
+      scroll: (state: FrameState, width: number) => void;
+      roadMode: boolean;
+      pan: number;
+    };
+    let previousWidth = 800;
+    for (const [roadMode, width] of [
+      [startsOnRoad, 800],
+      [false, 700],
+      [false, 1200],
+      [false, 800]
+    ] as const) {
+      const camera = flatRoadCamera(width, 600, geometry.hitY, roadMode, 0.1);
+      Object.assign(road, {
+        camera: camera.notes,
+        projection: camera.notes.road,
+        blackLane: camera.blackLane,
+        size: { width: total, height: geometry.hitY }
+      });
+      view.roadMode = roadMode;
+      view.pan = panAfterResize(view.pan, { width: previousWidth, total }, { width, total });
+      view.scroll(state, width);
+      effect.draw(state, [note], keys, geometry, road, true, 0.016);
+      if (!roadMode) {
+        expect(Math.abs(notesRoot.x)).toBeGreaterThan(0);
+        for (const pitch of [60, 61]) {
+          const key = keys.get(pitch);
+          const anchor = lastDraw().anchors.find((candidate) => candidate.pitch === pitch);
+          if (!key || !anchor) throw new Error("Missing white or black flame anchor");
+          expect(anchor.black).toBe(pitch === 61);
+          expect(anchor.x).toBeCloseTo(key.x + key.width / 2 + notesRoot.x);
+          expect(anchor.x).toBeCloseTo(key.x + key.width / 2 + keysRoot.x);
+          expect(anchor.y).toBeCloseTo(geometry.hitY);
+          expect(anchor.width).toBeCloseTo(key.width);
+        }
+      }
+      previousWidth = width;
+    }
+    effect.destroy();
+  }
+);

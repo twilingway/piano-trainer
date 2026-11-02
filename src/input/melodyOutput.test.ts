@@ -3,7 +3,7 @@ import { DEFAULT_MELODY_OUTPUT, parseMelodyOutput } from "./melodyOutput";
 
 describe("parseMelodyOutput", () => {
   it.each([null, undefined, false, [], "midi", { mode: "unknown", channel: "1" }])(
-    "uses browser defaults for invalid saved settings: %j",
+    "uses both-device defaults for invalid saved settings: %j",
     (saved) => {
       expect(parseMelodyOutput(saved)).toEqual(DEFAULT_MELODY_OUTPUT);
     }

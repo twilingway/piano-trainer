@@ -1,5 +1,5 @@
-import { Assets, Container, NineSliceSprite, Sprite, Texture } from "pixi.js";
-import type { Renderer } from "pixi.js";
+import { Assets, Container, NineSliceSprite, Sprite, Texture } from "./flatThree";
+import type { Renderer } from "./flatThree";
 
 import { isBlackKey } from "../fingering/fingering";
 import type { Finger, Hand } from "../fingering/fingering";
@@ -11,10 +11,15 @@ import { HIGHEST_PITCH, LOWEST_PITCH } from "./keyboardLayout";
 import { KEY_LIGHT_PAD, bakeKeyLight, keyShape, shapeId } from "./keyLightShapes";
 import type { KeyRect } from "./keyboardLayout";
 import { BLACK_STICKER, WHITE_STICKER, bakeKeySticker } from "./keyStickers";
-import { bakeKeyTextures } from "./keyTextures";
+import { bakeKeyTextures, destroyKeyTextures } from "./keyTextures";
 import type { KeyTextures } from "./keyTextures";
 import type { Geometry } from "./viewGeometry";
 import { PointerKeys, type KeyPointer } from "./pointerKeys";
+import type { Locale } from "../i18n/locales";
+import type { LessonFingerCue } from "../reading/fingerCues";
+import { bakeLessonFingerBadges, LessonFingerBadges } from "./lessonFingerBadges";
+import { DIGIT_MAX_PX } from "./keyboardFingerDigits";
+import { OctaveKeyLabels, keyDigit, lessonLabels } from "./octaveKeyLabels";
 
 const HAND_HINT: Readonly<Record<Hand, number>> = {
   right: FINGER_COLOR[3],
@@ -41,8 +46,8 @@ const FELT_EDGE = 0x00e5ff;
  * Two styles: "classic" (src/render/keys) and "arcade" (src/render/keys-arcade),
  * thicker pseudo-3D keys over a lacquered rail.
  */
-/** "perspective" and "3d" lay the keys under the road; "3d" draws them with three.js. */
-export type KeyStyle = "classic" | "arcade" | "perspective" | "3d";
+/** Keyboard appearance is independent of the notes' projection. */
+export type KeyStyle = "classic" | "arcade" | "3d";
 
 type FaceName =
   | "white"
@@ -69,7 +74,7 @@ interface StyleSet {
   readonly rail?: string;
 }
 
-const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "perspective" | "3d">, StyleSet>> = {
+const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "3d">, StyleSet>> = {
   classic: {
     faces: {
       white: new URL("./keys/white.webp", import.meta.url).href,
@@ -106,13 +111,11 @@ const RAIL_PER_WIDTH = 0.2;
 
 type PaintedFaces = KeyTextures & Readonly<Record<FaceName, Texture>>;
 const NO_SLICE = { leftWidth: 0, topHeight: 0, rightWidth: 0, bottomHeight: 0 };
-/** Largest size of a finger digit on a key. */
-const DIGIT_MAX_PX = 26;
-/** The finger digit's height on a key without stickers, at most. */
-const DIGIT_BARE_PX = 44;
 
 /** What the keys show in a frame: what is held, sounded and owed, and what crosses the hit line. */
 export interface KeysFrame {
+  /** Physical key travel, independent of sustained sound and hint colours. */
+  readonly physicalDown?: ReadonlySet<number>;
   readonly pressed: ReadonlySet<number>;
   readonly sounding: ReadonlySet<number>;
   readonly due: readonly SongNote[];
@@ -124,6 +127,7 @@ export interface KeysFrame {
   readonly playing: ReadonlyMap<number, SongNote>;
   readonly hints?: boolean;
   readonly neutralKeys?: boolean;
+  readonly fingerCues?: readonly LessonFingerCue[];
 }
 
 /**
@@ -137,17 +141,22 @@ export class KeyboardLayer {
   private readonly keyboard = new Container();
   private readonly hints = new Container();
   private readonly stickers = new Container();
+  readonly octaveMarks?: OctaveKeyLabels;
   private readonly felt = new Container();
   private readonly keySprites = new Map<number, NineSliceSprite>();
   private readonly keyDigits = new Map<number, Sprite>();
+  private readonly lessonBadges?: LessonFingerBadges;
   /** The light over each key, in its note's colour; a white key's under the black keys. */
   private readonly keyFronts = new Map<number, Sprite>();
   private readonly stickerSprites = new Map<number, Sprite>();
   private keyTextures: KeyTextures | undefined;
+  private bakedTextures: KeyTextures | undefined;
   /** The painted key faces once loaded; kept for good, never re-baked. */
   private painted: PaintedFaces | undefined;
+  private disposed = false;
+  private paintGeneration = 0;
   /** The style the painted faces are of. */
-  private style: Exclude<KeyStyle, "perspective" | "3d"> = "classic";
+  private style: Exclude<KeyStyle, "3d"> = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
   private modelFaces = false;
   /** The rail under the keys, for a style that has one. */
@@ -168,7 +177,11 @@ export class KeyboardLayer {
     onKeyPointer: (event: KeyEvent) => void
   ) {
     this.pointers = new PointerKeys(onKeyPointer);
-    this.container.addChild(this.keyboard, this.rail, this.felt, this.stickers, this.hints);
+    this.octaveMarks = new OctaveKeyLabels(renderer);
+    this.lessonBadges = new LessonFingerBadges(bakeLessonFingerBadges(renderer));
+    this.hints.addChild(this.lessonBadges.container);
+    this.container.addChild(this.keyboard, this.rail, this.felt, this.stickers);
+    this.container.addChild(this.octaveMarks.container, this.hints);
     this.rail.eventMode = "none";
     this.rail.visible = false;
     this.stickers.eventMode = "none";
@@ -210,15 +223,15 @@ export class KeyboardLayer {
    * were. The faces take effect on the next layout. Assets caches every load.
    */
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
+    const generation = ++this.paintGeneration;
     this.modelFaces = style === "3d";
-    const paintedStyle = style === "perspective" || style === "3d" ? "classic" : style;
+    const paintedStyle = style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
       const names = Object.keys(set.faces) as FaceName[];
-      const textures = await Promise.all(
-        names.map((name) => Assets.load<Texture>(set.faces[name]))
-      );
-      const rail = set.rail ? await Assets.load<Texture>(set.rail) : undefined;
+      const textures = await Promise.all(names.map((name) => Assets.load(set.faces[name])));
+      const rail = set.rail ? await Assets.load(set.rail) : undefined;
+      if (this.disposed || generation !== this.paintGeneration) return;
       // Every name has its texture: Promise.all keeps the order of `names`.
       this.painted = Object.fromEntries(
         names.map((name, index) => [name, textures[index]])
@@ -238,7 +251,10 @@ export class KeyboardLayer {
   /** Compact Latin and solfege note names on every key. */
   showStickers(show: boolean): void {
     this.stickers.visible = show;
+    this.octaveMarks?.show(undefined, show);
   }
+
+  showOctaveLabels = (show: boolean): void => this.octaveMarks?.show(show);
 
   /** Puts the keys, their stickers and the felt `total` pixels wide where `geometry` says. */
   layout(keys: ReadonlyMap<number, KeyRect>, geometry: Geometry, total: number): void {
@@ -265,6 +281,7 @@ export class KeyboardLayer {
         ? (BLACK_SLICE.bottomHeight * blackWidth) / painted.black.width
         : 3;
     this.bevel = { white: whiteBevel, black: blackBevel };
+    this.octaveMarks?.layout(keys, geometry, this.modelFaces, whiteBevel);
     // Nine-slice border bands include broad flat areas, especially on arcade keys.
     // Only reserve the narrow visible rim, rather than shrinking to their centre slice.
     const whiteLabelWidth = Math.max(0, whiteWidth - Math.max(4, whiteWidth * 0.12));
@@ -326,6 +343,10 @@ export class KeyboardLayer {
 
   /** The last frame drawn: the 3D keys dip the keys it holds down. */
   frame: KeysFrame | undefined;
+  setLocale(locale: Locale): void {
+    this.lessonBadges?.setLocale(locale);
+    this.octaveMarks?.setLocale(locale);
+  }
 
   /** Lights the keys for this frame: the owed chord, the notes sounding, the keys held. */
   draw(
@@ -335,6 +356,7 @@ export class KeyboardLayer {
     stickers: boolean
   ): void {
     this.frame = frame;
+    lessonLabels(this.lessonBadges, this.octaveMarks, frame, keys, geometry, this.modelFaces);
     const { keyboardTop, keyboardHeight, blackHeight } = geometry;
     for (const [pitch, sprite] of this.keySprites) {
       const due = strongestKeyHint(
@@ -354,11 +376,8 @@ export class KeyboardLayer {
       );
       const pressed = frame.pressed.has(pitch);
       const sounding = pressed || frame.sounding.has(pitch);
-      const shown = keyHintNote(
-        hintStrength > 0 ? due : undefined,
-        frame.playing.get(pitch),
-        sounding
-      );
+      const noteHint = hintStrength > 0 ? due : undefined;
+      const shown = keyHintNote(noteHint, frame.playing.get(pitch), sounding);
       // A key with a fingered note is its finger's colour whoever plays it; the press and
       // the program's own colours are for keys without one.
       const color =
@@ -372,9 +391,10 @@ export class KeyboardLayer {
                 ? HAND_HINT[shown.hand]
                 : undefined;
       const key = keys.get(pitch);
-      // Held by the player or sounded by the program, a painted key sinks.
+      // Key travel follows physical contacts; sustained sound keeps its own colour.
       if (key && this.keyTextures && !this.modelFaces) {
-        const face = this.faceOf(key.black, false, this.painted !== undefined && sounding);
+        const down = frame.physicalDown?.has(pitch) ?? sounding;
+        const face = this.faceOf(key.black, false, this.painted !== undefined && down);
         if (sprite.texture !== face) sprite.texture = face;
       }
       sprite.tint = this.modelFaces ? (key?.black ? 0x1a1816 : 0xf8f4e8) : 0xffffff;
@@ -397,6 +417,9 @@ export class KeyboardLayer {
             light.alpha *= 0.8;
           } else {
             light.scale.set(1);
+            // Native paint uses explicit unpadded dimensions on these same sprites.
+            light.width = light.texture.width;
+            light.height = light.texture.height;
             light.position.set(key.x - KEY_LIGHT_PAD, keyboardTop - KEY_LIGHT_PAD);
           }
         }
@@ -405,41 +428,14 @@ export class KeyboardLayer {
       if (!hint) continue;
       hint.visible =
         !frame.neutralKeys &&
+        frame.fingerCues === undefined &&
         key !== undefined &&
         shown?.finger !== undefined &&
         frame.hints !== false;
       hint.alpha = sounding ? 1 : hintStrength;
       if (!key || shown?.finger === undefined) continue;
       hint.texture = this.digitTextures.get(shown.finger) ?? Texture.EMPTY;
-      hint.x = key.x + key.width / 2;
-      if (!stickers) {
-        // Fit the digit below the black keys and above the front bevel.
-        const bevel = key.black ? this.bevel.black : this.bevel.white;
-        const bottom = keyboardTop + (key.black ? blackHeight : keyboardHeight) - bevel - 4;
-        const top = keyboardTop + (key.black ? 4 : blackHeight + 4);
-        hint.scale.set(
-          Math.min(
-            (key.width * 0.7) / hint.texture.width,
-            DIGIT_BARE_PX / hint.texture.height,
-            Math.max(0, bottom - top) / hint.texture.height
-          )
-        );
-        hint.y = bottom;
-      } else {
-        hint.scale.set(Math.min(1, (key.width * 0.9) / 40, DIGIT_MAX_PX / 40));
-        // The sticker fills the bottom of the key; the finger sits at the top of its free part.
-        hint.y = (key.black ? keyboardTop : keyboardTop + blackHeight) + hint.height + 2;
-      }
-      if (this.modelFaces) {
-        // Compensate the painted atlas for the metric cap and the cropped side bevels.
-        const oldHeight = hint.height;
-        const depth = key.black ? 94.0242 : 150;
-        const sourceHeight = key.black ? blackHeight : keyboardHeight;
-        const usableWidth = key.black ? 0.84 : 0.86;
-        const units = key.black ? 13.31152 / key.width : 22.5 / key.width;
-        hint.scale.y *= (sourceHeight * units) / (depth * usableWidth);
-        if (stickers) hint.y += hint.height - oldHeight;
-      }
+      keyDigit(hint, key, geometry, stickers, this.modelFaces, this.bevel, this.octaveMarks);
     }
   }
 
@@ -486,6 +482,8 @@ export class KeyboardLayer {
     blackHeight: number
   ): void {
     if (this.painted) {
+      destroyKeyTextures(this.bakedTextures);
+      this.bakedTextures = undefined;
       this.keyTextures = this.painted;
       for (const [pitch, sprite] of this.keySprites) {
         const isBlack = isBlackKey(pitch);
@@ -499,7 +497,7 @@ export class KeyboardLayer {
       }
       return;
     }
-    const old = this.keyTextures;
+    destroyKeyTextures(this.bakedTextures);
     this.keyTextures = bakeKeyTextures(
       this.renderer,
       { width: (white?.width ?? 10) - 1, height: keyboardHeight },
@@ -513,9 +511,20 @@ export class KeyboardLayer {
           : this.keyTextures.white;
       Object.assign(sprite, NO_SLICE);
     }
-    if (old) {
-      for (const texture of [old.white, old.black, old.blackLit]) texture.destroy(true);
-    }
+    this.bakedTextures = this.keyTextures;
+  }
+
+  /** Release only generated textures; cached painted assets and digits have separate owners. */
+  destroy(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.paintGeneration++;
+    this.releaseMouse();
+    this.lessonBadges?.destroy();
+    this.octaveMarks?.destroy();
+    destroyKeyTextures(this.bakedTextures);
+    for (const texture of this.lightTextures.values()) texture.destroy(true);
+    for (const sprite of this.stickerSprites.values()) sprite.texture.destroy(true);
   }
 
   /** Bakes a light for every key's shape; the last layout's lights are freed. */

@@ -137,7 +137,7 @@ describe("interval envelope persistence", () => {
     const { activeCourse: _active, intervals: _intervals, ...p2 } = state;
     const first = normalizeReadingState({ ...p2, schemaVersion: 2 });
     expect(first.invalid).toBe(false);
-    expect(first.reading).toMatchObject({ ...p2, schemaVersion: 8, activeCourse: "note-reading" });
+    expect(first.reading).toMatchObject({ ...p2, schemaVersion: 9, activeCourse: "note-reading" });
     expect(first.reading.profile).toEqual(state.profile);
     expect(first.reading.intervals.history).toEqual([]);
     expect(normalizeReadingState(first.reading).reading).toEqual(first.reading);
@@ -295,7 +295,7 @@ describe("interval envelope persistence", () => {
   });
   it("blocks unknown future schema and read failures for P3 while retaining memory progress", async () => {
     for (const load of [
-      () => Promise.resolve({ schemaVersion: 9, marker: "future" }),
+      () => Promise.resolve({ schemaVersion: 10, marker: "future" }),
       () => Promise.reject(new Error("denied"))
     ]) {
       const update = vi.fn();

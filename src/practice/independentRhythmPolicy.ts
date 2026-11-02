@@ -2,6 +2,7 @@ import type { KeyEvent } from "../input/midiInput";
 import type { NoteStatus, PracticeOptions, PracticeSession, PracticeStats } from "./session";
 import type { TempoClockReceipt } from "./tempoClock";
 import { NO_EVENTS, type TrainerCourse } from "./trainerCourse";
+import { lessonFingerCues } from "../reading/fingerCues";
 
 export interface TrainerIndependentRhythmPolicy {
   readonly inputCompensationMs: () => number;
@@ -65,10 +66,23 @@ export function observeIndependentRhythmInput(
   policy.onFrame(session, playing, received, session.tempoClockReceipt(received));
 }
 
-export function independentRhythmGuidance(policy: TrainerIndependentRhythmPolicy) {
+export function independentRhythmGuidance(
+  policy: Pick<TrainerIndependentRhythmPolicy, "cuePitches">,
+  session?: PracticeSession
+) {
+  const pitches = policy.cuePitches();
+  const notes =
+    session?.song.notes.filter((note) => note.start === 0 && pitches.includes(note.pitch)) ?? [];
   return {
-    lights: policy.cuePitches(),
-    frame: { hintNotes: [], due: [], waitingFor: [], hints: false, neutralKeys: true }
+    lights: pitches,
+    frame: {
+      hintNotes: [],
+      due: [],
+      waitingFor: [],
+      hints: notes.length > 0,
+      neutralKeys: true,
+      fingerCues: lessonFingerCues(notes)
+    }
   };
 }
 
@@ -110,7 +124,7 @@ export function independentRhythmCourse(policy: TrainerIndependentRhythmPolicy):
         observeIndependentRhythmInput(policy, session, event, context.playing(), received);
       context.publish();
     },
-    guidance: () => independentRhythmGuidance(policy),
+    guidance: (session) => independentRhythmGuidance(policy, session),
     cuePresented: (lights, atMs) => {
       if (lights.length > 0) policy.onCuePresented?.(lights, atMs);
     },

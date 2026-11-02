@@ -165,10 +165,6 @@
   flex: 0 0 auto;
   min-width: 0;
 }
-.workspace-main--overlay > .course-score-slot {
-  position: absolute;
-  inset: 0 0 auto;
-}
 .piano-tabs {
   --tabs-scale: 1;
 
@@ -266,9 +262,6 @@
   border-left: 1px solid var(--tabs-score);
   pointer-events: none;
 }
-.piano-tabs__column[data-current="true"] {
-  background: rgb(0 213 244 / 6%);
-}
 .piano-tabs__event {
   position: absolute;
   z-index: 1;
@@ -299,6 +292,7 @@
   font-size: calc(13px * var(--tabs-zoom));
 }
 .piano-tabs__note[data-current="true"] {
+  color: var(--tabs-played-notes);
   text-shadow: 0 0 8px currentColor;
 }
 .piano-tabs__sustain {
@@ -313,10 +307,6 @@
   position: absolute;
   inset: 0 auto 0 0;
   z-index: 3;
-  width: 3px;
-  margin-left: -1.5px;
-  background: var(--accent);
-  box-shadow: 0 0 12px var(--accent);
   visibility: hidden;
   pointer-events: none;
 }
@@ -452,6 +442,16 @@
   }
 }
 /* The text as a running line just over the keys; without the lane, under the board. */
+.instrument-profile-example {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.instrument-profile-import {
+  min-width: 0;
+  max-width: 100%;
+}
 .word-ticker {
   box-sizing: border-box;
   flex: 0 0 auto;
@@ -699,6 +699,50 @@ body {
   position: relative;
 }
 
+/* Feedback is clipped to the viewport, outside OSMD's measured SVG ink. */
+.staff-feedback {
+  position: fixed;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.staff-feedback__pulse {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #65ffbf;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(101 255 191 / 22%), transparent 70%);
+  box-shadow: 0 0 9px 2px rgb(36 255 163 / 70%);
+  pointer-events: none;
+  animation: lesson-staff-feedback-pop 520ms ease-out both;
+}
+
+@keyframes lesson-staff-feedback-pop {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.65);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.55);
+  }
+}
+
+@keyframes lesson-staff-feedback-still {
+  from,
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-feedback__pulse {
+    animation: lesson-staff-feedback-still 220ms linear both;
+  }
+}
 /* OSMD's cursor jumps from note to note: it stays, unseen, to steer the scrolling. */
 .staff img[id^="cursorImg"] {
   opacity: 0;
@@ -857,18 +901,6 @@ body {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-}
-
-/* The road fills the scene; the transparent score floats over its sky and effects. */
-.workspace-main--overlay > .staves {
-  position: absolute;
-  z-index: 2;
-  inset: 0 0 auto;
-  pointer-events: none;
-}
-
-.workspace-main--overlay .staff {
-  pointer-events: auto;
 }
 
 /* Both readers use their content height, capped at half the workspace above the lane. */
@@ -1064,6 +1096,20 @@ body {
   min-height: 0;
 }
 
+/* A long lesson score scrolls above the reserved keyboard instead of pushing it out. */
+.workspace-main--practice > .staves {
+  flex-shrink: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Lesson text may reflow; its keyboard keeps the existing responsive strip. */
+.workspace-main--practice > .lanes--keys {
+  flex: 0 0 auto;
+  max-height: 100%;
+  margin-top: auto;
+}
+
 .lanes--row {
   flex-direction: row;
 }
@@ -1096,7 +1142,7 @@ body {
   position: absolute;
   z-index: 3;
   top: 8px;
-  left: 8px;
+  right: calc(8px + var(--mobile-bar-width, 0px));
   min-width: 58px;
   padding: 3px 7px;
   border: 1px solid rgb(83 204 255 / 50%);
@@ -1109,10 +1155,6 @@ body {
   font-variant-numeric: tabular-nums;
   text-align: center;
   pointer-events: none;
-}
-
-.lane-label ~ .lane-fps {
-  top: 34px;
 }
 
 .lane-fps[data-level="mid"] {
@@ -1174,6 +1216,7 @@ body {
 
 .game-button,
 .game-select,
+.game-input,
 .icon-button,
 .view-toggle,
 .level-chip {
@@ -1205,6 +1248,15 @@ body {
   padding: 0 10px;
 }
 
+.game-input {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  cursor: text;
+}
+
 .icon-button,
 .view-toggle {
   display: grid;
@@ -1218,7 +1270,8 @@ body {
   color: var(--muted);
 }
 
-.view-toggle[aria-pressed="true"] {
+.view-toggle[aria-pressed="true"],
+.topbar-audio-toggle[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--text);
@@ -1494,6 +1547,10 @@ select:disabled {
   align-items: center;
 }
 
+.topbar-audio-toggle {
+  flex-shrink: 0;
+}
+
 .topbar-speed input {
   width: 90px;
   accent-color: var(--accent);
@@ -1607,10 +1664,15 @@ select:disabled {
 .waiting-pill {
   position: absolute;
   z-index: 2;
-  /* Over the hit line, wherever the keys were moved: above the word mode's running line. */
-  bottom: calc(100% - var(--hit-line, 62%) + 70px);
+  /*
+   * Over the hit line, wherever the keys were moved: above the word mode's running line.
+   * Its bottom sits 70px over the line (30px tall pill), but never above the lane's top
+   * edge, which clips it in the keys-only strip.
+   */
+  top: max(6px, calc(var(--hit-line, 62%) - 100px));
   left: 50%;
   padding: 4px 14px;
+  line-height: 20px;
   transform: translateX(-50%);
   border: 1px solid var(--early);
   border-radius: 999px;
@@ -2084,6 +2146,21 @@ button.song-card.song-card__open {
   text-align: center;
 }
 
+/* Compact result summaries move the trouble notes into the stats panel. */
+.result-stats-trouble {
+  display: none;
+}
+
+/* The take's details sit beside the game, below the review bar, so the review stays in view. */
+.game-dialog.result-stats {
+  position: fixed;
+  inset: 112px 12px auto auto;
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100dvh - 124px);
+  margin: 0;
+  z-index: 10;
+}
+
 .result-score {
   margin: 8px 0 0;
   font-family: var(--font-display);
@@ -2115,6 +2192,10 @@ button.song-card.song-card__open {
 }
 
 @media (max-width: 640px), (pointer: coarse) and (max-height: 640px) {
+  .result-stats-trouble {
+    display: block;
+  }
+
   .result-details,
   .result-review-action {
     display: none;
@@ -2269,6 +2350,20 @@ button.song-card.song-card__open {
     width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     border-radius: 12px;
+  }
+
+  /* A phone has no room for the review beside the game: the details take the screen. */
+  .game-dialog.result-stats {
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  /* The result dialogs already drop «Разобрать дубль» here; the bar goes too. */
+  .review-bar {
+    display: none;
   }
 
   .game-dialog__head {
@@ -2796,10 +2891,6 @@ button.song-card.song-card__open {
   position: static;
   transform: none;
 }
-.workspace-main--overlay .game-score-dock {
-  order: 1;
-  z-index: 3;
-}
 /* A message alone takes no row: it hangs in the corner over the lane. */
 .game-score-dock:has(> .game-score-board--message) {
   position: relative;
@@ -2918,6 +3009,14 @@ button.song-card.song-card__open {
 
 /* Keep desktop window controls readable without spending a second row on labels. */
 @media (640px < width <= 1800px) and (height > 500px) {
+  .topbar-audio-toggle {
+    justify-content: center;
+    width: 36px;
+    padding: 0;
+  }
+  .topbar-audio-toggle__label {
+    display: none;
+  }
   .topbar-library__label,
   .topbar-restart__label,
   .play-button__label {
@@ -3001,10 +3100,6 @@ button.song-card.song-card__open {
 .timing-histogram {
   text-align: left;
   font-size: 12px;
-}
-.game-result-details {
-  max-height: 50dvh;
-  overflow-y: auto;
 }
 @media (max-width: 900px), (max-height: 680px) {
   .game-score-board > section {
@@ -3219,11 +3314,6 @@ button.song-card.song-card__open {
     margin-right: var(--mobile-bar-width);
   }
 
-  .workspace-main--overlay > .course-score-slot {
-    right: var(--mobile-bar-width);
-    margin-right: 0;
-  }
-
   .workspace-main:has(> .staves)::before {
     position: absolute;
     z-index: 2;
@@ -3235,9 +3325,9 @@ button.song-card.song-card__open {
   }
 
   .workspace-main:has(> .lanes:not(.lanes--hidden)) > .staves {
-    position: absolute;
+    position: relative;
     z-index: 2;
-    inset: var(--mobile-score-top) var(--mobile-bar-width) auto var(--mobile-rail-width);
+    margin: var(--mobile-score-top) var(--mobile-bar-width) 0 var(--mobile-rail-width);
     max-height: min(34cqh, 150px);
     padding: 0;
     border-bottom: 1px solid var(--border);
@@ -3725,6 +3815,8 @@ button.song-card.song-card__open {
 .workspace-main:has(> .course-score-stack) .course-score-stack .staff {
   --staff-fit: 1;
 
+  align-self: stretch;
+  width: 100%;
   min-height: 0;
   max-height: calc(25cqh - 12px);
   pointer-events: auto;
@@ -3801,17 +3893,6 @@ button.song-card.song-card__open {
 }
 .reading-muted {
   opacity: 0.7;
-}
-.reading-status {
-  display: grid;
-  align-items: center;
-  min-height: calc(1.7em + 16px);
-}
-.reading-status > p {
-  grid-area: 1 / 1;
-}
-.reading-status-hidden {
-  visibility: hidden;
 }
 .reading-hint {
   font-size: 1.2rem;
@@ -4272,4 +4353,1159 @@ button.song-card.song-card__open {
   font-weight: 700;
   text-align: center;
   pointer-events: none;
+}
+
+/* Settings sections share visible boundaries on desktop and narrow screens. */
+.settings-content .settings-group {
+  min-width: 0;
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.settings-content .settings-group + .settings-group {
+  margin-top: 18px;
+}
+.settings-content .settings-group .settings-group {
+  padding: 12px;
+  background: transparent;
+}
+.settings-content .settings-group__title {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.settings-content .settings-list > .settings-group:last-child {
+  margin-bottom: 0;
+}
+.settings-help__guide {
+  display: grid;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.settings-help__guide li {
+  min-width: 0;
+}
+.settings-help__guide p,
+.settings-help__faq p {
+  margin: 8px 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.settings-help__faq {
+  display: grid;
+  gap: 14px;
+}
+.settings-help__faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.5;
+}
+@media (max-width: 480px) {
+  .settings-content .settings-group {
+    padding: 12px;
+  }
+  .settings-content .settings-group .settings-group {
+    padding: 10px;
+  }
+  .settings-help__guide .game-button {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+.settings-help__targets {
+  margin-top: 12px;
+}
+.settings-content [data-setting-highlight="true"] {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.settings-content :is(input, select, button, summary):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.instrument-chooser__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+.instrument-chooser__trigger > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.instrument-chooser__list {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px #0008;
+}
+.instrument-chooser__group {
+  padding: 8px 10px 4px;
+  font-weight: 700;
+}
+.instrument-chooser__option {
+  padding: 7px 10px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.instrument-chooser__option.is-active {
+  background: var(--accent);
+  color: #101722;
+}
+.instrument-chooser__option[aria-selected="true"] {
+  font-weight: 700;
+}
+.instrument-chooser__option[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Flex-column groups already have a gap; avoid adding block margins twice. */
+.settings-content .settings-list > .settings-group,
+.settings-content .settings-list > .settings-group + .settings-group {
+  margin: 0;
+}
+
+.hands-status {
+  position: absolute;
+  top: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  max-width: calc(100% - 2rem);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--panel);
+  color: var(--text);
+  pointer-events: none;
+}
+
+/* Both readers share the same baked glow and thin play-position core. */
+.staff-cursor,
+.piano-tabs__cursor {
+  width: 18px;
+  margin-left: -9px;
+  border-radius: 0;
+  background-color: transparent;
+  background-size: 800% 600%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  box-shadow: none;
+  filter: drop-shadow(0 0 2px rgb(0 210 255 / 35%));
+  animation: none;
+}
+
+.lane-neon-edge {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  height: 16px;
+  transform: translateY(-50%);
+  background-size: 800% 600%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgb(0 210 255 / 35%));
+  animation: neon-rail-frames 12s steps(1, end) infinite;
+}
+.lane-neon-edge--top {
+  top: 1px;
+  opacity: 0.65;
+}
+.lane-neon-edge--hit {
+  top: var(--hit-line, 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-cursor,
+  .piano-tabs__cursor,
+  .lane-neon-edge {
+    animation: none;
+  }
+}
+
+@keyframes neon-rail-frames {
+  0% {
+    background-position: 0% 0%;
+  }
+  2.0833% {
+    background-position: 14.2857% 0%;
+  }
+  4.1667% {
+    background-position: 28.5714% 0%;
+  }
+  6.25% {
+    background-position: 42.8571% 0%;
+  }
+  8.3333% {
+    background-position: 57.1429% 0%;
+  }
+  10.4167% {
+    background-position: 71.4286% 0%;
+  }
+  12.5% {
+    background-position: 85.7143% 0%;
+  }
+  14.5833% {
+    background-position: 100% 0%;
+  }
+  16.6667% {
+    background-position: 0% 20%;
+  }
+  18.75% {
+    background-position: 14.2857% 20%;
+  }
+  20.8333% {
+    background-position: 28.5714% 20%;
+  }
+  22.9167% {
+    background-position: 42.8571% 20%;
+  }
+  25% {
+    background-position: 57.1429% 20%;
+  }
+  27.0833% {
+    background-position: 71.4286% 20%;
+  }
+  29.1667% {
+    background-position: 85.7143% 20%;
+  }
+  31.25% {
+    background-position: 100% 20%;
+  }
+  33.3333% {
+    background-position: 0% 40%;
+  }
+  35.4167% {
+    background-position: 14.2857% 40%;
+  }
+  37.5% {
+    background-position: 28.5714% 40%;
+  }
+  39.5833% {
+    background-position: 42.8571% 40%;
+  }
+  41.6667% {
+    background-position: 57.1429% 40%;
+  }
+  43.75% {
+    background-position: 71.4286% 40%;
+  }
+  45.8333% {
+    background-position: 85.7143% 40%;
+  }
+  47.9167% {
+    background-position: 100% 40%;
+  }
+  50% {
+    background-position: 0% 60%;
+  }
+  52.0833% {
+    background-position: 14.2857% 60%;
+  }
+  54.1667% {
+    background-position: 28.5714% 60%;
+  }
+  56.25% {
+    background-position: 42.8571% 60%;
+  }
+  58.3333% {
+    background-position: 57.1429% 60%;
+  }
+  60.4167% {
+    background-position: 71.4286% 60%;
+  }
+  62.5% {
+    background-position: 85.7143% 60%;
+  }
+  64.5833% {
+    background-position: 100% 60%;
+  }
+  66.6667% {
+    background-position: 0% 80%;
+  }
+  68.75% {
+    background-position: 14.2857% 80%;
+  }
+  70.8333% {
+    background-position: 28.5714% 80%;
+  }
+  72.9167% {
+    background-position: 42.8571% 80%;
+  }
+  75% {
+    background-position: 57.1429% 80%;
+  }
+  77.0833% {
+    background-position: 71.4286% 80%;
+  }
+  79.1667% {
+    background-position: 85.7143% 80%;
+  }
+  81.25% {
+    background-position: 100% 80%;
+  }
+  83.3333% {
+    background-position: 0% 100%;
+  }
+  85.4167% {
+    background-position: 14.2857% 100%;
+  }
+  87.5% {
+    background-position: 28.5714% 100%;
+  }
+  89.5833% {
+    background-position: 42.8571% 100%;
+  }
+  91.6667% {
+    background-position: 57.1429% 100%;
+  }
+  93.75% {
+    background-position: 71.4286% 100%;
+  }
+  95.8333% {
+    background-position: 85.7143% 100%;
+  }
+  97.9167% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.play-countdown {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  background: radial-gradient(ellipse at center, rgb(4 27 44 / 90%), transparent 55%);
+  text-align: center;
+  pointer-events: none;
+}
+.play-countdown strong {
+  color: var(--accent);
+  font-family: var(--font-digits);
+  font-style: normal;
+  font-weight: 600;
+  font-size: clamp(4rem, 16vw, 10rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 0 20px var(--accent-soft);
+}
+
+/* Keep the play position readable across both staves without an animated hotspot. */
+.staff-cursor::after,
+.piano-tabs__cursor::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: #bdf7ff;
+  box-shadow: 0 0 4px #00d4ff;
+  pointer-events: none;
+}
+.staff .staffline > .vf-measure > path[fill="none"] {
+  stroke-width: 0.7;
+  stroke-opacity: 0.65;
+}
+.staff path.vf-stem {
+  stroke-width: 1.2;
+}
+
+.projection-number-control {
+  min-width: 0;
+  max-width: 100%;
+}
+.projection-number-control input[type="range"] {
+  width: 100px;
+  min-width: 40px;
+  flex: 1;
+}
+.projection-number-control input[type="number"] {
+  width: 78px;
+  min-width: 0;
+  padding: 5px;
+}
+@media (max-width: 500px) {
+  .projection-setting {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .projection-number-control {
+    width: 100%;
+  }
+}
+
+.game-dialog__actions,
+.settings-transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.settings-transport__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.settings-transport__toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.settings-transport__count {
+  min-width: 1ch;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (width <= 400px) {
+  .settings-transport__label {
+    display: none;
+  }
+}
+
+.music-course-catalog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.music-course-catalog .music-course-card {
+  margin: 0;
+  gap: 10px;
+  grid-template-rows: auto 1fr auto auto;
+  min-width: 0;
+}
+.music-course-card > .game-button {
+  min-height: 44px;
+  justify-content: center;
+  text-align: center;
+}
+.music-course-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.music-course-heading h3 {
+  margin: 0;
+}
+.music-course-status {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.music-course-practice .music-course-instruction {
+  max-width: 65ch;
+  margin: 8px 0 12px;
+}
+.music-course-choices > .game-button {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  white-space: normal;
+}
+.music-course-help,
+.music-course-theory,
+.music-course-settings,
+.music-course-result > details {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+.music-course-practice summary {
+  color: var(--accent);
+  padding: 6px 0;
+}
+.music-course-result dl {
+  display: grid;
+  gap: 6px;
+  max-width: 680px;
+}
+.music-course-result dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(50px, auto);
+  align-items: baseline;
+  gap: 16px;
+}
+.music-course-result dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.music-course-settings fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  margin: 8px 0;
+}
+.music-course-settings label {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+.music-course-settings select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+}
+.music-progress-entry {
+  margin-bottom: 16px;
+}
+.music-course-progress {
+  min-width: 0;
+  margin-block: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.music-progress-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.music-progress-filters label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.music-progress-filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+.music-course-progress summary {
+  padding-block: 10px;
+  color: var(--accent);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.music-course-progress :is(section, li, details) {
+  min-width: 0;
+}
+.music-course-progress :is(ol, ul) {
+  padding-left: 22px;
+}
+.music-progress-cohorts > section,
+.music-progress-children > section,
+.music-progress-pending > section,
+.music-progress-history > ol > li {
+  border-top: 1px solid var(--border);
+  padding-block: 10px;
+}
+.music-progress-metrics {
+  display: grid;
+  gap: 6px;
+}
+.music-progress-metrics > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(40px, auto);
+  gap: 14px;
+}
+.music-progress-metrics dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.music-progress-evidence {
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+@media (width <= 640px) {
+  .music-course-catalog,
+  .music-course-settings fieldset,
+  .music-progress-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .music-course-actions > .game-button,
+  .music-course-choices > .game-button {
+    flex: 1 1 135px;
+  }
+  .music-course-practice {
+    max-height: 42vh;
+    padding: 10px 12px;
+  }
+}
+
+/* Optional lesson information stays below the current action. */
+.lesson-details {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+}
+.lesson-details > summary {
+  box-sizing: border-box;
+  padding: 10px 0;
+  color: var(--accent);
+  cursor: pointer;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.lesson-details > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.lesson-details__body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 0 10px;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+.lesson-details__body > p {
+  margin: 0;
+}
+.lesson-details__body .reading-actions {
+  min-width: 0;
+}
+.reading-course-card .lesson-primary-action {
+  grid-column: 1 / -1;
+  justify-content: center;
+  border-color: var(--accent);
+  text-align: center;
+  min-height: 44px;
+}
+.reading-course-card .lesson-secondary-action {
+  grid-column: 1 / -1;
+  justify-self: start;
+  background: transparent;
+  min-height: 44px;
+  font-size: 0.9em;
+}
+.reading-course-card:has(> .lesson-details) {
+  gap: 10px;
+}
+.reading-practice > .lesson-details {
+  margin-top: 8px;
+}
+
+.foundation-course-catalog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+  margin: 20px 0;
+}
+.foundation-course-catalog > .reading-course-card {
+  min-width: 0;
+  margin: 0;
+}
+@media (width <= 640px) {
+  .foundation-course-catalog {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Give both legacy projection controls the full row rather than a short trailing slider. */
+.road-projection-setting {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.road-projection-setting .projection-number-control {
+  width: 100%;
+  gap: 8px;
+}
+.road-projection-setting input[type="range"] {
+  width: 0;
+  min-width: 0;
+}
+/* A lesson owns one compact score focus; its persistent canvas remains below it. */
+.lesson-workspace {
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  width: min(100%, 1080px);
+  min-width: 0;
+  max-height: calc(100% - 120px);
+  margin-inline: auto;
+  padding: 20px 20px 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.lesson-workspace__bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.lesson-workspace__heading h2 {
+  margin: 0;
+  font-size: clamp(18px, 2vw, 24px);
+}
+.lesson-workspace__heading p {
+  margin: 0;
+}
+.lesson-workspace__exit {
+  justify-self: start;
+}
+.lesson-menu {
+  position: relative;
+  justify-self: end;
+}
+.lesson-workspace__exit .game-button,
+.lesson-menu__toggle {
+  min-height: 40px;
+  font-size: 14px;
+}
+.lesson-menu__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 55%);
+}
+.lesson-menu__list[hidden] {
+  display: none;
+}
+.lesson-menu__group {
+  display: contents;
+}
+.lesson-menu__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding-block: 6px;
+  text-align: left;
+}
+.lesson-menu__note {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.lesson-workspace__counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6em;
+  margin-top: 8px;
+}
+.lesson-counter {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.lesson-counter__mode {
+  font-size: 13px;
+  color: var(--muted);
+}
+.lesson-workspace__score {
+  min-width: 0;
+  margin: 8px 0;
+}
+.lesson-workspace__score .staves {
+  max-height: none;
+}
+.lesson-workspace__score .staff {
+  max-height: 36vh;
+}
+.lesson-workspace__response {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.lesson-workspace__input {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.lesson-workspace__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.lesson-workspace__hint {
+  display: contents;
+}
+.lesson-workspace__actions .game-button {
+  min-height: 48px;
+}
+.lesson-workspace .lesson-main-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+  min-height: 48px;
+  font-weight: 700;
+  text-align: center;
+}
+.lesson-workspace__answer:empty {
+  display: none;
+}
+.lesson-workspace__feedback {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 4px;
+  min-height: 3.2em;
+}
+.lesson-workspace__feedback p {
+  margin: 0;
+}
+.lesson-workspace__feedback .reading-hint {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.lesson-main-instruction {
+  margin: 0;
+  font-weight: 700;
+  color: var(--accent);
+}
+.lesson-workspace .reading-practice {
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+}
+.lesson-workspace .reading-actions {
+  justify-content: center;
+  gap: 12px;
+  margin-block: 6px;
+}
+.lesson-workspace .lesson-repeated-instruction {
+  display: none;
+}
+.lesson-result {
+  margin-block: 12px;
+}
+.lesson-workspace__feedback .lesson-result {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.lesson-workspace .music-course-choices {
+  margin-block: 8px;
+  gap: 14px;
+}
+.lesson-workspace .music-course-choices .game-button {
+  min-height: 48px;
+}
+.lesson-settings-dialog,
+.lesson-theory-panel {
+  width: min(680px, calc(100vw - 24px));
+}
+.lesson-theory-panel {
+  position: fixed;
+  inset: auto 12px 12px auto;
+  margin: 0;
+  max-height: 65vh;
+}
+.music-course-settings fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  min-width: 0;
+}
+.music-course-settings label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.music-course-settings select,
+.music-course-settings input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+}
+.music-course-settings label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+}
+.music-course-result dl {
+  display: grid;
+  gap: 12px;
+}
+.music-course-result dl > div {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+.music-course-result dd {
+  margin: 0;
+}
+
+.first-steps > h3 {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+.first-steps > p {
+  color: var(--muted);
+  margin-top: 0;
+}
+.first-steps .foundation-course-catalog {
+  align-items: stretch;
+  gap: 18px;
+}
+.first-steps .music-course-catalog {
+  display: contents;
+}
+.first-steps .reading-course-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin: 0;
+  padding: 18px;
+  border-color: rgb(83 192 199 / 40%);
+  border-radius: 20px;
+  background: linear-gradient(145deg, #103c4d, #092737);
+}
+.first-steps .reading-course-card h3 {
+  color: #e7f5f3;
+  font-size: 18px;
+  text-transform: none;
+}
+.first-steps .reading-course-card > p:not(.reading-muted) {
+  min-height: 2.8em;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.first-steps .reading-course-card > .reading-actions {
+  display: flex;
+  margin-top: auto;
+}
+.first-steps .reading-course-card .game-button {
+  justify-content: center;
+  min-height: 44px;
+  text-align: center;
+}
+.first-steps .reading-course-card > .game-button,
+.first-steps .lesson-primary-action {
+  width: 100%;
+  margin-top: auto;
+  background: #105263;
+}
+.first-steps .reading-course-card > .reading-muted {
+  font-size: 13px;
+  margin: 0;
+}
+.first-steps .music-progress-entry,
+.first-steps #music-course-progress {
+  grid-column: 1 / -1;
+}
+
+@media (width <= 640px) {
+  .lesson-workspace {
+    padding: 12px;
+    max-height: calc(100% - 100px);
+  }
+  .lesson-workspace .reading-actions {
+    gap: 10px;
+  }
+  .lesson-workspace .game-button {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .lesson-workspace__score .staff {
+    max-height: 30vh;
+  }
+  .lesson-workspace__bar {
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+  }
+  .lesson-workspace__bar h2 {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .lesson-workspace .lesson-main-action {
+    min-width: 160px;
+  }
+  .first-steps .reading-course-card {
+    padding: 16px;
+  }
+  .first-steps .reading-course-card > p:not(.reading-muted) {
+    min-height: 0;
+  }
+}
+@media (height <= 500px) {
+  .lesson-workspace {
+    width: calc(100% - var(--mobile-bar-width, 52px));
+    margin-left: 0;
+    padding: 8px 12px;
+  }
+  .lesson-workspace__heading h2 {
+    font-size: 17px;
+  }
+  .lesson-workspace__heading p,
+  .lesson-workspace__input {
+    font-size: 12px;
+  }
+  .lesson-workspace__score .staff {
+    max-height: 30vh;
+  }
+  /* Instruction and counter share a row. */
+  .lesson-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    align-content: start;
+  }
+  .lesson-workspace > *,
+  .lesson-workspace__bar {
+    grid-column: 1 / -1;
+  }
+  .lesson-workspace__heading {
+    display: contents;
+  }
+  .lesson-workspace__heading p {
+    grid-column: 1;
+    align-self: center;
+  }
+  .lesson-workspace__counter {
+    grid-column: 2;
+    min-height: 0;
+    margin: 0;
+  }
+  .lesson-counter__mode {
+    display: none;
+  }
+  .lesson-workspace__input {
+    display: none;
+  }
+  .lesson-workspace .reading-practice {
+    margin-right: 0;
+  }
+  .lesson-workspace .game-button {
+    min-height: 40px;
+  }
+}
+/* Low screens: feedback sits beside the actions instead of below them. */
+@media (height <= 760px) {
+  .lesson-workspace__score {
+    margin: 4px 0;
+  }
+  /* The actions keep the centre column whatever the feedback says. */
+  .lesson-workspace__response {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 4px 12px;
+  }
+  .lesson-workspace__actions {
+    grid-area: 1 / 2;
+  }
+  .lesson-workspace__feedback {
+    grid-area: 1 / 3;
+    justify-items: start;
+    min-height: 2.8em;
+    align-content: center;
+    text-align: left;
+  }
+  .lesson-workspace__answer {
+    grid-area: 2 / 1 / 3 / -1;
+  }
+  .lesson-workspace__input {
+    grid-area: 3 / 1 / 4 / -1;
+  }
+}
+/* Very low screens: the feedback takes all the width beside the actions. */
+@media (height <= 500px) {
+  .lesson-workspace__response {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .lesson-workspace__actions {
+    grid-area: 1 / 1;
+  }
+  .lesson-workspace__feedback {
+    grid-area: 1 / 2;
+    font-size: 13px;
+  }
+  .lesson-workspace__feedback .reading-hint {
+    font-size: 14px;
+  }
+  .lesson-workspace .lesson-main-action {
+    min-width: 120px;
+  }
+}
+
+.first-steps .lesson-illustration {
+  align-self: center;
+  width: 100%;
+  height: 120px;
+  object-fit: contain;
+}
+.first-steps .foundation-course-catalog {
+  counter-reset: lesson;
+}
+.first-steps .reading-course-card {
+  counter-increment: lesson;
+}
+.first-steps .reading-course-card::before {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #b9e9e5;
+  background: rgb(0 0 0 / 20%);
+  font-size: 13px;
+  font-weight: 700;
+  content: counter(lesson);
+}
+
+@media (height <= 500px), (width <= 640px) {
+  .lesson-workspace {
+    width: calc(100% - var(--mobile-bar-width, 52px));
+    margin-inline: 0;
+  }
+  .lesson-workspace .reading-practice {
+    margin-right: 0;
+  }
 }

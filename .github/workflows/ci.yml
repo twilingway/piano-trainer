@@ -24,9 +24,10 @@ jobs:
         env:
           HEAD_REF: ${{ github.head_ref }}
 
-  gate:
+  # The gate's steps run as parallel jobs; `gate` itself is the required check and only collects them.
+  format:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Enable pnpm
@@ -37,7 +38,91 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Check
-        run: pnpm check
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/prettier
+          key:
+            prettier-${{ hashFiles('pnpm-lock.yaml', '.prettierrc.json', '.prettierignore') }}-${{
+            github.sha }}
+          restore-keys:
+            prettier-${{ hashFiles('pnpm-lock.yaml', '.prettierrc.json', '.prettierignore') }}-
+      - name: Format
+        run: pnpm format:check
       - name: Validate specifications
         run: pnpm spec:validate
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable pnpm
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint:shard ${{ matrix.shard }}/3
+
+  typecheck-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable pnpm
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Compiler tests
+        run: pnpm test:compiler
+      - name: Build
+        run: pnpm build
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable pnpm
+        run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Test
+        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3
+
+  gate:
+    if: always()
+    needs: [format, lint, typecheck-build, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every gate job passed
+        run: |
+          if [ "$FAILED" = "true" ]; then
+            echo "::error::A gate job failed, was cancelled or skipped."
+            exit 1
+          fi
+        env:
+          FAILED:
+            ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') ||
+            contains(needs.*.result, 'skipped') }}

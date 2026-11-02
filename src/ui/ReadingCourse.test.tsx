@@ -37,6 +37,15 @@ async function click(target: HTMLElement) {
     target.click();
   });
 }
+async function reveal(id: string) {
+  const details = host.querySelector<HTMLDetailsElement>(`[data-window-detail="${id}"]`);
+  if (!details) throw new Error(`Missing lesson details: ${id}`);
+  await act(async () => {
+    await Promise.resolve();
+    details.open = true;
+    details.dispatchEvent(new Event("toggle", { bubbles: true }));
+  });
+}
 
 async function english() {
   await act(async () => {
@@ -130,7 +139,7 @@ describe("reading course UI", () => {
     expect(host.textContent).toContain("A new order compared with the last 256 sets shown.");
   });
 
-  it("offers optional adaptive and delayed actions and changes only the summary source", async () => {
+  it("keeps generation recovery visible and routes source selection for the next adaptive practice", async () => {
     const onAdaptive = vi.fn();
     const onDelayedCheck = vi.fn();
     const onSourceFilter = vi.fn();
@@ -150,10 +159,13 @@ describe("reading course UI", () => {
         generationError
       />
     );
-    expect(host.querySelector("strong")?.textContent).toBe("Повторяю трудные ноты");
+    expect(host.querySelector(".lesson-counter__mode")?.textContent).toBe("Повторяю трудные ноты");
+    expect(host.querySelector('[role="alert"]')?.closest("details")).toBeNull();
+    await click(button("Повторить поиск серии"));
+    expect(host.querySelector(".reading-progress")).toBeNull();
+    await reveal("reading:practice:progress");
     await click(button("Повторить трудные ноты"));
     await click(button("Проверить чтение спустя время"));
-    await click(button("Повторить поиск серии"));
     expect(onAdaptive).toHaveBeenCalledOnce();
     expect(onDelayedCheck).toHaveBeenCalledOnce();
     expect(onGenerationRetry).toHaveBeenCalledOnce();
@@ -165,6 +177,7 @@ describe("reading course UI", () => {
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(onSourceFilter).toHaveBeenCalledWith("keyboard");
+    expect(host.textContent).toContain("Способ ввода для сводки и следующей тренировки");
     expect(onNewSeries).not.toHaveBeenCalled();
     expect(host.textContent).toContain("256 показанных серий");
     await english();
@@ -183,6 +196,8 @@ describe("reading course UI", () => {
       <ReadingCourseCard onStart={noop} onIntro={noop} history={[]} profile={profile} />
     );
     expect(host.textContent).toContain("Завершено серий: 2");
+    expect(host.querySelector("table")).toBeNull();
+    await reveal("reading:catalog:progress");
     const groups = [...host.querySelectorAll(".reading-progress-group")];
     expect(groups).toHaveLength(5);
     expect(groups[0]?.querySelector("h4")?.textContent).toBe("Читаю отдельные ноты");
@@ -237,25 +252,33 @@ describe("reading course UI", () => {
     expect(host.querySelector("tbody tr td:nth-child(2)")?.textContent).toBe("0");
   });
 
-  it("offers all three tasks immediately, even without completed sets", async () => {
+  it("keeps the primary task and introduction visible while mounting other modes only on request", async () => {
     const onStart = vi.fn();
     const onIntro = vi.fn();
     await render(<ReadingCourseCard onStart={onStart} onIntro={onIntro} history={[]} />);
-    expect(host.textContent).toContain("Читаю пять нот");
+    expect(host.textContent).toContain("Правая рука: пять нот");
     expect(host.textContent).toContain("Завершено серий: 0");
     expect(host.querySelectorAll("button:disabled")).toHaveLength(0);
-    for (const label of [
-      "Читаю отдельные ноты",
-      "Читаю короткие фразы",
-      "Проверяю чтение без подсказок"
-    ]) {
+    expect(host.querySelectorAll("button")).toHaveLength(1);
+    expect(host.querySelector(".lesson-primary-action")?.textContent).toBe("Читаю отдельные ноты");
+    expect(host.querySelector(".lesson-secondary-action")).toBeNull();
+    await reveal("reading:catalog:more");
+    expect(host.querySelector(".lesson-secondary-action")?.textContent).toBe(
+      "Знакомство с пятью нотами"
+    );
+    expect(host.querySelector(".reading-progress")).toBeNull();
+    await click(button("Читаю отдельные ноты"));
+    await reveal("reading:catalog:more");
+    expect(onStart).toHaveBeenCalledExactlyOnceWith("notes");
+    expect(onIntro).not.toHaveBeenCalled();
+    for (const label of ["Читаю короткие фразы", "Проверяю чтение без подсказок"]) {
       await click(button(label));
     }
     expect(onStart.mock.calls).toEqual([["notes"], ["phrases"], ["check"]]);
     await click(button("Знакомство с пятью нотами"));
     expect(onIntro).toHaveBeenCalledOnce();
     await english();
-    expect(host.textContent).toContain("Read five notes");
+    expect(host.textContent).toContain("Right hand: five notes");
     expect(button("Check reading without hints").disabled).toBe(false);
   });
 
@@ -269,8 +292,8 @@ describe("reading course UI", () => {
     await click(button("Подсказка"));
     expect(props.onHint).toHaveBeenCalledOnce();
     await render(<ReadingPracticePanel {...props} hintLevel={1} hintPitch={64} />);
-    expect(host.querySelector(".reading-hint")?.textContent).toBe("Текущая нота: ми 4");
-    expect(host.textContent).not.toContain("Текущая нота: до 4");
+    expect(host.querySelector(".reading-hint")?.textContent).toBe("Подсказка: ми 4");
+    expect(host.textContent).not.toContain("Подсказка: до 4");
     await render(<ReadingPracticePanel {...props} hintLevel={2} />);
     expect(button("Подсказка").disabled).toBe(true);
     await render(<ReadingPracticePanel {...props} result={result()} />);
@@ -281,6 +304,9 @@ describe("reading course UI", () => {
     const onPreferences = vi.fn();
     const props = { ...panelProps(), onPreferences };
     await render(<ReadingPracticePanel {...props} />);
+    expect(host.querySelector("input")).toBeNull();
+    await reveal("reading:practice:settings");
+    expect(onPreferences).not.toHaveBeenCalled();
     const checkbox = host.querySelector<HTMLInputElement>('input[type="checkbox"]');
     expect(checkbox?.checked).toBe(true);
     const delays = [...host.querySelectorAll<HTMLInputElement>('input[type="number"]')];
@@ -312,6 +338,8 @@ describe("reading course UI", () => {
       />
     );
     const current = host.querySelector(".reading-results");
+    expect(current?.closest("details")).toBeNull();
+    expect(host.querySelector(".reading-history")).toBeNull();
     expect(current?.textContent).toContain("Верно с первой попытки: 19/20");
     expect(current?.textContent).toContain("Самостоятельно с первой попытки: 90%");
     expect(current?.textContent).toContain("Решено без подсказок: 19/20");
@@ -334,6 +362,7 @@ describe("reading course UI", () => {
       "1.0",
       "1.0"
     ]);
+    await reveal("reading:practice:progress");
     expect(host.querySelector(".reading-history summary")?.textContent).toBe(
       "История этого задания: 1"
     );

@@ -1,6 +1,7 @@
 import type { KeyEvent } from "../input/midiInput";
 import type { PracticeEvent, PracticeOptions, PracticeSession } from "./session";
 import { keyLightPitches } from "./keyLights";
+import { lessonFingerCues } from "../reading/fingerCues";
 import { NO_EVENTS, type TrainerCourse } from "./trainerCourse";
 
 export interface TrainerReadingPolicy {
@@ -55,6 +56,7 @@ export function trainerGuidance(
       due: reading ? notes : playing || session.time < 0 ? session.nextDue() : [],
       waitingFor: reading ? notes : session.waiting ? session.nextDue() : [],
       hints: reading ? pitch !== undefined : !performanceMode,
+      ...(reading ? { fingerCues: lessonFingerCues(notes) } : {}),
       neutralKeys: reading !== null
     }
   };

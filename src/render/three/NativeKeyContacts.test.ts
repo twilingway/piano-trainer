@@ -81,7 +81,7 @@ describe("native source key contacts", () => {
     ] as const)
       expect(contacts.down(64, time), `t=${String(time)}`).toBe(down);
   });
-  it("merges nested overlapping holds but not gaps and reuses immutable arrays without rebuilding", () => {
+  it("separates nested repeat attacks and reuses immutable arrays without rebuilding", () => {
     const contacts = new NativeKeyContacts();
     const notes: NativeContactNotes = {
       left: [{ pitch: 60, start: 1, duration: 4 }],
@@ -93,11 +93,33 @@ describe("native source key contacts", () => {
     };
     expect(contacts.setNotes(notes)).toBe(true);
     expect(contacts.setNotes({ ...notes })).toBe(false);
-    expect(contacts.down(60, 4.9)).toBe(true);
+    expect(contacts.down(60, 1.9)).toBe(false);
+    expect(contacts.down(60, 2)).toBe(true);
+    expect(contacts.down(60, 2.9)).toBe(false);
+    expect(contacts.down(60, 3)).toBe(true);
+    expect(contacts.down(60, 4.9)).toBe(false);
     expect(contacts.down(60, 5.5)).toBe(false);
     expect(contacts.down(60, 6.1)).toBe(true);
     expect(contacts.down(60, NaN)).toBe(false);
     expect(contacts.setNotes({ left: [], right: [] })).toBe(true);
     expect(contacts.down(60, 4)).toBe(false);
+  });
+});
+
+describe("simultaneous unisons", () => {
+  it("merges one attack across hands while preserving other-pitch legato and source data", () => {
+    const contacts = new NativeKeyContacts();
+    const notes = {
+      left: [{ pitch: 60, start: 1, duration: 1 }],
+      right: [
+        { pitch: 60, start: 1, duration: 2 },
+        { pitch: 61, start: 2, duration: 2 }
+      ]
+    };
+    const before = JSON.stringify(notes);
+    contacts.setNotes(notes);
+    expect(contacts.down(60, 2.9)).toBe(true);
+    expect(contacts.down(61, 2.9)).toBe(true);
+    expect(JSON.stringify(notes)).toBe(before);
   });
 });

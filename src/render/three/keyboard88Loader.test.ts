@@ -47,6 +47,8 @@ function fixture() {
     scene.add(bone);
     return bone;
   });
+  for (const [i, bone] of bones.entries()) if (i > 0) at(bones, i - 1).add(bone);
+  scene.updateMatrixWorld(true);
   const skeleton = new Skeleton(bones);
   const materials: MeshStandardMaterial[] = [];
   for (const [i, role] of ["body", "rightHand", "leftHand"].entries()) {
@@ -278,6 +280,24 @@ describe("keyboard88 public loader", () => {
     }
   );
 
+  it.each(["parent", "rest", "bind", "inverse bind"])(
+    "rejects incompatible %s before textures and disposes parsed assets",
+    async (kind) => {
+      const f = fixture();
+      const last = at(f.bones, 51);
+      if (kind === "parent") f.scene.add(last);
+      if (kind === "rest") last.position.x = 0.001;
+      const mesh = f.scene.children.find((node) => node instanceof SkinnedMesh) as SkinnedMesh;
+      if (kind === "bind") mesh.bindMatrix.makeTranslation(0.001, 0, 0);
+      if (kind === "inverse bind") at(f.skeleton.boneInverses, 51).makeTranslation(0.001, 0, 0);
+      const disposeSkeleton = vi.spyOn(f.skeleton, "dispose");
+      await expect(loadKeyboard88Performer({ dependencies: f.dependencies })).rejects.toThrow(
+        "incompatible"
+      );
+      expect(f.decodeTexture).not.toHaveBeenCalled();
+      expect(disposeSkeleton).toHaveBeenCalledOnce();
+    }
+  );
   it("cleans the parsed model on skin failure", async () => {
     const f = fixture();
     const disposeSkeleton = vi.spyOn(f.skeleton, "dispose");

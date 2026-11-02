@@ -1,5 +1,5 @@
 import { BoxGeometry, Float32BufferAttribute } from "three";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { fullMetricKeyBoxes, keyBoxes, type KeyBox } from "./keyBoxes";
 
 /** Word mode supplies a single synthetic face carrying the entire computer-keyboard picture. */

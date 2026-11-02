@@ -6,6 +6,9 @@ export interface OutputChoice {
   readonly name: string;
 }
 
+export const AUTO_OUTPUT_ID = "__auto__";
+export const AUTO_OUTPUT_CHOICE: OutputChoice = { id: AUTO_OUTPUT_ID, name: "" };
+
 export interface OutputState {
   /** The connected outputs. */
   readonly devices: readonly MidiDevice[];
@@ -15,11 +18,11 @@ export interface OutputState {
 
 export interface MidiOutputControl {
   /** Switches to another output, or to none; the previous one gets a panic. */
-  select(choice: OutputChoice | null): void;
+  select(choice: OutputChoice | null, preferredName?: string): void;
   /** Lights C4 on the current output for a second. */
   test(): void;
   /** Sends one message to the current output; without one it goes nowhere. */
-  send(message: number[]): void;
+  send(message: number[], expectedPortId?: string): void;
   /** Stops listening and sends a panic to the current output. */
   dispose(): void;
 }
@@ -36,9 +39,15 @@ const TEST_MS = 1000;
 /** The chosen output among the connected ones: by id, then by name. */
 export function findOutput(
   devices: readonly MidiDevice[],
-  choice: OutputChoice | null
+  choice: OutputChoice | null,
+  preferredName?: string
 ): MidiDevice | undefined {
   if (!choice) return undefined;
+  if (choice.id === AUTO_OUTPUT_ID) {
+    const matching = preferredName ? devices.filter((device) => device.name === preferredName) : [];
+    if (matching.length) return matching.length === 1 ? matching[0] : undefined;
+    return devices.length === 1 ? devices[0] : undefined;
+  }
   return (
     devices.find((device) => device.id === choice.id) ??
     devices.find((device) => device.name === choice.name)
@@ -83,11 +92,13 @@ const CLOSED: MidiOutputControl = {
 export async function openMidiOutput(
   choice: OutputChoice | null,
   onState: (state: OutputState) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  preferredName?: string
 ): Promise<MidiOutputControl> {
   const access = await navigator.requestMIDIAccess();
   if (signal?.aborted) return CLOSED;
   let chosen = choice;
+  let preferred = preferredName;
   let port: MIDIOutput | undefined;
   let disposed = false;
   const refresh = () => {
@@ -97,7 +108,7 @@ export async function openMidiOutput(
       if (output.state !== "disconnected") outputs.push(output);
     });
     const devices = outputs.map((output) => ({ id: output.id, name: output.name ?? output.id }));
-    const current = findOutput(devices, chosen);
+    const current = findOutput(devices, chosen, preferred);
     const next = outputs.find((output) => output.id === current?.id);
     if (next !== port) panic(port);
     port = next;
@@ -110,8 +121,9 @@ export async function openMidiOutput(
   window.addEventListener("pagehide", onPageHide);
   refresh();
   return {
-    select(next) {
+    select(next, nextPreferred) {
       chosen = next;
+      preferred = nextPreferred;
       refresh();
     },
     test() {
@@ -120,8 +132,9 @@ export async function openMidiOutput(
       // The browser holds the release until then: no timer to clear.
       sendSafely(port, [NOTE_OFF, TEST_PITCH, 0], performance.now() + TEST_MS);
     },
-    send(message) {
-      if (!disposed && port) sendSafely(port, message);
+    send(message, expectedPortId) {
+      if (!disposed && port && (expectedPortId === undefined || port.id === expectedPortId))
+        sendSafely(port, message);
     },
     dispose() {
       if (disposed) return;

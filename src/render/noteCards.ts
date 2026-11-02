@@ -1,6 +1,6 @@
 import type { ScorePlacement } from "../song/scorePlacement";
-import { BlurFilter, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
-import type { Renderer } from "pixi.js";
+import { BlurFilter, Container, Graphics, Sprite, Text, Texture } from "./flatThree";
+import type { Renderer } from "./flatThree";
 
 import { isBlackKey } from "../fingering/fingering";
 import { placeOnStaff } from "./keyStickers";

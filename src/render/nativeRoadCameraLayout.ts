@@ -1,4 +1,4 @@
-import type { Sprite } from "pixi.js";
+import type { Sprite } from "./flatThree";
 import type { nativeNoteCameras } from "./nativeViewCameras";
 
 /** Keep the shell's contact row, projection and horizon fog on the same native camera. */
@@ -13,5 +13,12 @@ export function nativeRoadCameraLayout(
   const horizonY = projection.at(width / 2, 0).y;
   fog.position.set(0, horizonY);
   fog.height = Math.max(1, (hitY - horizonY) * 0.5);
-  return { camera, blackLane: cameras.blackLane, projection, hitY, horizonY };
+  return {
+    camera,
+    blackLane: cameras.blackLane,
+    whiteLane: cameras.whiteLane,
+    projection,
+    hitY,
+    horizonY
+  };
 }

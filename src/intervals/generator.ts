@@ -1,3 +1,4 @@
+import { withLessonFingering } from "../reading/fingerCues";
 import { songFromMusicXml } from "../song/musicxml";
 import { INTERVAL_CATEGORIES } from "./types";
 import type { IntervalCategory, IntervalExercise, IntervalMode, IntervalPair } from "./types";
@@ -108,7 +109,7 @@ export function generateIntervalExercise(
     generatorVersion: version,
     pairs,
     musicXml,
-    song: songFromMusicXml(musicXml, "")
+    song: withLessonFingering(songFromMusicXml(musicXml, ""))
   };
 }
 

@@ -58,12 +58,17 @@ export function ComputerKeyboardSettings({ controls }: Props) {
     </button>
   );
   return (
-    <section className="computer-keyboard-settings" aria-label={t("Компьютерная клавиатура")}>
+    <section
+      className="computer-keyboard-settings settings-group"
+      aria-label={t("Компьютерная клавиатура")}
+    >
+      <h3 className="settings-group__title">{t("Раскладка и назначения")}</h3>
       <label className="setting">
         <span>{t("Раскладка компьютера")}</span>
         <select
           className="game-select"
           aria-label={t("Раскладка компьютера")}
+          data-setting-target="computer-layout"
           value={controls.prefs.preset}
           onChange={(event) => {
             controls.choosePreset(event.target.value as KeyboardPreset);

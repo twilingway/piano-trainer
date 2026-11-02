@@ -1,4 +1,9 @@
+import { BassReadingLessonSummary } from "./LessonResultSummary";
+import { LessonIllustration } from "./LessonIllustration";
+import { LessonReport } from "./LessonReport";
 import { useI18n } from "../app/useI18n";
+import { LessonDetails } from "./LessonDetails";
+import { LessonMenuItem, LessonSlot } from "./LessonSlots";
 import type { BassReadingResult, BassReadingTask } from "../reading/bassTypes";
 import type { ReadingHintLevel, ReadingPreferences } from "../reading/types";
 import {
@@ -17,29 +22,40 @@ export function BassReadingCourseCard({
   const { t } = useI18n();
   return (
     <section className="reading-course-card">
+      <LessonIllustration lesson="left-hand" />
       <h3>{t("Левая рука: пять нот")}</h3>
       <p>{t("Читайте до–соль малой октавы в басовом ключе и находите их на клавиатуре.")}</p>
       <div className="reading-actions">
-        <button type="button" className="game-button" onClick={onIntro}>
+        <button
+          type="button"
+          className="game-button lesson-primary-action"
+          onClick={() => {
+            onStart("notes");
+          }}
+        >
+          {t(BASS_READING_TASK_LABELS.notes)}
+        </button>
+      </div>
+      <LessonDetails kind="more" id="bass-reading:catalog:more">
+        <button type="button" className="game-button lesson-secondary-action" onClick={onIntro}>
           {t("Знакомство с левой рукой")}
         </button>
-        {(["notes", "phrases"] as const).map((task) => (
-          <button
-            type="button"
-            className="game-button"
-            key={task}
-            onClick={() => {
-              onStart(task);
-            }}
-          >
-            {t(BASS_READING_TASK_LABELS[task])}
-          </button>
-        ))}
-      </div>
+        <button
+          type="button"
+          className="game-button"
+          onClick={() => {
+            onStart("phrases");
+          }}
+        >
+          {t(BASS_READING_TASK_LABELS.phrases)}
+        </button>
+      </LessonDetails>
       <p className="reading-muted">
         {t("Сохранено басовых серий: {number}", { number: progress.history.length })}
       </p>
-      <BassReadingProgress {...progress} />
+      <LessonDetails kind="progress" id="bass-reading:catalog:progress">
+        <BassReadingProgress {...progress} />
+      </LessonDetails>
     </section>
   );
 }
@@ -69,15 +85,23 @@ export function BassReadingPracticePanel(props: BassReadingPracticeProps) {
     .slice(-20);
   return (
     <section className="reading-practice" aria-label={t("Левая рука: пять нот")}>
-      <div className="reading-actions">
-        <strong>{t(BASS_READING_TASK_LABELS[task])}</strong>
-        <span>{t("Нота {number} из 20", { number: Math.min(20, props.index + 1) })}</span>
-        <button type="button" className="game-button" onClick={props.onNewSeries}>
-          {t("Новая серия")}
+      <LessonSlot name="counter">
+        <span className="lesson-counter__mode">{t(BASS_READING_TASK_LABELS[task])}</span>
+        <span className="lesson-counter">
+          {result
+            ? t("Завершено · {number} из {total}", { number: 20, total: 20 })
+            : t("Нота {number} из 20", { number: Math.min(20, props.index + 1) })}
+        </span>
+      </LessonSlot>
+      <LessonSlot name="exit">
+        <button type="button" className="game-button lesson-exit" onClick={props.onExit}>
+          {t("Выйти")}
         </button>
-        <button type="button" className="game-button" onClick={props.onExit}>
-          {t("Выйти из басового чтения")}
-        </button>
+      </LessonSlot>
+      {result === null && (
+        <LessonMenuItem kind="newSeries" label={t("Новая серия")} onSelect={props.onNewSeries} />
+      )}
+      <LessonSlot name="hint">
         <button
           type="button"
           className="game-button"
@@ -86,83 +110,88 @@ export function BassReadingPracticePanel(props: BassReadingPracticeProps) {
         >
           {t("Подсказка")}
         </button>
-      </div>
-      <div className="reading-status">
-        <p
-          className={`reading-muted${props.ready || result || props.renderError ? " reading-status-hidden" : ""}`}
-        >
-          {t("Нажмите «Играть» и дождитесь появления текущей ноты.")}
-        </p>
-        {props.renderError ? (
+      </LessonSlot>
+      {props.renderError ? (
+        <LessonSlot name="feedback">
           <p role="alert">
             {t("Не удалось показать ноты. Попробуйте загрузить стан снова.")}{" "}
             <button type="button" onClick={props.onRetry}>
               {t("Повторить загрузку стана")}
             </button>
           </p>
-        ) : (
-          props.ready &&
-          result === null &&
-          props.hintLevel > 0 &&
-          props.hintPitch !== undefined && (
-            <p className="reading-hint" aria-live="polite">
-              {t("Текущая нота: {note}", { note: bassReadingNoteName(props.hintPitch, t) })}
+        </LessonSlot>
+      ) : (
+        props.ready &&
+        result === null &&
+        props.hintLevel > 0 &&
+        props.hintPitch !== undefined && (
+          <LessonSlot name="feedback">
+            <p className="reading-hint">
+              {t("Подсказка: {note}", { note: bassReadingNoteName(props.hintPitch, t) })}
             </p>
-          )
-        )}
-      </div>
-      <details className="reading-hint-settings">
-        <summary>{t("Настройки подсказок чтения")}</summary>
-        <label>
-          <input
-            type="checkbox"
-            checked={preferences.automaticHints}
-            onChange={(event) => {
-              props.onPreferences({ automaticHints: event.target.checked });
-            }}
-          />
-          {t("Показывать подсказки автоматически")}
-        </label>
-        <label>
-          {t("Название ноты через, с")}
-          <input
-            type="number"
-            min={1}
-            max={60}
-            value={preferences.nameDelayMs / 1000}
-            onChange={(event) => {
-              props.onPreferences({ nameDelayMs: Number(event.target.value) * 1000 });
-            }}
-          />
-        </label>
-        <label>
-          {t("Клавиша через, с")}
-          <input
-            type="number"
-            min={preferences.nameDelayMs / 1000}
-            max={60}
-            value={preferences.keyDelayMs / 1000}
-            onChange={(event) => {
-              props.onPreferences({ keyDelayMs: Number(event.target.value) * 1000 });
-            }}
-          />
-        </label>
-      </details>
-      {result && <BassReadingResults result={result} sourceFilter={props.sourceFilter} />}
-      <BassReadingProgress
-        history={props.history}
-        sourceFilter={props.sourceFilter}
-        onSourceFilter={props.onSourceFilter}
-      />
-      <details className="reading-history">
-        <summary>{t("История этого задания: {number}", { number: history.length })}</summary>
-        {history
-          .slice()
-          .reverse()
-          .map((item) => (
-            <BassReadingResults key={item.id} result={item} sourceFilter={props.sourceFilter} />
-          ))}
-      </details>
+          </LessonSlot>
+        )
+      )}
+      <LessonDetails kind="settings" id="bass-reading:practice:settings">
+        <div className="reading-hint-settings">
+          <h4>{t("Настройки подсказок чтения")}</h4>
+          <label>
+            <input
+              type="checkbox"
+              checked={preferences.automaticHints}
+              onChange={(event) => {
+                props.onPreferences({ automaticHints: event.target.checked });
+              }}
+            />
+            {t("Показывать подсказки автоматически")}
+          </label>
+          <label>
+            {t("Название ноты через, с")}
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={preferences.nameDelayMs / 1000}
+              onChange={(event) => {
+                props.onPreferences({ nameDelayMs: Number(event.target.value) * 1000 });
+              }}
+            />
+          </label>
+          <label>
+            {t("Клавиша через, с")}
+            <input
+              type="number"
+              min={preferences.nameDelayMs / 1000}
+              max={60}
+              value={preferences.keyDelayMs / 1000}
+              onChange={(event) => {
+                props.onPreferences({ keyDelayMs: Number(event.target.value) * 1000 });
+              }}
+            />
+          </label>
+        </div>
+      </LessonDetails>
+      {result && (
+        <LessonReport summary={<BassReadingLessonSummary result={result} />}>
+          <BassReadingResults result={result} sourceFilter={props.sourceFilter} />
+        </LessonReport>
+      )}
+      <LessonDetails kind="progress" id="bass-reading:practice:progress">
+        <BassReadingProgress
+          history={props.history}
+          sourceFilter={props.sourceFilter}
+          onSourceFilter={props.onSourceFilter}
+        />
+        <details className="reading-history">
+          <summary>{t("История этого задания: {number}", { number: history.length })}</summary>
+          {history
+            .slice()
+            .reverse()
+            .map((item) => (
+              <BassReadingResults key={item.id} result={item} sourceFilter={props.sourceFilter} />
+            ))}
+        </details>
+      </LessonDetails>
     </section>
   );
 }

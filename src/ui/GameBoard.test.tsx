@@ -11,6 +11,7 @@ import type { StaffPrefs } from "../app/useStaffPrefs";
 import { DEFAULT_CAMERA } from "../render/worldCamera";
 import { GameBoard } from "./GameBoard";
 import { ResultDialog } from "./ResultDialog";
+import { ResultStats } from "./ResultStats";
 import { Workspace } from "./Workspace";
 
 vi.mock("../staff/Staff", () => ({ Staff: () => null }));
@@ -21,7 +22,9 @@ beforeEach(() => {
 
 const prefsWith = (lane: boolean): StaffPrefs => ({
   zoom: 1,
+  tabsZoom: 1,
   noteColor: "#00d4ff",
+  playedNoteColor: "#00df50",
   scoreColor: "#ffffff",
   singleLine: true,
   follow: true,
@@ -37,13 +40,22 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   handStyle: "drawn",
   road: true,
   roadGuides: false,
+  fallingNoteStyle: "filled",
   pianist: false,
+  worldFov: 45,
   freeCamera: false,
+  freeCameraWasd: false,
+  freeDirectField: { tilt: 90, length: 2, width: 4, shape: "line" },
+  freePerspectiveField: { tilt: 26.57, length: 4.47, width: 6, shape: "line" },
   performanceScene: false,
   keyboardDim: false,
+  flatNoteBurning: true,
+  flatPressEffects: true,
+  noteParticles: true,
   noteCards: false,
   noteCardsConfigured: false,
   labels: true,
+  octaveLabels: true,
   fps: false,
   keyRange: "song",
   keyStyle: "arcade",
@@ -51,7 +63,10 @@ const prefsWith = (lane: boolean): StaffPrefs => ({
   autoReview: false,
   roadFar: 0.5,
   camera: DEFAULT_CAMERA,
-  roadHorizon: 0.2
+  roadHorizon: 0.2,
+  roadFit: "button",
+  roadFitCamera: null,
+  roadNoteTilt: 0
 });
 
 describe("game score presentation", () => {
@@ -76,8 +91,8 @@ describe("game score presentation", () => {
           onOverdrive={vi.fn()}
         />
       );
-      expect(markup).toContain("30,0%");
-      expect(markup).not.toContain("100,0%");
+      expect(markup).toContain("30,0\u00a0%");
+      expect(markup).not.toContain("100,0\u00a0%");
       expect(markup).toContain("Попадания — 30%, удержание — 70%");
     }
   });
@@ -85,31 +100,43 @@ describe("game score presentation", () => {
   it("uses the unrounded shared result for stars and keeps timing accuracy separate", () => {
     const score = new GameScore(1);
     score.hit("a", 0, 0);
+    const stats = (percent: number) => ({
+      hits: 1,
+      misses: 0,
+      wrong: 0,
+      meanOffset: 0,
+      troubleSpots: [],
+      game: score.snapshot(1),
+      noteResult: {
+        policy: NOTE_RESULT_POLICY,
+        expectedNotes: 1,
+        hitNotes: 1,
+        hitPercent: 30,
+        holdPercent: percent - 30,
+        percent
+      }
+    });
+    const details = (percent: number) =>
+      renderToStaticMarkup(
+        <ResultStats
+          stats={stats(percent)}
+          canReview={false}
+          onClose={vi.fn()}
+          onAgain={vi.fn()}
+          onReview={vi.fn()}
+        />
+      );
     const render = (percent: number) =>
       renderToStaticMarkup(
         <ResultDialog
           open
           course
-          stats={{
-            hits: 1,
-            misses: 0,
-            wrong: 0,
-            meanOffset: 0,
-            troubleSpots: [],
-            game: score.snapshot(1),
-            noteResult: {
-              policy: NOTE_RESULT_POLICY,
-              expectedNotes: 1,
-              hitNotes: 1,
-              hitPercent: 30,
-              holdPercent: percent - 30,
-              percent
-            }
-          }}
+          stats={stats(percent)}
           canReview={false}
           onClose={vi.fn()}
           onAgain={vi.fn()}
           onReview={vi.fn()}
+          onStats={() => undefined}
         />
       );
     const below = render(74.999);
@@ -118,8 +145,10 @@ describe("game score presentation", () => {
     expect(below).not.toContain("Порог 75% достигнут");
     expect(below).toContain("Звёзды за попадания и удержание");
     expect(below).toContain('aria-label="Звёзды: 2 из 3"');
-    expect(below).toContain("Ранг по времени");
-    expect(below).toContain("Точность попадания: 100%");
+    expect(below).not.toContain("Ранг по времени");
+    expect(below).toContain("Статистика");
+    expect(details(74.999)).toContain("Ранг по времени");
+    expect(details(74.999)).toContain("Точность попадания: 100%");
     const window = new Window();
     window.document.body.innerHTML = below;
     const summary = window.document.querySelector(".result-summary");
@@ -133,7 +162,7 @@ describe("game score presentation", () => {
     expect(render(65)).toContain("Hits: 30% out of 30%");
     expect(render(65)).toContain("Holding: 35% out of 70%");
     expect(render(65)).toContain("You need at least 75% to pass");
-    expect(render(65)).toContain("Hit timing accuracy: 100%");
+    expect(details(65)).toContain("Hit timing accuracy: 100%");
   });
   it("awards holding result stars in wait mode without timing rank", () => {
     const markup = renderToStaticMarkup(
@@ -158,6 +187,7 @@ describe("game score presentation", () => {
         onClose={vi.fn()}
         onAgain={vi.fn()}
         onReview={vi.fn()}
+        onStats={() => undefined}
       />
     );
     expect(markup).toContain("65,0%");
@@ -175,34 +205,46 @@ describe("game score presentation", () => {
     score.hit("d", 150, 3);
     const game = score.snapshot(4);
     expect(game.accuracy).toBe(45);
+    const stats = {
+      hits: 4,
+      misses: 0,
+      wrong: 0,
+      meanOffset: 0,
+      troubleSpots: [],
+      game,
+      noteResult: {
+        policy: NOTE_RESULT_POLICY,
+        expectedNotes: 4,
+        hitNotes: 4,
+        hitPercent: 30,
+        holdPercent: 55.2,
+        percent: 85.2
+      }
+    };
     const markup = renderToStaticMarkup(
       <ResultDialog
         open
-        stats={{
-          hits: 4,
-          misses: 0,
-          wrong: 0,
-          meanOffset: 0,
-          troubleSpots: [],
-          game,
-          noteResult: {
-            policy: NOTE_RESULT_POLICY,
-            expectedNotes: 4,
-            hitNotes: 4,
-            hitPercent: 30,
-            holdPercent: 55.2,
-            percent: 85.2
-          }
-        }}
+        stats={stats}
         canReview={false}
         onClose={vi.fn()}
         onAgain={vi.fn()}
         onReview={vi.fn()}
+        onStats={() => undefined}
       />
     );
     expect(markup).toContain('aria-label="Звёзды: 3 из 3"');
     expect(markup).toContain("85,2%");
-    expect(markup).toContain("Точность попадания: 45%");
+    expect(
+      renderToStaticMarkup(
+        <ResultStats
+          stats={stats}
+          canReview={false}
+          onClose={vi.fn()}
+          onAgain={vi.fn()}
+          onReview={vi.fn()}
+        />
+      )
+    ).toContain("Точность попадания: 45%");
   });
   it("does not offer ranked score or Overdrive in wait mode", () => {
     const markup = renderToStaticMarkup(
@@ -240,14 +282,92 @@ describe("game score presentation", () => {
           onClose={vi.fn()}
           onAgain={vi.fn()}
           onReview={vi.fn()}
+          onStats={() => undefined}
         />
       );
     expect(render(score.snapshot(1))).toContain("75,0%");
-    expect(render(score.snapshot(1))).toContain("идеальная игра без Overdrive");
-    expect(render(score.snapshot(1))).toContain("Распределение ошибки времени");
+    expect(render(score.snapshot(1))).not.toContain("Распределение ошибки времени");
+    const details = renderToStaticMarkup(
+      <ResultStats
+        stats={{
+          hits: 2,
+          misses: 0,
+          wrong: 0,
+          meanOffset: 0,
+          troubleSpots: [],
+          game: score.snapshot(1)
+        }}
+        canReview={false}
+        onClose={vi.fn()}
+        onAgain={vi.fn()}
+        onReview={vi.fn()}
+      />
+    );
+    expect(details).toContain("идеальная игра без Overdrive");
+    expect(
+      renderToStaticMarkup(
+        <ResultStats
+          stats={{
+            hits: 2,
+            misses: 1,
+            wrong: 0,
+            meanOffset: 0,
+            troubleSpots: [{ pitch: 60, errors: 2 }],
+            game: score.snapshot(1)
+          }}
+          canReview={false}
+          onClose={vi.fn()}
+          onAgain={vi.fn()}
+          onReview={vi.fn()}
+        />
+      )
+    ).toContain('<p class="result-stats-trouble">Трудные ноты: до4 (2)</p>');
+    expect(details).toContain("Распределение ошибки времени");
     const empty = render(new GameScore(0).snapshot(0));
     expect(empty).toContain("Нет нот для оценки");
     expect(empty).not.toContain("Ранг");
+    expect(empty).not.toContain("Статистика");
+  });
+
+  it.each([
+    [
+      "ru",
+      "Трудные ноты:",
+      ["до", "до♯", "ре", "ре♯", "ми", "фа", "фа♯", "соль", "соль♯", "ля", "ля♯", "си"]
+    ],
+    ["en", "Trouble notes:", ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]]
+  ] as const)("localizes trouble-note names in both result views (%s)", (locale, label, names) => {
+    setInterfaceLanguage(locale);
+    const stats = {
+      hits: 0,
+      misses: 12,
+      wrong: 0,
+      meanOffset: 0,
+      troubleSpots: names.map((_, index) => ({ pitch: 60 + index, errors: 2 }))
+    };
+    const summary = renderToStaticMarkup(
+      <ResultDialog
+        open
+        stats={stats}
+        canReview={false}
+        onClose={vi.fn()}
+        onAgain={vi.fn()}
+        onReview={vi.fn()}
+        onStats={vi.fn()}
+      />
+    );
+    const panel = renderToStaticMarkup(
+      <ResultStats
+        stats={stats}
+        canReview={false}
+        onClose={vi.fn()}
+        onAgain={vi.fn()}
+        onReview={vi.fn()}
+      />
+    );
+    const expected = label + " " + names.map((name) => `${name}4 (2)`).join(", ");
+    expect(summary).toContain(expected);
+    expect(panel).toContain(expected);
   });
 
   it("shows the scorer's combo, accuracy and uncapped energy, without grade counts", () => {
@@ -261,7 +381,7 @@ describe("game score presentation", () => {
     );
     expect(markup).toContain('class="game-combo__value">0</strong>');
     expect(markup).toContain(
-      `${new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(game.accuracy ?? 0)}%`
+      `${new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(game.accuracy ?? 0)}\u00a0%`
     );
     expect(markup).not.toContain("data-grade");
     expect(markup).toContain('data-broken="true"');

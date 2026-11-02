@@ -71,7 +71,7 @@ describe("view profile migration and pure transitions", () => {
     choose({ keyboardStyle: "classic", keyboardOrientation: "top" });
     expect(profiles.active.keyboardOrientation).toBe("follow");
     expect(normalizeViewAxes({ keyboardStyle: "bogus", notesProjection: "bogus" })).toEqual({
-      keyboardStyle: "arcade",
+      keyboardStyle: "3d",
       notesProjection: "direct",
       keyboardOrientation: "follow"
     });
@@ -198,4 +198,83 @@ describe("explicit native note projection", () => {
     });
     expect(restoredTop.framing).toEqual(current);
   });
+});
+
+describe("unified keyboard migration", () => {
+  it.each([null, {}, { hands: true }, { keyStyle: "classic" }])(
+    "uses the full top preset when the legacy camera is absent: %j",
+    (staff) => {
+      const profiles = hydrateViewProfiles(null, staff, null);
+      expect(activeViewFraming(profiles).camera).toEqual(CAMERA_PRESETS.top);
+      expect(profiles.active.keyboardOrientation).toBe("follow");
+    }
+  );
+
+  it("keeps the old player fallback for an explicitly saved partial camera", () => {
+    const profiles = hydrateViewProfiles(null, { camera: { fov: 60 } }, null);
+    expect(activeViewFraming(profiles).camera).toEqual({ ...DEFAULT_CAMERA, fov: 60 });
+  });
+
+  it("migrates the legacy perspective style and keeps its camera and projection", () => {
+    const profiles = hydrateViewProfiles(null, { ...legacy, keyStyle: "perspective" }, layout);
+    expect(profiles.active).toEqual({
+      keyboardStyle: "3d",
+      notesProjection: "perspective",
+      keyboardOrientation: "follow"
+    });
+    expect(activeViewFraming(profiles)).toEqual({
+      camera: legacy.camera,
+      roadFar: legacy.roadFar,
+      roadHorizon: legacy.roadHorizon,
+      layout
+    });
+  });
+
+  it.each([false, true])(
+    "migrates the old active entry with explicit destination=%s",
+    (destination) => {
+      const oldEntry = { camera: CAMERA_PRESETS.hands, layout, roadFar: 0.4, roadHorizon: 0.2 };
+      const newEntry = { ...oldEntry, camera: CAMERA_PRESETS.player, roadFar: 0.7 };
+      const profiles = hydrateViewProfiles(
+        {
+          version: 1,
+          active: {
+            keyboardStyle: "perspective",
+            notesProjection: "perspective",
+            keyboardOrientation: "follow"
+          },
+          entries: {
+            "perspective:perspective:follow": oldEntry,
+            ...(destination ? { "3d:perspective:follow": newEntry } : {}),
+            "future:mode:unknown": { privateData: [1, 2] }
+          },
+          projectionByStyle: { perspective: "perspective" },
+          orientationByPair: { "perspective:perspective": "follow" }
+        },
+        {},
+        null
+      );
+      expect(profiles.active.keyboardStyle).toBe("3d");
+      expect(activeViewFraming(profiles)).toEqual(destination ? newEntry : oldEntry);
+      expect(profiles.entries["perspective:perspective:follow"]).toEqual(oldEntry);
+      expect(profiles.entries["future:mode:unknown"]).toEqual({ privateData: [1, 2] });
+      expect(profiles.projectionByStyle.perspective).toBe("perspective");
+      expect(hydrateViewProfiles(JSON.parse(JSON.stringify(profiles)), {}, null)).toEqual(profiles);
+    }
+  );
+});
+
+it("round-trips the extended horizon in saved framing without changing the legacy seed", () => {
+  const original = hydrateViewProfiles(null, { ...legacy, roadHorizon: 1.2 }, layout);
+  const saved = saveViewFraming(original, { ...activeViewFraming(original), roadHorizon: 1.4 });
+  const classic = selectViewProfile(saved, activeViewFraming(saved), { keyboardStyle: "classic" });
+  const returned = selectViewProfile(classic.profiles, classic.framing, { keyboardStyle: "3d" });
+  expect(returned.framing.roadHorizon).toBe(1.4);
+  const restored = hydrateViewProfiles(
+    JSON.parse(JSON.stringify(returned.profiles)),
+    legacy,
+    layout
+  );
+  expect(activeViewFraming(restored).roadHorizon).toBe(1.4);
+  expect(restored.legacySeed.roadHorizon).toBe(1.2);
 });

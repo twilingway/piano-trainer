@@ -1,4 +1,4 @@
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import type { HandsLayer } from "../HandsLayer";
 import type { ThreeStage } from "./ThreeStage";
 import type { HandsSource } from "./liveHands";
@@ -17,6 +17,12 @@ export class Keyboard88PerformerHost {
   private sourceChanged = false;
   private wanted = false;
   private generation = 0;
+
+  get status(): "idle" | "loading" | "ready" | "error" {
+    if (!this.wanted) return "idle";
+    if (this.loader.state === "failed") return "error";
+    return this.performer ? "ready" : "loading";
+  }
 
   get ready(): boolean {
     return this.wanted && this.performer !== undefined;

@@ -83,6 +83,7 @@ describe("course cards and exercise controls", () => {
         onClose={noop}
         onAgain={noop}
         onReview={noop}
+        onStats={() => undefined}
         onNext={onNext}
       />
     );
@@ -104,6 +105,7 @@ describe("course cards and exercise controls", () => {
         onClose={noop}
         onAgain={noop}
         onReview={noop}
+        onStats={() => undefined}
       />
     );
     expect(host.textContent).not.toContain("Следующее задание");

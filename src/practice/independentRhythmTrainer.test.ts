@@ -82,7 +82,7 @@ function run(offsetMs = 0) {
     seedHeld: (events, atMs) => {
       phase.seedHeld(events.map(convert), atMs);
     },
-    cuePitches: () => [60],
+    cuePitches: () => (phase.snapshot().active ? [] : [60]),
     statusOf: (id) => {
       const outcome = phase.snapshot().outcomes.find((note) => note.noteId === id)?.outcome;
       return outcome === "miss" ? "missed" : outcome;
@@ -95,6 +95,7 @@ function run(offsetMs = 0) {
     take,
     finished,
     view,
+    exercise,
     latest: () => latest,
     frame: (atMs: number) => {
       now = atMs;
@@ -160,8 +161,21 @@ describe("independent rhythm on the actual Trainer clock", () => {
       allowedDeviceId: "other-midi"
     });
     course.frame(1000);
-    expect(course.view.draw.mock.lastCall?.[0].hints).toBe(false);
+    const preparation = course.view.draw.mock.lastCall?.[0];
+    const first = course.exercise.song.notes[0];
+    if (!first) throw new Error("Missing preparation note");
+    expect(preparation).toMatchObject({ hints: true, neutralKeys: true, due: [], hintNotes: [] });
+    expect(preparation?.fingerCues).toEqual([
+      { noteId: first.id, pitch: 60, hand: "right", recommendedFinger: 1 }
+    ]);
     course.trainer.setPlaying(true);
+    course.frame(1100);
+    expect(course.view.draw.mock.lastCall?.[0]).toMatchObject({
+      hints: false,
+      fingerCues: [],
+      due: [],
+      hintNotes: []
+    });
     course.send("down", 5000, 72);
     expect(course.phase.snapshot().summary.unknownExtras).toBe(1);
     expect(course.phase.snapshot().summary.right.hits).toBe(0);

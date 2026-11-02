@@ -6,6 +6,7 @@ import {
   HandIcon,
   KeyboardIcon,
   NoteCardIcon,
+  PianoTabsIcon,
   RoadIcon,
   StaffIcon
 } from "./icons";
@@ -43,6 +44,13 @@ export function ViewHelp() {
             {t("Закрыть")}
           </button>
         </div>
+        <p>
+          <PianoTabsIcon />{" "}
+          <span>
+            <strong>{t("Пианинные табы")}</strong>{" "}
+            {t("— ноты по буквам и пальцам для каждой руки.")}
+          </span>
+        </p>
         <p>
           <StaffIcon />{" "}
           <span>

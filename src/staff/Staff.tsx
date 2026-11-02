@@ -1,23 +1,31 @@
+import { worldScoreSnapshot } from "./publishWorldScore";
+import type { StaffWorldSource } from "./staffWorldSnapshot";
+import type { LessonStaffFeedbackSource } from "./lessonStaffFeedback";
+import { useLessonStaffFeedback } from "./useLessonStaffFeedback";
+import { moveCursor, seekStaffAt } from "./staffCursorNavigation";
+import { createStaffOsmdOptions } from "./staffOsmdOptions";
+import neonCursorUrl from "../fx/neon-cursor.webp?url";
 import {
   lineBoxes,
   scrollTarget,
   centreShortScore,
   fitHeight,
+  prepareStaffCursorPadding,
   type LineBox,
   type ScrollTarget
 } from "./staffViewport";
 import { entryBeatAt, placeCursorLine } from "./liveCursor";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
 import { beatPositions, indexNotes, type NoteIndex } from "./staffNoteIndex";
-import { fitCompactStaff, staffZoom } from "./fitCompactStaff";
-import { fitWrappedStaff } from "./fitWrappedStaff";
+import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
 import { timelineSpots } from "./staffTimelineSpots";
 import { installUniformStaffLayout } from "./uniformStaffLayout";
 import { installLocalNoteNames } from "./localNoteNames";
 import { setStaffTempoLayout } from "./staffTempoLayout";
 import { usePublishReaderGeometry, useReaderFrameBeat } from "./readerGeometry";
 import { readStaffGeometry } from "./staffReaderGeometry";
-import { sharedReaderSpacing } from "./sharedReaderSpacing";
+import { sharedTabLabelWidths, sharedTabScale, type SharedTabLabels } from "./sharedReaderSpacing";
+import { DEFAULT_PLAYED_NOTE_COLOR } from "./notationColors";
 import {
   highlightUnderCursor,
   paintMarks,
@@ -27,14 +35,24 @@ import {
 } from "./staffNoteColors";
 import type { BeatSpot } from "./liveCursor";
 import { watchStaffPresentation, type StaffPresentation } from "./staffPresentation";
-import { courseCursor, courseStaffXml, courseStaffZoom } from "./courseStaff";
-import { courseRoom, lineExtent, showDrawing } from "./courseStaffView";
+import { courseCursor, courseStaffXml } from "./courseStaff";
+import {
+  fitCourseZoom,
+  measureCourseReach,
+  noteCourseReach,
+  reservedSpan,
+  showDrawing,
+  fitCourseDrawing,
+  fitCourseInk
+} from "./courseStaffView";
 import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 
 export { markKey } from "./staffNoteIndex";
 
 interface StaffProps {
+  readonly lessonStaffFeedback?: LessonStaffFeedbackSource | undefined;
+  readonly worldScoreSource?: StaffWorldSource | undefined;
   readonly timeline?:
     | {
         readonly timeAtBeat: (beat: number) => number;
@@ -45,9 +63,10 @@ interface StaffProps {
   readonly musicXml: string;
   /** Quarter notes from the start of the score; the cursor stands on the last entry at or before it. */
   readonly beat: number;
-  /** 1 = OSMD's own size. */
+  /** 1 = the viewport-fitted baseline size. */
   readonly zoom: number;
   readonly noteColor: string;
+  readonly playedNoteColor?: string;
   readonly scoreColor: string;
   /** One endless line that scrolls sideways, or systems wrapped to the width like a printed page. */
   readonly singleLine: boolean;
@@ -69,12 +88,13 @@ interface StaffProps {
   /** Publish this original score's layout for a second reader in the same workspace. */
   readonly shareGeometry?: boolean;
   /** Labels in a second reader may require wider shared engraving. */
-  readonly sharedNoteNames?: "off" | "ru" | "en" | undefined;
+  readonly sharedTabs?: SharedTabLabels | undefined;
   /** A reading course: no highlight, a fitted zoom and a cursor that leaves the note readable. */
   readonly course?: boolean;
+  /** A course's prompts with its extreme notes: every prompt keeps their room, nothing jumps. */
+  readonly courseRange?: readonly string[] | undefined;
 }
 
-const BEAT_EPSILON = 1e-6;
 /** Share of the remaining distance the view covers each frame: a glide, not a jump. */
 const GLIDE = 0.12;
 /** Share of the window the score may take; the lines that fit decide the exact height. */
@@ -82,34 +102,20 @@ const DEFAULT_MAX_SHARE = 0.45;
 /** Movement that turns a press on the score from a click into a drag, px. */
 const DRAG_THRESHOLD_PX = 5;
 
-function cursorBeat(osmd: OpenSheetMusicDisplay): number {
-  // OSMD counts in whole notes.
-  return osmd.cursor.Iterator.currentTimeStamp.RealValue * 4;
-}
-
-/** Walks the cursor to the last entry at or before `beat`. */
-function moveCursor(osmd: OpenSheetMusicDisplay, beat: number): void {
-  const cursor = osmd.cursor;
-  if (cursorBeat(osmd) > beat + BEAT_EPSILON) cursor.reset();
-  for (;;) {
-    const peek = cursor.Iterator.clone();
-    peek.moveToNext();
-    if (peek.EndReached || peek.currentTimeStamp.RealValue * 4 > beat + BEAT_EPSILON) break;
-    cursor.next();
-  }
-}
-
 /**
  * The score under a cursor that follows the song by beats rather than by
  * seconds, so tempo changes cannot drift it off; the notes under it are
  * coloured. Zoom, line wrapping and following are the reader's choice.
  */
 export function Staff({
+  lessonStaffFeedback,
   timeline,
+  worldScoreSource,
   musicXml,
   beat,
   zoom,
   noteColor,
+  playedNoteColor = DEFAULT_PLAYED_NOTE_COLOR,
   scoreColor,
   singleLine,
   follow,
@@ -120,11 +126,13 @@ export function Staff({
   marks,
   maxShare = DEFAULT_MAX_SHARE,
   shareGeometry = false,
-  sharedNoteNames,
+  sharedTabs,
   liveBeat,
   presentation,
-  course = false
+  course = false,
+  courseRange
 }: StaffProps) {
+  const hasSharedTabs = sharedTabs !== undefined;
   const publishGeometry = usePublishReaderGeometry();
   const shownXml = useMemo(
     () => (course ? courseStaffXml(musicXml) : musicXml),
@@ -136,14 +144,16 @@ export function Staff({
   const pageRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   const uniformRef = useRef<ReturnType<typeof installUniformStaffLayout> | undefined>(undefined);
+  const reachRef = useRef<Awaited<ReturnType<typeof measureCourseReach>>>(undefined);
   const presentationRef = useRef(presentation);
   useEffect(() => {
     presentationRef.current = presentation;
   });
-  const baseSpacingRef = useRef(1);
+  const tabWidthsRef = useRef<ReadonlyMap<number, number>>(new Map());
+  const baselineRef = useRef(new StaffZoomBaseline());
   const paintedRef = useRef<SVGElement[]>([]);
   // Read by the loader and the zoom effect, which must land the cursor where the song is.
-  const latest = useRef({ beat, zoom, follow, singleLine, maxShare, course });
+  const latest = useRef({ beat, zoom, follow, singleLine, maxShare, course, playedNoteColor });
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
   const noteIndexRef = useRef<NoteIndex>({
@@ -151,6 +161,7 @@ export function Staff({
     heads: new Map(),
     cursorBeats: new Map()
   });
+  const feedbackRef = useLessonStaffFeedback(lessonStaffFeedback, hostRef, noteIndexRef);
   /** Musical entries, including rests, with their x from the SVG's left edge and their line. */
   const beatXRef = useRef<BeatSpot[]>([]);
   /** The play cursor: a thin glowing line gliding with the song, over OSMD's own. */
@@ -159,12 +170,17 @@ export function Staff({
   const marksRef = useRef(marks);
 
   useEffect(() => {
-    latest.current = { beat, zoom, follow, singleLine, maxShare, course };
+    latest.current = { beat, zoom, follow, singleLine, maxShare, course, playedNoteColor };
   });
 
   const showBeat = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     moveCursor(osmd, liveBeatRef.current?.() ?? latest.current.beat);
-    if (!latest.current.course) paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
+    if (!latest.current.course)
+      paintedRef.current = highlightUnderCursor(
+        osmd,
+        paintedRef.current,
+        latest.current.playedNoteColor
+      );
     // A single line with a live position scrolls every frame on its own and needs no steering.
     const live = latest.current.singleLine;
     if (latest.current.follow) {
@@ -182,33 +198,37 @@ export function Staff({
 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
+    prepareStaffCursorPadding(host, latest.current.singleLine && !latest.current.course);
     setStaffColors(osmd, noteColor, scoreColor);
-    osmd.EngravingRules.VoiceSpacingMultiplierVexflow = sharedReaderSpacing(
-      baseSpacingRef.current,
-      sharedNoteNames
-    );
-    // A course ignores the song's saved zoom and the phone's smaller staff: its short exercise is
-    // the main thing on screen and is fitted to the room it has.
-    osmd.Zoom = latest.current.course ? 1 : staffZoom(host, latest.current.zoom);
-    osmd.render();
-    if (!latest.current.course && !latest.current.singleLine && breaksFromScore)
-      fitWrappedStaff(osmd);
-    if (latest.current.course) {
-      osmd.Zoom *= courseStaffZoom(lineExtent(osmd), courseRoom(host, latest.current.maxShare));
+    tabWidthsRef.current = new Map();
+    const reach = latest.current.course ? reachRef.current : undefined;
+    if (latest.current.course) fitCourseZoom(osmd, host, latest.current.maxShare, reach);
+    else
+      baselineRef.current.render(osmd, host, {
+        zoom: latest.current.zoom,
+        singleLine: latest.current.singleLine,
+        breaksFromScore,
+        maxShare: latest.current.maxShare
+      });
+    if (!latest.current.course && sharedTabs) {
+      tabWidthsRef.current = sharedTabLabelWidths(sharedTabs, sharedTabScale(host));
       osmd.render();
     }
-    fitCompactStaff(osmd, host, lineBoxes(osmd)[0]);
+    if (!latest.current.course && !latest.current.singleLine) fitWrappedStaffSvg(osmd);
+    if (latest.current.course) fitCourseInk(osmd, host, reservedSpan(osmd, reach));
+    if (latest.current.course) noteCourseReach(courseRange, osmd, host);
     paintStaffNotes(osmd, noteColor);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
+    const shift = latest.current.course ? fitCourseDrawing(host, reservedSpan(osmd, reach)) : 0;
     const page = pageRef.current;
     if (page) {
-      if (latest.current.singleLine) page.style.transform = "";
+      if (latest.current.singleLine || latest.current.course) page.style.transform = "";
       else centreShortScore(osmd, page);
     }
-    linesRef.current = lineBoxes(osmd);
+    linesRef.current = lineBoxes(osmd, shift);
     noteIndexRef.current = indexNotes(osmd);
     beatXRef.current = beatPositions(noteIndexRef.current.cursorBeats, host, linesRef.current);
-    const axis = uniformRef.current?.getAxis();
+    const axis = latest.current.singleLine ? uniformRef.current?.getAxis() : undefined;
     const measures = osmd.Sheet.SourceMeasures;
     const firstMeasure = measures[0];
     const lastMeasure = measures.at(-1);
@@ -224,6 +244,7 @@ export function Staff({
     }
     paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
+    worldScoreSource?.publish(worldScoreSnapshot(host, beatXRef.current, linesRef.current));
     // A new render draws new noteheads and puts the cursor back at the start.
     paintedRef.current = [];
     osmd.cursor.reset();
@@ -241,8 +262,9 @@ export function Staff({
       } else host.scrollLeft = target.left;
       host.scrollTop = target.top;
     }
-    if (latest.current.course) showDrawing(host);
+    if (latest.current.course) showDrawing(host, reservedSpan(osmd, reach));
     targetRef.current = null;
+    feedbackRef.current?.refresh();
     if (shareGeometry) {
       publishGeometry(readStaffGeometry(osmd, host, beatXRef.current, linesRef.current));
     }
@@ -252,36 +274,25 @@ export function Staff({
     const host = hostRef.current;
     const page = pageRef.current;
     if (!host || !page) return;
+    const feedback = feedbackRef.current;
+    feedback?.invalidate();
     if (shareGeometry) publishGeometry(null);
     let cancelled = false;
     let resizeTimer = 0;
-    const osmd = new OpenSheetMusicDisplay(page, {
-      backend: "svg",
-      defaultColorMusic: getComputedStyle(host).getPropertyValue("--accent").trim(),
-      // Re-flowing on resize is done below, so the line sizes are measured again too.
-      autoResize: false,
-      drawTitle: false,
-      drawComposer: false,
-      drawPartNames: false,
-      // OSMD leaves them off for a one-part score; here the reader chooses.
-      drawFingerings: fingers,
-      renderSingleHorizontalStaffline: singleLine,
-      followCursor: false,
-      newSystemFromXML: breaksFromScore,
-      // Eighths and shorter are beamed beat by beat, so each beat reads as one group at a glance.
-      autoBeam: true,
-      autoBeamOptions: { groups: [[1, 4]] }
-    });
-    baseSpacingRef.current = osmd.EngravingRules.VoiceSpacingMultiplierVexflow;
+    const options = createStaffOsmdOptions(host, { fingers, singleLine, breaksFromScore });
+    const osmd = new OpenSheetMusicDisplay(page, options);
     const presentationId = presentationRef.current?.id;
-    void osmd
-      .load(shownXml)
-      .then(() => {
+    void Promise.all([osmd.load(shownXml), measureCourseReach(courseRange, options, host)])
+      .then(([, reach]) => {
         if (cancelled) return;
+        reachRef.current = reach;
         installLocalNoteNames(osmd);
         uniformRef.current =
-          singleLine && !course && timeline
-            ? installUniformStaffLayout(osmd, timeline.timeAtBeat)
+          !course && timeline && (singleLine || hasSharedTabs)
+            ? installUniformStaffLayout(osmd, timeline.timeAtBeat, {
+                horizontal: singleLine,
+                labelWidthAtBeat: (beat) => tabWidthsRef.current.get(beat) ?? 0
+              })
             : undefined;
         setStaffTempoLayout(osmd, shownXml);
         osmd.Zoom = latest.current.zoom;
@@ -295,6 +306,7 @@ export function Staff({
         relayout(osmd, host);
       })
       .catch(() => {
+        if (!cancelled) feedback?.fail();
         if (
           !cancelled &&
           presentationId === presentationRef.current?.id &&
@@ -315,6 +327,7 @@ export function Staff({
     if (workspace) resizeObserver.observe(workspace);
     return () => {
       cancelled = true;
+      feedback?.invalidate();
       window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
       resizeObserver.disconnect();
@@ -324,17 +337,22 @@ export function Staff({
       osmd.clear();
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
       page.replaceChildren();
+      worldScoreSource?.publish(undefined);
       if (shareGeometry) publishGeometry(null);
     };
   }, [
     shownXml,
+    feedbackRef,
+    worldScoreSource,
     singleLine,
     breaksFromScore,
     fingers,
     shareGeometry,
     publishGeometry,
     course,
-    timeline
+    timeline,
+    hasSharedTabs,
+    courseRange
   ]);
 
   const presentationId = presentation?.id;
@@ -344,17 +362,36 @@ export function Staff({
       () => osmdRef.current !== null && Boolean(hostRef.current?.querySelector("svg")),
       (atMs) => {
         const current = presentationRef.current;
-        if (current?.id === presentationId) current.onPresented(presentationId, atMs);
+        if (current?.id === presentationId) {
+          feedbackRef.current?.ready(presentationId);
+          current.onPresented(presentationId, atMs);
+        }
       }
     );
-  }, [presentationId, musicXml]);
+  }, [
+    presentationId,
+    musicXml,
+    feedbackRef,
+    lessonStaffFeedback,
+    shownXml,
+    worldScoreSource,
+    singleLine,
+    breaksFromScore,
+    fingers,
+    shareGeometry,
+    publishGeometry,
+    course,
+    timeline,
+    hasSharedTabs,
+    courseRange
+  ]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
     const host = hostRef.current;
     if (!osmd || !host) return;
     relayout(osmd, host);
-  }, [zoom, noteColor, scoreColor, fingerColors, sharedNoteNames]);
+  }, [zoom, noteColor, scoreColor, fingerColors, sharedTabs]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
@@ -376,13 +413,17 @@ export function Staff({
   useEffect(() => {
     marksRef.current = marks;
     paintMarks(noteIndexRef.current.heads, marks);
-  }, [marks]);
+    const host = hostRef.current;
+    if (host)
+      worldScoreSource?.publish(worldScoreSnapshot(host, beatXRef.current, linesRef.current));
+  }, [marks, worldScoreSource]);
 
   // Read the shared beat every frame; single-line cursors stay exactly at the viewport midpoint.
   useEffect(() => {
     let frame = 0;
     let paintedBeat: number | undefined;
     let paintedMap: readonly BeatSpot[] | undefined;
+    let paintedColor: string | undefined;
     const reader = hostRef.current;
     const controller = reader ? createStaffFollow(reader) : undefined;
     const step = (timestamp: number) => {
@@ -393,12 +434,22 @@ export function Staff({
       );
       const osmd = osmdRef.current;
       const entryBeat = entryBeatAt(beatXRef.current, beatNow);
-      if (osmd && (entryBeat !== paintedBeat || paintedMap !== beatXRef.current)) {
+      if (
+        osmd &&
+        (entryBeat !== paintedBeat ||
+          paintedMap !== beatXRef.current ||
+          paintedColor !== latest.current.playedNoteColor)
+      ) {
         moveCursor(osmd, beatNow);
         if (!latest.current.course)
-          paintedRef.current = highlightUnderCursor(osmd, paintedRef.current);
+          paintedRef.current = highlightUnderCursor(
+            osmd,
+            paintedRef.current,
+            latest.current.playedNoteColor
+          );
         paintedBeat = entryBeat;
         paintedMap = beatXRef.current;
+        paintedColor = latest.current.playedNoteColor;
       }
       const following = controller?.frame(
         beatNow,
@@ -429,7 +480,7 @@ export function Staff({
         beatNow,
         latest.current.course && osmd
           ? courseCursor(beatXRef.current.length, unitInPixels * osmd.Zoom)
-          : undefined
+          : { centered: following === true && latest.current.singleLine }
       );
       frame = requestAnimationFrame(step);
     };
@@ -454,29 +505,14 @@ export function Staff({
   } | null>(null);
   const suppressClickRef = useRef(false);
 
-  const seekAt = (clientX: number, clientY: number) => {
-    if (!onSeek) return;
-    let best: number | undefined;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const [element, beat] of noteIndexRef.current.beats) {
-      const box = element.getBoundingClientRect();
-      if (box.width === 0 && box.height === 0) continue;
-      // Rows count heavily: a note on the clicked line beats a closer one on the next line.
-      const dx = clientX - (box.left + box.width / 2);
-      const dy = Math.max(0, Math.abs(clientY - (box.top + box.height / 2)) - box.height / 2);
-      const distance = dx * dx + 16 * dy * dy;
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = beat;
-      }
-    }
-    if (best !== undefined) onSeek(best);
-  };
-
   return (
     <div
       className={`${singleLine ? "staff staff--single" : "staff staff--wrapped"}${course ? " staff--course" : ""}`}
       ref={hostRef}
+      style={{
+        overflowY: !course && zoom > 1 ? "auto" : undefined,
+        overflowX: !course && !singleLine ? "auto" : undefined
+      }}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         const host = hostRef.current;
@@ -511,11 +547,15 @@ export function Staff({
           suppressClickRef.current = false;
           return;
         }
-        seekAt(event.clientX, event.clientY);
+        seekStaffAt(noteIndexRef.current, onSeek, event.clientX, event.clientY);
       }}
     >
       <div className="staff-page" ref={pageRef} />
-      <div className="staff-cursor" ref={cursorLineRef} />
+      <div
+        className="staff-cursor"
+        ref={cursorLineRef}
+        style={{ backgroundImage: `url("${neonCursorUrl}")` }}
+      />
     </div>
   );
 }

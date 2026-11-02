@@ -1,3 +1,4 @@
+import { LOOK_AHEAD_CAP_S } from "../noteSpeed";
 import type { WorldRoadNote } from "./roadNoteGeometry";
 
 export const ROAD_TRAIL_CAPACITY = 1024;
@@ -5,6 +6,12 @@ export const ROAD_TRAIL_MAX_GAP = 500;
 export const ROAD_TRAIL_MAX_GAP_SHARE = 0.22;
 export const ROAD_TRAIL_ANCHOR_CAPACITY = 88;
 const NO_ANCHORS: readonly WorldRoadNote[] = [];
+
+/** The longest gap a trail bridges, in road units: its share of at most six seconds of road. */
+export function roadTrailMaxGap(span: number, lookAhead: number): number {
+  const shown = lookAhead > LOOK_AHEAD_CAP_S ? LOOK_AHEAD_CAP_S / lookAhead : 1;
+  return span * ROAD_TRAIL_MAX_GAP_SHARE * shown;
+}
 
 interface LaneNote extends WorldRoadNote {
   active: boolean;
@@ -96,6 +103,7 @@ export class RoadTrailSelection {
         target.width = Math.min(previous.width, current.width) * 0.65;
         target.color = mixColor(previous.color, current.color);
         target.alpha = Math.min(1, previous.alpha, current.alpha);
+        target.pitch = current.pitch;
         target.lane = current.lane;
         used++;
       }
@@ -135,6 +143,7 @@ export class RoadTrailSelection {
       target.width = note.width;
       target.color = note.color;
       target.alpha = note.alpha;
+      target.pitch = note.pitch;
       target.lane = note.lane;
       target.originalTop = originalTop;
       target.active = true;

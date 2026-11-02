@@ -5,6 +5,7 @@ import { ConnectedNotices } from "./ConnectedPlayerNotices";
 import { ConnectedReview } from "./ConnectedPlayerReview";
 import { ConnectedPracticeWorkspace } from "./ConnectedPracticeWorkspace";
 import { ConnectedPlayerWindows } from "./ConnectedPlayerWindows";
+import { ConnectedGraphicsNotice } from "./ConnectedGraphicsNotice";
 export function PlayerScreen() {
   const enabled = useAppSelector((state) => state.preferences.word.enabled);
   const onClickCapture = useRuntimeCommand((runtime) => runtime.fullscreen.onClickCapture);
@@ -15,6 +16,7 @@ export function PlayerScreen() {
       <ConnectedReview />
       <ConnectedPracticeWorkspace />
       <ConnectedPlayerWindows />
+      <ConnectedGraphicsNotice />
     </div>
   );
 }

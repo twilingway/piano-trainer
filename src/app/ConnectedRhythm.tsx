@@ -6,6 +6,7 @@ export function ConnectedRhythmCard({ onChoose }: { onChoose: () => void }) {
   const rhythm = useRuntimeSelector((runtime) => runtime.rhythm);
   return (
     <RhythmCourseCard
+      completedRuns={rhythm.history.length}
       onStart={() => {
         rhythm.start();
         onChoose();

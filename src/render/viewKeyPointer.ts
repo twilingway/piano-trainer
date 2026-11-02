@@ -1,9 +1,9 @@
-import type { FederatedPointerEvent } from "pixi.js";
+import type { FederatedPointerEvent } from "./flatThree";
 import { KeyboardLayer } from "./KeyboardLayer";
 import type { ComputerKeyboardLayer, KeysLayer } from "./ComputerKeyboardLayer";
 import type { KeyPointer } from "./pointerKeys";
 
-/** Pixi pools its event; preserve the browser's physical timestamp. */
+/** Preserve the browser's physical timestamp through the scene event adapter. */
 export function pointerMetadata(event: KeyPointer): KeyPointer {
   const native =
     "nativeEvent" in event ? (event.nativeEvent as PointerEvent | undefined) : undefined;

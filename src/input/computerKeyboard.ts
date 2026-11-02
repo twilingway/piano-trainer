@@ -9,6 +9,8 @@ import { OVERDRIVE_KEY } from "../wordTyping/inputTokens";
 export interface KeyboardInputOptions {
   readonly bindings: KeyboardBindings;
   readonly blocked?: boolean;
+  /** Camera controls reserved by the active view; keyboard assignment capture still wins. */
+  readonly reservedCodes?: ReadonlySet<string>;
   readonly capture?: (code: string) => void;
   readonly cancelCapture?: () => void;
   /**
@@ -63,6 +65,7 @@ export function listenToComputerKeyboard(
       return;
     }
     if (options.blocked || event.defaultPrevented || isTypingTarget(event.target)) return;
+    if (options.reservedCodes?.has(event.code)) return;
     const altGraph = event.getModifierState("AltGraph");
     if (event.metaKey || (event.ctrlKey && !altGraph)) return;
     // Prevent Alt from focusing the browser menu while it modifies piano notes.

@@ -10,6 +10,7 @@ import { COURSE_STAGE_LABELS } from "../ui/CourseCards";
 import { stagePhrases } from "../course/model";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedCourseLessonBar } from "./ConnectedCourse";
+import { MUSIC_COURSE_LABELS } from "../ui/MusicCourse";
 import { READING_TASK_LABELS } from "../ui/ReadingCourse";
 import { BASS_READING_TASK_LABELS } from "../ui/BassReadingProgress";
 import { INTERVAL_MODE_LABELS } from "../ui/IntervalCourse";
@@ -24,6 +25,7 @@ export function ConnectedPlayerHeader() {
     settingsOpen,
     song,
     playing,
+    countdown,
     fullscreenActive,
     currentLesson,
     hasArrangement,
@@ -39,6 +41,7 @@ export function ConnectedPlayerHeader() {
     trainerSnapshotSource,
     trainerMode,
     trainerSpeed,
+    trainerMetronome,
     inputMidiName,
     courseActive,
     comparing,
@@ -49,13 +52,17 @@ export function ConnectedPlayerHeader() {
     independentRhythmActive,
     rhythmActive,
     intervalMode,
-    practiceActive
+    practiceActive,
+    musicCourse,
+    lessonAction
   } = useRuntimeSelector(
     (runtime) => ({
       sound: runtime.sound,
+      lessonAction: runtime.practiceActive ? runtime.lessonAction : null,
       settingsOpen: runtime.settingsOpen,
       song: runtime.song,
       playing: runtime.playing,
+      countdown: runtime.countdown,
       fullscreenActive: runtime.fullscreen.active,
       currentLesson: runtime.current.lesson,
       hasArrangement: !runtime.practiceActive && runtime.current.arrangement !== undefined,
@@ -71,6 +78,7 @@ export function ConnectedPlayerHeader() {
       trainerSnapshotSource: runtime.trainer.snapshotSource,
       trainerMode: runtime.trainer.mode,
       trainerSpeed: runtime.trainer.speed,
+      trainerMetronome: runtime.trainer.metronome,
       inputMidiName: runtime.input.midiName,
       courseActive: runtime.course.active,
       comparing: runtime.comparing,
@@ -81,7 +89,8 @@ export function ConnectedPlayerHeader() {
       independentRhythmActive: runtime.independentRhythm.active,
       rhythmActive: runtime.rhythm.active,
       intervalMode: runtime.intervals.active ? runtime.intervals.mode : null,
-      practiceActive: runtime.practiceActive
+      practiceActive: runtime.practiceActive,
+      musicCourse: runtime.music.active ? runtime.music.view.course : null
     }),
     shallowEqual
   );
@@ -97,6 +106,7 @@ export function ConnectedPlayerHeader() {
   const screenToggleEditing = useRuntimeCommand((runtime) => runtime.screen.toggleEditing);
   const trainerSetMode = useRuntimeCommand((runtime) => runtime.trainer.setMode);
   const trainerSetSpeed = useRuntimeCommand((runtime) => runtime.trainer.setSpeed);
+  const trainerSetMetronome = useRuntimeCommand((runtime) => runtime.trainer.setMetronome);
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   const computerKeyboard_endEditing = useRuntimeCommand(
     (runtime) => runtime.computerKeyboard.endEditing
@@ -110,29 +120,38 @@ export function ConnectedPlayerHeader() {
           source={trainerSnapshotSource}
           song={wordPracticeSong}
           title={
-            independentRhythmActive
-              ? t(INDEPENDENT_RHYTHM_TITLE)
-              : heldBassActive
-                ? t(HELD_BASS_TITLE)
-                : twoHandActive
-                  ? t(TWO_HAND_TITLE)
-                  : rhythmActive
-                    ? t("Ритм под метроном")
-                    : intervalMode
-                      ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
-                      : readingTask
-                        ? readingIsBass && readingTask !== "check"
-                          ? t(BASS_READING_TASK_LABELS[readingTask])
-                          : `${t("Читаю пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
-                        : courseActive
-                          ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
-                          : lessonDisplayTitle(song.title, currentLesson, t)
+            musicCourse
+              ? t(MUSIC_COURSE_LABELS[musicCourse])
+              : independentRhythmActive
+                ? t(INDEPENDENT_RHYTHM_TITLE)
+                : heldBassActive
+                  ? t(HELD_BASS_TITLE)
+                  : twoHandActive
+                    ? t(TWO_HAND_TITLE)
+                    : rhythmActive
+                      ? t("Ритм под метроном")
+                      : intervalMode
+                        ? `${t("Интервалы")} · ${t(INTERVAL_MODE_LABELS[intervalMode])}`
+                        : readingTask
+                          ? readingIsBass && readingTask !== "check"
+                            ? t(BASS_READING_TASK_LABELS[readingTask])
+                            : `${t("Правая рука: пять нот")} · ${t(READING_TASK_LABELS[readingTask])}`
+                          : courseActive
+                            ? `${t(courseActive.lesson.title, { number: courseActive.lesson.number })} · ${t(COURSE_STAGE_LABELS[courseActive.selection.stage])} · ${courseActive.phrase.title ? t(courseActive.phrase.title) : t("Фраза {number}", { number: stagePhrases(courseActive.lesson, courseActive.selection.stage).findIndex((phrase) => phrase.id === courseActive.phrase.id) + 1 })}`
+                            : lessonDisplayTitle(song.title, currentLesson, t)
           }
           playing={playing}
+          playAction={
+            lessonAction
+              ? { label: t(lessonAction.labelKey), disabled: lessonAction.disabled }
+              : undefined
+          }
+          countdownActive={countdown != null}
           soundLoading={sound === "loading" || (wordEnabled && (wordPending || Boolean(wordError)))}
           mode={trainerMode}
           {...playChoice}
           speed={trainerSpeed}
+          metronome={{ enabled: trainerMetronome, onChange: trainerSetMetronome }}
           fixedPractice={practiceActive}
           difficulty={hasArrangement ? { simplified, onSimplified } : undefined}
           midi={inputMidiName}

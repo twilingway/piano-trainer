@@ -3,8 +3,10 @@ import { parseDeviceRange } from "../input/deviceRange";
 import { DEFAULT_KEY_LIGHTS } from "../input/keyLights";
 import { parseMelodyOutput } from "../input/melodyOutput";
 import { parseKeyboardPrefs } from "../input/keyboardLayouts";
+import { AUTO_OUTPUT_CHOICE } from "../input/midiOutput";
 import { normalizeGamePreferences } from "./gamePreferences";
 import { getInterfaceLanguage } from "./interfaceLanguage";
+import { normalizeInstrumentProfilePreferences } from "./instrumentProfilePreferences";
 import { normalizePlayerPrefs, type PlayerPrefs } from "./playerPrefs";
 import type { PreferencesState } from "./preferencesSlice";
 import { persistenceErrorChanged, type PersistenceState } from "./persistenceSlice";
@@ -31,6 +33,7 @@ export const PREFERENCE_KEYS = {
   midiOutput: "midi-output-v1",
   keyLights: "key-lights-v1",
   melodyOutput: "melody-output-v1",
+  instrumentProfiles: "instrument-profiles-v1",
   fullscreen: "fullscreen-preferred",
   timing: "piano-trainer:timing-v1"
 } satisfies Record<keyof PreferencesState, string>;
@@ -82,7 +85,18 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
   );
   const framing = activeViewFraming(viewProfiles);
   const lights = record(json(PREFERENCE_KEYS.keyLights));
-  const output = record(json(PREFERENCE_KEYS.midiOutput));
+  const rawOutput = read(PREFERENCE_KEYS.midiOutput);
+  let decodedOutput: unknown = null;
+  if (rawOutput !== null) {
+    try {
+      decodedOutput = JSON.parse(rawOutput) as unknown;
+    } catch {
+      errors[persistenceKey(PREFERENCE_KEYS.midiOutput, "read")] = "invalid";
+    }
+  }
+  const output = record(decodedOutput);
+  const missingOutput =
+    rawOutput === null && !errors[persistenceKey(PREFERENCE_KEYS.midiOutput, "read")];
   const mobile =
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 640px), (pointer: coarse) and (max-height: 640px)").matches;
@@ -108,8 +122,12 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
     viewProfiles,
     deviceRange: parseDeviceRange(json(PREFERENCE_KEYS.deviceRange)),
     melodyOutput: parseMelodyOutput(json(PREFERENCE_KEYS.melodyOutput)),
-    midiOutput:
-      typeof output.id === "string" && typeof output.name === "string"
+    instrumentProfiles: normalizeInstrumentProfilePreferences(
+      json(PREFERENCE_KEYS.instrumentProfiles)
+    ),
+    midiOutput: missingOutput
+      ? AUTO_OUTPUT_CHOICE
+      : typeof output.id === "string" && typeof output.name === "string"
         ? { id: output.id, name: output.name }
         : null,
     keyLights: {

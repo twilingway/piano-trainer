@@ -8,7 +8,9 @@ import {
   startSoundOnFirstGesture,
   ensureMetronomeSound,
   metronomeSoundReady,
-  soundAllOff
+  soundAllOff,
+  soundClick,
+  stopClickSound
 } from "./pianoSound";
 import { stopRhythmTapSound } from "./rhythmTapSound";
 vi.mock("./rhythmTapSound", () => ({ stopRhythmTapSound: vi.fn() }));
@@ -42,6 +44,12 @@ const audio = vi.hoisted(() => ({
   start: vi.fn<() => Promise<void>>(),
   load: vi.fn<() => Promise<void>>(),
   timeout: vi.fn(),
+  voices: [] as {
+    volume: { value: number };
+    triggerAttackRelease: ReturnType<typeof vi.fn>;
+    dispose: ReturnType<typeof vi.fn>;
+    toDestination: () => unknown;
+  }[],
   changed: new Set<() => void>()
 }));
 vi.mock("tone", () => ({
@@ -60,6 +68,16 @@ vi.mock("tone", () => ({
     }
   }),
   getDestination: () => ({ mute: audio.mute, volume: { value: audio.volume } }),
+  Synth: vi.fn(function () {
+    const voice = {
+      volume: { value: 0 },
+      triggerAttackRelease: vi.fn(),
+      dispose: vi.fn(),
+      toDestination: (): unknown => voice
+    };
+    audio.voices.push(voice);
+    return voice;
+  }),
   Sampler: vi.fn(function () {
     return { toDestination: () => ({}) };
   })
@@ -88,6 +106,19 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("actual piano readiness", () => {
+  it("disposes a future click voice and creates a fresh one on the next run", () => {
+    soundClick(false, 12);
+    const voice = audio.voices.at(-1);
+    if (!voice) throw new Error("Expected a click voice");
+    expect(voice.triggerAttackRelease).toHaveBeenCalledWith("G6", 0.03, 12);
+    stopClickSound();
+    expect(voice.dispose).toHaveBeenCalledOnce();
+    stopClickSound();
+    expect(voice.dispose).toHaveBeenCalledOnce();
+    soundClick(false, 14);
+    expect(audio.voices.at(-1)).not.toBe(voice);
+    stopClickSound();
+  });
   it("observes audio suspension and releases its own state listener", () => {
     const callback = vi.fn();
     const stop = onPianoSoundInterrupted(callback);

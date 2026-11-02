@@ -104,7 +104,6 @@ export const independentRhythmMessages: Messages = {
   "Начать проверку пульса": { en: "Start the pulse check" },
   "Начать два ритма": { en: "Start two rhythms" },
   "Повторить с проверки пульса": { en: "Retry from the pulse check" },
-  "Выйти из двух ритмов": { en: "Leave two rhythms" },
   "Перейти к курсу «Ритм»": { en: "Go to the Rhythm course" },
   "Пульс: 8 четвертей · 60 BPM · окно ±150 мс · 0 лишних атак.": {
     en: "Pulse: 8 quarter notes · 60 BPM · ±150 ms window · no extra attacks."

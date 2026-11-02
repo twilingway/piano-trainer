@@ -90,8 +90,14 @@ export function keyboard88Model(scene: Object3D): Keyboard88 {
     if (!node) throw new Error(`keyboard88 is missing case ${name}`);
     node.traverse((child) => {
       if (!(child instanceof Mesh)) return;
-      const geometry = (child.geometry as BufferGeometry).clone().applyMatrix4(child.matrixWorld);
+      // The asset averages case normals across hard edges: the rim light then lands on the board's
+      // back face and its glossy clearcoat turns the LTC noise into white speckles. Shade it flat.
+      const source = child.geometry as BufferGeometry;
+      const geometry = (source.index ? source.toNonIndexed() : source.clone()).applyMatrix4(
+        child.matrixWorld
+      );
       geometry.translate(-KEYBOARD_C4.x, -KEYBOARD_C4.y, -KEYBOARD_C4.z);
+      geometry.computeVertexNormals();
       geometries.add(geometry);
       const mesh = new Mesh(geometry, child.material);
       mesh.name = name;

@@ -9,7 +9,6 @@ export const bassReadingMessages: Messages = {
   },
   "Знакомство с левой рукой": { en: "Meet the left-hand position" },
   "Сохранено басовых серий: {number}": { en: "Saved bass reading sets: {number}" },
-  "Выйти из басового чтения": { en: "Leave bass reading" },
   "Мой прогресс басового чтения": { en: "My bass reading progress" },
   "Сводка басового чтения: последние 20 серий каждого задания. Ноты и фразы учитываются отдельно.":
     {

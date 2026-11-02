@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import {
+  Box3,
   Bone,
   BoxGeometry,
   Float32BufferAttribute,
@@ -70,6 +71,48 @@ function setup() {
 afterEach(() => vi.restoreAllMocks());
 
 describe("inspection camera gestures", () => {
+  it("flies along the full view direction with frame delta, preserving orientation and stopping on release", () => {
+    const v = setup();
+    v.view.setMovement(true);
+    const direction = v.view.camera.getWorldDirection(new Vector3());
+    const before = v.view.camera.position.clone();
+    const rotation = v.view.camera.quaternion.clone();
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW", cancelable: true }));
+    v.view.update(800, 600, v.subject, 0.02);
+    const step = v.view.camera.position.clone().sub(before);
+    expect(step.length()).toBeGreaterThan(1);
+    expect(step.clone().normalize().distanceTo(direction)).toBeLessThan(0.00001);
+    expect(v.view.camera.quaternion.angleTo(rotation)).toBeLessThan(0.00001);
+    window.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+    const stopped = v.view.camera.position.clone();
+    v.view.update(800, 600, v.subject, 0.02);
+    expect(v.view.camera.position.distanceTo(stopped)).toBeLessThan(0.00001);
+    v.dispose();
+  });
+
+  it("normalizes diagonals, caps background delta and clears movement on reset or mode exit", () => {
+    const v = setup();
+    v.view.setMovement(true);
+    const before = v.view.camera.position.clone();
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+    v.view.update(800, 600, v.subject, 0.05);
+    const single = v.view.camera.position.distanceTo(before);
+    const diagonal = v.view.camera.position.clone();
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyD" }));
+    v.view.update(800, 600, v.subject, 10);
+    expect(v.view.camera.position.distanceTo(diagonal)).toBeCloseTo(single, 5);
+    v.view.invalidate();
+    v.view.update(800, 600, v.subject, 0.05);
+    const reset = v.view.camera.position.clone();
+    v.view.update(800, 600, v.subject, 0.05);
+    expect(v.view.camera.position.distanceTo(reset)).toBeLessThan(0.00001);
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+    v.view.setEnabled(false);
+    v.view.setEnabled(true);
+    v.view.update(800, 600, v.subject, 0.05);
+    expect(v.view.camera.position.distanceTo(reset)).toBeLessThan(0.00001);
+    v.dispose();
+  });
   it("orbits on MMB; Shift+MMB pans without rotating; LMB stays piano input", () => {
     const v = setup();
     const initial = v.view.camera.position.clone();
@@ -112,6 +155,49 @@ describe("inspection camera gestures", () => {
           expect(Math.abs(point.y)).toBeLessThan(1);
           expect(Math.abs(point.z)).toBeLessThan(1);
         }
+    v.dispose();
+  });
+
+  it("preserves orbit, pan and zoom through layout and bounds updates until an explicit reset", () => {
+    const v = setup();
+    const initial = v.view.camera.position.clone();
+    v.down();
+    v.move();
+    v.up();
+    v.down(1, true);
+    v.move(360, 270);
+    v.up();
+    v.canvas.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, cancelable: true }));
+    const position = v.view.camera.position.clone();
+    const rotation = v.view.camera.quaternion.clone();
+    expect(position.distanceTo(initial)).toBeGreaterThan(1);
+    const geometry = (v.subject.children[0] as Mesh).geometry;
+    const bounds = vi.spyOn(geometry, "computeBoundingBox");
+    v.subject.add(new Mesh(new BoxGeometry(700, 900, 500)));
+    v.view.invalidate(false);
+    v.view.setEnabled(false);
+    v.view.setEnabled(true);
+    v.view.update(1200, 500, v.subject);
+    expect(bounds).toHaveBeenCalledOnce();
+    expect(v.view.camera.position.distanceTo(position)).toBeLessThan(0.00001);
+    expect(v.view.camera.quaternion.angleTo(rotation)).toBeLessThan(0.00001);
+    v.view.invalidate();
+    v.view.update(1200, 500, v.subject);
+    expect(v.view.camera.position.distanceTo(position)).toBeGreaterThan(1);
+    v.dispose();
+  });
+
+  it.each([-100, 100])("preserves extreme zoom %s when bounds shrink or grow", (deltaY) => {
+    const v = setup();
+    for (let n = 0; n < 220; n++)
+      v.canvas.dispatchEvent(new WheelEvent("wheel", { deltaY, cancelable: true }));
+    const position = v.view.camera.position.clone();
+    for (const scale of [0.01, 100]) {
+      v.subject.scale.setScalar(scale);
+      v.view.invalidate(false);
+      v.view.update(1600, 400, v.subject);
+      expect(v.view.camera.position.distanceTo(position)).toBeLessThan(0.00001);
+    }
     v.dispose();
   });
 
@@ -198,4 +284,63 @@ it("keeps submillimetre depth detail and fits far to orbit distance without resc
   }
   expect(bounds).not.toHaveBeenCalled();
   v.dispose();
+});
+
+it("frames the instrument on reset, keeps road and poster inside depth and never moves a pose when a tile becomes ready", () => {
+  const v = setup();
+  const position = v.view.camera.position.clone();
+  v.view.setScoreBounds(new Box3(new Vector3(-750, 2200, -260), new Vector3(750, 2600, -260)));
+  v.view.setRoadBounds(new Box3(new Vector3(-900, 0, -9000), new Vector3(900, 2000, -200)));
+  v.view.update(800, 600, v.subject);
+  expect(v.view.camera.position.distanceTo(position)).toBeLessThan(1e-6);
+  v.view.reset(v.subject);
+  expect(v.view.camera.position.distanceTo(position)).toBeLessThan(1e-6);
+  const camera = v.view.camera;
+  let span = 0;
+  for (const x of [-300, 300])
+    for (const y of [-400, 400])
+      for (const z of [-200, 200]) {
+        const point = new Vector3(x, y, z).project(camera);
+        expect(Math.abs(point.x)).toBeLessThan(1);
+        expect(Math.abs(point.y)).toBeLessThan(1);
+        span = Math.max(span, Math.abs(point.x), Math.abs(point.y));
+      }
+  expect(span).toBeGreaterThan(0.8);
+  for (const point of [
+    new Vector3(-900, 0, -9000),
+    new Vector3(900, 2000, -9000),
+    new Vector3(-750, 2600, -260)
+  ])
+    expect(Math.abs(point.project(camera).z)).toBeLessThan(1);
+  v.dispose();
+});
+
+it("changes world FOV without resetting the saved pose or keyboard projection", () => {
+  const f = setup();
+  const pose = f.view.camera.position.clone();
+  const rotation = f.view.camera.quaternion.clone();
+  f.view.setFov(80);
+  f.view.update(800, 600, f.subject);
+  expect(f.view.camera.fov).toBe(80);
+  expect(f.view.camera.position.equals(pose)).toBe(true);
+  expect(f.view.camera.quaternion.angleTo(rotation)).toBeLessThan(0.000001);
+  f.view.setFov(500);
+  expect(f.view.camera.fov).toBe(100);
+  f.view.setFov(Number.NaN);
+  expect(f.view.camera.fov).toBe(45);
+  f.dispose();
+});
+
+it("preserves the free manual pose when structural field, score and aspect change", () => {
+  const f = setup();
+  const before = f.view.camera.position.clone();
+  f.view.setRoadBounds(
+    new Box3(new Vector3(-50000, -30000, -90000), new Vector3(50000, 8000, -1000))
+  );
+  f.view.setScoreBounds(
+    new Box3(new Vector3(-60000, 50000, -30000), new Vector3(60000, 70000, -20000))
+  );
+  f.view.update(320, 600, f.subject);
+  expect(f.view.camera.position.distanceTo(before)).toBeLessThan(0.000001);
+  f.dispose();
 });

@@ -1,3 +1,4 @@
+import { SettingsGroup } from "./SettingsGroup";
 import { useI18n } from "../../app/useI18n";
 import type { Dispatch, SetStateAction } from "react";
 
@@ -50,160 +51,171 @@ export function SongSettings({
   return (
     <div className="settings-list">
       {arrangement && (
-        <>
-          <label className="setting">
-            <span>{t("Сложность")}</span>
-            <select
-              className="game-select"
-              aria-label={t("Сложность")}
-              value={arrangement.simplified ? "simplified" : "full"}
-              onChange={(event) => {
-                arrangement.onSimplified(event.target.value === "simplified");
-              }}
-            >
-              <option value="full">{t("Полная")}</option>
-              <option value="simplified">{t("Упрощённая")}</option>
-            </select>
-          </label>
-          <p className="setting-hint">
-            {arrangement.simplified
-              ? t("Мелодия в правой руке, слева бас и до двух нот аккорда.")
-              : t("Все ноты песни.")}
-          </p>
-          <label className="setting">
-            <span>{t("Живое исполнение из MIDI")}</span>
-            <input
-              type="checkbox"
-              checked={!arrangement.asWritten}
-              onChange={(event) => {
-                arrangement.onAsWritten(!event.target.checked);
-              }}
-            />
-          </label>
-          <p className="setting-hint">
-            {arrangement.asWritten
-              ? t("Ноты падают как на стане: ровно по долям, без дублей.")
-              : t("Время и дубли как в файле: падающие ноты могут расходиться со станом.")}
-          </p>
-        </>
+        <SettingsGroup title={t("Обработка MIDI")}>
+          <div className="settings-list">
+            <label className="setting">
+              <span>{t("Сложность")}</span>
+              <select
+                className="game-select"
+                aria-label={t("Сложность")}
+                value={arrangement.simplified ? "simplified" : "full"}
+                onChange={(event) => {
+                  arrangement.onSimplified(event.target.value === "simplified");
+                }}
+              >
+                <option value="full">{t("Полная")}</option>
+                <option value="simplified">{t("Упрощённая")}</option>
+              </select>
+            </label>
+            <p className="setting-hint">
+              {arrangement.simplified
+                ? t("Мелодия в правой руке, слева бас и до двух нот аккорда.")
+                : t("Все ноты песни.")}
+            </p>
+            <label className="setting">
+              <span>{t("Живое исполнение из MIDI")}</span>
+              <input
+                type="checkbox"
+                checked={!arrangement.asWritten}
+                onChange={(event) => {
+                  arrangement.onAsWritten(!event.target.checked);
+                }}
+              />
+            </label>
+            <p className="setting-hint">
+              {arrangement.asWritten
+                ? t("Ноты падают как на стане: ровно по долям, без дублей.")
+                : t("Время и дубли как в файле: падающие ноты могут расходиться со станом.")}
+            </p>
+          </div>
+        </SettingsGroup>
       )}
-      {sourceKey && (
-        <label className="setting">
-          <span>{t("Тональность")}</span>
-          <span className="setting-control">
-            <button
-              type="button"
-              className="game-button"
-              aria-label={t("На полтона ниже")}
-              onClick={() => {
-                onTranspose((value) => Math.max(-11, value - 1));
-              }}
-            >
-              −
-            </button>
-            <select
-              className="game-select"
-              aria-label={t("Тональность")}
-              value={(sourceKey.tonic + transpose + 12) % 12}
-              onChange={(event) => {
-                onTranspose(shiftBetween(sourceKey.tonic, Number(event.target.value)));
-              }}
-            >
-              {Array.from({ length: 12 }, (_, tonic) => {
-                const shift = shiftBetween(sourceKey.tonic, tonic);
-                const moved = transposeKey(sourceKey, shift);
-                return (
-                  <option key={tonic} value={tonic}>
-                    {t(keyName(moved))}
-                    {shift === 0
-                      ? sourceKey.fifths === undefined
-                        ? t(" (исходная)")
-                        : t(" (как в нотах)")
-                      : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <button
-              type="button"
-              className="game-button"
-              aria-label={t("На полтона выше")}
-              onClick={() => {
-                onTranspose((value) => Math.min(11, value + 1));
-              }}
-            >
-              +
-            </button>
-          </span>
-        </label>
-      )}
-      <div className="setting">
-        <span>{t("Октава")}</span>
-        <span className="setting-control">
-          <button
-            type="button"
-            className="game-button"
-            aria-label={t("Октавой ниже")}
-            disabled={octave <= -2}
-            onClick={() => {
-              onOctave(octave - 1);
-            }}
-          >
-            −
-          </button>
-          <span className="digits">{octave > 0 ? `+${String(octave)}` : String(octave)}</span>
-          <button
-            type="button"
-            className="game-button"
-            aria-label={t("Октавой выше")}
-            disabled={octave >= 2}
-            onClick={() => {
-              onOctave(octave + 1);
-            }}
-          >
-            +
-          </button>
-        </span>
-      </div>
-      {outside > 0 && (
-        <div className="setting">
-          <span className="setting-hint">
-            {t("Нот вне вашей клавиатуры: {count}.", { count: outside })}
-          </span>
-          {move !== 0 && (
-            <button
-              type="button"
-              className="game-button"
-              onClick={() => {
-                onOctave(bestOctave);
-              }}
-            >
-              {move === -1
-                ? t("Октава вниз")
-                : move === 1
-                  ? t("Октава вверх")
-                  : move < 0
-                    ? t("Октав вниз: {count}", { count: -move })
-                    : t("Октав вверх: {count}", { count: move })}
-            </button>
+      <SettingsGroup title={t("Тональность и диапазон")}>
+        <div className="settings-list">
+          {sourceKey && (
+            <label className="setting">
+              <span>{t("Тональность")}</span>
+              <span className="setting-control">
+                <button
+                  type="button"
+                  className="game-button"
+                  aria-label={t("На полтона ниже")}
+                  onClick={() => {
+                    onTranspose((value) => Math.max(-11, value - 1));
+                  }}
+                >
+                  −
+                </button>
+                <select
+                  className="game-select"
+                  aria-label={t("Тональность")}
+                  data-setting-target="song-key"
+                  value={(sourceKey.tonic + transpose + 12) % 12}
+                  onChange={(event) => {
+                    onTranspose(shiftBetween(sourceKey.tonic, Number(event.target.value)));
+                  }}
+                >
+                  {Array.from({ length: 12 }, (_, tonic) => {
+                    const shift = shiftBetween(sourceKey.tonic, tonic);
+                    const moved = transposeKey(sourceKey, shift);
+                    return (
+                      <option key={tonic} value={tonic}>
+                        {t(keyName(moved))}
+                        {shift === 0
+                          ? sourceKey.fifths === undefined
+                            ? t(" (исходная)")
+                            : t(" (как в нотах)")
+                          : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  type="button"
+                  className="game-button"
+                  aria-label={t("На полтона выше")}
+                  onClick={() => {
+                    onTranspose((value) => Math.min(11, value + 1));
+                  }}
+                >
+                  +
+                </button>
+              </span>
+            </label>
+          )}
+          <div className="setting">
+            <span>{t("Октава")}</span>
+            <span className="setting-control">
+              <button
+                type="button"
+                className="game-button"
+                aria-label={t("Октавой ниже")}
+                disabled={octave <= -2}
+                onClick={() => {
+                  onOctave(octave - 1);
+                }}
+              >
+                −
+              </button>
+              <span className="digits">{octave > 0 ? `+${String(octave)}` : String(octave)}</span>
+              <button
+                type="button"
+                className="game-button"
+                aria-label={t("Октавой выше")}
+                disabled={octave >= 2}
+                onClick={() => {
+                  onOctave(octave + 1);
+                }}
+              >
+                +
+              </button>
+            </span>
+          </div>
+          {outside > 0 && (
+            <div className="setting">
+              <span className="setting-hint">
+                {t("Нот вне вашей клавиатуры: {count}.", { count: outside })}
+              </span>
+              {move !== 0 && (
+                <button
+                  type="button"
+                  className="game-button"
+                  onClick={() => {
+                    onOctave(bestOctave);
+                  }}
+                >
+                  {move === -1
+                    ? t("Октава вниз")
+                    : move === 1
+                      ? t("Октава вверх")
+                      : move < 0
+                        ? t("Октав вниз: {count}", { count: -move })
+                        : t("Октав вверх: {count}", { count: move })}
+                </button>
+              )}
+            </div>
           )}
         </div>
-      )}
-      <div className="setting">
-        <span>{t("Пальцы, исправленные кликом по ноте")}</span>
-        <button
-          type="button"
-          className="game-button"
-          onClick={onResetFingers}
-          disabled
-          title={t("Пальцы пока нельзя менять")}
-        >
-          {t("Сбросить пальцы")}
-        </button>
-      </div>
-      <p className="setting-hint">
-        {t("Пальцы пока нельзя менять. Клик по ноте на стане — играть с этого места.")}
-      </p>
+      </SettingsGroup>
+      <SettingsGroup title={t("Аппликатура")}>
+        <div className="settings-list">
+          <div className="setting">
+            <span>{t("Пальцы, исправленные кликом по ноте")}</span>
+            <button
+              type="button"
+              className="game-button"
+              onClick={onResetFingers}
+              disabled
+              title={t("Пальцы пока нельзя менять")}
+            >
+              {t("Сбросить пальцы")}
+            </button>
+          </div>
+          <p className="setting-hint">
+            {t("Пальцы пока нельзя менять. Клик по ноте на стане — играть с этого места.")}
+          </p>
+        </div>
+      </SettingsGroup>
     </div>
   );
 }

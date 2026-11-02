@@ -1,5 +1,5 @@
-import { Container, Graphics } from "pixi.js";
-import type { Renderer, Texture } from "pixi.js";
+import { Container, Graphics } from "./flatThree";
+import type { Renderer, Texture } from "./flatThree";
 
 import { isBlackKey } from "../fingering/fingering";
 import type { KeyRect } from "./keyboardLayout";

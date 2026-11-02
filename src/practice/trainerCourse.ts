@@ -1,5 +1,6 @@
 import type { KeyEvent } from "../input/midiInput";
 import type { SongNote } from "../song/song";
+import type { LessonFingerCue } from "../reading/fingerCues";
 import type { NoteStatus, PracticeEvent, PracticeSession, PracticeStats } from "./session";
 import type { TimingConfig } from "./timingConfig";
 import type { ReadingAttackGate, TrainerReadingPolicy } from "./readingPolicy";
@@ -7,6 +8,7 @@ import type { TrainerRhythmPolicy } from "./rhythmPolicy";
 import type { TrainerPairPolicy } from "./twoHandPolicy";
 import type { TrainerHeldBassPolicy } from "./heldBassPolicy";
 import type { TrainerIndependentRhythmPolicy } from "./independentRhythmPolicy";
+import type { TrainerMusicPolicy } from "./musicPolicy";
 
 export interface CoursePolicies {
   readonly reading: TrainerReadingPolicy;
@@ -14,6 +16,7 @@ export interface CoursePolicies {
   readonly pair: TrainerPairPolicy;
   readonly heldBass: TrainerHeldBassPolicy;
   readonly independentRhythm: TrainerIndependentRhythmPolicy;
+  readonly music: TrainerMusicPolicy;
 }
 export type CourseKind = keyof CoursePolicies;
 
@@ -25,6 +28,7 @@ export interface CourseGuidance {
     readonly waitingFor: readonly SongNote[];
     readonly hints: boolean;
     readonly neutralKeys: boolean;
+    readonly fingerCues?: readonly LessonFingerCue[];
   };
 }
 

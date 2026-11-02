@@ -1,3 +1,5 @@
+import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "./flatEffectSettings";
+import { freeNoteField, noteLookAhead, screenNoteField } from "./noteSpeed";
 import type { HudLayer } from "./HudLayer";
 import type { SongNote } from "../song/song";
 import { noteColor } from "./computerKeys";
@@ -5,25 +7,7 @@ import type { ComputerKeys } from "./computerKeys";
 import type { FrameState } from "./frameState";
 import type { FxKey, FxLayer } from "./FxLayer";
 import type { KeyRect } from "./keyboardLayout";
-import type { RoadLayer, Strike } from "./RoadLayer";
-
-/** Sounding notes light the road at their key centers, including the program's accompaniment. */
-export function viewStrikes(
-  playing: ReadonlyMap<number, SongNote>,
-  state: FrameState,
-  keys: ReadonlyMap<number, KeyRect>,
-  computer: ComputerKeys | undefined
-): Strike[] {
-  const strikes: Strike[] = [];
-  for (const [pitch, note] of playing) {
-    const key = keys.get(pitch);
-    // The player's own notes while held, and the program's while it sounds them.
-    const own = state.owns(note) && state.pressed.has(pitch);
-    if (!key || !(own || state.sounding.has(pitch))) continue;
-    strikes.push({ pitch, x: key.x + key.width / 2, color: noteColor(note, computer) });
-  }
-  return strikes;
-}
+import type { RoadLayer } from "./RoadLayer";
 
 /** Drive the existing strike flashes and held-key fire from the shared frame snapshot. */
 export function drawViewEffects(
@@ -35,8 +19,9 @@ export function drawViewEffects(
   road: RoadLayer | undefined,
   pan: number,
   hitY: number,
-  wasSounding: Set<number>,
-  deltaSeconds: number
+  wasSounding: Set<string>,
+  deltaSeconds: number,
+  effects: FlatEffectOptions = ALL_FLAT_EFFECTS
 ): void {
   const hitLineY = road ? road.hitLineY : hitY;
   const fxKey = (pitch: number): FxKey | undefined => {
@@ -59,12 +44,17 @@ export function drawViewEffects(
     if (key) struck.push(key);
   }
   // The program's own notes, for the hand the player leaves to it, flash as they sound.
-  for (const pitch of state.sounding) {
-    const key = wasSounding.has(pitch) ? undefined : fxKey(pitch);
-    if (key) struck.push(key);
+  if (state.playing !== false) {
+    const active = new Set<string>();
+    for (const pitch of state.sounding) {
+      const id = playing.get(pitch)?.id ?? `pitch:${String(pitch)}`;
+      const key = wasSounding.has(id) ? undefined : fxKey(pitch);
+      if (key) struck.push(key);
+      active.add(id);
+    }
+    wasSounding.clear();
+    for (const id of active) wasSounding.add(id);
   }
-  wasSounding.clear();
-  for (const pitch of state.sounding) wasSounding.add(pitch);
   // A note burns away on its key while it sounds: the player's held notes and the program's.
   const sounding: FxKey[] = [];
   for (const [pitch, note] of playing) {
@@ -72,7 +62,7 @@ export function drawViewEffects(
     const key = own || state.sounding.has(pitch) ? fxKey(pitch) : undefined;
     if (key) sounding.push(key);
   }
-  fx.draw(struck, sounding, hitLineY, deltaSeconds);
+  fx.draw(struck, sounding, hitLineY, state.playing === false ? 0 : deltaSeconds, effects);
 }
 
 /** Transient grades keep their screen HUD ownership in every camera mode. */
@@ -98,4 +88,30 @@ export function drawViewHud(
     hitLineY,
     deltaSeconds
   );
+}
+
+/**
+ * The notes' look-ahead is the time the shared note speed needs to cross the field: measured on
+ * screen at the hit line of the road (around `keyX`) when it draws the notes, else the flat lane.
+ * The free camera's own field is measured in the world instead. Song time is untouched.
+ */
+export function roadFrameState(
+  state: FrameState,
+  road:
+    | (Pick<RoadLayer, "notePlace"> & Partial<Pick<RoadLayer, "freeCamera" | "freeRoutes">>)
+    | undefined,
+  hitY: number,
+  whiteWidth: number,
+  keyX = 0
+): FrameState {
+  // The free camera never runs inside the performance scene, so its lanes are what the notes walk.
+  const lanes = road?.freeCamera ? road.freeRoutes?.lanes : undefined;
+  const free = lanes && freeNoteField(lanes);
+  const field =
+    free ??
+    (road
+      ? screenNoteField((x, y) => road.notePlace(x, y), keyX, whiteWidth, hitY)
+      : { length: hitY, whiteStep: whiteWidth });
+  const lookAhead = field && noteLookAhead(field.length, field.whiteStep);
+  return { ...state, lookAhead: lookAhead ?? state.lookAhead };
 }

@@ -2,7 +2,7 @@ export const NOTE_FACE_WIDTH = 64;
 export const NOTE_FACE_HEIGHT = 84;
 export const NOTE_BLOOM_MARGIN = 48;
 
-type CanvasFactory = (width: number, height: number) => HTMLCanvasElement;
+export type CanvasFactory = (width: number, height: number) => HTMLCanvasElement;
 
 /** Neutral masks: colour, emitted light, exterior bloom and the glass's white bevel. */
 export function bakeNoteMaterial(createCanvas: CanvasFactory) {
@@ -86,4 +86,17 @@ export function bakeNoteMaterial(createCanvas: CanvasFactory) {
     bloomContext.putImageData(pixels, 0, 0);
   }
   return { face, emission, bloom, bevel };
+}
+
+/** Shared opaque raised-note backing; both projected and direct notes use the same mask. */
+export function bakeNotePlate(createCanvas: CanvasFactory): HTMLCanvasElement {
+  const canvas = createCanvas(NOTE_FACE_WIDTH, NOTE_FACE_HEIGHT);
+  const context = canvas.getContext("2d");
+  if (context) {
+    context.fillStyle = "#fff";
+    context.beginPath();
+    context.roundRect(2, 2, NOTE_FACE_WIDTH - 4, NOTE_FACE_HEIGHT - 4, 8);
+    context.fill();
+  }
+  return canvas;
 }

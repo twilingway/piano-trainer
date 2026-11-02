@@ -1,9 +1,9 @@
 import { Group, SpotLight, Vector3 } from "three";
-import type { Texture } from "pixi.js";
+import type { Texture } from "../flatThree";
 import { describe, expect, it } from "vitest";
 import type { EnergySource } from "../noteEnergy";
 import { layoutKeyboard } from "../keyboardLayout";
-import type { KeysScene } from "../PerspectiveKeyboardLayer";
+import type { KeysScene } from "../NativeKeyboardScene";
 import { DEFAULT_CAMERA, PANEL_EDGE, worldCamera } from "../worldCamera";
 import { keyBoxes } from "./keyBoxes";
 import { projectionMatrix, viewMatrix } from "./threeCamera";
@@ -182,6 +182,21 @@ describe("Three note light lifecycle", () => {
       pool.dispose();
     }
   );
+
+  it("scales light reach and power by the keys group, not by the world reference camera", () => {
+    const keys = scene();
+    const pool = new ThreeNoteLights();
+    pool.layout(keyBoxes(keys), keys.camera, 1.6);
+    pool.update([source(60)], keys.camera, 0.1, 1.6);
+    const first = pool.group.children[0] as SpotLight;
+    expect(keys.camera.params.prefs.scale).toBe(1);
+    expect(first.distance).toBeCloseTo(420 * 1.6);
+    const intensity = first.intensity;
+    pool.layout(keyBoxes(keys), keys.camera, 0.8);
+    expect(first.distance).toBeCloseTo(420 * 0.8);
+    expect(first.intensity).toBeCloseTo((intensity / 1.6 ** 2) * 0.8 ** 2, 8);
+    pool.dispose();
+  });
 
   it("freezes positions, colours and brightness during pause, including a new source", () => {
     const keys = scene();

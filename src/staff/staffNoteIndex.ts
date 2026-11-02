@@ -12,13 +12,24 @@ export interface NoteIndex {
   /** Sounding notes only: rests cannot receive note clicks or take marks. */
   readonly beats: Map<SVGGElement, number>;
   readonly heads: Map<string, SVGElement[]>;
+  /** Exact per-key heads for feedback; ordinary chord painting keeps the full shapes above. */
+  readonly feedbackHeads?: Map<string, SVGElement[]>;
   /** Rest glyphs and noteheads both locate the continuous musical cursor. */
   readonly cursorBeats: Map<SVGElement, number>;
+}
+
+/** OSMD's public chord index matches VexFlow's note_heads / drawn vf-notehead order. */
+export function feedbackNotehead(note: VexFlowGraphicalNote): SVGElement | undefined {
+  const index = note.vfnoteIndex;
+  if (!Number.isInteger(index) || index < 0) return undefined;
+  const head = note.getNoteheadSVGs()[index];
+  return head instanceof SVGElement ? head : undefined;
 }
 
 export function indexNotes(osmd: OpenSheetMusicDisplay): NoteIndex {
   const beats = new Map<SVGGElement, number>();
   const heads = new Map<string, SVGElement[]>();
+  const feedbackHeads = new Map<string, SVGElement[]>();
   const cursorBeats = new Map<SVGElement, number>();
   for (const row of osmd.GraphicSheet.MeasureList) {
     for (const measure of row) {
@@ -38,12 +49,14 @@ export function indexNotes(osmd: OpenSheetMusicDisplay): NoteIndex {
             beats.set(element, beat);
             const key = markKey(beat, note.sourceNote.halfTone + 12);
             heads.set(key, [...(heads.get(key) ?? []), ...shapes]);
+            const head = feedbackNotehead(note);
+            if (head) feedbackHeads.set(key, [...(feedbackHeads.get(key) ?? []), head]);
           }
         }
       }
     }
   }
-  return { beats, heads, cursorBeats };
+  return { beats, heads, feedbackHeads, cursorBeats };
 }
 
 /** Each drawn musical entry, including silence, with its SVG position and line. */
@@ -66,4 +79,27 @@ export function beatPositions(
     if (!known || x < known.x) byBeat.set(beat, { beat, x, line });
   }
   return [...byBeat.values()].sort((a, b) => a.beat - b.beat);
+}
+
+/** Hit testing uses current DOM bounds after score zoom, scrolling or centring. */
+export function nearestNoteBeat(
+  beats: ReadonlyMap<SVGElement, number>,
+  clientX: number,
+  clientY: number
+): number | undefined {
+  let best: number | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const [element, beat] of beats) {
+    const box = element.getBoundingClientRect();
+    if (box.width === 0 && box.height === 0) continue;
+    // Rows count heavily: a note on the clicked line beats a closer one on the next line.
+    const dx = clientX - (box.left + box.width / 2);
+    const dy = Math.max(0, Math.abs(clientY - (box.top + box.height / 2)) - box.height / 2);
+    const distance = dx * dx + 16 * dy * dy;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = beat;
+    }
+  }
+  return best;
 }

@@ -4,6 +4,8 @@ export interface StaffTimeAxis {
   readonly originX: number;
   readonly pixelsPerSecond: number;
   readonly timeAtBeat: (beat: number) => number;
+  readonly xAtBeat?: (beat: number) => number;
+  readonly breakBeats?: readonly number[];
 }
 
 /** Include tempo boundaries so the existing beat interpolator stays linear in seconds. */
@@ -19,6 +21,7 @@ export function timelineSpots(
     startBeat,
     endBeat,
     ...timingBeats,
+    ...(axis.breakBeats ?? []),
     ...entries.map((entry) => entry.beat)
   ]);
   return [...beats]
@@ -26,7 +29,7 @@ export function timelineSpots(
     .sort((a, b) => a - b)
     .map((beat) => ({
       beat,
-      x: axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(beat),
+      x: axis.xAtBeat?.(beat) ?? axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(beat),
       line
     }));
 }

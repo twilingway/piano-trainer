@@ -1,4 +1,15 @@
+import { toneLessonMessages } from "./toneLessonMessages";
+import { fingerCueMessages } from "./fingerCueMessages";
+import { guidedLessonMessages } from "./guidedLessonMessages";
+import { musicProgressMessages } from "./musicProgressMessages";
+import { musicControllerMessages } from "./musicControllerMessages";
+import { musicCourseRuntimeMessages } from "./musicCourseRuntimeMessages";
+import { musicCourseMessages } from "./musicCourseMessages";
+import { worldCameraMessages } from "./worldCameraMessages";
+import { settingsHelpMessages } from "./settingsHelpMessages";
 import { performanceMessages } from "./performanceMessages";
+import { instrumentMessages } from "./instrumentMessages";
+import { graphicsMessages } from "./graphicsMessages";
 import type { Messages } from "./locales";
 import { freeCameraMessages } from "./freeCameraMessages";
 import { appMessages } from "./appMessages";
@@ -19,6 +30,14 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...musicProgressMessages,
+  ...musicControllerMessages,
+  ...musicCourseMessages,
+  ...musicCourseRuntimeMessages,
+  ...worldCameraMessages,
+  ...settingsHelpMessages,
+  ...instrumentMessages,
+  ...graphicsMessages,
   ...appMessages,
   ...performanceMessages,
   ...freeCameraMessages,
@@ -35,5 +54,8 @@ export const messages: Messages = {
   ...bassReadingMessages,
   ...twoHandMessages,
   ...heldBassMessages,
+  ...toneLessonMessages,
+  ...fingerCueMessages,
+  ...guidedLessonMessages,
   ...independentRhythmMessages
 };

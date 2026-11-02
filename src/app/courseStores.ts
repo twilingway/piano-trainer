@@ -1,3 +1,8 @@
+import {
+  normalizeMusicState,
+  mergeMusicHistory,
+  MUSIC_PREFERENCE_FIELDS
+} from "./musicPersistence";
 import type { ReadingState } from "./readingSlice";
 import type { ReadingPersistentField } from "./readingPersistentFields";
 import { mergeIntervalHistory, normalizeIntervalState } from "./intervalPersistence";
@@ -11,7 +16,7 @@ import {
 } from "./independentRhythmPersistence";
 
 export type CourseStateKey =
-  "intervals" | "rhythm" | "bass" | "coordination" | "heldBass" | "independentRhythm";
+  "music" | "intervals" | "rhythm" | "bass" | "coordination" | "heldBass" | "independentRhythm";
 type CourseId = Exclude<NonNullable<ReadingState["activeCourse"]>, "note-reading">;
 type History<K extends CourseStateKey> = ReadingState[K]["history"];
 
@@ -143,10 +148,27 @@ export const READING_COURSE_STORES: readonly ReadingCourseStore[] = [
       { field: "independentRhythmSourceFilter", key: "sourceFilter" },
       { field: "independentRhythmKeyHints", key: "showKeyHints" }
     ]
+  }),
+  store({
+    key: "music",
+    course: "music-learning",
+    since: 9,
+    normalize: (value) => {
+      const { music, invalid } = normalizeMusicState(value);
+      return { state: music, invalid };
+    },
+    mergeHistory: mergeMusicHistory,
+    selection: {
+      field: "musicSelection",
+      keys: ["course", "seed", "generatorVersion"],
+      followsRevision: true
+    },
+    preferences: [...MUSIC_PREFERENCE_FIELDS, { key: "integrated", field: "musicIntegrated" }],
+    resumable: (state) => state.course !== null
   })
 ];
 
-/** The six course slots of a reading state, in store order. */
+/** The course slots of a reading state, in store order. */
 export type ReadingCourseStates = Pick<ReadingState, CourseStateKey>;
 
 /** A field-by-field view of one course slot, for code that walks every store. */

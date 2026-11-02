@@ -1,3 +1,4 @@
+import { roadWidthUniforms } from "./roadWidthUniforms";
 import {
   AdditiveBlending,
   Color,
@@ -18,7 +19,6 @@ const NO_ANCHORS: readonly WorldRoadNote[] = [];
 
 const VERTEX = /* glsl */ `
 ${NOTE_LANE_SHADER}
-attribute vec3 noteSize;
 attribute float noteAlpha;
 varying vec2 vUv;
 varying vec3 vTint;
@@ -28,7 +28,7 @@ void main() {
   vTint = instanceColor;
   vAlpha = noteAlpha;
   vec3 point = vec3(position.x * noteSize.x, 0.0, -position.y * noteSize.z);
-  gl_Position = projectNoteLane(projectionMatrix * modelViewMatrix * instanceMatrix * vec4(point, 1.0));
+  gl_Position = projectRoadLanePoint(vec4(point, 1.0));
 }
 `;
 const FRAGMENT = /* glsl */ `
@@ -58,7 +58,7 @@ export class ThreeRoadTrails {
   private readonly geometry = new PlaneGeometry(1, 1);
   private readonly time = { value: 0 };
   private readonly material = new ShaderMaterial({
-    uniforms: { visualTime: this.time },
+    uniforms: { ...roadWidthUniforms, visualTime: this.time },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
     transparent: true,
@@ -67,13 +67,17 @@ export class ThreeRoadTrails {
     depthWrite: false,
     side: DoubleSide
   });
+  private readonly contacts = new InstancedBufferAttribute(
+    new Float32Array(ROAD_TRAIL_CAPACITY * 4),
+    4
+  );
   private readonly projections = new InstancedBufferAttribute(
-    new Float32Array(ROAD_TRAIL_CAPACITY * 3),
-    3
+    new Float32Array(ROAD_TRAIL_CAPACITY * 4),
+    4
   );
   private readonly sizes = new InstancedBufferAttribute(
-    new Float32Array(ROAD_TRAIL_CAPACITY * 3),
-    3
+    new Float32Array(ROAD_TRAIL_CAPACITY * 4),
+    4
   );
   private readonly alphas = new InstancedBufferAttribute(new Float32Array(ROAD_TRAIL_CAPACITY), 1);
   private readonly mesh = new InstancedMesh(this.geometry, this.material, ROAD_TRAIL_CAPACITY);
@@ -84,6 +88,7 @@ export class ThreeRoadTrails {
   constructor() {
     this.geometry.setAttribute("noteSize", this.sizes);
     this.geometry.setAttribute("noteProjection", this.projections);
+    this.geometry.setAttribute("noteContact", this.contacts);
     this.geometry.setAttribute("noteAlpha", this.alphas);
     this.mesh.instanceColor = new InstancedBufferAttribute(
       new Float32Array(ROAD_TRAIL_CAPACITY * 3),
@@ -92,6 +97,7 @@ export class ThreeRoadTrails {
     for (const attribute of [
       this.sizes,
       this.projections,
+      this.contacts,
       this.alphas,
       this.mesh.instanceMatrix,
       this.mesh.instanceColor
@@ -121,12 +127,20 @@ export class ThreeRoadTrails {
     for (let index = 0; index < used; index++) {
       const trail = this.selection.trails[index];
       if (!trail) continue;
-      this.sizes.setXYZ(index, trail.width, 0, trail.top - trail.bottom);
-      this.projections.setXYZ(
+      this.sizes.setXYZW(index, trail.width, 0, trail.top - trail.bottom, trail.pitch ?? 0);
+      this.projections.setXYZW(
         index,
         trail.lane?.scaleX ?? 1,
         trail.lane?.offsetX ?? 0,
-        trail.lane?.offsetY ?? 0
+        trail.lane?.offsetY ?? 0,
+        (trail.top + trail.bottom) / 2
+      );
+      this.contacts.setXYZW(
+        index,
+        trail.lane?.y ?? floorY,
+        trail.lane?.depth ?? this.nearZ,
+        trail.lane?.freeFar?.x ?? 0,
+        trail.lane?.freeFar?.y ?? 0
       );
       this.alphas.setX(index, trail.alpha);
       this.color.setRGB(
@@ -153,6 +167,7 @@ export class ThreeRoadTrails {
     if (used > 0) {
       this.upload(this.sizes, used);
       this.upload(this.projections, used);
+      this.upload(this.contacts, used);
       this.upload(this.alphas, used);
       this.upload(this.mesh.instanceMatrix, used);
       if (this.mesh.instanceColor) this.upload(this.mesh.instanceColor, used);

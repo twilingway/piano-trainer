@@ -1,3 +1,4 @@
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
 import {
   useCallback,
   useLayoutEffect,
@@ -7,6 +8,13 @@ import {
   useSyncExternalStore
 } from "react";
 import { nextIndependentRhythmSeed } from "../independentRhythm/generator";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues
+} from "../reading/fingerCues";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
+import { useI18n } from "./useI18n";
 import type { ReadingInputSource } from "../reading/types";
 import type {
   IndependentRhythmConnection,
@@ -19,13 +27,15 @@ export { useIndependentRhythmTrainer } from "./useIndependentRhythmTrainer";
 
 function controllerFor(
   selection: IndependentRhythmSelection,
-  save: ConstructorParameters<typeof IndependentRhythmController>[1]
+  save: ConstructorParameters<typeof IndependentRhythmController>[1],
+  feedback?: LessonStaffFeedbackSink
 ) {
-  return selection.active ? new IndependentRhythmController(selection, save) : null;
+  return selection.active ? new IndependentRhythmController(selection, save, feedback) : null;
 }
 const emptySubscribe = () => () => undefined;
 const emptySnapshot = () => null;
-export function useIndependentRhythmCourse() {
+export function useIndependentRhythmCourse(feedback?: LessonStaffFeedbackSink) {
+  const { locale } = useI18n();
   const active = useAppSelector(
     (state) => state.reading.activeCourse === "independent-rhythm-reading"
   );
@@ -50,7 +60,10 @@ export function useIndependentRhythmCourse() {
     },
     [dispatch]
   );
-  const controller = useMemo(() => controllerFor(selection, save), [selection, save]);
+  const controller = useMemo(
+    () => controllerFor(selection, save, feedback),
+    [selection, save, feedback]
+  );
   const currentRef = useRef(controller);
   useLayoutEffect(() => {
     currentRef.current = controller;
@@ -69,6 +82,23 @@ export function useIndependentRhythmCourse() {
     controller?.configureHints(saved.showKeyHints);
   }, [controller, saved.showKeyHints]);
   const scene = state?.scene ?? null;
+  const cueAllowed =
+    saved.showKeyHints && !!state?.ready && ["preparation", "passed"].includes(state.status);
+  const prompt = useMemo(() => {
+    if (!scene) return null;
+    // With key hints on, the cue row stays through the take, empty while it runs.
+    const cues = saved.showKeyHints
+      ? lessonFingerCues(scene.song.notes.filter((note) => note.start === 0))
+      : [];
+    return {
+      musicXml: cues.length
+        ? musicXmlWithLessonFingerCues(scene.musicXml, cues, scene.song.notes, (cue) =>
+            cueAllowed ? lessonFingerLabel(cue, locale) : HIDDEN_LESSON_CUE
+          )
+        : scene.musicXml,
+      beat: undefined
+    };
+  }, [scene, saved.showKeyHints, cueAllowed, locale]);
   const policy = useMemo(
     () => (controller && scene ? controller.policy(scene.id) : null),
     [controller, scene]
@@ -100,6 +130,7 @@ export function useIndependentRhythmCourse() {
     controller?.cancel();
   }, [controller]);
   const select = (seed: number) => {
+    feedback?.clear();
     controller?.cancel();
     dispatch(
       readingActions.independentRhythmSelected({ seed, generatorVersion: saved.generatorVersion })
@@ -125,7 +156,7 @@ export function useIndependentRhythmCourse() {
     sourceFilter: saved.sourceFilter,
     policy,
     presentation,
-    prompt: scene ? { musicXml: scene.musicXml, beat: undefined } : null,
+    prompt,
     renderError: state?.error === "staff",
     retry,
     intro,
@@ -147,6 +178,7 @@ export function useIndependentRhythmCourse() {
       select(nextIndependentRhythmSeed(saved.seed));
     },
     exit: () => {
+      feedback?.clear();
       controller?.cancel();
       dispatch(readingActions.exit());
     },

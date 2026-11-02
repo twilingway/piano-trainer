@@ -1,5 +1,6 @@
 import type { SongNote } from "../song/song";
 import type { FrameState } from "./frameState";
+import { boundedLookAhead } from "./noteSpeed";
 
 export interface EnergySource {
   readonly id: string;
@@ -19,7 +20,7 @@ export function energySources(
   colorOf: (note: SongNote) => number
 ): EnergySource[] {
   const sources: EnergySource[] = [];
-  const lookAhead = Math.max(0, frame.lookAhead);
+  const lookAhead = boundedLookAhead(frame.lookAhead);
   for (const note of notes) {
     if (note.start > frame.time + lookAhead || note.start + note.duration < frame.time) continue;
     const progress =

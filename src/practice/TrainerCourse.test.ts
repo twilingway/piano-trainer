@@ -4,6 +4,7 @@ import type { Song } from "../song/song";
 import { Trainer } from "./Trainer";
 import type { RunCompletion } from "./runCompletion";
 import type { PracticeOptions } from "./session";
+import type { TrainerMusicPolicy } from "./musicPolicy";
 
 vi.mock("../audio/pianoSound", () => ({ soundAllOff: vi.fn() }));
 vi.mock("../audio/sessionAudio", () => ({
@@ -208,5 +209,149 @@ describe("Trainer natural exercise completion", () => {
     expect(run.results.map((result) => result.runId)).toEqual(["1", "2"]);
     expect(run.results.every((result) => result.hitCount === 1 && !result.interrupted)).toBe(true);
     expect(run.results.every((result) => result.noteResult?.percent === 100)).toBe(true);
+  });
+});
+
+function musicPolicy(overrides: Partial<TrainerMusicPolicy> = {}): TrainerMusicPolicy {
+  return {
+    inputCompensationMs: () => 0,
+    onStart: vi.fn(() => true),
+    onFrame: vi.fn(() => []),
+    onInput: vi.fn<TrainerMusicPolicy["onInput"]>((event, session, playing, times) => {
+      if (!playing || !times.admitted) return [];
+      return event.type === "down"
+        ? session.pressKeyAt(event.pitch, times.corrected, times.received)
+        : session.releaseKeyAt(event.pitch, times.corrected);
+    }),
+    seedHeld: vi.fn(),
+    cancel: vi.fn(),
+    guidance: () => ({
+      lights: [],
+      frame: { hintNotes: [], due: [], waitingFor: [], hints: false, neutralKeys: true }
+    }),
+    ...overrides
+  };
+}
+describe("Trainer music course isolation", () => {
+  it.each(["wait", "tempo"] as const)(
+    "routes actual %s input without ordinary takes or run completion",
+    (mode) => {
+      const run = harness({ ...OPTIONS, mode });
+      const policy = musicPolicy();
+      const take = vi.fn();
+      run.trainer.onTake = take;
+      run.trainer.configureCourse("music", policy);
+      run.trainer.setPlaying(true);
+      run.hit();
+      run.frame(4500);
+      run.trainer.setPlaying(false);
+      expect(policy.onInput).toHaveBeenCalled();
+      expect(run.results).toEqual([]);
+      expect(take).not.toHaveBeenCalled();
+      expect(policy.onFrame).toHaveBeenCalled();
+    }
+  );
+  it("refuses a start before readiness and keeps music when other hooks configure null", () => {
+    const run = harness();
+    const policy = musicPolicy({ onStart: vi.fn(() => false) });
+    const snapshots: { playing: boolean }[] = [];
+    run.trainer.onSnapshot = (snapshot) => snapshots.push(snapshot);
+    run.trainer.configureCourse("music", policy);
+    run.trainer.configureCourse("reading", null);
+    run.trainer.configureCourse("rhythm", null);
+    run.trainer.configureCourse("pair", null);
+    run.trainer.configureCourse("heldBass", null);
+    run.trainer.configureCourse("independentRhythm", null);
+    run.trainer.setPlaying(true);
+    expect(policy.onStart).toHaveBeenCalledOnce();
+    expect(snapshots.at(-1)?.playing).toBe(false);
+    run.hit(1200);
+    expect(policy.onInput).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      false,
+      expect.objectContaining({ admitted: true })
+    );
+  });
+  it("preserves per-device compensation and original source/channel even for rejected input", () => {
+    const run = harness();
+    const policy = musicPolicy();
+    run.trainer.configureTiming({
+      inputOffsets: { "piano-a": 25, "piano-b": 70 },
+      manualInputOffsetMs: 10,
+      audioOffsetMs: 0,
+      visualOffsetMs: 0
+    });
+    run.trainer.configureCourse("music", policy);
+    run.trainer.setPlaying(true);
+    now = 3100;
+    const event = {
+      type: "down" as const,
+      pitch: 60,
+      velocity: 91,
+      timestamp: 3000,
+      source: "midi" as const,
+      deviceId: "piano-a",
+      channel: 4
+    };
+    run.trainer.key(event);
+    expect(policy.onInput).toHaveBeenLastCalledWith(event, expect.anything(), true, {
+      raw: 3000,
+      corrected: 2965,
+      received: 3100,
+      admitted: true
+    });
+    run.trainer.onInput = () => true;
+    now = 3200;
+    const other = { ...event, timestamp: 3100, deviceId: "piano-b", channel: 7 };
+    run.trainer.key(other);
+    expect(policy.onInput).toHaveBeenLastCalledWith(other, expect.anything(), true, {
+      raw: 3100,
+      corrected: 3020,
+      received: 3200,
+      admitted: false
+    });
+  });
+  it("seeds preheld owners without cancelling preparation and cancels them on song load", () => {
+    const run = harness();
+    run.trainer.key({
+      type: "down",
+      pitch: 48,
+      velocity: 90,
+      timestamp: now,
+      source: "midi",
+      deviceId: "piano",
+      channel: 2
+    });
+    const policy = musicPolicy();
+    run.trainer.configureCourse("music", policy);
+    expect(policy.cancel).not.toHaveBeenCalled();
+    expect(policy.seedHeld).toHaveBeenCalledWith(
+      [expect.objectContaining({ pitch: 48, deviceId: "piano", channel: 2 })],
+      now
+    );
+    run.trainer.load(SONG, OPTIONS, "new-music");
+    expect(policy.cancel).toHaveBeenCalled();
+    run.trainer.setPlaying(true);
+    expect(policy.onStart).toHaveBeenCalledWith(expect.anything(), now, [
+      expect.objectContaining({ pitch: 48 })
+    ]);
+  });
+  it("does not stop or grade music-policy misses and can play after the song clock ends", () => {
+    const run = harness();
+    const policy = musicPolicy({
+      onFrame: () => [{ type: "wrong", pitch: 61 }, { type: "finished" }]
+    });
+    const snapshots: { playing: boolean }[] = [];
+    run.trainer.onSnapshot = (snapshot) => snapshots.push(snapshot);
+    run.trainer.stopOnError = true;
+    run.trainer.configureCourse("music", policy);
+    run.trainer.setPlaying(true);
+    run.frame(4500);
+    expect(snapshots.at(-1)?.playing).toBe(true);
+    expect(run.results).toEqual([]);
+    run.trainer.setPlaying(false);
+    run.trainer.setPlaying(true);
+    expect(snapshots.at(-1)?.playing).toBe(true);
   });
 });

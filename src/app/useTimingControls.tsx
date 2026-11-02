@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
-import { audioTime, cancelScheduledSound, scheduleSound, soundClick } from "../audio/pianoSound";
+import {
+  audioTime,
+  cancelScheduledSound,
+  scheduleSound,
+  soundClick,
+  stopClickSound
+} from "../audio/pianoSound";
 import type { KeyEvent, MidiDevice } from "../input/midiInput";
 import { isTypingTarget } from "../input/computerKeyboard";
 import type { ConnectionType } from "../practice/calibration";
@@ -59,6 +65,7 @@ export function useTimingControls({
   const clearAudio = useCallback(() => {
     for (const job of audioJobs.current) cancelScheduledSound(job);
     audioJobs.current = [];
+    stopClickSound();
   }, []);
   const playBeat = useCallback(
     (timestamp: number) => {
@@ -77,7 +84,8 @@ export function useTimingControls({
     capture,
     progress,
     running,
-    countdown
+    countdown,
+    phase
   } = useCalibration({
     audioOffsetMs: preferences.audioOffsetMs,
     audioOutputId: preferences.audioOutputId,
@@ -216,6 +224,7 @@ export function useTimingControls({
     progress,
     running,
     countdown,
+    phase,
     locked,
     canCalibrate: !!chosenId,
     onTransport,

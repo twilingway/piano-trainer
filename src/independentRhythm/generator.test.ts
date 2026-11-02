@@ -23,9 +23,16 @@ describe("independent rhythm score source", () => {
         groups.set(note.start, (groups.get(note.start) ?? 0) + 1);
       expect([...groups.values()].filter((size) => size === 2)).toHaveLength(8);
       expect([...groups.values()].filter((size) => size === 1)).toHaveLength(8);
-      expect(songFromMusicXml(exercise.series.musicXml, "").notes).toEqual(
-        exercise.series.song.notes
-      );
+      for (const phase of [exercise.pulse, exercise.series]) {
+        const source = songFromMusicXml(phase.musicXml, "");
+        const written = phase.song.notes.map(
+          ({ finger: _finger, transition: _transition, ...note }) => note
+        );
+        expect(source.notes).toEqual(written);
+        expect(phase.musicXml).not.toContain("<fingering>");
+        expect(phase.musicXml).not.toContain("data-lesson-finger-cue");
+        for (const note of phase.song.notes) expect(note.finger).toBe(note.hand === "left" ? 5 : 1);
+      }
       expect(new Set(exercise.series.song.notes.map((note) => note.id)).size).toBe(24);
       expect(exercise.series.song.measures).toHaveLength(4);
       expect(exercise.series.song.beats.map((beat) => beat.time)).toEqual(

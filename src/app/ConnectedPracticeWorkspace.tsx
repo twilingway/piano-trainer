@@ -1,3 +1,9 @@
+import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
+import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
+import { ConnectedTwoHandPractice } from "./ConnectedTwoHand";
+import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
+import { ConnectedReadingPractice } from "./ConnectedReading";
+import { ConnectedLessonWorkspace } from "./ConnectedLessonWorkspace";
 import { useRuntimeCommand } from "./runtimeCommands";
 import {
   ConnectedGameBoard,
@@ -7,13 +13,6 @@ import {
 } from "./ConnectedPlayback";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { ConnectedPianoTabs } from "./ConnectedCourse";
-import { ConnectedReadingPractice } from "./ConnectedReading";
-import { ConnectedBassReadingPractice } from "./ConnectedBassReading";
-import { ConnectedTwoHandPractice } from "./ConnectedTwoHand";
-import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
-import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
-import { ConnectedRhythmPractice } from "./ConnectedRhythm";
-import { ConnectedIntervalPractice } from "./ConnectedIntervals";
 
 import { shallowEqual } from "react-redux";
 export function ConnectedPracticeWorkspace() {
@@ -41,11 +40,17 @@ export function ConnectedPracticeWorkspace() {
     trainerMode,
     trainerTrainerRef,
     trainerHostRef,
+    worldScoreViewRef,
+    worldScoreViewReady,
     snapshotWaiting,
     viewMirrorHostRef,
+    viewHandStatus,
+    countdown,
     courseTabs,
     courseTopView,
     practiceActive,
+    lessonStaffFeedback,
+    music,
     reading,
     rhythm
   } = useRuntimeSelector(
@@ -73,9 +78,14 @@ export function ConnectedPracticeWorkspace() {
       trainerMode: runtime.trainer.mode,
       trainerTrainerRef: runtime.trainer.trainerRef,
       trainerHostRef: runtime.trainer.hostRef,
+      worldScoreViewRef: runtime.trainer.viewRef,
+      worldScoreViewReady: runtime.trainer.trainerReady,
       snapshotWaiting: runtime.snapshot.waiting,
       viewMirrorHostRef: runtime.view.mirrorHostRef,
+      viewHandStatus: runtime.view.handStatus,
+      countdown: runtime.countdown,
       rhythm: runtime.rhythm,
+      music: runtime.music,
       reading: runtime.independentRhythm.active
         ? runtime.independentRhythm
         : runtime.heldBass.active
@@ -91,6 +101,7 @@ export function ConnectedPracticeWorkspace() {
         (runtime.course.saved.view === "tabs" || runtime.course.saved.view === "both") &&
         !runtime.comparing,
       courseTopView: runtime.course.saved.topView,
+      lessonStaffFeedback: runtime.lessonStaffFeedback,
       practiceActive: runtime.practiceActive
     }),
     shallowEqual
@@ -102,14 +113,17 @@ export function ConnectedPracticeWorkspace() {
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   return (
     <>
-      <ConnectedReadingPractice />
-      <ConnectedBassReadingPractice />
-      <ConnectedTwoHandPractice />
-      <ConnectedHeldBassPractice />
-      <ConnectedIndependentRhythmPractice />
-      <ConnectedIntervalPractice />
-      <ConnectedRhythmPractice />
+      <ConnectedReadingPractice mode="intro" />
+      <ConnectedBassReadingPractice mode="intro" />
+      <ConnectedTwoHandPractice mode="intro" />
+      <ConnectedHeldBassPractice mode="intro" />
+      <ConnectedIndependentRhythmPractice mode="intro" />
       <ConnectedWorkspace
+        lessonBoard={
+          practiceActive ? (score) => <ConnectedLessonWorkspace score={score} /> : undefined
+        }
+        worldScoreViewRef={worldScoreViewRef}
+        worldScoreViewReady={worldScoreViewReady}
         timelineSong={timelineSong}
         scoreBoard={courseTabs ? <ConnectedPianoTabs /> : undefined}
         scoreFirst={courseTopView}
@@ -138,6 +152,7 @@ export function ConnectedPracticeWorkspace() {
           ) : undefined
         }
         gameBoard={
+          !music.active &&
           !reading.active &&
           !rhythm.active && (
             <ConnectedGameBoard
@@ -151,36 +166,52 @@ export function ConnectedPracticeWorkspace() {
           )
         }
         staffXml={
-          rhythm.active
-            ? rhythm.exercise?.musicXml
-            : reading.active
-              ? reading.prompt?.musicXml
-              : scoreStaffXml
+          music.active
+            ? music.staffXml
+            : rhythm.active
+              ? rhythm.exercise?.musicXml
+              : reading.active
+                ? reading.prompt?.musicXml
+                : scoreStaffXml
         }
-        staffPresentation={rhythm.active ? rhythm.presentation : reading.presentation}
-        staffRetry={rhythm.active ? rhythm.retry : reading.retry}
-        readingBeat={reading.prompt?.beat}
+        staffPresentation={
+          music.active
+            ? music.presentation
+            : rhythm.active
+              ? rhythm.presentation
+              : reading.presentation
+        }
+        lessonStaffFeedback={practiceActive ? lessonStaffFeedback : undefined}
+        staffRetry={music.active ? music.retry : rhythm.active ? rhythm.retry : reading.retry}
+        readingBeat={music.active ? undefined : reading.prompt?.beat}
+        courseRange={
+          !music.active && !rhythm.active && reading.active && "range" in reading
+            ? reading.range
+            : undefined
+        }
         course={practiceActive}
         prefs={displayPrefs}
         layout={screenLayout}
         onLayout={screenUpdateLayout}
         onResetLayout={screenResetLayout}
         layoutMoved={screenMoved}
-        editing={!reading.active && !rhythm.active && screenEditing}
+        editing={!music.active && !reading.active && !rhythm.active && screenEditing}
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}
         fixedLines={scoreFixedLines}
         liveBeat={trainerLiveBeat}
         onSeek={trainerSeekToBeat}
-        reviewMarks={reading.active ? undefined : takesReviewMarks}
-        transcription={reading.active ? undefined : takesTranscription}
-        takeStaff={takesTakeStaff}
+        reviewMarks={music.active || reading.active ? undefined : takesReviewMarks}
+        transcription={music.active || reading.active ? undefined : takesTranscription}
+        takeStaff={music.active ? "off" : takesTakeStaff}
         splitDirection={takesSplitDirection}
         comparing={comparing}
-        waiting={snapshotWaiting}
+        waiting={snapshotWaiting && (!music.active || playing)}
         hostRef={trainerHostRef}
         mirrorHostRef={viewMirrorHostRef}
+        handStatus={viewHandStatus}
+        countdown={music.active && !playing ? null : countdown}
       />
     </>
   );

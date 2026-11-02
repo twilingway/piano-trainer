@@ -68,4 +68,49 @@ describe("keyboard88 runtime extraction", () => {
     asset.dispose();
     asset.dispose();
   });
+
+  it("shades the case flat when the asset averages its normals across hard edges", () => {
+    const scene = new Group();
+    const top = new MeshStandardMaterial(),
+      body = new MeshStandardMaterial();
+    top.userData.role = "top";
+    body.userData.role = "body";
+    for (let pitch = 21; pitch <= 108; pitch++) {
+      const key = new Group();
+      key.name = `key-${String(pitch)}`;
+      key.add(new Mesh(primitive(), top), new Mesh(primitive(), body));
+      scene.add(key);
+    }
+    const smoothed = primitive();
+    smoothed.setAttribute(
+      "normal",
+      new Float32BufferAttribute([0, 0.7, -0.7, 0, 0.7, 0.7, 0.7, 0.7, 0], 3)
+    );
+    for (const name of [
+      "slip.001",
+      "board.001",
+      "felt.001",
+      "table.001",
+      "cheek-left",
+      "cheek-right",
+      "panel-left",
+      "panel-right"
+    ]) {
+      const part = new Mesh(smoothed, body);
+      part.name = name;
+      scene.add(part);
+    }
+    const asset = keyboard88Model(scene);
+    for (const part of asset.case.children as Mesh[]) {
+      expect(part.geometry.index).toBeNull();
+      const normal = part.geometry.getAttribute("normal");
+      for (let i = 0; i < normal.count; i++) {
+        expect(normal.getX(i)).toBeCloseTo(0, 5);
+        expect(normal.getY(i)).toBeCloseTo(1, 5);
+        expect(normal.getZ(i)).toBeCloseTo(0, 5);
+      }
+    }
+    expect(smoothed.getAttribute("normal").getZ(0)).toBeCloseTo(-0.7, 5);
+    asset.dispose();
+  });
 });

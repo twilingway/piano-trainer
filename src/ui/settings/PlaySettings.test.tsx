@@ -29,10 +29,12 @@ afterEach(() => {
 
 const noop = () => undefined;
 
-function render(parts: PartsChoice | undefined, onHands = noop) {
+function render(parts: PartsChoice | undefined, onHands = noop, onCountdownSeconds = noop) {
   act(() => {
     root.render(
       <PlaySettings
+        countdownSeconds={3}
+        onCountdownSeconds={onCountdownSeconds}
         metronome
         onMetronome={noop}
         listening={false}
@@ -116,4 +118,20 @@ describe("PlaySettings parts", () => {
     expect(handsSelect()?.querySelector("optgroup")).toBeNull();
     expect(host.textContent).not.toContain("Автоаккомпанемент");
   });
+});
+
+it("offers bounded count-in seconds and sends zero without affecting other controls", () => {
+  const changed = vi.fn();
+  render(undefined, noop, changed);
+  const box = host.querySelector<HTMLInputElement>('[data-setting-target="play-countdown"]');
+  expect(box?.value).toBe("3");
+  expect(box?.min).toBe("0");
+  expect(box?.max).toBe("10");
+  const value = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  if (!box || !value?.set) throw new Error("Expected countdown input");
+  act(() => {
+    value.set?.call(box, "0");
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(changed).toHaveBeenCalledWith(0);
 });

@@ -104,7 +104,7 @@ export function BassReadingProgress({
   const { t } = useI18n();
   return (
     <section className="reading-progress">
-      <details>
+      <details data-window-detail="bass-reading:progress">
         <summary>{t("Мой прогресс басового чтения")}</summary>
         <p className="reading-muted">
           {t(

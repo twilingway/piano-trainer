@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CalibrationSession,
+  CALIBRATION_LEAD_IN,
   CALIBRATION_PERIOD_MS,
   CALIBRATION_SAMPLES,
   CALIBRATION_WARMUP,
   type CalibrationProgress,
+  type CalibrationPhase,
   type CalibrationResult
 } from "../practice/calibration";
 
@@ -29,16 +31,19 @@ export function useCalibration(options: CalibrationOptions) {
   const [progress, setProgress] = useState<CalibrationProgress | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState<CalibrationPhase | null>(null);
   const cancel = useCallback(() => {
     for (const timer of timers.current) clearTimeout(timer);
     timers.current = [];
     active.current = null;
     setRunning(false);
     setCountdown(null);
+    setPhase(null);
   }, []);
   useEffect(
     () => () => {
       for (const timer of timers.current) clearTimeout(timer);
+      timers.current = [];
       active.current = null;
     },
     []
@@ -54,14 +59,18 @@ export function useCalibration(options: CalibrationOptions) {
     setProgress(session.snapshot());
     setRunning(true);
     setCountdown(3);
+    setPhase("preparation");
     for (let second = 1; second <= 3; second++) {
       timers.current.push(
         setTimeout(() => {
-          if (active.current === session) setCountdown(second === 3 ? null : 3 - second);
+          if (active.current !== session) return;
+          setCountdown(second === 3 ? null : 3 - second);
+          if (second === 3) setPhase("lead-in");
         }, second * 1000)
       );
     }
-    for (let beat = 0; beat < CALIBRATION_WARMUP + CALIBRATION_SAMPLES; beat++) {
+    const totalBeats = CALIBRATION_LEAD_IN + CALIBRATION_WARMUP + CALIBRATION_SAMPLES;
+    for (let beat = 0; beat < totalBeats; beat++) {
       const timestamp = startMs + beat * CALIBRATION_PERIOD_MS;
       timers.current.push(
         setTimeout(
@@ -73,6 +82,21 @@ export function useCalibration(options: CalibrationOptions) {
         )
       );
     }
+    for (const [nextPhase, firstBeat] of [
+      ["warmup", CALIBRATION_LEAD_IN],
+      ["measurement", CALIBRATION_LEAD_IN + CALIBRATION_WARMUP]
+    ] as const) {
+      // Display the next stage when its nearest-beat admission window opens, not at its click.
+      const opensAt = startMs + (firstBeat - 0.45) * CALIBRATION_PERIOD_MS;
+      timers.current.push(
+        setTimeout(
+          () => {
+            if (active.current === session) setPhase(nextPhase);
+          },
+          Math.max(0, opensAt - performance.now())
+        )
+      );
+    }
     timers.current.push(
       setTimeout(
         () => {
@@ -80,10 +104,7 @@ export function useCalibration(options: CalibrationOptions) {
           setProgress(session.snapshot());
           cancel();
         },
-        startMs +
-          (CALIBRATION_WARMUP + CALIBRATION_SAMPLES) * CALIBRATION_PERIOD_MS +
-          500 -
-          performance.now()
+        startMs + totalBeats * CALIBRATION_PERIOD_MS + 500 - performance.now()
       )
     );
   }, [cancel]);
@@ -97,8 +118,9 @@ export function useCalibration(options: CalibrationOptions) {
         const next = session.snapshot();
         setProgress(next);
         if (next.complete && next.result) {
-          optionsRef.current.onComplete(next.result, audio.current);
+          const completedAudio = audio.current;
           cancel();
+          optionsRef.current.onComplete(next.result, completedAudio);
         }
       }
       // Consume calibration input so taps cannot play the underlying game.
@@ -106,5 +128,5 @@ export function useCalibration(options: CalibrationOptions) {
     },
     [cancel]
   );
-  return { start, cancel, capture, progress, running, countdown };
+  return { start, cancel, capture, progress, running, countdown, phase };
 }

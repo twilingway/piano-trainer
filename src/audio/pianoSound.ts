@@ -85,8 +85,7 @@ export function soundAllOff(): void {
   stopRhythmTapSound();
   cancelScheduledVoices();
   for (const sampler of samplers.values()) sampler.releaseAll();
-  click?.dispose();
-  click = undefined;
+  stopClickSound();
 }
 
 /*
@@ -102,6 +101,12 @@ export function soundClick(downbeat: boolean, at?: number): void {
   }).toDestination();
   click.volume.value = downbeat ? -8 : -14;
   click.triggerAttackRelease(downbeat ? "C7" : "G6", 0.03, at);
+}
+
+/** Disposing the calibration voice also cancels attacks already queued in Web Audio. */
+export function stopClickSound(): void {
+  click?.dispose();
+  click = undefined;
 }
 
 export function audioTime(): number {

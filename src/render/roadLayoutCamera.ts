@@ -2,11 +2,24 @@ import { KEYS_BACK, worldCamera, type CameraPrefs, type WorldCamera } from "./wo
 
 /** The road's shape, the player's to tune: a wider keyboard wants a lower horizon. */
 export interface RoadShape {
-  /** The road's width at the horizon, as a share of its width at the hit line. */
+  /** Nonnegative: near-road width share. Negative: inverse width as a viewport share. */
   readonly far: number;
   /** The horizon, as a share of the way down from the top of the view to the hit line. */
   readonly horizon: number;
+  /** Standard road straightening; absent keeps the plain near-quarter bend. */
+  readonly fit?: RoadFit | undefined;
 }
+/**
+ * "auto" keeps every standard lane straight to the shown keys; "button" bends the near quarter,
+ * straight only under the keyboard camera snapshot the button took.
+ */
+export interface RoadFit {
+  readonly mode: "auto" | "button";
+  readonly camera?: CameraPrefs | undefined;
+  /** How far straightened lanes follow the keyboard's perspective: 0 (default) world direction, 1 full. */
+  readonly tilt?: number | undefined;
+}
+export const DEFAULT_ROAD_FIT: RoadFit = { mode: "auto" };
 export const DEFAULT_ROAD_SHAPE: RoadShape = { far: 0.1, horizon: 0.1 };
 
 /** Layout-only camera inputs; the scene width may exceed the visible viewport. */

@@ -2,6 +2,7 @@ import type { Hand } from "../fingering/fingering";
 import type { ComboBoard, GradedStrike } from "../practice/combo";
 import type { NoteStatus } from "../practice/session";
 import type { SongNote } from "../song/song";
+import type { LessonFingerCue } from "../reading/fingerCues";
 
 export interface FrameState {
   /** Whether playback is running; waiting still animates decorative energy. */
@@ -33,6 +34,8 @@ export interface FrameState {
   readonly owns: (note: SongNote) => boolean;
   readonly hints?: boolean;
   readonly neutralKeys?: boolean;
+  /** Already-authorized lesson hints; an empty array explicitly removes previous cues. */
+  readonly fingerCues?: readonly LessonFingerCue[];
   /** A colour of the caller's choosing (a review grade); notes it colours are drawn solid. */
   readonly colorOf?: ((note: SongNote) => number | undefined) | undefined;
   /** The combo and accuracy board; none on a view that only mirrors another. */

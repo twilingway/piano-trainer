@@ -108,6 +108,7 @@ describe("closed dialog content", () => {
           onClose={noop}
           onAgain={noop}
           onReview={noop}
+          onStats={() => undefined}
         />
       );
     });

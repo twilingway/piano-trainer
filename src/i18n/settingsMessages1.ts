@@ -27,9 +27,6 @@ export const settingsMessages1 = {
   "Звук фортепиано": {
     en: "Piano sound"
   },
-  "Сбросить камеру": {
-    en: "Reset camera"
-  },
   "Приглушить клавиатуру": { en: "Dim keyboard" },
   "Ракурс пианино": { en: "Piano view" },
   Ракурс: {
@@ -136,9 +133,6 @@ export const settingsMessages1 = {
   Аркада: {
     en: "Arcade"
   },
-  "3D (с перспективой)": {
-    en: "3D (with perspective)"
-  },
   "Вид рук": {
     en: "Hands"
   },
@@ -159,6 +153,7 @@ export const settingsMessages1 = {
   "Перспектива: горизонт": {
     en: "Perspective: horizon"
   },
+  "{parameter}: числовое значение": { en: "{parameter}: numeric value" },
   "Перспектива: ширина у горизонта": {
     en: "Perspective: width at horizon"
   },

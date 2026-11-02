@@ -151,6 +151,7 @@ export class ThreeNoteLights {
   private boxes = new Map<number, KeyBox>();
   private lastSources: readonly EnergySource[] = [];
   private lastCamera: WorldCamera | undefined;
+  private lastScale = 1;
   private readonly lights = Array.from({ length: NOTE_LIGHT_LIMIT }, () => {
     const light = new SpotLight(0xffffff, 0, 420, 0.75, 0.9, 2);
     light.castShadow = false;
@@ -159,8 +160,13 @@ export class ThreeNoteLights {
     return light;
   });
 
-  layout(boxes: readonly KeyBox[], camera = this.lastCamera): void {
-    const oldScale = this.lastCamera?.params.prefs.scale ?? 1;
+  /** `scale` is the keys group's scale: the lights live there, not on the world road. */
+  layout(
+    boxes: readonly KeyBox[],
+    camera = this.lastCamera,
+    scale = camera?.params.prefs.scale ?? this.lastScale
+  ): void {
+    const oldScale = this.lastScale;
     const retained = new Map<
       number,
       {
@@ -193,8 +199,8 @@ export class ThreeNoteLights {
     const samples = camera
       ? this.selection.update(this.lastSources, camera)
       : this.selection.samples;
-    const scale = camera?.params.prefs.scale ?? oldScale;
     this.lastCamera = camera;
+    this.lastScale = scale;
     for (let index = 0; index < this.lights.length; index++) {
       const light = this.lights[index];
       const sample = samples[index];
@@ -231,21 +237,27 @@ export class ThreeNoteLights {
   clear(): void {
     this.lastSources = [];
     this.lastCamera = undefined;
+    this.lastScale = 1;
     this.selection.clear();
     for (const light of this.lights) light.intensity = 0;
   }
 
-  update(sources: readonly EnergySource[], camera: WorldCamera, deltaSeconds: number): void {
+  update(
+    sources: readonly EnergySource[],
+    camera: WorldCamera,
+    deltaSeconds: number,
+    scale = camera.params.prefs.scale
+  ): void {
     const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(0.1, deltaSeconds)) : 0;
     if (delta === 0) return;
     this.lastSources = sources;
     this.lastCamera = camera;
+    this.lastScale = scale;
     const samples = this.selection.update(sources, camera);
     for (let index = 0; index < this.lights.length; index++) {
       const light = this.lights[index];
       const sample = samples[index];
       if (!light || !sample) continue;
-      const scale = camera.params.prefs.scale;
       light.distance = 420 * scale;
       const target = sample.energy * LIGHT_POWER * scale ** 2;
       if (sample.energy > 0) {

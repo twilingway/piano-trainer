@@ -1,8 +1,11 @@
-﻿// @vitest-environment happy-dom
+// @vitest-environment happy-dom
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HIDDEN_LESSON_CUE } from "../reading/fingerCues";
 import { PracticeSession } from "../practice/session";
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+const staffFeedback = { publish: vi.fn<LessonStaffFeedbackSink["publish"]>(), clear: vi.fn() };
 import { createAppStore, type AppStore } from "./store";
 import { withTestStore } from "./storeTestSupport";
 import { createMemoryReadingRepository } from "./readingRepository";
@@ -10,6 +13,13 @@ import { useTwoHandCourse, useTwoHandTrainer } from "./useTwoHandCourse";
 import type { Trainer } from "../practice/Trainer";
 import type { KeyEvent } from "../input/midiInput";
 
+/** Hint rows stay reserved under the notes; only their text tells a shown hint. */
+function shownLyrics(xml = "") {
+  return Array.from(
+    new DOMParser().parseFromString(xml, "application/xml").querySelectorAll("lyric > text"),
+    (text) => text.textContent
+  ).filter((text) => text !== HIDDEN_LESSON_CUE);
+}
 let root: Root, host: HTMLDivElement, store: AppStore;
 let course: ReturnType<typeof useTwoHandCourse>, now: number;
 const configureCourse = vi.fn(),
@@ -18,7 +28,7 @@ const trainerRef = {
   current: { configureCourse, setPlaying, cancelInput: vi.fn() } as unknown as Trainer
 };
 function Harness({ connect = false }: { connect?: boolean }) {
-  const value = useTwoHandCourse();
+  const value = useTwoHandCourse(staffFeedback);
   useTwoHandTrainer(value, trainerRef, connect, false);
   useEffect(() => {
     course = value;
@@ -140,7 +150,7 @@ describe("two-hand course shell", () => {
       course.newSeries();
     });
     expect(course.hintLevel).toBe(0);
-    expect(course.prompt?.musicXml).not.toContain("<lyric>");
+    expect(shownLyrics(course.prompt?.musicXml)).toEqual([]);
     expect(course.policy?.cuePitches()).toEqual([]);
     act(() => {
       course.exit();
@@ -149,7 +159,7 @@ describe("two-hand course shell", () => {
       course.start();
     });
     expect(course.hintLevel).toBe(0);
-    expect(course.prompt?.musicXml).not.toContain("<lyric>");
+    expect(shownLyrics(course.prompt?.musicXml)).toEqual([]);
   });
   it("presents exact current pair and saves only after ten atomic accepted commits", async () => {
     const practice = select();
@@ -236,3 +246,63 @@ function required<T>(value: T | null | undefined): T {
   if (value == null) throw new Error("Missing fixture value");
   return value;
 }
+
+describe("two-hand accepted staff feedback", () => {
+  it("publishes both old displayed heads only after an atomic commit, then rejects stale callbacks", () => {
+    const practice = select();
+    present();
+    update(practice, now);
+    const oldPolicy = required(course.policy);
+    const pair = required(course.pair);
+    const presentationId = required(course.presentation).id;
+    const start = now;
+    input(practice, "down", pair.pitches[0], start + 10);
+    expect(staffFeedback.publish).not.toHaveBeenCalled();
+    input(practice, "down", pair.pitches[1], start + 110);
+    input(practice, "up", pair.pitches[0], start + 120);
+    input(practice, "up", pair.pitches[1], start + 130);
+    expect(staffFeedback.publish).not.toHaveBeenCalled();
+    update(practice, start + 381);
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(1);
+    expect(staffFeedback.publish.mock.calls[0]?.[0]).toMatchObject({
+      presentationId,
+      notes: pair.noteIds.map((noteId, index) => ({
+        noteId,
+        pitch: pair.pitches[index],
+        staffBeat: 0
+      }))
+    });
+    now += 600;
+    practice.tick(now);
+    update(practice, now);
+    expect(required(course.presentation).id).not.toBe(presentationId);
+    expect(required(course.pair).id).not.toBe(pair.id);
+    act(() => oldPolicy.onCommit?.(pair.noteIds, true, now));
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(1);
+    act(() => {
+      course.newSeries();
+    });
+    expect(staffFeedback.clear).toHaveBeenCalled();
+    act(() => oldPolicy.onCommit?.(pair.noteIds, true, now));
+    expect(staffFeedback.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not decorate a rejected commit or displayed hint", () => {
+    const practice = select();
+    present();
+    update(practice, now);
+    act(() => {
+      course.hint();
+      course.hint();
+    });
+    const pair = required(course.pair),
+      start = now;
+    input(practice, "down", pair.pitches[0], start + 10);
+    input(practice, "down", pair.pitches[1], start + 110);
+    input(practice, "up", pair.pitches[0], start + 120);
+    input(practice, "up", pair.pitches[1], start + 130);
+    update(practice, start + 381, false);
+    act(() => course.policy?.onCommit?.(pair.noteIds, false, now));
+    expect(staffFeedback.publish).not.toHaveBeenCalled();
+  });
+});

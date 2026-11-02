@@ -30,7 +30,7 @@ export class FreeCameraLegend {
       const line = this.lines[index];
       if (line) line.textContent = t(key);
     });
-    this.reset.textContent = t("Сбросить камеру");
+    this.reset.textContent = t("Вернуться к пианино");
   }
 
   destroy(): void {

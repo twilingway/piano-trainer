@@ -1,11 +1,13 @@
 import { MeshPhysicalMaterial } from "three";
 import type { Color, MeshStandardMaterial } from "three";
 import type { EnergySource } from "../noteEnergy";
+import { applyNativeKeyFinish, type NativeKeyFinishKind } from "./nativeKeyFinish";
 
 interface KeyEmission {
   readonly materials: [MeshStandardMaterial, MeshStandardMaterial];
   readonly baseColors: [Color, Color];
   readonly templates: readonly [MeshStandardMaterial, MeshStandardMaterial];
+  readonly nativeFinish: NativeKeyFinishKind | undefined;
   red: number;
   green: number;
   blue: number;
@@ -27,6 +29,7 @@ export class ThreeKeyEmission {
   private readonly keys = new Map<number, KeyEmission>();
   private readonly retained = new Map<number, DisplayEmission>();
   private readonly ownedTemplates = new Set<MeshStandardMaterial>();
+  private dim = false;
 
   /** Painted top templates share baked textures but own their shader hook and material object. */
   ownTemplate(material: MeshStandardMaterial): void {
@@ -57,7 +60,8 @@ export class ThreeKeyEmission {
   create(
     pitch: number,
     top: MeshStandardMaterial,
-    body: MeshStandardMaterial
+    body: MeshStandardMaterial,
+    nativeFinish?: NativeKeyFinishKind
   ): [MeshStandardMaterial, MeshStandardMaterial] {
     const materials: [MeshStandardMaterial, MeshStandardMaterial] = [top.clone(), body.clone()];
     for (const [index, material] of materials.entries()) {
@@ -81,12 +85,14 @@ export class ThreeKeyEmission {
       materials,
       baseColors: [top.color.clone(), body.color.clone()],
       templates: [top, body],
+      nativeFinish,
       red: 0,
       green: 0,
       blue: 0,
       weight: 0,
       intensity: 0
     };
+    this.refreshKey(key);
     const previous = this.retained.get(pitch);
     if (previous) {
       key.intensity = previous.intensity;
@@ -100,29 +106,47 @@ export class ThreeKeyEmission {
 
   /** Update existing clones without advancing, clearing or reallocating the note envelope. */
   refreshAppearance(): void {
-    for (const key of this.keys.values()) {
-      for (let index = 0; index < key.materials.length; index++) {
-        const material = key.materials[index];
-        const template = key.templates[index];
-        const base = key.baseColors[index];
-        if (!material || !template || !base) continue;
-        base.copy(template.color);
-        material.map = template.map;
-        material.roughness = template.roughness;
-        material.metalness = template.metalness;
-        material.bumpMap = template.bumpMap;
-        material.bumpScale = template.bumpScale;
-        if (material instanceof MeshPhysicalMaterial && template instanceof MeshPhysicalMaterial) {
-          material.clearcoat = template.clearcoat;
-          material.clearcoatRoughness = template.clearcoatRoughness;
-          material.specularIntensity = template.specularIntensity;
-          material.sheen = template.sheen;
-          material.sheenRoughness = template.sheenRoughness;
-          material.sheenColor.copy(template.sheenColor);
-        }
+    for (const key of this.keys.values()) this.refreshKey(key);
+  }
+
+  /** Finish changes share the current envelope and apply to keys created by the next layout. */
+  setDim(dim: boolean): void {
+    this.dim = dim;
+    this.refreshAppearance();
+  }
+
+  private refreshKey(key: KeyEmission): void {
+    for (let index = 0; index < key.materials.length; index++) {
+      const material = key.materials[index];
+      const template = key.templates[index];
+      const base = key.baseColors[index];
+      if (!material || !template || !base) continue;
+      base.copy(template.color);
+      material.map = template.map;
+      material.roughness = template.roughness;
+      material.metalness = template.metalness;
+      material.bumpMap = template.bumpMap;
+      material.bumpScale = template.bumpScale;
+      if (material instanceof MeshPhysicalMaterial && template instanceof MeshPhysicalMaterial) {
+        material.clearcoat = template.clearcoat;
+        material.clearcoatRoughness = template.clearcoatRoughness;
+        material.specularIntensity = template.specularIntensity;
+        material.sheen = template.sheen;
+        material.sheenRoughness = template.sheenRoughness;
+        material.sheenColor.copy(template.sheenColor);
       }
-      this.paint(key);
+      if (key.nativeFinish) {
+        applyNativeKeyFinish(
+          material,
+          template,
+          key.nativeFinish,
+          index === 0 ? "top" : "body",
+          this.dim
+        );
+        base.copy(material.color);
+      }
     }
+    this.paint(key);
   }
 
   update(sources: readonly EnergySource[], deltaSeconds: number): void {

@@ -4,8 +4,7 @@ interface Props {
   readonly staff: ReactNode;
   readonly keyboard: ReactNode;
   readonly wordTyping: boolean;
-  readonly fps: boolean;
-  readonly onFps: (show: boolean) => void;
+  readonly toggles: ReactNode;
   readonly editing: boolean;
   readonly onToggleEditing: () => void;
   readonly onResetLayout: () => void;
@@ -14,34 +13,32 @@ export function SettingsView(props: Props) {
   const { t } = useI18n();
   return (
     <>
+      <section className="settings-group" aria-label={t("Что показывать")}>
+        <h3 className="settings-group__title">{t("Что показывать")}</h3>
+        <div className="setting-control setting-control--views">{props.toggles}</div>
+      </section>
       <section className="settings-group">
         <h3 className="settings-group__title">{t("Нотная запись")}</h3>
         {props.staff}
       </section>
-      <section className="settings-group">
-        <h3 className="settings-group__title">{t("Клавиатура и отображение")}</h3>
-        <div className="settings-list">
-          <label className="setting">
-            <span>{t("Показывать FPS")}</span>
-            <input
-              type="checkbox"
-              checked={props.fps}
-              onChange={(event) => {
-                props.onFps(event.target.checked);
-              }}
-            />
-          </label>
-        </div>
-        {props.wordTyping ? (
+      {props.wordTyping ? (
+        <section
+          className="settings-group"
+          data-setting-target="key-style"
+          tabIndex={-1}
+          aria-disabled="true"
+          aria-label={t("Вид клавиш")}
+        >
+          <h3 className="settings-group__title">{t("Вид клавиш")}</h3>
           <p className="setting-hint">
             {t(
               "В режиме «Печатать мелодию» клавиатура сама подстраивается под выбранную партию, поэтому здесь её не настроить."
             )}
           </p>
-        ) : (
-          props.keyboard
-        )}
-      </section>
+        </section>
+      ) : (
+        props.keyboard
+      )}
       <section className="settings-group">
         <h3 className="settings-group__title">{t("Расположение")}</h3>
         <p className="setting-hint">

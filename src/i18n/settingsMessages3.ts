@@ -1,6 +1,27 @@
 import type { Messages } from "./locales";
 
 export const settingsMessages3 = {
+  "100% — линия клавиш. Значения выше опускают горизонт ниже неё.": {
+    en: "100% is the key line. Higher values move the horizon below it."
+  },
+  "Масштаб нотного стана": { en: "Staff size" },
+  "Масштаб пианинных табов": { en: "Piano tab size" },
+  "Уменьшить нотный стан": { en: "Make staff smaller" },
+  "Увеличить нотный стан": { en: "Make staff larger" },
+  "Уменьшить пианинные табы": { en: "Make piano tabs smaller" },
+  "Увеличить пианинные табы": { en: "Make piano tabs larger" },
+  "Подготовка к калибровке": { en: "Calibration preparation" },
+  "Подстройтесь под метроном: первые 3 щелчка не считаются.": {
+    en: "Find the beat: the first 3 clicks do not count."
+  },
+  "Разминка: нажимайте C4 под каждый щелчок.": {
+    en: "Warm-up: press C4 with each click."
+  },
+  "Замер: продолжайте нажимать C4 под каждый щелчок.": {
+    en: "Measurement: keep pressing C4 with each click."
+  },
+  "Горение нот": { en: "Note flames" },
+  "Эффекты нажатия": { en: "Key press effects" },
   "Приготовьтесь: {seconds}": { en: "Get ready: {seconds}" },
   "Эти настройки применяются к нотному стану и пианинным табам.": {
     en: "These settings apply to the score and piano tabs."
@@ -20,6 +41,9 @@ export const settingsMessages3 = {
   },
   "Подсказки к виду": {
     en: "View help"
+  },
+  "— ноты по буквам и пальцам для каждой руки.": {
+    en: "— note letters and fingering for each hand."
   },
   "— партитура над игрой.": {
     en: "— the score above the game."

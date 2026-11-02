@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { Ticker } from "pixi.js";
+import type { Ticker } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { FpsMeter } from "./FpsMeter";
 

@@ -75,9 +75,17 @@ export function NoteCardIcon() {
 export function RoadIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M10 3h4l7 18H3z" />
-      <line x1="12" x2="12" y1="6" y2="9" />
-      <line x1="12" x2="12" y1="12" y2="16" />
+      <path d="M12 3 21 8v9l-9 5-9-5V8L12 3ZM3 8l9 5 9-5M12 13v9" />
+    </svg>
+  );
+}
+
+export function MetronomeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 4h6l4 17H5L9 4ZM7 18h10" />
+      <path d="M12 16 20 2" strokeWidth="2.2" />
+      <path d="m15 4 4 3-2 3-4-3z" className="filled" />
     </svg>
   );
 }

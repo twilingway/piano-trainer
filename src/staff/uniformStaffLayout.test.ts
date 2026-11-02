@@ -2,10 +2,18 @@
 import {
   OpenSheetMusicDisplay,
   VexFlowGraphicalNote,
+  unitInPixels,
   type VexFlowMeasure
 } from "opensheetmusicdisplay";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { installUniformStaffLayout } from "./uniformStaffLayout";
+import { installUniformStaffLayout, type UniformStaffAxis } from "./uniformStaffLayout";
+import { staffNoteInk } from "./uniformStaffInk";
+import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
+import { EXERCISES } from "../song/exercises";
+
+function axisX(axis: UniformStaffAxis, beat: number) {
+  return axis.xAtBeat?.(beat) ?? axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(beat);
+}
 
 function note(step: string, duration: number, type = "quarter", extras = "") {
   return `<note><pitch><step>${step}</step><octave>4</octave></pitch><duration>${String(duration)}</duration><type>${type}</type>${extras}</note>`;
@@ -22,14 +30,14 @@ const regular = score([
   note("G", 16, "whole")
 ]);
 
-async function load(xml: string) {
+async function load(xml: string, horizontal = true, width = 1000) {
   const host = document.createElement("div");
   document.body.append(host);
-  Object.defineProperty(host, "offsetWidth", { value: 1000 });
+  Object.defineProperty(host, "offsetWidth", { value: width, configurable: true });
   const osmd = new OpenSheetMusicDisplay(host, {
     backend: "svg",
     autoResize: false,
-    renderSingleHorizontalStaffline: true
+    renderSingleHorizontalStaffline: horizontal
   });
   await osmd.load(xml);
   return osmd;
@@ -55,7 +63,8 @@ function heads(osmd: OpenSheetMusicDisplay) {
             return [
               {
                 beat: entry.getAbsoluteTimestamp().RealValue * 4,
-                x: (drawn.getNoteHeadBeginX() + drawn.getGlyphWidth() / 2) * osmd.Zoom
+                x: (drawn.getNoteHeadBeginX() + drawn.getGlyphWidth() / 2) * osmd.Zoom,
+                right: (drawn.getNoteHeadBeginX() + drawn.getGlyphWidth()) * osmd.Zoom
               }
             ];
           })
@@ -88,20 +97,135 @@ describe("uniform staff layout with installed OSMD", () => {
     expect(axis).toBeDefined();
     if (!axis) throw new Error("No axis after render");
     for (const head of heads(osmd)) {
-      expect(head.x).toBeCloseTo(
-        axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat),
-        6
-      );
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
     }
     const widths = osmd.GraphicSheet.MeasureList.slice(1).map(
       (row) => row[0]?.PositionAndShape.Size.width
     );
-    expect(widths[0]).toBeCloseTo(widths[1] ?? 0, 6);
+    // Only the filled bar needs a small fixed gutter; its musical scale is unchanged.
+    expect(widths[0]).toBeGreaterThanOrEqual(widths[1] ?? 0);
+    expect(((widths[0] ?? 0) - (widths[1] ?? 0)) * unitInPixels).toBeLessThan(10);
     expect(widths[1]).toBeCloseTo(widths[2] ?? 0, 6);
     // The first bar also reserves a clef/key/time-signature lead-in.
     expect(osmd.GraphicSheet.MeasureList[0]?.[0]?.PositionAndShape.Size.width).toBeGreaterThan(
       widths[0] ?? 0
     );
+  });
+
+  it.each([true, false])(
+    "reserves shared tab labels without changing staff glyph size, horizontal=%s",
+    async (horizontal) => {
+      const osmd = await load(regular, horizontal);
+      let labelWidth = 0;
+      const layout = installUniformStaffLayout(osmd, (beat) => beat / 2, {
+        horizontal,
+        labelWidthAtBeat: () => labelWidth
+      });
+      osmd.render();
+      const originalZoom = osmd.Zoom;
+      const before = heads(osmd).filter((head) => head.beat < 4);
+      labelWidth = 82 * 1.5;
+      osmd.render();
+      const enlarged = heads(osmd).filter((head) => head.beat < 4);
+      expect(osmd.Zoom).toBe(originalZoom);
+      expect(enlarged).toHaveLength(before.length);
+      for (let index = 1; index < enlarged.length; index++) {
+        expect((enlarged[index]?.x ?? 0) - (enlarged[index - 1]?.x ?? 0)).toBeGreaterThanOrEqual(
+          labelWidth
+        );
+      }
+      expect((enlarged[1]?.x ?? 0) - (enlarged[0]?.x ?? 0)).toBeGreaterThan(
+        (before[1]?.x ?? 0) - (before[0]?.x ?? 0)
+      );
+      // Zooming the staff preserves the same tab label space in CSS pixels.
+      osmd.Zoom = 0.5;
+      osmd.render();
+      const smallerStaff = heads(osmd).filter((head) => head.beat < 4);
+      expect((smallerStaff[1]?.x ?? 0) - (smallerStaff[0]?.x ?? 0)).toBeGreaterThanOrEqual(
+        labelWidth
+      );
+      expect(layout.getAxis()).toBeDefined();
+    }
+  );
+
+  it("expands the wrapped SVG viewport to its actual ink without scaling noteheads", async () => {
+    const osmd = await load(regular, false, 245);
+    installUniformStaffLayout(osmd, (beat) => beat / 2, {
+      horizontal: false,
+      labelWidthAtBeat: () => 123
+    });
+    osmd.Zoom = 1.5;
+    osmd.render();
+    const backend = osmd.Drawer.Backends[0];
+    const svg = backend?.getRenderElement().querySelector("svg");
+    if (!backend || !svg) throw new Error("No SVG backend after rendering");
+    const before = heads(osmd);
+    const previousWidth = Number(svg.getAttribute("width"));
+    const oldViewBox = (svg.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
+    expect(before.some((head) => head.right > previousWidth)).toBe(true);
+    fitWrappedStaffSvg(osmd);
+    const width = Number(svg.getAttribute("width"));
+    const viewBox = (svg.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
+    expect(width).toBeGreaterThan(previousWidth);
+    for (const head of heads(osmd)) expect(head.right).toBeLessThanOrEqual(width);
+    expect(heads(osmd)).toEqual(before);
+    expect(osmd.Zoom).toBe(1.5);
+    expect(width / (viewBox[2] ?? 1)).toBeCloseTo(previousWidth / (oldViewBox[2] ?? 1));
+    expect(viewBox[3]).toBe(oldViewBox[3]);
+    // Re-layout still reads the narrow host, rather than the expanded render viewport.
+    osmd.render();
+    fitWrappedStaffSvg(osmd);
+    expect(heads(osmd)).toEqual(before);
+  });
+
+  it("keeps wrapped glyph scale independent across repeated tab zoom and scrollbar changes", async () => {
+    const osmd = await load(regular, false, 1000);
+    osmd.render();
+    const backend = osmd.Drawer.Backends[0];
+    const host = backend?.getRenderElement().parentElement;
+    if (!host) throw new Error("No score host after rendering");
+    const workspace = document.createElement("div");
+    workspace.className = "workspace-main";
+    workspace.getBoundingClientRect = () => new DOMRect(0, 0, 1440, 1000);
+    document.body.append(workspace);
+    workspace.append(host);
+    host.style.maxHeight = "220px";
+    host.style.setProperty("--staff-fit", "1");
+    const baseline = new StaffZoomBaseline();
+    let labelWidth = 0;
+    installUniformStaffLayout(osmd, (beat) => beat / 2, {
+      horizontal: false,
+      labelWidthAtBeat: () => labelWidth
+    });
+    const options = { zoom: 1.4, singleLine: false, breaksFromScore: true, maxShare: 0.2 };
+    const scales: number[] = [];
+    const glyphWidths: number[] = [];
+    for (const tabsZoom of [2, 1, 1.5, 2, 1]) {
+      // A vertical scrollbar narrows the current engraving, not its viewport fit budget.
+      Object.defineProperty(host, "offsetWidth", {
+        value: tabsZoom > 1 ? 985 : 1000,
+        configurable: true
+      });
+      labelWidth = 0;
+      baseline.render(osmd, host, options);
+      labelWidth = 82 * tabsZoom;
+      osmd.render();
+      fitWrappedStaffSvg(osmd);
+      scales.push(osmd.Zoom);
+      const head = heads(osmd)[0];
+      if (!head) throw new Error("No notehead after wrapped rendering");
+      glyphWidths.push((head.right - head.x) * 2);
+    }
+    for (const width of glyphWidths) expect(width).toBeCloseTo(glyphWidths[0] ?? 0, 8);
+    expect(scales.every((scale) => scale === scales[0])).toBe(true);
+    const before = osmd.Zoom;
+    labelWidth = 0;
+    baseline.render(osmd, host, { ...options, zoom: 2 });
+    expect(osmd.Zoom / before).toBeCloseTo(2 / 1.4);
+    // A real CSS budget change invalidates the measured baseline.
+    host.style.maxHeight = "100px";
+    baseline.render(osmd, host, options);
+    expect(osmd.Zoom).toBeLessThan(before);
   });
 
   it("uses seconds through tempo changes, including changes between noteheads", async () => {
@@ -112,7 +236,7 @@ describe("uniform staff layout with installed OSMD", () => {
     const axis = layout.getAxis();
     if (!axis) throw new Error("No axis after render");
     for (const head of heads(osmd)) {
-      expect(head.x).toBeCloseTo(axis.originX + axis.pixelsPerSecond * timeAtBeat(head.beat), 6);
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
     }
     const drawn = heads(osmd);
     expect((drawn[2]?.x ?? 0) - (drawn[1]?.x ?? 0)).toBeCloseTo(axis.pixelsPerSecond * 0.75, 6);
@@ -132,10 +256,7 @@ describe("uniform staff layout with installed OSMD", () => {
     if (!axis || !firstAxis) throw new Error("No axis after render");
     expect(axis.pixelsPerSecond).toBeCloseTo(firstAxis.pixelsPerSecond * 0.7, 6);
     for (const head of heads(osmd)) {
-      expect(head.x).toBeCloseTo(
-        axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat),
-        6
-      );
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
     }
     layout.dispose();
     expect(layout.getAxis()).toBeUndefined();
@@ -168,9 +289,7 @@ describe("uniform staff layout with installed OSMD", () => {
     const axis = layout.getAxis();
     if (!axis) throw new Error("No axis after render");
     for (const head of heads(osmd)) {
-      expect(
-        Math.abs(head.x - (axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat)))
-      ).toBeLessThan(2);
+      expect(Math.abs(head.x - axisX(axis, head.beat))).toBeLessThan(2);
     }
     expect(osmd.Sheet.SourceMeasures.map((measure) => measure.AbsoluteTimestamp.RealValue)).toEqual(
       source
@@ -197,9 +316,7 @@ describe("uniform staff layout with installed OSMD", () => {
     const axis = layout.getAxis();
     if (!axis) throw new Error("No axis after render");
     for (const head of heads(osmd)) {
-      expect(
-        Math.abs(head.x - (axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat)))
-      ).toBeLessThan(2);
+      expect(Math.abs(head.x - axisX(axis, head.beat))).toBeLessThan(2);
     }
   });
 
@@ -218,10 +335,7 @@ describe("uniform staff layout with installed OSMD", () => {
     const axis = layout.getAxis();
     if (!axis) throw new Error("No axis after render");
     for (const head of heads(osmd)) {
-      expect(head.x).toBeCloseTo(
-        axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat),
-        6
-      );
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
     }
   });
 
@@ -257,10 +371,7 @@ describe("uniform staff layout with installed OSMD", () => {
     const axis = layout.getAxis();
     if (!axis) throw new Error("No axis after render");
     for (const head of heads(osmd)) {
-      expect(head.x).toBeCloseTo(
-        axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat),
-        6
-      );
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
     }
   });
 
@@ -274,10 +385,7 @@ describe("uniform staff layout with installed OSMD", () => {
     const axis = layout.getAxis();
     if (!axis) throw new Error("No axis after render");
     for (const head of heads(osmd)) {
-      expect(head.x).toBeCloseTo(
-        axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat),
-        6
-      );
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
     }
     interface Modifier {
       getX(): number;
@@ -327,10 +435,7 @@ describe("uniform staff layout with installed OSMD", () => {
     if (!axis) throw new Error("No axis after render");
     expect(axis.pixelsPerSecond).toBeLessThan(200);
     for (const head of heads(osmd)) {
-      expect(head.x).toBeCloseTo(
-        axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat),
-        6
-      );
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
     }
   });
 
@@ -350,9 +455,157 @@ describe("uniform staff layout with installed OSMD", () => {
     if (!axis) throw new Error("No axis after render");
     expect(axis.pixelsPerSecond).toBeLessThan(250);
     for (const head of heads(osmd)) {
-      expect(
-        Math.abs(head.x - (axis.originX + axis.pixelsPerSecond * axis.timeAtBeat(head.beat)))
-      ).toBeLessThan(2);
+      expect(Math.abs(head.x - axisX(axis, head.beat))).toBeLessThan(2);
     }
+  });
+
+  it("narrows ordinary quarter-note bars and slows their visual axis without changing score time", async () => {
+    const quarters = note("C", 4) + note("D", 4) + note("E", 4) + note("F", 4);
+    const osmd = await load(score([quarters, quarters]));
+    const sourceTimes = osmd.Sheet.SourceMeasures.map((measure) => ({
+      start: measure.AbsoluteTimestamp.RealValue,
+      duration: measure.Duration.RealValue
+    }));
+    const timeAtBeat = (beat: number) => beat / 2;
+    const layout = installUniformStaffLayout(osmd, timeAtBeat);
+    osmd.render();
+    const axis = layout.getAxis();
+    if (!axis) throw new Error("No axis after render");
+    expect(axis.pixelsPerSecond).toBeCloseTo(72 * osmd.Zoom, 6);
+    const second = osmd.GraphicSheet.MeasureList[1]?.[0];
+    if (!second) throw new Error("No second measure");
+    // Two seconds at the previous 90px/s baseline occupied 180px.
+    expect(second.PositionAndShape.Size.width * unitInPixels).toBeCloseTo(144, 6);
+    expect(second.PositionAndShape.Size.width * unitInPixels).toBeLessThan(180);
+    expect(axis.timeAtBeat).toBe(timeAtBeat);
+    expect(
+      osmd.Sheet.SourceMeasures.map((measure) => ({
+        start: measure.AbsoluteTimestamp.RealValue,
+        duration: measure.Duration.RealValue
+      }))
+    ).toEqual(sourceTimes);
+    for (const head of heads(osmd)) {
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
+    }
+  });
+
+  it("keeps real head, accidental and short-tail ink away from both barlines", async () => {
+    const sharp = (step: string) =>
+      note(step, 1, "16th", "<accidental>sharp</accidental>").replace(
+        "</step>",
+        "</step><alter>1</alter>"
+      );
+    const rest = "<note><rest/><duration>14</duration><type>half</type><dot/><dot/></note>";
+    const osmd = await load(
+      score([sharp("C") + rest + sharp("D"), sharp("C") + rest + sharp("D")])
+    );
+    const timeAtBeat = (beat: number) => beat / 2;
+    const layout = installUniformStaffLayout(osmd, timeAtBeat);
+    osmd.render();
+    const axis = layout.getAxis();
+    if (!axis) throw new Error("No axis after render");
+    // Dense accidental/rest neighbours may still require more than the baseline.
+    expect(axis.pixelsPerSecond).toBeGreaterThanOrEqual(72 * osmd.Zoom);
+    let accidentals = 0;
+    for (const row of osmd.GraphicSheet.MeasureList) {
+      for (const measure of row) {
+        const stave = (measure as VexFlowMeasure).getVFStave() as unknown as {
+          getX(): number;
+          getWidth(): number;
+          getYForLine(line: number): number;
+          getNumLines(): number;
+        };
+        const left = stave.getX();
+        const right = left + stave.getWidth();
+        const top = stave.getYForLine(0);
+        const bottom = stave.getYForLine(stave.getNumLines() - 1);
+        for (const entry of measure.staffEntries) {
+          for (const voice of entry.graphicalVoiceEntries) {
+            const note = voice.notes.find((candidate) => !candidate.sourceNote.isRest());
+            if (!(note instanceof VexFlowGraphicalNote)) continue;
+            const drawn = (note as unknown as { vfnote: [Parameters<typeof staffNoteInk>[0]] })
+              .vfnote[0];
+            const center =
+              drawn.getNoteHeadBeginX() +
+              (drawn.getGlyphWidth?.() ?? 0) / 2 -
+              (drawn.getXShift?.() ?? 0);
+            accidentals += drawn
+              .getModifiers()
+              .filter((modifier) => modifier.getCategory() === "accidentals").length;
+            for (const ink of staffNoteInk(drawn)) {
+              if (ink.bottom < top || ink.top > bottom) continue;
+              expect(center - ink.left - left).toBeGreaterThanOrEqual(10 - 1e-6);
+              expect(right - center - ink.right).toBeGreaterThanOrEqual(10 - 1e-6);
+            }
+          }
+        }
+      }
+    }
+    expect(accidentals).toBeGreaterThanOrEqual(4);
+    for (const head of heads(osmd)) {
+      expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
+    }
+  });
+  it("visibly compacts the actual anthem without propagating one short tail through every bar", async () => {
+    const levels = EXERCISES.find((item) => item.id === "anthem-ru")?.levels ?? [];
+    expect(levels).toHaveLength(3);
+    for (const level of levels) {
+      const timeAtBeat = (beat: number) => (beat * 60) / 76;
+      const osmd = await load(level.musicXml);
+      const sourceTimes = osmd.Sheet.SourceMeasures.map(
+        (measure) => measure.AbsoluteTimestamp.RealValue
+      );
+      const layout = installUniformStaffLayout(osmd, timeAtBeat);
+      osmd.render();
+      const axis = layout.getAxis();
+      if (!axis) throw new Error("No anthem axis after render");
+      const width = osmd.GraphicSheet.MeasureList.reduce(
+        (sum, row) => sum + (row[0]?.PositionAndShape.Size.width ?? 0) * unitInPixels,
+        0
+      );
+      // Measured before the gutter fix on the same installed engraver and bundled source.
+      const previousWidth = level.id === "hard" ? 16784.65 : 11163.19;
+      expect(width).toBeLessThan(previousWidth * 0.85);
+      expect(axis.pixelsPerSecond).toBeLessThan(166);
+      for (const head of heads(osmd)) {
+        expect(Math.abs(head.x - axisX(axis, head.beat))).toBeLessThan(2);
+      }
+      for (const measure of osmd.Sheet.SourceMeasures.slice(1)) {
+        const beat = measure.AbsoluteTimestamp.RealValue * 4;
+        expect(Math.abs(axisX(axis, beat - 1e-7) - axisX(axis, beat))).toBeLessThan(0.001);
+      }
+      expect(
+        osmd.Sheet.SourceMeasures.map((measure) => measure.AbsoluteTimestamp.RealValue)
+      ).toEqual(sourceTimes);
+    }
+  });
+
+  it("reserves cross-bar lyric ink as a local gutter rather than a global density increase", async () => {
+    const lyric = "<lyric><text>Twenty-character-label</text></lyric>";
+    const osmd = await load(
+      score([
+        note("C", 12, "half", "<dot/>") + note("D", 4, "quarter", lyric),
+        note("E", 4, "quarter", lyric) + note("F", 12, "half", "<dot/>")
+      ])
+    );
+    const layout = installUniformStaffLayout(osmd, (beat) => beat / 2);
+    osmd.render();
+    const axis = layout.getAxis();
+    if (!axis) throw new Error("No lyric axis after render");
+    expect(axis.pixelsPerSecond).toBe(72);
+    const entries = osmd.GraphicSheet.MeasureList.flatMap((row) =>
+      row.flatMap((measure) => measure.staffEntries)
+    );
+    const halves = entries.flatMap((entry) =>
+      entry.LyricsEntries.map((lyricEntry) => {
+        const box = lyricEntry.GraphicalLabel.PositionAndShape;
+        return ((box.BorderMarginRight - box.BorderMarginLeft) * unitInPixels) / 2;
+      })
+    );
+    expect(halves).toHaveLength(2);
+    expect(axisX(axis, 4) - axisX(axis, 3)).toBeGreaterThanOrEqual(
+      (halves[0] ?? 0) + (halves[1] ?? 0) + 4 - 1e-6
+    );
+    expect(Math.abs(axisX(axis, 4 - 1e-7) - axisX(axis, 4))).toBeLessThan(0.001);
   });
 });

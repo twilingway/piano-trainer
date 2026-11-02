@@ -1,3 +1,5 @@
+import { STAFF_VERTICAL_SPACE } from "./staffSpacing";
+
 /** A note of the score on screen: the beat it starts on, its x and the top of its line. */
 export interface BeatSpot {
   readonly beat: number;
@@ -58,7 +60,15 @@ export function placeCursorLine(
   lines: readonly { readonly top: number; readonly bottom: number }[],
   beat: number,
   /** A course moves the cursor off the notehead, or hides it over a single position. */
-  { offsetX = 0, hidden = false }: { readonly offsetX?: number; readonly hidden?: boolean } = {}
+  {
+    offsetX = 0,
+    hidden = false,
+    centered = false
+  }: {
+    readonly offsetX?: number;
+    readonly hidden?: boolean;
+    readonly centered?: boolean;
+  } = {}
 ): void {
   if (!line) return;
   const svg = host?.querySelector("svg");
@@ -70,9 +80,13 @@ export function placeCursorLine(
   }
   const origin = svg.getBoundingClientRect();
   const view = host.getBoundingClientRect();
-  const left = origin.left - view.left + host.scrollLeft + spot.x + offsetX;
-  const top = origin.top - view.top + host.scrollTop + box.top;
+  const screenX = origin.left - view.left + spot.x + offsetX;
+  // Scroll offsets may round to device pixels; keep a followed cursor still between those steps.
+  const anchoredX = centered && Math.abs(screenX - view.width / 2) <= 1 ? view.width / 2 : screenX;
+  const left = host.scrollLeft + anchoredX;
+  const top =
+    origin.top - view.top + host.scrollTop + box.top - STAFF_VERTICAL_SPACE.cursorOverhang;
   line.style.visibility = "visible";
   line.style.transform = `translate(${String(left)}px, ${String(top)}px)`;
-  line.style.height = `${String(box.bottom - box.top)}px`;
+  line.style.height = `${String(box.bottom - box.top + 2 * STAFF_VERTICAL_SPACE.cursorOverhang)}px`;
 }

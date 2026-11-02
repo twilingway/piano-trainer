@@ -21,12 +21,16 @@ export function ConnectedHeldBassCard({ onChoose }: { onChoose: () => void }) {
     />
   );
 }
-export function ConnectedHeldBassPractice() {
+export function ConnectedHeldBassPractice({
+  mode = "all"
+}: {
+  mode?: "all" | "intro" | "practice";
+}) {
   const course = useRuntimeSelector((runtime) => runtime.heldBass);
   const bindings = useRuntimeSelector((runtime) => runtime.computerKeyboard.bindings);
   return (
     <>
-      {course.intro && (
+      {mode !== "practice" && course.intro && (
         <HeldBassIntro
           bindings={Object.entries(bindings).flatMap(([code, binding]) =>
             binding.type === "note" ? [{ pitch: binding.pitch, label: keyLabel(code) }] : []
@@ -37,7 +41,7 @@ export function ConnectedHeldBassPractice() {
           }}
         />
       )}
-      {course.active && (
+      {mode !== "intro" && course.active && (
         <HeldBassPracticePanel
           history={course.history}
           sourceFilter={course.sourceFilter}

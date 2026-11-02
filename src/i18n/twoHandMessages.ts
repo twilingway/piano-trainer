@@ -69,13 +69,11 @@ export const twoHandMessages: Messages = {
   },
   "Знакомство с совместной игрой": { en: "Introduction to playing together" },
   "Начать десять пар": { en: "Start ten pairs" },
-  "Выйти из совместной игры": { en: "Leave two-hand practice" },
   "Серия двух рук завершена": { en: "Two-hand series completed" },
   "Без MIDI играйте двумя клавишами ПК или двумя касаниями. Одной мышью совместную атаку выполнить нельзя.":
     {
       en: "Without MIDI, use two computer keys or two touches. One mouse pointer cannot play both notes together."
     },
-  "Текущая пара: {notes}": { en: "Current pair: {notes}" },
   "До–соль в двух октавах": { en: "C–G in two octaves" },
   "Левая рука — до–соль малой октавы C3–G3, пальцы 5–4–3–2–1. Правая — C4–G4, пальцы 1–2–3–4–5.": {
     en: "Left hand: C3–G3, fingers 5–4–3–2–1. Right hand: C4–G4, fingers 1–2–3–4–5."

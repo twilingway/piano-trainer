@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Container, Sprite } from "pixi.js";
+import { Container, Sprite } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import { MistBoundsMask } from "./MistBoundsMask";
 import { layoutKeyboard } from "./keyboardLayout";

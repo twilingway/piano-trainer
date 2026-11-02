@@ -1,3 +1,5 @@
+import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
+import { publishJointStaffFeedback } from "./jointStaffFeedback";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import {
@@ -6,6 +8,13 @@ import {
   twoHandPromptXml
 } from "../reading/twoHandGenerator";
 import { TwoHandSession } from "../reading/twoHandSession";
+import {
+  HIDDEN_LESSON_CUE,
+  lessonFingerCues,
+  musicXmlWithLessonFingerCues
+} from "../reading/fingerCues";
+import { courseRangeIndices } from "../staff/courseStaff";
+import { lessonFingerLabel } from "../reading/fingerCueLabel";
 import type { TwoHandResult } from "../reading/twoHandTypes";
 import { DEFAULT_READING_PREFERENCES, type ReadingHintLevel } from "../reading/types";
 import type { TrainerPairPolicy } from "../practice/twoHandPolicy";
@@ -30,7 +39,7 @@ function selectedExercise(selection: TwoHandSelection) {
   return selection.active ? generateTwoHandExercise(selection.seed, selection.version) : null;
 }
 
-export function useTwoHandCourse() {
+export function useTwoHandCourse(feedback?: LessonStaffFeedbackSink) {
   const active = useAppSelector((state) => state.reading.activeCourse === "two-hand-coordination");
   const saved = useAppSelector((state) => state.reading.coordination);
   const preferences = useAppSelector((state) => state.reading.preferences);
@@ -42,16 +51,18 @@ export function useTwoHandCourse() {
     [active, saved.seed, saved.generatorVersion, revision]
   );
   const exercise = useMemo(() => selectedExercise(selection), [selection]);
-  const session = useMemo(() => {
+  const course = useMemo(() => {
     if (!exercise) return null;
+    const runId = `${crypto.randomUUID()}:${String(revision)}`;
     const run = new TwoHandSession(exercise, DEFAULT_READING_PREFERENCES, {
-      runId: `${crypto.randomUUID()}:${String(revision)}`,
+      runId,
       startedAt: null
     });
     const first = exercise.pairs[0];
     if (first) run.prepare(first.id, 0);
-    return run;
+    return { session: run, runId };
   }, [exercise, revision]);
+  const session = course?.session ?? null;
   const [published, setPublished] = useState<{
     session: TwoHandSession;
     signature: string;
@@ -110,15 +121,57 @@ export function useTwoHandCourse() {
       ? requested.level
       : (snapshot?.hintLevel ?? 0);
   const { locale } = useI18n();
+  const cueActive = snapshot?.active ?? false;
+  const cuePresented = snapshot?.presented ?? false;
   // The staff names a hinted note exactly as the hint line beside it does.
   const prompt = useMemo(
     () =>
       exercise
-        ? twoHandPromptXml(exercise, index, hintLevel, (pitch) =>
-            twoHandNoteName(pitch, (key) => translate(locale, messages, key))
-          )
+        ? (() => {
+            // Both hint rows, names and fingers, stay under the pair and are empty until
+            // their level: the staff and the row under it do not move.
+            const prompt = twoHandPromptXml(exercise, index, 1, (pitch) =>
+              hintLevel > 0
+                ? twoHandNoteName(pitch, (key) => translate(locale, messages, key))
+                : HIDDEN_LESSON_CUE
+            );
+            const shown = hintLevel === 2 && cueActive && cuePresented;
+            const cues = lessonFingerCues(
+              exercise.song.notes.filter((note) => pair?.noteIds.includes(note.id))
+            );
+            return {
+              ...prompt,
+              musicXml: cues.length
+                ? musicXmlWithLessonFingerCues(prompt.musicXml, cues, exercise.song.notes, (cue) =>
+                    shown ? lessonFingerLabel(cue, locale) : HIDDEN_LESSON_CUE
+                  )
+                : prompt.musicXml
+            };
+          })()
         : null,
-    [exercise, index, hintLevel, locale]
+    [exercise, index, pair, hintLevel, cueActive, cuePresented, locale]
+  );
+  // The pairs with each hand's lowest and highest note, hint rows shown (a shown hint sits lowest):
+  // the staves keep their room.
+  const range = useMemo(
+    () =>
+      exercise
+        ? courseRangeIndices(exercise.pairs.map((item) => [...item.pitches])).map((extreme) => {
+            const shown = twoHandPromptXml(exercise, extreme, 1, (pitch) =>
+              twoHandNoteName(pitch, (key) => translate(locale, messages, key))
+            );
+            const noteIds: readonly string[] = exercise.pairs[extreme]?.noteIds ?? [];
+            const cues = lessonFingerCues(
+              exercise.song.notes.filter((note) => noteIds.includes(note.id))
+            );
+            return cues.length
+              ? musicXmlWithLessonFingerCues(shown.musicXml, cues, exercise.song.notes, (cue) =>
+                  lessonFingerLabel(cue, locale)
+                )
+              : shown.musicXml;
+          })
+        : undefined,
+    [exercise, locale]
   );
   const id =
     exercise && pair ? `${exercise.id}:${String(revision)}:${pair.id}:${String(retry)}` : "";
@@ -208,7 +261,25 @@ export function useTwoHandCourse() {
               if (!accepted) {
                 session.cancel(now);
                 setErrorId(idRef.current);
-              } else finish();
+              } else {
+                if (
+                  sessionRef.current === session &&
+                  course &&
+                  commit.presentationId === session.snapshot().presentationId
+                )
+                  publishJointStaffFeedback(
+                    feedback,
+                    {
+                      runId: course.runId,
+                      presentationId: idRef.current,
+                      receiptId: commit.presentationId
+                    },
+                    exercise.song,
+                    commit.noteIds,
+                    0
+                  );
+                finish();
+              }
               publish();
             },
             cancel(now, resetAll) {
@@ -249,7 +320,7 @@ export function useTwoHandCourse() {
             }
           }
         : null,
-    [session, exercise, requestHint, publish, finish]
+    [session, course, exercise, requestHint, publish, finish, feedback]
   );
   const presentation = useMemo(
     () =>
@@ -294,6 +365,7 @@ export function useTwoHandCourse() {
     snapshot,
     policy,
     prompt,
+    range,
     presentation,
     index,
     pair,
@@ -311,12 +383,14 @@ export function useTwoHandCourse() {
     sourceFilter: saved.sourceFilter,
     result: finished?.session === session ? finished.result : null,
     start: () => {
+      feedback?.clear();
       setIntro(false);
       dispatch(readingActions.twoHandSelected({ seed: saved.seed }));
     },
     playAgain: async (ensureSound: () => Promise<void>) => {
       await ensureSound();
       if (sessionRef.current !== session || !session) return;
+      feedback?.clear();
       playRequestedRef.current = true;
       dispatch(
         readingActions.twoHandSelected({
@@ -325,14 +399,19 @@ export function useTwoHandCourse() {
         })
       );
     },
-    exit: () => dispatch(readingActions.exit()),
-    newSeries: () =>
+    exit: () => {
+      feedback?.clear();
+      dispatch(readingActions.exit());
+    },
+    newSeries: () => {
+      feedback?.clear();
       dispatch(
         readingActions.twoHandSelected({
           seed: nextTwoHandSeed(saved.seed),
           generatorVersion: saved.generatorVersion
         })
-      ),
+      );
+    },
     setSourceFilter: (value: typeof saved.sourceFilter) =>
       dispatch(readingActions.twoHandSourceFilterChanged(value)),
     updatePreferences: (value: Partial<typeof preferences>) =>
@@ -342,6 +421,7 @@ export function useTwoHandCourse() {
         requestHint(Math.min(2, hintLevel + 1) as ReadingHintLevel, pair.id);
     },
     onRetry: () => {
+      feedback?.clear();
       if (pair) session?.requirePresentation(pair.id, performance.now());
       setErrorId(null);
       setRetry((value) => value + 1);

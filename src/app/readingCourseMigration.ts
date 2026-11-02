@@ -2,7 +2,7 @@ import type { ReadingState } from "./readingSlice";
 import type { ReadingTask } from "../reading/types";
 import { READING_COURSE_STORES, type ReadingCourseStates } from "./courseStores";
 
-const COURSE_SCHEMAS: readonly unknown[] = [3, 4, 5, 6, 7, 8];
+const COURSE_SCHEMAS: readonly unknown[] = [3, 4, 5, 6, 7, 8, 9];
 
 /** Schema-specific siblings are normalized together; P2 stays outside this boundary. */
 export function normalizeReadingCourses(

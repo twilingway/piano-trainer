@@ -2,6 +2,7 @@ import type { KeyEvent } from "../input/midiInput";
 import type { PracticeEvent, PracticeOptions, PracticeSession } from "./session";
 import type { TrainerCourse } from "./trainerCourse";
 import { processScopedKey } from "./trainerScopedInput";
+import { lessonFingerCues } from "../reading/fingerCues";
 
 /** Pair assessment owns freshness and event ordering, independently of ordinary wait input. */
 export interface TrainerPairPolicy {
@@ -50,10 +51,17 @@ export function stepTrainerPair(
 export function pairGuidance(
   session: PracticeSession,
   policy: Pick<TrainerPairPolicy, "cuePitches">,
-  playing: boolean
+  playing: boolean,
+  retainHeld = false
 ) {
   const pitches = playing ? policy.cuePitches() : [];
-  const notes = session.nextDue().filter((note) => pitches.includes(note.pitch));
+  const due = session.nextDue();
+  const notes = (retainHeld ? session.song.notes : due).filter(
+    (note) =>
+      pitches.includes(note.pitch) &&
+      (due.includes(note) ||
+        (retainHeld && note.start < session.time && note.start + note.duration > session.time))
+  );
   return {
     lights: pitches,
     frame: {
@@ -61,6 +69,7 @@ export function pairGuidance(
       due: notes,
       waitingFor: notes,
       hints: notes.length > 0,
+      fingerCues: lessonFingerCues(notes),
       neutralKeys: true
     }
   };

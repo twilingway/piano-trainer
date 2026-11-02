@@ -2,6 +2,23 @@ import type { ReadingState } from "./readingSlice";
 import { READING_COURSE_STORES, courseSlot } from "./courseStores";
 
 export type ReadingPersistentField =
+  | "musicPurpose"
+  | "musicSelection"
+  | "musicInputSource"
+  | "musicSourceFilter"
+  | "musicSightPreviewSeconds"
+  | "musicSightLevel"
+  | "musicHarmonyLesson"
+  | "musicHarmonyMode"
+  | "musicHarmonyAural"
+  | "musicHarmonyTonePitchSet"
+  | "musicHarmonyRoot"
+  | "musicHarmonyQuality"
+  | "musicHarmonyInversion"
+  | "musicHarmonyProgression"
+  | "musicDictationLength"
+  | "musicDictationStartMode"
+  | "musicIntegrated"
   | "selection"
   | "activeCourse"
   | "intervalSelection"

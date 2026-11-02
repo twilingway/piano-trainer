@@ -105,7 +105,10 @@ export function TwoHandResults({
       <h3>{t("Результат совместной игры")}</h3>
       <TwoHandMetrics history={[result]} sourceFilter={sourceFilter} />
       {pairs.map((pair) => (
-        <details key={pair.pairId}>
+        <details
+          key={pair.pairId}
+          data-window-detail={`two-hand-reading:result:${result.id}:pair:${pair.pairId}`}
+        >
           <summary>
             {pair.expectedMidi.map((pitch) => twoHandNoteName(pitch, t)).join(" + ")} ·{" "}
             {t("Попыток пары: {number}", { number: pair.attempts.length })}
@@ -168,11 +171,11 @@ export function TwoHandProgress(props: TwoHandProgressProps) {
           "Сводка последних двадцати серий. Фильтр выбирает пары по успешной попытке; прежние ошибки и помощь сохраняются."
         )}
       </p>
-      <details>
+      <details data-window-detail="two-hand-reading:progress">
         <summary>{t("Мой прогресс двух рук")}</summary>
         <TwoHandMetrics {...props} />
       </details>
-      <details className="reading-history">
+      <details className="reading-history" data-window-detail="two-hand-reading:history">
         <summary>
           {t("История совместной игры: {number}", { number: props.history.length })}
         </summary>
