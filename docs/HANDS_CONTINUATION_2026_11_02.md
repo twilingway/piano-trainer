@@ -113,3 +113,26 @@ CPU0–5/below-normal и общий cap 12 GiB VRAM.
 Проверки ветки: `pnpm check` PASS (4478 tests, compiler 30, 10 existing skipped);
 `pnpm spec:validate` 86/86. Черновик [PR #274](https://github.com/twilingway/piano-trainer/pull/274)
 открыт в dev; задача и физическая приёмка остаются незавершёнными.
+
+### Полный raw key-only прогон LEFT/RIGHT
+
+Новый helper v2 прошёл 17 CPU synthetic/metadata тестов и независимое review. Точный preferred411,
+полные vertex/triangle partitions, separating AABB witnesses и atomic publication проверены
+отрицательными тестами. Actual GPU-прогон по 15 сохранённым surfaces завершён; независимый
+`publication.read` подтвердил committed SHA, source bindings и coverage без инициализации CUDA.
+
+Результат: literal baseline проходит LEFT/RIGHT key predicates; все 14 рабочих контактов valid, но
+LEFT key predicates отклонены. Inactive RIGHT проходит key predicates во всех 15 случаях. C6
+задевает соседние белые B5/MIDI83 и D6/MIDI86; C4 в той же экстремальной постановке — B3/MIDI59 и
+D4/MIDI62. Основные worst ROW входят в thumb411; данных для изменения FREE пальцев нет. Лучший C6 по
+max vertex/sample violation имеет 2.711 мм и 82 unauthorized crossings.
+
+Это отказы сохранённых raw surfaces, не допуск corrected/GN/SIDE/nail/world/saved/export/visual.
+Общий class/calibration остаётся null, writer запрещён. Следующая узкая диагностика проверяет три
+уже сохранённых нейтральных C4 из actual LEFTv2 и baseline, без новой модели или оптимизации.
+
+Отчёт: `native-left-key-diagnostic-v2/runs/4cf5aa5c91c5/report.json`, SHA
+`76c3bdfb39bb85ab134bf43bb8ab110b4c798af6a51cd23cdb6245c7b5ab2da1`. Pinned OpenSpec-файлы этой
+рабочей папки сохраняются неизменными как источники proof; обновления статуса пишутся здесь. Их
+нельзя удалять или обновлять вместе с worktree без отдельного переноса immutable provenance.
+Локальная отметка сохранена в ignored `.browser-artifacts/proof-sources.json`.
