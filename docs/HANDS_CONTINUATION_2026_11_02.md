@@ -382,3 +382,46 @@ best gap2=1.230379мм; остановка `NO_IMPROVING_STRICT_FEASIBLE_LP_DIRE
 остальные пальцы1/3/4 тоже остаются открытыми. Physical class и calibration остаются null,
 eligible_for_write=false; новых зелёных записей0. Owned GPU process завершён. Последний live weekly
 snapshot —70% USED при разрешённом stop89% USED; это время наблюдения, не обещание текущего остатка.
+
+### Следующие проверяемые этапы native LEFT
+
+| Этап                                 | Статус                                     | Критерий приёмки                                                                                                                                   |
+| ------------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Saved vertex/quad/ROW correspondence | Реализация private CPU-профиля             | Полный committed readback, actual triangulation сохранена; отдельный diagnostic prerequisite, без physical PASS                                    |
+| Diagnostic roundtrip literal631      | Ожидает correspondence                     | Отдельная новая copy/scene, pre-LBS→LBS→GN и save/reopen parity; исходный файл,64 позы и source scenes неизменны                                   |
+| Saved native LEFT semantic readback  | Ожидает roundtrip                          | На private cloned mesh actual Blender FLOAT readback hand+5pads+5native fingers; сохранение и повторное открытие, full ROW/actual topology binding |
+| Native LEFT nails/arm/physical       | Открыто, политики ещё не подтверждены      | Native dorsal/thumb orientation и nail-fit contract, собственные LEFT arm baseline/пределы и полный actual-surface audit                           |
+| Holds/transitions/octave stretches   | Ожидает необходимые native/roundtrip gates | Отдельные временные и визуальные сценарии; статический endpoint не объявляется игровой анимацией                                                   |
+
+Авторитетные LEFT hand+5pad values уже получены actual Blender POINT_FLOAT export:
+`OLD/probes/nlp1/50fc24c428/attr.npz`; report SHA
+`6272826c503c5d186ccbb10efd9346f38187241df471debc6f7aad1c9f9c895e`. Они сохраняют partial raw scope
+ранее проверенных6 поз; saved-scene LEFT membership и новые5finger fields пока не подтверждены.
+Отдельная попытка восстановить эти FLOAT positional limit-stencil дала maxerror0.373333 и была
+отвергнута: этот способ нельзя использовать для новых semantic fields.
+
+Native chains: thumb34–36,index22–24,middle25–27,ring31–33,pinky28–30. Новые finger labels должны
+выводиться из full52weights собственного LEFT chain и проходить actual Blender FLOAT interpolation,
+а не переименовывать RIGHT labels. Параметризованный LEFT nail helper обязан принимать certified
+actual quad/triangle topology; нынешний RIGHT helper также предполагает свою диагональ. RIGHT
+nail/arm calibration, его dorsal/thumb sign и флаг NAILS_CHECKED не переносятся автоматически.
+
+OpenSpec addendum прошёл независимое review и87/87+strict validation; CI коммита aeae62e —PASS. C3
+best после отдельного review105 actual audits сохраняется без нового поиска: запас до края chosen
+plateau около1.28нм, valid gap ещё превышен на0.230379мм; это локальная остановка выбранной схемы,
+не доказательство физической невозможности позы.
+
+Correspondence v1 прошёл79 synthetic tests и независимое review341 pins, но actual static replay
+остановился до sidecar на `REST_MATRIX_HEAD_BINDING`. Отчёт не опубликован, authority отсутствует:
+`literal631-quad-correspondence-v1/runs/ab056a50d9e0/failed.json`. Checksum исходного `.blend` после
+отказа повторно подтверждён9f3ae5f1…; code/PLAN/snapshots/failedrun v1 сохраняются неизменными.
+
+Причина — неподтверждённое exact cross-field равенство `Bone.head_local` и переноса `matrix_local`:
+это отдельные Blender fields arm_head/arm_mat. Max difference1.19209e-7м; оба отдельно совпадают с
+producer rest reference в пределах diagnostic1e-5м. Остальные rest/affine/rotation/weights/parents
+проверки проходят. Новая v2 требует явного уточнения контракта и новых fixtures: оба typed hashes
+сохранены, head↔producer, matrixT↔producer и matrixT↔head проверяются отдельно именованным
+позиционным bound; физические и dimensionless ограничения не меняются. Сертификат ещё не получен.
+
+Свежий полный `pnpm check` текущей source-ветки завершён PASS:4478 unit +30 compiler tests, 10
+существующих skips; format/lint/typecheck/build также PASS. Это не отменяет private v1 отказ.

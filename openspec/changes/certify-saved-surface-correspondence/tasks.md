@@ -12,7 +12,10 @@ writer ещё не реализованы в его рамках.
       SHA/scope/missing-file negative fixtures и сохранить полный input manifest.
 - [ ] 1.2 Реализовать typed array schema/value comparison и base6890/rig binding; pure tests
       проверяют разные integer dtype при равных values, overflow/range, vertex permutation,
-      full-weight pruning, wrong parent/rest и отдельную actual Basis identity.
+      full-weight pruning, wrong parent/rest и отдельную actual Basis identity; самостоятельные
+      Float32 rest-поля проходят только при всех трёх именованных positional ошибках≤existing1e-5m;
+      превышение каждого bound, source-hash или прежний rotation failure отклоняется без изменения
+      immutable v1 artifacts.
 
 ## 2. Quad chart, CC и ROW
 

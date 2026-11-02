@@ -63,6 +63,22 @@ positions/head errors применяется diagnostic `1e-5m`, не физич
 descriptors и source hashes остаются частью отдельного rig binding; линейные, угловые и weight
 ошибки не смешиваются одним tolerance.
 
+`rest_head` и translation-часть `rest_matrix` — самостоятельные captured поля с собственными typed
+hashes. Их byte equality не требуется: source Float32 поля могут независимо хранить округлённые
+позиции. Оба поля сохраняются без snap, усреднения или пересборки. Reference —
+`rest_joints_source52 @ C.T` в rest-local координатах без body translation. Из уже закреплённых
+arrays проверяются три именованных max-absolute-component ошибки в метрах:
+
+- `rest_head_to_producer_m`;
+- `rest_matrix_translation_to_producer_m`;
+- `rest_matrix_translation_to_rest_head_m`.
+
+Каждая обязана быть не больше существующего diagnostic position bound `1e-5m`; граничное значение
+допустимо, превышение любого сравнения отклоняется. Это замена неподтверждённого exact cross-field
+предположения, а не изменение rotation/affine/dimensionless, source-hash или physical гейтов. Данный
+контроль не выполняет новый model/FK evaluation; immutable v1 snapshots/plans/failed run сохраняются
+отдельно.
+
 ### 3. Ordered quad chart без geometry remap
 
 Для каждого actual polygon k проверяются row indices, loop start/length4, ordered loop vertices,

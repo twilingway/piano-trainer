@@ -48,6 +48,28 @@ IDs/faces, всех per-vertex weights, имён/parents/rest52 и source rig ge
 сохранять собственную identity; равенство Basis bare model template SHALL NOT предполагаться. Active
 pre-LBS positions SHALL сравниваться с полными producer posed positions.
 
+Captured `rest_head` и translation-часть `rest_matrix` SHALL сохранять самостоятельные typed
+identity без требования byte equality, snap или усреднения. Система SHALL проверять три
+max-absolute-component positional ошибки: `rest_head_to_producer_m`,
+`rest_matrix_translation_to_producer_m` и `rest_matrix_translation_to_rest_head_m`; каждая SHALL
+быть не больше существующего diagnostic position bound `1e-5m`. Producer reference SHALL
+использоваться в той же rest-local системе без body translation. Rotation/affine/dimensionless,
+source-hash и physical гейты SHALL оставаться неизменными.
+
+#### Scenario: Самостоятельные Float32 rest-позиции
+
+- **WHEN** два captured rest-поля численно различаются из-за независимого Float32 представления, но
+  все три positional ошибки не превышают `1e-5m` и остальные rig/source гейты пройдены
+- **THEN** проверка может продолжаться с измеренными тремя ошибками и двумя исходными typed hashes
+- **AND** поля не заменяются друг другом и не выдаются за byte-identical
+
+#### Scenario: Нарушено отдельное rest-сравнение или identity
+
+- **WHEN** любое из трёх positional сравнений превышает `1e-5m`, source hash нарушен либо прежний
+  rotation/affine rig gate не пройден
+- **THEN** сертификат отклоняется независимо от успешности остальных positional сравнений
+- **AND** v1 snapshots/plans/failed receipts не переписываются исправленной проверкой
+
 #### Scenario: Basis отличается от template
 
 - **WHEN** actual Basis не равен bare template, но его provenance, ordered topology, полные weights,
