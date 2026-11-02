@@ -19,26 +19,13 @@ export function GameBoard({ game, noteResult, mode, playing, onOverdrive }: Prop
     result == null
       ? "—"
       : `${formatNumber(result, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}\u00a0%`;
-  if (mode === "wait") {
+  if (mode === "wait" || !game || game.expectedNotes === 0) {
+    if (noteResult?.percent == null) return null;
     return (
-      // A computer's bar says this in its timing chip; the plaque stays for the compact bar.
-      <aside
-        className={`game-score-board game-score-board--message game-score-board--practice${noteResult ? " game-score-board--note-result" : ""}`}
-      >
-        <span className="game-practice-label">{t("Тренировка · без рейтинга времени")}</span>
-        {noteResult && "\u00a0"}
-        {noteResult && (
-          <span className="game-accuracy" title={t("Попадания — 30%, удержание — 70%")}>
-            {resultText}
-          </span>
-        )}
-      </aside>
-    );
-  }
-  if (!game || game.expectedNotes === 0) {
-    return (
-      <aside className="game-score-board game-score-board--message">
-        {t("Нет нот для оценки")}
+      <aside className="game-score-board game-score-board--message game-score-board--practice game-score-board--note-result">
+        <span className="game-accuracy" title={t("Попадания — 30%, удержание — 70%")}>
+          {resultText}
+        </span>
       </aside>
     );
   }

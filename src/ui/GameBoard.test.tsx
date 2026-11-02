@@ -250,8 +250,15 @@ describe("game score presentation", () => {
     const markup = renderToStaticMarkup(
       <GameBoard mode="wait" playing onOverdrive={vi.fn()} game={new GameScore(1).snapshot(0)} />
     );
-    expect(markup).toContain("без рейтинга времени");
+    expect(markup).toBe("");
     expect(markup).not.toContain("Overdrive");
+  });
+
+  it.each(["wait", "tempo"] as const)("omits an empty HUD plaque in %s mode", (mode) => {
+    const markup = renderToStaticMarkup(
+      <GameBoard mode={mode} playing onOverdrive={vi.fn()} game={new GameScore(0).snapshot(0)} />
+    );
+    expect(markup).toBe("");
   });
 
   it("disables Overdrive before sufficient energy and enables after 25 perfect notes", () => {
@@ -324,7 +331,8 @@ describe("game score presentation", () => {
     ).toContain('<p class="result-stats-trouble">Трудные ноты: до4 (2)</p>');
     expect(details).toContain("Распределение ошибки времени");
     const empty = render(new GameScore(0).snapshot(0));
-    expect(empty).toContain("Нет нот для оценки");
+    expect(empty).not.toContain("Нет нот для оценки");
+    expect(empty).not.toContain('class="result-score');
     expect(empty).not.toContain("Ранг");
     expect(empty).not.toContain("Статистика");
   });
