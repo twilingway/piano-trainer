@@ -140,8 +140,8 @@ export const settingsMessages1 = {
   Прямо: { en: "Straight" },
   "В перспективе": { en: "In perspective" },
   "Клавиатура сверху": { en: "Top-down keyboard" },
-  "Линии перспективы": {
-    en: "Perspective guide lines"
+  "Вертикальные линии": {
+    en: "Vertical guide lines"
   },
   "Мой пианист (проба)": { en: "My pianist (preview)" },
   Рисованные: {

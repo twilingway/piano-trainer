@@ -491,8 +491,7 @@ export class RoadLayer {
         !this.sceneCamera
     );
     this.horizon.clear();
-    if ((!this.drawsNativeRoad || this.nativeRoad.guides) && this.projection)
-      drawRoadHorizon(this.horizon, this.horizonY, this.viewWidth);
+    if (this.projection) drawRoadHorizon(this.horizon, this.horizonY, this.viewWidth);
     if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
   }
   destroy(): void {

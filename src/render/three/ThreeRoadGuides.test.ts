@@ -47,6 +47,19 @@ function positions(item: LineSegments): BufferAttribute {
 }
 
 describe("native road guides", () => {
+  it("hides only vertical lanes while keeping horizontal beats after repeated toggles", () => {
+    const keys = scene(),
+      guides = new ThreeRoadGuides();
+    for (const on of [true, false, true, false]) {
+      guides.update(keyBoxes(keys), keys.camera, [keys.camera.near.z], 1, false, undefined, on);
+      expect(line(guides, 0).visible).toBe(on);
+      expect(line(guides, 1).visible).toBe(on);
+      expect(line(guides, 2).visible).toBe(true);
+      expect(line(guides, 2).geometry.drawRange.count).toBe(2);
+      expect(guides.group.visible).toBe(true);
+    }
+    guides.dispose();
+  });
   it("draws one guide through every white and black key center in all camera presets", () => {
     for (const [low, high] of [
       [36, 83],
