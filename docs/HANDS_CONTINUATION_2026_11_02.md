@@ -336,3 +336,49 @@ sockets. Неподдерживаемые custom properties обозначают
 tests; до следующего actual run требуется независимое review81 pins. Exact PAD/SIDE no-op,
 source/restore hashes и защищённый Windows Job lifecycle остаются обязательными. Сохранённой новой
 сцены и физического допуска пока нет.
+
+### Source631 V6: наблюдения стадий завершены, соответствие топологии отдельно
+
+Read-only capture V6 прошёл независимое review109 pins и116 CPU tests; actual background Blender
+завершился exit0 за134с, peak4005MiB. Независимый typed reader проверил committed отчёт без Torch и
+Blender. Получены все5 стадий, полный Runtime RNA GN inventory,52-bone rig/rest/weights и88 keys.
+PAD и SIDE имеют exact no-op на наблюдаемой геометрии. Восстановление кадра, modifier flags и
+полного snapshot exact; исходный `.blend` сохранил SHA9f3ae5f1…; GUI и64 сохранённые позы не
+изменялись.
+
+Отчёт: `literal631-blender-stagecapture-v6/runs/6f4b8954eed0/report.json`, SHA
+`fbcdeff0fb0da1acbf0c3e67e7eeb7b0a2695a59c2e18ab407906d304052aefe`. Child receipt SHA
+`775cb55c55664c7db136b376071d4fe6a5317a61ff25cd970d5c6307ab5c2d18`.
+
+При этом прежний exact ordered-triangle gate НЕ пройден:20 triangle rows отличаются в10 quads между
+actual631 и frozen reference. V6 сохраняет эти наблюдения с `serialization_ready=false` и
+`STRUCTURAL_OBSERVATIONS_AND_RESTORATION_ONLY`; ROW correspondence пока PENDING. Предыдущие V4/V5
+ошибки типизации RNA и exact-TRI остановки сохранены отдельными неизменными прогонами. V6 не выдаёт
+saved-scene parity, native LEFT nails, visual/gameplay или physical admission.
+
+Для отдельного vertex/quad сертификата подготовлен архитектурный контракт: неизменные vertex IDs,
+ordered oriented quad boundaries, полные weights/rest/stage positions, explicit bijective bridge к
+независимому CC chart. Actual triangulation остаётся собственной; старые BVH/barycentric/collision
+proofs другой диагонали не наследуются. Перед реализацией нужен новый OpenSpec addendum; три старых
+pinned source-файла не редактируются. Diagnostic copy writer остаётся следующим отдельным этапом.
+
+### C3/593: fresh single-ROW branch
+
+Gapbranch593 завершён exit0:36 actual audits,2 принятых шага, gap2 уменьшен1.253405→1.240274мм.
+Потом все6 направлений оказались вне допустимого actual plateau footprint. Best endpoint сохранён с
+fresh final replay; physical gates и первоначальные anchors не ослаблены. Отчёт:
+`c3-gapbranch593-v1/runs/07b630dc15ff/report.json`, SHA
+`02bbf03c7bd51ab2af0ffd612d7d30c6c1d5e6067a7dae7f0277d1653556f846`.
+
+Следующий bounded footprint593 план прошёл11 CPU tests и независимое review554 pins. Он ограничивает
+предложение actual single-triangle XY domain с25% reserve; actual ray/contact/minimum/skin/nail
+проверки сохраняют последнее слово. Прогон выполняется; промежуточные accepted steps не считаются
+полной зелёной позой. Новых atlas promotions по-прежнему0.
+
+Footprint593 завершён exit0:105 actual audits и10 принятых проходов. Fresh final replay подтвердил
+best gap2=1.230379мм; остановка `NO_IMPROVING_STRICT_FEASIBLE_LP_DIRECTION`, final validation error
+отсутствует. Все источники неизменны. Отчёт: `c3-footprint593-v1/runs/f485bc42c8b3/report.json`, SHA
+`d456e96176afa37761f5acd271334737f81768f3c807955abe4f17f1c68ee357`. Выбранный контакт ещё не valid;
+остальные пальцы1/3/4 тоже остаются открытыми. Physical class и calibration остаются null,
+eligible_for_write=false; новых зелёных записей0. Owned GPU process завершён. Последний live weekly
+snapshot —70% USED при разрешённом stop89% USED; это время наблюдения, не обещание текущего остатка.
