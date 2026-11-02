@@ -1,3 +1,4 @@
+import { startupProgress } from "../../startup/bridge";
 import { Group, LinearSRGBColorSpace, Mesh, MeshStandardMaterial, PropertyBinding } from "three";
 import type { BufferGeometry, Object3D, Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -119,6 +120,9 @@ export function keyboard88Model(scene: Object3D): Keyboard88 {
 }
 
 export async function loadKeyboard88(): Promise<Keyboard88> {
-  const gltf = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/keyboard88.glb`);
+  const url = `${import.meta.env.BASE_URL}models/keyboard88.glb`;
+  const gltf = await new GLTFLoader().loadAsync(url, (event) => {
+    startupProgress(url, event.loaded);
+  });
   return keyboard88Model(gltf.scene);
 }

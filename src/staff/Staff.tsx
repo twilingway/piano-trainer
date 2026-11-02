@@ -2,7 +2,7 @@ import { worldScoreSnapshot } from "./publishWorldScore";
 import type { StaffWorldSource } from "./staffWorldSnapshot";
 import type { LessonStaffFeedbackSource } from "./lessonStaffFeedback";
 import { useLessonStaffFeedback } from "./useLessonStaffFeedback";
-import { moveCursor, seekStaffAt } from "./staffCursorNavigation";
+import { moveCursor, seekStaffAt, type StaffDrag } from "./staffCursorNavigation";
 import { createStaffOsmdOptions } from "./staffOsmdOptions";
 import neonCursorUrl from "../fx/neon-cursor.webp?url";
 import {
@@ -16,7 +16,7 @@ import {
 } from "./staffViewport";
 import { entryBeatAt, placeCursorLine } from "./liveCursor";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
-import { beatPositions, indexNotes, type NoteIndex } from "./staffNoteIndex";
+import { beatPositions, indexNotes, emptyNoteIndex } from "./staffNoteIndex";
 import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
 import { timelineSpots } from "./staffTimelineSpots";
 import { installUniformStaffLayout } from "./uniformStaffLayout";
@@ -51,6 +51,7 @@ import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 export { markKey } from "./staffNoteIndex";
 
 interface StaffProps {
+  readonly onLoadSettled?: (() => void) | undefined;
   readonly lessonStaffFeedback?: LessonStaffFeedbackSource | undefined;
   readonly worldScoreSource?: StaffWorldSource | undefined;
   readonly timeline?:
@@ -108,6 +109,7 @@ const DRAG_THRESHOLD_PX = 5;
  * coloured. Zoom, line wrapping and following are the reader's choice.
  */
 export function Staff({
+  onLoadSettled,
   lessonStaffFeedback,
   timeline,
   worldScoreSource,
@@ -146,6 +148,8 @@ export function Staff({
   const uniformRef = useRef<ReturnType<typeof installUniformStaffLayout> | undefined>(undefined);
   const reachRef = useRef<Awaited<ReturnType<typeof measureCourseReach>>>(undefined);
   const presentationRef = useRef(presentation);
+  const cancelPresentationRef = useRef<(() => void) | undefined>(undefined);
+  const loadSettled = useEffectEvent(() => onLoadSettled?.());
   useEffect(() => {
     presentationRef.current = presentation;
   });
@@ -156,11 +160,7 @@ export function Staff({
   const latest = useRef({ beat, zoom, follow, singleLine, maxShare, course, playedNoteColor });
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
-  const noteIndexRef = useRef<NoteIndex>({
-    beats: new Map(),
-    heads: new Map(),
-    cursorBeats: new Map()
-  });
+  const noteIndexRef = useRef(emptyNoteIndex());
   const feedbackRef = useLessonStaffFeedback(lessonStaffFeedback, hostRef, noteIndexRef);
   /** Musical entries, including rests, with their x from the SVG's left edge and their line. */
   const beatXRef = useRef<BeatSpot[]>([]);
@@ -306,6 +306,10 @@ export function Staff({
         relayout(osmd, host);
       })
       .catch(() => {
+        if (!cancelled) {
+          cancelPresentationRef.current?.();
+          loadSettled();
+        }
         if (!cancelled) feedback?.fail();
         if (
           !cancelled &&
@@ -357,17 +361,19 @@ export function Staff({
 
   const presentationId = presentation?.id;
   useEffect(() => {
-    if (presentationId === undefined) return;
-    return watchStaffPresentation(
+    const cancel = watchStaffPresentation(
       () => osmdRef.current !== null && Boolean(hostRef.current?.querySelector("svg")),
       (atMs) => {
         const current = presentationRef.current;
-        if (current?.id === presentationId) {
+        if (presentationId !== undefined && current?.id === presentationId) {
           feedbackRef.current?.ready(presentationId);
           current.onPresented(presentationId, atMs);
         }
+        loadSettled();
       }
     );
+    cancelPresentationRef.current = cancel;
+    return cancel;
   }, [
     presentationId,
     musicXml,
@@ -496,13 +502,7 @@ export function Staff({
    * own hit test works in coordinates it caches at render time, which a
    * scrolled or shifted view no longer matches.
    */
-  const dragRef = useRef<{
-    x: number;
-    y: number;
-    left: number;
-    top: number;
-    dragged: boolean;
-  } | null>(null);
+  const dragRef = useRef<StaffDrag | null>(null);
   const suppressClickRef = useRef(false);
 
   return (

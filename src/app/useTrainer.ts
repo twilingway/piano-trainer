@@ -277,7 +277,10 @@ export function useTrainer({
         setTrainerReady(true);
       })
       .catch((error: unknown) => {
-        if (!disposed) graphicsFail(error);
+        if (disposed) return;
+        graphicsFail(error);
+        // The existing graphics notice must remain reachable when WebGL cannot initialize.
+        window.pianoStartup?.ready("scene");
       });
     return () => {
       disposed = true;

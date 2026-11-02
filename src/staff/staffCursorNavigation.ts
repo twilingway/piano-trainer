@@ -3,6 +3,14 @@ import { nearestNoteBeat, type NoteIndex } from "./staffNoteIndex";
 
 const BEAT_EPSILON = 1e-6;
 
+export interface StaffDrag {
+  x: number;
+  y: number;
+  left: number;
+  top: number;
+  dragged: boolean;
+}
+
 function cursorBeat(osmd: OpenSheetMusicDisplay): number {
   // OSMD counts in whole notes.
   return osmd.cursor.Iterator.currentTimeStamp.RealValue * 4;

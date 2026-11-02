@@ -327,6 +327,7 @@ it.each(["network", "grid"])(
     batch.add(0, 0, -100, 10, 10, 0xffffff, 0.5, 0);
     batch.end();
     expect(batch.ready).toBe(false);
+    expect(batch.settled).toBe(true);
     expect(meshOf(batch).count).toBe(0);
     expect(warn).toHaveBeenCalledOnce();
     expect(disposed).toHaveBeenCalledTimes(failure === "grid" ? 1 : 0);
@@ -358,4 +359,20 @@ it("rotates each billboard in its camera plane without changing the atlas frame 
   expect(Math.hypot(x, y)).toBeCloseTo(Math.hypot(20, 40));
   expect(mesh.material.vertexShader).toContain("vec2 corner = atlasTurn");
   expect(mesh.material.vertexShader).toContain("c * particleShape.x + s * particleShape.y");
+});
+
+it("distinguishes a pending decorative atlas from a successful settled one", async () => {
+  let finish!: (value: Texture<HTMLImageElement>) => void;
+  vi.spyOn(TextureLoader.prototype, "loadAsync").mockReturnValueOnce(
+    new Promise<Texture<HTMLImageElement>>((resolve) => {
+      finish = resolve;
+    })
+  );
+  const batch = new WorldAtlasBatch(definition, 1);
+  batches.push(batch);
+  expect(batch.settled).toBe(false);
+  finish(texture());
+  await Promise.resolve();
+  expect(batch.settled).toBe(true);
+  expect(batch.ready).toBe(true);
 });

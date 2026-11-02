@@ -319,6 +319,10 @@ export class ThreeStage {
 
   private readonly configureCamera = configureStageCamera;
 
+  get startupResourcesSettled(): boolean {
+    return this.freeBursts.settled && this.worldStage.assetsSettled;
+  }
+
   get nativeEffectsReady(): boolean {
     const world = this.performanceEnabled || this.freeEnabled;
     return world && this.worldStage.ready;

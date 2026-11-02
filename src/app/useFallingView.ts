@@ -389,6 +389,23 @@ export function useFallingView({
     };
   }, [trainerRef, mirrorHost, comparing, lastTake, song]);
 
+  // All saved settings above must reach the view before the first startup acknowledgement.
+  useEffect(() => {
+    const view = viewRef.current;
+    const startup = window.pianoStartup;
+    if (!trainerReady || !view || !startup) return;
+    view.startup.begin();
+    let frame = 0;
+    const check = () => {
+      if (view.startup.status === "ready") startup.ready("scene");
+      else frame = requestAnimationFrame(check);
+    };
+    frame = requestAnimationFrame(check);
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [viewRef, trainerReady]);
+
   const resetWorldCamera = () => {
     // The world reset also drops the straightening snapshot; its mode stays.
     updateStaffPrefs({ worldFov: DEFAULT_WORLD_FOV, roadFitCamera: null });

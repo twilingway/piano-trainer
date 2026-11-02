@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import type { IndexHtmlTransformContext, Plugin, ResolvedConfig } from "vite";
 import { renderSiteMetadataHtml } from "./src/i18n/siteMetadataHtml.ts";
 import { siteLocaleFromPath } from "./src/i18n/siteMetadata.ts";
+import { localizeStartupHtml, pianoStartup } from "./src/startupTools/pianoStartup.ts";
 
 function localizedSiteMetadata(): Plugin {
   let outputDirectory: string | undefined;
@@ -26,7 +27,7 @@ function localizedSiteMetadata(): Plugin {
         mkdirSync(directory, { recursive: true });
         writeFileSync(
           resolve(directory, "index.html"),
-          renderSiteMetadataHtml(html, locale, `/${locale}/`)
+          localizeStartupHtml(renderSiteMetadataHtml(html, locale, `/${locale}/`), locale)
         );
       }
     }
@@ -36,6 +37,7 @@ function localizedSiteMetadata(): Plugin {
 export default defineConfig(({ mode }) => ({
   plugins: [
     localizedSiteMetadata(),
+    pianoStartup(),
     react(),
     // Keep render-isolation tests independent of compiler memoization.
     mode !== "test" && babel({ presets: [reactCompilerPreset()] }),
