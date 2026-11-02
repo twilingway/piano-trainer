@@ -257,3 +257,22 @@ Producer literal631 v1 остановился до экспорта геомет
 установил несовпадение hash recipes: source включает shape/dtype, v1 сравнивал только bytes. Model
 paths/file SHA совпали. Исправление подготовлено исключительно в новой v2, ожидаемые source hashes и
 v1 сохранены; требуется новое review и actual run. Blender-часть пока не запускалась.
+
+### Literal631 stagewise serialization подтверждена
+
+Producer v2 после независимого review57 pins и32 CPU tests завершил actual CUDA run exit0.
+Экспортированы33 typed arrays: raw/patched156,52 local/global rotations и joints, pre-LBS6890,
+source/world LBS, pre-GN165314, полный ROW/topology и model identity. Независимый `publication.read`
+без Torch воспроизвёл FK/LBS/pre-LBS и проверил source bindings. Ошибка относительно pinned
+literal631 surface/joints —0; raw-vs-matrix —0; independent LBS vs frozen Body —2.22e−16м; Float32
+shape representation error —5.96e−8м.
+
+Отчёт: `literal631-stagewise-producer-v2/runs/42489f6c2ee0/report.json`, SHA
+`a662db6bc3c854a9db41258b756a356f939c18c74e6ce5ff0395a35ef7930da9`. Stage NPZ SHA
+`650678d23a22800d60a4ccd00a39f22234aa01573d5dc3e86a60e9f92725b8e8`.
+
+Это source serialization proof, не saved Blender parity. Следующий отдельный read-only background
+capture631 сравнит shape_only→LBS→preGN/prePAD→postPAD→postSIDE, включая полный GN inventory,
+rig/rest/weights и88 keys. Исходная `.blend` и GUI не записываются; diagnostic copy writer будет
+рассматриваться только после этих receipts. Общий physical class/calibration остаётся null, writer
+выключен.
