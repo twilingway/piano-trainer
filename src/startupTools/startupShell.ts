@@ -49,7 +49,28 @@ html.piano-booting, html.piano-booting body { margin: 0; min-height: 100%; backg
   .startup-key, .startup-key::after, .startup-rule::after { animation: none; }
   .startup-key:nth-child(3)::after { opacity: .45; }
 }
-@media (max-height: 430px) { .startup-brand { margin-bottom: 20px; } .startup-piano { margin-bottom: 22px; } }
+@media (max-height: 620px) {
+  #piano-startup { padding: 12px 16px; }
+  .startup-content { padding: 0; }
+  .startup-brand { margin-bottom: 8px; }
+  .startup-piano { height: 64px; padding-top: 6px; margin-bottom: 10px; }
+  .startup-black { top: 6px; height: 34px; }
+  #startup-title { font-size: 20px; margin-bottom: 5px; }
+  #startup-stage { font-size: 12px; line-height: 1.4; }
+  .startup-rule { margin: 10px auto 8px; }
+  .startup-data { line-height: 1.45; }
+  #startup-remaining { margin-top: 4px; }
+  #startup-known { min-height: 0; }
+  #startup-reload { margin-top: 10px; }
+}
+@media (max-height: 340px) {
+  #piano-startup { padding-block: 8px; }
+  .startup-brand { display: none; }
+  .startup-piano { height: 48px; margin-bottom: 6px; }
+  .startup-black { height: 25px; }
+  #startup-title { font-size: 18px; }
+  .startup-rule { margin: 8px auto 6px; }
+}
 `;
 
 export function startupShell(locale: Locale): string {
