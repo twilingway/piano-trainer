@@ -1117,6 +1117,18 @@ it("routes native octave visibility and projection before the final flat overlay
 });
 
 describe("startup scene presentation", () => {
+  it("accepts visible flat keys when saved perspective is enabled but its road is hidden", async () => {
+    const view = fixture();
+    view.keys.container.visible = true;
+    view.road.visible = false;
+    await view.host.setEnabled(false, true);
+    expect(view.host.startupStatus).toBe("ready");
+    view.tick();
+    expect(mocks.draw).not.toHaveBeenCalled();
+    expect(view.host.startupStatus).toBe("ready");
+    view.host.destroy();
+  });
+
   it("waits for the model and an actual native frame instead of accepting loaded geometry", async () => {
     const kit = deferred<{ keys: Map<number, unknown>; dispose: () => void }>();
     mocks.loadKit.mockReturnValueOnce(kit.promise);

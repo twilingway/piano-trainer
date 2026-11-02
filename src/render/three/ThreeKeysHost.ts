@@ -25,7 +25,7 @@ export class ThreeKeysHost {
   private startupPresented = false;
 
   get startupStatus(): "loading" | "ready" {
-    if ((!this.wanted && !this.roadWanted) || (!this.keys.container.visible && !this.road.visible))
+    if (!(this.wanted && this.keys.container.visible) && !(this.roadWanted && this.road.visible))
       return "ready";
     if (!this.stage) return this.loadFailed ? "ready" : "loading";
     return this.startupPresented && this.handStatus !== "loading" ? "ready" : "loading";
