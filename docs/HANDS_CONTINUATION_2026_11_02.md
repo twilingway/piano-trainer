@@ -230,3 +230,30 @@ pairs. Native LEFT finger memberships и ногти пока отсутству�
 переносятся переименованием. Для воспроизводимой сцены нужен stagewise pre-LBS producer и отдельный
 diagnostic roundtrip writer. Повторный read-only MCP подтвердил исходную review-copy, кадр631,
 dirty=false; сцена не изменена.
+
+### Полный raw interhand rejector и новый C3 witness-прогон
+
+Отдельный pair-план прошёл12 synthetic CPU tests и независимое review620 pins. Actual GPU-прогон
+завершён exit0 за84с; независимый typed reader подтвердил отчёт. Literal baseline не имеет найденных
+noncoplanar surface intersections. Все6 рабочих поз отклонены: A swivel−20/0/+20 —994/981/953
+triangle pairs, B —1113/1083/1068. LEFT pad/411 в этих hits не участвуют; справа затронуты
+преимущественно fingers3–5 и nonpad surface. Это не основание менять LEFT FREE пальцы. Отчёт:
+`shared-hand-pair-v1/runs/529e4ba11181/report.json`, SHA
+`4d1bc278f7d77fbf5f434e148741ce1a1a89081e1b00e5d180fb69ae37c771c8`. Coplanar остаётся NOT_COVERED,
+containment NOT_RUN. Следующая отдельная family поднимет неактивное RIGHT wrist на60мм при тех же
+A/B и трёх swivel; это лишь предварительный forecast, без переноса прежних key/contact/pair
+результатов.
+
+Новый C3 witness-план после исправления обработки потерянного контакта прошёл24 CPU tests и
+повторное review518 pins. Actual GPU exit0,26 actual audits из максимальных40. В592 выбран
+gap-scale¼: **большой палец получил valid actual gap0.991684мм**, held5 сохранён0.340977мм; средний
+по-прежнему без plateau. В593 нет хорошо обусловленного stable-witness направления, все projected
+slots явно пропущены. В598 coupled slots отклонены по companion cap; обе позы точно возвращены к
+своим текущим baseline. Отчёт: `c3-witness-directions-v1/runs/73279606b208/report.json`, SHA
+`8a45702fe9703b0e6faacfa9f3e7bcb402099647c586eca33d271eeb40c60a89`. Ни одна полная C3-поза ещё не
+получила физический допуск.
+
+Producer literal631 v1 остановился до экспорта геометрии на model-array hash guard. Read-only разбор
+установил несовпадение hash recipes: source включает shape/dtype, v1 сравнивал только bytes. Model
+paths/file SHA совпали. Исправление подготовлено исключительно в новой v2, ожидаемые source hashes и
+v1 сохранены; требуется новое review и actual run. Blender-часть пока не запускалась.
