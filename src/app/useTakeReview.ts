@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 
 import { compareTake } from "../recording/compare";
 import type { Grade } from "../recording/compare";
@@ -55,9 +55,16 @@ interface StaffLayout {
 export function useTakeReview(
   song: Song,
   songKey: string,
-  ensureSound: () => Promise<void>,
+  ensureSound: () => Promise<boolean> | Promise<void>,
   { withNames, fixedLines, measuresPerLine, autoReview }: StaffLayout
 ) {
+  const request = useRef(0);
+  useLayoutEffect(
+    () => () => {
+      request.current++;
+    },
+    [songKey]
+  );
   const dispatch = useAppDispatch(),
     store = useAppStore();
   const takes = useAppSelector((state) => state.review.historyBySong[songKey] ?? EMPTY_TAKES);
@@ -89,15 +96,18 @@ export function useTakeReview(
   }, [dispatch]);
   const selectTake = useCallback(
     (id: string) => {
+      request.current++;
       dispatch(reviewActions.takeSelected(id));
     },
     [dispatch]
   );
   const startComparing = useCallback(async () => {
+    const token = ++request.current;
     const before = store.getState().review;
     const id = before.selectedId;
-    await ensureSound();
+    if ((await ensureSound()) === false) return;
     const current = store.getState().review;
+    if (token !== request.current) return;
     if (current.songKey === songKey && current.selectedId === id && id !== null)
       dispatch(reviewActions.comparingChanged(true));
   }, [store, ensureSound, songKey, dispatch]);

@@ -27,7 +27,7 @@ const selectTiming = (state: RootState) => state.preferences.timing;
 
 interface Options {
   trainerRef: RefObject<Trainer | null>;
-  ensureSound: () => Promise<void>;
+  ensureSound: () => Promise<boolean> | Promise<void>;
   devices: readonly MidiDevice[];
   deviceId: string;
   trainerReady: boolean;
@@ -126,7 +126,7 @@ export function useTimingControls({
     if (!chosenId || locked) return;
     const token = ++request.current;
     trainerRef.current?.setPlaying(false);
-    await ensureSound();
+    if ((await ensureSound()) === false) return;
     if (request.current === token) startCalibration();
   };
   const intercept = useCallback(

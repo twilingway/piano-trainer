@@ -410,8 +410,8 @@ export function useHeldBassCourse(feedback?: LessonStaffFeedbackSink) {
       setIntro(false);
       dispatch(readingActions.heldBassSelected({ seed: saved.seed }));
     },
-    playAgain: async (ensureSound: () => Promise<void>) => {
-      await ensureSound();
+    playAgain: async (ensureSound: () => Promise<boolean> | Promise<void>) => {
+      if ((await ensureSound()) === false) return;
       if (sessionRef.current !== session || !session) return;
       feedback?.clear();
       playRequestedRef.current = true;

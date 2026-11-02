@@ -415,10 +415,10 @@ export class FallingNotesView {
 
   /** Runs `onFrame` with real milliseconds before every draw. */
   onTick(onFrame: (deltaMs: number) => void): void {
-    this.app.ticker.add((ticker) => {
-      onFrame(ticker.deltaMS);
-    });
+    this.app.onTick(onFrame);
   }
+
+  waitForFrame = (signal?: AbortSignal): Promise<boolean> => this.app.waitForFrame(signal);
 
   setSong(song: Song): void {
     // The word mode draws the song one column a computer key.

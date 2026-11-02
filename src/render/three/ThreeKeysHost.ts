@@ -302,6 +302,9 @@ export class ThreeKeysHost {
   }
 
   private readonly frame = (): void => {
+    this.app.presentFrame(this.composeFrame);
+  };
+  private readonly composeFrame = (): boolean => {
     const { renderer, stage } = this.app;
     const scene = this.keys.scene;
     const layered =
@@ -313,7 +316,7 @@ export class ThreeKeysHost {
     this.syncFreeCamera(Boolean(layered));
     if (!layered || !this.stage) {
       renderer.render({ container: stage });
-      return;
+      return true;
     }
     const separateRoad = this.freeActive || this.performanceWanted;
     const worldEffects = separateRoad && this.stage.nativeEffectsReady;
@@ -376,7 +379,7 @@ export class ThreeKeysHost {
       this.stage.dispose();
       this.stage = undefined;
       renderer.render({ container: stage });
-      return;
+      return false;
     }
     try {
       renderer.render({ container: stage, clear: false });
@@ -384,6 +387,7 @@ export class ThreeKeysHost {
       this.effects.restore();
       this.roadEffects.restore();
     }
+    return true;
   };
 
   private readonly drawRoadEffects = (): void => {

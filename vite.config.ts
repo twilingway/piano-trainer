@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import type { IndexHtmlTransformContext, Plugin, ResolvedConfig } from "vite";
 import { renderSiteMetadataHtml } from "./src/i18n/siteMetadataHtml.ts";
 import { siteLocaleFromPath } from "./src/i18n/siteMetadata.ts";
+import { pianoSampleManifest } from "./src/audioTools/pianoSampleManifest.ts";
 
 function localizedSiteMetadata(): Plugin {
   let outputDirectory: string | undefined;
@@ -35,6 +36,7 @@ function localizedSiteMetadata(): Plugin {
 
 export default defineConfig(({ mode }) => ({
   plugins: [
+    pianoSampleManifest(),
     localizedSiteMetadata(),
     react(),
     // Keep render-isolation tests independent of compiler memoization.

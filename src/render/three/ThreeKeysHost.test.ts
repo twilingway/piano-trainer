@@ -2,8 +2,7 @@
 import { Camera, Group, type Vector2 } from "three";
 import type { SourcePerformanceIdentity } from "../../song/sourcePerformance";
 import type { SongStage } from "../../song/songStage";
-import { Container } from "../flatThree";
-import type { Application } from "../flatThree";
+import { Application, Container, UPDATE_PRIORITY } from "../flatThree";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SongNote } from "../../song/song";
 import type { NativeContactNotes } from "./NativeKeyContacts";
@@ -113,9 +112,9 @@ vi.mock("./pianist", () => ({
 }));
 vi.mock("./disposePianistModel", () => ({ disposePianistModel: mocks.disposeModel }));
 
-function fixture() {
+function fixture(realApp?: Application) {
   const canvas = document.createElement("canvas");
-  const stage = new Container();
+  const stage = realApp?.stage ?? new Container();
   const road = new Container();
   const keys = {
     container: new Container(),
@@ -134,6 +133,8 @@ function fixture() {
     songStage: undefined as SongStage | undefined
   };
   const renderer = {
+    gl: { isContextLost: vi.fn(() => false) },
+    destroy: vi.fn(),
     threeRenderer: { dispose: vi.fn() },
     render:
       vi.fn<(options: { container: Container; clear?: boolean; transform?: unknown }) => void>()
@@ -146,7 +147,23 @@ function fixture() {
     add: vi.fn((callback: () => void) => callbacks.add(callback)),
     remove: vi.fn((callback: () => void) => callbacks.delete(callback))
   };
-  const app = { renderer, ticker, stage, canvas, render, screen: { width: 800, height: 600 } };
+  if (realApp) {
+    Object.assign(realApp, { initializedRenderer: renderer, initializedCanvas: canvas });
+    realApp.screen.width = 800;
+    realApp.screen.height = 600;
+    realApp.ticker.add(realApp.render, realApp, UPDATE_PRIORITY.LOW);
+  }
+  const app = realApp ?? {
+    renderer,
+    ticker,
+    stage,
+    canvas,
+    render,
+    screen: { width: 800, height: 600 },
+    presentFrame: (draw: () => boolean) => {
+      draw();
+    }
+  };
   const keyboard = { frame: undefined as KeyboardLayer["frame"] };
   const host = new ThreeKeysHost(
     app as unknown as Application,
@@ -169,6 +186,10 @@ function fixture() {
     ticker,
     host,
     tick: () => {
+      if (realApp) {
+        realApp.ticker.update(1000);
+        return;
+      }
       [...callbacks].forEach((callback) => {
         callback();
       });
@@ -1109,4 +1130,66 @@ it("routes native octave visibility and projection before the final flat overlay
   await view.host.setEnabled(false);
   expect(marks.setNative).toHaveBeenLastCalledWith(false);
   view.host.destroy();
+});
+
+it.each([true, false])(
+  "confirms a complete native compositor frame through the actual application ticker (nativeKeys=%s)",
+  async (nativeKeys) => {
+    const app = new Application(),
+      view = fixture(app);
+    await view.host.setEnabled(nativeKeys, true);
+    const finish = vi.spyOn(app, "presentFrame"),
+      complete = vi.fn();
+    void app.waitForFrame().then(complete);
+    let passes = 0;
+    view.renderer.render.mockImplementation(() => {
+      passes++;
+      expect(complete).not.toHaveBeenCalled();
+    });
+    mocks.draw.mockImplementation(() => {
+      expect(complete).not.toHaveBeenCalled();
+    });
+    view.tick();
+    expect(passes).toBe(2);
+    expect(complete).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(complete).toHaveBeenCalledWith(true);
+    expect(finish).toHaveBeenCalledOnce();
+    view.host.destroy();
+    app.destroy();
+  }
+);
+it("does not confirm a failed native pass, a failed final overlay, or a context lost mid-composition", async () => {
+  for (const failure of ["native", "overlay", "lost"] as const) {
+    const app = new Application(),
+      view = fixture(app);
+    await view.host.setEnabled(true);
+    const complete = vi.fn();
+    void app.waitForFrame().then(complete);
+    mocks.draw.mockReset();
+    if (failure === "native")
+      mocks.draw.mockImplementation(() => {
+        throw new Error("native");
+      });
+    if (failure === "overlay") {
+      view.renderer.render
+        .mockImplementationOnce(() => undefined)
+        .mockImplementationOnce(() => {
+          throw new Error("overlay");
+        });
+      expect(() => {
+        view.tick();
+      }).toThrow("overlay");
+    } else {
+      if (failure === "lost")
+        mocks.draw.mockImplementation(() => {
+          view.renderer.gl.isContextLost.mockReturnValue(true);
+        });
+      view.tick();
+    }
+    await Promise.resolve();
+    expect(complete).toHaveBeenCalledWith(false);
+    view.host.destroy();
+    app.destroy();
+  }
 });

@@ -1,3 +1,4 @@
+import { ConnectedRuntimePreparation } from "./ConnectedRuntimePreparation";
 import { useAppSelector } from "./storeHooks";
 import { useRuntimeCommand } from "./runtimeCommands";
 import { ConnectedPlayerHeader } from "./ConnectedPlayerHeader";
@@ -17,6 +18,7 @@ export function PlayerScreen() {
       <ConnectedPracticeWorkspace />
       <ConnectedPlayerWindows />
       <ConnectedGraphicsNotice />
+      <ConnectedRuntimePreparation />
     </div>
   );
 }
