@@ -191,3 +191,42 @@ Managed run завершён exit0 за 248 с, global VRAM peak5620 MiB. Кад
 `2258ea31324749409bd1379f97ccc1bf57e2d17c9130b5e5dc9ab9990e5da151`. Следующий шаг определяется
 фактическими guard-отказами сохранённых trials. Отдельный независимо проверенный sweep598 запущен
 после полного завершения этого GPU job.
+
+### Sweep598 и причины дальнейшей работы C3
+
+Все24 независимых физических coordinate probes598 завершены (managed exit0, peak5950 MiB). Выбран
+MCP−0.000625 рад: nail2 penetration1.508481→1.500970 мм, vertex violation0.266564→0.254958 мм,
+triangle sample violation0.602990→0.591121 мм. Контакты2/3 сохранены, но gap2 уже0.987811 мм;
+поэтому дальнейшее односуставное поднятие не является решением. Отчёт:
+`c3-restoration598-coordinate-v1/runs/2afab873f1ea/report.json`, SHA
+`bb2fbb3df8bc106f5f9f71043b3041fe1918cf8631d60e1006ebe33d2f6793f0`.
+
+Независимый разбор C3 различил два барьера. В593 уменьшение contact objective ухудшает max vertex
+clearance component. В592 после полученного plateau исходный acquisition objective снижается, но
+actual pad gap растёт. Следующая новая bounded family должна использовать проверенный actual-gap
+witness для592 и согласованные суставные изменения с неизменными component/nail/held gates
+для593/598. Простое увеличение старого числа проходов не планируется. Все физические классы остаются
+null, writer выключен.
+
+### Общая поза: восстановление RIGHT и новый двусторонний key-аудит
+
+Генератор изменил только RIGHT17/19/21 у двух нейтральных LEFT A/B × swivel−20/0/+20; сохранены
+корпус, collar14, все LEFT local rotations, пальцы RIGHT, legs/rest/betas. Fresh strict reach,
+native RIGHT orientation, raw156/matrix/full-PSD parity и source rebuild guards прошли. Независимый
+typed reader подтвердил все7 surfaces и576 pins. Отчёт:
+`shared-right-standby-v1/generation-runs/38e05e6c0b7b/report.json`, SHA
+`9d9ad8329cd8ca1f97abed975c17400a0ee00ebe09fbb396c9b162fe5b996091`.
+
+Повторный key-only план закрепил593 pins и прошёл отдельное review. Actual GPU-прогон завершён
+exit0; независимый `publication.read` без Torch подтвердил все7 строк. **Все6 рабочих поз проходят
+fresh LEFT contact и full LEFT/RIGHT key predicates**, baseline тоже проходит обе руки. Fresh
+working gap находится в−0.1167…+0.3621мм и валиден по закреплённой contact policy. LEFT skin
+изменилась на0.439–1.255мм из-за global PSD, поэтому прежний LEFT PASS не наследовался. Отчёт:
+`shared-right-standby-v1/runs/82ff7c742b4b/report.json`, SHA
+`f32e5794ac7a21552765d6d613a939041d0196ef710e35e79abf271b23a97a5e`.
+
+Это ещё не физически зелёные позы. Следующий bounded rejector проверит полные LEFT×RIGHT triangle
+pairs. Native LEFT finger memberships и ногти пока отсутствуют; RIGHT-specific Nails/ArmClearance не
+переносятся переименованием. Для воспроизводимой сцены нужен stagewise pre-LBS producer и отдельный
+diagnostic roundtrip writer. Повторный read-only MCP подтвердил исходную review-copy, кадр631,
+dirty=false; сцена не изменена.
