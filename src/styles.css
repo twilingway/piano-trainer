@@ -2147,6 +2147,60 @@ button.song-card.song-card__open {
   text-align: center;
 }
 
+.game-dialog.result > .game-dialog__head {
+  display: none;
+}
+
+.game-dialog.result > .game-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.result-content {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.game-dialog.result .result-summary {
+  padding: 4px 0;
+}
+
+.game-dialog.result .result-summary p {
+  margin: 4px 0;
+}
+
+.game-dialog.result .result-stars {
+  margin: 0;
+  font-size: 36px;
+}
+
+.game-dialog.result .result-caption {
+  margin: 0 0 4px;
+}
+
+.game-dialog.result .result-details {
+  display: block;
+}
+
+.game-dialog.result .result-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  flex-shrink: 0;
+  gap: 8px;
+  margin: 0;
+}
+
+.game-dialog.result .result-actions .game-button {
+  justify-content: center;
+  min-height: 44px;
+  padding: 6px 8px;
+  line-height: 1.2;
+}
+
 /* Compact result summaries move the trouble notes into the stats panel. */
 .result-stats-trouble {
   display: none;
