@@ -23,6 +23,9 @@
       coverage; отдельно сохранить статус physical/saved/export/visual.
 - [ ] 2.1.6 Закрыть per-candidate bilateral/shared-torso и строгий writer с независимым saved
       Blender proof; обе руки используют один корпус и сохраняют контакты в общей геометрии.
+- [ ] 2.1.7 Выполнить key-only raw LEFT и inactive RIGHT диагностику в общем pressed set: полные
+      points/triangles и native ROW/masks проверены, permission684 не подменяется preferred411;
+      negative fixtures не дают общего GREEN при отсутствующих corrected/nail/containment proofs.
 - [ ] 2.2 Подготовить offline-фазы и переходы, проверить skin/pads/nails и удержание контактов на
       дробных отсчётах; неизвестные назначения дают явный отказ.
 - [ ] 2.3 Реализовать чистый sampler абсолютного времени; onset/release, повтор, held+moving,

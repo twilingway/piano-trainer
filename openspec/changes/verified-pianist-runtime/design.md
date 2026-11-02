@@ -53,6 +53,21 @@ PracticeSession и заполняет готовую позу без собст�
 Новый эксперимент не меняет frozen C4/source и не получает PASS по отдельному тестовому клипу. Все
 непройденные случаи остаются в ledger с причиной, coverage и точными путями.
 
+### 5. Частичная диагностика raw LEFT и общей клавиатуры
+
+После finite reach/contact проверяются сохранённые полные raw surfaces, без нового model/FK solve:
+все 165314 points, original triangles и точная bijection evaluated-ID → source ROW. LEFT hand/pad
+FLOAT attributes приходят из native LEFT proof, не из RIGHT masks. Preferred411 используется для
+касания, permission684 — только для допустимого погружения thumb в собственную активную клавишу. Все
+88 actual key meshes используют один pressed set для обеих рук; inactive RIGHT не получает
+собственных pad permissions и не подменяет общую клавиатуру all-rest состоянием.
+
+Key-only diagnostic сообщает отдельно LEFT/key и inactive-RIGHT/key predicates. Он сохраняет
+непроверенными corrected surface/GN/SIDE, LEFT nails, finger subsets, arm/body/inter-hand
+containment, saved Blender, export и visual. Его PASS не устанавливает physical_class/calibration и
+не разрешает writer. Caps прежней позы не переиспользуются. Полные vertex/triangle/sample witnesses
+и source/geometry/control SHA сохраняются; неполный обход не получает COMPLETE.
+
 ## Risks / Trade-offs
 
 - LBS не воспроизводит PSD/SIDE → сравнение skin, отдельный corrective export до допуска.

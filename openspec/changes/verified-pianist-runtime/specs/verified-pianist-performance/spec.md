@@ -80,3 +80,11 @@ Numerical, saved Blender, export, browser и visual статусы SHALL хра�
 
 - **WHEN** кандидат прошёл GPU, но saved/export/browser/visual ещё не выполнены
 - **THEN** отчёт не объявляет его готовой игровой анимацией или визуально принятым результатом
+
+#### Scenario: Частичная проверка raw поверхности
+
+- **WHEN** сохранённая raw поверхность LEFT прошла отдельные key predicates, но corrected surface,
+  ногти, containment или saved Blender ещё не проверены
+- **THEN** отчёт сохраняет эти проверки открытыми, общий physical_class/calibration остаётся null, а
+  запись и игровой допуск не разрешаются
+- **AND** inactive RIGHT проверяется в том же pressed set клавиатуры без собственных pad permissions
