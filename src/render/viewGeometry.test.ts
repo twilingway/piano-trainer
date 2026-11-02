@@ -72,6 +72,65 @@ describe("viewGeometry", () => {
     const geometry = viewGeometry(600, 40, { ...ALL, hands: true }, false);
     expect(geometry.keyboardTop + geometry.keyboardHeight).toBeCloseTo(600 - 120);
   });
+
+  it.each([320, 667, 900])(
+    "keeps the same key dimensions inside shorter panes against a %ipx workspace",
+    (referenceHeight) => {
+      for (const natural of [undefined, 245]) {
+        const placement = { ...USUAL_PLACEMENT, scale: 1.35, lift: 0.16 };
+        const full = viewGeometry(
+          referenceHeight,
+          40,
+          ALL,
+          false,
+          false,
+          placement,
+          natural,
+          referenceHeight
+        );
+        const reservation = referenceHeight - full.hitY;
+        for (const height of [
+          referenceHeight,
+          reservation,
+          Math.max(reservation, referenceHeight * 0.55)
+        ]) {
+          for (const notes of [false, true]) {
+            const pane = viewGeometry(
+              height,
+              40,
+              { ...ALL, notes },
+              false,
+              false,
+              placement,
+              natural,
+              referenceHeight
+            );
+            expect(pane.keyboardHeight).toBeCloseTo(full.keyboardHeight, 10);
+            expect(pane.blackHeight).toBeCloseTo(full.blackHeight, 10);
+            expect(height - pane.hitY).toBeCloseTo(reservation, 10);
+            expect(pane.keyboardTop + pane.keyboardHeight).toBeLessThanOrEqual(height);
+          }
+        }
+      }
+    }
+  );
+
+  it("keeps legacy fitting when no usable workspace reference was supplied", () => {
+    const expected = viewGeometry(150, 40, { ...ALL, notes: false }, false);
+    for (const invalid of [undefined, 0, -1, NaN, Infinity])
+      expect(
+        viewGeometry(
+          150,
+          40,
+          { ...ALL, notes: false },
+          false,
+          false,
+          USUAL_PLACEMENT,
+          undefined,
+          invalid
+        )
+      ).toEqual(expected);
+  });
 });
 
 describe("fitRange", () => {

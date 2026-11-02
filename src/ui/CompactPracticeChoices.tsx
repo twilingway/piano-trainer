@@ -77,10 +77,18 @@ interface Props {
   readonly onHands: (hands: HandsChoice) => void;
   readonly onMode: (mode: PracticeModeChoice) => void;
   readonly parts?: PartsChoice | undefined;
+  readonly concise?: boolean;
 }
 
 /** The practice choices stay visible in the compact menu, with captions for touch. */
-export function CompactPracticeChoices({ hands, mode, onHands, onMode, parts }: Props) {
+export function CompactPracticeChoices({
+  hands,
+  mode,
+  onHands,
+  onMode,
+  parts,
+  concise = false
+}: Props) {
   const { t } = useI18n();
   return (
     <div className="compact-practice">
@@ -148,12 +156,14 @@ export function CompactPracticeChoices({ hands, mode, onHands, onMode, parts }: 
           ))}
         </div>
       )}
-      <p className="compact-practice__hint">
-        {parts?.role
-          ? t("Остальное играет программа.")
-          : t(HAND_CHOICES.find((choice) => choice.value === hands)?.hint ?? "")}
-      </p>
-      {parts && hands !== "listen" && (
+      {!concise && (
+        <p className="compact-practice__hint">
+          {parts?.role
+            ? t("Остальное играет программа.")
+            : t(HAND_CHOICES.find((choice) => choice.value === hands)?.hint ?? "")}
+        </p>
+      )}
+      {!concise && parts && hands !== "listen" && (
         <label className="setting">
           <span>{t("Автоаккомпанемент")}</span>
           <input

@@ -1,6 +1,7 @@
 import type { LessonStaffFeedbackSource } from "../staff/lessonStaffFeedback";
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import neonRailUrl from "../fx/neon-rail.webp?url";
+import { usePianoStaffRoom } from "./usePianoStaffRoom";
 import { useI18n } from "../app/useI18n";
 import type { ReactNode, Ref, RefObject } from "react";
 import { useMemo } from "react";
@@ -93,6 +94,17 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   // With the lane hidden or cut to its keys, the staff may take more of the screen.
   const staffRoom = laneMode === "hidden" ? 1.9 : laneMode === "keys" ? 1.4 : 1;
   const staffShown = Boolean(props.staffXml) && prefs.visible;
+  const pianoReference =
+    !props.course &&
+    !props.comparing &&
+    !props.wordBoard &&
+    !props.scoreBoard &&
+    !props.lessonBoard &&
+    !transcription &&
+    !prefs.freeCamera &&
+    !prefs.performanceScene;
+  const staffOnly = pianoReference && staffShown && prefs.keys && !prefs.lane;
+  const workspaceRef = usePianoStaffRoom(pianoReference, staffOnly, staffShown);
   const dualScore = Boolean(props.scoreBoard) && staffShown;
   const sharedTabs = useMemo(
     () =>
@@ -202,7 +214,12 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   );
   return (
     <div className="workspace">
-      <div className={props.course ? "workspace-main workspace-main--practice" : "workspace-main"}>
+      <div
+        ref={workspaceRef}
+        className={props.course ? "workspace-main workspace-main--practice" : "workspace-main"}
+        data-piano-layout-reference={pianoReference ? "true" : undefined}
+        data-piano-staff-region={staffOnly ? "true" : undefined}
+      >
         {props.countdown != null && (
           <div className="play-countdown" role="status" aria-live="polite" aria-atomic="true">
             <span>{props.countdown > 0 ? t("Приготовьтесь") : t("Готовим звук…")}</span>
