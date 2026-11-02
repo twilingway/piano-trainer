@@ -187,7 +187,7 @@ export class FallingNotesView {
     this.road.setCamera(this.cameraPrefs);
     this.noteSettings.apply();
     this.sceneCamera.apply();
-    this.road.setRoadGuides(this.roadGuides);
+    this.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
     void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
     this.road.container.visible = false;
@@ -320,7 +320,7 @@ export class FallingNotesView {
 
   setRoadGuides(on: boolean): void {
     this.roadGuides = on;
-    this.road?.setRoadGuides(on);
+    for (const layer of [this.notesLayer, this.road]) layer?.setRoadGuides(on);
   }
 
   setFallingNoteStyle = this.noteSettings.setStyle;

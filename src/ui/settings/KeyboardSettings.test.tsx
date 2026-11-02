@@ -97,6 +97,32 @@ describe("KeyboardSettings: the local pianist", () => {
   });
 });
 
+describe("vertical guide setting", () => {
+  it.each(["classic", "arcade", "3d"] as const)(
+    "offers the saved choice in %s in both languages",
+    (keyStyle) => {
+      const changed = vi.fn();
+      for (const language of ["ru", "en"] as const) {
+        setInterfaceLanguage(language);
+        act(() => {
+          root.render(
+            <KeyboardSettings {...base} keyStyle={keyStyle} roadGuides onRoadGuides={changed} />
+          );
+        });
+        const label = [...host.querySelectorAll("label")].find((item) =>
+          item.textContent.includes(
+            language === "ru" ? "Вертикальные линии" : "Vertical guide lines"
+          )
+        );
+        const input = label?.querySelector("input");
+        expect(input?.checked).toBe(true);
+        act(() => input?.click());
+        expect(changed).toHaveBeenLastCalledWith(false);
+      }
+    }
+  );
+});
+
 describe("free camera setting", () => {
   it("replaces screen percentages with world controls only in free 3D and restores the saved framing", () => {
     const changed = vi.fn();

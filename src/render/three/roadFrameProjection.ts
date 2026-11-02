@@ -22,14 +22,15 @@ export function prepareRoadProjection(
     vertical,
     free && !performance && (frame?.freeLanes.length ?? 0) > 0
   );
-  if (frame?.guides && !performance)
+  if (frame && !performance)
     guides.update(
       boxes,
       camera,
       frame.beats,
       frame.beatCount,
       vertical,
-      free && frame.freeLayout ? frame.freeLanes : undefined
+      free && frame.freeLayout ? frame.freeLanes : undefined,
+      frame.guides
     );
   else guides.clear();
 }

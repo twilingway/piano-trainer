@@ -125,7 +125,7 @@ describe("ThreeStage physical key contact", () => {
         noteAura: aura,
         roadTrails: trails,
         roadNotes: notes,
-        roadGuides: { clear: vi.fn(), setDocked: vi.fn() },
+        roadGuides: { clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() },
         keys
       });
       Object.assign(view.scene, { faces: [], texture: { width: 800, height: 200 } });
@@ -554,7 +554,7 @@ it.each(["filled", "flat", "glass"] as const)(
       roadTrails: trails,
       roadNotes: native,
       flatRoadNotes: flat,
-      roadGuides: { clear: vi.fn(), setDocked: vi.fn() }
+      roadGuides: { clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() }
     });
     const frame = new ThreeRoadFrame();
     frame.noteStyle = style;

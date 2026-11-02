@@ -145,7 +145,8 @@ export class ThreeRoadGuides {
     beatDepths: readonly number[],
     beatCount = beatDepths.length,
     vertical = false,
-    routes?: readonly FreeRoadLane[]
+    routes?: readonly FreeRoadLane[],
+    lanes = true
   ): void {
     if (this.disposed) return;
     if (
@@ -175,7 +176,8 @@ export class ThreeRoadGuides {
       }
       this.sourcePositions.needsUpdate = true;
     }
-    this.sources.visible = this.sourceCount > 0;
+    this.sources.visible = lanes && this.sourceCount > 0;
+    this.whiteLanes.visible = this.blackLanes.visible = lanes;
     this.sources.geometry.setDrawRange(0, this.sourceCount);
     this.whiteLanes.geometry.setDrawRange(0, this.whiteCount * 2);
     this.blackLanes.geometry.setDrawRange(0, this.blackCount * 2);
