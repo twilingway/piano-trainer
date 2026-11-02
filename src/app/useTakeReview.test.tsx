@@ -158,3 +158,38 @@ describe("review runtime facade", () => {
     }
   });
 });
+
+it("does not start a comparison when required audio fails", async () => {
+  const store = createAppStore(),
+    root = createRoot(document.createElement("div"));
+  let controls!: ReturnType<typeof useTakeReview>;
+  function Harness() {
+    const value = useTakeReview(song, "song", () => Promise.resolve(false), {
+      withNames,
+      fixedLines: false,
+      measuresPerLine: 4,
+      autoReview: false
+    });
+    useLayoutEffect(() => {
+      controls = value;
+    });
+    return null;
+  }
+  try {
+    await act(async () => {
+      root.render(withTestStore(<Harness />, store));
+      await Promise.resolve();
+    });
+    act(() => {
+      controls.recordTake(take);
+    });
+    await act(async () => {
+      await controls.startComparing();
+    });
+    expect(store.getState().review.comparing).toBe(false);
+  } finally {
+    act(() => {
+      root.unmount();
+    });
+  }
+});

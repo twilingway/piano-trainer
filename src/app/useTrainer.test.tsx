@@ -1,3 +1,4 @@
+import type * as PreparationModule from "./TrainerPreparation";
 // @vitest-environment happy-dom
 import { act, StrictMode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     onRunFinished?: (result: RunCompletion) => void;
     load: ReturnType<typeof vi.fn>;
     setPlaying: ReturnType<typeof vi.fn>;
+    setPreparing: ReturnType<typeof vi.fn>;
     setGraphicsAvailable: ReturnType<typeof vi.fn>;
     cancelInput: ReturnType<typeof vi.fn>;
     seek: ReturnType<typeof vi.fn>;
@@ -42,11 +44,25 @@ vi.mock("../render/FallingNotesView", () => ({
     mount() {
       return mocks.mount();
     }
+    waitForFrame() {
+      return Promise.resolve(true);
+    }
     destroy() {
       this.destroyed = true;
     }
   }
 }));
+vi.mock("./TrainerPreparation", async (original) => {
+  const actual = await original<typeof PreparationModule>();
+  return {
+    ...actual,
+    TrainerPreparation: class extends actual.TrainerPreparation {
+      constructor() {
+        super(() => Promise.resolve(true));
+      }
+    }
+  };
+});
 vi.mock("../practice/Trainer", () => ({
   Trainer: class {
     onSnapshot?: (snapshot: TrainerSnapshot) => void;
@@ -55,6 +71,7 @@ vi.mock("../practice/Trainer", () => ({
     destroyed = false;
     load = vi.fn(() => this.onSnapshot?.(snapshot()));
     setPlaying = vi.fn();
+    setPreparing = vi.fn();
     setGraphicsAvailable = vi.fn();
     cancelInput = vi.fn();
     seek = vi.fn();
@@ -96,7 +113,8 @@ const handlers = {
   onReplay: vi.fn(),
   onRunFinished: vi.fn()
 };
-let ensureSound: () => Promise<void>;
+let ensureSound: () => Promise<void> | Promise<boolean>;
+let waitForSound: () => Promise<boolean>;
 interface Replay {
   song: Song;
   take: Take;
@@ -143,6 +161,7 @@ function Harness({
     course,
     startFromRef,
     ensureSound,
+    waitForSound,
     ...handlers,
     comparing: !!replay,
     compareSong: replay?.song,
@@ -169,6 +188,7 @@ beforeEach(() => {
   mocks.mount.mockReset().mockResolvedValue(undefined);
   renders = 0;
   ensureSound = () => Promise.resolve();
+  waitForSound = () => Promise.resolve(true);
   startFromRef.current = null;
   host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);
@@ -1292,3 +1312,81 @@ describe("graphics availability while the view mounts", () => {
     expect(mocks.trainers.filter((entry) => !entry.destroyed)).toHaveLength(1);
   });
 });
+
+it.each(["togglePlay", "toggleListening"] as const)(
+  "does not start %s when required audio fails",
+  async (command) => {
+    ensureSound = () => Promise.resolve(false);
+    await mount();
+    const trainer = active();
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      await value[command]();
+    });
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    expect(value.listening).toBe(false);
+  }
+);
+
+it.each([true, false])(
+  "gates a derived cold course Listen start on mandatory sound (ready=%s)",
+  async (ready) => {
+    let decoded!: (ready: boolean) => void;
+    const required = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          decoded = resolve;
+        })
+    );
+    waitForSound = required;
+    const unlock = vi.fn(() => Promise.resolve(true));
+    ensureSound = unlock;
+    const course = {
+      stage: "right" as const,
+      context: "cold",
+      accompaniment: false,
+      onStage: vi.fn(),
+      onAccompaniment: vi.fn()
+    };
+    await mount(false, song, song, undefined, course);
+    const trainer = active();
+    trainer.setPlaying.mockClear();
+    await act(async () => {
+      value.setHandChoice("listen");
+      expect(unlock).toHaveBeenCalledOnce();
+      await Promise.resolve();
+    });
+    expect(required).toHaveBeenCalledOnce();
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+    await act(async () => {
+      decoded(ready);
+      await Promise.resolve();
+    });
+    if (ready) expect(trainer.setPlaying).toHaveBeenLastCalledWith(true);
+    else expect(trainer.setPlaying).not.toHaveBeenCalled();
+  }
+);
+
+it.each([false, true])(
+  "applies speed-only slider changes synchronously without a modal or extra pause (playing=%s)",
+  async (playing) => {
+    await mount();
+    const trainer = active();
+    trainer.onSnapshot?.(snapshot({ playing }));
+    trainer.setPreparing.mockClear();
+    for (const speed of [0.5, 0.75]) {
+      trainer.load.mockClear();
+      act(() => {
+        value.setSpeed(speed);
+      });
+      expect(value.preparation.status).toBe("idle");
+      expect(trainer.load).toHaveBeenCalledExactlyOnceWith(
+        song,
+        expect.objectContaining({ speed }),
+        song.title,
+        { preservePosition: true }
+      );
+      expect(trainer.setPreparing).not.toHaveBeenCalled();
+    }
+  }
+);

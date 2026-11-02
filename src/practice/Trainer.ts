@@ -45,6 +45,7 @@ const SNAPSHOT_INTERVAL_MS = 150;
 export class Trainer {
   onSnapshot: ((snapshot: TrainerSnapshot) => void) | undefined;
   onBeforePlay: (() => void) | undefined;
+  onPreparationPause: (() => void) | undefined;
   /** A take has ended: the song finished, or the run was restarted, moved or reloaded. */
   onTake: ((take: Take) => void) | undefined;
   /** Natural end only, emitted before a loop restarts or a take is delivered. */
@@ -93,6 +94,7 @@ export class Trainer {
   /** The song's notes' keys by note id: a missed note is shown on its key. */
   private pitchOf = new Map<string, number>();
   private playing = false;
+  private preparing = false;
   private graphicsAvailable = true;
   private effectEpoch = 0;
   private recorder: TakeRecorder | undefined;
@@ -219,13 +221,20 @@ export class Trainer {
     }
   }
 
+  setPreparing(on: boolean): void {
+    if (on) this.setPlaying(false);
+    this.preparing = on;
+  }
+
   setPlaying(playing: boolean): void {
+    if (this.preparing && !playing) this.onPreparationPause?.();
     const course = this.courses.current;
     this.resumePending = false;
     const session = this.session;
     const wasPlaying = this.playing;
     this.playing =
       playing &&
+      !this.preparing &&
       this.graphicsAvailable &&
       this.canStart &&
       (session?.finished !== true || course?.playsAfterFinish === true);

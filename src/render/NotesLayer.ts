@@ -138,6 +138,7 @@ export class NotesLayer {
   private noteNames: FallingNoteNames | undefined;
   /** How a note is written and coloured; in the word mode its key's column stands apart. */
   private look: NoteLook = PIANO_LOOK;
+  private preparedSong: Song | undefined;
 
   constructor(
     private readonly renderer: Renderer,
@@ -177,6 +178,10 @@ export class NotesLayer {
 
   /** The notes of `song`, each on the key of its pitch, written and coloured as `look` says. */
   setSong(song: Song, look: NoteLook = PIANO_LOOK): void {
+    this.playing.clear();
+    this.arrivals.length = 0;
+    if (this.preparedSong === song && this.look === look) return;
+    this.preparedSong = undefined;
     this.look = look;
     this.trailAnchors = new RoadTrailAnchors(song.notes);
     this.beats = song.beats;
@@ -195,6 +200,7 @@ export class NotesLayer {
     // Faces of the last song: baked per pitch, value and hand, they go with it.
     for (const texture of this.cardFaces.values()) texture.destroy(true);
     this.cardFaces.clear();
+    const faceTexture = cardFaceTexture.bind(undefined, this.renderer, this.cardFaces);
     this.notes = song.notes.map((note, order) => {
       const body = new TilingSprite({ texture: Texture.WHITE, width: 1, height: 1 });
       body.eventMode = "none";
@@ -215,7 +221,7 @@ export class NotesLayer {
       const quarters = quartersAt(song, note.start + note.duration) - note.startBeat;
       const glyph = noteGlyph(quarters);
       const beatSeconds = note.duration / Math.max(quarters, 0.25);
-      const face = new Sprite(this.cardFace(shown.pitch, glyph, shown.hand, placement));
+      const face = new Sprite(faceTexture(shown.pitch, glyph, shown.hand, placement));
       face.anchor.set(0.5, 1);
       face.eventMode = "none";
       const badge = new Sprite(
@@ -240,6 +246,7 @@ export class NotesLayer {
       this.cards.addChild(glow, frame, face, badge, digit, name);
       return { note, body, placement, beatSeconds, glow, frame, face, badge, digit, name };
     });
+    this.preparedSong = song;
   }
 
   /** The lane's guides for keys laid out `total` pixels wide, down to the hit line. */
@@ -559,14 +566,5 @@ export class NotesLayer {
   private nameTexture(pitch: number): Texture {
     const style = this.noteNames;
     return style ? (this.labels.names.get(nameKey(style, pitch)) ?? Texture.EMPTY) : Texture.EMPTY;
-  }
-
-  private cardFace(
-    pitch: number,
-    glyph: ReturnType<typeof noteGlyph>,
-    hand: Hand,
-    placement?: ScorePlacement
-  ): Texture {
-    return cardFaceTexture(this.renderer, this.cardFaces, pitch, glyph, hand, placement);
   }
 }
