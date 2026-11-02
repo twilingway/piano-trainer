@@ -1,4 +1,4 @@
-import { Group, RectAreaLight, Vector3 } from "three";
+import { DirectionalLight, Group, RectAreaLight, Vector3 } from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import type { Texture } from "../flatThree";
 import { describe, expect, it, vi } from "vitest";
@@ -22,6 +22,35 @@ function scene(first = 21, last = 108, width = 1800, scale = 1): KeysScene {
     version: 1
   };
 }
+
+it("uses a stable soft directional aperture on mobile without initializing LTC textures", () => {
+  const initialize = vi.spyOn(RectAreaLightUniformsLib, "init");
+  const pool = new ThreeRimLights("mobile");
+  expect(initialize).not.toHaveBeenCalled();
+  const light = pool.group.children.find((child) => child instanceof DirectionalLight);
+  if (!(light instanceof DirectionalLight)) throw new Error("Missing mobile aperture light");
+  expect(pool.group.children.some((child) => child instanceof RectAreaLight)).toBe(false);
+  const resources = [...pool.group.children];
+  const boxes = keyBoxes(scene(36, 84));
+  const left = Math.min(...boxes.map((box) => box.x - box.width / 2));
+  const right = Math.max(...boxes.map((box) => box.x + box.width / 2));
+  pool.layout(boxes, 1);
+  expect(light.position.toArray()).toEqual([(left + right) / 2, 58, -142]);
+  expect(light.target.position.toArray()).toEqual([(left + right) / 2, 22, -52]);
+  expect(light.target.parent).toBe(pool.group);
+  expect(light.intensity).toBe(0.45);
+  expect(light.castShadow).toBe(false);
+  expect(light.color.getHex()).toBe(0xe5e7eb);
+  pool.layout(boxes, 1.5);
+  expect(light.intensity).toBe(0.45);
+  expect(pool.group.children).toEqual(resources);
+  pool.layout([], 1);
+  expect(light.intensity).toBe(0);
+  pool.dispose();
+  expect(pool.group.children).toHaveLength(0);
+  expect(light.target.parent).toBeNull();
+  initialize.mockRestore();
+});
 
 describe("neutral rim lighting", () => {
   it("initializes shared LTC textures only once across construction and disposal", () => {

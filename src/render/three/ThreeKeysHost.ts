@@ -1,3 +1,4 @@
+import { nativeLightingProfile } from "./nativeLightingProfile";
 import type { StaffWorldSource } from "../../staff/staffWorldSnapshot";
 import { Container, UPDATE_PRIORITY } from "../flatThree";
 import { Vector2, type Camera } from "three";
@@ -261,7 +262,12 @@ export class ThreeKeysHost {
         return;
       }
       try {
-        this.stage = new ThreeStage(this.app.renderer.threeRenderer, kit);
+        const profile = nativeLightingProfile(
+          typeof window !== "undefined" &&
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(pointer: coarse)").matches
+        );
+        this.stage = new ThreeStage(this.app.renderer.threeRenderer, kit, profile);
         this.stage.beforeRender = this.beforeRender;
         this.stage.setKeyboardDim(this.keyboardDim);
         if (this.worldScore) this.stage.setWorldScoreSource(this.worldScore);

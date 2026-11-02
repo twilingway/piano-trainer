@@ -1110,3 +1110,24 @@ it("routes native octave visibility and projection before the final flat overlay
   expect(marks.setNative).toHaveBeenLastCalledWith(false);
   view.host.destroy();
 });
+
+it.each([false, true])(
+  "selects the native profile for primary coarse pointer=%s",
+  async (matches) => {
+    const media = vi.fn(() => ({ matches }));
+    vi.stubGlobal("matchMedia", media);
+    const view = fixture();
+    await view.host.setEnabled(true);
+    expect(media).toHaveBeenCalledExactlyOnceWith("(pointer: coarse)");
+    expect(mocks.construct.mock.lastCall?.[2]).toBe(matches ? "mobile" : "full");
+    view.host.destroy();
+  }
+);
+
+it("keeps desktop lighting when media-query detection is unavailable", async () => {
+  vi.stubGlobal("matchMedia", undefined);
+  const view = fixture();
+  await view.host.setEnabled(true);
+  expect(mocks.construct.mock.lastCall?.[2]).toBe("full");
+  view.host.destroy();
+});

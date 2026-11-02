@@ -36,12 +36,12 @@ afterEach(() => {
   owned.length = 0;
   vi.restoreAllMocks();
 });
-function fixture() {
+function fixture(profile: "full" | "mobile" = "full") {
   const scene = new Group(),
     subject = new Group();
   subject.add(new Mesh(geometry, material));
   subject.updateMatrixWorld(true);
-  const stage = new PerformanceWorldStage(scene);
+  const stage = new PerformanceWorldStage(scene, profile);
   owned.push(stage);
   return { scene, subject, stage, camera: new PerspectiveCamera(45, 1.6, 5, 10000) };
 }
@@ -54,7 +54,7 @@ function batch(
   if (!(mesh instanceof InstancedMesh)) throw new Error("Missing particle batch");
   return mesh as InstancedMesh<PlaneGeometry, ShaderMaterial>;
 }
-async function loaded() {
+async function loaded(profile: "full" | "mobile" = "full") {
   vi.spyOn(TextureLoader.prototype, "loadAsync").mockImplementation((url) =>
     Promise.resolve(
       new Texture(
@@ -64,7 +64,7 @@ async function loaded() {
       )
     )
   );
-  const result = fixture();
+  const result = fixture(profile);
   await Promise.resolve();
   return result;
 }
@@ -307,4 +307,17 @@ it("places metric back-row effects on the same GLB stem anchor as notes", () => 
     expect(key?.y).toBeCloseTo(30 + (black ? 34 : 22) * 2);
     expect(key?.z).toBeCloseTo(40 - (black ? 145.8 : 149.1938) * 2);
   }
+});
+
+it("keeps mobile world particles while omitting the eight physical ring lights", async () => {
+  const { stage, subject, camera } = await loaded("mobile");
+  stage.update(true, 0, subject, boxes, [source], camera, 142, true, undefined, true);
+  const lights: PointLight[] = [];
+  stage.group.traverse((child) => {
+    if (child instanceof PointLight) lights.push(child);
+  });
+  expect(lights).toHaveLength(0);
+  expect(stage.group.children[0]?.visible).toBe(true);
+  expect(batch(stage, 1).count).toBe(98);
+  expect(batch(stage, 2).count).toBeGreaterThan(0);
 });

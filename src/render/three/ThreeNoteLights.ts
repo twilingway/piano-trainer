@@ -1,3 +1,4 @@
+import type { NativeLightingProfile } from "./nativeLightingProfile";
 import { Group, SpotLight } from "three";
 import type { EnergySource } from "../noteEnergy";
 import type { WorldCamera } from "../worldCamera";
@@ -152,13 +153,17 @@ export class ThreeNoteLights {
   private lastSources: readonly EnergySource[] = [];
   private lastCamera: WorldCamera | undefined;
   private lastScale = 1;
-  private readonly lights = Array.from({ length: NOTE_LIGHT_LIMIT }, () => {
-    const light = new SpotLight(0xffffff, 0, 420, 0.75, 0.9, 2);
-    light.castShadow = false;
-    light.add(light.target);
-    this.group.add(light);
-    return light;
-  });
+  private readonly lights: SpotLight[];
+
+  constructor(profile: NativeLightingProfile = "full") {
+    this.lights = Array.from({ length: profile === "mobile" ? 0 : NOTE_LIGHT_LIMIT }, () => {
+      const light = new SpotLight(0xffffff, 0, 420, 0.75, 0.9, 2);
+      light.castShadow = false;
+      light.add(light.target);
+      this.group.add(light);
+      return light;
+    });
+  }
 
   /** `scale` is the keys group's scale: the lights live there, not on the world road. */
   layout(
@@ -166,6 +171,7 @@ export class ThreeNoteLights {
     camera = this.lastCamera,
     scale = camera?.params.prefs.scale ?? this.lastScale
   ): void {
+    if (this.lights.length === 0) return;
     const oldScale = this.lastScale;
     const retained = new Map<
       number,
@@ -248,6 +254,7 @@ export class ThreeNoteLights {
     deltaSeconds: number,
     scale = camera.params.prefs.scale
   ): void {
+    if (this.lights.length === 0) return;
     const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(0.1, deltaSeconds)) : 0;
     if (delta === 0) return;
     this.lastSources = sources;

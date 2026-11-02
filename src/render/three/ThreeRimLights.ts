@@ -1,4 +1,5 @@
-import { Group, RectAreaLight, Vector3 } from "three";
+import type { NativeLightingProfile } from "./nativeLightingProfile";
+import { DirectionalLight, Group, RectAreaLight, Vector3 } from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import type { KeyBox } from "./keyBoxes";
 
@@ -9,14 +10,20 @@ let initialized = false;
 /** A continuous, forward-facing strip casts the rim's light down over keys and fingertips. */
 export class ThreeRimLights {
   readonly group = new Group();
-  private readonly light = new RectAreaLight(0xe5e7eb, 0, 1, 14);
+  private readonly light: RectAreaLight | DirectionalLight;
   private readonly direction = new Vector3();
 
-  constructor() {
-    // Three's init allocates new LTC textures each time; the shared library lives across stages.
-    if (!initialized) {
-      RectAreaLightUniformsLib.init();
-      initialized = true;
+  constructor(profile: NativeLightingProfile = "full") {
+    if (profile === "mobile") {
+      this.light = new DirectionalLight(0xe5e7eb, 0);
+      this.group.add(this.light.target);
+    } else {
+      // Three's init allocates new LTC textures each time; the shared library lives across stages.
+      if (!initialized) {
+        RectAreaLightUniformsLib.init();
+        initialized = true;
+      }
+      this.light = new RectAreaLight(0xe5e7eb, 0, 1, 14);
     }
     this.light.castShadow = false;
     this.group.add(this.light);
@@ -35,11 +42,16 @@ export class ThreeRimLights {
     const span = boxes.length > 0 ? Math.max(0, right - left) : 0;
     const centre = span > 0 ? (left + right) / 2 : 0;
     this.light.position.set(centre, 58, -back);
-    this.direction.set(0, 22 - 58, back - 52).normalize();
-    this.light.quaternion.setFromUnitVectors(FRONT, this.direction);
-    this.light.width = span * scale;
-    this.light.height = 14 * scale;
-    this.light.intensity = span > 0 ? 5.5 : 0;
+    if (this.light instanceof DirectionalLight) {
+      this.light.target.position.set(centre, 22, -52);
+      this.light.intensity = span > 0 ? 0.45 : 0;
+    } else {
+      this.direction.set(0, 22 - 58, back - 52).normalize();
+      this.light.quaternion.setFromUnitVectors(FRONT, this.direction);
+      this.light.width = span * scale;
+      this.light.height = 14 * scale;
+      this.light.intensity = span > 0 ? 5.5 : 0;
+    }
   }
 
   dispose(): void {

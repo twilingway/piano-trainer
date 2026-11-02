@@ -29,14 +29,16 @@ export class ThreeKeyEmission {
   private readonly keys = new Map<number, KeyEmission>();
   private readonly retained = new Map<number, DisplayEmission>();
   private readonly ownedTemplates = new Set<MeshStandardMaterial>();
+  private readonly retiredMaterials = new Set<MeshStandardMaterial>();
   private dim = false;
 
   /** Painted top templates share baked textures but own their shader hook and material object. */
   ownTemplate(material: MeshStandardMaterial): void {
+    this.retiredMaterials.delete(material);
     this.ownedTemplates.add(material);
   }
 
-  /** Only numeric display state survives a rebuild; previous materials are released at once. */
+  /** Keep one previous shader-owning generation until the replacement has actually rendered. */
   beginLayout(): void {
     this.retained.clear();
     for (const [pitch, key] of this.keys) {
@@ -50,11 +52,26 @@ export class ThreeKeyEmission {
         });
       }
     }
-    this.releaseMaterials();
+    if (this.retiredMaterials.size > 0) {
+      // A second layout before rendering replaces only the never-rendered intermediate keys.
+      this.releaseMaterials();
+    } else {
+      for (const key of this.keys.values())
+        for (const material of key.materials) this.retiredMaterials.add(material);
+      for (const material of this.ownedTemplates) this.retiredMaterials.add(material);
+      this.keys.clear();
+      this.ownedTemplates.clear();
+    }
   }
 
   endLayout(): void {
     this.retained.clear();
+  }
+
+  /** New visible key materials now own the shared programs; releasing their predecessors is safe. */
+  finishFrame(): void {
+    for (const material of this.retiredMaterials) material.dispose();
+    this.retiredMaterials.clear();
   }
 
   create(
@@ -196,6 +213,7 @@ export class ThreeKeyEmission {
   dispose(): void {
     this.retained.clear();
     this.releaseMaterials();
+    this.finishFrame();
   }
 
   private paint(key: KeyEmission): void {

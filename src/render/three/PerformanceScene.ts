@@ -1,3 +1,4 @@
+import type { NativeLightingProfile } from "./nativeLightingProfile";
 import { quintic } from "./performanceCameraMath";
 import { performanceOutroTimeline } from "./performanceOutroTimeline";
 import { performanceRoadScale } from "./performanceRoadProjection";
@@ -25,7 +26,7 @@ import { PerformanceLights } from "./PerformanceLights";
 export class PerformanceScene {
   roadScale = 1;
   readonly camera = new PerspectiveCamera(45, 1, 1, 10000);
-  readonly lights = new PerformanceLights();
+  readonly lights: PerformanceLights;
   readonly background = new Color(0x000000);
   private readonly bounds = new Box3();
   private readonly centre = new Vector3();
@@ -127,7 +128,8 @@ export class PerformanceScene {
     this.dirty = true;
   }
 
-  constructor(scene: Scene) {
+  constructor(scene: Scene, profile: NativeLightingProfile = "full") {
+    this.lights = new PerformanceLights(profile);
     scene.add(this.lights.group);
     this.lights.group.visible = false;
   }
