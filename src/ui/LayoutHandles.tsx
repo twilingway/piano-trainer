@@ -13,6 +13,14 @@ const laneOf = (element: HTMLElement) => element.parentElement ?? element;
 const laneLength = (lane: HTMLElement, name: string) =>
   Number.parseFloat(getComputedStyle(lane).getPropertyValue(name)) || 0;
 
+/** Placement fractions share the renderer's external reference, even in a short keys-only pane. */
+const placementHeight = (element: HTMLElement) => {
+  const reference = element.closest<HTMLElement>(
+    '.workspace-main[data-piano-layout-reference="true"]'
+  )?.clientHeight;
+  return reference !== undefined && reference > 0 ? reference : laneOf(element).clientHeight || 1;
+};
+
 /** What tells a line can be dragged: an arrow always, its name on hover. */
 function Grip({ label }: { label: string }) {
   return (
@@ -45,7 +53,7 @@ export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayo
   });
   const offset = { "--keys-y": `${String(layout.keysY)}px` } as CSSProperties;
   const lift = useVerticalDrag({
-    start: (element) => ({ lift: layout.keysLift, height: laneOf(element).clientHeight || 1 }),
+    start: (element) => ({ lift: layout.keysLift, height: placementHeight(element) }),
     move: (dy, from) => {
       onLayout({ keysLift: clampLayout("keysLift", from.lift - dy / from.height) });
     }
@@ -56,8 +64,14 @@ export function KeysHandles({ layout, onLayout }: { layout: ScreenLayout; onLayo
       return {
         lift: layout.keysLift,
         scale: layout.keysScale,
-        height: lane.clientHeight || 1,
-        size: Math.max(1, laneLength(lane, "--keys-bottom") - laneLength(lane, "--hit-line"))
+        height: placementHeight(element),
+        size: Math.max(
+          1,
+          lane.closest('.workspace-main[data-piano-layout-reference="true"]')
+            ? laneLength(lane, "--keys-height") ||
+                laneLength(lane, "--keys-bottom") - laneLength(lane, "--hit-line")
+            : laneLength(lane, "--keys-bottom") - laneLength(lane, "--hit-line")
+        )
       };
     },
     move: (dy, from) => {

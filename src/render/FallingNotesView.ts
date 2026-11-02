@@ -29,14 +29,15 @@ import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
 import { FlatEffectSettings } from "./flatEffectSettings";
 import { RoadLayer, type RoadShape, type StaffWorldSource } from "./RoadLayer";
-import { drawViewKeys } from "./drawViewKeys";
+import { drawViewKeys, syncViewKeyboards } from "./drawViewKeys";
 import { drawNativeRoadFrame, syncNativeKeyLayer } from "./viewRoadComposition";
 import { drawViewEffects, drawViewHud, roadFrameState } from "./viewEffects";
 import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
-import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry, viewLayoutChanged } from "./viewGeometry";
+import { USUAL_PLACEMENT, viewGeometry, viewLayoutChanged } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewLayout, ViewParts } from "./viewGeometry";
 import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 import { layoutFallingKeyboard } from "./layoutFallingKeyboard";
+import { PianoPaneReference, fitPianoViewport } from "./pianoPaneReference";
 
 export type { FallingNoteNames } from "./bakeLabels";
 export type { FrameState } from "./frameState";
@@ -140,11 +141,13 @@ export class FallingNotesView {
   private roadGuides = false;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
   private nativeHeight: number | undefined;
+  private paneReference: PianoPaneReference | undefined = new PianoPaneReference(this.relayout);
 
   async mount(host: HTMLElement): Promise<void> {
     await initializeViewApplication(this.app, host);
     if (this.isDestroyed()) return;
     host.appendChild(this.app.canvas);
+    this.paneReference?.observe(host);
     this.freeLegend = new FreeCameraLegend(host, () => this.road?.resetFreeCamera(), this.locale);
     this.fpsMeter = new FpsMeter(host, this.app.ticker, this.locale, this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
@@ -404,12 +407,8 @@ export class FallingNotesView {
 
   /** Shows the keyboard of the mode; the hands lie over piano keys only. */
   private syncKeyboards(): void {
-    const computer = this.computer !== undefined;
-    if (this.keyboard) this.keyboard.container.visible = this.parts.keys && !computer;
-    if (this.computerKeyboard)
-      this.computerKeyboard.container.visible = this.parts.keys && computer;
-    this.hands.container.visible = this.parts.hands && this.parts.keys && !computer;
-    if (!this.hands.container.visible) this.hands.reset();
+    const { parts, keyboard, computerKeyboard: typing, hands } = this;
+    syncViewKeyboards(parts, !!this.computer, keyboard, typing, hands);
   }
 
   /** Runs `onFrame` with real milliseconds before every draw. */
@@ -552,6 +551,7 @@ export class FallingNotesView {
     this.freeLegend?.destroy();
     this.ready = false;
     this.resizeObserver?.disconnect();
+    this.paneReference?.destroy();
     this.road?.destroy();
     this.keyboard?.destroy();
     this.computerKeyboard?.destroy();
@@ -573,7 +573,8 @@ export class FallingNotesView {
     const layoutParts =
       this.keyStyle === "3d" && this.hands.live ? { ...parts, hands: false } : parts;
     const natural = this.keyStyle === "3d" ? this.nativeHeight : undefined;
-    return viewGeometry(height, whiteWidth, layoutParts, labels, fits, placement, natural);
+    const ref = this.paneReference?.height;
+    return viewGeometry(height, whiteWidth, layoutParts, labels, fits, placement, natural, ref);
   }
 
   private layout(width: number, height: number): void {
@@ -604,17 +605,15 @@ export class FallingNotesView {
         roadMode: this.roadMode,
         hud: this.hud,
         hudTop: this.hudTop,
-        host: this.app.canvas.parentElement
+        host: this.app.canvas.parentElement,
+        referenceHeight: this.paneReference?.height
       })
     );
   }
 
   /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */
   private fitPiano(width: number): number {
-    const { range, rangeFitsSong: song, rangeFitsViewport: viewport } = this;
-    const compact =
-      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches;
-    const layout = fitPianoKeys(width, range, song, viewport, compact);
+    const layout = fitPianoViewport(width, this.range, this.rangeFitsSong, this.rangeFitsViewport);
     Object.assign(this, layout);
     return layout.total;
   }

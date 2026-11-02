@@ -8,7 +8,12 @@ import { NativeKeyboardScene } from "./NativeKeyboardScene";
 import { metricKeyboardCamera } from "./metricKeyboardCamera";
 import { layoutKeyboard } from "./keyboardLayout";
 import type { Geometry, KeysPlacement } from "./viewGeometry";
-import { USUAL_PLACEMENT, viewGeometry, viewLayoutChanged } from "./viewGeometry";
+import {
+  pianoPaneRequiredHeight,
+  USUAL_PLACEMENT,
+  viewGeometry,
+  viewLayoutChanged
+} from "./viewGeometry";
 import { CAMERA_PRESETS, DEFAULT_CAMERA, normalizeCamera, type CameraPrefs } from "./worldCamera";
 import type { RoadShape } from "./roadLayoutCamera";
 import { nativeViewCameras } from "./nativeViewCameras";
@@ -16,6 +21,7 @@ import * as framing from "./nativeKeyboardFraming";
 import { nativeKeyboardFootprint, naturalNativeKeyboardHeight } from "./nativeKeyboardFraming";
 import { projectionMatrix, viewMatrix } from "./three/threeCamera";
 import { projectNoteLane } from "./noteLaneProjection";
+import { keyBoxes } from "./three/keyBoxes";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -94,6 +100,170 @@ function layoutHarness(
   };
   return { view, internal, screen, road, setKeyboard, layout, scene, dispose };
 }
+
+describe("stable piano panes", () => {
+  it.each(["classic", "arcade", "3d"])(
+    "ends notes at the remaining lane bottom with the %s keyboard hidden",
+    (style) => {
+      for (const height of [175, 291, 720]) {
+        const test = layoutHarness(667, height, 48, 83, CAMERA_PRESETS.player, false);
+        Object.assign(test.view, {
+          paneReference: { height: 720 },
+          keyStyle: style,
+          parts: { notes: true, keys: false, hands: false },
+          placement: { ...USUAL_PLACEMENT, lift: 0.2, x: 40, y: -80 }
+        });
+        Object.assign(test.road, { style });
+        const geometry = test.layout();
+        expect(geometry.keyboardHeight).toBe(0);
+        expect(geometry.hitY).toBe(height);
+        test.road.setKeysOffset({ x: 40, y: -80 });
+        expect(test.road.hitLineY).toBeCloseTo(height, 7);
+        for (const pitch of [60, 61]) {
+          const key = layoutKeyboard(667, 48, 83).get(pitch);
+          if (!key) throw new Error("Missing note key");
+          const finish = test.road.notePlace(key.x + key.width / 2, height);
+          expect(finish?.y).toBeCloseTo(height, 7);
+          const earlier = test.road.notePlace(key.x + key.width / 2, height / 2);
+          expect(earlier?.y).toBeLessThan(height);
+        }
+        test.dispose();
+      }
+    }
+  );
+  it.each([
+    [390, 720],
+    [768, 1024],
+    [1440, 900]
+  ])(
+    "keeps projected white/black dimensions and matrix picking at %s×%s",
+    (width, referenceHeight) => {
+      for (const prefs of [
+        CAMERA_PRESETS.top,
+        CAMERA_PRESETS.player,
+        { ...CAMERA_PRESETS.hands, scale: 1.35 },
+        { ...CAMERA_PRESETS.player, targetY: -150 },
+        { ...CAMERA_PRESETS.player, targetY: 80 }
+      ]) {
+        const test = layoutHarness(width, referenceHeight, 48, 83, prefs, false);
+        Object.assign(test.view, { paneReference: { height: referenceHeight } });
+        const initial = test.layout();
+        const measure = () => {
+          const scene = test.scene();
+          const camera = scene.keyboardCamera;
+          if (!camera) throw new Error("Missing keyboard camera");
+          return [60, 61].map((pitch) => {
+            const box = keyBoxes(scene).find((key) => key.pitch === pitch);
+            if (!box) throw new Error("Missing measured key");
+            const corners = [box.x - box.width / 2, box.x + box.width / 2].flatMap((x) =>
+              [box.bottom, box.top].flatMap((y) =>
+                [box.front, box.back].map((z) => camera.project(x, y, z))
+              )
+            );
+            const top = Math.min(...corners.map((point) => point.y));
+            const bottom = Math.max(...corners.map((point) => point.y));
+            const left = Math.min(...corners.map((point) => point.x));
+            const right = Math.max(...corners.map((point) => point.x));
+            const x = box.x;
+            const y = box.top;
+            const z = box.back;
+            const expected = camera.project(x, y, z);
+            const projected = new Vector3(x * prefs.scale, y * prefs.scale, -z * prefs.scale)
+              .applyMatrix4(viewMatrix(camera.params))
+              .applyMatrix4(projectionMatrix(camera.params, width, test.screen.height));
+            expect(((projected.x + 1) * width) / 2).toBeCloseTo(expected.x, 7);
+            expect(((1 - projected.y) * test.screen.height) / 2).toBeCloseTo(expected.y, 7);
+            return { width: right - left, height: bottom - top, top, bottom };
+          });
+        };
+        const before = measure();
+        const initialCamera = test.scene().keyboardCamera;
+        if (!initialCamera) throw new Error("Missing keyboard camera");
+        const reservation = Math.ceil(
+          pianoPaneRequiredHeight(
+            referenceHeight,
+            initial,
+            USUAL_PLACEMENT,
+            nativeKeyboardFootprint(initialCamera)
+          )
+        );
+        for (const canvasHeight of [
+          reservation,
+          Math.max(reservation, referenceHeight * 0.7),
+          reservation,
+          referenceHeight
+        ]) {
+          test.screen.height = canvasHeight;
+          Object.assign(test.view, {
+            parts: { notes: canvasHeight === referenceHeight, keys: true, hands: false },
+            roadMode: canvasHeight === referenceHeight
+          });
+          test.layout();
+          const after = measure();
+          after.forEach((box, index) => {
+            expect(box.width).toBeCloseTo(before[index]?.width ?? NaN, 7);
+            expect(box.height).toBeCloseTo(before[index]?.height ?? NaN, 7);
+            expect(box.top).toBeGreaterThanOrEqual(-1e-6);
+            // Preserve intentional saved-camera clipping, without introducing any new clipping.
+            expect(Math.max(0, box.bottom - canvasHeight)).toBeCloseTo(
+              Math.max(0, (before[index]?.bottom ?? NaN) - referenceHeight),
+              7
+            );
+          });
+        }
+        const fresh = layoutHarness(width, reservation, 48, 83, prefs, false, false);
+        Object.assign(fresh.view, { paneReference: { height: referenceHeight } });
+        expect(fresh.layout().keyboardHeight).toBeCloseTo(initial.keyboardHeight, 7);
+        const freshCamera = fresh.scene().keyboardCamera;
+        if (!freshCamera) throw new Error("Missing fresh keyboard camera");
+        expect(nativeKeyboardFootprint(freshCamera).top).toBeGreaterThanOrEqual(-1e-6);
+        fresh.dispose();
+        test.dispose();
+      }
+    }
+  );
+
+  it.each([
+    [-150, 0],
+    [80, -80],
+    [-80, 80],
+    [-150, -45]
+  ])("reserves the final camera and placed keys at targetY %s and shift %s", (targetY, y) => {
+    const referenceHeight = 720;
+    const test = layoutHarness(
+      390,
+      referenceHeight,
+      48,
+      83,
+      { ...CAMERA_PRESETS.player, targetY },
+      false
+    );
+    const placement = { ...USUAL_PLACEMENT, lift: 0.18, y };
+    Object.assign(test.view, { paneReference: { height: referenceHeight }, placement });
+    const initial = test.layout();
+    const initialCamera = test.scene().keyboardCamera;
+    if (!initialCamera) throw new Error("Missing keyboard camera");
+    const before = nativeKeyboardFootprint(initialCamera);
+    const offset = Math.min(y, referenceHeight - initial.keyboardTop - initial.keyboardHeight);
+    const required = Math.ceil(
+      pianoPaneRequiredHeight(referenceHeight, initial, placement, before)
+    );
+    expect(required).toBe(Math.ceil(referenceHeight - Math.min(initial.hitY, before.top + offset)));
+    test.screen.height = required;
+    Object.assign(test.view, {
+      parts: { notes: false, keys: true, hands: false },
+      roadMode: false
+    });
+    test.layout();
+    const camera = test.scene().keyboardCamera;
+    if (!camera) throw new Error("Missing compact keyboard camera");
+    const after = nativeKeyboardFootprint(camera);
+    expect(after.top + offset).toBeGreaterThanOrEqual(-1e-6);
+    expect(after.bottom + offset).toBeLessThanOrEqual(required + 1e-6);
+    expect(after.height).toBeCloseTo(before.height, 7);
+    test.dispose();
+  });
+});
 
 describe("independent world road", () => {
   interface RoadFields {

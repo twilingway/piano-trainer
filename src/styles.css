@@ -978,7 +978,7 @@ body {
 .layout-grip {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: calc(12px + var(--mobile-bar-width, 0px));
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1003,7 +1003,7 @@ body {
 }
 /* The staff's sign sits over its edge: under it the game's panels begin. */
 .layout-handle--staff > .layout-grip {
-  right: 28px;
+  right: calc(28px + var(--mobile-bar-width, 0px));
   transform: translateY(calc(-100% - 2px));
 }
 :is(.layout-handle, .layout-move, .word-ticker-slot):is(:hover, [data-dragging]) .layout-grip {
@@ -3188,6 +3188,7 @@ button.song-card.song-card__open {
 /* A column of buttons at the right edge, under the right thumb; the left rail keeps the score. */
 @media (height <= 500px), (width <= 640px) {
   .shell-top {
+    --compact-controls-top: max(8px, env(safe-area-inset-top));
     position: fixed;
     top: max(8px, env(safe-area-inset-top));
     right: max(8px, env(safe-area-inset-right));
@@ -3196,6 +3197,7 @@ button.song-card.song-card__open {
   }
 
   .shell-top:has(> .song-progress) {
+    --compact-controls-top: calc(max(8px, env(safe-area-inset-top)) + 24px);
     position: relative;
     inset: auto;
     align-self: stretch;
@@ -3280,11 +3282,11 @@ button.song-card.song-card__open {
 
   .compact-controls__menu {
     position: fixed;
-    top: max(8px, env(safe-area-inset-top));
+    top: var(--compact-controls-top);
     right: calc(56px + env(safe-area-inset-right));
     left: auto;
     width: min(320px, calc(100vw - 72px - env(safe-area-inset-left) - env(safe-area-inset-right)));
-    max-height: calc(100dvh - 64px - env(safe-area-inset-top));
+    max-height: calc(100dvh - var(--compact-controls-top) - max(8px, env(safe-area-inset-bottom)));
   }
 
   .compact-controls__views {
@@ -3464,6 +3466,15 @@ button.song-card.song-card__open {
     font-size: 10px;
     padding: 4px;
     white-space: nowrap;
+  }
+
+  /* The compact result hangs above the keys; keep their move grip below its badge. */
+  .workspace-main:has(
+      > .game-score-dock > .game-score-board--practice.game-score-board--note-result
+    )
+    > .lanes--keys
+    .layout-move {
+    margin-top: 32px;
   }
 }
 
@@ -5508,5 +5519,94 @@ button.song-card.song-card__open {
   }
   .lesson-workspace .reading-practice {
     margin-right: 0;
+  }
+}
+
+/* Ordinary piano reserves the renderer's canonical footprint, including its lifted floor. */
+.workspace-main[data-piano-layout-reference="true"] > .lanes {
+  min-height: var(--piano-required-height, 0px);
+}
+.workspace-main[data-piano-layout-reference="true"] > .lanes--keys {
+  flex: 0 0 auto;
+  height: var(--piano-required-height, clamp(110px, 24vh, 260px));
+  margin-top: auto;
+}
+.workspace-main[data-piano-layout-reference="true"][data-piano-staff-region="true"] > .staves {
+  flex: 0 1 auto;
+  max-height: var(--piano-staff-room, 100%);
+  margin-bottom: 6px;
+}
+.workspace-main[data-piano-layout-reference="true"][data-piano-staff-region="true"]
+  > .staves
+  .staff {
+  max-height: var(--piano-staff-room, 100%);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.workspace-main[data-piano-layout-reference="true"] > .staves {
+  flex-shrink: 1;
+  max-height: var(--piano-staff-room, 100%);
+}
+.workspace-main[data-piano-layout-reference="true"] > .staves .staff {
+  flex-shrink: 1;
+  min-height: 0;
+}
+
+.workspace-main[data-piano-layout-reference="true"] > .lane-top-gap {
+  flex-shrink: 1;
+}
+
+/* The hand shortcut keeps its choices separate from the general control menu. */
+.compact-hands {
+  grid-template-columns: minmax(0, 1fr);
+}
+.compact-hands > .icon-button {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  min-width: 0;
+  padding: 0;
+}
+.hands-popover {
+  position: fixed;
+  z-index: 9;
+  box-sizing: border-box;
+  width: 280px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  white-space: normal;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+}
+.hands-popover .compact-practice__hands {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.hands-popover .compact-practice__choice {
+  flex-direction: row;
+  gap: 8px;
+  min-height: 44px;
+}
+.play-settings__choices {
+  display: grid;
+  gap: 12px;
+}
+@media (height <= 500px), (width <= 640px) {
+  .play-settings__choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .play-settings__choices > .setting {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .play-settings__choices .game-select {
+    width: 100%;
+    min-height: 44px;
   }
 }

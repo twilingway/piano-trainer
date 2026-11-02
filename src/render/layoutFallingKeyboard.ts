@@ -3,7 +3,7 @@ import type { KeysLayer } from "./ComputerKeyboardLayer";
 import type { KeyRect } from "./keyboardLayout";
 import type { CameraPrefs } from "./worldCamera";
 import type { ViewParts, KeysPlacement } from "./viewGeometry";
-import { viewGeometry } from "./viewGeometry";
+import { pianoPaneRequiredHeight, viewGeometry } from "./viewGeometry";
 import { naturalNativeViewHeight } from "./nativeKeyboardFraming";
 import type { RoadLayer } from "./RoadLayer";
 import type { HandsLayer } from "./HandsLayer";
@@ -33,16 +33,28 @@ export function layoutFallingKeyboard(options: {
   readonly hud: Pick<HudLayer, "layout">;
   readonly hudTop: number;
   readonly host: HTMLElement | null;
+  readonly referenceHeight?: number | undefined;
 }) {
   const { screen, total, parts, placement, native, computer, road, roadMode } = options;
+  const referenceHeight = computer ? undefined : options.referenceHeight;
+  const referenceScreen = { ...screen, height: referenceHeight ?? screen.height };
   const whiteWidth = [...options.keys.values()].find((key) => !key.black)?.width ?? 0;
   const layoutParts = native && options.hands.live ? { ...parts, hands: false } : parts;
   const flat = computer
     ? computerGeometry(screen.height, total, parts, placement)
-    : viewGeometry(screen.height, whiteWidth, layoutParts, options.labels, options.fits, placement);
+    : viewGeometry(
+        screen.height,
+        whiteWidth,
+        layoutParts,
+        options.labels,
+        options.fits,
+        placement,
+        undefined,
+        referenceHeight
+      );
   const nativeGeometry = (prefs: CameraPrefs) => {
     const height = naturalNativeViewHeight(
-      screen,
+      referenceScreen,
       total,
       prefs,
       options.keys,
@@ -59,7 +71,8 @@ export function layoutFallingKeyboard(options: {
         options.labels,
         options.fits,
         placement,
-        height
+        height,
+        referenceHeight
       )
     };
   };
@@ -80,14 +93,20 @@ export function layoutFallingKeyboard(options: {
   options.keysLayer?.layout(keys, geometry, total);
   options.hands.reset();
   options.notes?.layout(computer ? new Map() : keys, geometry.hitY, total);
-  const floor = parts.keys ? screen.height * placement.lift : 0;
+  const floor = parts.keys ? referenceScreen.height * placement.lift : 0;
   const bottom = geometry.keyboardTop + geometry.keyboardHeight;
   const handRoom = parts.hands && !options.hands.live ? screen.height - floor - bottom : 0;
-  road?.layoutView(
+  const footprint = road?.layoutView(
     keys,
     geometry,
     total,
-    { width: screen.width, height: screen.height, floor, handRoom },
+    {
+      width: screen.width,
+      height: screen.height,
+      floor,
+      handRoom,
+      ...(referenceHeight === undefined ? {} : { referenceHeight })
+    },
     !parts.hands || native,
     native ? placement.scale : undefined,
     computer,
@@ -96,6 +115,17 @@ export function layoutFallingKeyboard(options: {
   );
   const hitLine = roadMode && road ? road.hitLineY : geometry.hitY;
   options.hud.layout(screen.width, hitLine, options.hudTop);
-  publishOverlayLayout(options.host, hitLine, bottom, options.hudTop);
+  publishOverlayLayout(
+    options.host,
+    hitLine,
+    bottom,
+    options.hudTop,
+    referenceHeight === undefined
+      ? undefined
+      : parts.keys
+        ? pianoPaneRequiredHeight(screen.height, geometry, placement, footprint)
+        : 0,
+    geometry.keyboardHeight
+  );
   return { keys, nativeHeight, keysFloor: screen.height - bottom };
 }
