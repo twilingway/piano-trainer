@@ -425,3 +425,51 @@ producer rest reference в пределах diagnostic1e-5м. Остальные
 
 Свежий полный `pnpm check` текущей source-ветки завершён PASS:4478 unit +30 compiler tests, 10
 существующих skips; format/lint/typecheck/build также PASS. Это не отменяет private v1 отказ.
+
+### Остановка по просьбе пользователя: correspondence v2 завершён
+
+90 synthetic CPU tests и независимое review354 pins подтвердили новый v2 plan. Root static replay
+завершён exit0; отдельный процесс `correspondence.py --read` повторил полный committed proof и
+завершился exit0. Final scope review подтверждает ограниченную authority. Отчёт:
+`literal631-quad-correspondence-v2/runs/417cb6c1c939/report.json`, SHA
+`6f7fc2abcedad62a77249f7fdd511ab1a8394580a8a5f2e77a60d64e8ff65c92`. План:
+`literal631-quad-correspondence-v2/plans/47b9d33cf705/plan.json`, SHA
+`8ec50f71e7c51e0bb5177947531248f91c2910bc8b03931a7a1e200de261a133`.
+
+Подтверждены165314 vertex/ROW и165312 quad bijections через native CC bridge; geometry arrays не
+переиндексировались. Actual triangulation сохранена,20 несовпадающих triangle rows в10 quads
+остаются видимыми; `old_exact_TRI_gate=FAILED_UNCHANGED`, piecewise-linear surface equality=false.
+PAD/SIDE exact no-op по40 arrays каждая. Max errors: pre-LBS3.7253e-9м,LBS4.3401e-7м,
+preGN4.0439e-7м,posed heads2.3621e-7м. Rest head/matrixT/source проверки прошли отдельно, с
+исходными typed identities. Все inputs, V1/его341pins, старые3pinned OpenSpec и source `.blend`
+неизменны.
+
+`diagnostic_roundtrip_prerequisites_pass=true` даёт только подготовку следующего отдельного
+DIAGNOSTIC_ROUNDTRIP_ONLY writer. `serialization_ready=false`, class/calibration=null,
+eligible_for_write=false; accepted scenes, atlas и public assets не записывались. Native LEFT mask
+statistics этого сертификата честно NOT_EVALUATED; прежний actual6col proof остаётся в своём
+частичном scope. Новых зелёных поз0. Aggregate verified-pianist-runtime task2.1 остаётся открытым.
+
+Пользователь попросил закончить текущие прогоны, закоммитить/запушить задачи и продолжить позже.
+Новых writer/Blender/model/GPU/semantic/octave прогонов не начато. Точка возобновления: сначала
+отдельный reviewed diagnostic-copy contract/PLAN, save/reopen и source/64poses guards; затем actual
+native LEFT semantic readback, native nails/arm/physical и holds/transitions/octaves по очереди
+выше. Private нормативные snapshots исключают mutable tasks/status из runtime pins.
+
+Параллельный релиз завершён: PR276 и PR275 влиты, prod0.0.275,
+main0c2d7116fe9e930ed50a2f2fbe7ec41037fcf4ad. Оба публичных version.txt и Mac deployed-sha совпали;
+RU/health/JS/CSS прошли smoke. Основная папка пользователя оставлена на dev;5190 и открытый Blender
+не тронуты. PR274 с руками остаётся draft и не входит в этот релиз. Остаточные private этапы не
+влиты/не развёрнуты.
+
+Финальные проверки перед паузой: OpenSpec87/87 PASS, Prettier и git diff --check PASS; private
+profile/report подтверждены ignored (`blender/.gitignore`), в PR нет private arrays/models. Owned
+CPU/GPU sessions завершены, известных owned PID5344/37188/41420 больше нет; своих серверов нет.
+Основная папка чистая на dev. Bounded certificate tasks11/11 выполнены; общий runtime-план не
+закрыт.
+
+Архивирование завершённого addendum не выполнено: automatic approval review отклонил
+`openspec archive`, поскольку команда меняет canonical specs и выходит за финальную просьбу
+commit/push. Обход или ручное перемещение не выполнялись. Change остаётся активным с11/11
+выполненными задачами; canonical specs и все pinned source-файлы сохранены. Это не блокирует
+commit/push и паузу.
