@@ -1,4 +1,3 @@
-import type { NativeLightingProfile } from "./nativeLightingProfile";
 import { FLAME, MIST, HIT, GLITTER } from "./worldStageEffectDefinitions";
 import { ALL_FLAT_EFFECTS, type FlatEffectOptions } from "../flatEffectSettings";
 import { performanceRingField } from "./performanceRingField";
@@ -61,7 +60,10 @@ export class PerformanceWorldStage {
   private readonly glitter = new WorldAtlasBatch(GLITTER, 512);
   private readonly state = new PerformanceFxState();
   private readonly spirals = new PerformanceNoteSpirals();
-  private readonly lights: PointLight[];
+  private readonly lights = Array.from(
+    { length: RING_LIGHTS },
+    () => new PointLight(0xffffff, 0, 240, 2)
+  );
   private readonly bounds = new Box3();
   private readonly logicalKeyBounds = new Box3();
   private readonly position = new Vector3();
@@ -81,11 +83,7 @@ export class PerformanceWorldStage {
   private bassNotes: BassNotes | undefined;
   private bassOnsets: readonly BassOnset[] = [];
 
-  constructor(scene: Object3D, profile: NativeLightingProfile = "full") {
-    this.lights = Array.from(
-      { length: profile === "mobile" ? 0 : RING_LIGHTS },
-      () => new PointLight(0xffffff, 0, 240, 2)
-    );
+  constructor(scene: Object3D) {
     this.group.add(
       this.platform.group,
       this.mist.group,

@@ -283,27 +283,3 @@ it("keeps the costume readable between lighting cues and extinguishes the soft f
   expect(fill.intensity).toBe(0);
   lights.dispose();
 });
-
-it("keeps mobile stage beams and fixtures while excluding additional point and spot lighting", () => {
-  const mobile = new PerformanceLights("mobile");
-  const full = new PerformanceLights();
-  const meshes = (rig: PerformanceLights) => {
-    let count = 0;
-    rig.group.traverse((child) => {
-      if (child instanceof Mesh) count++;
-    });
-    return count;
-  };
-  expect(meshes(mobile)).toBe(meshes(full));
-  for (const time of [0, 14, 19, 70, 14]) {
-    mobile.layout(new Vector3(0, 22, 30), 1200, 1, 352, 1, time);
-    const physical: (SpotLight | PointLight)[] = [];
-    mobile.group.traverseVisible((child) => {
-      if (child instanceof SpotLight || child instanceof PointLight) physical.push(child);
-    });
-    expect(physical).toHaveLength(0);
-    expect(meshes(mobile)).toBe(meshes(full));
-  }
-  mobile.dispose();
-  full.dispose();
-});

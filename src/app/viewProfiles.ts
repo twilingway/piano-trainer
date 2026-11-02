@@ -96,16 +96,24 @@ export function normalizeViewFraming(
 export function hydrateViewProfiles(
   value: unknown,
   legacyStaff: unknown,
-  legacyLayout: unknown
+  legacyLayout: unknown,
+  defaultKeyboardStyle: KeyboardStyle = "3d"
 ): ViewProfiles {
   const raw = record(value);
   const staff = record(legacyStaff);
-  const legacyAxes = normalizeViewAxes({
-    keyboardStyle: staff.keyStyle,
-    notesProjection: staff.road === true ? "perspective" : "direct",
-    keyboardOrientation:
-      staff.keyboardOrientation ?? (staff.keyboardTopView === true ? "top" : "follow")
-  });
+  const legacyAxes = normalizeViewAxes(
+    {
+      keyboardStyle: staff.keyStyle,
+      notesProjection: staff.road === true ? "perspective" : "direct",
+      keyboardOrientation:
+        staff.keyboardOrientation ?? (staff.keyboardTopView === true ? "top" : "follow")
+    },
+    {
+      keyboardStyle: defaultKeyboardStyle,
+      notesProjection: "direct",
+      keyboardOrientation: "follow"
+    }
+  );
   const migratedSeed = normalizeViewFraming({
     ...staff,
     ...(staff.camera === undefined ? {} : { camera: normalizeCamera(staff.camera) }),

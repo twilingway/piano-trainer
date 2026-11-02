@@ -324,18 +324,3 @@ describe("Three note light lifecycle", () => {
     pool.dispose();
   });
 });
-
-it("keeps mobile note lighting absent through chords, layout changes and release", () => {
-  const keys = scene();
-  const pool = new ThreeNoteLights("mobile");
-  const boxes = keyBoxes(keys);
-  expect(pool.group.children).toHaveLength(0);
-  pool.layout(boxes, keys.camera);
-  pool.update([source(60), source(64), source(67)], keys.camera, 0.1);
-  pool.update([], keys.camera, 0.1);
-  pool.layout(boxes.slice(12), scene(0, 1.5).camera);
-  pool.clear();
-  expect(pool.group.children).toHaveLength(0);
-  pool.dispose();
-  expect(pool.group.children).toHaveLength(0);
-});

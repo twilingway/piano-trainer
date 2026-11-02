@@ -1,4 +1,3 @@
-import type { NativeLightingProfile } from "./nativeLightingProfile";
 import { configureDockedRoad, updateDockedKeyOffsets } from "./dockedRoadProjection";
 import { NativeOctaveProjection } from "./nativeOctaveProjection";
 import type { OctaveKeyLabels } from "../octaveKeyLabels";
@@ -78,10 +77,10 @@ export class ThreeStage {
   /** The song's range only: the road and its guides stay as wide as the song, not all 88 keys. */
   private roadBoxes: readonly KeyBox[] = [];
   private roadVersion = -1;
-  private readonly noteLights: ThreeNoteLights;
+  private readonly noteLights = new ThreeNoteLights();
   private readonly keyEmission = new ThreeKeyEmission();
   private readonly appearance: KeyboardAppearance;
-  private readonly rimLights: ThreeRimLights;
+  private readonly rimLights = new ThreeRimLights();
   private picture = new Texture();
   private readonly materials = new StageKeyMaterials((dim) => {
     this.keyEmission.setDim(dim);
@@ -101,16 +100,13 @@ export class ThreeStage {
 
   constructor(
     private readonly renderer: WebGLRenderer,
-    private readonly keyboard: Keyboard88,
-    profile: NativeLightingProfile = "full"
+    private readonly keyboard: Keyboard88
   ) {
-    this.noteLights = new ThreeNoteLights(profile);
-    this.rimLights = new ThreeRimLights(profile);
     this.free = new FreeSceneCamera(renderer.domElement);
     this.scorePoster = new StageWorldScore(renderer, this.scene, this.keys, this.free);
     this.cabinet = new PianoCase(keyboard);
-    this.performance = new PerformanceScene(this.scene, profile);
-    this.worldStage = new PerformanceWorldStage(this.scene, profile);
+    this.performance = new PerformanceScene(this.scene);
+    this.worldStage = new PerformanceWorldStage(this.scene);
     this.roadCamera.matrixAutoUpdate = false;
     this.keyboardCamera.matrixAutoUpdate = false;
     this.appearance = this.materials.appearance;

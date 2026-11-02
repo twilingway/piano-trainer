@@ -1,4 +1,3 @@
-import type { NativeLightingProfile } from "./nativeLightingProfile";
 import type { Camera } from "three";
 import { quintic } from "./performanceCameraMath";
 import {
@@ -120,7 +119,7 @@ export class PerformanceLights {
   private readonly poles: Mesh[] = [];
   private readonly feet: Mesh[][] = [];
 
-  constructor(profile: NativeLightingProfile = "full") {
+  constructor() {
     this.fixtures.name = "performance-light-fixtures";
     for (const color of [0xa3bfd6, 0xffe0c1]) {
       const material = new ShaderMaterial({
@@ -141,7 +140,6 @@ export class PerformanceLights {
       this.materials.push(material);
       const beam = new Mesh(this.geometry, material);
       const spot = new SpotLight(color, 0, 0, 0.42, 0.92, 0);
-      spot.visible = profile === "full";
       const pool = new Mesh(
         this.poolGeometry,
         new ShaderMaterial({
@@ -173,10 +171,6 @@ export class PerformanceLights {
       this.poles.push(pole);
       this.feet.push(feet);
       this.fixtures.add(head, pole, ...feet);
-    }
-    if (profile === "mobile") {
-      this.fill.visible = false;
-      for (const light of this.faceLights) light.visible = false;
     }
     this.ambient.name = "performer-soft-fill";
     this.group.add(this.fill, this.fixtures, this.ambient, ...this.faceLights);

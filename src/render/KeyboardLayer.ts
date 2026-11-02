@@ -481,34 +481,32 @@ export class KeyboardLayer {
     keyboardHeight: number,
     blackHeight: number
   ): void {
+    destroyKeyTextures(this.bakedTextures);
+    if (this.modelFaces) {
+      // Native geometry supplies the key finish; this layer paints only tint and labels.
+      this.bakedTextures = this.keyTextures = undefined;
+      for (const sprite of this.keySprites.values())
+        Object.assign(sprite, NO_SLICE, { texture: Texture.WHITE });
+      return;
+    }
     if (this.painted) {
-      destroyKeyTextures(this.bakedTextures);
       this.bakedTextures = undefined;
       this.keyTextures = this.painted;
       for (const [pitch, sprite] of this.keySprites) {
         const isBlack = isBlackKey(pitch);
-        sprite.texture = this.modelFaces
-          ? Texture.WHITE
-          : isBlack
-            ? this.painted.black
-            : this.painted.white;
+        sprite.texture = isBlack ? this.painted.black : this.painted.white;
         const slices = KEY_STYLES[this.style];
-        Object.assign(sprite, this.modelFaces ? NO_SLICE : isBlack ? slices.black : slices.white);
+        Object.assign(sprite, isBlack ? slices.black : slices.white);
       }
       return;
     }
-    destroyKeyTextures(this.bakedTextures);
     this.keyTextures = bakeKeyTextures(
       this.renderer,
       { width: (white?.width ?? 10) - 1, height: keyboardHeight },
       { width: black?.width ?? 6, height: blackHeight }
     );
     for (const [pitch, sprite] of this.keySprites) {
-      sprite.texture = this.modelFaces
-        ? Texture.WHITE
-        : isBlackKey(pitch)
-          ? this.keyTextures.black
-          : this.keyTextures.white;
+      sprite.texture = isBlackKey(pitch) ? this.keyTextures.black : this.keyTextures.white;
       Object.assign(sprite, NO_SLICE);
     }
     this.bakedTextures = this.keyTextures;
@@ -533,6 +531,14 @@ export class KeyboardLayer {
     keyboardHeight: number,
     blackHeight: number
   ): void {
+    if (this.modelFaces) {
+      // Native paint uses plain rectangles, so generating shape masks would force unused GPU reads.
+      for (const texture of this.lightTextures.values()) texture.destroy(true);
+      this.lightTextures.clear();
+      this.lightOf.clear();
+      for (const sprite of this.keyFronts.values()) sprite.texture = Texture.WHITE;
+      return;
+    }
     const old = this.lightTextures;
     this.lightTextures = new Map();
     this.lightOf.clear();
