@@ -276,3 +276,39 @@ capture631 сравнит shape_only→LBS→preGN/prePAD→postPAD→postSIDE, 
 rig/rest/weights и88 keys. Исходная `.blend` и GUI не записываются; diagnostic copy writer будет
 рассматриваться только после этих receipts. Общий physical class/calibration остаётся null, writer
 выключен.
+
+### Park60: контакт, клавиши и raw interhand проверены вместе
+
+Приподнятое на60мм RIGHT wrist рассчитано в отдельной v2: literal baseline сохранил исходную
+высоту,6 рабочих поз получили новый target. Stage1 прошёл отдельное review659 pins/40 CPU tests и
+actual CUDA run. Его отчёт: `shared-right-standby-v2/generation-runs/7d58f9145dbc/report.json`, SHA
+`6addcdad9b273fc4f2a68a4dcd3c0400e0cb76ddeb3bd4503ad3bf062961984f`.
+
+Fresh key/contact план закрепил676 pins: все7 строк проходят key predicates обеих рук,6 рабочих LEFT
+contacts valid (gap−0.14385…+0.40142мм). Отчёт:
+`shared-right-standby-v2/runs/3e4e82fdc6a5/report.json`, SHA
+`fa05952b5b1d6cfd545f77028d19c097c3611d1103526ce9a609f64815b9b876`.
+
+Новый pair-v2 adapter прошёл18 CPU tests, независимое review700 pins и actual GPU run exit0 за90с.
+**Все6 park60 поз и baseline получили NO_HIT/0 noncoplanar triangle intersections.** Независимый
+typed reader без Torch подтвердил полный source/witness coverage. Отчёт:
+`shared-hand-pair-v2/runs/6fbdfde0b8b3/report.json`, SHA
+`cf27723db9f3d49ee143705ffc7904e1d2f2fe6b31c369b83828665883b7b000`. Это устраняет найденные ранее
+raw interhand hits; coplanar/containment, GN/SIDE, nails и полный physical admission не объявляются
+проверенными.
+
+### C3 fixed witnesses: продуктивный шаг593
+
+Actual fixed-witness прогон завершён exit0:30 actual audits и14 отдельных raw screens. В592 оба
+middle3 survivors отклонены, thumb1 и held5 сохранены. В593 двухограниченная LP-модель нашла
+feasible направление: gap2 уменьшен1.357691→1.335778мм; все6 LP-кандидатов feasible. В598 все8
+normalized coupled trials отклонены, endpoint сохранён. Отчёт:
+`c3-fixed-witness-v1/runs/60876312330d/report.json`, SHA
+`2aada44d7a1e6b02c2e8b3c1ea19f3782e75a1e4ee85ec9b9a359dfdf4683a36`. Готовится отдельное конечное
+продолжение только продуктивного593/f2, без ослабления component/nail/held gates и без накопления
+numerical tolerance.
+
+Первый background Blender capture ещё не запускался: review нашёл риск orphan child при
+принудительной остановке host. Новый Windows JobObject lifecycle проверяется отдельно; frozen
+quota89 guard и исходная сцена не меняются. Physical class/calibration остаются null; новых зелёных
+записей нет.
