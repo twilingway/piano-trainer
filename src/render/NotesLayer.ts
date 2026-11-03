@@ -136,6 +136,7 @@ export class NotesLayer {
   private readonly flatBlocks = new FlatNoteBlocks();
   private trailAnchors: RoadTrailAnchors | undefined;
   private noteNames: FallingNoteNames | undefined;
+  private fingersVisible = true;
   /** How a note is written and coloured; in the word mode its key's column stands apart. */
   private look: NoteLook = PIANO_LOOK;
   private preparedSong: Song | undefined;
@@ -165,6 +166,10 @@ export class NotesLayer {
     this.noteNames = style;
     for (const { note, name } of this.notes)
       name.texture = this.nameTexture(this.look.written(note).pitch);
+  }
+
+  setFingersVisible(visible: boolean): void {
+    this.fingersVisible = visible;
   }
 
   /** Each falling note carries a card with the note written on a staff; off, plain bars. */
@@ -269,6 +274,9 @@ export class NotesLayer {
     road?.setLegacyLabels(this.overlayLabels);
     const pixelsPerSecond = hitY / state.lookAhead;
     const cards = this.cardsOn;
+    const pianoCaptions = !cards && this.look.badge === undefined;
+    const nativeLabels = pianoCaptions && road?.drawsNativeNoteLabels === true;
+    const fingers = this.fingersVisible && state.hints !== false;
     road?.beginNotes(state.lookAhead);
     this.playing.clear();
     this.arrivals.length = 0;
@@ -345,13 +353,14 @@ export class NotesLayer {
       frame.visible = onScreen && cards && !struck;
       face.visible = frame.visible;
       glow.visible = frame.visible;
-      badge.visible = frame.visible && note.finger !== undefined && state.hints !== false;
+      badge.visible = frame.visible && note.finger !== undefined && fingers;
       digit.visible =
         onScreen &&
         visibleHeight > 0 &&
         !cards &&
+        !nativeLabels &&
         note.finger !== undefined &&
-        state.hints !== false;
+        fingers;
       name.visible = false;
       if (!onScreen) continue;
 
@@ -424,8 +433,8 @@ export class NotesLayer {
             note.id,
             bounds.top - (hitY - (note.start + note.duration - state.time) * pixelsPerSecond),
             note.pitch,
-            state.hints !== false ? note.finger : undefined,
-            this.noteNames
+            pianoCaptions && fingers ? note.finger : undefined,
+            pianoCaptions && this.noteNames && state.hints !== false
               ? fallingNoteName(this.noteNames, this.look.written(note).pitch)
               : undefined
           )
@@ -509,7 +518,7 @@ export class NotesLayer {
         badge.alpha = seen;
         continue;
       }
-      if (this.noteNames) {
+      if (this.noteNames && state.hints !== false && !nativeLabels) {
         // Over the finger, when the note is tall enough to hold both.
         const digitHeight = digit.visible ? digit.height + 2 : 0;
         const nameScale = fitNoteLabel(

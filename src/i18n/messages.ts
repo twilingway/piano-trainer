@@ -1,4 +1,5 @@
 import { toneLessonMessages } from "./toneLessonMessages";
+import { hintMessages } from "./hintMessages";
 import { startupMessages } from "./startupMessages";
 import { preparationMessages } from "./preparationMessages";
 import { fingerCueMessages } from "./fingerCueMessages";
@@ -32,6 +33,7 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...hintMessages,
   ...startupMessages,
   ...preparationMessages,
   ...musicProgressMessages,

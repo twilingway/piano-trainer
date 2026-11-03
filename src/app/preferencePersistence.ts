@@ -85,8 +85,7 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
   const viewProfiles = hydrateViewProfiles(
     json(PREFERENCE_KEYS.viewProfiles),
     rawStaff,
-    layouts.piano,
-    mediaMatches("(pointer: coarse)") ? "classic" : "3d"
+    layouts.piano
   );
   const framing = activeViewFraming(viewProfiles);
   const lights = record(json(PREFERENCE_KEYS.keyLights));

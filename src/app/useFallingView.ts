@@ -54,6 +54,8 @@ interface LaneLook {
   readonly fps: boolean;
   readonly labels: boolean;
   readonly octaveLabels: boolean;
+  readonly keyboardFingers: boolean;
+  readonly fallingFingers: boolean;
   readonly names: NoteNameStyle | undefined;
   readonly parts: { readonly notes: boolean; readonly keys: boolean; readonly hands: boolean };
   readonly road: StaffPrefs["road"];
@@ -70,6 +72,7 @@ function applyLaneLook(view: FallingNotesView, look: LaneLook): void {
   view.setShowLabels(look.labels);
   view.setShowOctaveLabels(look.octaveLabels);
   view.setNoteNames(look.names);
+  view.setFingerLabels(look.keyboardFingers, look.fallingFingers);
   view.setParts(look.parts);
   view.setRoad(look.road);
   view.setNoteCards(look.noteCards);
@@ -133,7 +136,7 @@ interface Options {
   readonly staffPrefs: StaffPrefs;
   readonly cameraInputBlocked?: boolean;
   readonly updateStaffPrefs: (change: Partial<StaffPrefs>) => void;
-  readonly fallingNames: NoteNameStyle | undefined;
+  readonly typingNames: NoteNameStyle | undefined;
   readonly comparing: boolean;
   readonly lastTake: { readonly take: Take; readonly review: TakeReview } | null;
   /** The word mode's inputs: the computer keys stand in for the piano's while they are set. */
@@ -155,7 +158,7 @@ export function useFallingView({
   staffPrefs: savedPrefs,
   cameraInputBlocked = false,
   updateStaffPrefs,
-  fallingNames,
+  typingNames,
   comparing,
   lastTake,
   computerKeys,
@@ -163,6 +166,11 @@ export function useFallingView({
 }: Options) {
   const { locale } = useI18n();
   const staffPrefs = comparing ? comparisonPrefs(savedPrefs) : savedPrefs;
+  const fallingNames = computerKeys
+    ? typingNames
+    : staffPrefs.fallingNoteNames === "off"
+      ? undefined
+      : staffPrefs.fallingNoteNames;
   const [handStatus, setHandStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   useEffect(() => {
     const view = viewRef.current;
@@ -214,6 +222,8 @@ export function useFallingView({
       fps: staffPrefs.fps,
       labels: showLabels,
       octaveLabels: staffPrefs.octaveLabels,
+      keyboardFingers: computerKeys ? true : staffPrefs.keyboardFingers,
+      fallingFingers: computerKeys ? true : staffPrefs.fallingFingers,
       names: fallingNames,
       // The same parts in both lanes, or the two run at different speeds.
       parts: { notes: staffPrefs.lane, keys: staffPrefs.keys, hands: staffPrefs.hands },
@@ -240,6 +250,9 @@ export function useFallingView({
     trainerReady,
     showLabels,
     staffPrefs.octaveLabels,
+    staffPrefs.keyboardFingers,
+    staffPrefs.fallingFingers,
+    computerKeys,
     staffPrefs.fps,
     fallingNames,
     staffPrefs.lane,

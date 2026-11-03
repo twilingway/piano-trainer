@@ -49,6 +49,7 @@ function harness(modelFaces: boolean) {
   sticker.scale.set(0.5);
   const layer = Object.assign(Object.create(KeyboardLayer.prototype) as object, {
     modelFaces,
+    fingersVisible: true,
     keySprites,
     keyDigits: digits,
     keyFronts: new Map<number, Sprite>(),
@@ -92,6 +93,30 @@ function layoutHarness(modelFaces: boolean) {
 }
 
 describe("keyboard finger labels", () => {
+  it.each([false, true])(
+    "hides only ordinary fingers and preserves sounding feedback, native=%s",
+    (native) => {
+      const run = layoutHarness(native);
+      run.layer.draw(run.frame, keys, geometry(180), true);
+      expect([...run.digits.values()].every((digit) => digit.visible)).toBe(true);
+      run.layer.setFingersVisible(false);
+      run.layer.draw(run.frame, keys, geometry(180), true);
+      expect([...run.digits.values()].every((digit) => !digit.visible)).toBe(true);
+      expect([...run.lights.values()].every((light) => light.visible)).toBe(true);
+      expect(run.sticker.visible).toBe(true);
+      const draw = vi.fn();
+      Object.assign(run.layer, { lessonBadges: { draw } });
+      const fingerCues = [
+        { noteId: "n", pitch: 60, hand: "right" as const, recommendedFinger: 3 as const }
+      ];
+      run.layer.draw({ ...run.frame, fingerCues }, keys, geometry(180), true);
+      expect(draw).toHaveBeenLastCalledWith(fingerCues, keys, geometry(180), native);
+      run.layer.setFingersVisible(true);
+      run.layer.draw(run.frame, keys, geometry(180), true);
+      expect([...run.digits.values()].every((digit) => digit.visible)).toBe(true);
+    }
+  );
+
   it.each([false, true])(
     "passes explicit lesson badges independently of neutral tint, native=%s",
     (native) => {

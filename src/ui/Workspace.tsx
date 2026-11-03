@@ -98,12 +98,13 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   useEffect(() => {
     if (!staffShown) startupReady("staff");
   }, [staffShown]);
+  const lessonReference = Boolean(props.course && props.lessonBoard);
   const pianoReference =
-    !props.course &&
+    (!props.course || lessonReference) &&
     !props.comparing &&
     !props.wordBoard &&
     !props.scoreBoard &&
-    !props.lessonBoard &&
+    (!props.lessonBoard || lessonReference) &&
     !transcription &&
     !prefs.freeCamera &&
     !prefs.performanceScene;

@@ -10,7 +10,7 @@ type FallingView = ReturnType<typeof useFallingView>;
 
 /** The settings' keyboard section: the keys, their look, the hands', the road and the camera. */
 export function useKeyboardSettings(
-  view: Pick<FallingView, "keyRange" | "setKeyRange" | "showLabels" | "setShowLabels">,
+  view: Pick<FallingView, "keyRange" | "setKeyRange">,
   staffPrefs: StaffPrefs,
   updateStaffPrefs: (change: Partial<StaffPrefs>) => void
 ): ComponentProps<typeof KeyboardSettings> & {
@@ -28,12 +28,6 @@ export function useKeyboardSettings(
   return {
     keyRange: view.keyRange,
     onKeyRange: view.setKeyRange,
-    showLabels: view.showLabels,
-    onShowLabels: view.setShowLabels,
-    octaveLabels: staffPrefs.octaveLabels,
-    onOctaveLabels: (octaveLabels) => {
-      updateStaffPrefs({ octaveLabels });
-    },
     fps: staffPrefs.fps,
     onFps: (fps) => {
       updateStaffPrefs({ fps });

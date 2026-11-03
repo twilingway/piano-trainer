@@ -21,6 +21,7 @@ import { SettingsGroup } from "../ui/settings/SettingsGroup";
 import { SettingsView } from "../ui/settings/SettingsView";
 import { SongSettings } from "../ui/settings/SongSettings";
 import { StaffSettings } from "../ui/settings/StaffSettings";
+import { PianoHintSettings } from "../ui/settings/PianoHintSettings";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 import { useAppSelector } from "./storeHooks";
@@ -185,6 +186,7 @@ function ConnectedViewSettings() {
   return (
     <SettingsView
       wordTyping={wordTyping}
+      hints={<ConnectedPianoHintSettings />}
       staff={<ConnectedStaffSettings />}
       keyboard={<ConnectedKeyboardSettings />}
       toggles={<ConnectedSettingsToggles />}
@@ -193,6 +195,26 @@ function ConnectedViewSettings() {
       onResetLayout={onResetLayout}
     />
   );
+}
+function ConnectedPianoHintSettings() {
+  const prefs = useAppSelector(
+    (state) => ({
+      labels: state.preferences.staff.labels,
+      octaveLabels: state.preferences.staff.octaveLabels,
+      keyboardFingers: state.preferences.staff.keyboardFingers,
+      fallingNoteNames: state.preferences.staff.fallingNoteNames,
+      fallingFingers: state.preferences.staff.fallingFingers,
+      noteNames: state.preferences.staff.noteNames,
+      fingers: state.preferences.staff.fingers,
+      chords: state.preferences.staff.chords,
+      fingerColors: state.preferences.staff.fingerColors
+    }),
+    shallowEqual
+  );
+  const wordTyping = useAppSelector((state) => state.preferences.word.enabled);
+  const hasScore = useRuntimeSelector((runtime) => Boolean(runtime.score.staffXml));
+  const onChange = useRuntimeCommand((runtime) => runtime.updateStaffPrefs);
+  return <PianoHintSettings {...{ prefs, wordTyping, hasScore, onChange }} />;
 }
 function ConnectedStaffSettings() {
   const prefs = useAppSelector((state) => state.preferences.staff);

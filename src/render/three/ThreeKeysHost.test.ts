@@ -11,6 +11,7 @@ import type { KeyboardLayer } from "../KeyboardLayer";
 import type { NativeKeyboardScene } from "../NativeKeyboardScene";
 import { ThreeKeysHost } from "./ThreeKeysHost";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
+import { RoadLayer } from "../RoadLayer";
 
 const mocks = vi.hoisted(() => ({
   construct: vi.fn(),
@@ -26,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   resetFreeCamera: vi.fn(),
   freeKeyAt: vi.fn(),
   nativeEffectsReady: false,
+  noteLabelsReady: true,
   startupResourcesSettled: true,
   handPresent: true,
   loadPianist: vi.fn(),
@@ -59,6 +61,9 @@ vi.mock("./ThreeStage", () => ({
     }
     get nativeEffectsReady() {
       return mocks.nativeEffectsReady;
+    }
+    get noteLabelsReady() {
+      return mocks.noteLabelsReady;
     }
     setWorldFov = mocks.setWorldFov;
     setFreeCameraMovement = vi.fn();
@@ -177,6 +182,7 @@ function fixture(realApp?: Application) {
     hands as unknown as HandsLayer
   );
   return {
+    app,
     canvas,
     stage,
     road,
@@ -212,6 +218,7 @@ function deferred<T>() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.nativeEffectsReady = false;
+  mocks.noteLabelsReady = true;
   mocks.startupResourcesSettled = true;
   mocks.handPresent = true;
   mocks.publicReady = false;
@@ -231,7 +238,43 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+it.each(["classic", "arcade"] as const)(
+  "does not load the native scene while initializing %s without perspective notes",
+  async (style) => {
+    const { app, renderer, keyboard, hands } = fixture();
+    const road = new RoadLayer(
+      renderer as unknown as Application["renderer"],
+      app as unknown as Application,
+      keyboard as KeyboardLayer,
+      hands as unknown as HandsLayer
+    );
+    await road.setKeyStyle(style);
+    expect(mocks.loadKit).not.toHaveBeenCalled();
+    expect(mocks.construct).not.toHaveBeenCalled();
+    expect(mocks.loadHand).not.toHaveBeenCalled();
+
+    road.setNotesPerspective(true);
+    await road.setKeyStyle(style);
+    expect(mocks.loadKit).toHaveBeenCalledTimes(1);
+    expect(mocks.construct).toHaveBeenCalledTimes(1);
+    road.destroy();
+  }
+);
+
 describe("shared WebGL keyboard recovery", () => {
+  it("exposes native captions only while their road and baked layer are available", async () => {
+    const view = fixture();
+    expect(view.host.nativeNoteLabelsReady).toBe(false);
+    await view.host.setEnabled(true);
+    expect(view.host.nativeNoteLabelsReady).toBe(true);
+    mocks.noteLabelsReady = false;
+    expect(view.host.nativeNoteLabelsReady).toBe(false);
+    mocks.noteLabelsReady = true;
+    view.road.visible = false;
+    expect(view.host.nativeNoteLabelsReady).toBe(false);
+    view.host.destroy();
+    expect(view.host.nativeNoteLabelsReady).toBe(false);
+  });
   it("draws flat road, native scene and HUD in order", async () => {
     const view = fixture();
     await view.host.setEnabled(true);

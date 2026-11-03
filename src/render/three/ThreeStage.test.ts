@@ -43,6 +43,13 @@ function fixture() {
 
     configureCamera: vi.fn(),
     roadNotes: { ...disposable(), setViewport: vi.fn(), setStyle: vi.fn() },
+    noteLabels: {
+      ...disposable(),
+      update: vi.fn(),
+      clear: vi.fn(),
+      setViewport: vi.fn(),
+      ready: true
+    },
     roadTrails: disposable(),
     noteAura: disposable(),
     roadGuides: { ...disposable(), clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() },
@@ -549,11 +556,13 @@ it.each(["filled", "flat", "glass"] as const)(
     const trails = { group: new Group(), update: vi.fn() };
     const native = { group: new Group(), setStyle: vi.fn(), setViewport: vi.fn(), update: vi.fn() };
     const flat = { group: new Group(), update: vi.fn(), clear: vi.fn() };
+    const labels = { update: vi.fn(), clear: vi.fn(), setViewport: vi.fn(), ready: true };
     Object.assign(view.stage, {
       noteAura: aura,
       roadTrails: trails,
       roadNotes: native,
       flatRoadNotes: flat,
+      noteLabels: labels,
       roadGuides: { clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() }
     });
     const frame = new ThreeRoadFrame();
@@ -572,6 +581,7 @@ it.each(["filled", "flat", "glass"] as const)(
     );
     expect(aura.group.visible).toBe(style === "glass");
     expect(trails.group.visible).toBe(true);
+    expect(labels.update).toHaveBeenCalledExactlyOnceWith(frame.notes, 22, style === "flat", 0);
     if (style === "flat") {
       expect(flat.update).toHaveBeenCalledOnce();
       expect(native.group.visible).toBe(false);
@@ -584,6 +594,27 @@ it.each(["filled", "flat", "glass"] as const)(
     expect(frame.songTime).toBe(0);
   }
 );
+
+it("exposes label readiness and clears the native captions when the road frame disappears", () => {
+  const view = fixture();
+  const labels = {
+    ready: true,
+    update: vi.fn(),
+    clear: vi.fn(),
+    dispose: vi.fn(),
+    setViewport: vi.fn()
+  };
+  Object.assign(view.stage, { noteLabels: labels });
+  expect(view.stage.noteLabelsReady).toBe(true);
+  view.draw();
+  expect(labels.clear).toHaveBeenCalledOnce();
+  labels.ready = false;
+  expect(view.stage.noteLabelsReady).toBe(false);
+  labels.ready = true;
+  view.stage.dispose();
+  expect(labels.dispose).toHaveBeenCalledOnce();
+  expect(view.stage.noteLabelsReady).toBe(false);
+});
 
 it("passes the workspace score source to its structural world poster", () => {
   const { stage } = fixture();
