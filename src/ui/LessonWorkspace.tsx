@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -30,8 +31,8 @@ interface Props {
 
 /**
  * The score keeps one owner; the panel's counter, exit, hint, answer controls,
- * feedback and menu items land in fixed places, so nothing below the staff
- * moves when a key is played.
+ * feedback and menu items land in fixed places. Actions have their own rail beside
+ * the scrollable score, or a top strip on narrow portrait screens.
  */
 export function LessonWorkspace(props: Props) {
   const { t } = useI18n();
@@ -40,6 +41,7 @@ export function LessonWorkspace(props: Props) {
   const [hint, setHint] = useState<HTMLElement | null>(null);
   const [answer, setAnswer] = useState<HTMLElement | null>(null);
   const [feedback, setFeedback] = useState<HTMLElement | null>(null);
+  const [resultAction, setResultAction] = useState<HTMLElement | null>(null);
   const [menu, setMenu] = useState<Partial<Record<LessonMenuKind, HTMLElement>>>({});
   const [menuRefs] = useState(
     () =>
@@ -56,6 +58,8 @@ export function LessonWorkspace(props: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const menuArea = useRef<HTMLDivElement>(null);
+  const menuList = useRef<HTMLDivElement>(null);
+  const workspace = useRef<HTMLElement>(null);
   const menuId = useId();
   const slots = useMemo(
     () => ({
@@ -64,14 +68,15 @@ export function LessonWorkspace(props: Props) {
         ...(counter && { counter }),
         ...(hint && { hint }),
         ...(answer && { answer }),
-        ...(feedback && { feedback })
+        ...(feedback && { feedback }),
+        ...(resultAction && { resultAction })
       },
       menu,
       closeMenu: () => {
         setMenuOpen(false);
       }
     }),
-    [exit, counter, hint, answer, feedback, menu]
+    [exit, counter, hint, answer, feedback, resultAction, menu]
   );
   useEffect(() => {
     if (!menuOpen) return;
@@ -84,14 +89,41 @@ export function LessonWorkspace(props: Props) {
       document.removeEventListener("pointerdown", close);
     };
   }, [menuOpen]);
+  useLayoutEffect(() => {
+    const list = menuList.current;
+    const button = menuButton.current;
+    const frame = workspace.current;
+    if (!menuOpen || !list || !button || !frame) return;
+    const position = () => {
+      const anchor = button.getBoundingClientRect();
+      const room = frame.getBoundingClientRect();
+      const top = anchor.bottom + 4;
+      list.style.top = `${String(top)}px`;
+      list.style.right = `${String(Math.max(8, window.innerWidth - anchor.right))}px`;
+      list.style.maxHeight = `${String(Math.max(40, room.bottom - top - 8))}px`;
+      list.style.maxWidth = `${String(Math.max(1, room.width - 16))}px`;
+    };
+    position();
+    const observer = new ResizeObserver(position);
+    observer.observe(frame);
+    observer.observe(button);
+    window.addEventListener("resize", position);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", position);
+    };
+  }, [menuOpen]);
   return (
     <LessonWindowContext value={props.windows}>
       <LessonSlotContext value={slots}>
-        <section className="lesson-workspace" aria-label={props.title}>
+        <section className="lesson-workspace" aria-label={props.title} ref={workspace}>
           <header className="lesson-workspace__heading">
             <div className="lesson-workspace__bar">
               <div className="lesson-workspace__exit" ref={setExit} />
-              <h2>{props.title}</h2>
+              <div className="lesson-workspace__title">
+                <h2>{props.title}</h2>
+                <div className="lesson-workspace__counter" ref={setCounter} />
+              </div>
               <div
                 className="lesson-menu"
                 ref={menuArea}
@@ -114,25 +146,29 @@ export function LessonWorkspace(props: Props) {
                 >
                   {t("Меню урока")}
                 </button>
-                <div id={menuId} className="lesson-menu__list" hidden={!menuOpen}>
+                <div id={menuId} className="lesson-menu__list" hidden={!menuOpen} ref={menuList}>
                   {LESSON_MENU_KINDS.map((kind) => (
                     <div key={kind} className="lesson-menu__group" ref={menuRefs[kind]} />
                   ))}
                 </div>
               </div>
             </div>
-            <p>{props.instruction}</p>
-          </header>
-          <div className="lesson-workspace__counter" ref={setCounter} />
-          <div className="lesson-workspace__score">{props.score}</div>
-          <div className="lesson-workspace__response">
-            <div className="lesson-workspace__actions">
-              {props.action}
-              <div className="lesson-workspace__hint" ref={setHint} />
-            </div>
-            <div className="lesson-workspace__answer" ref={setAnswer} />
+            <p className="lesson-workspace__instruction">{props.instruction}</p>
             <div className="lesson-workspace__feedback" aria-live="polite" ref={setFeedback} />
             <p className="lesson-workspace__input">{props.input}</p>
+          </header>
+          <div className="lesson-workspace__content">
+            <footer className="lesson-workspace__response">
+              <div className="lesson-workspace__actions">
+                {props.action}
+                <div className="lesson-workspace__hint" ref={setHint} />
+                <div className="lesson-workspace__result-action" ref={setResultAction} />
+              </div>
+              <div className="lesson-workspace__answer" ref={setAnswer} />
+            </footer>
+            <div className="lesson-workspace__body">
+              <div className="lesson-workspace__score">{props.score}</div>
+            </div>
           </div>
           <div className="lesson-workspace__controls" aria-label={t("Управление уроком")}>
             {props.children}

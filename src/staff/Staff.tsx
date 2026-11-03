@@ -1,8 +1,10 @@
 import { worldScoreSnapshot } from "./publishWorldScore";
+import { revealLessonEntry } from "./lessonViewport";
 import type { StaffWorldSource } from "./staffWorldSnapshot";
 import type { LessonStaffFeedbackSource } from "./lessonStaffFeedback";
 import { useLessonStaffFeedback } from "./useLessonStaffFeedback";
-import { moveCursor, seekStaffAt, type StaffDrag } from "./staffCursorNavigation";
+import { moveCursor } from "./staffCursorNavigation";
+import { useStaffPointerNavigation } from "./useStaffPointerNavigation";
 import { createStaffOsmdOptions } from "./staffOsmdOptions";
 import neonCursorUrl from "../fx/neon-cursor.webp?url";
 import {
@@ -42,8 +44,7 @@ import {
   noteCourseReach,
   reservedSpan,
   showDrawing,
-  fitCourseDrawing,
-  fitCourseInk
+  fitCourseDrawing
 } from "./courseStaffView";
 import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
@@ -100,8 +101,6 @@ interface StaffProps {
 const GLIDE = 0.12;
 /** Share of the window the score may take; the lines that fit decide the exact height. */
 const DEFAULT_MAX_SHARE = 0.45;
-/** Movement that turns a press on the score from a click into a drag, px. */
-const DRAG_THRESHOLD_PX = 5;
 
 /**
  * The score under a cursor that follows the song by beats rather than by
@@ -161,6 +160,7 @@ export function Staff({
   const targetRef = useRef<ScrollTarget | null>(null);
   const linesRef = useRef<LineBox[]>([]);
   const noteIndexRef = useRef(emptyNoteIndex());
+  const revealedLessonBeat = useRef<number | undefined>(undefined);
   const feedbackRef = useLessonStaffFeedback(lessonStaffFeedback, hostRef, noteIndexRef);
   /** Musical entries, including rests, with their x from the SVG's left edge and their line. */
   const beatXRef = useRef<BeatSpot[]>([]);
@@ -202,7 +202,8 @@ export function Staff({
     setStaffColors(osmd, noteColor, scoreColor);
     tabWidthsRef.current = new Map();
     const reach = latest.current.course ? reachRef.current : undefined;
-    if (latest.current.course) fitCourseZoom(osmd, host, latest.current.maxShare, reach);
+    if (latest.current.course)
+      fitCourseZoom(osmd, host, latest.current.maxShare, reach, latest.current.zoom);
     else
       baselineRef.current.render(osmd, host, {
         zoom: latest.current.zoom,
@@ -215,7 +216,6 @@ export function Staff({
       osmd.render();
     }
     if (!latest.current.course && !latest.current.singleLine) fitWrappedStaffSvg(osmd);
-    if (latest.current.course) fitCourseInk(osmd, host, reservedSpan(osmd, reach));
     if (latest.current.course) noteCourseReach(courseRange, osmd, host);
     paintStaffNotes(osmd, noteColor);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
@@ -262,7 +262,16 @@ export function Staff({
       } else host.scrollLeft = target.left;
       host.scrollTop = target.top;
     }
-    if (latest.current.course) showDrawing(host, reservedSpan(osmd, reach));
+    if (latest.current.course) {
+      showDrawing(host, reservedSpan(osmd, reach));
+      revealLessonEntry(
+        host,
+        noteIndexRef.current.cursorBeats,
+        latest.current.beat,
+        noteIndexRef.current.feedbackHeads
+      );
+      revealedLessonBeat.current = entryBeatAt(beatXRef.current, latest.current.beat);
+    }
     targetRef.current = null;
     feedbackRef.current?.refresh();
     if (shareGeometry) {
@@ -327,8 +336,10 @@ export function Staff({
     };
     window.addEventListener("resize", onResize);
     const workspace = host.closest(".workspace-main");
+    const lessonBody = host.closest(".lesson-workspace__body");
     const resizeObserver = new ResizeObserver(onResize);
     if (workspace) resizeObserver.observe(workspace);
+    if (lessonBody) resizeObserver.observe(lessonBody);
     return () => {
       cancelled = true;
       feedback?.invalidate();
@@ -404,7 +415,17 @@ export function Staff({
     const host = hostRef.current;
     if (!osmd || !host) return;
     showBeat(osmd, host);
-  }, [beat]);
+    const entry = entryBeatAt(beatXRef.current, beat);
+    if (course && entry !== revealedLessonBeat.current) {
+      revealLessonEntry(
+        host,
+        noteIndexRef.current.cursorBeats,
+        beat,
+        noteIndexRef.current.feedbackHeads
+      );
+      revealedLessonBeat.current = entry;
+    }
+  }, [beat, course]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
@@ -497,13 +518,7 @@ export function Staff({
     };
   }, [readFrameBeat]);
 
-  /**
-   * The beat of the drawn note nearest to a click, measured on screen. OSMD's
-   * own hit test works in coordinates it caches at render time, which a
-   * scrolled or shifted view no longer matches.
-   */
-  const dragRef = useRef<StaffDrag | null>(null);
-  const suppressClickRef = useRef(false);
+  const pointerHandlers = useStaffPointerNavigation(hostRef, noteIndexRef, onSeek);
 
   return (
     <div
@@ -513,42 +528,7 @@ export function Staff({
         overflowY: !course && zoom > 1 ? "auto" : undefined,
         overflowX: !course && !singleLine ? "auto" : undefined
       }}
-      onPointerDown={(event) => {
-        if (event.button !== 0) return;
-        const host = hostRef.current;
-        dragRef.current = {
-          x: event.clientX,
-          y: event.clientY,
-          left: host?.scrollLeft ?? 0,
-          top: host?.scrollTop ?? 0,
-          dragged: false
-        };
-      }}
-      onPointerMove={(event) => {
-        const drag = dragRef.current;
-        const host = hostRef.current;
-        if (!drag || !host || (event.buttons & 1) === 0) return;
-        const dx = event.clientX - drag.x;
-        const dy = event.clientY - drag.y;
-        if (!drag.dragged && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
-        // Grabbing the score and pulling it scrolls it, like a page under the hand.
-        drag.dragged = true;
-        host.scrollLeft = drag.left - dx;
-        host.scrollTop = drag.top - dy;
-      }}
-      onPointerUp={() => {
-        // A drag is not a click: letting go after pulling the score must not start the song.
-        const drag = dragRef.current;
-        dragRef.current = null;
-        if (drag?.dragged) suppressClickRef.current = true;
-      }}
-      onClick={(event) => {
-        if (suppressClickRef.current) {
-          suppressClickRef.current = false;
-          return;
-        }
-        seekStaffAt(noteIndexRef.current, onSeek, event.clientX, event.clientY);
-      }}
+      {...pointerHandlers}
     >
       <div className="staff-page" ref={pageRef} />
       <div

@@ -22,6 +22,8 @@ export interface StaffPrefs {
   readonly zoom: number;
   /** Independent size of piano tab labels. */
   readonly tabsZoom: number;
+  /** Independent scale of lesson notation after its viewport baseline is fitted. */
+  readonly lessonZoom: number;
   readonly noteColor: string;
   readonly playedNoteColor: string;
   readonly scoreColor: string;
@@ -103,6 +105,7 @@ export interface StaffPrefs {
 export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   zoom: 1,
   tabsZoom: 1,
+  lessonZoom: 1.5,
   noteColor: "#ffffff",
   playedNoteColor: DEFAULT_PLAYED_NOTE_COLOR,
   scoreColor: "#ffffff",
@@ -158,7 +161,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
   const boolean = <K extends keyof StaffPrefs>(key: K): StaffPrefs[K] =>
     (typeof raw[key] === "boolean" ? raw[key] : defaults[key]) as StaffPrefs[K];
   const number = (
-    key: "zoom" | "tabsZoom" | "roadFar" | "roadHorizon" | "roadNoteTilt",
+    key: "zoom" | "tabsZoom" | "lessonZoom" | "roadFar" | "roadHorizon" | "roadNoteTilt",
     low: number,
     high: number
   ) => {
@@ -178,6 +181,7 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
   return {
     zoom,
     tabsZoom: raw.tabsZoom === undefined ? zoom : number("tabsZoom", 0.5, 2),
+    lessonZoom: number("lessonZoom", 0.5, 2),
     noteColor: color("noteColor"),
     playedNoteColor: color("playedNoteColor"),
     scoreColor: color("scoreColor"),

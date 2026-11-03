@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { LessonDetails } from "./LessonDetails";
+import { LessonReport } from "./LessonReport";
 import { LessonMenuItem, LessonSlot } from "./LessonSlots";
 import { LessonWorkspace, type LessonWindowControls } from "./LessonWorkspace";
 
@@ -93,6 +94,14 @@ describe("lesson workspace", () => {
     expect(host.querySelector(".lesson-workspace__counter")?.textContent).toBe("Нота 3 из 20");
     expect(host.querySelector(".lesson-workspace__exit")?.textContent).toBe("Выйти");
     const actions = required(host.querySelector(".lesson-workspace__actions"));
+    const content = required(host.querySelector(".lesson-workspace__content"));
+    const body = required(host.querySelector(".lesson-workspace__body"));
+    const response = required(host.querySelector(".lesson-workspace__response"));
+    expect(body.parentElement).toBe(content);
+    expect(response.parentElement).toBe(content);
+    expect(response.contains(actions)).toBe(true);
+    expect(body.contains(actions)).toBe(false);
+    expect(body.querySelector(".staff")).not.toBeNull();
     expect([...actions.querySelectorAll("button")].map((item) => item.textContent)).toEqual([
       "Играть",
       "Подсказка"
@@ -155,5 +164,67 @@ describe("lesson workspace", () => {
     await click(button("Как выполнять задание"));
     expect(host.textContent).toContain("Справка теста");
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("keeps result actions outside the scrolling score", async () => {
+    const onOpen = vi.fn();
+    await act(async () => {
+      root.render(
+        <LessonWorkspace
+          title="Lesson"
+          instruction="Play the note"
+          input="MIDI"
+          score={<div className="staff" />}
+          action={<button type="button">Новая серия</button>}
+          windows={{ open: null, onOpen, interruptsAttempt: false }}
+        >
+          <LessonReport summary={<p>20/20</p>}>
+            <p>Details</p>
+          </LessonReport>
+        </LessonWorkspace>
+      );
+      await Promise.resolve();
+    });
+    const body = required(host.querySelector(".lesson-workspace__body"));
+    const footer = required(host.querySelector("footer"));
+    expect(body.querySelector(".staff")).not.toBeNull();
+    expect(host.querySelector(".lesson-workspace__heading")?.textContent).toContain("20/20");
+    expect(body.textContent).not.toContain("20/20");
+    expect(body.querySelector("button")).toBeNull();
+    expect(footer.contains(button("Новая серия"))).toBe(true);
+    expect(footer.contains(button("Подробнее"))).toBe(true);
+    await click(button("Подробнее"));
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith("result");
+  });
+
+  it("keeps all hearing choices in the action area rather than inside the score scrollport", async () => {
+    await act(async () => {
+      root.render(
+        <LessonWorkspace
+          title="Intervals"
+          instruction="Listen and choose"
+          input="Keyboard"
+          score={<div className="staff" />}
+          action={<button type="button">Listen</button>}
+          windows={{ open: null, onOpen: vi.fn(), interruptsAttempt: false }}
+        >
+          <LessonSlot name="answer">
+            <div className="reading-actions interval-choices">
+              {[1, 2, 3, 4, 5].map((choice) => (
+                <button key={choice} type="button">
+                  {choice}
+                </button>
+              ))}
+            </div>
+          </LessonSlot>
+        </LessonWorkspace>
+      );
+      await Promise.resolve();
+    });
+    const body = required(host.querySelector(".lesson-workspace__body"));
+    const response = required(host.querySelector(".lesson-workspace__response"));
+    expect(response.querySelectorAll(".interval-choices button")).toHaveLength(5);
+    expect(body.querySelector("button")).toBeNull();
+    expect(response.querySelector(".lesson-workspace__answer")?.textContent).toBe("12345");
   });
 });

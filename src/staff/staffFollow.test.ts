@@ -41,6 +41,21 @@ function fixture() {
 }
 
 describe("staff cursor following", () => {
+  it("keeps fitting lesson notation centered as a drawing, with follow only for long phrases", () => {
+    const { host } = fixture();
+    const body = document.createElement("div");
+    body.className = "lesson-workspace__body";
+    body.append(host);
+    const svg = host.querySelector("svg");
+    if (!svg) throw new Error("Missing score");
+    svg.getBoundingClientRect = () => new DOMRect(300, 0, 240, 120);
+    host.scrollLeft = 80;
+    centreLivePosition(host, spots, 3);
+    expect(host.scrollLeft).toBe(0);
+    svg.getBoundingClientRect = () => new DOMRect(430 - host.scrollLeft, 0, 2000, 120);
+    centreLivePosition(host, spots, 3);
+    expect(host.scrollLeft).toBe(260);
+  });
   it("keeps the followed cursor fixed when browser scrolling rounds fractional pixels", () => {
     const view = fixture();
     let rounded = 0;

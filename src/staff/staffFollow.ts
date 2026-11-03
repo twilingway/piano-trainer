@@ -11,6 +11,13 @@ export function centreLivePosition(
   const x = spotAt(spots, beat)?.x;
   const svg = host.querySelector("svg");
   if (x === undefined || !svg) return;
+  if (
+    host.closest(".lesson-workspace__body") &&
+    svg.getBoundingClientRect().width <= host.clientWidth
+  ) {
+    host.scrollLeft = 0;
+    return;
+  }
   const view = host.getBoundingClientRect();
   const svgLeft = svg.getBoundingClientRect().left - view.left + host.scrollLeft;
   host.scrollLeft = svgLeft + x - view.width / 2;

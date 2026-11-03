@@ -33,6 +33,8 @@ const reachCache = new Map<string, Promise<CourseReach | undefined>>();
  * 0.67 SVG units under C4 at zoom 3), so a measured prompt keeps this much more room.
  */
 const REACH_SLACK = 1;
+/** Short windows scroll readable notation instead of shrinking the clef to a thumbnail. */
+const MIN_LESSON_STAFF_ROOM = 120;
 /** What a course's prompts really reached on screen, by the exercise's range. */
 const drawnReach = new WeakMap<readonly string[], CourseReach>();
 
@@ -171,12 +173,31 @@ export function reservedSpan(
 }
 
 /** The drawn ink joined with the reserved span, in SVG units. */
-function courseInk(svg: SVGGraphicsElement, reserved: InkSpan | undefined): InkSpan {
-  const ink = svg.getBBox();
+function courseInk(
+  svg: SVGGraphicsElement,
+  reserved: InkSpan | undefined,
+  ink = svg.getBBox()
+): InkSpan {
   const span = { top: ink.y, bottom: ink.y + ink.height };
   return reserved
     ? { top: Math.min(span.top, reserved.top), bottom: Math.max(span.bottom, reserved.bottom) }
     : span;
+}
+
+/** Blank teaching lyrics reserve layout but their font box is not visible notation ink. */
+function visibleCourseInk(svg: SVGGraphicsElement): DOMRect {
+  const blanks = [...svg.querySelectorAll("text")]
+    .filter((text) => !text.textContent.replace(/[\s\u200b-\u200d\ufeff]/g, ""))
+    .map((text) => ({ text, display: text.style.display }));
+  try {
+    for (const { text } of blanks) text.style.display = "none";
+    return svg.getBBox();
+  } finally {
+    for (const { text, display } of blanks) {
+      if (display) text.style.display = display;
+      else text.style.removeProperty("display");
+    }
+  }
 }
 
 /** The first line's drawn size, page margins included, in pixels. */
@@ -189,12 +210,13 @@ export function lineExtent(osmd: OpenSheetMusicDisplay): { width: number; height
   return { width, height: (first.BorderMarginBottom - first.BorderMarginTop) * pixels };
 }
 
-/** Render a course at the zoom that fits its line, the reserved reach included, into its room. */
+/** Fit the course baseline first, then preserve the player's independent notation size. */
 export function fitCourseZoom(
   osmd: OpenSheetMusicDisplay,
   host: HTMLElement,
   maxShare: number,
-  reach: CourseReach | undefined
+  reach: CourseReach | undefined,
+  zoom = 1
 ): void {
   osmd.Zoom = 1;
   osmd.render();
@@ -204,12 +226,21 @@ export function fitCourseZoom(
   );
   osmd.render();
   fitCompactStaff(osmd, host, reservedLineBox(lineBoxes(osmd)[0], osmd, reach));
+  fitCourseInk(osmd, host, reservedSpan(osmd, reach));
+  if (zoom !== 1) {
+    osmd.Zoom *= zoom;
+    osmd.render();
+  }
 }
 
 /** What a course's staff may fill: the reader's width and its share of the workspace height. */
 export function courseRoom(host: HTMLElement, maxShare: number): { width: number; height: number } {
+  // This scrollport has a fixed grid allocation; the rendered ink never determines its height.
+  const lessonBody = host.closest(".lesson-workspace__body");
   const workspace = host.closest(".workspace-main");
-  const requestedHeight = (workspace?.clientHeight ?? window.innerHeight) * maxShare;
+  const requestedHeight = lessonBody
+    ? Math.max(MIN_LESSON_STAFF_ROOM, lessonBody.clientHeight)
+    : (workspace?.clientHeight ?? window.innerHeight) * maxShare;
   const cssHeight = Number.parseFloat(getComputedStyle(host).maxHeight);
   const height = Number.isFinite(cssHeight)
     ? Math.min(requestedHeight, cssHeight)
@@ -227,6 +258,12 @@ export function courseRoom(host: HTMLElement, maxShare: number): { width: number
 export function showDrawing(host: HTMLElement, reserved?: InkSpan): void {
   const svg = host.querySelector("svg");
   if (!svg) return;
+  if (host.closest(".lesson-workspace__body")) {
+    const scrollbar = host.offsetHeight - host.clientHeight;
+    host.style.height = `${String(svg.getBoundingClientRect().height + scrollbar)}px`;
+    host.scrollTop = 0;
+    return;
+  }
   let top = Infinity;
   let bottom = -Infinity;
   for (const part of svg.children) {
@@ -258,7 +295,10 @@ export function fitCourseInk(
   reserved?: InkSpan
 ): void {
   const svg = host.querySelector("svg");
-  const limit = Number.parseFloat(getComputedStyle(host).maxHeight);
+  const lessonBody = host.closest(".lesson-workspace__body");
+  const limit = lessonBody
+    ? Math.max(MIN_LESSON_STAFF_ROOM, lessonBody.clientHeight)
+    : Number.parseFloat(getComputedStyle(host).maxHeight);
   if (!svg || typeof svg.getBBox !== "function" || !Number.isFinite(limit)) return;
   const viewBox = (svg.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
   const pixelHeight = Number.parseFloat(svg.getAttribute("height") ?? "");
@@ -302,7 +342,8 @@ export function fitCourseDrawing(host: HTMLElement, reserved?: InkSpan): number 
   if (originalHeight) svg.setAttribute("height", originalHeight);
   if (originalViewBox) svg.setAttribute("viewBox", originalViewBox);
   else svg.removeAttribute("viewBox");
-  const ink = svg.getBBox();
+  const lessonBody = host.closest<HTMLElement>(".lesson-workspace__body");
+  const ink = lessonBody ? visibleCourseInk(svg) : svg.getBBox();
   const previous = originalViewBox.split(/\s+/).map(Number);
   const [viewLeft = 0, viewTop = 0, viewWidth, viewHeight] = previous.length === 4 ? previous : [];
   const originalPixels = Number.parseFloat(originalWidth);
@@ -322,9 +363,16 @@ export function fitCourseDrawing(host: HTMLElement, reserved?: InkSpan): number 
     widthPixels = Math.min(host.clientWidth, Math.ceil(inkPixels + 2 * paddingPixels));
     widthUnits = widthPixels / scale;
   }
-  const span = courseInk(svg, reserved);
-  const top = Math.min(viewTop, span.top);
-  const bottom = Math.max(viewTop + height, span.bottom);
+  const span = courseInk(svg, lessonBody ? undefined : reserved, ink);
+  const spare = lessonBody
+    ? Math.max(0, lessonBody.clientHeight - (span.bottom - span.top) * scale)
+    : 0;
+  const topPadding = Math.min(STAFF_VERTICAL_SPACE.top, spare / 2);
+  const bottomPadding = topPadding;
+  const top = lessonBody ? span.top - topPadding / scale : Math.min(viewTop, span.top);
+  const bottom = lessonBody
+    ? span.bottom + bottomPadding / scale
+    : Math.max(viewTop + height, span.bottom);
   const stretched = top !== viewTop || bottom - top !== height;
   if (widthPixels === originalPixels && !stretched) return 0;
   const croppedViewBox = `${String(left)} ${String(top)} ${String(widthUnits)} ${String(bottom - top)}`;
@@ -333,6 +381,11 @@ export function fitCourseDrawing(host: HTMLElement, reserved?: InkSpan): number 
   svg.setAttribute("width", String(widthPixels));
   svg.setAttribute("height", heightPixels);
   svg.setAttribute("viewBox", croppedViewBox);
+  if (lessonBody && svg.parentElement) {
+    // OSMD's backend wrapper must not retain the uncropped paper dimensions.
+    svg.parentElement.style.width = `${String(widthPixels)}px`;
+    svg.parentElement.style.height = `${heightPixels}px`;
+  }
   data.lessonCropWidth = String(widthPixels);
   data.lessonCropHeight = heightPixels;
   data.lessonCropViewBox = croppedViewBox;

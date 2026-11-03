@@ -97,3 +97,80 @@ it.each([
   }
   expect(changed).not.toHaveBeenCalled();
 });
+
+it.each(["ru", "en"] as const)("changes only lesson notation scale by 5%% in %s", (language) => {
+  setInterfaceLanguage(language);
+  const changed = vi.fn();
+  act(() => {
+    root.render(
+      <StaffSettings
+        hasScore
+        prefs={{ ...DEFAULT_STAFF_PREFS, zoom: 0.8, tabsZoom: 1.2, lessonZoom: 1.5 }}
+        onChange={changed}
+      />
+    );
+  });
+  const label = language === "ru" ? "Масштаб нотного стана в уроках" : "Lesson staff scale";
+  const smaller = language === "ru" ? "Уменьшить ноты в уроке" : "Make lesson notes smaller";
+  const larger = language === "ru" ? "Увеличить ноты в уроке" : "Make lesson notes larger";
+  expect(host.textContent).toContain(label);
+  const decrease = host.querySelector<HTMLButtonElement>(`button[aria-label="${smaller}"]`);
+  const increase = host.querySelector<HTMLButtonElement>(`button[aria-label="${larger}"]`);
+  expect(decrease?.closest(".setting")?.textContent).toContain("150%");
+  act(() => decrease?.click());
+  expect(changed).toHaveBeenLastCalledWith({ lessonZoom: 1.45 });
+  act(() => increase?.click());
+  expect(changed).toHaveBeenLastCalledWith({ lessonZoom: 1.55 });
+  expect(host.textContent).toContain("80%");
+  expect(host.textContent).toContain("120%");
+});
+
+it.each(["ru", "en"] as const)(
+  "bounds lesson controls in %s without changing other scales",
+  (language) => {
+    setInterfaceLanguage(language);
+    const changed = vi.fn();
+    const labels =
+      language === "ru"
+        ? ["Уменьшить ноты в уроке", "Увеличить ноты в уроке"]
+        : ["Make lesson notes smaller", "Make lesson notes larger"];
+    for (const [index, lessonZoom] of [0.5, 2].entries()) {
+      act(() => {
+        root.render(
+          <StaffSettings
+            hasScore
+            prefs={{ ...DEFAULT_STAFF_PREFS, lessonZoom }}
+            onChange={changed}
+          />
+        );
+      });
+      const label = labels[index];
+      if (!label) throw new Error("Missing lesson scale bound label");
+      const button = host.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+      expect(button?.disabled).toBe(true);
+      act(() => button?.click());
+    }
+    expect(changed).not.toHaveBeenCalled();
+  }
+);
+
+it.each(["ru", "en"] as const)(
+  "offers lesson scale even when the current song has no score in %s",
+  (language) => {
+    setInterfaceLanguage(language);
+    const changed = vi.fn();
+    act(() => {
+      root.render(
+        <StaffSettings hasScore={false} prefs={DEFAULT_STAFF_PREFS} onChange={changed} />
+      );
+    });
+    const group = language === "ru" ? "Размер и прокрутка" : "Size and scrolling";
+    const label = language === "ru" ? "Масштаб нотного стана в уроках" : "Lesson staff scale";
+    expect(host.querySelector(`section[aria-label="${group}"]`)?.textContent).toContain(label);
+    expect(host.querySelectorAll("button")).toHaveLength(2);
+    expect(host.querySelector("input")).toBeNull();
+    const larger = language === "ru" ? "Увеличить ноты в уроке" : "Make lesson notes larger";
+    act(() => host.querySelector<HTMLButtonElement>(`button[aria-label="${larger}"]`)?.click());
+    expect(changed).toHaveBeenLastCalledWith({ lessonZoom: 1.55 });
+  }
+);
