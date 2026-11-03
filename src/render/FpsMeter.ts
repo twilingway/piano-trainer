@@ -12,6 +12,8 @@ export class FpsMeter {
   private sampleStart = 0;
   private frames = 0;
   private visible = false;
+  private readonly host: HTMLElement;
+  private readonly anchorObserver: MutationObserver;
 
   constructor(
     host: HTMLElement,
@@ -23,7 +25,14 @@ export class FpsMeter {
     this.element.title = "Кадров в секунду";
     this.element.textContent = "FPS —";
     this.element.hidden = true;
-    host.appendChild(this.element);
+    this.host = host;
+    this.refreshAnchor();
+    this.anchorObserver = new MutationObserver(this.refreshAnchor);
+    this.anchorObserver.observe(host.closest(".lanes") ?? host.closest(".workspace-main") ?? host, {
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class"]
+    });
     this.setLocale(locale);
     this.setVisible(visible);
   }
@@ -40,6 +49,7 @@ export class FpsMeter {
   }
 
   destroy(): void {
+    this.anchorObserver.disconnect();
     this.ticker.remove(this.onFrame);
     this.element.remove();
   }
@@ -47,6 +57,14 @@ export class FpsMeter {
   setLocale(locale: Locale): void {
     this.element.title = translate(locale, appMessages, "Кадров в секунду");
   }
+
+  private readonly refreshAnchor = (): void => {
+    const workspace = this.host.closest<HTMLElement>(".workspace-main");
+    const lanes = this.host.closest(".lanes");
+    const comparing = lanes ? lanes.querySelectorAll(":scope > .lane").length > 1 : false;
+    const anchor = workspace && !comparing ? workspace : this.host;
+    if (this.element.parentElement !== anchor) anchor.appendChild(this.element);
+  };
 
   private readonly onFrame = (): void => {
     const now = performance.now();

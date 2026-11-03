@@ -654,3 +654,37 @@ describe("Trainer melody routing", () => {
     expect(run.takes).toHaveLength(1);
   });
 });
+
+it("freezes song position during deferred party preparation and keeps full load/reset semantics", () => {
+  const run = harness();
+  run.trainer.setPlaying(true);
+  run.frame(3000, 150);
+  down(run.trainer, 3000);
+  run.frame(3250, 150);
+  const position = run.latest()?.time;
+  run.trainer.setPreparing(true);
+  expect(run.latest()?.playing).toBe(false);
+  run.frame(6250, 3000);
+  run.trainer.load(SONG, { mode: "tempo", hands: new Set(["left"]), speed: 1 }, "fixture", {
+    preservePosition: true
+  });
+  run.trainer.setPlaying(true);
+  expect(run.latest()?.playing).toBe(false);
+  expect(run.latest()?.time).toBeCloseTo(position ?? NaN);
+  expect(run.view.setSong).toHaveBeenCalledTimes(2);
+  expect(run.takes).toHaveLength(1);
+  run.trainer.setPreparing(false);
+  run.trainer.setPlaying(true);
+  expect(run.latest()?.playing).toBe(true);
+  expect(run.latest()?.time).toBeCloseTo(position ?? NaN);
+});
+it("reports an explicit raw pause during preparation without treating its initial suspension as a user pause", () => {
+  const run = harness(),
+    paused = vi.fn();
+  run.trainer.onPreparationPause = paused;
+  run.trainer.setPlaying(true);
+  run.trainer.setPreparing(true);
+  expect(paused).not.toHaveBeenCalled();
+  run.trainer.setPlaying(false);
+  expect(paused).toHaveBeenCalledOnce();
+});

@@ -23,7 +23,8 @@ import { BLACK_NOTE_FLOOR, WHITE_NOTE_FLOOR } from "./noteDimensions";
 import { nativeKeyContactLanes } from "./nativeKeyContactAnchors";
 import type { NoteLaneProjection } from "./noteLaneProjection";
 import { FREE_BLACK_LANE, freeRoadKeyPoint, roadKeyHeights } from "./roadScenePoints";
-import { DEFAULT_ROAD_SHAPE, roadLayoutCamera, type RoadShape } from "./roadLayoutCamera";
+import { DEFAULT_ROAD_SHAPE, type RoadShape } from "./roadLayoutCamera";
+import { nativePaneFootprint, roadSurfaceLayout } from "./roadSurfaceLayout";
 import type { HandsGeometry, HandsLayer } from "./HandsLayer";
 import type { KeyboardLayer, KeyStyle } from "./KeyboardLayer";
 import { ThreeKeysHost } from "./three/ThreeKeysHost";
@@ -58,6 +59,8 @@ export class RoadLayer {
   private keyboardTop = false;
   private notesPerspective = true;
   private cameraHeight = 1;
+  private referenceBottom: number | undefined;
+  private notesOnly = false;
   private keyHeights = new Map<number, number>();
   private blackLane: NoteLaneProjection | undefined;
   private whiteLane: NoteLaneProjection | undefined;
@@ -144,8 +147,13 @@ export class RoadLayer {
     computer: boolean,
     roadMode: boolean,
     reference?: Parameters<typeof nativeRoadCameras>[3]
-  ): void {
+  ): ReturnType<typeof nativePaneFootprint> {
     const { width, height, floor, handRoom } = viewport;
+    this.notesOnly = viewport.referenceHeight !== undefined && geometry.keyboardHeight === 0;
+    this.referenceBottom =
+      viewport.referenceHeight === undefined || geometry.keyboardHeight === 0
+        ? undefined
+        : viewport.referenceHeight - floor;
     this.layout(total, geometry.hitY, height - floor, width, handRoom);
     this.setKeyboard(
       computer ? new Map([[0, { pitch: 0, black: false, x: 0, width: total }]]) : keys,
@@ -155,6 +163,7 @@ export class RoadLayer {
       reference
     );
     if (!roadMode) this.container.visible = this.effects.visible = false;
+    return nativePaneFootprint(this.nativeKeyboard, this.keyboardCamera);
   }
   setKeyboard(
     keys: ReadonlyMap<number, KeyRect>,
@@ -170,7 +179,7 @@ export class RoadLayer {
     this.keyHeights = roadKeyHeights(keys, true);
     this.keysShift = new Matrix().translate(0, -geometry.keyboardTop);
     void this.three?.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard);
-    if (this.nativeKeyboard && this.camera) {
+    if (this.nativeKeyboard && this.camera && !this.notesOnly) {
       this.camera = metricCameraForKeys(this.camera, keys, this.cameraHeight, this.shape.horizon);
       const { cameras, world, fit } = nativeRoadCameras(this.camera, keys, geometry, reference, {
         viewWidth: this.viewWidth,
@@ -207,9 +216,6 @@ export class RoadLayer {
     this.keys.layout(keys, geometry, this.keysTexture, true);
     this.setPan(this.pan, true);
   }
-  noteLaneX(keyX: number): number {
-    return keyX - this.pan;
-  }
   notePlace(keyX: number, y: number, offset = 0, lift = 0): Projected | undefined {
     // Standard keeps a fixed reference world; only the displayed keys move with camera.*.
     return Dock.place(
@@ -236,7 +242,7 @@ export class RoadLayer {
     this.physicalContactLanes = nativeKeyContactLanes(this.contactKeys, FREE_BLACK_LANE);
   }
   private noteLane(keyX: number): NoteLaneProjection | undefined {
-    if (this.nativeKeyboard && this.contactLanes)
+    if (this.nativeKeyboard && !this.notesOnly && this.contactLanes)
       return (
         this.freeCamera || this.three?.performanceScene || this.dock?.active
           ? this.physicalContactLanes
@@ -255,9 +261,6 @@ export class RoadLayer {
   beatY(y: number): number {
     if (this.drawsNativeRoad && this.camera) this.nativeRoad.beat(y, this.size.height, this.camera);
     return y;
-  }
-  get isPerspective(): boolean {
-    return this.nativeKeyboard;
   }
   drawHold(
     keyX: number,
@@ -302,41 +305,34 @@ export class RoadLayer {
   layout(width: number, height: number, bottom: number, viewWidth: number, handRoom = 0): void {
     // A keys-only viewport can leave no road space, but still needs fresh paint and cameras.
     const valid = width >= 1 && viewWidth >= 1 && bottom >= Math.max(1, height);
-    this.container.visible = valid && height >= 1;
-    this.effects.visible = this.container.visible;
+    this.effects.visible = this.container.visible = valid && height >= 1;
     if (!valid) {
       this.size = { width: 0, height: 0 };
       return;
     }
-    this.size = { width, height: Math.max(0, height) };
-    this.viewWidth = viewWidth;
-    const resolution = Math.min(this.renderer.resolution, 8192 / width);
-    this.keysTexture.source.resize(width, Math.max(1, bottom - height), resolution);
-    this.cameraHeight = Math.max(1, bottom - handRoom);
-    this.camera = roadLayoutCamera(
-      viewWidth,
-      width,
-      this.cameraHeight,
-      this.cameraPrefs,
-      true,
-      this.shape.horizon
+    Object.assign(
+      this,
+      roadSurfaceLayout({
+        width,
+        height,
+        bottom,
+        viewWidth,
+        cameraHeight: Math.max(1, (this.referenceBottom ?? bottom) - handRoom),
+        prefs: this.cameraPrefs,
+        horizon: this.shape.horizon,
+        resolution: this.renderer.resolution,
+        texture: this.keysTexture,
+        fog: this.fog
+      })
     );
-    this.projection = this.camera.road;
-    this.hitY = this.projection.at(viewWidth / 2, 1).y;
-    this.horizonY = this.projection.at(viewWidth / 2, 0).y;
-    this.fog.position.set(0, this.horizonY);
-    this.fog.width = viewWidth;
-    this.fog.height = Math.max(1, (this.hitY - this.horizonY) * 0.5);
   }
   setFallingNoteStyle(style: FallingNoteStyle): void {
     this.fallingNoteStyle = style;
   }
   setKeyStyle(style: KeyStyle): Promise<void> {
     this.style = style;
-    return (
-      this.three?.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard) ??
-      Promise.resolve()
-    );
+    if (!this.three) return Promise.resolve();
+    return this.three.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard);
   }
   get drawsNativeRoad(): boolean {
     return this.three?.drawsRoad === true;
@@ -359,6 +355,7 @@ export class RoadLayer {
     this.three.onFreeCamera = changed;
     this.three.setFreeCamera(on);
   }
+  readonly startupStatus = () => this.three?.startupStatus ?? "ready";
   get handStatus(): "idle" | "loading" | "ready" | "error" {
     return this.three?.handStatus ?? "idle";
   }
@@ -443,6 +440,7 @@ export class RoadLayer {
     return camera.project(camera.sourceX(x - this.pan), surface.height, surface.depth);
   }
   setKeysOffset(offset: PointData): void {
+    if (this.notesOnly) offset = { x: 0, y: 0 };
     const changed = this.keys.container.x !== offset.x || this.keys.container.y !== offset.y;
     this.keys.container.position.copyFrom(offset);
     if (!changed || !this.keyboardCamera) return;
@@ -491,8 +489,7 @@ export class RoadLayer {
         !this.sceneCamera
     );
     this.horizon.clear();
-    if ((!this.drawsNativeRoad || this.nativeRoad.guides) && this.projection)
-      drawRoadHorizon(this.horizon, this.horizonY, this.viewWidth);
+    if (this.projection) drawRoadHorizon(this.horizon, this.horizonY, this.viewWidth);
     if (this.projection) this.arrivals.draw(arrivals, this.projection, this.pan);
   }
   destroy(): void {

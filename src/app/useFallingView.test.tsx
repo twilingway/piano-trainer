@@ -13,6 +13,7 @@ import { useFallingView } from "./useFallingView";
 vi.mock("../render/FallingNotesView", () => ({ FallingNotesView: vi.fn() }));
 
 const view = {
+  startup: { begin: vi.fn(), status: "loading" as "loading" | "ready" },
   onHandStatus: undefined as ((status: "idle" | "loading" | "ready" | "error") => void) | undefined,
   flatEffects: { set: vi.fn() },
   setLocale: vi.fn(),
@@ -478,4 +479,63 @@ it("passes the world FOV without moving or reloading the lesson", () => {
   expect(trainer.load).not.toHaveBeenCalled();
   expect(trainer.seek).not.toHaveBeenCalled();
   expect(trainer.setPlaying).not.toHaveBeenCalled();
+});
+
+it("acknowledges startup only after saved settings and a ready rendered scene", async () => {
+  const ready = vi.fn();
+  vi.stubGlobal("pianoStartup", { ready, fail: vi.fn(), progress: vi.fn() });
+  const pending = new Map<number, FrameRequestCallback>();
+  let sequence = 0;
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    pending.set(++sequence, callback);
+    return sequence;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => pending.delete(id));
+  const tick = () => {
+    const callbacks = [...pending.values()];
+    pending.clear();
+    for (const callback of callbacks) callback(10);
+  };
+  view.startup.status = "loading";
+  await act(async () => {
+    root.render(<Harness prefs={DEFAULT_STAFF_PREFS} />);
+    await Promise.resolve();
+  });
+  expect(view.startup.begin).toHaveBeenCalledOnce();
+  expect(view.setKeyStyle.mock.invocationCallOrder.at(-1)).toBeLessThan(
+    view.startup.begin.mock.invocationCallOrder[0] ?? 0
+  );
+  expect(view.setPerformanceScene.mock.invocationCallOrder.at(-1)).toBeLessThan(
+    view.startup.begin.mock.invocationCallOrder[0] ?? 0
+  );
+  tick();
+  expect(ready).not.toHaveBeenCalled();
+  view.startup.status = "ready";
+  tick();
+  expect(ready).toHaveBeenCalledExactlyOnceWith("scene");
+  expect(pending.size).toBe(0);
+});
+
+it("cancels startup acknowledgement when the configured view unmounts", async () => {
+  const ready = vi.fn();
+  vi.stubGlobal("pianoStartup", { ready, fail: vi.fn(), progress: vi.fn() });
+  const pending = new Map<number, FrameRequestCallback>();
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    pending.set(1, callback);
+    return 1;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (id: number) => pending.delete(id));
+  view.startup.status = "loading";
+  await act(async () => {
+    root.render(<Harness prefs={DEFAULT_STAFF_PREFS} />);
+    await Promise.resolve();
+  });
+  expect(pending.size).toBe(1);
+  await act(async () => {
+    root.unmount();
+    await Promise.resolve();
+  });
+  expect(pending.size).toBe(0);
+  expect(ready).not.toHaveBeenCalled();
+  root = createRoot(host);
 });

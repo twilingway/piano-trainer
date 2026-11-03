@@ -22,6 +22,14 @@ export class ThreeKeysHost {
   private stage: ThreeStage | undefined;
   private loading: Promise<void> | undefined;
   private loadFailed = false;
+  private startupPresented = false;
+
+  get startupStatus(): "loading" | "ready" {
+    if (!(this.wanted && this.keys.container.visible) && !(this.roadWanted && this.road.visible))
+      return "ready";
+    if (!this.stage) return this.loadFailed ? "ready" : "loading";
+    return this.startupPresented && this.handStatus !== "loading" ? "ready" : "loading";
+  }
   private wanted = false;
   private roadWanted = false;
   private keyboardDim = false;
@@ -66,6 +74,7 @@ export class ThreeKeysHost {
   /** Settles once the keys are drawn by three, or once it is clear that they cannot be. */
   setEnabled(on: boolean, road = on): Promise<void> {
     if (this.destroyed) return Promise.resolve();
+    if (on !== this.wanted || road !== this.roadWanted) this.startupPresented = false;
     this.wanted = on;
     if (this.hands) this.hands.live = on;
     this.roadWanted = road;
@@ -97,6 +106,7 @@ export class ThreeKeysHost {
 
   /** The native road is independent of keyboard visibility and keyboard style. */
   setRoadEnabled(on: boolean): Promise<void> {
+    if (on !== this.roadWanted) this.startupPresented = false;
     this.roadWanted = on;
     const loaded = on ? this.load() : Promise.resolve();
     this.sync();
@@ -302,6 +312,9 @@ export class ThreeKeysHost {
   }
 
   private readonly frame = (): void => {
+    this.app.presentFrame(this.composeFrame);
+  };
+  private readonly composeFrame = (): boolean => {
     const { renderer, stage } = this.app;
     const scene = this.keys.scene;
     const layered =
@@ -313,7 +326,7 @@ export class ThreeKeysHost {
     this.syncFreeCamera(Boolean(layered));
     if (!layered || !this.stage) {
       renderer.render({ container: stage });
-      return;
+      return true;
     }
     const separateRoad = this.freeActive || this.performanceWanted;
     const worldEffects = separateRoad && this.stage.nativeEffectsReady;
@@ -376,14 +389,16 @@ export class ThreeKeysHost {
       this.stage.dispose();
       this.stage = undefined;
       renderer.render({ container: stage });
-      return;
+      return false;
     }
     try {
       renderer.render({ container: stage, clear: false });
+      this.startupPresented = this.stage.startupResourcesSettled && this.handStatus !== "loading";
     } finally {
       this.effects.restore();
       this.roadEffects.restore();
     }
+    return true;
   };
 
   private readonly drawRoadEffects = (): void => {

@@ -1,3 +1,4 @@
+import { preparationTransport } from "./preparationTransport";
 import { usePracticeCourses } from "./usePracticeCourses";
 import {
   dispatchMusicLessonAction,
@@ -33,7 +34,7 @@ import { useIndependentRhythmTrainer } from "./useIndependentRhythmCourse";
 import { useRhythmTrainer } from "./useRhythmTrainer";
 import { useIntervalAudioTrainer } from "./useIntervalAudio";
 import { DEFAULT_SCREEN_LAYOUT } from "./screenLayout";
-import { useSound } from "./useSound";
+import { useSound, preparePlaybackSound } from "./useSound";
 import { useScreenLayout } from "./useScreenLayout";
 import { useStaffPrefs } from "./useStaffPrefs";
 import { useStaffScore } from "./useStaffScore";
@@ -42,8 +43,7 @@ import { useTrainer } from "./useTrainer";
 import { ViewToggles } from "../ui/ViewToggles";
 import { useWordTyping, useWordTypingInterfaceLanguage } from "./useWordTyping";
 import { ConnectedWordSettings } from "./ConnectedSettings";
-import { GameModeSwitch } from "../ui/GameModeSwitch";
-import { PracticeTimingStatus, IndependentRhythmTimingStatus } from "../ui/PracticeTimingStatus";
+import { practiceTimingStatus, practiceModeSwitch } from "./practiceTimingStatus";
 import type { Part } from "../wordTyping/types";
 
 import { useDeviceRange, useRangeFit } from "./useDeviceRange";
@@ -61,7 +61,7 @@ export function usePlayerRuntime() {
    * Kept across reloads (listen, speed, hand, mode), cleared by "Сначала" and a new song.
    */
   const startFromRef = useRef<number | null>(null);
-  const { sound, ensureSound, ensureIntervalSound } = useSound();
+  const { sound, ensureSound, ensureIntervalSound, audioPreparation } = useSound();
   const current = useSong(startFromRef);
   const course = useCourse(current.showSong);
   const {
@@ -142,6 +142,7 @@ export function usePlayerRuntime() {
     wordTyping: word.enabled,
     startFromRef,
     ensureSound,
+    waitForSound: audioPreparation.wait,
     onNoteClick: current.cycleFinger,
     onTake: practiceActive ? () => undefined : takes.recordTake,
     onRunFinished: music.active
@@ -218,7 +219,7 @@ export function usePlayerRuntime() {
       libraryOpen ||
       (settingsOpen && practiceActive) ||
       (word.enabled && (word.pending || Boolean(word.error))),
-    prepare: ensureIntervalSound,
+    prepare: () => preparePlaybackSound(ensureIntervalSound, trainer.preparation.wait),
     onToggle: playNow
   });
   useWordTypingInterfaceLanguage(word, snapshot.playing);
@@ -369,9 +370,13 @@ export function usePlayerRuntime() {
     computerKeyboard,
     timing.settingsProps.running
   );
-  const play =
+  const { play, cancel: cancelPreparation } = preparationTransport(
     completedPractice?.invoke ??
-    lessonPlayback(lessonWindow !== null, music.active || ear, playNow, songPlay);
+      lessonPlayback(lessonWindow !== null, music.active || ear, playNow, songPlay),
+    countdown.cancel,
+    audioPreparation,
+    trainer
+  );
   const lessonAction = practiceLessonAction({
     music: music.active ? music.view : undefined,
     completed: completedPractice?.action,
@@ -422,7 +427,6 @@ export function usePlayerRuntime() {
     startFromRef.current = null;
     word.choosePart(part);
   };
-  const wordSettings = <ConnectedWordSettings />;
 
   const chooseGame = (enabled: boolean) => {
     if (practiceActive) reading.exit();
@@ -430,17 +434,9 @@ export function usePlayerRuntime() {
     startFromRef.current = null;
     word.update({ enabled });
   };
-  const timingStatus = independentRhythm.active ? (
-    <IndependentRhythmTimingStatus />
-  ) : (
-    <PracticeTimingStatus policy={snapshot.timingPolicy} ranked={game.ranked} />
-  );
-  const modeSwitch = (
-    <GameModeSwitch wordTyping={word.enabled} locked={playing} onChange={chooseGame}>
-      {word.enabled && wordSettings}
-      {timingStatus}
-    </GameModeSwitch>
-  );
+  const timingStatus = practiceTimingStatus(independentRhythm.active, snapshot, game.ranked);
+  // eslint-disable-next-line react-hooks/refs -- The view helper only passes the event handler to JSX.
+  const modeSwitch = practiceModeSwitch(word.enabled, playing, chooseGame, timingStatus);
 
   return {
     music,
@@ -457,6 +453,8 @@ export function usePlayerRuntime() {
     lessonStaffFeedback,
     displayPrefs: workspacePrefs,
     sound,
+    audioPreparation,
+    cancelPreparation,
     t,
     fullscreen,
     libraryOpen,
@@ -504,7 +502,7 @@ export function usePlayerRuntime() {
     startOver,
     toggles,
     keyboardSettings,
-    wordSettings,
+    wordSettings: <ConnectedWordSettings />,
     chooseWordPart,
     chooseGame,
     timingStatus,

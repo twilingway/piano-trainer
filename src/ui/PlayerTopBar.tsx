@@ -2,18 +2,16 @@ import { useI18n } from "../app/useI18n";
 import { useRef, useSyncExternalStore, type ReactNode } from "react";
 
 import type { Scoreboard } from "../practice/scoreboard";
-import { ROLE_TITLE } from "../song/midiParts";
 import {
   choiceValue,
   chooseValue,
   CompactPracticeChoices,
-  HAND_CHOICES,
-  HandsPicture,
   PartOptions
 } from "./CompactPracticeChoices";
 import type { PartsChoice } from "./CompactPracticeChoices";
 import { FullscreenIcon, GearIcon, LibraryIcon, PauseIcon, PlayIcon, RestartIcon } from "./icons";
 import { BarPopover } from "./BarPopover";
+import { HandsPopover } from "./HandsPopover";
 import { ViewHelp } from "./ViewHelp";
 import { ToolbarAudioControls } from "./ToolbarAudioControls";
 
@@ -88,11 +86,6 @@ export function PlayerTopBar(props: Props) {
   const board = props.board ?? { clock: "0:00" };
   const controls = useRef<HTMLDetailsElement>(null);
   const compact = useSyncExternalStore(subscribeCompact, compactSnapshot, () => false);
-  const handTitle = t(
-    props.parts?.role
-      ? ROLE_TITLE[props.parts.role]
-      : (HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки")
-  );
   return (
     <header className={`topbar${props.course ? " topbar--course" : ""}`}>
       <details className="compact-controls" ref={controls}>
@@ -111,6 +104,21 @@ export function PlayerTopBar(props: Props) {
             }
           }}
         >
+          <div className="compact-controls__view-head">
+            <span>{t("Вид")}</span>
+            <ViewHelp />
+          </div>
+          <div className="setting-control setting-control--views compact-controls__views">
+            {props.toggles}
+          </div>
+          <button
+            type="button"
+            className="game-button"
+            aria-pressed={props.editing}
+            onClick={props.onToggleEditing}
+          >
+            {t("✎ Редактировать интерфейс")}
+          </button>
           <p className="compact-controls__stats">
             {props.title}
             <br />
@@ -130,21 +138,6 @@ export function PlayerTopBar(props: Props) {
           )}
           {props.difficulty && <CompactDifficulty {...props.difficulty} />}
           {props.menuExtra}
-          <div className="compact-controls__view-head">
-            <span>{t("Вид")}</span>
-            <ViewHelp />
-          </div>
-          <div className="setting-control setting-control--views compact-controls__views">
-            {props.toggles}
-          </div>
-          <button
-            type="button"
-            className="game-button"
-            aria-pressed={props.editing}
-            onClick={props.onToggleEditing}
-          >
-            {t("✎ Редактировать интерфейс")}
-          </button>
           <button type="button" className="game-button" onClick={props.onLibrary}>
             <LibraryIcon /> {t("Библиотека")}
           </button>
@@ -158,24 +151,18 @@ export function PlayerTopBar(props: Props) {
           </button>
         </div>
       </details>
-      <button
-        type="button"
-        className="icon-button compact-hands"
-        aria-label={t("Выбор рук: {hands}", { hands: handTitle })}
-        title={t("{hands} — выбрать руки", { hands: handTitle })}
-        onClick={() => {
-          const menu = controls.current;
-          if (!menu) return;
-          menu.open = true;
-          const choices = menu.querySelector(".compact-practice__hands");
-          choices?.scrollIntoView({ block: "nearest" });
-          choices
-            ?.querySelector<HTMLButtonElement>('[aria-checked="true"]')
-            ?.focus({ preventScroll: true });
+      <HandsPopover
+        key={props.fixedPractice ? "fixed" : "choices"}
+        hands={props.hands}
+        mode={props.mode}
+        parts={props.parts}
+        disabled={props.fixedPractice}
+        onHands={props.onHands}
+        onMode={props.onMode}
+        onOpen={() => {
+          if (controls.current) controls.current.open = false;
         }}
-      >
-        <HandsPicture hands={props.hands} />
-      </button>
+      />
       <button
         type="button"
         className="game-button topbar-library"

@@ -82,7 +82,21 @@ export class Renderer {
   resize(width: number, height: number): void {
     this.screen.width = Math.max(1, width);
     this.screen.height = Math.max(1, height);
-    this.threeRenderer.setSize(this.screen.width, this.screen.height, false);
+    const size = this.threeRenderer.getSize(new Vector2());
+    // The application updates its shared screen before resize; Three retains the previous size.
+    if (
+      size.x !== this.screen.width ||
+      size.y !== this.screen.height ||
+      this.threeRenderer.getPixelRatio() !== this.resolution ||
+      this.canvas.width !== Math.floor(this.screen.width * this.resolution) ||
+      this.canvas.height !== Math.floor(this.screen.height * this.resolution)
+    ) {
+      this.threeRenderer.setDrawingBufferSize(
+        this.screen.width,
+        this.screen.height,
+        this.resolution
+      );
+    }
     this.canvas.style.width = String(this.screen.width) + "px";
     this.canvas.style.height = String(this.screen.height) + "px";
   }

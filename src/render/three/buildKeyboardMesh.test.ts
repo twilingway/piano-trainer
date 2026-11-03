@@ -225,12 +225,14 @@ describe("native keyboard mesh finish integration", () => {
     item.stage.appearance.setDim(false);
     const fresh = materials(item.build(61));
     item.emission.endLayout();
-    expect(oldDispose.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(oldDispose.every((spy) => spy.mock.calls.length === 0)).toBe(true);
     expect(fresh[0]?.emissiveIntensity).toBe(intensity);
     expect(fresh[0]?.emissive).toEqual(tint);
     expect(fresh.map((material) => material.roughness)).toEqual(
       bright.map((material) => material.roughness)
     );
+    item.emission.finishFrame();
+    expect(oldDispose.every((spy) => spy.mock.calls.length === 1)).toBe(true);
     item.emission.clear();
     expect(fresh[0]?.color).toEqual(bright[0]?.color);
     item.stage.appearance.setDim(true);

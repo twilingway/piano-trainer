@@ -207,3 +207,40 @@ it("keeps count-in cancellation available while sound prepares", () => {
   });
   expect(cancel).toHaveBeenCalledOnce();
 });
+
+it("opens a separate hand menu and puts view controls before the general menu status", () => {
+  render({
+    toggles: (
+      <button type="button" data-view-test>
+        View
+      </button>
+    )
+  });
+  const general = host.querySelector<HTMLDetailsElement>(".compact-controls");
+  const generalMenu = host.querySelector(".compact-controls__menu");
+  expect(generalMenu?.firstElementChild?.classList.contains("compact-controls__view-head")).toBe(
+    true
+  );
+  expect(generalMenu?.children[1]?.querySelector("[data-view-test]")).not.toBeNull();
+  if (!general) throw new Error("Missing controls");
+  general.open = true;
+  act(() => {
+    host.querySelector<HTMLButtonElement>(".compact-hands > button")?.click();
+  });
+  expect(general.open).toBe(false);
+  expect(host.querySelector(".hands-popover")).not.toBeNull();
+  expect(host.querySelector(".hands-popover .compact-controls__stats")).toBeNull();
+});
+
+it("closes the hand shortcut when switching into fixed course practice", () => {
+  render();
+  act(() => {
+    host.querySelector<HTMLButtonElement>(".compact-hands > button")?.click();
+  });
+  expect(host.querySelector(".hands-popover")).not.toBeNull();
+  render({ fixedPractice: true });
+  expect(host.querySelector(".hands-popover")).toBeNull();
+  expect(host.querySelector<HTMLButtonElement>(".compact-hands > button")?.disabled).toBe(true);
+  render({ fixedPractice: false });
+  expect(host.querySelector(".hands-popover")).toBeNull();
+});

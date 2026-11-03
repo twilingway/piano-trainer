@@ -560,45 +560,48 @@ describe("player settings organization", () => {
     expect(dim()?.checked).toBe(true);
   });
 
-  it("offers optional road guides disabled by default and keeps the choice after reload", async () => {
-    await render(false);
-    await section("Вид");
-    await act(async () => {
-      await Promise.resolve();
-      const keys = select("Вид клавиш");
-      keys.value = "3d";
-      keys.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    const guides = () =>
-      Array.from(host.querySelectorAll("label"))
-        .find((label) => label.textContent.includes("Линии перспективы"))
-        ?.querySelector<HTMLInputElement>("input");
-    expect(guides()?.checked).toBe(false);
-    await act(async () => {
-      guides()?.click();
-      await Promise.resolve();
-    });
-    expect(guides()?.checked).toBe(true);
-    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
-      roadGuides: true
-    });
-    await act(async () => {
-      root.unmount();
-      await Promise.resolve();
-    });
-    root = createRoot(host);
-    store = createAppStore();
-    await render(false);
-    await section("Вид");
-    expect(guides()?.checked).toBe(true);
-    await act(async () => {
-      setInterfaceLanguage("en");
-      await Promise.resolve();
-    });
-    expect(host.textContent).toContain("Perspective guide lines");
-    expect(onMode).not.toHaveBeenCalled();
-    expect(onRules).not.toHaveBeenCalled();
-  });
+  it.each(["classic", "arcade", "3d"])(
+    "keeps the vertical guide choice after reload in %s",
+    async (style) => {
+      await render(false);
+      await section("Вид");
+      await act(async () => {
+        await Promise.resolve();
+        const keys = select("Вид клавиш");
+        keys.value = style;
+        keys.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      const guides = () =>
+        Array.from(host.querySelectorAll("label"))
+          .find((label) => label.textContent.includes("Вертикальные линии"))
+          ?.querySelector<HTMLInputElement>("input");
+      expect(guides()?.checked).toBe(false);
+      await act(async () => {
+        guides()?.click();
+        await Promise.resolve();
+      });
+      expect(guides()?.checked).toBe(true);
+      expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+        roadGuides: true
+      });
+      await act(async () => {
+        root.unmount();
+        await Promise.resolve();
+      });
+      root = createRoot(host);
+      store = createAppStore();
+      await render(false);
+      await section("Вид");
+      expect(guides()?.checked).toBe(true);
+      await act(async () => {
+        setInterfaceLanguage("en");
+        await Promise.resolve();
+      });
+      expect(host.textContent).toContain("Vertical guide lines");
+      expect(onMode).not.toHaveBeenCalled();
+      expect(onRules).not.toHaveBeenCalled();
+    }
+  );
 });
 
 it.each(["ru", "en"] as const)(

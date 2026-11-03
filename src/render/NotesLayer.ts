@@ -35,12 +35,11 @@ import type { Arrival, RoadLayer } from "./RoadLayer";
 import type { Geometry } from "./viewGeometry";
 import { drawRoadBeatBars } from "./RoadBeatBars";
 import { RoadTrailAnchors } from "./RoadTrailAnchors";
+import { FlatNoteGuides } from "./FlatNoteGuides";
 
 export { HAND_COLOR } from "./fingerColors";
 import { towardWhite } from "./fingerColors";
 const MISSED_COLOR = 0xff2454;
-const OCTAVE_LINE = 0x008cff;
-const HIT_LINE = 0x00e5ff;
 const NOTE_GAP_PX = 1;
 /** With cards on, the bar behind a card is a tail this share of its key wide. */
 const TAIL_SHARE = 0.28;
@@ -116,7 +115,8 @@ export class NotesLayer {
   /** Notes coming over the road's horizon in the last frame drawn, with their flash. */
   readonly arrivals: Arrival[] = [];
   private readonly lane = new Container();
-  private readonly guides = new Container();
+  private readonly guideLayout = new FlatNoteGuides();
+  private readonly guides = this.guideLayout.container;
   /** The road's lanes and measure bars, under the notes; flat, the plain guides do. */
   private readonly beatBars = new Container();
   private beats: readonly SongBeat[] = [];
@@ -138,6 +138,7 @@ export class NotesLayer {
   private noteNames: FallingNoteNames | undefined;
   /** How a note is written and coloured; in the word mode its key's column stands apart. */
   private look: NoteLook = PIANO_LOOK;
+  private preparedSong: Song | undefined;
 
   constructor(
     private readonly renderer: Renderer,
@@ -171,8 +172,16 @@ export class NotesLayer {
     this.cardsOn = on;
   }
 
+  setRoadGuides(on: boolean): void {
+    this.guideLayout.setVisible(on);
+  }
+
   /** The notes of `song`, each on the key of its pitch, written and coloured as `look` says. */
   setSong(song: Song, look: NoteLook = PIANO_LOOK): void {
+    this.playing.clear();
+    this.arrivals.length = 0;
+    if (this.preparedSong === song && this.look === look) return;
+    this.preparedSong = undefined;
     this.look = look;
     this.trailAnchors = new RoadTrailAnchors(song.notes);
     this.beats = song.beats;
@@ -191,6 +200,7 @@ export class NotesLayer {
     // Faces of the last song: baked per pitch, value and hand, they go with it.
     for (const texture of this.cardFaces.values()) texture.destroy(true);
     this.cardFaces.clear();
+    const faceTexture = cardFaceTexture.bind(undefined, this.renderer, this.cardFaces);
     this.notes = song.notes.map((note, order) => {
       const body = new TilingSprite({ texture: Texture.WHITE, width: 1, height: 1 });
       body.eventMode = "none";
@@ -211,7 +221,7 @@ export class NotesLayer {
       const quarters = quartersAt(song, note.start + note.duration) - note.startBeat;
       const glyph = noteGlyph(quarters);
       const beatSeconds = note.duration / Math.max(quarters, 0.25);
-      const face = new Sprite(this.cardFace(shown.pitch, glyph, shown.hand, placement));
+      const face = new Sprite(faceTexture(shown.pitch, glyph, shown.hand, placement));
       face.anchor.set(0.5, 1);
       face.eventMode = "none";
       const badge = new Sprite(
@@ -236,32 +246,13 @@ export class NotesLayer {
       this.cards.addChild(glow, frame, face, badge, digit, name);
       return { note, body, placement, beatSeconds, glow, frame, face, badge, digit, name };
     });
+    this.preparedSong = song;
   }
 
   /** The lane's guides for keys laid out `total` pixels wide, down to the hit line. */
   layout(keys: ReadonlyMap<number, KeyRect>, hitY: number, total: number): void {
-    this.guides.removeChildren().forEach((child) => {
-      child.destroy();
-    });
-    // White-key boundaries form the lanes; each octave has a stronger edge.
-    for (const [pitch, key] of keys) {
-      if (key.black) continue;
-      const line = new Sprite(Texture.WHITE);
-      line.tint = OCTAVE_LINE;
-      line.alpha = pitch % 12 === 0 ? 0.5 : 0.18;
-      line.x = key.x;
-      line.width = 1;
-      line.height = hitY;
-      this.guides.addChild(line);
-    }
+    this.guideLayout.layout(keys, hitY, total);
     this.laneWidth = total;
-    const hitLine = new Sprite(Texture.WHITE);
-    hitLine.tint = HIT_LINE;
-    hitLine.alpha = 1;
-    hitLine.y = hitY - 1;
-    hitLine.width = total;
-    hitLine.height = 2;
-    this.guides.addChild(hitLine);
   }
 
   /**
@@ -575,14 +566,5 @@ export class NotesLayer {
   private nameTexture(pitch: number): Texture {
     const style = this.noteNames;
     return style ? (this.labels.names.get(nameKey(style, pitch)) ?? Texture.EMPTY) : Texture.EMPTY;
-  }
-
-  private cardFace(
-    pitch: number,
-    glyph: ReturnType<typeof noteGlyph>,
-    hand: Hand,
-    placement?: ScorePlacement
-  ): Texture {
-    return cardFaceTexture(this.renderer, this.cardFaces, pitch, glyph, hand, placement);
   }
 }

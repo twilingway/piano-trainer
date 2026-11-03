@@ -249,18 +249,16 @@ export function KeyboardSettings({
             </p>
           )}
           {keyStyle !== "3d" && roadProjection}
-          {keyStyle === "3d" && (
-            <label className="setting">
-              <span>{t("Линии перспективы")}</span>
-              <input
-                type="checkbox"
-                checked={roadGuides}
-                onChange={(event) => {
-                  onRoadGuides(event.target.checked);
-                }}
-              />
-            </label>
-          )}
+          <label className="setting">
+            <span>{t("Вертикальные линии")}</span>
+            <input
+              type="checkbox"
+              checked={roadGuides}
+              onChange={(event) => {
+                onRoadGuides(event.target.checked);
+              }}
+            />
+          </label>
         </div>
       </SettingsGroup>
       <SettingsGroup title={t("Анимация и эффекты")}>
