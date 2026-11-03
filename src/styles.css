@@ -5220,8 +5220,10 @@ button.song-card.song-card__open {
   color: var(--muted);
 }
 .lesson-workspace__content {
+  --lesson-action-width: clamp(112px, 16vw, 140px);
+
   display: grid;
-  grid-template-columns: clamp(112px, 16vw, 140px) minmax(0, 1fr);
+  grid-template-columns: var(--lesson-action-width) minmax(0, 1fr) var(--lesson-action-width);
   grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
@@ -5534,10 +5536,13 @@ button.song-card.song-card__open {
 }
 @media (height <= 500px), (width <= 640px) {
   .lesson-workspace {
-    width: calc(100% - var(--mobile-bar-width, 52px));
+    width: 100%;
     margin-inline: 0;
     padding: 6px 8px;
     gap: 4px;
+  }
+  .lesson-menu {
+    margin-right: var(--mobile-bar-width, 52px);
   }
   .lesson-workspace .game-button {
     min-height: 40px;
@@ -5586,6 +5591,7 @@ button.song-card.song-card__open {
   .lesson-workspace__response {
     grid-column: 1;
     grid-row: 1;
+    width: calc(100% - var(--mobile-bar-width, 52px));
   }
   .lesson-workspace__actions {
     flex-direction: row;
@@ -5598,6 +5604,8 @@ button.song-card.song-card__open {
   .lesson-workspace__body {
     grid-column: 1;
     grid-row: 2;
+    width: calc(100% - 2 * var(--mobile-bar-width, 52px));
+    justify-self: center;
   }
 }
 
