@@ -4,18 +4,23 @@ import type { NotesLayer } from "./NotesLayer";
 import { ViewHintSettings } from "./viewHintSettings";
 
 it("retains pre-mount hint choices and changes each mounted layer without resetting its song", () => {
-  let keyboard: KeyboardLayer | undefined;
-  let notes: NotesLayer | undefined;
-  const settings = new ViewHintSettings(() => ({ keyboard, notes }));
+  const layers: { keyboard: KeyboardLayer | undefined; notes: NotesLayer | undefined } = {
+    keyboard: undefined,
+    notes: undefined
+  };
+  const settings = new ViewHintSettings(() => layers);
   settings.setNoteNames("en");
   settings.setFingerLabels(false, true);
   const keyFingers = vi.fn(),
     fallingFingers = vi.fn(),
     names = vi.fn();
-  keyboard = { setFingersVisible: keyFingers } as unknown as KeyboardLayer;
-  notes = { setFingersVisible: fallingFingers, setNoteNames: names } as unknown as NotesLayer;
-  settings.applyKeyboard(keyboard);
-  settings.applyNotes(notes);
+  layers.keyboard = { setFingersVisible: keyFingers } as unknown as KeyboardLayer;
+  layers.notes = {
+    setFingersVisible: fallingFingers,
+    setNoteNames: names
+  } as unknown as NotesLayer;
+  settings.applyKeyboard(layers.keyboard);
+  settings.applyNotes(layers.notes);
   expect(keyFingers).toHaveBeenCalledExactlyOnceWith(false);
   expect(fallingFingers).toHaveBeenCalledExactlyOnceWith(true);
   expect(names).toHaveBeenCalledExactlyOnceWith("en");
