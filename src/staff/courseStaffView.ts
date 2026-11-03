@@ -173,12 +173,31 @@ export function reservedSpan(
 }
 
 /** The drawn ink joined with the reserved span, in SVG units. */
-function courseInk(svg: SVGGraphicsElement, reserved: InkSpan | undefined): InkSpan {
-  const ink = svg.getBBox();
+function courseInk(
+  svg: SVGGraphicsElement,
+  reserved: InkSpan | undefined,
+  ink = svg.getBBox()
+): InkSpan {
   const span = { top: ink.y, bottom: ink.y + ink.height };
   return reserved
     ? { top: Math.min(span.top, reserved.top), bottom: Math.max(span.bottom, reserved.bottom) }
     : span;
+}
+
+/** Blank teaching lyrics reserve layout but their font box is not visible notation ink. */
+function visibleCourseInk(svg: SVGGraphicsElement): DOMRect {
+  const blanks = [...svg.querySelectorAll("text")]
+    .filter((text) => !text.textContent.replace(/[\s\u200b-\u200d\ufeff]/g, ""))
+    .map((text) => ({ text, display: text.style.display }));
+  try {
+    for (const { text } of blanks) text.style.display = "none";
+    return svg.getBBox();
+  } finally {
+    for (const { text, display } of blanks) {
+      if (display) text.style.display = display;
+      else text.style.removeProperty("display");
+    }
+  }
 }
 
 /** The first line's drawn size, page margins included, in pixels. */
@@ -323,7 +342,8 @@ export function fitCourseDrawing(host: HTMLElement, reserved?: InkSpan): number 
   if (originalHeight) svg.setAttribute("height", originalHeight);
   if (originalViewBox) svg.setAttribute("viewBox", originalViewBox);
   else svg.removeAttribute("viewBox");
-  const ink = svg.getBBox();
+  const lessonBody = host.closest<HTMLElement>(".lesson-workspace__body");
+  const ink = lessonBody ? visibleCourseInk(svg) : svg.getBBox();
   const previous = originalViewBox.split(/\s+/).map(Number);
   const [viewLeft = 0, viewTop = 0, viewWidth, viewHeight] = previous.length === 4 ? previous : [];
   const originalPixels = Number.parseFloat(originalWidth);
@@ -343,8 +363,7 @@ export function fitCourseDrawing(host: HTMLElement, reserved?: InkSpan): number 
     widthPixels = Math.min(host.clientWidth, Math.ceil(inkPixels + 2 * paddingPixels));
     widthUnits = widthPixels / scale;
   }
-  const lessonBody = host.closest<HTMLElement>(".lesson-workspace__body");
-  const span = courseInk(svg, lessonBody ? undefined : reserved);
+  const span = courseInk(svg, lessonBody ? undefined : reserved, ink);
   const spare = lessonBody
     ? Math.max(0, lessonBody.clientHeight - (span.bottom - span.top) * scale)
     : 0;

@@ -30,6 +30,23 @@ function fixture(ink: DOMRect, hostWidth = 800) {
 }
 
 describe("the short lesson score viewport", () => {
+  it("excludes the invisible teaching lyric font box without deleting the cue placeholder", () => {
+    const body = document.createElement("div");
+    body.className = "lesson-workspace__body";
+    Object.defineProperty(body, "clientHeight", { value: 120 });
+    const { host, svg } = fixture(new DOMRect(40, 20, 120, 170));
+    body.append(host);
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.textContent = "\u200b";
+    svg.append(text);
+    svg.getBBox = () => new DOMRect(40, 20, 120, text.style.display === "none" ? 80 : 170);
+    fitCourseDrawing(host);
+    showDrawing(host);
+    expect(Number(svg.getAttribute("height"))).toBe(104);
+    expect(host.style.height).toBe("104px");
+    expect(text.style.display).toBe("");
+    expect(text.textContent).toBe("\u200b");
+  });
   it("crops blank SVG paper when the lesson ink already fits the visible scene", () => {
     const body = document.createElement("div");
     body.className = "lesson-workspace__body";
