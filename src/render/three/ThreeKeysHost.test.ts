@@ -2,8 +2,7 @@
 import { Camera, Group, type Vector2 } from "three";
 import type { SourcePerformanceIdentity } from "../../song/sourcePerformance";
 import type { SongStage } from "../../song/songStage";
-import { Container } from "../flatThree";
-import type { Application } from "../flatThree";
+import { Application, Container, UPDATE_PRIORITY } from "../flatThree";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SongNote } from "../../song/song";
 import type { NativeContactNotes } from "./NativeKeyContacts";
@@ -27,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   resetFreeCamera: vi.fn(),
   freeKeyAt: vi.fn(),
   nativeEffectsReady: false,
+  startupResourcesSettled: true,
   handPresent: true,
   loadPianist: vi.fn(),
   pianistConstruct: vi.fn(),
@@ -54,6 +54,9 @@ vi.mock("./ThreeStage", () => ({
     setSongStage = mocks.setSongStage;
     addToKeys = mocks.addToKeys;
     removeFromKeys = mocks.removeFromKeys;
+    get startupResourcesSettled() {
+      return mocks.startupResourcesSettled;
+    }
     get nativeEffectsReady() {
       return mocks.nativeEffectsReady;
     }
@@ -113,9 +116,9 @@ vi.mock("./pianist", () => ({
 }));
 vi.mock("./disposePianistModel", () => ({ disposePianistModel: mocks.disposeModel }));
 
-function fixture() {
+function fixture(realApp?: Application) {
   const canvas = document.createElement("canvas");
-  const stage = new Container();
+  const stage = realApp?.stage ?? new Container();
   const road = new Container();
   const keys = {
     container: new Container(),
@@ -134,6 +137,8 @@ function fixture() {
     songStage: undefined as SongStage | undefined
   };
   const renderer = {
+    gl: { isContextLost: vi.fn(() => false) },
+    destroy: vi.fn(),
     threeRenderer: { dispose: vi.fn() },
     render:
       vi.fn<(options: { container: Container; clear?: boolean; transform?: unknown }) => void>()
@@ -146,7 +151,23 @@ function fixture() {
     add: vi.fn((callback: () => void) => callbacks.add(callback)),
     remove: vi.fn((callback: () => void) => callbacks.delete(callback))
   };
-  const app = { renderer, ticker, stage, canvas, render, screen: { width: 800, height: 600 } };
+  if (realApp) {
+    Object.assign(realApp, { initializedRenderer: renderer, initializedCanvas: canvas });
+    realApp.screen.width = 800;
+    realApp.screen.height = 600;
+    realApp.ticker.add(realApp.render, realApp, UPDATE_PRIORITY.LOW);
+  }
+  const app = realApp ?? {
+    renderer,
+    ticker,
+    stage,
+    canvas,
+    render,
+    screen: { width: 800, height: 600 },
+    presentFrame: (draw: () => boolean) => {
+      draw();
+    }
+  };
   const keyboard = { frame: undefined as KeyboardLayer["frame"] };
   const host = new ThreeKeysHost(
     app as unknown as Application,
@@ -169,6 +190,10 @@ function fixture() {
     ticker,
     host,
     tick: () => {
+      if (realApp) {
+        realApp.ticker.update(1000);
+        return;
+      }
       [...callbacks].forEach((callback) => {
         callback();
       });
@@ -187,6 +212,7 @@ function deferred<T>() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.nativeEffectsReady = false;
+  mocks.startupResourcesSettled = true;
   mocks.handPresent = true;
   mocks.publicReady = false;
   mocks.publicStatus = "loading";
@@ -1093,6 +1119,19 @@ it.each(["loading", "failed"])(
   }
 );
 
+it.each([false, true])(
+  "keeps native stage lighting identical with primary coarse pointer=%s",
+  async (matches) => {
+    const media = vi.fn(() => ({ matches }));
+    vi.stubGlobal("matchMedia", media);
+    const view = fixture();
+    await view.host.setEnabled(true);
+    expect(mocks.construct.mock.lastCall).toHaveLength(2);
+    expect(media).not.toHaveBeenCalled();
+    view.host.destroy();
+  }
+);
+
 it("routes native octave visibility and projection before the final flat overlay pass", async () => {
   const view = fixture();
   const marks = { setNative: vi.fn(), mountNative: vi.fn() };
@@ -1109,4 +1148,133 @@ it("routes native octave visibility and projection before the final flat overlay
   await view.host.setEnabled(false);
   expect(marks.setNative).toHaveBeenLastCalledWith(false);
   view.host.destroy();
+});
+
+describe("startup scene presentation", () => {
+  it("accepts visible flat keys when saved perspective is enabled but its road is hidden", async () => {
+    const view = fixture();
+    view.keys.container.visible = true;
+    view.road.visible = false;
+    await view.host.setEnabled(false, true);
+    expect(view.host.startupStatus).toBe("ready");
+    view.tick();
+    expect(mocks.draw).not.toHaveBeenCalled();
+    expect(view.host.startupStatus).toBe("ready");
+    view.host.destroy();
+  });
+
+  it("waits for the model and an actual native frame instead of accepting loaded geometry", async () => {
+    const kit = deferred<{ keys: Map<number, unknown>; dispose: () => void }>();
+    mocks.loadKit.mockReturnValueOnce(kit.promise);
+    const view = fixture();
+    view.hands.container.visible = false;
+    const loading = view.host.setEnabled(true);
+    expect(view.host.startupStatus).toBe("loading");
+    kit.resolve({ keys: new Map(), dispose: vi.fn() });
+    await loading;
+    expect(view.host.startupStatus).toBe("loading");
+    view.tick();
+    expect(view.host.startupStatus).toBe("ready");
+    expect(mocks.draw).toHaveBeenCalledOnce();
+    view.host.destroy();
+  });
+
+  it("keeps loading while selected hands load and presents their first completed frame", async () => {
+    const view = fixture();
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(view.host.startupStatus).toBe("loading");
+    mocks.publicReady = true;
+    mocks.publicStatus = "ready";
+    expect(view.host.startupStatus).toBe("loading");
+    view.tick();
+    expect(view.host.startupStatus).toBe("ready");
+    view.host.destroy();
+  });
+
+  it("waits for decorative resource settlement and accepts failed optional hands", async () => {
+    const view = fixture();
+    mocks.publicStatus = "error";
+    mocks.startupResourcesSettled = false;
+    await view.host.setEnabled(true);
+    view.tick();
+    expect(view.host.startupStatus).toBe("loading");
+    mocks.startupResourcesSettled = true;
+    expect(view.host.startupStatus).toBe("loading");
+    view.tick();
+    expect(view.host.startupStatus).toBe("ready");
+    view.host.destroy();
+  });
+
+  it("settles a failed optional native model so the existing flat fallback can be presented", async () => {
+    const view = fixture();
+    mocks.loadKit.mockRejectedValueOnce(new Error("offline"));
+    await view.host.setEnabled(true);
+    expect(view.host.startupStatus).toBe("ready");
+    view.tick();
+    expect(view.render).toHaveBeenCalledOnce();
+    view.host.destroy();
+  });
+});
+
+it.each([true, false])(
+  "confirms a complete native compositor frame through the actual application ticker (nativeKeys=%s)",
+  async (nativeKeys) => {
+    const app = new Application(),
+      view = fixture(app);
+    await view.host.setEnabled(nativeKeys, true);
+    const finish = vi.spyOn(app, "presentFrame"),
+      complete = vi.fn();
+    void app.waitForFrame().then(complete);
+    let passes = 0;
+    view.renderer.render.mockImplementation(() => {
+      passes++;
+      expect(complete).not.toHaveBeenCalled();
+    });
+    mocks.draw.mockImplementation(() => {
+      expect(complete).not.toHaveBeenCalled();
+    });
+    view.tick();
+    expect(passes).toBe(2);
+    expect(complete).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(complete).toHaveBeenCalledWith(true);
+    expect(finish).toHaveBeenCalledOnce();
+    view.host.destroy();
+    app.destroy();
+  }
+);
+it("does not confirm a failed native pass, a failed final overlay, or a context lost mid-composition", async () => {
+  for (const failure of ["native", "overlay", "lost"] as const) {
+    const app = new Application(),
+      view = fixture(app);
+    await view.host.setEnabled(true);
+    const complete = vi.fn();
+    void app.waitForFrame().then(complete);
+    mocks.draw.mockReset();
+    if (failure === "native")
+      mocks.draw.mockImplementation(() => {
+        throw new Error("native");
+      });
+    if (failure === "overlay") {
+      view.renderer.render
+        .mockImplementationOnce(() => undefined)
+        .mockImplementationOnce(() => {
+          throw new Error("overlay");
+        });
+      expect(() => {
+        view.tick();
+      }).toThrow("overlay");
+    } else {
+      if (failure === "lost")
+        mocks.draw.mockImplementation(() => {
+          view.renderer.gl.isContextLost.mockReturnValue(true);
+        });
+      view.tick();
+    }
+    await Promise.resolve();
+    expect(complete).toHaveBeenCalledWith(false);
+    view.host.destroy();
+    app.destroy();
+  }
 });

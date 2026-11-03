@@ -311,6 +311,7 @@ export class ThreeStage {
             }
           : undefined
       );
+      if (nativeKeyboard) this.keyEmission.finishFrame();
     } finally {
       // Return GL defaults even if a pass failed; the host can draw the flat scene safely.
       this.renderer.resetState();
@@ -318,6 +319,10 @@ export class ThreeStage {
   }
 
   private readonly configureCamera = configureStageCamera;
+
+  get startupResourcesSettled(): boolean {
+    return this.freeBursts.settled && this.worldStage.assetsSettled;
+  }
 
   get nativeEffectsReady(): boolean {
     const world = this.performanceEnabled || this.freeEnabled;

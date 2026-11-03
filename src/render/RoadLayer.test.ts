@@ -254,6 +254,19 @@ describe("inspection key input", () => {
     v.draw(0.016);
     expect(v.internals.arrivals.container.renderable).toBe(true);
   });
+
+  it("keeps the horizon while vertical guides are toggled on the native road", () => {
+    const v = fixture();
+    Object.assign(v.internals, { projection: { at: vi.fn() }, horizonY: 70 });
+    const rect = vi.spyOn(v.internals.horizon, "rect");
+    for (const on of [false, true, false]) {
+      v.layer.setRoadGuides(on);
+      rect.mockClear();
+      v.draw(0);
+      expect(v.frame.guides).toBe(on);
+      expect(rect).toHaveBeenCalledTimes(8);
+    }
+  });
 });
 
 it.each(["classic", "arcade", "3d"] as const)(

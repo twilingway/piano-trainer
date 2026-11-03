@@ -4,11 +4,25 @@ import type { FrameState } from "./frameState";
 import type { HandsLayer } from "./HandsLayer";
 import type { KeyRect } from "./keyboardLayout";
 import type { RoadLayer } from "./RoadLayer";
-import type { Geometry } from "./viewGeometry";
+import type { Geometry, ViewParts } from "./viewGeometry";
 import { NativeKeyContacts } from "./three/NativeKeyContacts";
 
 const contactsByHands = new WeakMap<HandsLayer, NativeKeyContacts>();
 const NO_SOUNDING_KEYS: ReadonlySet<number> = new Set();
+
+/** Display mode switches keep native/sprite hand visibility consistent with the shown keys. */
+export function syncViewKeyboards(
+  parts: ViewParts,
+  computer: boolean,
+  keyboard: KeysLayer | undefined,
+  typing: KeysLayer | undefined,
+  hands: HandsLayer
+): void {
+  if (keyboard) keyboard.container.visible = parts.keys && !computer;
+  if (typing) typing.container.visible = parts.keys && computer;
+  hands.container.visible = parts.hands && parts.keys && !computer;
+  if (!hands.container.visible) hands.reset();
+}
 
 /** The frame's key colours and hand poses read the same session snapshot. */
 export function drawViewKeys(

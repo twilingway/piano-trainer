@@ -20,6 +20,7 @@ function fixture() {
   };
   const disposable = () => ({ dispose: vi.fn() });
   const layer = () => ({ ...disposable(), update: vi.fn() });
+  const keyEmission = { ...layer(), finishFrame: vi.fn() };
   const picture = new Texture();
   const stage = Object.create(ThreeStage.prototype) as ThreeStage;
   Object.assign(stage, {
@@ -47,7 +48,7 @@ function fixture() {
     roadGuides: { ...disposable(), clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() },
     freeBursts: { ...disposable(), update: vi.fn() },
     noteLights: layer(),
-    keyEmission: layer(),
+    keyEmission,
     appearance: disposable(),
     rimLights: disposable(),
     board: disposable(),
@@ -102,7 +103,7 @@ function fixture() {
   const draw = (delta = 1 / 60, down = false) => {
     stage.draw(scene, picture, () => down, { width: 800, height: 600 }, delta, undefined);
   };
-  return { stage, picture, draw, hinge, renderer, geometryDispose, scene };
+  return { stage, picture, draw, hinge, renderer, geometryDispose, scene, keyEmission };
 }
 
 describe("ThreeStage physical key contact", () => {
@@ -124,7 +125,7 @@ describe("ThreeStage physical key contact", () => {
         noteAura: aura,
         roadTrails: trails,
         roadNotes: notes,
-        roadGuides: { clear: vi.fn(), setDocked: vi.fn() },
+        roadGuides: { clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() },
         keys
       });
       Object.assign(view.scene, { faces: [], texture: { width: 800, height: 200 } });
@@ -170,6 +171,7 @@ describe("ThreeStage physical key contact", () => {
       );
       expect(aura.group.visible).toBe(true);
       expect(trails.group.visible).toBe(true);
+      expect(view.keyEmission.finishFrame).toHaveBeenCalledTimes(nativeKeyboard ? 2 : 0);
     }
   );
   it("uses the native contact input and preserves press/release smoothing", () => {
@@ -191,6 +193,30 @@ describe("ThreeStage physical key contact", () => {
     expect(view.geometryDispose).toHaveBeenCalledOnce();
   });
 });
+
+it.each([false, true])(
+  "retires key materials only after all native passes succeed (failure: %s)",
+  (failure) => {
+    const view = fixture();
+    const order: string[] = [];
+    view.renderer.render.mockImplementation(() => {
+      order.push("render");
+      if (failure) throw new Error("GPU pass failed");
+    });
+    view.keyEmission.finishFrame.mockImplementation(() => {
+      order.push("finish");
+    });
+    if (failure)
+      expect(() => {
+        view.draw();
+      }).toThrow("GPU pass failed");
+    else view.draw();
+    expect(order).toContain("render");
+    expect(view.keyEmission.finishFrame).toHaveBeenCalledTimes(failure ? 0 : 1);
+    if (!failure) expect(order.at(-1)).toBe("finish");
+    expect(view.renderer.resetState).toHaveBeenCalledTimes(2);
+  }
+);
 
 it("samples pre-render against the configured camera before GPU rendering and bypasses native workers", () => {
   const view = fixture();
@@ -528,7 +554,7 @@ it.each(["filled", "flat", "glass"] as const)(
       roadTrails: trails,
       roadNotes: native,
       flatRoadNotes: flat,
-      roadGuides: { clear: vi.fn(), setDocked: vi.fn() }
+      roadGuides: { clear: vi.fn(), update: vi.fn(), setDocked: vi.fn() }
     });
     const frame = new ThreeRoadFrame();
     frame.noteStyle = style;

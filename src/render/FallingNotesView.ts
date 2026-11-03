@@ -1,3 +1,4 @@
+import { ViewStartupPresentation } from "./viewStartupPresentation";
 import { ViewNoteSettings } from "./ViewNoteSettings";
 import { HandStatusSignal, type HandModelStatus } from "./handStatusSignal";
 import { Application, Container, Texture, type FederatedPointerEvent } from "./flatThree";
@@ -8,7 +9,7 @@ import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
 import { destroyViewContainers, initializeViewApplication } from "./viewApplication";
 import { bakeDigits, bakeNames, type FallingNoteNames } from "./bakeLabels";
-import { bindKeyboardPointer } from "./bindKeyboardPointer";
+import { bindViewKeyboardPointer } from "./viewApplication";
 import { ComputerKeyboardLayer, type KeysLayer } from "./ComputerKeyboardLayer";
 import { computerGeometry, computerWidth } from "./computerKeyboardLayout";
 import { ComputerKeys, type ComputerKeyboard } from "./computerKeys";
@@ -28,14 +29,15 @@ import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
 import { FlatEffectSettings } from "./flatEffectSettings";
 import { RoadLayer, type RoadShape, type StaffWorldSource } from "./RoadLayer";
-import { drawViewKeys } from "./drawViewKeys";
+import { drawViewKeys, syncViewKeyboards } from "./drawViewKeys";
 import { drawNativeRoadFrame, syncNativeKeyLayer } from "./viewRoadComposition";
 import { drawViewEffects, drawViewHud, roadFrameState } from "./viewEffects";
 import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
-import { USUAL_PLACEMENT, fitPianoKeys, viewGeometry, viewLayoutChanged } from "./viewGeometry";
+import { USUAL_PLACEMENT, viewGeometry, viewLayoutChanged } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewLayout, ViewParts } from "./viewGeometry";
 import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 import { layoutFallingKeyboard } from "./layoutFallingKeyboard";
+import { PianoPaneReference, fitPianoViewport } from "./pianoPaneReference";
 
 export type { FallingNoteNames } from "./bakeLabels";
 export type { FrameState } from "./frameState";
@@ -116,6 +118,7 @@ export class FallingNotesView {
   private pan = 0;
   private panLayout = { width: 0, total: 0 };
   private ready = false;
+  readonly startup = new ViewStartupPresentation(this.app.ticker);
   private destroyed = false;
   private resizeObserver: ResizeObserver | undefined;
   private fpsMeter: FpsMeter | undefined;
@@ -138,11 +141,13 @@ export class FallingNotesView {
   private roadGuides = false;
   private cameraPrefs: CameraPrefs = DEFAULT_CAMERA;
   private nativeHeight: number | undefined;
+  private paneReference: PianoPaneReference | undefined = new PianoPaneReference(this.relayout);
 
   async mount(host: HTMLElement): Promise<void> {
     await initializeViewApplication(this.app, host);
     if (this.isDestroyed()) return;
     host.appendChild(this.app.canvas);
+    this.paneReference?.observe(host);
     this.freeLegend = new FreeCameraLegend(host, () => this.road?.resetFreeCamera(), this.locale);
     this.fpsMeter = new FpsMeter(host, this.app.ticker, this.locale, this.fpsVisible);
     // `resizeTo` follows the window only; the lane also changes when the staff above it does.
@@ -177,11 +182,12 @@ export class FallingNotesView {
     this.computerKeyboard = computerKeyboard;
     this.setLocale(this.locale);
     this.road = new RoadLayer(renderer, this.app, keyboard, this.hands);
+    this.startup.setSources(keyboard, this.hands, this.road);
     this.road.setSceneEffects([this.plasma.container, this.road.effects, this.fx.container]);
     this.road.setCamera(this.cameraPrefs);
     this.noteSettings.apply();
     this.sceneCamera.apply();
-    this.road.setRoadGuides(this.roadGuides);
+    this.setRoadGuides(this.roadGuides);
     // The 3D keys move the road onto the back panel once three has loaded: lay it out again.
     void this.road.setKeyStyle(this.keyStyle).then(this.relayout);
     this.road.container.visible = false;
@@ -207,12 +213,8 @@ export class FallingNotesView {
     await Promise.all([loadViewAssets(this.fx, notes, this.road, this.hands), this.plasma.load()]);
     if (this.isDestroyed()) return;
     // On the road the keys are a picture: the stage finds the key under the mouse itself.
-    const stage = this.app.stage;
-    stage.eventMode = "static";
-    stage.hitArea = this.app.screen;
-    this.unbindKeyboardPointer = bindKeyboardPointer(
-      stage,
-      this.app.canvas,
+    this.unbindKeyboardPointer = bindViewKeyboardPointer(
+      this.app,
       this.keysPointer.bind(this),
       viewKeyRelease(this)
     );
@@ -318,7 +320,7 @@ export class FallingNotesView {
 
   setRoadGuides(on: boolean): void {
     this.roadGuides = on;
-    this.road?.setRoadGuides(on);
+    for (const layer of [this.notesLayer, this.road]) layer?.setRoadGuides(on);
   }
 
   setFallingNoteStyle = this.noteSettings.setStyle;
@@ -405,20 +407,16 @@ export class FallingNotesView {
 
   /** Shows the keyboard of the mode; the hands lie over piano keys only. */
   private syncKeyboards(): void {
-    const computer = this.computer !== undefined;
-    if (this.keyboard) this.keyboard.container.visible = this.parts.keys && !computer;
-    if (this.computerKeyboard)
-      this.computerKeyboard.container.visible = this.parts.keys && computer;
-    this.hands.container.visible = this.parts.hands && this.parts.keys && !computer;
-    if (!this.hands.container.visible) this.hands.reset();
+    const { parts, keyboard, computerKeyboard: typing, hands } = this;
+    syncViewKeyboards(parts, !!this.computer, keyboard, typing, hands);
   }
 
   /** Runs `onFrame` with real milliseconds before every draw. */
   onTick(onFrame: (deltaMs: number) => void): void {
-    this.app.ticker.add((ticker) => {
-      onFrame(ticker.deltaMS);
-    });
+    this.app.onTick(onFrame);
   }
+
+  waitForFrame = (signal?: AbortSignal): Promise<boolean> => this.app.waitForFrame(signal);
 
   setSong(song: Song): void {
     // The word mode draws the song one column a computer key.
@@ -505,6 +503,7 @@ export class FallingNotesView {
     this.fx.hitContainer.renderable = !effectRoad?.sceneCamera;
     // React's GameBoard owns the score panels; Three only draws transient strike grades.
     drawViewHud(this.hud, state, this.keys, road, this.pan, geometry.hitY, hitLineY, delta);
+    this.startup.markDrawn();
   }
 
   /**
@@ -552,6 +551,7 @@ export class FallingNotesView {
     this.freeLegend?.destroy();
     this.ready = false;
     this.resizeObserver?.disconnect();
+    this.paneReference?.destroy();
     this.road?.destroy();
     this.keyboard?.destroy();
     this.computerKeyboard?.destroy();
@@ -573,7 +573,8 @@ export class FallingNotesView {
     const layoutParts =
       this.keyStyle === "3d" && this.hands.live ? { ...parts, hands: false } : parts;
     const natural = this.keyStyle === "3d" ? this.nativeHeight : undefined;
-    return viewGeometry(height, whiteWidth, layoutParts, labels, fits, placement, natural);
+    const ref = this.paneReference?.height;
+    return viewGeometry(height, whiteWidth, layoutParts, labels, fits, placement, natural, ref);
   }
 
   private layout(width: number, height: number): void {
@@ -604,17 +605,15 @@ export class FallingNotesView {
         roadMode: this.roadMode,
         hud: this.hud,
         hudTop: this.hudTop,
-        host: this.app.canvas.parentElement
+        host: this.app.canvas.parentElement,
+        referenceHeight: this.paneReference?.height
       })
     );
   }
 
   /** Fits the piano's range to `width`, lays its keys out and returns their whole width. */
   private fitPiano(width: number): number {
-    const { range, rangeFitsSong: song, rangeFitsViewport: viewport } = this;
-    const compact =
-      width <= 900 || window.matchMedia("(height <= 500px), (pointer: coarse)").matches;
-    const layout = fitPianoKeys(width, range, song, viewport, compact);
+    const layout = fitPianoViewport(width, this.range, this.rangeFitsSong, this.rangeFitsViewport);
     Object.assign(this, layout);
     return layout.total;
   }

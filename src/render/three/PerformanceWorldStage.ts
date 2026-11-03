@@ -132,6 +132,12 @@ export class PerformanceWorldStage {
   get stage(): PerformanceStageLayout | undefined {
     return this.layoutValue;
   }
+  get assetsSettled(): boolean {
+    return [this.flame, this.ringFlame, this.mist, this.hit, this.glitter, this.spirals].every(
+      (effect) => effect.settled
+    );
+  }
+
   /** Legacy can be replaced atomically only when every original atlas is available. */
   get ready(): boolean {
     return (

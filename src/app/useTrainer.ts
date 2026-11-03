@@ -1,3 +1,4 @@
+import { useTrainerLoading } from "./useTrainerLoading";
 import { practiceActions } from "./practiceSlice";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
@@ -53,7 +54,8 @@ interface Options {
    * Kept across reloads (listen, speed, hand, mode), cleared by "Сначала" and a new song.
    */
   readonly startFromRef: RefObject<number | null>;
-  readonly ensureSound: () => Promise<void>;
+  readonly ensureSound: () => Promise<boolean> | Promise<void>;
+  readonly waitForSound?: (() => Promise<boolean>) | undefined;
   /** A click on a falling note. */
   readonly onNoteClick: (noteId: string) => void;
   /** A take the trainer finished recording. */
@@ -77,6 +79,7 @@ export function useTrainer({
   songKey,
   startFromRef,
   ensureSound,
+  waitForSound,
   onNoteClick,
   onTake,
   onRunFinished,
@@ -147,12 +150,14 @@ export function useTrainer({
     );
   };
   const [trainerReady, setTrainerReady] = useState(false);
+  const soundRequest = useRef<Promise<boolean> | null>(null);
   const [snapshotSource] = useState(createTrainerSnapshotSource);
   // How the player last played, brought back from the previous visit.
   const dispatch = useAppDispatch();
   const storedMode = useAppSelector((state) => state.preferences.player.mode);
   const setMode = (mode: PracticeMode) => {
     if (fixedPractice) return;
+    prepareResumeSound();
     dispatch(preferencesActions.playerChanged({ mode }));
   };
   const mode =
@@ -203,10 +208,12 @@ export function useTrainer({
   const setHandChoice = (choice: HandChoice) => {
     if (fixedPractice) return;
     if (ranked && snapshotSource.getSnapshot()?.playing) return;
+    prepareResumeSound(Boolean(course) && choice === "listen");
     if (!course) dispatch(practiceActions.partRoleChosen(null));
     updateHandChoice(choice);
   };
   const choosePart = (role: PartRole) => {
+    prepareResumeSound();
     dispatch(practiceActions.partRoleChosen(role));
   };
   const storedSpeed = useAppSelector((state) => state.preferences.player.speed);
@@ -215,6 +222,7 @@ export function useTrainer({
   };
   const setSpeed = (next: number) => {
     if (fixedPractice) return;
+    prepareResumeSound();
     updateSpeed(Math.max(0.01, Math.min(1, next)));
   };
   const speed =
@@ -228,6 +236,7 @@ export function useTrainer({
   const storedAccompaniment = useAppSelector((state) => state.preferences.player.accompaniment);
   const setAccompaniment = (accompaniment: boolean) => {
     if (fixedPractice) return;
+    prepareResumeSound();
     if (course) {
       course.onAccompaniment(accompaniment);
       return;
@@ -252,6 +261,9 @@ export function useTrainer({
     view.onKeyPointer = forwardViewPointer(trainerRef, pianoBlockedRef);
     view.onInputCancel = (resetAll) => trainerRef.current?.cancelInput(resetAll);
     let disposed = false;
+    const invalidateAssignment = () => {
+      assignmentRef.current.generation++;
+    };
     const mounted = view
       .mount(host)
       .then(() => {
@@ -277,12 +289,15 @@ export function useTrainer({
         setTrainerReady(true);
       })
       .catch((error: unknown) => {
-        if (!disposed) graphicsFail(error);
+        if (disposed) return;
+        graphicsFail(error);
+        // The existing graphics notice must remain reachable when WebGL cannot initialize.
+        window.pianoStartup?.ready("scene");
       });
     return () => {
       disposed = true;
       detachGraphics();
-      assignmentRef.current.generation++;
+      invalidateAssignment();
       trainerRef.current?.destroy();
       trainerRef.current = null;
       viewRef.current = null;
@@ -333,98 +348,49 @@ export function useTrainer({
     [fixedPractice, compareSong, lastTake]
   );
 
-  useEffect(() => {
-    const trainer = trainerRef.current;
-    if (!trainer) return;
-    trainer.observeTextNotes(wordTyping ? song.notes.map((note) => note.id) : []);
-    const previous = loadedRef.current;
-    if (
-      assignmentRef.current.sourceSong !== sourceSong ||
-      assignmentRef.current.courseContext !== courseContext ||
-      assignmentRef.current.music !== music
-    ) {
-      assignmentRef.current = {
-        sourceSong,
-        courseContext,
-        music,
-        generation: assignmentRef.current.generation + 1
-      };
-      setListeningSource(null);
-    }
-    if (replaying) {
-      const preservePosition =
-        previous?.trainer === trainer &&
-        previous.sourceSong === sourceSong &&
-        previous.replaying?.takeId === replaying.takeId &&
-        previous.replaying.from === replaying.from &&
-        previous.replaying.speed === replaying.speed &&
-        previous.replayCount === replayCount;
-      loadedRef.current = { trainer, sourceSong, replaying, replayCount };
-      trainer.load(
-        replaying.song,
-        { mode: "tempo", hands: new Set<Hand>(), speed: replaying.speed },
-        `${songKey}:replay`,
-        { preservePosition }
-      );
-      if (!preservePosition) {
-        if (replaying.from > 0) trainer.seek(replaying.from);
-        trainer.setPlaying(true);
-      }
-      return;
-    }
-    const preservePosition =
-      !music &&
-      previous?.music !== true &&
-      previous?.trainer === trainer &&
-      previous.sourceSong === sourceSong &&
-      !previous.replaying &&
-      (courseContext === undefined || previous.courseContext === courseContext);
-    loadedRef.current = {
-      trainer,
-      sourceSong,
-      replayCount,
-      listening,
-      listenOnly,
-      courseContext,
-      music: music !== undefined
-    };
-    trainer.load(song, practiceOptions, songKey, {
-      preservePosition,
-      ...(courseContext === undefined ? {} : { runContext: courseContext })
-    });
-    if (!fixedPractice && !preservePosition && startFromRef.current !== null)
-      trainer.seek(startFromRef.current);
-    if (
-      listening &&
-      (listenOnly
-        ? preservePosition && !previous.listening
-        : !preservePosition || !previous.listening)
-    )
-      trainer.setPlaying(true);
-    // replayCount is here only to play the comparison again.
-  }, [
+  const preparation = useTrainerLoading({
     trainerReady,
+    waitForSound: waitForSound ?? (() => soundRequest.current ?? Promise.resolve(false)),
+    trainerRef,
+    viewRef,
+    loadedRef,
+    assignmentRef,
+    snapshotSource,
+    setListeningSource,
     song,
     sourceSong,
-    practiceOptions,
-    listening,
-    listenOnly,
     songKey,
-    startFromRef,
-    replaying,
-    replayCount,
-    wordTyping,
-    reading,
-    rhythm,
-    independentRhythm,
+    courseContext,
     music,
     fixedPractice,
-    courseContext
-  ]);
+    wordTyping,
+    practiceOptions,
+    replaying,
+    replayCount,
+    listening,
+    listenOnly,
+    startFromRef
+  });
 
   useEffect(() => {
     if (trainerRef.current) trainerRef.current.metronome = metronome;
   }, [trainerReady, metronome]);
+
+  function ensurePreparedSound(): Promise<boolean> {
+    try {
+      soundRequest.current = Promise.resolve(ensureSound()).then(
+        (ready) => ready !== false,
+        () => false
+      );
+    } catch {
+      soundRequest.current = Promise.resolve(false);
+    }
+    return soundRequest.current;
+  }
+  function prepareResumeSound(explicitListen = false): void {
+    if (explicitListen || snapshotSource.getSnapshot()?.playing || preparation.wantsResume())
+      void ensurePreparedSound();
+  }
 
   // Read by the staff every frame; stable, so the staff never re-subscribes.
   const liveBeat = useCallback(() => trainerRef.current?.quarters() ?? 0, []);
@@ -440,10 +406,15 @@ export function useTrainer({
   };
 
   const togglePlay = async () => {
+    if (preparation.status === "preparing" || preparation.status === "waiting-frame") {
+      preparation.cancel();
+      trainerRef.current?.setPlaying(false);
+      return;
+    }
     if (graphics.blocked()) return;
     const generation = assignmentRef.current.generation,
       trainer = trainerRef.current;
-    await ensureSound();
+    if (!(await ensurePreparedSound()) || !(await preparation.wait())) return;
     if (generation !== assignmentRef.current.generation || trainer !== trainerRef.current) return;
     const state = snapshotSource.getSnapshot();
     if (!music && state?.finished && !state.playing) restart();
@@ -459,7 +430,7 @@ export function useTrainer({
       return;
     }
     const generation = assignmentRef.current.generation;
-    await ensureSound();
+    if (!(await ensurePreparedSound())) return;
     const current = loadedRef.current;
     if (
       generation !== assignmentRef.current.generation ||
@@ -503,6 +474,7 @@ export function useTrainer({
     trainerReady,
     snapshotSource,
     graphics,
+    preparation,
     mode,
     setMode,
     handChoice,

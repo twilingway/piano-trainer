@@ -50,6 +50,7 @@ export interface KeyboardViewport {
   readonly height: number;
   readonly floor: number;
   readonly handRoom: number;
+  readonly referenceHeight?: number;
 }
 
 /** Async native-hand readiness changes the source hit row even without a resize. */
@@ -78,6 +79,20 @@ export const USUAL_PLACEMENT: KeysPlacement = { lift: 0, scale: 1, x: 0, y: 0 };
 /** However the keys are placed, the falling notes keep at least this share of the view. */
 export const MIN_NOTES_SHARE = 0.25;
 
+/** Reserve the actual placed physical keys and the hit line without adding opposite shifts twice. */
+export function pianoPaneRequiredHeight(
+  height: number,
+  geometry: Geometry,
+  placement: KeysPlacement,
+  physical?: { readonly top: number }
+): number {
+  const offset = Math.min(placement.y, height - geometry.keyboardTop - geometry.keyboardHeight);
+  return Math.max(
+    0,
+    height - Math.min(geometry.hitY, (physical?.top ?? geometry.keyboardTop) + offset)
+  );
+}
+
 /** Which parts are on screen: the falling notes, the keyboard, the hands over it. */
 export interface ViewParts {
   readonly notes: boolean;
@@ -93,12 +108,16 @@ export function viewGeometry(
   stickers: boolean,
   fitsViewport = false,
   placement: KeysPlacement = USUAL_PLACEMENT,
-  nativeHeight?: number
+  nativeHeight?: number,
+  referenceHeight?: number
 ): Geometry {
   if (!parts.keys) {
     const none = { keyboardHeight: 0, blackHeight: 0, feltHeight: 0 };
     return { ...none, keyboardTop: height, hitY: height, whiteWidth };
   }
+  const stable = Number.isFinite(referenceHeight) && (referenceHeight ?? 0) > 0;
+  const frameHeight = stable ? (referenceHeight ?? height) : height;
+  const reserveNotes = stable || parts.notes;
   const native = nativeHeight !== undefined && Number.isFinite(nativeHeight) && nativeHeight > 0;
   const wanted =
     (native
@@ -107,21 +126,27 @@ export function viewGeometry(
     placement.scale;
   const framingWidth =
     whiteWidth *
-    (native ? Math.min(1, (height * (parts.notes ? MAX_KEYBOARD_SHARE : 1)) / wanted) : 1);
+    (native ? Math.min(1, (frameHeight * (reserveNotes ? MAX_KEYBOARD_SHARE : 1)) / wanted) : 1);
   const feltHeight = Math.max(3, framingWidth * FELT_PER_WIDTH);
   const blackOf = (keyboardHeight: number) =>
     keyboardHeight * (stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT);
   // The palms reach below the keys, into a strip of their own; without hands a margin stays.
   const margin = framingWidth * BOTTOM_MARGIN_PER_WIDTH;
   const strip = parts.hands
-    ? Math.max(margin, Math.min(framingWidth * HANDS_STRIP_PER_WIDTH, height * MAX_HANDS_SHARE))
+    ? Math.max(
+        margin,
+        Math.min(framingWidth * HANDS_STRIP_PER_WIDTH, frameHeight * MAX_HANDS_SHARE)
+      )
     : margin;
   // The player's lift leaves an empty floor under the keys and the hands' strip.
-  const below = strip + height * placement.lift;
+  const below = strip + frameHeight * placement.lift;
   // Only the keys: they keep their length, not stretched over the view, and may use all of it.
-  const room = parts.notes
-    ? Math.min(height * MAX_KEYBOARD_SHARE, height * (1 - MIN_NOTES_SHARE) - below - feltHeight)
-    : height - below - feltHeight;
+  const room = reserveNotes
+    ? Math.min(
+        frameHeight * MAX_KEYBOARD_SHARE,
+        frameHeight * (1 - MIN_NOTES_SHARE) - below - feltHeight
+      )
+    : frameHeight - below - feltHeight;
   const keyboardHeight = Math.max(0, Math.min(wanted, room));
   const keyboardTop = height - below - keyboardHeight;
   return {

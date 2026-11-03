@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { NineSliceSprite, Sprite, Texture, TextureSource } from "./flatThree";
+import { Container, NineSliceSprite, Sprite, Texture, TextureSource } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import type { SongNote } from "../song/song";
 import type { Finger } from "../fingering/fingering";
@@ -64,6 +64,31 @@ function harness(modelFaces: boolean) {
     hints: true
   };
   return { layer, digits, frame, sticker };
+}
+
+function layoutHarness(modelFaces: boolean) {
+  const run = harness(modelFaces);
+  const generated: Texture[] = [];
+  const generateTexture = vi.fn(() => {
+    const texture = new Texture({ source: new TextureSource({ width: 64, height: 200 }) });
+    generated.push(texture);
+    return texture;
+  });
+  const lights = new Map([...keys.keys()].map((pitch) => [pitch, new Sprite()]));
+  const lightOf = new Map<number, Texture>();
+  Object.assign(run.layer, {
+    renderer: { resolution: 1, generateTexture },
+    style: "classic",
+    felt: new Container(),
+    rail: new Sprite(),
+    keyFronts: lights,
+    lightOf,
+    lightTextures: new Map(),
+    disposed: false,
+    paintGeneration: 0,
+    pointers: { clear: vi.fn() }
+  });
+  return { ...run, generateTexture, lights, lightOf, generated };
 }
 
 describe("keyboard finger labels", () => {
@@ -197,6 +222,95 @@ describe("flat key light geometry after leaving 3D", () => {
           }
         }
       }
+    }
+  );
+});
+
+describe("native keyboard layout without unused GPU baking", () => {
+  it("does not generate face or light textures when range and camera geometry change without artwork", () => {
+    const run = layoutHarness(true);
+    const wider = new Map(keys);
+    wider.set(62, { pitch: 62, black: false, x: 40, width: 40 });
+    run.layer.layout(keys, geometry(180), 80);
+    run.layer.layout(wider, geometry(110), 120);
+    run.layer.layout(keys, geometry(320), 80);
+    // generateTexture performs readRenderTargetPixels; native paint needs no newly baked pixels.
+    expect(run.generateTexture).not.toHaveBeenCalled();
+    expect(run.lightOf.size).toBe(0);
+    run.layer.draw(run.frame, keys, geometry(320), false);
+    for (const key of keys.values()) {
+      const light = run.lights.get(key.pitch);
+      expect(light?.texture).toBe(Texture.WHITE);
+      expect(light?.visible).toBe(true);
+      expect(light?.width).toBe(key.width);
+      expect(light?.height).toBe(key.black ? geometry(320).blackHeight : 320);
+    }
+    run.layer.destroy();
+  });
+
+  it("releases generated flat faces and masks once when entering 3D without touching shared digits", () => {
+    const run = layoutHarness(false);
+    run.layer.layout(keys, geometry(180), 80);
+    const baked = [...run.generated];
+    expect(baked.length).toBeGreaterThan(3);
+    const disposals = baked.map((texture) => vi.spyOn(texture, "destroy"));
+    Object.assign(run.layer, { modelFaces: true });
+    run.layer.layout(keys, geometry(180), 80);
+    run.layer.layout(keys, geometry(110), 80);
+    expect(run.generateTexture).toHaveBeenCalledTimes(baked.length);
+    expect(disposals.every((dispose) => dispose.mock.calls.length === 1)).toBe(true);
+    expect([...run.lights.values()].every((sprite) => sprite.texture === Texture.WHITE)).toBe(true);
+    expect(run.lightOf.size).toBe(0);
+    run.layer.destroy();
+    expect(disposals.every((dispose) => dispose.mock.calls.length === 1)).toBe(true);
+    expect(Texture.WHITE.destroyed).toBe(false);
+  });
+
+  it.each(["classic", "arcade"] as const)(
+    "rebakes padded masks on return to %s while keeping shared painted faces alive",
+    (style) => {
+      const run = layoutHarness(false);
+      const shared = new Texture({ source: new TextureSource({ width: 40, height: 40 }) });
+      const sharedDispose = vi.spyOn(shared, "destroy");
+      const painted = Object.fromEntries(
+        [
+          "white",
+          "whiteLit",
+          "black",
+          "blackLit",
+          "whitePressed",
+          "whitePressedLit",
+          "blackPressed",
+          "blackPressedLit"
+        ].map((name) => [name, shared])
+      );
+      Object.assign(run.layer, { painted, style });
+      run.layer.layout(keys, geometry(180), 80);
+      const oldMasks = [...run.lightOf.values()];
+      const oldDisposals = oldMasks.map((texture) => vi.spyOn(texture, "destroy"));
+      const baked = run.generateTexture.mock.calls.length;
+      expect(baked).toBeGreaterThan(0);
+      Object.assign(run.layer, { modelFaces: true });
+      run.layer.layout(keys, geometry(110), 80);
+      expect(run.generateTexture).toHaveBeenCalledTimes(baked);
+      expect(oldDisposals.every((dispose) => dispose.mock.calls.length === 1)).toBe(true);
+      Object.assign(run.layer, { modelFaces: false });
+      run.layer.layout(keys, geometry(180), 80);
+      expect(run.generateTexture).toHaveBeenCalledTimes(baked * 2);
+      run.layer.draw(run.frame, keys, geometry(180), false);
+      for (const key of keys.values()) {
+        const light = run.lights.get(key.pitch);
+        expect(light?.texture).toBe(run.lightOf.get(key.pitch));
+        expect(light?.texture).not.toBe(Texture.WHITE);
+        expect(light?.texture).not.toBe(oldMasks[key.black ? 1 : 0]);
+        expect(light?.x).toBe(key.x - KEY_LIGHT_PAD);
+        expect(light?.y).toBe(geometry(180).keyboardTop - KEY_LIGHT_PAD);
+        expect(light?.width).toBe(light?.texture.width);
+      }
+      expect(sharedDispose).not.toHaveBeenCalled();
+      run.layer.destroy();
+      expect(sharedDispose).not.toHaveBeenCalled();
+      shared.destroy(true);
     }
   );
 });

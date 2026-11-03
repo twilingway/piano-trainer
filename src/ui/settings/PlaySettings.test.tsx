@@ -135,3 +135,15 @@ it("offers bounded count-in seconds and sends zero without affecting other contr
   });
   expect(changed).toHaveBeenCalledWith(0);
 });
+
+it("groups mode and hands before the remaining play settings", () => {
+  render(undefined);
+  const choices = host.querySelector(".play-settings__choices");
+  expect(choices?.parentElement?.firstElementChild).toBe(choices);
+  expect(choices?.querySelectorAll("select")).toHaveLength(2);
+  expect(choices?.querySelector("select[data-setting-target='play-mode']")).not.toBeNull();
+  expect(choices?.querySelector("input")).toBeNull();
+  expect(
+    choices?.nextElementSibling?.querySelector('[data-setting-target="play-countdown"]')
+  ).not.toBeNull();
+});

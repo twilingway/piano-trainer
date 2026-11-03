@@ -53,7 +53,7 @@ function Harness({
   show?: boolean;
   connected?: readonly MidiDevice[];
   localInput?: boolean;
-  prepareSound?: () => Promise<void>;
+  prepareSound?: () => Promise<void> | Promise<boolean>;
 }) {
   const timing = useTimingControls({
     trainerRef: ref,
@@ -279,4 +279,20 @@ describe("stable trainer timing wiring", () => {
     expect(fake.onInput).toBeUndefined();
     root = createRoot(host);
   });
+});
+
+it("does not start calibration when required audio fails", async () => {
+  ref.current = fake as unknown as Trainer;
+  await act(async () => {
+    await Promise.resolve();
+    root.render(
+      withTestStore(<Harness ready show prepareSound={() => Promise.resolve(false)} />, store)
+    );
+  });
+  await act(async () => {
+    ui.props?.onStart();
+    await Promise.resolve();
+  });
+  expect(ui.props?.running).toBe(false);
+  expect(scheduleSound).not.toHaveBeenCalled();
 });

@@ -1,4 +1,5 @@
 import { DataTexture, MeshStandardMaterial } from "three";
+import type { WebGLRenderer } from "three";
 import { describe, expect, it, vi } from "vitest";
 import type { EnergySource } from "../noteEnergy";
 import { ThreeKeyEmission } from "./ThreeKeyEmission";
@@ -113,11 +114,13 @@ describe("whole-key note emission", () => {
     emission.endLayout();
     emission.update([source(60, { color: 0xff0000 })], 0);
     expect(fresh[0]).not.toBe(original[0]);
-    expect(dispose.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(dispose.every((spy) => spy.mock.calls.length === 0)).toBe(true);
     expect(fresh[0].emissiveIntensity).toBe(intensity);
     expect(fresh[0].emissive).toEqual(tint);
     expect(fresh[1].emissive).toEqual(tint);
     expect(unplayed.every((material) => material.emissiveIntensity === 0)).toBe(true);
+    emission.finishFrame();
+    expect(dispose.every((spy) => spy.mock.calls.length === 1)).toBe(true);
     emission.dispose();
     template.dispose();
   });
@@ -135,6 +138,111 @@ describe("whole-key note emission", () => {
     expect(fresh.every((material) => material.emissiveIntensity === 0)).toBe(true);
     expect(fresh[0].color).toEqual(template.color);
     emission.dispose();
+    template.dispose();
+  });
+
+  it("retains one rendered generation while immediately releasing intermediate layouts", () => {
+    const emission = new ThreeKeyEmission();
+    const texture = new DataTexture();
+    const body = new MeshStandardMaterial({ map: texture });
+    const textureDispose = vi.spyOn(texture, "dispose");
+    const bodyDispose = vi.spyOn(body, "dispose");
+    const layout = () => {
+      const top = new MeshStandardMaterial({ map: texture });
+      emission.ownTemplate(top);
+      const materials = emission.create(60, top, body);
+      emission.endLayout();
+      return {
+        materials,
+        disposals: [...materials, top].map((material) => vi.spyOn(material, "dispose"))
+      };
+    };
+    const original = layout();
+    emission.finishFrame();
+    emission.update([source(60)], 0.03);
+    const intensity = original.materials[0].emissiveIntensity;
+    emission.beginLayout();
+    const intermediate = layout();
+    emission.beginLayout();
+    const current = layout();
+    expect(original.disposals.every((spy) => spy.mock.calls.length === 0)).toBe(true);
+    expect(intermediate.disposals.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(current.disposals.every((spy) => spy.mock.calls.length === 0)).toBe(true);
+    expect(current.materials[0].emissiveIntensity).toBe(intensity);
+    emission.finishFrame();
+    emission.finishFrame();
+    expect(original.disposals.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(intermediate.disposals.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(current.disposals.every((spy) => spy.mock.calls.length === 0)).toBe(true);
+    emission.dispose();
+    emission.dispose();
+    expect(current.disposals.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(bodyDispose).not.toHaveBeenCalled();
+    expect(textureDispose).not.toHaveBeenCalled();
+    body.dispose();
+    texture.dispose();
+  });
+
+  it("releases both material generations when disposed before a replacement frame", () => {
+    const emission = new ThreeKeyEmission();
+    const template = new MeshStandardMaterial();
+    const original = emission.create(60, template, template);
+    const originalDisposals = original.map((material) => vi.spyOn(material, "dispose"));
+    emission.beginLayout();
+    const top = template.clone();
+    emission.ownTemplate(top);
+    const current = emission.create(60, top, template);
+    const currentDisposals = [...current, top].map((material) => vi.spyOn(material, "dispose"));
+    emission.endLayout();
+    emission.dispose();
+    emission.finishFrame();
+    emission.dispose();
+    expect(
+      [...originalDisposals, ...currentDisposals].every((spy) => spy.mock.calls.length === 1)
+    ).toBe(true);
+    template.dispose();
+  });
+
+  it("keeps inherited shader hooks and shared program ownership alive through the first replacement render", () => {
+    const emission = new ThreeKeyEmission();
+    const template = new MeshStandardMaterial();
+    const decorate = vi.fn((shader: Parameters<MeshStandardMaterial["onBeforeCompile"]>[0]) => {
+      shader.fragmentShader += "\n// inherited painted top";
+    });
+    template.onBeforeCompile = decorate;
+    template.customProgramCacheKey = () => "painted-top-v1";
+    const owners = new Set<MeshStandardMaterial>();
+    let compilations = 0;
+    const render = (materials: readonly MeshStandardMaterial[]) => {
+      for (const material of materials) {
+        if (owners.size === 0) compilations++;
+        expect(material.customProgramCacheKey()).toBe("three-key-neon-v1:painted-top-v1");
+        const shader = { fragmentShader: "#include <emissivemap_fragment>" } as Parameters<
+          MeshStandardMaterial["onBeforeCompile"]
+        >[0];
+        material.onBeforeCompile(shader, {} as WebGLRenderer);
+        expect(shader.fragmentShader).toContain("inherited painted top");
+        expect(shader.fragmentShader).toContain("float keyRim");
+        owners.add(material);
+        material.addEventListener("dispose", () => {
+          owners.delete(material);
+        });
+      }
+    };
+    const original = emission.create(60, template, template);
+    render(original);
+    emission.finishFrame();
+    emission.beginLayout();
+    const current = emission.create(60, template, template);
+    emission.endLayout();
+    expect(owners.size).toBe(2);
+    render(current);
+    emission.finishFrame();
+    expect(compilations).toBe(1);
+    expect(owners).toEqual(new Set(current));
+    expect(decorate).toHaveBeenCalledTimes(4);
+    emission.dispose();
+    expect(owners.size).toBe(0);
     template.dispose();
   });
 });

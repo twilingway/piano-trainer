@@ -1,3 +1,4 @@
+import { RenderCompletion } from "./RenderCompletion";
 import { Container, type DestroyOptions } from "./scene";
 import { Renderer } from "./renderer";
 import { Rectangle } from "./math";
@@ -52,6 +53,17 @@ export class Application {
   private disposed = false;
   private unbind: (() => void) | undefined;
   private contextLost = false;
+  private readonly completion = new RenderCompletion();
+  waitForFrame = (signal?: AbortSignal): Promise<boolean> => {
+    if (
+      this.disposed ||
+      this.contextLost ||
+      !this.initializedRenderer ||
+      this.initializedRenderer.gl.isContextLost()
+    )
+      return Promise.resolve(false);
+    return this.completion.wait(signal);
+  };
   init(options: {
     resizeTo: HTMLElement;
     background?: number;
@@ -97,6 +109,7 @@ export class Application {
   private readonly lost = (event: Event) => {
     event.preventDefault();
     this.contextLost = true;
+    this.completion.finish(false);
   };
   private readonly restored = () => {
     this.contextLost = false;
@@ -106,9 +119,32 @@ export class Application {
     this.frame = requestAnimationFrame(this.tick);
     if (!this.contextLost) this.ticker.update(time);
   };
+  onTick(onFrame: (deltaMs: number) => void): void {
+    this.ticker.add((ticker) => {
+      onFrame(ticker.deltaMS);
+    });
+  }
+  /** The owner of the whole compositor calls this once, after every pass. */
+  presentFrame(draw: () => boolean): void {
+    const renderer = this.initializedRenderer;
+    if (this.disposed || this.contextLost || !renderer) return;
+    try {
+      if (!draw()) {
+        this.completion.finish(false);
+        return;
+      }
+    } catch (error) {
+      this.completion.finish(false);
+      throw error;
+    }
+    if (renderer.gl.isContextLost()) this.completion.finish(false);
+    else if (!document.hidden) this.completion.finish(true);
+  }
   readonly render = (): void => {
-    if (!this.disposed && !this.contextLost && this.initializedRenderer)
-      this.initializedRenderer.render({ container: this.stage });
+    this.presentFrame(() => {
+      this.renderer.render({ container: this.stage });
+      return true;
+    });
   };
   queueResize(): void {
     if (!this.host || !this.initializedRenderer) return;
@@ -123,6 +159,7 @@ export class Application {
   ): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.completion.dispose();
     cancelAnimationFrame(this.frame);
     this.unbind?.();
     this.unbind = undefined;

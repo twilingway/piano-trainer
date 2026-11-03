@@ -168,6 +168,10 @@ export class PerformanceNoteSpirals {
   private lastTime: number | undefined;
   private unit = 1;
   private disposed = false;
+  get settled(): boolean {
+    return this.batch.settled && this.glow.settled;
+  }
+
   get ready(): boolean {
     return this.batch.ready && this.glow.ready;
   }

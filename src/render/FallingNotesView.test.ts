@@ -94,6 +94,7 @@ function viewHarness(roadMode: boolean, songNotes: readonly SongNote[] = notes, 
   // Exercise frame wiring with real draw(), substituting only the GPU-backed layers.
   const view = Object.assign(Object.create(FallingNotesView.prototype) as object, {
     keyLabels: { labels: false, octaves: true },
+    startup: { markDrawn: vi.fn() },
     ready: true,
     handStatus: new HandStatusSignal(),
     flatEffects: new FlatEffectSettings(),

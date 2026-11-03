@@ -50,21 +50,42 @@ export function PlaySettings({
   const { t, formatNumber } = useI18n();
   return (
     <div className="settings-list">
-      <label className="setting">
-        <span>{t("Режим")}</span>
-        <select
-          className="game-select"
-          aria-label={t("Режим")}
-          data-setting-target="play-mode"
-          value={mode}
-          onChange={(event) => {
-            onMode(event.target.value as PracticeMode);
-          }}
-        >
-          <option value="wait">{t("Ждать ноту")}</option>
-          <option value="tempo">{t("В темпе")}</option>
-        </select>
-      </label>
+      <div className="play-settings__choices">
+        <label className="setting">
+          <span>{t("Режим")}</span>
+          <select
+            className="game-select"
+            aria-label={t("Режим")}
+            data-setting-target="play-mode"
+            value={mode}
+            onChange={(event) => {
+              onMode(event.target.value as PracticeMode);
+            }}
+          >
+            <option value="wait">{t("Ждать ноту")}</option>
+            <option value="tempo">{t("В темпе")}</option>
+          </select>
+        </label>
+        {!wordTyping && (
+          <label className="setting">
+            <span>{t("Руки")}</span>
+            <select
+              className="game-select"
+              aria-label={t("Руки")}
+              value={choiceValue(hands, parts)}
+              onChange={(event) => {
+                chooseValue(event.target.value, onHands, parts);
+              }}
+            >
+              <option value="right">{t("Правая рука")}</option>
+              <option value="left">{t("Левая рука")}</option>
+              <option value="both">{t("Обе руки")}</option>
+              <option value="listen">{t("Только слушать")}</option>
+              <PartOptions parts={parts} />
+            </select>
+          </label>
+        )}
+      </div>
       <label className="setting">
         <span>{t("Отсчёт перед игрой, с")}</span>
         <input
@@ -83,25 +104,6 @@ export function PlaySettings({
       <p className="setting-hint">
         {t("От 0 до 10 секунд только перед началом игры. После паузы — сразу. 0 — без отсчёта.")}
       </p>
-      {!wordTyping && (
-        <label className="setting">
-          <span>{t("Руки")}</span>
-          <select
-            className="game-select"
-            aria-label={t("Руки")}
-            value={choiceValue(hands, parts)}
-            onChange={(event) => {
-              chooseValue(event.target.value, onHands, parts);
-            }}
-          >
-            <option value="right">{t("Правая рука")}</option>
-            <option value="left">{t("Левая рука")}</option>
-            <option value="both">{t("Обе руки")}</option>
-            <option value="listen">{t("Только слушать")}</option>
-            <PartOptions parts={parts} />
-          </select>
-        </label>
-      )}
       {!wordTyping && parts && hands !== "listen" && (
         <label className="setting">
           <span title={t("Остальные партии играет программа.")}>{t("Автоаккомпанемент")}</span>

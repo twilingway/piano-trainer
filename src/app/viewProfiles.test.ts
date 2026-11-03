@@ -278,3 +278,18 @@ it("round-trips the extended horizon in saved framing without changing the legac
   expect(activeViewFraming(restored).roadHorizon).toBe(1.4);
   expect(restored.legacySeed.roadHorizon).toBe(1.2);
 });
+
+it("uses a caller's initial style only as fallback while retaining the legacy framing seed", () => {
+  const profiles = hydrateViewProfiles(null, { camera: { fov: 60 } }, layout, "classic");
+  expect(profiles.active).toEqual({
+    keyboardStyle: "classic",
+    notesProjection: "direct",
+    keyboardOrientation: "follow"
+  });
+  expect(activeViewFraming(profiles).camera.fov).toBe(60);
+  expect(activeViewFraming(profiles).layout).toEqual(layout);
+  const chosen = selectViewProfile(profiles, activeViewFraming(profiles), { keyboardStyle: "3d" });
+  const restored = hydrateViewProfiles(chosen.profiles, {}, {}, "classic");
+  expect(restored.active.keyboardStyle).toBe("3d");
+  expect(activeViewFraming(restored)).toEqual(chosen.framing);
+});

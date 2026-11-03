@@ -48,7 +48,7 @@ export interface StaffPrefs {
   readonly handStyle: HandStyle;
   /** The trial road view: notes in perspective, glowing, with sparks. */
   readonly road: boolean;
-  /** Optional lane guides on the 3D road. */
+  /** Optional vertical lane guides in every piano style. */
   readonly roadGuides: boolean;
   readonly fallingNoteStyle: FallingNoteStyle;
   /** The local pianist model at the 3D keys instead of the live hands, when it is there. */

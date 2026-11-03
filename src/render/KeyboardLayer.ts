@@ -20,6 +20,10 @@ import type { LessonFingerCue } from "../reading/fingerCues";
 import { bakeLessonFingerBadges, LessonFingerBadges } from "./lessonFingerBadges";
 import { DIGIT_MAX_PX } from "./keyboardFingerDigits";
 import { OctaveKeyLabels, keyDigit, lessonLabels } from "./octaveKeyLabels";
+import { KEY_STYLES } from "./keyFaceStyles";
+import type { FaceName, KeyStyle } from "./keyFaceStyles";
+
+export type { KeyStyle } from "./keyFaceStyles";
 
 const HAND_HINT: Readonly<Record<Hand, number>> = {
   right: FINGER_COLOR[3],
@@ -37,75 +41,6 @@ const LIGHT_SOUNDING = { white: 1, black: 1 } as const;
 /** Deep-blue felt capped by the neon hit line. */
 const FELT = 0x003b62;
 const FELT_EDGE = 0x00e5ff;
-/*
- * Key faces painted after the approved mockup, stretched as nine-slice
- * sprites: corners and the front bevel keep their size, the middle stretches.
- * The "lit" faces are the same keys in neutral grey, for a tint to colour
- * them. Should they fail to load, the faces baked in code stand in.
- *
- * Two styles: "classic" (src/render/keys) and "arcade" (src/render/keys-arcade),
- * thicker pseudo-3D keys over a lacquered rail.
- */
-/** Keyboard appearance is independent of the notes' projection. */
-export type KeyStyle = "classic" | "arcade" | "3d";
-
-type FaceName =
-  | "white"
-  | "whiteLit"
-  | "black"
-  | "blackLit"
-  | "whitePressed"
-  | "whitePressedLit"
-  | "blackPressed"
-  | "blackPressedLit";
-
-interface Slice {
-  readonly leftWidth: number;
-  readonly topHeight: number;
-  readonly rightWidth: number;
-  readonly bottomHeight: number;
-}
-
-interface StyleSet {
-  readonly faces: Readonly<Record<FaceName, string>>;
-  readonly white: Slice;
-  readonly black: Slice;
-  /** The lacquered rail under the keys, for a style that has one. */
-  readonly rail?: string;
-}
-
-const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "3d">, StyleSet>> = {
-  classic: {
-    faces: {
-      white: new URL("./keys/white.webp", import.meta.url).href,
-      whiteLit: new URL("./keys/white-lit.webp", import.meta.url).href,
-      black: new URL("./keys/black.webp", import.meta.url).href,
-      blackLit: new URL("./keys/black-lit.webp", import.meta.url).href,
-      whitePressed: new URL("./keys/white-pressed.webp", import.meta.url).href,
-      whitePressedLit: new URL("./keys/white-pressed-lit.webp", import.meta.url).href,
-      blackPressed: new URL("./keys/black-pressed.webp", import.meta.url).href,
-      blackPressedLit: new URL("./keys/black-pressed-lit.webp", import.meta.url).href
-    },
-    white: { leftWidth: 12, topHeight: 60, rightWidth: 14, bottomHeight: 64 },
-    black: { leftWidth: 16, topHeight: 178, rightWidth: 16, bottomHeight: 76 }
-  },
-  arcade: {
-    faces: {
-      white: new URL("./keys-arcade/white.webp", import.meta.url).href,
-      whiteLit: new URL("./keys-arcade/white-lit.webp", import.meta.url).href,
-      black: new URL("./keys-arcade/black.webp", import.meta.url).href,
-      blackLit: new URL("./keys-arcade/black-lit.webp", import.meta.url).href,
-      whitePressed: new URL("./keys-arcade/white-pressed.webp", import.meta.url).href,
-      whitePressedLit: new URL("./keys-arcade/white-pressed-lit.webp", import.meta.url).href,
-      blackPressed: new URL("./keys-arcade/black-pressed.webp", import.meta.url).href,
-      blackPressedLit: new URL("./keys-arcade/black-pressed-lit.webp", import.meta.url).href
-    },
-    // The pressed faces share the up faces' slices: their sunk bevel sits inside the bottom band.
-    white: { leftWidth: 16, topHeight: 32, rightWidth: 16, bottomHeight: 80 },
-    black: { leftWidth: 12, topHeight: 28, rightWidth: 12, bottomHeight: 88 },
-    rail: new URL("./keys-arcade/case-rail.webp", import.meta.url).href
-  }
-};
 /** The case's rail under the keys, in white-key widths. */
 const RAIL_PER_WIDTH = 0.2;
 
@@ -155,6 +90,7 @@ export class KeyboardLayer {
   private painted: PaintedFaces | undefined;
   private disposed = false;
   private paintGeneration = 0;
+  paintLoading = false;
   /** The style the painted faces are of. */
   private style: Exclude<KeyStyle, "3d"> = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
@@ -224,6 +160,7 @@ export class KeyboardLayer {
    */
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
     const generation = ++this.paintGeneration;
+    this.paintLoading = true;
     this.modelFaces = style === "3d";
     const paintedStyle = style === "3d" ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
@@ -240,6 +177,8 @@ export class KeyboardLayer {
       this.style = paintedStyle;
     } catch (error) {
       console.warn("The painted key faces did not load; keeping the keys as they are", error);
+    } finally {
+      if (generation === this.paintGeneration) this.paintLoading = false;
     }
   }
 
@@ -481,34 +420,32 @@ export class KeyboardLayer {
     keyboardHeight: number,
     blackHeight: number
   ): void {
+    destroyKeyTextures(this.bakedTextures);
+    if (this.modelFaces) {
+      // Native geometry supplies the key finish; this layer paints only tint and labels.
+      this.bakedTextures = this.keyTextures = undefined;
+      for (const sprite of this.keySprites.values())
+        Object.assign(sprite, NO_SLICE, { texture: Texture.WHITE });
+      return;
+    }
     if (this.painted) {
-      destroyKeyTextures(this.bakedTextures);
       this.bakedTextures = undefined;
       this.keyTextures = this.painted;
       for (const [pitch, sprite] of this.keySprites) {
         const isBlack = isBlackKey(pitch);
-        sprite.texture = this.modelFaces
-          ? Texture.WHITE
-          : isBlack
-            ? this.painted.black
-            : this.painted.white;
+        sprite.texture = isBlack ? this.painted.black : this.painted.white;
         const slices = KEY_STYLES[this.style];
-        Object.assign(sprite, this.modelFaces ? NO_SLICE : isBlack ? slices.black : slices.white);
+        Object.assign(sprite, isBlack ? slices.black : slices.white);
       }
       return;
     }
-    destroyKeyTextures(this.bakedTextures);
     this.keyTextures = bakeKeyTextures(
       this.renderer,
       { width: (white?.width ?? 10) - 1, height: keyboardHeight },
       { width: black?.width ?? 6, height: blackHeight }
     );
     for (const [pitch, sprite] of this.keySprites) {
-      sprite.texture = this.modelFaces
-        ? Texture.WHITE
-        : isBlackKey(pitch)
-          ? this.keyTextures.black
-          : this.keyTextures.white;
+      sprite.texture = isBlackKey(pitch) ? this.keyTextures.black : this.keyTextures.white;
       Object.assign(sprite, NO_SLICE);
     }
     this.bakedTextures = this.keyTextures;
@@ -533,6 +470,14 @@ export class KeyboardLayer {
     keyboardHeight: number,
     blackHeight: number
   ): void {
+    if (this.modelFaces) {
+      // Native paint uses plain rectangles, so generating shape masks would force unused GPU reads.
+      for (const texture of this.lightTextures.values()) texture.destroy(true);
+      this.lightTextures.clear();
+      this.lightOf.clear();
+      for (const sprite of this.keyFronts.values()) sprite.texture = Texture.WHITE;
+      return;
+    }
     const old = this.lightTextures;
     this.lightTextures = new Map();
     this.lightOf.clear();

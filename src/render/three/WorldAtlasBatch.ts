@@ -126,6 +126,7 @@ export class WorldAtlasBatch {
   private imageHeight = 1;
   private disposed = false;
   ready = false;
+  settled = false;
   private used = 0;
 
   constructor(
@@ -211,6 +212,8 @@ export class WorldAtlasBatch {
       loaded?.dispose();
       if (!this.disposed)
         console.warn("Native performance atlas unavailable; keep legacy effects", error);
+    } finally {
+      this.settled = true;
     }
   }
 

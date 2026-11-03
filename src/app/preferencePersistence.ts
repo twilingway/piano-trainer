@@ -43,6 +43,10 @@ const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+const mediaMatches = (query: string): boolean =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia(query).matches;
 const integer = (value: unknown, low: number, high: number, fallback: number) =>
   typeof value === "number" && Number.isInteger(value) && value >= low && value <= high
     ? value
@@ -81,7 +85,8 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
   const viewProfiles = hydrateViewProfiles(
     json(PREFERENCE_KEYS.viewProfiles),
     rawStaff,
-    layouts.piano
+    layouts.piano,
+    mediaMatches("(pointer: coarse)") ? "classic" : "3d"
   );
   const framing = activeViewFraming(viewProfiles);
   const lights = record(json(PREFERENCE_KEYS.keyLights));
@@ -97,9 +102,7 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
   const output = record(decodedOutput);
   const missingOutput =
     rawOutput === null && !errors[persistenceKey(PREFERENCE_KEYS.midiOutput, "read")];
-  const mobile =
-    typeof window !== "undefined" &&
-    window.matchMedia("(max-width: 640px), (pointer: coarse) and (max-height: 640px)").matches;
+  const mobile = mediaMatches("(max-width: 640px), (pointer: coarse) and (max-height: 640px)");
   const preferences: PreferencesState = {
     player: normalizePlayerPrefs(json(PREFERENCE_KEYS.player)),
     staff: {
