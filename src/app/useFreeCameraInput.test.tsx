@@ -10,7 +10,12 @@ let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 let result: ReturnType<typeof useFreeCameraInput>;
 const options = { bindings: {} };
-const enabledPrefs = { ...DEFAULT_STAFF_PREFS, freeCamera: true, freeCameraWasd: true };
+const enabledPrefs: StaffPrefs = {
+  ...DEFAULT_STAFF_PREFS,
+  keyStyle: "3d",
+  freeCamera: true,
+  freeCameraWasd: true
+};
 function Harness({ prefs, blocked }: { readonly prefs: StaffPrefs; readonly blocked: boolean }) {
   const current = useFreeCameraInput(prefs, options, blocked);
   useLayoutEffect(() => {

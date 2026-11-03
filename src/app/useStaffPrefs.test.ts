@@ -535,10 +535,10 @@ describe("flat keyboard effect preferences", () => {
 
 describe("initial unified keyboard preferences", () => {
   it.each([undefined, {}, { labels: true }])(
-    "starts with 3D, full top camera and hidden hands: %j",
+    "starts with Arcade, full top camera and hidden hands: %j",
     (saved) => {
       expect(normalizeStaffPrefs(saved)).toMatchObject({
-        keyStyle: "3d",
+        keyStyle: "arcade",
         camera: CAMERA_PRESETS.top,
         hands: false,
         keyboardOrientation: "follow"
@@ -583,7 +583,7 @@ describe("initial unified keyboard preferences", () => {
   it("hydrates the top preset through the store when no camera was saved", async () => {
     await mount();
     expect(prefs.staffPrefs).toMatchObject({
-      keyStyle: "3d",
+      keyStyle: "arcade",
       hands: false,
       camera: CAMERA_PRESETS.top,
       keyboardOrientation: "follow"
@@ -781,6 +781,7 @@ describe("extended screen horizon", () => {
     expect(normalizeStaffPrefs({ roadHorizon: value }).roadHorizon).toBe(expected);
   });
   it("restores a below-keyboard horizon through profile changes and reload", async () => {
+    localStorage.setItem("staff-prefs", JSON.stringify({ keyStyle: "3d" }));
     await mount();
     await act(async () => {
       prefs.updateStaffPrefs({ road: true, roadHorizon: 1.2, roadFar: -0.01 });

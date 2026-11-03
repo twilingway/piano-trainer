@@ -295,7 +295,7 @@ it("applies the full initial top camera with follow orientation and hidden hands
   });
   expect(view.setCamera).toHaveBeenCalledWith(CAMERA_PRESETS.top);
   expect(view.setKeyboardTop).toHaveBeenCalledWith(false);
-  expect(view.setKeyStyle).toHaveBeenCalledWith("3d");
+  expect(view.setKeyStyle).toHaveBeenCalledWith("arcade");
   expect(view.setParts).toHaveBeenCalledWith({ notes: true, keys: true, hands: false });
 });
 

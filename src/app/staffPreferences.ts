@@ -141,7 +141,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   octaveLabels: true,
   fps: false,
   keyRange: "song",
-  keyStyle: "3d",
+  keyStyle: "arcade",
   keyboardOrientation: "follow",
   autoReview: false,
   camera: CAMERA_PRESETS.top,
@@ -223,7 +223,8 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     octaveLabels: boolean("octaveLabels"),
     fps: boolean("fps"),
     keyRange: choice("keyRange", ["song", "3oct", "4oct", "88", "61", "49", "25"]),
-    keyStyle: choice("keyStyle", ["classic", "arcade", "3d"]),
+    keyStyle:
+      raw.keyStyle === "perspective" ? "3d" : choice("keyStyle", ["classic", "arcade", "3d"]),
     keyboardOrientation:
       raw.keyStyle === "3d" && raw.keyboardOrientation === "top" ? "top" : "follow",
     autoReview: boolean("autoReview"),
