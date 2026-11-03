@@ -6208,3 +6208,59 @@ button.song-card.song-card__open {
     left: 41px;
   }
 }
+
+.note-character {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+.note-character img {
+  width: 72px;
+  height: 88px;
+  object-fit: contain;
+}
+.reading-intro-detail {
+  grid-template-columns: minmax(0, 1fr) 80px;
+  grid-template-rows: minmax(1.5em, auto) minmax(3em, auto) minmax(3em, auto);
+}
+.reading-intro-detail > :not(.note-character) {
+  grid-column: 1;
+}
+.reading-intro-detail > .note-character {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+.note-character-family {
+  margin: 1rem 0;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.note-character-family summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.note-character-family__notes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.note-character-family__notes .note-character {
+  flex: 0 0 72px;
+}
+
+.reading-intro-staff .staff {
+  overflow: hidden !important;
+}
+.reading-intro-staff .staff-page {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+.reading-intro-staff .staff-page svg {
+  display: block;
+}

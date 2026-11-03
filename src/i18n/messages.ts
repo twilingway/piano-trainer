@@ -1,3 +1,4 @@
+import { clayMessages } from "./clayMessages";
 import { pathMessages } from "./pathMessages";
 import { toneLessonMessages } from "./toneLessonMessages";
 import { hintMessages } from "./hintMessages";
@@ -34,6 +35,7 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...clayMessages,
   ...pathMessages,
   ...hintMessages,
   ...startupMessages,

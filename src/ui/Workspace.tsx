@@ -18,6 +18,7 @@ import { ReaderGeometryProvider } from "../staff/readerGeometry";
 import { KeysHandles, LaneTopHandle, StaffHandle, TickerSlot } from "./LayoutHandles";
 
 interface Props {
+  readonly staffPitchColorNoteId?: string | undefined;
   readonly worldScore?: {
     readonly source: StaffWorldSource;
     readonly hidden: boolean;
@@ -159,6 +160,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           }
           presentation={props.staffPresentation}
           musicXml={props.staffXml}
+          pitchColorNoteId={props.staffPitchColorNoteId}
           beat={props.readingBeat ?? props.beat}
           zoom={lessonReference ? prefs.lessonZoom : props.course ? 1 : prefs.zoom}
           noteColor={prefs.noteColor}
