@@ -1,6 +1,6 @@
 {
   "name": "twiling-keys",
-  "version": "0.0.287",
+  "version": "0.0.290",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.34.5",
