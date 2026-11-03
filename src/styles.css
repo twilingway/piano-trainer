@@ -5112,10 +5112,10 @@ button.song-card.song-card__open {
 /* A lesson owns one compact score focus; its persistent canvas remains below it. */
 .lesson-workspace {
   box-sizing: border-box;
-  flex: 0 1 auto;
+  flex: 1 1 0;
   width: min(100%, 1080px);
   min-width: 0;
-  max-height: calc(100% - 120px);
+  min-height: 0;
   margin-inline: auto;
   padding: 20px 20px 12px;
   overflow-y: auto;
@@ -5216,8 +5216,13 @@ button.song-card.song-card__open {
 }
 .lesson-workspace__response {
   display: grid;
+  min-width: 0;
   justify-items: center;
   gap: 8px;
+}
+.lesson-workspace__response > * {
+  min-width: 0;
+  max-width: 100%;
 }
 .lesson-workspace__input {
   margin: 0;
@@ -5408,7 +5413,6 @@ button.song-card.song-card__open {
 @media (width <= 640px) {
   .lesson-workspace {
     padding: 12px;
-    max-height: calc(100% - 100px);
   }
   .lesson-workspace .reading-actions {
     gap: 10px;
@@ -5518,6 +5522,18 @@ button.song-card.song-card__open {
     grid-area: 3 / 1 / 4 / -1;
   }
 }
+@media (width <= 640px) and (height > 500px) {
+  .lesson-workspace__response {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lesson-workspace__response > * {
+    grid-area: auto;
+  }
+  .lesson-workspace__feedback {
+    justify-items: center;
+    text-align: center;
+  }
+}
 /* Very low screens: the feedback takes all the width beside the actions. */
 @media (height <= 500px) {
   .lesson-workspace__response {
@@ -5577,6 +5593,9 @@ button.song-card.song-card__open {
 }
 
 /* Ordinary piano reserves the renderer's canonical footprint, including its lifted floor. */
+.workspace-main--practice[data-piano-layout-reference="true"] > .lanes--hidden {
+  display: none;
+}
 .workspace-main[data-piano-layout-reference="true"] > .lanes {
   min-height: var(--piano-required-height, 0px);
 }
