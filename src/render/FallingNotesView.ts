@@ -8,7 +8,7 @@ import type { Locale } from "../i18n/locales";
 import type { KeyEvent } from "../input/midiInput";
 import type { Song, SongNote } from "../song/song";
 import { destroyViewContainers, initializeViewApplication } from "./viewApplication";
-import { bakeDigits, bakeNames, type FallingNoteNames } from "./bakeLabels";
+import { bakeDigits, bakeNames } from "./bakeLabels";
 import { bindViewKeyboardPointer } from "./viewApplication";
 import { ComputerKeyboardLayer, type KeysLayer } from "./ComputerKeyboardLayer";
 import { computerGeometry, computerWidth } from "./computerKeyboardLayout";
@@ -24,6 +24,7 @@ import type { FrameState } from "./frameState";
 import { HudLayer } from "./HudLayer";
 import { KeyboardLayer, type KeyStyle } from "./KeyboardLayer";
 import { KeyboardLabelSettings } from "./octaveKeyLabels";
+import { ViewHintSettings } from "./viewHintSettings";
 import { HIGHEST_PITCH, LOWEST_PITCH, type KeyRect } from "./keyboardLayout";
 import { followKeyboardPan, panAfterResize } from "./keyboardPan";
 import { NotesLayer } from "./NotesLayer";
@@ -39,7 +40,6 @@ import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 import { layoutFallingKeyboard } from "./layoutFallingKeyboard";
 import { PianoPaneReference, fitPianoViewport } from "./pianoPaneReference";
 
-export type { FallingNoteNames } from "./bakeLabels";
 export type { FrameState } from "./frameState";
 
 /**
@@ -135,7 +135,10 @@ export class FallingNotesView {
   );
   private unbindKeyboardPointer: (() => void) | undefined;
   /** Settings made before `mount`, applied to the layers once they exist. */
-  private noteNames: FallingNoteNames | undefined;
+  private readonly hintSettings = new ViewHintSettings(() => ({
+    keyboard: this.keyboard,
+    notes: this.notesLayer
+  }));
   private cards = true;
   private keyStyle: KeyStyle = "arcade";
   private roadGuides = false;
@@ -163,7 +166,7 @@ export class FallingNotesView {
       badges: this.badgeTextures,
       names: this.nameTextures
     });
-    notes.setNoteNames(this.noteNames);
+    this.hintSettings.applyNotes(notes);
     notes.setCards(this.cards);
     notes.setVisible(this.parts.notes);
     if (this.song) notes.setSong(this.song);
@@ -172,6 +175,7 @@ export class FallingNotesView {
       this.onKeyPointer?.(event)
     );
     keyboard.showStickers(this.keyLabels.labels);
+    this.hintSettings.applyKeyboard(keyboard);
     keyboard.showOctaveLabels(this.keyLabels.octaves);
     this.keyboard = keyboard;
     const computerKeyboard = new ComputerKeyboardLayer(renderer, (event) =>
@@ -223,10 +227,9 @@ export class FallingNotesView {
   }
 
   /** Note names on the falling notes, over the finger; undefined hides them. */
-  setNoteNames(style: FallingNoteNames | undefined): void {
-    this.noteNames = style;
-    this.notesLayer?.setNoteNames(style);
-  }
+  setNoteNames = this.hintSettings.setNoteNames;
+
+  setFingerLabels = this.hintSettings.setFingerLabels;
 
   /** The look of the keys: classic, or arcade in a case. */
   setKeyStyle(style: KeyStyle): void {

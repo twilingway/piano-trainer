@@ -102,6 +102,102 @@ describe("key sticker preference", () => {
   });
 });
 
+describe("independent piano hint preferences", () => {
+  it("migrates legacy names without coupling either finger switch to staff fingers", async () => {
+    localStorage.setItem(
+      "staff-prefs",
+      JSON.stringify({ noteNames: "en", fingers: false, labels: true })
+    );
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({
+      noteNames: "en",
+      fallingNoteNames: "en",
+      fingers: false,
+      fallingFingers: true,
+      keyboardFingers: true,
+      labels: true
+    });
+    await act(async () => {
+      prefs.updateStaffPrefs({ noteNames: "ru", fallingFingers: false, keyboardFingers: false });
+      await Promise.resolve();
+    });
+    expect(prefs.staffPrefs.fallingNoteNames).toBe("en");
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({
+      noteNames: "ru",
+      fallingNoteNames: "en",
+      fingers: false,
+      fallingFingers: false,
+      keyboardFingers: false,
+      labels: true
+    });
+    await act(async () => {
+      prefs.updateStaffPrefs({ fallingNoteNames: "off" });
+      await Promise.resolve();
+    });
+    expect(prefs.staffPrefs.noteNames).toBe("ru");
+    expect(prefs.staffPrefs.labels).toBe(true);
+  });
+
+  it.each([null, "unknown", true, 1])(
+    "rejects malformed new names %s instead of copying legacy names",
+    (fallingNoteNames) => {
+      expect(
+        normalizeStaffPrefs({
+          noteNames: "ru",
+          fallingNoteNames,
+          fallingFingers: "false",
+          keyboardFingers: null
+        })
+      ).toMatchObject({
+        noteNames: "ru",
+        fallingNoteNames: "off",
+        fallingFingers: true,
+        keyboardFingers: true
+      });
+    }
+  );
+
+  it.each(["off", "ru", "en"] as const)(
+    "retains explicit independent falling names %s",
+    (fallingNoteNames) => {
+      expect(normalizeStaffPrefs({ noteNames: "ru", fallingNoteNames })).toMatchObject({
+        fallingNoteNames
+      });
+    }
+  );
+
+  it("keeps course display restrictions separate from saved ordinary preferences", () => {
+    const saved = normalizeStaffPrefs({
+      noteNames: "en",
+      fallingNoteNames: "ru",
+      keyboardFingers: false,
+      fallingFingers: false,
+      labels: true
+    });
+    expect(readingDisplayProfile(saved)).toMatchObject({
+      noteNames: "off",
+      fallingNoteNames: "off",
+      labels: false,
+      lane: false,
+      keyboardFingers: true,
+      fallingFingers: true
+    });
+    expect(saved).toMatchObject({
+      noteNames: "en",
+      fallingNoteNames: "ru",
+      keyboardFingers: false,
+      fallingFingers: false,
+      labels: true
+    });
+  });
+});
+
 describe("FPS preference", () => {
   it("starts disabled and ignores invalid saved values", async () => {
     localStorage.setItem("staff-prefs", JSON.stringify({ fps: "true" }));
@@ -439,10 +535,10 @@ describe("flat keyboard effect preferences", () => {
 
 describe("initial unified keyboard preferences", () => {
   it.each([undefined, {}, { labels: true }])(
-    "starts with 3D, full top camera and hidden hands: %j",
+    "starts with Arcade, full top camera and hidden hands: %j",
     (saved) => {
       expect(normalizeStaffPrefs(saved)).toMatchObject({
-        keyStyle: "3d",
+        keyStyle: "arcade",
         camera: CAMERA_PRESETS.top,
         hands: false,
         keyboardOrientation: "follow"
@@ -487,7 +583,7 @@ describe("initial unified keyboard preferences", () => {
   it("hydrates the top preset through the store when no camera was saved", async () => {
     await mount();
     expect(prefs.staffPrefs).toMatchObject({
-      keyStyle: "3d",
+      keyStyle: "arcade",
       hands: false,
       camera: CAMERA_PRESETS.top,
       keyboardOrientation: "follow"
@@ -685,6 +781,7 @@ describe("extended screen horizon", () => {
     expect(normalizeStaffPrefs({ roadHorizon: value }).roadHorizon).toBe(expected);
   });
   it("restores a below-keyboard horizon through profile changes and reload", async () => {
+    localStorage.setItem("staff-prefs", JSON.stringify({ keyStyle: "3d" }));
     await mount();
     await act(async () => {
       prefs.updateStaffPrefs({ road: true, roadHorizon: 1.2, roadFar: -0.01 });

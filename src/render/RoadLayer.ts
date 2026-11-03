@@ -57,7 +57,7 @@ export class RoadLayer {
   private camera: WorldCamera | undefined;
   private keyboardCamera: WorldCamera | undefined;
   private keyboardTop = false;
-  private notesPerspective = true;
+  private notesPerspective = false;
   private cameraHeight = 1;
   private referenceBottom: number | undefined;
   private notesOnly = false;
@@ -336,6 +336,9 @@ export class RoadLayer {
   }
   get drawsNativeRoad(): boolean {
     return this.three?.drawsRoad === true;
+  }
+  get drawsNativeNoteLabels(): boolean {
+    return this.drawsNativeRoad && this.three?.nativeNoteLabelsReady === true;
   }
   get drawsNativeKeyboard(): boolean {
     return this.three?.on === true && this.keys.container.visible;

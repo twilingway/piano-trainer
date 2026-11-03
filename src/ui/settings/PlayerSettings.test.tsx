@@ -8,6 +8,7 @@ import { PlaySettings } from "./PlaySettings";
 import { GameSettings } from "../GameSettings";
 import { SongSettings } from "./SongSettings";
 import { StaffSettings } from "./StaffSettings";
+import { PianoHintSettings } from "./PianoHintSettings";
 import { KeyboardSettings } from "./KeyboardSettings";
 import { SettingsView } from "./SettingsView";
 import { MidiSettings } from "./MidiSettings";
@@ -127,6 +128,14 @@ function Harness({
       view={
         <SettingsView
           wordTyping={wordTyping}
+          hints={
+            <PianoHintSettings
+              prefs={staffPrefs}
+              wordTyping={wordTyping}
+              hasScore
+              onChange={updateStaffPrefs}
+            />
+          }
           staff={
             <StaffSettings {...{ prefs: staffPrefs, hasScore: true, onChange: updateStaffPrefs }} />
           }
@@ -137,12 +146,6 @@ function Harness({
               {...{
                 keyRange: "song",
                 onKeyRange: noop,
-                showLabels: false,
-                onShowLabels: noop,
-                octaveLabels: staffPrefs.octaveLabels,
-                onOctaveLabels: (octaveLabels) => {
-                  updateStaffPrefs({ octaveLabels });
-                },
                 keyStyle: staffPrefs.keyStyle,
                 onKeyStyle: (keyStyle) => {
                   updateStaffPrefs({ keyStyle });
@@ -290,6 +293,77 @@ afterEach(async () => {
 });
 
 describe("player settings organization", () => {
+  it("saves all hint targets independently and restores them after reload", async () => {
+    await render(false);
+    await section("Вид");
+    const titles = [
+      "Подсказки на клавишах",
+      "Подсказки на падающих нотах",
+      "Подсказки на нотном стане"
+    ] as const;
+    const first = host.querySelector<HTMLElement>(`section[aria-label="${titles[0]}"]`);
+    expect(first?.nextElementSibling?.getAttribute("aria-label")).toBe(titles[1]);
+    expect(first?.nextElementSibling?.nextElementSibling?.getAttribute("aria-label")).toBe(
+      titles[2]
+    );
+    const before = store.getState().preferences.staff;
+    await act(async () => {
+      const names = select("Названия на падающих нотах");
+      names.value = "ru";
+      names.dispatchEvent(new Event("change", { bubbles: true }));
+      host
+        .querySelector<HTMLInputElement>('input[aria-label="Номера пальцев на падающих нотах"]')
+        ?.click();
+      host
+        .querySelector<HTMLInputElement>('input[aria-label="Номера пальцев на клавишах"]')
+        ?.click();
+      await Promise.resolve();
+    });
+    expect(store.getState().preferences.staff).toMatchObject({
+      fallingNoteNames: "ru",
+      fallingFingers: false,
+      keyboardFingers: false,
+      labels: before.labels,
+      octaveLabels: before.octaveLabels,
+      noteNames: before.noteNames,
+      fingers: before.fingers,
+      chords: before.chords,
+      fingerColors: before.fingerColors
+    });
+    await act(async () => {
+      const names = select("Названия на нотном стане");
+      names.value = "en";
+      names.dispatchEvent(new Event("change", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      fallingNoteNames: "ru",
+      fallingFingers: false,
+      keyboardFingers: false,
+      noteNames: "en"
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    store = createAppStore();
+    await render(false);
+    await section("Вид");
+    expect(select("Названия на падающих нотах").value).toBe("ru");
+    expect(select("Названия на нотном стане").value).toBe("en");
+    expect(
+      host.querySelector<HTMLInputElement>('input[aria-label="Номера пальцев на падающих нотах"]')
+        ?.checked
+    ).toBe(false);
+    expect(
+      host.querySelector<HTMLInputElement>('input[aria-label="Номера пальцев на клавишах"]')
+        ?.checked
+    ).toBe(false);
+    expect(onMode).not.toHaveBeenCalled();
+    expect(onRules).not.toHaveBeenCalled();
+  });
+
   it("switches the open interface to English while preserving tab and preferences", async () => {
     await render();
     await section("О программе");
@@ -463,7 +537,7 @@ describe("player settings organization", () => {
   it("offers the hand look next to the key look, 3D by default", async () => {
     await render(false);
     await section("Вид");
-    expect(select("Вид рук").disabled).toBe(true);
+    expect(select("Вид рук").disabled).toBe(false);
     await act(async () => {
       await Promise.resolve();
       const keys = select("Вид клавиш");
@@ -488,13 +562,7 @@ describe("player settings organization", () => {
     await section("Вид");
     const keys = select("Вид клавиш");
     expect(Array.from(keys.options, (option) => option.value)).toEqual(["classic", "arcade", "3d"]);
-    expect(keys.value).toBe("3d");
-    expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
-    await act(async () => {
-      await Promise.resolve();
-      keys.value = "arcade";
-      keys.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    expect(keys.value).toBe("arcade");
     expect(host.querySelector("input[aria-label='Угол обзора']")).toBeNull();
     await act(async () => {
       await Promise.resolve();

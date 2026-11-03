@@ -359,6 +359,9 @@ it("keeps one lesson score and the same canvas through prompts, hints and window
       expect(trainerHost.current).toBe(lane);
       expect(trainerHost.current?.querySelector("canvas")).toBe(canvas);
       expect(host.querySelector(".lesson-workspace .staff")).toBe(staff);
+      expect(
+        host.querySelector(".workspace-main")?.getAttribute("data-piano-layout-reference")
+      ).toBe("true");
     }
   } finally {
     await act(async () => {

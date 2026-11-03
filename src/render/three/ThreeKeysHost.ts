@@ -117,6 +117,10 @@ export class ThreeKeysHost {
     return this.active && this.roadWanted && this.road.visible && this.keys.scene !== undefined;
   }
 
+  get nativeNoteLabelsReady(): boolean {
+    return this.drawsRoad && this.stage?.noteLabelsReady === true;
+  }
+
   setEnergy(sources: readonly EnergySource[], deltaSeconds?: number): void {
     this.energy = sources;
     this.energyDeltaSeconds = deltaSeconds;
