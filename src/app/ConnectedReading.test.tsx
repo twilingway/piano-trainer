@@ -4,6 +4,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConnectedReadingPractice } from "./ConnectedReading";
 
+const mark = vi.hoisted(() => vi.fn());
+vi.mock("./GuidedProgressProvider", () => ({ useGuidedProgress: () => ({ mark }) }));
 const reading = vi.hoisted(() => ({ intro: true, task: null, setIntro: vi.fn(), start: vi.fn() }));
 
 vi.mock("./PlayerRuntimeProvider", () => ({
@@ -52,6 +54,7 @@ describe("reading introduction integration", () => {
     });
     expect(reading.setIntro).toHaveBeenCalledWith(false);
     expect(reading.start).toHaveBeenCalledExactlyOnceWith("notes");
+    expect(mark).toHaveBeenCalledExactlyOnceWith("right-intro");
   });
   it("closes without starting or changing the existing exercise", async () => {
     await act(async () => {
@@ -60,5 +63,6 @@ describe("reading introduction integration", () => {
     });
     expect(reading.setIntro).toHaveBeenCalledExactlyOnceWith(false);
     expect(reading.start).not.toHaveBeenCalled();
+    expect(mark).not.toHaveBeenCalled();
   });
 });

@@ -5906,3 +5906,305 @@ button.song-card.song-card__open {
     animation: none;
   }
 }
+
+/* The learning path is a library view; it never advances musical time. */
+.guided-path {
+  max-width: 900px;
+  margin: 22px auto 32px;
+  color: #e6f5ed;
+}
+.guided-path__heading {
+  margin-bottom: 20px;
+}
+.guided-path__heading h3 {
+  color: #eef8ef;
+  font-size: clamp(23px, 3vw, 32px);
+  line-height: 1.15;
+  margin: 8px 0;
+  text-transform: none;
+  letter-spacing: -0.025em;
+}
+.guided-path__heading p {
+  color: #a8c4c6;
+  margin: 8px 0;
+}
+.guided-path__eyebrow {
+  color: #b9db74;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.guided-path__welcome {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  align-items: center;
+  gap: 8px;
+  min-height: 230px;
+  border: 1px solid #3b665a;
+  border-radius: 24px;
+  background: linear-gradient(120deg, #173b35, #102932);
+  padding: 22px 16px 20px 26px;
+  overflow: hidden;
+}
+.guided-path__speech {
+  min-width: 0;
+}
+.guided-path__speech h4 {
+  font-size: 25px;
+  line-height: 1.18;
+  margin: 10px 0;
+  color: #eff8e6;
+}
+.guided-path__speech p {
+  max-width: 410px;
+  color: #c2d7cf;
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 10px 0 18px;
+}
+.guided-path__assistant {
+  display: block;
+  width: 180px;
+  height: 240px;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 8px 10px #0005);
+  align-self: end;
+}
+.game-button.guided-path__continue {
+  background: #bddf73;
+  color: #20361e;
+  border: 1px solid #cdea94;
+  border-bottom: 5px solid #759843;
+  border-radius: 13px;
+  min-height: 48px;
+  padding: 11px 22px;
+  font-weight: 800;
+}
+.game-button.guided-path__continue:hover {
+  background: #cce98b;
+}
+.guided-path__progress {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #bdd0c5;
+  margin: 20px 0 8px;
+  font-size: 12px;
+}
+.guided-path__progress progress {
+  flex: 1;
+  min-width: 30px;
+  max-width: 260px;
+  height: 8px;
+  accent-color: #bddf73;
+}
+.guided-path__freedom {
+  color: #9db5b8;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+.guided-path__trail {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto;
+  max-width: 650px;
+}
+.guided-path__item {
+  position: relative;
+  padding: 0 0 13px;
+}
+.guided-path__item::before {
+  content: "";
+  position: absolute;
+  top: 46px;
+  bottom: -20px;
+  left: 38px;
+  width: 4px;
+  background: #31494b;
+  border-radius: 4px;
+}
+.guided-path__item:last-child::before {
+  display: none;
+}
+.guided-path__chapter {
+  position: relative;
+  z-index: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: #c1d6cc;
+  background: #102b34;
+  border: 1px solid #315151;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 23px 0 18px;
+}
+.guided-path__step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  text-align: left;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: none;
+  padding: 9px 14px 12px 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.guided-path__step:hover {
+  background: #153944;
+  border-color: #456968;
+}
+.guided-path__step:focus-visible {
+  outline: 3px solid #b9db74;
+  outline-offset: 3px;
+}
+.guided-path__token {
+  position: relative;
+  flex: 0 0 76px;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 70px;
+  border-radius: 50%;
+  background: #334e55;
+  border-bottom: 7px solid #223a42;
+  color: #c0d4d2;
+  font-size: 31px;
+  font-weight: 800;
+  box-shadow: 0 0 0 6px #071e29;
+}
+.guided-path__description {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.guided-path__description strong {
+  font-size: 16px;
+  line-height: 1.3;
+  color: #dcece6;
+}
+.guided-path__status {
+  color: #91b1b5;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.guided-path__goal {
+  color: #a6c0c0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.guided-path__choice {
+  font-size: 11px;
+  color: #b9db74;
+}
+.guided-path__item[data-status="current"] .guided-path__token {
+  background: #bedf75;
+  border-bottom-color: #779c43;
+  color: #2b441f;
+  box-shadow:
+    0 0 0 5px #294e3c,
+    0 0 0 8px #85ae53;
+}
+.guided-path__item[data-status="current"] .guided-path__status {
+  color: #c3e984;
+}
+.guided-path__item[data-status="completed"] .guided-path__token {
+  background: #73b8ad;
+  border-bottom-color: #3d7b76;
+  color: #092e31;
+}
+.guided-path__item[data-status="completed"] .guided-path__status {
+  color: #90cfc1;
+}
+.guided-path__error {
+  color: #ffc297;
+  font-size: 13px;
+}
+.guided-catalog {
+  margin: 20px 0 36px;
+  border: 1px solid #36555d;
+  border-radius: 14px;
+  padding: 14px;
+}
+.guided-catalog > summary {
+  color: #c9e0dd;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 4px;
+}
+.guided-catalog > .foundation-course-catalog {
+  margin-top: 18px;
+}
+@media (max-width: 500px) {
+  .guided-path {
+    margin-top: 18px;
+  }
+  .guided-path__welcome {
+    grid-template-columns: minmax(0, 1fr) 100px;
+    padding: 18px 8px 16px 16px;
+    min-height: 210px;
+    border-radius: 18px;
+    gap: 0;
+  }
+  .guided-path__assistant {
+    width: 110px;
+    height: 210px;
+    margin-left: -8px;
+  }
+  .guided-path__speech h4 {
+    font-size: 20px;
+  }
+  .guided-path__speech p {
+    font-size: 12px;
+  }
+  .guided-path__eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+  .game-button.guided-path__continue {
+    padding: 10px 11px;
+    font-size: 12px;
+  }
+  .guided-path__step {
+    gap: 14px;
+  }
+  .guided-path__token {
+    flex-basis: 62px;
+    width: 62px;
+    height: 58px;
+    font-size: 27px;
+  }
+  .guided-path__item::before {
+    left: 30px;
+  }
+  .guided-path__description strong {
+    font-size: 14px;
+  }
+  .guided-path__goal {
+    font-size: 11px;
+  }
+  .guided-path__progress {
+    gap: 9px;
+    font-size: 11px;
+  }
+}
+
+.guided-path__step {
+  padding-left: 10px;
+}
+.guided-path__item::before {
+  left: 48px;
+}
+@media (max-width: 500px) {
+  .guided-path__item::before {
+    left: 41px;
+  }
+}

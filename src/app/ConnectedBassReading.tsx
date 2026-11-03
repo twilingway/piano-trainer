@@ -1,3 +1,4 @@
+import { useGuidedProgress } from "./GuidedProgressProvider";
 import { BassReadingCourseCard, BassReadingPracticePanel } from "../ui/BassReadingCourse";
 import { BassReadingIntro } from "../ui/BassReadingIntro";
 import { keyLabel } from "../input/keyboardLayouts";
@@ -27,6 +28,7 @@ export function ConnectedBassReadingPractice({
 }: {
   mode?: "all" | "intro" | "practice";
 }) {
+  const progress = useGuidedProgress();
   const reading = useRuntimeSelector((runtime) => runtime.reading);
   const bindings = useRuntimeSelector((runtime) => runtime.computerKeyboard.bindings);
   return (
@@ -37,6 +39,7 @@ export function ConnectedBassReadingPractice({
             binding.type === "note" ? [{ pitch: binding.pitch, label: keyLabel(code) }] : []
           )}
           onStart={() => {
+            progress.mark("left-intro");
             reading.startBass("notes");
           }}
           onClose={() => {
