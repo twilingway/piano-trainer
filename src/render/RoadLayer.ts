@@ -57,7 +57,7 @@ export class RoadLayer {
   private camera: WorldCamera | undefined;
   private keyboardCamera: WorldCamera | undefined;
   private keyboardTop = false;
-  private notesPerspective = true;
+  private notesPerspective = false;
   private cameraHeight = 1;
   private referenceBottom: number | undefined;
   private notesOnly = false;

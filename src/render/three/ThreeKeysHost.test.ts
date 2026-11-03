@@ -11,6 +11,7 @@ import type { KeyboardLayer } from "../KeyboardLayer";
 import type { NativeKeyboardScene } from "../NativeKeyboardScene";
 import { ThreeKeysHost } from "./ThreeKeysHost";
 import { ThreeRoadFrame } from "./ThreeRoadFrame";
+import { RoadLayer } from "../RoadLayer";
 
 const mocks = vi.hoisted(() => ({
   construct: vi.fn(),
@@ -177,6 +178,7 @@ function fixture(realApp?: Application) {
     hands as unknown as HandsLayer
   );
   return {
+    app,
     canvas,
     stage,
     road,
@@ -230,6 +232,29 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
+it.each(["classic", "arcade"] as const)(
+  "does not load the native scene while initializing %s without perspective notes",
+  async (style) => {
+    const { app, renderer, keyboard, hands } = fixture();
+    const road = new RoadLayer(
+      renderer as unknown as Application["renderer"],
+      app as unknown as Application,
+      keyboard as KeyboardLayer,
+      hands as unknown as HandsLayer
+    );
+    await road.setKeyStyle(style);
+    expect(mocks.loadKit).not.toHaveBeenCalled();
+    expect(mocks.construct).not.toHaveBeenCalled();
+    expect(mocks.loadHand).not.toHaveBeenCalled();
+
+    road.setNotesPerspective(true);
+    await road.setKeyStyle(style);
+    expect(mocks.loadKit).toHaveBeenCalledTimes(1);
+    expect(mocks.construct).toHaveBeenCalledTimes(1);
+    road.destroy();
+  }
+);
 
 describe("shared WebGL keyboard recovery", () => {
   it("draws flat road, native scene and HUD in order", async () => {

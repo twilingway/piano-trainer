@@ -71,7 +71,7 @@ describe("view profile migration and pure transitions", () => {
     choose({ keyboardStyle: "classic", keyboardOrientation: "top" });
     expect(profiles.active.keyboardOrientation).toBe("follow");
     expect(normalizeViewAxes({ keyboardStyle: "bogus", notesProjection: "bogus" })).toEqual({
-      keyboardStyle: "3d",
+      keyboardStyle: "arcade",
       notesProjection: "direct",
       keyboardOrientation: "follow"
     });
