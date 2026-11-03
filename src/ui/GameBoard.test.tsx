@@ -23,6 +23,7 @@ beforeEach(() => {
 const prefsWith = (lane: boolean): StaffPrefs => ({
   zoom: 1,
   tabsZoom: 1,
+  lessonZoom: 1.5,
   noteColor: "#00d4ff",
   playedNoteColor: "#00df50",
   scoreColor: "#ffffff",

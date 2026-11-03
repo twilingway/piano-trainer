@@ -808,6 +808,49 @@ describe("extended screen horizon", () => {
 });
 
 describe("independent notation sizes", () => {
+  it.each([undefined, null, "2", Number.NaN, Number.POSITIVE_INFINITY])(
+    "starts invalid or missing lesson size %s at a readable 150%% without copying the song size",
+    (lessonZoom) => {
+      expect(normalizeStaffPrefs({ zoom: 0.5, tabsZoom: 2, lessonZoom })).toMatchObject({
+        zoom: 0.5,
+        tabsZoom: 2,
+        lessonZoom: 1.5
+      });
+    }
+  );
+
+  it.each([
+    [0.1, 0.5],
+    [0.75, 0.75],
+    [1.75, 1.75],
+    [9, 2]
+  ])("normalizes lesson scale %s to %s", (lessonZoom, expected) => {
+    expect(normalizeStaffPrefs({ lessonZoom }).lessonZoom).toBe(expected);
+  });
+
+  it("persists lesson size independently from song notation, tabs and effective reading defaults", async () => {
+    localStorage.setItem("staff-prefs", JSON.stringify({ zoom: 0.75, tabsZoom: 1.25 }));
+    await mount();
+    expect(prefs.staffPrefs.lessonZoom).toBe(1.5);
+    await act(async () => {
+      prefs.updateStaffPrefs({ lessonZoom: 2 });
+      await Promise.resolve();
+    });
+    expect(readingDisplayProfile(prefs.staffPrefs)).toMatchObject({ lessonZoom: 2 });
+    expect(JSON.parse(localStorage.getItem("staff-prefs") ?? "{}")).toMatchObject({
+      zoom: 0.75,
+      tabsZoom: 1.25,
+      lessonZoom: 2
+    });
+    await act(async () => {
+      root.unmount();
+      await Promise.resolve();
+    });
+    root = createRoot(host);
+    await mount();
+    expect(prefs.staffPrefs).toMatchObject({ zoom: 0.75, tabsZoom: 1.25, lessonZoom: 2 });
+  });
+
   it.each([
     [{ zoom: 1.5 }, { zoom: 1.5, tabsZoom: 1.5 }],
     [{ zoom: 9 }, { zoom: 2, tabsZoom: 2 }],
