@@ -1,5 +1,5 @@
 import { Group, InstancedMesh, Matrix4, Texture, Vector2 } from "three";
-import type { PlaneGeometry, ShaderMaterial } from "three";
+import type { BufferGeometry, ShaderMaterial } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { NOTE_LANE_SHADER } from "../noteLaneProjection";
 import { noteSlabHeight } from "../noteDimensions";
@@ -40,10 +40,10 @@ function canvasFixture(available = true) {
   return { context, create };
 }
 
-function mesh(view: ThreeRoadNoteLabels): InstancedMesh<PlaneGeometry, ShaderMaterial> {
+function mesh(view: ThreeRoadNoteLabels): InstancedMesh<BufferGeometry, ShaderMaterial> {
   const child = view.group.children[0];
   if (!(child instanceof InstancedMesh)) throw new Error("Expected bounded caption batch");
-  return child as InstancedMesh<PlaneGeometry, ShaderMaterial>;
+  return child as InstancedMesh<BufferGeometry, ShaderMaterial>;
 }
 
 describe("native note label atlas", () => {
@@ -120,13 +120,18 @@ describe("bounded native note captions", () => {
     expect(first.elements).toEqual(second.elements);
     const viewport: unknown = batch.material.uniforms.viewport?.value;
     expect(viewport).toEqual(new Vector2(1334, 750));
-    expect(batch.material.vertexShader).toContain("clip.xy += pixels * (2.0 / viewport) * clip.w");
     expect(batch.material.vertexShader).toContain(
-      "projectRoadLanePoint(vec4(0.0, labelShape.w, anchorZ, 1.0))"
+      "vec4 clip = projectRoadLanePoint(vec4(slabPoint, 1.0))"
     );
-    expect(batch.material.fragmentShader).toContain(
-      "captionEdge(captionBodyAB.xy, captionBodyAB.zw, captionPoint)"
+    expect(batch.material.vertexShader).toContain(
+      "projectRoadLanePoint(vec4(0.0, topY, anchorZ, 1.0))"
     );
+    expect(batch.material.fragmentShader).toContain("vec2 point = captionClip.xy / captionClip.w");
+    expect(batch.material.vertexShader).toContain("direction * offset * (2.0 / viewport)");
+    expect(batch.material.polygonOffset).toBe(true);
+    expect(batch.material.polygonOffsetFactor).toBeLessThan(0);
+    expect(batch.material.polygonOffsetUnits).toBeLessThan(0);
+    expect(batch.material.depthTest).toBe(true);
     view.dispose();
   });
   it("updates names and missing fields without baking, reallocating or retaining old captions", () => {
@@ -181,7 +186,16 @@ describe("bounded native note captions", () => {
     const actual = new Matrix4();
     batch.getMatrixAt(0, actual);
     const expected = new Matrix4();
-    performanceNoteMatrix(expected, 42, 34, -231, 34, 142, 0.8, 0.75);
+    performanceNoteMatrix(
+      expected,
+      42,
+      34 + (flat ? 0 : noteSlabHeight(20, 34)) / 2,
+      -231,
+      34,
+      142,
+      0.8,
+      0.75
+    );
     actual.elements.forEach((value, index) => {
       expect(value).toBeCloseTo(expected.elements[index] ?? 0);
     });
@@ -195,7 +209,7 @@ describe("bounded native note captions", () => {
     expect(projection.getY(0)).toBeCloseTo(0.1);
     expect(projection.getZ(0)).toBeCloseTo(0.2);
     expect(projection.getW(0)).toBe(231);
-    expect(shape.getW(0)).toBeCloseTo((flat ? 0 : noteSlabHeight(20, 34)) + 0.24);
+    expect(shape.getW(0)).toBeCloseTo(flat ? 0 : noteSlabHeight(20, 34));
     expect(shape.getX(0)).toBe(20);
     expect(shape.getY(0)).toBe(178);
     expect(batch.material.vertexShader).toContain(NOTE_LANE_SHADER);

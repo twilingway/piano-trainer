@@ -13,13 +13,16 @@ const NAME_HEIGHT = 16 * (128 / 80);
 const BODY_SHARE = 0.82;
 
 export const NATIVE_NOTE_LABEL_LAYOUT_SHADER = /* glsl */ `
-vec4 captionStack(float width, float height, vec2 aspects) {
+vec4 captionStack(float width, float length, vec2 aspects, vec2 direction) {
   float usableWidth = max(0.0, width * ${String(BODY_SHARE)});
-  float finger = aspects.x > 0.0 ? min(${String(FINGER_HEIGHT)}, usableWidth / aspects.x) : 0.0;
-  float name = aspects.y > 0.0 ? min(${String(NAME_HEIGHT)}, usableWidth / aspects.y) : 0.0;
+  vec2 crossExtent = vec2(aspects.x, aspects.y) * abs(direction.y) + abs(direction.x);
+  float finger = aspects.x > 0.0 ? min(${String(FINGER_HEIGHT)}, usableWidth / max(crossExtent.x, 0.000001)) : 0.0;
+  float name = aspects.y > 0.0 ? min(${String(NAME_HEIGHT)}, usableWidth / max(crossExtent.y, 0.000001)) : 0.0;
   float gap = aspects.x > 0.0 && aspects.y > 0.0 ? min(2.0, width * 0.06) : 0.0;
-  float fit = min(1.0, max(0.0, height * ${String(BODY_SHARE)}) / max(finger + name + gap, 0.000001));
-  return vec4(finger, name, gap, finger + name + gap) * fit;
+  vec2 along = vec2(finger, name) * (vec2(aspects.x, aspects.y) * abs(direction.x) + abs(direction.y));
+  float total = along.x + along.y + gap;
+  float fit = min(1.0, max(0.0, length * ${String(BODY_SHARE)}) / max(total, 0.000001));
+  return vec4(finger, name, gap, total) * fit;
 }
 `;
 
@@ -29,22 +32,29 @@ export function nativeNoteLabelLayout(
   height: number,
   fingerAspect: number,
   nameAspect: number,
-  target: NativeNoteLabelLayout
+  target: NativeNoteLabelLayout,
+  directionX = 0,
+  directionY = 1
 ): void {
   const hasFinger = Number.isFinite(fingerAspect) && fingerAspect > 0;
   const hasName = Number.isFinite(nameAspect) && nameAspect > 0;
   const usableWidth = Math.max(0, width * BODY_SHARE);
-  const finger = hasFinger ? Math.min(FINGER_HEIGHT, usableWidth / fingerAspect) : 0;
-  const name = hasName ? Math.min(NAME_HEIGHT, usableWidth / nameAspect) : 0;
+  const length = Math.hypot(directionX, directionY);
+  const dx = length > 0 ? Math.abs(directionX / length) : 0;
+  const dy = length > 0 ? Math.abs(directionY / length) : 1;
+  const finger = hasFinger ? Math.min(FINGER_HEIGHT, usableWidth / (fingerAspect * dy + dx)) : 0;
+  const name = hasName ? Math.min(NAME_HEIGHT, usableWidth / (nameAspect * dy + dx)) : 0;
   const gap = hasFinger && hasName ? Math.min(2, width * 0.06) : 0;
+  const fingerAlong = finger * (fingerAspect * dx + dy);
+  const nameAlong = name * (nameAspect * dx + dy);
   const scale = Math.min(
     1,
-    Math.max(0, height * BODY_SHARE) / Math.max(finger + name + gap, 0.000001)
+    Math.max(0, height * BODY_SHARE) / Math.max(fingerAlong + nameAlong + gap, 0.000001)
   );
   target.fingerHeight = finger * scale;
   target.fingerWidth = target.fingerHeight * (hasFinger ? fingerAspect : 0);
   target.nameHeight = name * scale;
   target.nameWidth = target.nameHeight * (hasName ? nameAspect : 0);
-  target.fingerY = hasName ? -(target.nameHeight + gap * scale) / 2 : 0;
-  target.nameY = hasFinger ? (target.fingerHeight + gap * scale) / 2 : 0;
+  target.fingerY = hasName ? (-(nameAlong + gap) * scale) / 2 : 0;
+  target.nameY = hasFinger ? ((fingerAlong + gap) * scale) / 2 : 0;
 }

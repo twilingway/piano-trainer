@@ -59,4 +59,21 @@ describe("native note caption layout", () => {
     expect(near.nameHeight).toBeCloseTo(16 * (128 / 80));
     expect(near.fingerHeight).toBeCloseTo(24 * (128 / 80));
   });
+
+  it.each([
+    [0.8, 0.6],
+    [-0.8, 0.6],
+    [1, 0]
+  ])("fits upright rectangles across a slanted route %s/%s", (dx, dy) => {
+    const out = target();
+    nativeNoteLabelLayout(24, 160, 0.55, 1.4, out, dx, dy);
+    const crossFinger = Math.abs(dy) * out.fingerWidth + Math.abs(dx) * out.fingerHeight;
+    const crossName = Math.abs(dy) * out.nameWidth + Math.abs(dx) * out.nameHeight;
+    expect(crossFinger).toBeLessThanOrEqual(24 * 0.82 + 0.000001);
+    expect(crossName).toBeLessThanOrEqual(24 * 0.82 + 0.000001);
+    const fingerAlong = Math.abs(dx) * out.fingerWidth + Math.abs(dy) * out.fingerHeight;
+    const nameAlong = Math.abs(dx) * out.nameWidth + Math.abs(dy) * out.nameHeight;
+    expect(out.fingerY + fingerAlong / 2).toBeLessThan(out.nameY - nameAlong / 2);
+    expect(out.nameWidth / out.nameHeight).toBeCloseTo(1.4);
+  });
 });

@@ -5,7 +5,7 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
-  PlaneGeometry,
+  type BufferGeometry,
   ShaderMaterial,
   Vector2
 } from "three";
@@ -22,85 +22,77 @@ import { NATIVE_NOTE_LABEL_LAYOUT_SHADER } from "./nativeNoteLabelLayout";
 import { performanceNoteMatrix } from "./performanceNoteMatrix";
 import { roadWidthUniforms } from "./roadWidthUniforms";
 import type { WorldRoadNote } from "./roadNoteGeometry";
+import { NOTE_SLAB_ATTRIBUTES, NOTE_SLAB_VERTEX } from "./noteSlabGeometry";
+import { createNativeNoteLabelGeometry } from "./nativeNoteLabelGeometry";
 
 export const NATIVE_NOTE_LABEL_CAPACITY = 1024;
 
 const VERTEX = /* glsl */ `
 #define NOTE_META_PACKED
 ${NOTE_LANE_SHADER}
+${NOTE_SLAB_ATTRIBUTES}
 attribute vec4 labelShape;
 attribute vec4 labelUv;
 attribute vec2 labelAspects;
 uniform vec2 viewport;
-varying vec2 captionUv;
 varying float captionAlpha;
-varying float captionClipW;
-varying vec2 captionPoint;
-varying vec4 captionBodyAB;
-varying vec4 captionBodyCD;
+varying vec4 captionClip;
+varying vec4 captionRect;
+varying vec4 captionAtlas;
 ${NATIVE_NOTE_LABEL_LAYOUT_SHADER}
 vec3 captionNdc(vec4 clip) { return clip.xyz / max(abs(clip.w), 0.000001); }
 void main() {
+  vec4 noteSize = vec4(labelShape.x, labelShape.w, labelShape.y, notePitch);
+  ${NOTE_SLAB_VERTEX}
+  vec4 clip = projectRoadLanePoint(vec4(slabPoint, 1.0));
   float halfWidth = labelShape.x * 0.5, halfDepth = labelShape.y * 0.5;
-  vec4 front = projectRoadLanePoint(vec4(0.0, labelShape.w, halfDepth, 1.0));
-  vec4 back = projectRoadLanePoint(vec4(0.0, labelShape.w, -halfDepth, 1.0));
-  vec3 a = captionNdc(projectRoadLanePoint(vec4(-halfWidth, labelShape.w, halfDepth, 1.0)));
-  vec3 b = captionNdc(projectRoadLanePoint(vec4(halfWidth, labelShape.w, halfDepth, 1.0)));
-  vec3 c = captionNdc(projectRoadLanePoint(vec4(halfWidth, labelShape.w, -halfDepth, 1.0)));
-  vec3 d = captionNdc(projectRoadLanePoint(vec4(-halfWidth, labelShape.w, -halfDepth, 1.0)));
+  float topY = labelShape.w * 0.5;
+  vec4 front = projectRoadLanePoint(vec4(0.0, topY, halfDepth, 1.0));
+  vec4 back = projectRoadLanePoint(vec4(0.0, topY, -halfDepth, 1.0));
   vec2 route = (captionNdc(back).xy - captionNdc(front).xy) * viewport * 0.5;
-  float availableHeight = (max(max(a.y, b.y), max(c.y, d.y)) - min(min(a.y, b.y), min(c.y, d.y))) * viewport.y * 0.5;
-  float headWidth = length((b.xy - a.xy) * viewport * 0.5);
-  vec4 stack = captionStack(headWidth, availableHeight, labelAspects);
-  float progress = clamp((stack.w * 0.5 + 2.0) / max(length(route), 0.000001), 0.0, 0.5);
+  float routeLength = max(length(route), 0.000001);
+  vec2 direction = route / routeLength;
+  vec3 headLeft = captionNdc(projectRoadLanePoint(vec4(-halfWidth, topY, halfDepth, 1.0)));
+  vec3 headRight = captionNdc(projectRoadLanePoint(vec4(halfWidth, topY, halfDepth, 1.0)));
+  vec2 span = (headRight.xy - headLeft.xy) * viewport * 0.5;
+  float headWidth = abs(span.x * direction.y - span.y * direction.x);
+  vec4 stack = captionStack(headWidth, routeLength, labelAspects, direction);
+  float progress = clamp((stack.w * 0.5 + 2.0) / routeLength, 0.0, 0.5);
   float anchorZ = halfDepth - labelShape.y * progress;
-  vec4 clip = projectRoadLanePoint(vec4(0.0, labelShape.w, anchorZ, 1.0));
-  vec3 left = captionNdc(projectRoadLanePoint(vec4(-halfWidth, labelShape.w, anchorZ, 1.0)));
-  vec3 right = captionNdc(projectRoadLanePoint(vec4(halfWidth, labelShape.w, anchorZ, 1.0)));
-  stack = captionStack(length((right.xy - left.xy) * viewport * 0.5), availableHeight, labelAspects);
+  vec4 anchor = projectRoadLanePoint(vec4(0.0, topY, anchorZ, 1.0));
+  vec3 left = captionNdc(projectRoadLanePoint(vec4(-halfWidth, topY, anchorZ, 1.0)));
+  vec3 right = captionNdc(projectRoadLanePoint(vec4(halfWidth, topY, anchorZ, 1.0)));
+  span = (right.xy - left.xy) * viewport * 0.5;
+  float crossWidth = abs(span.x * direction.y - span.y * direction.x);
+  stack = captionStack(crossWidth, routeLength, labelAspects, direction);
   bool finger = labelShape.z < 0.0;
   float height = finger ? stack.x : stack.y;
   float aspect = finger ? labelAspects.x : labelAspects.y;
-  float direction = route.y < 0.0 ? -1.0 : 1.0;
-  float offset = finger ? -(stack.y + stack.z) * 0.5 : (stack.x + stack.z) * 0.5;
-  vec2 pixels = position.xy * vec2(height * aspect, height) + vec2(0.0, offset * direction);
-  clip.xy += pixels * (2.0 / viewport) * clip.w;
-  // The billboard follows the projected body's depth plane instead of intersecting its top.
-  vec3 normal = cross(b - a, c - a);
-  if (abs(normal.z) > 0.00000001) {
-    vec2 point = captionNdc(clip).xy;
-    clip.z = (a.z - dot(normal.xy, point - a.xy) / normal.z - 0.00001) * clip.w;
-  }
-  captionUv = labelUv.xy + vec2(uv.x, 1.0 - uv.y) * labelUv.zw;
-  captionAlpha = noteAlpha;
-  captionClipW = clip.w;
-  captionPoint = captionNdc(clip).xy;
-  captionBodyAB = vec4(a.xy, b.xy);
-  captionBodyCD = vec4(c.xy, d.xy);
+  vec2 along = stack.xy * (labelAspects * abs(direction.x) + abs(direction.y));
+  float offset = finger ? -(along.y + stack.z) * 0.5 : (along.x + stack.z) * 0.5;
+  vec2 center = captionNdc(anchor).xy + direction * offset * (2.0 / viewport);
+  captionRect = vec4(center, vec2(height * aspect, height) * (2.0 / viewport));
+  captionAtlas = labelUv;
+  captionAlpha = anchor.w > 0.0 ? noteAlpha : 0.0;
+  // Divide only after perspective interpolation in the fragment, independent of render DPR.
+  captionClip = clip;
   gl_Position = clip;
 }
 `;
 
 const FRAGMENT = /* glsl */ `
 uniform sampler2D picture;
-varying vec2 captionUv;
 varying float captionAlpha;
-varying float captionClipW;
-varying vec2 captionPoint;
-varying vec4 captionBodyAB;
-varying vec4 captionBodyCD;
-float captionEdge(vec2 a, vec2 b, vec2 point) {
-  vec2 edge = b - a;
-  return edge.x * (point.y - a.y) - edge.y * (point.x - a.x);
-}
+varying vec4 captionClip;
+varying vec4 captionRect;
+varying vec4 captionAtlas;
 void main() {
-  if (captionClipW <= 0.0) discard;
-  vec4 edges = vec4(captionEdge(captionBodyAB.xy, captionBodyAB.zw, captionPoint),
-    captionEdge(captionBodyAB.zw, captionBodyCD.xy, captionPoint),
-    captionEdge(captionBodyCD.xy, captionBodyCD.zw, captionPoint),
-    captionEdge(captionBodyCD.zw, captionBodyAB.xy, captionPoint));
-  if (!all(greaterThanEqual(edges, vec4(0.0))) && !all(lessThanEqual(edges, vec4(0.0)))) discard;
-  vec4 source = texture2D(picture, captionUv);
+  if (captionClip.w <= 0.0 || captionAlpha <= 0.0 || min(captionRect.z, captionRect.w) <= 0.0) discard;
+  vec2 point = captionClip.xy / captionClip.w;
+  vec2 cell = (point - captionRect.xy) / captionRect.zw + 0.5;
+  if (min(cell.x, cell.y) < 0.0 || max(cell.x, cell.y) > 1.0) discard;
+  vec2 pictureUv = captionAtlas.xy + vec2(cell.x, 1.0 - cell.y) * captionAtlas.zw;
+  vec4 source = texture2D(picture, pictureUv);
   // Fragment depth already includes the final dock projection. Only the two-pixel strip at the
   // actual near clip fades; an orthographic road's small NDC depth is not world-space distance.
   float nearEdge = max(fwidth(gl_FragCoord.z) * 2.0, 0.000001);
@@ -119,7 +111,7 @@ export class ThreeRoadNoteLabels {
   performanceScale = 1;
   nearZ = 0;
   private readonly atlas: NativeNoteLabelAtlas | undefined;
-  private readonly mesh: InstancedMesh<PlaneGeometry, ShaderMaterial> | undefined;
+  private readonly mesh: InstancedMesh<BufferGeometry, ShaderMaterial> | undefined;
   private readonly shape: InstancedBufferAttribute;
   private readonly aspects: InstancedBufferAttribute;
   private readonly uv: InstancedBufferAttribute;
@@ -142,7 +134,7 @@ export class ThreeRoadNoteLabels {
     this.alphaPitch = new InstancedBufferAttribute(new Float32Array(instances * 2), 2);
     this.atlas = bakeNativeNoteLabelAtlas(createCanvas);
     if (this.atlas) {
-      const geometry = new PlaneGeometry(1, 1);
+      const geometry = createNativeNoteLabelGeometry();
       geometry.setAttribute("labelShape", this.shape);
       geometry.setAttribute("labelAspects", this.aspects);
       geometry.setAttribute("labelUv", this.uv);
@@ -160,6 +152,9 @@ export class ThreeRoadNoteLabels {
         transparent: true,
         depthTest: true,
         depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
         forceSinglePass: true,
         toneMapped: false,
         side: DoubleSide
@@ -205,11 +200,11 @@ export class ThreeRoadNoteLabels {
         const name = note.label ? this.atlas.glyphs.get(note.label) : undefined;
         if (!finger && !name) continue;
         const laneY = note.lane?.y ?? floorY;
-        const lift = (flat ? 0 : noteSlabHeight(note.width, laneY)) + note.width * 0.012;
+        const bodyHeight = flat ? 0 : noteSlabHeight(note.width, laneY);
         performanceNoteMatrix(
           this.matrix,
           note.x,
-          laneY,
+          laneY + bodyHeight / 2,
           -(note.top + note.bottom) / 2,
           laneY,
           this.nearZ,
@@ -217,8 +212,9 @@ export class ThreeRoadNoteLabels {
           this.performanceScale
         );
         if (finger)
-          this.write(used++, note, finger, laneY, lift, -1, finger.aspect, name?.aspect ?? 0);
-        if (name) this.write(used++, note, name, laneY, lift, 1, finger?.aspect ?? 0, name.aspect);
+          this.write(used++, note, finger, laneY, bodyHeight, -1, finger.aspect, name?.aspect ?? 0);
+        if (name)
+          this.write(used++, note, name, laneY, bodyHeight, 1, finger?.aspect ?? 0, name.aspect);
       }
     this.mesh.count = used;
     this.group.visible = used > 0;
@@ -243,12 +239,12 @@ export class ThreeRoadNoteLabels {
     note: WorldRoadNote,
     glyph: NativeNoteGlyph,
     laneY: number,
-    lift: number,
+    bodyHeight: number,
     kind: number,
     fingerAspect: number,
     nameAspect: number
   ): void {
-    this.shape.setXYZW(index, note.width, note.top - note.bottom, kind, lift);
+    this.shape.setXYZW(index, note.width, note.top - note.bottom, kind, bodyHeight);
     this.aspects.setXY(index, fingerAspect, nameAspect);
     this.uv.setXYZW(index, glyph.u, glyph.v, glyph.width, glyph.height);
     this.projection.setXYZW(
