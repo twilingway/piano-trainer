@@ -82,6 +82,16 @@ it("keeps the canonical keyboard reservation while staff zoom uses its natural h
   expect(workspace.dataset.pianoStaffRegion).toBeUndefined();
   expect(lanes.style.getPropertyValue("--piano-required-height")).toBe("300px");
 });
+
+it("uses only the independent lesson size in the lesson room and retains song zoom on exit", async () => {
+  const prefs = { ...base.prefs, zoom: 0.75, lessonZoom: 1.75 };
+  await render({ prefs, course: true, lessonBoard: (score) => <section>{score}</section> });
+  expect(host.querySelector(".staff")?.getAttribute("data-zoom")).toBe("1.75");
+  await render({ prefs });
+  expect(host.querySelector(".staff")?.getAttribute("data-zoom")).toBe("0.75");
+  await render({ prefs, course: true });
+  expect(host.querySelector(".staff")?.getAttribute("data-zoom")).toBe("1");
+});
 it.each([
   "course",
   "comparing",

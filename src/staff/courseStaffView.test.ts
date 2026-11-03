@@ -1,7 +1,13 @@
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
-import { fitCourseDrawing, fitCourseInk, courseRoom, showDrawing } from "./courseStaffView";
+import {
+  fitCourseDrawing,
+  fitCourseInk,
+  fitCourseZoom,
+  courseRoom,
+  showDrawing
+} from "./courseStaffView";
 import { beatPositions } from "./staffNoteIndex";
 import { placeCursorLine } from "./liveCursor";
 
@@ -24,6 +30,21 @@ function fixture(ink: DOMRect, hostWidth = 800) {
 }
 
 describe("the short lesson score viewport", () => {
+  it("crops blank SVG paper when the lesson ink already fits the visible scene", () => {
+    const body = document.createElement("div");
+    body.className = "lesson-workspace__body";
+    Object.defineProperty(body, "clientHeight", { value: 140 });
+    const { host, svg, page } = fixture(new DOMRect(40, 80, 180, 100));
+    body.append(host);
+    fitCourseDrawing(host);
+    showDrawing(host);
+    expect(Number(svg.getAttribute("height"))).toBe(124);
+    expect(svg.getAttribute("viewBox")).toBe("28 68 204 124");
+    expect(host.style.height).toBe("124px");
+    expect(page.style.width).toBe("204px");
+    expect(page.style.height).toBe("124px");
+    expect(host.scrollTop).toBe(0);
+  });
   it.each([
     [new DOMRect(40, 20, 180, 140), 204],
     [new DOMRect(20, 20, 360, 240), 384]
@@ -160,6 +181,86 @@ describe("the short lesson score viewport", () => {
 });
 
 describe("the complete lesson ink budget", () => {
+  it("uses the allocated lesson scrollport instead of the workspace or rendered score height", () => {
+    const workspace = document.createElement("div");
+    workspace.className = "workspace-main";
+    Object.defineProperty(workspace, "clientHeight", { value: 900 });
+    const body = document.createElement("div");
+    body.className = "lesson-workspace__body";
+    Object.defineProperty(body, "clientHeight", { value: 180 });
+    const { host } = fixture(new DOMRect(0, 0, 100, 100));
+    host.style.maxHeight = "none";
+    body.append(host);
+    workspace.append(body);
+    document.body.append(workspace);
+    expect(courseRoom(host, 0.9).height).toBe(148);
+    host.style.height = "800px";
+    expect(courseRoom(host, 0.1).height).toBe(148);
+    workspace.remove();
+  });
+
+  it("keeps manual lesson scale after fitting ink, across prompts, repeated layout and resize", () => {
+    const body = document.createElement("div");
+    body.className = "lesson-workspace__body";
+    let roomHeight = 180;
+    Object.defineProperty(body, "clientHeight", { get: () => roomHeight });
+    const { host, svg } = fixture(new DOMRect(20, 30, 200, 100));
+    host.style.maxHeight = "none";
+    svg.setAttribute("viewBox", "0 0 400 200");
+    body.append(host);
+    document.body.append(body);
+    const notation = {
+      Zoom: 1,
+      GraphicSheet: {
+        MusicPages: [
+          {
+            MusicSystems: [
+              {
+                PositionAndShape: {
+                  AbsolutePosition: { x: 0, y: 0 },
+                  Size: { width: 40 },
+                  BorderMarginTop: 0,
+                  BorderMarginBottom: 10
+                },
+                StaffLines: [{ PositionAndShape: { AbsolutePosition: { y: 2 } } }]
+              }
+            ]
+          }
+        ]
+      },
+      render: vi.fn(() => {
+        svg.setAttribute("width", String(400 * notation.Zoom));
+        svg.setAttribute("height", String(200 * notation.Zoom));
+        svg.setAttribute("viewBox", "0 0 400 200");
+      })
+    };
+    const osmd = notation as unknown as OpenSheetMusicDisplay;
+    const reach = { line: 140, above: 0, below: 140 };
+    fitCourseZoom(osmd, host, 0.5, reach, 1);
+    const baseline = notation.Zoom;
+    expect(baseline).toBeCloseTo(148 / 140);
+    fitCourseZoom(osmd, host, 0.5, reach, 2);
+    expect(notation.Zoom).toBeCloseTo(baseline * 2);
+    // Final ink can exceed the scrollport: the player's 200% must not be fitted back to 100%.
+    expect(svg.getBBox().height * notation.Zoom).toBeGreaterThan(roomHeight);
+    fitCourseDrawing(host);
+    fitCourseZoom(osmd, host, 0.5, reach, 2);
+    expect(notation.Zoom).toBeCloseTo(baseline * 2);
+    svg.getBBox = () => new DOMRect(20, 40, 200, 80);
+    fitCourseZoom(osmd, host, 0.5, reach, 2);
+    expect(notation.Zoom).toBeCloseTo(baseline * 2);
+    roomHeight = 240;
+    fitCourseZoom(osmd, host, 0.5, reach, 2);
+    expect(notation.Zoom).toBeCloseTo((208 / 140) * 2);
+    fitCourseZoom(osmd, host, 0.5, reach, 1);
+    expect(notation.Zoom).toBeCloseTo(208 / 140);
+    roomHeight = 40;
+    fitCourseZoom(osmd, host, 0.5, reach, 1.5);
+    expect(notation.Zoom).toBeCloseTo((88 / 140) * 1.5);
+    expect(courseRoom(host, 0.5).height).toBe(88);
+    body.remove();
+  });
+
   it("caps courseRoom to the same CSS height as the rendered lesson", () => {
     const workspace = document.createElement("div");
     workspace.className = "workspace-main";

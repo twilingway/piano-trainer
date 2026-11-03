@@ -27,16 +27,18 @@ export function LessonReport({
           <div className="lesson-result__summary" role="status">
             {summary}
           </div>
-          <button
-            type="button"
-            className="game-button"
-            onClick={() => {
-              setOpen(true);
-            }}
-          >
-            {t("Подробнее")}
-          </button>
         </div>
+      </LessonSlot>
+      <LessonSlot name="resultAction">
+        <button
+          type="button"
+          className="game-button"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          {t("Подробнее")}
+        </button>
       </LessonSlot>
       <GameDialog
         open={open}

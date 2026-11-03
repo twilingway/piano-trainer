@@ -160,7 +160,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           presentation={props.staffPresentation}
           musicXml={props.staffXml}
           beat={props.readingBeat ?? props.beat}
-          zoom={prefs.zoom}
+          zoom={lessonReference ? prefs.lessonZoom : props.course ? 1 : prefs.zoom}
           noteColor={prefs.noteColor}
           playedNoteColor={prefs.playedNoteColor}
           scoreColor={prefs.scoreColor}

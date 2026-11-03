@@ -5109,17 +5109,19 @@ button.song-card.song-card__open {
   width: 0;
   min-width: 0;
 }
-/* A lesson owns one compact score focus; its persistent canvas remains below it. */
+/* Actions have a separate rail; only notation and feedback scroll above the piano. */
 .lesson-workspace {
   box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   flex: 1 1 0;
   width: min(100%, 1080px);
   min-width: 0;
   min-height: 0;
   margin-inline: auto;
-  padding: 20px 20px 12px;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  padding: 12px 16px;
+  gap: 6px;
+  overflow: hidden;
   text-align: center;
   overflow-wrap: anywhere;
 }
@@ -5127,15 +5129,24 @@ button.song-card.song-card__open {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 .lesson-workspace__heading h2 {
   margin: 0;
-  font-size: clamp(18px, 2vw, 24px);
+  font-size: clamp(17px, 2vw, 24px);
 }
 .lesson-workspace__heading p {
   margin: 0;
+  text-align: center;
+}
+.lesson-workspace__instruction {
+  min-height: 20px;
+  line-height: 20px;
+}
+.lesson-workspace__heading:has(.lesson-workspace__feedback:not(:empty))
+  .lesson-workspace__instruction {
+  display: none;
 }
 .lesson-workspace__exit {
   justify-self: start;
@@ -5150,7 +5161,8 @@ button.song-card.song-card__open {
   font-size: 14px;
 }
 .lesson-menu__list {
-  position: absolute;
+  box-sizing: border-box;
+  position: fixed;
   top: calc(100% + 6px);
   right: 0;
   z-index: 5;
@@ -5160,6 +5172,8 @@ button.song-card.song-card__open {
   width: max-content;
   min-width: 220px;
   max-width: min(320px, calc(100vw - 32px));
+  max-height: min(320px, 65dvh);
+  overflow-y: auto;
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -5177,6 +5191,7 @@ button.song-card.song-card__open {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
+  flex-shrink: 0;
   width: 100%;
   min-height: 44px;
   padding-block: 6px;
@@ -5189,14 +5204,14 @@ button.song-card.song-card__open {
 }
 .lesson-workspace__counter {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 2.6em;
-  margin-top: 8px;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 0;
 }
 .lesson-counter {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -5204,21 +5219,55 @@ button.song-card.song-card__open {
   font-size: 13px;
   color: var(--muted);
 }
+.lesson-workspace__content {
+  display: grid;
+  grid-template-columns: clamp(112px, 16vw, 140px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  gap: 12px;
+}
+.lesson-workspace__body {
+  display: flex;
+  flex-direction: column;
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
 .lesson-workspace__score {
   min-width: 0;
-  margin: 8px 0;
+  width: 100%;
+  flex: 0 0 auto;
+  margin-block: auto;
 }
 .lesson-workspace__score .staves {
   max-height: none;
+  margin: 0;
+  padding: 0;
 }
-.lesson-workspace__score .staff {
-  max-height: 36vh;
+.workspace-main.workspace-main--practice > .lesson-workspace .lesson-workspace__score .staff {
+  min-height: 0;
+  max-height: none;
+  resize: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.lesson-workspace__score .staff svg {
+  display: block;
 }
 .lesson-workspace__response {
-  display: grid;
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
-  justify-items: center;
-  gap: 8px;
+  min-height: 0;
+  gap: 6px;
 }
 .lesson-workspace__response > * {
   min-width: 0;
@@ -5231,41 +5280,87 @@ button.song-card.song-card__open {
 }
 .lesson-workspace__actions {
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
+  flex-shrink: 0;
 }
-.lesson-workspace__hint {
+.lesson-workspace__hint,
+.lesson-workspace__result-action {
   display: contents;
 }
 .lesson-workspace__actions .game-button {
-  min-height: 48px;
+  width: 100%;
+  min-height: 44px;
 }
 .lesson-workspace .lesson-main-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 200px;
-  min-height: 48px;
+  min-width: 0;
+  min-height: 44px;
   font-weight: 700;
   text-align: center;
 }
 .lesson-workspace__answer:empty {
   display: none;
 }
+/* A finished series has two useful actions; its disabled hint does not reserve a third row. */
+.lesson-workspace__actions:has(.lesson-workspace__result-action:not(:empty))
+  .lesson-workspace__hint {
+  display: none;
+}
+/* Choice exercises need the full width rather than five buttons in a narrow side rail. */
+.lesson-workspace__content:has(.lesson-workspace__answer:not(:empty)) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+}
+.lesson-workspace__content:has(.lesson-workspace__answer:not(:empty)) .lesson-workspace__response {
+  grid-column: 1;
+  grid-row: 1;
+}
+.lesson-workspace__content:has(.lesson-workspace__answer:not(:empty)) .lesson-workspace__actions {
+  flex-direction: row;
+}
+.lesson-workspace__content:has(.lesson-workspace__answer:not(:empty))
+  .lesson-workspace__actions
+  .game-button {
+  width: auto;
+  min-width: 112px;
+}
+.lesson-workspace__content:has(.lesson-workspace__answer:not(:empty)) .lesson-workspace__body {
+  grid-column: 1;
+  grid-row: 2;
+}
 .lesson-workspace__feedback {
   display: grid;
-  align-content: start;
   justify-items: center;
+  align-content: start;
   gap: 4px;
-  min-height: 3.2em;
+  min-height: 20px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.lesson-workspace__feedback:empty {
+  display: none;
+}
+.lesson-workspace__feedback:has(.lesson-result) .reading-hint {
+  display: none;
+}
+.lesson-result__summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 12px;
 }
 .lesson-workspace__feedback p {
   margin: 0;
 }
 .lesson-workspace__feedback .reading-hint {
-  font-size: 1.1rem;
+  font-size: inherit;
   font-weight: 700;
   color: var(--accent);
 }
@@ -5282,11 +5377,15 @@ button.song-card.song-card__open {
 }
 .lesson-workspace .reading-actions {
   justify-content: center;
-  gap: 12px;
-  margin-block: 6px;
+  gap: 8px;
+  margin-block: 0;
 }
 .lesson-workspace .lesson-repeated-instruction {
   display: none;
+}
+/* Portal owners and dialogs must not create a third grid row. */
+.lesson-workspace__controls {
+  display: contents;
 }
 .lesson-result {
   margin-block: 12px;
@@ -5298,11 +5397,11 @@ button.song-card.song-card__open {
   margin: 0;
 }
 .lesson-workspace .music-course-choices {
-  margin-block: 8px;
-  gap: 14px;
+  margin-block: 0;
+  gap: 8px;
 }
 .lesson-workspace .music-course-choices .game-button {
-  min-height: 48px;
+  min-height: 44px;
 }
 .lesson-settings-dialog,
 .lesson-theory-panel {
@@ -5412,28 +5511,19 @@ button.song-card.song-card__open {
 
 @media (width <= 640px) {
   .lesson-workspace {
-    padding: 12px;
-  }
-  .lesson-workspace .reading-actions {
-    gap: 10px;
+    padding: 8px;
   }
   .lesson-workspace .game-button {
     max-width: 100%;
     white-space: normal;
   }
-  .lesson-workspace__score .staff {
-    max-height: 30vh;
-  }
   .lesson-workspace__bar {
     grid-template-columns: auto auto;
     justify-content: space-between;
   }
-  .lesson-workspace__bar h2 {
+  .lesson-workspace__title {
     grid-column: 1 / -1;
     grid-row: 2;
-  }
-  .lesson-workspace .lesson-main-action {
-    min-width: 160px;
   }
   .first-steps .reading-course-card {
     padding: 16px;
@@ -5442,115 +5532,72 @@ button.song-card.song-card__open {
     min-height: 0;
   }
 }
-@media (height <= 500px) {
+@media (height <= 500px), (width <= 640px) {
   .lesson-workspace {
     width: calc(100% - var(--mobile-bar-width, 52px));
-    margin-left: 0;
-    padding: 8px 12px;
+    margin-inline: 0;
+    padding: 6px 8px;
+    gap: 4px;
   }
-  .lesson-workspace__heading h2 {
-    font-size: 17px;
+  .lesson-workspace .game-button {
+    min-height: 40px;
+    font-size: 13px;
   }
-  .lesson-workspace__heading p,
-  .lesson-workspace__input {
-    font-size: 12px;
-  }
-  .lesson-workspace__score .staff {
-    max-height: 30vh;
-  }
-  /* Instruction and counter share a row. */
-  .lesson-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 12px;
-    align-content: start;
-  }
-  .lesson-workspace > *,
-  .lesson-workspace__bar {
-    grid-column: 1 / -1;
-  }
-  .lesson-workspace__heading {
-    display: contents;
-  }
-  .lesson-workspace__heading p {
-    grid-column: 1;
-    align-self: center;
-  }
-  .lesson-workspace__counter {
-    grid-column: 2;
-    min-height: 0;
-    margin: 0;
-  }
+  .lesson-workspace__input,
   .lesson-counter__mode {
     display: none;
   }
-  .lesson-workspace__input {
-    display: none;
+  .lesson-workspace__heading p {
+    font-size: 12px;
+  }
+  .lesson-workspace__counter {
+    margin-top: 0;
   }
   .lesson-workspace .reading-practice {
     margin-right: 0;
   }
-  .lesson-workspace .game-button {
-    min-height: 40px;
-  }
 }
-/* Low screens: feedback sits beside the actions instead of below them. */
-@media (height <= 760px) {
-  .lesson-workspace__score {
-    margin: 4px 0;
+@media (height <= 500px) {
+  .lesson-workspace__bar h2 {
+    font-size: 16px;
   }
-  /* The actions keep the centre column whatever the feedback says. */
-  .lesson-workspace__response {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    gap: 4px 12px;
-  }
-  .lesson-workspace__actions {
-    grid-area: 1 / 2;
+  .lesson-counter {
+    font-size: 13px;
   }
   .lesson-workspace__feedback {
-    grid-area: 1 / 3;
-    justify-items: start;
-    min-height: 2.8em;
-    align-content: center;
-    text-align: left;
+    font-size: 13px;
   }
-  .lesson-workspace__answer {
-    grid-area: 2 / 1 / 3 / -1;
+}
+@media (width <= 640px) and (height <= 500px) {
+  .lesson-workspace__bar {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
-  .lesson-workspace__input {
-    grid-area: 3 / 1 / 4 / -1;
+  .lesson-workspace__title {
+    grid-column: auto;
+    grid-row: auto;
   }
 }
 @media (width <= 640px) and (height > 500px) {
-  .lesson-workspace__response {
+  .lesson-workspace__content {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
   }
-  .lesson-workspace__response > * {
-    grid-area: auto;
-  }
-  .lesson-workspace__feedback {
-    justify-items: center;
-    text-align: center;
-  }
-}
-/* Very low screens: the feedback takes all the width beside the actions. */
-@media (height <= 500px) {
   .lesson-workspace__response {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-column: 1;
+    grid-row: 1;
   }
   .lesson-workspace__actions {
-    grid-area: 1 / 1;
+    flex-direction: row;
+    gap: 8px;
   }
-  .lesson-workspace__feedback {
-    grid-area: 1 / 2;
-    font-size: 13px;
+  .lesson-workspace__actions .game-button {
+    flex: 1 1 96px;
+    width: auto;
   }
-  .lesson-workspace__feedback .reading-hint {
-    font-size: 14px;
-  }
-  .lesson-workspace .lesson-main-action {
-    min-width: 120px;
+  .lesson-workspace__body {
+    grid-column: 1;
+    grid-row: 2;
   }
 }
 
@@ -5580,16 +5627,6 @@ button.song-card.song-card__open {
   font-size: 13px;
   font-weight: 700;
   content: counter(lesson);
-}
-
-@media (height <= 500px), (width <= 640px) {
-  .lesson-workspace {
-    width: calc(100% - var(--mobile-bar-width, 52px));
-    margin-inline: 0;
-  }
-  .lesson-workspace .reading-practice {
-    margin-right: 0;
-  }
 }
 
 /* Ordinary piano reserves the renderer's canonical footprint, including its lifted floor. */

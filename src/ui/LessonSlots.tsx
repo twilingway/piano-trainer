@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-export type LessonSlotName = "exit" | "counter" | "hint" | "answer" | "feedback";
+export type LessonSlotName = "exit" | "counter" | "hint" | "answer" | "feedback" | "resultAction";
 
 /** Menu groups in reading and Tab order; each item kind has its own place. */
 export const LESSON_MENU_KINDS = [

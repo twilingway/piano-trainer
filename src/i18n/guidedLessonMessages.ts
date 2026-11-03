@@ -1,6 +1,9 @@
 import type { Messages } from "./locales";
 
 export const guidedLessonMessages: Messages = {
+  "Масштаб нотного стана в уроках": { en: "Lesson staff scale" },
+  "Уменьшить ноты в уроке": { en: "Make lesson notes smaller" },
+  "Увеличить ноты в уроке": { en: "Make lesson notes larger" },
   "Предпросмотр завершён. Нажмите «Начать задание», чтобы сыграть фразу.": {
     en: "The preview is over. Press Start exercise to play the phrase."
   },
