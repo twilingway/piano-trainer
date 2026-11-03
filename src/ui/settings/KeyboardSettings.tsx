@@ -16,10 +16,6 @@ import type { KeyStyle } from "../../render/KeyboardLayer";
 interface Props {
   readonly keyRange: KeyRange;
   readonly onKeyRange: (range: KeyRange) => void;
-  readonly showLabels: boolean;
-  readonly onShowLabels: (show: boolean) => void;
-  readonly octaveLabels: boolean;
-  readonly onOctaveLabels: (show: boolean) => void;
   readonly keyStyle: KeyStyle;
   readonly onKeyStyle: (style: KeyStyle) => void;
   readonly fallingNoteStyle: FallingNoteStyle;
@@ -66,14 +62,10 @@ interface Props {
   readonly onCamera: (camera: CameraPrefs) => void;
 }
 
-/** The keyboard tab: how many keys, the stickers and what to show. */
+/** Key range, appearance, projection, effects and the camera. */
 export function KeyboardSettings({
   keyRange,
   onKeyRange,
-  showLabels,
-  onShowLabels,
-  octaveLabels,
-  onOctaveLabels,
   keyStyle,
   onKeyStyle,
   fallingNoteStyle,
@@ -183,26 +175,6 @@ export function KeyboardSettings({
               />
             </label>
           )}
-          <label className="setting">
-            <span>{t("Номера октав на клавишах")}</span>
-            <input
-              type="checkbox"
-              checked={octaveLabels}
-              onChange={(event) => {
-                onOctaveLabels(event.target.checked);
-              }}
-            />
-          </label>
-          <label className="setting">
-            <span>{t("Названия нот на клавишах")}</span>
-            <input
-              type="checkbox"
-              checked={showLabels}
-              onChange={(event) => {
-                onShowLabels(event.target.checked);
-              }}
-            />
-          </label>
         </div>
       </SettingsGroup>
       <SettingsGroup title={t("Падающие ноты")}>

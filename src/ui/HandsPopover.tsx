@@ -28,10 +28,6 @@ export function HandsPopover(props: Props) {
       ? ROLE_TITLE[props.parts.role]
       : (HAND_CHOICES.find((choice) => choice.value === props.hands)?.title ?? "Руки")
   );
-  const close = () => {
-    setOpen(false);
-    trigger.current?.focus({ preventScroll: true });
-  };
   useLayoutEffect(() => {
     const button = trigger.current;
     const menu = panel.current;
@@ -118,21 +114,8 @@ export function HandsPopover(props: Props) {
             hands={props.hands}
             mode={props.mode}
             onMode={props.onMode}
-            onHands={(hands) => {
-              props.onHands(hands);
-              close();
-            }}
-            parts={
-              parts
-                ? {
-                    ...parts,
-                    onRole: (role) => {
-                      parts.onRole(role);
-                      close();
-                    }
-                  }
-                : undefined
-            }
+            onHands={props.onHands}
+            parts={parts}
           />
         </div>
       )}

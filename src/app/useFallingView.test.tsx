@@ -22,6 +22,7 @@ const view = {
   setShowLabels: vi.fn(),
   setShowOctaveLabels: vi.fn(),
   setNoteNames: vi.fn(),
+  setFingerLabels: vi.fn(),
   setParts: vi.fn(),
   setRoad: vi.fn(),
   setNoteCards: vi.fn(),
@@ -83,7 +84,7 @@ function Harness({
     staffPrefs: prefs,
     cameraInputBlocked: blocked,
     updateStaffPrefs,
-    fallingNames: undefined,
+    typingNames: undefined,
     comparing,
     lastTake: comparing ? comparisonTake : null,
     placement: USUAL_PLACEMENT
@@ -112,6 +113,32 @@ afterEach(async () => {
 });
 
 describe("road guide view preference", () => {
+  it("uses independent falling names and finger flags without moving the song clock", async () => {
+    const prefs = {
+      ...DEFAULT_STAFF_PREFS,
+      noteNames: "ru" as const,
+      fallingNoteNames: "en" as const,
+      keyboardFingers: false,
+      fallingFingers: true
+    };
+    await act(async () => {
+      root.render(<Harness prefs={prefs} />);
+      await Promise.resolve();
+    });
+    expect(view.setNoteNames).toHaveBeenLastCalledWith("en");
+    expect(view.setFingerLabels).toHaveBeenLastCalledWith(false, true);
+    vi.clearAllMocks();
+    await act(async () => {
+      root.render(<Harness prefs={{ ...prefs, noteNames: "off", fallingFingers: false }} />);
+      await Promise.resolve();
+    });
+    expect(view.setNoteNames).toHaveBeenLastCalledWith("en");
+    expect(view.setFingerLabels).toHaveBeenLastCalledWith(false, false);
+    expect(trainer.load).not.toHaveBeenCalled();
+    expect(trainer.seek).not.toHaveBeenCalled();
+    expect(trainer.setPlaying).not.toHaveBeenCalled();
+  });
+
   it("toggles guides without rebuilding the view or issuing song/playback commands", async () => {
     await act(async () => {
       root.render(<Harness prefs={DEFAULT_STAFF_PREFS} />);

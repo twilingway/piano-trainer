@@ -95,6 +95,7 @@ export class KeyboardLayer {
   private style: Exclude<KeyStyle, "3d"> = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
   private modelFaces = false;
+  private fingersVisible = true;
   /** The rail under the keys, for a style that has one. */
   private railTexture: Texture | undefined;
   private readonly rail = new Sprite();
@@ -287,6 +288,10 @@ export class KeyboardLayer {
     this.octaveMarks?.setLocale(locale);
   }
 
+  setFingersVisible(visible: boolean): void {
+    this.fingersVisible = visible;
+  }
+
   /** Lights the keys for this frame: the owed chord, the notes sounding, the keys held. */
   draw(
     frame: KeysFrame,
@@ -366,6 +371,7 @@ export class KeyboardLayer {
       const hint = this.keyDigits.get(pitch);
       if (!hint) continue;
       hint.visible =
+        this.fingersVisible &&
         !frame.neutralKeys &&
         frame.fingerCues === undefined &&
         key !== undefined &&

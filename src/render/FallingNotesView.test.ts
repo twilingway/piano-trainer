@@ -45,6 +45,7 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
     playing: new Map<number, SongNote>(),
     arrivals: [],
     cardsOn: false,
+    fingersVisible: true,
     cards: new Container(),
     root: new Container(),
     guides: new Container(),
@@ -74,6 +75,107 @@ function notesHarness(songNotes: readonly SongNote[] = notes) {
   Object.assign(layer, { overlayLabels: [layer.root, layer.cards] });
   return { layer, sprites, flatDraw };
 }
+
+describe("independent falling captions", () => {
+  const note: SongNote = {
+    id: "caption",
+    pitch: 60,
+    hand: "right",
+    finger: 1,
+    start: 0,
+    startBeat: 0,
+    duration: 2
+  };
+  const geometry: Geometry = {
+    hitY: 400,
+    keyboardTop: 404,
+    keyboardHeight: 110,
+    blackHeight: 66,
+    whiteWidth: 40,
+    feltHeight: 4
+  };
+  const keys = layoutKeyboard(800, 48, 72);
+  const state = {
+    time: -1,
+    lookAhead: 6,
+    statusOf: () => undefined,
+    hands: new Set<Hand>(),
+    owns: () => true
+  };
+
+  it("can hide a block finger while its name remains and never invents an absent finger", () => {
+    const unfingered = { ...note };
+    delete unfingered.finger;
+    for (const input of [note, unfingered]) {
+      const { layer, sprites } = notesHarness([input]);
+      layer.setFingersVisible(false);
+      layer.draw(state, keys, geometry, undefined);
+      expect(sprites[0]?.digit.visible).toBe(false);
+      expect(sprites[0]?.name.visible).toBe(true);
+      const nameBottom = sprites[0]?.name.y;
+      layer.setFingersVisible(true);
+      layer.draw(state, keys, geometry, undefined);
+      expect(sprites[0]?.digit.visible).toBe(input.finger !== undefined);
+      if (input.finger !== undefined) expect(sprites[0]?.name.y).toBeLessThan(nameBottom ?? 0);
+      layer.draw({ ...state, hints: false }, keys, geometry, undefined);
+      expect(sprites[0]?.digit.visible).toBe(false);
+      expect(sprites[0]?.name.visible).toBe(false);
+    }
+  });
+
+  it("hides a card's badge without hiding its notation", () => {
+    const { layer, sprites } = notesHarness([note]);
+    layer.setCards(true);
+    layer.draw(state, keys, geometry, undefined);
+    expect(sprites[0]?.badge.visible).toBe(true);
+    layer.setFingersVisible(false);
+    layer.draw(state, keys, geometry, undefined);
+    expect(sprites[0]?.badge.visible).toBe(false);
+    expect(sprites[0]?.face.visible).toBe(true);
+    expect(sprites[0]?.name.visible).toBe(false);
+  });
+
+  it("emits only the selected native captions and restores overlay when native labels are unavailable", () => {
+    const { layer, sprites } = notesHarness([note]);
+    const drawHold = vi.fn(() => true);
+    const road = {
+      drawsNativeNoteLabels: true,
+      drawsNativeRoad: false,
+      setLegacyLabels: vi.fn(),
+      beginNotes: vi.fn(),
+      endNotes: vi.fn(),
+      drawHold,
+      fitHoldTop: (_x: number, top: number) => top,
+      notePlace: (x: number, y: number) => ({ x, y, scale: 1 }),
+      scenePan: 0
+    } as unknown as RoadLayer;
+    layer.draw(state, keys, geometry, road);
+    expect(drawHold.mock.calls[0]?.slice(10, 12)).toEqual([1, "до"]);
+    expect(sprites[0]?.digit.visible).toBe(false);
+    expect(sprites[0]?.name.visible).toBe(false);
+    drawHold.mockClear();
+    layer.setFingersVisible(false);
+    layer.draw(state, keys, geometry, road);
+    expect(drawHold.mock.calls[0]?.slice(10, 12)).toEqual([undefined, "до"]);
+    drawHold.mockClear();
+    layer.draw({ ...state, hints: false }, keys, geometry, road);
+    expect(drawHold.mock.calls[0]?.slice(10, 12)).toEqual([undefined, undefined]);
+    Object.assign(road, { drawsNativeNoteLabels: false });
+    layer.draw(state, keys, geometry, road);
+    expect(sprites[0]?.digit.visible).toBe(false);
+    expect(sprites[0]?.name.visible).toBe(true);
+    const letter = new Texture({ source: new TextureSource({ width: 32, height: 32 }) });
+    Object.assign(layer, { look: { ...PIANO_LOOK, badge: () => letter } });
+    layer.setFingersVisible(true);
+    Object.assign(road, { drawsNativeNoteLabels: true });
+    drawHold.mockClear();
+    layer.draw(state, keys, geometry, road);
+    expect(sprites[0]?.digit.visible).toBe(true);
+    expect(sprites[0]?.digit.texture).toBe(letter);
+    expect(sprites[0]?.name.visible).toBe(true);
+    expect(drawHold.mock.calls[0]?.slice(10, 12)).toEqual([undefined, undefined]);
+  });
+});
 
 /** The harness road's field in seconds, and the flat lane's: hitY 400 px under 40 px keys. */
 const ROAD_LOOK_AHEAD = 6;

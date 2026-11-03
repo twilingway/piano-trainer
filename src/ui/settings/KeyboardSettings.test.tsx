@@ -14,10 +14,6 @@ const noop = () => undefined;
 const base: ComponentProps<typeof KeyboardSettings> = {
   keyRange: "song",
   onKeyRange: noop,
-  showLabels: false,
-  onShowLabels: noop,
-  octaveLabels: true,
-  onOctaveLabels: noop,
   keyStyle: "3d",
   onKeyStyle: noop,
   notesPerspective: true,
@@ -681,33 +677,15 @@ describe("separate keyboard and world cameras", () => {
   });
 });
 
-describe("octave key label setting", () => {
+describe("hint settings are grouped separately", () => {
   it.each([
     ["ru", "Номера октав на клавишах"],
     ["en", "Octave numbers on keys"]
-  ] as const)("offers an independent localized toggle (%s)", (locale, label) => {
+  ] as const)("does not duplicate octave hint controls (%s)", (locale, label) => {
     setInterfaceLanguage(locale);
-    const onOctaveLabels = vi.fn(),
-      onShowLabels = vi.fn();
     act(() => {
-      root.render(
-        <KeyboardSettings
-          {...base}
-          octaveLabels
-          onOctaveLabels={onOctaveLabels}
-          onShowLabels={onShowLabels}
-        />
-      );
+      root.render(<KeyboardSettings {...base} />);
     });
-    const row = [...host.querySelectorAll("label")].find((node) =>
-      node.textContent.includes(label)
-    );
-    const box = row?.querySelector("input");
-    expect(box?.checked).toBe(true);
-    act(() => {
-      box?.click();
-    });
-    expect(onOctaveLabels).toHaveBeenCalledExactlyOnceWith(false);
-    expect(onShowLabels).not.toHaveBeenCalled();
+    expect(host.textContent).not.toContain(label);
   });
 });

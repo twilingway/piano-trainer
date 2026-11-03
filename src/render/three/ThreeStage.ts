@@ -30,6 +30,7 @@ import { ThreeKeyEmission } from "./ThreeKeyEmission";
 import type { KeyboardAppearance } from "./KeyboardAppearance";
 import { ThreeRimLights } from "./ThreeRimLights";
 import { ThreeRoadNotes } from "./ThreeRoadNotes";
+import { ThreeRoadNoteLabels } from "./ThreeRoadNoteLabels";
 import { roadTrailMaxGap } from "./roadTrailGeometry";
 import { ThreeRoadTrails } from "./ThreeRoadTrails";
 import { ThreeNoteAura } from "./ThreeNoteAura";
@@ -68,6 +69,7 @@ export class ThreeStage {
   private readonly baseLighting = new Group();
   private baseLightingVisible = true;
   private readonly roadNotes = new ThreeRoadNotes();
+  private readonly noteLabels = new ThreeRoadNoteLabels();
   private flatRoadNotes: ThreeFlatRoadNotes | undefined;
   private readonly roadTrails = new ThreeRoadTrails();
   private readonly noteAura = new ThreeNoteAura();
@@ -116,6 +118,7 @@ export class ThreeStage {
       this.roadGuides.group,
       this.roadTrails.group,
       this.roadNotes.group,
+      this.noteLabels.group,
       this.noteAura.group,
       this.freeBursts.group
     );
@@ -168,6 +171,7 @@ export class ThreeStage {
     this.lighting.position.copy(this.keys.position);
     this.road.visible = roadFrame !== undefined;
     this.roadNotes.setViewport(screen.width, screen.height);
+    this.noteLabels.setViewport(screen.width, screen.height);
     const sceneEnabled = this.performanceEnabled || this.freeEnabled;
     const effectBoxes = nativeKeyboard ? this.boxes : this.roadBoxes;
     if (sceneEnabled) {
@@ -217,6 +221,17 @@ export class ThreeStage {
         roadCamera.near.z,
         this.freeEnabled && !this.performanceEnabled
       );
+      this.noteLabels.nearZ = roadCamera.near.z;
+      this.noteLabels.performanceAngle = angle;
+      this.noteLabels.performanceScale = this.performanceEnabled ? this.performance.roadScale : 1;
+      this.noteLabels.update(
+        roadFrame.notes,
+        roadCamera.near.y,
+        roadFrame.flatMaterial,
+        roadFrame.noteCount
+      );
+    } else {
+      this.noteLabels.clear();
     }
     const step = Math.min(1, deltaSeconds * DIP_RATE);
     this.noteLights.update(energy, roadCamera, energyDeltaSeconds, this.keys.scale.x);
@@ -327,6 +342,10 @@ export class ThreeStage {
   get nativeEffectsReady(): boolean {
     const world = this.performanceEnabled || this.freeEnabled;
     return world && this.worldStage.ready;
+  }
+
+  get noteLabelsReady(): boolean {
+    return !this.disposed && this.noteLabels.ready;
   }
 
   setWorldFov(fov: number): void {
@@ -449,6 +468,7 @@ export class ThreeStage {
     this.noteLights.dispose();
     this.rimLights.dispose();
     this.roadNotes.dispose();
+    this.noteLabels.dispose();
     this.flatRoadNotes?.dispose();
     this.roadTrails.dispose();
     this.noteAura.dispose();

@@ -13,7 +13,7 @@ interface Props {
   readonly onChange: (change: Partial<StaffPrefs>) => void;
 }
 
-/** The staff tab: zoom, lines, following the play, names, fingers and chords. */
+/** Staff and piano tab scale, line layout, following the play and notation colors. */
 export function StaffSettings({ prefs, hasScore, onChange }: Props) {
   const { t } = useI18n();
   if (!hasScore) {
@@ -154,59 +154,6 @@ export function StaffSettings({ prefs, hasScore, onChange }: Props) {
                 onChange({ scoreColor: event.target.value });
               }}
             />
-          </label>
-        </div>
-      </SettingsGroup>
-      <SettingsGroup title={t("Подсказки к нотам")}>
-        <div className="settings-list">
-          <label className="setting">
-            <span>{t("Названия на нотах")}</span>
-            <select
-              className="game-select"
-              value={prefs.noteNames}
-              onChange={(event) => {
-                onChange({ noteNames: event.target.value as StaffPrefs["noteNames"] });
-              }}
-            >
-              <option value="off">{t("Нет")}</option>
-              <option value="ru">до ре ми</option>
-              <option value="en">C D E</option>
-            </select>
-          </label>
-          <label className="setting">
-            <span>{t("Номера пальцев")}</span>
-            <input
-              type="checkbox"
-              checked={prefs.fingers}
-              onChange={(event) => {
-                onChange({ fingers: event.target.checked });
-              }}
-            />
-          </label>
-          <label className="setting">
-            <span>{t("Аккорды")}</span>
-            <input
-              type="checkbox"
-              checked={prefs.chords}
-              onChange={(event) => {
-                onChange({ chords: event.target.checked });
-              }}
-            />
-          </label>
-          <label className="setting">
-            <span>{t("Цвет номеров пальцев")}</span>
-            <select
-              className="game-select"
-              value={prefs.fingerColors}
-              aria-label={t("Цвет номеров пальцев")}
-              disabled={!prefs.fingers}
-              onChange={(event) => {
-                onChange({ fingerColors: event.target.value as StaffPrefs["fingerColors"] });
-              }}
-            >
-              <option value="mono">{t("Одноцветные")}</option>
-              <option value="fingers">{t("По цветам пальцев")}</option>
-            </select>
           </label>
         </div>
       </SettingsGroup>

@@ -29,8 +29,13 @@ export interface StaffPrefs {
   readonly follow: boolean;
   /** Measures on every line of a wrapped page; 0 lets the width decide. */
   readonly measuresPerLine: 0 | 2 | 4 | 8;
-  /** Note names on the staff and the falling notes. */
+  /** Note names on the staff and piano tabs. */
   readonly noteNames: "off" | NoteNameStyle;
+  /** Labels on falling piano notes, independent of score notation. */
+  readonly fallingNoteNames: "off" | NoteNameStyle;
+  readonly fallingFingers: boolean;
+  /** Ordinary song fingering; lessons still own their explicit teaching cues. */
+  readonly keyboardFingers: boolean;
   /** Chord symbols over the staff. */
   readonly chords: boolean;
   /** Finger numbers on the staff. */
@@ -105,6 +110,9 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   follow: true,
   measuresPerLine: 4,
   noteNames: "off",
+  fallingNoteNames: "off",
+  fallingFingers: true,
+  keyboardFingers: true,
   chords: false,
   fingers: true,
   fingerColors: "mono",
@@ -177,6 +185,12 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     follow: boolean("follow"),
     measuresPerLine: choice("measuresPerLine", [0, 2, 4, 8]),
     noteNames: choice("noteNames", ["off", "ru", "en"]),
+    fallingNoteNames:
+      raw.fallingNoteNames === undefined
+        ? choice("noteNames", ["off", "ru", "en"])
+        : choice("fallingNoteNames", ["off", "ru", "en"]),
+    fallingFingers: boolean("fallingFingers"),
+    keyboardFingers: boolean("keyboardFingers"),
     chords: boolean("chords"),
     fingers: boolean("fingers"),
     fingerColors: choice("fingerColors", ["mono", "fingers"]),

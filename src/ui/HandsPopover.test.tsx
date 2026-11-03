@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
-import { act, type ComponentProps } from "react";
+import { act, useState, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import { HandsPopover } from "./HandsPopover";
+import { ROLE_HAND, type PartRole } from "../song/midiParts";
+import type { HandsChoice, PracticeModeChoice } from "./PlayerTopBar";
 
 let host: HTMLDivElement;
 let root: Root;
@@ -50,6 +52,39 @@ function open() {
   });
 }
 
+function ControlledChoices() {
+  const [hands, setHands] = useState<HandsChoice>("right");
+  const [role, setRole] = useState<PartRole | null>(null);
+  const [mode, setMode] = useState<PracticeModeChoice>("tempo");
+  return (
+    <div data-mode={mode} data-role={role ?? "none"} data-hands={hands}>
+      <HandsPopover
+        hands={role ? ROLE_HAND[role] : hands}
+        mode={mode}
+        onOpen={onOpen}
+        onHands={(next) => {
+          setRole(null);
+          setHands(next);
+        }}
+        onMode={setMode}
+        parts={{
+          roles: ["melody", "bass"],
+          role,
+          onRole: setRole,
+          accompaniment: true,
+          onAccompaniment: vi.fn()
+        }}
+      />
+    </div>
+  );
+}
+function choose(button: HTMLButtonElement) {
+  act(() => {
+    button.focus();
+    button.click();
+  });
+}
+
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("innerWidth", 667);
@@ -78,7 +113,7 @@ afterEach(() => {
 });
 
 describe("the hand shortcut", () => {
-  it("opens only mode and hand choices, focuses the selected hand and closes after choosing", () => {
+  it("opens only mode and hand choices and keeps focus on the chosen hand", () => {
     render();
     open();
     expect(onOpen).toHaveBeenCalledOnce();
@@ -90,13 +125,11 @@ describe("the hand shortcut", () => {
     ).toBeNull();
     expect(document.activeElement).toBe(hand(1));
     expect(hand(1).getAttribute("aria-checked")).toBe("true");
-    act(() => {
-      hand(0).click();
-    });
+    choose(hand(0));
     expect(onHands).toHaveBeenCalledWith("left");
-    expect(menu()).toBeNull();
-    expect(trigger().getAttribute("aria-expanded")).toBe("false");
-    expect(document.activeElement).toBe(trigger());
+    expect(menu()).not.toBeNull();
+    expect(trigger().getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(hand(0));
   });
 
   it("keeps mode changes open and disables mode choices while listening", () => {
@@ -128,7 +161,7 @@ describe("the hand shortcut", () => {
     expect(menu()).toBeNull();
   });
 
-  it("retains MIDI part choices and closes after choosing a part", () => {
+  it("retains MIDI part choices and focus after choosing a part", () => {
     const onRole = vi.fn();
     render({
       parts: {
@@ -141,12 +174,55 @@ describe("the hand shortcut", () => {
     });
     open();
     expect(document.activeElement).toBe(hand(5));
-    act(() => {
-      hand(4).click();
-    });
+    choose(hand(4));
     expect(onRole).toHaveBeenCalledWith("melody");
-    expect(menu()).toBeNull();
+    expect(menu()).not.toBeNull();
+    expect(document.activeElement).toBe(hand(4));
   });
+
+  it.each([0, 4])(
+    "allows choice %s then listening in one opening with controlled state",
+    (index) => {
+      act(() => {
+        root.render(<ControlledChoices />);
+      });
+      open();
+      const waiting = menu()?.querySelector<HTMLButtonElement>(".segmented button");
+      if (!waiting) throw new Error("Missing practice mode");
+      choose(waiting);
+      expect(waiting.getAttribute("aria-checked")).toBe("true");
+      choose(hand(index));
+      expect(hand(index).getAttribute("aria-checked")).toBe("true");
+      expect(document.activeElement).toBe(hand(index));
+      expect(host.firstElementChild?.getAttribute("data-role")).toBe(
+        index === 4 ? "melody" : "none"
+      );
+      choose(hand(3));
+      expect(menu()).not.toBeNull();
+      expect(hand(3).getAttribute("aria-checked")).toBe("true");
+      expect(document.activeElement).toBe(hand(3));
+      expect(host.firstElementChild?.getAttribute("data-role")).toBe("none");
+      expect(host.firstElementChild?.getAttribute("data-hands")).toBe("listen");
+      expect(host.firstElementChild?.getAttribute("data-mode")).toBe("wait");
+      expect(
+        Array.from(
+          menu()?.querySelectorAll<HTMLButtonElement>(".segmented button") ?? [],
+          (button) => [button.disabled, button.getAttribute("aria-checked")]
+        )
+      ).toEqual([
+        [true, "false"],
+        [true, "false"]
+      ]);
+      expect(hand(4).getAttribute("aria-checked")).toBe("false");
+      choose(hand(1));
+      expect(waiting.getAttribute("aria-checked")).toBe("true");
+      expect(waiting.disabled).toBe(false);
+      expect(onOpen).toHaveBeenCalledOnce();
+      choose(trigger());
+      expect(menu()).toBeNull();
+      expect(document.activeElement).toBe(trigger());
+    }
+  );
 
   it("does not open choices for fixed practice", () => {
     render({ disabled: true });

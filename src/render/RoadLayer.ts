@@ -337,6 +337,9 @@ export class RoadLayer {
   get drawsNativeRoad(): boolean {
     return this.three?.drawsRoad === true;
   }
+  get drawsNativeNoteLabels(): boolean {
+    return this.drawsNativeRoad && this.three?.nativeNoteLabelsReady === true;
+  }
   get drawsNativeKeyboard(): boolean {
     return this.three?.on === true && this.keys.container.visible;
   }

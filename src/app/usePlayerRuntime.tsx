@@ -322,7 +322,7 @@ export function usePlayerRuntime() {
     staffPrefs: workspacePrefs,
     cameraInputBlocked: !cameraInput.enabled,
     updateStaffPrefs,
-    fallingNames: score.nameStyle,
+    typingNames: score.nameStyle,
     comparing: !practiceActive && takes.comparing,
     lastTake: takes.lastTake,
     computerKeys: word.keyboard,

@@ -3,6 +3,7 @@ import { useI18n } from "../../app/useI18n";
 interface Props {
   readonly staff: ReactNode;
   readonly keyboard: ReactNode;
+  readonly hints: ReactNode;
   readonly wordTyping: boolean;
   readonly toggles: ReactNode;
   readonly editing: boolean;
@@ -17,6 +18,7 @@ export function SettingsView(props: Props) {
         <h3 className="settings-group__title">{t("Что показывать")}</h3>
         <div className="setting-control setting-control--views">{props.toggles}</div>
       </section>
+      {props.hints}
       <section className="settings-group">
         <h3 className="settings-group__title">{t("Нотная запись")}</h3>
         {props.staff}
