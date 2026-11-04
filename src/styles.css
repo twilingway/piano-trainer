@@ -6337,3 +6337,9 @@ button.song-card.song-card__open {
 .beginner-feedback p {
   margin: 0.4rem 0;
 }
+
+@media (width <= 640px), (height <= 500px) {
+  .beginner-feedback {
+    padding-inline-end: var(--mobile-bar-width, 52px);
+  }
+}
