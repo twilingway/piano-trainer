@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <work><work-title>Звёздочка</work-title></work>
+  <identification><creator type="composer">Traditional melody; original educational arrangement</creator></identification>
+  <part-list><score-part id="learner"><part-name>Melody</part-name></score-part><score-part id="accompaniment"><part-name>Accompaniment</part-name></score-part></part-list>
+  <part id="learner">
+    <measure number="1">
+      <attributes><divisions>4</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+      <direction><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>80</per-minute></metronome></direction-type><sound tempo="80"/></direction>
+      <note id="twinkle-m1-n1"><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-m1-n2"><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-m1-n3"><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m1-n4"><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>4</fingering></technical></notations></note>
+    </measure>
+    <measure number="2">
+      <note id="twinkle-m2-n1"><pitch><step>A</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m2-n2"><pitch><step>A</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m2-n3"><pitch><step>G</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice><type>half</type><staff>1</staff><stem>up</stem><notations><technical><fingering>4</fingering></technical></notations></note>
+    </measure>
+    <measure number="3">
+      <note id="twinkle-m3-n1"><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>3</fingering></technical></notations></note>
+      <note id="twinkle-m3-n2"><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>3</fingering></technical></notations></note>
+      <note id="twinkle-m3-n3"><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>2</fingering></technical></notations></note>
+      <note id="twinkle-m3-n4"><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>2</fingering></technical></notations></note>
+    </measure>
+    <measure number="4">
+      <note id="twinkle-m4-n1"><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-m4-n2"><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>2</fingering></technical></notations></note>
+      <note id="twinkle-m4-n3"><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice><type>half</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+    </measure>
+    <measure number="5">
+      <note id="twinkle-m5-n1"><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m5-n2"><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m5-n3"><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>4</fingering></technical></notations></note>
+      <note id="twinkle-m5-n4"><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>4</fingering></technical></notations></note>
+    </measure>
+    <measure number="6">
+      <note id="twinkle-m6-n1"><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>3</fingering></technical></notations></note>
+      <note id="twinkle-m6-n2"><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>3</fingering></technical></notations></note>
+      <note id="twinkle-m6-n3"><pitch><step>D</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice><type>half</type><staff>1</staff><stem>up</stem><notations><technical><fingering>2</fingering></technical></notations></note>
+    </measure>
+    <measure number="7">
+      <note id="twinkle-m7-n1"><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m7-n2"><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m7-n3"><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>4</fingering></technical></notations></note>
+      <note id="twinkle-m7-n4"><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>4</fingering></technical></notations></note>
+    </measure>
+    <measure number="8">
+      <note id="twinkle-m8-n1"><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>3</fingering></technical></notations></note>
+      <note id="twinkle-m8-n2"><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>3</fingering></technical></notations></note>
+      <note id="twinkle-m8-n3"><pitch><step>D</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice><type>half</type><staff>1</staff><stem>up</stem><notations><technical><fingering>2</fingering></technical></notations></note>
+    </measure>
+    <measure number="9">
+      <note id="twinkle-m9-n1"><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-m9-n2"><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-m9-n3"><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m9-n4"><pitch><step>G</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>4</fingering></technical></notations></note>
+    </measure>
+    <measure number="10">
+      <note id="twinkle-m10-n1"><pitch><step>A</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m10-n2"><pitch><step>A</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-m10-n3"><pitch><step>G</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice><type>half</type><staff>1</staff><stem>up</stem><notations><technical><fingering>4</fingering></technical></notations></note>
+    </measure>
+    <measure number="11">
+      <note id="twinkle-m11-n1"><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>3</fingering></technical></notations></note>
+      <note id="twinkle-m11-n2"><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>3</fingering></technical></notations></note>
+      <note id="twinkle-m11-n3"><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>2</fingering></technical></notations></note>
+      <note id="twinkle-m11-n4"><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>2</fingering></technical></notations></note>
+    </measure>
+    <measure number="12">
+      <note id="twinkle-m12-n1"><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-m12-n2"><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>2</fingering></technical></notations></note>
+      <note id="twinkle-m12-n3"><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice><type>half</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+  <part id="accompaniment">
+    <measure number="1">
+      <attributes><divisions>4</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>F</sign><line>4</line></clef></attributes>
+      <direction><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>80</per-minute></metronome></direction-type><sound tempo="80"/></direction>
+      <note id="twinkle-auto-m1-n1"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m1-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m1-n3"><pitch><step>G</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m1-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="2">
+      <note id="twinkle-auto-m2-n1"><pitch><step>F</step><octave>2</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m2-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m2-n3"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m2-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="3">
+      <note id="twinkle-auto-m3-n1"><pitch><step>F</step><octave>2</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m3-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m3-n3"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m3-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="4">
+      <note id="twinkle-auto-m4-n1"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m4-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m4-n3"><pitch><step>G</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m4-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="5">
+      <note id="twinkle-auto-m5-n1"><pitch><step>G</step><octave>2</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m5-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m5-n3"><pitch><step>D</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m5-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="6">
+      <note id="twinkle-auto-m6-n1"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m6-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m6-n3"><pitch><step>G</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m6-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="7">
+      <note id="twinkle-auto-m7-n1"><pitch><step>G</step><octave>2</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m7-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m7-n3"><pitch><step>D</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m7-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="8">
+      <note id="twinkle-auto-m8-n1"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m8-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m8-n3"><pitch><step>G</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m8-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="9">
+      <note id="twinkle-auto-m9-n1"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m9-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m9-n3"><pitch><step>G</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m9-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="10">
+      <note id="twinkle-auto-m10-n1"><pitch><step>F</step><octave>2</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m10-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m10-n3"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m10-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="11">
+      <note id="twinkle-auto-m11-n1"><pitch><step>F</step><octave>2</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m11-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m11-n3"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m11-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+    </measure>
+    <measure number="12">
+      <note id="twinkle-auto-m12-n1"><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>5</fingering></technical></notations></note>
+      <note id="twinkle-auto-m12-n2"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <note id="twinkle-auto-m12-n3"><pitch><step>G</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff><stem>up</stem><notations><technical><fingering>1</fingering></technical></notations></note>
+      <note id="twinkle-auto-m12-n4"><rest/><duration>4</duration><voice>1</voice><type>quarter</type><staff>1</staff></note>
+      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+    </measure>
+  </part>
+</score-partwise>

@@ -65,6 +65,7 @@ function state(phase: "guided" | "independent", legacy = false, hintLevel = 0) {
     snapshot: {},
     view: {},
     course: { active: null, saved: {} },
+    songCourse: { active: false },
     music: { active: false },
     rhythm: { active: false },
     independentRhythm: { active: false },

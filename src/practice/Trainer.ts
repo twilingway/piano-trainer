@@ -1,3 +1,4 @@
+import type { InputCancellationReason } from "./inputCancellation";
 import { soundAllOff } from "../audio/pianoSound";
 import type { SessionMelodyOutput } from "../audio/sessionAudio";
 import { SessionAudio } from "../audio/sessionAudio";
@@ -65,8 +66,8 @@ export class Trainer {
   configureCourse<K extends CourseKind>(kind: K, policy: CoursePolicies[K] | null): void {
     this.courses.configure(kind, policy);
   }
-  cancelInput(resetAll = false): void {
-    this.courses.cancelInput(resetAll);
+  cancelInput(resetAll = false, reason: InputCancellationReason = "cleanup"): void {
+    this.courses.cancelInput(resetAll, reason);
   }
   private timing: TrainerTiming = {
     inputOffsets: {},
@@ -139,7 +140,7 @@ export class Trainer {
       runContext
     }: { preservePosition?: boolean; runContext?: string } = {}
   ): void {
-    this.cancelInput();
+    this.cancelInput(false, "load");
     const now = performance.now();
     const previous = preservePosition ? this.session : undefined;
     const resume = previous !== undefined && this.playing;
@@ -186,7 +187,7 @@ export class Trainer {
   }
 
   private move(from: number, restart: boolean): void {
-    this.cancelInput();
+    this.cancelInput(false, restart ? "restart" : "seek");
     this.resumePending = false;
     if (!this.session) return;
     if (restart) this.run.restart();
@@ -244,7 +245,7 @@ export class Trainer {
       session.setInputGrace(
         course?.inputCompensationMs?.() ?? maximumInputCompensation(this.timing)
       );
-    if (!this.playing) this.silence();
+    if (!this.playing) this.silence("pause");
     const now = performance.now();
     if (session && this.playing && !wasPlaying) {
       this.run.begin(session.startedFrom);
@@ -518,8 +519,8 @@ export class Trainer {
     }
   }
 
-  private silence(): void {
-    this.cancelInput();
+  private silence(reason: InputCancellationReason = "cleanup"): void {
+    this.cancelInput(false, reason);
     if (this.session) this.apply(this.session.stopAuto());
     this.sounding.clear();
     this.onLights?.([]);

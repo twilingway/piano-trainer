@@ -1,3 +1,4 @@
+import type { InputCancellationReason } from "./inputCancellation";
 import type { KeyEvent } from "../input/midiInput";
 import type { SongNote } from "../song/song";
 import type { LessonFingerCue } from "../reading/fingerCues";
@@ -17,6 +18,7 @@ export interface CoursePolicies {
   readonly heldBass: TrainerHeldBassPolicy;
   readonly independentRhythm: TrainerIndependentRhythmPolicy;
   readonly music: TrainerMusicPolicy;
+  readonly songCourse: TrainerMusicPolicy;
 }
 export type CourseKind = keyof CoursePolicies;
 
@@ -89,7 +91,7 @@ export interface TrainerCourse {
     performance: boolean
   ) => CourseGuidance;
   readonly cuePresented: (lights: readonly number[], atMs: number) => void;
-  readonly cancel?: (atMs: number, resetAll: boolean) => void;
+  readonly cancel?: (atMs: number, resetAll: boolean, reason?: InputCancellationReason) => void;
   readonly statusOf?: (noteId: string) => NoteStatus | undefined;
   /** A course with its own stats replaces the session's game board. */
   readonly stats?: () => PracticeStats | undefined;

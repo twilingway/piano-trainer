@@ -7,6 +7,7 @@ import { setInterfaceLanguage } from "../app/interfaceLanguage";
 import type { ReadingSourceFilter } from "../reading/progressTypes";
 import { ReadingProgress } from "./ReadingProgress";
 import { LibraryDialog } from "./LibraryDialog";
+import { useLibraryNavigation } from "../app/useLibraryNavigation";
 import { WindowViewMemory } from "./windowViewMemory";
 
 let host: HTMLDivElement, root: Root;
@@ -36,6 +37,7 @@ afterEach(async () => {
 function props(): ComponentProps<typeof LibraryDialog> {
   return {
     open: true,
+    kind: "lessons",
     onClose: vi.fn(),
     lessons: [
       { id: "fixture", title: "Lesson fixture", levels: [{ id: "easy", title: "Level fixture" }] }
@@ -156,7 +158,7 @@ describe("library window presentation memory", () => {
     expect(callbacks.onFolderSong).not.toHaveBeenCalled();
   });
 
-  it("restores only remaining stable IDs, clamps shortened content and preserves the access message", async () => {
+  it("restores only remaining stable IDs and clamps shortened lesson content", async () => {
     const callbacks = props();
     const render = async (open: boolean, missing: boolean) => {
       await act(async () => {
@@ -189,7 +191,7 @@ describe("library window presentation memory", () => {
     await render(true, true);
     expect(detail().open).toBe(false);
     expect(body().scrollTop).toBe(200);
-    expect(body().textContent).toContain("Дать доступ к папке");
+    expect(body().textContent).not.toContain("Дать доступ к папке");
     expect(callbacks.onGrantFolder).not.toHaveBeenCalled();
     expect(callbacks.onFolderSong).not.toHaveBeenCalled();
   });
@@ -219,4 +221,112 @@ describe("library window presentation memory", () => {
     expect(detail().open).toBe(false);
     expect(body().scrollTop).toBe(0);
   });
+});
+
+it("separates lessons from melodies and never builds the lesson path in the melody window", async () => {
+  const callbacks = props();
+  const built = vi.fn();
+  function Path() {
+    built();
+    return <div data-new-path>New lesson path</div>;
+  }
+  const shared = {
+    ...callbacks,
+    foldersSupported: true,
+    mySongs: [{ id: "my-song", title: "My melody" }],
+    melodies: [
+      { id: "anthem-ru", title: "Bundled melody", levels: [{ id: "easy", title: "Melody level" }] }
+    ],
+    course: <Path />
+  };
+  await act(async () => {
+    await Promise.resolve();
+    root.render(<LibraryDialog {...shared} kind="melodies" />);
+  });
+  expect(built).not.toHaveBeenCalled();
+  expect(body().textContent).toContain("Открыть файл");
+  expect(body().textContent).toContain("My melody");
+  expect(body().textContent).toContain("Bundled melody");
+  expect(body().textContent).not.toContain("Lesson fixture");
+  expect(body().querySelector(".library-legacy")).toBeNull();
+  await act(async () => {
+    await Promise.resolve();
+    root.render(<LibraryDialog {...shared} kind="lessons" />);
+  });
+  expect(built).toHaveBeenCalledOnce();
+  expect(body().querySelector("[data-new-path]")).not.toBeNull();
+  expect(body().querySelector<HTMLDetailsElement>(".library-legacy")?.open).toBe(false);
+  expect(body().textContent).toContain("Lesson fixture");
+  expect(body().textContent).not.toContain("Открыть файл");
+  expect(body().textContent).not.toContain("My melody");
+  expect(callbacks.onLesson).not.toHaveBeenCalled();
+  expect(callbacks.onMySong).not.toHaveBeenCalled();
+});
+
+it("remembers each entrance independently without selecting or reloading music on reopen", async () => {
+  const callbacks = props();
+  function Shell() {
+    const [open, setOpen] = useState(true);
+    const navigation = useLibraryNavigation(setOpen);
+    return (
+      <>
+        <button
+          data-lessons
+          onClick={() => {
+            navigation.open("lessons");
+          }}
+        >
+          Lessons
+        </button>
+        <button
+          data-melodies
+          onClick={() => {
+            navigation.open("melodies");
+          }}
+        >
+          Melodies
+        </button>
+        <LibraryDialog
+          {...callbacks}
+          open={open}
+          kind={navigation.kind}
+          onClose={() => {
+            setOpen(false);
+          }}
+          folder={{ name: "Folder", needsAccess: true, songs: [] }}
+        />
+      </>
+    );
+  }
+  const click = async (selector: string) => {
+    await act(async () => {
+      await Promise.resolve();
+      const button = host.querySelector<HTMLButtonElement>(selector);
+      if (!button) throw new Error("missing navigation button");
+      button.click();
+    });
+  };
+  await act(async () => {
+    await Promise.resolve();
+    root.render(<Shell />);
+  });
+  detail().open = true;
+  body().scrollTop = 700;
+  await click('[aria-label="Закрыть"]');
+  expect(host.querySelector("dialog")).toBeNull();
+  await click("[data-melodies]");
+  expect(body().scrollTop).toBe(0);
+  expect(body().textContent).toContain("Дать доступ к папке");
+  body().scrollTop = 120;
+  await click('[aria-label="Закрыть"]');
+  await click("[data-lessons]");
+  expect(detail().open).toBe(true);
+  expect(body().scrollTop).toBe(700);
+  await click('[aria-label="Закрыть"]');
+  await click("[data-melodies]");
+  expect(body().scrollTop).toBe(120);
+  expect(callbacks.onLesson).not.toHaveBeenCalled();
+  expect(callbacks.onMySong).not.toHaveBeenCalled();
+  expect(callbacks.onFolderSong).not.toHaveBeenCalled();
+  expect(callbacks.onGrantFolder).not.toHaveBeenCalled();
 });

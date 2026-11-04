@@ -1,3 +1,4 @@
+import { useSongCourse } from "./useSongCourse";
 import { useBeginnerCourse } from "./useBeginnerCourse";
 import { useState } from "react";
 import { createLessonStaffFeedback } from "../staff/lessonStaffFeedback";
@@ -13,6 +14,7 @@ import { useMusicCourse } from "./useMusicCourse";
 export function usePracticeCourses() {
   const [lessonStaffFeedback] = useState(createLessonStaffFeedback);
   const beginner = useBeginnerCourse();
+  const songCourse = useSongCourse(beginner);
   const reading = useReadingCourse(lessonStaffFeedback, beginner);
   const intervals = useIntervalCourse(lessonStaffFeedback);
   const rhythm = useRhythmCourse(lessonStaffFeedback);
@@ -22,6 +24,7 @@ export function usePracticeCourses() {
   const music = useMusicCourse(lessonStaffFeedback);
   return {
     beginner,
+    songCourse,
     reading,
     intervals,
     rhythm,

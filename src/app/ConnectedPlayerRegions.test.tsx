@@ -52,6 +52,17 @@ vi.mock("../ui/ResultStats", () => ({ ResultStats: observed.stats }));
 const initial = (): PlayerRuntime =>
   ({
     libraryOpen: false,
+    libraryNavigation: { kind: "lessons", open: vi.fn(), setKind: vi.fn() },
+    songCourse: {
+      active: false,
+      controller: { choose: vi.fn() },
+      view: {
+        progressState: { results: [], selection: null },
+        loaded: true,
+        error: null,
+        storageError: false
+      }
+    },
     settingsOpen: false,
     resultClosed: false,
     lessonWindow: null,
@@ -664,5 +675,28 @@ describe("connected regions without React Compiler", () => {
     expect(view.container.textContent).toContain("Previous game mode");
     expect(view.container.textContent).toContain("Рейтинг недоступен");
     expect(observed.result.mock.lastCall?.[0]).toMatchObject({ open: true });
+  });
+});
+
+it.each([
+  "notes",
+  "duration",
+  "guided-phrase",
+  "review",
+  "independent-phrase",
+  "performance"
+] as const)("overrides written staff fingers only for the new course %s stage", (kind) => {
+  observed.runtime = initial();
+  const guided = kind !== "independent-phrase" && kind !== "performance";
+  const base = observed.runtime.songCourse;
+  observed.runtime.songCourse = {
+    ...base,
+    active: true,
+    view: { ...base.view, material: { node: { kind } } }
+  } as PlayerRuntime["songCourse"];
+  mount(<ConnectedPracticeWorkspace />);
+  expect(observed.workspace.mock.lastCall?.[0]).toMatchObject({
+    staffFingers: guided,
+    staffPitchColors: guided
   });
 });

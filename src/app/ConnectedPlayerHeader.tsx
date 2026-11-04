@@ -95,7 +95,7 @@ export function ConnectedPlayerHeader() {
     shallowEqual
   );
   const fullscreenToggle = useRuntimeCommand((runtime) => runtime.fullscreen.toggle);
-  const setLibraryOpen = useRuntimeCommand((runtime) => runtime.setLibraryOpen);
+  const openLibrary = useRuntimeCommand((runtime) => runtime.libraryNavigation.open);
   const setSettingsOpen = useRuntimeCommand((runtime) => runtime.setSettingsOpen);
   const play = useRuntimeCommand((runtime) => runtime.play);
   const startOver = useRuntimeCommand((runtime) => runtime.startOver);
@@ -192,7 +192,10 @@ export function ConnectedPlayerHeader() {
             if (!practiceActive) screenToggleEditing();
           }}
           onLibrary={() => {
-            setLibraryOpen(true);
+            openLibrary("lessons");
+          }}
+          onMelodies={() => {
+            openLibrary("melodies");
           }}
           onRestart={startOver}
           onTogglePlay={play}
