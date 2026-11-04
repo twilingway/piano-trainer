@@ -124,11 +124,9 @@ export class RoadLayer {
       this.nativeRoad.freeLanes = this.freeRoutes.lanes;
       this.physicalContactLanes = this.nativeRoad.freeContacts = this.freeRoutes.contacts;
     }
-    this.nativeRoad.noteStyle = this.computerKeyboard
-      ? "glass"
-      : isNativeKeyStyle(this.style)
-        ? this.fallingNoteStyle
-        : "flat";
+    this.nativeRoad.noteStyle = this.fallingNoteStyle;
+    if (this.computerKeyboard) this.nativeRoad.noteStyle = "glass";
+    else if (!isNativeKeyStyle(this.style)) this.nativeRoad.noteStyle = "flat";
     this.nativeRoad.flatMaterial = this.nativeRoad.noteStyle === "flat";
     const keys = this.nativeRoad.flatMaterial && this.camera ? this.contactKeys : undefined;
     const place = this.notePlace.bind(this);

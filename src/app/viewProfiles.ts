@@ -1,9 +1,9 @@
-import { isNativeKeyStyle } from "../render/keyFaceStyles";
+import { isNativeKeyStyle, type KeyStyle } from "../render/keyFaceStyles";
 import { normalizeRoadHorizon } from "../render/roadHorizon";
 import { CAMERA_PRESETS, normalizeCamera, type CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_SCREEN_LAYOUT, normalizeLayout, type ScreenLayout } from "./screenLayout";
 
-export type KeyboardStyle = import("../render/keyFaceStyles").KeyStyle;
+export type KeyboardStyle = KeyStyle;
 export type NotesProjection = "direct" | "perspective";
 export type KeyboardOrientation = "follow" | "top";
 export interface ViewAxes {

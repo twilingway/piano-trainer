@@ -23,7 +23,7 @@ export class ThreeRimLights {
   }
 
   /** Parent transforms move the aperture; WebGLLights strips scale from its width/height axes. */
-  layout(boxes: readonly KeyBox[], scale: number): void {
+  layout(boxes: readonly KeyBox[], scale: number, gain = 1): void {
     let left = Number.POSITIVE_INFINITY;
     let right = Number.NEGATIVE_INFINITY;
     let back = 0;
@@ -39,7 +39,7 @@ export class ThreeRimLights {
     this.light.quaternion.setFromUnitVectors(FRONT, this.direction);
     this.light.width = span * scale;
     this.light.height = 14 * scale;
-    this.light.intensity = span > 0 ? 5.5 : 0;
+    this.light.intensity = span > 0 ? 5.5 * gain : 0;
   }
 
   dispose(): void {

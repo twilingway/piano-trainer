@@ -1,5 +1,5 @@
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
-import { ExtrudeGeometry, Float32BufferAttribute, Shape } from "three";
+import { ExtrudeGeometry, Float32BufferAttribute, Shape, type BufferGeometry } from "three";
 import { isBlackKey } from "../../fingering/fingering";
 import {
   KEYBOARD_BLACK_FRONT,
@@ -10,7 +10,7 @@ import {
 import type { KeyBox } from "./keyBoxes";
 
 /** An authored low-poly clay key. Metric centres and the top contact plane never move. */
-export function clayKeyGeometry(box: KeyBox): ExtrudeGeometry {
+export function clayKeyGeometry(box: KeyBox): BufferGeometry {
   const radius = box.black ? 2.1 : 3.2;
   const half = (box.black ? box.width : KEYBOARD_WHITE_WIDTH) / 2;
   const left = -half + radius,
@@ -57,9 +57,10 @@ export function clayKeyGeometry(box: KeyBox): ExtrudeGeometry {
   points.pop();
   const shape = new Shape();
   for (let i = 0; i < points.length; i++) {
-    const at = points[i]!,
-      before = points[(i + points.length - 1) % points.length]!,
-      after = points[(i + 1) % points.length]!;
+    const at = points[i],
+      before = points[(i + points.length - 1) % points.length],
+      after = points[(i + 1) % points.length];
+    if (!at || !before || !after) throw new Error("Clay key outline is incomplete");
     const leftLength = Math.hypot(before[0] - at[0], before[1] - at[1]);
     const rightLength = Math.hypot(after[0] - at[0], after[1] - at[1]);
     const corner = Math.min(1.8, leftLength * 0.24, rightLength * 0.24);
@@ -116,10 +117,9 @@ export function clayKeyGeometry(box: KeyBox): ExtrudeGeometry {
   const welded = mergeVertices(geometry, 0.0001);
   welded.computeVertexNormals();
   const smooth = welded.toNonIndexed();
-  geometry.copy(smooth);
-  smooth.dispose();
+  geometry.dispose();
   welded.dispose();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
+  smooth.computeBoundingBox();
+  smooth.computeBoundingSphere();
+  return smooth;
 }

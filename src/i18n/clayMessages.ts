@@ -1,6 +1,6 @@
 import type { Messages } from "./locales";
 export const clayMessages: Messages = {
-  "Пластилин": { en: "Clay" },
+  Пластилин: { en: "Clay" },
   "Оформление объёмных нот доступно для клавиш «3D» и «Пластилин».": {
     en: "3D note styles are available with the 3D and Clay keyboards."
   },

@@ -1,5 +1,5 @@
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { Box3, Group, Mesh, Vector3, type Material } from "three";
+import { Box3, Group, Mesh, Vector3, type BufferGeometry, type Material } from "three";
 import type { Keyboard88 } from "./keyboard88";
 import { KEYBOARD_METRES } from "../keyboardMetrics";
 
@@ -31,8 +31,9 @@ export class PianoCase {
         clone.traverse((node) => {
           if (!(node instanceof Mesh)) return;
           node.material = finish;
-          node.geometry.computeBoundingBox();
-          const bounds = node.geometry.boundingBox as Box3 | null;
+          const source = node.geometry as BufferGeometry;
+          source.computeBoundingBox();
+          const bounds = source.boundingBox;
           if (!bounds) return;
           const size = bounds.getSize(new Vector3()),
             centre = bounds.getCenter(new Vector3());

@@ -510,7 +510,7 @@ export class ThreeStage {
     this.appearance.layout(boxes);
     // Both light rigs sit in the keys group, scaled by the keyboard camera.
     this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera, keysGroupScale(keys));
-    this.rimLights.layout(boxes, keysGroupScale(keys));
+    this.rimLights.layout(boxes, keysGroupScale(keys), this.materials.clayEnabled ? 0.2 : 1);
     this.hinged = buildStageKeys(
       this.keys,
       boxes,

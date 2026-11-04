@@ -356,7 +356,8 @@ export class FallingNotesView {
 
   /** Puts the road on or off: on when asked for and the notes show, with or without the keys. */
   private syncRoad(): void {
-    const on = (this.roadWanted || (isNativeKeyStyle(this.keyStyle) && !this.computer)) && this.parts.notes;
+    const on =
+      (this.roadWanted || (isNativeKeyStyle(this.keyStyle) && !this.computer)) && this.parts.notes;
     if (!this.road || !this.notesLayer) return;
     const changed = on !== this.roadMode;
     this.roadMode = on;
@@ -416,9 +417,7 @@ export class FallingNotesView {
   }
 
   /** Runs `onFrame` with real milliseconds before every draw. */
-  onTick(onFrame: (deltaMs: number) => void): void {
-    this.app.onTick(onFrame);
-  }
+  onTick = this.app.onTick.bind(this.app);
 
   waitForFrame = (signal?: AbortSignal): Promise<boolean> => this.app.waitForFrame(signal);
 

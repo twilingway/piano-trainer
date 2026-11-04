@@ -233,7 +233,8 @@ export function useFallingView({
       keyStyle: staffPrefs.keyStyle,
       handStyle: staffPrefs.handStyle,
       camera: staffPrefs.camera,
-      keyboardTop: isNativeKeyStyle(staffPrefs.keyStyle) && staffPrefs.keyboardOrientation === "top",
+      keyboardTop:
+        isNativeKeyStyle(staffPrefs.keyStyle) && staffPrefs.keyboardOrientation === "top",
       roadShape: {
         far: staffPrefs.roadFar,
         horizon: staffPrefs.roadHorizon,

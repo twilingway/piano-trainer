@@ -93,6 +93,19 @@ describe("neutral rim lighting", () => {
     pool.dispose();
   });
 
+  it("softens the existing emitter for matte clay and restores the original native radiance", () => {
+    const pool = new ThreeRimLights();
+    const boxes = keyBoxes(scene());
+    pool.layout(boxes, 1);
+    const emitter = pool.group.children[0] as RectAreaLight;
+    pool.layout(boxes, 1, 0.2);
+    expect(pool.group.children).toEqual([emitter]);
+    expect(emitter.intensity).toBeCloseTo(1.1);
+    pool.layout(boxes, 1);
+    expect(emitter.intensity).toBe(5.5);
+    pool.dispose();
+  });
+
   it("keeps radiance on narrow layouts, disables empty ones, and disposes only its own group", () => {
     const pool = new ThreeRimLights();
     const parent = new Group();
