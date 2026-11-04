@@ -181,7 +181,7 @@ export function Staff({
     if (!latest.current.course && !latest.current.singleLine) fitWrappedStaffSvg(osmd);
     if (latest.current.course) noteCourseReach(courseRange, osmd, host);
     paintStaffNotes(osmd, noteColor, palette);
-    applyStaffClayMaterial(host, material === "clay");
+    applyStaffClayMaterial(host, material === "clay", osmd);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
     const shift =
       latest.current.course && !illustration

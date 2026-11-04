@@ -20,7 +20,9 @@ describe("clay SVG material", () => {
     );
     expect(host.querySelector(".vf-notehead path")?.getAttribute("fill-rule")).toBe("evenodd");
     expect(host.querySelector("feDiffuseLighting")).not.toBeNull();
-    expect(host.querySelector("feSpecularLighting")).not.toBeNull();
+    expect(host.querySelector("feSpecularLighting")).toBeNull();
+    expect(host.querySelector("feTurbulence")).not.toBeNull();
+    expect(host.querySelector('feBlend[mode="screen"]')).toBeNull();
   });
   it("keeps unique isolated filters for two scores and does not accumulate after resize", () => {
     const host = document.createElement("div");

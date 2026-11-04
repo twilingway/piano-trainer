@@ -1,3 +1,6 @@
+import { applyStaffClayClefs } from "./staffClayClefs";
+import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
+import { applyStaffClayFaces } from "./staffClayFaces";
 const NS = "http://www.w3.org/2000/svg";
 let nextId = 0;
 function element(name: string, attributes: Readonly<Record<string, string>>) {
@@ -8,37 +11,32 @@ function element(name: string, attributes: Readonly<Record<string, string>>) {
 function material(id: string): SVGElement {
   const filter = element("filter", {
     id,
-    x: "-18%",
-    y: "-18%",
-    width: "136%",
-    height: "138%",
+    x: "-10%",
+    y: "-10%",
+    width: "120%",
+    height: "120%",
     "color-interpolation-filters": "sRGB"
   });
-  // A tiny glyph-local height map gives broad rounded light instead of a metallic edge.
   filter.append(
-    element("feGaussianBlur", { in: "SourceAlpha", stdDeviation: "0.85", result: "height" })
+    element("feGaussianBlur", { in: "SourceAlpha", stdDeviation: "0.75", result: "height" })
   );
   const diffuse = element("feDiffuseLighting", {
     in: "height",
-    surfaceScale: "2.3",
-    diffuseConstant: "1.12",
+    surfaceScale: "1.5",
+    diffuseConstant: "1",
     "lighting-color": "#ffffff",
     result: "light"
   });
-  diffuse.append(element("feDistantLight", { azimuth: "225", elevation: "58" }));
-  const shine = element("feSpecularLighting", {
-    in: "height",
-    surfaceScale: "2.5",
-    specularConstant: "0.42",
-    specularExponent: "10",
-    "lighting-color": "#fff9e9",
-    result: "shine"
-  });
-  shine.append(element("feDistantLight", { azimuth: "225", elevation: "58" }));
+  diffuse.append(element("feDistantLight", { azimuth: "225", elevation: "60" }));
+  const soften = element("feComponentTransfer", { in: "light", result: "softLight" });
+  for (const channel of ["feFuncR", "feFuncG", "feFuncB"]) {
+    soften.append(element(channel, { type: "linear", slope: "0.3", intercept: "0.7" }));
+  }
   filter.append(
     diffuse,
+    soften,
     element("feComposite", {
-      in: "light",
+      in: "softLight",
       in2: "SourceAlpha",
       operator: "in",
       result: "insideLight"
@@ -49,19 +47,32 @@ function material(id: string): SVGElement {
       mode: "multiply",
       result: "body"
     }),
-    shine,
-    element("feComposite", {
-      in: "shine",
-      in2: "SourceAlpha",
-      operator: "in",
-      result: "insideShine"
-    }),
-    element("feBlend", { in: "body", in2: "insideShine", mode: "screen" })
+    element("feTurbulence", {
+      type: "fractalNoise",
+      baseFrequency: "0.65",
+      numOctaves: "1",
+      seed: "7",
+      result: "grain"
+    })
+  );
+  const grain = element("feComponentTransfer", { in: "grain", result: "softGrain" });
+  for (const channel of ["feFuncR", "feFuncG", "feFuncB"]) {
+    grain.append(element(channel, { type: "linear", slope: "0.045", intercept: "0.955" }));
+  }
+  filter.append(
+    grain,
+    element("feBlend", { in: "body", in2: "softGrain", mode: "multiply", result: "textured" }),
+    element("feComposite", { in: "textured", in2: "SourceAlpha", operator: "in" })
   );
   return filter;
 }
 /** A bounded decoration pass over freshly engraved SVGs, never called by the frame loop. */
-export function applyStaffClayMaterial(host: HTMLElement, enabled: boolean): void {
+export function applyStaffClayMaterial(
+  host: HTMLElement,
+  enabled: boolean,
+  osmd?: OpenSheetMusicDisplay
+): void {
+  applyStaffClayFaces(host, enabled, osmd);
   for (const svg of host.querySelectorAll("svg")) {
     const previous = svg.querySelector<SVGElement>("defs[data-clay-material]");
     for (const painted of svg.querySelectorAll<SVGElement>("[data-clay-glyph]")) {
@@ -105,4 +116,5 @@ export function applyStaffClayMaterial(host: HTMLElement, enabled: boolean): voi
         "drop-shadow(0 0.65px 0 rgb(0 0 0 / 0.32)) drop-shadow(0 -0.3px 0 rgb(255 255 255 / 0.26))";
     }
   }
+  applyStaffClayClefs(host, enabled, osmd);
 }
