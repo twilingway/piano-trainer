@@ -1,3 +1,4 @@
+import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { ExtrudeGeometry, Float32BufferAttribute, Shape } from "three";
 import { isBlackKey } from "../../fingering/fingering";
 import {
@@ -109,6 +110,15 @@ export function clayKeyGeometry(box: KeyBox): ExtrudeGeometry {
       previous = material;
     }
   }
+  // ExtrudeGeometry splits triangle normals. Weld only equal attributes before averaging so the
+  // rounded clay edge has a soft surface, while paint UVs and top/body material groups survive.
+  geometry.deleteAttribute("normal");
+  const welded = mergeVertices(geometry, 0.0001);
+  welded.computeVertexNormals();
+  const smooth = welded.toNonIndexed();
+  geometry.copy(smooth);
+  smooth.dispose();
+  welded.dispose();
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return geometry;

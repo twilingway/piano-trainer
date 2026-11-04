@@ -83,6 +83,31 @@ describe("authored clay keyboard geometry", () => {
       geometry.dispose();
     }
   });
+  it("smooths the bevel without triangle-normal seams or moving the flat contact plane", () => {
+    for (const pitch of [60, 61]) {
+      const geometry = clayKeyGeometry(box(pitch));
+      const positions = geometry.getAttribute("position"),
+        normals = geometry.getAttribute("normal");
+      const shared = new Map<string, readonly number[]>();
+      let joined = 0;
+      for (let i = 0; i < positions.count; i++) {
+        const point = [positions.getX(i), positions.getY(i), positions.getZ(i)];
+        const normal = [normals.getX(i), normals.getY(i), normals.getZ(i)];
+        expect(Math.hypot(...normal)).toBeCloseTo(1, 5);
+        const key = point.map((value) => value.toFixed(4)).join(",");
+        const previous = shared.get(key);
+        if (previous) {
+          joined++;
+          expect(
+            normal.every((value, axis) => Math.abs(value - (previous[axis] ?? 0)) < 0.0001)
+          ).toBe(true);
+        } else shared.set(key, normal);
+      }
+      expect(joined).toBeGreaterThan(0);
+      expect(geometry.boundingBox?.max.y).toBeCloseTo(box(pitch).top - 22, 5);
+      geometry.dispose();
+    }
+  });
   it("bakes deterministic matte relief once and frees only its owned materials and map once", () => {
     const one = new ClayKeyMaterials(),
       two = new ClayKeyMaterials();

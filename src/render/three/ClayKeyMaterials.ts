@@ -26,7 +26,7 @@ export function clayReliefMap(): DataTexture {
 export class ClayKeyMaterials {
   readonly relief = clayReliefMap();
   readonly white = new MeshStandardMaterial({
-    color: 0xf1dfbd,
+    color: 0xffead1,
     roughness: 0.91,
     metalness: 0,
     bumpMap: this.relief,
