@@ -19,6 +19,7 @@ export function layoutFallingKeyboard(options: {
   readonly keys: Map<number, KeyRect>;
   readonly prefs: CameraPrefs;
   readonly native: boolean;
+  readonly nativeRangeFit?: boolean;
   readonly overhead: boolean;
   readonly computer: boolean;
   readonly parts: ViewParts;
@@ -60,7 +61,8 @@ export function layoutFallingKeyboard(options: {
       options.keys,
       options.overhead,
       placement.lift,
-      parts.hands && !options.hands.live ? flat : undefined
+      parts.hands && !options.hands.live ? flat : undefined,
+      options.nativeRangeFit ?? false
     );
     return {
       height,

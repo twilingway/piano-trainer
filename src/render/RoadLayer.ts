@@ -179,7 +179,9 @@ export class RoadLayer {
     this.keysShift = new Matrix().translate(0, -geometry.keyboardTop);
     void this.three?.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard);
     if (this.nativeKeyboard && this.camera && !this.notesOnly) {
-      this.camera = metricCameraForKeys(this.camera, keys, this.cameraHeight, this.shape.horizon);
+      const height = this.cameraHeight;
+      const clay = this.style === "clay";
+      this.camera = metricCameraForKeys(this.camera, keys, height, this.shape.horizon, clay);
       const { cameras, world, fit } = nativeRoadCameras(this.camera, keys, geometry, reference, {
         viewWidth: this.viewWidth,
         sceneWidth: this.size.width,
@@ -344,11 +346,8 @@ export class RoadLayer {
     return this.three?.on === true && this.keys.container.visible;
   }
   setSceneEffects(layers: readonly Container[]): void {
-    this.three?.setSceneEffects(layers, [
-      this.horizon,
-      this.arrivals.container,
-      this.rail.container
-    ]);
+    const extra = [this.horizon, this.arrivals.container, this.rail.container];
+    this.three?.setSceneEffects(layers, extra);
   }
   setWorldScoreSource = (source: StaffWorldSource | undefined): void =>
     this.three?.setWorldScoreSource(source);

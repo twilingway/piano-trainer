@@ -1,5 +1,5 @@
 import { feedbackNotehead } from "./staffExactNotehead";
-import { VexFlowGraphicalNote } from "opensheetmusicdisplay";
+import { NoteHeadShape, VexFlowGraphicalNote } from "opensheetmusicdisplay";
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { FINGER_COLOR } from "../render/fingerColors";
 import type { Finger } from "../fingering/fingering";
@@ -120,6 +120,7 @@ export function paintStaffNotes(
   noteColor: string,
   palette = false
 ): void {
+  const stems = new Map<VexFlowGraphicalNote["vfnote"][0], VexFlowGraphicalNote[]>();
   for (const row of osmd.GraphicSheet.MeasureList) {
     for (const measure of row) {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -136,6 +137,10 @@ export function paintStaffNotes(
               applyToSlurs: true
             });
             if (palette && note instanceof VexFlowGraphicalNote) {
+              const staveNote = note.vfnote[0];
+              const members = stems.get(staveNote) ?? [];
+              members.push(note);
+              stems.set(staveNote, members);
               const head = feedbackNotehead(note);
               if (head) {
                 const color = note.sourceNote.NoteheadColorXml || noteColor;
@@ -147,5 +152,32 @@ export function paintStaffNotes(
         }
       }
     }
+  }
+  // Chord members share one stem. Only an entirely revealed, one-colour chord may tint it.
+  // Shared beams, ties and slurs keep the base colour; adjacent pitches cannot overwrite them.
+  for (const members of stems.values()) {
+    const first = members[0];
+    const color = first?.sourceNote.NoteheadColorXml;
+    if (
+      !first ||
+      !color ||
+      members.some((note) => {
+        const head = note.sourceNote.Notehead as typeof note.sourceNote.Notehead | undefined;
+        return (
+          !!note.sourceNote.CustomNoteheadVFCode ||
+          note.sourceNote.NoteheadColorXml !== color ||
+          (head !== undefined && head.Shape !== NoteHeadShape.NORMAL)
+        );
+      })
+    )
+      continue;
+    first.setColor(color, {
+      applyToNoteheads: false,
+      applyToStem: true,
+      applyToFlag: true,
+      applyToBeams: false,
+      applyToTies: false,
+      applyToSlurs: false
+    });
   }
 }

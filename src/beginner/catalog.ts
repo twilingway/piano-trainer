@@ -56,5 +56,5 @@ export function beginnerDisplayRange(
 ): readonly [number, number] | undefined {
   if (!stage) return undefined;
   const low = stage.pitches[0] ?? 60;
-  return [low, Math.max(low + 2, stage.pitches.at(-1) ?? low)];
+  return [low, Math.min(low + 24, Math.max(low + 12, stage.pitches.at(-1) ?? low))];
 }

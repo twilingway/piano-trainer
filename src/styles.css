@@ -5222,6 +5222,7 @@ button.song-card.song-card__open {
 .lesson-workspace__content {
   --lesson-action-width: clamp(112px, 16vw, 140px);
 
+  position: relative;
   display: grid;
   grid-template-columns: var(--lesson-action-width) minmax(0, 1fr) var(--lesson-action-width);
   grid-template-rows: minmax(0, 1fr);
@@ -5274,6 +5275,50 @@ button.song-card.song-card__open {
 .lesson-workspace__response > * {
   min-width: 0;
   max-width: 100%;
+}
+/* The reserved side columns keep wide phrases intact; the rail uses nearby empty space. */
+.lesson-workspace__content[data-lesson-action-anchor] > .lesson-workspace__response {
+  position: absolute;
+  z-index: 1;
+  top: var(--lesson-actions-top);
+  left: var(--lesson-actions-left);
+  width: var(--lesson-action-width);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.lesson-workspace__waiting {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid #64cfc3;
+  border-radius: 12px;
+  background: #17433f;
+  color: #e8fff6;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+.lesson-workspace__waiting:empty {
+  visibility: hidden;
+}
+.lesson-workspace__waiting:not(:empty)::before {
+  content: "";
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94e8b4;
 }
 .lesson-workspace__input {
   margin: 0;
@@ -5600,6 +5645,9 @@ button.song-card.song-card__open {
   .lesson-workspace__actions .game-button {
     flex: 1 1 96px;
     width: auto;
+  }
+  .lesson-workspace__waiting {
+    flex-basis: 100%;
   }
   .lesson-workspace__body {
     grid-column: 1;

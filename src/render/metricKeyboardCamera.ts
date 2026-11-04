@@ -10,7 +10,8 @@ export function metricKeyboardCamera(
   height: number,
   prefs: CameraPrefs,
   horizon: number,
-  keys: Iterable<KeyRect>
+  keys: Iterable<KeyRect>,
+  rangeFit = false
 ): WorldCamera {
   const units = metricSourceUnits(keys);
   return worldCamera(
@@ -22,7 +23,8 @@ export function metricKeyboardCamera(
     {
       left: (-width * units) / 2,
       right: (sceneWidth - width / 2) * units,
-      pan: (sceneWidth - width) / 2
+      pan: (sceneWidth - width) / 2,
+      ...(rangeFit ? { zoomIn: true } : {})
     },
     units,
     KEYBOARD_DEPTH
@@ -33,7 +35,8 @@ export function metricCameraForKeys(
   base: WorldCamera,
   keys: ReadonlyMap<number, KeyRect>,
   height: number,
-  horizon: number
+  horizon: number,
+  rangeFit = false
 ): WorldCamera {
   const width = Math.max(...[...keys.values()].map((key) => key.x + key.width));
   return metricKeyboardCamera(
@@ -42,6 +45,7 @@ export function metricCameraForKeys(
     height,
     base.params.prefs,
     horizon,
-    keys.values()
+    keys.values(),
+    rangeFit
   );
 }

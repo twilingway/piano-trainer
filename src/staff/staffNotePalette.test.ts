@@ -17,10 +17,12 @@ describe("exact palette noteheads", () => {
     });
     const paints = [vi.fn(), vi.fn(), vi.fn()];
     const colors = ["#ff7b80", "#bfdc59", "#70bcef"];
+    const shared = {};
     const notes = colors.map((color, index) => {
       const note = Object.create(VexFlowGraphicalNote.prototype) as VexFlowGraphicalNote;
       Object.defineProperties(note, {
         vfnoteIndex: { value: index },
+        vfnote: { value: [shared] },
         sourceNote: { value: { NoteheadColorXml: color, ParentVoiceEntry: {} } }
       });
       note.getNoteheadSVGs = () => heads as unknown as HTMLElement[];
@@ -58,6 +60,31 @@ describe("exact palette noteheads", () => {
     osmd.cursor.GNotesUnderCursor = () => [];
     highlightUnderCursor(osmd, painted);
     expect(heads[0]?.querySelector("path")?.getAttribute("fill")).toBe(colors[0]);
+  });
+  it("does not choose one pitch for a shared mixed or partly revealed chord stem", () => {
+    const mixed = chord();
+    paintStaffNotes(mixed.osmd, "#55ccff", true);
+    expect(mixed.paints.map((paint) => paint.mock.calls.length)).toEqual([1, 1, 1]);
+    for (const note of mixed.notes) Object.assign(note.sourceNote, { NoteheadColorXml: "#ff7b80" });
+    Object.assign(mixed.notes[1]?.sourceNote ?? {}, { NoteheadColorXml: "" });
+    for (const paint of mixed.paints) paint.mockClear();
+    paintStaffNotes(mixed.osmd, "#55ccff", true);
+    expect(mixed.paints.map((paint) => paint.mock.calls.length)).toEqual([1, 1, 1]);
+  });
+  it("tints a fully revealed one-colour stem and flag after every base pass, without shared beams", () => {
+    const { notes, osmd, paints } = chord();
+    for (const note of notes) Object.assign(note.sourceNote, { NoteheadColorXml: "#ff7b80" });
+    paintStaffNotes(osmd, "#55ccff", true);
+    expect(paints[0]).toHaveBeenLastCalledWith("#ff7b80", {
+      applyToNoteheads: false,
+      applyToStem: true,
+      applyToFlag: true,
+      applyToBeams: false,
+      applyToTies: false,
+      applyToSlurs: false
+    });
+    expect(paints[1]).toHaveBeenCalledOnce();
+    expect(paints[2]).toHaveBeenCalledOnce();
   });
   it("keeps classic/control colours uniform when palette was not explicitly permitted", () => {
     const { notes, osmd, paints } = chord();

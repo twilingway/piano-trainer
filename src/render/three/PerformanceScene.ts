@@ -28,6 +28,7 @@ export class PerformanceScene {
   readonly lights = new PerformanceLights();
   readonly background = new Color(0x000000);
   private readonly bounds = new Box3();
+  private readonly focusBounds = new Box3();
   private readonly centre = new Vector3();
   private readonly size = new Vector3();
   private readonly target = new Vector3();
@@ -122,6 +123,13 @@ export class PerformanceScene {
     this.route = undefined;
   }
 
+  setFocusBounds(bounds: Box3 | undefined): void {
+    if (bounds ? this.focusBounds.equals(bounds) : this.focusBounds.isEmpty()) return;
+    if (bounds) this.focusBounds.copy(bounds);
+    else this.focusBounds.makeEmpty();
+    this.invalidate();
+  }
+
   invalidate(): void {
     this.route = undefined;
     this.dirty = true;
@@ -136,6 +144,8 @@ export class PerformanceScene {
   updateInspection(time: number, subject: Object3D, camera: Camera): void {
     if (this.dirty || this.scale !== subject.scale.x) {
       posedSceneBounds(subject, this.bounds);
+      if (!this.focusBounds.isEmpty())
+        this.bounds.copy(this.focusBounds).applyMatrix4(subject.matrixWorld);
       this.dirty = false;
       this.scale = subject.scale.x;
       this.route = undefined;
@@ -169,6 +179,8 @@ export class PerformanceScene {
     // Bounds are refreshed for the posed local model; no static bind-pose clipping.
     if (this.dirty || this.scale !== subject.scale.x) {
       posedSceneBounds(subject, this.bounds);
+      if (!this.focusBounds.isEmpty())
+        this.bounds.copy(this.focusBounds).applyMatrix4(subject.matrixWorld);
       this.dirty = false;
       this.scale = subject.scale.x;
       this.route = undefined;

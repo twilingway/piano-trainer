@@ -1,4 +1,6 @@
 import { ConnectedBeginner } from "./ConnectedBeginner";
+import { useMemo } from "react";
+import { claySourceNoteIds } from "../song/clayNotes";
 import { revealedClayNote } from "../reading/clayHint";
 import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
 import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
@@ -51,6 +53,8 @@ export function ConnectedPracticeWorkspace() {
     courseTabs,
     courseTopView,
     practiceActive,
+    beginnerGuided,
+    beginnerIndependent,
     lessonStaffFeedback,
     music,
     reading,
@@ -104,10 +108,17 @@ export function ConnectedPracticeWorkspace() {
         !runtime.comparing,
       courseTopView: runtime.course.saved.topView,
       lessonStaffFeedback: runtime.lessonStaffFeedback,
-      practiceActive: runtime.practiceActive
+      practiceActive: runtime.practiceActive,
+      beginnerIndependent: runtime.beginner.active && runtime.beginner.independent,
+      beginnerGuided:
+        runtime.beginner.active && !runtime.beginner.intro && !runtime.beginner.independent
     }),
     shallowEqual
   );
+  const sourceXml = "note" in reading ? reading.exercise?.musicXml : undefined;
+  const sourceNoteIds = useMemo(() => claySourceNoteIds(sourceXml), [sourceXml]);
+  const sourceNoteId =
+    "note" in reading ? sourceNoteIds.get(reading.note?.sourceIndex ?? -1) : undefined;
   const updateStaffPrefs = useRuntimeCommand((runtime) => runtime.updateStaffPrefs);
   const screenUpdateLayout = useRuntimeCommand((runtime) => runtime.screen.updateLayout);
   const screenResetLayout = useRuntimeCommand((runtime) => runtime.screen.resetLayout);
@@ -177,9 +188,14 @@ export function ConnectedPracticeWorkspace() {
                 ? reading.prompt?.musicXml
                 : scoreStaffXml
         }
+        staffPitchColors={beginnerGuided}
         staffPitchColorNoteId={
-          !music.active && "hintLevel" in reading && "note" in reading && "task" in reading
-            ? revealedClayNote(reading.active, reading.task, reading.hintLevel, reading.note?.id)
+          !beginnerIndependent &&
+          !music.active &&
+          "hintLevel" in reading &&
+          "note" in reading &&
+          "task" in reading
+            ? revealedClayNote(reading.active, reading.task, reading.hintLevel, sourceNoteId)
             : undefined
         }
         staffPresentation={

@@ -42,7 +42,8 @@ export function ConnectedLessonWorkspace({ score }: { readonly score: ReactNode 
       bass: runtime.reading.isBass,
       action: runtime.lessonAction,
       open: runtime.lessonWindow,
-      playing: runtime.playing
+      playing: runtime.playing,
+      waiting: runtime.snapshot.waiting
     }),
     shallowEqual
   );
@@ -112,6 +113,7 @@ export function ConnectedLessonWorkspace({ score }: { readonly score: ReactNode 
       }
       input={input}
       score={score}
+      waiting={state.playing && state.waiting}
       windows={{ open: state.open, onOpen, interruptsAttempt: state.playing }}
       action={
         state.action.command !== null ? (
