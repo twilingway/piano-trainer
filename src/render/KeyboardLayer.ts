@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "./keyFaceStyles";
 import { Assets, Container, NineSliceSprite, Sprite, Texture } from "./flatThree";
 import type { Renderer } from "./flatThree";
 
@@ -92,7 +93,7 @@ export class KeyboardLayer {
   private paintGeneration = 0;
   paintLoading = false;
   /** The style the painted faces are of. */
-  private style: Exclude<KeyStyle, "3d"> = "classic";
+  private style: "classic" | "arcade" = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
   private modelFaces = false;
   private fingersVisible = true;
@@ -162,8 +163,8 @@ export class KeyboardLayer {
   async loadPaintedFaces(style: KeyStyle): Promise<void> {
     const generation = ++this.paintGeneration;
     this.paintLoading = true;
-    this.modelFaces = style === "3d";
-    const paintedStyle = style === "3d" ? "classic" : style;
+    this.modelFaces = isNativeKeyStyle(style);
+    const paintedStyle = isNativeKeyStyle(style) ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
       const names = Object.keys(set.faces) as FaceName[];

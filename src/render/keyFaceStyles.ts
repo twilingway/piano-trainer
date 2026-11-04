@@ -8,7 +8,11 @@
  * thicker pseudo-3D keys over a lacquered rail.
  */
 /** Keyboard appearance is independent of the notes' projection. */
-export type KeyStyle = "classic" | "arcade" | "3d";
+export type KeyStyle = "classic" | "arcade" | "3d" | "clay";
+export type NativeKeyStyle = Extract<KeyStyle, "3d" | "clay">;
+export function isNativeKeyStyle(style: unknown): style is NativeKeyStyle {
+  return style === "3d" || style === "clay";
+}
 
 export type FaceName =
   | "white"
@@ -35,7 +39,7 @@ interface StyleSet {
   readonly rail?: string;
 }
 
-export const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, "3d">, StyleSet>> = {
+export const KEY_STYLES: Readonly<Record<Exclude<KeyStyle, NativeKeyStyle>, StyleSet>> = {
   classic: {
     faces: {
       white: new URL("./keys/white.webp", import.meta.url).href,

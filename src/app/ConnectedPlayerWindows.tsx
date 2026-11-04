@@ -1,4 +1,5 @@
-import { useI18n } from "./useI18n";
+import { ConnectedGuidedPath } from "./ConnectedGuidedPath";
+import { GuidedCatalog } from "../ui/GuidedCatalog";
 import { ConnectedMusicCards } from "./ConnectedMusicCourse";
 import { shallowEqual } from "react-redux";
 import { useState } from "react";
@@ -149,7 +150,6 @@ function ConnectedLibraryWindow({
   onClose: () => void;
   memory: WindowViewMemory;
 }) {
-  const { t } = useI18n();
   const { lesson, source, mySongs, folder } = useRuntimeSelector(
     (runtime) => ({
       lesson: runtime.current.lesson,
@@ -176,9 +176,8 @@ function ConnectedLibraryWindow({
       previousLessons={PREVIOUS_COURSE_LESSONS}
       course={
         <>
-          <section className="first-steps" aria-label={t("Первые шаги")}>
-            <h3>{t("Первые шаги")}</h3>
-            <p>{t("От первой ноты к маленькой пьесе. Выбирайте удобный шаг.")}</p>
+          <ConnectedGuidedPath onChoose={onClose} />
+          <GuidedCatalog>
             <div className="foundation-course-catalog">
               <ConnectedReadingCard onChoose={onClose} />
               <ConnectedBassReadingCard onChoose={onClose} />
@@ -189,7 +188,7 @@ function ConnectedLibraryWindow({
               <ConnectedIndependentRhythmCard onChoose={onClose} />
               <ConnectedMusicCards onChoose={onClose} />
             </div>
-          </section>
+          </GuidedCatalog>
           <ConnectedCourseCards onChoose={onClose} />
         </>
       }

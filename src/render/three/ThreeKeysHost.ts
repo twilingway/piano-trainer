@@ -33,6 +33,7 @@ export class ThreeKeysHost {
   private wanted = false;
   private roadWanted = false;
   private keyboardDim = false;
+  private clayKeyboard = false;
   private active = false;
   private freeWanted = false;
   private performanceWanted = false;
@@ -146,6 +147,11 @@ export class ThreeKeysHost {
   setSceneEffects(layers: readonly Container[], roadLayers: readonly Container[] = []): void {
     this.effects.setLayers(layers);
     this.roadEffects.setLayers(roadLayers);
+  }
+
+  setClayKeyboard(on: boolean): void {
+    this.clayKeyboard = on;
+    this.stage?.setClayKeyboard(on);
   }
 
   setKeyboardDim(dim: boolean): void {
@@ -278,6 +284,7 @@ export class ThreeKeysHost {
         this.stage = new ThreeStage(this.app.renderer.threeRenderer, kit);
         this.stage.beforeRender = this.beforeRender;
         this.stage.setKeyboardDim(this.keyboardDim);
+        this.stage.setClayKeyboard(this.clayKeyboard);
         if (this.worldScore) this.stage.setWorldScoreSource(this.worldScore);
         this.stage.setWorldFov(this.worldFov);
         this.stage.setFreeCameraMovement(this.movementWanted);

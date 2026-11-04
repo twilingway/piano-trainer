@@ -306,7 +306,7 @@ describe("independent keyboard effects", () => {
 });
 
 it.each(["ru", "en"] as const)(
-  "offers exactly three keyboard styles in %s with independent note projection",
+  "offers all four keyboard styles in %s with independent note projection",
   (language) => {
     setInterfaceLanguage(language);
     act(() => {
@@ -319,8 +319,10 @@ it.each(["ru", "en"] as const)(
     expect(Array.from(style.options, (option) => option.value)).toEqual([
       "classic",
       "arcade",
-      "3d"
+      "3d",
+      "clay"
     ]);
+    expect(style.options[3]?.textContent).toBe(language === "ru" ? "Пластилин" : "Clay");
     expect(style.options[2]?.textContent).toBe("3D");
     expect(Array.from(projection.options, (option) => option.value)).toEqual([
       "direct",

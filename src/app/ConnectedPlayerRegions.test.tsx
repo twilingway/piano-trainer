@@ -62,6 +62,7 @@ const initial = (): PlayerRuntime =>
     snapshot: { finished: false },
     trainer: { snapshotSource: {}, mode: "wait", speed: 1, playChoice: { hands: "both" } },
     takes: { canReview: false },
+    beginner: { active: false, selection: null, stage: null },
     reading: { active: false, task: null },
     intervals: { active: false, mode: "see-and-play" },
     rhythm: { active: false },

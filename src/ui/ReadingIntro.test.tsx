@@ -1,3 +1,4 @@
+import { CLAY_NOTES, clayStepForPitch } from "../song/clayNotes";
 // @vitest-environment happy-dom
 import { act, type ComponentProps, type ReactNode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -114,6 +115,13 @@ describe("visual reading introduction", () => {
 
   it("links every note name and white key to its staff position and named finger without reloading XML", async () => {
     await render();
+    expect(currentStaff()).toMatchObject({
+      material: "clay",
+      pitchColors: true,
+      course: true,
+      illustration: true,
+      singleLine: true
+    });
     const xml = currentStaff().musicXml;
     const id = currentStaff().presentation?.id;
     for (const note of READING_INTRO_NOTES) {
@@ -122,6 +130,9 @@ describe("visual reading introduction", () => {
       ].find((button) => button.textContent === `${note.name}${note.notation}`);
       await click(nameButton ?? null);
       expect(currentStaff().beat).toBe(note.beat);
+      expect(currentStaff().playedNoteColor).toBe(
+        CLAY_NOTES[clayStepForPitch(note.pitch) ?? "C"].color
+      );
       expect(currentStaff().presentation?.id).toBe(id);
       expect(currentStaff().musicXml).toBe(xml);
       expect(selectedButtons()).toHaveLength(3);
@@ -142,6 +153,9 @@ describe("visual reading introduction", () => {
       expect(document.activeElement).toBe(key);
       await click(key);
       expect(currentStaff().beat).toBe(note.beat);
+      expect(currentStaff().playedNoteColor).toBe(
+        CLAY_NOTES[clayStepForPitch(note.pitch) ?? "C"].color
+      );
       expect(selectedButtons().every((button) => button.textContent.includes(note.notation))).toBe(
         true
       );
@@ -167,6 +181,9 @@ describe("visual reading introduction", () => {
       expect(label.type).toBe("button");
       await click(label);
       expect(currentStaff().beat).toBe(note.beat);
+      expect(currentStaff().playedNoteColor).toBe(
+        CLAY_NOTES[clayStepForPitch(note.pitch) ?? "C"].color
+      );
       expect(selectedButtons()).toHaveLength(3);
       expect(selectedButtons().every((button) => button.textContent.includes(note.notation))).toBe(
         true

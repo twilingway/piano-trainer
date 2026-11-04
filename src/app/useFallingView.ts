@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
@@ -126,6 +127,7 @@ interface LaneRange {
 }
 
 interface Options {
+  readonly displayRange?: readonly [number, number] | undefined;
   readonly hostRef: RefObject<HTMLDivElement | null>;
   readonly hasScore: boolean;
   readonly viewRef: RefObject<FallingNotesView | null>;
@@ -155,6 +157,7 @@ export function useFallingView({
   trainerReady,
   song,
   baseSong,
+  displayRange,
   staffPrefs: savedPrefs,
   cameraInputBlocked = false,
   updateStaffPrefs,
@@ -232,7 +235,8 @@ export function useFallingView({
       keyStyle: staffPrefs.keyStyle,
       handStyle: staffPrefs.handStyle,
       camera: staffPrefs.camera,
-      keyboardTop: staffPrefs.keyStyle === "3d" && staffPrefs.keyboardOrientation === "top",
+      keyboardTop:
+        isNativeKeyStyle(staffPrefs.keyStyle) && staffPrefs.keyboardOrientation === "top",
       roadShape: {
         far: staffPrefs.roadFar,
         horizon: staffPrefs.roadHorizon,
@@ -343,7 +347,8 @@ export function useFallingView({
     for (const view of lanes(viewRef, comparisonRef)) view.setKeysPlacement({ lift, scale, x, y });
   }, [viewRef, trainerReady, lift, scale, x, y]);
 
-  const [rangeLow, rangeHigh] = keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange];
+  const [rangeLow, rangeHigh] =
+    displayRange ?? (keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange]);
   useEffect(() => {
     const range: LaneRange = {
       low: rangeLow,

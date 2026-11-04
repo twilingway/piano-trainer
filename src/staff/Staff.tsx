@@ -1,7 +1,9 @@
+import type { StaffProps } from "./staffProps";
+import { fitStaffIllustration } from "./staffIllustration";
+import { musicXmlWithClayColors } from "../song/clayNotes";
+import { applyStaffClayMaterial } from "./staffClayMaterial";
 import { worldScoreSnapshot } from "./publishWorldScore";
 import { revealLessonEntry } from "./lessonViewport";
-import type { StaffWorldSource } from "./staffWorldSnapshot";
-import type { LessonStaffFeedbackSource } from "./lessonStaffFeedback";
 import { useLessonStaffFeedback } from "./useLessonStaffFeedback";
 import { moveCursor } from "./staffCursorNavigation";
 import { useStaffPointerNavigation } from "./useStaffPointerNavigation";
@@ -26,7 +28,7 @@ import { installLocalNoteNames } from "./localNoteNames";
 import { setStaffTempoLayout } from "./staffTempoLayout";
 import { usePublishReaderGeometry, useReaderFrameBeat } from "./readerGeometry";
 import { readStaffGeometry } from "./staffReaderGeometry";
-import { sharedTabLabelWidths, sharedTabScale, type SharedTabLabels } from "./sharedReaderSpacing";
+import { sharedTabLabelWidths, sharedTabScale } from "./sharedReaderSpacing";
 import { DEFAULT_PLAYED_NOTE_COLOR } from "./notationColors";
 import {
   highlightUnderCursor,
@@ -36,7 +38,7 @@ import {
   setStaffColors
 } from "./staffNoteColors";
 import type { BeatSpot } from "./liveCursor";
-import { watchStaffPresentation, type StaffPresentation } from "./staffPresentation";
+import { watchStaffPresentation } from "./staffPresentation";
 import { courseCursor, courseStaffXml } from "./courseStaff";
 import {
   fitCourseZoom,
@@ -50,52 +52,6 @@ import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
 
 export { markKey } from "./staffNoteIndex";
-
-interface StaffProps {
-  readonly onLoadSettled?: (() => void) | undefined;
-  readonly lessonStaffFeedback?: LessonStaffFeedbackSource | undefined;
-  readonly worldScoreSource?: StaffWorldSource | undefined;
-  readonly timeline?:
-    | {
-        readonly timeAtBeat: (beat: number) => number;
-        readonly beats: readonly number[];
-      }
-    | undefined;
-  readonly presentation?: StaffPresentation | undefined;
-  readonly musicXml: string;
-  /** Quarter notes from the start of the score; the cursor stands on the last entry at or before it. */
-  readonly beat: number;
-  /** 1 = the viewport-fitted baseline size. */
-  readonly zoom: number;
-  readonly noteColor: string;
-  readonly playedNoteColor?: string;
-  readonly scoreColor: string;
-  /** One endless line that scrolls sideways, or systems wrapped to the width like a printed page. */
-  readonly singleLine: boolean;
-  /** Keep the cursor in view as the song plays. */
-  readonly follow: boolean;
-  /** Finger numbers over and under the notes. */
-  readonly fingers: boolean;
-  readonly fingerColors: "mono" | "fingers";
-  /** Break lines where the score says so (the fixed measures-per-line layout) instead of by width. */
-  readonly breaksFromScore: boolean;
-  /** A click on the score: the beat of the note nearest to it. */
-  readonly onSeek?: (beat: number) => void;
-  /** Notehead colours by markKey(beat, pitch): the review of the last take. */
-  readonly marks?: ReadonlyMap<string, string> | undefined;
-  /** Where the song is right now in quarters; a single line scrolls with it every frame. */
-  readonly liveBeat?: (() => number) | undefined;
-  /** Share of the window this staff may take; two staves stacked take less each. */
-  readonly maxShare?: number;
-  /** Publish this original score's layout for a second reader in the same workspace. */
-  readonly shareGeometry?: boolean;
-  /** Labels in a second reader may require wider shared engraving. */
-  readonly sharedTabs?: SharedTabLabels | undefined;
-  /** A reading course: no highlight, a fitted zoom and a cursor that leaves the note readable. */
-  readonly course?: boolean;
-  /** A course's prompts with its extreme notes: every prompt keeps their room, nothing jumps. */
-  readonly courseRange?: readonly string[] | undefined;
-}
 
 /** Share of the remaining distance the view covers each frame: a glide, not a jump. */
 const GLIDE = 0.12;
@@ -131,14 +87,21 @@ export function Staff({
   liveBeat,
   presentation,
   course = false,
-  courseRange
+  courseRange,
+  material = course ? "clay" : "classic",
+  pitchColors = false,
+  pitchColorNoteId,
+  illustration = false
 }: StaffProps) {
   const hasSharedTabs = sharedTabs !== undefined;
+  const palette = pitchColors || pitchColorNoteId !== undefined;
   const publishGeometry = usePublishReaderGeometry();
-  const shownXml = useMemo(
-    () => (course ? courseStaffXml(musicXml) : musicXml),
-    [course, musicXml]
-  );
+  const shownXml = useMemo(() => {
+    const xml = palette
+      ? musicXmlWithClayColors(musicXml, pitchColors ? undefined : pitchColorNoteId)
+      : musicXml;
+    return course ? courseStaffXml(xml) : xml;
+  }, [course, musicXml, palette, pitchColors, pitchColorNoteId]);
   const readFrameBeat = useReaderFrameBeat();
   const hostRef = useRef<HTMLDivElement>(null);
   /** OSMD draws here; the host around it scrolls. */
@@ -199,7 +162,7 @@ export function Staff({
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
     prepareStaffCursorPadding(host, latest.current.singleLine && !latest.current.course);
-    setStaffColors(osmd, noteColor, scoreColor);
+    setStaffColors(osmd, noteColor, scoreColor, palette);
     tabWidthsRef.current = new Map();
     const reach = latest.current.course ? reachRef.current : undefined;
     if (latest.current.course)
@@ -217,15 +180,20 @@ export function Staff({
     }
     if (!latest.current.course && !latest.current.singleLine) fitWrappedStaffSvg(osmd);
     if (latest.current.course) noteCourseReach(courseRange, osmd, host);
-    paintStaffNotes(osmd, noteColor);
+    paintStaffNotes(osmd, noteColor, palette);
+    applyStaffClayMaterial(host, material === "clay", osmd);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
-    const shift = latest.current.course ? fitCourseDrawing(host, reservedSpan(osmd, reach)) : 0;
+    const shift =
+      latest.current.course && !illustration
+        ? fitCourseDrawing(host, reservedSpan(osmd, reach))
+        : 0;
+    const illustrationLines = illustration ? fitStaffIllustration(host) : undefined;
     const page = pageRef.current;
     if (page) {
       if (latest.current.singleLine || latest.current.course) page.style.transform = "";
       else centreShortScore(osmd, page);
     }
-    linesRef.current = lineBoxes(osmd, shift);
+    linesRef.current = illustrationLines ?? lineBoxes(osmd, shift);
     noteIndexRef.current = indexNotes(osmd);
     beatXRef.current = beatPositions(noteIndexRef.current.cursorBeats, host, linesRef.current);
     const axis = latest.current.singleLine ? uniformRef.current?.getAxis() : undefined;
@@ -262,7 +230,7 @@ export function Staff({
       } else host.scrollLeft = target.left;
       host.scrollTop = target.top;
     }
-    if (latest.current.course) {
+    if (latest.current.course && !illustration) {
       showDrawing(host, reservedSpan(osmd, reach));
       revealLessonEntry(
         host,
@@ -367,7 +335,8 @@ export function Staff({
     course,
     timeline,
     hasSharedTabs,
-    courseRange
+    courseRange,
+    illustration
   ]);
 
   const presentationId = presentation?.id;
@@ -400,7 +369,8 @@ export function Staff({
     course,
     timeline,
     hasSharedTabs,
-    courseRange
+    courseRange,
+    illustration
   ]);
 
   useEffect(() => {
@@ -408,7 +378,7 @@ export function Staff({
     const host = hostRef.current;
     if (!osmd || !host) return;
     relayout(osmd, host);
-  }, [zoom, noteColor, scoreColor, fingerColors, sharedTabs]);
+  }, [zoom, noteColor, scoreColor, fingerColors, sharedTabs, material, palette, illustration]);
 
   useEffect(() => {
     const osmd = osmdRef.current;

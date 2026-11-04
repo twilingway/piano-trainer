@@ -1,6 +1,8 @@
+import { CLAY_NOTES, clayStepForPitch } from "../song/clayNotes";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useI18n } from "../app/useI18n";
 import { musicXmlWithNoteNames } from "../song/musicxml";
+import { NoteCharacterFamily, SelectedNoteCharacter } from "./NoteCharacter";
 import { Staff } from "../staff/Staff";
 import { GameDialog } from "./GameDialog";
 
@@ -134,11 +136,17 @@ export function BassReadingIntro({
           <Staff
             key={presentationId}
             musicXml={musicXml}
+            course
+            illustration
+            maxShare={0.3}
+            material="clay"
+            pitchColors
             beat={selectedIndex}
             zoom={1}
             noteColor="#f2f5ff"
-            scoreColor="#f2f5ff"
-            singleLine={false}
+            playedNoteColor={CLAY_NOTES[clayStepForPitch(selectedPitch) ?? "C"].color}
+            scoreColor="#f3e6cc"
+            singleLine
             follow={false}
             fingers={false}
             fingerColors="mono"
@@ -231,6 +239,7 @@ export function BassReadingIntro({
           ))}
         </div>
         <div className="reading-intro-detail" aria-live="polite" aria-atomic="true">
+          <SelectedNoteCharacter pitch={selectedPitch} bass />
           <strong>
             {t("Выбрана нота: {note} ({notation})", {
               note: t(selected.name),
@@ -250,6 +259,7 @@ export function BassReadingIntro({
             "Приложение проверяет высоту ноты, но не определяет, какой рукой и пальцем вы играете."
           )}
         </p>
+        <NoteCharacterFamily />
       </section>
       <section className="reading-intro-section">
         <h3>{t("Ввод с компьютерной клавиатуры")}</h3>

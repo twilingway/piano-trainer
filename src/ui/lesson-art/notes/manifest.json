@@ -1,0 +1,123 @@
+{
+  "generatedAt": "2026-11-03",
+  "tool": "OpenAI image_gen built-in",
+  "source": "Original generated clay characters, style reference from existing project intervals.webp",
+  "sheets": {
+    "up": "exec-51598ff2-5de0-492f-b916-88f69d1d809b.png",
+    "down": "exec-1f1f0907-7d11-496d-af93-07dd8be7b3e5.png"
+  },
+  "normalization": "Regular4x2cells, alpha>32boundingcrop, fit224ontransparent256,WebPquality86method6",
+  "musicalCorrection": "Downward stem is attached at left of head; flag curls upward and right, verified against SMuFL flag8thDown. Faces remain upright. Earlier incorrect left flags not shipped.",
+  "reference": "https://smufl.formats.music/latest/tables/flags.html",
+  "palette": {
+    "C": "#ff7b80",
+    "D": "#ffb84d",
+    "E": "#bfdc59",
+    "F": "#64cfc3",
+    "G": "#70bcef",
+    "A": "#c58ee7",
+    "B": "#ed83b8"
+  },
+  "nativeSizeCssPx": 64,
+  "totalBytes": 157222,
+  "assets": [
+    {
+      "file": "do-down.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 8786,
+      "sha256": "fd42e06591960f6c0ca2d8a968547d5032500a11b5287a085a8780fc9e1fac2a"
+    },
+    {
+      "file": "do-up.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 14122,
+      "sha256": "b523a87bbb2a64874458420644eaafe448ecb78cb3efe5e0746f83459a7a853b"
+    },
+    {
+      "file": "fa-down.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 8546,
+      "sha256": "ee018f33c171d60de6c24d1485206bb519ec0d23ad8cd6904aefa1dca9583e6d"
+    },
+    {
+      "file": "fa-up.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 14508,
+      "sha256": "5a8cd1fcbdf889d5b45350f14a1bec085a1ae4b686a3461a0277374bd27d2689"
+    },
+    {
+      "file": "la-down.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 8792,
+      "sha256": "890079952cdb501feedc3b8b976c977aa60af7e89805b5aaab9272a5252b9ba8"
+    },
+    {
+      "file": "la-up.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 13018,
+      "sha256": "06bdbb7edf5925cfe363fef04ebc2a519e1f6c012e165c89628c4856bf9e38d1"
+    },
+    {
+      "file": "mi-down.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 8314,
+      "sha256": "1f70898743232646d5e7ffd6129b44984aa0b6d26c9fb67946ec2eb957dadcd1"
+    },
+    {
+      "file": "mi-up.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 13872,
+      "sha256": "5b620568ac6b55ba2067fa0b03bc7ca31d6d34d9ed364531a222f828a2ce8d07"
+    },
+    {
+      "file": "re-down.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 8448,
+      "sha256": "0b284b59ff2eebb7b6f556558b10c075ba52edaf3daea652c0c695a6e0f37427"
+    },
+    {
+      "file": "re-up.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 14060,
+      "sha256": "432bd6d4789b12548a0a1e41ba8b10886b6e414ca5d6bc75378c820c412180f5"
+    },
+    {
+      "file": "si-down.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 8442,
+      "sha256": "091d359e155658bedf5ed15f0b6a21ee535a1491d27fb9770b68c54264a0fa02"
+    },
+    {
+      "file": "si-up.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 13542,
+      "sha256": "71f1879a50e350b0c531d1df28355d6ad8935c707401a90cb5a2a6778f90f330"
+    },
+    {
+      "file": "sol-down.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 8886,
+      "sha256": "a2c1e5e478475f3b212a81d1e5950b1deede7aacd0080106ab0213f0a035454e"
+    },
+    {
+      "file": "sol-up.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 13886,
+      "sha256": "d2233bd941b7c2ed41d6140e5390f3e82c5197e822b14dad3d96fd686bbf1b01"
+    }
+  ]
+}

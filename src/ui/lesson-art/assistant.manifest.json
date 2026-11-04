@@ -1,0 +1,22 @@
+{
+  "id": "personal-piano-assistant",
+  "file": "assistant.webp",
+  "generatedAt": "2026-11-03",
+  "tool": "OpenAI image_gen built-in",
+  "source": "User-provided personal portrait; derivative character explicitly requested for this game.",
+  "privacy": "Original photographs, personal Blender head and APK remain local and are not included.",
+  "direction": "Handcrafted plasticine adult character; recognizable facial geometry, black rectangular glasses, grey beard, black top hat, dark coat, copper collar, white gloves.",
+  "revisions": [
+    "Smaller head requested by user",
+    "More plasticine face requested by user",
+    "Floating cane removed on user request"
+  ],
+  "sourceFile": "exec-37a07c43-a3ae-4961-b0d5-1c96dc53c326.png",
+  "normalization": "Downsample RGBA to 512x768, WebP quality86 method6; alpha preserved.",
+  "width": 512,
+  "height": 768,
+  "bytes": 37636,
+  "sha256": "2ab22541c79eb3dde5d4f0d44fb95bad8001e185e288e5a8e23cc5ba250e317b",
+  "alphaExtrema": [0, 255],
+  "nativeDisplay": "Responsive CSS, decorative image with text outside; no runtime raster redraw."
+}

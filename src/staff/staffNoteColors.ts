@@ -1,3 +1,4 @@
+import { feedbackNotehead } from "./staffExactNotehead";
 import { VexFlowGraphicalNote } from "opensheetmusicdisplay";
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { FINGER_COLOR } from "../render/fingerColors";
@@ -83,7 +84,8 @@ export function paintMarks(
 export function setStaffColors(
   osmd: OpenSheetMusicDisplay,
   noteColor: string,
-  scoreColor: string
+  scoreColor: string,
+  palette = false
 ): void {
   osmd.setOptions({
     defaultColorMusic: scoreColor,
@@ -101,7 +103,9 @@ export function setStaffColors(
       for (const entry of measure.staffEntries) {
         for (const voice of entry.graphicalVoiceEntries) {
           for (const note of voice.notes) {
-            note.sourceNote.NoteheadColor = noteColor;
+            note.sourceNote.NoteheadColor = palette
+              ? note.sourceNote.NoteheadColorXml || noteColor
+              : noteColor;
             note.sourceNote.ParentVoiceEntry.StemColor = noteColor;
           }
         }
@@ -111,7 +115,11 @@ export function setStaffColors(
 }
 
 /** Beams and flags have independent SVG shapes; use OSMD's public API to colour them too. */
-export function paintStaffNotes(osmd: OpenSheetMusicDisplay, noteColor: string): void {
+export function paintStaffNotes(
+  osmd: OpenSheetMusicDisplay,
+  noteColor: string,
+  palette = false
+): void {
   for (const row of osmd.GraphicSheet.MeasureList) {
     for (const measure of row) {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -120,13 +128,21 @@ export function paintStaffNotes(osmd: OpenSheetMusicDisplay, noteColor: string):
         for (const voice of entry.graphicalVoiceEntries) {
           for (const note of voice.notes) {
             note.setColor(noteColor, {
-              applyToNoteheads: true,
+              applyToNoteheads: !palette,
               applyToStem: true,
               applyToBeams: true,
               applyToFlag: true,
               applyToTies: true,
               applyToSlurs: true
             });
+            if (palette && note instanceof VexFlowGraphicalNote) {
+              const head = feedbackNotehead(note);
+              if (head) {
+                const color = note.sourceNote.NoteheadColorXml || noteColor;
+                head.setAttribute("fill", color);
+                for (const path of head.querySelectorAll("path")) path.setAttribute("fill", color);
+              }
+            }
           }
         }
       }

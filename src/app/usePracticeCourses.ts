@@ -1,3 +1,4 @@
+import { useBeginnerCourse } from "./useBeginnerCourse";
 import { useState } from "react";
 import { createLessonStaffFeedback } from "../staff/lessonStaffFeedback";
 import { useReadingCourse } from "./useReadingCourse";
@@ -11,7 +12,8 @@ import { useMusicCourse } from "./useMusicCourse";
 /** One stable feedback channel belongs to this player's exercise adapters. */
 export function usePracticeCourses() {
   const [lessonStaffFeedback] = useState(createLessonStaffFeedback);
-  const reading = useReadingCourse(lessonStaffFeedback);
+  const beginner = useBeginnerCourse();
+  const reading = useReadingCourse(lessonStaffFeedback, beginner);
   const intervals = useIntervalCourse(lessonStaffFeedback);
   const rhythm = useRhythmCourse(lessonStaffFeedback);
   const twoHand = useTwoHandCourse(lessonStaffFeedback);
@@ -19,6 +21,7 @@ export function usePracticeCourses() {
   const independentRhythm = useIndependentRhythmCourse(lessonStaffFeedback);
   const music = useMusicCourse(lessonStaffFeedback);
   return {
+    beginner,
     reading,
     intervals,
     rhythm,

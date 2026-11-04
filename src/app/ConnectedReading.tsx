@@ -1,3 +1,4 @@
+import { useGuidedProgress } from "./GuidedProgressProvider";
 import { ReadingCourseCard, ReadingPracticePanel } from "../ui/ReadingCourse";
 import { ReadingIntro } from "../ui/ReadingIntro";
 import { useRuntimeSelector } from "./PlayerRuntimeProvider";
@@ -45,12 +46,14 @@ export function ConnectedReadingPractice({
 }: {
   mode?: "all" | "intro" | "practice";
 }) {
+  const progress = useGuidedProgress();
   const reading = useRuntimeSelector((runtime) => runtime.reading);
   return (
     <>
       {mode !== "practice" && reading.intro && reading.introCourse !== "bass" && (
         <ReadingIntro
           onStart={() => {
+            progress.mark("right-intro");
             reading.setIntro(false);
             void reading.start("notes");
           }}
@@ -59,7 +62,7 @@ export function ConnectedReadingPractice({
           }}
         />
       )}
-      {mode !== "intro" && reading.task && !reading.isBass && (
+      {mode !== "intro" && !reading.beginnerActive && reading.task && !reading.isBass && (
         <ReadingPracticePanel
           task={reading.task}
           purpose={reading.purpose ?? reading.task}

@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-11-04",
+  "tool": "OpenAI image_gen built-in",
+  "source": "Original generated mint plasticine G2 and F4 clefs; no third party asset or personal photograph",
+  "normalization": "Alpha>32 bounding crop with 3px padding; proportional resize to max768; WebP quality90 method6, alpha preserved",
+  "prompt": "One cheerful standard musical clef, matte mint handmade plasticine, face, frontal orthographic, transparent cutout, broad top-left lighting, no lettering or staff; two separate musical dots for F clef. Treble edit preserves G silhouette and requests clean alpha without halo.",
+  "assets": [
+    {
+      "file": "treble-clay.webp",
+      "source": "exec-8a83fc39-36f9-4aa4-b10e-4431cc3173c9.png",
+      "width": 316,
+      "height": 768,
+      "sourceCrop": [211, 43, 808, 1494],
+      "anchorNormalized": [0.509212730318258, 0.611302549965541],
+      "anchorMeaning": "G4 center on second staff line",
+      "bytes": 47082,
+      "sha256": "c3763d0659e821bded57561fc51fad4bce8e141de29fecfbdc5ca539d4bda3ef"
+    },
+    {
+      "file": "bass-clay.webp",
+      "source": "exec-51946021-a6a3-496c-a542-12550a8c163e.png",
+      "width": 705,
+      "height": 768,
+      "sourceCrop": [132, 93, 1111, 1160],
+      "anchorNormalized": [0.8661899897854954, 0.3908153701968135],
+      "anchorMeaning": "F3 fourth staff line between musical dots",
+      "bytes": 74730,
+      "sha256": "5b614fed18ebbe96ca55dbdef12b08aea91314406b9c79e7fbcfd743632c99d9"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "./keyFaceStyles";
 import { ViewStartupPresentation } from "./viewStartupPresentation";
 import { ViewNoteSettings } from "./ViewNoteSettings";
 import { HandStatusSignal, type HandModelStatus } from "./handStatusSignal";
@@ -127,7 +128,7 @@ export class FallingNotesView {
   private freeLegend: FreeCameraLegend | undefined;
   private readonly sceneCamera = new ViewSceneCamera(
     () => this.road,
-    () => this.keyStyle === "3d" && !this.computer,
+    () => isNativeKeyStyle(this.keyStyle) && !this.computer,
     (on) => {
       this.freeLegend?.setVisible(on);
       if (!on) this.panSnap = true;
@@ -355,7 +356,8 @@ export class FallingNotesView {
 
   /** Puts the road on or off: on when asked for and the notes show, with or without the keys. */
   private syncRoad(): void {
-    const on = (this.roadWanted || (this.keyStyle === "3d" && !this.computer)) && this.parts.notes;
+    const on =
+      (this.roadWanted || (isNativeKeyStyle(this.keyStyle) && !this.computer)) && this.parts.notes;
     if (!this.road || !this.notesLayer) return;
     const changed = on !== this.roadMode;
     this.roadMode = on;
@@ -415,9 +417,7 @@ export class FallingNotesView {
   }
 
   /** Runs `onFrame` with real milliseconds before every draw. */
-  onTick(onFrame: (deltaMs: number) => void): void {
-    this.app.onTick(onFrame);
-  }
+  onTick = this.app.onTick.bind(this.app);
 
   waitForFrame = (signal?: AbortSignal): Promise<boolean> => this.app.waitForFrame(signal);
 
@@ -483,7 +483,7 @@ export class FallingNotesView {
       delta
     );
     // The road takes a picture of the keys; whole hands stay in their own projected overlay.
-    if (road || (this.keyStyle === "3d" && !this.computer))
+    if (road || (isNativeKeyStyle(this.keyStyle) && !this.computer))
       drawNativeRoadFrame(this.road, this.notesLayer, this.keysRoot, delta);
     // Native objects keep drawing; only screen-projected decorations leave inspection view.
     const inspect = effectRoad?.sceneCamera === true;
@@ -574,8 +574,8 @@ export class FallingNotesView {
     if (this.computer) return computerGeometry(height, this.total, parts, placement);
     // Native hands rest on the physical keys and need no sprite-palm strip.
     const layoutParts =
-      this.keyStyle === "3d" && this.hands.live ? { ...parts, hands: false } : parts;
-    const natural = this.keyStyle === "3d" ? this.nativeHeight : undefined;
+      isNativeKeyStyle(this.keyStyle) && this.hands.live ? { ...parts, hands: false } : parts;
+    const natural = isNativeKeyStyle(this.keyStyle) ? this.nativeHeight : undefined;
     const ref = this.paneReference?.height;
     return viewGeometry(height, whiteWidth, layoutParts, labels, fits, placement, natural, ref);
   }
@@ -594,7 +594,7 @@ export class FallingNotesView {
         total,
         keys: this.keys,
         prefs: this.cameraPrefs,
-        native: this.keyStyle === "3d" && !this.computer,
+        native: isNativeKeyStyle(this.keyStyle) && !this.computer,
         overhead: this.road?.requestedKeyboardTop ?? false,
         computer: !!this.computer,
         parts: this.parts,

@@ -1,3 +1,4 @@
+import { CLAY_NOTES } from "../song/clayNotes";
 // @vitest-environment happy-dom
 import { act, type ComponentProps, type ReactNode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -114,6 +115,13 @@ describe("bass reading introduction", () => {
     const onStart = vi.fn();
     const onClose = vi.fn();
     await render({ onStart, onClose });
+    expect(currentStaff()).toMatchObject({
+      material: "clay",
+      pitchColors: true,
+      course: true,
+      illustration: true,
+      singleLine: true
+    });
     const xml = currentStaff().musicXml;
     const fingers = [
       ...host.querySelectorAll<HTMLButtonElement>(
@@ -123,6 +131,7 @@ describe("bass reading introduction", () => {
     for (const [index, finger] of fingers.entries()) {
       await click(finger);
       expect(currentStaff().beat).toBe(index);
+      expect(currentStaff().playedNoteColor).toBe(Object.values(CLAY_NOTES)[index]?.color);
       expect(currentStaff().musicXml).toBe(xml);
     }
     expect(host.querySelector(".reading-intro-detail")?.textContent).toContain(
