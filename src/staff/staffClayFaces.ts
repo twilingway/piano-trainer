@@ -18,7 +18,7 @@ export function hasClayFace(note: VexFlowGraphicalNote): boolean {
   const source = note.sourceNote;
   const type = source.NoteTypeXml;
   const head = source.Notehead as typeof source.Notehead | undefined;
-  // OSMD 2.1.x calls the enum value "eigth", so valid XML "eighth" yields UNDEFINED.
+  // OSMD 2.1.3 calls the enum value "eigth", so valid XML "eighth" yields UNDEFINED.
   // Only the engraver's explicit normal solid glyph is safe in that compatibility case.
   const glyph = note.vfnote[0].getGlyph() as unknown as { readonly code_head?: string };
   const filledType =

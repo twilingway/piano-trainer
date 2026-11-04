@@ -101,6 +101,8 @@ it("freezes source CSS for thin staff lines, stems and styled fingering text int
 
 it("exports both exact embedded clay clefs visibly and rejects every untrusted image", () => {
   const host = document.body.appendChild(document.createElement("div"));
+  // The DOM source is hidden while its rasterized poster is visible in the world.
+  host.style.visibility = "hidden";
   host.innerHTML =
     '<svg xmlns="http://www.w3.org/2000/svg"><g class="vf-clef"><path visibility="hidden" d="M0 0L10 10"/></g></svg>';
   const drawing = host.querySelector("svg");
