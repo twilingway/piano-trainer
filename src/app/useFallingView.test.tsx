@@ -590,11 +590,21 @@ describe("native keyboard range preferences reach the rendered lane", () => {
       await Promise.resolve();
     });
     expect(view.setRange).toHaveBeenLastCalledWith(60, 72, false, true);
+    expect(view.setKeysPlacement).toHaveBeenLastCalledWith({
+      ...USUAL_PLACEMENT,
+      maxHeightShare: 0.3
+    });
     view.setRange.mockClear();
     await act(async () => {
       root.render(<Harness prefs={prefs} displayRange={[60, 72]} />);
       await Promise.resolve();
     });
     expect(view.setRange).not.toHaveBeenCalled();
+    await act(async () => {
+      root.render(<Harness prefs={prefs} />);
+      await Promise.resolve();
+    });
+    expect(view.setKeysPlacement).toHaveBeenLastCalledWith(USUAL_PLACEMENT);
+    expect(updateStaffPrefs).not.toHaveBeenCalled();
   });
 });

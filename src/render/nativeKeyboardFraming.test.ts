@@ -102,6 +102,23 @@ function layoutHarness(
 }
 
 describe("stable piano panes", () => {
+  it("refits a live keyboard when a lesson height budget enters and leaves", () => {
+    const test = layoutHarness(1920, 1080, 60, 72, CAMERA_PRESETS.top, false, false);
+    Object.assign(test.view, { paneReference: { height: 1080 }, keyStyle: "clay" });
+    const initial = test.layout();
+    test.view.setKeysPlacement({ ...USUAL_PLACEMENT, maxHeightShare: 0.3 });
+    expect(test.internal.laidOutFor.width).toBe(0);
+    const balanced = test.layout();
+    expect(balanced.keyboardHeight).toBeLessThanOrEqual(1080 * 0.3);
+    const balancedCamera = test.scene().keyboardCamera;
+    if (!balancedCamera) throw new Error("Missing balanced camera");
+    expect(nativeKeyboardFootprint(balancedCamera).height).toBeLessThanOrEqual(1080 * 0.3 + 1e-6);
+    expect(balanced.keyboardHeight).toBeLessThan(initial.keyboardHeight);
+    test.view.setKeysPlacement(USUAL_PLACEMENT);
+    expect(test.internal.laidOutFor.width).toBe(0);
+    expect(test.layout().keyboardHeight).toBeCloseTo(initial.keyboardHeight, 6);
+    test.dispose();
+  });
   it.each(["classic", "arcade", "3d"])(
     "ends notes at the remaining lane bottom with the %s keyboard hidden",
     (style) => {

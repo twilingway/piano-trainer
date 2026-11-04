@@ -66,6 +66,9 @@ it("uses a temporary standard beginner view and restores the saved range/free sc
     freeCamera: false,
     performanceScene: false
   });
+  expect(readingDisplayProfile(saved, true).camera.pitch).toBe(18);
+  expect(readingDisplayProfile(saved, true).keyboardOrientation).toBe("follow");
+  expect(readingDisplayProfile(saved).camera).toBe(saved.camera);
   expect(readingDisplayProfile(saved)).toMatchObject({ freeCamera: true, performanceScene: true });
   expect(JSON.stringify(saved)).toBe(before);
 });
