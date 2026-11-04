@@ -1,3 +1,4 @@
+import { beginnerDisplayRange } from "../beginner/catalog";
 import { preparationTransport } from "./preparationTransport";
 import { usePracticeCourses } from "./usePracticeCourses";
 import {
@@ -65,6 +66,7 @@ export function usePlayerRuntime() {
   const current = useSong(startFromRef);
   const course = useCourse(current.showSong);
   const {
+    beginner,
     reading,
     intervals,
     rhythm,
@@ -75,6 +77,7 @@ export function usePlayerRuntime() {
     lessonStaffFeedback
   } = usePracticeCourses();
   const lessonDialogsOpen =
+    beginner.intro ||
     lessonWindow !== null ||
     libraryOpen ||
     settingsOpen ||
@@ -227,14 +230,7 @@ export function usePlayerRuntime() {
   const cameraInput = useFreeCameraInput(
     workspacePrefs,
     computerKeyboard.options,
-    libraryOpen ||
-      settingsOpen ||
-      computerKeyboard.editing ||
-      word.enabled ||
-      ear ||
-      twoHand.intro ||
-      heldBass.intro ||
-      independentRhythm.intro
+    lessonDialogsOpen || computerKeyboard.editing || word.enabled || ear
   );
   const input = useKeyInput(
     trainer.trainerRef,
@@ -277,6 +273,7 @@ export function usePlayerRuntime() {
     rankedReady: timing.rankedReady,
     performance: !practiceActive && game.performance,
     canStart:
+      !beginner.intro &&
       musicClockAllowed(music.active, music.view) &&
       !ear &&
       !twoHand.intro &&
@@ -319,6 +316,7 @@ export function usePlayerRuntime() {
     trainerReady: trainer.trainerReady,
     song: word.practiceSong,
     baseSong: practiceActive || word.enabled ? word.practiceSong : current.baseSong,
+    displayRange: beginnerDisplayRange(beginner.stage),
     staffPrefs: workspacePrefs,
     cameraInputBlocked: !cameraInput.enabled,
     updateStaffPrefs,
@@ -439,6 +437,7 @@ export function usePlayerRuntime() {
   const modeSwitch = practiceModeSwitch(word.enabled, playing, chooseGame, timingStatus);
 
   return {
+    beginner,
     music,
     lessonWindow,
     setLessonWindow,

@@ -47,26 +47,30 @@ export function ConnectedBassReadingPractice({
           }}
         />
       )}
-      {mode !== "intro" && reading.isBass && reading.task && reading.task !== "check" && (
-        <BassReadingPracticePanel
-          task={reading.task}
-          preferences={reading.preferences}
-          onPreferences={reading.updatePreferences}
-          onHint={reading.hint}
-          hintLevel={reading.hintLevel}
-          hintPitch={reading.note?.pitch}
-          index={reading.index}
-          renderError={reading.renderError}
-          onRetry={reading.onRetry}
-          onNewSeries={reading.newSeries}
-          onExit={reading.exit}
-          result={reading.bassResult}
-          history={reading.bassHistory}
-          ready={Boolean(reading.snapshot?.active && reading.snapshot.presented)}
-          sourceFilter={reading.bassSourceFilter}
-          onSourceFilter={reading.setBassSourceFilter}
-        />
-      )}
+      {mode !== "intro" &&
+        !reading.beginnerActive &&
+        reading.isBass &&
+        reading.task &&
+        reading.task !== "check" && (
+          <BassReadingPracticePanel
+            task={reading.task}
+            preferences={reading.preferences}
+            onPreferences={reading.updatePreferences}
+            onHint={reading.hint}
+            hintLevel={reading.hintLevel}
+            hintPitch={reading.note?.pitch}
+            index={reading.index}
+            renderError={reading.renderError}
+            onRetry={reading.onRetry}
+            onNewSeries={reading.newSeries}
+            onExit={reading.exit}
+            result={reading.bassResult}
+            history={reading.bassHistory}
+            ready={Boolean(reading.snapshot?.active && reading.snapshot.presented)}
+            sourceFilter={reading.bassSourceFilter}
+            onSourceFilter={reading.setBassSourceFilter}
+          />
+        )}
     </>
   );
 }

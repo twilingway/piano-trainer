@@ -1,3 +1,4 @@
+import { ConnectedBeginner } from "./ConnectedBeginner";
 import { musicButtonAnswer } from "./musicLessonAction";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
@@ -27,6 +28,7 @@ export function ConnectedLessonWorkspace({ score }: { readonly score: ReactNode 
   const { t } = useI18n();
   const state = useRuntimeSelector(
     (runtime) => ({
+      beginner: runtime.beginner.stage,
       music: runtime.music.active ? runtime.music.view : null,
       source: runtime.music.source,
       rhythm: runtime.rhythm.active,
@@ -52,21 +54,23 @@ export function ConnectedLessonWorkspace({ score }: { readonly score: ReactNode 
     },
     [onOpen]
   );
-  const title = state.music
-    ? MUSIC_COURSE_LABELS[state.music.course]
-    : state.independent
-      ? "Играю два ритма"
-      : state.held
-        ? "Держу бас, играю мелодию"
-        : state.twoHand
-          ? "Две руки: играю вместе"
-          : state.rhythm
-            ? "Ритм"
-            : state.intervals
-              ? "Интервалы"
-              : state.bass
-                ? "Левая рука: пять нот"
-                : "Правая рука: пять нот";
+  const title = state.beginner
+    ? state.beginner.title
+    : state.music
+      ? MUSIC_COURSE_LABELS[state.music.course]
+      : state.independent
+        ? "Играю два ритма"
+        : state.held
+          ? "Держу бас, играю мелодию"
+          : state.twoHand
+            ? "Две руки: играю вместе"
+            : state.rhythm
+              ? "Ритм"
+              : state.intervals
+                ? "Интервалы"
+                : state.bass
+                  ? "Левая рука: пять нот"
+                  : "Правая рука: пять нот";
   const instruction = state.music
     ? "Смотрите на задание и следуйте шагам под нотами."
     : state.independent
@@ -129,6 +133,7 @@ export function ConnectedLessonWorkspace({ score }: { readonly score: ReactNode 
           <p role="status">{t(state.action.reasonKey)}</p>
         </LessonSlot>
       )}
+      <ConnectedBeginner />
       <ConnectedMusicPractice />
       <ConnectedReadingPractice mode="practice" />
       <ConnectedBassReadingPractice mode="practice" />
