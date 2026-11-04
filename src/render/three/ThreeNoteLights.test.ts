@@ -323,4 +323,28 @@ describe("Three note light lifecycle", () => {
     );
     pool.dispose();
   });
+
+  it("hides the coloured rig for clay without losing the paused envelope or recreating lights", () => {
+    const keys = scene();
+    const pool = new ThreeNoteLights();
+    pool.layout(keyBoxes(keys));
+    pool.update([source(60)], keys.camera, 0.1);
+    const lights = [...pool.group.children] as SpotLight[];
+    const first = lights[0];
+    if (!first) throw new Error("missing test light");
+    const intensity = first.intensity;
+    const position = first.position.clone();
+    pool.setEnabled(false);
+    expect(pool.group.visible).toBe(false);
+    pool.layout(keyBoxes(keys));
+    pool.update([source(72)], keys.camera, 0);
+    expect(pool.group.visible).toBe(false);
+    expect(first.intensity).toBe(intensity);
+    expect(first.position).toEqual(position);
+    pool.setEnabled(true);
+    expect(pool.group.visible).toBe(true);
+    expect(pool.group.children).toEqual(lights);
+    expect(first.intensity).toBe(intensity);
+    pool.dispose();
+  });
 });

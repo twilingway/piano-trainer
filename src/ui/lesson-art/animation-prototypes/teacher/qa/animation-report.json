@@ -1,0 +1,39 @@
+{
+  "durationMsPerPose": [900, 900, 900],
+  "loop": 0,
+  "webp": [
+    {
+      "pose": "do",
+      "visiblePixelDifferences": 0,
+      "invisibleRgbDifferences": 12071
+    },
+    {
+      "pose": "re",
+      "visiblePixelDifferences": 0,
+      "invisibleRgbDifferences": 4007
+    },
+    {
+      "pose": "mi",
+      "visiblePixelDifferences": 0,
+      "invisibleRgbDifferences": 4715
+    }
+  ],
+  "apng": [
+    {
+      "pose": "do",
+      "visiblePixelDifferences": 0,
+      "invisibleRgbDifferences": 0
+    },
+    {
+      "pose": "re",
+      "visiblePixelDifferences": 0,
+      "invisibleRgbDifferences": 0
+    },
+    {
+      "pose": "mi",
+      "visiblePixelDifferences": 0,
+      "invisibleRgbDifferences": 0
+    }
+  ],
+  "encodedWebpDurationMs": [900, 900, 900]
+}

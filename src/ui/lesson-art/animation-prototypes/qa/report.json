@@ -1,0 +1,142 @@
+{
+  "notes": {
+    "do": {
+      "sourceSize": [1254, 1254],
+      "alphaRange": [0, 255],
+      "fullyTransparentPixels": 950667,
+      "lowAlphaNoisePixels1to7": 83029,
+      "rawSilhouetteSizes": [
+        [275, 329],
+        [276, 329],
+        [275, 329],
+        [275, 328],
+        [275, 329],
+        [275, 328],
+        [275, 328],
+        [275, 329],
+        [275, 328],
+        [275, 328],
+        [275, 328],
+        [275, 328]
+      ],
+      "normalizedBounds": [
+        [23, 31, 298, 360],
+        [22, 31, 298, 360],
+        [23, 31, 298, 360],
+        [23, 32, 298, 360],
+        [23, 31, 298, 360],
+        [22, 32, 297, 360],
+        [23, 32, 298, 360],
+        [23, 31, 298, 360],
+        [23, 32, 298, 360],
+        [22, 32, 297, 360],
+        [23, 32, 298, 360],
+        [23, 32, 298, 360]
+      ],
+      "losslessSheetRoundtrip": true,
+      "widthDriftPx": 1,
+      "heightDriftPx": 1,
+      "normalizedBaselineDriftPx": 0,
+      "previewFrameCounts": {
+        "neutral": 4,
+        "correct": 4,
+        "gentle-wrong": 4
+      }
+    },
+    "re": {
+      "sourceSize": [1254, 1254],
+      "alphaRange": [0, 255],
+      "fullyTransparentPixels": 978001,
+      "lowAlphaNoisePixels1to7": 55279,
+      "rawSilhouetteSizes": [
+        [274, 329],
+        [275, 329],
+        [274, 329],
+        [274, 329],
+        [274, 329],
+        [275, 329],
+        [274, 329],
+        [274, 329],
+        [274, 329],
+        [275, 329],
+        [274, 329],
+        [275, 329]
+      ],
+      "normalizedBounds": [
+        [23, 31, 297, 360],
+        [22, 31, 297, 360],
+        [23, 31, 297, 360],
+        [23, 31, 297, 360],
+        [23, 31, 297, 360],
+        [22, 31, 297, 360],
+        [23, 31, 297, 360],
+        [23, 31, 297, 360],
+        [23, 31, 297, 360],
+        [22, 31, 297, 360],
+        [23, 31, 297, 360],
+        [23, 31, 298, 360]
+      ],
+      "losslessSheetRoundtrip": true,
+      "widthDriftPx": 1,
+      "heightDriftPx": 0,
+      "normalizedBaselineDriftPx": 0,
+      "previewFrameCounts": {
+        "neutral": 4,
+        "correct": 4,
+        "gentle-wrong": 4
+      }
+    },
+    "mi": {
+      "sourceSize": [1254, 1254],
+      "alphaRange": [0, 255],
+      "fullyTransparentPixels": 978659,
+      "lowAlphaNoisePixels1to7": 49190,
+      "rawSilhouetteSizes": [
+        [275, 329],
+        [276, 329],
+        [275, 329],
+        [276, 329],
+        [275, 329],
+        [276, 329],
+        [275, 329],
+        [276, 329],
+        [275, 330],
+        [276, 330],
+        [275, 330],
+        [276, 330]
+      ],
+      "normalizedBounds": [
+        [23, 31, 298, 360],
+        [22, 31, 298, 360],
+        [23, 31, 298, 360],
+        [22, 31, 298, 360],
+        [23, 31, 298, 360],
+        [22, 31, 298, 360],
+        [23, 31, 298, 360],
+        [22, 31, 298, 360],
+        [23, 30, 298, 360],
+        [22, 30, 298, 360],
+        [23, 30, 298, 360],
+        [22, 30, 298, 360]
+      ],
+      "losslessSheetRoundtrip": true,
+      "widthDriftPx": 1,
+      "heightDriftPx": 1,
+      "normalizedBaselineDriftPx": 0,
+      "previewFrameCounts": {
+        "neutral": 4,
+        "correct": 4,
+        "gentle-wrong": 4
+      }
+    }
+  },
+  "assertions": {
+    "threeSourcesCopiedByteIdentically": true,
+    "thirtySixFrames": true,
+    "ninePreviewsFourFramesEach": true,
+    "allSheetsLosslessRGBAroundtrip": true,
+    "noAlpha128ClippedBySourceGrid": true,
+    "baselineAllFramesPx": 360,
+    "creativeEditing": false
+  }
+}

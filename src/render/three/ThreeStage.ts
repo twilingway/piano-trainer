@@ -454,6 +454,7 @@ export class ThreeStage {
   setClayKeyboard(on: boolean): void {
     if (this.materials.clayEnabled === on) return;
     this.materials.clayEnabled = on;
+    this.noteLights.setEnabled(!on);
     this.version = -1;
   }
 

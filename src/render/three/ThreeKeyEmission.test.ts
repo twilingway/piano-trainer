@@ -245,4 +245,56 @@ describe("whole-key note emission", () => {
     expect(owners.size).toBe(0);
     template.dispose();
   });
+
+  it("tints only the sounding clay key without a neon shader or self-lit surfaces", () => {
+    const emission = new ThreeKeyEmission();
+    const template = new MeshStandardMaterial({ color: 0xffefdb, roughness: 0.91 });
+    template.onBeforeCompile = (shader) => {
+      shader.fragmentShader += "\n// inherited clay top";
+    };
+    template.customProgramCacheKey = () => "painted-clay-v1";
+    const played = emission.create(60, template, template, "clay-white");
+    const neighbor = emission.create(61, template, template, "clay-black");
+    for (let frame = 0; frame < 8; frame++) emission.update([source(60)], 0.1);
+    expect(played[0].color).not.toEqual(template.color);
+    expect(played[0].color.r).toBeGreaterThan(template.color.r * 0.5);
+    expect(played.every((material) => material.emissiveIntensity === 0)).toBe(true);
+    expect(neighbor.every((material) => material.color.equals(template.color))).toBe(true);
+    expect(neighbor.every((material) => material.emissiveIntensity === 0)).toBe(true);
+    const shader = { fragmentShader: "#include <emissivemap_fragment>" } as Parameters<
+      MeshStandardMaterial["onBeforeCompile"]
+    >[0];
+    played[0].onBeforeCompile(shader, {} as WebGLRenderer);
+    expect(shader.fragmentShader).toContain("inherited clay top");
+    expect(shader.fragmentShader).not.toContain("keyRim");
+    expect(played[0].customProgramCacheKey()).toBe("three-key-clay-v1:painted-clay-v1");
+    for (let frame = 0; frame < 8; frame++) emission.update([], 0.1);
+    expect(played[0].color).toEqual(template.color);
+    emission.dispose();
+    template.dispose();
+  });
+
+  it("preserves paused colour across clay and ordinary 3D rebuilds with their own finishes", () => {
+    const emission = new ThreeKeyEmission();
+    const template = new MeshStandardMaterial({ color: 0xffefdb });
+    const original = emission.create(60, template, template);
+    emission.update([source(60)], 0.03);
+    const neonIntensity = original[0].emissiveIntensity;
+    const tint = original[0].emissive.clone();
+    emission.beginLayout();
+    const clay = emission.create(60, template, template, "clay-white");
+    emission.endLayout();
+    const pausedColor = clay[0].color.clone();
+    emission.update([source(60, { color: 0xff0000 })], 0);
+    expect(clay[0].emissive).toEqual(tint);
+    expect(clay[0].color).toEqual(pausedColor);
+    expect(clay[0].emissiveIntensity).toBe(0);
+    emission.beginLayout();
+    const restored = emission.create(60, template, template);
+    emission.endLayout();
+    expect(restored[0].emissive).toEqual(tint);
+    expect(restored[0].emissiveIntensity).toBe(neonIntensity);
+    emission.dispose();
+    template.dispose();
+  });
 });

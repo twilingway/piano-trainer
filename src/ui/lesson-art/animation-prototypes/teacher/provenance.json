@@ -1,0 +1,70 @@
+{
+  "tool": "built-in image_gen",
+  "status": "C/D/E contact verified; normalized game assets remain prototypes",
+  "referenceMaster": {
+    "file": "sources/teacher-edit-master.png",
+    "sha256": "02e3f979865026810a05c1969a3702a959141aa958d103d0b0dd6cc77fe5ed11"
+  },
+  "do": {
+    "prompt": "Precision composite edit for an original children's clay piano teacher sprite. Image1 is the complete CLEAN master: preserve its recognizable face, materials, costume, body, chair, piano case, camera, exact keyboard and transparent silhouette. Image2 is a cropped verified hand pose to INSERT, not a second character or an art-style reference. It was cropped at original full-image rectangle (465, 565, 780, 785) from a1536x1024 frame with the same camera and keyboard. Copy this hand pose into that exact rectangle of image1 at its ORIGINAL PIXEL SCALE, not enlarged. Match the clean smooth matte clay material of image1, without embossed patterns.\r\nReplace ONLY the anatomical RIGHT hand on viewer LEFT and its small key-contact patch with the exact pose from image2: THUMB finger1 pressing C, coral patch, immediately viewer-right of the first pair of black keys. Copy the finger-to-key contact and the correct white key from the insert. Keep five glove fingers and the neighboring raised fingers exactly as the insert, not the original middle-press pose of image1. Remove the old lime E patch. No additional colored keys. Preserve all white/black-key positions; groups3-2-3-2, high pitches viewer-left. No re-interpretation of fingering: the insert is the precise musical target.\r\nEverything outside that small hand/key-contact region must keep image1's original appearance. Preserve image1's perfect cutout silhouette: absolutely transparent everywhere outside the man, chair and piano, with no smoke, glow, grey field, vignette or semi-opaque haze. Keep opaque surfaces opaque. Return ONE full-size1536x1024 transparent RGBA sprite, not the crop, no reference diagram or labels, no text/numbers/arrows, no extra hands or objects.\r\n\nUse case: compositing. For a clean transparent game sprite, keep solid object surfaces fully opaque and all exterior pixels fully transparent except the narrow antialiased silhouette edge. Remove isolated floating specks. Do not paint any aura or colored atmospheric haze.",
+    "promptUtf8Sha256": "b603ebe2a4c45745adcf933e804ff7fdf7d4ad65051af9ba308e8f4bc1e5148a",
+    "source": "sources/teacher-do-insert-source.png",
+    "sourceSha256": "99c1d4cc10f56dd6478a5f16cf7e56d81d539ee128c02876465e715f337840ac",
+    "generatedFilename": "exec-d54ad4ed-da28-4b77-a9bd-b481cdea79c8.png",
+    "references": ["sources/teacher-edit-master.png", "sources/teacher-do-hand-insert.png"],
+    "contact": "Anatomical right thumb1 on C, viewer-right of the first two-black group.",
+    "referenceSha256s": {
+      "sources/teacher-edit-master.png": "02e3f979865026810a05c1969a3702a959141aa958d103d0b0dd6cc77fe5ed11",
+      "sources/teacher-do-hand-insert.png": "b38e849788ac121b1b4fc3a002793dec703693453f2de5fe8882cdefdc684d8d"
+    }
+  },
+  "re": {
+    "prompt": "Use case: background-extraction. Asset type: transparent game sprite. Edit the attached image ONLY to remove the background, colored atmospheric haze and aura. Keep the man, chair and piano at their exact original size and position in the full 1536x1024 canvas. Preserve all recognizable facial features, costume and matte clay colors. Most critically, preserve the right hand on viewer-left EXACTLY: its INDEX finger is already correctly contacting the amber D key at approximately x678; the neighboring black-key pair stays centered at x650.5 and x698. Do not redraw or reinterpret fingers, do not move any keys, do not change the colored contact patch. The musical pose in the input is correct. This is background removal, not a new pose or a style change. Rebuild a clean cutout alpha: the entire man/chair/piano foreground is solid and opaque, the whole exterior including all glow/haze is fully transparent, with only a narrow natural antialiased contour. No smoke, vignette, grey field, colored mist, shadow pool or isolated floating pixels around the cutout. Do not add text, labels, border, objects or a ground plane. Return the same full-size transparent RGBA sprite.\n",
+    "promptUtf8Sha256": "2c2a6218d5144722c75a0d2a514bf53dbc9dcbc12e5d660092e24ba361ee3339",
+    "source": "sources/teacher-re-extracted-source.png",
+    "sourceSha256": "1edf6def0f696119e1b87a93bdea68293cd65f8dc29fca7efbda7cc2e7f7cab7",
+    "generatedFilename": "exec-07a98347-9f8f-4c53-ac89-cd7c16181027.png",
+    "references": ["sources/teacher-re-extraction-input.png"],
+    "referenceSha256": "6a2eab80cc6042e4c0db9e81421b693d11a7cdbcb5a8f224374d36fd9450e6e7",
+    "contact": "Anatomical right index2 on D between unchanged black-key centers650.0/698.5.",
+    "referenceSha256s": {
+      "sources/teacher-re-extraction-input.png": "6a2eab80cc6042e4c0db9e81421b693d11a7cdbcb5a8f224374d36fd9450e6e7"
+    }
+  },
+  "mi": {
+    "source": "sources/teacher-mi-clean-source.png",
+    "sourceSha256": "06e3f17029b4962dbc29f10e61934c8ddfd974941594ae96505eee853cb4070f",
+    "contact": "Anatomical right middle3 on E, viewer-left of the first two-black group.",
+    "prompt": "Restore the clean original plasticine surface quality of this game character. Image1 is the REQUIRED final geometry, pose, keyboard, hand, exact green E-key contact and full composition. Image2 is ONLY the original approved clean material/identity reference. Use the materials and recognizable face appearance from image2 on the locked pose and keyboard from image1.\nRemove the accumulated embossed repeating swirl/triangle/quilt patterns from the hat, skin, gloves, coat, orange collar, chair and piano case. Give them smooth soft matte hand-molded plasticine surfaces, simple clean broad shading and only extremely subtle natural tactile irregularity, exactly like image2. Skin is warm orange-peach clay; beard separate soft grey clay locks; keep the glasses and the same friendly recognizable facial features. Ivory and charcoal keyboard, teal case, orange collar, dark hat and coat. No stone, leather grain, marble, noise, intricate engraving, stamped patterns, wrinkle mesh, grunge, gloss, metal, external haze or glow. No added realism.\nCRITICAL GEOMETRY LOCK: retain the pose of image1 exactly. On the teacher's anatomical right hand on VIEWER LEFT, the MIDDLE finger3 is the third finger from its viewer-right end and already correctly touches E4. Its tip and the small lime patch are centered at approximately x623,y740 in the1536x1024 frame, INSIDE the single white key bounded by x600 and x650. Keep the separate index and thumb lifted. Do not shift any fingertip, wrist, key edge or black-key group. Keep black-key groups3-2-3-2 from left to right, keyboard playing ends toward the teacher. The small lime patch must remain inside that key and not become a floating button. Retain the head, hat and body scale, framing and full transparent margins. Single full teacher seated at the piano. Genuine transparent RGBA background, no added objects, text, numbers, labels, arrows or floor.\n",
+    "promptUtf8Sha256": "e8373145e0fbae5d096808aee3ee913660ee86f83311c15e4ae92534c4d4f33b",
+    "references": [
+      "sources/teacher-mi-geometry-reference.png",
+      "sources/teacher-mi-style-reference.png"
+    ],
+    "referenceRoles": [
+      "locked pose, keyboard and middle finger E contact",
+      "clean material and generated clay identity only"
+    ],
+    "generatedFilename": "exec-30559766-fa37-4645-a0f7-a79b1606e14a.png",
+    "referenceSha256s": {
+      "sources/teacher-mi-geometry-reference.png": "09db085271d869f893456a18ea8344df38ee626f73dadae9efff1d66c4a844ac",
+      "sources/teacher-mi-style-reference.png": "b3ae390119fff99d49b31ad7ffd448e099f18c880fc9d80bd69fc6e7fd7dfac6"
+    }
+  },
+  "mechanicalNormalization": {
+    "script": "normalize_teacher.py",
+    "algorithm": "Largest connected alpha>32 subject, dilate3px, scale max opacity254 to255, zero RGB where alpha0; no creative RGB edits.",
+    "sourceCanvas": [1536, 1024],
+    "spriteFrame": [512, 544],
+    "pivot": [256, 528],
+    "geometry": "Common crop(256,0)-(1280,1024), insert at(0,32), scale0.5 uniformly, integer vertical translation only to align alpha128 feet to pivot528."
+  },
+  "schemaVersion": 1,
+  "pathBase": "teacher directory",
+  "generationBoundary": "Exact final generation prompts and frozen generated-art references; upstream historical experiments and original personal photographs are outside this publication.",
+  "referenceOnlyInputs": {
+    "sources/teacher-re-extraction-input.png": "Exact input to accepted D background extraction; old alpha is intentionally preserved; never a display-ready sprite.",
+    "sources/teacher-mi-geometry-reference.png": "Exact Mi pose reference before clean-material restoration; never a display-ready sprite.",
+    "sources/teacher-mi-style-reference.png": "Exact generated clay style reference before keyboard corrections; never a display-ready sprite."
+  }
+}

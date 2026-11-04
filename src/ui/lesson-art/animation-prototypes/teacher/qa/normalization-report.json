@@ -1,0 +1,143 @@
+{
+  "do": {
+    "before": {
+      "file": "sources/teacher-do-insert-source.png",
+      "sha256": "99c1d4cc10f56dd6478a5f16cf7e56d81d539ee128c02876465e715f337840ac",
+      "mode": "RGBA",
+      "size": [1536, 1024],
+      "matchesExpectedCanvas": true,
+      "alphaRange": [0, 254],
+      "cornerAlpha": [0, 0, 0, 0],
+      "fullyTransparentPixels": 1030826,
+      "fullyOpaquePixels": 0,
+      "nearOpaquePixels250to255": 516707,
+      "lowAlphaNoisePixels1to7": 15132,
+      "invisibleRgbPixels": 709946,
+      "boundsAlpha128": [316, 2, 1215, 1021],
+      "strictAlphaGate": false,
+      "visualContactGate": "pending-human-inspection",
+      "automaticAcceptance": false
+    },
+    "mask": {
+      "connectedComponentsAboveAlpha32": 1,
+      "largestComponentPixels": 525836,
+      "dilationPx": 3
+    },
+    "alphaScaleNumerator": 255,
+    "alphaScaleDenominator": 254,
+    "retainedVisibleRgbUnchanged": true,
+    "after": {
+      "file": "do-press-v2.png",
+      "sha256": "a028fb159b7aa24625a254e0260ab5a8b00ed50138517b577325661b73513fe3",
+      "mode": "RGBA",
+      "size": [1536, 1024],
+      "matchesExpectedCanvas": true,
+      "alphaRange": [0, 255],
+      "cornerAlpha": [0, 0, 0, 0],
+      "fullyTransparentPixels": 1038103,
+      "fullyOpaquePixels": 6894,
+      "nearOpaquePixels250to255": 518364,
+      "lowAlphaNoisePixels1to7": 7855,
+      "invisibleRgbPixels": 0,
+      "boundsAlpha128": [316, 2, 1215, 1021],
+      "strictAlphaGate": true,
+      "visualContactGate": "pending-human-inspection",
+      "automaticAcceptance": false
+    },
+    "losslessWebpRoundtrip": true
+  },
+  "re": {
+    "before": {
+      "file": "sources/teacher-re-extracted-source.png",
+      "sha256": "1edf6def0f696119e1b87a93bdea68293cd65f8dc29fca7efbda7cc2e7f7cab7",
+      "mode": "RGBA",
+      "size": [1536, 1024],
+      "matchesExpectedCanvas": true,
+      "alphaRange": [0, 254],
+      "cornerAlpha": [0, 0, 0, 0],
+      "fullyTransparentPixels": 1031926,
+      "fullyOpaquePixels": 0,
+      "nearOpaquePixels250to255": 518702,
+      "lowAlphaNoisePixels1to7": 11432,
+      "invisibleRgbPixels": 670995,
+      "boundsAlpha128": [314, 2, 1215, 1019],
+      "strictAlphaGate": false,
+      "visualContactGate": "pending-human-inspection",
+      "automaticAcceptance": false
+    },
+    "mask": {
+      "connectedComponentsAboveAlpha32": 1,
+      "largestComponentPixels": 528401,
+      "dilationPx": 3
+    },
+    "alphaScaleNumerator": 255,
+    "alphaScaleDenominator": 254,
+    "retainedVisibleRgbUnchanged": true,
+    "after": {
+      "file": "re-press-v2.png",
+      "sha256": "1aabe9e82380bc31a628b66ed5b823a488e066a6101055972c9ffd8e00a51d73",
+      "mode": "RGBA",
+      "size": [1536, 1024],
+      "matchesExpectedCanvas": true,
+      "alphaRange": [0, 255],
+      "cornerAlpha": [0, 0, 0, 0],
+      "fullyTransparentPixels": 1035402,
+      "fullyOpaquePixels": 6833,
+      "nearOpaquePixels250to255": 520155,
+      "lowAlphaNoisePixels1to7": 7956,
+      "invisibleRgbPixels": 0,
+      "boundsAlpha128": [314, 2, 1215, 1019],
+      "strictAlphaGate": true,
+      "visualContactGate": "pending-human-inspection",
+      "automaticAcceptance": false
+    },
+    "losslessWebpRoundtrip": true
+  },
+  "mi": {
+    "before": {
+      "file": "sources/teacher-mi-clean-source.png",
+      "sha256": "06e3f17029b4962dbc29f10e61934c8ddfd974941594ae96505eee853cb4070f",
+      "mode": "RGBA",
+      "size": [1536, 1024],
+      "matchesExpectedCanvas": true,
+      "alphaRange": [0, 254],
+      "cornerAlpha": [1, 0, 0, 0],
+      "fullyTransparentPixels": 1034087,
+      "fullyOpaquePixels": 0,
+      "nearOpaquePixels250to255": 512438,
+      "lowAlphaNoisePixels1to7": 15432,
+      "invisibleRgbPixels": 696006,
+      "boundsAlpha128": [317, 2, 1214, 1019],
+      "strictAlphaGate": false,
+      "visualContactGate": "pending-human-inspection",
+      "automaticAcceptance": false
+    },
+    "mask": {
+      "connectedComponentsAboveAlpha32": 1,
+      "largestComponentPixels": 522199,
+      "dilationPx": 3
+    },
+    "alphaScaleNumerator": 255,
+    "alphaScaleDenominator": 254,
+    "retainedVisibleRgbUnchanged": true,
+    "after": {
+      "file": "mi-press-v2.png",
+      "sha256": "a3966c998b3c72bf73e20b854c8a9ae75da87c6446a29c181d89bb2c6a5ada73",
+      "mode": "RGBA",
+      "size": [1536, 1024],
+      "matchesExpectedCanvas": true,
+      "alphaRange": [0, 255],
+      "cornerAlpha": [0, 0, 0, 0],
+      "fullyTransparentPixels": 1041284,
+      "fullyOpaquePixels": 2680,
+      "nearOpaquePixels250to255": 513901,
+      "lowAlphaNoisePixels1to7": 8235,
+      "invisibleRgbPixels": 0,
+      "boundsAlpha128": [317, 2, 1214, 1019],
+      "strictAlphaGate": true,
+      "visualContactGate": "pending-human-inspection",
+      "automaticAcceptance": false
+    },
+    "losslessWebpRoundtrip": true
+  }
+}

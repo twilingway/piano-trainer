@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "status": "prototype",
+  "tool": "OpenAI image_gen built-in",
+  "styleMaster": "../notes/do-up.webp",
+  "identityMaster": "../assistant.webp",
+  "privateOriginals": "User photographs and personal Blender source remain local; never copied into this directory.",
+  "do": {
+    "prompt": "Production sprite animation study for an original children's piano-learning game. Use the supplied coral note ONLY as a material, palette and character-family reference. Create ONE clean sprite sheet: exactly 4 equal columns and 3 equal rows, on a genuinely transparent background, with generous transparent gutters. Square sheet, each cell is a tall portrait frame. Each of the 12 cells contains the SAME single CORAL RED DO musical QUARTER NOTE character: a plump slightly tilted oval notehead, one straight rounded stem attached at the RIGHT going UP, NO flag, NO extra music symbols. Hand-molded matte plasticine with fine tactile texture, broad soft upper-left lighting, no metal or neon, no outside glow. Lock body silhouette, head/stem proportions, camera, lighting, coral #ff7b80, scale and exact anchor position across all cells. Full stem and head fit in every frame, no clipping, no feet or hands. Animate the FACE, with only extremely subtle squash within 2 percent; keep musical geometry stable for placement on a real staff. Row 1 neutral/idle frames: attentive open dark eyes, relaxed neutral small mouth; frame2 softly blinks, frame3 opens, frame4 returns exactly to frame1. Row 2 correct-answer joy frames: expression brightens, gentle closed-eye smile, happy open smile with tiny pink tongue, returns to a warm smile; friendly small celebration, no body jumping. Row 3 wrong-answer mild-disappointment frames: surprised small mouth, slightly sad curved eyebrows and tiny frown, reassuring sympathetic expression, returns toward neutral. Never angry, frightening, crying or shaming. Face remains upright despite oval tilt. Use simple dimensional charcoal eye and mouth pieces, tiny pink tongue only when smiling. No text, frame labels, numbers, borders, scenery, floor, staff, clef, shadows outside the object, duplicate notes in one cell or other objects. Clean authentic alpha cutout, consistent evenly spaced grid.",
+    "rows": 3,
+    "columns": 4,
+    "states": ["neutral", "correct", "incorrect"],
+    "frameDurationsMs": [100, 120, 140],
+    "color": "#ff7b80",
+    "musicShape": "quarter/up",
+    "actualGeneratedMusicShape": "eighth/up",
+    "generationNote": "Reference flag was retained despite quarter-note request. Full-body sheet is an eighth-note character prototype, not a replacement for every written duration. Runtime notation must preserve its own stem/flag/hollow shape."
+  },
+  "re": {
+    "planned": "Use accepted Do sheet as style/layout reference; replace body with amber #ffb84d, retain all anchors and expressions.",
+    "prompt": "Edit this sprite-sheet image as a FAMILY VARIANT for the RE note. Change ONLY the character's clay BODY COLOR from coral red to warm amber orange #ffb84d in every one of the 12 cells. Preserve precisely the same 4-column by 3-row grid, same 12 facial-expression sequence, note silhouette including its existing eighth-note flag, upright face, stem/head dimensions, eye/mouth shapes, lighting, clay texture, alpha transparency, cell centers and image margins. No lettering, labels, new props, halos, backgrounds or changes to the music symbol. Row1 neutral blink, row2 joyful correct-answer reaction, row3 mild sympathetic incorrect-answer reaction. Keep this an original matte handmade clay toy matching the source sheet."
+  },
+  "mi": {
+    "planned": "Use accepted Do sheet as style/layout reference; replace body with lime #bfdc59, retain all anchors and expressions.",
+    "prompt": "Edit this sprite-sheet image as a FAMILY VARIANT for the MI note. Change ONLY the character's clay BODY COLOR from coral red to soft lime green #bfdc59 in every one of the 12 cells. Preserve precisely the same 4-column by 3-row grid, same 12 facial-expression sequence, note silhouette including its existing eighth-note flag, upright face, stem/head dimensions, eye/mouth shapes, lighting, clay texture, alpha transparency, cell centers and image margins. No lettering, labels, new props, halos, backgrounds or changes to the music symbol. Row1 neutral blink, row2 joyful correct-answer reaction, row3 mild sympathetic incorrect-answer reaction. Keep this an original matte handmade clay toy matching the source sheet."
+  },
+  "teacherFinalV2": {
+    "status": "static contact-verified prototypes; not integrated",
+    "provenance": "teacher/provenance.json",
+    "manifest": "teacher/manifest-v2.json",
+    "publication": "teacher/publication-files.json"
+  }
+}
