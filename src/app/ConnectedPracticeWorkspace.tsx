@@ -1,3 +1,4 @@
+import { revealedClayNote } from "../reading/clayHint";
 import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
 import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
 import { ConnectedTwoHandPractice } from "./ConnectedTwoHand";
@@ -173,6 +174,11 @@ export function ConnectedPracticeWorkspace() {
               : reading.active
                 ? reading.prompt?.musicXml
                 : scoreStaffXml
+        }
+        staffPitchColorNoteId={
+          !music.active && "hintLevel" in reading && "note" in reading && "task" in reading
+            ? revealedClayNote(reading.active, reading.task, reading.hintLevel, reading.note?.id)
+            : undefined
         }
         staffPresentation={
           music.active

@@ -1,3 +1,4 @@
+import { GuidedProgressProvider } from "./GuidedProgressProvider";
 import {
   createContext,
   useContext,
@@ -38,7 +39,11 @@ export function PlayerRuntimeProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     source.publish(runtime);
   }, [source, runtime]);
-  return <RuntimeContext.Provider value={source}>{children}</RuntimeContext.Provider>;
+  return (
+    <RuntimeContext.Provider value={source}>
+      <GuidedProgressProvider>{children}</GuidedProgressProvider>
+    </RuntimeContext.Provider>
+  );
 }
 
 /** Select only runtime information/commands needed by a mounted connected component. */

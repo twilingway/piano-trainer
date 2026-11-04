@@ -1,8 +1,10 @@
+import { CLAY_NOTES, clayStepForPitch } from "../song/clayNotes";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "../app/useI18n";
 import { READING_INTRO_NOTES, READING_INTRO_XML } from "../reading/introduction";
 import { musicXmlWithNoteNames } from "../song/musicxml";
+import { NoteCharacterFamily, SelectedNoteCharacter } from "./NoteCharacter";
 import { Staff } from "../staff/Staff";
 import { GameDialog } from "./GameDialog";
 import { ReadingIntroHand } from "./ReadingIntroHand";
@@ -120,11 +122,17 @@ export function ReadingIntro({
           <Staff
             key={presentationId}
             musicXml={musicXml}
+            course
+            illustration
+            maxShare={0.3}
+            material="clay"
+            pitchColors
             beat={selected.beat}
             zoom={1}
             noteColor="#f2f5ff"
-            scoreColor="#f2f5ff"
-            singleLine={false}
+            playedNoteColor={CLAY_NOTES[clayStepForPitch(selectedPitch) ?? "C"].color}
+            scoreColor="#f3e6cc"
+            singleLine
             follow={false}
             fingers={false}
             fingerColors="mono"
@@ -201,6 +209,7 @@ export function ReadingIntro({
           <ReadingIntroHand selectedPitch={selectedPitch} onSelect={setSelectedPitch} />
         </div>
         <div className="reading-intro-detail" aria-live="polite" aria-atomic="true">
+          <SelectedNoteCharacter pitch={selectedPitch} />
           <strong>
             {t("Выбрана нота: {note} ({notation})", {
               note: t(selected.name),
@@ -217,6 +226,7 @@ export function ReadingIntro({
         </div>
       </section>
 
+      <NoteCharacterFamily />
       <section className="reading-intro-section">
         <h3>{t("3. Попробуйте читать ноты")}</h3>
         <p>
