@@ -68,6 +68,8 @@ export function viewLayoutChanged(
 
 /** The player's placement of the keys: a lift off the bottom and a size against the usual. */
 export interface KeysPlacement {
+  /** Optional lesson-only viewport budget; never changes the physical key geometry. */
+  readonly maxHeightShare?: number;
   /** As a share of the view's height. */
   readonly lift: number;
   readonly scale: number;
@@ -76,6 +78,14 @@ export interface KeysPlacement {
   readonly y: number;
 }
 export const USUAL_PLACEMENT: KeysPlacement = { lift: 0, scale: 1, x: 0, y: 0 };
+/** Position-only shifts need no new camera; size and lesson budgets do. */
+export function placementChanged(previous: KeysPlacement, next: KeysPlacement): boolean {
+  return (
+    previous.lift !== next.lift ||
+    previous.scale !== next.scale ||
+    previous.maxHeightShare !== next.maxHeightShare
+  );
+}
 /** However the keys are placed, the falling notes keep at least this share of the view. */
 export const MIN_NOTES_SHARE = 0.25;
 
@@ -117,8 +127,11 @@ export function viewGeometry(
   }
   const stable = Number.isFinite(referenceHeight) && (referenceHeight ?? 0) > 0;
   const frameHeight = stable ? (referenceHeight ?? height) : height;
-  const reserveNotes = stable || parts.notes;
+  const reserveNotes = stable || parts.notes || placement.maxHeightShare !== undefined;
   const native = nativeHeight !== undefined && Number.isFinite(nativeHeight) && nativeHeight > 0;
+  const maxKeyboardShare = Number.isFinite(placement.maxHeightShare)
+    ? Math.max(0.1, Math.min(1, placement.maxHeightShare ?? MAX_KEYBOARD_SHARE))
+    : MAX_KEYBOARD_SHARE;
   const wanted =
     (native
       ? nativeHeight
@@ -126,7 +139,7 @@ export function viewGeometry(
     placement.scale;
   const framingWidth =
     whiteWidth *
-    (native ? Math.min(1, (frameHeight * (reserveNotes ? MAX_KEYBOARD_SHARE : 1)) / wanted) : 1);
+    (native ? Math.min(1, (frameHeight * (reserveNotes ? maxKeyboardShare : 1)) / wanted) : 1);
   const feltHeight = Math.max(3, framingWidth * FELT_PER_WIDTH);
   const blackOf = (keyboardHeight: number) =>
     keyboardHeight * (stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT);
@@ -143,7 +156,7 @@ export function viewGeometry(
   // Only the keys: they keep their length, not stretched over the view, and may use all of it.
   const room = reserveNotes
     ? Math.min(
-        frameHeight * MAX_KEYBOARD_SHARE,
+        frameHeight * maxKeyboardShare,
         frameHeight * (1 - MIN_NOTES_SHARE) - below - feltHeight
       )
     : frameHeight - below - feltHeight;

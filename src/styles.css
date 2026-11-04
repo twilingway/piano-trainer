@@ -5628,9 +5628,29 @@ button.song-card.song-card__open {
   }
 }
 @media (width <= 640px) and (height > 500px) {
+  .lesson-workspace {
+    grid-template-rows: auto auto;
+    align-content: start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .lesson-workspace__waiting:empty {
+    display: none;
+  }
+  .lesson-workspace__body {
+    min-height: max-content;
+    overflow: visible;
+  }
+  .lesson-workspace__score {
+    margin-block: 0;
+  }
+  .lesson-workspace .beginner-help .note-character img {
+    width: 56px;
+    height: 68px;
+  }
   .lesson-workspace__content {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto max-content;
     gap: 8px;
   }
   .lesson-workspace__response {
