@@ -151,3 +151,13 @@ describe("one music TrainerCourse adapter", () => {
     expect(h.course.inputCompensationMs?.()).toBe(777);
   });
 });
+
+it("routes the song-led course separately and forwards cancellation before cleanup", () => {
+  const h = harness();
+  const route = musicCourse(h.policy, "songCourse");
+  expect(route.kind).toBe("songCourse");
+  route.cancel?.(1500, false, "pause");
+  expect(h.policy.cancel).toHaveBeenCalledWith(1500, false, "pause");
+  route.cancel?.(1600, true, "disconnect");
+  expect(h.policy.cancel).toHaveBeenCalledWith(1600, true, "disconnect");
+});

@@ -81,3 +81,7 @@ export const sameTrainerStatus = (
   left.finished === right.finished &&
   left.waiting === right.waiting &&
   left.timingPolicy === right.timingPolicy;
+
+export function useTrainerStatus(source: TrainerSnapshotSource) {
+  return useTrainerSelector(source, selectTrainerStatus, sameTrainerStatus);
+}

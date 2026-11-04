@@ -16,7 +16,8 @@ import { ResultDialog } from "./ResultDialog";
 vi.mock("../i18n/messages", async () => {
   const { uiMessages } = await import("../i18n/uiMessages");
   const { uiMessagesExtra } = await import("../i18n/uiMessagesExtra");
-  return { messages: { ...uiMessages, ...uiMessagesExtra } };
+  const { SONG_COURSE_NAVIGATION_MESSAGES } = await import("../i18n/songCourseNavigationMessages");
+  return { messages: { ...uiMessages, ...uiMessagesExtra, ...SONG_COURSE_NAVIGATION_MESSAGES } };
 });
 vi.mock("./GameDialog", () => ({
   GameDialog: ({ children, title }: { children: ReactNode; title: string }) => (
@@ -51,8 +52,10 @@ describe("translated player interface", () => {
       root.render(
         <LibraryDialog
           open
+          kind="melodies"
           onClose={vi.fn()}
-          lessons={[...EXERCISES, localLesson]}
+          lessons={[]}
+          melodies={[...EXERCISES, localLesson]}
           current={{ exerciseId: "five-finger-c", levelId: "easy" }}
           currentSource={null}
           onLesson={onLesson}
@@ -70,12 +73,12 @@ describe("translated player interface", () => {
         />
       );
     });
-    expect(host.querySelector("section")?.getAttribute("aria-label")).toBe("Библиотека");
+    expect(host.querySelector("section")?.getAttribute("aria-label")).toBe("Мелодии");
     await act(async () => {
       await Promise.resolve();
       setInterfaceLanguage("en");
     });
-    expect(host.querySelector("section")?.getAttribute("aria-label")).toBe("Library");
+    expect(host.querySelector("section")?.getAttribute("aria-label")).toBe("Melodies");
     expect(host.textContent).toContain("Open file");
     expect(host.textContent).toContain("C position: five fingers");
     expect(host.textContent).toContain("Easy — slow");

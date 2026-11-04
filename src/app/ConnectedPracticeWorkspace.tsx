@@ -1,3 +1,4 @@
+import { ConnectedSongCourse } from "./ConnectedSongCourse";
 import { ConnectedBeginner } from "./ConnectedBeginner";
 import { useMemo } from "react";
 import { claySourceNoteIds } from "../song/clayNotes";
@@ -57,6 +58,7 @@ export function ConnectedPracticeWorkspace() {
     beginnerIndependent,
     lessonStaffFeedback,
     music,
+    songCourse,
     reading,
     rhythm
   } = useRuntimeSelector(
@@ -92,6 +94,7 @@ export function ConnectedPracticeWorkspace() {
       countdown: runtime.countdown,
       rhythm: runtime.rhythm,
       music: runtime.music,
+      songCourse: runtime.songCourse,
       reading: runtime.independentRhythm.active
         ? runtime.independentRhythm
         : runtime.heldBass.active
@@ -134,7 +137,11 @@ export function ConnectedPracticeWorkspace() {
       <ConnectedIndependentRhythmPractice mode="intro" />
       <ConnectedWorkspace
         lessonBoard={
-          practiceActive ? (score) => <ConnectedLessonWorkspace score={score} /> : undefined
+          songCourse.active
+            ? (score) => <ConnectedSongCourse score={score} />
+            : practiceActive
+              ? (score) => <ConnectedLessonWorkspace score={score} />
+              : undefined
         }
         worldScoreViewRef={worldScoreViewRef}
         worldScoreViewReady={worldScoreViewReady}
@@ -166,6 +173,7 @@ export function ConnectedPracticeWorkspace() {
           ) : undefined
         }
         gameBoard={
+          !songCourse.active &&
           !music.active &&
           !reading.active &&
           !rhythm.active && (
@@ -180,15 +188,19 @@ export function ConnectedPracticeWorkspace() {
           )
         }
         staffXml={
-          music.active
-            ? music.staffXml
-            : rhythm.active
-              ? rhythm.exercise?.musicXml
-              : reading.active
-                ? reading.prompt?.musicXml
-                : scoreStaffXml
+          songCourse.active
+            ? (songCourse.staffXml ?? undefined)
+            : music.active
+              ? music.staffXml
+              : rhythm.active
+                ? rhythm.exercise?.musicXml
+                : reading.active
+                  ? reading.prompt?.musicXml
+                  : scoreStaffXml
         }
-        staffPitchColors={beginnerGuided}
+        staffPitchColors={
+          songCourse.active ? controllerHelped(songCourse.view.material?.node.kind) : beginnerGuided
+        }
         staffPitchColorNoteId={
           !beginnerIndependent &&
           !music.active &&
@@ -199,17 +211,31 @@ export function ConnectedPracticeWorkspace() {
             : undefined
         }
         staffPresentation={
-          music.active
-            ? music.presentation
-            : rhythm.active
-              ? rhythm.presentation
-              : reading.presentation
+          songCourse.active
+            ? songCourse.presentation
+            : music.active
+              ? music.presentation
+              : rhythm.active
+                ? rhythm.presentation
+                : reading.presentation
         }
         lessonStaffFeedback={practiceActive ? lessonStaffFeedback : undefined}
-        staffRetry={music.active ? music.retry : rhythm.active ? rhythm.retry : reading.retry}
-        readingBeat={music.active ? undefined : reading.prompt?.beat}
+        staffRetry={
+          songCourse.active
+            ? songCourse.view.revision
+            : music.active
+              ? music.retry
+              : rhythm.active
+                ? rhythm.retry
+                : reading.retry
+        }
+        readingBeat={songCourse.active || music.active ? undefined : reading.prompt?.beat}
         courseRange={
-          !music.active && !rhythm.active && reading.active && "range" in reading
+          !songCourse.active &&
+          !music.active &&
+          !rhythm.active &&
+          reading.active &&
+          "range" in reading
             ? reading.range
             : undefined
         }
@@ -219,16 +245,22 @@ export function ConnectedPracticeWorkspace() {
         onLayout={screenUpdateLayout}
         onResetLayout={screenResetLayout}
         layoutMoved={screenMoved}
-        editing={!music.active && !reading.active && !rhythm.active && screenEditing}
+        editing={
+          !songCourse.active && !music.active && !reading.active && !rhythm.active && screenEditing
+        }
         onZoom={(zoom) => {
           updateStaffPrefs({ zoom });
         }}
         fixedLines={scoreFixedLines}
         liveBeat={trainerLiveBeat}
         onSeek={trainerSeekToBeat}
-        reviewMarks={music.active || reading.active ? undefined : takesReviewMarks}
-        transcription={music.active || reading.active ? undefined : takesTranscription}
-        takeStaff={music.active ? "off" : takesTakeStaff}
+        reviewMarks={
+          songCourse.active || music.active || reading.active ? undefined : takesReviewMarks
+        }
+        transcription={
+          songCourse.active || music.active || reading.active ? undefined : takesTranscription
+        }
+        takeStaff={songCourse.active || music.active ? "off" : takesTakeStaff}
         splitDirection={takesSplitDirection}
         comparing={comparing}
         waiting={snapshotWaiting && (!music.active || playing)}
@@ -239,4 +271,8 @@ export function ConnectedPracticeWorkspace() {
       />
     </>
   );
+}
+
+function controllerHelped(kind: string | undefined): boolean {
+  return kind !== "independent-phrase" && kind !== "performance";
 }

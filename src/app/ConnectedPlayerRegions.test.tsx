@@ -52,6 +52,17 @@ vi.mock("../ui/ResultStats", () => ({ ResultStats: observed.stats }));
 const initial = (): PlayerRuntime =>
   ({
     libraryOpen: false,
+    libraryNavigation: { kind: "lessons", open: vi.fn(), setKind: vi.fn() },
+    songCourse: {
+      active: false,
+      controller: { choose: vi.fn() },
+      view: {
+        progressState: { results: [], selection: null },
+        loaded: true,
+        error: null,
+        storageError: false
+      }
+    },
     settingsOpen: false,
     resultClosed: false,
     lessonWindow: null,

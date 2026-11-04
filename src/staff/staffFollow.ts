@@ -1,3 +1,4 @@
+import { positionSongCourseViewport } from "./songCourseViewport";
 import { spotAt, type BeatSpot } from "./liveCursor";
 
 const MANUAL_SCROLL_HOLD_MS = 2500;
@@ -8,6 +9,7 @@ export function centreLivePosition(
   spots: readonly BeatSpot[],
   beat: number
 ): void {
+  if (positionSongCourseViewport(host, spots, beat)) return;
   const x = spotAt(spots, beat)?.x;
   const svg = host.querySelector("svg");
   if (x === undefined || !svg) return;

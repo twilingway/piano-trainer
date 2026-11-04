@@ -175,7 +175,11 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           fingerColors={prefs.fingerColors}
           breaksFromScore={props.fixedLines}
           onSeek={props.onSeek}
-          liveBeat={props.staffPresentation ? undefined : props.liveBeat}
+          liveBeat={
+            props.staffPresentation && !props.staffPresentation.songCourseFeedback
+              ? undefined
+              : props.liveBeat
+          }
           marks={props.reviewMarks}
           maxShare={dualScore ? Math.min(staffShare, 0.2) : staffShare}
           shareGeometry={dualScore}

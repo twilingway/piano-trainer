@@ -15,6 +15,9 @@ interface Lesson {
 
 interface Props {
   readonly open: boolean;
+  readonly kind?: "lessons" | "melodies";
+  readonly melodies?: readonly Lesson[];
+  readonly legacyCourse?: ReactNode;
   readonly viewMemory?: WindowViewMemory;
   readonly onClose: () => void;
   readonly lessons: readonly Lesson[];
@@ -49,10 +52,14 @@ interface Props {
   readonly onOpenFile: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
-/** Every song to play, as cards: lessons with their levels, the player's own songs, the folder. */
+/** Lessons and melody scores have separate entrances and separate window memories. */
 export function LibraryDialog(props: Props) {
   const { t } = useI18n();
-  const [memory] = useState(() => new WindowViewMemory());
+  const [memories] = useState(() => ({
+    lessons: new WindowViewMemory(),
+    melodies: new WindowViewMemory()
+  }));
+  const kind = props.kind ?? "lessons";
   if (!props.open) return null;
   const bundledTitle = (lesson: Lesson, title: string) =>
     EXERCISES.some((exercise) => exercise.id === lesson.id) ? t(title) : title;
@@ -121,106 +128,125 @@ export function LibraryDialog(props: Props) {
   );
   return (
     <GameDialog
+      key={kind}
       open={props.open}
-      title={t("Библиотека")}
+      title={t(kind === "lessons" ? "Уроки" : "Мелодии")}
       className="library"
       onClose={props.onClose}
-      memory={props.viewMemory ?? memory}
+      memory={props.viewMemory ?? memories[kind]}
     >
-      <div className="library-actions">
-        <label className="game-button">
-          {t("Открыть файл")}
-          <input
-            type="file"
-            accept=".mid,.midi,.musicxml,.xml,.mxl"
-            hidden
-            onChange={(event) => {
-              props.onOpenFile(event);
-              props.onClose();
-            }}
-          />
-        </label>
-        {props.foldersSupported && !props.folder && (
-          <button type="button" className="game-button" onClick={props.onChooseFolder}>
-            {t("Выбрать папку")}
-          </button>
-        )}
-      </div>
-
-      {props.course}
-      <h3>{t("Уроки")}</h3>
-      {lessonGrid(props.lessons)}
-      {props.previousLessons && props.previousLessons.length > 0 && (
-        <>
-          <h3>{t("Предыдущие версии")}</h3>
-          {lessonGrid(props.previousLessons)}
-        </>
+      {kind === "melodies" && (
+        <div className="library-actions">
+          <label className="game-button">
+            {t("Открыть файл")}
+            <input
+              type="file"
+              accept=".mid,.midi,.musicxml,.xml,.mxl"
+              hidden
+              onChange={(event) => {
+                props.onOpenFile(event);
+                props.onClose();
+              }}
+            />
+          </label>
+          {props.foldersSupported && !props.folder && (
+            <button type="button" className="game-button" onClick={props.onChooseFolder}>
+              {t("Выбрать папку")}
+            </button>
+          )}
+        </div>
       )}
 
-      {props.mySongs.length > 0 && (
+      {kind === "lessons" ? (
         <>
-          <h3>{t("Мои песни")}</h3>
-          <div className="song-grid">
-            {props.mySongs.map((song) => (
-              <div
-                key={song.id}
-                className="song-card"
-                data-current={props.currentSource === `my:${song.id}`}
-              >
-                <button
-                  type="button"
-                  className="song-card__open"
-                  onClick={choose(() => {
-                    props.onMySong(song.id);
-                  })}
-                >
-                  {song.title}
-                </button>
-                <button
-                  type="button"
-                  className="song-card__remove"
-                  aria-label={t("Удалить «{title}» из моих песен", { title: song.title })}
-                  title={t("Удалить из моих")}
-                  onClick={() => {
-                    props.onDeleteMySong(song.id);
-                  }}
-                >
-                  ✕
-                </button>
+          {props.course}
+          <details className="guided-catalog library-legacy" data-window-detail="library:legacy">
+            <summary>{t("Отдельные упражнения и прежние уроки")}</summary>
+            {props.legacyCourse}
+            <h3>{t("Уроки")}</h3>
+            {lessonGrid(props.lessons)}
+            {props.previousLessons && props.previousLessons.length > 0 && (
+              <>
+                <h3>{t("Предыдущие версии")}</h3>
+                {lessonGrid(props.previousLessons)}
+              </>
+            )}
+          </details>
+        </>
+      ) : (
+        <>
+          {props.melodies && props.melodies.length > 0 && (
+            <>
+              <h3>{t("Встроенные мелодии")}</h3>
+              {lessonGrid(props.melodies)}
+            </>
+          )}
+          {props.mySongs.length > 0 && (
+            <>
+              <h3>{t("Мои песни")}</h3>
+              <div className="song-grid">
+                {props.mySongs.map((song) => (
+                  <div
+                    key={song.id}
+                    className="song-card"
+                    data-current={props.currentSource === `my:${song.id}`}
+                  >
+                    <button
+                      type="button"
+                      className="song-card__open"
+                      onClick={choose(() => {
+                        props.onMySong(song.id);
+                      })}
+                    >
+                      {song.title}
+                    </button>
+                    <button
+                      type="button"
+                      className="song-card__remove"
+                      aria-label={t("Удалить «{title}» из моих песен", { title: song.title })}
+                      title={t("Удалить из моих")}
+                      onClick={() => {
+                        props.onDeleteMySong(song.id);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </>
-      )}
+            </>
+          )}
 
-      {props.folder && (
-        <>
-          <h3>
-            {t("Папка «{name}»", { name: props.folder.name })}
-            <button type="button" className="text-button" onClick={props.onForgetFolder}>
-              {t("Отключить")}
-            </button>
-          </h3>
-          {props.folder.needsAccess ? (
-            <button type="button" className="game-button" onClick={props.onGrantFolder}>
-              {t("Дать доступ к папке")}
-            </button>
-          ) : (
-            <div className="song-grid">
-              {props.folder.songs.map((song) => (
-                <button
-                  key={song.path}
-                  type="button"
-                  className="song-card song-card__open"
-                  data-current={props.currentSource === `dir:${song.path}`}
-                  onClick={choose(() => {
-                    props.onFolderSong(song.path);
-                  })}
-                >
-                  {song.title}
+          {props.folder && (
+            <>
+              <h3>
+                {t("Папка «{name}»", { name: props.folder.name })}
+                <button type="button" className="text-button" onClick={props.onForgetFolder}>
+                  {t("Отключить")}
                 </button>
-              ))}
-            </div>
+              </h3>
+              {props.folder.needsAccess ? (
+                <button type="button" className="game-button" onClick={props.onGrantFolder}>
+                  {t("Дать доступ к папке")}
+                </button>
+              ) : (
+                <div className="song-grid">
+                  {props.folder.songs.map((song) => (
+                    <button
+                      key={song.path}
+                      type="button"
+                      className="song-card song-card__open"
+                      data-current={props.currentSource === `dir:${song.path}`}
+                      onClick={choose(() => {
+                        props.onFolderSong(song.path);
+                      })}
+                    >
+                      {song.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
