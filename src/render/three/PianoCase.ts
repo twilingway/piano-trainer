@@ -1,4 +1,5 @@
-import { Box3, Group } from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { Box3, Group, Mesh, Vector3, type Material } from "three";
 import type { Keyboard88 } from "./keyboard88";
 import { KEYBOARD_METRES } from "../keyboardMetrics";
 
@@ -6,10 +7,11 @@ import { KEYBOARD_METRES } from "../keyboardMetrics";
 export class PianoCase {
   readonly group = new Group();
   private disposed = false;
+  private readonly clayGeometries: RoundedBoxGeometry[] = [];
 
   constructor(private readonly keyboard: Keyboard88) {}
 
-  layout(c4: number): void {
+  layout(c4: number, finish?: Material): void {
     this.clear();
     if (this.disposed || !Number.isFinite(c4)) return;
     this.group.position.set(c4, 22, 0);
@@ -25,6 +27,26 @@ export class PianoCase {
           clone.position.z = bounds.min.z + (clone.position.z - bounds.min.z) * scale;
         }
       }
+      if (finish)
+        clone.traverse((node) => {
+          if (!(node instanceof Mesh)) return;
+          node.material = finish;
+          node.geometry.computeBoundingBox();
+          const bounds = node.geometry.boundingBox as Box3 | null;
+          if (!bounds) return;
+          const size = bounds.getSize(new Vector3()),
+            centre = bounds.getCenter(new Vector3());
+          const geometry = new RoundedBoxGeometry(
+            size.x,
+            size.y,
+            size.z,
+            3,
+            Math.min(0.005, size.x * 0.4, size.y * 0.4, size.z * 0.4)
+          );
+          geometry.translate(centre.x, centre.y, centre.z);
+          this.clayGeometries.push(geometry);
+          node.geometry = geometry;
+        });
       this.group.add(clone);
     }
   }
@@ -32,6 +54,8 @@ export class PianoCase {
   clear(): void {
     // Geometry and baked materials belong to the keyboard asset, shared across rebuilds.
     this.group.clear();
+    for (const geometry of this.clayGeometries) geometry.dispose();
+    this.clayGeometries.length = 0;
   }
 
   dispose(): void {

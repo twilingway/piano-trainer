@@ -13,7 +13,7 @@ export function pickKeyboardKey(
   raycaster: Raycaster,
   pointer: Vector2,
   scene: Scene,
-  hinged: readonly { readonly pitch: number; readonly mesh: Mesh }[],
+  hinged: readonly { readonly pitch: number; readonly mesh: Mesh; readonly pickMesh?: Mesh }[],
   occluders: Object3D[],
   camera: Camera,
   x: number,
@@ -28,9 +28,14 @@ export function pickKeyboardKey(
   const origin = new Vector3(pointer.x, pointer.y, -1).unproject(camera);
   const direction = new Vector3(pointer.x, pointer.y, 1).unproject(camera).sub(origin).normalize();
   raycaster.set(origin, direction);
-  const hits = raycaster.intersectObjects([...hinged.map(({ mesh }) => mesh), ...occluders], true);
+  for (const key of hinged) key.pickMesh?.matrixWorld.copy(key.mesh.matrixWorld);
+  const hits = raycaster.intersectObjects(
+    [...hinged.map(({ mesh, pickMesh }) => pickMesh ?? mesh), ...occluders],
+    true
+  );
   const hit = hits.find(({ object }) => {
-    let part: Object3D | null = object;
+    let part: Object3D | null =
+      hinged.find((key) => (key.pickMesh ?? key.mesh) === object)?.mesh ?? object;
     while (part) {
       if (!part.visible) return false;
       part = part.parent;
@@ -38,5 +43,5 @@ export function pickKeyboardKey(
     return true;
   });
   if (hit?.uv) surface?.copy(hit.uv);
-  return hit && hinged.find(({ mesh }) => mesh === hit.object)?.pitch;
+  return hit && hinged.find(({ mesh, pickMesh }) => (pickMesh ?? mesh) === hit.object)?.pitch;
 }

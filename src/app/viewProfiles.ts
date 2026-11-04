@@ -1,8 +1,9 @@
+import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import { normalizeRoadHorizon } from "../render/roadHorizon";
 import { CAMERA_PRESETS, normalizeCamera, type CameraPrefs } from "../render/worldCamera";
 import { DEFAULT_SCREEN_LAYOUT, normalizeLayout, type ScreenLayout } from "./screenLayout";
 
-export type KeyboardStyle = "classic" | "arcade" | "3d";
+export type KeyboardStyle = import("../render/keyFaceStyles").KeyStyle;
 export type NotesProjection = "direct" | "perspective";
 export type KeyboardOrientation = "follow" | "top";
 export interface ViewAxes {
@@ -31,7 +32,7 @@ export const DEFAULT_VIEW_FRAMING: ViewFraming = {
   roadHorizon: 0.1,
   layout: DEFAULT_SCREEN_LAYOUT
 };
-const STYLES: readonly KeyboardStyle[] = ["classic", "arcade", "3d"];
+const STYLES: readonly KeyboardStyle[] = ["classic", "arcade", "3d", "clay"];
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -46,14 +47,13 @@ export function normalizeViewAxes(value: unknown, fallback?: ViewAxes): ViewAxes
       ? "3d"
       : STYLES.includes(raw.keyboardStyle as KeyboardStyle)
         ? (raw.keyboardStyle as KeyboardStyle)
-        : (fallback?.keyboardStyle ?? "arcade");
+        : (fallback?.keyboardStyle ?? "clay");
   return {
     keyboardStyle,
     notesProjection: projection(raw.notesProjection, fallback?.notesProjection ?? "direct"),
-    keyboardOrientation:
-      keyboardStyle === "3d"
-        ? orientation(raw.keyboardOrientation ?? fallback?.keyboardOrientation)
-        : "follow"
+    keyboardOrientation: isNativeKeyStyle(keyboardStyle)
+      ? orientation(raw.keyboardOrientation ?? fallback?.keyboardOrientation)
+      : "follow"
   };
 }
 export const viewProfileKey = (axes: ViewAxes): string =>
@@ -97,7 +97,7 @@ export function hydrateViewProfiles(
   value: unknown,
   legacyStaff: unknown,
   legacyLayout: unknown,
-  defaultKeyboardStyle: KeyboardStyle = "arcade"
+  defaultKeyboardStyle: KeyboardStyle = "clay"
 ): ViewProfiles {
   const raw = record(value);
   const staff = record(legacyStaff);
@@ -217,7 +217,7 @@ export function editViewCamera(
   const selected = selectViewProfile(
     profiles,
     current,
-    profiles.active.keyboardStyle === "3d" ? { keyboardOrientation: "follow" } : {}
+    isNativeKeyStyle(profiles.active.keyboardStyle) ? { keyboardOrientation: "follow" } : {}
   );
   const framing = normalizeViewFraming({ ...current, camera }, profiles.legacySeed);
   return { profiles: saveViewFraming(selected.profiles, framing), framing };

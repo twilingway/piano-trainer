@@ -450,6 +450,12 @@ export class ThreeStage {
     this.scorePoster.setSource(source);
   }
 
+  setClayKeyboard(on: boolean): void {
+    if (this.materials.clayEnabled === on) return;
+    this.materials.clayEnabled = on;
+    this.version = -1;
+  }
+
   setKeyboardDim(on: boolean): void {
     this.appearance.setDim(on);
   }
