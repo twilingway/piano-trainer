@@ -241,9 +241,8 @@ export class FallingNotesView {
     this.road?.setCamera(this.cameraPrefs);
     this.syncRoad();
     this.laidOutFor = { width: 0, height: 0 };
-    const keyboard = this.keyboard;
-    if (!keyboard) return;
-    void Promise.all([keyboard.loadPaintedFaces(style), loaded]).then(this.relayout);
+    if (!this.keyboard) return;
+    void Promise.all([this.keyboard.loadPaintedFaces(style), loaded]).then(this.relayout);
   }
 
   /** Each falling note carries a card with the note written on a staff; off, plain bars. */
@@ -595,6 +594,7 @@ export class FallingNotesView {
         keys: this.keys,
         prefs: this.cameraPrefs,
         native: isNativeKeyStyle(this.keyStyle) && !this.computer,
+        nativeRangeFit: this.keyStyle === "clay" && !this.computer,
         overhead: this.road?.requestedKeyboardTop ?? false,
         computer: !!this.computer,
         parts: this.parts,

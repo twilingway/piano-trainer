@@ -1,3 +1,4 @@
+import { applyNativeRange, nativeRangeBounds } from "./nativeRangeFocus";
 import { configureDockedRoad, updateDockedKeyOffsets } from "./dockedRoadProjection";
 import { NativeOctaveProjection } from "./nativeOctaveProjection";
 import type { OctaveKeyLabels } from "../octaveKeyLabels";
@@ -506,7 +507,10 @@ export class ThreeStage {
     const boxes = keyboardSceneBoxes(keys);
     this.boxes = boxes;
     this.roadBoxes = keyBoxes(keys);
-    this.performance.layout(boxes);
+    const focus = this.materials.clayEnabled ? nativeRangeBounds(this.roadBoxes) : undefined;
+    this.free.setFocusBounds(focus);
+    this.performance.setFocusBounds(focus);
+    this.performance.layout(this.materials.clayEnabled ? this.roadBoxes : boxes);
     this.appearance.layout(boxes);
     // Both light rigs sit in the keys group, scaled by the keyboard camera.
     this.noteLights.layout(boxes, keys.roadCamera ?? keys.camera, keysGroupScale(keys));
@@ -521,6 +525,7 @@ export class ThreeStage {
       this.cabinet,
       this.body
     );
+    applyNativeRange(this.hinged, this.roadBoxes, this.materials.clayEnabled);
     this.keyEmission.endLayout();
   }
 

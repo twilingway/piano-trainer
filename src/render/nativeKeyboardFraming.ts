@@ -19,7 +19,8 @@ export function naturalNativeViewHeight(
   keys: ReadonlyMap<number, KeyRect>,
   overhead: boolean,
   lift: number,
-  spriteHands?: Geometry
+  spriteHands?: Geometry,
+  rangeFit = false
 ): number {
   const floor = screen.height * lift;
   const handRoom = spriteHands
@@ -32,7 +33,8 @@ export function naturalNativeViewHeight(
       screen.height - floor - handRoom,
       prefs,
       0.1,
-      keys.values()
+      keys.values(),
+      rangeFit
     ),
     overhead
   );

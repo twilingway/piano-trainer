@@ -54,6 +54,8 @@ export function normalizeCamera(value: unknown): CameraPrefs {
 }
 /** The numbers `project` is built from, for a renderer that has to see the same scene. */
 export interface CameraParams {
+  /** Explicit range framing of the standard native keyboard camera. */
+  readonly nativeRangeFit?: boolean;
   /** Standard keyboard-only longitudinal fit; free and performance cameras do not use it. */
   readonly keyboardDepthScale?: number;
   readonly keyboardDepthAnchor?: number;
@@ -78,6 +80,8 @@ export interface CameraParams {
 }
 /** Actual unpanned key bounds in world units; pan retains its source-pixel units. */
 export interface OverheadFit {
+  /** Explicit native range framing; calibration retains manual FOV and zoom. */
+  readonly zoomIn?: boolean;
   readonly left: number;
   readonly right: number;
   readonly pan: number;
@@ -155,7 +159,10 @@ export function worldCamera(
     const frontHeight = sa < 0 ? 0 : 34;
     const depth = (prefs.height * fit - frontHeight * prefs.scale) * sa + prefs.distance * fit * ca;
     if (extent > 0 && depth > 1) {
-      const zoom = Math.min(1, ((width / 2 - 12) * depth) / (extent * prefs.scale * focal));
+      const referenceDepth = (prefs.height * fit - frontHeight) * sa + prefs.distance * fit * ca;
+      const zoom = overheadFit.zoomIn
+        ? ((width / 2 - 12) * referenceDepth) / (extent * defaultFocal)
+        : Math.min(1, ((width / 2 - 12) * depth) / (extent * prefs.scale * focal));
       const yy = near.y * prefs.scale - prefs.height * fit;
       const zz = near.z * prefs.scale + prefs.distance * fit;
       const before = ((yy * ca + zz * sa) * focal) / (-yy * sa + zz * ca);
@@ -179,7 +186,12 @@ export function worldCamera(
         Math.abs(right - pan * sourceUnits)
       );
       const projectedExtent = extent * prefs.scale * initialOrthoScale;
-      if (projectedExtent > 0) fitScale = Math.min(1, (width / 2 - margin) / projectedExtent);
+      if (projectedExtent > 0) {
+        const referenceScale = defaultFocal / Math.max(1, prefs.height * fit - 22);
+        fitScale = overheadFit.zoomIn
+          ? (width / 2 - margin) / (extent * referenceScale)
+          : Math.min(1, (width / 2 - margin) / projectedExtent);
+      }
     }
   }
   const orthographicScale =
@@ -259,7 +271,8 @@ export function worldCamera(
     fit,
     prefs,
     ...(sourceUnits === 0.5 ? {} : { sourceUnits }),
-    ...(keyboardDepth === undefined ? {} : { keyboardDepth })
+    ...(keyboardDepth === undefined ? {} : { keyboardDepth }),
+    ...(overheadFit?.zoomIn ? { nativeRangeFit: true } : {})
   };
   const projectionParams =
     orthographicScale === undefined ? params : { ...params, orthographicScale };

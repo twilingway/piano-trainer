@@ -70,9 +70,11 @@ export function usePracticeDisplayPrefs({
   staffPrefs,
   performance,
   courseActive,
-  courseView
+  courseView,
+  beginner = false
 }: {
   readonly practiceActive: boolean;
+  readonly beginner?: boolean;
   readonly ear: boolean;
   readonly music: Pick<MusicCourseHook, "active" | "staffVisible" | "keysVisible"> & {
     readonly fingeringVisible?: boolean;
@@ -86,7 +88,7 @@ export function usePracticeDisplayPrefs({
     () =>
       practiceActive
         ? {
-            ...readingDisplayProfile(staffPrefs),
+            ...readingDisplayProfile(staffPrefs, beginner),
             visible: music.active ? music.staffVisible : !ear,
             keys: music.active ? music.keysVisible : !ear,
             fingers: music.active && (music.fingeringVisible ?? false)
@@ -108,6 +110,7 @@ export function usePracticeDisplayPrefs({
             : staffPrefs,
     [
       practiceActive,
+      beginner,
       ear,
       music.active,
       music.staffVisible,

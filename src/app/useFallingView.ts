@@ -349,17 +349,22 @@ export function useFallingView({
 
   const [rangeLow, rangeHigh] =
     displayRange ?? (keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange]);
+  const hasDisplayRange = displayRange !== undefined;
   useEffect(() => {
     const range: LaneRange = {
       low: rangeLow,
       high: rangeHigh,
-      fitsSong: keyRange === "song",
-      fitsViewport: keyRange === "3oct" || keyRange === "4oct"
+      fitsSong: !hasDisplayRange && keyRange === "song",
+      fitsViewport:
+        hasDisplayRange ||
+        keyRange === "3oct" ||
+        keyRange === "4oct" ||
+        (staffPrefs.keyStyle === "clay" && keyRange !== "song")
     };
     rangeRef.current = range;
     for (const view of lanes(viewRef, comparisonRef))
       view.setRange(range.low, range.high, range.fitsSong, range.fitsViewport);
-  }, [viewRef, trainerReady, rangeLow, rangeHigh, keyRange]);
+  }, [viewRef, trainerReady, rangeLow, rangeHigh, keyRange, hasDisplayRange, staffPrefs.keyStyle]);
 
   // The original on a second screen, drawn by the trainer at the take's song time.
   useEffect(() => {

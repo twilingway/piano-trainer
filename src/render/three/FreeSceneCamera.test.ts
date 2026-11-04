@@ -344,3 +344,24 @@ it("preserves the free manual pose when structural field, score and aspect chang
   expect(f.view.camera.position.distanceTo(before)).toBeLessThan(0.000001);
   f.dispose();
 });
+
+it("reframes an explicit native range change while preserving orbit for the same range", () => {
+  const v = setup();
+  const range = new Box3(new Vector3(-90, 0, -150), new Vector3(90, 34, 0));
+  v.view.setFocusBounds(range);
+  v.view.update(800, 600, v.subject);
+  const framed = v.view.camera.position.clone();
+  v.down();
+  v.move();
+  v.up();
+  const orbit = v.view.camera.position.clone();
+  expect(orbit.distanceTo(framed)).toBeGreaterThan(1);
+  v.view.setFocusBounds(range.clone());
+  v.view.invalidate(false);
+  v.view.update(800, 600, v.subject);
+  expect(v.view.camera.position.distanceTo(orbit)).toBeLessThan(0.00001);
+  v.view.setFocusBounds(new Box3(new Vector3(-400, 0, -150), new Vector3(400, 34, 0)));
+  v.view.update(800, 600, v.subject);
+  expect(v.view.camera.position.distanceTo(orbit)).toBeGreaterThan(1);
+  v.dispose();
+});

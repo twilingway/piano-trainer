@@ -16,6 +16,30 @@ export function clayStepForPitch(pitch: number): ClayNoteStep | undefined {
     (((pitch % 12) + 12) % 12) as 0 | 2 | 4 | 5 | 7 | 9 | 11
   ];
 }
+/** Map the parser's full-score source index to an unambiguous XML id, not a runtime song id. */
+export function claySourceNoteIds(xml: string | undefined): ReadonlyMap<number, string> {
+  const result = new Map<number, string>();
+  if (!xml) return result;
+  try {
+    const document = new DOMParser().parseFromString(xml, "application/xml");
+    if (
+      document.querySelector("parsererror") ||
+      document.documentElement.localName !== "score-partwise"
+    )
+      return result;
+    const notes = [...document.querySelectorAll("note")];
+    const counts = new Map<string, number>();
+    for (const note of notes) {
+      if (note.id) counts.set(note.id, (counts.get(note.id) ?? 0) + 1);
+    }
+    notes.forEach((note, index) => {
+      if (note.id && counts.get(note.id) === 1) result.set(index, note.id);
+    });
+  } catch {
+    // Malformed inputs cannot grant a colour hint.
+  }
+  return result;
+}
 /** A display-only pass; a named hint may colour only its explicitly revealed source note. */
 export function musicXmlWithClayColors(xml: string, noteId?: string): string {
   try {

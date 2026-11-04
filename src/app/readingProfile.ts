@@ -1,9 +1,10 @@
 import type { StaffPrefs } from "./staffPreferences";
 
 /** Effective display only: never persists the course's forced defaults over player preferences. */
-export function readingDisplayProfile(prefs: StaffPrefs): StaffPrefs {
+export function readingDisplayProfile(prefs: StaffPrefs, beginner = false): StaffPrefs {
   return {
     ...prefs,
+    ...(beginner ? { freeCamera: false, performanceScene: false } : {}),
     visible: true,
     lane: false,
     keys: true,

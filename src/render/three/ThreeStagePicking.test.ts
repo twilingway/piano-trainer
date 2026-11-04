@@ -155,3 +155,93 @@ it("picks docked visible keys even when the free world camera points elsewhere",
   expect(f.pick(new Vector3(-0.3, 0.45, -0.6))).toBe(61);
   f.dispose();
 });
+
+it("keeps projected white and black key picking aligned after every native selected range", async () => {
+  const { metricKeyboardCamera } = await import("../metricKeyboardCamera");
+  const { fittedNativeKeyboardCamera, naturalNativeKeyboardHeight } =
+    await import("../nativeKeyboardFraming");
+  const { layoutKeyboard } = await import("../keyboardLayout");
+  const { viewGeometry } = await import("../viewGeometry");
+  const { CAMERA_PRESETS } = await import("../worldCamera");
+  const { viewMatrix, projectionMatrix } = await import("./threeCamera");
+  const { pickKeyboardKey } = await import("./pickKeyboardKey");
+  const width = 1920,
+    height = 1080,
+    scene = new Scene(),
+    camera = new Camera();
+  camera.matrixAutoUpdate = false;
+  const white = new Mesh(new BoxGeometry(23.5, 22, 150), new MeshBasicMaterial());
+  white.position.set(0, 11, -75);
+  const black = new Mesh(new BoxGeometry(13.3, 12, 94), new MeshBasicMaterial());
+  black.position.set(11.75, 28, -102);
+  scene.add(white, black);
+  const keys = [
+    { pitch: 60, mesh: white },
+    { pitch: 61, mesh: black }
+  ];
+  try {
+    for (const [low, high] of [
+      [60, 72],
+      [48, 72],
+      [36, 84],
+      [21, 108]
+    ]) {
+      const layout = layoutKeyboard(width, low, high);
+      const base = metricKeyboardCamera(
+        width,
+        width,
+        height,
+        CAMERA_PRESETS.top,
+        0.1,
+        layout.values(),
+        true
+      );
+      const geometry = viewGeometry(
+        height,
+        23.5,
+        { keys: true, notes: true, hands: false },
+        false,
+        true,
+        undefined,
+        naturalNativeKeyboardHeight(base, true)
+      );
+      const fitted = fittedNativeKeyboardCamera(base, geometry.keyboardHeight, true, 1);
+      camera.matrix.copy(viewMatrix(fitted.params)).invert();
+      camera.matrixWorldNeedsUpdate = true;
+      camera.projectionMatrix.copy(projectionMatrix(fitted.params, width, height));
+      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+      scene.scale.setScalar(fitted.params.prefs.scale);
+      camera.updateMatrixWorld(true);
+      for (const [point, pitch] of [
+        [new Vector3(0, 22, 20), 60],
+        [new Vector3(11.75, 34, 100), 61]
+      ] as const) {
+        const pixel = fitted.project(point.x, point.y, point.z);
+        const rendered = new Vector3(point.x, point.y, -point.z)
+          .multiplyScalar(fitted.params.prefs.scale)
+          .project(camera);
+        expect(((rendered.x + 1) * width) / 2).toBeCloseTo(pixel.x, 6);
+        expect(((1 - rendered.y) * height) / 2).toBeCloseTo(pixel.y, 6);
+        expect(
+          pickKeyboardKey(
+            new Raycaster(),
+            new Vector2(),
+            scene,
+            keys,
+            [],
+            camera,
+            pixel.x,
+            pixel.y,
+            width,
+            height
+          )
+        ).toBe(pitch);
+      }
+    }
+  } finally {
+    for (const mesh of [white, black]) {
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    }
+  }
+});

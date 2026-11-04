@@ -372,3 +372,54 @@ it("keeps one lesson score and the same canvas through prompts, hints and window
     vi.unstubAllGlobals();
   }
 });
+
+it("shows waiting beside a lesson but keeps the keyboard badge for ordinary songs", () => {
+  setInterfaceLanguage("ru");
+  const noop = () => undefined;
+  const props = {
+    staffXml: "<score-partwise/>",
+    prefs: DEFAULT_STAFF_PREFS,
+    fixedLines: false,
+    beat: 0,
+    liveBeat: () => 0,
+    onSeek: noop,
+    reviewMarks: undefined,
+    transcription: undefined,
+    takeStaff: "row" as const,
+    splitDirection: "row" as const,
+    comparing: false,
+    waiting: true,
+    hostRef: { current: null },
+    mirrorHostRef: { current: null },
+    layout: DEFAULT_SCREEN_LAYOUT,
+    onLayout: noop,
+    onZoom: noop,
+    layoutMoved: false,
+    onResetLayout: noop,
+    editing: false
+  };
+  const song = renderToStaticMarkup(<Workspace {...props} />);
+  expect(song).toContain('class="waiting-pill"');
+  const lesson = renderToStaticMarkup(
+    <Workspace
+      {...props}
+      course
+      lessonBoard={(score) => (
+        <LessonWorkspace
+          title="Lesson"
+          instruction="Play"
+          input="MIDI"
+          score={score}
+          action={<button>Play</button>}
+          waiting
+          windows={{ open: null, onOpen: noop, interruptsAttempt: false }}
+        >
+          {null}
+        </LessonWorkspace>
+      )}
+    />
+  );
+  expect(lesson).not.toContain('class="waiting-pill"');
+  expect(lesson).toContain('class="lesson-workspace__waiting"');
+  expect(lesson.match(/Жду ноту/g)).toHaveLength(1);
+});
