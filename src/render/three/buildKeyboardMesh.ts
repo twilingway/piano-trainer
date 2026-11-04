@@ -1,3 +1,5 @@
+import { clayKeyGeometry } from "./clayKeyGeometry";
+import type { ClayKeyMaterials } from "./ClayKeyMaterials";
 import { Mesh, type MeshStandardMaterial, type Texture } from "three";
 import type { Keyboard88 } from "./keyboard88";
 import type { KeyBox } from "./keyBoxes";
@@ -11,19 +13,38 @@ export function buildKeyboardMesh(
   keyboard: Keyboard88,
   picture: Texture,
   emission: ThreeKeyEmission,
-  fallback: { top: MeshStandardMaterial; white: MeshStandardMaterial }
+  fallback: {
+    top: MeshStandardMaterial;
+    white: MeshStandardMaterial;
+    clay?: ClayKeyMaterials;
+    clayEnabled?: boolean;
+  }
 ): Mesh {
   const key = keyboard.keys.get(box.pitch);
   if (!key && box.pitch !== 0) throw new Error(`keyboard88 has no key ${String(box.pitch)}`);
-  const geometry = key ? keyboard88Geometry(key.geometry, box) : computerKeyboardSlabGeometry(box);
+  const clay = key && fallback.clayEnabled ? fallback.clay : undefined;
+  const clayBody = box.black ? clay?.black : clay?.white;
+  const geometry = clay
+    ? clayKeyGeometry(box)
+    : key
+      ? keyboard88Geometry(key.geometry, box)
+      : computerKeyboardSlabGeometry(box);
   const painted = key
-    ? paintedKeyboardTop(key.materials[0], picture, box.black, box.uv.u1 > box.uv.u0)
+    ? paintedKeyboardTop(clayBody ?? key.materials[0], picture, box.black, box.uv.u1 > box.uv.u0)
     : fallback.top;
   const materials = emission.create(
     box.pitch,
     painted,
-    key?.materials[1] ?? fallback.white,
-    key ? (box.black ? "black" : "white") : undefined
+    clayBody ?? key?.materials[1] ?? fallback.white,
+    clay
+      ? box.black
+        ? "clay-black"
+        : "clay-white"
+      : key
+        ? box.black
+          ? "black"
+          : "white"
+        : undefined
   );
   if (key) emission.ownTemplate(painted);
   const mesh = new Mesh(geometry, materials);

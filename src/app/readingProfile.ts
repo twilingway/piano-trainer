@@ -22,7 +22,7 @@ export function readingDisplayProfile(prefs: StaffPrefs): StaffPrefs {
     chords: false,
     noteCards: false,
     keyRange: "song",
-    keyStyle: "classic",
+    keyStyle: prefs.keyStyle === "clay" ? "clay" : "classic",
     follow: true,
     singleLine: true,
     autoReview: false

@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "./keyFaceStyles";
 import { FreeRoadRoutes } from "./freeRoadRoutes";
 export type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
@@ -102,7 +103,7 @@ export class RoadLayer {
         : undefined;
   }
   private get nativeKeyboard(): boolean {
-    return this.style === "3d" && !this.computerKeyboard;
+    return isNativeKeyStyle(this.style) && !this.computerKeyboard;
   }
   setEnergy(sources: readonly EnergySource[], deltaSeconds: number): void {
     this.three?.setEnergy(sources, deltaSeconds);
@@ -123,11 +124,9 @@ export class RoadLayer {
       this.nativeRoad.freeLanes = this.freeRoutes.lanes;
       this.physicalContactLanes = this.nativeRoad.freeContacts = this.freeRoutes.contacts;
     }
-    this.nativeRoad.noteStyle = this.computerKeyboard
-      ? "glass"
-      : this.style === "3d"
-        ? this.fallingNoteStyle
-        : "flat";
+    this.nativeRoad.noteStyle = this.fallingNoteStyle;
+    if (this.computerKeyboard) this.nativeRoad.noteStyle = "glass";
+    else if (!isNativeKeyStyle(this.style)) this.nativeRoad.noteStyle = "flat";
     this.nativeRoad.flatMaterial = this.nativeRoad.noteStyle === "flat";
     const keys = this.nativeRoad.flatMaterial && this.camera ? this.contactKeys : undefined;
     const place = this.notePlace.bind(this);
@@ -331,6 +330,7 @@ export class RoadLayer {
   }
   setKeyStyle(style: KeyStyle): Promise<void> {
     this.style = style;
+    this.three?.setClayKeyboard(style === "clay");
     if (!this.three) return Promise.resolve();
     return this.three.setEnabled(this.nativeKeyboard, this.notesPerspective || this.nativeKeyboard);
   }

@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import { normalizeRoadHorizon } from "../render/roadHorizon";
 import { normalizeWorldFov } from "../render/worldFov";
 import type { FallingNoteStyle } from "../render/fallingNoteStyle";
@@ -144,7 +145,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   octaveLabels: true,
   fps: false,
   keyRange: "song",
-  keyStyle: "arcade",
+  keyStyle: "clay",
   keyboardOrientation: "follow",
   autoReview: false,
   camera: CAMERA_PRESETS.top,
@@ -228,9 +229,11 @@ export function normalizeStaffPrefs(value: unknown, mobile = false): StaffPrefs 
     fps: boolean("fps"),
     keyRange: choice("keyRange", ["song", "3oct", "4oct", "88", "61", "49", "25"]),
     keyStyle:
-      raw.keyStyle === "perspective" ? "3d" : choice("keyStyle", ["classic", "arcade", "3d"]),
+      raw.keyStyle === "perspective"
+        ? "3d"
+        : choice("keyStyle", ["classic", "arcade", "3d", "clay"]),
     keyboardOrientation:
-      raw.keyStyle === "3d" && raw.keyboardOrientation === "top" ? "top" : "follow",
+      isNativeKeyStyle(raw.keyStyle) && raw.keyboardOrientation === "top" ? "top" : "follow",
     autoReview: boolean("autoReview"),
     camera: raw.camera === undefined ? CAMERA_PRESETS.top : normalizeCamera(raw.camera),
     roadFar: number("roadFar", -1, 0.9),

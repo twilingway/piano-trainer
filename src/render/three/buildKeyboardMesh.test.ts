@@ -257,3 +257,30 @@ describe("native keyboard mesh finish integration", () => {
     item.dispose();
   });
 });
+
+it("uses matte rounded clay without altering asset templates and keeps paused hue while dimming", () => {
+  const item = fixture();
+  item.stage.clayEnabled = true;
+  const mesh = item.build(60),
+    pair = materials(mesh);
+  expect(pair[0]?.roughness).toBeGreaterThan(0.9);
+  expect(pair[1]?.bumpMap).toBe(item.stage.clay.relief);
+  expect(pair[0]?.normalMap).toBeNull();
+  const bright = pair[0]?.color.clone();
+  item.emission.update([source(60)], 0.02);
+  const hue = pair[0]?.emissive.clone(),
+    intensity = pair[0]?.emissiveIntensity;
+  item.stage.appearance.setDim(true);
+  expect(pair[0]?.emissive).toEqual(hue);
+  expect(pair[0]?.emissiveIntensity).toBe(intensity);
+  item.emission.clear();
+  expect(pair[0]?.color.r).toBeLessThan(bright?.r ?? 0);
+  item.stage.appearance.setDim(false);
+  expect(pair[0]?.color).toEqual(bright);
+  expect(item.templates[0]?.[0].roughness).toBe(0.36);
+  const relief = vi.spyOn(item.stage.clay.relief, "dispose");
+  item.emission.dispose();
+  expect(relief).not.toHaveBeenCalled();
+  item.dispose();
+  expect(relief).toHaveBeenCalledTimes(1);
+});

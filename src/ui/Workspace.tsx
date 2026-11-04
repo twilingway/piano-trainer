@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import type { LessonStaffFeedbackSource } from "../staff/lessonStaffFeedback";
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
 import neonRailUrl from "../fx/neon-rail.webp?url";
@@ -132,7 +133,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
   const laneTop = !staffShown && !props.scoreBoard && laneMode !== "hidden" && !props.comparing;
   const handles = props.editing && !props.comparing;
   const showEdges = prefs.lane && !prefs.freeCamera && !prefs.performanceScene;
-  const showHitEdge = prefs.keyStyle !== "3d" || !prefs.keys || Boolean(props.wordBoard);
+  const showHitEdge = !isNativeKeyStyle(prefs.keyStyle) || !prefs.keys || Boolean(props.wordBoard);
   const staffBoard = staffShown && props.staffXml && (
     <div
       key="staff"
@@ -284,7 +285,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           )}
           <div className="lane" ref={hostRef}>
             {showEdges && <LaneEdges hitVisible={showHitEdge} />}
-            {prefs.keyStyle === "3d" &&
+            {isNativeKeyStyle(prefs.keyStyle) &&
               prefs.hands &&
               prefs.keys &&
               !props.comparing &&

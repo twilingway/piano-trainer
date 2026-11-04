@@ -1,4 +1,4 @@
-import { Group } from "three";
+import { Group, Mesh as PickMesh } from "three";
 import type { Mesh, Texture } from "three";
 import { metricKeyX } from "../keyboardMetrics";
 import { buildKeyboardMesh } from "./buildKeyboardMesh";
@@ -11,6 +11,7 @@ export interface HingedKey {
   readonly pitch: number;
   readonly hinge: Group;
   readonly mesh: Mesh;
+  readonly pickMesh?: Mesh;
 }
 
 /** Keep mesh allocation and physical case layout outside the frame compositor. */
@@ -30,11 +31,17 @@ export function buildStageKeys(
     const hinge = new Group();
     hinge.add(mesh);
     keys.add(hinge);
-    hinged.push({ pitch: box.pitch, hinge, mesh });
+    const original = materials.clayEnabled ? kit.keys.get(box.pitch) : undefined;
+    const pickMesh = original ? new PickMesh(original.geometry, mesh.material) : undefined;
+    // The non-rendered proxy borrows asset geometry and emission materials; neither is owned here.
+    hinged.push({ pitch: box.pitch, hinge, mesh, ...(pickMesh ? { pickMesh } : {}) });
   }
   const white = boxes.find((box) => !box.black);
   if (white && white.pitch !== 0) {
-    cabinet.layout(white.x - metricKeyX(white.pitch));
+    cabinet.layout(
+      white.x - metricKeyX(white.pitch),
+      materials.clayEnabled ? materials.clay.case : undefined
+    );
     body.add(cabinet.group);
   }
   return hinged;
