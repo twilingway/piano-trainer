@@ -35,7 +35,7 @@ import { drawViewKeys, syncViewKeyboards } from "./drawViewKeys";
 import { drawNativeRoadFrame, syncNativeKeyLayer } from "./viewRoadComposition";
 import { drawViewEffects, drawViewHud, roadFrameState } from "./viewEffects";
 import { DEFAULT_CAMERA, type CameraPrefs } from "./worldCamera";
-import { USUAL_PLACEMENT, viewGeometry, viewLayoutChanged } from "./viewGeometry";
+import { USUAL_PLACEMENT, placementChanged, viewGeometry, viewLayoutChanged } from "./viewGeometry";
 import type { Geometry, KeysPlacement, ViewLayout, ViewParts } from "./viewGeometry";
 import { playViewKeyPointer, viewKeyRelease } from "./viewKeyPointer";
 import { layoutFallingKeyboard } from "./layoutFallingKeyboard";
@@ -305,10 +305,8 @@ export class FallingNotesView {
 
   setKeysPlacement(placement: KeysPlacement): void {
     // Moved keys only shift with the scroll; a lift or a size lays the view out again.
-    const { lift, scale } = this.placement;
+    if (placementChanged(this.placement, placement)) this.laidOutFor = { width: 0, height: 0 };
     this.placement = placement;
-    if (placement.lift !== lift || placement.scale !== scale)
-      this.laidOutFor = { width: 0, height: 0 };
   }
 
   setWorldScoreSource = (source?: StaffWorldSource): void => this.road?.setWorldScoreSource(source);

@@ -337,15 +337,17 @@ export function useFallingView({
     comparisonRef.current?.setFallingNoteStyle(staffPrefs.fallingNoteStyle);
   }, [viewRef, trainerReady, staffPrefs.fallingNoteStyle]);
   const { lift, scale, x, y } = placement;
+  const maxHeightShare = displayRange ? 0.3 : undefined;
   useEffect(() => {
     freeLayoutRef.current = freeLayout;
     viewRef.current?.setFreeRoadLayout(freeLayout);
     comparisonRef.current?.setFreeRoadLayout(freeLayout);
   }, [viewRef, trainerReady, freeLayout]);
   useEffect(() => {
-    placementRef.current = { lift, scale, x, y };
-    for (const view of lanes(viewRef, comparisonRef)) view.setKeysPlacement({ lift, scale, x, y });
-  }, [viewRef, trainerReady, lift, scale, x, y]);
+    const effective = { lift, scale, x, y, ...(maxHeightShare ? { maxHeightShare } : {}) };
+    placementRef.current = effective;
+    for (const view of lanes(viewRef, comparisonRef)) view.setKeysPlacement(effective);
+  }, [viewRef, trainerReady, lift, scale, x, y, maxHeightShare]);
 
   const [rangeLow, rangeHigh] =
     displayRange ?? (keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange]);
