@@ -6264,3 +6264,76 @@ button.song-card.song-card__open {
 .reading-intro-staff .staff-page svg {
   display: block;
 }
+
+/* Small beginner steps share the existing lesson slots and engraving. */
+.beginner-intro {
+  max-width: 700px;
+}
+.beginner-intro__coach {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.beginner-intro__coach img {
+  width: 100px;
+  height: 110px;
+  object-fit: contain;
+}
+.beginner-intro__note {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+.beginner-intro__note > :last-child {
+  min-width: 0;
+  flex: 1;
+}
+.beginner-key-map {
+  display: flex;
+  height: 100px;
+  max-width: 440px;
+  margin: 1.2rem auto;
+}
+.beginner-key-map__white {
+  position: relative;
+  flex: 1;
+  border: 2px solid #637884;
+  border-radius: 0 0 8px 8px;
+  background: #dce7e9;
+  color: #103746;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+.beginner-key-map__white.is-known {
+  background: #fff8df;
+}
+.beginner-key-map__white.is-current {
+  background: #76dfcb;
+  box-shadow: inset 0 -6px 0 #27a596;
+}
+.beginner-key-map__white i {
+  position: absolute;
+  z-index: 1;
+  right: -9px;
+  top: -2px;
+  width: 16px;
+  height: 62%;
+  background: #213340;
+  border-radius: 0 0 4px 4px;
+}
+.beginner-help,
+.beginner-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.beginner-help .note-character {
+  width: 85px;
+}
+.beginner-feedback p {
+  margin: 0.4rem 0;
+}

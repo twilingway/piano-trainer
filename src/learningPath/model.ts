@@ -1,6 +1,8 @@
+import { BEGINNER_STAGES } from "../beginner/catalog";
 import type { MusicCourse } from "../musicLearning/types";
 import type { ReadingTask } from "../reading/types";
 export type PathCommand =
+  | { readonly kind: "beginner"; readonly stageId: string }
   | { readonly kind: "intro"; readonly hand: "right" | "left" }
   | { readonly kind: "reading"; readonly task: ReadingTask }
   | { readonly kind: "bass"; readonly task: "notes" | "phrases" }
@@ -19,6 +21,17 @@ export interface PathStep {
   readonly command: PathCommand;
 }
 export const PATH_STEPS: readonly PathStep[] = [
+  ...BEGINNER_STAGES.map((stage): PathStep => ({
+    id: stage.id,
+    chapter:
+      stage.hand === "right"
+        ? "От одной ноты к октаве: правая рука"
+        : "От одной ноты к октаве: левая рука",
+    title: stage.title,
+    goal: "Знакомство, короткая игра с помощником и самостоятельная попытка.",
+    symbol: "♪",
+    command: { kind: "beginner", stageId: stage.id }
+  })),
   {
     id: "right-intro",
     chapter: "Знакомимся с пианино",

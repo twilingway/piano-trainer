@@ -39,8 +39,11 @@ export class ReadingSession {
   constructor(
     private readonly exercise: ReadingExercise,
     private preferences: ReadingPreferences,
-    private readonly metadata?: ReadingSessionMetadata
+    private readonly metadata?: ReadingSessionMetadata,
+    private readonly targetCount = 20
   ) {
+    if (!Number.isInteger(targetCount) || targetCount < 1)
+      throw new RangeError("Invalid reading target count");
     this.startedAt = metadata?.startedAt ?? null;
     this.newMaterial = metadata?.newMaterial ?? false;
   }
@@ -215,13 +218,13 @@ export class ReadingSession {
       hintLevel: this.prompt?.hints.at(-1)?.level ?? 0,
       answers: [...this.answers],
       active: this.enabled,
-      completed: this.answers.length === 20,
+      completed: this.answers.length === this.targetCount,
       presented: typeof this.prompt?.presentedAt === "number" && !this.prompt.solved
     };
   }
 
   result(id: string, createdAt: number): ReadingResult | null {
-    if (this.answers.length !== 20) return null;
+    if (this.answers.length !== this.targetCount) return null;
     const runId = this.metadata?.runId ?? id;
     let attemptIndex = 0;
     return {

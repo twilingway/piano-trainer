@@ -62,7 +62,7 @@ export function ConnectedReadingPractice({
           }}
         />
       )}
-      {mode !== "intro" && reading.task && !reading.isBass && (
+      {mode !== "intro" && !reading.beginnerActive && reading.task && !reading.isBass && (
         <ReadingPracticePanel
           task={reading.task}
           purpose={reading.purpose ?? reading.task}

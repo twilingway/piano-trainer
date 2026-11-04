@@ -6,6 +6,7 @@ import { ConnectedGuidedPath } from "./ConnectedGuidedPath";
 import { PATH_STEPS, type PathStep } from "../learningPath/model";
 const mock = vi.hoisted(() => ({
   start: vi.fn(),
+  beginner: vi.fn(),
   intro: vi.fn(),
   bassIntro: vi.fn(),
   music: vi.fn(),
@@ -17,8 +18,10 @@ const mock = vi.hoisted(() => ({
   independent: vi.fn()
 }));
 vi.mock("./PlayerRuntimeProvider", () => ({
+  useRuntimeSelector: () => ({ completed: [] }),
   useRuntimeSource: () => ({
     getSnapshot: () => ({
+      beginner: { start: mock.beginner },
       reading: {
         start: mock.start,
         setIntro: mock.intro,
@@ -93,6 +96,11 @@ const click = async (id: string) => {
   });
 };
 describe("guided commands", () => {
+  it("opens the first small stage without giving completion", async () => {
+    await click("beginner-v1-right-1");
+    expect(mock.beginner).toHaveBeenCalledWith("beginner-v1-right-1");
+    expect(close).toHaveBeenCalledOnce();
+  });
   it("waits for reading selection and leaves the library open on failure", async () => {
     mock.start.mockResolvedValue(false);
     await click("right-check");

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useRuntimeSource } from "./PlayerRuntimeProvider";
+import { useRuntimeSelector, useRuntimeSource } from "./PlayerRuntimeProvider";
 import { GuidedLessonPath } from "../ui/GuidedLessonPath";
 import type { PathStep } from "../learningPath/model";
 import { useGuidedProgress } from "./GuidedProgressProvider";
 export function ConnectedGuidedPath({ onChoose }: { readonly onChoose: () => void }) {
   const source = useRuntimeSource();
   const progress = useGuidedProgress();
+  const beginner = useRuntimeSelector((r) => r.beginner);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
   const choose = async (step: PathStep) => {
@@ -14,7 +15,8 @@ export function ConnectedGuidedPath({ onChoose }: { readonly onChoose: () => voi
     setPending(true);
     setFailed(false);
     try {
-      if (c.kind === "reading") {
+      if (c.kind === "beginner") r.beginner.start(c.stageId);
+      else if (c.kind === "reading") {
         if (!(await r.reading.start(c.task))) {
           setFailed(true);
           return;
@@ -38,7 +40,7 @@ export function ConnectedGuidedPath({ onChoose }: { readonly onChoose: () => voi
   };
   return (
     <GuidedLessonPath
-      completed={progress.completed}
+      completed={[...progress.completed, ...beginner.completed]}
       pending={pending}
       error={
         failed
