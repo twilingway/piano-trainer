@@ -1,11 +1,8 @@
+import { CLAY_CLEF_URLS } from "./staffClayArt";
 import { VexFlowMeasure, type OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import manifest from "./art/manifest.json";
 
 const NS = "http://www.w3.org/2000/svg";
-const urls = {
-  treble: new URL("./art/treble-clay.webp", import.meta.url).href,
-  bass: new URL("./art/bass-clay.webp", import.meta.url).href
-};
 interface ClefAsset {
   readonly width: number;
   readonly height: number;
@@ -131,7 +128,7 @@ export function applyStaffClayClefs(
     if (!position) continue;
     const image = document.createElementNS(NS, "image");
     image.dataset.clayClefImage = anchor.kind;
-    image.setAttribute("href", urls[anchor.kind]);
+    image.setAttribute("href", CLAY_CLEF_URLS[anchor.kind]);
     image.setAttribute("aria-hidden", "true");
     image.setAttribute("pointer-events", "none");
     for (const [key, value] of Object.entries(position)) image.setAttribute(key, String(value));
@@ -148,7 +145,7 @@ export function applyStaffClayClefs(
     image.addEventListener(
       "error",
       () => {
-        if (!image.isConnected || image.parentElement !== group) return;
+        if (!image.isConnected || image.parentNode !== group) return;
         for (const path of paths) restore(path);
         image.remove();
       },

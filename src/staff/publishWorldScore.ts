@@ -1,3 +1,4 @@
+import { isClayClefImage } from "./staffClayArt";
 import type { BeatSpot } from "./liveCursor";
 import type { LineBox } from "./staffViewport";
 import type { StaffWorldSnapshot } from "./staffWorldSnapshot";
@@ -58,8 +59,13 @@ export function worldScoreSnapshot(
     const y = rect.top - origin.top + host.scrollTop;
     const clone = drawing.cloneNode(true) as SVGSVGElement;
     freezeSvgPresentation(drawing, clone);
-    clone.querySelectorAll("script,foreignObject,image").forEach((node) => {
+    clone.querySelectorAll("script,foreignObject").forEach((node) => {
       node.remove();
+    });
+    // SVG-as-image cannot load external resources. Only the two exact embedded app assets
+    // are admitted; a marker alone, another data URL or a remote image is never sufficient.
+    clone.querySelectorAll("image").forEach((image) => {
+      if (!isClayClefImage(image)) image.remove();
     });
     clone.setAttribute("x", String(x));
     clone.setAttribute("y", String(y));

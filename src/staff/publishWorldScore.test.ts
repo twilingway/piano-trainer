@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { CLAY_CLEF_URLS } from "./staffClayArt";
 import { describe, expect, it, vi } from "vitest";
 import { worldScoreSnapshot } from "./publishWorldScore";
 import { StaffWorldSource } from "./staffWorldSnapshot";
@@ -95,5 +96,49 @@ it("freezes source CSS for thin staff lines, stems and styled fingering text int
   } finally {
     rules.remove();
     host.remove();
+  }
+});
+
+it("exports both exact embedded clay clefs visibly and rejects every untrusted image", () => {
+  const host = document.body.appendChild(document.createElement("div"));
+  host.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg"><g class="vf-clef"><path visibility="hidden" d="M0 0L10 10"/></g></svg>';
+  const drawing = host.querySelector("svg");
+  if (!drawing) throw new Error("Expected drawing");
+  Object.defineProperty(host, "clientWidth", { value: 800 });
+  Object.defineProperty(host, "clientHeight", { value: 200 });
+  vi.spyOn(drawing, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 200));
+  const add = (id: string, href: string, marker?: string) => {
+    const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+    image.id = id;
+    image.setAttribute("href", href);
+    image.style.opacity = "1";
+    if (marker) image.setAttribute("data-clay-clef-image", marker);
+    drawing.append(image);
+  };
+  add("treble", CLAY_CLEF_URLS.treble, "treble");
+  add("bass", CLAY_CLEF_URLS.bass, "bass");
+  add("no-marker", CLAY_CLEF_URLS.treble);
+  add("wrong-data", "data:image/webp;base64,AAAA", "treble");
+  add("wrong-pair", CLAY_CLEF_URLS.bass, "treble");
+  add("wrong-marker", CLAY_CLEF_URLS.bass, "unknown");
+  add("external", "https://example.invalid/key.webp", "bass");
+  try {
+    const snapshot = worldScoreSnapshot(host, [], []);
+    if (!snapshot) throw new Error("Expected snapshot");
+    const parsed = new DOMParser().parseFromString(snapshot.svg, "image/svg+xml");
+    const images = [...parsed.querySelectorAll("image")];
+    expect(images.map((image) => image.id)).toEqual(["treble", "bass"]);
+    for (const image of images) {
+      expect(image.getAttribute("href")).toMatch(/^data:image\/webp;base64,/);
+      expect(image.style.opacity).toBe("1");
+      expect(image.style.visibility).not.toBe("hidden");
+    }
+    expect(images[0]?.getAttribute("href")).toBe(CLAY_CLEF_URLS.treble);
+    expect(images[1]?.getAttribute("href")).toBe(CLAY_CLEF_URLS.bass);
+    expect(host.querySelectorAll("image")).toHaveLength(7);
+  } finally {
+    host.remove();
+    vi.restoreAllMocks();
   }
 });
