@@ -1,5 +1,8 @@
 # Бэклог для проверки Codex
 
+Целый такт в учебной комнате на широком экране:
+[LESSON_WHOLE_MEASURE_QA_2026_11_03.md](LESSON_WHOLE_MEASURE_QA_2026_11_03.md).
+
 Повторная приёмка учебной комнаты после релиза 0.0.287:
 [LESSON_ROOM_VISIBLE_CONTROLS_QA_2026_11_03.md](LESSON_ROOM_VISIBLE_CONTROLS_QA_2026_11_03.md).
 
