@@ -24,24 +24,22 @@ afterEach(async () => {
   setInterfaceLanguage("ru");
 });
 describe("learning path presentation", () => {
-  it("shows a single recommendation, all seventeen unlocked steps and text-based statuses", async () => {
+  it("shows a single recommendation, all thirty-three unlocked steps and text-based statuses", async () => {
     const choose = vi.fn();
     await act(async () => {
       await Promise.resolve();
       root.render(<GuidedLessonPath completed={["right-intro"]} onChoose={choose} />);
     });
-    expect(host.querySelectorAll("ol button")).toHaveLength(17);
+    expect(host.querySelectorAll("ol button")).toHaveLength(33);
     expect(host.querySelectorAll('[aria-current="step"]')).toHaveLength(1);
-    expect(host.querySelector('[aria-current="step"]')?.textContent).toContain(
-      "Пять нот правой рукой"
-    );
+    expect(host.querySelector('[aria-current="step"]')?.textContent).toContain("Одна до");
     expect(host.querySelectorAll("button[disabled]")).toHaveLength(0);
-    expect(host.textContent).toContain("Выполнено шагов: 1 из 17");
+    expect(host.textContent).toContain("Выполнено шагов: 1 из 33");
     await act(async () => {
       await Promise.resolve();
       host.querySelector<HTMLButtonElement>(".guided-path__continue")?.click();
     });
-    expect(choose).toHaveBeenCalledWith(expect.objectContaining({ id: "right-notes" }));
+    expect(choose).toHaveBeenCalledWith(expect.objectContaining({ id: "beginner-v1-right-1" }));
   });
   it("translates headings, objectives and actions into English", async () => {
     setInterfaceLanguage("en");

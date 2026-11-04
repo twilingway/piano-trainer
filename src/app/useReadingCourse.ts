@@ -1,3 +1,4 @@
+import type { BeginnerCourse } from "./useBeginnerCourse";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { generateReadingExercise } from "../reading/generator";
 import { generateBassReadingExercise, nextBassReadingSeed } from "../reading/bassGenerator";
@@ -16,18 +17,19 @@ import { useI18n } from "./useI18n";
 import { DEFAULT_READING_PREFERENCES } from "../reading/types";
 import type { ReadingHintLevel, ReadingPreferences, ReadingResult } from "../reading/types";
 import type { TrainerReadingPolicy } from "../practice/readingPolicy";
-import type { Trainer } from "../practice/Trainer";
-import type { RefObject } from "react";
 import { readingActions, type ReadingState } from "./readingSlice";
 import { useAppDispatch, useAppSelector, useAppStore } from "./storeHooks";
 import type { LessonStaffFeedbackSink } from "../staff/lessonStaffFeedback";
 import { useLessonAcceptedFeedback } from "./useLessonAcceptedFeedback";
 import { useReadingGeneration } from "./useReadingGeneration";
 
-export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
+export function useReadingCourse(feedback?: LessonStaffFeedbackSink, beginner?: BeginnerCourse) {
   const { locale } = useI18n();
   const saved = useAppSelector((state) => state.reading);
-  const isBass = saved.activeCourse === "bass-reading";
+  const beginnerActive = beginner?.active ?? false;
+  const isBass = beginnerActive
+    ? beginner?.stage?.hand === "left"
+    : saved.activeCourse === "bass-reading";
   const dispatch = useAppDispatch();
   const store = useAppStore();
   const [intro, setIntro] = useState(false);
@@ -60,7 +62,7 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
     generatorVersion: isBass ? saved.bass.generatorVersion : 1,
     revision: saved.selectionRevision
   });
-  const exercise = useMemo(() => {
+  const legacyExercise = useMemo(() => {
     const selection = JSON.parse(selectionKey) as Pick<ReadingState, "task" | "seed" | "plan"> & {
       bass: boolean;
       generatorVersion: number;
@@ -75,6 +77,8 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
       ? generateReadingExercise(selection.task, selection.seed, selection.plan ?? undefined)
       : null;
   }, [selectionKey]);
+  const exercise = beginnerActive ? (beginner?.exercise ?? null) : legacyExercise;
+  const targetCount = beginnerActive ? (beginner?.stage?.targetCount ?? 20) : 20;
   const run = useMemo(
     () =>
       exercise
@@ -87,8 +91,11 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
     [exercise]
   );
   const session = useMemo(
-    () => (exercise && run ? new ReadingSession(exercise, DEFAULT_READING_PREFERENCES, run) : null),
-    [exercise, run]
+    () =>
+      exercise && run
+        ? new ReadingSession(exercise, DEFAULT_READING_PREFERENCES, run, targetCount)
+        : null,
+    [exercise, run, targetCount]
   );
   const feedbackRef = useLessonAcceptedFeedback(feedback, session);
   const [published, setPublished] = useState<{
@@ -113,8 +120,10 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
     sessionRef.current = session;
   }, [session]);
   useEffect(() => {
-    session?.configure(saved.preferences);
-  }, [session, saved.preferences]);
+    session?.configure(
+      beginnerActive ? { ...saved.preferences, automaticHints: false } : saved.preferences
+    );
+  }, [session, saved.preferences, beginnerActive]);
   const publish = useCallback(() => {
     if (!session) return;
     const snapshot = session.snapshot();
@@ -203,8 +212,18 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
       session
         ? {
             onFrame(practice, playing, atMs) {
+              if (sessionRef.current !== session) return;
               const due = practice.nextDue()[0];
               if (due && practice.waiting) session.prepare(due.id, due.pitch, atMs);
+              if (
+                beginnerActive &&
+                exercise?.task !== "check" &&
+                session.snapshot().presented &&
+                due
+              ) {
+                session.showHint(due.id, 1, atMs);
+                requestHint(1, due.id);
+              }
               session.setActive(
                 playing &&
                   practice.waiting &&
@@ -223,6 +242,7 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
             allowInput(event, practice, raw) {
               const owed = practice.nextDue()[0];
               return Boolean(
+                sessionRef.current === session &&
                 owed &&
                 !blockedRef.current &&
                 document.visibilityState !== "hidden" &&
@@ -230,6 +250,7 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
               );
             },
             onJudgement(event, events, raw) {
+              if (sessionRef.current !== session) return;
               if (events.some((event) => event.type === "hit" || event.type === "wrong")) {
                 const shown = shownRef.current;
                 const answer = session.answer(event.pitch, event.source ?? "pointer", raw);
@@ -282,7 +303,16 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
             }
           }
         : null,
-    [session, exercise, publish, requestHint, store, saved.selectionRevision, feedbackRef]
+    [
+      session,
+      exercise,
+      publish,
+      requestHint,
+      store,
+      saved.selectionRevision,
+      feedbackRef,
+      beginnerActive
+    ]
   );
 
   const presentation = useMemo(
@@ -302,6 +332,7 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
               if (!session.snapshot().presented) return;
               session.markStarted(Date.now());
               if (
+                !beginnerActive &&
                 exercise &&
                 exercise.skillId !== "bass-note-reading" &&
                 journaledSession.current !== session
@@ -329,7 +360,7 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
             }
           }
         : undefined,
-    [session, id, noteId, publish, exercise, store, feedbackRef]
+    [session, id, noteId, publish, exercise, store, feedbackRef, beginnerActive]
   );
 
   useEffect(() => {
@@ -352,23 +383,25 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
   }, [refreshClock, feedbackRef]);
   const generation = useReadingGeneration(onSelected);
   const finish = useCallback(() => {
-    if (!session || finished?.session === session) return;
+    if (!session || sessionRef.current !== session || finished?.session === session) return;
     const result = session.result(crypto.randomUUID(), Date.now());
     if (result) {
-      if (isBass) {
+      if (beginnerActive) beginner?.finish(result);
+      else if (isBass) {
         const bassResult = toBassReadingResult(result);
         if (!bassResult) return;
         dispatch(readingActions.bassResultAdded(bassResult));
       } else dispatch(readingActions.resultAdded(result));
       setFinished({ session, result });
     }
-  }, [session, finished, dispatch, isBass]);
+  }, [session, finished, dispatch, isBass, beginnerActive, beginner]);
   const suspend = useCallback(() => {
     session?.setActive(false, performance.now());
     publish();
   }, [session, publish]);
   return {
     active: exercise !== null,
+    beginnerActive,
     isBass,
     bassHistory: saved.bass.history,
     bassSourceFilter: saved.bass.sourceFilter,
@@ -415,13 +448,15 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
     ...generation,
     exit: () => {
       feedbackRef.current?.clear();
-      dispatch(readingActions.exit());
+      if (beginnerActive) beginner?.exit();
+      else dispatch(readingActions.exit());
     },
     finish,
     suspend,
     newSeries: () => {
       feedbackRef.current?.clear();
-      if (isBass)
+      if (beginnerActive) beginner?.repeat();
+      else if (isBass)
         dispatch(
           readingActions.bassSelected({
             task: saved.bass.task,
@@ -456,34 +491,4 @@ export function useReadingCourse(feedback?: LessonStaffFeedbackSink) {
   };
 }
 
-export function useReadingTrainer(
-  reading: {
-    policy: TrainerReadingPolicy | null;
-    session: { setActive: (active: boolean, atMs: number) => void } | null;
-    blockedRef: RefObject<boolean>;
-    suspend: () => void;
-  },
-  trainerRef: RefObject<Trainer | null>,
-  ready: boolean,
-  blocked: boolean
-) {
-  const { policy, session, blockedRef, suspend } = reading;
-  useEffect(() => {
-    blockedRef.current = blocked;
-    if (blocked) suspend();
-  }, [blocked, blockedRef, suspend]);
-  useEffect(() => {
-    if (!ready) return;
-    const trainer = trainerRef.current;
-    trainer?.configureCourse("reading", policy);
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") suspend();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      trainer?.configureCourse("reading", null);
-      document.removeEventListener("visibilitychange", onVisibility);
-      session?.setActive(false, performance.now());
-    };
-  }, [trainerRef, ready, policy, session, suspend]);
-}
+export { useReadingTrainer } from "./useReadingTrainer";

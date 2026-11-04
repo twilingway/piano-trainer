@@ -1,3 +1,4 @@
+import { ConnectedBeginner } from "./ConnectedBeginner";
 import { revealedClayNote } from "../reading/clayHint";
 import { ConnectedIndependentRhythmPractice } from "./ConnectedIndependentRhythm";
 import { ConnectedHeldBassPractice } from "./ConnectedHeldBass";
@@ -114,6 +115,7 @@ export function ConnectedPracticeWorkspace() {
   const trainerSeekToBeat = useRuntimeCommand((runtime) => runtime.trainer.seekToBeat);
   return (
     <>
+      <ConnectedBeginner intro />
       <ConnectedReadingPractice mode="intro" />
       <ConnectedBassReadingPractice mode="intro" />
       <ConnectedTwoHandPractice mode="intro" />
