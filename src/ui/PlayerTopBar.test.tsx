@@ -244,3 +244,28 @@ it("closes the hand shortcut when switching into fixed course practice", () => {
   render({ fixedPractice: false });
   expect(host.querySelector(".hands-popover")).toBeNull();
 });
+
+it("has separate lessons and melodies entrances on the wide bar and in the compact menu", () => {
+  const lessons = vi.fn();
+  const melodies = vi.fn();
+  render({ onLibrary: lessons, onMelodies: melodies });
+  const wideLessons = host.querySelector<HTMLButtonElement>(".topbar-library");
+  const wideMelodies = host.querySelector<HTMLButtonElement>(".topbar-melodies");
+  expect(wideLessons?.getAttribute("aria-label")).toBe("Уроки");
+  expect(wideMelodies?.getAttribute("aria-label")).toBe("Мелодии");
+  const compact = Array.from(
+    host.querySelectorAll<HTMLButtonElement>(".compact-controls__menu > button")
+  );
+  const compactLessons = compact.find((button) => button.textContent.trim() === "Уроки");
+  const compactMelodies = compact.find((button) => button.textContent.trim() === "Мелодии");
+  expect(compactLessons).toBeDefined();
+  expect(compactMelodies).toBeDefined();
+  act(() => {
+    wideLessons?.click();
+    wideMelodies?.click();
+    compactLessons?.click();
+    compactMelodies?.click();
+  });
+  expect(lessons).toHaveBeenCalledTimes(2);
+  expect(melodies).toHaveBeenCalledTimes(2);
+});

@@ -1,4 +1,7 @@
 import { ConnectedGuidedPath } from "./ConnectedGuidedPath";
+import { SONG_COURSE_SOURCES } from "../songCourse/catalog";
+import { SongCoursePath } from "../ui/SongCoursePath";
+import type { LibraryWindowKind } from "./useLibraryNavigation";
 import { GuidedCatalog } from "../ui/GuidedCatalog";
 import { ConnectedMusicCards } from "./ConnectedMusicCourse";
 import { shallowEqual } from "react-redux";
@@ -25,9 +28,13 @@ import { useRuntimeSelector } from "./PlayerRuntimeProvider";
 import { useRuntimeCommand } from "./runtimeCommands";
 
 export function ConnectedPlayerWindows() {
-  const [libraryMemory] = useState(() => new WindowViewMemory());
+  const [libraryMemories] = useState(() => ({
+    lessons: new WindowViewMemory(),
+    melodies: new WindowViewMemory()
+  }));
   const {
     libraryOpen,
+    libraryKind,
     settingsOpen,
     finished,
     playing,
@@ -43,6 +50,7 @@ export function ConnectedPlayerWindows() {
   } = useRuntimeSelector(
     (runtime) => ({
       libraryOpen: runtime.libraryOpen,
+      libraryKind: runtime.libraryNavigation.kind,
       settingsOpen: runtime.settingsOpen,
       finished: runtime.snapshot.finished,
       playing: runtime.snapshot.playing,
@@ -93,7 +101,9 @@ export function ConnectedPlayerWindows() {
     <>
       {libraryOpen && (
         <ConnectedLibraryWindow
-          memory={libraryMemory}
+          key={libraryKind}
+          kind={libraryKind}
+          memory={libraryMemories[libraryKind]}
           onClose={() => {
             setLibraryOpen(false);
           }}
@@ -145,19 +155,26 @@ export function ConnectedPlayerWindows() {
 }
 function ConnectedLibraryWindow({
   onClose,
-  memory
+  memory,
+  kind
 }: {
   onClose: () => void;
   memory: WindowViewMemory;
+  kind: LibraryWindowKind;
 }) {
-  const { lesson, source, mySongs, folder } = useRuntimeSelector(
+  const { lesson, source, mySongs, folder, songCourseView } = useRuntimeSelector(
     (runtime) => ({
       lesson: runtime.current.lesson,
       source: runtime.current.librarySource,
       mySongs: runtime.library.mySongs,
-      folder: runtime.library.folder
+      folder: runtime.library.folder,
+      songCourseView: runtime.songCourse.view
     }),
     shallowEqual
+  );
+  const chooseSongCourse = useRuntimeCommand(
+    (runtime) => (songId: string, nodeId: string) =>
+      runtime.songCourse.controller.choose(songId, nodeId)
   );
   const openLesson = useRuntimeCommand((runtime) => runtime.current.openLesson);
   const openMySong = useRuntimeCommand((runtime) => runtime.library.openMySong);
@@ -170,27 +187,53 @@ function ConnectedLibraryWindow({
   return (
     <LibraryDialog
       open
+      kind={kind}
       viewMemory={memory}
       onClose={onClose}
-      lessons={LESSONS.filter((lesson) => !PREVIOUS_COURSE_LESSONS.includes(lesson))}
+      lessons={LESSONS.filter((lesson) => lesson.id === "five-finger-c" || lesson.id === "scale-c")}
+      melodies={LESSONS.filter(
+        (lesson) =>
+          lesson.id !== "five-finger-c" &&
+          lesson.id !== "scale-c" &&
+          !PREVIOUS_COURSE_LESSONS.includes(lesson)
+      )}
       previousLessons={PREVIOUS_COURSE_LESSONS}
       course={
-        <>
-          <ConnectedGuidedPath onChoose={onClose} />
-          <GuidedCatalog>
-            <div className="foundation-course-catalog">
-              <ConnectedReadingCard onChoose={onClose} />
-              <ConnectedBassReadingCard onChoose={onClose} />
-              <ConnectedIntervalCard onChoose={onClose} />
-              <ConnectedRhythmCard onChoose={onClose} />
-              <ConnectedTwoHandCard onChoose={onClose} />
-              <ConnectedHeldBassCard onChoose={onClose} />
-              <ConnectedIndependentRhythmCard onChoose={onClose} />
-              <ConnectedMusicCards onChoose={onClose} />
-            </div>
-          </GuidedCatalog>
-          <ConnectedCourseCards onChoose={onClose} />
-        </>
+        kind === "lessons" ? (
+          <SongCoursePath
+            sources={SONG_COURSE_SOURCES}
+            selection={songCourseView.progressState.selection}
+            results={songCourseView.progressState.results}
+            pending={!songCourseView.loaded}
+            error={
+              songCourseView.error ??
+              (songCourseView.storageError ? "Прогресс мелодий временно недоступен." : null)
+            }
+            onChoose={(songId, nodeId) => {
+              if (chooseSongCourse(songId, nodeId)) onClose();
+            }}
+          />
+        ) : null
+      }
+      legacyCourse={
+        kind === "lessons" ? (
+          <>
+            <ConnectedGuidedPath onChoose={onClose} />
+            <GuidedCatalog>
+              <div className="foundation-course-catalog">
+                <ConnectedReadingCard onChoose={onClose} />
+                <ConnectedBassReadingCard onChoose={onClose} />
+                <ConnectedIntervalCard onChoose={onClose} />
+                <ConnectedRhythmCard onChoose={onClose} />
+                <ConnectedTwoHandCard onChoose={onClose} />
+                <ConnectedHeldBassCard onChoose={onClose} />
+                <ConnectedIndependentRhythmCard onChoose={onClose} />
+                <ConnectedMusicCards onChoose={onClose} />
+              </div>
+            </GuidedCatalog>
+            <ConnectedCourseCards onChoose={onClose} />
+          </>
+        ) : null
       }
       current={lesson}
       currentSource={source}

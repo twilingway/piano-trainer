@@ -1,3 +1,7 @@
+import { songCourseMessages } from "./songCourseMessages";
+import { SONG_COURSE_NAVIGATION_MESSAGES } from "./songCourseNavigationMessages";
+import { songCourseSourceMessages } from "./songCourseSourceMessages";
+import { songCourseUiMessages } from "./songCourseUiMessages";
 import { beginnerMessages } from "./beginnerMessages";
 import { clayMessages } from "./clayMessages";
 import { pathMessages } from "./pathMessages";
@@ -36,6 +40,10 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...songCourseMessages,
+  ...SONG_COURSE_NAVIGATION_MESSAGES,
+  ...songCourseSourceMessages,
+  ...songCourseUiMessages,
   ...beginnerMessages,
   ...clayMessages,
   ...pathMessages,

@@ -54,6 +54,7 @@ interface Props {
   readonly editing: boolean;
   readonly onToggleEditing: () => void;
   readonly onLibrary: () => void;
+  readonly onMelodies?: () => void;
   readonly onRestart: () => void;
   readonly onTogglePlay: () => void;
   readonly onMode: (mode: PracticeModeChoice) => void;
@@ -139,8 +140,13 @@ export function PlayerTopBar(props: Props) {
           {props.difficulty && <CompactDifficulty {...props.difficulty} />}
           {props.menuExtra}
           <button type="button" className="game-button" onClick={props.onLibrary}>
-            <LibraryIcon /> {t("Библиотека")}
+            <LibraryIcon /> {t("Уроки")}
           </button>
+          {props.onMelodies && (
+            <button type="button" className="game-button" onClick={props.onMelodies}>
+              <LibraryIcon /> {t("Мелодии")}
+            </button>
+          )}
           <button
             type="button"
             className="game-button"
@@ -166,13 +172,25 @@ export function PlayerTopBar(props: Props) {
       <button
         type="button"
         className="game-button topbar-library"
-        aria-label={t("Библиотека: {title}", { title: props.title })}
-        title={t("Библиотека")}
+        aria-label={t("Уроки")}
+        title={t("Уроки")}
         onClick={props.onLibrary}
       >
         <LibraryIcon />
-        <span className="topbar-library__label">{t("Библиотека")}</span>
+        <span className="topbar-library__label">{t("Уроки")}</span>
       </button>
+      {props.onMelodies && (
+        <button
+          type="button"
+          className="game-button topbar-melodies"
+          aria-label={t("Мелодии")}
+          title={t("Мелодии")}
+          onClick={props.onMelodies}
+        >
+          <LibraryIcon />
+          <span className="topbar-library__label">{t("Мелодии")}</span>
+        </button>
+      )}
       <span className="topbar-title" title={props.title}>
         {props.title}
       </span>

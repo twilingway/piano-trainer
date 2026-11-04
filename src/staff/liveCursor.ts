@@ -63,11 +63,13 @@ export function placeCursorLine(
   {
     offsetX = 0,
     hidden = false,
-    centered = false
+    centered = false,
+    anchorX
   }: {
     readonly offsetX?: number;
     readonly hidden?: boolean;
     readonly centered?: boolean;
+    readonly anchorX?: number;
   } = {}
 ): void {
   if (!line) return;
@@ -82,7 +84,8 @@ export function placeCursorLine(
   const view = host.getBoundingClientRect();
   const screenX = origin.left - view.left + spot.x + offsetX;
   // Scroll offsets may round to device pixels; keep a followed cursor still between those steps.
-  const anchoredX = centered && Math.abs(screenX - view.width / 2) <= 1 ? view.width / 2 : screenX;
+  const fixedX = anchorX ?? (centered ? view.width / 2 : undefined);
+  const anchoredX = fixedX !== undefined && Math.abs(screenX - fixedX) <= 1 ? fixedX : screenX;
   const left = host.scrollLeft + anchoredX;
   const top =
     origin.top - view.top + host.scrollTop + box.top - STAFF_VERTICAL_SPACE.cursorOverhang;

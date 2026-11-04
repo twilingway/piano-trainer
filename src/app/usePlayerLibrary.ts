@@ -5,6 +5,7 @@ import { createLibraryController } from "./libraryController";
 import { songActions } from "./songSlice";
 import { useAppSelector, useAppStore } from "./storeHooks";
 interface Options {
+  readonly restoreSelection?: boolean;
   readonly showSong: (song: Song, source: string | null) => void;
   readonly setLibrarySource: (source: string | null) => void;
   readonly openLesson: (choice: LessonChoice) => void;
@@ -26,7 +27,9 @@ export function usePlayerLibrary(options: Options) {
   useLayoutEffect(() => {
     commands.publish(options);
   }, [commands, options]);
-  const [source] = useState(() => store.getState().preferences.player.librarySource);
+  const [source] = useState(() =>
+    options.restoreSelection === false ? null : store.getState().preferences.player.librarySource
+  );
   const [controller] = useState(() =>
     createLibraryController({
       getState: () => store.getState(),

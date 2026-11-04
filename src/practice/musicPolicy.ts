@@ -1,3 +1,4 @@
+import type { InputCancellationReason } from "./inputCancellation";
 import type { KeyEvent } from "../input/midiInput";
 import type { NoteStatus, PracticeEvent, PracticeSession, PracticeStats } from "./session";
 import type { CourseGuidance, KeyTimes, TrainerCourse } from "./trainerCourse";
@@ -23,15 +24,18 @@ export interface TrainerMusicPolicy {
     times: MusicInputTimes
   ) => readonly PracticeEvent[];
   readonly seedHeld: (events: readonly KeyEvent[], atMs: number) => void;
-  readonly cancel: (atMs: number, resetAll?: boolean) => void;
+  readonly cancel: (atMs: number, resetAll?: boolean, reason?: InputCancellationReason) => void;
   readonly guidance: (session: PracticeSession, playing: boolean) => CourseGuidance;
   readonly statusOf?: (noteId: string) => NoteStatus | undefined;
   readonly stats?: () => PracticeStats | undefined;
 }
 
-export function musicCourse(policy: TrainerMusicPolicy): TrainerCourse {
+export function musicCourse(
+  policy: TrainerMusicPolicy,
+  kind: "music" | "songCourse" = "music"
+): TrainerCourse {
   return {
-    kind: "music",
+    kind,
     policy,
     ownsInput: true,
     smoothClock: true,
@@ -59,8 +63,9 @@ export function musicCourse(policy: TrainerMusicPolicy): TrainerCourse {
     },
     guidance: (session, playing) => policy.guidance(session, playing),
     cuePresented: () => undefined,
-    cancel: (atMs, resetAll) => {
-      policy.cancel(atMs, resetAll);
+    cancel: (atMs, resetAll, reason) => {
+      if (reason === undefined) policy.cancel(atMs, resetAll);
+      else policy.cancel(atMs, resetAll, reason);
     },
     ...(policy.statusOf ? { statusOf: policy.statusOf } : {}),
     ...(policy.stats ? { stats: policy.stats } : {})

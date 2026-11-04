@@ -1,3 +1,4 @@
+import type { InputCancellationReason } from "./inputCancellation";
 import type { PracticeSession } from "./session";
 import type { TrainerInputHolds } from "./trainerInputHolds";
 import type { CourseKind, CoursePolicies, TrainerCourse } from "./trainerCourse";
@@ -14,7 +15,8 @@ const COURSES: { readonly [K in CourseKind]: (policy: CoursePolicies[K]) => Trai
   pair: pairCourse,
   heldBass: heldBassCourse,
   independentRhythm: independentRhythmCourse,
-  music: musicCourse
+  music: musicCourse,
+  songCourse: (policy) => musicCourse(policy, "songCourse")
 };
 
 /** One exclusive course; physical ownership crosses load and phase boundaries. */
@@ -36,7 +38,7 @@ export class TrainerCoursePolicies {
   configure<K extends CourseKind>(kind: K, policy: CoursePolicies[K] | null): void {
     const current = this.current;
     if (policy === null ? current?.kind !== kind : current?.policy === policy) return;
-    this.cancelInput();
+    this.cancelInput(false, "configure");
     const next = policy === null ? null : COURSES[kind](policy);
     this.current = next;
     if (!next) return;
@@ -46,11 +48,11 @@ export class TrainerCoursePolicies {
   }
 
   /** Loss of physical input cancels before any cleanup-generated releases arrive. */
-  cancelInput(resetAll = false): void {
+  cancelInput(resetAll = false, reason: InputCancellationReason = "cleanup"): void {
     if (resetAll) this.inputHolds.clear();
     const cancel = this.current?.cancel;
     if (!cancel) return;
-    cancel(performance.now(), resetAll);
+    cancel(performance.now(), resetAll, reason);
     this.pressed.clear();
     this.onLights()?.([]);
   }

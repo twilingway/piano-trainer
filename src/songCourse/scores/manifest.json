@@ -1,0 +1,136 @@
+{
+  "hot-cross-buns": {
+    "revision": "1",
+    "file": "hot-cross-buns.musicxml",
+    "sha256": "d5f469254da3863937ae1094c80d98c47c0d6e75fc41ffbd16f727596e658c39",
+    "tempo": 72,
+    "measures": 8,
+    "learnerNoteIdsByMeasure": [
+      ["hot-cross-buns-m1-n1", "hot-cross-buns-m1-n2"],
+      ["hot-cross-buns-m2-n1"],
+      ["hot-cross-buns-m3-n1", "hot-cross-buns-m3-n2"],
+      ["hot-cross-buns-m4-n1"],
+      [
+        "hot-cross-buns-m5-n1",
+        "hot-cross-buns-m5-n2",
+        "hot-cross-buns-m5-n3",
+        "hot-cross-buns-m5-n4"
+      ],
+      [
+        "hot-cross-buns-m6-n1",
+        "hot-cross-buns-m6-n2",
+        "hot-cross-buns-m6-n3",
+        "hot-cross-buns-m6-n4"
+      ],
+      ["hot-cross-buns-m7-n1", "hot-cross-buns-m7-n2"],
+      ["hot-cross-buns-m8-n1"]
+    ],
+    "arrangement": "Original educational MusicXML arrangement; independently authored accompaniment. Research editions were inspected only for melody range and contour."
+  },
+  "aunt-rhody": {
+    "revision": "1",
+    "file": "aunt-rhody.musicxml",
+    "sha256": "49e0529afab228120c64c345cf572d853d7f90654f8211ac011bccba50f6148d",
+    "tempo": 72,
+    "measures": 8,
+    "learnerNoteIdsByMeasure": [
+      ["aunt-rhody-m1-n1", "aunt-rhody-m1-n2", "aunt-rhody-m1-n3"],
+      ["aunt-rhody-m2-n1", "aunt-rhody-m2-n2"],
+      ["aunt-rhody-m3-n1", "aunt-rhody-m3-n2", "aunt-rhody-m3-n3"],
+      ["aunt-rhody-m4-n1", "aunt-rhody-m4-n2", "aunt-rhody-m4-n3"],
+      ["aunt-rhody-m5-n1", "aunt-rhody-m5-n2", "aunt-rhody-m5-n3"],
+      ["aunt-rhody-m6-n1", "aunt-rhody-m6-n2", "aunt-rhody-m6-n3"],
+      ["aunt-rhody-m7-n1", "aunt-rhody-m7-n2", "aunt-rhody-m7-n3", "aunt-rhody-m7-n4"],
+      ["aunt-rhody-m8-n1"]
+    ],
+    "arrangement": "Original educational MusicXML arrangement; independently authored accompaniment. Research editions were inspected only for melody range and contour."
+  },
+  "lightly-row": {
+    "revision": "1",
+    "file": "lightly-row.musicxml",
+    "sha256": "27f4852d1fc123f55f309498d5273cb255057466a14a77112552f5044ef77ab3",
+    "tempo": 72,
+    "measures": 16,
+    "learnerNoteIdsByMeasure": [
+      ["lightly-row-m1-n1", "lightly-row-m1-n2", "lightly-row-m1-n3"],
+      ["lightly-row-m2-n1", "lightly-row-m2-n2", "lightly-row-m2-n3"],
+      ["lightly-row-m3-n1", "lightly-row-m3-n2", "lightly-row-m3-n3", "lightly-row-m3-n4"],
+      ["lightly-row-m4-n1", "lightly-row-m4-n2", "lightly-row-m4-n3"],
+      ["lightly-row-m5-n1", "lightly-row-m5-n2", "lightly-row-m5-n3"],
+      ["lightly-row-m6-n1", "lightly-row-m6-n2", "lightly-row-m6-n3"],
+      ["lightly-row-m7-n1", "lightly-row-m7-n2", "lightly-row-m7-n3", "lightly-row-m7-n4"],
+      ["lightly-row-m8-n1"],
+      ["lightly-row-m9-n1", "lightly-row-m9-n2", "lightly-row-m9-n3", "lightly-row-m9-n4"],
+      ["lightly-row-m10-n1", "lightly-row-m10-n2", "lightly-row-m10-n3"],
+      ["lightly-row-m11-n1", "lightly-row-m11-n2", "lightly-row-m11-n3", "lightly-row-m11-n4"],
+      ["lightly-row-m12-n1", "lightly-row-m12-n2", "lightly-row-m12-n3"],
+      ["lightly-row-m13-n1", "lightly-row-m13-n2", "lightly-row-m13-n3"],
+      ["lightly-row-m14-n1", "lightly-row-m14-n2", "lightly-row-m14-n3"],
+      ["lightly-row-m15-n1", "lightly-row-m15-n2", "lightly-row-m15-n3", "lightly-row-m15-n4"],
+      ["lightly-row-m16-n1"]
+    ],
+    "arrangement": "Original educational MusicXML arrangement; independently authored accompaniment. Research editions were inspected only for melody range and contour."
+  },
+  "ode-to-joy": {
+    "revision": "1",
+    "file": "ode-to-joy.musicxml",
+    "sha256": "016105204254829b5f91dfd9e67cf165d0145b369dc09ffddef699ddf2bef3ac",
+    "tempo": 76,
+    "measures": 16,
+    "learnerNoteIdsByMeasure": [
+      ["ode-to-joy-m1-n1", "ode-to-joy-m1-n2", "ode-to-joy-m1-n3", "ode-to-joy-m1-n4"],
+      ["ode-to-joy-m2-n1", "ode-to-joy-m2-n2", "ode-to-joy-m2-n3", "ode-to-joy-m2-n4"],
+      ["ode-to-joy-m3-n1", "ode-to-joy-m3-n2", "ode-to-joy-m3-n3", "ode-to-joy-m3-n4"],
+      ["ode-to-joy-m4-n1", "ode-to-joy-m4-n2", "ode-to-joy-m4-n3"],
+      ["ode-to-joy-m5-n1", "ode-to-joy-m5-n2", "ode-to-joy-m5-n3", "ode-to-joy-m5-n4"],
+      ["ode-to-joy-m6-n1", "ode-to-joy-m6-n2", "ode-to-joy-m6-n3", "ode-to-joy-m6-n4"],
+      ["ode-to-joy-m7-n1", "ode-to-joy-m7-n2", "ode-to-joy-m7-n3", "ode-to-joy-m7-n4"],
+      ["ode-to-joy-m8-n1", "ode-to-joy-m8-n2", "ode-to-joy-m8-n3"],
+      ["ode-to-joy-m9-n1", "ode-to-joy-m9-n2", "ode-to-joy-m9-n3", "ode-to-joy-m9-n4"],
+      ["ode-to-joy-m10-n1", "ode-to-joy-m10-n2", "ode-to-joy-m10-n3", "ode-to-joy-m10-n4"],
+      ["ode-to-joy-m11-n1", "ode-to-joy-m11-n2", "ode-to-joy-m11-n3", "ode-to-joy-m11-n4"],
+      ["ode-to-joy-m12-n1", "ode-to-joy-m12-n2", "ode-to-joy-m12-n3", "ode-to-joy-m12-n4"],
+      ["ode-to-joy-m13-n1", "ode-to-joy-m13-n2", "ode-to-joy-m13-n3", "ode-to-joy-m13-n4"],
+      ["ode-to-joy-m14-n1", "ode-to-joy-m14-n2", "ode-to-joy-m14-n3", "ode-to-joy-m14-n4"],
+      ["ode-to-joy-m15-n1", "ode-to-joy-m15-n2", "ode-to-joy-m15-n3", "ode-to-joy-m15-n4"],
+      ["ode-to-joy-m16-n1", "ode-to-joy-m16-n2", "ode-to-joy-m16-n3"]
+    ],
+    "arrangement": "Original educational MusicXML arrangement; independently authored accompaniment. Research editions were inspected only for melody range and contour."
+  },
+  "twinkle": {
+    "revision": "1",
+    "file": "twinkle.musicxml",
+    "sha256": "5eb05e44ca0551016010bb9b7d286e249ff238d8991d479d82fbd2475c089d5d",
+    "tempo": 80,
+    "measures": 12,
+    "learnerNoteIdsByMeasure": [
+      ["twinkle-m1-n1", "twinkle-m1-n2", "twinkle-m1-n3", "twinkle-m1-n4"],
+      ["twinkle-m2-n1", "twinkle-m2-n2", "twinkle-m2-n3"],
+      ["twinkle-m3-n1", "twinkle-m3-n2", "twinkle-m3-n3", "twinkle-m3-n4"],
+      ["twinkle-m4-n1", "twinkle-m4-n2", "twinkle-m4-n3"],
+      ["twinkle-m5-n1", "twinkle-m5-n2", "twinkle-m5-n3", "twinkle-m5-n4"],
+      ["twinkle-m6-n1", "twinkle-m6-n2", "twinkle-m6-n3"],
+      ["twinkle-m7-n1", "twinkle-m7-n2", "twinkle-m7-n3", "twinkle-m7-n4"],
+      ["twinkle-m8-n1", "twinkle-m8-n2", "twinkle-m8-n3"],
+      ["twinkle-m9-n1", "twinkle-m9-n2", "twinkle-m9-n3", "twinkle-m9-n4"],
+      ["twinkle-m10-n1", "twinkle-m10-n2", "twinkle-m10-n3"],
+      ["twinkle-m11-n1", "twinkle-m11-n2", "twinkle-m11-n3", "twinkle-m11-n4"],
+      ["twinkle-m12-n1", "twinkle-m12-n2", "twinkle-m12-n3"]
+    ],
+    "arrangement": "Original educational MusicXML arrangement; independently authored accompaniment. Research editions were inspected only for melody range and contour."
+  },
+  "joy-octave": {
+    "revision": "1",
+    "file": "joy-octave.musicxml",
+    "sha256": "f30889e00f052adfb7a593503c360812f6902ef62b93fe7c9501c4dc585aabfe",
+    "tempo": 72,
+    "measures": 4,
+    "learnerNoteIdsByMeasure": [
+      ["joy-octave-m1-n1", "joy-octave-m1-n2", "joy-octave-m1-n3"],
+      ["joy-octave-m2-n1", "joy-octave-m2-n2"],
+      ["joy-octave-m3-n1", "joy-octave-m3-n2"],
+      ["joy-octave-m4-n1"]
+    ],
+    "arrangement": "Original educational MusicXML arrangement; independently authored accompaniment. Research editions were inspected only for melody range and contour."
+  }
+}

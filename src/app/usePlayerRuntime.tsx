@@ -1,3 +1,7 @@
+import { useLibraryNavigation } from "./useLibraryNavigation";
+import { selectedPractice, practiceDialogsOpen } from "./practiceCourseSelection";
+import { ConnectedPlayerViewControls } from "./ConnectedPlayerViewControls";
+import { useSongCourseTrainer } from "./useSongCourseTrainer";
 import { beginnerDisplayRange } from "../beginner/catalog";
 import { preparationTransport } from "./preparationTransport";
 import { usePracticeCourses } from "./usePracticeCourses";
@@ -41,19 +45,19 @@ import { useStaffPrefs } from "./useStaffPrefs";
 import { useStaffScore } from "./useStaffScore";
 import { useTakeReview } from "./useTakeReview";
 import { useTrainer } from "./useTrainer";
-import { ViewToggles } from "../ui/ViewToggles";
 import { useWordTyping, useWordTypingInterfaceLanguage } from "./useWordTyping";
 import { ConnectedWordSettings } from "./ConnectedSettings";
 import { practiceTimingStatus, practiceModeSwitch } from "./practiceTimingStatus";
 import type { Part } from "../wordTyping/types";
 
 import { useDeviceRange, useRangeFit } from "./useDeviceRange";
-import { selectTrainerStatus, sameTrainerStatus, useTrainerSelector } from "./trainerSnapshots";
+import { useTrainerStatus } from "./trainerSnapshots";
 
 export function usePlayerRuntime() {
   const { t } = useI18n();
   const fullscreen = useFullscreen();
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const libraryNavigation = useLibraryNavigation(setLibraryOpen);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [lessonWindow, setLessonWindow] = useState<string | null>(null);
   const [resultClosed, setResultClosed] = useState(false);
@@ -65,8 +69,10 @@ export function usePlayerRuntime() {
   const { sound, ensureSound, ensureIntervalSound, audioPreparation } = useSound();
   const current = useSong(startFromRef);
   const course = useCourse(current.showSong);
+  const practiceCourses = usePracticeCourses();
   const {
     beginner,
+    songCourse,
     reading,
     intervals,
     rhythm,
@@ -75,32 +81,14 @@ export function usePlayerRuntime() {
     independentRhythm,
     music,
     lessonStaffFeedback
-  } = usePracticeCourses();
-  const lessonDialogsOpen =
-    beginner.intro ||
-    lessonWindow !== null ||
-    libraryOpen ||
-    settingsOpen ||
-    twoHand.intro ||
-    heldBass.intro ||
-    independentRhythm.intro;
-  const practiceActive =
-    reading.active ||
-    intervals.active ||
-    rhythm.active ||
-    twoHand.active ||
-    heldBass.active ||
-    independentRhythm.active ||
-    music.active;
-  const ear = intervals.active && intervals.mode === "hear-and-choose";
-  const practiceExercise =
-    music.scene ??
-    independentRhythm.scene ??
-    heldBass.scene ??
-    twoHand.exercise ??
-    rhythm.exercise ??
-    intervals.exercise ??
-    reading.exercise;
+  } = practiceCourses;
+  const lessonDialogsOpen = practiceDialogsOpen(
+    practiceCourses,
+    libraryOpen,
+    settingsOpen,
+    lessonWindow
+  );
+  const { practiceActive, ear, practiceExercise } = selectedPractice(practiceCourses);
   const song = practiceExercise?.song ?? current.song;
   const songKey = practiceExercise?.id ?? current.songKey;
   const word = useWordTyping(song, songKey, libraryOpen || settingsOpen, practiceActive);
@@ -118,7 +106,7 @@ export function usePlayerRuntime() {
   const workspaceLayout = practiceActive ? DEFAULT_SCREEN_LAYOUT : screen.layout;
   const displayPrefs = usePracticeDisplayPrefs({
     practiceActive,
-    beginner: beginner.active,
+    beginner: beginner.active || songCourse.active,
     ear,
     music,
     staffPrefs,
@@ -140,7 +128,7 @@ export function usePlayerRuntime() {
     readingHand: twoHand.active || heldBass.active ? "both" : reading.isBass ? "left" : "right",
     rhythm: rhythm.active,
     independentRhythm: independentRhythm.active,
-    music: music.options,
+    music: songCourse.options ?? music.options,
     pianoBlocked: ear || rhythm.active,
     songKey: word.practiceKey,
     wordTyping: word.enabled,
@@ -149,21 +137,22 @@ export function usePlayerRuntime() {
     waitForSound: audioPreparation.wait,
     onNoteClick: current.cycleFinger,
     onTake: practiceActive ? () => undefined : takes.recordTake,
-    onRunFinished: music.active
-      ? () => undefined
-      : independentRhythm.active
+    onRunFinished:
+      songCourse.active || music.active
         ? () => undefined
-        : heldBass.active
-          ? heldBass.finish
-          : twoHand.active
-            ? twoHand.finish
-            : rhythm.active
-              ? () => undefined
-              : intervals.active
-                ? intervals.publish
-                : reading.active
-                  ? reading.finish
-                  : course.controller.finish,
+        : independentRhythm.active
+          ? () => undefined
+          : heldBass.active
+            ? heldBass.finish
+            : twoHand.active
+              ? twoHand.finish
+              : rhythm.active
+                ? () => undefined
+                : intervals.active
+                  ? intervals.publish
+                  : reading.active
+                    ? reading.finish
+                    : course.controller.finish,
     course: practiceActive ? undefined : course.practice,
     compareSong: takes.compareSong,
     lastTake: takes.lastTake,
@@ -173,6 +162,13 @@ export function usePlayerRuntime() {
     gameOptions: game.options,
     ranked: !practiceActive && game.ranked
   });
+  useSongCourseTrainer(
+    songCourse,
+    trainer.trainerRef,
+    trainer.trainerReady,
+    lessonDialogsOpen,
+    () => preparePlaybackSound(ensureSound, trainer.preparation.wait)
+  );
   useReadingTrainer(
     intervals.active ? intervals : reading,
     trainer.trainerRef,
@@ -198,11 +194,7 @@ export function usePlayerRuntime() {
     !practiceActive && course.active && takes.comparing
       ? { ...displayPrefs, visible: true }
       : displayPrefs;
-  const snapshot = useTrainerSelector(
-    trainer.snapshotSource,
-    selectTrainerStatus,
-    sameTrainerStatus
-  );
+  const snapshot = useTrainerStatus(trainer.snapshotSource);
   const countdownSeconds = useAppSelector((state) => state.preferences.player.countdownSeconds);
   const countdown = usePlayCountdown({
     seconds: countdownSeconds,
@@ -218,6 +210,7 @@ export function usePlayerRuntime() {
       takes.comparing
     ]),
     blocked:
+      songCourse.active ||
       music.active ||
       lessonWindow !== null ||
       libraryOpen ||
@@ -240,11 +233,13 @@ export function usePlayerRuntime() {
       : word.enabled
         ? word.keyboardOptions
         : cameraInput.keyboard,
-    music.active || rhythm.active || independentRhythm.active ? undefined : device.intercept,
+    songCourse.active || music.active || rhythm.active || independentRhythm.active
+      ? undefined
+      : device.intercept,
     trainer.trainerReady,
     ear || countdown.active,
     rhythm.active || independentRhythm.active,
-    music.active || independentRhythm.active,
+    songCourse.active || music.active || independentRhythm.active,
     snapshot.playing
   );
   const fit = useRangeFit(
@@ -311,13 +306,15 @@ export function usePlayerRuntime() {
   );
   const view = useFallingView({
     hostRef: trainer.hostRef,
-    hasScore: Boolean(music.active ? music.staffXml : score.staffXml),
+    hasScore: Boolean(
+      songCourse.active ? songCourse.staffXml : music.active ? music.staffXml : score.staffXml
+    ),
     viewRef: trainer.viewRef,
     trainerRef: trainer.trainerRef,
     trainerReady: trainer.trainerReady,
     song: word.practiceSong,
     baseSong: practiceActive || word.enabled ? word.practiceSong : current.baseSong,
-    displayRange: beginnerDisplayRange(beginner.stage),
+    displayRange: songCourse.displayRange ?? beginnerDisplayRange(beginner.stage),
     staffPrefs: workspacePrefs,
     cameraInputBlocked: !cameraInput.enabled,
     updateStaffPrefs,
@@ -333,6 +330,7 @@ export function usePlayerRuntime() {
     }
   });
   const library = usePlayerLibrary({
+    restoreSelection: false,
     showSong: current.showSong,
     setLibrarySource: current.setLibrarySource,
     openLesson: current.openLesson
@@ -348,7 +346,10 @@ export function usePlayerRuntime() {
   function playNow() {
     setResultClosed(false);
     if (lessonWindow !== null) return;
-    if (music.active) {
+    if (songCourse.active) {
+      if (snapshot.playing) songCourse.controller.pause();
+      else void songCourse.controller.start();
+    } else if (music.active) {
       dispatchMusicLessonAction(music.view, music.command, music.cancel);
     } else if (independentRhythm.active) {
       if (snapshot.playing) independentRhythm.cancel();
@@ -371,7 +372,12 @@ export function usePlayerRuntime() {
   );
   const { play, cancel: cancelPreparation } = preparationTransport(
     completedPractice?.invoke ??
-      lessonPlayback(lessonWindow !== null, music.active || ear, playNow, songPlay),
+      lessonPlayback(
+        lessonWindow !== null,
+        songCourse.active || music.active || ear,
+        playNow,
+        songPlay
+      ),
     countdown.cancel,
     audioPreparation,
     trainer
@@ -390,7 +396,8 @@ export function usePlayerRuntime() {
   const startOver = () => {
     countdown.resetNewRun();
     setResultClosed(false);
-    if (music.active) music.command("retry");
+    if (songCourse.active) songCourse.controller.retry();
+    else if (music.active) music.command("retry");
     else
       restartBasicPractice(
         { reading, intervals, twoHand, heldBass, rhythm, independentRhythm },
@@ -408,18 +415,7 @@ export function usePlayerRuntime() {
         : computerKeyboard.editing)
   });
 
-  const toggles = !practiceActive && (
-    <ViewToggles
-      prefs={staffPrefs}
-      hasScore={Boolean(score.staffXml)}
-      onChange={updateStaffPrefs}
-      courseScore={
-        course.active && !takes.comparing
-          ? { view: course.saved.view, onView: course.setView }
-          : undefined
-      }
-    />
-  );
+  const toggles = !practiceActive && <ConnectedPlayerViewControls />;
   const keyboardSettings = useKeyboardSettings(view, staffPrefs, updateStaffPrefs);
 
   const chooseWordPart = (part: Part) => {
@@ -428,6 +424,7 @@ export function usePlayerRuntime() {
   };
 
   const chooseGame = (enabled: boolean) => {
+    if (songCourse.active) songCourse.controller.exit();
     if (practiceActive) reading.exit();
     computerKeyboard.endEditing();
     startFromRef.current = null;
@@ -439,6 +436,7 @@ export function usePlayerRuntime() {
 
   return {
     beginner,
+    songCourse,
     music,
     lessonWindow,
     setLessonWindow,
@@ -459,6 +457,7 @@ export function usePlayerRuntime() {
     fullscreen,
     libraryOpen,
     setLibraryOpen,
+    libraryNavigation,
     settingsOpen,
     setSettingsOpen,
     resultClosed,
@@ -476,9 +475,14 @@ export function usePlayerRuntime() {
     takes,
     trainer: {
       ...trainer,
+      speed: songCourse.options?.speed ?? trainer.speed,
+      setSpeed: (value: number) => {
+        if (songCourse.active) songCourse.controller.setSpeed(value);
+        else trainer.setSpeed(value);
+      },
       seekToBeat: (beat: number) => {
         countdown.cancel();
-        trainer.seekToBeat(beat);
+        if (!songCourse.active) trainer.seekToBeat(beat);
       }
     },
     countdown: countdown.countdown,

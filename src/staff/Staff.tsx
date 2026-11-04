@@ -1,3 +1,9 @@
+import {
+  fitSongCourseViewport,
+  songCourseCursorAnchor,
+  fitSongCourseLabelBounds
+} from "./songCourseViewport";
+import { useSongCourseFaces } from "./useSongCourseFaces";
 import type { StaffProps } from "./staffProps";
 import { fitStaffIllustration } from "./staffIllustration";
 import { musicXmlWithClayColors } from "../song/clayNotes";
@@ -125,6 +131,12 @@ export function Staff({
   const noteIndexRef = useRef(emptyNoteIndex());
   const revealedLessonBeat = useRef<number | undefined>(undefined);
   const feedbackRef = useLessonStaffFeedback(lessonStaffFeedback, hostRef, noteIndexRef);
+  const facesRef = useSongCourseFaces(
+    presentation?.songCourseFeedback,
+    hostRef,
+    noteIndexRef,
+    presentation?.id
+  );
   /** Musical entries, including rests, with their x from the SVG's left edge and their line. */
   const beatXRef = useRef<BeatSpot[]>([]);
   /** The play cursor: a thin glowing line gliding with the song, over OSMD's own. */
@@ -161,7 +173,11 @@ export function Staff({
 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
-    prepareStaffCursorPadding(host, latest.current.singleLine && !latest.current.course);
+    prepareStaffCursorPadding(
+      host,
+      latest.current.singleLine &&
+        (!latest.current.course || presentationRef.current?.id.startsWith("song-course:") === true)
+    );
     setStaffColors(osmd, noteColor, scoreColor, palette);
     tabWidthsRef.current = new Map();
     const reach = latest.current.course ? reachRef.current : undefined;
@@ -174,6 +190,11 @@ export function Staff({
         breaksFromScore,
         maxShare: latest.current.maxShare
       });
+    fitSongCourseViewport(
+      osmd,
+      host,
+      presentationRef.current?.id.startsWith("song-course:") === true
+    );
     if (!latest.current.course && sharedTabs) {
       tabWidthsRef.current = sharedTabLabelWidths(sharedTabs, sharedTabScale(host));
       osmd.render();
@@ -184,9 +205,9 @@ export function Staff({
     applyStaffClayMaterial(host, material === "clay", osmd);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
     const shift =
-      latest.current.course && !illustration
+      (latest.current.course && !illustration
         ? fitCourseDrawing(host, reservedSpan(osmd, reach))
-        : 0;
+        : 0) + fitSongCourseLabelBounds(host);
     const illustrationLines = illustration ? fitStaffIllustration(host) : undefined;
     const page = pageRef.current;
     if (page) {
@@ -242,6 +263,7 @@ export function Staff({
     }
     targetRef.current = null;
     feedbackRef.current?.refresh();
+    facesRef.current?.refresh();
     if (shareGeometry) {
       publishGeometry(readStaffGeometry(osmd, host, beatXRef.current, linesRef.current));
     }
@@ -475,9 +497,11 @@ export function Staff({
         beatXRef.current,
         linesRef.current,
         beatNow,
-        latest.current.course && osmd
-          ? courseCursor(beatXRef.current.length, unitInPixels * osmd.Zoom)
-          : { centered: following === true && latest.current.singleLine }
+        presentationRef.current?.id.startsWith("song-course:") === true
+          ? songCourseCursorAnchor(hostRef.current, following === true)
+          : latest.current.course && osmd
+            ? courseCursor(beatXRef.current.length, unitInPixels * osmd.Zoom)
+            : { centered: following === true && latest.current.singleLine }
       );
       frame = requestAnimationFrame(step);
     };
