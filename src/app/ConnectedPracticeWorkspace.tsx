@@ -198,6 +198,9 @@ export function ConnectedPracticeWorkspace() {
                   ? reading.prompt?.musicXml
                   : scoreStaffXml
         }
+        staffFingers={
+          songCourse.active ? controllerHelped(songCourse.view.material?.node.kind) : undefined
+        }
         staffPitchColors={
           songCourse.active ? controllerHelped(songCourse.view.material?.node.kind) : beginnerGuided
         }

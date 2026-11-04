@@ -19,6 +19,8 @@ import { ReaderGeometryProvider } from "../staff/readerGeometry";
 import { KeysHandles, LaneTopHandle, StaffHandle, TickerSlot } from "./LayoutHandles";
 
 interface Props {
+  /** Temporary lesson display only; the saved finger preference remains unchanged. */
+  readonly staffFingers?: boolean | undefined;
   readonly staffPitchColorNoteId?: string | undefined;
   readonly staffPitchColors?: boolean;
   readonly worldScore?: {
@@ -171,7 +173,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           scoreColor={prefs.scoreColor}
           singleLine={prefs.singleLine}
           follow={prefs.follow}
-          fingers={prefs.fingers}
+          fingers={props.staffFingers ?? prefs.fingers}
           fingerColors={prefs.fingerColors}
           breaksFromScore={props.fixedLines}
           onSeek={props.onSeek}

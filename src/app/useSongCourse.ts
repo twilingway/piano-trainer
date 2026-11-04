@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createSongCourseFanfare } from "../audio/songCourseFanfare";
-import { courseDisplayRange, learnerScoreXml } from "../songCourse/material";
+import { courseDisplayRange } from "../songCourse/material";
+import { songCourseStaffXml } from "./songCourseStaffXml";
+import { useI18n } from "./useI18n";
 import { SongCourseController } from "./songCourseController";
 import { readingActions } from "./readingSlice";
 import { songActions } from "./songSlice";
@@ -9,6 +11,7 @@ import type { BeginnerCourse } from "./useBeginnerCourse";
 
 /** Persistent selection and subscriptions only; the controller lends the existing Trainer clock. */
 export function useSongCourse(beginner: BeginnerCourse) {
+  const { locale } = useI18n();
   const store = useAppStore();
   const [fanfare] = useState(createSongCourseFanfare);
   const [controller] = useState(
@@ -72,8 +75,8 @@ export function useSongCourse(beginner: BeginnerCourse) {
     [controller, sceneId]
   );
   const staffXml = useMemo(
-    () => (view.material ? learnerScoreXml(view.material) : null),
-    [view.material]
+    () => (view.material ? songCourseStaffXml(view.material, locale) : null),
+    [view.material, locale]
   );
   const displayRange = useMemo(() => {
     if (!view.material) return undefined;

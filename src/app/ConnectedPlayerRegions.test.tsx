@@ -677,3 +677,26 @@ describe("connected regions without React Compiler", () => {
     expect(observed.result.mock.lastCall?.[0]).toMatchObject({ open: true });
   });
 });
+
+it.each([
+  "notes",
+  "duration",
+  "guided-phrase",
+  "review",
+  "independent-phrase",
+  "performance"
+] as const)("overrides written staff fingers only for the new course %s stage", (kind) => {
+  observed.runtime = initial();
+  const guided = kind !== "independent-phrase" && kind !== "performance";
+  const base = observed.runtime.songCourse;
+  observed.runtime.songCourse = {
+    ...base,
+    active: true,
+    view: { ...base.view, material: { node: { kind } } }
+  } as PlayerRuntime["songCourse"];
+  mount(<ConnectedPracticeWorkspace />);
+  expect(observed.workspace.mock.lastCall?.[0]).toMatchObject({
+    staffFingers: guided,
+    staffPitchColors: guided
+  });
+});
