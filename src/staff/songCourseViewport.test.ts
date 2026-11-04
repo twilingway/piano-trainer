@@ -1,8 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from "vitest";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
+import { showDrawing } from "./courseStaffView";
 import { placeCursorLine } from "./liveCursor";
-import { songCourseDensityScale, songCoursePlayhead } from "./songCourseViewport";
+import {
+  fitSongCourseLabelBounds,
+  songCourseDensityScale,
+  songCoursePlayhead
+} from "./songCourseViewport";
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -64,4 +69,61 @@ describe("four-note course viewport", () => {
       follow.dispose();
     }
   });
+});
+
+it.each([false, true])(
+  "keeps rendered note names and written fingers inside the course viewport (top overflow=%s)",
+  (above) => {
+    const body = document.body.appendChild(document.createElement("div"));
+    body.className = "lesson-workspace__body";
+    const host = body.appendChild(document.createElement("div"));
+    host.dataset.songCoursePlayhead = "160";
+    const wrapper = host.appendChild(document.createElement("div"));
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "400");
+    svg.setAttribute("height", "128");
+    svg.setAttribute("viewBox", "0 0 400 128");
+    wrapper.append(svg);
+    svg.getBoundingClientRect = () => new DOMRect(20, 104, 400, Number(svg.getAttribute("height")));
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.textContent = "B";
+    svg.append(label);
+    const shift = () => -Number((svg.getAttribute("viewBox") ?? "").split(" ")[1]);
+    label.getBoundingClientRect = () => new DOMRect(180, 212 + shift(), 20, 34);
+    if (above) {
+      const finger = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      finger.textContent = "5";
+      svg.append(finger);
+      finger.getBoundingClientRect = () => new DOMRect(180, 90 + shift(), 12, 20);
+    }
+    const moved = fitSongCourseLabelBounds(host);
+    expect(moved).toBe(above ? 18 : 0);
+    for (const text of svg.querySelectorAll("text")) {
+      expect(text.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        svg.getBoundingClientRect().top
+      );
+      expect(text.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        svg.getBoundingClientRect().bottom
+      );
+    }
+    expect(svg.getAttribute("width")).toBe("400");
+    expect(
+      svg
+        .getAttribute("viewBox")
+        ?.split(" ")
+        .filter((_, index) => index === 0 || index === 2)
+    ).toEqual(["0", "400"]);
+    showDrawing(host);
+    expect(Number.parseFloat(host.style.height)).toBe(svg.getBoundingClientRect().height);
+    const fitted = svg.getAttribute("viewBox");
+    expect(fitSongCourseLabelBounds(host)).toBe(0);
+    expect(svg.getAttribute("viewBox")).toBe(fitted);
+  }
+);
+
+it("leaves legacy course SVG label geometry unchanged", () => {
+  const host = document.body.appendChild(document.createElement("div"));
+  host.innerHTML = '<svg width="400" height="128" viewBox="0 0 400 128"><text>B</text></svg>';
+  expect(fitSongCourseLabelBounds(host)).toBe(0);
+  expect(host.querySelector("svg")?.getAttribute("height")).toBe("128");
 });

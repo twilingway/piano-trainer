@@ -93,3 +93,43 @@ export function songCourseCursorAnchor(
   const value = host?.dataset.songCoursePlayhead;
   return following && value !== undefined ? { anchorX: Number(value) } : {};
 }
+
+/** Grow only the vertical viewport for rendered labels; the horizontal density and scale stay fixed. */
+export function fitSongCourseLabelBounds(host: HTMLElement): number {
+  if (host.dataset.songCoursePlayhead === undefined) return 0;
+  const svg = host.querySelector("svg");
+  if (!svg) return 0;
+  const frame = svg.getBoundingClientRect();
+  const view = (svg.getAttribute("viewBox") ?? "").trim().split(/\s+/).map(Number);
+  const [left, top, width, height] = view;
+  if (
+    left === undefined ||
+    top === undefined ||
+    width === undefined ||
+    !height ||
+    frame.height <= 0
+  )
+    return 0;
+  let inkTop = frame.top;
+  let inkBottom = frame.bottom;
+  for (const text of svg.querySelectorAll("text")) {
+    if (!text.textContent.trim()) continue;
+    const bounds = text.getBoundingClientRect();
+    if (!(bounds.width > 0 && bounds.height > 0)) continue;
+    inkTop = Math.min(inkTop, bounds.top);
+    inkBottom = Math.max(inkBottom, bounds.bottom);
+  }
+  const extraTop = inkTop < frame.top ? frame.top - inkTop + 4 : 0;
+  const extraBottom = inkBottom > frame.bottom ? inkBottom - frame.bottom + 4 : 0;
+  if (extraTop === 0 && extraBottom === 0) return 0;
+  const unitsPerPixel = height / frame.height;
+  const newHeight = frame.height + extraTop + extraBottom;
+  const newViewBox = `${String(left)} ${String(top - extraTop * unitsPerPixel)} ${String(width)} ${String(newHeight * unitsPerPixel)}`;
+  svg.setAttribute("height", String(newHeight));
+  svg.setAttribute("viewBox", newViewBox);
+  if (svg.parentElement) svg.parentElement.style.height = `${String(newHeight)}px`;
+  // The generic crop restores its original geometry on the next render, including this enlargement.
+  svg.dataset.lessonCropHeight = String(newHeight);
+  svg.dataset.lessonCropViewBox = newViewBox;
+  return extraTop;
+}

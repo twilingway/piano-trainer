@@ -9,9 +9,9 @@ export function createSongCourseFanfare() {
     play(result: SongCourseResult, muted = false): void {
       if (heard.has(result.runId)) return;
       heard.add(result.runId);
-      if (muted || !result.completed || !result.valid || Tone.getContext().state !== "running")
-        return;
+      if (muted || !result.completed || !result.valid) return;
       try {
+        if (Tone.getContext().state !== "running") return;
         voice ??= new Tone.PolySynth(Tone.Synth, {
           oscillator: { type: "triangle" },
           envelope: { attack: 0.01, decay: 0.12, sustain: 0.1, release: 0.2 },

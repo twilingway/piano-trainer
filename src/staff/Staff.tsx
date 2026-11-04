@@ -1,4 +1,8 @@
-import { fitSongCourseViewport, songCourseCursorAnchor } from "./songCourseViewport";
+import {
+  fitSongCourseViewport,
+  songCourseCursorAnchor,
+  fitSongCourseLabelBounds
+} from "./songCourseViewport";
 import { useSongCourseFaces } from "./useSongCourseFaces";
 import type { StaffProps } from "./staffProps";
 import { fitStaffIllustration } from "./staffIllustration";
@@ -201,9 +205,9 @@ export function Staff({
     applyStaffClayMaterial(host, material === "clay", osmd);
     paintStaffFingerings(osmd, fingerColors, scoreColor);
     const shift =
-      latest.current.course && !illustration
+      (latest.current.course && !illustration
         ? fitCourseDrawing(host, reservedSpan(osmd, reach))
-        : 0;
+        : 0) + fitSongCourseLabelBounds(host);
     const illustrationLines = illustration ? fitStaffIllustration(host) : undefined;
     const page = pageRef.current;
     if (page) {
