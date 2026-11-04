@@ -1,9 +1,12 @@
+import { ClayKeyMaterials } from "./ClayKeyMaterials";
 import { KeyboardAppearance } from "./KeyboardAppearance";
 import { DirectionalLight, Group, HemisphereLight, MeshStandardMaterial } from "three";
 import { IVORY, ivoryMaterial, velvetMaterial } from "./keyMaterials";
 
 /** Materials share the baked keyboard picture; ownership and disposal stay together. */
 export class StageKeyMaterials {
+  readonly clay = new ClayKeyMaterials();
+  clayEnabled = false;
   readonly top = new MeshStandardMaterial({ color: IVORY, roughness: 0.4 });
   readonly white = ivoryMaterial();
   readonly black = velvetMaterial();
@@ -27,6 +30,7 @@ export class StageKeyMaterials {
     this.lighting.add(hemisphere, sun);
   }
   dispose(): void {
+    this.clay.dispose();
     this.white.map?.dispose();
     this.black.bumpMap?.dispose();
     for (const material of [this.top, this.white, this.black, this.case, this.felt])

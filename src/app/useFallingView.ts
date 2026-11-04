@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
@@ -232,7 +233,8 @@ export function useFallingView({
       keyStyle: staffPrefs.keyStyle,
       handStyle: staffPrefs.handStyle,
       camera: staffPrefs.camera,
-      keyboardTop: staffPrefs.keyStyle === "3d" && staffPrefs.keyboardOrientation === "top",
+      keyboardTop:
+        isNativeKeyStyle(staffPrefs.keyStyle) && staffPrefs.keyboardOrientation === "top",
       roadShape: {
         far: staffPrefs.roadFar,
         horizon: staffPrefs.roadHorizon,

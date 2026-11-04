@@ -257,7 +257,7 @@ it("applies camera edits and clears top atomically while retaining layout and ro
 it("hydrates the initial top camera without writing over existing preferences", () => {
   const app = harness({ [PREFERENCE_KEYS.staff]: { hands: true, labels: true } });
   expect(app.prefs().staff).toMatchObject({
-    keyStyle: "arcade",
+    keyStyle: "clay",
     keyboardOrientation: "follow",
     camera: CAMERA_PRESETS.top,
     hands: true,

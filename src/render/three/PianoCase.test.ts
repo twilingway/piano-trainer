@@ -96,3 +96,26 @@ describe("original keyboard88 housing", () => {
     v.material.dispose();
   });
 });
+
+it("rounds only clay housing clones and releases owned shapes without disposing source assets", () => {
+  const v = setup(),
+    clay = new MeshStandardMaterial({ roughness: 0.94 });
+  const sourceDisposals = v.source.children.map((part) =>
+    vi.spyOn((part as Mesh).geometry, "dispose")
+  );
+  v.cabinet.layout(0, clay);
+  const shapes = v.cabinet.group.children.map((part) => (part as Mesh).geometry);
+  shapes.forEach((geometry, index) => {
+    expect(geometry).not.toBe((v.source.children[index] as Mesh).geometry);
+    expect((v.cabinet.group.children[index] as Mesh).material).toBe(clay);
+  });
+  const disposed = shapes.map((geometry) => vi.spyOn(geometry, "dispose"));
+  v.cabinet.layout(0);
+  expect(disposed.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+  v.cabinet.dispose();
+  v.cabinet.dispose();
+  expect(sourceDisposals.every((spy) => spy.mock.calls.length === 0)).toBe(true);
+  for (const mesh of v.source.children) (mesh as Mesh).geometry.dispose();
+  v.material.dispose();
+  clay.dispose();
+});

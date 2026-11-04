@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import { useWorldScorePoster } from "./useWorldScorePoster";
 import type { FallingNotesView } from "../render/FallingNotesView";
 import type { ComponentProps, RefObject } from "react";
@@ -111,7 +112,7 @@ export function ConnectedWorkspace({
   const beat = useTrainerSelector(source, selectBeat);
   const enabled =
     props.prefs.freeCamera &&
-    props.prefs.keyStyle === "3d" &&
+    isNativeKeyStyle(props.prefs.keyStyle) &&
     !props.wordBoard &&
     (props.prefs.keys || props.prefs.lane) &&
     !props.prefs.performanceScene &&

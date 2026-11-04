@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "../../render/keyFaceStyles";
 import { RoadProjectionSettings } from "./RoadProjectionSettings";
 import { RoadFitSettings, WorldFovSettings } from "./WorldCameraSettings";
 import type { RoadFit } from "../../render/roadLayoutCamera";
@@ -161,9 +162,10 @@ export function KeyboardSettings({
               <option value="classic">{t("Классика")}</option>
               <option value="arcade">{t("Аркада")}</option>
               <option value="3d">{t("3D")}</option>
+              <option value="clay">{t("Пластилин")}</option>
             </select>
           </label>
-          {keyStyle === "3d" && (
+          {isNativeKeyStyle(keyStyle) && (
             <label className="setting">
               <span>{t("Приглушить клавиатуру")}</span>
               <input
@@ -194,7 +196,7 @@ export function KeyboardSettings({
               <option value="perspective">{t("В перспективе")}</option>
             </select>
           </label>
-          {keyStyle === "3d" ? (
+          {isNativeKeyStyle(keyStyle) ? (
             <label className="setting">
               <span>{t("Оформление нот")}</span>
               <select
@@ -217,10 +219,10 @@ export function KeyboardSettings({
               data-setting-target="falling-note-style"
               tabIndex={-1}
             >
-              {t("Оформление объёмных нот выбирается в виде клавиш «3D».")}
+              {t("Оформление объёмных нот доступно для клавиш «3D» и «Пластилин».")}
             </p>
           )}
-          {keyStyle !== "3d" && roadProjection}
+          {!isNativeKeyStyle(keyStyle) && roadProjection}
           <label className="setting">
             <span>{t("Вертикальные линии")}</span>
             <input
@@ -279,18 +281,18 @@ export function KeyboardSettings({
             <span>{t("Вид рук")}</span>
             <select
               className="game-select"
-              value={keyStyle === "3d" ? "rendered" : handStyle}
-              disabled={keyStyle === "3d"}
+              value={isNativeKeyStyle(keyStyle) ? "rendered" : handStyle}
+              disabled={isNativeKeyStyle(keyStyle)}
               aria-label={t("Вид рук")}
               onChange={(event) => {
                 onHandStyle(event.target.value as HandStyle);
               }}
             >
-              {keyStyle !== "3d" && <option value="drawn">{t("Рисованные")}</option>}
+              {!isNativeKeyStyle(keyStyle) && <option value="drawn">{t("Рисованные")}</option>}
               <option value="rendered">{t("3D")}</option>
             </select>
           </label>
-          {keyStyle === "3d" && onPerformanceScene && (
+          {isNativeKeyStyle(keyStyle) && onPerformanceScene && (
             <label className="setting">
               <span>{t("Сцена исполнения")}</span>
               <input
@@ -302,7 +304,7 @@ export function KeyboardSettings({
               />
             </label>
           )}
-          {keyStyle === "3d" && pianist !== undefined && onPianist && (
+          {isNativeKeyStyle(keyStyle) && pianist !== undefined && onPianist && (
             <label className="setting">
               <span>{t("Мой пианист (проба)")}</span>
               <input
@@ -316,7 +318,7 @@ export function KeyboardSettings({
           )}
         </div>
       </SettingsGroup>
-      {keyStyle === "3d" && (
+      {isNativeKeyStyle(keyStyle) && (
         <SettingsGroup title={t("Камера клавиатуры")}>
           <div className="settings-list">
             <CameraSettings camera={camera} onChange={onCamera} disabled={worldVisible} />
@@ -330,7 +332,7 @@ export function KeyboardSettings({
           </div>
         </SettingsGroup>
       )}
-      {keyStyle === "3d" && (
+      {isNativeKeyStyle(keyStyle) && (
         <SettingsGroup title={t("Камера нот и мира")}>
           <div className="settings-list">
             {onFreeCamera && (

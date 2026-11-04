@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import { ConnectedSettingsTransport } from "./ConnectedSettingsTransport";
 import { preferencesActions } from "./preferencesSlice";
 import { useAppDispatch } from "./storeHooks";
@@ -40,7 +41,7 @@ export function ConnectedPlayerSettings(props: { open: boolean; onClose: () => v
   const wordTyping = useAppSelector((state) => state.preferences.word.enabled);
   const freeCamera = useAppSelector(
     (state) =>
-      state.preferences.staff.keyStyle === "3d" &&
+      isNativeKeyStyle(state.preferences.staff.keyStyle) &&
       state.preferences.staff.freeCamera &&
       !state.preferences.staff.performanceScene
   );
