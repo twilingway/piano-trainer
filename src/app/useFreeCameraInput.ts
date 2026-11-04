@@ -1,3 +1,4 @@
+import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import { useMemo } from "react";
 import type { KeyboardInputOptions } from "../input/computerKeyboard";
 import { FREE_CAMERA_CODES } from "../input/freeCameraMovement";
@@ -10,7 +11,7 @@ export function useFreeCameraInput(
   blocked: boolean
 ) {
   const enabled =
-    prefs.keyStyle === "3d" &&
+    isNativeKeyStyle(prefs.keyStyle) &&
     prefs.keys &&
     prefs.freeCamera &&
     prefs.freeCameraWasd &&

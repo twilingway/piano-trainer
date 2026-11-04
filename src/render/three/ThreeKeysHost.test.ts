@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   drawOctaveLabels: vi.fn(),
   clearEnergy: vi.fn(),
   setKeyboardDim: vi.fn(),
+  setClayKeyboard: vi.fn(),
   dispose: vi.fn(),
   loadKit: vi.fn(),
   loadHand: vi.fn(),
@@ -75,6 +76,7 @@ vi.mock("./ThreeStage", () => ({
     drawOctaveLabels = mocks.drawOctaveLabels;
     clearEnergy = mocks.clearEnergy;
     setKeyboardDim = mocks.setKeyboardDim;
+    setClayKeyboard = mocks.setClayKeyboard;
     dispose = mocks.dispose;
     setFreeCamera = mocks.setFreeCamera;
     resetFreeCamera = mocks.resetFreeCamera;

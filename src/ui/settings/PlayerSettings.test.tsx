@@ -537,7 +537,7 @@ describe("player settings organization", () => {
   it("offers the hand look next to the key look, 3D by default", async () => {
     await render(false);
     await section("Вид");
-    expect(select("Вид рук").disabled).toBe(false);
+    expect(select("Вид рук").disabled).toBe(true);
     await act(async () => {
       await Promise.resolve();
       const keys = select("Вид клавиш");
@@ -561,9 +561,14 @@ describe("player settings organization", () => {
     await render(false);
     await section("Вид");
     const keys = select("Вид клавиш");
-    expect(Array.from(keys.options, (option) => option.value)).toEqual(["classic", "arcade", "3d"]);
-    expect(keys.value).toBe("arcade");
-    expect(host.querySelector("input[aria-label='Угол обзора']")).toBeNull();
+    expect(Array.from(keys.options, (option) => option.value)).toEqual([
+      "classic",
+      "arcade",
+      "3d",
+      "clay"
+    ]);
+    expect(keys.value).toBe("clay");
+    expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
     await act(async () => {
       await Promise.resolve();
       keys.value = "3d";
@@ -879,7 +884,9 @@ it("explains the 3D appearance destination while flat keys remain selected", asy
   });
   const target = host.querySelector<HTMLElement>('[data-setting-target="falling-note-style"]');
   expect(document.activeElement).toBe(target);
-  expect(target?.textContent).toContain("Оформление объёмных нот выбирается в виде клавиш «3D».");
+  expect(target?.textContent).toContain(
+    "Оформление объёмных нот доступно для клавиш «3D» и «Пластилин»."
+  );
   expect(select("Вид клавиш").value).toBe("classic");
   expect(JSON.stringify(store.getState().preferences)).toBe(before);
 });

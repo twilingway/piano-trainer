@@ -1,6 +1,6 @@
 import type { MeshStandardMaterial } from "three";
 
-export type NativeKeyFinishKind = "white" | "black";
+export type NativeKeyFinishKind = "white" | "black" | "clay-white" | "clay-black";
 export type NativeKeySurface = "top" | "body";
 
 const BRIGHT = {
@@ -18,6 +18,10 @@ export function applyNativeKeyFinish(
 ): void {
   material.color.copy(template.color);
   material.roughness = template.roughness;
+  if (kind === "clay-white" || kind === "clay-black") {
+    if (dim) material.color.multiplyScalar(0.55);
+    return;
+  }
   if (dim) return;
   const profile = BRIGHT[kind];
   material.color.r *= profile.color[0];
