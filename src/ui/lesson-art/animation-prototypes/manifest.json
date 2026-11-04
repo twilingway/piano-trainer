@@ -1,0 +1,439 @@
+{
+  "schemaVersion": 1,
+  "status": "prototype-not-integrated",
+  "generationTool": "built-in image_gen",
+  "promptFile": "prompts.json",
+  "shape": "eighth-note-character-stem-up",
+  "limitation": "Персонаж с флажком восьмой. Не заменяет целую, половинную или четверть в учебной партитуре.",
+  "frameSize": [320, 384],
+  "pivotPx": [160, 360],
+  "grid": {
+    "columns": 4,
+    "rows": 3,
+    "stateOrder": ["neutral", "correct", "gentle-wrong"]
+  },
+  "sampling": "linear; clamp atlas frames to their rectangles; no generated mipmaps",
+  "normalization": "Перенос целых пикселей, без масштабирования. Нижний центр силуэта alpha>=128 совмещён с общей опорой. Сохранена исходная альфа внутри обрезки с запасом8px.",
+  "notes": {
+    "do": {
+      "source": "sources/do-source.png",
+      "generatedFilename": "exec-42508637-6a8a-4bcc-ae14-2f0f79c11c94.png",
+      "sourceSha256": "2cbca2014bc97a3b198be4774aeeae78ee79db0e379dccc641098a6d83297f70",
+      "sheet": "sheets/do-sheet.webp",
+      "frames": [
+        {
+          "state": "neutral",
+          "index": 0,
+          "atlasRect": [0, 0, 320, 384],
+          "sourceCellRect": [0, 0, 314, 418],
+          "sourceCropInCell": [23, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 1,
+          "atlasRect": [320, 0, 320, 384],
+          "sourceCellRect": [314, 0, 627, 418],
+          "sourceCropInCell": [22, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [22, 31, 298, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 2,
+          "atlasRect": [640, 0, 320, 384],
+          "sourceCellRect": [627, 0, 940, 418],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 3,
+          "atlasRect": [960, 0, 320, 384],
+          "sourceCellRect": [940, 0, 1254, 418],
+          "sourceCropInCell": [23, 43, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 32, 298, 360]
+        },
+        {
+          "state": "correct",
+          "index": 0,
+          "atlasRect": [0, 384, 320, 384],
+          "sourceCellRect": [0, 418, 314, 836],
+          "sourceCropInCell": [23, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        },
+        {
+          "state": "correct",
+          "index": 1,
+          "atlasRect": [320, 384, 320, 384],
+          "sourceCellRect": [314, 418, 627, 836],
+          "sourceCropInCell": [22, 43, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [22, 32, 297, 360]
+        },
+        {
+          "state": "correct",
+          "index": 2,
+          "atlasRect": [640, 384, 320, 384],
+          "sourceCellRect": [627, 418, 940, 836],
+          "sourceCropInCell": [23, 43, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 32, 298, 360]
+        },
+        {
+          "state": "correct",
+          "index": 3,
+          "atlasRect": [960, 384, 320, 384],
+          "sourceCellRect": [940, 418, 1254, 836],
+          "sourceCropInCell": [23, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 0,
+          "atlasRect": [0, 768, 320, 384],
+          "sourceCellRect": [0, 836, 314, 1254],
+          "sourceCropInCell": [23, 43, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 32, 298, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 1,
+          "atlasRect": [320, 768, 320, 384],
+          "sourceCellRect": [314, 836, 627, 1254],
+          "sourceCropInCell": [22, 43, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [22, 32, 297, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 2,
+          "atlasRect": [640, 768, 320, 384],
+          "sourceCellRect": [627, 836, 940, 1254],
+          "sourceCropInCell": [23, 43, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 32, 298, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 3,
+          "atlasRect": [960, 768, 320, 384],
+          "sourceCellRect": [940, 836, 1254, 1254],
+          "sourceCropInCell": [23, 43, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 32, 298, 360]
+        }
+      ],
+      "animations": {
+        "neutral": {
+          "row": 0,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [1100, 130, 130, 400],
+          "preview": "previews/do-neutral.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        },
+        "correct": {
+          "row": 1,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [140, 180, 260, 220],
+          "preview": "previews/do-correct.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        },
+        "gentle-wrong": {
+          "row": 2,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [130, 260, 220, 450],
+          "preview": "previews/do-gentle-wrong.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        }
+      },
+      "sheetSha256": "8745fef6667063589aa7f2539bcf3bab36871d8f6cf11b3eb06489a271b11998"
+    },
+    "re": {
+      "source": "sources/re-source.png",
+      "generatedFilename": "exec-d196611d-d980-4d5f-8b80-d734ea5f29ef.png",
+      "sourceSha256": "2a962da6d3978d3c61d25002b92c48c7dc3071e33a66ee10db01dbf5b4b4d11d",
+      "sheet": "sheets/re-sheet.webp",
+      "frames": [
+        {
+          "state": "neutral",
+          "index": 0,
+          "atlasRect": [0, 0, 320, 384],
+          "sourceCellRect": [0, 0, 314, 418],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 297, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 1,
+          "atlasRect": [320, 0, 320, 384],
+          "sourceCellRect": [314, 0, 627, 418],
+          "sourceCropInCell": [22, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [22, 31, 297, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 2,
+          "atlasRect": [640, 0, 320, 384],
+          "sourceCellRect": [627, 0, 940, 418],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 297, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 3,
+          "atlasRect": [960, 0, 320, 384],
+          "sourceCellRect": [940, 0, 1254, 418],
+          "sourceCropInCell": [24, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-9, -19],
+          "visibleBoundsAlpha128": [23, 31, 297, 360]
+        },
+        {
+          "state": "correct",
+          "index": 0,
+          "atlasRect": [0, 384, 320, 384],
+          "sourceCellRect": [0, 418, 314, 836],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 297, 360]
+        },
+        {
+          "state": "correct",
+          "index": 1,
+          "atlasRect": [320, 384, 320, 384],
+          "sourceCellRect": [314, 418, 627, 836],
+          "sourceCropInCell": [22, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [22, 31, 297, 360]
+        },
+        {
+          "state": "correct",
+          "index": 2,
+          "atlasRect": [640, 384, 320, 384],
+          "sourceCellRect": [627, 418, 940, 836],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 297, 360]
+        },
+        {
+          "state": "correct",
+          "index": 3,
+          "atlasRect": [960, 384, 320, 384],
+          "sourceCellRect": [940, 418, 1254, 836],
+          "sourceCropInCell": [24, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-9, -19],
+          "visibleBoundsAlpha128": [23, 31, 297, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 0,
+          "atlasRect": [0, 768, 320, 384],
+          "sourceCellRect": [0, 836, 314, 1254],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 297, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 1,
+          "atlasRect": [320, 768, 320, 384],
+          "sourceCellRect": [314, 836, 627, 1254],
+          "sourceCropInCell": [22, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [22, 31, 297, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 2,
+          "atlasRect": [640, 768, 320, 384],
+          "sourceCellRect": [627, 836, 940, 1254],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 297, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 3,
+          "atlasRect": [960, 768, 320, 384],
+          "sourceCellRect": [940, 836, 1254, 1254],
+          "sourceCropInCell": [23, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        }
+      ],
+      "animations": {
+        "neutral": {
+          "row": 0,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [1100, 130, 130, 400],
+          "preview": "previews/re-neutral.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        },
+        "correct": {
+          "row": 1,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [140, 180, 260, 220],
+          "preview": "previews/re-correct.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        },
+        "gentle-wrong": {
+          "row": 2,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [130, 260, 220, 450],
+          "preview": "previews/re-gentle-wrong.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        }
+      },
+      "sheetSha256": "10e188380fca291119a38d34b21c837c1c71ec7bb3b4fea4e36978b2d9f005ba"
+    },
+    "mi": {
+      "source": "sources/mi-source.png",
+      "generatedFilename": "exec-56e4d462-7d37-4ea6-8dbd-581da4e74649.png",
+      "sourceSha256": "b5c4bc236bf496b2e241c1c856460bb4fa99ea5b5b8f1003d0c8aa177d65df24",
+      "sheet": "sheets/mi-sheet.webp",
+      "frames": [
+        {
+          "state": "neutral",
+          "index": 0,
+          "atlasRect": [0, 0, 320, 384],
+          "sourceCellRect": [0, 0, 314, 418],
+          "sourceCropInCell": [23, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 1,
+          "atlasRect": [320, 0, 320, 384],
+          "sourceCellRect": [314, 0, 627, 418],
+          "sourceCropInCell": [22, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [22, 31, 298, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 2,
+          "atlasRect": [640, 0, 320, 384],
+          "sourceCellRect": [627, 0, 940, 418],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        },
+        {
+          "state": "neutral",
+          "index": 3,
+          "atlasRect": [960, 0, 320, 384],
+          "sourceCellRect": [940, 0, 1254, 418],
+          "sourceCropInCell": [23, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-9, -19],
+          "visibleBoundsAlpha128": [22, 31, 298, 360]
+        },
+        {
+          "state": "correct",
+          "index": 0,
+          "atlasRect": [0, 384, 320, 384],
+          "sourceCellRect": [0, 418, 314, 836],
+          "sourceCropInCell": [23, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        },
+        {
+          "state": "correct",
+          "index": 1,
+          "atlasRect": [320, 384, 320, 384],
+          "sourceCellRect": [314, 418, 627, 836],
+          "sourceCropInCell": [22, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [22, 31, 298, 360]
+        },
+        {
+          "state": "correct",
+          "index": 2,
+          "atlasRect": [640, 384, 320, 384],
+          "sourceCellRect": [627, 418, 940, 836],
+          "sourceCropInCell": [23, 42, 313, 387],
+          "sourceToFrameOffsetPx": [-8, -19],
+          "visibleBoundsAlpha128": [23, 31, 298, 360]
+        },
+        {
+          "state": "correct",
+          "index": 3,
+          "atlasRect": [960, 384, 320, 384],
+          "sourceCellRect": [940, 418, 1254, 836],
+          "sourceCropInCell": [23, 42, 314, 387],
+          "sourceToFrameOffsetPx": [-9, -19],
+          "visibleBoundsAlpha128": [22, 31, 298, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 0,
+          "atlasRect": [0, 768, 320, 384],
+          "sourceCellRect": [0, 836, 314, 1254],
+          "sourceCropInCell": [23, 42, 314, 388],
+          "sourceToFrameOffsetPx": [-8, -20],
+          "visibleBoundsAlpha128": [23, 30, 298, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 1,
+          "atlasRect": [320, 768, 320, 384],
+          "sourceCellRect": [314, 836, 627, 1254],
+          "sourceCropInCell": [22, 42, 313, 388],
+          "sourceToFrameOffsetPx": [-8, -20],
+          "visibleBoundsAlpha128": [22, 30, 298, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 2,
+          "atlasRect": [640, 768, 320, 384],
+          "sourceCellRect": [627, 836, 940, 1254],
+          "sourceCropInCell": [23, 42, 313, 388],
+          "sourceToFrameOffsetPx": [-8, -20],
+          "visibleBoundsAlpha128": [23, 30, 298, 360]
+        },
+        {
+          "state": "gentle-wrong",
+          "index": 3,
+          "atlasRect": [960, 768, 320, 384],
+          "sourceCellRect": [940, 836, 1254, 1254],
+          "sourceCropInCell": [23, 42, 314, 388],
+          "sourceToFrameOffsetPx": [-9, -20],
+          "visibleBoundsAlpha128": [22, 30, 298, 360]
+        }
+      ],
+      "animations": {
+        "neutral": {
+          "row": 0,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [1100, 130, 130, 400],
+          "preview": "previews/mi-neutral.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        },
+        "correct": {
+          "row": 1,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [140, 180, 260, 220],
+          "preview": "previews/mi-correct.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        },
+        "gentle-wrong": {
+          "row": 2,
+          "frames": [0, 1, 2, 3],
+          "durationsMs": [130, 260, 220, 450],
+          "preview": "previews/mi-gentle-wrong.webp",
+          "previewLoop": "infinite-for-inspection-only"
+        }
+      },
+      "sheetSha256": "a17253a1258960dec510acdf99eeb8ff69f5c84776e491638a0533a71a4cf7ef"
+    }
+  }
+}

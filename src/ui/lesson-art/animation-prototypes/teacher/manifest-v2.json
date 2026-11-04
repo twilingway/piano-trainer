@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "status": "prototype-contact-verified-not-integrated",
+  "generationTool": "built-in image_gen",
+  "normalization": "Largest connected alpha>32 subject; dilate3px; normalize max opacity to255; zero invisible RGB. No hand, key, face or body RGB changes.",
+  "sourceCanvas": [1536, 1024],
+  "frameSize": [512, 544],
+  "pivotPx": [256, 528],
+  "sourceCropPx": [256, 0, 1280, 1024],
+  "sourceCropOffsetPx": [0, 32],
+  "uniformScale": 0.5,
+  "poses": {
+    "do": {
+      "source": "sources/teacher-do-insert-source.png",
+      "finger": 1,
+      "pitch": "C",
+      "contactReview": "verified",
+      "sourceSha256": "99c1d4cc10f56dd6478a5f16cf7e56d81d539ee128c02876465e715f337840ac",
+      "png": "do-press-v2.png",
+      "webp": "do-press-v2.webp",
+      "pngSha256": "a028fb159b7aa24625a254e0260ab5a8b00ed50138517b577325661b73513fe3",
+      "webpSha256": "9251fb8b0dd34d996877cc220fffb5ae62ae914f7ab59f76f5b329d9ff7009a7",
+      "frame": "sheets/do-press-frame.webp",
+      "strictAlphaGate": true,
+      "frameGeometry": {
+        "translationAfterScalePx": [0, 1],
+        "visibleBoundsAlpha128": [30, 18, 479, 528]
+      }
+    },
+    "re": {
+      "source": "sources/teacher-re-extracted-source.png",
+      "finger": 2,
+      "pitch": "D",
+      "contactReview": "verified",
+      "anatomyLimitation": "Four fingertip silhouettes readable; fifth fingertip is not independently verifiable.",
+      "sourceSha256": "1edf6def0f696119e1b87a93bdea68293cd65f8dc29fca7efbda7cc2e7f7cab7",
+      "png": "re-press-v2.png",
+      "webp": "re-press-v2.webp",
+      "pngSha256": "1aabe9e82380bc31a628b66ed5b823a488e066a6101055972c9ffd8e00a51d73",
+      "webpSha256": "98329ce479d7f4cd74bb95e3ae3756b0bc28903f7f817733a9a18f229b212423",
+      "frame": "sheets/re-press-frame.webp",
+      "strictAlphaGate": true,
+      "frameGeometry": {
+        "translationAfterScalePx": [0, 2],
+        "visibleBoundsAlpha128": [29, 19, 480, 528]
+      }
+    },
+    "mi": {
+      "source": "sources/teacher-mi-clean-source.png",
+      "finger": 3,
+      "pitch": "E",
+      "contactReview": "verified",
+      "sourceSha256": "06e3f17029b4962dbc29f10e61934c8ddfd974941594ae96505eee853cb4070f",
+      "png": "mi-press-v2.png",
+      "webp": "mi-press-v2.webp",
+      "pngSha256": "a3966c998b3c72bf73e20b854c8a9ae75da87c6446a29c181d89bb2c6a5ada73",
+      "webpSha256": "297202854a748ea451b0da55f7a55b8c6c5f20267316753432cc7dc12fb2d78e",
+      "frame": "sheets/mi-press-frame.webp",
+      "strictAlphaGate": true,
+      "frameGeometry": {
+        "translationAfterScalePx": [0, 2],
+        "visibleBoundsAlpha128": [30, 19, 479, 528]
+      }
+    }
+  },
+  "rejectedHistory": "Wrong D insert and old alpha-baked D display candidate are excluded; see README. Frozen generation reference inputs are not display assets.",
+  "sampling": "linear; clamp sprite frame rectangles; no generated mipmaps",
+  "gameplayIntegration": false,
+  "anatomyLimitation": "Four fingertips are readable in these views; all five are not independently verified. Contact review is scoped to the designated thumb/index/middle."
+}

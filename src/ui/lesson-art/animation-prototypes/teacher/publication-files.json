@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 1,
+  "scope": "Static teacher prototypes only; no game integration",
+  "includeRepoRelativeFiles": [
+    "src/ui/lesson-art/animation-prototypes/teacher/README.md",
+    "src/ui/lesson-art/animation-prototypes/teacher/manifest-v2.json",
+    "src/ui/lesson-art/animation-prototypes/teacher/provenance.json",
+    "src/ui/lesson-art/animation-prototypes/teacher/publication-files.json",
+    "src/ui/lesson-art/animation-prototypes/teacher/normalize_teacher.py",
+    "src/ui/lesson-art/animation-prototypes/teacher/inspect_teacher.py",
+    "src/ui/lesson-art/animation-prototypes/teacher/validate_publication.py",
+    "src/ui/lesson-art/animation-prototypes/teacher/refresh_publication.py",
+    "src/ui/lesson-art/animation-prototypes/teacher/sources/teacher-do-insert-source.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/sources/teacher-do-hand-insert.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/sources/teacher-edit-master.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/sources/teacher-mi-clean-source.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/sources/teacher-mi-geometry-reference.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/sources/teacher-mi-style-reference.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/sources/teacher-re-extracted-source.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/sources/teacher-re-extraction-input.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/do-press-v2.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/do-press-v2.webp",
+    "src/ui/lesson-art/animation-prototypes/teacher/re-press-v2.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/re-press-v2.webp",
+    "src/ui/lesson-art/animation-prototypes/teacher/mi-press-v2.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/mi-press-v2.webp",
+    "src/ui/lesson-art/animation-prototypes/teacher/sheets/do-press-frame.webp",
+    "src/ui/lesson-art/animation-prototypes/teacher/sheets/re-press-frame.webp",
+    "src/ui/lesson-art/animation-prototypes/teacher/sheets/mi-press-frame.webp",
+    "src/ui/lesson-art/animation-prototypes/teacher/sheets/teacher-cde.webp",
+    "src/ui/lesson-art/animation-prototypes/teacher/previews/teacher-cde.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/previews/teacher-cde.webp",
+    "src/ui/lesson-art/animation-prototypes/teacher/qa/normalization-report.json",
+    "src/ui/lesson-art/animation-prototypes/teacher/qa/animation-report.json",
+    "src/ui/lesson-art/animation-prototypes/teacher/qa/teacher-cde-dark.jpg",
+    "src/ui/lesson-art/animation-prototypes/teacher/qa/teacher-cde-light.jpg",
+    "src/ui/lesson-art/animation-prototypes/teacher/qa/normalized-v2/do-press-v2-contact-light.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/qa/normalized-v2/re-press-v2-contact-light.png",
+    "src/ui/lesson-art/animation-prototypes/teacher/qa/normalized-v2/mi-press-v2-contact-light.png",
+    "src/ui/lesson-art/animation-prototypes/prompts.json"
+  ],
+  "excludedLocalTeacherFiles": [
+    {
+      "path": "__pycache__/inspect_teacher.cpython-313.pyc",
+      "reason": "Python bytecode cache"
+    },
+    {
+      "path": "alpha-normalization-report.json",
+      "reason": "Superseded QA output"
+    },
+    {
+      "path": "do-position-verified-original.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "do-position-verified.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "do-position-verified.webp",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "local-prompt-history.json",
+      "reason": "Local historical teacher prompt archive; final exact prompts are in provenance.json"
+    },
+    {
+      "path": "mi-press-original.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "mi-press.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "mi-press.webp",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "previews/teacher-accepted-do-mi.webp",
+      "reason": "Superseded two-pose comparison"
+    },
+    {
+      "path": "qa/insert-generation/report.json",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/insert-generation/teacher-do-insert-source-contact-dark.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/insert-generation/teacher-do-insert-source-contact-light.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/insert-generation/teacher-do-insert-source-dark.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/insert-generation/teacher-do-insert-source-light.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/insert-generation/teacher-re-insert-source-contact-dark.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/insert-generation/teacher-re-insert-source-contact-light.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/insert-generation/teacher-re-insert-source-dark.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/insert-generation/teacher-re-insert-source-light.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/do-position-verified-contact-dark.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/do-position-verified-contact-light.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/do-position-verified-dark.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/do-position-verified-light.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/mi-press-contact-dark.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/mi-press-contact-light.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/mi-press-dark.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/mi-press-light.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/re-candidate-contact-dark.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/re-candidate-contact-light.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/re-candidate-dark.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/re-candidate-light.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/legacy-inspection/report.json",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/normalized-v2/do-press-v2-contact-dark.png",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/do-press-v2-dark.jpg",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/do-press-v2-light.jpg",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/mi-press-v2-contact-dark.png",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/mi-press-v2-dark.jpg",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/mi-press-v2-light.jpg",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/re-press-v2-contact-dark.png",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/re-press-v2-dark.jpg",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/re-press-v2-light.jpg",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/normalized-v2/report.json",
+      "reason": "Redundant individual preview or machine inspection report; selected contacts and compact reports retained"
+    },
+    {
+      "path": "qa/provenance-validation.json",
+      "reason": "Superseded QA output"
+    },
+    {
+      "path": "qa/re-extraction/exec-07a98347-9f8f-4c53-ac89-cd7c16181027-contact-dark.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/re-extraction/exec-07a98347-9f8f-4c53-ac89-cd7c16181027-contact-light.png",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/re-extraction/exec-07a98347-9f8f-4c53-ac89-cd7c16181027-dark.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/re-extraction/exec-07a98347-9f8f-4c53-ac89-cd7c16181027-light.jpg",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "qa/re-extraction/report.json",
+      "reason": "Historical or duplicate inspection artifact"
+    },
+    {
+      "path": "re-candidate-original.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "re-candidate.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "re-candidate.webp",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "sheets/teacher-accepted-do-mi.webp",
+      "reason": "Superseded two-pose comparison"
+    },
+    {
+      "path": "sources/teacher-re-hand-insert.png",
+      "reason": "Rejected D insertion experiment; not used by accepted extraction"
+    },
+    {
+      "path": "sources/teacher-re-insert-source.png",
+      "reason": "Rejected D insertion experiment; not used by accepted extraction"
+    },
+    {
+      "path": "teacher-do-press-source.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "teacher-mi-clean-source.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "teacher-mi-contact-verified-source.png",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    },
+    {
+      "path": "teacher-mi-press.webp",
+      "reason": "Historical display draft or duplicate original; exact necessary inputs retained once under sources/"
+    }
+  ],
+  "exclusionPolicy": "Everything in teacher/ absent from the explicit include list remains local. Never stage teacher/ recursively. Personal original photographs are forbidden and absent.",
+  "sharedPromptsNote": "Shared notes sections are outside teacher ownership; only teacherFinalV2 pointers were curated here.",
+  "generationReferenceBoundary": "Frozen generated-art inputs are included solely to repeat exact final prompts; their historical ancestors and private photos are not required for normalization.",
+  "teacherFileCount": 35,
+  "fileCountIncludingSharedPrompts": 36,
+  "teacherBytes": 18620861,
+  "totalBytesIncludingSharedPrompts": 18625594
+}
