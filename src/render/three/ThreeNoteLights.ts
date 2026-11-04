@@ -160,6 +160,11 @@ export class ThreeNoteLights {
     return light;
   });
 
+  /** Clay keys use their own surface tint; keep the shared light envelope for a paused switch. */
+  setEnabled(enabled: boolean): void {
+    this.group.visible = enabled;
+  }
+
   /** `scale` is the keys group's scale: the lights live there, not on the world road. */
   layout(
     boxes: readonly KeyBox[],

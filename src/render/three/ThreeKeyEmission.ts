@@ -8,6 +8,7 @@ interface KeyEmission {
   readonly baseColors: [Color, Color];
   readonly templates: readonly [MeshStandardMaterial, MeshStandardMaterial];
   readonly nativeFinish: NativeKeyFinishKind | undefined;
+  readonly clay: boolean;
   red: number;
   green: number;
   blue: number;
@@ -80,6 +81,7 @@ export class ThreeKeyEmission {
     body: MeshStandardMaterial,
     nativeFinish?: NativeKeyFinishKind
   ): [MeshStandardMaterial, MeshStandardMaterial] {
+    const clay = nativeFinish === "clay-white" || nativeFinish === "clay-black";
     const materials: [MeshStandardMaterial, MeshStandardMaterial] = [top.clone(), body.clone()];
     for (const [index, material] of materials.entries()) {
       const template = index === 0 ? top : body;
@@ -89,20 +91,23 @@ export class ThreeKeyEmission {
       material.emissiveIntensity = 0;
       material.onBeforeCompile = (shader, renderer) => {
         decorate(shader, renderer);
-        shader.fragmentShader = shader.fragmentShader.replace(
-          "#include <emissivemap_fragment>",
-          `#include <emissivemap_fragment>
-           float keyRim = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.0);
-           totalEmissiveRadiance *= 0.85 + keyRim * 0.8;`
-        );
+        if (!clay)
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <emissivemap_fragment>",
+            `#include <emissivemap_fragment>
+             float keyRim = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.0);
+             totalEmissiveRadiance *= 0.85 + keyRim * 0.8;`
+          );
       };
-      material.customProgramCacheKey = () => `three-key-neon-v1:${program}`;
+      material.customProgramCacheKey = () =>
+        `${clay ? "three-key-clay-v1" : "three-key-neon-v1"}:${program}`;
     }
     const key: KeyEmission = {
       materials,
       baseColors: [top.color.clone(), body.color.clone()],
       templates: [top, body],
       nativeFinish,
+      clay,
       red: 0,
       green: 0,
       blue: 0,
@@ -218,10 +223,10 @@ export class ThreeKeyEmission {
 
   private paint(key: KeyEmission): void {
     const [top, body] = key.materials;
-    top.color.copy(key.baseColors[0]).lerp(top.emissive, key.intensity * 0.9);
-    body.color.copy(key.baseColors[1]).lerp(body.emissive, key.intensity * 0.9);
-    top.emissiveIntensity = key.intensity * 1.05;
-    body.emissiveIntensity = key.intensity * 0.9;
+    top.color.copy(key.baseColors[0]).lerp(top.emissive, key.intensity * (key.clay ? 0.15 : 0.9));
+    body.color.copy(key.baseColors[1]).lerp(body.emissive, key.intensity * (key.clay ? 0.1 : 0.9));
+    top.emissiveIntensity = key.clay ? 0 : key.intensity * 1.05;
+    body.emissiveIntensity = key.clay ? 0 : key.intensity * 0.9;
   }
 
   private releaseMaterials(): void {

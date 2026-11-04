@@ -96,6 +96,7 @@ export class KeyboardLayer {
   private style: "classic" | "arcade" = "classic";
   /** The model supplies its own bevels; its texture contains only paint and labels. */
   private modelFaces = false;
+  private clayFaces = false;
   private fingersVisible = true;
   /** The rail under the keys, for a style that has one. */
   private railTexture: Texture | undefined;
@@ -164,6 +165,7 @@ export class KeyboardLayer {
     const generation = ++this.paintGeneration;
     this.paintLoading = true;
     this.modelFaces = isNativeKeyStyle(style);
+    this.clayFaces = style === "clay";
     const paintedStyle = isNativeKeyStyle(style) ? "classic" : style;
     const set = KEY_STYLES[paintedStyle];
     try {
@@ -359,7 +361,11 @@ export class KeyboardLayer {
             light.position.set(key.x, keyboardTop);
             light.width = key.width;
             light.height = key.black ? blackHeight : keyboardHeight;
-            light.alpha *= 0.8;
+            light.alpha = this.clayFaces
+              ? sounding
+                ? 0.25
+                : 0.15 * hintStrength
+              : light.alpha * 0.8;
           } else {
             light.scale.set(1);
             // Native paint uses explicit unpadded dimensions on these same sprites.

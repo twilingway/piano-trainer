@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Container, NineSliceSprite, Sprite, Texture, TextureSource } from "./flatThree";
+import { Assets, Container, NineSliceSprite, Sprite, Texture, TextureSource } from "./flatThree";
 import { describe, expect, it, vi } from "vitest";
 import type { SongNote } from "../song/song";
 import type { Finger } from "../fingering/fingering";
@@ -252,6 +252,37 @@ describe("flat key light geometry after leaving 3D", () => {
 });
 
 describe("native keyboard layout without unused GPU baking", () => {
+  it("keeps clay press and waiting paint soft without weakening digits or ordinary 3D", async () => {
+    const run = layoutHarness(true);
+    const load = vi.spyOn(Assets, "load").mockResolvedValue(Texture.WHITE);
+    try {
+      for (const [style, pressAlpha, waitWhiteAlpha, waitBlackAlpha] of [
+        ["clay", 0.25, 0.15, 0.15],
+        ["3d", 0.8, 0.56, 0.68],
+        ["clay", 0.25, 0.15, 0.15]
+      ] as const) {
+        await run.layer.loadPaintedFaces(style);
+        run.layer.draw(run.frame, keys, geometry(180), false);
+        for (const pitch of keys.keys()) {
+          expect(run.lights.get(pitch)?.alpha).toBeCloseTo(pressAlpha);
+          expect(run.digits.get(pitch)?.alpha).toBe(1);
+        }
+        run.layer.draw(
+          { ...run.frame, pressed: new Set(), due: notes },
+          keys,
+          geometry(180),
+          false
+        );
+        expect(run.lights.get(60)?.alpha).toBeCloseTo(waitWhiteAlpha);
+        expect(run.lights.get(61)?.alpha).toBeCloseTo(waitBlackAlpha);
+        expect([...run.digits.values()].every((digit) => digit.alpha === 1)).toBe(true);
+      }
+    } finally {
+      load.mockRestore();
+      run.layer.destroy();
+    }
+  });
+
   it("does not generate face or light textures when range and camera geometry change without artwork", () => {
     const run = layoutHarness(true);
     const wider = new Map(keys);

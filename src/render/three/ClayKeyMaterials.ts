@@ -26,18 +26,18 @@ export function clayReliefMap(): DataTexture {
 export class ClayKeyMaterials {
   readonly relief = clayReliefMap();
   readonly white = new MeshStandardMaterial({
-    color: 0xffead1,
+    color: 0xffefdb,
     roughness: 0.91,
     metalness: 0,
     bumpMap: this.relief,
-    bumpScale: 0.32
+    bumpScale: 0.12
   });
   readonly black = new MeshStandardMaterial({
-    color: 0x303944,
+    color: 0x34383d,
     roughness: 0.94,
     metalness: 0,
     bumpMap: this.relief,
-    bumpScale: 0.22
+    bumpScale: 0.1
   });
   readonly case = new MeshStandardMaterial({
     color: 0x28505a,
