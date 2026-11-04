@@ -70,7 +70,12 @@ function Panel({ hint, onNewSeries }: { hint: boolean; onNewSeries: () => void }
   );
 }
 
-async function render(windows: LessonWindowControls, hint = false, onNewSeries = vi.fn()) {
+async function render(
+  windows: LessonWindowControls,
+  hint = false,
+  onNewSeries = vi.fn(),
+  waiting = false
+) {
   await act(async () => {
     root.render(
       <LessonWorkspace
@@ -80,6 +85,7 @@ async function render(windows: LessonWindowControls, hint = false, onNewSeries =
         score={<div className="staff" />}
         action={<button type="button">Играть</button>}
         windows={windows}
+        waiting={waiting}
       >
         <Panel hint={hint} onNewSeries={onNewSeries} />
       </LessonWorkspace>
@@ -227,4 +233,17 @@ describe("lesson workspace", () => {
     expect(body.querySelector("button")).toBeNull();
     expect(response.querySelector(".lesson-workspace__answer")?.textContent).toBe("12345");
   });
+});
+
+it("keeps the waiting status next to lesson actions and removes stale text while paused", async () => {
+  const windows = { open: null, onOpen: vi.fn(), interruptsAttempt: false };
+  await render(windows, false, vi.fn(), true);
+  const status = required(host.querySelector(".lesson-workspace__waiting"));
+  expect(status.getAttribute("role")).toBe("status");
+  expect(status.textContent).toBe("Жду ноту");
+  expect(host.querySelector(".lesson-workspace__actions")?.contains(status)).toBe(true);
+  expect(host.querySelector(".lesson-workspace__body")?.contains(status)).toBe(false);
+  await render(windows);
+  expect(host.querySelector(".lesson-workspace__waiting")).toBe(status);
+  expect(status.textContent).toBe("");
 });

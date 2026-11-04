@@ -20,6 +20,7 @@ import { KeysHandles, LaneTopHandle, StaffHandle, TickerSlot } from "./LayoutHan
 
 interface Props {
   readonly staffPitchColorNoteId?: string | undefined;
+  readonly staffPitchColors?: boolean;
   readonly worldScore?: {
     readonly source: StaffWorldSource;
     readonly hidden: boolean;
@@ -162,6 +163,7 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
           presentation={props.staffPresentation}
           musicXml={props.staffXml}
           pitchColorNoteId={props.staffPitchColorNoteId}
+          pitchColors={props.staffPitchColors ?? false}
           beat={props.readingBeat ?? props.beat}
           zoom={lessonReference ? prefs.lessonZoom : props.course ? 1 : prefs.zoom}
           noteColor={prefs.noteColor}
@@ -297,7 +299,9 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
                 </span>
               )}
             {props.comparing && <span className="lane-label">{t("Ваш дубль")}</span>}
-            {props.waiting && <span className="waiting-pill">{t("Жду ноту")}</span>}
+            {props.waiting && !props.lessonBoard && (
+              <span className="waiting-pill">{t("Жду ноту")}</span>
+            )}
             {!props.comparing && laneMode === "full" && props.gameBoard}
             {prefs.keys && laneMode !== "hidden" && handles && (
               <KeysHandles layout={props.layout} onLayout={props.onLayout} />

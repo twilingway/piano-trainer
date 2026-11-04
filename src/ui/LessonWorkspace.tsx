@@ -10,6 +10,7 @@ import {
   type ReactNode
 } from "react";
 import { useI18n } from "../app/useI18n";
+import { useLessonActionAnchor } from "./useLessonActionAnchor";
 import { LESSON_MENU_KINDS, LessonSlotContext, type LessonMenuKind } from "./LessonSlots";
 
 export interface LessonWindowControls {
@@ -25,6 +26,7 @@ interface Props {
   readonly input: string;
   readonly score: ReactNode;
   readonly action: ReactNode;
+  readonly waiting?: boolean;
   readonly windows: LessonWindowControls;
   readonly children: ReactNode;
 }
@@ -60,6 +62,8 @@ export function LessonWorkspace(props: Props) {
   const menuArea = useRef<HTMLDivElement>(null);
   const menuList = useRef<HTMLDivElement>(null);
   const workspace = useRef<HTMLElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  useLessonActionAnchor(content);
   const menuId = useId();
   const slots = useMemo(
     () => ({
@@ -157,9 +161,12 @@ export function LessonWorkspace(props: Props) {
             <div className="lesson-workspace__feedback" aria-live="polite" ref={setFeedback} />
             <p className="lesson-workspace__input">{props.input}</p>
           </header>
-          <div className="lesson-workspace__content">
+          <div className="lesson-workspace__content" ref={content}>
             <footer className="lesson-workspace__response">
               <div className="lesson-workspace__actions">
+                <div className="lesson-workspace__waiting" role="status" aria-atomic="true">
+                  {props.waiting ? t("Жду ноту") : ""}
+                </div>
                 {props.action}
                 <div className="lesson-workspace__hint" ref={setHint} />
                 <div className="lesson-workspace__result-action" ref={setResultAction} />

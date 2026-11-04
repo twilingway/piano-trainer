@@ -66,9 +66,11 @@ function Harness({
   prefs,
   comparing = false,
   blocked = false,
-  mirrorShown = true
+  mirrorShown = true,
+  displayRange
 }: {
   readonly prefs: StaffPrefs;
+  readonly displayRange?: readonly [number, number];
   readonly comparing?: boolean;
   readonly blocked?: boolean;
   readonly mirrorShown?: boolean;
@@ -87,7 +89,8 @@ function Harness({
     typingNames: undefined,
     comparing,
     lastTake: comparing ? comparisonTake : null,
-    placement: USUAL_PLACEMENT
+    placement: USUAL_PLACEMENT,
+    displayRange
   });
   return (
     <>
@@ -444,7 +447,7 @@ it("gives the original the take lane's range and look, live", async () => {
   expect(mirror.setNoteCards).toHaveBeenLastCalledWith(true);
   expect(mirror.setShowOctaveLabels).toHaveBeenLastCalledWith(true);
   expect(view.setShowOctaveLabels).toHaveBeenLastCalledWith(true);
-  expect(mirror.setRange).toHaveBeenLastCalledWith(21, 108, false, false);
+  expect(mirror.setRange).toHaveBeenLastCalledWith(21, 108, false, true);
   expect(mirror.mount).toHaveBeenCalledOnce();
 });
 
@@ -565,4 +568,33 @@ it("cancels startup acknowledgement when the configured view unmounts", async ()
   expect(pending.size).toBe(0);
   expect(ready).not.toHaveBeenCalled();
   root = createRoot(host);
+});
+
+describe("native keyboard range preferences reach the rendered lane", () => {
+  it.each([
+    ["25", 60, 84],
+    ["49", 36, 84],
+    ["61", 36, 96],
+    ["88", 21, 108]
+  ] as const)("fits %s selected keys", async (keyRange, low, high) => {
+    await act(async () => {
+      root.render(<Harness prefs={{ ...DEFAULT_STAFF_PREFS, keyStyle: "clay", keyRange }} />);
+      await Promise.resolve();
+    });
+    expect(view.setRange).toHaveBeenLastCalledWith(low, high, false, true);
+  });
+  it("keeps the exact beginner octave and does not reframe on an equivalent array", async () => {
+    const prefs = { ...DEFAULT_STAFF_PREFS, keyStyle: "clay" as const, keyRange: "song" as const };
+    await act(async () => {
+      root.render(<Harness prefs={prefs} displayRange={[60, 72]} />);
+      await Promise.resolve();
+    });
+    expect(view.setRange).toHaveBeenLastCalledWith(60, 72, false, true);
+    view.setRange.mockClear();
+    await act(async () => {
+      root.render(<Harness prefs={prefs} displayRange={[60, 72]} />);
+      await Promise.resolve();
+    });
+    expect(view.setRange).not.toHaveBeenCalled();
+  });
 });

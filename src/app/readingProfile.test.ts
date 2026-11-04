@@ -52,3 +52,20 @@ describe("clay keyboard preferences and lessons", () => {
     expect(restored).toEqual(next.profiles);
   });
 });
+
+it("uses a temporary standard beginner view and restores the saved range/free scene", () => {
+  const saved = normalizeStaffPrefs({
+    keyStyle: "clay",
+    keyRange: "49",
+    freeCamera: true,
+    performanceScene: true
+  });
+  const before = JSON.stringify(saved);
+  expect(readingDisplayProfile(saved, true)).toMatchObject({
+    keyRange: "song",
+    freeCamera: false,
+    performanceScene: false
+  });
+  expect(readingDisplayProfile(saved)).toMatchObject({ freeCamera: true, performanceScene: true });
+  expect(JSON.stringify(saved)).toBe(before);
+});

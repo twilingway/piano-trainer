@@ -118,6 +118,7 @@ export function usePlayerRuntime() {
   const workspaceLayout = practiceActive ? DEFAULT_SCREEN_LAYOUT : screen.layout;
   const displayPrefs = usePracticeDisplayPrefs({
     practiceActive,
+    beginner: beginner.active,
     ear,
     music,
     staffPrefs,

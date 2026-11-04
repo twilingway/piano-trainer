@@ -15,6 +15,7 @@ export class FreeSceneCamera {
   private touchAction = "";
   private readonly bounds = new Box3();
   private readonly scoreBounds = new Box3();
+  private readonly focusBounds = new Box3();
   private readonly roadBounds = new Box3();
   private readonly world = new Box3();
   private readonly corner = new Vector3();
@@ -80,6 +81,13 @@ export class FreeSceneCamera {
     if (resetPose) this.movement.clear();
     this.needsBounds = true;
     this.needsReset ||= resetPose;
+  }
+
+  setFocusBounds(bounds: Box3 | undefined): void {
+    if (bounds ? this.focusBounds.equals(bounds) : this.focusBounds.isEmpty()) return;
+    if (bounds) this.focusBounds.copy(bounds);
+    else this.focusBounds.makeEmpty();
+    this.invalidate();
   }
 
   setRoadBounds(bounds: Box3 | undefined): void {
@@ -154,6 +162,8 @@ export class FreeSceneCamera {
       this.bounds.setFromCenterAndSize(new Vector3(), new Vector3(400, 400, 400));
     // «Вернуться к пианино» frames the instrument; road and poster only keep far and zoom-out open.
     this.world.copy(this.bounds).union(this.scoreBounds).union(this.roadBounds);
+    if (!this.focusBounds.isEmpty())
+      this.bounds.copy(this.focusBounds).applyMatrix4(subject.matrixWorld);
     this.bounds.getCenter(this.centre);
     this.bounds.getSize(this.size);
     const radius = Math.max(1, this.size.length() / 2);

@@ -139,3 +139,50 @@ describe("explicit course fingering display", () => {
     expect(savedStaff.fingers).toBe(true);
   });
 });
+
+it("restores saved 49 keys and scene cameras after exiting beginner practice", () => {
+  const saved = {
+    ...DEFAULT_STAFF_PREFS,
+    keyStyle: "clay" as const,
+    keyRange: "49" as const,
+    freeCamera: true,
+    performanceScene: true
+  };
+  const before = JSON.stringify(saved);
+  function BeginnerPrefs({ active }: { readonly active: boolean }) {
+    const effective = usePracticeDisplayPrefs({
+      practiceActive: active,
+      beginner: active,
+      ear: false,
+      music: { active: false, staffVisible: true, keysVisible: true },
+      staffPrefs: saved,
+      performance: false,
+      courseActive: false,
+      courseView: "staff"
+    });
+    return (
+      <output
+        data-range={effective.keyRange}
+        data-free={effective.freeCamera}
+        data-performance={effective.performanceScene}
+      />
+    );
+  }
+  act(() => {
+    root.render(<BeginnerPrefs active />);
+  });
+  expect(host.querySelector("output")?.dataset).toMatchObject({
+    range: "song",
+    free: "false",
+    performance: "false"
+  });
+  act(() => {
+    root.render(<BeginnerPrefs active={false} />);
+  });
+  expect(host.querySelector("output")?.dataset).toMatchObject({
+    range: "49",
+    free: "true",
+    performance: "true"
+  });
+  expect(JSON.stringify(saved)).toBe(before);
+});
