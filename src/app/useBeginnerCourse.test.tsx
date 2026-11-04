@@ -12,13 +12,17 @@ import { mergeBeginnerProgress, readBeginnerProgress } from "../beginner/progres
 import { PracticeSession } from "../practice/session";
 import type { Trainer } from "../practice/Trainer";
 import type { KeyEvent } from "../input/midiInput";
-const repo = vi.hoisted(() => ({ saved: undefined as unknown, fail: false }));
+const repo = vi.hoisted<{
+  saved: unknown;
+  fail: boolean;
+  pendingLoad: Promise<ReturnType<typeof emptyBeginnerProgress>> | null;
+}>(() => ({ saved: undefined, fail: false, pendingLoad: null }));
 vi.mock("./beginnerRepository", () => ({
   beginnerRepository: {
     load: () =>
       repo.fail
         ? Promise.reject(new Error("future schema"))
-        : Promise.resolve(readBeginnerProgress(repo.saved)),
+        : (repo.pendingLoad ?? Promise.resolve(readBeginnerProgress(repo.saved))),
     save: (value: ReturnType<typeof emptyBeginnerProgress>, changed: boolean) => {
       if (repo.fail) return Promise.reject(new Error("future schema"));
       repo.saved = mergeBeginnerProgress(repo.saved, value, changed);
@@ -91,6 +95,7 @@ beforeEach(async () => {
   vi.spyOn(performance, "now").mockImplementation(() => now);
   repo.saved = undefined;
   repo.fail = false;
+  repo.pendingLoad = null;
   now = 1000;
   configureCourse.mockClear();
   store = createAppStore({
@@ -216,6 +221,71 @@ describe("beginner course through the real reading adapter", () => {
     expect(reading.exercise?.id).toBe(id);
     expect(reading.snapshot?.answers).toEqual([]);
     expect(reading.isBass).toBe(true);
+  });
+  async function deferSavedCompletion() {
+    act(() => {
+      beginner.start("beginner-v1-right-1");
+    });
+    act(() => {
+      beginner.independentStart();
+    });
+    solve(6);
+    await act(async () => {
+      reading.finish();
+      await Promise.resolve();
+    });
+    const saved = readBeginnerProgress(repo.saved);
+    expect(saved.completed).toEqual(["beginner-v1-right-1"]);
+    let resolveLoad: ((value: typeof saved) => void) | undefined;
+    repo.pendingLoad = new Promise((resolve) => {
+      resolveLoad = resolve;
+    });
+    await act(async () => {
+      root.render(null);
+      await Promise.resolve();
+    });
+    await mount();
+    expect(beginner.loaded).toBe(false);
+    return async () => {
+      const resolve = resolveLoad;
+      if (!resolve) throw new Error("Expected deferred loading callback");
+      await act(async () => {
+        resolve(saved);
+        await Promise.resolve();
+      });
+    };
+  }
+  it("merges a late saved completion while preserving a newly selected stage and live answers", async () => {
+    const finishLoading = await deferSavedCompletion();
+    act(() => {
+      beginner.start("beginner-v1-left-2");
+    });
+    act(() => {
+      beginner.guided();
+    });
+    solve(1);
+    const selection = beginner.selection;
+    const session = reading.session;
+    await finishLoading();
+    expect(beginner.selection).toEqual(selection);
+    expect(beginner.completed).toEqual(["beginner-v1-right-1"]);
+    expect(beginner.history).toHaveLength(1);
+    expect(reading.session).toBe(session);
+    expect(reading.snapshot?.answers).toHaveLength(1);
+  });
+  it("merges late history after exit without reviving the saved selection", async () => {
+    const finishLoading = await deferSavedCompletion();
+    act(() => {
+      beginner.start("beginner-v1-left-2");
+    });
+    act(() => {
+      beginner.exit();
+    });
+    await finishLoading();
+    expect(beginner.selection).toBeNull();
+    expect(beginner.completed).toEqual(["beginner-v1-right-1"]);
+    expect(beginner.history).toHaveLength(1);
+    expect(reading.active).toBe(false);
   });
   it("remains playable and shows a storage error when a future schema prevents writing", async () => {
     repo.fail = true;

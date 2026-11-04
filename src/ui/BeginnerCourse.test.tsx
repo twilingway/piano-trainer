@@ -80,7 +80,7 @@ it("starts only after the current staff presentation and retries rendering failu
   });
   const startButton = () =>
     [...host.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("Сыграть с помощником")
+      button.textContent.includes("Сыграть с помощником")
     );
   expect(startButton()?.disabled).toBe(true);
   const failedPresentation = staffPresentation;
@@ -92,7 +92,7 @@ it("starts only after the current staff presentation and retries rendering failu
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("Не удалось показать ноты.");
   expect(startButton()?.disabled).toBe(true);
   const retry = [...host.querySelectorAll("button")].find((button) =>
-    button.textContent?.includes("Повторить показ нот")
+    button.textContent.includes("Повторить показ нот")
   );
   expect(retry).toBeDefined();
   act(() => {

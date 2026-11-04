@@ -29,7 +29,13 @@ export function useBeginnerCourse() {
     void beginnerRepository
       .load()
       .then((progress) => {
-        if (live && !edited.current)
+        if (!live) return;
+        if (edited.current)
+          setState((current) => ({
+            ...current,
+            progress: mergeBeginnerProgress(progress, current.progress, true)
+          }));
+        else
           setState({
             progress,
             revision:
@@ -38,7 +44,7 @@ export function useBeginnerCourse() {
                 : -1,
             run: 0
           });
-        if (live) setLoaded(true);
+        setLoaded(true);
       })
       .catch(() => {
         if (live) {
