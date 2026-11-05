@@ -22,6 +22,7 @@ import { shallowEqual } from "react-redux";
 export function ConnectedPlayerHeader() {
   const {
     sound,
+    songCourseActive,
     settingsOpen,
     song,
     playing,
@@ -58,6 +59,7 @@ export function ConnectedPlayerHeader() {
   } = useRuntimeSelector(
     (runtime) => ({
       sound: runtime.sound,
+      songCourseActive: runtime.songCourse.active,
       lessonAction: runtime.practiceActive ? runtime.lessonAction : null,
       settingsOpen: runtime.settingsOpen,
       song: runtime.song,
@@ -113,6 +115,7 @@ export function ConnectedPlayerHeader() {
   );
   const { t } = useI18n();
   const playChoice = usePlayChoice();
+  if (songCourseActive) return null;
   return (
     <>
       <div className="shell-top">
