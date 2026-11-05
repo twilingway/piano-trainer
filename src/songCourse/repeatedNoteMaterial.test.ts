@@ -65,6 +65,21 @@ describe("four source-derived Es", () => {
       )
     ).toBe(true);
     const document = new DOMParser().parseFromString(learnerScoreXml(material), "application/xml");
+    expect(document.querySelectorAll("clef")).toHaveLength(1);
+    expect(document.querySelectorAll("time")).toHaveLength(1);
+    expect(
+      document.querySelectorAll(
+        "measure[number='2'] > attributes, measure[number='2'] > direction, measure[number='2'] > print"
+      )
+    ).toHaveLength(0);
+    const fullXml = new DOMParser().parseFromString(material.musicXml, "application/xml");
+    for (const part of fullXml.querySelectorAll("score-partwise > part")) {
+      expect(
+        part.querySelectorAll(
+          "measure[number='2'] > attributes, measure[number='2'] > direction, measure[number='2'] > print"
+        )
+      ).toHaveLength(0);
+    }
     expect([...document.querySelectorAll("note > type")].map((node) => node.textContent)).toEqual([
       "half",
       "half",
