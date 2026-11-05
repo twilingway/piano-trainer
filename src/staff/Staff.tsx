@@ -1,7 +1,8 @@
 import {
   fitSongCourseViewport,
   songCourseCursorAnchor,
-  fitSongCourseLabelBounds
+  fitSongCourseLabelBounds,
+  fitSongCourseRoom
 } from "./songCourseViewport";
 import { useSongCourseFaces } from "./useSongCourseFaces";
 import type { StaffProps } from "./staffProps";
@@ -201,13 +202,16 @@ export function Staff({
     }
     if (!latest.current.course && !latest.current.singleLine) fitWrappedStaffSvg(osmd);
     if (latest.current.course) noteCourseReach(courseRange, osmd, host);
-    paintStaffNotes(osmd, noteColor, palette);
-    applyStaffClayMaterial(host, material === "clay", osmd);
-    paintStaffFingerings(osmd, fingerColors, scoreColor);
-    const shift =
-      (latest.current.course && !illustration
-        ? fitCourseDrawing(host, reservedSpan(osmd, reach))
-        : 0) + fitSongCourseLabelBounds(host);
+    const shift = fitSongCourseRoom(osmd, host, () => {
+      paintStaffNotes(osmd, noteColor, palette);
+      applyStaffClayMaterial(host, material === "clay", osmd);
+      paintStaffFingerings(osmd, fingerColors, scoreColor);
+      return (
+        (latest.current.course && !illustration
+          ? fitCourseDrawing(host, reservedSpan(osmd, reach))
+          : 0) + fitSongCourseLabelBounds(host)
+      );
+    });
     const illustrationLines = illustration ? fitStaffIllustration(host) : undefined;
     const page = pageRef.current;
     if (page) {
@@ -326,7 +330,7 @@ export function Staff({
     };
     window.addEventListener("resize", onResize);
     const workspace = host.closest(".workspace-main");
-    const lessonBody = host.closest(".lesson-workspace__body");
+    const lessonBody = host.closest(".song-course-lesson__score, .lesson-workspace__body");
     const resizeObserver = new ResizeObserver(onResize);
     if (workspace) resizeObserver.observe(workspace);
     if (lessonBody) resizeObserver.observe(lessonBody);
