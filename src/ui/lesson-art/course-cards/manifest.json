@@ -1,0 +1,32 @@
+{
+  "assets": [
+    {
+      "file": "do-on-palm.webp",
+      "dimensions": [960, 640],
+      "bytes": 44086,
+      "sha256": "680b4112c7e3c6ed98c2db3eda0e3ea7f3098450530c35086f25721ea8c76940",
+      "sourceFile": "lesson-01-do.png",
+      "sourceSha256": "111ff90e55296e994685530c0f25c06734706bd4d8f827c6cfcec2763fd1d7b7",
+      "promptFile": "prompt-lesson-01-do.txt",
+      "promptSha256": "52907f38ae4ed9898626535b737aba3a51c0190765ad17a040dfad3d0347902b",
+      "approval": "Selected by the user for the first two lesson cards on 2026-11-05",
+      "provenance": "Generated with built-in OpenAI image_gen; original PNG and exact prompt retained in the local art gallery",
+      "normalization": "Full frame, no crop or semantic edits; Lanczos 960x640, WebP quality 88 method 6",
+      "embeddedMetadataPreserved": []
+    },
+    {
+      "file": "re-with-twili.webp",
+      "dimensions": [960, 640],
+      "bytes": 41794,
+      "sha256": "3f845f283278cb27d514309f0f177d87ad79126a9eb8f7c208fda87155e48c79",
+      "sourceFile": "lesson-02-re-v2.png",
+      "sourceSha256": "a78080db42da0f9564e12d2f9aba91ee64780d6e37dfd4df0edb7632f133ecdd",
+      "promptFile": "prompt-lesson-02-re-v2.txt",
+      "promptSha256": "e4b57efcec5daa01e84b872408ce8448af0a60f98bb094dc1d377d6def261032",
+      "approval": "Selected by the user for the first two lesson cards on 2026-11-05",
+      "provenance": "Generated with built-in OpenAI image_gen; original PNG and exact prompt retained in the local art gallery",
+      "normalization": "Full frame, no crop or semantic edits; Lanczos 960x640, WebP quality 88 method 6",
+      "embeddedMetadataPreserved": []
+    }
+  ]
+}
