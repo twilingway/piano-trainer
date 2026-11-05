@@ -252,7 +252,11 @@ export function completedSongCourseNodes(
           result.sourceHash === source.sourceHash &&
           result.nodeId === node.id &&
           result.rubricVariant === "normal" &&
-          result.mode === (node.kind === "performance" ? "tempo" : "wait")
+          (node.kind === "performance"
+            ? result.mode === "tempo"
+            : node.kind === "review"
+              ? result.mode === "wait"
+              : true)
       )
     )
     .map((node) => node.id);

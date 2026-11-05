@@ -1,3 +1,6 @@
+import { SongCourseHold } from "./songCourseHold";
+import type { SongCourseHoldSnapshot } from "../songCourse/holdCue";
+import type { Song } from "../song/song";
 import type { KeyEvent } from "../input/midiInput";
 import type { MusicInputTimes } from "../practice/musicPolicy";
 import type { PracticeEvent, PracticeSession } from "../practice/session";
@@ -15,13 +18,21 @@ export interface SongCourseCharacterContext {
   readonly phase: string;
   readonly presentationId: string;
   readonly runId: string | null;
+  readonly playbackSong?: Song | undefined;
 }
 export function songCourseCharacterContext(
   view: Pick<SongCourseCharacterContext, "material" | "phase">,
   presentationId: string,
-  runId: string | null
+  runId: string | null,
+  playbackSong?: Song
 ): SongCourseCharacterContext {
-  return { material: view.material, phase: view.phase, presentationId, runId };
+  return {
+    material: view.material,
+    phase: view.phase,
+    presentationId,
+    runId,
+    playbackSong: playbackSong ?? view.material?.song
+  };
 }
 export interface SongCourseCharacterSnapshot extends CourseCharacterPresentation {
   readonly presentationId: string | null;
@@ -48,6 +59,7 @@ const EMPTY: SongCourseCharacterSnapshot = {
 /** A visual event tap. It owns no musical time, scoring evidence or persistent state. */
 export class SongCourseCharacters {
   private context: SongCourseCharacterContext | null = null;
+  private readonly hold = new SongCourseHold();
   private current = EMPTY;
   private readonly listeners = new Set<() => void>();
   private readonly physical = new Map<string, PhysicalPosition>();
@@ -65,6 +77,37 @@ export class SongCourseCharacters {
     private readonly feedback: SongCourseFeedbackSource
   ) {}
 
+  get phase(): string {
+    return this.readContext().phase;
+  }
+  readonly readHold = (): SongCourseHoldSnapshot | null => {
+    const context = this.readContext();
+    const session = this.boundSession;
+    if (
+      !this.visible ||
+      !session ||
+      !context.material ||
+      !context.runId ||
+      context.material !== this.context?.material ||
+      context.presentationId !== this.context.presentationId ||
+      context.runId !== this.context.runId ||
+      session.song !== (context.playbackSong ?? context.material.song) ||
+      !["playing", "paused", "awaiting-keys-up", "awaiting-rehold", "awaiting-release"].includes(
+        context.phase
+      ) ||
+      ["independent-phrase", "performance"].includes(context.material.node.kind)
+    )
+      return null;
+    const cue = this.hold.read(session.time);
+    return cue
+      ? {
+          ...cue,
+          presentationId: context.presentationId,
+          runId: context.runId,
+          sourceHash: context.material.source.sourceHash
+        }
+      : null;
+  };
   readonly read = (): SongCourseCharacterSnapshot => this.current;
   readonly subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -79,9 +122,11 @@ export class SongCourseCharacters {
     const changed =
       previous?.material !== next.material ||
       previous.presentationId !== next.presentationId ||
-      previous.runId !== next.runId;
+      previous.runId !== next.runId ||
+      previous.playbackSong !== next.playbackSong;
     this.context = next;
     if (changed) {
+      this.hold.clear();
       this.physical.clear();
       this.boundSession = null;
       this.ordinal = 0;
@@ -91,6 +136,12 @@ export class SongCourseCharacters {
       this.expression = "neutral";
       this.feedbackSnapshot = this.feedback.read();
     }
+    if (
+      !["playing", "paused", "awaiting-keys-up", "awaiting-rehold", "awaiting-release"].includes(
+        next.phase
+      )
+    )
+      this.hold.clear();
     if (!["playing", "demo", "awaiting-release"].includes(next.phase)) {
       this.physical.clear();
       this.playing = false;
@@ -102,8 +153,11 @@ export class SongCourseCharacters {
   bind(session: PracticeSession): void {
     this.syncContext();
     const context = this.context;
-    if (session.song !== context?.material?.song) return;
-    if (this.boundSession !== session) this.physical.clear();
+    if (session.song !== (context?.playbackSong ?? context?.material?.song)) return;
+    if (this.boundSession !== session) {
+      this.physical.clear();
+      this.hold.clear();
+    }
     this.boundSession = session;
     this.time = session.time;
     this.playing = true;
@@ -133,7 +187,8 @@ export class SongCourseCharacters {
     session: PracticeSession,
     playing: boolean,
     times: MusicInputTimes,
-    events: readonly PracticeEvent[]
+    events: readonly PracticeEvent[],
+    beforePhase = this.phase
   ): void {
     this.syncContext();
     if (!this.isCurrent(session) || !Number.isFinite(times.raw)) return;
@@ -159,11 +214,25 @@ export class SongCourseCharacters {
             )
           : undefined;
       sourceNoteId = matched?.sourceNoteId ?? null;
+      if (matched && this.visible && this.context?.phase !== "demo")
+        this.hold.accept(matched, key, session.time);
       if (sourceNoteId && sourceNoteId !== this.target) {
         this.target = sourceNoteId;
         this.expression = "neutral";
       }
     }
+    if (
+      event.type === "down" &&
+      times.admitted &&
+      ["awaiting-rehold", "paused"].includes(beforePhase) &&
+      this.context?.phase === "playing"
+    )
+      sourceNoteId = this.hold.resume(key, session.time) ?? sourceNoteId;
+    if (event.type === "up")
+      this.hold.release(
+        key,
+        ["paused", "awaiting-keys-up", "awaiting-rehold"].includes(beforePhase)
+      );
     if (event.type === "down" && previous?.sourceNoteId && !sourceNoteId)
       sourceNoteId = previous.sourceNoteId;
     this.physical.set(key, { raw: times.raw, ordinal, sourceNoteId });
@@ -171,7 +240,9 @@ export class SongCourseCharacters {
     this.publish();
   }
 
-  cancel(): void {
+  cancel(preserveHold = false): void {
+    if (preserveHold) this.hold.pause(this.boundSession?.time ?? this.time);
+    else this.hold.clear();
     this.physical.clear();
     this.playing = false;
     this.expression = "neutral";
@@ -181,12 +252,14 @@ export class SongCourseCharacters {
   setVisible(visible: boolean): void {
     if (this.visible === visible) return;
     this.visible = visible;
+    this.hold.clear();
     this.physical.clear();
     this.expression = "neutral";
     this.publish();
   }
 
   dispose(): void {
+    this.hold.clear();
     this.physical.clear();
     this.boundSession = null;
     this.listeners.clear();
@@ -195,7 +268,10 @@ export class SongCourseCharacters {
   }
 
   private isCurrent(session: PracticeSession): boolean {
-    return this.boundSession === session && session.song === this.context?.material?.song;
+    return (
+      this.boundSession === session &&
+      session.song === (this.context?.playbackSong ?? this.context?.material?.song)
+    );
   }
 
   private refreshFeedback(): void {

@@ -17,6 +17,7 @@ export interface SongCourseView {
   readonly material: CourseMaterial | null;
   readonly phase: SongCoursePhase;
   readonly progress: number;
+  readonly countdown?: number | undefined;
   readonly waiting: boolean;
   readonly result: SongCourseResult | null;
   readonly error: string | null;

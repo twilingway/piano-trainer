@@ -2,8 +2,10 @@ import {
   fitSongCourseViewport,
   songCourseCursorAnchor,
   fitSongCourseLabelBounds,
-  fitSongCourseRoom
+  fitSongCourseRoom,
+  frameSongCourseDrawing
 } from "./songCourseViewport";
+import { installSongCourseHeader } from "./songCourseHeader";
 import { useSongCourseFaces } from "./useSongCourseFaces";
 import type { StaffProps } from "./staffProps";
 import { fitStaffIllustration } from "./staffIllustration";
@@ -18,7 +20,6 @@ import { createStaffOsmdOptions } from "./staffOsmdOptions";
 import neonCursorUrl from "../fx/neon-cursor.webp?url";
 import {
   lineBoxes,
-  scrollTarget,
   centreShortScore,
   fitHeight,
   prepareStaffCursorPadding,
@@ -29,7 +30,7 @@ import { entryBeatAt, placeCursorLine } from "./liveCursor";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
 import { beatPositions, indexNotes, emptyNoteIndex } from "./staffNoteIndex";
 import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
-import { timelineSpots } from "./staffTimelineSpots";
+import { layoutStaffTimeline, staffCursorTarget } from "./staffTimelineLayout";
 import { installUniformStaffLayout } from "./uniformStaffLayout";
 import { installLocalNoteNames } from "./localNoteNames";
 import { setStaffTempoLayout } from "./staffTempoLayout";
@@ -114,6 +115,7 @@ export function Staff({
   /** OSMD draws here; the host around it scrolls. */
   const pageRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
+  const fixedHeaderRef = useRef<ReturnType<typeof installSongCourseHeader>>(undefined);
   const uniformRef = useRef<ReturnType<typeof installUniformStaffLayout> | undefined>(undefined);
   const reachRef = useRef<Awaited<ReturnType<typeof measureCourseReach>>>(undefined);
   const presentationRef = useRef(presentation);
@@ -136,7 +138,8 @@ export function Staff({
     presentation?.songCourseFeedback,
     hostRef,
     noteIndexRef,
-    presentation?.id
+    presentation?.id,
+    presentation?.readHold
   );
   /** Musical entries, including rests, with their x from the SVG's left edge and their line. */
   const beatXRef = useRef<BeatSpot[]>([]);
@@ -158,22 +161,18 @@ export function Staff({
         latest.current.playedNoteColor
       );
     // A single line with a live position scrolls every frame on its own and needs no steering.
-    const live = latest.current.singleLine;
     if (latest.current.follow) {
-      const target = scrollTarget(
-        host,
-        osmd.cursor.cursorElement,
-        linesRef.current,
-        latest.current.singleLine
-      );
+      const target = staffCursorTarget(osmd, host, linesRef.current, latest.current.singleLine);
       // Live, the line is placed once by relayout and moved by the frame loop alone:
       // a second steer here pulled it back to where it stood when the note began.
-      targetRef.current = live ? null : target;
+      targetRef.current = latest.current.singleLine ? null : target;
     }
   });
 
   /** Renders at the current size and zoom, then measures the lines and puts the cursor back. */
   const relayout = useEffectEvent((osmd: OpenSheetMusicDisplay, host: HTMLElement) => {
+    fixedHeaderRef.current?.dispose();
+    fixedHeaderRef.current = undefined;
     prepareStaffCursorPadding(
       host,
       latest.current.singleLine &&
@@ -218,23 +217,16 @@ export function Staff({
       if (latest.current.singleLine || latest.current.course) page.style.transform = "";
       else centreShortScore(osmd, page);
     }
+    frameSongCourseDrawing(host);
     linesRef.current = illustrationLines ?? lineBoxes(osmd, shift);
     noteIndexRef.current = indexNotes(osmd);
-    beatXRef.current = beatPositions(noteIndexRef.current.cursorBeats, host, linesRef.current);
-    const axis = latest.current.singleLine ? uniformRef.current?.getAxis() : undefined;
-    const measures = osmd.Sheet.SourceMeasures;
-    const firstMeasure = measures[0];
-    const lastMeasure = measures.at(-1);
-    if (axis && timeline && firstMeasure && lastMeasure) {
-      beatXRef.current = timelineSpots(
-        axis,
-        beatXRef.current,
-        [...timeline.beats, ...measures.map((measure) => measure.AbsoluteTimestamp.RealValue * 4)],
-        firstMeasure.AbsoluteTimestamp.RealValue * 4,
-        (lastMeasure.AbsoluteTimestamp.RealValue + lastMeasure.Duration.RealValue) * 4,
-        linesRef.current[0]?.top ?? 0
-      );
-    }
+    beatXRef.current = layoutStaffTimeline(
+      osmd,
+      latest.current.singleLine ? uniformRef.current?.getAxis() : undefined,
+      timeline,
+      beatPositions(noteIndexRef.current.cursorBeats, host, linesRef.current),
+      linesRef.current
+    );
     paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
     worldScoreSource?.publish(worldScoreSnapshot(host, beatXRef.current, linesRef.current));
@@ -243,12 +235,7 @@ export function Staff({
     osmd.cursor.reset();
     showBeat(osmd, host);
     // The page under the view has changed: jump to the cursor's line at once instead of gliding.
-    const target = scrollTarget(
-      host,
-      osmd.cursor.cursorElement,
-      linesRef.current,
-      latest.current.singleLine
-    );
+    const target = staffCursorTarget(osmd, host, linesRef.current, latest.current.singleLine);
     if (latest.current.follow) {
       if (latest.current.singleLine) {
         centreLivePosition(host, beatXRef.current, liveBeatRef.current?.() ?? latest.current.beat);
@@ -265,6 +252,8 @@ export function Staff({
       );
       revealedLessonBeat.current = entryBeatAt(beatXRef.current, latest.current.beat);
     }
+    if (presentationRef.current?.id.startsWith("song-course:") === true)
+      fixedHeaderRef.current = installSongCourseHeader(host);
     targetRef.current = null;
     feedbackRef.current?.refresh();
     facesRef.current?.refresh();
@@ -313,7 +302,11 @@ export function Staff({
           cancelPresentationRef.current?.();
           loadSettled();
         }
-        if (!cancelled) feedback?.fail();
+        if (!cancelled) {
+          fixedHeaderRef.current?.dispose();
+          fixedHeaderRef.current = undefined;
+          feedback?.fail();
+        }
         if (
           !cancelled &&
           presentationId === presentationRef.current?.id &&
@@ -343,6 +336,8 @@ export function Staff({
       uniformRef.current?.dispose();
       uniformRef.current = undefined;
       osmdRef.current = null;
+      fixedHeaderRef.current?.dispose();
+      fixedHeaderRef.current = undefined;
       osmd.clear();
       // clear() empties the score but leaves its sized SVG behind, stacked over the next one.
       page.replaceChildren();
@@ -507,6 +502,8 @@ export function Staff({
             ? courseCursor(beatXRef.current.length, unitInPixels * osmd.Zoom)
             : { centered: following === true && latest.current.singleLine }
       );
+      fixedHeaderRef.current?.frame();
+      facesRef.current?.frame();
       frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
@@ -514,7 +511,7 @@ export function Staff({
       controller?.dispose();
       cancelAnimationFrame(frame);
     };
-  }, [readFrameBeat]);
+  }, [readFrameBeat, facesRef]);
 
   const pointerHandlers = useStaffPointerNavigation(hostRef, noteIndexRef, onSeek);
 

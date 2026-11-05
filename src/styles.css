@@ -6686,10 +6686,11 @@ button.song-card.song-card__open {
   justify-content: center;
   gap: 0.75rem;
   width: min(850px, 100%);
-  min-height: 100%;
-  margin: auto;
-  padding: 24px 32px;
-  overflow: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 12px 24px 20px;
+  overflow: hidden;
   text-align: center;
   color: #e4f2ed;
 }
@@ -6710,7 +6711,7 @@ button.song-card.song-card__open {
 }
 .song-course-result__stars > span {
   display: block;
-  color: #39515a;
+  color: #8aa7b0;
   font-size: 4.6rem;
   line-height: 1.1;
 }
@@ -7330,4 +7331,499 @@ button.song-card.song-card__open {
     height: 160px;
     max-height: 160px;
   }
+}
+
+/* Clay controls share one material across the course, including its local menu. */
+:is(.song-course-lesson, .song-course-result, .song-course-path) .game-button {
+  --clay-button-top: #c6ff75;
+  --clay-button-face: #a2e638;
+  --clay-button-edge: #629b16;
+  --clay-button-ink: #1a390d;
+  border: 1px solid #dfff9a;
+  border-radius: 17px 15px 18px 14px;
+  background: linear-gradient(172deg, var(--clay-button-top), var(--clay-button-face) 72%);
+  color: var(--clay-button-ink);
+  box-shadow:
+    inset 0 2px 3px rgb(255 255 255 / 35%),
+    inset 0 -3px 4px rgb(24 68 77 / 18%),
+    0 5px 0 var(--clay-button-edge),
+    0 7px 8px rgb(0 0 0 / 20%);
+  font-weight: 800;
+  text-shadow: 0 1px rgb(255 255 255 / 18%);
+}
+:is(.song-course-lesson, .song-course-result, .song-course-path) .game-button.song-course-primary {
+  --clay-button-top: #e0ff83;
+  --clay-button-face: #b7f34a;
+  --clay-button-edge: #74ae18;
+  --clay-button-ink: #2b421d;
+  border-color: #edf5c5;
+}
+:is(.song-course-lesson, .song-course-result, .song-course-path) .game-button:enabled:hover {
+  filter: brightness(1.08);
+}
+:is(.song-course-lesson, .song-course-result, .song-course-path) .game-button:enabled:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 2px 4px rgb(24 68 77 / 18%),
+    0 2px 0 var(--clay-button-edge);
+}
+:is(.song-course-lesson, .song-course-result, .song-course-path) .game-button:focus-visible {
+  outline: 3px solid #fff1aa;
+  outline-offset: 6px;
+}
+:is(.song-course-lesson, .song-course-result, .song-course-path) .game-button:disabled {
+  opacity: 0.5;
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 20%);
+}
+.workspace-main > .song-course-result {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+  justify-content: stretch;
+  min-height: 0;
+  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+.song-course-result__bar {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+}
+.song-course-result__rating {
+  margin: 0;
+  color: #f3d67d;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+.song-course-result__body {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  padding: 4px 8px;
+}
+.song-course-result__body > :is(.song-course-result__stars, .song-course-result__axes) {
+  justify-content: center;
+  margin-inline: auto;
+}
+.song-course-result__body > .song-course-result__message {
+  margin: 8px auto;
+}
+.song-course-result__actions {
+  justify-self: center;
+  width: min(540px, 100%);
+  gap: 12px;
+  padding: 4px 4px 7px;
+}
+.song-course-result__actions > .game-button {
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 14px;
+}
+.song-course-result__assistant {
+  display: none;
+}
+@media (width > 1100px) and (height > 700px) {
+  .song-course-result__assistant {
+    display: block;
+  }
+}
+@media (height <= 500px) {
+  .workspace-main > .song-course-result {
+    gap: 6px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .song-course-result__body {
+    padding-block: 0;
+  }
+  .song-course-result__stars {
+    min-height: 40px;
+  }
+  .song-course-result__stars > span {
+    font-size: 2.4rem;
+  }
+  .song-course-result h2 {
+    font-size: 1.2rem;
+  }
+  .song-course-result__body > .song-course-result__message {
+    margin-block: 4px;
+    font-size: 0.8rem;
+  }
+  .song-course-result__axes {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .song-course-result__axes > div {
+    padding: 6px;
+  }
+  .song-course-result__axes dt {
+    font-size: 0.75rem;
+  }
+  .song-course-result__axes dd {
+    margin-top: 3px;
+    font-size: 1rem;
+  }
+  .song-course-result__speed {
+    margin: 5px 0;
+  }
+  .song-course-result__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: min(720px, 100%);
+    gap: 10px;
+  }
+  .song-course-result__actions > .game-button {
+    flex: 1 1 160px;
+    font-size: 0.85rem;
+  }
+  .song-course-result__celebration {
+    display: none;
+  }
+}
+
+/* A completed attempt owns the whole workspace; the keyboard is needed again on retry. */
+.workspace-main:has(> .song-course-result) > .lanes {
+  display: none;
+}
+.song-course-result__bar .song-course-lesson__icon.game-button {
+  min-height: 44px;
+}
+
+/* The loading piano's black keys sit over every animated white key in a single layer. */
+.preparation-piano {
+  position: relative;
+}
+.preparation-piano__black-keys {
+  position: absolute;
+  inset: 6px;
+  z-index: 1;
+  pointer-events: none;
+}
+.preparation-piano__black-keys > .preparation-piano__black {
+  right: auto;
+  width: calc(65% / 7);
+  transform: translateX(-50%);
+}
+.song-course-lesson__score .staves {
+  position: relative;
+}
+.song-course-lesson__bar:has(> .song-course-lesson__pause) {
+  grid-template-columns: 42px minmax(0, 1fr) 42px 42px;
+}
+.song-course-lesson__action > .song-course-lesson__play {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  min-width: 76px;
+  height: 76px;
+  min-height: 76px;
+  padding: 0;
+  border-radius: 48%;
+  font-size: 2rem;
+}
+.song-course-lesson__action:empty {
+  display: none;
+}
+@media (height <= 500px) {
+  .song-course-lesson__bar:has(> .song-course-lesson__pause) {
+    grid-template-columns: 36px minmax(0, 1fr) 36px 36px;
+  }
+  .song-course-lesson__action > .song-course-lesson__play {
+    width: 52px;
+    min-width: 52px;
+    height: 52px;
+    min-height: 52px;
+    font-size: 1.5rem;
+  }
+}
+
+.song-course-lesson__action > .song-course-lesson__play {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  z-index: 3;
+}
+.song-course-lesson__play > svg {
+  display: block;
+}
+.song-course-result__actions:has(> button:only-child) {
+  width: min(280px, 100%);
+}
+.song-course-miniature .staff-cursor {
+  display: none;
+}
+.workspace-main:has(> .song-course-lesson) > .lanes {
+  border-block: 0;
+}
+
+/* Play and its count-in live in the native top layer, leaving score geometry stable. */
+.game-dialog.song-course-start {
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+.game-dialog.song-course-start::backdrop {
+  background: rgb(2 12 24 / 8%);
+  backdrop-filter: none;
+}
+.song-course-start > .game-dialog__head {
+  display: none;
+}
+.song-course-start > .game-dialog__body {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+.song-course-start .song-course-lesson__play {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 76px;
+  height: 76px;
+  min-height: 76px;
+  padding: 0;
+  border-radius: 48%;
+  font-size: 2rem;
+}
+.song-course-start__exit {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  top: max(8px, env(safe-area-inset-top));
+}
+@media (height <= 500px) {
+  .song-course-start .song-course-lesson__play {
+    width: 64px;
+    height: 64px;
+    min-height: 64px;
+    font-size: 1.8rem;
+  }
+  .song-course-start__exit {
+    top: max(4px, env(safe-area-inset-top));
+  }
+}
+
+.song-course-start .song-course-lesson__play {
+  width: min(240px, 48vw, 48dvh);
+  height: min(240px, 48vw, 48dvh);
+  min-height: 0;
+  font-size: clamp(3rem, 12vmin, 5rem);
+}
+.song-course-start .song-course-lesson__play > svg {
+  width: 48%;
+  height: 48%;
+}
+:is(.song-course-lesson, .song-course-start, .song-course-result)
+  .song-course-lesson__icon:focus-visible {
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+.song-course-lesson__score {
+  position: relative;
+}
+.song-course-hold {
+  position: absolute;
+  box-sizing: border-box;
+  z-index: 3;
+  padding: 4px 8px;
+  border: 1px solid var(--hold-color, #c6e177);
+  border-radius: 12px;
+  color: #f3f7ed;
+  background: rgb(6 25 35 / 96%);
+  pointer-events: none;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 16px;
+}
+.song-course-hold__track {
+  position: relative;
+  height: 8px;
+  margin: 3px 10px 0 0;
+  border-radius: 6px;
+  background: #2c4850;
+  overflow: visible;
+}
+.song-course-hold__fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--hold-color, #c6e177);
+  transform-origin: left center;
+}
+.song-course-hold__end {
+  position: absolute;
+  right: -11px;
+  top: -4px;
+  font-size: 14px;
+  color: #f6d16b;
+}
+.song-course-hold[data-state="release"] {
+  border-color: #f6d16b;
+}
+
+.song-course-hold__label,
+.song-course-hold__track {
+  display: block;
+}
+.song-course-hold__end {
+  right: 7px;
+  top: auto;
+  bottom: 4px;
+}
+
+.song-course-start {
+  pointer-events: none;
+}
+.song-course-start .game-button {
+  pointer-events: auto;
+}
+.song-course-start .song-course-lesson__play {
+  width: clamp(104px, 30vmin, 144px);
+  height: clamp(104px, 30vmin, 144px);
+}
+.app:has(.song-course-lesson) .lane-fps {
+  top: auto;
+  bottom: 4px;
+  right: 4px;
+}
+.clay-stars {
+  --clay-star-size: 64px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.clay-stars > span,
+.clay-stars img {
+  display: block;
+  width: var(--clay-star-size);
+  height: var(--clay-star-size);
+}
+.clay-stars > span[data-earned="false"] {
+  opacity: 0.35;
+  filter: grayscale(1) brightness(0.85);
+}
+.clay-stars > span[data-earned="true"] {
+  animation: song-course-star-arrive 350ms ease-out both;
+}
+.song-course-result__stars > .clay-stars {
+  font-size: 0;
+  text-shadow: none;
+}
+.song-course-path__stars .clay-stars {
+  --clay-star-size: 18px;
+  gap: 2px;
+}
+@media (height <= 500px) {
+  .song-course-result__stars .clay-stars {
+    --clay-star-size: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clay-stars > span[data-earned="true"] {
+    animation: none;
+  }
+}
+@media (orientation: portrait) and (min-height: 640px) and (width <= 1024px) {
+  .song-course-lesson__playing-room:has(.song-course-characters__teacher) {
+    grid-template-rows: clamp(160px, 24dvh, 260px) minmax(0, 1fr);
+  }
+  .song-course-lesson__characters:has(.song-course-characters__teacher),
+  .song-course-lesson__characters .song-course-characters {
+    height: 100%;
+    max-height: none;
+  }
+  .song-course-lesson__characters .song-course-characters__teacher {
+    height: 100%;
+    max-height: 100%;
+    max-width: 60vw;
+  }
+}
+
+/* Written notes own their duration; animated faces belong to those same engraved heads. */
+.song-course-lesson__characters .song-course-characters__note {
+  display: none;
+}
+@media (width > 1024px) {
+  .song-course-lesson__playing-room:has(.song-course-characters__note) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .song-course-lesson__characters:has(.song-course-characters__note) {
+    display: none;
+  }
+}
+.song-course-lesson__score [data-clay-face="neutral"] > ellipse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: course-note-blink 4s ease-in-out infinite;
+}
+@keyframes course-note-blink {
+  0%,
+  44%,
+  48%,
+  100% {
+    transform: scaleY(1);
+  }
+  46% {
+    transform: scaleY(0.15);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .song-course-lesson__score [data-clay-face] > ellipse {
+    animation: none;
+  }
+}
+
+.song-course-result__stars > .clay-stars {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+}
+.song-course-result__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+}
+.song-course-result__body > .song-course-result__stars {
+  flex-shrink: 0;
+}
+
+.game-dialog.song-course-start {
+  position: fixed;
+  z-index: 20;
+}
+.song-course-lesson__progress progress::-webkit-progress-value {
+  background: linear-gradient(#d7ff76, #a9eb31);
+}
+.song-course-lesson__progress progress::-moz-progress-bar {
+  background: #b7f34a;
+}
+.song-course-path__node[data-state="current"] {
+  border-color: #b7f34a;
+}
+
+.song-course-result__actions > .game-button:not(.song-course-primary) {
+  --clay-button-top: #9feaff;
+  --clay-button-face: #28c6ed;
+  --clay-button-edge: #0d7fa7;
+  --clay-button-ink: #07364b;
+  border-color: #c4f3ff;
 }

@@ -35,7 +35,10 @@ export function withSongCourseCharacters(
     onStart(session, atMs, held) {
       const started = policy.onStart(session, atMs, held);
       if (started) characters.bind(session);
-      else characters.cancel();
+      else
+        characters.cancel(
+          ["paused", "awaiting-keys-up", "awaiting-rehold"].includes(characters.phase)
+        );
       return started;
     },
     onFrame(session, playing, atMs) {
@@ -44,8 +47,9 @@ export function withSongCourseCharacters(
       return events;
     },
     onInput(event, session, playing, times) {
+      const beforePhase = characters.phase;
       const events = policy.onInput(event, session, playing, times);
-      characters.key(event, session, playing, times, events);
+      characters.key(event, session, playing, times, events, beforePhase);
       return events;
     },
     seedHeld(events, atMs) {
@@ -54,7 +58,7 @@ export function withSongCourseCharacters(
     },
     cancel(atMs, resetAll, reason) {
       policy.cancel(atMs, resetAll, reason);
-      characters.cancel();
+      characters.cancel(reason === "pause");
     }
   };
 }

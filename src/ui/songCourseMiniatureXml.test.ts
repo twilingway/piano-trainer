@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   SONG_COURSE_SOURCE_KEYS,
+  SONG_COURSE_SOURCES,
   findSongCourseNode,
   findSongCourseSource
 } from "../songCourse/catalog";
@@ -14,6 +15,18 @@ import { songFromMusicXml } from "../song/musicxml";
 import { songCourseMiniatureXml } from "./songCourseMiniatureXml";
 
 describe("source-score course miniatures", () => {
+  it("keeps exactly one written learner note for every catalogue miniature", () => {
+    for (const source of SONG_COURSE_SOURCES) {
+      for (const node of source.nodes) {
+        const document = new DOMParser().parseFromString(
+          songCourseMiniatureXml(source, node),
+          "application/xml"
+        );
+        expect(document.querySelectorAll("part > measure > note"), node.id).toHaveLength(1);
+        expect(document.querySelectorAll("part > measure > note > pitch"), node.id).toHaveLength(1);
+      }
+    }
+  });
   it.each([
     ["hot-cross-buns", "notes-c", 60, "quarter", false],
     ["hot-cross-buns", "notes-d", 62, "quarter", false],
@@ -47,16 +60,22 @@ describe("source-score course miniatures", () => {
       expect(original?.querySelector("duration")?.textContent).toBe(
         note.querySelector("duration")?.textContent
       );
-      expect(document.querySelector("time, notations, lyric, direction")).toBeNull();
+      expect(document.querySelector("notations, lyric, direction")).toBeNull();
       expect(document.querySelectorAll("score-partwise > part")).toHaveLength(1);
+      expect(document.querySelector("clef > sign")?.textContent).toBe("G");
+      expect(document.querySelector("time > beats")?.textContent).toBe("4");
+      expect(document.querySelector("time > beat-type")?.textContent).toBe("4");
     }
   );
 });
 
 it("registers English for every source, course UI, navigation and runtime message", () => {
-  expect(SONG_COURSE_SOURCE_KEYS).toHaveLength(41);
   const keys = new Set([
     ...SONG_COURSE_SOURCE_KEYS,
+    ...SONG_COURSE_SOURCES.flatMap((source) => [
+      source.title,
+      ...source.nodes.flatMap((node) => [node.title, node.instruction])
+    ]),
     ...Object.keys(SONG_COURSE_NAVIGATION_MESSAGES),
     ...Object.keys(songCourseUiMessages),
     ...Object.keys(songCourseMessages)

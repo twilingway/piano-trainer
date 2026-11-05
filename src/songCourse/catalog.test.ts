@@ -76,10 +76,11 @@ describe("melody-led course content", () => {
     expect(new Set(nodeIds).size).toBe(nodeIds.length);
   });
 
-  it("starts C, D and E as separate actual fragments and separates quarter, half and whole notes", () => {
+  it("introduces C, D and E before the unchanged mixed phrase and written durations", () => {
     const source = findSongCourseSource("hot-cross-buns");
     if (!source) throw new Error("missing source");
-    expect(source.nodes.slice(0, 6).map((node) => node.kind)).toEqual([
+    expect(source.nodes.slice(0, 7).map((node) => node.kind)).toEqual([
+      "notes",
       "notes",
       "notes",
       "notes",
@@ -87,20 +88,65 @@ describe("melody-led course content", () => {
       "duration",
       "duration"
     ]);
-    const materials = source.nodes.slice(0, 6).map((node) => buildSongCourseMaterial(source, node));
+    const materials = source.nodes.slice(0, 7).map((node) => buildSongCourseMaterial(source, node));
     expect(materials[0]?.expected.map((note) => note.pitch)).toEqual([60, 60, 60, 60]);
     expect(materials[1]?.expected.map((note) => note.pitch)).toEqual([62, 62, 62, 62]);
-    expect(materials[2]?.expected.map((note) => note.pitch)).toEqual([64, 62, 60]);
-    expect(
-      materials[3]?.expected.map((note) => Number(((note.duration * 72) / 60).toFixed(6)))
-    ).toEqual([1, 1, 1, 1]);
+    expect(materials[2]?.expected.map((note) => note.pitch)).toEqual([64]);
+    expect(materials[3]?.expected.map((note) => note.pitch)).toEqual([64, 62, 60]);
     expect(
       materials[4]?.expected.map((note) => Number(((note.duration * 72) / 60).toFixed(6)))
-    ).toEqual([2, 2]);
+    ).toEqual([1, 1, 1, 1]);
     expect(
       materials[5]?.expected.map((note) => Number(((note.duration * 72) / 60).toFixed(6)))
+    ).toEqual([2, 2]);
+    expect(
+      materials[6]?.expected.map((note) => Number(((note.duration * 72) / 60).toFixed(6)))
     ).toEqual([4]);
-    expect(materials[5]?.musicXml).toContain("<type>whole</type>");
+    expect(materials[6]?.musicXml).toContain("<type>whole</type>");
+  });
+
+  it("uses one source-owned E with its written finger and length while retaining the old mixed node", () => {
+    const source = findSongCourseSource("hot-cross-buns");
+    if (!source) throw new Error("missing source");
+    expect(source.nodes.slice(0, 4).map((node) => node.id)).toEqual([
+      "hot-cross-buns/notes-c",
+      "hot-cross-buns/notes-d",
+      "hot-cross-buns/notes-e-intro",
+      "hot-cross-buns/notes-e"
+    ]);
+    const intro = findSongCourseNode(source.id, "hot-cross-buns/notes-e-intro");
+    const mixed = findSongCourseNode(source.id, "hot-cross-buns/notes-e");
+    if (!intro || !mixed) throw new Error("missing introduction or mixed phrase");
+    expect(intro.sourceNoteIds).toEqual(["hot-cross-buns-m1-n1"]);
+    const material = buildSongCourseMaterial(source, intro);
+    expect(material.expected).toHaveLength(1);
+    const expected = material.expected[0];
+    if (!expected) throw new Error("missing expected E");
+    expect(expected.sourceNoteId).toBe("hot-cross-buns@1:hot-cross-buns-m1-n1");
+    expect(expected.pitch).toBe(64);
+    expect(expected.start).toBe(0);
+    expect(expected.duration).toBeCloseTo((2 * 60) / 72);
+    const written = material.song.notes.find((note) => note.id === expected.runtimeNoteId);
+    expect(written?.scoreFinger).toBe(3);
+    expect(written?.finger).toBe(3);
+    const document = new DOMParser().parseFromString(material.musicXml, "application/xml");
+    expect(
+      document.getElementById("hot-cross-buns-m1-n1")?.querySelector("type")?.textContent
+    ).toBe("half");
+    expect(
+      document.getElementById("hot-cross-buns-m1-n1")?.querySelector("fingering")?.textContent
+    ).toBe("3");
+    expect(mixed.sourceNoteIds).toEqual([
+      "hot-cross-buns-m1-n1",
+      "hot-cross-buns-m1-n2",
+      "hot-cross-buns-m2-n1"
+    ]);
+    expect(mixed.title).toBe("Собираем до, ре и ми");
+    expect(buildSongCourseMaterial(source, mixed).expected.map((note) => note.pitch)).toEqual([
+      64, 62, 60
+    ]);
+    expect(source.revision).toBe("1");
+    expect(source.sourceHash).toBe(manifest["hot-cross-buns"].sha256);
   });
 
   it("teaches the sixth note through a prepared change of fingers and the octave through a turn", () => {

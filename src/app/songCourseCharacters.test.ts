@@ -7,7 +7,11 @@ import type { KeyEvent } from "../input/midiInput";
 import { findSongCourseSource } from "../songCourse/catalog";
 import { buildSongCourseMaterial } from "../songCourse/material";
 import { createSongCourseFeedback } from "../staff/songCourseFeedback";
-import { SongCourseCharacters, type SongCourseCharacterContext } from "./songCourseCharacters";
+import {
+  SongCourseCharacters,
+  songCourseCharacterContext,
+  type SongCourseCharacterContext
+} from "./songCourseCharacters";
 import { withSongCourseCharacters } from "./songCourseCharacterPolicy";
 import { songCourseOptions } from "./songCourseOptions";
 
@@ -292,5 +296,160 @@ describe("character policy observer", () => {
       h.times(1000)
     );
     expect(original.onFrame).toHaveBeenCalledExactlyOnceWith(h.session, true, 1001);
+  });
+});
+
+describe("intro demonstration song identity", () => {
+  it("binds the exact filtered demo song and animates its C4 while rejecting a source session and equivalent copy", () => {
+    const h = fixture();
+    const expectedIds = new Set(h.material.expected.map((note) => note.runtimeNoteId));
+    const demoSong = {
+      ...h.material.song,
+      notes: h.material.song.notes.filter((note) => expectedIds.has(note.id))
+    };
+    const context = songCourseCharacterContext(
+      { material: h.material, phase: "demo" },
+      "p1",
+      null,
+      demoSong
+    );
+    expect(context.playbackSong).toBe(demoSong);
+    h.patch(context);
+    h.actors.bind(h.session);
+    h.actors.frame(h.session, true);
+    expect(h.actors.read().teacherPose).toBe("idle");
+    const demoSession = new PracticeSession(demoSong, songCourseOptions(h.material, 1));
+    demoSession.time = h.first.start;
+    h.actors.bind(demoSession);
+    h.actors.frame(demoSession, true);
+    expect(h.actors.read().teacherPose).toBe("do");
+    const foreign = new PracticeSession({ ...demoSong }, songCourseOptions(h.material, 1));
+    foreign.time = h.first.start + h.first.duration + 10;
+    const before = h.actors.read();
+    h.actors.bind(foreign);
+    h.actors.frame(foreign, true);
+    expect(h.actors.read()).toBe(before);
+    h.actors.frame(demoSession, false);
+    expect(h.actors.read().teacherPose).toBe("idle");
+  });
+
+  it("invalidates a bound demo when only its playback identity changes and returns safely to the learner song", () => {
+    const h = fixture();
+    const demoSong = { ...h.material.song, notes: [...h.material.song.notes] };
+    h.patch({ phase: "demo", runId: null, playbackSong: demoSong });
+    const demoSession = new PracticeSession(demoSong, songCourseOptions(h.material, 1));
+    demoSession.time = h.first.start;
+    h.actors.bind(demoSession);
+    expect(h.actors.read().teacherPose).toBe("do");
+    h.patch({ playbackSong: { ...demoSong } });
+    expect(h.actors.read().teacherPose).toBe("idle");
+    h.actors.frame(demoSession, true);
+    expect(h.actors.read().teacherPose).toBe("idle");
+    const learner = songCourseCharacterContext(
+      { material: h.material, phase: "playing" },
+      "p2",
+      "r2"
+    );
+    expect(learner.playbackSong).toBe(h.material.song);
+    h.patch(learner);
+    h.feedback.reset(h.material, "p2", "r2");
+    h.actors.bind(h.session);
+    h.input("down", 2000, h.hit());
+    expect(h.actors.read().teacherPose).toBe("do");
+    h.actors.frame(demoSession, false);
+    expect(h.actors.read().teacherPose).toBe("do");
+  });
+});
+
+describe("accepted-note hold cue observer", () => {
+  it("follows only the bound music clock and never publishes numeric frames to React", () => {
+    const h = fixture();
+    h.session.time = 0;
+    h.input("down", 1000, h.hit());
+    expect(h.actors.readHold()).toMatchObject({
+      sourceNoteId: h.first.sourceNoteId,
+      progress: 0,
+      action: "hold"
+    });
+    const changed = vi.fn();
+    h.actors.subscribe(changed);
+    h.session.time = h.first.duration / 2;
+    h.actors.frame(h.session, true);
+    expect(h.actors.readHold()?.progress).toBeCloseTo(0.5);
+    h.session.time = h.first.duration;
+    h.actors.frame(h.session, true);
+    expect(h.actors.readHold()?.action).toBe("release");
+    expect(changed).not.toHaveBeenCalled();
+    h.input("up", 1800);
+    expect(h.actors.readHold()).toBeNull();
+  });
+  it("never starts from wrong keys, unadmitted claims, demo, seeding or a stale run", () => {
+    const h = fixture();
+    h.session.time = 0;
+    h.input("down", 1000, [{ type: "wrong", pitch: 62 }], 62);
+    expect(h.actors.readHold()).toBeNull();
+    h.input("down", 1100, h.hit(), 60, false);
+    expect(h.actors.readHold()).toBeNull();
+    h.patch({ phase: "demo" });
+    h.input("down", 1200, h.hit());
+    expect(h.actors.readHold()).toBeNull();
+    h.patch({ phase: "playing", runId: "r2" });
+    h.actors.bind(h.session);
+    h.input("down", 1300, h.hit());
+    expect(h.actors.readHold()).not.toBeNull();
+    h.patch({ runId: "r3" });
+    expect(h.actors.readHold()).toBeNull();
+    h.actors.bind(h.session);
+    h.input("down", 1400, h.hit());
+    h.actors.cancel();
+    expect(h.actors.readHold()).toBeNull();
+  });
+  it("preserves a paused cue across blocked start and resumes only a confirmed owner rehold", () => {
+    const h = fixture();
+    h.session.time = 0;
+    h.input("down", 1000, h.hit());
+    h.session.time = h.first.duration * 0.4;
+    h.patch({ phase: "paused" });
+    const base = {
+      inputCompensationMs: () => 0,
+      onStart: () => false,
+      onFrame: () => [],
+      onInput: (event: KeyEvent) => {
+        if (event.type === "down" && event.pitch === 60 && h.context().phase === "awaiting-rehold")
+          h.patch({ phase: "playing" });
+        return [];
+      },
+      seedHeld: () => undefined,
+      cancel: () => undefined,
+      guidance: () => ({})
+    } as unknown as TrainerMusicPolicy;
+    const policy = withSongCourseCharacters(base, h.actors);
+    policy.cancel(1200, false, "pause");
+    h.session.time = 50;
+    expect(h.actors.readHold()).toMatchObject({ paused: true, progress: 0.4 });
+    expect(policy.onStart(h.session, 1250, [])).toBe(false);
+    expect(h.actors.readHold()?.progress).toBeCloseTo(0.4);
+    h.actors.key(h.event("up"), h.session, false, h.times(1300), [], "paused");
+    h.patch({ phase: "awaiting-rehold" });
+    policy.onInput(h.event("down", 62), h.session, false, h.times(1350));
+    expect(h.actors.readHold()?.paused).toBe(true);
+    policy.onInput(h.event("down"), h.session, false, h.times(1400));
+    expect(h.actors.readHold()).toMatchObject({ paused: false, progress: 0.4 });
+    h.session.time += h.first.duration * 0.6;
+    expect(h.actors.readHold()?.action).toBe("release");
+    h.actors.key(h.event("up"), h.session, true, h.times(1800), []);
+    expect(h.actors.readHold()).toBeNull();
+  });
+  it("clears on early release, hiding, failed cleanup and source replacement", () => {
+    for (const ending of ["release", "hidden", "cancel", "source"] as const) {
+      const h = fixture();
+      h.session.time = 0;
+      h.input("down", 1000, h.hit());
+      if (ending === "release") h.input("up", 1100);
+      if (ending === "hidden") h.actors.setVisible(false);
+      if (ending === "cancel") h.actors.cancel();
+      if (ending === "source") h.patch({ material: { ...h.material } });
+      expect(h.actors.readHold(), ending).toBeNull();
+    }
   });
 });

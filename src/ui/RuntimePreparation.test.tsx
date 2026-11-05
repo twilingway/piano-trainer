@@ -167,4 +167,13 @@ describe("late preparation feedback", () => {
     expect(host.textContent).toContain("Couldn't prepare your part");
     expect(host.textContent).toContain("Retry part preparation");
   });
+  it("keeps all five black keys above the seven independently animated white keys", () => {
+    render({ party: "preparing" });
+    const piano = host.querySelector(".preparation-piano");
+    expect(piano?.querySelectorAll(".preparation-piano__white")).toHaveLength(7);
+    expect(
+      piano?.querySelectorAll(".preparation-piano__black-keys > .preparation-piano__black")
+    ).toHaveLength(5);
+    expect(piano?.querySelector(".preparation-piano__white .preparation-piano__black")).toBeNull();
+  });
 });

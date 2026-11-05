@@ -260,6 +260,7 @@ export class KeyboardLayer {
     }
 
     this.placeRail(whiteWidth, keyboardTop + keyboardHeight, total);
+    if (feltHeight === 0) this.rail.visible = false;
 
     this.felt.removeChildren().forEach((child) => {
       child.destroy();
@@ -273,14 +274,14 @@ export class KeyboardLayer {
     feltEdge.tint = FELT_EDGE;
     feltEdge.y = keyboardTop - feltHeight;
     feltEdge.width = total;
-    feltEdge.height = 1;
+    feltEdge.height = feltHeight > 0 ? 1 : 0;
     // The felt throws a thin shadow on the tops of the keys.
     const feltShade = new Sprite(Texture.WHITE);
     feltShade.tint = 0x000000;
     feltShade.alpha = 0.25;
     feltShade.y = keyboardTop;
     feltShade.width = total;
-    feltShade.height = 2;
+    feltShade.height = feltHeight > 0 ? 2 : 0;
     this.felt.addChild(felt, feltEdge, feltShade);
   }
 

@@ -1,5 +1,22 @@
 import type { Messages } from "./locales";
 export const songCourseUiMessages: Messages = {
+  "Начал вовремя": { en: "Started on time" },
+  Слушай: { en: "Listen" },
+  "Твоя очередь": { en: "Your turn" },
+  Держи: { en: "Hold" },
+  Отпусти: { en: "Release" },
+  "Дорожка длительности ноты": { en: "Note hold progress" },
+  "До начала: {count}": { en: "Starting in {count}" },
+  "Попробуем ещё раз": { en: "Let's try again" },
+  "Повторим нужные клавиши, затем сыграем ещё раз.": {
+    en: "Let's review the keys, then try again."
+  },
+  "Послушаем ритм и попробуем нажимать вовремя.": {
+    en: "Listen to the rhythm, then try playing on time."
+  },
+  "Держите клавишу до конца ноты, затем отпускайте.": {
+    en: "Hold the key until the note ends, then release it."
+  },
   "Скорость этапа: {value}%": { en: "Step speed: {value}%" },
   "Выбрать скорость до начала этапа": { en: "Choose speed before starting the step" },
   "Выберите удобную скорость перед игрой.": { en: "Choose a comfortable speed before playing." },
@@ -42,7 +59,7 @@ export const songCourseUiMessages: Messages = {
   "Разобрать трудные места": {
     en: "Practice tricky parts"
   },
-  "Сыграть этот этап ещё раз": {
+  "Сыграть ещё раз": {
     en: "Play this step again"
   },
   "Правильные ноты": {

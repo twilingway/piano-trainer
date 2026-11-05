@@ -19,7 +19,6 @@ export interface SongCourseDisplayProfile {
 export function songCourseDisplayProfile({
   active,
   compact,
-  shortViewport = false,
   preferred,
   display,
   learnerRange
@@ -30,12 +29,9 @@ export function songCourseDisplayProfile({
     prefs: {
       ...display,
       keyRange: compact ? "song" : preferred.keyRange === "song" ? "88" : preferred.keyRange,
-      keyStyle: preferred.keyStyle,
-      ...(compact && shortViewport && (preferred.keyStyle === "clay" || preferred.keyStyle === "3d")
-        ? { camera: { ...display.camera, height: 150, distance: 900, pitch: 18 } }
-        : {})
+      keyStyle: preferred.keyStyle === "arcade" ? "arcade" : "classic"
     },
     displayRange: compact ? learnerRange : undefined,
-    keyboardMaxHeightShare: 0.3
+    keyboardMaxHeightShare: 0.36
   };
 }

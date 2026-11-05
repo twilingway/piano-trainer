@@ -13,6 +13,9 @@ interface InputOwner {
   readonly material: CourseMaterial | null;
   readonly trainer: Trainer | null;
   readonly demo: boolean;
+  readonly onStarted?: (session: PracticeSession) => boolean;
+  readonly acceptsSession?: (session: PracticeSession) => boolean;
+  readonly onAllReleased?: () => void;
 }
 const NO_EVENTS: readonly PracticeEvent[] = [];
 /** Physical evidence survives an intentional transport pause; cleanup never masquerades as key-up. */
@@ -33,6 +36,9 @@ export class SongCourseInput {
       ordinal: number
     ) => void = () => undefined
   ) {}
+  get hasHeldKeys(): boolean {
+    return [...this.physical.values()].some((position) => position.type === "down");
+  }
   reset(): void {
     this.ordinal = 0;
     this.presented.clear();
@@ -56,11 +62,15 @@ export class SongCourseInput {
     );
   }
   start(session: PracticeSession, atMs: number, held: readonly KeyEvent[]): boolean {
-    const { attempt, demo } = this.read();
-    if (demo) return true;
+    const { attempt, demo, onStarted } = this.read();
+    if (demo) {
+      this.seed(held);
+      return onStarted?.(session) !== false;
+    }
     if (!attempt) return false;
     if (attempt.phase === "paused" || attempt.phase === "awaiting-keys-up") {
       const resume = attempt.requestResume(atMs, this.nextOrdinal());
+      if (resume && onStarted?.(session) === false) return false;
       this.publish();
       return resume;
     }
@@ -71,6 +81,7 @@ export class SongCourseInput {
       return false;
     }
     if (attempt.phase === "playing") {
+      if (onStarted?.(session) === false) return false;
       this.present(session, atMs);
       return true;
     }
@@ -82,6 +93,7 @@ export class SongCourseInput {
     playing: boolean,
     times: MusicInputTimes
   ): readonly PracticeEvent[] {
+    if (this.read().acceptsSession?.(session) === false) return NO_EVENTS;
     const key = courseInputKey(event),
       previous = this.physical.get(key),
       held = previous?.type === "down";
@@ -90,10 +102,13 @@ export class SongCourseInput {
       performanceMs: times.raw,
       stableOrdinal: ++this.physicalOrdinal
     };
-    if (!previous || physicalCourseOrder(position, previous) > 0) this.physical.set(key, position);
-    const { attempt, demo, trainer, material } = this.read();
-    if (!attempt || demo || attempt.phase === "complete" || attempt.phase === "aborted")
+    const fresh = !previous || physicalCourseOrder(position, previous) > 0;
+    if (fresh) this.physical.set(key, position);
+    const { attempt, demo, trainer, material, onAllReleased } = this.read();
+    if (!attempt || demo || attempt.phase === "complete" || attempt.phase === "aborted") {
+      if (fresh && event.type === "up" && !this.hasHeldKeys) onAllReleased?.();
       return NO_EVENTS;
+    }
     this.present(session, times.received);
     const songTime = session.songTimeAt(times.corrected) ?? session.time;
     const decision = attempt.input({

@@ -1,10 +1,12 @@
+import { courseLearnerMode } from "../songCourse/listenRepeat";
 import {
   findSongCourseNode,
   findSongCourseSource,
   SONG_COURSE_SOURCES
 } from "../songCourse/catalog";
 import { mergeSongCourseProgress } from "../songCourse/progress";
-import type { SongCourseProgress, SongCourseSelection } from "../songCourse/model";
+import { SongCourseAttempt } from "../songCourse/attempt";
+import type { CourseMaterial, SongCourseProgress, SongCourseSelection } from "../songCourse/model";
 import type { songCourseRepository } from "./songCourseRepository";
 
 export async function loadCourseProgress(
@@ -61,4 +63,28 @@ export function nextCourseSelection(
         nodeId: node.id
       }
     : null;
+}
+
+/** Assemble an attempt from the same source material and an owner-provided run identity. */
+export function newCourseAttempt(
+  material: CourseMaterial,
+  speed: number,
+  runId: string
+): SongCourseAttempt {
+  return new SongCourseAttempt({
+    runId,
+    songId: material.source.id,
+    sourceRevision: material.source.revision,
+    sourceHash: material.source.sourceHash,
+    nodeId: material.node.id,
+    mode: courseLearnerMode(material.node.kind),
+    speed,
+    expected: material.expected,
+    learnerPartIds: material.source.learnerPartIds,
+    ...(material.node.kind === "review" ? { rubricVariant: "learning-review" as const } : {})
+  });
+}
+
+export function courseHelped(material: CourseMaterial | null): boolean {
+  return material?.node.kind !== "independent-phrase" && material?.node.kind !== "performance";
 }

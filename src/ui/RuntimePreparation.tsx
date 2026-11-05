@@ -21,10 +21,17 @@ function PianoLoadingMark() {
           key={index}
           className="preparation-piano__white"
           style={{ "--key-delay": `${String(index * 110)}ms` } as CSSProperties}
-        >
-          {[0, 1, 3, 4, 5].includes(index) && <i className="preparation-piano__black" />}
-        </span>
+        />
       ))}
+      <div className="preparation-piano__black-keys">
+        {[1, 2, 4, 5, 6].map((boundary) => (
+          <i
+            key={boundary}
+            className="preparation-piano__black"
+            style={{ left: `${String((boundary / 7) * 100)}%` }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
