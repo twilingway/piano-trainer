@@ -73,7 +73,7 @@ export function fitSongCourseViewport(
 }
 
 /** Choose one screen anchor after the final crop/zoom, with room to scroll to the last barline. */
-export function frameSongCourseDrawing(host: HTMLElement): void {
+export function frameSongCourseDrawing(host: HTMLElement, leadInPixels = 0): void {
   delete host.dataset.songCourseCentered;
   if (host.dataset.songCoursePlayhead === undefined) return;
   const svg = host.querySelector("svg");
@@ -87,7 +87,7 @@ export function frameSongCourseDrawing(host: HTMLElement): void {
   const anchor = songCoursePlayhead(host.clientWidth);
   host.dataset.songCoursePlayhead = String(anchor);
   host.dataset.songCourseCursorGap = String(gap);
-  page.style.paddingInline = `${String(anchor)}px ${String(Math.max(0, host.clientWidth - anchor))}px`;
+  page.style.paddingInline = `${String(anchor + Math.max(0, leadInPixels))}px ${String(Math.max(0, host.clientWidth - anchor))}px`;
 }
 
 /** Reads the same beat as the normal staff cursor; no easing, timer or independent clock. */

@@ -95,18 +95,22 @@ export function installSongCourseHeader(host: HTMLElement) {
   const drawing = headerDrawing(source, firstBox.left);
   if (!drawing) return undefined;
   const sourceBox = source.getBoundingClientRect();
-  // Keep the initial balanced composition, while an opaque prefix masks the moving original.
+  // Derive the fixed copy from score coordinates, never from the temporary count-in scroll.
   const anchor = host.dataset.songCoursePlayhead;
   const sourceOffset =
     anchor === undefined
       ? sourceBox.left - host.getBoundingClientRect().left
       : Number(anchor) - (firstBox.left + firstBox.width / 2 - sourceBox.left);
-  const glyphs = [...source.querySelectorAll<SVGGraphicsElement>(GLYPHS)]
-    .map((glyph) => glyph.getBoundingClientRect())
-    .filter((box) => box.width > 0 && box.right < firstBox.left);
+  const movingGlyphs = [...source.querySelectorAll<SVGGraphicsElement>(GLYPHS)].filter((glyph) => {
+    const box = glyph.getBoundingClientRect();
+    return box.width > 0 && box.right < firstBox.left;
+  });
+  const glyphs = movingGlyphs.map((glyph) => glyph.getBoundingClientRect());
   const introRight = Math.max(...glyphs.map((box) => box.right - sourceBox.left));
   const width = Math.min(firstBox.left - sourceBox.left - 6, introRight + 6);
   if (!(width > 0 && sourceBox.height > 0)) return undefined;
+  // External CSS hides only this reader copy; standalone SVG exports retain the original symbols.
+  for (const glyph of movingGlyphs) glyph.setAttribute("data-song-course-prefix", "");
   const overlay = document.createElement("div");
   overlay.className = "song-course-header";
   overlay.setAttribute("aria-hidden", "true");
@@ -153,6 +157,7 @@ export function installSongCourseHeader(host: HTMLElement) {
     frame,
     dispose() {
       host.removeEventListener("scroll", frame);
+      for (const glyph of movingGlyphs) glyph.removeAttribute("data-song-course-prefix");
       overlay.remove();
     }
   };

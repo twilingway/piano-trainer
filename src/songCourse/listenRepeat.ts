@@ -1,5 +1,8 @@
 import type { SongCourseMode, SongCourseNode } from "./model";
 
+/** One preparatory bar for the current 4/4 melody course. */
+export const SONG_COURSE_COUNT_IN_BEATS = 4;
+
 /** Learner phrases run continuously; isolated review retains its deliberate note gate. */
 export function courseLearnerMode(kind: SongCourseNode["kind"]): SongCourseMode {
   return kind === "review" ? "wait" : "tempo";

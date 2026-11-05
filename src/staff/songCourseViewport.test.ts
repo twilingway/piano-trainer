@@ -359,3 +359,49 @@ it("contains 200-percent manual notation in a 159px landscape row without reduci
   fitSongCourseRoom(notation as unknown as OpenSheetMusicDisplay, host, () => 0);
   expect(host.style.maxHeight).toBe("");
 });
+
+it.each([320, 390, 667])(
+  "reserves a complete run-up without negative scroll at width %s",
+  (width) => {
+    for (const zoom of [1, 1.5, 2]) {
+      const host = document.body.appendChild(document.createElement("div"));
+      host.dataset.songCoursePlayhead = String(width / 2);
+      Object.defineProperty(host, "clientWidth", { value: width });
+      const page = host.appendChild(document.createElement("div"));
+      page.className = "staff-page";
+      page.innerHTML = '<svg><g class="vf-notehead"/></svg>';
+      const svg = page.querySelector("svg"),
+        head = page.querySelector(".vf-notehead");
+      if (!svg || !head) throw new Error("Missing approach drawing");
+      let scroll = 0;
+      Object.defineProperty(host, "scrollLeft", {
+        get: () => scroll,
+        set: (value: number) => {
+          scroll = Math.max(0, value);
+        }
+      });
+      host.getBoundingClientRect = () => new DOMRect(0, 0, width, 150);
+      svg.getBoundingClientRect = () =>
+        new DOMRect((parseFloat(page.style.paddingInline) || 0) - scroll, 0, 500 * zoom, 150);
+      head.getBoundingClientRect = () =>
+        new DOMRect(svg.getBoundingClientRect().left + 90 * zoom, 70, 20 * zoom, 10);
+      const leadIn = 200 * zoom;
+      frameSongCourseDrawing(host, leadIn);
+      const spots = [-4, 0, 4].map((beat) => ({ beat, x: (100 + beat * 50) * zoom, line: 0 }));
+      const scrolls = [-4, -3, -2, -1, -1e-7, 0, 1e-7, 1, 4].map((beat) => {
+        positionSongCourseViewport(host, spots, beat);
+        expect(scroll).toBeGreaterThanOrEqual(0);
+        expect(svg.getBoundingClientRect().left + (100 + beat * 50) * zoom).toBeCloseTo(
+          width / 2,
+          6
+        );
+        return scroll;
+      });
+      expect((scrolls[1] ?? 0) - (scrolls[0] ?? 0)).toBeCloseTo(50 * zoom, 6);
+      expect((scrolls[6] ?? 0) - (scrolls[4] ?? 0)).toBeLessThan(0.001);
+      expect(
+        head.getBoundingClientRect().left + head.getBoundingClientRect().width / 2
+      ).toBeLessThan(width / 2);
+    }
+  }
+);

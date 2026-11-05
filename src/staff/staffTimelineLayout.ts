@@ -26,6 +26,15 @@ export function layoutStaffTimeline(
     (last.AbsoluteTimestamp.RealValue + last.Duration.RealValue) * 4,
     lines[0]?.top ?? 0
   );
+  const start = spots[0];
+  if (start && timeline.fromBeat !== undefined && timeline.fromBeat < start.beat)
+    spots.unshift({
+      beat: timeline.fromBeat,
+      x:
+        start.x +
+        axis.pixelsPerSecond * (axis.timeAtBeat(timeline.fromBeat) - axis.timeAtBeat(start.beat)),
+      line: start.line
+    });
   return offsetX === 0 ? spots : spots.map((spot) => ({ ...spot, x: spot.x + offsetX }));
 }
 
@@ -55,4 +64,14 @@ export function installStaffTimeline(
         continuousTime
       })
     : undefined;
+}
+
+/** Reserve the same negative-time distance in DOM scroll space after the final render zoom. */
+export function staffTimelineLeadInPixels(
+  axis: StaffTimeAxis | undefined,
+  timeline: StaffProps["timeline"]
+): number {
+  return axis && timeline?.fromBeat !== undefined
+    ? Math.max(0, axis.pixelsPerSecond * (axis.timeAtBeat(0) - axis.timeAtBeat(timeline.fromBeat)))
+    : 0;
 }

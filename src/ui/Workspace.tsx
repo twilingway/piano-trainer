@@ -1,3 +1,4 @@
+import { SONG_COURSE_COUNT_IN_BEATS } from "../songCourse/listenRepeat";
 import { isNativeKeyStyle } from "../render/keyFaceStyles";
 import type { LessonStaffFeedbackSource } from "../staff/lessonStaffFeedback";
 import type { StaffWorldSource } from "../staff/staffWorldSnapshot";
@@ -91,10 +92,13 @@ export function Workspace({ hostRef, mirrorHostRef, ...props }: Props) {
     return song
       ? {
           timeAtBeat: (beat: number) => secondsAt(song, beat),
-          beats: song.beats.map((beat) => beat.position)
+          beats: song.beats.map((beat) => beat.position),
+          ...(props.staffPresentation?.id.startsWith("song-course:")
+            ? { fromBeat: -SONG_COURSE_COUNT_IN_BEATS }
+            : {})
         }
       : undefined;
-  }, [props.timelineSong]);
+  }, [props.timelineSong, props.staffPresentation?.id]);
   // The lane shows notes and keys, only the keys (a strip), or nothing at all.
   const laneMode = prefs.lane ? "full" : prefs.keys ? "keys" : "hidden";
   // With the lane hidden or cut to its keys, the staff may take more of the screen.

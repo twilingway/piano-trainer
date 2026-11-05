@@ -22,6 +22,8 @@ export interface PracticeOptions {
   readonly missGraceMs?: number;
   /** Explicit musical count-in; absence preserves the ordinary two-second lead-in. */
   readonly countInBeats?: number;
+  /** Sound preparatory negative-time beats even when the persistent metronome is off. */
+  readonly audibleCountIn?: boolean;
   /** The keys the player's instrument has; their hands' notes outside it go to the program. */
   readonly playable?: PlayableRange | undefined;
   /** The song's parts the player plays, within `hands`; none = every part of those hands. */
