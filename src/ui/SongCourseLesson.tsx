@@ -191,7 +191,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
       </div>
       <footer className="song-course-lesson__action">
         {holding ? (
-          <p className="song-course-lesson__hold-status">{t("Дождитесь отпускания клавиши")}</p>
+          <p className="song-course-lesson__hold-status">{t(status)}</p>
         ) : (
           <button type="button" className="game-button lesson-main-action" onClick={action}>
             {t(phase === "error" ? "Загрузить этап ещё раз" : actionLabel)}

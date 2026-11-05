@@ -214,6 +214,18 @@ describe("song-course lesson and result", () => {
       onRetrySave: vi.fn()
     };
   }
+  it("keeps the release and rehold instructions consistent", async () => {
+    const props = lessonProps();
+    for (const [phase, instruction] of [
+      ["awaiting-keys-up", "Сначала отпустите клавиши"],
+      ["awaiting-rehold", "Снова нажмите прежнюю ноту"],
+      ["awaiting-release", "Завершаем звук — отпустите клавишу"]
+    ] as const) {
+      await render(<SongCourseLesson {...props} phase={phase} />);
+      expect(host.querySelector(".song-course-lesson__hold-status")?.textContent).toBe(instruction);
+      expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe(instruction);
+    }
+  });
   it("shows musical progress and permits speed selection only before a new attempt", async () => {
     const props = lessonProps();
     await render(<SongCourseLesson {...props} />);

@@ -11,7 +11,6 @@ export const clayLessonMessages: Messages = {
   "Подсказки и меню этапа": { en: "Stage hints and menu" },
   "Как сыграть этот этап": { en: "How to play this stage" },
   "Начать этап заново": { en: "Restart this stage" },
-  "Дождитесь отпускания клавиши": { en: "Release the key to continue" },
   "На телефоне и планшете клавиши подобраны для урока. Ваш обычный диапазон сохранён.": {
     en: "On phones and tablets, the keys fit this lesson. Your usual keyboard range is saved."
   },

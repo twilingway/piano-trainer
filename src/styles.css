@@ -7210,6 +7210,7 @@ button.song-card.song-card__open {
   height: 76.8px;
   flex-shrink: 0;
   background-repeat: no-repeat;
+  background-size: 400% 300%;
   background-position-x: 0%;
   animation-timing-function: steps(1, end);
 }
@@ -7271,7 +7272,9 @@ button.song-card.song-card__open {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .song-course-characters__note {
+  .song-course-characters__note.is-neutral,
+  .song-course-characters__note.is-correct,
+  .song-course-characters__note.is-gentle-wrong {
     animation: none;
   }
   .song-course-characters__note.is-correct {
