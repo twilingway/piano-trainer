@@ -192,7 +192,7 @@ describe("achievement star boundaries", () => {
       )
     );
     expect(result).toMatchObject({
-      rubricVersion: "song-course-v2",
+      rubricVersion: "song-course-v3",
       pitch: 100,
       onset: 50,
       hold: 100,

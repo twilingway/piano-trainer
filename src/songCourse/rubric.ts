@@ -17,7 +17,8 @@ export function starsForCourseAxes(
   pitch: number,
   onset: number | null,
   hold: number,
-  version: SongCourseRubricVersion = SONG_COURSE_RUBRIC_VERSION
+  version: SongCourseRubricVersion = SONG_COURSE_RUBRIC_VERSION,
+  introductory = false
 ): 0 | 1 | 2 | 3 {
   if (
     [pitch, hold, onset ?? 100].some((value) => !Number.isFinite(value) || value < 0 || value > 100)
@@ -28,7 +29,8 @@ export function starsForCourseAxes(
     const minimum = Math.min(pitch, hold, onset ?? 100);
     return minimum >= 80 ? 2 : minimum >= 60 ? 1 : 0;
   }
-  return pitch >= 80 && hold >= 80 ? 2 : pitch >= 60 ? 1 : 0;
+  const secondHold = version === SONG_COURSE_RUBRIC_VERSION && introductory ? 75 : 80;
+  return pitch >= 80 && hold >= secondHold ? 2 : pitch >= 60 ? 1 : 0;
 }
 
 export function assertCourseAttemptConfig(config: SongCourseAttemptConfig): void {
@@ -120,12 +122,15 @@ export function gradeSongCourseAttempt(
     mistakePhraseIds.add(nearest.phraseId);
   }
   const valid = invalidReasons.length === 0;
-  const stars = valid ? starsForCourseAxes(pitch, onset, hold) : 0;
+  const stars = valid
+    ? starsForCourseAxes(pitch, onset, hold, SONG_COURSE_RUBRIC_VERSION, config.introductory)
+    : 0;
   return freezeSongCourseResult({
     evidence: createSongCourseEvidence(config, evidence),
     schemaVersion: 1,
     rubricVersion: SONG_COURSE_RUBRIC_VERSION,
     rubricVariant: variant,
+    ...(config.introductory ? { introductory: true as const } : {}),
     runId: config.runId,
     songId: config.songId,
     sourceRevision: config.sourceRevision,

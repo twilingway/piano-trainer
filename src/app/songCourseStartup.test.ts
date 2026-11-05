@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
 import { SONG_COURSE_SOURCES } from "../songCourse/catalog";
 import { emptySongCourseProgress } from "../songCourse/progress";
@@ -60,4 +61,18 @@ describe("song-course startup", () => {
     resolve(emptySongCourseProgress());
     expect((await pending).selection).toEqual(local.selection);
   });
+});
+
+it("only tags canonical notes introductions for the lower v3 hold milestone", async () => {
+  const { newCourseAttempt } = await import("./songCourseStartup");
+  const { buildSongCourseMaterial } = await import("../songCourse/material");
+  const source = SONG_COURSE_SOURCES[0];
+  if (!source) throw new Error("Missing course source");
+  for (const node of source.nodes) {
+    const material = buildSongCourseMaterial(source, node);
+    const attempt = newCourseAttempt(material, 1, "context-" + node.id);
+    expect(attempt.config.introductory).toBe(node.kind === "notes" ? true : undefined);
+    expect(attempt.config.sourceHash).toBe(source.sourceHash);
+    expect(attempt.config.expected).toEqual(material.expected);
+  }
 });

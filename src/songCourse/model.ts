@@ -2,9 +2,12 @@ import type { Hand } from "../fingering/fingering";
 import type { Song } from "../song/song";
 
 export const LEGACY_SONG_COURSE_RUBRIC_VERSION = "song-course-v1" as const;
-export const SONG_COURSE_RUBRIC_VERSION = "song-course-v2" as const;
+export const ACHIEVEMENT_SONG_COURSE_RUBRIC_VERSION = "song-course-v2" as const;
+export const SONG_COURSE_RUBRIC_VERSION = "song-course-v3" as const;
 export type SongCourseRubricVersion =
-  typeof LEGACY_SONG_COURSE_RUBRIC_VERSION | typeof SONG_COURSE_RUBRIC_VERSION;
+  | typeof LEGACY_SONG_COURSE_RUBRIC_VERSION
+  | typeof ACHIEVEMENT_SONG_COURSE_RUBRIC_VERSION
+  | typeof SONG_COURSE_RUBRIC_VERSION;
 export type SongCourseMode = "wait" | "tempo";
 export type SongCourseNodeKind =
   "notes" | "duration" | "guided-phrase" | "independent-phrase" | "performance" | "review";
@@ -112,6 +115,8 @@ export interface SongCourseAttemptConfig {
   readonly speed: number;
   readonly expected: readonly CourseExpectedNote[];
   readonly rubricVariant?: SongCourseRubricVariant;
+  /** Supplied only for a canonical notes introduction; standard attempts omit this flag. */
+  readonly introductory?: true;
 }
 export type CourseMistakeKind = "pitch" | "onset" | "hold";
 export interface CourseNoteGrade {
@@ -141,6 +146,7 @@ export interface SongCourseResult {
   readonly schemaVersion: 1;
   readonly rubricVersion: SongCourseRubricVersion;
   readonly rubricVariant: SongCourseRubricVariant;
+  readonly introductory?: true;
   readonly runId: string;
   readonly songId: string;
   readonly sourceRevision: string;
