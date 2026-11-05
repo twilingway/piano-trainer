@@ -62,6 +62,10 @@ describe("source-bound hold overlay", () => {
     expect(cue).not.toBeNull();
     expect(h.host.querySelector(".song-course-hold")).toBeNull();
     expect(cue?.getAttribute("aria-valuenow")).toBe("50");
+    expect(parseFloat(cue?.style.left ?? "0")).toBeGreaterThan(
+      h.head.getBoundingClientRect().right
+    );
+    expect(parseFloat(cue?.style.width ?? "0")).toBeLessThanOrEqual(104);
     expect(cue?.textContent).toContain("Hold");
     expect(cue?.style.getPropertyValue("--hold-color")).toBe("#ff7b80");
     const snapshot = h.read();
@@ -78,6 +82,28 @@ describe("source-bound hold overlay", () => {
     expect(exported).not.toContain("Release");
     h.set(null);
     h.owner.frame();
+    expect(h.room.querySelector(".song-course-hold")).toBeNull();
+  });
+  it("keeps real hold/release progress visible when the last head scrolls behind the pinned clef", () => {
+    const h = fixture();
+    const header = h.room.appendChild(document.createElement("div"));
+    header.className = "song-course-header";
+    header.getBoundingClientRect = () => new DOMRect(10, 20, 110, 160);
+    h.host.dataset.songCoursePlayhead = "130";
+    h.host.scrollLeft = 220;
+    h.owner.frame();
+    const cue = h.room.querySelector<HTMLElement>(".song-course-hold");
+    expect(cue?.dataset.compact).toBe("true");
+    expect(cue?.getAttribute("aria-valuenow")).toBe("50");
+    expect(parseFloat(cue?.style.left ?? "0")).toBeGreaterThanOrEqual(10);
+    const current = h.read();
+    if (!current) throw new Error("snapshot");
+    h.set({ ...current, progress: 1, action: "release" });
+    h.owner.frame();
+    expect(h.room.querySelector(".song-course-hold")).toBe(cue);
+    expect(cue?.textContent).toContain("Release");
+    expect(cue?.getAttribute("aria-valuenow")).toBe("100");
+    h.owner.dispose();
     expect(h.room.querySelector(".song-course-hold")).toBeNull();
   });
   it("freezes its paused value and rejects stale presentation and unavailable canonical heads", () => {

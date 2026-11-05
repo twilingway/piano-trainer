@@ -61,6 +61,10 @@ export function buildRepeatedNoteMaterial(
       copy.setAttribute("number", String(measureIndex + 1));
       for (const child of Array.from(copy.children))
         if (["note", "backup", "forward", "barline"].includes(child.tagName)) child.remove();
+      // MusicXML inherits the introduction; cloning it mid-exercise redraws clef and time.
+      if (measureIndex > 0)
+        for (const child of Array.from(copy.children))
+          if (["attributes", "direction", "print"].includes(child.tagName)) child.remove();
       if (learner) {
         for (let position = 0; position < notesPerMeasure; position++) {
           const clone = original.cloneNode(true) as Element;
