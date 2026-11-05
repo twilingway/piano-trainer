@@ -4,9 +4,9 @@ import { readingDisplayProfile } from "./readingProfile";
 import { hydrateViewProfiles, activeViewFraming, selectViewProfile } from "./viewProfiles";
 import { DEFAULT_SCREEN_LAYOUT } from "./screenLayout";
 describe("clay keyboard preferences and lessons", () => {
-  it("uses clay for absent/malformed choices, and preserves every explicit old style", () => {
+  it("uses classic for absent/malformed choices, and preserves every explicit old style", () => {
     for (const raw of [null, {}, { keyStyle: "bad" }])
-      expect(normalizeStaffPrefs(raw).keyStyle).toBe("clay");
+      expect(normalizeStaffPrefs(raw).keyStyle).toBe("classic");
     for (const keyStyle of ["classic", "arcade", "3d", "clay"] as const)
       expect(normalizeStaffPrefs({ keyStyle, keyboardOrientation: "top" })).toMatchObject({
         keyStyle,

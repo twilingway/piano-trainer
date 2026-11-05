@@ -28,14 +28,14 @@ const coarsePointer = () =>
   }));
 
 describe("new piano defaults", () => {
-  it("hydrates an empty installation as Clay, both devices, and automatic MIDI output", () => {
+  it("hydrates an empty installation as Classic, both devices, and automatic MIDI output", () => {
     const prefs = load();
-    expect(prefs.staff.keyStyle).toBe("clay");
-    expect(prefs.viewProfiles.active.keyboardStyle).toBe("clay");
+    expect(prefs.staff.keyStyle).toBe("classic");
+    expect(prefs.viewProfiles.active.keyboardStyle).toBe("classic");
     expect(prefs.staff.hands).toBe(false);
     expect(prefs.staff.road).toBe(false);
-    expect(DEFAULT_STAFF_PREFS.keyStyle).toBe("clay");
-    expect(normalizeStaffPrefs({ keyStyle: "bad" }).keyStyle).toBe("clay");
+    expect(DEFAULT_STAFF_PREFS.keyStyle).toBe("classic");
+    expect(normalizeStaffPrefs({ keyStyle: "bad" }).keyStyle).toBe("classic");
     expect(prefs.melodyOutput).toEqual({ mode: "both", channel: 1 });
     expect(prefs.midiOutput).toEqual(AUTO_OUTPUT_CHOICE);
     expect(prefs.instrumentProfiles.profileId).toBe("grace-bp-300");
@@ -63,20 +63,20 @@ describe.each([false, true])(
       if (coarse) coarsePointer();
     });
 
-    it("starts in Clay on a coarse primary pointer even on a wide tablet viewport", () => {
+    it("starts in Classic on a coarse primary pointer even on a wide tablet viewport", () => {
       coarsePointer();
       vi.stubGlobal("innerWidth", 1280);
       vi.stubGlobal("innerHeight", 800);
       const prefs = load();
-      expect(prefs.staff.keyStyle).toBe("clay");
-      expect(prefs.viewProfiles.active.keyboardStyle).toBe("clay");
+      expect(prefs.staff.keyStyle).toBe("classic");
+      expect(prefs.viewProfiles.active.keyboardStyle).toBe("classic");
       expect(prefs.staff.road).toBe(false);
       expect(prefs.staff.visible).toBe(true);
     });
 
     it("keeps the desktop default when media-query detection is unavailable", () => {
       vi.stubGlobal("matchMedia", undefined);
-      expect(load().staff.keyStyle).toBe("clay");
+      expect(load().staff.keyStyle).toBe("classic");
     });
 
     it.each(["classic", "arcade", "3d", "clay"])(
@@ -89,12 +89,12 @@ describe.each([false, true])(
           }),
           [PREFERENCE_KEYS.staff]: JSON.stringify({ keyStyle: "classic" })
         });
-        expect(prefs.staff.keyStyle).toBe(keyboardStyle);
-        expect(prefs.viewProfiles.active.keyboardStyle).toBe(keyboardStyle);
-        expect(prefs.staff.road).toBe(true);
-        expect(prefs.staff.keyboardOrientation).toBe(
-          ["3d", "clay"].includes(keyboardStyle) ? "top" : "follow"
+        expect(prefs.staff.keyStyle).toBe(keyboardStyle === "clay" ? "classic" : keyboardStyle);
+        expect(prefs.viewProfiles.active.keyboardStyle).toBe(
+          keyboardStyle === "clay" ? "classic" : keyboardStyle
         );
+        expect(prefs.staff.road).toBe(true);
+        expect(prefs.staff.keyboardOrientation).toBe(keyboardStyle === "3d" ? "top" : "follow");
       }
     );
 
@@ -104,13 +104,15 @@ describe.each([false, true])(
         const prefs = load({
           [PREFERENCE_KEYS.staff]: JSON.stringify({ keyStyle, camera: { fov: 60 }, road: true })
         });
-        expect(prefs.staff.keyStyle).toBe(keyStyle === "perspective" ? "3d" : keyStyle);
+        expect(prefs.staff.keyStyle).toBe(
+          keyStyle === "perspective" ? "3d" : keyStyle === "clay" ? "classic" : keyStyle
+        );
         expect(prefs.staff.camera.fov).toBe(60);
         expect(prefs.staff.road).toBe(true);
       }
     );
 
-    it("uses Clay for invalid saved choices without discarding other saved preferences", () => {
+    it("uses Classic for invalid saved choices without discarding other saved preferences", () => {
       const prefs = load({
         [PREFERENCE_KEYS.viewProfiles]: JSON.stringify({
           version: 1,
@@ -122,12 +124,12 @@ describe.each([false, true])(
           octaveLabels: false
         })
       });
-      expect(prefs.staff.keyStyle).toBe("clay");
+      expect(prefs.staff.keyStyle).toBe("classic");
       expect(prefs.staff.camera.fov).toBe(60);
       expect(prefs.staff.octaveLabels).toBe(false);
     });
 
-    it("persists a manual switch from Clay to 3D and restores it on reload", () => {
+    it("persists a manual switch from Classic to 3D and restores it on reload", () => {
       const values: Record<string, string> = {};
       const storage = {
         getItem: (key: string) => values[key] ?? null,
@@ -136,7 +138,7 @@ describe.each([false, true])(
         }
       };
       const initial = loadPreferences(storage);
-      expect(initial.preferences.staff.keyStyle).toBe("clay");
+      expect(initial.preferences.staff.keyStyle).toBe("classic");
       const listener = createPersistenceListener();
       registerPreferencePersistence(listener, storage);
       const store = configureStore({
@@ -151,3 +153,61 @@ describe.each([false, true])(
     });
   }
 );
+
+it("restores a removed saved clay choice as classic without erasing archived profiles", () => {
+  const archived = {
+    camera: { height: 960 },
+    layout: { keysY: 41 },
+    retainedMarker: "clay-source"
+  };
+  const values: Record<string, string> = {
+    [PREFERENCE_KEYS.staff]: JSON.stringify({
+      keyStyle: "clay",
+      keyboardOrientation: "top",
+      octaveLabels: false
+    }),
+    [PREFERENCE_KEYS.viewProfiles]: JSON.stringify({
+      version: 1,
+      active: { keyboardStyle: "clay", keyboardOrientation: "top", notesProjection: "perspective" },
+      entries: {
+        "clay:perspective:top": archived,
+        "classic:perspective:follow": { camera: { height: 720 }, layout: { keysY: 77 } }
+      }
+    })
+  };
+  const original = { ...values };
+  const storage = {
+    getItem: (key: string) => values[key] ?? null,
+    setItem: vi.fn((key: string, value: string) => {
+      values[key] = value;
+    })
+  };
+  const initial = loadPreferences(storage);
+  expect(initial.preferences.staff).toMatchObject({
+    keyStyle: "classic",
+    keyboardOrientation: "follow",
+    road: true,
+    octaveLabels: false,
+    camera: { height: 720 }
+  });
+  expect(initial.preferences.layouts.piano.keysY).toBe(77);
+  expect(initial.preferences.viewProfiles.entries["clay:perspective:top"]).toEqual(archived);
+  expect(storage.setItem).not.toHaveBeenCalled();
+  expect(values).toEqual(original);
+  const listener = createPersistenceListener();
+  registerPreferencePersistence(listener, storage);
+  const store = configureStore({
+    reducer: { preferences: preferencesReducer, persistence: persistenceReducer },
+    preloadedState: initial,
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware().prepend(listener.middleware)
+  });
+  store.dispatch(preferencesActions.staffChanged({ octaveLabels: true }));
+  const restored = loadPreferences(storage).preferences;
+  expect(restored.staff).toMatchObject({
+    keyStyle: "classic",
+    octaveLabels: true,
+    camera: { height: 720 }
+  });
+  expect(restored.viewProfiles.active).toEqual(initial.preferences.viewProfiles.active);
+  expect(restored.viewProfiles.entries["clay:perspective:top"]).toEqual(archived);
+});
