@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "reviewed-idle-prototype-awaiting-game-context",
+  "status": "integrated-portrait-idle",
   "generationTool": "built-in image_gen",
   "purpose": "Neutral seated pose for no active teaching note; never asserts a pressed pitch",
   "frame": "idle-frame.webp",
@@ -24,10 +24,10 @@
   "limitations": [
     "New generation retains small silhouette/face variation; not pixel-identical to pressed poses.",
     "Four fingertips remain separately readable; full five-finger anatomy not certified.",
-    "This single neutral frame permits truthful rest/release display, not a complete smooth pressing/releasing animation.",
-    "Native-scale game-context acceptance remains for root."
+    "This single neutral frame permits truthful rest/release display, not a complete smooth pressing/releasing animation."
   ],
   "privacy": "No original user photograph or private Blender source is included.",
   "provenanceTerms": "Generated for this original project with built-in image_gen from an existing generated project asset; no downloaded third-party art.",
-  "promptUtf8Sha256": "1aca2478b757136eee43c503f8bc057f01541e70b21426a787b37382ffd6abc1"
+  "promptUtf8Sha256": "1aca2478b757136eee43c503f8bc057f01541e70b21426a787b37382ffd6abc1",
+  "gameContextQa": "docs/CLAY_LESSON_SCREEN_QA_2026_11_05.md; portrait idle, CDE demo, physical input/release and image failure verified"
 }
