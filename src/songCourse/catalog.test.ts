@@ -91,7 +91,7 @@ describe("melody-led course content", () => {
     const materials = source.nodes.slice(0, 7).map((node) => buildSongCourseMaterial(source, node));
     expect(materials[0]?.expected.map((note) => note.pitch)).toEqual([60, 60, 60, 60]);
     expect(materials[1]?.expected.map((note) => note.pitch)).toEqual([62, 62, 62, 62]);
-    expect(materials[2]?.expected.map((note) => note.pitch)).toEqual([64]);
+    expect(materials[2]?.expected.map((note) => note.pitch)).toEqual([64, 64, 64, 64]);
     expect(materials[3]?.expected.map((note) => note.pitch)).toEqual([64, 62, 60]);
     expect(
       materials[4]?.expected.map((note) => Number(((note.duration * 72) / 60).toFixed(6)))
@@ -105,13 +105,13 @@ describe("melody-led course content", () => {
     expect(materials[6]?.musicXml).toContain("<type>whole</type>");
   });
 
-  it("uses one source-owned E with its written finger and length while retaining the old mixed node", () => {
+  it("retains the legacy one-E material and the old mixed node behind the new four-E step", () => {
     const source = findSongCourseSource("hot-cross-buns");
     if (!source) throw new Error("missing source");
     expect(source.nodes.slice(0, 4).map((node) => node.id)).toEqual([
       "hot-cross-buns/notes-c",
       "hot-cross-buns/notes-d",
-      "hot-cross-buns/notes-e-intro",
+      "hot-cross-buns/notes-e-repeat-v1",
       "hot-cross-buns/notes-e"
     ]);
     const intro = findSongCourseNode(source.id, "hot-cross-buns/notes-e-intro");

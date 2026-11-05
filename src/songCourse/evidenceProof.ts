@@ -1,3 +1,4 @@
+import { expectedNodeRawIds } from "./nodeIdentity";
 import { validSongCourseEvidence } from "./evidence";
 import { gradeSongCourseAttempt } from "./rubric";
 import type { CourseNoteGrade, SongCourseResult, SongCourseSource, SongCourseNode } from "./model";
@@ -62,7 +63,7 @@ export function songCourseEvidenceMatchesNode(
   )
     return false;
   const expectedIds = new Set(
-    node.sourceNoteIds.map((id) => `${source.id}@${source.revision}:${id}`)
+    expectedNodeRawIds(node).map((id) => `${source.id}@${source.revision}:${id}`)
   );
   return (
     evidence.expected.length === expectedIds.size &&
