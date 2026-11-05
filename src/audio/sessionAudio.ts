@@ -25,12 +25,17 @@ export class SessionAudio {
   private anchor = { performance: 0, audio: 0 };
   private readonly scheduled = new Set<string>();
   private readonly jobs = new Set<number>();
+  private countInClicks:
+    { readonly session: PracticeSession; readonly sounded: Map<number, number> } | undefined;
   private pump: ReturnType<typeof setInterval> | undefined;
   reset(performanceMs: number): void {
     if (this.pump !== undefined) clearInterval(this.pump);
     this.pump = undefined;
     for (const job of this.jobs) cancelScheduledSound(job);
     this.jobs.clear();
+    // A callback may already have created a future voice; only already-heard beats survive pause.
+    for (const [index, dueAt] of this.countInClicks?.sounded ?? [])
+      if (dueAt > performanceMs) this.countInClicks?.sounded.delete(index);
     this.scheduled.clear();
     cancelScheduledVoices();
     this.output.midi?.reset();
@@ -46,6 +51,9 @@ export class SessionAudio {
     this.pump = setInterval(pump, 50);
   }
   schedule(session: PracticeSession, now: number, offsetMs: number, metronome: boolean): void {
+    if (session.options.audibleCountIn && this.countInClicks?.session !== session)
+      this.countInClicks = { session, sounded: new Map() };
+    const preparation = session.options.audibleCountIn ? this.countInClicks : undefined;
     const due = session.options.mode === "wait" ? session.nextDue()[0]?.start : undefined;
     const liveTime = Math.min(session.songTimeAt(now) ?? session.time, due ?? Infinity);
     const horizon = liveTime + (0.3 + Math.max(0, offsetMs) / 1000) * session.options.speed;
@@ -142,7 +150,11 @@ export class SessionAudio {
           (session.options.countInBeats !== undefined && beat.time >= session.song.duration)
         )
           continue;
+        if (beat.time < 0 && preparation?.sounded.has(index)) continue;
+        const dueAt = session.performanceTimeAt(beat.time);
         schedule(`beat:${String(index)}`, beat.time, (at) => {
+          if (beat.time < 0 && dueAt !== undefined)
+            preparation?.sounded.set(index, dueAt - offsetMs);
           scheduledClick(beat.downbeat, at);
         });
       }

@@ -417,37 +417,40 @@ it("keeps an immediate helper demonstration silent from preparatory beats", () =
   audio.reset(1000);
 });
 
-it("resumes only remaining preparation and cancels obsolete clicks before retry", () => {
-  const run = countedSession();
-  const audio = new SessionAudio();
-  audio.reset(1000);
-  audio.schedule(run, 1000, 0, false);
-  flushQueued();
-  audio.schedule(run, 1500, 0, false);
-  flushQueued();
-  expect(sound.click).toHaveBeenCalledTimes(2);
-  run.pauseClock(1540);
-  const stopped = run.time;
-  audio.reset(1540);
-  expect(sound.queued.size).toBe(0);
-  run.resumeClock(5000);
-  expect(run.time).toBe(stopped);
-  audio.reset(5000);
-  for (const now of [5000, 5250, 5500, 5750, 6000]) {
-    audio.schedule(run, now, 0, false);
+it.each([1500, 1540])(
+  "resumes only remaining preparation after pausing at %sms and cancels old retry clicks",
+  (pauseAt) => {
+    const run = countedSession();
+    const audio = new SessionAudio();
+    audio.reset(1000);
+    audio.schedule(run, 1000, 0, false);
     flushQueued();
-  }
-  expect(sound.click).toHaveBeenCalledTimes(4);
-  const retry = countedSession();
-  audio.reset(1000);
-  audio.schedule(retry, 1000, 0, false);
-  expect(sound.queued.size).toBe(1);
-  audio.reset(1000);
-  expect(sound.queued.size).toBe(0);
-  for (const now of [1000, 1500, 2000, 2500, 3000]) {
-    audio.schedule(retry, now, 0, false);
+    audio.schedule(run, 1500, 0, false);
     flushQueued();
+    expect(sound.click).toHaveBeenCalledTimes(2);
+    run.pauseClock(pauseAt);
+    const stopped = run.time;
+    audio.reset(pauseAt);
+    expect(sound.queued.size).toBe(0);
+    run.resumeClock(5000);
+    expect(run.time).toBe(stopped);
+    audio.reset(5000);
+    for (const now of [5000, 5250, 5500, 5750, 6000]) {
+      audio.schedule(run, now, 0, false);
+      flushQueued();
+    }
+    expect(sound.click).toHaveBeenCalledTimes(4);
+    const retry = countedSession();
+    audio.reset(1000);
+    audio.schedule(retry, 1000, 0, false);
+    expect(sound.queued.size).toBe(1);
+    audio.reset(1000);
+    expect(sound.queued.size).toBe(0);
+    for (const now of [1000, 1500, 2000, 2500, 3000]) {
+      audio.schedule(retry, now, 0, false);
+      flushQueued();
+    }
+    expect(sound.click).toHaveBeenCalledTimes(8);
+    audio.reset(1000);
   }
-  expect(sound.click).toHaveBeenCalledTimes(8);
-  audio.reset(1000);
-});
+);
