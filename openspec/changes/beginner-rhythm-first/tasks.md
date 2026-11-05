@@ -12,5 +12,5 @@
 ## 3. Приёмка
 
 - [x] 3.1 Независимое ревью и узкие тесты.
-- [ ] 3.2 pnpm check и pnpm spec:validate; PR в dev с UTF-8 readback.
+- [x] 3.2 pnpm check и pnpm spec:validate; PR в dev с UTF-8 readback.
 - [ ] 3.3 Видимая QA интегрирующим root перед архивированием.
