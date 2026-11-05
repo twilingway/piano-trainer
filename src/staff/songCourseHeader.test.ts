@@ -153,3 +153,23 @@ it("recreates the same fixed prefix after a zoom or relayout in the middle of sc
   expect(second.style.width).toBe(width);
   rebuilt?.dispose();
 });
+
+it("clips the fixed header to the row while vertically scrolling enlarged notation", () => {
+  const { room, host, svg } = fixture();
+  svg.getBoundingClientRect = () =>
+    new DOMRect(20 - host.scrollLeft, 40 - host.scrollTop, 900, 210);
+  const header = installSongCourseHeader(host);
+  const overlay = required(room.querySelector<HTMLElement>(".song-course-header"));
+  const clone = required(overlay.querySelector("svg"));
+  expect(overlay.style.top).toBe("30px");
+  expect(overlay.style.height).toBe("140px");
+  expect(clone.getAttribute("height")).toBe("210");
+  expect(clone.style.marginTop).toBe("0px");
+  host.scrollTop = 50;
+  host.dispatchEvent(new Event("scroll"));
+  expect(overlay.style.top).toBe("30px");
+  expect(overlay.style.height).toBe("140px");
+  expect(clone.style.marginTop).toBe("-50px");
+  expect(overlay.style.overflow).toBe("hidden");
+  header?.dispose();
+});

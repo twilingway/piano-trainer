@@ -775,6 +775,7 @@ describe("uniform staff layout with installed OSMD", () => {
           }
           frameSongCourseDrawing(host);
           const anchor = Number(host.dataset.songCoursePlayhead);
+          expect(anchor).toBe(width / 2);
           const cursor = host.appendChild(document.createElement("div"));
           const spots = Array.from({ length: count * 4 + 1 }, (_, step) => ({
             beat: step / 4,

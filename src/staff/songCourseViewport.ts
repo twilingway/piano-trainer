@@ -8,9 +8,9 @@ export interface SongCourseViewportNote {
   readonly width: number;
 }
 
-/** Keep a clef zone on narrow screens and leave most of a wide viewport for upcoming notes. */
+/** One visible target at the center of the score viewport, before and during every course phase. */
 export function songCoursePlayhead(width: number): number {
-  return Math.min(320, Math.max(0, width) * 0.4);
+  return Math.max(0, width) / 2;
 }
 
 /** Fit every real four-event window; a partial ending contributes only its real notes. */
@@ -83,25 +83,8 @@ export function frameSongCourseDrawing(host: HTMLElement): void {
   const drawing = svg.getBoundingClientRect();
   const head = first.getBoundingClientRect();
   if (!(drawing.width > 0 && head.width > 0)) return;
-  const firstX = head.left + head.width / 2 - drawing.left;
-  const prefixRight = Math.max(
-    0,
-    ...[
-      ...svg.querySelectorAll<SVGGraphicsElement>(".vf-clef, .vf-timesignature, .vf-keysignature")
-    ]
-      .map((glyph) => glyph.getBoundingClientRect())
-      .filter((box) => box.width > 0 && box.right < head.left)
-      .map((box) => box.right - drawing.left)
-  );
   const gap = Math.max(12, head.width / 2 + 8);
-  const balanced =
-    drawing.width <= host.clientWidth + 0.5
-      ? (host.clientWidth - drawing.width) / 2 + firstX
-      : songCoursePlayhead(host.clientWidth);
-  const anchor = Math.min(
-    host.clientWidth - Math.min(12, host.clientWidth / 24),
-    Math.max(balanced, prefixRight + gap)
-  );
+  const anchor = songCoursePlayhead(host.clientWidth);
   host.dataset.songCoursePlayhead = String(anchor);
   host.dataset.songCourseCursorGap = String(gap);
   page.style.paddingInline = `${String(anchor)}px ${String(Math.max(0, host.clientWidth - anchor))}px`;
@@ -182,11 +165,14 @@ export function fitSongCourseRoom(
   draw: () => number,
   manualZoom = 1
 ): number {
+  host.style.maxHeight = "";
   let shift = draw();
   const room = host.closest<HTMLElement>(".song-course-lesson__score");
   if (!room || host.dataset.songCoursePlayhead === undefined) return shift;
   const limit = room.clientHeight;
   if (!(limit > 1)) return shift;
+  // The final manual zoom may be taller than the row: scroll inside it, never over the heading.
+  host.style.maxHeight = `${String(limit)}px`;
   // Crop padding and font bounds may change slightly after a render, so measure again.
   for (let pass = 0; pass < 4; pass++) {
     const svg = host.querySelector("svg");
