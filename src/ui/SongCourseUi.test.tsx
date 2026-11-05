@@ -214,9 +214,26 @@ describe("song-course lesson and result", () => {
       onRetrySave: vi.fn()
     };
   }
+  it("keeps the release and rehold instructions consistent", async () => {
+    const props = lessonProps();
+    for (const [phase, instruction] of [
+      ["awaiting-keys-up", "Сначала отпустите клавиши"],
+      ["awaiting-rehold", "Снова нажмите прежнюю ноту"],
+      ["awaiting-release", "Завершаем звук — отпустите клавишу"]
+    ] as const) {
+      await render(<SongCourseLesson {...props} phase={phase} />);
+      expect(host.querySelector(".song-course-lesson__hold-status")?.textContent).toBe(instruction);
+      expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe(instruction);
+    }
+  });
   it("shows musical progress and permits speed selection only before a new attempt", async () => {
     const props = lessonProps();
     await render(<SongCourseLesson {...props} />);
+    expect(host.querySelector('input[type="range"]')).toBeNull();
+    expect(host.textContent).not.toContain(props.material.node.instruction);
+    expect(host.querySelector("[data-lesson-score]")).not.toBeNull();
+    await click("···");
+    expect(host.textContent).toContain(props.material.node.instruction);
     const slider = host.querySelector<HTMLInputElement>('input[type="range"]');
     expect(slider?.min).toBe("0.25");
     expect(slider?.max).toBe("1");
@@ -233,15 +250,75 @@ describe("song-course lesson and result", () => {
       slider.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(props.onSpeed).toHaveBeenCalledExactlyOnceWith(0.5);
+    await act(async () => {
+      await Promise.resolve();
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(host.querySelector(".song-course-menu")).toBeNull();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Подсказки и меню этапа");
     await click("Сыграть этап");
     expect(props.onStart).toHaveBeenCalledOnce();
     for (const phase of ["playing", "paused", "awaiting-release", "demo"] as const) {
       await render(<SongCourseLesson {...props} phase={phase} waiting />);
       expect(host.querySelector('input[type="range"]')).toBeNull();
     }
-    expect(host.querySelector(".lesson-workspace__waiting")?.textContent).toBe("");
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe(
+      "Слушайте помощника"
+    );
     await click("Пауза в песне");
     expect(props.onPause).toHaveBeenCalledOnce();
+  });
+
+  it("pauses for optional instructions, closes outside, and keeps settings behind the course menu", async () => {
+    const props = lessonProps();
+    const onSettings = vi.fn(),
+      onLanguage = vi.fn(),
+      onFullscreen = vi.fn();
+    const view = (phase: SongCourseLessonProps["phase"]) => (
+      <SongCourseLesson
+        {...props}
+        phase={phase}
+        onSettings={onSettings}
+        onLanguage={onLanguage}
+        onFullscreen={onFullscreen}
+      />
+    );
+    await render(view("playing"));
+    await click("···");
+    expect(props.onPause).toHaveBeenCalledOnce();
+    expect(host.querySelector('input[type="range"]')).toBeNull();
+    expect(host.textContent).toContain(props.material.node.instruction);
+    await click("Сменить язык урока");
+    expect(onLanguage).toHaveBeenCalledOnce();
+    await click("Настройки");
+    expect(onSettings).toHaveBeenCalledOnce();
+    expect(host.querySelector(".song-course-menu")).toBeNull();
+    await render(view("ready"));
+    await click("···");
+    await click("На весь экран");
+    expect(onFullscreen).toHaveBeenCalledOnce();
+    await click("···");
+    await act(async () => {
+      await Promise.resolve();
+      document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    });
+    expect(host.querySelector(".song-course-menu")).toBeNull();
+  });
+
+  it("keeps short status and musical hold instructions localized without the long ready card", async () => {
+    const props = lessonProps();
+    setInterfaceLanguage("en");
+    await render(
+      <SongCourseLesson {...props} phase="awaiting-rehold" characters={<span data-character />} />
+    );
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe(
+      "Press the same note again"
+    );
+    expect(host.querySelector("[data-character]")).not.toBeNull();
+    expect(host.querySelector(".song-course-lesson__action button")).toBeNull();
+    await click("···");
+    expect(host.textContent).toContain("How to play this stage");
+    expect(host.textContent).toContain("On phones and tablets");
   });
 
   it("shows separate pitch/onset/hold evidence, actual speed, earned stars and result callbacks", async () => {

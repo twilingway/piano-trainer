@@ -700,3 +700,17 @@ it.each([
     staffPitchColors: guided
   });
 });
+
+it("leaves the melody course its own compact bar and restores the ordinary header on exit", () => {
+  observed.runtime = initial();
+  observed.runtime.songCourse = { ...observed.runtime.songCourse, active: true };
+  const view = mount(<ConnectedPlayerHeader />);
+  expect(observed.header).not.toHaveBeenCalled();
+  expect(view.container.querySelector(".shell-top")).toBeNull();
+  observed.runtime = {
+    ...observed.runtime,
+    songCourse: { ...observed.runtime.songCourse, active: false }
+  };
+  view.render();
+  expect(observed.header).toHaveBeenCalledOnce();
+});

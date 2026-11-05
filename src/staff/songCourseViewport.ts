@@ -133,3 +133,34 @@ export function fitSongCourseLabelBounds(host: HTMLElement): number {
   svg.dataset.lessonCropViewBox = newViewBox;
   return extraTop;
 }
+
+/**
+ * Fit the final cropped drawing, including rendered name/finger labels, in its allocated row.
+ * OSMD rerenders at a uniform zoom before any note/cursor coordinates are indexed.
+ * Only the responsive melody shell opts in; legacy manually enlarged lessons keep scrolling.
+ */
+export function fitSongCourseRoom(
+  osmd: OpenSheetMusicDisplay,
+  host: HTMLElement,
+  draw: () => number
+): number {
+  let shift = draw();
+  const room = host.closest<HTMLElement>(".song-course-lesson__score");
+  if (!room || host.dataset.songCoursePlayhead === undefined) return shift;
+  const limit = room.clientHeight;
+  if (!(limit > 1)) return shift;
+  // Crop padding and font bounds may change slightly after a render, so measure again.
+  for (let pass = 0; pass < 4; pass++) {
+    const svg = host.querySelector("svg");
+    if (!svg) break;
+    const scrollbar = Math.max(0, host.offsetHeight - host.clientHeight);
+    const height = svg.getBoundingClientRect().height + scrollbar;
+    if (!(height > limit + 0.5)) break;
+    const scale = Math.max(0.01, (limit - 1) / height);
+    if (!(Number.isFinite(scale) && scale < 1)) break;
+    osmd.Zoom *= scale;
+    osmd.render();
+    shift = draw();
+  }
+  return shift;
+}
