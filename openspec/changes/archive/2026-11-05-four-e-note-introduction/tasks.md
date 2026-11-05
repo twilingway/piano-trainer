@@ -12,4 +12,4 @@
 ## 3. Проверка
 
 - [x] 3.1 Проверить четыре down/up, одно удержание, duration/finger/source identity и reload.
-- [ ] 3.2 Выполнить pnpm check и pnpm spec:validate, открыть PR в dev.
+- [x] 3.2 Выполнить pnpm check и pnpm spec:validate, открыть PR в dev.
