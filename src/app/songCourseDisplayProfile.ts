@@ -32,7 +32,7 @@ export function songCourseDisplayProfile({
       keyRange: compact ? "song" : preferred.keyRange === "song" ? "88" : preferred.keyRange,
       keyStyle: preferred.keyStyle,
       ...(compact && shortViewport && (preferred.keyStyle === "clay" || preferred.keyStyle === "3d")
-        ? { camera: { ...display.camera, pitch: 10 } }
+        ? { camera: { ...display.camera, height: 150, distance: 900, pitch: 18 } }
         : {})
     },
     displayRange: compact ? learnerRange : undefined,

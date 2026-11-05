@@ -1,3 +1,12 @@
+import { layoutKeyboard } from "../render/keyboardLayout";
+import { metricKeyboardCamera } from "../render/metricKeyboardCamera";
+import {
+  fittedNativeKeyboardCamera,
+  nativeKeyboardFootprint,
+  naturalNativeKeyboardHeight
+} from "../render/nativeKeyboardFraming";
+import { USUAL_PLACEMENT, viewGeometry } from "../render/viewGeometry";
+import { DEFAULT_CAMERA, type CameraPrefs } from "../render/worldCamera";
 import { describe, expect, it } from "vitest";
 import { normalizeStaffPrefs } from "./staffPreferences";
 import { readingDisplayProfile } from "./readingProfile";
@@ -115,7 +124,12 @@ it.each(["clay", "3d"] as const)(
       display,
       learnerRange: [60, 72]
     });
-    expect(result.prefs.camera).toEqual({ ...display.camera, pitch: 10 });
+    expect(result.prefs.camera).toEqual({
+      ...display.camera,
+      height: 150,
+      distance: 900,
+      pitch: 18
+    });
     expect(display.camera.pitch).toBe(18);
     expect(preferred.camera.pitch).toBe(60);
     expect(JSON.stringify(preferred)).toBe(before);
@@ -150,4 +164,52 @@ it.each([
   });
   expect(result.prefs.camera).toBe(display.camera);
   expect(result.prefs.camera.pitch).toBe(18);
+});
+
+function compactNativeMetrics(prefs: CameraPrefs) {
+  const width = 667,
+    height = 375;
+  const layout = layoutKeyboard(width, 60, 72);
+  const base = metricKeyboardCamera(width, width, height, prefs, 0.1, layout.values(), true);
+  const geometry = viewGeometry(
+    height,
+    width / 8,
+    { keys: true, notes: false, hands: false },
+    false,
+    true,
+    { ...USUAL_PLACEMENT, maxHeightShare: 0.3 },
+    naturalNativeKeyboardHeight(base, false),
+    height
+  );
+  const fitted = fittedNativeKeyboardCamera(base, geometry.keyboardHeight, false, 1);
+  const whiteWidth = fitted.project(23.5, 22, 0).x - fitted.project(0, 22, 0).x;
+  return {
+    whiteWidth,
+    octaveWidth: whiteWidth * 8,
+    height: nativeKeyboardFootprint(fitted).height,
+    physicalDepth: fitted.params.keyboardDepth,
+    depthScale: fitted.params.keyboardDepthScale
+  };
+}
+
+it("widens a short compact physical key to at least 44px within the same height budget", () => {
+  const preferred = normalizeStaffPrefs({ keyStyle: "clay" });
+  const display = readingDisplayProfile(preferred, true);
+  const result = songCourseDisplayProfile({
+    active: true,
+    compact: true,
+    shortViewport: true,
+    preferred,
+    display,
+    learnerRange: [60, 72]
+  });
+  const before = compactNativeMetrics(display.camera);
+  const after = compactNativeMetrics(result.prefs.camera);
+  expect(before.whiteWidth).toBeCloseTo(36.0611516778842, 6);
+  expect(after.whiteWidth).toBeGreaterThanOrEqual(44);
+  expect(after.whiteWidth).toBeGreaterThan(before.whiteWidth * 1.2);
+  expect(after.height).toBeCloseTo(375 * 0.3, 6);
+  expect(after.physicalDepth).toBe(150);
+  expect(after.depthScale).toBeUndefined();
+  expect(display.camera).toEqual({ ...DEFAULT_CAMERA, pitch: 18 });
 });

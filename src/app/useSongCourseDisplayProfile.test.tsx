@@ -31,6 +31,8 @@ function Harness({ active = true }: { readonly active?: boolean }) {
       data-high={profile.displayRange?.[1]}
       data-height-share={profile.keyboardMaxHeightShare}
       data-pitch={profile.prefs.camera.pitch}
+      data-camera-height={profile.prefs.camera.height}
+      data-camera-distance={profile.prefs.camera.distance}
     />
   );
 }
@@ -139,13 +141,13 @@ it("adjusts only compact short framing through height changes without resetting 
   });
   const output = readOutput();
   const identity = output.dataset.identity;
-  expect(output.dataset.pitch).toBe("10");
+  expect(output.dataset).toMatchObject({ pitch: "18", cameraHeight: "150", cameraDistance: "900" });
   await act(async () => {
     height = 501;
     for (const listener of listeners) listener();
     await Promise.resolve();
   });
-  expect(output.dataset.pitch).toBe("18");
+  expect(output.dataset).toMatchObject({ pitch: "18", cameraHeight: "230", cameraDistance: "720" });
   await act(async () => {
     width = 1025;
     height = 375;
