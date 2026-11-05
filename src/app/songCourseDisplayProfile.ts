@@ -3,6 +3,7 @@ import type { StaffPrefs } from "./staffPreferences";
 export interface SongCourseDisplayInput {
   readonly active: boolean;
   readonly compact: boolean;
+  readonly shortViewport?: boolean;
   readonly preferred: StaffPrefs;
   readonly display: StaffPrefs;
   readonly learnerRange: readonly [number, number] | undefined;
@@ -18,6 +19,7 @@ export interface SongCourseDisplayProfile {
 export function songCourseDisplayProfile({
   active,
   compact,
+  shortViewport = false,
   preferred,
   display,
   learnerRange
@@ -28,7 +30,10 @@ export function songCourseDisplayProfile({
     prefs: {
       ...display,
       keyRange: compact ? "song" : preferred.keyRange === "song" ? "88" : preferred.keyRange,
-      keyStyle: preferred.keyStyle
+      keyStyle: preferred.keyStyle,
+      ...(compact && shortViewport && (preferred.keyStyle === "clay" || preferred.keyStyle === "3d")
+        ? { camera: { ...display.camera, pitch: 10 } }
+        : {})
     },
     displayRange: compact ? learnerRange : undefined,
     keyboardMaxHeightShare: 0.3

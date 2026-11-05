@@ -6,12 +6,14 @@ import { readingDisplayProfile } from "./readingProfile";
 import { normalizeStaffPrefs } from "./staffPreferences";
 import {
   COMPACT_SONG_COURSE_QUERY,
+  SHORT_SONG_COURSE_QUERY,
   useSongCourseDisplayProfile
 } from "./useSongCourseDisplayProfile";
 
 let host: HTMLDivElement;
 let root: Root;
 let width: number;
+let height: number;
 const listeners = new Set<() => void>();
 const preferred = normalizeStaffPrefs({ keyRange: "49", keyStyle: "3d", freeCamera: true });
 const display = readingDisplayProfile(preferred, true);
@@ -28,6 +30,7 @@ function Harness({ active = true }: { readonly active?: boolean }) {
       data-low={profile.displayRange?.[0]}
       data-high={profile.displayRange?.[1]}
       data-height-share={profile.keyboardMaxHeightShare}
+      data-pitch={profile.prefs.camera.pitch}
     />
   );
 }
@@ -41,13 +44,14 @@ function readOutput(): HTMLOutputElement {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   width = 1024;
+  height = 768;
   mounts = 0;
   listeners.clear();
   vi.spyOn(window, "matchMedia").mockImplementation((query) => {
-    expect(query).toBe(COMPACT_SONG_COURSE_QUERY);
+    expect([COMPACT_SONG_COURSE_QUERY, SHORT_SONG_COURSE_QUERY]).toContain(query);
     return {
       get matches() {
-        return width <= 1024;
+        return query === COMPACT_SONG_COURSE_QUERY ? width <= 1024 : height <= 500;
       },
       addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
       removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener)
@@ -81,7 +85,7 @@ it("switches 1024 to 1025 and back without remounting the course or changing sav
     heightShare: "0.3"
   });
   const identity = output.dataset.identity;
-  expect(listeners.size).toBe(1);
+  expect(listeners.size).toBe(2);
   await act(async () => {
     width = 1025;
     for (const listener of listeners) listener();
@@ -123,4 +127,33 @@ it("removes its listener and stops overriding the legacy view when the course ex
   });
   expect(listeners.size).toBe(0);
   root = createRoot(host);
+});
+
+it("adjusts only compact short framing through height changes without resetting the lesson", async () => {
+  const before = JSON.stringify(preferred);
+  await act(async () => {
+    width = 667;
+    height = 500;
+    root.render(<Harness />);
+    await Promise.resolve();
+  });
+  const output = readOutput();
+  const identity = output.dataset.identity;
+  expect(output.dataset.pitch).toBe("10");
+  await act(async () => {
+    height = 501;
+    for (const listener of listeners) listener();
+    await Promise.resolve();
+  });
+  expect(output.dataset.pitch).toBe("18");
+  await act(async () => {
+    width = 1025;
+    height = 375;
+    for (const listener of listeners) listener();
+    await Promise.resolve();
+  });
+  expect(output.dataset).toMatchObject({ pitch: "18", range: "49" });
+  expect(output.dataset.identity).toBe(identity);
+  expect(mounts).toBe(1);
+  expect(JSON.stringify(preferred)).toBe(before);
 });

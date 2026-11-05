@@ -100,3 +100,54 @@ describe("responsive song course display", () => {
     }
   });
 });
+
+it.each(["clay", "3d"] as const)(
+  "uses a shallow temporary %s camera only on compact short viewports",
+  (keyStyle) => {
+    const preferred = normalizeStaffPrefs({ keyStyle, camera: { pitch: 60 } });
+    const display = readingDisplayProfile(preferred, true);
+    const before = JSON.stringify(preferred);
+    const result = songCourseDisplayProfile({
+      active: true,
+      compact: true,
+      shortViewport: true,
+      preferred,
+      display,
+      learnerRange: [60, 72]
+    });
+    expect(result.prefs.camera).toEqual({ ...display.camera, pitch: 10 });
+    expect(display.camera.pitch).toBe(18);
+    expect(preferred.camera.pitch).toBe(60);
+    expect(JSON.stringify(preferred)).toBe(before);
+    expect(
+      songCourseDisplayProfile({
+        active: false,
+        compact: true,
+        shortViewport: true,
+        preferred,
+        display: preferred,
+        learnerRange: [60, 72]
+      }).prefs
+    ).toBe(preferred);
+  }
+);
+
+it.each([
+  { compact: true, shortViewport: false, keyStyle: "clay" as const },
+  { compact: false, shortViewport: true, keyStyle: "clay" as const },
+  { compact: true, shortViewport: true, keyStyle: "classic" as const },
+  { compact: true, shortViewport: true, keyStyle: "arcade" as const }
+])("does not change the existing camera for %j", ({ compact, shortViewport, keyStyle }) => {
+  const preferred = normalizeStaffPrefs({ keyStyle });
+  const display = readingDisplayProfile(preferred, true);
+  const result = songCourseDisplayProfile({
+    active: true,
+    compact,
+    shortViewport,
+    preferred,
+    display,
+    learnerRange: [60, 72]
+  });
+  expect(result.prefs.camera).toBe(display.camera);
+  expect(result.prefs.camera.pitch).toBe(18);
+});
