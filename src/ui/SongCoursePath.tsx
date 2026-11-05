@@ -12,6 +12,13 @@ import type {
 import assistant from "./lesson-art/assistant.webp";
 import { ClayStars } from "./ClayStars";
 import { SongCourseMiniature } from "./SongCourseMiniature";
+import doCard from "./lesson-art/course-cards/do-on-palm.webp";
+import reCard from "./lesson-art/course-cards/re-with-twili.webp";
+
+const INTRO_CARD_ART: Readonly<Record<string, string>> = {
+  "hot-cross-buns/notes-c": doCard,
+  "hot-cross-buns/notes-d": reCard
+};
 
 export interface SongCoursePathProps {
   readonly sources: readonly SongCourseSource[];
@@ -217,11 +224,12 @@ function SongCoursePathNode(props: {
 }) {
   const { t } = useI18n();
   const { source, node, result, current } = props;
+  const illustration = source.id === "hot-cross-buns" ? INTRO_CARD_ART[node.id] : undefined;
   return (
     <li>
       <button
         type="button"
-        className="song-course-path__node"
+        className={`song-course-path__node${illustration ? " song-course-path__node--illustrated" : ""}`}
         disabled={props.pending}
         data-state={current ? "current" : result ? "complete" : "upcoming"}
         aria-current={current ? "step" : undefined}
@@ -229,11 +237,24 @@ function SongCoursePathNode(props: {
           props.onChoose(source.id, node.id);
         }}
       >
-        <SongCourseMiniature source={source} node={node} />
+        {illustration ? (
+          <img
+            className="song-course-path__illustration"
+            src={illustration}
+            alt=""
+            width={960}
+            height={640}
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+          />
+        ) : (
+          <SongCourseMiniature source={source} node={node} />
+        )}
         <span className="song-course-path__node-copy">
           <small>{t("Этап песни {number}", { number: props.number })}</small>
           <strong>{t(node.title)}</strong>
-          <span>{t(node.instruction)}</span>
+          {!illustration && <span>{t(node.instruction)}</span>}
           {result && (
             <span
               className="song-course-path__stars"
