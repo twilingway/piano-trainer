@@ -1,6 +1,8 @@
+import type { SongCourseHoldSnapshot } from "../songCourse/holdCue";
 import type { SongCourseFeedbackSource } from "./songCourseFeedback";
 export interface StaffPresentation {
   readonly songCourseFeedback?: SongCourseFeedbackSource;
+  readonly readHold?: (() => SongCourseHoldSnapshot | null) | undefined;
   readonly id: string;
   readonly onPresented: (id: string, atMs: number) => void;
   readonly onError: (id: string) => void;

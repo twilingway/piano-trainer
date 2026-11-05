@@ -78,6 +78,21 @@ function receipt(change: Partial<Result> = {}): Result {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   setInterfaceLanguage("ru");
+  vi.spyOn(HTMLDialogElement.prototype, "showModal").mockImplementation(function (
+    this: HTMLDialogElement
+  ) {
+    this.setAttribute("open", "");
+  });
+  vi.spyOn(HTMLDialogElement.prototype, "show").mockImplementation(function (
+    this: HTMLDialogElement
+  ) {
+    this.setAttribute("open", "");
+  });
+  vi.spyOn(HTMLDialogElement.prototype, "close").mockImplementation(function (
+    this: HTMLDialogElement
+  ) {
+    this.removeAttribute("open");
+  });
   host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);
 });
@@ -88,6 +103,7 @@ afterEach(async () => {
   });
   host.remove();
   setInterfaceLanguage("ru");
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 async function render(view: ReactNode) {
@@ -256,17 +272,36 @@ describe("song-course lesson and result", () => {
     });
     expect(host.querySelector(".song-course-menu")).toBeNull();
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Подсказки и меню этапа");
-    await click("Сыграть этап");
+    const play = host.querySelector<HTMLButtonElement>(".song-course-lesson__play");
+    expect(play?.getAttribute("aria-label")).toBe("Сыграть этап");
+    expect(host.querySelectorAll('button[aria-label="К пути по мелодиям"]')).toHaveLength(1);
+    await act(async () => {
+      await Promise.resolve();
+      play?.click();
+    });
     expect(props.onStart).toHaveBeenCalledOnce();
     for (const phase of ["playing", "paused", "awaiting-release", "demo"] as const) {
       await render(<SongCourseLesson {...props} phase={phase} waiting />);
       expect(host.querySelector('input[type="range"]')).toBeNull();
     }
-    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe(
-      "Слушайте помощника"
-    );
-    await click("Пауза в песне");
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe("Слушай мелодию");
+    await act(async () => {
+      await Promise.resolve();
+      host.querySelector<HTMLButtonElement>(".song-course-lesson__pause")?.click();
+    });
     expect(props.onPause).toHaveBeenCalledOnce();
+  });
+
+  it("distinguishes the melody example from the accompanied learner turn", async () => {
+    const props = lessonProps();
+    await render(<SongCourseLesson {...props} phase="demo" accompaniment />);
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe("Слушай мелодию");
+    await render(<SongCourseLesson {...props} phase="playing" accompaniment />);
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe(
+      "Твоя очередь · с сопровождением"
+    );
+    await render(<SongCourseLesson {...props} phase="playing" accompaniment={false} />);
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe("Твоя очередь");
   });
 
   it("pauses for optional instructions, closes outside, and keeps settings behind the course menu", async () => {
@@ -342,20 +377,29 @@ describe("song-course lesson and result", () => {
     );
     expect(Array.from(host.querySelectorAll("dt"), (item) => item.textContent)).toEqual([
       "Правильные ноты",
-      "Попадание в ритм",
       "Длина нажатия"
     ]);
     expect(Array.from(host.querySelectorAll("dd"), (item) => item.textContent)).toEqual([
       "100 процентов",
-      "Время начала не оценивается",
       "75 процентов"
     ]);
     expect(host.querySelectorAll('[data-earned="true"]')).toHaveLength(1);
-    expect(host.textContent).toContain("Скорость исполнения: 75%");
+    expect(host.textContent).not.toContain("Скорость исполнения:");
     await click("К следующему этапу");
     await click("Разобрать трудные места");
-    await click("Сыграть этот этап ещё раз");
-    await click("К пути по мелодиям");
+    await click("Сыграть ещё раз");
+    expect(host.querySelector(".song-course-result__rating")?.textContent).toBe(
+      "Звёзд за этап: 1 из 3"
+    );
+    expect(host.querySelector(".song-course-result__actions")?.textContent).not.toContain(
+      "К пути по мелодиям"
+    );
+    const close = host.querySelector<HTMLButtonElement>(".song-course-result__bar button");
+    expect(close?.getAttribute("aria-label")).toBe("К пути по мелодиям");
+    await act(async () => {
+      await Promise.resolve();
+      close?.click();
+    });
     await click("Ещё раз сохранить результат");
     for (const callback of [next, review, retry, exit, save])
       expect(callback).toHaveBeenCalledOnce();
@@ -375,6 +419,88 @@ describe("song-course lesson and result", () => {
     expect(host.querySelectorAll('[data-earned="true"]')).toHaveLength(0);
     expect(host.textContent).toContain("Попытка не завершена");
     expect(host.textContent).not.toContain("К следующему этапу");
+  });
+  it.each([0, 2, 3] as const)(
+    "shows an explicit %s-star rating, including an honest zero",
+    async (stars) => {
+      const noop = vi.fn();
+      await render(
+        <SongCourseResult
+          result={receipt({
+            stars,
+            completed: stars > 0,
+            pitch: stars ? 100 : 57,
+            hold: stars ? 100 : 0
+          })}
+          hasNext
+          canReview
+          storageError={false}
+          onNext={noop}
+          onReview={noop}
+          onRetry={noop}
+          onExit={noop}
+          onRetrySave={noop}
+        />
+      );
+      expect(host.querySelector(".song-course-result__rating")?.textContent).toBe(
+        `Звёзд за этап: ${String(stars)} из 3`
+      );
+      expect(host.querySelectorAll('[data-earned="true"]')).toHaveLength(stars);
+      expect(host.querySelectorAll('[data-earned="false"]')).toHaveLength(3 - stars);
+      if (stars === 0) {
+        expect(host.querySelector(".song-course-result__stars")?.textContent).not.toContain("★");
+        expect(host.querySelector(".song-course-result__message")?.textContent).toContain(
+          "Держите клавишу до конца ноты"
+        );
+        expect(host.querySelector(".song-course-result__actions")?.textContent).not.toContain(
+          "К следующему этапу"
+        );
+      }
+    }
+  );
+  it("keeps the first note exercise simple and grades rhythm only in tempo stages", async () => {
+    const props = lessonProps();
+    await render(
+      <SongCourseLesson
+        {...props}
+        phase="result"
+        result={receipt({ stars: 0, completed: false, hold: 0 })}
+        canReview
+      />
+    );
+    expect(host.querySelector("h2")?.textContent).toBe("Попробуем ещё раз");
+    expect(host.textContent).not.toContain("Разобрать трудные места");
+    expect(host.textContent).not.toContain("Попадание в ритм");
+    expect(host.querySelectorAll(".song-course-result__actions button")).toHaveLength(1);
+    const noop = vi.fn();
+    await render(
+      <SongCourseResult
+        result={receipt({ mode: "tempo", onset: 80 })}
+        hasNext
+        canReview
+        storageError={false}
+        onNext={noop}
+        onReview={noop}
+        onRetry={noop}
+        onExit={noop}
+        onRetrySave={noop}
+      />
+    );
+    expect(host.textContent).toContain("Попадание в ритм");
+    expect(host.textContent).toContain("80 процентов");
+    expect(host.textContent).toContain("Скорость исполнения: 75%");
+  });
+  it("shows the session count-in inside Play and removes the central control during play", async () => {
+    const props = lessonProps();
+    await render(<SongCourseLesson {...props} phase="playing" countdown={3} />);
+    expect(host.querySelector(".song-course-lesson__play")?.textContent).toBe("3");
+    expect(host.querySelector(".song-course-lesson__play")?.getAttribute("aria-label")).toBe(
+      "До начала: 3"
+    );
+    await render(<SongCourseLesson {...props} phase="playing" />);
+    expect(host.querySelector(".song-course-lesson__play")).toBeNull();
+    expect(host.querySelector(".song-course-lesson__pause")).not.toBeNull();
+    expect(host.querySelector(".song-course-lesson__action")?.textContent ?? "").toBe("");
   });
 });
 

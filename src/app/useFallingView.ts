@@ -346,10 +346,17 @@ export function useFallingView({
     comparisonRef.current?.setFreeRoadLayout(freeLayout);
   }, [viewRef, trainerReady, freeLayout]);
   useEffect(() => {
-    const effective = { lift, scale, x, y, ...(maxHeightShare ? { maxHeightShare } : {}) };
+    const effective = {
+      lift,
+      scale,
+      x,
+      y,
+      ...(maxHeightShare ? { maxHeightShare } : {}),
+      ...(keyboardMaxHeightShare !== undefined ? { edgeToEdge: true } : {})
+    };
     placementRef.current = effective;
     for (const view of lanes(viewRef, comparisonRef)) view.setKeysPlacement(effective);
-  }, [viewRef, trainerReady, lift, scale, x, y, maxHeightShare]);
+  }, [viewRef, trainerReady, lift, scale, x, y, maxHeightShare, keyboardMaxHeightShare]);
 
   const [rangeLow, rangeHigh] =
     displayRange ?? (keyRange === "song" ? songRange(baseSong) : FIXED_RANGES[keyRange]);

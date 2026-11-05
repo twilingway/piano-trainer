@@ -5,6 +5,9 @@ import { centreLivePosition, createStaffFollow } from "./staffFollow";
 import { showDrawing, fitCourseDrawing } from "./courseStaffView";
 import { placeCursorLine } from "./liveCursor";
 import {
+  frameSongCourseDrawing,
+  songCourseCursorAnchor,
+  positionSongCourseViewport,
   fitSongCourseLabelBounds,
   fitSongCourseRoom,
   songCourseDensityScale,
@@ -195,4 +198,45 @@ it("preserves legacy manually enlarged notation without an allocated melody row"
   expect(notation.render).not.toHaveBeenCalled();
   expect(notation.Zoom).toBe(2);
   expect(draw).toHaveBeenCalledOnce();
+});
+
+it("centres a whole short phrase and leaves its cursor moving while only longer music scrolls", () => {
+  const host = document.body.appendChild(document.createElement("div"));
+  host.dataset.songCoursePlayhead = "128";
+  Object.defineProperty(host, "clientWidth", { value: 320 });
+  const page = host.appendChild(document.createElement("div"));
+  page.className = "staff-page";
+  page.style.paddingInline = "128px 192px";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  page.append(svg);
+  let width = 280;
+  svg.getBoundingClientRect = () => new DOMRect((320 - width) / 2 - host.scrollLeft, 0, width, 120);
+  host.getBoundingClientRect = () => new DOMRect(0, 0, 320, 120);
+  frameSongCourseDrawing(host);
+  expect(host.dataset.songCourseCentered).toBe("true");
+  expect(page.style.paddingInline).toBe("0px");
+  const spots = [0, 1, 2, 3].map((beat) => ({ beat, x: 100 + beat * 50, line: 0 }));
+  const cursor = host.appendChild(document.createElement("div"));
+  const positions: string[] = [];
+  for (const beat of [0, 1, 2, 3]) {
+    host.scrollLeft = 80;
+    expect(positionSongCourseViewport(host, spots, beat)).toBe(true);
+    expect(host.scrollLeft).toBe(0);
+    expect(svg.getBoundingClientRect().left).toBe(20);
+    expect(songCourseCursorAnchor(host, true)).toEqual({});
+    placeCursorLine(
+      host,
+      cursor,
+      spots,
+      [{ top: 0, bottom: 120 }],
+      beat,
+      songCourseCursorAnchor(host, true)
+    );
+    positions.push(cursor.style.transform);
+  }
+  expect(new Set(positions).size).toBe(4);
+  width = 900;
+  frameSongCourseDrawing(host);
+  expect(host.dataset.songCourseCentered).toBeUndefined();
+  expect(songCourseCursorAnchor(host, true)).toEqual({ anchorX: 128 });
 });

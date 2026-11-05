@@ -42,6 +42,7 @@ export function fitSongCourseViewport(
   enabled: boolean
 ): void {
   delete host.dataset.songCoursePlayhead;
+  delete host.dataset.songCourseCentered;
   if (!enabled) return;
   const width = host.clientWidth;
   const playhead = songCoursePlayhead(width);
@@ -70,12 +71,30 @@ export function fitSongCourseViewport(
   }
 }
 
+/** Final cropped ink that fits whole stays centred; only a genuinely long score scrolls. */
+export function frameSongCourseDrawing(host: HTMLElement): void {
+  delete host.dataset.songCourseCentered;
+  if (host.dataset.songCoursePlayhead === undefined) return;
+  const svg = host.querySelector("svg");
+  const page = host.querySelector<HTMLElement>(".staff-page");
+  if (!svg || !page) return;
+  if (svg.getBoundingClientRect().width <= host.clientWidth + 0.5) {
+    host.dataset.songCourseCentered = "true";
+    page.style.paddingInline = "0px";
+    host.scrollLeft = 0;
+  }
+}
+
 /** Reads the same beat as the normal staff cursor; no easing, timer or independent clock. */
 export function positionSongCourseViewport(
   host: HTMLElement,
   spots: readonly BeatSpot[],
   beat: number
 ): boolean {
+  if (host.dataset.songCourseCentered === "true") {
+    host.scrollLeft = 0;
+    return true;
+  }
   const value = host.dataset.songCoursePlayhead;
   const svg = host.querySelector("svg");
   if (value === undefined || !svg || !spots.length) return false;
@@ -91,7 +110,9 @@ export function songCourseCursorAnchor(
   following: boolean
 ): { readonly anchorX?: number } {
   const value = host?.dataset.songCoursePlayhead;
-  return following && value !== undefined ? { anchorX: Number(value) } : {};
+  return following && value !== undefined && host?.dataset.songCourseCentered !== "true"
+    ? { anchorX: Number(value) }
+    : {};
 }
 
 /** Grow only the vertical viewport for rendered labels; the horizontal density and scale stay fixed. */

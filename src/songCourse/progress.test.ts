@@ -101,3 +101,42 @@ describe("versioned song course progress", () => {
     ).toThrow("Unsupported");
   });
 });
+
+it.each([
+  "notes",
+  "duration",
+  "guided-phrase",
+  "independent-phrase",
+  "performance",
+  "review"
+] as const)("validates stored receipt modes for %s without rewriting their evidence", (kind) => {
+  const original = sourceFixture();
+  const node = original.nodes[0];
+  if (!node) throw new Error("missing node");
+  const source = { ...original, nodes: [{ ...node, kind }] };
+  for (const mode of ["wait", "tempo"] as const) {
+    const result = gradeSongCourseAttempt(
+      courseConfig(undefined, { mode }),
+      gradeEvidence([rawInput("down", 0, 1), rawInput("up", 1000, 2)], {
+        presentations: [{ sourceNoteId: "test@r1:n0", performanceMs: 0, stableOrdinal: 0 }]
+      })
+    );
+    expect(validSongCourseResult(result)).toBe(true);
+    const progress = readSongCourseProgress({ ...emptySongCourseProgress(), results: [result] });
+    expect(progress.results[0]?.mode).toBe(mode);
+    const allowed =
+      kind === "performance" ? mode === "tempo" : kind === "review" ? mode === "wait" : true;
+    expect(completedSongCourseNodes(progress, source)).toEqual(allowed ? [node.id] : []);
+  }
+});
+it("retains a stored learning-review receipt with its original wait rubric context", () => {
+  const result = gradeSongCourseAttempt(
+    courseConfig(undefined, { mode: "wait", rubricVariant: "learning-review" }),
+    gradeEvidence([rawInput("down", 0, 1), rawInput("up", 1000, 2)], {
+      presentations: [{ sourceNoteId: "test@r1:n0", performanceMs: 0, stableOrdinal: 0 }]
+    })
+  );
+  expect(
+    readSongCourseProgress({ ...emptySongCourseProgress(), results: [result] }).results
+  ).toEqual([result]);
+});

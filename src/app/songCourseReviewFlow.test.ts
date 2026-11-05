@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
 import type { Trainer } from "../practice/Trainer";
+import type { Song } from "../song/song";
 import type { PracticeSession } from "../practice/session";
 import { SONG_COURSE_SOURCES } from "../songCourse/catalog";
 import { buildSongCourseMaterial } from "../songCourse/material";
@@ -111,18 +112,32 @@ function controllerHarness() {
     }
   );
   controller.choose("hot-cross-buns", "hot-cross-buns/notes-c");
-  const play = vi.fn();
+  let session = { time: 0, waiting: false, finished: true } as unknown as PracticeSession;
+  const play = vi.fn((playing: boolean) => {
+    if (playing) controller.policy.onStart(session, 1000, []);
+  });
+  const load = vi.fn((song: Song) => {
+    session = { song, time: 0, waiting: false, finished: true } as unknown as PracticeSession;
+  });
   let resolveSound: (value: boolean) => void = () => undefined;
   const sound = new Promise<boolean>((resolve) => {
     resolveSound = resolve;
   });
   controller.refreshConnection({
-    trainer: { setPlaying: play, load: vi.fn() } as unknown as Trainer,
+    trainer: { setPlaying: play, load } as unknown as Trainer,
     blocked: false,
     prepare: () => sound
   });
-  const session = { time: 0, waiting: false, finished: true } as unknown as PracticeSession;
-  return { controller, play, save, onResult, resolveSound, session };
+  return {
+    controller,
+    play,
+    save,
+    onResult,
+    resolveSound,
+    get session() {
+      return session;
+    }
+  };
 }
 describe("controller review routing", () => {
   it("reaches every block after retries and returns only after the last review", async () => {
@@ -184,7 +199,7 @@ describe("staff failure stops a song course attempt", () => {
     expect(h.onResult).not.toHaveBeenCalled();
     expect(h.save).not.toHaveBeenCalled();
     await h.controller.start();
-    expect(h.play.mock.calls.filter(([playing]) => playing === true)).toHaveLength(1);
+    expect(h.play.mock.calls.filter(([playing]) => playing)).toHaveLength(1);
     expect(h.controller.getSnapshot().phase).toBe("error");
     h.controller.retry();
     expect(h.controller.getSnapshot().phase).toBe("ready");

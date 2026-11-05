@@ -10,6 +10,7 @@ import type {
   SongCourseSource
 } from "../songCourse/model";
 import assistant from "./lesson-art/assistant.webp";
+import { ClayStars } from "./ClayStars";
 import { SongCourseMiniature } from "./SongCourseMiniature";
 
 export interface SongCoursePathProps {
@@ -193,7 +194,7 @@ function SongCourseGroup(props: {
                         className="song-course-path__stars"
                         aria-label={t("Звёзд за этап: {count} из 3", { count: result.stars })}
                       >
-                        {"★".repeat(result.stars)}
+                        <ClayStars count={result.stars} />
                       </span>
                     )}
                   </span>

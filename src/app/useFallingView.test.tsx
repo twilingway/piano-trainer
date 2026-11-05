@@ -621,7 +621,8 @@ it("keeps a modest song-course keyboard height on desktop and restores ordinary 
   expect(view.setRange).toHaveBeenLastCalledWith(21, 108, false, true);
   expect(view.setKeysPlacement).toHaveBeenLastCalledWith({
     ...USUAL_PLACEMENT,
-    maxHeightShare: 0.3
+    maxHeightShare: 0.3,
+    edgeToEdge: true
   });
   await act(async () => {
     root.render(<Harness prefs={prefs} displayRange={[60, 72]} keyboardMaxHeightShare={0.3} />);
@@ -635,7 +636,8 @@ it("keeps a modest song-course keyboard height on desktop and restores ordinary 
   expect(view.setRange).toHaveBeenLastCalledWith(36, 84, false, true);
   expect(view.setKeysPlacement).toHaveBeenLastCalledWith({
     ...USUAL_PLACEMENT,
-    maxHeightShare: 0.3
+    maxHeightShare: 0.3,
+    edgeToEdge: true
   });
   await act(async () => {
     root.render(<Harness prefs={{ ...prefs, keyRange: "49" }} />);

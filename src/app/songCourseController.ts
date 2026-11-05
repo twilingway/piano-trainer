@@ -3,18 +3,17 @@ import { SongCourseCharacters, songCourseCharacterContext } from "./songCourseCh
 import { createSongCourseCharacterPolicy } from "./songCourseCharacterPolicy";
 import { createSongCourseFeedback } from "../staff/songCourseFeedback";
 import * as startup from "./songCourseStartup";
-import { courseMelodyProgress, songCourseSceneId, songCourseGuidance } from "./songCourseGuidance";
+import { SongCoursePlayback } from "./songCoursePlayback";
+import * as guidance from "./songCourseGuidance";
 import { SongCourseInput } from "./songCourseInput";
-import type { PracticeEvent, PracticeOptions, PracticeSession } from "../practice/session";
+import type { PracticeOptions } from "../practice/session";
 import type { SongCourseScene } from "./songCourseContracts";
-import { SongCourseAttempt } from "../songCourse/attempt";
 import { findSongCourseNode, findSongCourseSource } from "../songCourse/catalog";
 import { buildSongCourseMaterial } from "../songCourse/material";
 import { SongCourseReviewFlow } from "./songCourseReviewFlow";
 import { emptySongCourseProgress, mergeSongCourseProgress } from "../songCourse/progress";
-import type { CourseMaterial, SongCourseProgress } from "../songCourse/model";
+import type { CourseMaterial, SongCourseProgress, SongCourseResult } from "../songCourse/model";
 import type { TrainerMusicPolicy } from "../practice/musicPolicy";
-import type { InputCancellationReason } from "../practice/inputCancellation";
 import { songCourseOptions } from "./songCourseOptions";
 import { songCourseRepository } from "./songCourseRepository";
 import type {
@@ -23,7 +22,6 @@ import type {
   SongCourseView
 } from "./songCourseContracts";
 
-const NO_EVENTS: readonly PracticeEvent[] = [];
 type Repository = typeof songCourseRepository;
 export type SongCourseSnapshot = SongCourseView & {
   readonly progressState: SongCourseProgress;
@@ -45,13 +43,12 @@ export class SongCourseController {
     loaded: false,
     storageError: false
   };
-  private attempt: SongCourseAttempt | null = null;
+  private readonly playback: SongCoursePlayback;
   private readonly input: SongCourseInput;
   private speed = 1;
   private readonly reviews = new SongCourseReviewFlow();
   private optionCache: PracticeOptions | undefined;
   private sceneCache: SongCourseScene | null = null;
-  private generation = 0;
   private selectionEpoch = 0;
   private restoreEpoch = 0;
   private restored = false;
@@ -64,7 +61,13 @@ export class SongCourseController {
   readonly policy: TrainerMusicPolicy;
   readonly faceFeedback = createSongCourseFeedback();
   readonly characters = new SongCourseCharacters(
-    () => songCourseCharacterContext(this.state, this.sceneId, this.attempt?.config.runId ?? null),
+    () =>
+      songCourseCharacterContext(
+        this.state,
+        this.sceneId,
+        this.playback.attempt?.config.runId ?? null,
+        this.state.phase === "demo" ? this.playback.demoSong : undefined
+      ),
     this.faceFeedback
   );
 
@@ -72,25 +75,55 @@ export class SongCourseController {
     private readonly callbacks: SongCourseCallbacks,
     private readonly repository: Repository = songCourseRepository
   ) {
+    this.playback = new SongCoursePlayback({
+      read: () => ({
+        view: this.state,
+        connection: this.connection,
+        presentation: this.presentationReady,
+        sceneId: this.sceneId,
+        speed: this.speed,
+        disposed: this.disposed
+      }),
+      input: () => this.input,
+      feedback: this.faceFeedback,
+      internal: (run) => {
+        this.internalLoad = true;
+        try {
+          run();
+        } finally {
+          this.internalLoad = false;
+        }
+      },
+      update: (patch) => {
+        this.state = { ...this.state, ...patch };
+        this.publish();
+      },
+      result: (result) => {
+        this.acceptResult(result);
+      },
+      fail: (error) => {
+        this.fail(error);
+      }
+    });
     this.input = new SongCourseInput(
       () => ({
-        attempt: this.attempt,
+        attempt: this.playback.attempt,
         material: this.state.material,
         trainer: this.connection.trainer,
-        demo: this.state.phase === "demo"
+        demo: this.playback.showing,
+        onStarted: this.playback.attach,
+        onAllReleased: this.playback.released,
+        acceptsSession: this.playback.accepts
       }),
       () => {
         this.syncPhase();
       },
-      () => {
-        this.state = { ...this.state, phase: "ready", error: "Сначала отпустите все клавиши." };
-        this.publish();
-      },
+      this.playback.preheld,
       (notes, ordinal) => {
-        if (this.attempt && this.state.material)
+        if (this.playback.attempt && this.state.material)
           this.faceFeedback.update(
             {
-              runId: this.attempt.config.runId,
+              runId: this.playback.attempt.config.runId,
               presentationId: this.sceneId,
               sourceHash: this.state.material.source.sourceHash
             },
@@ -101,9 +134,12 @@ export class SongCourseController {
     );
     this.policy = createSongCourseCharacterPolicy(
       this.input,
-      this.onFrame.bind(this),
-      this.onCancel.bind(this),
-      (session, playing) => songCourseGuidance(this.state.material, this.helped, session, playing),
+      this.playback.frame,
+      (atMs, resetAll, reason) => {
+        if (!this.internalLoad) this.playback.cancel(atMs, resetAll, reason);
+      },
+      (session, playing) =>
+        guidance.songCourseGuidance(this.state.material, this.helped, session, playing),
       this.characters
     );
   }
@@ -121,10 +157,7 @@ export class SongCourseController {
     return this.state.material !== null;
   }
   get helped() {
-    return (
-      this.state.material?.node.kind !== "independent-phrase" &&
-      this.state.material?.node.kind !== "performance"
-    );
+    return startup.courseHelped(this.state.material);
   }
   get options() {
     return this.optionCache;
@@ -133,7 +166,7 @@ export class SongCourseController {
     return this.sceneCache;
   }
   get sceneId() {
-    return songCourseSceneId(this.state);
+    return guidance.songCourseSceneId(this.state);
   }
   get hasNext() {
     return (
@@ -241,13 +274,16 @@ export class SongCourseController {
   };
   setSpeed(speed: number): void {
     if (!Number.isFinite(speed) || speed < 0.25 || speed > 1) return;
-    if (this.attempt && this.attempt.phase !== "complete") this.attempt.invalidate("speed-change");
+    if (this.playback.attempt && this.playback.attempt.phase !== "complete")
+      this.playback.attempt.invalidate("speed-change");
     this.speed = speed;
     if (this.state.phase === "ready" || this.state.phase === "result") this.retry();
   }
   refreshConnection(connection: SongCourseConnection): void {
+    const replaced = connection.trainer !== this.connection.trainer;
     this.connection = connection;
-    if (connection.blocked && ["playing", "demo"].includes(this.state.phase)) this.pause();
+    if ((connection.blocked || replaced) && (this.playback.busy || this.state.phase === "playing"))
+      this.pause();
   }
   present(id: string): void {
     if (id !== this.sceneId || this.presentationSettled) return;
@@ -262,153 +298,38 @@ export class SongCourseController {
       this.fail("Не удалось открыть учебную мелодию. Выберите этап ещё раз.");
     }
   }
+  soundInterrupted = (): void => {
+    if (this.active && !this.disposed) this.playback.soundInterrupted();
+  };
   start = async () => {
-    if (this.state.phase === "paused") {
-      this.connection.trainer?.setPlaying(true);
-      return;
-    }
-    await this.begin(false);
+    await this.playback.start();
   };
   demo = async () => {
-    await this.begin(true);
+    await this.playback.preview();
   };
   pause = () => {
-    if (this.state.phase === "demo") this.retry();
-    else this.connection.trainer?.setPlaying(false);
+    this.playback.pause();
   };
   dispose(): void {
     this.disposed = true;
-    this.generation++;
-    this.attempt?.abort("dispose");
+    this.playback.reset("dispose");
     this.resolvePresentation?.(false);
     this.faceFeedback.clear();
     this.listeners.clear();
     this.characters.dispose();
   }
 
-  private async begin(demo: boolean): Promise<void> {
-    const material = this.state.material,
-      connection = this.connection;
-    if (!material || !connection.trainer || connection.blocked) return;
-    const generation = ++this.generation;
-    const sound = connection.prepare();
-    const [ready, presented] = await Promise.all([sound, this.presentationReady]);
-    if (
-      this.disposed ||
-      generation !== this.generation ||
-      connection.trainer !== this.connection.trainer ||
-      this.connection.blocked
-    )
-      return;
-    if (!ready || !presented) {
-      this.fail(
-        ready
-          ? "Не удалось открыть учебную мелодию. Выберите этап ещё раз."
-          : "Звук пока недоступен. Нажмите «Играть» ещё раз."
-      );
-      return;
-    }
-    this.attempt = demo
-      ? null
-      : new SongCourseAttempt({
-          runId: crypto.randomUUID(),
-          songId: material.source.id,
-          sourceRevision: material.source.revision,
-          sourceHash: material.source.sourceHash,
-          nodeId: material.node.id,
-          mode: material.node.kind === "performance" ? "tempo" : "wait",
-          speed: this.speed,
-          expected: material.expected,
-          learnerPartIds: material.source.learnerPartIds,
-          ...(material.node.kind === "review" ? { rubricVariant: "learning-review" as const } : {})
-        });
-    this.faceFeedback.reset(material, this.sceneId, this.attempt?.config.runId ?? null);
-    this.input.reset();
-    this.state = {
-      ...this.state,
-      phase: demo ? "demo" : "playing",
-      progress: 0,
-      result: null,
-      error: null
-    };
-    this.internalLoad = true;
-    const options = songCourseOptions(material, this.speed);
-    connection.trainer.load(
-      material.song,
-      demo ? { ...options, mode: "tempo", hands: new Set(), countInBeats: 0 } : options,
-      this.sceneId
-    );
-    this.internalLoad = false;
-    connection.trainer.setPlaying(true);
+  private acceptResult(result: SongCourseResult): void {
+    this.progressState = mergeSongCourseProgress(this.progressState, {
+      ...this.progressState,
+      results: [result]
+    });
+    this.callbacks.onResult(result);
+    void this.persist(false);
     this.publish();
   }
-  private onFrame(
-    session: PracticeSession,
-    playing: boolean,
-    atMs: number
-  ): readonly PracticeEvent[] {
-    const material = this.state.material;
-    if (!material) return NO_EVENTS;
-    if (this.state.phase === "demo" && session.finished) {
-      this.attempt = null;
-      this.state = { ...this.state, phase: "ready", progress: 0, waiting: false };
-      this.restoreLearnerSession();
-      this.publish();
-      return NO_EVENTS;
-    }
-    const attempt = this.attempt;
-    if (!attempt || attempt.phase === "aborted" || attempt.phase === "complete") return NO_EVENTS;
-    this.input.present(session, atMs);
-    if (session.finished) attempt.finish(atMs);
-    const result = attempt.tick(atMs, Date.now());
-    if (result) {
-      this.state = { ...this.state, phase: "result", progress: 1, waiting: false, result };
-      this.progressState = mergeSongCourseProgress(this.progressState, {
-        ...this.progressState,
-        results: [result]
-      });
-      this.connection.trainer?.setPlaying(false);
-      this.callbacks.onResult(result);
-      void this.persist(false);
-      this.publish();
-      return NO_EVENTS;
-    }
-    const progress = courseMelodyProgress(material, session.time);
-    const phase = attempt.phase;
-    if (
-      Math.floor(progress * 100) !== Math.floor(this.state.progress * 100) ||
-      phase !== this.state.phase ||
-      this.state.waiting !== (playing && session.waiting)
-    ) {
-      this.state = { ...this.state, phase, progress, waiting: playing && session.waiting };
-      this.publish();
-    }
-    return NO_EVENTS;
-  }
-  private onCancel(
-    atMs: number,
-    resetAll = false,
-    reason: InputCancellationReason = "cleanup"
-  ): void {
-    if (this.internalLoad || !this.attempt || ["complete", "aborted"].includes(this.attempt.phase))
-      return;
-    if (reason === "pause") this.attempt.pause(atMs, this.input.nextOrdinal());
-    else {
-      this.attempt.abort(reason);
-      this.state = {
-        ...this.state,
-        phase: "error",
-        error: "Попытка остановлена. Начните этот этап ещё раз."
-      };
-    }
-    if (reason !== "pause") this.faceFeedback.clear();
-    if (resetAll) this.input.clear();
-    this.syncPhase();
-  }
   private selectMaterial(material: CourseMaterial): void {
-    this.generation++;
-    this.attempt?.abort("selection");
-    this.attempt = null;
+    this.playback.reset("selection");
     this.internalLoad = true;
     this.connection.trainer?.setPlaying(false);
     this.internalLoad = false;
@@ -431,23 +352,9 @@ export class SongCourseController {
     this.sceneCache = { id: this.sceneId, song: material.song, musicXml: material.musicXml };
     this.publish();
   }
-  private restoreLearnerSession(): void {
-    const material = this.state.material;
-    if (!material || !this.connection.trainer) return;
-    this.internalLoad = true;
-    this.connection.trainer.setPlaying(false);
-    this.connection.trainer.load(
-      material.song,
-      songCourseOptions(material, this.speed),
-      this.sceneId
-    );
-    this.internalLoad = false;
-  }
   private leave(): void {
     this.reviews.clear();
-    this.generation++;
-    this.attempt?.abort("exit");
-    this.attempt = null;
+    this.playback.reset("exit");
     this.internalLoad = true;
     this.connection.trainer?.setPlaying(false);
     this.internalLoad = false;
@@ -466,7 +373,7 @@ export class SongCourseController {
     this.publish();
   }
   private syncPhase(): void {
-    const phase = this.attempt?.phase;
+    const phase = this.playback.attempt?.phase;
     if (phase && phase !== "complete" && phase !== "aborted") this.state = { ...this.state, phase };
     this.publish();
   }
@@ -475,12 +382,10 @@ export class SongCourseController {
     return false;
   }
   private fail(error: string): void {
-    this.generation++;
-    this.attempt?.abort("material-error");
-    this.attempt = null;
+    this.playback.reset("material-error");
     this.connection.trainer?.setPlaying(false);
     this.faceFeedback.clear();
-    this.state = { ...this.state, phase: "error", error, waiting: false };
+    this.state = { ...this.state, phase: "error", error, waiting: false, countdown: undefined };
     this.publish();
   }
   private async persist(selectionChanged: boolean): Promise<void> {

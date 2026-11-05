@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { CourseMaterial, SongCourseResult as CourseResult } from "../songCourse/model";
 import { useI18n } from "../app/useI18n";
+import { SongCourseStart } from "./SongCourseStart";
 import { SongCourseMenu } from "./SongCourseMenu";
 import { SongCourseResult } from "./SongCourseResult";
 
@@ -18,6 +19,7 @@ export interface SongCourseLessonProps {
   readonly material: CourseMaterial;
   readonly phase: SongCourseLessonPhase;
   readonly progress: number;
+  readonly countdown?: number | undefined;
   readonly speed?: number;
   readonly onSpeed?: (speed: number) => void;
   readonly result: CourseResult | null;
@@ -28,6 +30,7 @@ export interface SongCourseLessonProps {
   readonly score: ReactNode;
   readonly characters?: ReactNode;
   readonly waiting?: boolean;
+  readonly accompaniment?: boolean;
   readonly helperPitch?: number;
   readonly onStart: () => void;
   readonly onDemo: () => void;
@@ -82,6 +85,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
     return (
       <SongCourseResult
         result={props.result}
+        introductory={material.node.kind === "notes"}
         hasNext={props.hasNext}
         canReview={props.canReview}
         storageError={props.storageError}
@@ -95,7 +99,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
   const progress = Number.isFinite(props.progress) ? Math.min(1, Math.max(0, props.progress)) : 0;
   const status =
     phase === "demo"
-      ? "Слушайте помощника"
+      ? "Слушай мелодию"
       : phase === "awaiting-keys-up"
         ? "Сначала отпустите клавиши"
         : phase === "awaiting-rehold"
@@ -107,7 +111,9 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
               : props.waiting && phase === "playing"
                 ? "Жду ноту"
                 : phase === "playing"
-                  ? "Теперь ваша очередь"
+                  ? props.accompaniment
+                    ? "Твоя очередь · с сопровождением"
+                    : "Твоя очередь"
                   : GOALS[material.node.kind];
   const actionLabel = running
     ? "Пауза в песне"
@@ -137,6 +143,17 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
             })}
           />
         </div>
+        {running && (
+          <button
+            type="button"
+            className="game-button song-course-lesson__icon song-course-lesson__pause"
+            aria-label={t("Пауза в песне")}
+            title={t("Пауза в песне")}
+            onClick={props.onPause}
+          >
+            <span aria-hidden="true">Ⅱ</span>
+          </button>
+        )}
         <button
           ref={menuButton}
           type="button"
@@ -159,6 +176,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
           <SongCourseMenu
             id={menuId}
             instruction={t(material.node.instruction)}
+            accompaniment={props.accompaniment}
             phase={phase}
             speed={props.speed ?? 1}
             onSpeed={props.onSpeed}
@@ -189,15 +207,27 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
         )}
         <div className="song-course-lesson__score lesson-workspace__score">{props.score}</div>
       </div>
-      <footer className="song-course-lesson__action">
-        {holding ? (
-          <p className="song-course-lesson__hold-status">{t(status)}</p>
-        ) : (
-          <button type="button" className="game-button lesson-main-action" onClick={action}>
-            {t(phase === "error" ? "Загрузить этап ещё раз" : actionLabel)}
-          </button>
-        )}
-      </footer>
+      {(holding || phase === "error") && (
+        <footer className="song-course-lesson__action">
+          {holding ? (
+            <p className="song-course-lesson__hold-status">{t(status)}</p>
+          ) : (
+            <button type="button" className="game-button lesson-main-action" onClick={action}>
+              {t("Загрузить этап ещё раз")}
+            </button>
+          )}
+        </footer>
+      )}
+      <SongCourseStart
+        open={
+          !menuOpen &&
+          (phase === "ready" || phase === "paused" || (running && props.countdown !== undefined))
+        }
+        label={actionLabel}
+        countdown={running ? props.countdown : undefined}
+        onStart={action}
+        onExit={props.onExit}
+      />
     </section>
   );
 }

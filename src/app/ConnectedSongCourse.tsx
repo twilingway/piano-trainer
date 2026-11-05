@@ -20,6 +20,7 @@ export function ConnectedSongCourse({ score }: { readonly score: ReactNode }) {
       material={view.material}
       phase={view.phase}
       progress={view.progress}
+      countdown={view.countdown}
       result={view.result}
       error={view.error}
       storageError={course.storageError}
@@ -36,6 +37,7 @@ export function ConnectedSongCourse({ score }: { readonly score: ReactNode }) {
       }}
       onFullscreen={() => void fullscreen()}
       waiting={view.waiting}
+      accompaniment={course.options?.accompaniment ?? false}
       speed={course.options?.speed ?? 1}
       onSpeed={(value: number) => {
         controller.setSpeed(value);
