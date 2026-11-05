@@ -31,7 +31,10 @@ export function initialCourseSelection(
     findSongCourseSource(saved.songId)?.sourceHash === saved.sourceHash &&
     findSongCourseNode(saved.songId, saved.nodeId)
   )
-    return saved;
+    return {
+      ...saved,
+      nodeId: findSongCourseNode(saved.songId, saved.nodeId)?.supersededBy ?? saved.nodeId
+    };
   if (legacyActive) return null;
   const source = SONG_COURSE_SOURCES[0],
     node = source?.nodes[0];
@@ -51,7 +54,11 @@ export function nextCourseSelection(
   if (!material) return null;
   const sourceIndex = SONG_COURSE_SOURCES.findIndex((source) => source.id === material.source.id);
   const nodes = material.source.nodes,
-    index = nodes.findIndex((node) => node.id === material.node.id);
+    index = nodes.findIndex(
+      (node) =>
+        node.id ===
+        (findSongCourseNode(material.source.id, material.node.id)?.supersededBy ?? material.node.id)
+    );
   const source =
     index >= 0 && nodes[index + 1] ? material.source : SONG_COURSE_SOURCES[sourceIndex + 1];
   const node = source === material.source ? nodes[index + 1] : source?.nodes[0];

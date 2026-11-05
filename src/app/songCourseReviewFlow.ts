@@ -42,7 +42,12 @@ export class SongCourseReviewFlow {
   private returnSelection: SongCourseSelection | null = null;
 
   canReview(material: CourseMaterial | null, result: SongCourseResult | null): boolean {
-    return !!(material && result && songCourseMistakeReview(material.source, result).length);
+    return !!(
+      material &&
+      !material.node.repeat &&
+      result &&
+      songCourseMistakeReview(material.source, result).length
+    );
   }
   get returnTo(): SongCourseSelection | null {
     return this.returnSelection;
@@ -59,6 +64,7 @@ export class SongCourseReviewFlow {
     result: SongCourseResult,
     selection: SongCourseSelection | null
   ): CourseMaterial | null {
+    if (material.node.repeat) return null;
     const entries = songCourseMistakeReview(material.source, result).map((plan) => ({
       source: material.source,
       plan,

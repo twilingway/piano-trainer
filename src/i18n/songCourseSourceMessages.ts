@@ -1,6 +1,10 @@
 import type { Messages } from "./locales";
 
 export const songCourseSourceMessages: Messages = {
+  "Сыграй четыре ми средним пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.":
+    {
+      en: "Play four Es with your right middle finger. Hold each key until the track fills, then release it."
+    },
   "Знакомимся с ми": { en: "Meet E" },
   "Ми играет средний палец правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.":
     {

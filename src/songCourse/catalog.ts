@@ -5,6 +5,7 @@ import odeToJoy from "./scores/ode-to-joy.musicxml?raw";
 import twinkle from "./scores/twinkle.musicxml?raw";
 import joyOctave from "./scores/joy-octave.musicxml?raw";
 import scoreManifest from "./scores/manifest.json";
+import { findSourceCourseNode } from "./nodeIdentity";
 import type {
   SongCourseNode,
   SongCourseNodeKind,
@@ -61,6 +62,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
     };
   };
   const intros: SongCourseNode[] = [];
+  const legacyNodes: SongCourseNode[] = [];
   if (id === "hot-cross-buns") {
     intros.push(
       node(
@@ -81,14 +83,15 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       ),
       {
         ...node(
-          "notes-e-intro",
+          "notes-e-repeat-v1",
           "notes",
           "Знакомимся с ми",
-          "Ми играет средний палец правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
+          "Сыграй четыре ми средним пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
           0,
           1
         ),
-        sourceNoteIds: ["hot-cross-buns-m1-n1"]
+        sourceNoteIds: ["hot-cross-buns-m1-n1"],
+        repeat: { originNoteId: "hot-cross-buns-m1-n1", count: 4 }
       },
       node(
         "notes-e",
@@ -123,6 +126,18 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
         2
       )
     );
+    legacyNodes.push({
+      ...node(
+        "notes-e-intro",
+        "notes",
+        "Знакомимся с ми",
+        "Ми играет средний палец правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
+        0,
+        1
+      ),
+      sourceNoteIds: ["hot-cross-buns-m1-n1"],
+      supersededBy: "hot-cross-buns/notes-e-repeat-v1"
+    });
   }
   if (id === "aunt-rhody")
     intros.push(
@@ -234,7 +249,8 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       { partId: "accompaniment", staff: "1", hand: "left" }
     ],
     phrases,
-    nodes: [...intros, ...guided, ...independent, performance]
+    nodes: [...intros, ...guided, ...independent, performance],
+    legacyNodes
   };
 }
 
@@ -253,7 +269,8 @@ export function findSongCourseSource(songId: string): SongCourseSource | undefin
 }
 
 export function findSongCourseNode(songId: string, nodeId: string): SongCourseNode | undefined {
-  return findSongCourseSource(songId)?.nodes.find((node) => node.id === nodeId);
+  const source = findSongCourseSource(songId);
+  return source ? findSourceCourseNode(source, nodeId) : undefined;
 }
 
 export const SONG_COURSE_SOURCE_KEYS: readonly string[] = Array.from(

@@ -25,6 +25,8 @@ export interface SongCourseNode {
   readonly instruction: string;
   readonly phraseIds: readonly string[];
   readonly sourceNoteIds: readonly string[];
+  readonly repeat?: { readonly originNoteId: string; readonly count: 4 };
+  readonly supersededBy?: string;
 }
 export interface SongCoursePartHand {
   readonly partId: string;
@@ -42,6 +44,7 @@ export interface SongCourseSource {
   readonly partHands: readonly SongCoursePartHand[];
   readonly phrases: readonly SongCoursePhrase[];
   readonly nodes: readonly SongCourseNode[];
+  readonly legacyNodes?: readonly SongCourseNode[];
 }
 export interface CourseExpectedNote {
   readonly sourceNoteId: string;

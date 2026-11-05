@@ -1,3 +1,4 @@
+import { allCourseNodes, expectedNodeRawIds } from "./nodeIdentity";
 import { songFromMusicXml } from "../song/musicxml";
 import { secondsAt, type Song } from "../song/song";
 import type { SongCourseSource } from "./model";
@@ -53,7 +54,8 @@ function validateReferences(
   }
   if (covered.size !== notes.size) throw new Error("song-course-unassigned-phrase");
   const nodeIds = new Set<string>();
-  for (const node of source.nodes) {
+  for (const node of allCourseNodes(source)) {
+    expectedNodeRawIds(node);
     if (
       !node.id ||
       nodeIds.has(node.id) ||
