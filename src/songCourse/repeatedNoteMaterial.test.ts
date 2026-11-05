@@ -164,6 +164,17 @@ describe("four source-derived Es", () => {
   );
   it("keeps the four-half legacy material and its receipts unchanged", () => {
     const material = buildSongCourseMaterial(source, halfId);
+    const legacyXml = new DOMParser().parseFromString(material.musicXml, "application/xml");
+    for (const part of legacyXml.querySelectorAll("score-partwise > part")) {
+      expect(part.querySelectorAll(":scope > measure")).toHaveLength(2);
+      expect(part.querySelectorAll("clef")).toHaveLength(1);
+      expect(part.querySelectorAll("time")).toHaveLength(1);
+      expect(
+        part.querySelectorAll(
+          "measure[number='2'] > attributes, measure[number='2'] > direction, measure[number='2'] > print"
+        )
+      ).toHaveLength(0);
+    }
     expect(material.expected.map((note) => note.startBeat)).toEqual([0, 2, 4, 6]);
     expect(material.song.measures.map((measure) => measure.length)).toEqual([4, 4]);
     expect(material.expected.every((note) => Math.abs(note.duration - (2 * 60) / 72) < 1e-7)).toBe(
