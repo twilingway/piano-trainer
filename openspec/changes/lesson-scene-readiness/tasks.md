@@ -12,3 +12,4 @@
 
 - [ ] 3.1 Rebase на dev с PR323, pnpm check и pnpm spec:validate; записать результаты и создать PR с UTF8 readback.
 - [ ] 3.2 Root review и визуальная проверка в одной существующей вкладке: cold-cache, ошибка, portrait/landscape, zoom.
+- [ ] 3.3 Убрать наследуемые attributes/directions/print из второго такта четырёх ми; проверить XML и parsed timing/IDs regression.
