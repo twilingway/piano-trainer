@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { onPianoSoundInterrupted } from "../audio/pianoSound";
 import { createSongCourseFanfare } from "../audio/songCourseFanfare";
 import { courseDisplayRange } from "../songCourse/material";
 import { songCourseStaffXml } from "./songCourseStaffXml";
@@ -30,6 +31,13 @@ export function useSongCourse(beginner: BeginnerCourse) {
     controller.subscribe,
     controller.getSnapshot,
     controller.getSnapshot
+  );
+  useEffect(
+    () =>
+      onPianoSoundInterrupted(() => {
+        controller.soundInterrupted();
+      }),
+    [controller]
   );
   const [legacyReady, setLegacyReady] = useState(false);
   useEffect(() => {
@@ -65,6 +73,7 @@ export function useSongCourse(beginner: BeginnerCourse) {
     () => ({
       id: sceneId,
       songCourseFeedback: controller.faceFeedback,
+      readHold: controller.characters.readHold,
       onPresented: (id: string) => {
         controller.present(id);
       },

@@ -54,7 +54,7 @@ export function SongCourseMenu(props: Props) {
         <strong>{t("Как сыграть этот этап")}</strong>
         <button
           type="button"
-          className="icon-button"
+          className="game-button song-course-lesson__icon"
           aria-label={t("Закрыть")}
           onClick={props.onClose}
         >

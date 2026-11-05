@@ -20,6 +20,7 @@ export function ConnectedSongCourse({ score }: { readonly score: ReactNode }) {
       material={view.material}
       phase={view.phase}
       progress={view.progress}
+      countdown={view.countdown}
       result={view.result}
       error={view.error}
       storageError={course.storageError}

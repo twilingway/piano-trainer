@@ -38,7 +38,7 @@ export function songCourseMiniatureXml(source: SongCourseSource, node: SongCours
     "application/xml"
   );
   for (const element of selected.querySelectorAll(
-    "work, movement-title, identification, direction, print, attributes > time, notations, lyric"
+    "work, movement-title, identification, direction, print, notations, lyric"
   ))
     element.remove();
   return new XMLSerializer().serializeToString(selected);

@@ -53,3 +53,12 @@ export function songCourseSceneId(view: SongCourseView): string {
         String(view.revision)
     : "";
 }
+
+/** Read the existing musical lead-in; this presentation never advances time. */
+export function courseCountIn(material: CourseMaterial, time: number): number | undefined {
+  if (!Number.isFinite(time) || time >= 0) return undefined;
+  const first = material.song.beats[0];
+  const second = material.song.beats[1];
+  const seconds = first && second ? second.time - first.time : 0.5;
+  return seconds > 0 ? Math.max(1, Math.ceil(-time / seconds)) : undefined;
+}

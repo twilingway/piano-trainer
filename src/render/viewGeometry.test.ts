@@ -254,3 +254,31 @@ describe("fitRange", () => {
     expect((lastSongKey?.x ?? 0) + (lastSongKey?.width ?? 0)).toBeLessThan(fitted.total);
   });
 });
+
+it("uses the course strip for longer keys without changing the ordinary keyboard rails", () => {
+  const ordinary = viewGeometry(
+    375,
+    667 / 8,
+    { notes: false, keys: true, hands: false },
+    false,
+    true,
+    { ...USUAL_PLACEMENT, maxHeightShare: 0.3 }
+  );
+  const course = viewGeometry(
+    375,
+    667 / 8,
+    { notes: false, keys: true, hands: false },
+    false,
+    true,
+    { ...USUAL_PLACEMENT, maxHeightShare: 0.36, edgeToEdge: true }
+  );
+  expect(ordinary.feltHeight).toBeGreaterThan(0);
+  expect(ordinary.keyboardHeight).toBeCloseTo(112.5);
+  expect(course.feltHeight).toBe(0);
+  expect(course.hitY).toBe(course.keyboardTop);
+  expect(course.keyboardTop + course.keyboardHeight).toBe(375);
+  expect(course.keyboardHeight).toBeCloseTo(135);
+  expect(course.blackHeight / course.keyboardHeight).toBeCloseTo(
+    ordinary.blackHeight / ordinary.keyboardHeight
+  );
+});

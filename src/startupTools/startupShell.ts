@@ -24,8 +24,8 @@ html.piano-booting, html.piano-booting body { margin: 0; min-height: 100%; backg
 .startup-key::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
   background: linear-gradient(#41d5ec00, #41d5ec); opacity: 0; animation: startup-key-glow 2.4s ease-in-out infinite;
   animation-delay: calc(var(--key) * .13s); }
-.startup-black { position: absolute; top: 10px; z-index: 1; width: 18px; height: 57px;
-  left: calc(8px + var(--position) * 30px - 9px); border-radius: 0 0 3px 3px;
+.startup-black { position: absolute; top: 10px; z-index: 1; width: calc((100% - 16px) / 7 * .65); height: calc((100% - 20px) * .62);
+  left: calc(8px + (100% - 16px) * var(--position) / 7); transform: translateX(-50%); border-radius: 0 0 3px 3px;
   background: linear-gradient(100deg, #263641, #080e15 65%); border: 1px solid #050b11;
   box-shadow: inset 0 -5px 0 #050b11, 2px 3px 3px #0005; }
 #startup-title { font-size: clamp(20px, 5.8vw, 25px); font-weight: 600; letter-spacing: -.035em; margin: 0 0 9px; }
@@ -53,8 +53,8 @@ html.piano-booting, html.piano-booting body { margin: 0; min-height: 100%; backg
   #piano-startup { padding: 12px 16px; }
   .startup-content { padding: 0; }
   .startup-brand { margin-bottom: 8px; }
-  .startup-piano { height: 64px; padding-top: 6px; margin-bottom: 10px; }
-  .startup-black { top: 6px; height: 34px; }
+  .startup-piano { width: 192px; height: 96px; padding-top: 6px; margin-bottom: 10px; }
+  .startup-black { top: 6px; height: calc((100% - 16px) * .62); }
   #startup-title { font-size: 20px; margin-bottom: 5px; }
   #startup-stage { font-size: 12px; line-height: 1.4; }
   .startup-rule { margin: 10px auto 8px; }
@@ -66,8 +66,7 @@ html.piano-booting, html.piano-booting body { margin: 0; min-height: 100%; backg
 @media (max-height: 340px) {
   #piano-startup { padding-block: 8px; }
   .startup-brand { display: none; }
-  .startup-piano { height: 48px; margin-bottom: 6px; }
-  .startup-black { height: 25px; }
+  .startup-piano { width: 176px; height: 88px; margin-bottom: 6px; }
   #startup-title { font-size: 18px; }
   .startup-rule { margin: 8px auto 6px; }
 }

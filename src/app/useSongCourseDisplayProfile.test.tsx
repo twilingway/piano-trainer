@@ -84,7 +84,7 @@ it("switches 1024 to 1025 and back without remounting the course or changing sav
     range: "song",
     low: "60",
     high: "72",
-    heightShare: "0.3"
+    heightShare: "0.36"
   });
   const identity = output.dataset.identity;
   expect(listeners.size).toBe(2);
@@ -93,7 +93,7 @@ it("switches 1024 to 1025 and back without remounting the course or changing sav
     for (const listener of listeners) listener();
     await Promise.resolve();
   });
-  expect(output.dataset).toMatchObject({ range: "49", style: "3d", heightShare: "0.3" });
+  expect(output.dataset).toMatchObject({ range: "49", style: "classic", heightShare: "0.36" });
   expect(output.dataset.low).toBeUndefined();
   expect(output.dataset.high).toBeUndefined();
   expect(output.dataset.identity).toBe(identity);
@@ -131,7 +131,7 @@ it("removes its listener and stops overriding the legacy view when the course ex
   root = createRoot(host);
 });
 
-it("adjusts only compact short framing through height changes without resetting the lesson", async () => {
+it("keeps the course classic camera display stable through height changes without resetting the lesson", async () => {
   const before = JSON.stringify(preferred);
   await act(async () => {
     width = 667;
@@ -141,7 +141,7 @@ it("adjusts only compact short framing through height changes without resetting 
   });
   const output = readOutput();
   const identity = output.dataset.identity;
-  expect(output.dataset).toMatchObject({ pitch: "18", cameraHeight: "150", cameraDistance: "900" });
+  expect(output.dataset).toMatchObject({ pitch: "18", cameraHeight: "230", cameraDistance: "720" });
   await act(async () => {
     height = 501;
     for (const listener of listeners) listener();

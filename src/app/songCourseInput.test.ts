@@ -4,6 +4,8 @@ import { SongCourseAttempt } from "../songCourse/attempt";
 import type { PracticeSession } from "../practice/session";
 import type { Trainer } from "../practice/Trainer";
 import type { CourseMaterial } from "../songCourse/model";
+import { courseConfig, expectedNote } from "../songCourse/testFixtures";
+import { courseLearnerMode } from "../songCourse/listenRepeat";
 import { SongCourseInput } from "./songCourseInput";
 
 function harness() {
@@ -268,4 +270,112 @@ it("never advances a repeated waiting C for a stale attack with no core source-n
   expect(h.session.owedNote()?.id).toBe("c1");
   expect(h.session.stats().hits).toBe(1);
   expect(h.attempt.rawInputs.at(-1)?.performanceMs).toBe(200);
+});
+
+function continuousCs() {
+  const expected = [0, 1, 2, 3].map((index) => expectedNote(index, 60, index + 1, 0.7));
+  const attempt = new SongCourseAttempt(
+    courseConfig(expected, { mode: courseLearnerMode("notes") })
+  );
+  const session = new RealPracticeSession(
+    {
+      title: "stream",
+      source: "musicxml",
+      duration: 5,
+      measures: [],
+      beats: [],
+      notes: expected.map((note) => ({
+        id: note.runtimeNoteId,
+        pitch: 60,
+        hand: "right",
+        part: "learner",
+        start: note.start,
+        startBeat: note.startBeat,
+        duration: note.duration
+      }))
+    },
+    {
+      mode: attempt.config.mode,
+      hands: new Set(["right"]),
+      parts: new Set(["learner"]),
+      speed: 1,
+      countInBeats: 0
+    }
+  );
+  const trainer = { setPlaying: vi.fn() };
+  const adapter = new SongCourseInput(
+    () => ({
+      attempt,
+      material: {
+        runtimeToSource: new Map(expected.map((note) => [note.runtimeNoteId, note.sourceNoteId]))
+      } as unknown as CourseMaterial,
+      trainer: trainer as unknown as Trainer,
+      demo: false
+    }),
+    vi.fn(),
+    vi.fn()
+  );
+  session.startClock(0);
+  const key = (type: "down" | "up", at: number) => {
+    session.tick(at);
+    adapter.key({ type, pitch: 60, velocity: 90, source: "keyboard" }, session, true, {
+      raw: at,
+      corrected: at,
+      received: at,
+      admitted: true
+    });
+    expect(session.waiting).toBe(false);
+    expect(session.time).toBeCloseTo(at / 1000);
+    expect(attempt.phase).toBe("playing");
+  };
+  return { expected, attempt, session, trainer, key };
+}
+it("streams repeated Cs without note gates and retains early, timely, late and hold evidence", () => {
+  const h = continuousCs();
+  for (const [down, up] of [
+    [1000, 1700],
+    [1800, 2100],
+    [3200, 3700],
+    [4000, 4700]
+  ]) {
+    if (down === undefined || up === undefined) throw new Error("missing interval");
+    h.key("down", down);
+    h.key("up", up);
+  }
+  h.session.tick(5500);
+  expect(h.session.finished).toBe(true);
+  h.attempt.finish(5500);
+  const result = h.attempt.tick(6500, 1);
+  expect(result?.mode).toBe("tempo");
+  expect(result?.pitch).toBe(100);
+  expect(result?.notes.map((note) => note.sourceNoteId)).toEqual(
+    h.expected.map((note) => note.sourceNoteId)
+  );
+  for (const [index, offset] of [0, -200, 200, 0].entries())
+    expect(result?.notes[index]?.onsetOffsetMs).toBeCloseTo(offset);
+  for (const [index, heldMs] of [700, 300, 500, 700].entries())
+    expect(result?.notes[index]?.heldMs).toBeCloseTo(heldMs);
+  expect(
+    h.attempt.rawInputs
+      .filter((input) => input.type === "down")
+      .map((input) => input.rawPerformanceMs)
+  ).toEqual([1000, 1800, 3200, 4000]);
+  expect(h.trainer.setPlaying).not.toHaveBeenCalled();
+});
+it("keeps the clock running past a following C while the previous physical C stays held", () => {
+  const h = continuousCs();
+  h.key("down", 1000);
+  h.session.tick(2100);
+  expect(h.session.time).toBeCloseTo(2.1);
+  expect(h.session.waiting).toBe(false);
+  expect(h.attempt.phase).toBe("playing");
+  h.key("down", 2200);
+  h.key("up", 2300);
+  h.key("down", 3000);
+  h.key("up", 3700);
+  h.attempt.finish(5500);
+  const result = h.attempt.tick(6500, 1);
+  expect(result?.notes.map((note) => note.matched)).toEqual([true, false, true, false]);
+  expect(result?.notes[0]?.heldMs).toBeCloseTo(1300);
+  expect(h.trainer.setPlaying).not.toHaveBeenCalled();
 });

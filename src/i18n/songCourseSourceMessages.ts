@@ -1,6 +1,11 @@
 import type { Messages } from "./locales";
 
 export const songCourseSourceMessages: Messages = {
+  "Знакомимся с ми": { en: "Meet E" },
+  "Ми играет средний палец правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.":
+    {
+      en: "Play E with your right middle finger. Hold until the bar fills, then release."
+    },
   "Быстрая восьмая в мотиве": {
     en: "A quick eighth note in the motif"
   },
@@ -40,9 +45,9 @@ export const songCourseSourceMessages: Messages = {
   "Ля и перенос руки": {
     en: "A and moving your hand"
   },
-  "Ми — средним пальцем, ре — указательным, до — большим. Держите ми и ре по две доли, до — четыре.":
+  "Ми — средним пальцем, ре — указательным, до — большим. Держи каждую клавишу, пока дорожка не заполнится, затем отпусти.":
     {
-      en: "Play E with your middle finger, D with your index finger, and C with your thumb. Hold E and D for two beats each, and C for four."
+      en: "Play E with your middle finger, D with your index finger, and C with your thumb. Hold each key until the bar fills, then release."
     },
   "На повторной соль смените пятый палец на четвёртый, затем сыграйте ля пятым. Не растягивайте руку.":
     {
@@ -99,13 +104,13 @@ export const songCourseSourceMessages: Messages = {
   "Сыграйте трудное место ещё раз, сохраняя ритм и длину звуков.": {
     en: "Play the tricky part again, keeping the rhythm and note lengths."
   },
-  "Сыграйте четыре до большим пальцем правой руки. Держите каждый звук одну долю, затем отпускайте клавишу и нажимайте заново.":
+  "Сыграй четыре до большим пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.":
     {
-      en: "Play four Cs with your right thumb. Hold each for one beat, then release the key and press it again."
+      en: "Play four Cs with your right thumb. Hold until the bar fills, then release."
     },
-  "Сыграйте четыре ре указательным пальцем правой руки. Держите каждый звук одну долю и отпускайте перед следующим нажатием.":
+  "Сыграй четыре ре указательным пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.":
     {
-      en: "Play four Ds with your right index finger. Hold each for one beat and release the key before pressing again."
+      en: "Play four Ds with your right index finger. Hold until the bar fills, then release."
     },
   "Точка добавляет половину длительности. Удерживайте ноту до конца её звучания.": {
     en: "A dot adds half the note's length. Hold the note until its sound ends."

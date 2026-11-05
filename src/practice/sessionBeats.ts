@@ -4,11 +4,8 @@ import type { PracticeOptions } from "./practiceTypes";
 export function sessionLeadIn(song: Song, options: PracticeOptions, fallback: number): number {
   const beatSeconds =
     song.beats[1] && song.beats[0] ? song.beats[1].time - song.beats[0].time : 0.5;
-  return options.hands.size > 0
-    ? options.countInBeats === undefined
-      ? fallback
-      : options.countInBeats * beatSeconds
-    : 0;
+  if (options.countInBeats !== undefined) return options.countInBeats * beatSeconds;
+  return options.hands.size > 0 ? fallback : 0;
 }
 
 /** Beat of the latest note that has started by `time`; notes are sorted by start. */

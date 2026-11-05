@@ -70,6 +70,8 @@ export function viewLayoutChanged(
 export interface KeysPlacement {
   /** Optional lesson-only viewport budget; never changes the physical key geometry. */
   readonly maxHeightShare?: number;
+  /** A teaching keyboard uses its reserved strip for keys, without decorative rails. */
+  readonly edgeToEdge?: boolean;
   /** As a share of the view's height. */
   readonly lift: number;
   readonly scale: number;
@@ -83,7 +85,8 @@ export function placementChanged(previous: KeysPlacement, next: KeysPlacement): 
   return (
     previous.lift !== next.lift ||
     previous.scale !== next.scale ||
-    previous.maxHeightShare !== next.maxHeightShare
+    previous.maxHeightShare !== next.maxHeightShare ||
+    previous.edgeToEdge !== next.edgeToEdge
   );
 }
 /** However the keys are placed, the falling notes keep at least this share of the view. */
@@ -140,11 +143,11 @@ export function viewGeometry(
   const framingWidth =
     whiteWidth *
     (native ? Math.min(1, (frameHeight * (reserveNotes ? maxKeyboardShare : 1)) / wanted) : 1);
-  const feltHeight = Math.max(3, framingWidth * FELT_PER_WIDTH);
+  const feltHeight = placement.edgeToEdge ? 0 : Math.max(3, framingWidth * FELT_PER_WIDTH);
   const blackOf = (keyboardHeight: number) =>
     keyboardHeight * (stickers ? BLACK_KEY_HEIGHT_WITH_STICKERS : BLACK_KEY_HEIGHT);
   // The palms reach below the keys, into a strip of their own; without hands a margin stays.
-  const margin = framingWidth * BOTTOM_MARGIN_PER_WIDTH;
+  const margin = placement.edgeToEdge ? 0 : framingWidth * BOTTOM_MARGIN_PER_WIDTH;
   const strip = parts.hands
     ? Math.max(
         margin,
