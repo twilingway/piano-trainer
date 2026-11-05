@@ -284,12 +284,24 @@ describe("song-course lesson and result", () => {
       await render(<SongCourseLesson {...props} phase={phase} waiting />);
       expect(host.querySelector('input[type="range"]')).toBeNull();
     }
-    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe("Слушай");
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe("Слушай мелодию");
     await act(async () => {
       await Promise.resolve();
       host.querySelector<HTMLButtonElement>(".song-course-lesson__pause")?.click();
     });
     expect(props.onPause).toHaveBeenCalledOnce();
+  });
+
+  it("distinguishes the melody example from the accompanied learner turn", async () => {
+    const props = lessonProps();
+    await render(<SongCourseLesson {...props} phase="demo" accompaniment />);
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe("Слушай мелодию");
+    await render(<SongCourseLesson {...props} phase="playing" accompaniment />);
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe(
+      "Твоя очередь · с сопровождением"
+    );
+    await render(<SongCourseLesson {...props} phase="playing" accompaniment={false} />);
+    expect(host.querySelector(".song-course-lesson__status")?.textContent).toBe("Твоя очередь");
   });
 
   it("pauses for optional instructions, closes outside, and keeps settings behind the course menu", async () => {

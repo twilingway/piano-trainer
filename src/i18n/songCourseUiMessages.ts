@@ -1,5 +1,10 @@
 import type { Messages } from "./locales";
 export const songCourseUiMessages: Messages = {
+  "Слушай мелодию": { en: "Listen to the melody" },
+  "Твоя очередь · с сопровождением": { en: "Your turn · with accompaniment" },
+  "В примере звучит мелодия со стана. Во время вашей игры компьютер добавляет сопровождение.": {
+    en: "The example plays the melody on the staff. During your turn, the computer adds accompaniment."
+  },
   "Начал вовремя": { en: "Started on time" },
   Слушай: { en: "Listen" },
   "Твоя очередь": { en: "Your turn" },

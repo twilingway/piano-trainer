@@ -207,7 +207,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       `independent-${String(index + 1)}`,
       "independent-phrase",
       "Фраза самостоятельно",
-      "Сыграйте знакомую фразу без цветных подсказок. Сохраняйте длительность звуков.",
+      "Сыграйте знакомую фразу без имён нот и номеров пальцев. Сохраняйте длительность звуков.",
       phrase.fromMeasure,
       phrase.toMeasure
     )

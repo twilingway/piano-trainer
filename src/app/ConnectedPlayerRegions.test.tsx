@@ -697,7 +697,7 @@ it.each([
   mount(<ConnectedPracticeWorkspace />);
   expect(observed.workspace.mock.lastCall?.[0]).toMatchObject({
     staffFingers: guided,
-    staffPitchColors: guided
+    staffPitchColors: true
   });
 });
 

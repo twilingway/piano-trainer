@@ -2,13 +2,24 @@
 import { describe, expect, it } from "vitest";
 import { findSongCourseSource } from "./catalog";
 import { buildSongCourseMaterial } from "./material";
+import { PracticeSession } from "../practice/session";
 import { songCourseDemoSong } from "./demoSong";
 
 const source = findSongCourseSource("hot-cross-buns");
 if (!source) throw new Error("missing fixture");
 
 describe("introductory demonstration score", () => {
-  it.each(["notes-c", "notes-d", "notes-e", "quarter", "half", "whole"])(
+  it.each([
+    "notes-c",
+    "notes-d",
+    "notes-e",
+    "quarter",
+    "half",
+    "whole",
+    "guided-1",
+    "independent-1",
+    "performance"
+  ])(
     "isolates the written learner notes for %s without transposing or altering the score",
     (suffix) => {
       const material = buildSongCourseMaterial(source, `hot-cross-buns/${suffix}`);
@@ -36,8 +47,30 @@ describe("introductory demonstration score", () => {
       ).toBe(true);
     }
   );
-  it("keeps the accompaniment for a phrase demonstration", () => {
-    const material = buildSongCourseMaterial(source, "hot-cross-buns/guided-1");
-    expect(songCourseDemoSong(material)).toBe(material.song);
+  it("sounds exactly the final learner melody while preserving the real answer accompaniment", () => {
+    const material = buildSongCourseMaterial(source, "hot-cross-buns/performance");
+    const options = {
+      mode: "tempo" as const,
+      speed: 1,
+      hands: new Set<"right">(),
+      accompaniment: true
+    };
+    const demo = new PracticeSession(songCourseDemoSong(material), options);
+    expect(
+      demo.song.notes
+        .filter((note) => demo.accompanies(note))
+        .map((note) => [note.pitch, note.start, note.duration])
+    ).toEqual(material.expected.map((note) => [note.pitch, note.start, note.duration]));
+    const learner = new PracticeSession(material.song, {
+      ...options,
+      hands: new Set(["right"]),
+      parts: new Set(source.learnerPartIds)
+    });
+    expect(
+      learner.song.notes
+        .filter((note) => learner.accompanies(note))
+        .every((note) => source.accompanimentPartIds.includes(note.part ?? ""))
+    ).toBe(true);
+    expect(learner.song.notes.some((note) => learner.accompanies(note))).toBe(true);
   });
 });
