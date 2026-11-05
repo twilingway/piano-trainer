@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installUniformStaffLayout, type UniformStaffAxis } from "./uniformStaffLayout";
 import { staffNoteInk } from "./uniformStaffInk";
 import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
+import { songCourseDensityScale, songCoursePlayhead } from "./songCourseViewport";
 import { EXERCISES } from "../song/exercises";
 
 function axisX(axis: UniformStaffAxis, beat: number) {
@@ -641,6 +642,56 @@ describe("uniform staff layout with installed OSMD", () => {
     }
   );
 
+  it("keeps four course notes readable in a 390px phone's 360px score viewport", async () => {
+    const width = 360;
+    const xml = score([Array.from({ length: 4 }, () => note("E", 4)).join("")]);
+    const host = document.body.appendChild(document.createElement("div"));
+    Object.defineProperty(host, "offsetWidth", { value: width });
+    const osmd = new OpenSheetMusicDisplay(host, {
+      backend: "svg",
+      autoResize: false,
+      drawTitle: false,
+      drawComposer: false,
+      drawPartNames: false,
+      renderSingleHorizontalStaffline: true
+    });
+    await osmd.load(xml);
+    const layout = installUniformStaffLayout(osmd, (beat) => (beat * 60) / 65, {
+      continuousTime: true
+    });
+    osmd.Zoom = 3;
+    osmd.render();
+    const axis = layout.getAxis();
+    if (!axis) throw new Error("No phone course axis");
+    const measure = osmd.GraphicSheet.MeasureList[0]?.[0] as VexFlowMeasure | undefined;
+    if (!measure) throw new Error("No phone measure");
+    // Course drawing crops empty page margins before the four-note viewport fits it.
+    const croppedLeft = measure.getVFStave().getX() * osmd.Zoom;
+    const notes = heads(osmd).map((head) => ({
+      x: head.x - croppedLeft,
+      width: 2 * (head.right - head.x)
+    }));
+    expect(notes).toHaveLength(4);
+    const scale = songCourseDensityScale(width, notes);
+    const playhead = songCoursePlayhead(width);
+    const first = notes[0];
+    if (!first) throw new Error("No phone note");
+    for (const head of notes) {
+      expect(head.width * scale).toBeGreaterThanOrEqual(14);
+      expect(playhead + (head.x - first.x + head.width / 2) * scale).toBeLessThan(width);
+    }
+    expect(axis.pixelsPerSecond / osmd.Zoom).toBeLessThan(72);
+  });
+
+  it("retains the ordinary 72px/s minimum while sparse courses may use 18px/s", async () => {
+    const xml = score([note("C", 16, "whole")]);
+    for (const continuousTime of [false, true]) {
+      const osmd = await load(xml);
+      const layout = installUniformStaffLayout(osmd, (beat) => beat, { continuousTime });
+      osmd.render();
+      expect(layout.getAxis()?.pixelsPerSecond).toBeCloseTo(continuousTime ? 18 : 72);
+    }
+  });
   it("uses a global course density for cross-bar labels without accelerating locally", async () => {
     const lyric = "<lyric><text>Twenty-character-label</text></lyric>";
     const osmd = await load(

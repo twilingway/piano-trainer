@@ -88,6 +88,7 @@ interface MeasureState {
 }
 
 const MIN_PIXELS_PER_SECOND = 72;
+const COURSE_MIN_PIXELS_PER_SECOND = 18;
 const SYMBOL_GAP = 4;
 // Barline gutters are independent of the spacing between neighbouring symbols.
 const BARLINE_GAP = 10;
@@ -124,7 +125,8 @@ function density(
   labelWidthAtBeat: ((beat: number) => number) | undefined,
   continuousTime: boolean
 ) {
-  let pixelsPerSecond = MIN_PIXELS_PER_SECOND;
+  const minimum = continuousTime ? COURSE_MIN_PIXELS_PER_SECOND : MIN_PIXELS_PER_SECOND;
+  let pixelsPerSecond = minimum;
   let inset = Math.max(MIN_INSET, instructions.inset);
   interface Column {
     beat: number;
@@ -212,7 +214,7 @@ function density(
       ...columns.flatMap((column) => column.ink.map((box) => box.right)),
       ...columns.map((column) => column.labelHalf)
     );
-    const horizon = (maxLeft + maxRight + SYMBOL_GAP) / MIN_PIXELS_PER_SECOND;
+    const horizon = (maxLeft + maxRight + SYMBOL_GAP) / minimum;
     for (let index = 1; index < columns.length; index++) {
       const next = columns[index];
       if (!next) continue;
