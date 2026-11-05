@@ -292,6 +292,26 @@ describe("song-course lesson and result", () => {
     expect(props.onPause).toHaveBeenCalledOnce();
   });
 
+  it("uses short readable teacher, learner and resume cues in both languages", async () => {
+    const props = lessonProps();
+    await render(<SongCourseLesson {...props} phase="ready" />);
+    expect(host.querySelector(".song-course-start__cue")?.textContent).toBe("Слушаем Твили");
+    await render(<SongCourseLesson {...props} phase="paused" />);
+    expect(host.querySelector(".song-course-start__cue")?.textContent).toBe("Продолжаем");
+    expect(host.querySelector(".song-course-lesson__play")?.getAttribute("title")).toBe(
+      "Продолжаем"
+    );
+    await render(<SongCourseLesson {...props} phase="playing" countdown={3} />);
+    expect(host.querySelector(".song-course-start__cue")?.textContent).toBe("Твоя очередь");
+    setInterfaceLanguage("en");
+    await render(<SongCourseLesson {...props} phase="ready" />);
+    expect(host.querySelector(".song-course-start__cue")?.textContent).toBe("Listen to Twili");
+    await render(<SongCourseLesson {...props} phase="paused" />);
+    expect(host.querySelector(".song-course-lesson__play")?.getAttribute("title")).toBe("Continue");
+    await render(<SongCourseLesson {...props} phase="playing" countdown={3} />);
+    expect(host.querySelector(".song-course-start__cue")?.textContent).toBe("Your turn");
+  });
+
   it("distinguishes the melody example from the accompanied learner turn", async () => {
     const props = lessonProps();
     await render(<SongCourseLesson {...props} phase="demo" accompaniment />);

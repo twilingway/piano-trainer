@@ -21,7 +21,8 @@ export function songCourseStartPlacement(
     right = Math.min(view.right, keyboard.right);
   const gapTop = Math.max(view.top + 8, score.bottom + 10);
   const gapBottom = Math.min(view.bottom, keyboard.top) - 8;
-  const cueHeight = 32;
+  // Portrait cue:24px line +6px vertical padding +6px gap.
+  const cueHeight = 36;
   const gapSize = Math.min(preferred, right - left - 16, gapBottom - gapTop - cueHeight);
   if (gapSize >= 64)
     return {

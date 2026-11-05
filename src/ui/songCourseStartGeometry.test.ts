@@ -15,7 +15,7 @@ it("places start and its learner cue in the empty band below all notation", () =
   expect(value?.overKeyboard).toBe(false);
   expect(value?.size).toBe(112);
   expect(requireValue(value).top).toBeGreaterThan(420);
-  expect(requireValue(value).top + requireValue(value).size + 32).toBeLessThan(650);
+  expect(requireValue(value).top + requireValue(value).size + 36).toBeLessThan(650);
   expect(requireValue(value).left + requireValue(value).size / 2).toBe(195);
 });
 it("uses keyboard rather than the first notes in short landscape", () => {
@@ -27,7 +27,7 @@ it("uses keyboard rather than the first notes in short landscape", () => {
   );
   expect(value?.overKeyboard).toBe(true);
   expect(requireValue(value).top).toBeGreaterThan(250);
-  expect(requireValue(value).top + requireValue(value).size + 32).toBeLessThanOrEqual(375);
+  expect(requireValue(value).top + requireValue(value).size + 36).toBeLessThanOrEqual(369);
   expect(requireValue(value).left + requireValue(value).size / 2).toBe(333.5);
 });
 it("clamps to the zoomed visual viewport and its offset", () => {
@@ -39,7 +39,7 @@ it("clamps to the zoomed visual viewport and its offset", () => {
   expect(requireValue(value).left).toBeGreaterThanOrEqual(120);
   expect(requireValue(value).left + requireValue(value).size).toBeLessThanOrEqual(520);
   expect(requireValue(value).top).toBeGreaterThan(360);
-  expect(requireValue(value).top + requireValue(value).size + 32).toBeLessThan(540);
+  expect(requireValue(value).top + requireValue(value).size + 36).toBeLessThan(540);
 });
 it("does not invent a placement over notation if even the keyboard is unavailable", () => {
   expect(
