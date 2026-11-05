@@ -14,9 +14,10 @@
 
 ## 3. Интеграция
 
-- [ ] 3.1 Rebase на dev с PR323, pnpm check и pnpm spec:validate; записать результаты и создать PR с
+- [x] 3.1 Rebase на dev с PR323, pnpm check и pnpm spec:validate; записать результаты и создать PR с
       UTF8 readback.
-- [ ] 3.2 Root review и визуальная проверка в одной существующей вкладке: cold-cache, ошибка,
-      portrait/landscape, zoom.
+- [x] 3.2 Root review GO и визуальная проверка в одной существующей вкладке: reload с очищенным JS
+      decoded-map, portrait/landscape, видимость Play/teacher/hold; error/stale/zoom — focused
+      tests. Границы и provenance записаны в docs/LESSON_SCENE_READINESS_QA_2026_11_05.md.
 - [x] 3.3 Убрать наследуемые attributes/directions/print из второго такта четырёх ми; проверить XML
       и parsed timing/IDs regression.

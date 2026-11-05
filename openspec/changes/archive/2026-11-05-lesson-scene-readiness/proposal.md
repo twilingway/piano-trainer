@@ -24,6 +24,9 @@
 
 ### Modified Capabilities
 
+- `lesson-teacher`: ошибка необходимого изображения текущей песенной сцены блокирует старт с retry;
+  необязательное оформление остаётся неблокирующим.
+
 ## Impact
 
 Хуки app, изображения SongCourseCharacters, SongCourseStart, hold overlay, scoped CSS и тесты. Без
