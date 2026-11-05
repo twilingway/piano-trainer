@@ -88,17 +88,18 @@ describe("fixed song-course score header", () => {
     header?.dispose();
   });
 
-  it("does not add an overlay to a centred short score or an absent drawing", () => {
+  it("also fixes the header of a short score and skips an absent drawing", () => {
     const { room, host } = fixture();
-    host.dataset.songCourseCentered = "true";
-    expect(installSongCourseHeader(host)).toBeUndefined();
-    delete host.dataset.songCourseCentered;
+    const header = installSongCourseHeader(host);
+    expect(header).toBeDefined();
+    header?.dispose();
     host.replaceChildren();
     expect(installSongCourseHeader(host)).toBeUndefined();
     expect(room.querySelector(".song-course-header")).toBeNull();
   });
   it("masks the original moving prefix at the beginning without hiding it in the exported SVG", () => {
     const { room, host, svg } = fixture(28);
+    host.dataset.songCoursePlayhead = "138";
     const header = installSongCourseHeader(host);
     const overlay = required(room.querySelector<HTMLElement>(".song-course-header"));
     const time = required(svg.querySelector(".vf-timesignature"));
@@ -109,7 +110,46 @@ describe("fixed song-course score header", () => {
     const initial = parseFloat(overlay.style.width);
     host.scrollLeft = 420;
     header?.frame();
-    expect(parseFloat(overlay.style.width)).toBeLessThan(initial);
+    expect(parseFloat(overlay.style.width)).toBe(initial);
     header?.dispose();
   });
+});
+
+it("caps an opaque enlarged prefix before the cursor and keeps its initial copy still", () => {
+  const { room, host, svg } = fixture(28);
+  host.dataset.songCoursePlayhead = "250";
+  host.dataset.songCourseCursorGap = "20";
+  required(svg.querySelector(".vf-notehead")).getBoundingClientRect = () =>
+    new DOMRect(348 - host.scrollLeft, 90, 40, 20);
+  required(svg.querySelector(".vf-timesignature")).getBoundingClientRect = () =>
+    new DOMRect(93 - host.scrollLeft, 70, 250, 60);
+  const header = installSongCourseHeader(host);
+  const overlay = required(room.querySelector<HTMLElement>(".song-course-header"));
+  const clone = required(overlay.querySelector("svg"));
+  expect(parseFloat(overlay.style.width)).toBe(224);
+  expect(clone.style.marginLeft).toBe("-70px");
+  host.scrollLeft = 400;
+  header?.frame();
+  expect(parseFloat(overlay.style.width)).toBe(224);
+  expect(clone.style.marginLeft).toBe("-70px");
+  expect(host.innerHTML).not.toContain("song-course-header");
+  header?.dispose();
+});
+
+it("recreates the same fixed prefix after a zoom or relayout in the middle of scrolling", () => {
+  const { room, host } = fixture(28);
+  host.dataset.songCoursePlayhead = "160";
+  host.dataset.songCourseCursorGap = "18";
+  const initial = installSongCourseHeader(host);
+  const first = required(room.querySelector<HTMLElement>(".song-course-header"));
+  const drawing = required(first.querySelector("svg"));
+  const margin = drawing.style.marginLeft;
+  const width = first.style.width;
+  initial?.dispose();
+  host.scrollLeft = 420;
+  const rebuilt = installSongCourseHeader(host);
+  const second = required(room.querySelector<HTMLElement>(".song-course-header"));
+  expect(required(second.querySelector("svg")).style.marginLeft).toBe(margin);
+  expect(second.style.width).toBe(width);
+  rebuilt?.dispose();
 });

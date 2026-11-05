@@ -43,6 +43,7 @@ export function fitSongCourseViewport(
 ): void {
   delete host.dataset.songCoursePlayhead;
   delete host.dataset.songCourseCentered;
+  delete host.dataset.songCourseCursorGap;
   if (!enabled) return;
   const width = host.clientWidth;
   const playhead = songCoursePlayhead(width);
@@ -71,18 +72,39 @@ export function fitSongCourseViewport(
   }
 }
 
-/** Final cropped ink that fits whole stays centred; only a genuinely long score scrolls. */
+/** Choose one screen anchor after the final crop/zoom, with room to scroll to the last barline. */
 export function frameSongCourseDrawing(host: HTMLElement): void {
   delete host.dataset.songCourseCentered;
   if (host.dataset.songCoursePlayhead === undefined) return;
   const svg = host.querySelector("svg");
   const page = host.querySelector<HTMLElement>(".staff-page");
-  if (!svg || !page) return;
-  if (svg.getBoundingClientRect().width <= host.clientWidth + 0.5) {
-    host.dataset.songCourseCentered = "true";
-    page.style.paddingInline = "0px";
-    host.scrollLeft = 0;
-  }
+  const first = svg?.querySelector<SVGGraphicsElement>(".vf-notehead");
+  if (!svg || !page || !first || !(host.clientWidth > 0)) return;
+  const drawing = svg.getBoundingClientRect();
+  const head = first.getBoundingClientRect();
+  if (!(drawing.width > 0 && head.width > 0)) return;
+  const firstX = head.left + head.width / 2 - drawing.left;
+  const prefixRight = Math.max(
+    0,
+    ...[
+      ...svg.querySelectorAll<SVGGraphicsElement>(".vf-clef, .vf-timesignature, .vf-keysignature")
+    ]
+      .map((glyph) => glyph.getBoundingClientRect())
+      .filter((box) => box.width > 0 && box.right < head.left)
+      .map((box) => box.right - drawing.left)
+  );
+  const gap = Math.max(12, head.width / 2 + 8);
+  const balanced =
+    drawing.width <= host.clientWidth + 0.5
+      ? (host.clientWidth - drawing.width) / 2 + firstX
+      : songCoursePlayhead(host.clientWidth);
+  const anchor = Math.min(
+    host.clientWidth - Math.min(12, host.clientWidth / 24),
+    Math.max(balanced, prefixRight + gap)
+  );
+  host.dataset.songCoursePlayhead = String(anchor);
+  host.dataset.songCourseCursorGap = String(gap);
+  page.style.paddingInline = `${String(anchor)}px ${String(Math.max(0, host.clientWidth - anchor))}px`;
 }
 
 /** Reads the same beat as the normal staff cursor; no easing, timer or independent clock. */
@@ -91,10 +113,6 @@ export function positionSongCourseViewport(
   spots: readonly BeatSpot[],
   beat: number
 ): boolean {
-  if (host.dataset.songCourseCentered === "true") {
-    host.scrollLeft = 0;
-    return true;
-  }
   const value = host.dataset.songCoursePlayhead;
   const svg = host.querySelector("svg");
   if (value === undefined || !svg || !spots.length) return false;
@@ -110,9 +128,7 @@ export function songCourseCursorAnchor(
   following: boolean
 ): { readonly anchorX?: number } {
   const value = host?.dataset.songCoursePlayhead;
-  return following && value !== undefined && host?.dataset.songCourseCentered !== "true"
-    ? { anchorX: Number(value) }
-    : {};
+  return following && value !== undefined ? { anchorX: Number(value) } : {};
 }
 
 /** Grow only the vertical viewport for rendered labels; the horizontal density and scale stay fixed. */
