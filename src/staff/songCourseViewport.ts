@@ -163,7 +163,8 @@ export function fitSongCourseLabelBounds(host: HTMLElement): number {
 export function fitSongCourseRoom(
   osmd: OpenSheetMusicDisplay,
   host: HTMLElement,
-  draw: () => number
+  draw: () => number,
+  manualZoom = 1
 ): number {
   let shift = draw();
   const room = host.closest<HTMLElement>(".song-course-lesson__score");
@@ -183,5 +184,20 @@ export function fitSongCourseRoom(
     osmd.render();
     shift = draw();
   }
+  if (manualZoom !== 1 && Number.isFinite(manualZoom) && manualZoom > 0) {
+    osmd.Zoom *= manualZoom;
+    osmd.render();
+    shift = draw();
+  }
   return shift;
+}
+
+/** Uniform axes use uncropped SVG pixels; reader spots are relative to the cropped viewport. */
+export function songCourseAxisOffset(host: HTMLElement): number {
+  const svg = host.querySelector("svg");
+  if (!svg) return 0;
+  const [left, , width] = (svg.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
+  return left !== undefined && width && Number.isFinite(left)
+    ? -(left * svg.getBoundingClientRect().width) / width
+    : 0;
 }

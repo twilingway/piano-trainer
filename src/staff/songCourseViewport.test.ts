@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { DEFAULT_STAFF_PREFS } from "../app/staffPreferences";
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
@@ -6,6 +7,7 @@ import { showDrawing, fitCourseDrawing } from "./courseStaffView";
 import { placeCursorLine } from "./liveCursor";
 import {
   frameSongCourseDrawing,
+  songCourseAxisOffset,
   songCourseCursorAnchor,
   positionSongCourseViewport,
   fitSongCourseLabelBounds,
@@ -239,4 +241,48 @@ it("centres a whole short phrase and leaves its cursor moving while only longer 
   frameSongCourseDrawing(host);
   expect(host.dataset.songCourseCentered).toBeUndefined();
   expect(songCourseCursorAnchor(host, true)).toEqual({ anchorX: 128 });
+});
+
+it("applies 100/150/200 percent relative to the existing default after fitting, without refitting the manual result", () => {
+  const sizes: number[] = [];
+  for (const requested of [1, DEFAULT_STAFF_PREFS.lessonZoom, 2]) {
+    const room = document.body.appendChild(document.createElement("div"));
+    room.className = "song-course-lesson__score";
+    Object.defineProperty(room, "clientHeight", { value: 120 });
+    const host = room.appendChild(document.createElement("div"));
+    host.dataset.songCoursePlayhead = "128";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    host.append(svg);
+    const notation = {
+      Zoom: 1.5,
+      render: vi.fn(() => {
+        svg.setAttribute("width", String(400 * notation.Zoom));
+        svg.setAttribute("height", String(225 * notation.Zoom));
+      })
+    };
+    svg.getBoundingClientRect = () =>
+      new DOMRect(0, 0, Number(svg.getAttribute("width")), Number(svg.getAttribute("height")));
+    notation.render();
+    fitSongCourseRoom(
+      notation as unknown as OpenSheetMusicDisplay,
+      host,
+      () => 0,
+      requested / DEFAULT_STAFF_PREFS.lessonZoom
+    );
+    sizes.push(svg.getBoundingClientRect().width);
+    if (requested === 2) expect(svg.getBoundingClientRect().height).toBeGreaterThan(120);
+  }
+  expect(sizes[0]).toBeCloseTo(((sizes[1] ?? 0) * 2) / 3);
+  expect(sizes[2]).toBeCloseTo(((sizes[1] ?? 0) * 4) / 3);
+});
+
+it("keeps the cropped SVG time axis in reader pixel coordinates", () => {
+  const host = document.body.appendChild(document.createElement("div"));
+  host.innerHTML = '<svg viewBox="20 30 400 100" width="600" height="150"></svg>';
+  const svg = host.querySelector("svg");
+  if (!svg) throw new Error("Missing cropped SVG");
+  svg.getBoundingClientRect = () => new DOMRect(40, 50, 600, 150);
+  expect(songCourseAxisOffset(host)).toBe(-30);
+  svg.setAttribute("viewBox", "0 30 400 100");
+  expect(songCourseAxisOffset(host)).toBeCloseTo(0);
 });
