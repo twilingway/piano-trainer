@@ -88,13 +88,19 @@ function opaqueBackground(host: HTMLElement): string {
 export function installSongCourseHeader(host: HTMLElement) {
   const source = host.querySelector("svg");
   const parent = host.parentElement;
-  if (!source || !parent || host.dataset.songCourseCentered === "true") return undefined;
+  if (!source || !parent) return undefined;
   const first = source.querySelector<SVGGraphicsElement>(".vf-notehead");
   if (!first) return undefined;
   const firstBox = first.getBoundingClientRect();
   const drawing = headerDrawing(source, firstBox.left);
   if (!drawing) return undefined;
   const sourceBox = source.getBoundingClientRect();
+  // Keep the initial balanced composition, while an opaque prefix masks the moving original.
+  const anchor = host.dataset.songCoursePlayhead;
+  const sourceOffset =
+    anchor === undefined
+      ? sourceBox.left - host.getBoundingClientRect().left
+      : Number(anchor) - (firstBox.left + firstBox.width / 2 - sourceBox.left);
   const glyphs = [...source.querySelectorAll<SVGGraphicsElement>(GLYPHS)]
     .map((glyph) => glyph.getBoundingClientRect())
     .filter((box) => box.width > 0 && box.right < firstBox.left);
@@ -118,6 +124,7 @@ export function installSongCourseHeader(host: HTMLElement) {
   drawing.setAttribute("height", String(sourceBox.height));
   drawing.style.maxWidth = "none";
   drawing.style.display = "block";
+  drawing.style.marginLeft = `${String(sourceOffset)}px`;
   overlay.append(drawing);
   parent.append(overlay);
   let lastPosition = "";
@@ -125,19 +132,20 @@ export function installSongCourseHeader(host: HTMLElement) {
     const view = host.getBoundingClientRect();
     const container = parent.getBoundingClientRect();
     const liveSource = source.getBoundingClientRect();
-    const top = liveSource.top - container.top + parent.scrollTop;
+    const top = view.top - container.top + parent.scrollTop;
+    const drawingTop = liveSource.top - view.top;
     const left = view.left - container.left + parent.scrollLeft;
-    const playhead = Number(host.dataset.songCoursePlayhead ?? host.clientWidth);
-    const maskWidth = Math.max(
-      width,
-      Math.min(playhead - 12, liveSource.left + introRight - view.left + 6)
-    );
-    const position = `${String(left)},${String(top)},${String(maskWidth)}`;
+    const playhead = Number(host.dataset.songCoursePlayhead ?? (host.clientWidth || view.width));
+    const gap = Number(host.dataset.songCourseCursorGap ?? 12);
+    const maskWidth = Math.max(0, Math.min(playhead - gap, sourceOffset + width));
+    const position = `${String(left)},${String(top)},${String(maskWidth)},${String(view.height)},${String(drawingTop)}`;
     if (position === lastPosition) return;
     lastPosition = position;
     overlay.style.width = `${String(maskWidth)}px`;
     overlay.style.left = `${String(left)}px`;
     overlay.style.top = `${String(top)}px`;
+    overlay.style.height = `${String(view.height)}px`;
+    drawing.style.marginTop = `${String(drawingTop)}px`;
   };
   host.addEventListener("scroll", frame, { passive: true });
   frame();

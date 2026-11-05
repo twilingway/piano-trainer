@@ -8,9 +8,9 @@ export interface SongCourseViewportNote {
   readonly width: number;
 }
 
-/** Keep a clef zone on narrow screens and leave most of a wide viewport for upcoming notes. */
+/** One visible target at the center of the score viewport, before and during every course phase. */
 export function songCoursePlayhead(width: number): number {
-  return Math.min(320, Math.max(0, width) * 0.4);
+  return Math.max(0, width) / 2;
 }
 
 /** Fit every real four-event window; a partial ending contributes only its real notes. */
@@ -43,6 +43,7 @@ export function fitSongCourseViewport(
 ): void {
   delete host.dataset.songCoursePlayhead;
   delete host.dataset.songCourseCentered;
+  delete host.dataset.songCourseCursorGap;
   if (!enabled) return;
   const width = host.clientWidth;
   const playhead = songCoursePlayhead(width);
@@ -71,18 +72,22 @@ export function fitSongCourseViewport(
   }
 }
 
-/** Final cropped ink that fits whole stays centred; only a genuinely long score scrolls. */
+/** Choose one screen anchor after the final crop/zoom, with room to scroll to the last barline. */
 export function frameSongCourseDrawing(host: HTMLElement): void {
   delete host.dataset.songCourseCentered;
   if (host.dataset.songCoursePlayhead === undefined) return;
   const svg = host.querySelector("svg");
   const page = host.querySelector<HTMLElement>(".staff-page");
-  if (!svg || !page) return;
-  if (svg.getBoundingClientRect().width <= host.clientWidth + 0.5) {
-    host.dataset.songCourseCentered = "true";
-    page.style.paddingInline = "0px";
-    host.scrollLeft = 0;
-  }
+  const first = svg?.querySelector<SVGGraphicsElement>(".vf-notehead");
+  if (!svg || !page || !first || !(host.clientWidth > 0)) return;
+  const drawing = svg.getBoundingClientRect();
+  const head = first.getBoundingClientRect();
+  if (!(drawing.width > 0 && head.width > 0)) return;
+  const gap = Math.max(12, head.width / 2 + 8);
+  const anchor = songCoursePlayhead(host.clientWidth);
+  host.dataset.songCoursePlayhead = String(anchor);
+  host.dataset.songCourseCursorGap = String(gap);
+  page.style.paddingInline = `${String(anchor)}px ${String(Math.max(0, host.clientWidth - anchor))}px`;
 }
 
 /** Reads the same beat as the normal staff cursor; no easing, timer or independent clock. */
@@ -91,10 +96,6 @@ export function positionSongCourseViewport(
   spots: readonly BeatSpot[],
   beat: number
 ): boolean {
-  if (host.dataset.songCourseCentered === "true") {
-    host.scrollLeft = 0;
-    return true;
-  }
   const value = host.dataset.songCoursePlayhead;
   const svg = host.querySelector("svg");
   if (value === undefined || !svg || !spots.length) return false;
@@ -110,9 +111,7 @@ export function songCourseCursorAnchor(
   following: boolean
 ): { readonly anchorX?: number } {
   const value = host?.dataset.songCoursePlayhead;
-  return following && value !== undefined && host?.dataset.songCourseCentered !== "true"
-    ? { anchorX: Number(value) }
-    : {};
+  return following && value !== undefined ? { anchorX: Number(value) } : {};
 }
 
 /** Grow only the vertical viewport for rendered labels; the horizontal density and scale stay fixed. */
@@ -166,11 +165,14 @@ export function fitSongCourseRoom(
   draw: () => number,
   manualZoom = 1
 ): number {
+  host.style.maxHeight = "";
   let shift = draw();
   const room = host.closest<HTMLElement>(".song-course-lesson__score");
   if (!room || host.dataset.songCoursePlayhead === undefined) return shift;
   const limit = room.clientHeight;
   if (!(limit > 1)) return shift;
+  // The final manual zoom may be taller than the row: scroll inside it, never over the heading.
+  host.style.maxHeight = `${String(limit)}px`;
   // Crop padding and font bounds may change slightly after a render, so measure again.
   for (let pass = 0; pass < 4; pass++) {
     const svg = host.querySelector("svg");
