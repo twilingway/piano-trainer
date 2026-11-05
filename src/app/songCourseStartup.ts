@@ -85,6 +85,7 @@ export function newCourseAttempt(
     speed,
     expected: material.expected,
     learnerPartIds: material.source.learnerPartIds,
+    ...(material.node.kind === "notes" ? { introductory: true as const } : {}),
     ...(material.node.kind === "review" ? { rubricVariant: "learning-review" as const } : {})
   });
 }

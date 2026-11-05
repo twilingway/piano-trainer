@@ -183,7 +183,7 @@ it("preserves legacy zero stars while admitting the same proven v2 performance a
   expect(validSongCourseResult({ ...legacy, stars: 2, completed: true })).toBe(false);
   expect(validSongCourseResult({ ...current, stars: 0, completed: false })).toBe(false);
   expect(validSongCourseResult({ ...current, stars: 3 })).toBe(false);
-  for (const rubricVersion of ["song-course-v3", "legacy-reading", "", null, undefined])
+  for (const rubricVersion of ["song-course-v4", "legacy-reading", "", null, undefined])
     expect(validSongCourseResult({ ...current, rubricVersion })).toBe(false);
 });
 
