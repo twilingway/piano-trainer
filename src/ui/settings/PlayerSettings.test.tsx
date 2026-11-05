@@ -537,7 +537,7 @@ describe("player settings organization", () => {
   it("offers the hand look next to the key look, 3D by default", async () => {
     await render(false);
     await section("Вид");
-    expect(select("Вид рук").disabled).toBe(true);
+    expect(select("Вид рук").disabled).toBe(false);
     await act(async () => {
       await Promise.resolve();
       const keys = select("Вид клавиш");
@@ -561,14 +561,9 @@ describe("player settings organization", () => {
     await render(false);
     await section("Вид");
     const keys = select("Вид клавиш");
-    expect(Array.from(keys.options, (option) => option.value)).toEqual([
-      "classic",
-      "arcade",
-      "3d",
-      "clay"
-    ]);
-    expect(keys.value).toBe("clay");
-    expect(host.querySelector("input[aria-label='Угол обзора']")).not.toBeNull();
+    expect(Array.from(keys.options, (option) => option.value)).toEqual(["classic", "arcade", "3d"]);
+    expect(keys.value).toBe("classic");
+    expect(host.querySelector("input[aria-label='Угол обзора']")).toBeNull();
     await act(async () => {
       await Promise.resolve();
       keys.value = "3d";

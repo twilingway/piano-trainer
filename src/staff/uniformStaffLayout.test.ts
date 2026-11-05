@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installUniformStaffLayout, type UniformStaffAxis } from "./uniformStaffLayout";
 import { staffNoteInk } from "./uniformStaffInk";
 import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
+import { songCourseDensityScale, songCoursePlayhead } from "./songCourseViewport";
 import { EXERCISES } from "../song/exercises";
 
 function axisX(axis: UniformStaffAxis, beat: number) {
@@ -607,5 +608,106 @@ describe("uniform staff layout with installed OSMD", () => {
       (halves[0] ?? 0) + (halves[1] ?? 0) + 4 - 1e-6
     );
     expect(Math.abs(axisX(axis, 4 - 1e-7) - axisX(axis, 4))).toBeLessThan(0.001);
+  });
+
+  it.each([0.75, 1, 1.6])(
+    "keeps the course uniformly timed through its final whole note at zoom %s",
+    async (zoom) => {
+      const osmd = await load(regular);
+      const timeAtBeat = (beat: number) => beat * 0.5;
+      const before = osmd.Sheet.SourceMeasures.map((m) => [
+        m.AbsoluteTimestamp.RealValue,
+        m.Duration.RealValue
+      ]);
+      const layout = installUniformStaffLayout(osmd, timeAtBeat, { continuousTime: true });
+      osmd.Zoom = zoom;
+      osmd.render();
+      const axis = layout.getAxis();
+      if (!axis) throw new Error("No course time axis");
+      for (const head of heads(osmd)) expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
+      const step = axis.pixelsPerSecond / 8;
+      for (let beat = 0.25; beat <= 16; beat += 0.25)
+        expect(axisX(axis, beat) - axisX(axis, beat - 0.25)).toBeCloseTo(step, 6);
+      const last = osmd.GraphicSheet.MeasureList.at(-1)?.[0] as VexFlowMeasure | undefined;
+      if (!last) throw new Error("No last measure");
+      const stave = last.getVFStave();
+      const barline = (stave.getX() + stave.getWidth()) * osmd.Zoom;
+      expect(axisX(axis, 16)).toBeCloseTo(barline, 6);
+      const finalHead = heads(osmd).at(-1);
+      expect(finalHead?.beat).toBe(12);
+      expect(axisX(axis, 16) - (finalHead?.x ?? 0)).toBeCloseTo(axis.pixelsPerSecond * 2, 6);
+      expect(
+        osmd.Sheet.SourceMeasures.map((m) => [m.AbsoluteTimestamp.RealValue, m.Duration.RealValue])
+      ).toEqual(before);
+    }
+  );
+
+  it("keeps four course notes readable in a 390px phone's 360px score viewport", async () => {
+    const width = 360;
+    const xml = score([Array.from({ length: 4 }, () => note("E", 4)).join("")]);
+    const host = document.body.appendChild(document.createElement("div"));
+    Object.defineProperty(host, "offsetWidth", { value: width });
+    const osmd = new OpenSheetMusicDisplay(host, {
+      backend: "svg",
+      autoResize: false,
+      drawTitle: false,
+      drawComposer: false,
+      drawPartNames: false,
+      renderSingleHorizontalStaffline: true
+    });
+    await osmd.load(xml);
+    const layout = installUniformStaffLayout(osmd, (beat) => (beat * 60) / 65, {
+      continuousTime: true
+    });
+    osmd.Zoom = 3;
+    osmd.render();
+    const axis = layout.getAxis();
+    if (!axis) throw new Error("No phone course axis");
+    const measure = osmd.GraphicSheet.MeasureList[0]?.[0] as VexFlowMeasure | undefined;
+    if (!measure) throw new Error("No phone measure");
+    // Course drawing crops empty page margins before the four-note viewport fits it.
+    const croppedLeft = measure.getVFStave().getX() * osmd.Zoom;
+    const notes = heads(osmd).map((head) => ({
+      x: head.x - croppedLeft,
+      width: 2 * (head.right - head.x)
+    }));
+    expect(notes).toHaveLength(4);
+    const scale = songCourseDensityScale(width, notes);
+    const playhead = songCoursePlayhead(width);
+    const first = notes[0];
+    if (!first) throw new Error("No phone note");
+    for (const head of notes) {
+      expect(head.width * scale).toBeGreaterThanOrEqual(14);
+      expect(playhead + (head.x - first.x + head.width / 2) * scale).toBeLessThan(width);
+    }
+    expect(axis.pixelsPerSecond / osmd.Zoom).toBeLessThan(72);
+  });
+
+  it("retains the ordinary 72px/s minimum while sparse courses may use 18px/s", async () => {
+    const xml = score([note("C", 16, "whole")]);
+    for (const continuousTime of [false, true]) {
+      const osmd = await load(xml);
+      const layout = installUniformStaffLayout(osmd, (beat) => beat, { continuousTime });
+      osmd.render();
+      expect(layout.getAxis()?.pixelsPerSecond).toBeCloseTo(continuousTime ? 18 : 72);
+    }
+  });
+  it("uses a global course density for cross-bar labels without accelerating locally", async () => {
+    const lyric = "<lyric><text>Twenty-character-label</text></lyric>";
+    const osmd = await load(
+      score([
+        note("C", 12, "half", "<dot/>") + note("D", 4, "quarter", lyric),
+        note("E", 4, "quarter", lyric) + note("F", 12, "half", "<dot/>")
+      ])
+    );
+    const layout = installUniformStaffLayout(osmd, (beat) => beat / 2, { continuousTime: true });
+    osmd.render();
+    const axis = layout.getAxis();
+    if (!axis) throw new Error("No course lyric axis");
+    expect(axis.pixelsPerSecond).toBeGreaterThan(72);
+    for (const head of heads(osmd)) expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
+    const step = axis.pixelsPerSecond / 2;
+    for (let beat = 1; beat <= 8; beat++)
+      expect(axisX(axis, beat) - axisX(axis, beat - 1)).toBeCloseTo(step, 6);
   });
 });

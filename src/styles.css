@@ -7827,3 +7827,90 @@ button.song-card.song-card__open {
   --clay-button-ink: #07364b;
   border-color: #c4f3ff;
 }
+
+/* Turn labels stay in the floating start layer and never shrink the score. */
+.song-course-start__cue {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - clamp(52px, 15vmin, 72px) - 12px);
+  transform: translate(-50%, -100%);
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: #061b27;
+  color: #e7ffaf;
+  font-size: clamp(14px, 3vmin, 18px);
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+}
+/* Scoped floating controls use measured notation bounds without resizing OSMD. */
+.song-course-start__placement {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.song-course-start .song-course-start__placement .song-course-lesson__play {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  min-height: 0;
+  flex-shrink: 0;
+  font-size: clamp(2rem, 7vmin, 3rem);
+}
+.song-course-start__placement .song-course-start__cue {
+  position: static;
+  transform: none;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  max-width: none;
+  width: max-content;
+  margin: 0;
+  padding: 3px 8px;
+  font-size: 16px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+.song-course-hold {
+  padding: 2px 4px;
+  border-radius: 9px;
+  font-size: 10px;
+  line-height: 14px;
+}
+.song-course-hold__label {
+  white-space: nowrap;
+}
+.song-course-hold__track {
+  height: 6px;
+  margin-top: 2px;
+  margin-right: 12px;
+}
+.song-course-hold__end {
+  right: 4px;
+  bottom: 1px;
+}
+.song-course-hold__end img {
+  width: 13px;
+  height: 13px;
+}
+@media (orientation: portrait) and (min-height: 640px) and (width <= 1024px) {
+  .song-course-lesson__playing-room:has(.song-course-characters__teacher) {
+    grid-template-rows: clamp(176px, 26dvh, 280px) minmax(0, 1fr);
+  }
+  .song-course-lesson__characters .song-course-characters__teacher {
+    /* Reviewed common alpha128 bounds: x29..480/y16..528 in a512x544 frame. */
+    max-width: 66vw;
+    transform: translateX(0.3%);
+  }
+}
+
+@media (orientation: portrait) and (min-height: 640px) and (min-width: 320px) {
+  .song-course-start__placement .song-course-start__cue {
+    font-size: 18px;
+    line-height: 24px;
+  }
+}

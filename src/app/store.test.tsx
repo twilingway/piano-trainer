@@ -152,7 +152,7 @@ describe("application preferences", () => {
     expect(state.preferences.staff).toMatchObject({
       keys: true,
       zoom: 1,
-      keyStyle: "clay",
+      keyStyle: "classic",
       camera: { fov: 43 }
     });
     expect(state.preferences.player).toMatchObject({

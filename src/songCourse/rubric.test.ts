@@ -9,7 +9,7 @@ describe("song course independent pitch, onset and hold", () => {
       courseConfig(),
       gradeEvidence([rawInput("down", 200, 0), rawInput("up", 1200, 1)])
     );
-    expect(result).toMatchObject({ pitch: 100, onset: 0, hold: 100, stars: 0, completed: false });
+    expect(result).toMatchObject({ pitch: 100, onset: 0, hold: 100, stars: 2, completed: true });
   });
   it("uses the separate learning review window without inflating normal results", () => {
     const evidence = gradeEvidence([rawInput("down", 200, 0), rawInput("up", 1200, 1)]);
@@ -130,8 +130,8 @@ describe("song course independent pitch, onset and hold", () => {
     expect(result.extraCount).toBe(0);
   });
   it("cannot award three stars through pitch alone", () => {
-    expect(starsForCourseAxes(100, 100, 0)).toBe(0);
-    expect(starsForCourseAxes(100, 0, 100)).toBe(0);
+    expect(starsForCourseAxes(100, 100, 0)).toBe(1);
+    expect(starsForCourseAxes(100, 0, 100)).toBe(2);
     expect(starsForCourseAxes(95, null, 90)).toBe(3);
   });
 });
@@ -144,7 +144,7 @@ it("rejects a physical release beyond the collection deadline despite a correcte
       rawInput("up", 1150, 1, 60, { rawPerformanceMs: 1250, songTime: 1.15 })
     ])
   );
-  expect(result).toMatchObject({ pitch: 100, onset: 100, hold: 0, stars: 0, completed: false });
+  expect(result).toMatchObject({ pitch: 100, onset: 100, hold: 0, stars: 1, completed: true });
   expect(result.notes[0]).toMatchObject({ heldMs: 1100, holdCorrect: false });
 });
 it("still accepts a physical release exactly on the inclusive collection deadline", () => {
@@ -156,4 +156,64 @@ it("still accepts a physical release exactly on the inclusive collection deadlin
     ])
   );
   expect(result).toMatchObject({ hold: 100, stars: 3 });
+});
+
+describe("achievement star boundaries", () => {
+  it.each([
+    [100, 50, 100, 2],
+    [100, 0, 100, 2],
+    [100, 100, 0, 1],
+    [59.99, 100, 100, 0],
+    [60, 0, 0, 1],
+    [79.99, 100, 100, 1],
+    [80, 0, 79.99, 1],
+    [80, 0, 80, 2],
+    [94.99, 100, 100, 2],
+    [95, 89.99, 90, 2],
+    [95, 90, 89.99, 2],
+    [95, 90, 90, 3],
+    [95, null, 90, 3],
+    [80, null, 80, 2],
+    [60, null, 0, 1]
+  ] as const)("grades pitch %s, onset %s, hold %s as %s", (pitch, onset, hold, stars) => {
+    expect(starsForCourseAxes(pitch, onset, hold)).toBe(stars);
+  });
+  it("credits pitch and hold with two stars while retaining actual onset errors", () => {
+    const result = gradeSongCourseAttempt(
+      courseConfig([expectedNote(0), expectedNote(1)]),
+      gradeEvidence(
+        [
+          rawInput("down", 0, 0),
+          rawInput("up", 1000, 1),
+          rawInput("down", 1200, 2),
+          rawInput("up", 2200, 3)
+        ],
+        { musicalEndPerformanceMs: 2000, closedAtPerformanceMs: 2300 }
+      )
+    );
+    expect(result).toMatchObject({
+      rubricVersion: "song-course-v2",
+      pitch: 100,
+      onset: 50,
+      hold: 100,
+      stars: 2,
+      completed: true
+    });
+    expect(result.notes[1]?.mistakes).toContain("onset");
+  });
+  it("gives no credit to invalid evidence even with perfect axes", () => {
+    const result = gradeSongCourseAttempt(
+      courseConfig(),
+      gradeEvidence([rawInput("down", 0, 0), rawInput("up", 1000, 1)], {
+        invalidReasons: ["interrupted"]
+      })
+    );
+    expect(result).toMatchObject({
+      pitch: 100,
+      hold: 100,
+      stars: 0,
+      completed: false,
+      valid: false
+    });
+  });
 });

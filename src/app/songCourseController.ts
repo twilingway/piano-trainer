@@ -291,6 +291,12 @@ export class SongCourseController {
     this.resolvePresentation?.(true);
     this.resolvePresentation = null;
   }
+  artError(id: string): void {
+    if (id !== this.sceneId || this.disposed) return;
+    this.presentationReady = Promise.resolve(false);
+    this.resolvePresentation?.(false);
+    this.fail("Не удалось загрузить картинки урока. Откройте этап ещё раз.");
+  }
   staffError(id: string): void {
     if (id === this.sceneId) {
       this.presentationReady = Promise.resolve(false);

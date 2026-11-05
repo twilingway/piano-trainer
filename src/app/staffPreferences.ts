@@ -145,7 +145,7 @@ export const DEFAULT_STAFF_PREFS: StaffPrefs = {
   octaveLabels: true,
   fps: false,
   keyRange: "song",
-  keyStyle: "clay",
+  keyStyle: "classic",
   keyboardOrientation: "follow",
   autoReview: false,
   camera: CAMERA_PRESETS.top,

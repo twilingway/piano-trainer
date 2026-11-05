@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { CourseMaterial, SongCourseResult as CourseResult } from "../songCourse/model";
 import { useI18n } from "../app/useI18n";
+import { needsCourseDemonstration } from "../songCourse/listenRepeat";
 import { SongCourseStart } from "./SongCourseStart";
 import { SongCourseMenu } from "./SongCourseMenu";
 import { SongCourseResult } from "./SongCourseResult";
@@ -118,7 +119,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
   const actionLabel = running
     ? "Пауза в песне"
     : phase === "paused"
-      ? "Продолжить исполнение"
+      ? "Продолжаем"
       : "Сыграть этап";
   const action = phase === "error" ? props.onRetry : running ? props.onPause : props.onStart;
   return (
@@ -224,6 +225,15 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
           (phase === "ready" || phase === "paused" || (running && props.countdown !== undefined))
         }
         label={actionLabel}
+        cue={
+          running && props.countdown !== undefined
+            ? "Твоя очередь"
+            : phase === "ready" && needsCourseDemonstration(material.node.kind)
+              ? "Слушаем Твили"
+              : phase === "paused"
+                ? "Продолжаем"
+                : "Твоя очередь"
+        }
         countdown={running ? props.countdown : undefined}
         onStart={action}
         onExit={props.onExit}

@@ -1,5 +1,14 @@
 import type { Messages } from "./locales";
 export const songCourseUiMessages: Messages = {
+  "Слушаем Твили": { en: "Listen to Twili" },
+  Продолжаем: { en: "Continue" },
+  "Звёзды за правильные ноты и длительность звуков.": {
+    en: "Stars for the right notes and note lengths."
+  },
+  "Звёзды: ноты → удержание → начало вовремя.": {
+    en: "Stars: notes → holding → starting on time."
+  },
+  "Другие повторы": { en: "More repetitions" },
   "Слушай мелодию": { en: "Listen to the melody" },
   "Твоя очередь · с сопровождением": { en: "Your turn · with accompaniment" },
   "В примере звучит мелодия со стана. Во время вашей игры компьютер добавляет сопровождение.": {

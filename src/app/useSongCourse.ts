@@ -4,6 +4,7 @@ import { createSongCourseFanfare } from "../audio/songCourseFanfare";
 import { courseDisplayRange } from "../songCourse/material";
 import { songCourseStaffXml } from "./songCourseStaffXml";
 import { useI18n } from "./useI18n";
+import { SongCourseSceneArt } from "./songCourseSceneArt";
 import { SongCourseController } from "./songCourseController";
 import { readingActions } from "./readingSlice";
 import { songActions } from "./songSlice";
@@ -69,19 +70,44 @@ export function useSongCourse(beginner: BeginnerCourse) {
       controller.restoreInitial(beginner.active || store.getState().reading.activeCourse !== null);
   }, [controller, store, view.loaded, legacyReady, beginner.loaded, beginner.active]);
   const sceneId = controller.sceneId;
+  const art = useMemo(
+    () => new SongCourseSceneArt(view.material, sceneId),
+    [view.material, sceneId]
+  );
+  useEffect(() => {
+    art.activate();
+    void art.prepare();
+    return () => {
+      art.dispose();
+    };
+  }, [art]);
   const presentation = useMemo(
     () => ({
       id: sceneId,
       songCourseFeedback: controller.faceFeedback,
       readHold: controller.characters.readHold,
       onPresented: (id: string) => {
-        controller.present(id);
+        if (id !== art.presentationId) return;
+        const urls = [
+          ...document.querySelectorAll<SVGImageElement>(".song-course-lesson__score svg image")
+        ]
+          .map((image) => image.getAttribute("href") ?? image.getAttribute("xlink:href"))
+          .filter((url): url is string => !!url);
+        void art.presented(
+          urls,
+          () => {
+            controller.present(id);
+          },
+          () => {
+            controller.artError(id);
+          }
+        );
       },
       onError: (id: string) => {
         controller.staffError(id);
       }
     }),
-    [controller, sceneId]
+    [controller, sceneId, art]
   );
   const staffXml = useMemo(
     () => (view.material ? songCourseStaffXml(view.material, locale) : null),

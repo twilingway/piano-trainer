@@ -1,3 +1,5 @@
+import { findSourceCourseNode } from "./nodeIdentity";
+import { buildRepeatedNoteMaterial } from "./repeatedNoteMaterial";
 import { quartersAt } from "../song/song";
 import type { PlayableRange } from "../practice/playableRange";
 import type { CourseMaterial, SongCourseNode, SongCourseSource } from "./model";
@@ -9,10 +11,10 @@ export function buildSongCourseMaterial(
   source: SongCourseSource,
   nodeOrId: SongCourseNode | string
 ): CourseMaterial {
-  const node =
-    typeof nodeOrId === "string" ? source.nodes.find((value) => value.id === nodeOrId) : nodeOrId;
+  const node = typeof nodeOrId === "string" ? findSourceCourseNode(source, nodeOrId) : nodeOrId;
   if (node?.songId !== source.id || !node.sourceNoteIds.length)
     throw new Error("song-course-node-unavailable");
+  if (node.repeat) return buildRepeatedNoteMaterial(source, node);
   const full = loadSongCourseSource(source);
   const wanted = new Set(node.sourceNoteIds);
   const selected = full.identities.filter(

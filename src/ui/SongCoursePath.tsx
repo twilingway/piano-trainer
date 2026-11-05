@@ -1,6 +1,6 @@
 import { useContext, useLayoutEffect, useRef, useState } from "react";
-import { validSongCourseResult } from "../songCourse/progress";
-import { songCourseEvidenceMatchesNode } from "../songCourse/evidenceProof";
+import { coursePath } from "../songCourse/path";
+import { coursePathResults } from "../songCourse/pathProgress";
 import { WindowDisclosureContext } from "./windowDisclosureContext";
 import { useI18n } from "../app/useI18n";
 import type {
@@ -23,32 +23,12 @@ export interface SongCoursePathProps {
   readonly onLegacy?: () => void;
 }
 
-function bestResult(
-  source: SongCourseSource,
-  node: SongCourseNode,
-  results: readonly SongCourseResult[]
-) {
-  return results
-    .filter(
-      (r) =>
-        r.valid &&
-        r.completed &&
-        r.rubricVariant === "normal" &&
-        r.songId === source.id &&
-        r.sourceRevision === source.revision &&
-        r.sourceHash === source.sourceHash &&
-        r.nodeId === node.id &&
-        validSongCourseResult(r) &&
-        songCourseEvidenceMatchesNode(r, source, node)
-    )
-    .sort((a, b) => b.stars - a.stars || b.createdAt - a.createdAt)[0];
-}
-
 export function SongCoursePath(props: SongCoursePathProps) {
   const { t } = useI18n();
-  const entries = props.sources.flatMap((source) =>
-    source.nodes.map((node) => ({ source, node, result: bestResult(source, node, props.results) }))
-  );
+  const entries = props.sources.flatMap((source) => {
+    const results = coursePathResults(source, props.results);
+    return coursePath(source).nodes.map((node) => ({ source, node, result: results.get(node.id) }));
+  });
   const completed = entries.filter((entry) => entry.result).length;
   const selectedEntries = entries.filter(
     (entry) =>
@@ -142,13 +122,18 @@ function SongCourseGroup(props: {
     props.selection.sourceRevision === source.revision &&
     props.selection.sourceHash === source.sourceHash;
   const [open, setOpen] = useState(selected || props.defaultOpen);
+  const [repeatsOpen, setRepeatsOpen] = useState(false);
   const element = useRef<HTMLDetailsElement>(null);
   useLayoutEffect(() => {
     if (!element.current) return;
     memory?.restoreDetails("body", element.current.parentElement ?? element.current);
     setOpen(element.current.open);
   }, [memory]);
-  const done = source.nodes.filter((node) => bestResult(source, node, props.results)).length;
+  const path = coursePath(source);
+  const grouped = coursePathResults(source, props.results);
+  const exact = repeatsOpen ? coursePathResults(source, props.results, false) : undefined;
+  const selectedId = props.selection && path.representativeById.get(props.selection.nodeId);
+  const done = path.nodes.filter((node) => grouped.has(node.id)).length;
   return (
     <details
       className="song-course-path__group"
@@ -163,47 +148,102 @@ function SongCourseGroup(props: {
       <summary className="song-course-path__group-toggle">
         <span>{t(source.title)}</span>
         <small>
-          {t("Этапов завершено: {done} из {total}", { done, total: source.nodes.length })}
+          {t("Этапов завершено: {done} из {total}", { done, total: path.nodes.length })}
         </small>
         <span aria-hidden="true">{open ? "−" : "+"}</span>
       </summary>
       {open && (
-        <ol className="song-course-path__trail">
-          {source.nodes.map((node, index) => {
-            const result = bestResult(source, node, props.results);
-            const current = selected && props.selection.nodeId === node.id;
-            return (
-              <li key={node.id}>
-                <button
-                  type="button"
-                  className="song-course-path__node"
-                  disabled={props.pending}
-                  data-state={current ? "current" : result ? "complete" : "upcoming"}
-                  aria-current={current ? "step" : undefined}
-                  onClick={() => {
-                    props.onChoose(source.id, node.id);
-                  }}
-                >
-                  <SongCourseMiniature source={source} node={node} />
-                  <span className="song-course-path__node-copy">
-                    <small>{t("Этап песни {number}", { number: index + 1 })}</small>
-                    <strong>{t(node.title)}</strong>
-                    <span>{t(node.instruction)}</span>
-                    {result && (
-                      <span
-                        className="song-course-path__stars"
-                        aria-label={t("Звёзд за этап: {count} из 3", { count: result.stars })}
-                      >
-                        <ClayStars count={result.stars} />
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+        <>
+          <ol className="song-course-path__trail">
+            {path.nodes.map((node, index) => (
+              <SongCoursePathNode
+                key={node.id}
+                source={source}
+                node={node}
+                number={index + 1}
+                result={grouped.get(node.id)}
+                current={selected && selectedId === node.id}
+                pending={props.pending}
+                onChoose={props.onChoose}
+              />
+            ))}
+          </ol>
+          {path.repeats.length > 0 && (
+            <details
+              className="song-course-path__repeats"
+              data-window-detail={`song-course-repeats:${source.id}`}
+              open={repeatsOpen}
+              onToggle={(event) => {
+                setRepeatsOpen(event.currentTarget.open);
+                memory?.captureDetails(
+                  "body",
+                  event.currentTarget.parentElement ?? event.currentTarget
+                );
+              }}
+            >
+              <summary className="song-course-path__group-toggle">{t("Другие повторы")}</summary>
+              {repeatsOpen && (
+                <ol className="song-course-path__trail">
+                  {path.repeats.map((node) => (
+                    <SongCoursePathNode
+                      key={node.id}
+                      source={source}
+                      node={node}
+                      number={source.nodes.indexOf(node) + 1}
+                      result={exact?.get(node.id)}
+                      current={false}
+                      pending={props.pending}
+                      onChoose={props.onChoose}
+                    />
+                  ))}
+                </ol>
+              )}
+            </details>
+          )}
+        </>
       )}
     </details>
+  );
+}
+
+function SongCoursePathNode(props: {
+  readonly source: SongCourseSource;
+  readonly node: SongCourseNode;
+  readonly number: number;
+  readonly result: SongCourseResult | undefined;
+  readonly current: boolean;
+  readonly pending: boolean;
+  readonly onChoose: (songId: string, nodeId: string) => void;
+}) {
+  const { t } = useI18n();
+  const { source, node, result, current } = props;
+  return (
+    <li>
+      <button
+        type="button"
+        className="song-course-path__node"
+        disabled={props.pending}
+        data-state={current ? "current" : result ? "complete" : "upcoming"}
+        aria-current={current ? "step" : undefined}
+        onClick={() => {
+          props.onChoose(source.id, node.id);
+        }}
+      >
+        <SongCourseMiniature source={source} node={node} />
+        <span className="song-course-path__node-copy">
+          <small>{t("Этап песни {number}", { number: props.number })}</small>
+          <strong>{t(node.title)}</strong>
+          <span>{t(node.instruction)}</span>
+          {result && (
+            <span
+              className="song-course-path__stars"
+              aria-label={t("Звёзд за этап: {count} из 3", { count: result.stars })}
+            >
+              <ClayStars count={result.stars} />
+            </span>
+          )}
+        </span>
+      </button>
+    </li>
   );
 }

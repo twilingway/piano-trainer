@@ -1,3 +1,4 @@
+import { songCourseHoldPlacement } from "./songCourseHoldGeometry";
 import rewardStar from "../ui/lesson-art/reward-star.webp";
 import type { SongCourseHoldSnapshot } from "../songCourse/holdCue";
 import { uniqueFeedbackHead } from "./lessonStaffFeedbackOverlay";
@@ -47,14 +48,34 @@ export class SongCourseHoldOverlay {
     }
     const note = head.getBoundingClientRect();
     const box = parent.getBoundingClientRect();
-    const width = Math.min(180, box.width - 16);
-    if (
-      !(note.width > 0 && note.height > 0 && width > 60 && box.height > 42) ||
-      note.right <= box.left ||
-      note.left >= box.right ||
-      note.bottom <= box.top ||
-      note.top >= box.bottom
-    ) {
+    const obstacles = [
+      ...parent.querySelectorAll<SVGGraphicsElement>(
+        ".vf-stavenote, .vf-clef, .vf-timesignature, .vf-keysignature, svg text"
+      )
+    ]
+      .map((element) => element.getBoundingClientRect())
+      .filter((bounds) => bounds.width > 0 && bounds.height > 0);
+    const visual = window.visualViewport;
+    const viewport = {
+      left: Math.max(box.left, visual?.offsetLeft ?? 0),
+      top: Math.max(box.top, visual?.offsetTop ?? 0),
+      right: Math.min(box.right, (visual?.offsetLeft ?? 0) + (visual?.width ?? window.innerWidth)),
+      bottom: (visual?.offsetTop ?? 0) + (visual?.height ?? window.innerHeight)
+    };
+    const header = parent
+      .querySelector<HTMLElement>(".song-course-header")
+      ?.getBoundingClientRect();
+    const scrollView = this.host.getBoundingClientRect();
+    const cursor =
+      scrollView.left + Number(this.host.dataset.songCoursePlayhead ?? scrollView.width / 2);
+    const placement = songCourseHoldPlacement(viewport, note, obstacles, {
+      below: Math.max(note.bottom, ...obstacles.map((bounds) => bounds.bottom)),
+      anchorX: cursor,
+      forceFallback:
+        note.left < Math.max(viewport.left, header?.right ?? viewport.left) ||
+        note.right > viewport.right
+    });
+    if (!(note.width > 0 && note.height > 0 && placement && box.width > 0 && box.height > 0)) {
       this.clear();
       return;
     }
@@ -95,18 +116,11 @@ export class SongCourseHoldOverlay {
     this.layer.setAttribute("aria-valuetext", text);
     this.layer.style.setProperty("--hold-color", snapshot.color);
     if (this.fill) this.fill.style.transform = `scaleX(${String(snapshot.progress)})`;
-    const left = Math.max(
-      8,
-      Math.min(box.width - width - 8, note.left + note.width / 2 - box.left - width / 2)
-    );
-    const below = note.bottom - box.top + 8;
-    const top = Math.max(
-      2,
-      Math.min(box.height - 42, below + 42 <= box.height ? below : note.top - box.top - 46)
-    );
-    this.layer.style.left = `${String(left)}px`;
-    this.layer.style.top = `${String(top)}px`;
-    this.layer.style.width = `${String(width)}px`;
+    this.layer.dataset.compact = String(placement.compact);
+    this.layer.style.position = "fixed";
+    this.layer.style.left = `${String(placement.left)}px`;
+    this.layer.style.top = `${String(placement.top)}px`;
+    this.layer.style.width = `${String(placement.width)}px`;
   };
   clear(): void {
     this.layer?.remove();

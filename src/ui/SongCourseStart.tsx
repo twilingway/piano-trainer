@@ -1,17 +1,22 @@
+import { useRef } from "react";
+import { useSongCourseStartPosition } from "./useSongCourseStartPosition";
 import { useI18n } from "../app/useI18n";
 import { GameDialog } from "./GameDialog";
 
 interface Props {
   readonly open: boolean;
   readonly label: string;
+  readonly cue: string;
   readonly countdown: number | undefined;
   readonly onStart: () => void;
   readonly onExit: () => void;
 }
 
 /** A floating dialog never takes space from the engraved score or blocks the lesson menu. */
-export function SongCourseStart({ open, label, countdown, onStart, onExit }: Props) {
+export function SongCourseStart({ open, label, cue, countdown, onStart, onExit }: Props) {
   const { t } = useI18n();
+  const placementRef = useRef<HTMLDivElement>(null);
+  const placement = useSongCourseStartPosition(open, placementRef);
   return (
     <GameDialog
       open={open}
@@ -21,7 +26,18 @@ export function SongCourseStart({ open, label, countdown, onStart, onExit }: Pro
       onClose={onExit}
     >
       {open && (
-        <>
+        <div
+          ref={placementRef}
+          className="song-course-start__placement"
+          data-over-keyboard={placement?.overKeyboard}
+          style={{
+            left: placement?.left,
+            top: placement?.top,
+            width: placement?.size,
+            visibility: placement ? "visible" : "hidden"
+          }}
+        >
+          <p className="song-course-start__cue">{t(cue)}</p>
           {countdown === undefined ? (
             <button
               type="button"
@@ -44,7 +60,7 @@ export function SongCourseStart({ open, label, countdown, onStart, onExit }: Pro
               {countdown}
             </div>
           )}
-        </>
+        </div>
       )}
     </GameDialog>
   );

@@ -1,16 +1,15 @@
 import {
   fitSongCourseViewport,
+  songCourseAxisOffset,
   songCourseCursorAnchor,
-  fitSongCourseLabelBounds,
-  fitSongCourseRoom,
   frameSongCourseDrawing
 } from "./songCourseViewport";
+import { DEFAULT_STAFF_PREFS } from "../app/staffPreferences";
 import { installSongCourseHeader } from "./songCourseHeader";
 import { useSongCourseFaces } from "./useSongCourseFaces";
 import type { StaffProps } from "./staffProps";
 import { fitStaffIllustration } from "./staffIllustration";
 import { musicXmlWithClayColors } from "../song/clayNotes";
-import { applyStaffClayMaterial } from "./staffClayMaterial";
 import { worldScoreSnapshot } from "./publishWorldScore";
 import { revealLessonEntry } from "./lessonViewport";
 import { useLessonStaffFeedback } from "./useLessonStaffFeedback";
@@ -30,21 +29,19 @@ import { entryBeatAt, placeCursorLine } from "./liveCursor";
 import { centreLivePosition, createStaffFollow } from "./staffFollow";
 import { beatPositions, indexNotes, emptyNoteIndex } from "./staffNoteIndex";
 import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
-import { layoutStaffTimeline, staffCursorTarget } from "./staffTimelineLayout";
-import { installUniformStaffLayout } from "./uniformStaffLayout";
+import {
+  installStaffTimeline,
+  layoutStaffTimeline,
+  staffCursorTarget
+} from "./staffTimelineLayout";
+import { fitStaffDrawing, staffDrawingOverflow } from "./staffDrawing";
 import { installLocalNoteNames } from "./localNoteNames";
 import { setStaffTempoLayout } from "./staffTempoLayout";
 import { usePublishReaderGeometry, useReaderFrameBeat } from "./readerGeometry";
 import { readStaffGeometry } from "./staffReaderGeometry";
 import { sharedTabLabelWidths, sharedTabScale } from "./sharedReaderSpacing";
 import { DEFAULT_PLAYED_NOTE_COLOR } from "./notationColors";
-import {
-  highlightUnderCursor,
-  paintMarks,
-  paintStaffFingerings,
-  paintStaffNotes,
-  setStaffColors
-} from "./staffNoteColors";
+import { highlightUnderCursor, paintMarks, setStaffColors } from "./staffNoteColors";
 import type { BeatSpot } from "./liveCursor";
 import { watchStaffPresentation } from "./staffPresentation";
 import { courseCursor, courseStaffXml } from "./courseStaff";
@@ -53,8 +50,7 @@ import {
   measureCourseReach,
   noteCourseReach,
   reservedSpan,
-  showDrawing,
-  fitCourseDrawing
+  showDrawing
 } from "./courseStaffView";
 import { OpenSheetMusicDisplay, unitInPixels } from "opensheetmusicdisplay";
 import { useEffect, useEffectEvent, useMemo, useRef } from "react";
@@ -102,6 +98,7 @@ export function Staff({
   illustration = false
 }: StaffProps) {
   const hasSharedTabs = sharedTabs !== undefined;
+  const melodyCourse = presentation?.id.startsWith("song-course:") === true;
   const palette = pitchColors || pitchColorNoteId !== undefined;
   const publishGeometry = usePublishReaderGeometry();
   const shownXml = useMemo(() => {
@@ -116,7 +113,7 @@ export function Staff({
   const pageRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   const fixedHeaderRef = useRef<ReturnType<typeof installSongCourseHeader>>(undefined);
-  const uniformRef = useRef<ReturnType<typeof installUniformStaffLayout> | undefined>(undefined);
+  const uniformRef = useRef<ReturnType<typeof installStaffTimeline>>(undefined);
   const reachRef = useRef<Awaited<ReturnType<typeof measureCourseReach>>>(undefined);
   const presentationRef = useRef(presentation);
   const cancelPresentationRef = useRef<(() => void) | undefined>(undefined);
@@ -181,8 +178,8 @@ export function Staff({
     setStaffColors(osmd, noteColor, scoreColor, palette);
     tabWidthsRef.current = new Map();
     const reach = latest.current.course ? reachRef.current : undefined;
-    if (latest.current.course)
-      fitCourseZoom(osmd, host, latest.current.maxShare, reach, latest.current.zoom);
+    const fitZoom = melodyCourse ? DEFAULT_STAFF_PREFS.lessonZoom : latest.current.zoom;
+    if (latest.current.course) fitCourseZoom(osmd, host, latest.current.maxShare, reach, fitZoom);
     else
       baselineRef.current.render(osmd, host, {
         zoom: latest.current.zoom,
@@ -201,15 +198,16 @@ export function Staff({
     }
     if (!latest.current.course && !latest.current.singleLine) fitWrappedStaffSvg(osmd);
     if (latest.current.course) noteCourseReach(courseRange, osmd, host);
-    const shift = fitSongCourseRoom(osmd, host, () => {
-      paintStaffNotes(osmd, noteColor, palette);
-      applyStaffClayMaterial(host, material === "clay", osmd);
-      paintStaffFingerings(osmd, fingerColors, scoreColor);
-      return (
-        (latest.current.course && !illustration
-          ? fitCourseDrawing(host, reservedSpan(osmd, reach))
-          : 0) + fitSongCourseLabelBounds(host)
-      );
+    const shift = fitStaffDrawing(osmd, host, {
+      noteColor,
+      palette,
+      material,
+      fingerColors,
+      scoreColor,
+      course: latest.current.course,
+      illustration,
+      span: reservedSpan(osmd, reach),
+      manualZoom: melodyCourse ? latest.current.zoom / DEFAULT_STAFF_PREFS.lessonZoom : 1
     });
     const illustrationLines = illustration ? fitStaffIllustration(host) : undefined;
     const page = pageRef.current;
@@ -225,7 +223,8 @@ export function Staff({
       latest.current.singleLine ? uniformRef.current?.getAxis() : undefined,
       timeline,
       beatPositions(noteIndexRef.current.cursorBeats, host, linesRef.current),
-      linesRef.current
+      linesRef.current,
+      melodyCourse ? songCourseAxisOffset(host) : 0
     );
     paintMarks(noteIndexRef.current.heads, marksRef.current);
     fitHeight(host, linesRef.current, latest.current.singleLine, latest.current.maxShare);
@@ -279,13 +278,14 @@ export function Staff({
         if (cancelled) return;
         reachRef.current = reach;
         installLocalNoteNames(osmd);
-        uniformRef.current =
-          !course && timeline && (singleLine || hasSharedTabs)
-            ? installUniformStaffLayout(osmd, timeline.timeAtBeat, {
-                horizontal: singleLine,
-                labelWidthAtBeat: (beat) => tabWidthsRef.current.get(beat) ?? 0
-              })
-            : undefined;
+        uniformRef.current = installStaffTimeline(
+          osmd,
+          timeline,
+          (singleLine || hasSharedTabs) && (!course || melodyCourse),
+          singleLine,
+          (beat) => tabWidthsRef.current.get(beat) ?? 0,
+          melodyCourse
+        );
         setStaffTempoLayout(osmd, shownXml);
         osmd.Zoom = latest.current.zoom;
         // Half the usual page margin: the view starts at the first line anyway.
@@ -357,7 +357,8 @@ export function Staff({
     timeline,
     hasSharedTabs,
     courseRange,
-    illustration
+    illustration,
+    melodyCourse
   ]);
 
   const presentationId = presentation?.id;
@@ -391,7 +392,8 @@ export function Staff({
     timeline,
     hasSharedTabs,
     courseRange,
-    illustration
+    illustration,
+    melodyCourse
   ]);
 
   useEffect(() => {
@@ -519,10 +521,7 @@ export function Staff({
     <div
       className={`${singleLine ? "staff staff--single" : "staff staff--wrapped"}${course ? " staff--course" : ""}`}
       ref={hostRef}
-      style={{
-        overflowY: !course && zoom > 1 ? "auto" : undefined,
-        overflowX: !course && !singleLine ? "auto" : undefined
-      }}
+      style={staffDrawingOverflow(course, zoom, melodyCourse, singleLine)}
       {...pointerHandlers}
     >
       <div className="staff-page" ref={pageRef} />

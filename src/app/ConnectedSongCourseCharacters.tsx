@@ -25,7 +25,8 @@ function characterViewport() {
 
 /** Only the decoration subscribes to visual changes; the player shell never follows animation frames. */
 export function ConnectedSongCourseCharacters() {
-  const source = useRuntimeSelector((runtime) => runtime.songCourse.controller.characters);
+  const controller = useRuntimeSelector((runtime) => runtime.songCourse.controller);
+  const source = controller.characters;
   const snapshot = useSyncExternalStore(source.subscribe, source.read, source.read);
   const [viewport] = useState(characterViewport);
   const layout = useSyncExternalStore(viewport.subscribe, viewport.read, viewport.read);
@@ -46,6 +47,10 @@ export function ConnectedSongCourseCharacters() {
       expression={snapshot.expression}
       reactionKey={`${snapshot.presentationId ?? ""}/${snapshot.runId ?? ""}/${snapshot.targetSourceNoteId ?? ""}/${snapshot.expression}`}
       teacherPose={snapshot.teacherPose}
+      presentationId={snapshot.presentationId ?? ""}
+      onArtError={() => {
+        if (snapshot.presentationId) controller.artError(snapshot.presentationId);
+      }}
       teacherVisible={layout === "portrait"}
       visible={snapshot.visible && layout !== "hidden"}
     />

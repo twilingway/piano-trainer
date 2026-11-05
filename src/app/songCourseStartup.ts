@@ -1,3 +1,4 @@
+import { coursePath, nextCoursePathNode } from "../songCourse/path";
 import { courseLearnerMode } from "../songCourse/listenRepeat";
 import {
   findSongCourseNode,
@@ -31,7 +32,10 @@ export function initialCourseSelection(
     findSongCourseSource(saved.songId)?.sourceHash === saved.sourceHash &&
     findSongCourseNode(saved.songId, saved.nodeId)
   )
-    return saved;
+    return {
+      ...saved,
+      nodeId: findSongCourseNode(saved.songId, saved.nodeId)?.supersededBy ?? saved.nodeId
+    };
   if (legacyActive) return null;
   const source = SONG_COURSE_SOURCES[0],
     node = source?.nodes[0];
@@ -50,11 +54,11 @@ export function nextCourseSelection(
 ): SongCourseSelection | null {
   if (!material) return null;
   const sourceIndex = SONG_COURSE_SOURCES.findIndex((source) => source.id === material.source.id);
-  const nodes = material.source.nodes,
-    index = nodes.findIndex((node) => node.id === material.node.id);
-  const source =
-    index >= 0 && nodes[index + 1] ? material.source : SONG_COURSE_SOURCES[sourceIndex + 1];
-  const node = source === material.source ? nodes[index + 1] : source?.nodes[0];
+  const currentId =
+    findSongCourseNode(material.source.id, material.node.id)?.supersededBy ?? material.node.id;
+  const next = nextCoursePathNode(material.source, currentId);
+  const source = next ? material.source : SONG_COURSE_SOURCES[sourceIndex + 1];
+  const node = next ?? (source && coursePath(source).nodes[0]);
   return source && node
     ? {
         songId: source.id,

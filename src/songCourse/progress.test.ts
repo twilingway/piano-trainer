@@ -7,8 +7,10 @@ import {
   validSongCourseResult
 } from "./progress";
 import { gradeSongCourseAttempt } from "./rubric";
+import { LEGACY_SONG_COURSE_RUBRIC_VERSION, SONG_COURSE_RUBRIC_VERSION } from "./model";
 import {
   courseConfig,
+  expectedNote,
   gradeEvidence,
   rawInput,
   sourceFixture,
@@ -139,4 +141,67 @@ it("retains a stored learning-review receipt with its original wait rubric conte
   expect(
     readSongCourseProgress({ ...emptySongCourseProgress(), results: [result] }).results
   ).toEqual([result]);
+});
+
+it("preserves legacy zero stars while admitting the same proven v2 performance after reload", () => {
+  const current = gradeSongCourseAttempt(
+    courseConfig([expectedNote(0), expectedNote(1)], { runId: "new-achievement" }),
+    gradeEvidence(
+      [
+        rawInput("down", 0, 0),
+        rawInput("up", 1000, 1),
+        rawInput("down", 1200, 2),
+        rawInput("up", 2200, 3)
+      ],
+      { musicalEndPerformanceMs: 2000, closedAtPerformanceMs: 2300 }
+    )
+  );
+  expect(current).toMatchObject({
+    rubricVersion: SONG_COURSE_RUBRIC_VERSION,
+    pitch: 100,
+    onset: 50,
+    hold: 100,
+    stars: 2,
+    completed: true
+  });
+  const legacy = {
+    ...current,
+    runId: "old-strict-result",
+    rubricVersion: LEGACY_SONG_COURSE_RUBRIC_VERSION,
+    stars: 0 as const,
+    completed: false
+  };
+  expect(validSongCourseResult(legacy)).toBe(true);
+  expect(validSongCourseResult(current)).toBe(true);
+  const saved = JSON.parse(
+    JSON.stringify({ ...emptySongCourseProgress(), results: [legacy, current] })
+  ) as unknown;
+  const restored = readSongCourseProgress(saved);
+  expect(restored.results).toEqual([current, legacy]);
+  expect(restored.results.find((result) => result.runId === legacy.runId)?.stars).toBe(0);
+  expect(restored.results.find((result) => result.runId === current.runId)?.stars).toBe(2);
+  expect(validSongCourseResult({ ...legacy, stars: 2, completed: true })).toBe(false);
+  expect(validSongCourseResult({ ...current, stars: 0, completed: false })).toBe(false);
+  expect(validSongCourseResult({ ...current, stars: 3 })).toBe(false);
+  for (const rubricVersion of ["song-course-v3", "legacy-reading", "", null, undefined])
+    expect(validSongCourseResult({ ...current, rubricVersion })).toBe(false);
+});
+
+it("retains legacy completion proof and credit under the new default rubric", () => {
+  const legacy = {
+    ...receipt("legacy-completed"),
+    rubricVersion: LEGACY_SONG_COURSE_RUBRIC_VERSION
+  };
+  expect(validSongCourseResult(legacy)).toBe(true);
+  const restored = readSongCourseProgress(
+    JSON.parse(JSON.stringify({ ...emptySongCourseProgress(), results: [legacy] })) as unknown
+  );
+  expect(restored.results).toEqual([legacy]);
+  expect(completedSongCourseNodes(restored, sourceFixture())).toEqual(["performance"]);
+  const merged = mergeSongCourseProgress(restored, {
+    ...emptySongCourseProgress(),
+    results: [receipt("current-completed")]
+  });
+  expect(merged.results).toHaveLength(2);
+  expect(completedSongCourseNodes(merged, sourceFixture())).toEqual(["performance"]);
 });

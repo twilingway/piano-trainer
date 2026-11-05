@@ -47,7 +47,7 @@ export function normalizeViewAxes(value: unknown, fallback?: ViewAxes): ViewAxes
       ? "3d"
       : STYLES.includes(raw.keyboardStyle as KeyboardStyle)
         ? (raw.keyboardStyle as KeyboardStyle)
-        : (fallback?.keyboardStyle ?? "clay");
+        : (fallback?.keyboardStyle ?? "classic");
   return {
     keyboardStyle,
     notesProjection: projection(raw.notesProjection, fallback?.notesProjection ?? "direct"),
@@ -97,7 +97,7 @@ export function hydrateViewProfiles(
   value: unknown,
   legacyStaff: unknown,
   legacyLayout: unknown,
-  defaultKeyboardStyle: KeyboardStyle = "clay"
+  defaultKeyboardStyle: KeyboardStyle = "classic"
 ): ViewProfiles {
   const raw = record(value);
   const staff = record(legacyStaff);

@@ -5,6 +5,7 @@ import {
 } from "./evidence";
 import { songCourseEvidenceMatches, songCourseEvidenceMatchesNode } from "./evidenceProof";
 import {
+  LEGACY_SONG_COURSE_RUBRIC_VERSION,
   SONG_COURSE_RUBRIC_VERSION,
   type CourseNoteGrade,
   type SongCourseProgress,
@@ -60,7 +61,8 @@ export function validSongCourseResult(value: unknown): value is SongCourseResult
   if (
     v.schemaVersion !== 1 ||
     !validSongCourseEvidence(v.evidence) ||
-    v.rubricVersion !== SONG_COURSE_RUBRIC_VERSION ||
+    (v.rubricVersion !== SONG_COURSE_RUBRIC_VERSION &&
+      v.rubricVersion !== LEGACY_SONG_COURSE_RUBRIC_VERSION) ||
     (v.rubricVariant !== "normal" && v.rubricVariant !== "learning-review") ||
     ![v.runId, v.songId, v.sourceRevision, v.nodeId].every(text) ||
     !text(v.sourceHash) ||
@@ -134,7 +136,7 @@ export function validSongCourseResult(value: unknown): value is SongCourseResult
   )
     return false;
   const valid = v.invalidReasons.length === 0;
-  const stars = valid ? starsForCourseAxes(pitch, onset, hold) : 0;
+  const stars = valid ? starsForCourseAxes(pitch, onset, hold, v.rubricVersion) : 0;
   return (
     v.valid === valid &&
     v.stars === stars &&

@@ -108,7 +108,7 @@ it("does not celebrate a calibrated physical up beyond the bounded final collect
   attempt.finish(1000);
   const release = attempt.input(event("up", 1150, 2, { rawPerformanceMs: 1250, songTime: 1.15 }));
   expect(release.feedback).toEqual([]);
-  expect(attempt.tick(1300, 1)).toMatchObject({ hold: 0, stars: 0 });
+  expect(attempt.tick(1300, 1)).toMatchObject({ hold: 0, stars: 1 });
 });
 it("celebrates a correctly calibrated physical release using raw duration instead of corrected close time", () => {
   const attempt = new SongCourseAttempt({ ...config, mode: "tempo" });
