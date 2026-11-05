@@ -119,7 +119,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
   const actionLabel = running
     ? "Пауза в песне"
     : phase === "paused"
-      ? "Продолжить исполнение"
+      ? "Продолжаем"
       : "Сыграть этап";
   const action = phase === "error" ? props.onRetry : running ? props.onPause : props.onStart;
   return (
@@ -229,10 +229,10 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
           running && props.countdown !== undefined
             ? "Твоя очередь"
             : phase === "ready" && needsCourseDemonstration(material.node.kind)
-              ? "Сначала послушай помощника"
+              ? "Слушаем Твили"
               : phase === "paused"
-                ? "Продолжить после нажатия"
-                : "Играй после отсчёта"
+                ? "Продолжаем"
+                : "Твоя очередь"
         }
         countdown={running ? props.countdown : undefined}
         onStart={action}

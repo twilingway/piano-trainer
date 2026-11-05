@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "status": "future-generation-direction-only-no-new-assets",
+  "nameRu": "Маэстро Твилинг",
+  "shortNameRu": "Твили",
+  "role": "aristocratic musician and friendly piano teacher, not a wizard",
+  "sourcePrompts": "../prompts.json",
+  "acceptedFrames": "manifest-v2.json",
+  "idleManifest": "../../clay-lesson-teacher/manifest.json",
+  "futurePromptConstraints": [
+    "Preserve recognizable accepted face, glasses, beard, top hat and orange scarf in matte plasticine.",
+    "No magic, wand, staff, spells, glow or wizard imagery.",
+    "Keep mirrored keyboard: high pitches on viewer left, verified right-hand C4 thumb1 D4 index2 E4 middle3.",
+    "Reuse accepted camera, lighting,512x544frame and pivot256,528. True alpha cutout with no halo.",
+    "Save exact new prompt and provenance beside any future generation; never overwrite historical prompts."
+  ],
+  "currentAssetMutation": false
+}

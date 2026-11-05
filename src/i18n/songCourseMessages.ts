@@ -1,6 +1,9 @@
 import type { Messages } from "./locales";
 
 export const songCourseMessages: Messages = {
+  "Не удалось загрузить картинки урока. Откройте этап ещё раз.": {
+    en: "The lesson pictures could not load. Open this stage again."
+  },
   "Не удалось открыть учебную мелодию. Выберите этап ещё раз.": {
     en: "Couldn't open this lesson. Choose the step again."
   },
