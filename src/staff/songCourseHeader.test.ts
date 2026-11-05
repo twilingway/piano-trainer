@@ -75,7 +75,7 @@ describe("fixed song-course score header", () => {
     const clone = required(room.querySelector(".song-course-header svg"));
     const filter = required(clone.querySelector("filter"));
     expect(clone.querySelector(".vf-clef")?.getAttribute("style")).toContain(`#${filter.id}`);
-    expect(host.innerHTML).toBe(original);
+    expect(host.querySelectorAll("[data-song-course-prefix]")).toHaveLength(3);
     expect(host.querySelectorAll("svg")).toHaveLength(1);
     expect(host.querySelectorAll(".vf-notehead")).toHaveLength(1);
     const snapshot = worldScoreSnapshot(
@@ -85,7 +85,9 @@ describe("fixed song-course score header", () => {
     );
     expect(snapshot?.svg).toContain('id="real-note"');
     expect(snapshot?.svg).not.toContain("song-course-header-");
+    expect(snapshot?.svg).not.toContain("visibility: hidden");
     header?.dispose();
+    expect(host.innerHTML).toBe(original);
   });
 
   it("also fixes the header of a short score and skips an absent drawing", () => {
@@ -172,4 +174,22 @@ it("clips the fixed header to the row while vertically scrolling enlarged notati
   expect(clone.style.marginTop).toBe("-50px");
   expect(overlay.style.overflow).toBe("hidden");
   header?.dispose();
+});
+
+it("keeps one visible prefix while the first note approaches from beyond the viewport", () => {
+  const { room, host, svg } = fixture(500);
+  host.dataset.songCoursePlayhead = "160";
+  const header = installSongCourseHeader(host);
+  const overlay = required(room.querySelector<HTMLElement>(".song-course-header"));
+  const drawing = required(overlay.querySelector("svg"));
+  expect(drawing.style.marginLeft).toBe("50px");
+  expect(host.querySelectorAll("[data-song-course-prefix]")).toHaveLength(3);
+  expect(overlay.querySelectorAll("[data-song-course-prefix]")).toHaveLength(0);
+  expect(svg.querySelector(".vf-clef")?.getAttribute("style")).not.toContain("visibility");
+  const position = [drawing.style.marginLeft, overlay.style.width];
+  host.scrollLeft = 610;
+  header?.frame();
+  expect([drawing.style.marginLeft, overlay.style.width]).toEqual(position);
+  header?.dispose();
+  expect(host.querySelectorAll("[data-song-course-prefix]")).toHaveLength(0);
 });

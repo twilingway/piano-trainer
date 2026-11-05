@@ -1,6 +1,8 @@
 import type { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import { describe, expect, it } from "vitest";
 import { layoutStaffTimeline } from "./staffTimelineLayout";
+import { spotAt } from "./liveCursor";
+import { songCourseStaffOffset } from "../songCourse/progressView";
 
 const entries = [
   { beat: 1, x: 90, line: 40 },
@@ -50,3 +52,26 @@ it("continues through a final four-beat hold and applies the viewport crop witho
   expect(spots.at(-1)).toEqual({ beat: 8, x: 410, line: 40 });
   expect(axis.originX).toBe(40);
 });
+
+it.each([0.5, 0.75, 1])(
+  "approaches zero continuously on the existing clock at speed %s",
+  (speed) => {
+    const clampedAxis = { ...axis, xAtBeat: (beat: number) => 40 + Math.max(0, beat) * 50 };
+    const result = layoutStaffTimeline(
+      sheet(),
+      clampedAxis,
+      { ...timeline, fromBeat: -4 },
+      entries,
+      []
+    );
+    expect(result[0]).toEqual({ beat: -4, x: -160, line: 0 });
+    for (const elapsed of [0, 0.1, 0.5, 1, 1.5, 2 / speed - 1e-7, 2 / speed, 2 / speed + 1e-7]) {
+      const beat = -4 + elapsed * speed * 2;
+      expect(spotAt(result, beat)?.x).toBeCloseTo(40 + beat * 50, 6);
+      expect(songCourseStaffOffset(result, beat, 160)).toBeCloseTo(160 - (40 + beat * 50), 6);
+    }
+    expect(result.at(-1)).toEqual({ beat: 8, x: 440, line: 0 });
+    expect(entries[0]?.beat).toBe(1);
+    expect(layoutStaffTimeline(sheet(), clampedAxis, timeline, entries, [])[0]?.beat).toBe(0);
+  }
+);

@@ -32,6 +32,7 @@ import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
 import {
   installStaffTimeline,
   layoutStaffTimeline,
+  staffTimelineLeadInPixels,
   staffCursorTarget
 } from "./staffTimelineLayout";
 import { fitStaffDrawing, staffDrawingOverflow } from "./staffDrawing";
@@ -215,12 +216,13 @@ export function Staff({
       if (latest.current.singleLine || latest.current.course) page.style.transform = "";
       else centreShortScore(osmd, page);
     }
-    frameSongCourseDrawing(host);
+    const timeAxis = latest.current.singleLine ? uniformRef.current?.getAxis() : undefined;
+    frameSongCourseDrawing(host, staffTimelineLeadInPixels(timeAxis, timeline));
     linesRef.current = illustrationLines ?? lineBoxes(osmd, shift);
     noteIndexRef.current = indexNotes(osmd);
     beatXRef.current = layoutStaffTimeline(
       osmd,
-      latest.current.singleLine ? uniformRef.current?.getAxis() : undefined,
+      timeAxis,
       timeline,
       beatPositions(noteIndexRef.current.cursorBeats, host, linesRef.current),
       linesRef.current,

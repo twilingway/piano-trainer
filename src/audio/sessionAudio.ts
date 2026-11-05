@@ -134,8 +134,9 @@ export class SessionAudio {
         }
       );
     }
-    if (metronome)
+    if (metronome || session.options.audibleCountIn)
       for (const [index, beat] of session.audioBeats.entries()) {
+        if (!metronome && (beat.time >= 0 || beat.time < session.time)) continue;
         if (
           beat.time < session.startedFrom - session.leadInSeconds ||
           (session.options.countInBeats !== undefined && beat.time >= session.song.duration)

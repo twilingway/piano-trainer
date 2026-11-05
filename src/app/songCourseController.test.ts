@@ -230,6 +230,7 @@ describe("listen then repeat transport", () => {
     expect(h.controller.getSnapshot()).toMatchObject({ phase: "demo", countdown: undefined });
     expect(h.session.options.hands.size).toBe(0);
     expect(h.session.options.countInBeats).toBe(0);
+    expect(h.session.options.audibleCountIn).toBe(false);
     expect(h.session.time).toBe(0);
     expect(
       h.session.song.notes.every((note) =>
@@ -245,6 +246,7 @@ describe("listen then repeat transport", () => {
       countdown: 4,
       result: null
     });
+    expect(h.load.mock.lastCall?.[1].audibleCountIn).toBe(true);
     expect(h.controller.faceFeedback.read()?.runId).not.toBeNull();
     const run = h.controller.faceFeedback.read()?.runId;
     h.controller.policy.onFrame(old, true, 5000);

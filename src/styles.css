@@ -7914,3 +7914,8 @@ button.song-card.song-card__open {
     line-height: 24px;
   }
 }
+
+/* The pinned course header owns these symbols while the original score approaches it. */
+.staff [data-song-course-prefix] {
+  visibility: hidden;
+}
