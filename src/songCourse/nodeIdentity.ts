@@ -17,6 +17,7 @@ export function expectedNodeRawIds(node: SongCourseNode): readonly string[] {
   if (!repeat) return node.sourceNoteIds;
   if (
     node.kind !== "notes" ||
+    !["quarter", "half"].includes(repeat.duration) ||
     ![4].includes(repeat.count) ||
     node.sourceNoteIds.length !== 1 ||
     node.sourceNoteIds[0] !== repeat.originNoteId

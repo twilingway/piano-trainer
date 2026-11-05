@@ -32,6 +32,9 @@ export function buildRepeatedNoteMaterial(
   )
     throw new Error("song-course-invalid-repeat-origin");
   const ids = expectedNodeRawIds(node);
+  const durationKind = node.repeat.duration;
+  const beats = durationKind === "quarter" ? 1 : 2;
+  const notesPerMeasure = 4 / beats;
   if (ids.some((id) => full.identities.some((entry) => entry.xmlId === id)))
     throw new Error("song-course-repeat-id-collision");
   const offset = note.startBeat - measure.start;
@@ -53,15 +56,20 @@ export function buildRepeatedNoteMaterial(
     if (!first) throw new Error("song-course-missing-repeat-measure");
     const learner = part.getAttribute("id") === origin.partId;
     const divisions = Number(first.querySelector("attributes > divisions")?.textContent ?? 1);
-    const measures = Array.from({ length: 2 }, (_, measureIndex) => {
+    const measures = Array.from({ length: ids.length / notesPerMeasure }, (_, measureIndex) => {
       const copy = first.cloneNode(true) as Element;
       copy.setAttribute("number", String(measureIndex + 1));
       for (const child of Array.from(copy.children))
         if (["note", "backup", "forward", "barline"].includes(child.tagName)) child.remove();
       if (learner) {
-        for (let position = 0; position < 2; position++) {
+        for (let position = 0; position < notesPerMeasure; position++) {
           const clone = original.cloneNode(true) as Element;
-          clone.setAttribute("id", ids[measureIndex * 2 + position] ?? "");
+          clone.setAttribute("id", ids[measureIndex * notesPerMeasure + position] ?? "");
+          const duration = clone.querySelector("duration");
+          const type = clone.querySelector("type");
+          if (!duration || !type) throw new Error("song-course-missing-repeat-duration");
+          duration.textContent = String(divisions * beats);
+          type.textContent = durationKind;
           copy.append(clone);
         }
       } else {

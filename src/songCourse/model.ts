@@ -25,7 +25,11 @@ export interface SongCourseNode {
   readonly instruction: string;
   readonly phraseIds: readonly string[];
   readonly sourceNoteIds: readonly string[];
-  readonly repeat?: { readonly originNoteId: string; readonly count: 4 };
+  readonly repeat?: {
+    readonly originNoteId: string;
+    readonly count: 4;
+    readonly duration: "quarter" | "half";
+  };
   readonly supersededBy?: string;
 }
 export interface SongCoursePartHand {

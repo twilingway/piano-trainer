@@ -5,12 +5,12 @@
 
 ## 2. Реализация
 
-- [ ] 2.1 Ввести явную длительность repeat и новый четвертной узел, сохранив half legacy.
-- [ ] 2.2 Проверить derived IDs, proof/history, one-hop startup, source/final/C/D invariants.
-- [ ] 2.3 Записать roadmap четверть → восьмая → шестнадцатая без реализации будущих этапов.
+- [x] 2.1 Ввести явную длительность repeat и новый четвертной узел, сохранив half legacy.
+- [x] 2.2 Проверить derived IDs, proof/history, one-hop startup, source/final/C/D invariants.
+- [x] 2.3 Записать roadmap четверть → восьмая → шестнадцатая без реализации будущих этапов.
 
 ## 3. Приёмка
 
-- [ ] 3.1 Независимое ревью и узкие тесты.
+- [x] 3.1 Независимое ревью и узкие тесты.
 - [ ] 3.2 pnpm check и pnpm spec:validate; PR в dev с UTF-8 readback.
 - [ ] 3.3 Видимая QA интегрирующим root перед архивированием.
