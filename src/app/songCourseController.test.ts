@@ -201,6 +201,7 @@ describe("song-course transport lifecycle", () => {
     const h = harness();
     h.controller.present(h.controller.sceneId);
     await h.controller.start();
+    await h.finishDemo();
     expect(h.controller.getSnapshot().countdown).toBe(4);
     const session = h.session as unknown as { time: number; waiting: boolean };
     for (const [time, count] of [
@@ -222,14 +223,14 @@ describe("song-course transport lifecycle", () => {
 });
 
 describe("listen then repeat transport", () => {
-  it("shows the source fragment with four beats first and starts exactly one fresh counted learner attempt", async () => {
+  it("shows the source fragment immediately and starts exactly one counted learner attempt", async () => {
     const h = harness();
     h.controller.present(h.controller.sceneId);
     await h.controller.start();
-    expect(h.controller.getSnapshot()).toMatchObject({ phase: "demo", countdown: 4 });
+    expect(h.controller.getSnapshot()).toMatchObject({ phase: "demo", countdown: undefined });
     expect(h.session.options.hands.size).toBe(0);
-    expect(h.session.options.countInBeats).toBe(4);
-    expect(h.session.time).toBeLessThan(0);
+    expect(h.session.options.countInBeats).toBe(0);
+    expect(h.session.time).toBe(0);
     expect(
       h.session.song.notes.every((note) =>
         h.material.expected.some((expected) => expected.runtimeNoteId === note.id)

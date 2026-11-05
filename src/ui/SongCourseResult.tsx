@@ -1,3 +1,4 @@
+import { SONG_COURSE_RUBRIC_VERSION } from "../songCourse/model";
 import type { SongCourseResult as CourseResult } from "../songCourse/model";
 import { useI18n } from "../app/useI18n";
 import { ClayStars } from "./ClayStars";
@@ -104,6 +105,15 @@ export function SongCourseResult(props: SongCourseResultProps) {
                 : "Каждая попытка помогает. Повторим сложные фразы."
           )}
         </p>
+        {result.rubricVersion === SONG_COURSE_RUBRIC_VERSION && (
+          <p className="song-course-result__message">
+            {t(
+              result.onset === null
+                ? "Звёзды за правильные ноты и длительность звуков."
+                : "Звёзды: ноты → удержание → начало вовремя."
+            )}
+          </p>
+        )}
         <dl className="song-course-result__axes">
           {axes
             .filter((axis) => axis.value !== null)

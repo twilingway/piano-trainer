@@ -3,6 +3,8 @@ import { alignCourseInputs, type CourseAlignment } from "./alignment";
 import { gradeCourseHold, physicalPerformanceMs } from "./hold";
 import {
   SONG_COURSE_RUBRIC_VERSION,
+  LEGACY_SONG_COURSE_RUBRIC_VERSION,
+  type SongCourseRubricVersion,
   type CourseMistakeKind,
   type CourseExpectedNote,
   type CoursePause,
@@ -14,11 +16,19 @@ import {
 export function starsForCourseAxes(
   pitch: number,
   onset: number | null,
-  hold: number
+  hold: number,
+  version: SongCourseRubricVersion = SONG_COURSE_RUBRIC_VERSION
 ): 0 | 1 | 2 | 3 {
+  if (
+    [pitch, hold, onset ?? 100].some((value) => !Number.isFinite(value) || value < 0 || value > 100)
+  )
+    return 0;
   if (pitch >= 95 && hold >= 90 && (onset === null || onset >= 90)) return 3;
-  const minimum = Math.min(pitch, hold, onset ?? 100);
-  return minimum >= 80 ? 2 : minimum >= 60 ? 1 : 0;
+  if (version === LEGACY_SONG_COURSE_RUBRIC_VERSION) {
+    const minimum = Math.min(pitch, hold, onset ?? 100);
+    return minimum >= 80 ? 2 : minimum >= 60 ? 1 : 0;
+  }
+  return pitch >= 80 && hold >= 80 ? 2 : pitch >= 60 ? 1 : 0;
 }
 
 export function assertCourseAttemptConfig(config: SongCourseAttemptConfig): void {

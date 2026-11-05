@@ -4,10 +4,10 @@
 
 ## 2. Реализация
 
-- [ ] 2.1 Убрать первый demo-отсчёт, сохранить learner и lifecycleзащиту.
-- [ ] 2.2 Показать локализованную очередь на ready/countdown без изменения размеров SVG.
+- [x] 2.1 Убрать первый demo-отсчёт, сохранить learner и lifecycleзащиту.
+- [x] 2.2 Показать локализованную очередь на ready/countdown без изменения размеров SVG.
 
 ## 3. Проверка
 
-- [ ] 3.1 Проверить guided/demo/learner и прямой independentstart, pause/cancel/all-up.
-- [ ] 3.2 Проверить браузер, независимое ревью, pnpm check/spec:validate и открыть PR в dev.
+- [x] 3.1 Проверить guided/demo/learner и прямой independentstart, pause/cancel/all-up.
+- [x] 3.2 Проверить браузер, независимое ревью, pnpm check/spec:validate и открыть PR в dev.

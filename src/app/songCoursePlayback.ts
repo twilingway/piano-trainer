@@ -184,7 +184,7 @@ export class SongCoursePlayback {
       phase: purpose ? "demo" : "playing",
       progress: 0,
       waiting: false,
-      countdown: purpose === "preview" ? undefined : options.countInBeats,
+      countdown: purpose ? undefined : options.countInBeats,
       result: null,
       error: null
     });
@@ -195,7 +195,7 @@ export class SongCoursePlayback {
             ...options,
             mode: "tempo",
             hands: new Set(),
-            countInBeats: purpose === "repeat" ? 4 : 0
+            countInBeats: 0
           }
         : options,
       true

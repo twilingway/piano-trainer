@@ -1,7 +1,10 @@
 import type { Hand } from "../fingering/fingering";
 import type { Song } from "../song/song";
 
-export const SONG_COURSE_RUBRIC_VERSION = "song-course-v1" as const;
+export const LEGACY_SONG_COURSE_RUBRIC_VERSION = "song-course-v1" as const;
+export const SONG_COURSE_RUBRIC_VERSION = "song-course-v2" as const;
+export type SongCourseRubricVersion =
+  typeof LEGACY_SONG_COURSE_RUBRIC_VERSION | typeof SONG_COURSE_RUBRIC_VERSION;
 export type SongCourseMode = "wait" | "tempo";
 export type SongCourseNodeKind =
   "notes" | "duration" | "guided-phrase" | "independent-phrase" | "performance" | "review";
@@ -129,7 +132,7 @@ export interface SongCourseRunEvidence {
 export interface SongCourseResult {
   readonly evidence: SongCourseRunEvidence;
   readonly schemaVersion: 1;
-  readonly rubricVersion: typeof SONG_COURSE_RUBRIC_VERSION;
+  readonly rubricVersion: SongCourseRubricVersion;
   readonly rubricVariant: SongCourseRubricVariant;
   readonly runId: string;
   readonly songId: string;

@@ -1,5 +1,14 @@
 import type { Messages } from "./locales";
 export const songCourseUiMessages: Messages = {
+  "Сначала послушай помощника": { en: "Listen to your helper first" },
+  "Продолжить после нажатия": { en: "Press to continue" },
+  "Играй после отсчёта": { en: "Play after the countdown" },
+  "Звёзды за правильные ноты и длительность звуков.": {
+    en: "Stars for the right notes and note lengths."
+  },
+  "Звёзды: ноты → удержание → начало вовремя.": {
+    en: "Stars: notes → holding → starting on time."
+  },
   "Слушай мелодию": { en: "Listen to the melody" },
   "Твоя очередь · с сопровождением": { en: "Your turn · with accompaniment" },
   "В примере звучит мелодия со стана. Во время вашей игры компьютер добавляет сопровождение.": {
