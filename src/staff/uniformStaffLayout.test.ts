@@ -9,7 +9,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installUniformStaffLayout, type UniformStaffAxis } from "./uniformStaffLayout";
 import { staffNoteInk } from "./uniformStaffInk";
 import { fitWrappedStaffSvg, StaffZoomBaseline } from "./fitCompactStaff";
-import { songCourseDensityScale, songCoursePlayhead } from "./songCourseViewport";
+import {
+  songCourseDensityScale,
+  songCoursePlayhead,
+  frameSongCourseDrawing,
+  positionSongCourseViewport,
+  songCourseCursorAnchor
+} from "./songCourseViewport";
+import { placeCursorLine, spotAt } from "./liveCursor";
+import { layoutStaffTimeline, staffTimelineLeadInPixels } from "./staffTimelineLayout";
 import { EXERCISES } from "../song/exercises";
 
 function axisX(axis: UniformStaffAxis, beat: number) {
@@ -709,5 +717,183 @@ describe("uniform staff layout with installed OSMD", () => {
     const step = axis.pixelsPerSecond / 2;
     for (let beat = 1; beat <= 8; beat++)
       expect(axisX(axis, beat) - axisX(axis, beat - 1)).toBeCloseTo(step, 6);
+  });
+  it.each([4, 8, 16])(
+    "scrolls an actual %s-beat course uniformly beneath a fixed cursor through its final barline",
+    async (count) => {
+      for (const zoom of [1, 1.5, 2]) {
+        const osmd = await load(
+          count === 16
+            ? regular
+            : score(
+                Array.from({ length: count / 4 }, () =>
+                  Array.from({ length: 4 }, () => note("C", 4)).join("")
+                )
+              )
+        );
+        const layout = installUniformStaffLayout(osmd, (beat) => beat * 0.5, {
+          continuousTime: true
+        });
+        osmd.Zoom = zoom;
+        osmd.render();
+        const axis = layout.getAxis();
+        if (!axis) throw new Error("Missing actual axis");
+        const actualHeads = heads(osmd);
+        const last = osmd.GraphicSheet.MeasureList.at(-1)?.[0] as VexFlowMeasure | undefined;
+        if (!last) throw new Error("Missing last actual measure");
+        const stave = last.getVFStave();
+        const barline = (stave.getX() + stave.getWidth()) * zoom;
+        expect(axisX(axis, count)).toBeCloseTo(barline, 6);
+        for (const width of [320, 390, 667, 1076]) {
+          const host = document.body.appendChild(document.createElement("div"));
+          Object.defineProperty(host, "clientWidth", { value: width });
+          host.dataset.songCoursePlayhead = String(songCoursePlayhead(width));
+          const page = host.appendChild(document.createElement("div"));
+          page.className = "staff-page";
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          page.append(svg);
+          const first = actualHeads[0];
+          if (!first) throw new Error("Missing actual head");
+          svg.getBoundingClientRect = () =>
+            new DOMRect(
+              (parseFloat(page.style.paddingInline) || 0) - host.scrollLeft,
+              0,
+              barline + 12,
+              140
+            );
+          host.getBoundingClientRect = () => new DOMRect(0, 0, width, 140);
+          for (const actual of actualHeads) {
+            const head = document.createElementNS(svg.namespaceURI, "g");
+            head.setAttribute("class", "vf-notehead");
+            head.getBoundingClientRect = () =>
+              new DOMRect(
+                svg.getBoundingClientRect().left + actual.x - (actual.right - actual.x),
+                50,
+                2 * (actual.right - actual.x),
+                12
+              );
+            svg.append(head);
+          }
+          frameSongCourseDrawing(host);
+          const anchor = Number(host.dataset.songCoursePlayhead);
+          expect(anchor).toBe(width / 2);
+          const cursor = host.appendChild(document.createElement("div"));
+          const spots = Array.from({ length: count * 4 + 1 }, (_, step) => ({
+            beat: step / 4,
+            x: axisX(axis, step / 4),
+            line: 0
+          }));
+          let previousScroll: number | undefined;
+          for (const spot of spots) {
+            positionSongCourseViewport(host, spots, spot.beat);
+            placeCursorLine(
+              host,
+              cursor,
+              spots,
+              [{ top: 0, bottom: 120 }],
+              spot.beat,
+              songCourseCursorAnchor(host, true)
+            );
+            const translated = Number(/translate\(([^p]+)px/.exec(cursor.style.transform)?.[1]);
+            expect(translated - host.scrollLeft).toBeCloseTo(anchor, 6);
+            expect(cursor.style.visibility).toBe("visible");
+            if (previousScroll !== undefined)
+              expect(host.scrollLeft - previousScroll).toBeCloseTo(axis.pixelsPerSecond / 8, 6);
+            previousScroll = host.scrollLeft;
+            const paused = host.scrollLeft;
+            positionSongCourseViewport(host, spots, spot.beat);
+            expect(host.scrollLeft).toBe(paused);
+          }
+          expect(svg.getBoundingClientRect().left + barline).toBeCloseTo(anchor, 6);
+          const maxScroll =
+            parseFloat(page.style.paddingInline) +
+            barline +
+            12 +
+            Number.parseFloat(page.style.paddingInline.split(" ")[1] ?? "0") -
+            width;
+          expect(host.scrollLeft).toBeLessThanOrEqual(maxScroll);
+          host.remove();
+        }
+        layout.dispose();
+      }
+    }
+  );
+
+  it("approaches actual engraved heads through zero at every phone zoom without a scroll clamp", async () => {
+    const osmd = await load(score([note("C", 4) + note("D", 4) + note("E", 8, "half")]));
+    const layout = installUniformStaffLayout(osmd, (beat) => beat * 0.5, { continuousTime: true });
+    for (const zoom of [1, 1.5, 2]) {
+      osmd.Zoom = zoom;
+      osmd.render();
+      const axis = layout.getAxis();
+      if (!axis) throw new Error("Missing actual approach axis");
+      const first = heads(osmd)[0];
+      if (!first) throw new Error("Missing first engraved head");
+      const spots = layoutStaffTimeline(
+        osmd,
+        axis,
+        { beats: [0, 1, 2, 3, 4], timeAtBeat: axis.timeAtBeat, fromBeat: -4 },
+        [],
+        [{ top: 0, bottom: 100 }]
+      );
+      expect(spotAt(spots, 0)?.x).toBeCloseTo(first.x, 6);
+      expect(spotAt(spots, -4)?.x).toBeCloseTo(first.x - axis.pixelsPerSecond * 2, 6);
+      const last = osmd.GraphicSheet.MeasureList.at(-1)?.[0] as VexFlowMeasure | undefined;
+      if (!last) throw new Error("Missing final measure");
+      expect(spotAt(spots, 4)?.x).toBeCloseTo(
+        (last.getVFStave().getX() + last.getVFStave().getWidth()) * zoom,
+        6
+      );
+      for (const width of [320, 390, 667]) {
+        const host = document.body.appendChild(document.createElement("div"));
+        Object.defineProperty(host, "clientWidth", { value: width });
+        host.dataset.songCoursePlayhead = String(width / 2);
+        const page = host.appendChild(document.createElement("div"));
+        page.className = "staff-page";
+        page.innerHTML = '<svg><g class="vf-notehead"/></svg>';
+        const svg = page.querySelector("svg"),
+          head = page.querySelector(".vf-notehead");
+        if (!svg || !head) throw new Error("Missing approach drawing");
+        let scroll = 0;
+        Object.defineProperty(host, "scrollLeft", {
+          get: () => scroll,
+          set: (value: number) => {
+            scroll = Math.max(0, value);
+          }
+        });
+        host.getBoundingClientRect = () => new DOMRect(0, 0, width, 140);
+        svg.getBoundingClientRect = () =>
+          new DOMRect((parseFloat(page.style.paddingInline) || 0) - scroll, 0, 1000 * zoom, 140);
+        head.getBoundingClientRect = () =>
+          new DOMRect(svg.getBoundingClientRect().left + first.x - 10 * zoom, 50, 20 * zoom, 10);
+        frameSongCourseDrawing(
+          host,
+          staffTimelineLeadInPixels(axis, { beats: [], timeAtBeat: axis.timeAtBeat, fromBeat: -4 })
+        );
+        const cursor = host.appendChild(document.createElement("div"));
+        let previous: number | undefined;
+        for (const beat of [-4, -3, -2, -1, -1e-7, 0, 1e-7, 1]) {
+          positionSongCourseViewport(host, spots, beat);
+          placeCursorLine(
+            host,
+            cursor,
+            spots,
+            [{ top: 0, bottom: 100 }],
+            beat,
+            songCourseCursorAnchor(host, true)
+          );
+          const x = spotAt(spots, beat)?.x;
+          expect(x).toBeDefined();
+          expect(svg.getBoundingClientRect().left + (x ?? 0)).toBeCloseTo(width / 2, 6);
+          expect(scroll).toBeGreaterThanOrEqual(previous ?? 0);
+          previous = scroll;
+          expect(cursor.style.visibility).toBe("visible");
+        }
+        positionSongCourseViewport(host, spots, 0);
+        expect(head.getBoundingClientRect().left + 10 * zoom).toBeCloseTo(width / 2, 6);
+        host.remove();
+      }
+    }
+    layout.dispose();
   });
 });

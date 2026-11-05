@@ -15,6 +15,8 @@ export interface StaffProps {
     | {
         readonly timeAtBeat: (beat: number) => number;
         readonly beats: readonly number[];
+        /** Optional visual run-up on the same axis; it never inserts score events. */
+        readonly fromBeat?: number;
       }
     | undefined;
   readonly presentation?: StaffPresentation | undefined;

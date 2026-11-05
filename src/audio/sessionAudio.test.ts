@@ -360,3 +360,97 @@ describe("melody output routing", () => {
     expect(midi.noteOff).not.toHaveBeenCalled();
   });
 });
+
+function countedSession(speed = 1, demo = false) {
+  const song: Song = {
+    title: "counted course",
+    source: "midi",
+    notes: [],
+    measures: [],
+    duration: 2,
+    beats: Array.from({ length: 5 }, (_, position) => ({
+      time: position * 0.5,
+      position,
+      downbeat: position % 4 === 0
+    }))
+  };
+  const run = new PracticeSession(song, {
+    mode: "tempo",
+    hands: new Set(["right"]),
+    speed,
+    countInBeats: demo ? 0 : 4,
+    audibleCountIn: !demo
+  });
+  run.startClock(1000);
+  return run;
+}
+
+it.each([0.5, 0.75, 1])(
+  "sounds exactly four preparatory beats with metronome off at speed %s",
+  (speed) => {
+    const run = countedSession(speed);
+    const audio = new SessionAudio();
+    audio.reset(1000);
+    for (let now = 1000; now <= 1000 + 4000 / speed; now += 25) {
+      audio.schedule(run, now, 0, false);
+      flushQueued();
+    }
+    expect(sound.click).toHaveBeenCalledTimes(4);
+    for (const [index, call] of sound.click.mock.calls.entries()) {
+      expect(call[0]).toBe(index === 0);
+      expect(call[1]).toBeCloseTo(10 + (index * 0.5) / speed, 6);
+    }
+    expect(sound.noteOn).not.toHaveBeenCalled();
+    expect(run.options.audibleCountIn).toBe(true);
+    audio.reset(10000);
+  }
+);
+
+it("keeps an immediate helper demonstration silent from preparatory beats", () => {
+  const run = countedSession(1, true);
+  const audio = new SessionAudio();
+  audio.reset(1000);
+  audio.schedule(run, 1000, 0, false);
+  flushQueued();
+  expect(run.time).toBe(0);
+  expect(sound.click).not.toHaveBeenCalled();
+  audio.reset(1000);
+});
+
+it.each([1500, 1540])(
+  "resumes only remaining preparation after pausing at %sms and cancels old retry clicks",
+  (pauseAt) => {
+    const run = countedSession();
+    const audio = new SessionAudio();
+    audio.reset(1000);
+    audio.schedule(run, 1000, 0, false);
+    flushQueued();
+    audio.schedule(run, 1500, 0, false);
+    flushQueued();
+    expect(sound.click).toHaveBeenCalledTimes(2);
+    run.pauseClock(pauseAt);
+    const stopped = run.time;
+    audio.reset(pauseAt);
+    expect(sound.queued.size).toBe(0);
+    run.resumeClock(5000);
+    expect(run.time).toBe(stopped);
+    audio.reset(5000);
+    for (const now of [5000, 5250, 5500, 5750, 6000]) {
+      audio.schedule(run, now, 0, false);
+      flushQueued();
+    }
+    expect(sound.click).toHaveBeenCalledTimes(4);
+    const retry = countedSession();
+    audio.reset(1000);
+    audio.schedule(retry, 1000, 0, false);
+    expect(sound.queued.size).toBe(1);
+    audio.reset(1000);
+    expect(sound.queued.size).toBe(0);
+    for (const now of [1000, 1500, 2000, 2500, 3000]) {
+      audio.schedule(retry, now, 0, false);
+      flushQueued();
+    }
+    expect(sound.click).toHaveBeenCalledTimes(8);
+    audio.reset(1000);
+  }
+);

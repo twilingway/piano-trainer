@@ -29,6 +29,7 @@ describe("course learner transport options", () => {
     expect(attempt.config.mode).toBe(options.mode);
     expect(attempt.config.speed).toBe(options.speed);
     expect(options.countInBeats).toBe(4);
+    expect(options.audibleCountIn).toBe(true);
   });
   it.each(["notes", "duration"] as const)(
     "keeps %s learner attacks silent until the child plays",

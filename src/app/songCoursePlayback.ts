@@ -195,7 +195,8 @@ export class SongCoursePlayback {
             ...options,
             mode: "tempo",
             hands: new Set(),
-            countInBeats: 0
+            countInBeats: 0,
+            audibleCountIn: false
           }
         : options,
       true

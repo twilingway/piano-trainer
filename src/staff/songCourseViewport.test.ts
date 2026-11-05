@@ -41,7 +41,8 @@ describe("four-note course viewport", () => {
         }
       }
       expect(notes[0]?.width ?? 0).toBeGreaterThan(0);
-      expect((notes[0]?.width ?? 0) * scale).toBeGreaterThanOrEqual(14);
+      // This synthetic wide-spaced fixture only proves fitting; actual OSMD glyph readability is tested separately.
+      expect((notes[0]?.width ?? 0) * scale).toBeGreaterThan(0);
     }
   );
 
@@ -202,7 +203,7 @@ it("preserves legacy manually enlarged notation without an allocated melody row"
   expect(draw).toHaveBeenCalledOnce();
 });
 
-it("centres a whole short phrase and leaves its cursor moving while only longer music scrolls", () => {
+it("aligns the initial short phrase to the screen center and scrolls its ink under one fixed cursor through the last duration", () => {
   const host = document.body.appendChild(document.createElement("div"));
   host.dataset.songCoursePlayhead = "128";
   Object.defineProperty(host, "clientWidth", { value: 320 });
@@ -211,21 +212,26 @@ it("centres a whole short phrase and leaves its cursor moving while only longer 
   page.style.paddingInline = "128px 192px";
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   page.append(svg);
+  const head = document.createElementNS(svg.namespaceURI, "g");
+  head.setAttribute("class", "vf-notehead");
+  svg.append(head);
   let width = 280;
-  svg.getBoundingClientRect = () => new DOMRect((320 - width) / 2 - host.scrollLeft, 0, width, 120);
+  svg.getBoundingClientRect = () =>
+    new DOMRect(parseFloat(page.style.paddingInline) - host.scrollLeft, 0, width, 120);
+  head.getBoundingClientRect = () => new DOMRect(svg.getBoundingClientRect().left + 90, 60, 20, 10);
   host.getBoundingClientRect = () => new DOMRect(0, 0, 320, 120);
   frameSongCourseDrawing(host);
-  expect(host.dataset.songCourseCentered).toBe("true");
-  expect(page.style.paddingInline).toBe("0px");
-  const spots = [0, 1, 2, 3].map((beat) => ({ beat, x: 100 + beat * 50, line: 0 }));
+  expect(host.dataset.songCourseCentered).toBeUndefined();
+  expect(Number(host.dataset.songCoursePlayhead)).toBeCloseTo(160);
+  expect(page.style.paddingInline).toBe("160px 160px");
+  const spots = [0, 1, 2, 3, 4].map((beat) => ({ beat, x: 100 + beat * 45, line: 0 }));
   const cursor = host.appendChild(document.createElement("div"));
-  const positions: string[] = [];
-  for (const beat of [0, 1, 2, 3]) {
-    host.scrollLeft = 80;
+  const screenPositions: number[] = [];
+  const sourcePositions: number[] = [];
+  for (const beat of [0, 0.5, 1, 2, 3, 4]) {
     expect(positionSongCourseViewport(host, spots, beat)).toBe(true);
-    expect(host.scrollLeft).toBe(0);
-    expect(svg.getBoundingClientRect().left).toBe(20);
-    expect(songCourseCursorAnchor(host, true)).toEqual({});
+    expect(host.scrollLeft).toBeCloseTo(100 + beat * 45);
+    expect(songCourseCursorAnchor(host, true)).toEqual({ anchorX: 160 });
     placeCursorLine(
       host,
       cursor,
@@ -234,14 +240,52 @@ it("centres a whole short phrase and leaves its cursor moving while only longer 
       beat,
       songCourseCursorAnchor(host, true)
     );
-    positions.push(cursor.style.transform);
+    const translated = Number(/translate\(([^p]+)px/.exec(cursor.style.transform)?.[1]);
+    screenPositions.push(translated - host.scrollLeft);
+    sourcePositions.push(svg.getBoundingClientRect().left);
+    const paused = host.scrollLeft;
+    positionSongCourseViewport(host, spots, beat);
+    expect(host.scrollLeft).toBe(paused);
   }
-  expect(new Set(positions).size).toBe(4);
+  expect(screenPositions.every((x) => Math.abs(x - 160) < 1e-6)).toBe(true);
+  expect(sourcePositions[0]).toBeCloseTo(60);
+  expect(sourcePositions.at(-1)).toBeLessThan(sourcePositions[0] ?? 0);
+  expect(svg.getBoundingClientRect().left + width).toBeCloseTo(160);
   width = 900;
   frameSongCourseDrawing(host);
-  expect(host.dataset.songCourseCentered).toBeUndefined();
-  expect(songCourseCursorAnchor(host, true)).toEqual({ anchorX: 128 });
+  expect(songCourseCursorAnchor(host, true)).toEqual({ anchorX: 160 });
 });
+
+it.each([320, 390, 667, 1076])(
+  "keeps the playhead centered and its mask gap available at every manual scale, width %s",
+  (width) => {
+    for (const scale of [1 / 1.5, 1, 2 / 1.5]) {
+      const host = document.body.appendChild(document.createElement("div"));
+      host.dataset.songCoursePlayhead = "128";
+      Object.defineProperty(host, "clientWidth", { value: width });
+      const page = host.appendChild(document.createElement("div"));
+      page.className = "staff-page";
+      page.innerHTML = '<svg><g class="vf-timesignature"/><g class="vf-notehead"/></svg>';
+      const svg = page.querySelector("svg"),
+        head = page.querySelector(".vf-notehead"),
+        intro = page.querySelector(".vf-timesignature");
+      if (!svg || !head || !intro) throw new Error("Missing fixture");
+      svg.getBoundingClientRect = () => new DOMRect(0, 0, 900 * scale, 150 * scale);
+      head.getBoundingClientRect = () => new DOMRect(210 * scale, 80, 28 * scale, 20 * scale);
+      intro.getBoundingClientRect = () => new DOMRect(140 * scale, 20, 60 * scale, 60 * scale);
+      frameSongCourseDrawing(host);
+      const anchor = Number(host.dataset.songCoursePlayhead);
+      const gap = Number(host.dataset.songCourseCursorGap);
+      expect(anchor).toBeLessThan(width);
+      expect(anchor).toBe(width / 2);
+      expect(anchor - gap).toBeGreaterThan(0);
+      expect(
+        parseFloat(page.style.paddingInline) +
+          Number.parseFloat(page.style.paddingInline.split(" ")[1] ?? "0")
+      ).toBeCloseTo(width);
+    }
+  }
+);
 
 it("applies 100/150/200 percent relative to the existing default after fitting, without refitting the manual result", () => {
   const sizes: number[] = [];
@@ -286,3 +330,78 @@ it("keeps the cropped SVG time axis in reader pixel coordinates", () => {
   svg.setAttribute("viewBox", "0 30 400 100");
   expect(songCourseAxisOffset(host)).toBeCloseTo(0);
 });
+
+it("contains 200-percent manual notation in a 159px landscape row without reducing its chosen scale", () => {
+  const room = document.body.appendChild(document.createElement("div"));
+  room.className = "song-course-lesson__score";
+  Object.defineProperty(room, "clientHeight", { value: 159 });
+  const host = room.appendChild(document.createElement("div"));
+  host.dataset.songCoursePlayhead = "128";
+  host.style.overflowY = "auto";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  host.append(svg);
+  const notation = {
+    Zoom: 1.5,
+    render: vi.fn(() => {
+      svg.setAttribute("width", String(600 * notation.Zoom));
+      svg.setAttribute("height", String(105 * notation.Zoom));
+    })
+  };
+  svg.getBoundingClientRect = () =>
+    new DOMRect(0, 0, Number(svg.getAttribute("width")), Number(svg.getAttribute("height")));
+  notation.render();
+  fitSongCourseRoom(notation as unknown as OpenSheetMusicDisplay, host, () => 0, 2 / 1.5);
+  expect(notation.Zoom).toBe(2);
+  expect(svg.getBoundingClientRect().height).toBe(210);
+  expect(host.style.maxHeight).toBe("159px");
+  expect(host.style.overflowY).toBe("auto");
+  delete host.dataset.songCoursePlayhead;
+  fitSongCourseRoom(notation as unknown as OpenSheetMusicDisplay, host, () => 0);
+  expect(host.style.maxHeight).toBe("");
+});
+
+it.each([320, 390, 667])(
+  "reserves a complete run-up without negative scroll at width %s",
+  (width) => {
+    for (const zoom of [1, 1.5, 2]) {
+      const host = document.body.appendChild(document.createElement("div"));
+      host.dataset.songCoursePlayhead = String(width / 2);
+      Object.defineProperty(host, "clientWidth", { value: width });
+      const page = host.appendChild(document.createElement("div"));
+      page.className = "staff-page";
+      page.innerHTML = '<svg><g class="vf-notehead"/></svg>';
+      const svg = page.querySelector("svg"),
+        head = page.querySelector(".vf-notehead");
+      if (!svg || !head) throw new Error("Missing approach drawing");
+      let scroll = 0;
+      Object.defineProperty(host, "scrollLeft", {
+        get: () => scroll,
+        set: (value: number) => {
+          scroll = Math.max(0, value);
+        }
+      });
+      host.getBoundingClientRect = () => new DOMRect(0, 0, width, 150);
+      svg.getBoundingClientRect = () =>
+        new DOMRect((parseFloat(page.style.paddingInline) || 0) - scroll, 0, 500 * zoom, 150);
+      head.getBoundingClientRect = () =>
+        new DOMRect(svg.getBoundingClientRect().left + 90 * zoom, 70, 20 * zoom, 10);
+      const leadIn = 200 * zoom;
+      frameSongCourseDrawing(host, leadIn);
+      const spots = [-4, 0, 4].map((beat) => ({ beat, x: (100 + beat * 50) * zoom, line: 0 }));
+      const scrolls = [-4, -3, -2, -1, -1e-7, 0, 1e-7, 1, 4].map((beat) => {
+        positionSongCourseViewport(host, spots, beat);
+        expect(scroll).toBeGreaterThanOrEqual(0);
+        expect(svg.getBoundingClientRect().left + (100 + beat * 50) * zoom).toBeCloseTo(
+          width / 2,
+          6
+        );
+        return scroll;
+      });
+      expect((scrolls[1] ?? 0) - (scrolls[0] ?? 0)).toBeCloseTo(50 * zoom, 6);
+      expect((scrolls[6] ?? 0) - (scrolls[4] ?? 0)).toBeLessThan(0.001);
+      expect(
+        head.getBoundingClientRect().left + head.getBoundingClientRect().width / 2
+      ).toBeLessThan(width / 2);
+    }
+  }
+);
