@@ -98,8 +98,8 @@ export const songCourseSourceMessages: Messages = {
   "Соль играет мизинец правой руки. Найдите соль и вернитесь к знакомой ми.": {
     en: "Play G with your right little finger. Find G, then return to the E you know."
   },
-  "Сыграйте знакомую фразу без цветных подсказок. Сохраняйте длительность звуков.": {
-    en: "Play the familiar phrase without color hints. Hold each note for its written length."
+  "Сыграйте знакомую фразу без имён нот и номеров пальцев. Сохраняйте длительность звуков.": {
+    en: "Play the familiar phrase without note names or finger numbers. Hold each note for its written length."
   },
   "Сыграйте трудное место ещё раз, сохраняя ритм и длину звуков.": {
     en: "Play the tricky part again, keeping the rhythm and note lengths."

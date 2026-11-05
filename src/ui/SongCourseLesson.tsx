@@ -30,6 +30,7 @@ export interface SongCourseLessonProps {
   readonly score: ReactNode;
   readonly characters?: ReactNode;
   readonly waiting?: boolean;
+  readonly accompaniment?: boolean;
   readonly helperPitch?: number;
   readonly onStart: () => void;
   readonly onDemo: () => void;
@@ -98,7 +99,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
   const progress = Number.isFinite(props.progress) ? Math.min(1, Math.max(0, props.progress)) : 0;
   const status =
     phase === "demo"
-      ? "Слушай"
+      ? "Слушай мелодию"
       : phase === "awaiting-keys-up"
         ? "Сначала отпустите клавиши"
         : phase === "awaiting-rehold"
@@ -110,7 +111,9 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
               : props.waiting && phase === "playing"
                 ? "Жду ноту"
                 : phase === "playing"
-                  ? "Твоя очередь"
+                  ? props.accompaniment
+                    ? "Твоя очередь · с сопровождением"
+                    : "Твоя очередь"
                   : GOALS[material.node.kind];
   const actionLabel = running
     ? "Пауза в песне"
@@ -173,6 +176,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
           <SongCourseMenu
             id={menuId}
             instruction={t(material.node.instruction)}
+            accompaniment={props.accompaniment}
             phase={phase}
             speed={props.speed ?? 1}
             onSpeed={props.onSpeed}

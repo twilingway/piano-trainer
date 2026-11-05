@@ -5,6 +5,7 @@ import type { SongCourseLessonPhase } from "./SongCourseLesson";
 interface Props {
   readonly id: string;
   readonly instruction: string;
+  readonly accompaniment?: boolean | undefined;
   readonly phase: SongCourseLessonPhase;
   readonly speed: number;
   readonly buttonRef: RefObject<HTMLButtonElement | null>;
@@ -62,6 +63,13 @@ export function SongCourseMenu(props: Props) {
         </button>
       </div>
       <p>{props.instruction}</p>
+      {props.accompaniment && (
+        <p>
+          {t(
+            "В примере звучит мелодия со стана. Во время вашей игры компьютер добавляет сопровождение."
+          )}
+        </p>
+      )}
       <div className="song-course-menu__actions">
         {canDemo && (
           <button type="button" className="game-button" onClick={run(props.onDemo)}>

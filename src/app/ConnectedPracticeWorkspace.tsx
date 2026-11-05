@@ -201,9 +201,7 @@ export function ConnectedPracticeWorkspace() {
         staffFingers={
           songCourse.active ? controllerHelped(songCourse.view.material?.node.kind) : undefined
         }
-        staffPitchColors={
-          songCourse.active ? controllerHelped(songCourse.view.material?.node.kind) : beginnerGuided
-        }
+        staffPitchColors={songCourse.active || beginnerGuided}
         staffPitchColorNoteId={
           !beginnerIndependent &&
           !music.active &&
