@@ -83,7 +83,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       ),
       {
         ...node(
-          "notes-e-repeat-v1",
+          "notes-e-quarter-v1",
           "notes",
           "Знакомимся с ми",
           "Сыграй четыре ми средним пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
@@ -91,7 +91,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
           1
         ),
         sourceNoteIds: ["hot-cross-buns-m1-n1"],
-        repeat: { originNoteId: "hot-cross-buns-m1-n1", count: 4 }
+        repeat: { originNoteId: "hot-cross-buns-m1-n1", count: 4, duration: "quarter" }
       },
       node(
         "notes-e",
@@ -136,7 +136,20 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
         1
       ),
       sourceNoteIds: ["hot-cross-buns-m1-n1"],
-      supersededBy: "hot-cross-buns/notes-e-repeat-v1"
+      supersededBy: "hot-cross-buns/notes-e-quarter-v1"
+    });
+    legacyNodes.push({
+      ...node(
+        "notes-e-repeat-v1",
+        "notes",
+        "Знакомимся с ми",
+        "Сыграй четыре ми средним пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
+        0,
+        1
+      ),
+      sourceNoteIds: ["hot-cross-buns-m1-n1"],
+      repeat: { originNoteId: "hot-cross-buns-m1-n1", count: 4, duration: "half" },
+      supersededBy: "hot-cross-buns/notes-e-quarter-v1"
     });
   }
   if (id === "aunt-rhody")
