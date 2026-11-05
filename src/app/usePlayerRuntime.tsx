@@ -13,7 +13,7 @@ import {
   restartBasicPractice
 } from "./musicLessonAction";
 import { useSettingsPlayback } from "./useSettingsPlayback";
-import { useMusicTrainer, usePracticeDisplayPrefs, musicClockAllowed } from "./useMusicTrainer";
+import { useMusicTrainer, musicClockAllowed } from "./useMusicTrainer";
 import { usePlayCountdown } from "./usePlayCountdown";
 import { useAppSelector } from "./storeHooks";
 import { useRef, useState } from "react";
@@ -23,6 +23,7 @@ import { useGameOptions } from "./useGameOptions";
 import { useTimingControls } from "./useTimingControls";
 
 import { useFallingView } from "./useFallingView";
+import { useCourseWorkspaceDisplay } from "./useCourseWorkspaceDisplay";
 import { useFullscreen } from "./useFullscreen";
 import { useKeyInput } from "./useKeyInput";
 import { useKeyboardSettings } from "./useKeyboardSettings";
@@ -104,17 +105,13 @@ export function usePlayerRuntime() {
   const { staffPrefs, updateStaffPrefs } = useStaffPrefs();
   const screen = useScreenLayout(word.enabled ? "typing" : "piano");
   const workspaceLayout = practiceActive ? DEFAULT_SCREEN_LAYOUT : screen.layout;
-  const displayPrefs = usePracticeDisplayPrefs({
-    practiceActive,
-    beginner: beginner.active || songCourse.active,
-    ear,
-    music,
-    staffPrefs,
+  const courseDisplay = useCourseWorkspaceDisplay({
+    courses: practiceCourses,
+    preferences: staffPrefs,
     performance: game.performance,
-    courseActive: course.active !== null,
-    courseView: course.saved.view
+    course
   });
-  const score = useStaffScore(song, current.baseSong, displayPrefs);
+  const score = useStaffScore(song, current.baseSong, courseDisplay.prefs);
   const takes = useTakeReview(word.practiceSong, word.practiceKey, ensureSound, {
     withNames: score.withNames,
     fixedLines: score.fixedLines,
@@ -192,8 +189,8 @@ export function usePlayerRuntime() {
   );
   const workspacePrefs =
     !practiceActive && course.active && takes.comparing
-      ? { ...displayPrefs, visible: true }
-      : displayPrefs;
+      ? { ...courseDisplay.prefs, visible: true }
+      : courseDisplay.prefs;
   const snapshot = useTrainerStatus(trainer.snapshotSource);
   const countdownSeconds = useAppSelector((state) => state.preferences.player.countdownSeconds);
   const countdown = usePlayCountdown({
@@ -314,7 +311,10 @@ export function usePlayerRuntime() {
     trainerReady: trainer.trainerReady,
     song: word.practiceSong,
     baseSong: practiceActive || word.enabled ? word.practiceSong : current.baseSong,
-    displayRange: songCourse.displayRange ?? beginnerDisplayRange(beginner.stage),
+    displayRange: songCourse.active
+      ? courseDisplay.displayRange
+      : beginnerDisplayRange(beginner.stage),
+    keyboardMaxHeightShare: courseDisplay.keyboardMaxHeightShare,
     staffPrefs: workspacePrefs,
     cameraInputBlocked: !cameraInput.enabled,
     updateStaffPrefs,
