@@ -31,4 +31,4 @@
 - [x] 4.1 Проверить ready/playing/hold/result в видимом браузере во всех шести viewport и при 200%
       zoom, доступность стана+клавиш, меню, поворот, reduced-motion и отказ рисунка; сохранить
       артефакты.
-- [ ] 4.2 Пройти независимый review, `pnpm check` и `pnpm spec:validate`, затем открыть PR в dev.
+- [x] 4.2 Пройти независимый review, `pnpm check` и `pnpm spec:validate`, затем открыть PR в dev.
