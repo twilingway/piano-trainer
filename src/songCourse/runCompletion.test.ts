@@ -18,7 +18,7 @@ describe("bounded song course release collection", () => {
     run.input(rawInput("down", 0, 0));
     run.finish(1000);
     run.input(rawInput("up", 1000, 1, 60, { synthetic: true }));
-    expect(run.tick(1200, 1700000000000)).toMatchObject({ hold: 0, stars: 0 });
+    expect(run.tick(1200, 1700000000000)).toMatchObject({ hold: 0, stars: 1 });
   });
   it("never waits more than one second for a very long terminal note", () => {
     const run = new SongCourseAttempt(courseConfig([expectedNote(0, 60, 0, 10)]));

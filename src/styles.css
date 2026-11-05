@@ -7827,3 +7827,21 @@ button.song-card.song-card__open {
   --clay-button-ink: #07364b;
   border-color: #c4f3ff;
 }
+
+/* Turn labels stay in the floating start layer and never shrink the score. */
+.song-course-start__cue {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - clamp(52px, 15vmin, 72px) - 12px);
+  transform: translate(-50%, -100%);
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: #061b27;
+  color: #e7ffaf;
+  font-size: clamp(14px, 3vmin, 18px);
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+}

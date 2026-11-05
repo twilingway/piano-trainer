@@ -4,13 +4,14 @@ import { GameDialog } from "./GameDialog";
 interface Props {
   readonly open: boolean;
   readonly label: string;
+  readonly cue: string;
   readonly countdown: number | undefined;
   readonly onStart: () => void;
   readonly onExit: () => void;
 }
 
 /** A floating dialog never takes space from the engraved score or blocks the lesson menu. */
-export function SongCourseStart({ open, label, countdown, onStart, onExit }: Props) {
+export function SongCourseStart({ open, label, cue, countdown, onStart, onExit }: Props) {
   const { t } = useI18n();
   return (
     <GameDialog
@@ -22,6 +23,7 @@ export function SongCourseStart({ open, label, countdown, onStart, onExit }: Pro
     >
       {open && (
         <>
+          <p className="song-course-start__cue">{t(cue)}</p>
           {countdown === undefined ? (
             <button
               type="button"
