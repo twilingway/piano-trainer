@@ -36,3 +36,17 @@ describe("staff timeline layout composition", () => {
     expect(result.at(-1)).toEqual({ beat: 8, x: 440, line: 40 });
   });
 });
+
+it("continues through a final four-beat hold and applies the viewport crop without changing the axis", () => {
+  const spots = layoutStaffTimeline(
+    sheet(),
+    axis,
+    timeline,
+    [{ beat: 4, x: 999, line: 40 }],
+    [{ top: 40, bottom: 100 }],
+    -30
+  );
+  expect(spots.find((spot) => spot.beat === 4)?.x).toBe(210);
+  expect(spots.at(-1)).toEqual({ beat: 8, x: 410, line: 40 });
+  expect(axis.originX).toBe(40);
+});

@@ -608,4 +608,55 @@ describe("uniform staff layout with installed OSMD", () => {
     );
     expect(Math.abs(axisX(axis, 4 - 1e-7) - axisX(axis, 4))).toBeLessThan(0.001);
   });
+
+  it.each([0.75, 1, 1.6])(
+    "keeps the course uniformly timed through its final whole note at zoom %s",
+    async (zoom) => {
+      const osmd = await load(regular);
+      const timeAtBeat = (beat: number) => beat * 0.5;
+      const before = osmd.Sheet.SourceMeasures.map((m) => [
+        m.AbsoluteTimestamp.RealValue,
+        m.Duration.RealValue
+      ]);
+      const layout = installUniformStaffLayout(osmd, timeAtBeat, { continuousTime: true });
+      osmd.Zoom = zoom;
+      osmd.render();
+      const axis = layout.getAxis();
+      if (!axis) throw new Error("No course time axis");
+      for (const head of heads(osmd)) expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
+      const step = axis.pixelsPerSecond / 8;
+      for (let beat = 0.25; beat <= 16; beat += 0.25)
+        expect(axisX(axis, beat) - axisX(axis, beat - 0.25)).toBeCloseTo(step, 6);
+      const last = osmd.GraphicSheet.MeasureList.at(-1)?.[0] as VexFlowMeasure | undefined;
+      if (!last) throw new Error("No last measure");
+      const stave = last.getVFStave();
+      const barline = (stave.getX() + stave.getWidth()) * osmd.Zoom;
+      expect(axisX(axis, 16)).toBeCloseTo(barline, 6);
+      const finalHead = heads(osmd).at(-1);
+      expect(finalHead?.beat).toBe(12);
+      expect(axisX(axis, 16) - (finalHead?.x ?? 0)).toBeCloseTo(axis.pixelsPerSecond * 2, 6);
+      expect(
+        osmd.Sheet.SourceMeasures.map((m) => [m.AbsoluteTimestamp.RealValue, m.Duration.RealValue])
+      ).toEqual(before);
+    }
+  );
+
+  it("uses a global course density for cross-bar labels without accelerating locally", async () => {
+    const lyric = "<lyric><text>Twenty-character-label</text></lyric>";
+    const osmd = await load(
+      score([
+        note("C", 12, "half", "<dot/>") + note("D", 4, "quarter", lyric),
+        note("E", 4, "quarter", lyric) + note("F", 12, "half", "<dot/>")
+      ])
+    );
+    const layout = installUniformStaffLayout(osmd, (beat) => beat / 2, { continuousTime: true });
+    osmd.render();
+    const axis = layout.getAxis();
+    if (!axis) throw new Error("No course lyric axis");
+    expect(axis.pixelsPerSecond).toBeGreaterThan(72);
+    for (const head of heads(osmd)) expect(head.x).toBeCloseTo(axisX(axis, head.beat), 6);
+    const step = axis.pixelsPerSecond / 2;
+    for (let beat = 1; beat <= 8; beat++)
+      expect(axisX(axis, beat) - axisX(axis, beat - 1)).toBeCloseTo(step, 6);
+  });
 });

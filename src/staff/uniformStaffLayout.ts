@@ -121,7 +121,8 @@ function density(
   states: readonly MeasureState[],
   timeAtBeat: (beat: number) => number,
   instructions: { readonly inset: number; readonly endings: ReadonlyMap<number, number> },
-  labelWidthAtBeat: ((beat: number) => number) | undefined
+  labelWidthAtBeat: ((beat: number) => number) | undefined,
+  continuousTime: boolean
 ) {
   let pixelsPerSecond = MIN_PIXELS_PER_SECOND;
   let inset = Math.max(MIN_INSET, instructions.inset);
@@ -220,7 +221,8 @@ function density(
         if (!previous) continue;
         const seconds = timeAtBeat(next.beat) - timeAtBeat(previous.beat);
         if (seconds > horizon) break;
-        if (seconds <= 0 || previous.measureStart !== next.measureStart) continue;
+        if (seconds <= 0 || (!continuousTime && previous.measureStart !== next.measureStart))
+          continue;
         const inkSpace = overlappingInkSpace(previous.ink, next.ink);
         const labelSpace =
           previous.labelHalf > 0 && next.labelHalf > 0 ? previous.labelHalf + next.labelHalf : 0;
@@ -228,6 +230,17 @@ function density(
         if (width > 0) pixelsPerSecond = Math.max(pixelsPerSecond, (width + SYMBOL_GAP) / seconds);
       }
     }
+  }
+  if (continuousTime) {
+    for (const { column, endBeat, ending } of tails) {
+      const seconds = timeAtBeat(endBeat) - timeAtBeat(column.beat);
+      if (seconds > 0)
+        pixelsPerSecond = Math.max(
+          pixelsPerSecond,
+          (inset + column.glyphRight + BARLINE_GAP + ending) / seconds
+        );
+    }
+    return { pixelsPerSecond, inset, gutters: new Map<number, number>() };
   }
   // Boundary space belongs only to the affected measure, not the song's density.
   const gutters = new Map<number, number>();
@@ -295,9 +308,11 @@ export function installUniformStaffLayout(
   timeAtBeat: (beat: number) => number,
   options: {
     readonly horizontal?: boolean;
+    readonly continuousTime?: boolean;
     readonly labelWidthAtBeat?: (beat: number) => number;
   } = {}
 ): UniformStaffLayout {
+  const continuousTime = options.continuousTime === true && options.horizontal !== false;
   const sheet = osmd.GraphicSheet as unknown as LayoutSheet;
   const calculator = sheet.GetCalculator;
   const original = calculator.calculateXLayout;
@@ -364,7 +379,8 @@ export function installUniformStaffLayout(
       uniformStaffInstructionSpace(osmd),
       options.labelWidthAtBeat
         ? (beat) => (options.labelWidthAtBeat?.(beat) ?? 0) / osmd.Zoom
-        : undefined
+        : undefined,
+      continuousTime
     );
     const last = states.at(-1);
     if (last && options.horizontal !== false) {
@@ -385,7 +401,9 @@ export function installUniformStaffLayout(
         const formatter = measure.formatVoices;
         const duration = timeAtBeat(state.endBeat) - timeAtBeat(state.startBeat);
         const gutter = gutters.get(state.startBeat) ?? 0;
-        measure.minimumStaffEntriesWidth = (duration * scale + gutter) / unitInPixels;
+        // The fixed attack inset is paid once at the end, so musical end meets its barline.
+        const finalInset = continuousTime && state === last ? inset : 0;
+        measure.minimumStaffEntriesWidth = (duration * scale + gutter + finalInset) / unitInPixels;
         measure.setWidth = function () {
           // First clef/key/time signature occupy a lead-in outside musical time.
           const prefix =
@@ -393,7 +411,7 @@ export function installUniformStaffLayout(
               ? Math.max(0, this.getVFStave().getNoteStartX() - this.getVFStave().getX())
               : 0;
           if (axis && this === first) axis.prefix = prefix;
-          setWidth.call(this, (prefix + duration * scale + gutter) / unitInPixels);
+          setWidth.call(this, (prefix + duration * scale + gutter + finalInset) / unitInPixels);
         };
         if (formatter) {
           measure.formatVoices = function (width, target) {
