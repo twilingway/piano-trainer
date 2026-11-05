@@ -6492,6 +6492,7 @@ button.song-card.song-card__open {
   margin-top: 1rem;
 }
 .song-course-path__group-toggle {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   align-items: center;
