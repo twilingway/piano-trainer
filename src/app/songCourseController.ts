@@ -1,4 +1,6 @@
 import { emptySongCourseView, NO_SONG_COURSE_CONNECTION } from "./songCourseContracts";
+import { SongCourseCharacters, songCourseCharacterContext } from "./songCourseCharacters";
+import { createSongCourseCharacterPolicy } from "./songCourseCharacterPolicy";
 import { createSongCourseFeedback } from "../staff/songCourseFeedback";
 import * as startup from "./songCourseStartup";
 import { courseMelodyProgress, songCourseSceneId, songCourseGuidance } from "./songCourseGuidance";
@@ -10,7 +12,7 @@ import { findSongCourseNode, findSongCourseSource } from "../songCourse/catalog"
 import { buildSongCourseMaterial } from "../songCourse/material";
 import { SongCourseReviewFlow } from "./songCourseReviewFlow";
 import { emptySongCourseProgress, mergeSongCourseProgress } from "../songCourse/progress";
-import type { CourseMaterial, SongCourseProgress, SongCourseSelection } from "../songCourse/model";
+import type { CourseMaterial, SongCourseProgress } from "../songCourse/model";
 import type { TrainerMusicPolicy } from "../practice/musicPolicy";
 import type { InputCancellationReason } from "../practice/inputCancellation";
 import { songCourseOptions } from "./songCourseOptions";
@@ -61,6 +63,10 @@ export class SongCourseController {
   private presentationReady: Promise<boolean> = Promise.resolve(false);
   readonly policy: TrainerMusicPolicy;
   readonly faceFeedback = createSongCourseFeedback();
+  readonly characters = new SongCourseCharacters(
+    () => songCourseCharacterContext(this.state, this.sceneId, this.attempt?.config.runId ?? null),
+    this.faceFeedback
+  );
 
   constructor(
     private readonly callbacks: SongCourseCallbacks,
@@ -93,20 +99,13 @@ export class SongCourseController {
           );
       }
     );
-    this.policy = {
-      inputCompensationMs: () => 500,
-      onStart: (session, atMs, held) => this.input.start(session, atMs, held),
-      onFrame: (session, playing, atMs) => this.onFrame(session, playing, atMs),
-      onInput: (event, session, playing, times) => this.input.key(event, session, playing, times),
-      seedHeld: (held) => {
-        this.input.seed(held);
-      },
-      cancel: (atMs, resetAll, reason) => {
-        this.onCancel(atMs, resetAll, reason);
-      },
-      guidance: (session, playing) =>
-        songCourseGuidance(this.state.material, this.helped, session, playing)
-    };
+    this.policy = createSongCourseCharacterPolicy(
+      this.input,
+      this.onFrame.bind(this),
+      this.onCancel.bind(this),
+      (session, playing) => songCourseGuidance(this.state.material, this.helped, session, playing),
+      this.characters
+    );
   }
   readonly subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -137,7 +136,10 @@ export class SongCourseController {
     return songCourseSceneId(this.state);
   }
   get hasNext() {
-    return this.reviews.hasPending || this.nextSelection() !== null;
+    return (
+      this.reviews.hasPending ||
+      (this.reviews.returnTo ?? startup.nextCourseSelection(this.state.material)) !== null
+    );
   }
   get canReview() {
     return this.reviews.canReview(this.state.material, this.state.result);
@@ -227,7 +229,7 @@ export class SongCourseController {
       this.selectMaterial(review);
       return;
     }
-    const value = this.nextSelection();
+    const value = this.reviews.returnTo ?? startup.nextCourseSelection(this.state.material);
     if (value) this.choose(value.songId, value.nodeId);
   };
   review = () => {
@@ -281,6 +283,7 @@ export class SongCourseController {
     this.resolvePresentation?.(false);
     this.faceFeedback.clear();
     this.listeners.clear();
+    this.characters.dispose();
   }
 
   private async begin(demo: boolean): Promise<void> {
@@ -462,9 +465,6 @@ export class SongCourseController {
     this.sceneCache = null;
     this.publish();
   }
-  private nextSelection(): SongCourseSelection | null {
-    return this.reviews.returnTo ?? startup.nextCourseSelection(this.state.material);
-  }
   private syncPhase(): void {
     const phase = this.attempt?.phase;
     if (phase && phase !== "complete" && phase !== "aborted") this.state = { ...this.state, phase };
@@ -500,6 +500,7 @@ export class SongCourseController {
       loaded: this.loaded,
       storageError: this.storageError
     };
+    this.characters.syncContext();
     for (const listener of this.listeners) listener();
   }
 }

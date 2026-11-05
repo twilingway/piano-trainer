@@ -67,10 +67,12 @@ function Harness({
   comparing = false,
   blocked = false,
   mirrorShown = true,
-  displayRange
+  displayRange,
+  keyboardMaxHeightShare
 }: {
   readonly prefs: StaffPrefs;
   readonly displayRange?: readonly [number, number];
+  readonly keyboardMaxHeightShare?: number;
   readonly comparing?: boolean;
   readonly blocked?: boolean;
   readonly mirrorShown?: boolean;
@@ -90,7 +92,8 @@ function Harness({
     comparing,
     lastTake: comparing ? comparisonTake : null,
     placement: USUAL_PLACEMENT,
-    displayRange
+    displayRange,
+    keyboardMaxHeightShare
   });
   return (
     <>
@@ -607,4 +610,39 @@ describe("native keyboard range preferences reach the rendered lane", () => {
     expect(view.setKeysPlacement).toHaveBeenLastCalledWith(USUAL_PLACEMENT);
     expect(updateStaffPrefs).not.toHaveBeenCalled();
   });
+});
+
+it("keeps a modest song-course keyboard height on desktop and restores ordinary framing on exit", async () => {
+  const prefs = { ...DEFAULT_STAFF_PREFS, keyStyle: "clay" as const, keyRange: "88" as const };
+  await act(async () => {
+    root.render(<Harness prefs={prefs} keyboardMaxHeightShare={0.3} />);
+    await Promise.resolve();
+  });
+  expect(view.setRange).toHaveBeenLastCalledWith(21, 108, false, true);
+  expect(view.setKeysPlacement).toHaveBeenLastCalledWith({
+    ...USUAL_PLACEMENT,
+    maxHeightShare: 0.3
+  });
+  await act(async () => {
+    root.render(<Harness prefs={prefs} displayRange={[60, 72]} keyboardMaxHeightShare={0.3} />);
+    await Promise.resolve();
+  });
+  expect(view.setRange).toHaveBeenLastCalledWith(60, 72, false, true);
+  await act(async () => {
+    root.render(<Harness prefs={{ ...prefs, keyRange: "49" }} keyboardMaxHeightShare={0.3} />);
+    await Promise.resolve();
+  });
+  expect(view.setRange).toHaveBeenLastCalledWith(36, 84, false, true);
+  expect(view.setKeysPlacement).toHaveBeenLastCalledWith({
+    ...USUAL_PLACEMENT,
+    maxHeightShare: 0.3
+  });
+  await act(async () => {
+    root.render(<Harness prefs={{ ...prefs, keyRange: "49" }} />);
+    await Promise.resolve();
+  });
+  expect(view.setKeysPlacement).toHaveBeenLastCalledWith(USUAL_PLACEMENT);
+  expect(updateStaffPrefs).not.toHaveBeenCalled();
+  expect(trainer.load).not.toHaveBeenCalled();
+  expect(trainer.setPlaying).not.toHaveBeenCalled();
 });

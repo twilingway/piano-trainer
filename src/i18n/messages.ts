@@ -1,3 +1,4 @@
+import { clayLessonMessages } from "./clayLessonMessages";
 import { songCourseMessages } from "./songCourseMessages";
 import { SONG_COURSE_NAVIGATION_MESSAGES } from "./songCourseNavigationMessages";
 import { songCourseSourceMessages } from "./songCourseSourceMessages";
@@ -40,6 +41,7 @@ import { independentRhythmMessages } from "./independentRhythmMessages";
 
 /** Catalog modules are added here; Russian source messages remain the fallback. */
 export const messages: Messages = {
+  ...clayLessonMessages,
   ...songCourseMessages,
   ...SONG_COURSE_NAVIGATION_MESSAGES,
   ...songCourseSourceMessages,

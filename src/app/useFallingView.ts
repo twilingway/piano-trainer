@@ -127,6 +127,7 @@ interface LaneRange {
 }
 
 interface Options {
+  readonly keyboardMaxHeightShare?: number | undefined;
   readonly displayRange?: readonly [number, number] | undefined;
   readonly hostRef: RefObject<HTMLDivElement | null>;
   readonly hasScore: boolean;
@@ -158,6 +159,7 @@ export function useFallingView({
   song,
   baseSong,
   displayRange,
+  keyboardMaxHeightShare,
   staffPrefs: savedPrefs,
   cameraInputBlocked = false,
   updateStaffPrefs,
@@ -337,7 +339,7 @@ export function useFallingView({
     comparisonRef.current?.setFallingNoteStyle(staffPrefs.fallingNoteStyle);
   }, [viewRef, trainerReady, staffPrefs.fallingNoteStyle]);
   const { lift, scale, x, y } = placement;
-  const maxHeightShare = displayRange ? 0.3 : undefined;
+  const maxHeightShare = keyboardMaxHeightShare ?? (displayRange ? 0.3 : undefined);
   useEffect(() => {
     freeLayoutRef.current = freeLayout;
     viewRef.current?.setFreeRoadLayout(freeLayout);

@@ -233,14 +233,20 @@ export function fitCourseZoom(
   }
 }
 
+/** The melody shell allocates an exact grid row; legacy lessons keep their readable floor. */
+function allocatedLessonHeight(host: HTMLElement): number | undefined {
+  const score = host.closest<HTMLElement>(".song-course-lesson__score");
+  if (score) return Math.max(1, score.clientHeight);
+  const body = host.closest(".lesson-workspace__body");
+  return body ? Math.max(MIN_LESSON_STAFF_ROOM, body.clientHeight) : undefined;
+}
+
 /** What a course's staff may fill: the reader's width and its share of the workspace height. */
 export function courseRoom(host: HTMLElement, maxShare: number): { width: number; height: number } {
   // This scrollport has a fixed grid allocation; the rendered ink never determines its height.
-  const lessonBody = host.closest(".lesson-workspace__body");
   const workspace = host.closest(".workspace-main");
-  const requestedHeight = lessonBody
-    ? Math.max(MIN_LESSON_STAFF_ROOM, lessonBody.clientHeight)
-    : (workspace?.clientHeight ?? window.innerHeight) * maxShare;
+  const requestedHeight =
+    allocatedLessonHeight(host) ?? (workspace?.clientHeight ?? window.innerHeight) * maxShare;
   const cssHeight = Number.parseFloat(getComputedStyle(host).maxHeight);
   const height = Number.isFinite(cssHeight)
     ? Math.min(requestedHeight, cssHeight)
@@ -258,7 +264,7 @@ export function courseRoom(host: HTMLElement, maxShare: number): { width: number
 export function showDrawing(host: HTMLElement, reserved?: InkSpan): void {
   const svg = host.querySelector("svg");
   if (!svg) return;
-  if (host.closest(".lesson-workspace__body")) {
+  if (host.closest(".song-course-lesson__score, .lesson-workspace__body")) {
     const scrollbar = host.offsetHeight - host.clientHeight;
     host.style.height = `${String(svg.getBoundingClientRect().height + scrollbar)}px`;
     host.scrollTop = 0;
@@ -295,10 +301,7 @@ export function fitCourseInk(
   reserved?: InkSpan
 ): void {
   const svg = host.querySelector("svg");
-  const lessonBody = host.closest(".lesson-workspace__body");
-  const limit = lessonBody
-    ? Math.max(MIN_LESSON_STAFF_ROOM, lessonBody.clientHeight)
-    : Number.parseFloat(getComputedStyle(host).maxHeight);
+  const limit = allocatedLessonHeight(host) ?? Number.parseFloat(getComputedStyle(host).maxHeight);
   if (!svg || typeof svg.getBBox !== "function" || !Number.isFinite(limit)) return;
   const viewBox = (svg.getAttribute("viewBox") ?? "").split(/\s+/).map(Number);
   const pixelHeight = Number.parseFloat(svg.getAttribute("height") ?? "");
@@ -342,7 +345,9 @@ export function fitCourseDrawing(host: HTMLElement, reserved?: InkSpan): number 
   if (originalHeight) svg.setAttribute("height", originalHeight);
   if (originalViewBox) svg.setAttribute("viewBox", originalViewBox);
   else svg.removeAttribute("viewBox");
-  const lessonBody = host.closest<HTMLElement>(".lesson-workspace__body");
+  const lessonBody = host.closest<HTMLElement>(
+    ".song-course-lesson__score, .lesson-workspace__body"
+  );
   const ink = lessonBody ? visibleCourseInk(svg) : svg.getBBox();
   const previous = originalViewBox.split(/\s+/).map(Number);
   const [viewLeft = 0, viewTop = 0, viewWidth, viewHeight] = previous.length === 4 ? previous : [];

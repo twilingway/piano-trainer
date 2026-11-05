@@ -372,3 +372,31 @@ describe("the room reserved for an exercise's range", () => {
     expect(host.style.height).toBe("452px");
   });
 });
+
+it("uses the exact responsive score row below the legacy 120px floor", () => {
+  const score = document.createElement("div");
+  score.className = "song-course-lesson__score";
+  Object.defineProperty(score, "clientHeight", { value: 90 });
+  const { host, svg } = fixture(new DOMRect(20, 15, 200, 140));
+  score.append(host);
+  document.body.append(score);
+  host.style.maxHeight = "none";
+  expect(courseRoom(host, 0.9).height).toBe(58);
+  svg.setAttribute("width", "1200");
+  svg.setAttribute("height", "600");
+  svg.setAttribute("viewBox", "0 0 400 200");
+  const notation = {
+    Zoom: 3,
+    render: vi.fn(() => {
+      svg.setAttribute("width", String(400 * notation.Zoom));
+      svg.setAttribute("height", String(200 * notation.Zoom));
+    })
+  };
+  fitCourseInk(notation as unknown as OpenSheetMusicDisplay, host);
+  expect(notation.Zoom).toBeCloseTo(58 / 140);
+  fitCourseDrawing(host);
+  showDrawing(host);
+  expect(Number(svg.getAttribute("height"))).toBeLessThanOrEqual(90);
+  expect(host.style.height).toBe(String(Number(svg.getAttribute("height"))) + "px");
+  score.remove();
+});

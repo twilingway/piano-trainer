@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "status": "integrated-portrait-idle",
+  "generationTool": "built-in image_gen",
+  "purpose": "Neutral seated pose for no active teaching note; never asserts a pressed pitch",
+  "frame": "idle-frame.webp",
+  "framePng": "idle-frame.png",
+  "frameSize": [512, 544],
+  "pivotPx": [256, 528],
+  "source": "idle-source.png",
+  "reference": "../animation-prototypes/teacher/mi-press-v2.png",
+  "prompt": "generation-prompt.txt",
+  "normalizationScript": "normalize_idle.py",
+  "report": "qa/report.json",
+  "generatedFilename": "exec-30ec57f3-708b-4d9c-917a-95ac5466d3a1.png",
+  "generationId": "01a1a9cb-2912-7621-9508-5c36a04d67e7",
+  "sourceSha256": "8b27b65ae1f8da37099b05854308430900f50c2fef5f569acb72fdacf67fee75",
+  "referenceSha256": "a3966c998b3c72bf73e20b854c8a9ae75da87c6446a29c181d89bb2c6a5ada73",
+  "pngSha256": "36e35c6083f6ed46d76faff239724f38ad0c99f247b9c33ada670afde9fa2553",
+  "webpSha256": "a9f290e4cba1fbc94ab655dc1b649eaccc2bc3e446469ea21ec3a0b1d5b73b0b",
+  "keyboardOrder": "High pitches on viewer left; black-key groups3-2-3-2",
+  "noteContact": "none",
+  "compatibility": "Uses same common source crop/scale/anchor as accepted teacher/sheets/*-press-frame.webp. Top-level *-press-v2 files are full source canvases, not512x544frames.",
+  "limitations": [
+    "New generation retains small silhouette/face variation; not pixel-identical to pressed poses.",
+    "Four fingertips remain separately readable; full five-finger anatomy not certified.",
+    "This single neutral frame permits truthful rest/release display, not a complete smooth pressing/releasing animation."
+  ],
+  "privacy": "No original user photograph or private Blender source is included.",
+  "provenanceTerms": "Generated for this original project with built-in image_gen from an existing generated project asset; no downloaded third-party art.",
+  "promptUtf8Sha256": "1aca2478b757136eee43c503f8bc057f01541e70b21426a787b37382ffd6abc1",
+  "gameContextQa": "docs/CLAY_LESSON_SCREEN_QA_2026_11_05.md; portrait idle, CDE demo, physical input/release and image failure verified"
+}
