@@ -152,7 +152,7 @@ export function KeyboardSettings({
             <span>{t("Вид клавиш")}</span>
             <select
               className="game-select"
-              value={keyStyle}
+              value={keyStyle === "clay" ? "classic" : keyStyle}
               aria-label={t("Вид клавиш")}
               data-setting-target="key-style"
               onChange={(event) => {
@@ -162,7 +162,6 @@ export function KeyboardSettings({
               <option value="classic">{t("Классика")}</option>
               <option value="arcade">{t("Аркада")}</option>
               <option value="3d">{t("3D")}</option>
-              <option value="clay">{t("Пластилин")}</option>
             </select>
           </label>
           {isNativeKeyStyle(keyStyle) && (

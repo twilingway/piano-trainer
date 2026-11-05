@@ -301,7 +301,7 @@ it("applies the full initial top camera with follow orientation and hidden hands
   });
   expect(view.setCamera).toHaveBeenCalledWith(CAMERA_PRESETS.top);
   expect(view.setKeyboardTop).toHaveBeenCalledWith(false);
-  expect(view.setKeyStyle).toHaveBeenCalledWith("clay");
+  expect(view.setKeyStyle).toHaveBeenCalledWith("classic");
   expect(view.setParts).toHaveBeenCalledWith({ notes: true, keys: true, hands: false });
 });
 
@@ -450,7 +450,7 @@ it("gives the original the take lane's range and look, live", async () => {
   expect(mirror.setNoteCards).toHaveBeenLastCalledWith(true);
   expect(mirror.setShowOctaveLabels).toHaveBeenLastCalledWith(true);
   expect(view.setShowOctaveLabels).toHaveBeenLastCalledWith(true);
-  expect(mirror.setRange).toHaveBeenLastCalledWith(21, 108, false, true);
+  expect(mirror.setRange).toHaveBeenLastCalledWith(21, 108, false, false);
   expect(mirror.mount).toHaveBeenCalledOnce();
 });
 

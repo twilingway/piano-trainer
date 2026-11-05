@@ -81,12 +81,24 @@ export function loadPreferences(storage: PreferenceStorage = browserPreferenceSt
     }
   };
   const layouts = record(json(PREFERENCE_KEYS.layouts));
-  const rawStaff = json(PREFERENCE_KEYS.staff);
-  const viewProfiles = hydrateViewProfiles(
-    json(PREFERENCE_KEYS.viewProfiles),
-    rawStaff,
-    layouts.piano
-  );
+  const savedStaff = json(PREFERENCE_KEYS.staff);
+  const staffRecord = record(savedStaff);
+  const rawStaff =
+    staffRecord.keyStyle === "clay"
+      ? { ...staffRecord, keyStyle: "classic", keyboardOrientation: "follow" }
+      : savedStaff;
+  const savedProfiles = json(PREFERENCE_KEYS.viewProfiles);
+  const profileRecord = record(savedProfiles);
+  const activeProfile = record(profileRecord.active);
+  // Retain archived framing entries while replacing the removed selectable keyboard.
+  const selectableProfiles =
+    activeProfile.keyboardStyle === "clay"
+      ? {
+          ...profileRecord,
+          active: { ...activeProfile, keyboardStyle: "classic", keyboardOrientation: "follow" }
+        }
+      : savedProfiles;
+  const viewProfiles = hydrateViewProfiles(selectableProfiles, rawStaff, layouts.piano);
   const framing = activeViewFraming(viewProfiles);
   const lights = record(json(PREFERENCE_KEYS.keyLights));
   const rawOutput = read(PREFERENCE_KEYS.midiOutput);

@@ -535,10 +535,10 @@ describe("flat keyboard effect preferences", () => {
 
 describe("initial unified keyboard preferences", () => {
   it.each([undefined, {}, { labels: true }])(
-    "starts with Clay, full top camera and hidden hands: %j",
+    "starts with Classic, full top camera and hidden hands: %j",
     (saved) => {
       expect(normalizeStaffPrefs(saved)).toMatchObject({
-        keyStyle: "clay",
+        keyStyle: "classic",
         camera: CAMERA_PRESETS.top,
         hands: false,
         keyboardOrientation: "follow"
@@ -555,7 +555,7 @@ describe("initial unified keyboard preferences", () => {
       );
       await mount();
       expect(prefs.staffPrefs).toMatchObject({
-        keyStyle,
+        keyStyle: keyStyle === "clay" ? "classic" : keyStyle,
         hands: true,
         camera: CAMERA_PRESETS.hands
       });
@@ -583,7 +583,7 @@ describe("initial unified keyboard preferences", () => {
   it("hydrates the top preset through the store when no camera was saved", async () => {
     await mount();
     expect(prefs.staffPrefs).toMatchObject({
-      keyStyle: "clay",
+      keyStyle: "classic",
       hands: false,
       camera: CAMERA_PRESETS.top,
       keyboardOrientation: "follow"
