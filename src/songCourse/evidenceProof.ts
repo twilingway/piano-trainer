@@ -29,6 +29,7 @@ export function songCourseEvidenceMatches(result: SongCourseResult): boolean {
         mode: result.mode,
         speed: result.speed,
         rubricVariant: result.rubricVariant,
+        ...(result.introductory ? { introductory: true as const } : {}),
         learnerPartIds: evidence.learnerPartIds,
         expected: evidence.expected
       },
@@ -58,6 +59,7 @@ export function songCourseEvidenceMatchesNode(
   const evidence = result.evidence;
   if (
     !validSongCourseEvidence(evidence) ||
+    (result.introductory === true && node.kind !== "notes") ||
     evidence.learnerPartIds.length !== source.learnerPartIds.length ||
     !evidence.learnerPartIds.every((part) => source.learnerPartIds.includes(part))
   )
