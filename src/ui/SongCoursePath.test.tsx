@@ -72,5 +72,5 @@ it("highlights the visible representative of an explicitly selected legacy repea
     );
   });
   expect(host.querySelectorAll('[aria-current="step"]')).toHaveLength(1);
-  expect(host.querySelector('[aria-current="step"]')?.textContent).toContain("Фраза с помощником");
+  expect(host.querySelector('[aria-current="step"]')?.textContent).toContain("Играем с Твили");
 });

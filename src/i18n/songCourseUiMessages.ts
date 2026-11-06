@@ -1,5 +1,30 @@
 import type { Messages } from "./locales";
 export const songCourseUiMessages: Messages = {
+  "Не удалось открыть урок. Выбери его ещё раз.": {
+    en: "Could not open the lesson. Please choose it again."
+  },
+  "Попытка остановлена. Начни урок заново.": {
+    en: "The attempt stopped. Please restart the lesson."
+  },
+  "Не удалось загрузить картинки. Открой урок заново.": {
+    en: "Could not load the pictures. Please reopen the lesson."
+  },
+  "Завершено уроков: {done} из {total}": { en: "Lessons completed: {done} of {total}" },
+  "Завершённые уроки": { en: "Completed lessons" },
+  "СЛЕДУЮЩИЙ УРОК": { en: "NEXT LESSON" },
+  "Знакомимся с нотами и играем мелодии.": { en: "Get to know the notes and play melodies." },
+  "Продолжить обучение": { en: "Continue learning" },
+  "Сыграть урок": { en: "Play lesson" },
+  "Прогресс урока": { en: "Lesson progress" },
+  "Подсказки и меню урока": { en: "Lesson hints and menu" },
+  "Открыть урок заново": { en: "Reload lesson" },
+  "Как пройти урок": { en: "How to play this lesson" },
+  "Начать урок заново": { en: "Restart lesson" },
+  "Скорость урока: {value}%": { en: "Lesson speed: {value}%" },
+  "Выбрать скорость урока": { en: "Choose lesson speed" },
+  "Звёзд за урок: {count} из 3": { en: "Stars for this lesson: {count} out of 3" },
+  "К следующему уроку": { en: "Next lesson" },
+  "Урок пройден!": { en: "Lesson complete!" },
   "Слушаем Твили": { en: "Listen to Twili" },
   Продолжаем: { en: "Continue" },
   "Звёзды за правильные ноты и длительность звуков.": {

@@ -52,12 +52,12 @@ export function SongCoursePath(props: SongCoursePathProps) {
       <header className="song-course-path__heading">
         <span>{t("УЧИМСЯ ИГРАЯ")}</span>
         <h2>{t("По нотам — к целой песне")}</h2>
-        <p>{t("Короткие этапы и концерт в конце каждой мелодии.")}</p>
+        <p>{t("Знакомимся с нотами и играем мелодии.")}</p>
       </header>
       {next && (
         <div className="song-course-path__welcome">
           <div>
-            <span className="song-course-path__eyebrow">{t("СЛЕДУЮЩИЙ ЭТАП ПЕСНИ")}</span>
+            <span className="song-course-path__eyebrow">{t("СЛЕДУЮЩИЙ УРОК")}</span>
             <h3>{t(next.source.title)}</h3>
             <p>{t(next.node.title)}</p>
             <button
@@ -68,7 +68,7 @@ export function SongCoursePath(props: SongCoursePathProps) {
                 props.onChoose(next.source.id, next.node.id);
               }}
             >
-              {t("Продолжить мелодию")} <span aria-hidden="true">→</span>
+              {t("Продолжить обучение")} <span aria-hidden="true">→</span>
             </button>
           </div>
           <img src={assistant} alt="" draggable={false} />
@@ -81,12 +81,12 @@ export function SongCoursePath(props: SongCoursePathProps) {
       )}
       <div className="song-course-path__completion">
         <span>
-          {t("Этапов завершено: {done} из {total}", { done: completed, total: entries.length })}
+          {t("Завершено уроков: {done} из {total}", { done: completed, total: entries.length })}
         </span>
         <progress
           value={completed}
           max={Math.max(1, entries.length)}
-          aria-label={t("Завершённые этапы песен")}
+          aria-label={t("Завершённые уроки")}
         />
       </div>
       {props.sources.map((source, index) => (
@@ -155,7 +155,7 @@ function SongCourseGroup(props: {
       <summary className="song-course-path__group-toggle">
         <span>{t(source.title)}</span>
         <small>
-          {t("Этапов завершено: {done} из {total}", { done, total: path.nodes.length })}
+          {t("Завершено уроков: {done} из {total}", { done, total: path.nodes.length })}
         </small>
         <span aria-hidden="true">{open ? "−" : "+"}</span>
       </summary>
@@ -252,13 +252,13 @@ function SongCoursePathNode(props: {
           <SongCourseMiniature source={source} node={node} />
         )}
         <span className="song-course-path__node-copy">
-          <small>{t("Этап песни {number}", { number: props.number })}</small>
+          <small>{t("Урок {number}", { number: props.number })}</small>
           <strong>{t(node.title)}</strong>
           {!illustration && <span>{t(node.instruction)}</span>}
           {result && (
             <span
               className="song-course-path__stars"
-              aria-label={t("Звёзд за этап: {count} из 3", { count: result.stars })}
+              aria-label={t("Звёзд за урок: {count} из 3", { count: result.stars })}
             >
               <ClayStars count={result.stars} />
             </span>

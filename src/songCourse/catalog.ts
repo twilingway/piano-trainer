@@ -68,16 +68,16 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "notes-c",
         "notes",
-        "До в песне",
-        "Сыграй четыре до большим пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
+        "Изучаем ноту До",
+        "Нажимай До большим пальцем правой руки. Держи клавишу до конца дорожки.",
         4,
         5
       ),
       node(
         "notes-d",
         "notes",
-        "Добавляем ре в песню",
-        "Сыграй четыре ре указательным пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
+        "Изучаем ноту Ре",
+        "Нажимай Ре указательным пальцем правой руки. Держи клавишу до конца дорожки.",
         5,
         6
       ),
@@ -85,8 +85,8 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
         ...node(
           "notes-e-quarter-v1",
           "notes",
-          "Знакомимся с ми",
-          "Сыграй четыре ми средним пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
+          "Изучаем ноту Ми",
+          "Нажимай Ми средним пальцем правой руки. Держи клавишу до конца дорожки.",
           0,
           1
         ),
@@ -96,7 +96,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "notes-e",
         "notes",
-        "Собираем до, ре и ми",
+        "Играем До, Ре и Ми",
         "Ми — средним пальцем, ре — указательным, до — большим. Держи каждую клавишу, пока дорожка не заполнится, затем отпусти.",
         0,
         2
@@ -104,7 +104,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "quarter",
         "duration",
-        "Короткие звуки песни",
+        "Изучаем четвертные ноты",
         "Каждая четверть длится одну долю. Держите клавишу до конца звука, затем отпускайте.",
         4,
         5
@@ -112,7 +112,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "half",
         "duration",
-        "Две доли на звук",
+        "Удерживаем ноту дольше",
         "Половинная нота пустая внутри и со штилем. Удерживайте каждую клавишу две доли.",
         0,
         1
@@ -120,7 +120,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "whole",
         "duration",
-        "Четыре доли на звук",
+        "Играем самые длинные ноты",
         "Целая нота пустая внутри и без штиля. Удерживайте до четыре доли.",
         1,
         2
@@ -130,7 +130,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       ...node(
         "notes-e-intro",
         "notes",
-        "Знакомимся с ми",
+        "Изучаем ноту Ми",
         "Ми играет средний палец правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
         0,
         1
@@ -142,8 +142,8 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       ...node(
         "notes-e-repeat-v1",
         "notes",
-        "Знакомимся с ми",
-        "Сыграй четыре ми средним пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.",
+        "Изучаем ноту Ми",
+        "Нажимай Ми средним пальцем правой руки. Держи клавишу до конца дорожки.",
         0,
         1
       ),
@@ -157,7 +157,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "notes-f",
         "notes",
-        "Новая фа в мелодии",
+        "Изучаем ноту Фа",
         "Фа играет безымянный палец правой руки. Сыграйте знакомые ре и новую фа.",
         2,
         3
@@ -168,7 +168,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "notes-g",
         "notes",
-        "Новая соль в мелодии",
+        "Изучаем ноту Соль",
         "Соль играет мизинец правой руки. Найдите соль и вернитесь к знакомой ми.",
         0,
         1
@@ -179,7 +179,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "notes-a",
         "notes",
-        "Ля и перенос руки",
+        "Изучаем ноту Ля",
         "На повторной соль смените пятый палец на четвёртый, затем сыграйте ля пятым. Не растягивайте руку.",
         0,
         2
@@ -190,7 +190,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "upper-c-b",
         "notes",
-        "Си и верхняя до",
+        "Изучаем Си и верхнюю До",
         "Начните с верхней до пятым пальцем и спускайтесь по соседним клавишам. Следуйте пальцам в нотах.",
         0,
         2
@@ -206,7 +206,7 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
       node(
         "eighth",
         "duration",
-        "Быстрая восьмая в мотиве",
+        "Изучаем восьмые ноты",
         "Восьмая со флажком длится половину доли. Сравните короткую ля с длинными соседними звуками.",
         0,
         1
@@ -224,8 +224,8 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
     node(
       `guided-${String(index + 1)}`,
       "guided-phrase",
-      "Фраза с помощником",
-      "Послушайте фразу, затем сыграйте её с цветом и именем нот.",
+      "Играем с Твили",
+      "Сначала послушай Твили, затем сыграй сам. Цвет и названия нот помогут.",
       phrase.fromMeasure,
       phrase.toMeasure
     )
@@ -234,8 +234,8 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
     node(
       `independent-${String(index + 1)}`,
       "independent-phrase",
-      "Фраза самостоятельно",
-      "Сыграйте знакомую фразу без имён нот и номеров пальцев. Сохраняйте длительность звуков.",
+      "Играем самостоятельно",
+      "Сыграй знакомую мелодию без подсказок. Удерживай каждую ноту до конца.",
       phrase.fromMeasure,
       phrase.toMeasure
     )
@@ -243,8 +243,8 @@ function sourceFor(definition: SourceDefinition): SongCourseSource {
   const performance = node(
     "performance",
     "performance",
-    id === "joy-octave" ? "Весь октавный мотив в темпе" : "Вся мелодия в темпе",
-    "После отсчёта сыграйте вместе с сопровождением. Музыка идёт дальше: следите за ритмом и вовремя отпускайте клавиши.",
+    id === "joy-octave" ? "Играем всю мелодию" : "Играем всю мелодию",
+    "После четырёх ударов сыграй всю мелодию вместе с музыкой.",
     0,
     measures.length
   );

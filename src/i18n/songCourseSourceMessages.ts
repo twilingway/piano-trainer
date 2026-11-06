@@ -1,6 +1,39 @@
 import type { Messages } from "./locales";
 
 export const songCourseSourceMessages: Messages = {
+  "Изучаем ноту До": { en: "Learn the note C" },
+  "Изучаем ноту Ре": { en: "Learn the note D" },
+  "Изучаем ноту Ми": { en: "Learn the note E" },
+  "Изучаем ноту Фа": { en: "Learn the note F" },
+  "Изучаем ноту Соль": { en: "Learn the note G" },
+  "Изучаем ноту Ля": { en: "Learn the note A" },
+  "Изучаем Си и верхнюю До": { en: "Learn B and high C" },
+  "Играем До, Ре и Ми": { en: "Play C, D, and E" },
+  "Изучаем четвертные ноты": { en: "Learn quarter notes" },
+  "Удерживаем ноту дольше": { en: "Hold the note longer" },
+  "Играем самые длинные ноты": { en: "Play the longest notes" },
+  "Играем с Твили": { en: "Play with Twili" },
+  "Играем самостоятельно": { en: "Play on your own" },
+  "Играем всю мелодию": { en: "Play the whole melody" },
+  "Изучаем восьмые ноты": { en: "Learn eighth notes" },
+  "Нажимай До большим пальцем правой руки. Держи клавишу до конца дорожки.": {
+    en: "Play C with your right thumb. Hold the key until the bar fills."
+  },
+  "Нажимай Ре указательным пальцем правой руки. Держи клавишу до конца дорожки.": {
+    en: "Play D with your right index finger. Hold the key until the bar fills."
+  },
+  "Нажимай Ми средним пальцем правой руки. Держи клавишу до конца дорожки.": {
+    en: "Play E with your right middle finger. Hold the key until the bar fills."
+  },
+  "Сначала послушай Твили, затем сыграй сам. Цвет и названия нот помогут.": {
+    en: "Listen to Twili, then play it yourself. Note colors and names will help."
+  },
+  "Сыграй знакомую мелодию без подсказок. Удерживай каждую ноту до конца.": {
+    en: "Play the melody you know without hints. Hold each note until it ends."
+  },
+  "После четырёх ударов сыграй всю мелодию вместе с музыкой.": {
+    en: "After four count-in beats, play the whole melody along with the music."
+  },
   "Сыграй четыре ми средним пальцем правой руки. Держи клавишу, пока дорожка не заполнится, затем отпусти.":
     {
       en: "Play four Es with your right middle finger. Hold each key until the track fills, then release it."

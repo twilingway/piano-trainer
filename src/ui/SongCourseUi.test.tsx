@@ -135,7 +135,7 @@ describe("song-course path", () => {
     expect(host.querySelectorAll('[data-state="complete"]')).toHaveLength(0);
     expect(host.querySelector("progress")?.value).toBe(0);
     expect(choose).not.toHaveBeenCalled();
-    await click("Продолжить мелодию →");
+    await click("Продолжить обучение →");
     expect(choose).toHaveBeenCalledExactlyOnceWith(source.id, nodeId);
     const full = receipt();
     const subset = gradeSongCourseAttempt(
@@ -164,7 +164,7 @@ describe("song-course path", () => {
     await render(path([full]));
     expect(host.querySelectorAll('[data-state="complete"]')).toHaveLength(1);
     expect(host.querySelector("progress")?.value).toBe(1);
-    expect(host.querySelector('[aria-label="Звёзд за этап: 1 из 3"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Звёзд за урок: 1 из 3"]')).not.toBeNull();
   });
 
   it("restores both opened and closed song groups after the window content unmounts", async () => {
@@ -255,7 +255,7 @@ describe("song-course lesson and result", () => {
     expect(slider?.max).toBe("1");
     expect(slider?.value).toBe("0.75");
     expect(host.querySelector("progress")?.value).toBe(0.25);
-    expect(host.textContent).toContain("Скорость этапа: 75%");
+    expect(host.textContent).toContain("Скорость урока: 75%");
     await act(async () => {
       await Promise.resolve();
       if (!slider) throw new Error("missing slider");
@@ -271,9 +271,9 @@ describe("song-course lesson and result", () => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(host.querySelector(".song-course-menu")).toBeNull();
-    expect(document.activeElement?.getAttribute("aria-label")).toBe("Подсказки и меню этапа");
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Подсказки и меню урока");
     const play = host.querySelector<HTMLButtonElement>(".song-course-lesson__play");
-    expect(play?.getAttribute("aria-label")).toBe("Сыграть этап");
+    expect(play?.getAttribute("aria-label")).toBe("Сыграть урок");
     expect(host.querySelectorAll('button[aria-label="К пути по мелодиям"]')).toHaveLength(1);
     await act(async () => {
       await Promise.resolve();
@@ -372,7 +372,7 @@ describe("song-course lesson and result", () => {
     expect(host.querySelector("[data-character]")).not.toBeNull();
     expect(host.querySelector(".song-course-lesson__action button")).toBeNull();
     await click("···");
-    expect(host.textContent).toContain("How to play this stage");
+    expect(host.textContent).toContain("How to play this lesson");
     expect(host.textContent).toContain("On phones and tablets");
   });
 
@@ -405,11 +405,11 @@ describe("song-course lesson and result", () => {
     ]);
     expect(host.querySelectorAll('[data-earned="true"]')).toHaveLength(1);
     expect(host.textContent).not.toContain("Скорость исполнения:");
-    await click("К следующему этапу");
+    await click("К следующему уроку");
     await click("Разобрать трудные места");
     await click("Сыграть ещё раз");
     expect(host.querySelector(".song-course-result__rating")?.textContent).toBe(
-      "Звёзд за этап: 1 из 3"
+      "Звёзд за урок: 1 из 3"
     );
     expect(host.querySelector(".song-course-result__actions")?.textContent).not.toContain(
       "К пути по мелодиям"
@@ -438,7 +438,7 @@ describe("song-course lesson and result", () => {
     );
     expect(host.querySelectorAll('[data-earned="true"]')).toHaveLength(0);
     expect(host.textContent).toContain("Попытка не завершена");
-    expect(host.textContent).not.toContain("К следующему этапу");
+    expect(host.textContent).not.toContain("К следующему уроку");
   });
   it.each([0, 2, 3] as const)(
     "shows an explicit %s-star rating, including an honest zero",
@@ -463,7 +463,7 @@ describe("song-course lesson and result", () => {
         />
       );
       expect(host.querySelector(".song-course-result__rating")?.textContent).toBe(
-        `Звёзд за этап: ${String(stars)} из 3`
+        `Звёзд за урок: ${String(stars)} из 3`
       );
       expect(host.querySelectorAll('[data-earned="true"]')).toHaveLength(stars);
       expect(host.querySelectorAll('[data-earned="false"]')).toHaveLength(3 - stars);
@@ -473,7 +473,7 @@ describe("song-course lesson and result", () => {
           "Держите клавишу до конца ноты"
         );
         expect(host.querySelector(".song-course-result__actions")?.textContent).not.toContain(
-          "К следующему этапу"
+          "К следующему уроку"
         );
       }
     }
@@ -543,6 +543,6 @@ it("continues the selected melody before unfinished earlier songs", async () => 
     />
   );
   expect(host.querySelector(".song-course-path__welcome h3")?.textContent).toBe("Звёздочка");
-  await click("Продолжить мелодию →");
+  await click("Продолжить обучение →");
   expect(choose).toHaveBeenCalledExactlyOnceWith(twinkle.id, node.id);
 });
