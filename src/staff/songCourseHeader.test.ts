@@ -193,3 +193,91 @@ it("keeps one visible prefix while the first note approaches from beyond the vie
   header?.dispose();
   expect(host.querySelectorAll("[data-song-course-prefix]")).toHaveLength(0);
 });
+
+function fiveRailFixture(sourceOffset = 500) {
+  const scene = fixture(sourceOffset);
+  const original = required(scene.svg.querySelector<SVGPathElement>("#staff-line"));
+  original.style.strokeOpacity = "0.65";
+  original.style.strokeWidth = "1.6";
+  for (let index = 1; index < 5; index++) {
+    const rail = original.cloneNode(true) as SVGPathElement;
+    rail.id = `staff-line-${String(index)}`;
+    const y = 50 + index * 10;
+    rail.setAttribute("d", `M0 ${String(y)}L900 ${String(y)}`);
+    rail.getBoundingClientRect = () =>
+      new DOMRect(20 + sourceOffset - scene.host.scrollLeft, 40 + y, 900, 0);
+    original.parentElement?.append(rail);
+  }
+  scene.host.dataset.songCoursePlayhead = "160";
+  return scene;
+}
+
+it("joins all five rails across the negative-time run-up without covering notes or cursor", () => {
+  const { room, host, svg } = fiveRailFixture();
+  const original = svg.innerHTML;
+  const header = installSongCourseHeader(host);
+  const bridge = required(room.querySelector<HTMLElement>(".song-course-rail-bridge"));
+  const prefix = required(room.querySelector<HTMLElement>(".song-course-header"));
+  const drawing = required(bridge.querySelector("svg"));
+  const rails = [...drawing.querySelectorAll(".vf-measure > path")];
+  expect(rails).toHaveLength(5);
+  expect(drawing.querySelector(".vf-clef, .vf-timesignature, .vf-stavenote, text")).toBeNull();
+  expect(bridge.nextElementSibling).toBe(host);
+  expect(bridge.style.pointerEvents).toBe("none");
+  expect(bridge.style.backgroundColor).toBe("");
+  expect(bridge.style.zIndex).toBe("0");
+  expect(drawing.style.overflow).toBe("visible");
+  expect(rails.every((line) => line.getAttribute("d")?.includes("L1220 "))).toBe(true);
+  expect(rails.every((line) => line.getAttribute("style")?.includes("stroke-opacity: 0.65"))).toBe(
+    true
+  );
+  const prefixEnd = parseFloat(prefix.style.left) + parseFloat(prefix.style.width);
+  const firstStart = parseFloat(bridge.style.left);
+  expect(firstStart).toBeLessThanOrEqual(prefixEnd);
+  expect(firstStart + parseFloat(bridge.style.width)).toBe(335);
+  const prefixPosition = [prefix.style.left, prefix.style.width];
+  host.scrollLeft = 200;
+  header?.frame();
+  expect(parseFloat(bridge.style.width)).toBe(181);
+  // On arrival and afterwards the original staff already covers the region.
+  for (const scroll of [450, 700, 950]) {
+    host.scrollLeft = scroll;
+    header?.frame();
+    expect(bridge.style.width).toBe("0px");
+    expect([prefix.style.left, prefix.style.width]).toEqual(prefixPosition);
+  }
+  expect(host.querySelectorAll("svg")).toHaveLength(1);
+  const snapshot = worldScoreSnapshot(
+    host,
+    [{ beat: 0, x: 100, line: 0 }],
+    [{ top: 0, bottom: 100 }]
+  );
+  expect(snapshot?.svg).not.toContain("song-course-rail-bridge");
+  expect(snapshot?.svg).not.toContain("L1220 ");
+  const ids = [...room.querySelectorAll("[id]")].map((element) => element.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  header?.dispose();
+  expect(room.querySelector(".song-course-rail-bridge")).toBeNull();
+  expect(svg.innerHTML).toBe(original);
+});
+
+it("keeps enlarged bridge rails vertically aligned and clipped to the current row", () => {
+  const { room, host, svg } = fiveRailFixture();
+  svg.getBoundingClientRect = () =>
+    new DOMRect(520 - host.scrollLeft, 40 - host.scrollTop, 1800, 280);
+  const header = installSongCourseHeader(host);
+  const bridge = required(room.querySelector<HTMLElement>(".song-course-rail-bridge"));
+  const drawing = required(bridge.querySelector("svg"));
+  expect(drawing.getAttribute("width")).toBe("1800");
+  expect(drawing.getAttribute("height")).toBe("280");
+  expect(bridge.style.height).toBe("140px");
+  expect(bridge.style.top).toBe("30px");
+  expect(bridge.style.overflow).toBe("hidden");
+  host.scrollTop = 50;
+  host.dispatchEvent(new Event("scroll"));
+  expect(drawing.style.marginTop).toBe("-50px");
+  expect(bridge.style.top).toBe("30px");
+  expect(bridge.style.height).toBe("140px");
+  header?.dispose();
+  expect(room.querySelector(".song-course-rail-bridge")).toBeNull();
+});
