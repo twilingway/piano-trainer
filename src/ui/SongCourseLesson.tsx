@@ -120,7 +120,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
     ? "Пауза в песне"
     : phase === "paused"
       ? "Продолжаем"
-      : "Сыграть этап";
+      : "Сыграть урок";
   const action = phase === "error" ? props.onRetry : running ? props.onPause : props.onStart;
   return (
     <section className="song-course-lesson" aria-label={t(material.node.title)} data-phase={phase}>
@@ -138,7 +138,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
           <progress
             max={1}
             value={progress}
-            aria-label={t("Прогресс мелодии в этом этапе")}
+            aria-label={t("Прогресс урока")}
             aria-valuetext={t("Мелодия пройдена на {value}%", {
               value: Math.round(progress * 100)
             })}
@@ -159,8 +159,8 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
           ref={menuButton}
           type="button"
           className="game-button song-course-lesson__icon"
-          aria-label={t("Подсказки и меню этапа")}
-          title={t("Подсказки и меню этапа")}
+          aria-label={t("Подсказки и меню урока")}
+          title={t("Подсказки и меню урока")}
           aria-expanded={menuOpen}
           aria-controls={menuId}
           onClick={() => {
@@ -214,7 +214,7 @@ export function SongCourseLesson(props: SongCourseLessonProps) {
             <p className="song-course-lesson__hold-status">{t(status)}</p>
           ) : (
             <button type="button" className="game-button lesson-main-action" onClick={action}>
-              {t("Загрузить этап ещё раз")}
+              {t("Открыть урок заново")}
             </button>
           )}
         </footer>

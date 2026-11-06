@@ -163,7 +163,7 @@ export class SongCoursePlayback {
     if (!ready || !presented) {
       this.owner.fail(
         ready
-          ? "Не удалось открыть учебную мелодию. Выберите этап ещё раз."
+          ? "Не удалось открыть урок. Выбери его ещё раз."
           : "Звук пока недоступен. Нажмите «Играть» ещё раз."
       );
       return;
@@ -292,7 +292,7 @@ export class SongCoursePlayback {
         this.owner.update({
           phase: "error",
           countdown: undefined,
-          error: "Попытка остановлена. Начните этот этап ещё раз."
+          error: "Попытка остановлена. Начни урок заново."
         });
       }
     } else if (this.attempt && !["complete", "aborted"].includes(this.attempt.phase)) {
@@ -305,7 +305,7 @@ export class SongCoursePlayback {
         this.owner.update({
           phase: "error",
           countdown: undefined,
-          error: "Попытка остановлена. Начните этот этап ещё раз."
+          error: "Попытка остановлена. Начни урок заново."
         });
       }
     } else if (this.owner.read().view.phase === "awaiting-keys-up") {
