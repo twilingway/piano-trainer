@@ -7957,3 +7957,8 @@ button.song-card.song-card__open {
     padding: 0 4px 4px;
   }
 }
+
+/* Continuous course rails replace only horizontal reader paths; exports keep their geometry. */
+.staff [data-song-course-rail] {
+  visibility: hidden;
+}

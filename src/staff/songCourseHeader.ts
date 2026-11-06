@@ -96,8 +96,8 @@ function opaqueBackground(host: HTMLElement): string {
   return "#030e18";
 }
 
-/** Fill only the empty run-up, below the real score and outside exported SVGs. */
-function installRailBridge(
+/** One uninterrupted rail drawing below notes; the exported score retains its own lines. */
+function installCourseRails(
   host: HTMLElement,
   source: SVGSVGElement,
   sourceOffset: number,
@@ -105,14 +105,16 @@ function installRailBridge(
 ) {
   const parent = host.parentElement;
   const drawing = headerDrawing(source, firstNoteX, true);
-  const firstRail = [
+  const movingRails = [
     ...source.querySelectorAll<SVGGraphicsElement>(".vf-measure > path, .vf-stave > path")
-  ].find((path) => {
+  ].filter((path) => {
     const box = path.getBoundingClientRect();
     return box.width > 1 && box.height <= 2;
   });
+  const firstRail = movingRails[0];
   if (!parent || !drawing || !firstRail) return undefined;
   const sourceBox = source.getBoundingClientRect();
+  const railStart = sourceOffset + firstRail.getBoundingClientRect().left - sourceBox.left;
   const viewWidth = source.viewBox.baseVal.width || sourceBox.width;
   const extension = viewWidth * (1 + host.getBoundingClientRect().width / sourceBox.width);
   for (const path of drawing.querySelectorAll(".vf-measure > path, .vf-stave > path")) {
@@ -132,7 +134,7 @@ function installRailBridge(
   drawing.setAttribute("height", String(sourceBox.height));
   Object.assign(drawing.style, { maxWidth: "none", display: "block", overflow: "visible" });
   const layer = document.createElement("div");
-  layer.className = "song-course-rail-bridge";
+  layer.className = "song-course-rails";
   layer.setAttribute("aria-hidden", "true");
   Object.assign(layer.style, {
     position: "absolute",
@@ -142,15 +144,16 @@ function installRailBridge(
   });
   layer.append(drawing);
   parent.insertBefore(layer, host);
+  // External CSS hides only the moving reader paths, never barlines, ledgers or exported SVGs.
+  for (const rail of movingRails) rail.setAttribute("data-song-course-rail", "");
   let lastPosition = "";
   return {
-    frame(maskWidth: number) {
+    frame() {
       const view = host.getBoundingClientRect();
       const container = parent.getBoundingClientRect();
       const liveSource = source.getBoundingClientRect();
-      const start = Math.max(0, maskWidth - 1);
-      const end = Math.min(view.width, firstRail.getBoundingClientRect().left - view.left + 1);
-      const width = Math.max(0, end - start);
+      const start = Math.max(0, railStart);
+      const width = Math.max(0, view.width - start);
       const left = view.left - container.left + parent.scrollLeft + start;
       const top = view.top - container.top + parent.scrollTop;
       const drawingTop = liveSource.top - view.top;
@@ -165,6 +168,7 @@ function installRailBridge(
       drawing.style.marginTop = `${String(drawingTop)}px`;
     },
     dispose() {
+      for (const rail of movingRails) rail.removeAttribute("data-song-course-rail");
       layer.remove();
     }
   };
@@ -217,7 +221,7 @@ export function installSongCourseHeader(host: HTMLElement) {
   drawing.style.marginLeft = `${String(sourceOffset)}px`;
   overlay.append(drawing);
   parent.append(overlay);
-  const bridge = installRailBridge(host, source, sourceOffset, firstBox.left);
+  const rails = installCourseRails(host, source, sourceOffset, firstBox.left);
   let lastPosition = "";
   const frame = () => {
     const view = host.getBoundingClientRect();
@@ -229,7 +233,7 @@ export function installSongCourseHeader(host: HTMLElement) {
     const playhead = Number(host.dataset.songCoursePlayhead ?? (host.clientWidth || view.width));
     const gap = Number(host.dataset.songCourseCursorGap ?? 12);
     const maskWidth = Math.max(0, Math.min(playhead - gap, sourceOffset + width));
-    bridge?.frame(maskWidth);
+    rails?.frame();
     const position = `${String(left)},${String(top)},${String(maskWidth)},${String(view.height)},${String(drawingTop)}`;
     if (position === lastPosition) return;
     lastPosition = position;
@@ -247,7 +251,7 @@ export function installSongCourseHeader(host: HTMLElement) {
       host.removeEventListener("scroll", frame);
       for (const glyph of movingGlyphs) glyph.removeAttribute("data-song-course-prefix");
       overlay.remove();
-      bridge?.dispose();
+      rails?.dispose();
     }
   };
 }
