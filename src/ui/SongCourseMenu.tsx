@@ -49,10 +49,10 @@ export function SongCourseMenu(props: Props) {
       id={props.id}
       className="song-course-menu"
       role="dialog"
-      aria-label={t("Подсказки и меню этапа")}
+      aria-label={t("Подсказки и меню урока")}
     >
       <div className="song-course-menu__head">
-        <strong>{t("Как сыграть этот этап")}</strong>
+        <strong>{t("Как пройти урок")}</strong>
         <button
           type="button"
           className="game-button song-course-lesson__icon"
@@ -77,19 +77,19 @@ export function SongCourseMenu(props: Props) {
           </button>
         )}
         <button type="button" className="game-button" onClick={run(props.onRetry)}>
-          {t("Начать этап заново")}
+          {t("Начать урок заново")}
         </button>
       </div>
       {props.phase === "ready" && props.onSpeed && (
         <label className="song-course-lesson__speed">
-          <span>{t("Скорость этапа: {value}%", { value: Math.round(props.speed * 100) })}</span>
+          <span>{t("Скорость урока: {value}%", { value: Math.round(props.speed * 100) })}</span>
           <input
             type="range"
             min={0.25}
             max={1}
             step={0.05}
             value={props.speed}
-            aria-label={t("Выбрать скорость до начала этапа")}
+            aria-label={t("Выбрать скорость урока")}
             onChange={(event) => props.onSpeed?.(Number(event.target.value))}
           />
         </label>

@@ -147,7 +147,7 @@ describe("melody-led course content", () => {
       "hot-cross-buns-m1-n2",
       "hot-cross-buns-m2-n1"
     ]);
-    expect(mixed.title).toBe("Собираем до, ре и ми");
+    expect(mixed.title).toBe("Играем До, Ре и Ми");
     expect(buildSongCourseMaterial(source, mixed).expected.map((note) => note.pitch)).toEqual([
       64, 62, 60
     ]);

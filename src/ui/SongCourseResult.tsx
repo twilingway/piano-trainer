@@ -26,7 +26,7 @@ export function SongCourseResult(props: SongCourseResultProps) {
     passed && props.hasNext ? props.onNext : canReview ? props.onReview : props.onRetry;
   const label =
     passed && props.hasNext
-      ? "К следующему этапу"
+      ? "К следующему уроку"
       : canReview
         ? "Разобрать трудные места"
         : "Сыграть ещё раз";
@@ -68,7 +68,7 @@ export function SongCourseResult(props: SongCourseResultProps) {
           <span aria-hidden="true">×</span>
         </button>
         <p className="song-course-result__rating">
-          {t("Звёзд за этап: {count} из 3", { count: stars })}
+          {t("Звёзд за урок: {count} из 3", { count: stars })}
         </p>
         <span aria-hidden="true" />
       </header>
@@ -81,7 +81,7 @@ export function SongCourseResult(props: SongCourseResultProps) {
         <div
           className="song-course-result__stars"
           role="img"
-          aria-label={t("Звёзд за этап: {count} из 3", { count: stars })}
+          aria-label={t("Звёзд за урок: {count} из 3", { count: stars })}
         >
           <ClayStars count={stars} />
         </div>
@@ -90,7 +90,7 @@ export function SongCourseResult(props: SongCourseResultProps) {
             !result.valid
               ? "Попытка не завершена"
               : passed
-                ? "Этап сыгран!"
+                ? "Урок пройден!"
                 : props.introductory
                   ? "Попробуем ещё раз"
                   : "Потренируем трудные места"
