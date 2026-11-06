@@ -1,5 +1,14 @@
 import type { Messages } from "./locales";
 export const songCourseUiMessages: Messages = {
+  "Не удалось открыть урок. Выбери его ещё раз.": {
+    en: "Could not open the lesson. Please choose it again."
+  },
+  "Попытка остановлена. Начни урок заново.": {
+    en: "The attempt stopped. Please restart the lesson."
+  },
+  "Не удалось загрузить картинки. Открой урок заново.": {
+    en: "Could not load the pictures. Please reopen the lesson."
+  },
   "Завершено уроков: {done} из {total}": { en: "Lessons completed: {done} of {total}" },
   "Завершённые уроки": { en: "Completed lessons" },
   "СЛЕДУЮЩИЙ УРОК": { en: "NEXT LESSON" },

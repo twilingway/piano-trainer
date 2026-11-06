@@ -295,13 +295,13 @@ export class SongCourseController {
     if (id !== this.sceneId || this.disposed) return;
     this.presentationReady = Promise.resolve(false);
     this.resolvePresentation?.(false);
-    this.fail("Не удалось загрузить картинки урока. Откройте этап ещё раз.");
+    this.fail("Не удалось загрузить картинки. Открой урок заново.");
   }
   staffError(id: string): void {
     if (id === this.sceneId) {
       this.presentationReady = Promise.resolve(false);
       this.resolvePresentation?.(false);
-      this.fail("Не удалось открыть учебную мелодию. Выберите этап ещё раз.");
+      this.fail("Не удалось открыть урок. Выбери его ещё раз.");
     }
   }
   soundInterrupted = (): void => {
@@ -384,7 +384,7 @@ export class SongCourseController {
     this.publish();
   }
   private materialError(): false {
-    this.fail("Не удалось открыть учебную мелодию. Выберите этап ещё раз.");
+    this.fail("Не удалось открыть урок. Выбери его ещё раз.");
     return false;
   }
   private fail(error: string): void {
