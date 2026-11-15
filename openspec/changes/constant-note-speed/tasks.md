@@ -14,7 +14,7 @@
 
 ## 2. Verification
 
-- [ ] 2.1 `pnpm check` and `pnpm spec:validate`
+- [x] 2.1 `pnpm check` and `pnpm spec:validate`
 - [ ] 2.2 Browser on the task stand: reference view, far horizon and hidden staff show the same note
       speed and length in white-key steps
 
@@ -24,3 +24,6 @@
       (`screenNoteField` over `RoadLayer.notePlace`); flat lanes unchanged
 - [x] 3.2 Tests: the same on-screen white keys a second at the hit line for roads that squeeze depth
       or widen keys; spec, proposal and design updated
+
+Проверка 15.11.2026: pnpm check 5336 tests/30 compiler, spec:validate 102/102 — PASS. Видимый
+trace-проход частичный; 2.2 остаётся открыт. Сценарии и пределы: docs/NOTE_SPEED_QA_2026_11_15.md.
