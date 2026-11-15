@@ -3063,7 +3063,7 @@ button.song-card.song-card__open {
 }
 
 /* Keep desktop window controls readable without spending a second row on labels. */
-@media (640px < width <= 1800px) and (height > 500px) {
+@media (640px < width <= 2200px) and (height > 500px) {
   .topbar-audio-toggle {
     justify-content: center;
     width: 36px;
