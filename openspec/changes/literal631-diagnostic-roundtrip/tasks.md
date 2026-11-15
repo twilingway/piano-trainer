@@ -22,5 +22,7 @@
 
 - [x] 3.1 Независимый typed reader проверяет complete receipt и immutable hashes; final review
       подтверждает DIAGNOSTIC_ROUNDTRIP_ONLY без physical/serialization promotion.
-- [ ] 3.2 Выполнить pnpm check и pnpm spec:validate; записать конкретные результаты, оставшиеся
+- [x] 3.2 Выполнить pnpm check и pnpm spec:validate; записать конкретные результаты, оставшиеся
       native LEFT/physical/animation gates и открыть PR в dev без private assets.
+
+Публикация после пользовательского stop: PR #343 в dev. Merge/deploy не выполнялись.
